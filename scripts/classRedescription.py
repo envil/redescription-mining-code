@@ -4,6 +4,10 @@ from classRule import  *
 
 class Redescription:
     nbVariables = 3
+    sym_alpha = 0
+    sym_beta = 1
+    sym_gamma = 2
+    sym_delta = 3
     diff_terms = Rule.diff_terms
     diff_cols = Rule.diff_cols
     diff_op = Rule.diff_op
@@ -29,6 +33,7 @@ class Redescription:
             raise Exception('Non interpretable redescription !\n')
         self.N = nN
         self.lAvailableCols = navailableCols
+        self.vectorABCD = Redescription.makeVectorABCD(self.nbAvailableCols()>0, self.N, self.sAlpha, self.sBeta, self.sGamma)
         
     def fromInitialPair(initialPair, data, souvenirs):
         ruleL = Rule()
@@ -36,7 +41,8 @@ class Redescription:
         ruleL.extend(None, initialPair[1])
         ruleR.extend(None, initialPair[2])
         r = Redescription(ruleL, ruleR, [data.supp(0, initialPair[1]), data.supp(1, initialPair[2])], data.N) 
-        r.lAvailableCols = [set(souvenirs.availableMo[0]), set(souvenirs.availableMo[1])] 
+        r.lAvailableCols = [set(souvenirs.availableMo[0]), set(souvenirs.availableMo[1])]
+        r.vectorABCD = Redescription.makeVectorABCD(r.nbAvailableCols()>0, r.N, r.sAlpha, r.sBeta, r.sGamma)
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
@@ -105,8 +111,20 @@ class Redescription:
     def delta(self):
         return set(range(self.N)) - self.sAlpha - self.sBeta - self.sGamma
 
+    def makeVectorABCD(makeV, N, alpha, beta, gamma):
+        if makeV and N >= 0  :
+            vect = [Redescription.sym_delta for i in range(N)]
+            sets = [(Redescription.sym_gamma, gamma), (Redescription.sym_beta, beta), (Redescription.sym_alpha, alpha)]
+            for (val, s) in sets:
+                for i in s:
+                    vect[i] = val
+        else:
+            vect = None
+        return vect
+    makeVectorABCD = staticmethod(makeVectorABCD)
+
     def parts(self):
-        return ( self.sAlpha, self.sBeta, self.sGamma, self.delta())
+        return ( self.sAlpha, self.sBeta, self.sGamma, self.delta(), self.vectorABCD)
     
     def rule(self, side):
         return self.rules[side]
@@ -163,6 +181,7 @@ class Redescription:
                 self.lAvailableCols[side] = set()
             else:
                 self.lAvailableCols[side].remove(term.col())
+            self.vectorABCD = Redescription.makeVectorABCD(self.nbAvailableCols()>0 and data.needsVectorABCD(), self.N, self.sAlpha, self.sBeta, self.sGamma)
 
     def kid(self, data, side= -1, op = None, term= None):
         ##pdb.set_trace()
@@ -172,6 +191,8 @@ class Redescription:
         else:
             kid.rules[side].extend(op, term)
             suppX = data.supp(side, term)
+            if suppX == None or len(suppX) < 3:
+                pdb.set_trace()
             if side == 0:
                 if op.isOr():
                     kid.sAlpha |= (suppX - kid.sBeta - kid.sGamma)
@@ -195,7 +216,7 @@ class Redescription:
                 kid.lAvailableCols[side] = set()
             else:
                 kid.lAvailableCols[side].remove(term.col())
-
+            kid.vectorABCD = Redescription.makeVectorABCD(kid.nbAvailableCols()>0 and data.needsVectorABCD(), kid.N, kid.sAlpha, kid.sBeta, kid.sGamma)
         return kid
             
     def copy(self):
@@ -226,14 +247,10 @@ class Redescription:
             nsBeta = nsuppR - nsuppL
             nsGamma =  nsuppL & nsuppR
 
-            res= ( len(nsAlpha.symmetric_difference(self.sAlpha)) == 0, \
+            return ( len(nsAlpha.symmetric_difference(self.sAlpha)) == 0, \
                      len(nsBeta.symmetric_difference(self.sBeta)) == 0, \
                      len(nsGamma.symmetric_difference(self.sGamma)) == 0 )
-            if res[0] *res[1] *res[2] == 0:
-                pdb.set_trace()
-            return res
-
-
+           
     def compliesWith(self, criterions):
         complies = True
         for crit in criterions:

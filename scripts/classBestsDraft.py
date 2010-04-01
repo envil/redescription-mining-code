@@ -25,6 +25,7 @@ class BestsDraft:
     diff_toRed = 2
     diff_toBlue = 3
     diff_acc = 4
+    diff_none = 5
     
     def make(acc=-1, side=-1, op=-1, term=-1, toRed=0, toBlue=0):
         return {'acc': acc, 'term': term, 'side': side, 'op': op, 'toRed' : toRed, 'toBlue': toBlue }
@@ -37,15 +38,13 @@ class BestsDraft:
             return side*2 + op.isOr()*1
     pos = staticmethod(pos)    
 
-    def __init__(self, ncurrAcc, nminContribution, minImpr=0):
+    def __init__(self, ncurrAcc):
         self.bests = [BestsDraft.make(),
                       BestsDraft.make(),
                       BestsDraft.make(),
                       BestsDraft.make(),
                       BestsDraft.make(ncurrAcc)] ## last contains current rule
-        self.improvements = [0 for i in range(4)]
-        self.minContribution = nminContribution
-
+        
     def term(self, pos):
         return self.bests[pos]['term']
     def acc(self, pos):
@@ -59,36 +58,64 @@ class BestsDraft:
     def op(self, pos):
         return self.bests[pos]['op']    
 
-    def compare(self, x, pos):
-        if x['acc'] > self.bests[pos]['acc']:
-            return BestsDraft.diff_acc
-        elif x['acc'] == self.bests[pos]['acc']:
-            if x['toBlue'] > self.bests[pos]['toBlue']:
-                return BestsDraft.diff_toBlue
-            elif x['toBlue'] == self.bests[pos]['toBlue']:
-                if x['toRed'] > self.bests[pos]['toRed']:
-                    return BestsDraft.diff_toRed
-                elif x['toRed'] == self.bests[pos]['toRed']:
-                    if x['term'] > self.bests[pos]['term']:
-                        return BestsDraft.diff_item
-                    elif x['term'] == self.bests[pos]['term']:
-                        return 0
-                    else:
-                        return -BestsDraft.diff_item
-                else:
-                    return -BestsDraft.diff_toRed
-            else:
-                return -BestsDraft.diff_toBlue
+#     def compare(self, x, pos):
+#         if x['acc'] > self.bests[pos]['acc']:
+#             return BestsDraft.diff_acc
+#         elif x['acc'] == self.bests[pos]['acc']:
+#             if x['toBlue'] > self.bests[pos]['toBlue']:
+#                 return BestsDraft.diff_toBlue
+#             elif x['toBlue'] == self.bests[pos]['toBlue']:
+#                 if x['toRed'] > self.bests[pos]['toRed']:
+#                     return BestsDraft.diff_toRed
+#                 elif x['toRed'] == self.bests[pos]['toRed']:
+#                     if x['term'] > self.bests[pos]['term']:
+#                         return BestsDraft.diff_item
+#                     elif x['term'] == self.bests[pos]['term']:
+#                         return 0
+#                     else:
+#                         return -BestsDraft.diff_item
+#                 else:
+#                     return -BestsDraft.diff_toRed
+#             else:
+#                 return -BestsDraft.diff_toBlue
+#         else:
+#             return -BestsDraft.diff_acc
+
+    def comparePair(x, y):
+        if y == None:
+            return BestsDraft.diff_none
+        elif x == None:
+            return -BestsDraft.diff_none
         else:
-            return -BestsDraft.diff_acc
-     
-    def upBest(self, side, op, term, acc, toRed, toBlue):
-        if toBlue >=  self.minContribution :
-            pos = BestsDraft.pos(side, op)
-            tmp = BestsDraft.make(acc, side, op, term, toRed, toBlue)
-            
-            if self.compare(tmp, pos) > 0 :
-                self.bests[pos] = tmp
+            if x['acc'] > y['acc']:
+                return BestsDraft.diff_acc
+            elif x['acc'] == y['acc']:
+                if x['toBlue'] > y['toBlue']:
+                    return BestsDraft.diff_toBlue
+                elif x['toBlue'] == y['toBlue']:
+                    if x['toRed'] > y['toRed']:
+                        return BestsDraft.diff_toRed
+                    elif x['toRed'] == y['toRed']:
+                        if x['term'] > y['term']:
+                            return BestsDraft.diff_item
+                        elif x['term'] == y['term']:
+                            return 0
+                        else:
+                            return -BestsDraft.diff_item
+                    else:
+                        return -BestsDraft.diff_toRed
+                else:
+                    return -BestsDraft.diff_toBlue
+            else:
+                return -BestsDraft.diff_acc
+    comparePair = staticmethod(comparePair) 
+
+    def upBest(self, candis):
+        for candi in candis:
+            pos = BestsDraft.pos(candi['side'], candi['op'])
+        ##cand = BestsDraft.make(acc, side, op, term, toRed, toBlue)
+            if BestsDraft.comparePair(candi, self.bests[pos]) > 0 :
+                self.bests[pos] = candi
 
 #     def newABc(self, pos, redescription):
 #         if self.bests[pos]['side'] == 0 :

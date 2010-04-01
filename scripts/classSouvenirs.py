@@ -3,10 +3,10 @@ import pdb
 class Souvenirs:
     format_index_pref = ':%(lengthL)i:%(lengthR)i:%(side)i:%(op)i:'
     format_index_suff = '%(buk)i:%(col)i:'
-    def __init__(self, nAvailableMo, nAmnesic = False):
+    def __init__(self,  nAvailableMo, nAmnesic = False):
         self.rulesList = []
         self.indexes = {}
-        self.availableMo = nAvailableMo
+        self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
         self.amnesic = nAmnesic
 
     def __str__(self):

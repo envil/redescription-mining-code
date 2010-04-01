@@ -17,8 +17,8 @@ class Op:
                 
     def isSet(self):
         return self.val != 0
-    
-    def same(self):
+
+    def copy(self):
         return Op(self.val)
     
     def other(self):
@@ -89,6 +89,9 @@ class Item:
     def __init__(self, ncol):
         self.col = ncol
            
+    def copy(self):
+        return Item(self.col)
+
     def cmpType(self, other):
         if other == None:
             return 1
@@ -109,6 +112,10 @@ class Item:
     
 class BoolItem(Item):
     type_id = 1
+
+
+    def copy(self):
+        return BoolItem(self.col)
     
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -150,6 +157,9 @@ class CatItem(Item):
     def __init__(self, ncol, ncat):
         self.col = ncol
         self.cat = ncat
+
+    def copy(self):
+        return CatItem(self.col, self.cat)
             
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -202,7 +212,10 @@ class NumItem(Item):
         self.col = ncol
         self.lowb = nlowb
         self.upb = nupb
-            
+
+    def copy(self):
+        return NumItem(self.col, self.lowb, self.upb)
+                        
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
             if self.cmpType(other) == 0:
@@ -273,18 +286,13 @@ class Term:
                  {'class': CatItem,  'match':'\d+\=\d+?$'}, \
                  {'class': BoolItem, 'match':'\d+$'}]
     
-    def __init__(self, nneg, ncol, v1=None, v2=None):
-        if type(ncol) == int:
-            self.neg = Neg(nneg)
-            if v1 == None and v2 == None:
-                self.item = BoolItem(ncol)
-            elif v2 == None:
-                self.item = CatItem(ncol, v1)
-            else:
-                self.item = NumItem(ncol, v1, v2)
-        else:
-            self.neg = nneg  ## Already a Neg instance
-            self.item = ncol ## Already an Item instance
+    def __init__(self, nneg, nitem):
+        self.neg = Neg(nneg)
+        self.item = nitem ## Already an Item instance
+
+    def copy(self):
+        return Term(self.neg.boolVal(), self.item.copy())
+            
 
     def disp(self, lenIndex=0, names = None):
         return '%s%s' % (self.neg, self.item.disp(lenIndex, names))
@@ -305,7 +313,7 @@ class Term:
     
     def isNeg(self):
         return self.neg.boolVal()
-    
+
     def col(self):
         return self.item.colId()
     
@@ -319,7 +327,7 @@ class Term:
                 (item, pos) = Term.itemTypes[i]['class'].parse(parts, pos)
             i+=1
         if pos - tmp_pos in [1, 2]:
-            return (Term(neg, item), pos)
+            return (Term(neg.boolVal(), item), pos)
         else:
             return (None, tmp_pos)
     parse = staticmethod(parse)
@@ -350,16 +358,16 @@ class Rule:
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
         if nb % 2 == 0: # even bucket: rule operator, else other
-            return self.op.same()
+            return self.op.copy()
         else: 
             return self.op.other()
 
     def copy(self):
         c = Rule()
-        c.op = self.op
+        c.op = self.op.copy()
         c.buk = []
         for buk in self.buk:
-            c.buk.append(set(buk))
+            c.buk.append(set([t.copy() for t in buk]))
         return c
             
     def compare(x, y): ## same as compare pair with empty right

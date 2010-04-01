@@ -85,7 +85,25 @@ def getNames(filename, lenColSupps, empty):
         names = []
     return names
 
-def readNonBoolean(filename):
+def readNumerical(filename):
+    ## Read input
+    ## WARNING: non boolean data stored transposed
+
+    rowId = -1
+    f = open(filename, 'r')
+    tmpcolSupps = []
+    verbPrint(1,"\nReading dense input %s\n"%filename)
+    for row in f:
+        a = (row.strip()).split(' ')
+        if rowId == -1:
+            rowId = len(a)
+        elif rowId != len(a):
+            raise Exception('Inconsistent number of rows !\n')
+        tmpcolSupps.append([float(i) for i in a])
+    f.close()
+    return (tmpcolSupps, rowId-1)
+
+def readCategorical(filename):
     ## Read input
     ## WARNING: non boolean data stored transposed
 

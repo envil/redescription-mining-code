@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, getopt, math, random, utilsIO
+import sys, getopt, utilsIO
 from classRule import *
 from classRedescription import *
 from classData import *
@@ -106,12 +106,7 @@ def getOpts(argv):
     setts['amnesic'] = False
     setts['maxSideIden'] = 0
     ## rule types
-    setts['rule_types'] = {}
-    setts['rule_types']['and_nots'] = True
-    setts['rule_types']['or_nots'] = True
-    setts['rule_types']['nots'] = True
-    setts['rule_types']['ands'] = True
-    setts['rule_types']['ors'] = True
+    setts['rule_types'] = {False: set([False, True]), True: set([False, True])}
     for o, a in opts:
             
         if o in ("-L", "--dataL"): setts['datafiles'][0] = a
@@ -129,18 +124,11 @@ def getOpts(argv):
         if o in ("-A", "--amnesic"): setts['amnesic'] = True
         if o in ("-i", "--max-side-identical"): setts['maxSideIden'] = int(a)
         
-        if o == "--witout-and-nots": setts['rule_types']['and_nots'] = False
-        if o == "--without-or-nots": setts['rule_types']['or_nots'] = False
-        if o == "--without-nots":
-            setts['rule_types']['nots'] = False
-            setts['rule_types']['and_nots'] = False
-            setts['rule_types']['or_nots'] = False
-        if o == "--without-ands":
-            setts['rule_types']['ands'] = False
-            setts['rule_types']['and_nots'] = False
-        if o == "--without-ors":
-            setts['rule_types']['ors'] = False
-            setts['rule_types']['or_nots'] = False
+        if o == "--witout-and-nots": setts['rule_types'][False].remove(True)
+        if o == "--without-or-nots": setts['rule_types'][True].remove(True)
+        if o == "--without-nots": setts['rule_types'][False].remove(True); setts['rule_types'][True].remove(True)
+        if o == "--without-ands": del setts['rule_types'][False]
+        if o == "--without-ors": del setts['rule_types'][True]
             
         if o in ("-h", "--help"):
             usage()
@@ -152,94 +140,16 @@ def getOpts(argv):
 def verbPrint(level, message):
     utilsIO.verbPrint(level, message, setts)
 
-def addInitialPair(N, suppA, suppB, idA, idB, initialPairs, ruleTypes, scoreFormula='suppI[i]/suppU[i]'):
-
-    c = float(len(suppA & suppB))
-    a = float(len(suppA - suppB))
-    b = float(len(suppB - suppA))
-
-## Evaluate score for AB AbB ABb AbBb
-    if ruleTypes['and_nots'] or ruleTypes['or_nots'] :
-        suppI = [ c, b, a, N-a-b-c]
-        suppU = [ a+b+c, N-a, N-b, N-c]
-        suppA = [ a+c, N-a-c, a+c, N-a-c]
-        suppB = [ b+c, b+c, N-b-c, N-b-c]
-        rand = [random.random()  for i in range(4)]
-## Evaluate score for AB only
-    else:
-        suppI = [ c]
-        suppU = [ a+b+c]
-        suppA = [ a+c]
-        suppB = [ b+c]
-        rand = [random.random()]
-
-    ## compute score according to given formula
-    for i in range(len(suppI)):
-        initialPairs.append((eval(scoreFormula), Term(i in [1, 3], idA), Term(i in [2, 3], idB), suppI[i] ))
-    # for i in range(len(suppI)):
-#         s = eval(scoreFormula)
-#         if s > minScore and s < maxScore and suppI[i] >= minC and suppI[i] <= N - minC :
-#             Ab = i in [1, 3]
-#             Bb = i in [2, 3]
-#             initialPairs.append((s, idA, idB, Ab, Bb, suppI[i] ))
-
-def initializePairs(data, availableCols, nbPairs, ruleTypes, scoreFormula='suppI[i]/suppU[i]'):
-    initialPairs = []
-    for idL in availableCols[0]:
-        verbPrint(10, 'Searching for intial pairs (idL:%i, *)' %idL)
-        for idR in  availableCols[1]:
-            addInitialPair(data.N, data.vect(0,idL), data.vect(1,idR), idL, idR, initialPairs, ruleTypes, scoreFormula)
-    initialPairs.sort(key=lambda x: x[0], reverse=True) 
-    if len(initialPairs) > nbPairs:
-        initialPairs = initialPairs[:nbPairs]
-    return initialPairs
-
-def updateBestsBool(bests, palpha, pbeta, pgamma, pdelta, side, x, suppX, minSupp, maxSupp, ruleTypes):
-    ingamma = float(len(pgamma & suppX))
-    inalpha = float(len(palpha & suppX))
-    inbeta = float(len(pbeta & suppX))
-    indelta = float(len(pdelta & suppX))
-    gamma = len(pgamma)
-    alpha = len(palpha)
-    beta = len(pbeta)
-    delta = len(pdelta)
-    
-    verbPrint(9, 'Col %i: (%i / %i, %i / %i, %i / %i, %i / %i)' % \
-              (x, inalpha, alpha, inbeta, beta, ingamma, gamma, indelta, delta))
-
-    if ruleTypes['ands'] and ingamma >= minSupp:
-        bests.upBest(side, Op(False), Term(False,x), ingamma / (beta + gamma + inalpha), inalpha, ingamma)
-
-    if ruleTypes['and_nots'] and gamma - ingamma >= minSupp :
-        bests.upBest(side, Op(False), Term(True,x), (gamma - ingamma) / (beta + gamma + alpha - inalpha), alpha - inalpha, gamma - ingamma)
-
-    if ruleTypes['ors'] and alpha + gamma + inbeta + indelta <= maxSupp :
-        bests.upBest(side, Op(True), Term(False,x), (inbeta + gamma)/ (alpha + beta + gamma + indelta), indelta, inbeta)
-
-    if ruleTypes['or_nots'] and alpha + gamma + beta - inbeta + delta - indelta <= maxSupp :
-        bests.upBest(side, Op(True), Term(True,x), (beta - inbeta + gamma)/ (alpha + beta + gamma + delta - indelta),  delta - indelta,  delta - inbeta)
-
-def updateBestsCat(bests, palpha, pbeta, pgamma, pdelta, side, x, suppX, minSupp, maxSupp, ruleTypes):
-    ## TODO
-    print "To be defined"
-    
-def updateBestsNum(bests, palpha, pbeta, pgamma, pdelta, side, x, suppX, minSupp, maxSupp, ruleTypes):
-    ## TODO
-    print "To be defined"
-
-def getKids(currentRedescription, data, minContribution, minImpr, maxImpr, ruleTypes, excludeCurr):    
-
-    minSupp = minContribution*(1+max(currentRedescription.length(0), currentRedescription.length(1)))
-    maxSupp = data.N - minContribution*(1+max(currentRedescription.length(0), currentRedescription.length(1)))
-    
-    bests = BestsDraft(currentRedescription.acc(), minContribution)
-    (alpha, beta, gamma, delta) = currentRedescription.parts()
+def getKids(currentRedescription, data, minImpr, maxImpr, ruleTypes, excludeCurr):    
+    Data.log_fid.write('## Extending Redescription %s\n' % currentRedescription)
+    bests = BestsDraft(currentRedescription.acc())
+    parts = currentRedescription.parts()
     for x in currentRedescription.availableColsSide(0):
-        eval('updateBests' + data.dataTypeSuffs[0])(bests, alpha, beta, gamma, delta, 0, x, data.vect(0,x), minSupp, maxSupp, ruleTypes)
-        
-    for y in currentRedescription.availableColsSide(1):
-        eval('updateBests' + data.dataTypeSuffs[1])(bests, beta, alpha, gamma, delta, 1, y, data.vect(1,y), minSupp, maxSupp, ruleTypes)
+        data.updateBests(bests, parts, 0, x, ruleTypes)
 
+    for y in currentRedescription.availableColsSide(1):
+        data.updateBests(bests, parts, 1, y, ruleTypes)
+ 
     verbPrint(8, currentRedescription)
     verbPrint(8, bests)
     kids = set()
@@ -247,7 +157,7 @@ def getKids(currentRedescription, data, minContribution, minImpr, maxImpr, ruleT
         kids.add(currentRedescription.kid(data, bests.side(i), bests.op(i), bests.term(i) ))
     return kids
 
-def processDraft(currentDraft, data, minContribution, minImpr, maxImpr, ruleTypes, souvenirs):    
+def processDraft(currentDraft, data, minImpr, maxImpr, ruleTypes, souvenirs):    
     step = 0
     verbPrint(4, "Expanding pair, step %i" % (step))
     verbPrint(5, currentDraft)
@@ -259,7 +169,7 @@ def processDraft(currentDraft, data, minContribution, minImpr, maxImpr, ruleType
         for red in notBarren : ## code getKids
             nb_extensions = red.updateAvailable(souvenirs)
             if red.nbAvailableCols() > 0:
-                tmp_kids = getKids(red, data, minContribution, minImpr, maxImpr, ruleTypes, nb_extensions > 0)
+                tmp_kids = getKids(red, data, minImpr, maxImpr, ruleTypes, nb_extensions > 0)
                 if nb_extensions == 0 or len(tmp_kids) > 0:
                     kids.update(tmp_kids)
                     souvenirs.update(tmp_kids)
@@ -279,23 +189,20 @@ def main():
     getOpts(sys.argv[1:])
     utilsIO.setts = setts
     data = Data(setts['datafiles'])
-    setts['minC'] = data.updateC(setts['c'])
-    (setts['minSupp'], setts['maxSupp']) = data.updateS(setts['s'])
+    data.setMinSC(setts['s'], setts['c'])
     verbPrint(3, "Settings:\n %s" % (setts))
     verbPrint(3, data)
     Redescription.nbVariables = setts['nbVariables']
     readyDraft = RedescriptionsDraft()
-    souvenirs = Souvenirs([data.nonFullCols(setts['minC'],0),data.nonFullCols(setts['minC'],1)], setts['amnesic'])
-    criterionsReady = [':red:length(1) + :red:length(0) > %i' % 3, \
-                      ':red:lenI() > %i' % setts['minSupp'], \
-                      ':red:lenI() < %i' % setts['maxSupp'] ]
+    souvenirs = Souvenirs(data.nonFull(), setts['amnesic'])
+    criterionsReady = [':red:length(1) + :red:length(0) > %i' % 3 ]
 
     output = open(setts['outputfile'], 'w')
     supportOutput = open(setts['supportOutputfile'], 'w', 1)
     
     ## Initialization phase, try all pairs:
     verbPrint(3, 'Searching for initial pairs')
-    initialPairs = initializePairs(data, souvenirs.availableMo, setts['nbRules'], setts['rule_types'],  setts['scoreFormula'])
+    initialPairs = data.initializePairs(setts['nbRules'], setts['rule_types'],  setts['scoreFormula'])
     verbPrint(3, "%i initial pairs" % len(initialPairs))
     verbPrint(20, "Initial Pairs: %s" % str(initialPairs))
 
@@ -303,7 +210,7 @@ def main():
          currentDraft = RedescriptionsDraft(setts['draft_cap'])
          currentDraft.insert(Redescription.fromInitialPair(initialPairs.pop(0), data, souvenirs))
 
-         processDraft(currentDraft, data, setts['minC'], setts['minImpr'], float('Inf'), setts['rule_types'], souvenirs)
+         processDraft(currentDraft, data, setts['minImpr'], float('Inf'), setts['rule_types'], souvenirs)
          ready = currentDraft.getReady(setts['draft_out'], criterionsReady) #setts['draft_out']
 
          if setts['maxSideIden'] > 0 :
