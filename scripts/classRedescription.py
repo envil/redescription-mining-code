@@ -191,8 +191,6 @@ class Redescription:
         else:
             kid.rules[side].extend(op, term)
             suppX = data.supp(side, term)
-            if suppX == None or len(suppX) < 3:
-                pdb.set_trace()
             if side == 0:
                 if op.isOr():
                     kid.sAlpha |= (suppX - kid.sBeta - kid.sGamma)
