@@ -21,6 +21,7 @@ class Redescription:
             self.sAlpha = set()
             self.sBeta = set()
             self.sGamma = set([-1])
+        
         elif type(nsupps) == list and len(nsupps) == 3:
             self.sAlpha = nsupps[0]
             self.sBeta = nsupps[1]
@@ -35,14 +36,12 @@ class Redescription:
         self.lAvailableCols = navailableCols
         self.vectorABCD = Redescription.makeVectorABCD(self.nbAvailableCols()>0, self.N, self.sAlpha, self.sBeta, self.sGamma)
         
-    def fromInitialPair(initialPair, data, souvenirs):
+    def fromInitialPair(initialPair, data):
         ruleL = Rule()
         ruleR = Rule()
         ruleL.extend(None, initialPair[1])
         ruleR.extend(None, initialPair[2])
-        r = Redescription(ruleL, ruleR, [data.supp(0, initialPair[1]), data.supp(1, initialPair[2])], data.N) 
-        r.lAvailableCols = [set(souvenirs.availableMo[0]), set(souvenirs.availableMo[1])]
-        r.vectorABCD = Redescription.makeVectorABCD(r.nbAvailableCols()>0, r.N, r.sAlpha, r.sBeta, r.sGamma)
+        r = Redescription(ruleL, ruleR, [data.supp(0, initialPair[1]), data.supp(1, initialPair[2])], data.N, data.nonFull()) 
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
@@ -257,11 +256,20 @@ class Redescription:
         
 
     def __str__(self):
-        return '(%i %i,  %i / %i\t = %f) %i + %i items:\t (%i): %s <=> %s' \
+        if self.sGamma != set([-1]):
+            return '(%i %i,  %i / %i\t = %f) %i + %i items:\t (%i): %s <=> %s' \
                   % (self.lenL(), self.lenR(), \
                      self.lenI(), self.lenU(), self.acc(), \
                      self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
                      len(self), self.rules[0], self.rules[1])
+        elif hasattr(self, 'readInfo'):
+            return '(%i %i,  %i / %i\t = %f): %s <=> %s' \
+                  % (self.readInfo['L'], self.readInfo['R'], \
+                     self.readInfo['I'], self.readInfo['L'] + self.readInfo['R'] -self.readInfo['I'], self.readInfo['acc'], \
+                     self.rules[0], self.rules[1])
+        else:
+            return 'Non printable redescription'
+            
 
  #    def dispLong(self):
 #         return '(%i %i,  %i / %i\t = %f, %s) %i + %i items:\t (%i): %s <=> %s' \
@@ -271,15 +279,28 @@ class Redescription:
 #                      self.rules[0].length() + self.rules[1].length(), self.rules[0].dispIds(), self.rules[1].dispIds())
 
     def dispCarateristiques(self):
-        return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i' \
+        if self.sGamma != set([-1]):
+            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i' \
              % (self.acc(), self.lenL(), self.lenR(), self.lenI())
+        elif hasattr(self, 'readInfo'):
+            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i' \
+             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'])
+        else:
+            return 'Non printable redescription'
+        
 
     def dispCarateristiquesSimple(self):
-        return '%f\t%i\t%i\t%i' \
+        if self.sGamma != set([-1]):
+            return '%f\t%i\t%i\t%i' \
              % (self.acc(), self.lenL(), self.lenR(), self.lenI())
-
+        elif hasattr(self, 'readInfo'):
+            return '%f\t%i\t%i\t%i' \
+             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'])
+        else:
+            return 'Non printable redescription'
+        
     def disp(self, lenIndex=0, names= [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\n\t\t'+self.dispCarateristiques()
+        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCarateristiques()+'\n'
 
     def dispSimple(self, lenIndex=0, names = [None, None]):
         return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCarateristiquesSimple()+'\n'
@@ -374,6 +395,7 @@ class Redescription:
                                  % (r.lenL(), left,  r.lenR(), right,  r.lenI(), inter))
         else:
             r = Redescription(ruleL, ruleR)
+            r.readInfo = {'acc':acc, 'L':left, 'R':right, 'I':inter}
         return r
     parse = staticmethod(parse)
         

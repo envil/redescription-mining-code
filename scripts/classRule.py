@@ -88,7 +88,10 @@ class Item:
     
     def __init__(self, ncol):
         self.col = ncol
-           
+
+#     def simple(self, neg):
+#         return neg
+
     def copy(self):
         return Item(self.col)
 
@@ -112,7 +115,7 @@ class Item:
     
 class BoolItem(Item):
     type_id = 1
-
+    patt = '(?P<col>\d+)$'
 
     def copy(self):
         return BoolItem(self.col)
@@ -131,7 +134,7 @@ class BoolItem(Item):
             lenIndex = str(lenIndex)
         else:
             lenIndex = ''
-        if type(names) == list :
+        if type(names) == list  and len(names) > 0:
             return ('%'+lenIndex+'s ') % names[self.col]
         else:
             return ('%'+lenIndex+'i ') % self.col
@@ -140,19 +143,22 @@ class BoolItem(Item):
         return self.disp()
             
     def parse(parts, pos):
-        ok = True
-        try:
-            ncol = int(parts[pos])
-        except ValueError, detail:
-            raise Warning('In boolean item %s, column is not convertible to int (%s)\n'%(parts[pos], detail))
-            ok = False
-        if ok :
-            return (BoolItem(ncol), pos+1)
+        partsU = re.match(BoolItem.patt, parts[pos])
+        if partsU != None:
+            ok = True
+            try:
+                ncol = int(partsU.group('col'))
+            except ValueError, detail:
+                raise Warning('In boolean item %s, column is not convertible to int (%s)\n'%(parts[pos], detail))
+                ok = False
+            if ok :
+                return (BoolItem(ncol), pos+1)
         return (None, pos)
     parse = staticmethod(parse)
     
 class CatItem(Item):
     type_id = 2
+    patt = '(?P<col>\d+)\=(?P<cat>\d+?)$'
     
     def __init__(self, ncol, ncat):
         self.col = ncol
@@ -178,7 +184,7 @@ class CatItem(Item):
             lenIndex = str(lenIndex)
         else:
             lenIndex = ''
-        if type(names) == list :
+        if type(names) == list  and len(names) > 0:
             return ('%'+lenIndex+'s=%i ') % (names[self.col], self.cat)
         else:
             return ('%'+lenIndex+'i=%i ') % (self.col, self.cat)
@@ -187,16 +193,16 @@ class CatItem(Item):
         return self.disp()
     
     def parse(parts, pos):
-        partsU = parts[pos].split('=')
-        if len(partsU) == 2:
+        partsU = re.match(CatItem.patt, parts[pos])
+        if partsU != None :
             ok = True
             try:
-                ncat = int(partsU[1])
+                ncat = int(partsU.group('cat'))
             except ValueError, detail:
                 raise Warning('In categorical item %s, category is not convertible to int (%s)\n'%(parts[pos], detail))
                 ok = False
             try:
-                ncol = int(partsU[0])
+                ncol = int(partsU.group('col'))
             except ValueError, detail:
                 raise Warning('In categorical item %s, column is not convertible to int (%s)\n'%(parts[pos], detail))
                 ok = False
@@ -207,12 +213,29 @@ class CatItem(Item):
 
 class NumItem(Item):
     type_id = 3
+    patt = '(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+))?\<(?P<upb>-?\d+(\.\d+)?)))$'
     
     def __init__(self, ncol, nlowb, nupb):
-        self.col = ncol
-        self.lowb = nlowb
-        self.upb = nupb
+        if nlowb == float('-Inf') and nupb == float('Inf'):
+            #pdb.set_trace()
+            raise Warning('Unbounded numerical item !')
+        else:
+            self.col = ncol
+            self.lowb = nlowb
+            self.upb = nupb
 
+#     def simple(self, neg):
+#         if neg:
+#             if self.lowb == float('-Inf'):
+#                 self.lowb = self.upb
+#                 self.upb = float('Inf')
+#                 neg = False
+#             elif self.upb == float('Inf'):
+#                 self.upb = self.lowb
+#                 self.lowb = float('-Inf')
+#                 neg = False
+#         return neg
+            
     def copy(self):
         return NumItem(self.col, self.lowb, self.upb)
                         
@@ -242,53 +265,79 @@ class NumItem(Item):
         return int(self.col*self.lowb*self.upb-(self.col)*(self.lowb+1)*(self.upb-1))
     
     def disp(self, lenIndex=0, names = None):
+        if self.lowb > float('-Inf'):
+            lb = '>%s' % self.lowb
+        else:
+            lb = ''
+        if self.upb < float('Inf'):
+            ub = '<%s' % self.upb
+        else:
+            ub = ''
         if lenIndex > 0 :
             lenIndex = str(lenIndex)
         else:
             lenIndex = ''
-        if type(names) == list :
-            return ('%'+lenIndex+'s>%f<%f ') % (names[self.col], self.lowb, self.upb)
+        if type(names) == list  and len(names) > 0:
+            return ('%'+lenIndex+'s%s%s ') % (names[self.col], lb, ub)
         else:
-            return ('%'+lenIndex+'i>%f<%f ') % (self.col, self.lowb, self.upb)
+            return ('%'+lenIndex+'i%s%s ') % (self.col, lb, ub)
 
     def __str__(self):
         return self.disp()
-    
+
     def parse(parts, pos):
-        partsU = parts[pos].split('<')
-        if len(partsU) == 2:
-            partsV = partsU[0].split('>')
-            if len(partsV) == 2:
-                ok = True
+        partsU = re.match(NumItem.patt, parts[pos])
+        if partsU != None :
+            ok = True; ncol=None; lowb=None; upb=None
+            if partsU.group('upbs') != None:                
                 try:
-                    nupb = float(partsU[1])
+                    upb = float(partsU.group('upbs'))
                 except ValueError, detail:
                     raise Warning('In numerical item %s, upper bound is not convertible to float (%s)\n'%(parts[pos], detail))
                     ok = False
+                lowb = float('-inf')
+            
+            elif partsU.group('lowbs') != None:                
                 try:
-                    nlowb = float(partsV[1])
+                    lowb = float(partsU.group('lowbs'))
                 except ValueError, detail:
                     raise Warning('In numerical item %s, lower bound is not convertible to float (%s)\n'%(parts[pos], detail))
                     ok = False
+                upb = float('inf')
+
+            else:
                 try:
-                    ncol = int(partsV[0])
+                    lowb = float(partsU.group('lowb'))
+                    upb = float(partsU.group('upb'))
                 except ValueError, detail:
-                    raise Warning('In numerical item %s, column is not convertible to int (%s)\n'%(parts[pos], detail))
+                    raise Warning('In numerical item %s, some bound is not convertible to float (%s)\n'%(parts[pos], detail))
                     ok = False
-                if ok:
-                    return (NumItem(ncol, nlowb, nupb), pos+1)
-        return (None, pos+1)
-    parse = staticmethod(parse)     
-                   
+            try:
+                ncol = int(partsU.group('col'))
+            except ValueError, detail:
+                raise Warning('In numerical item %s, column is not convertible to int (%s)\n'%(parts[pos], detail))
+                ok = False
+            if ok:
+                return (NumItem(ncol, lowb, upb), pos+1)
+        return (None, pos)
+    parse = staticmethod(parse)
+               
 class Term:
 
-    itemTypes = [{'class': NumItem,  'match':'\d+\>\d+(\.\d+)?\<\d+(\.\d+)?$'}, \
-                 {'class': CatItem,  'match':'\d+\=\d+?$'}, \
-                 {'class': BoolItem, 'match':'\d+$'}]
+    itemTypes = [{'class': NumItem }, \
+                 {'class': CatItem }, \
+                 {'class': BoolItem }]
+
+
+#     itemTypes = [{'class': NumItem,  'match':'\d+\>-?\d+(\.\d+)?\<-?\d+(\.\d+)?$'}, \
+#                  {'class': CatItem,  'match':'\d+\=\d+?$'}, \
+#                  {'class': BoolItem, 'match':'\d+$'}]
+
     
     def __init__(self, nneg, nitem):
-        self.neg = Neg(nneg)
         self.item = nitem ## Already an Item instance
+        self.neg = Neg(nneg)
+#         self.neg = Neg(self.item.simple(nneg))
 
     def copy(self):
         return Term(self.neg.boolVal(), self.item.copy())
@@ -323,7 +372,7 @@ class Term:
         i = 0
         item = None
         while i < len(Term.itemTypes) and item == None:
-            if (re.match(Term.itemTypes[i]['match'], parts[pos])):
+            if (re.match(Term.itemTypes[i]['class'].patt, parts[pos])):
                 (item, pos) = Term.itemTypes[i]['class'].parse(parts, pos)
             i+=1
         if pos - tmp_pos in [1, 2]:

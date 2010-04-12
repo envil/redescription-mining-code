@@ -141,7 +141,6 @@ def verbPrint(level, message):
     utilsIO.verbPrint(level, message, setts)
 
 def getKids(currentRedescription, data, minImpr, maxImpr, ruleTypes, excludeCurr):    
-    Data.log_fid.write('## Extending Redescription %s\n' % currentRedescription)
     bests = BestsDraft(currentRedescription.acc())
     parts = currentRedescription.parts()
     for x in currentRedescription.availableColsSide(0):
@@ -202,13 +201,13 @@ def main():
     
     ## Initialization phase, try all pairs:
     verbPrint(3, 'Searching for initial pairs')
-    initialPairs = data.initializePairs(setts['nbRules'], setts['rule_types'],  setts['scoreFormula'])
-    verbPrint(3, "%i initial pairs" % len(initialPairs))
-    verbPrint(20, "Initial Pairs: %s" % str(initialPairs))
+    initialReds = data.initializeRedescriptions(setts['nbRules'], setts['rule_types'],  setts['scoreFormula'])
+    verbPrint(3, "%i initial pairs" % len(initialReds))
+    verbPrint(20, "Initial Pairs: %s" % str(initialReds))
 
-    while len(initialPairs) > 0 :
+    while len(initialReds) > 0 :
          currentDraft = RedescriptionsDraft(setts['draft_cap'])
-         currentDraft.insert(Redescription.fromInitialPair(initialPairs.pop(0), data, souvenirs))
+         currentDraft.insert(initialReds.pop(0))
 
          processDraft(currentDraft, data, setts['minImpr'], float('Inf'), setts['rule_types'], souvenirs)
          ready = currentDraft.getReady(setts['draft_out'], criterionsReady) #setts['draft_out']

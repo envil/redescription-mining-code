@@ -142,9 +142,11 @@ class BestsDraft:
     
     def dispCand(self, pos):
         if self.side(pos) == 0:
-            dsp = '* %8s <==> * %8s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' % ((str(self.op(pos)) + str(self.term(pos))), '', self.acc(pos), self.score(pos), self.toBlue(pos), self.toRed(pos))
+            dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' % ((str(self.op(pos)) + str(self.term(pos))), '', self.acc(pos), self.score(pos), self.toBlue(pos), self.toRed(pos))
+        elif self.side(pos) == 1:
+            dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' % ('', (str(self.op(pos)) + str(self.term(pos))), self.acc(pos), self.score(pos), self.toBlue(pos), self.toRed(pos))
         else:
-            dsp = '* %8s <==> * %8s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' % ('', (str(self.op(pos)) + str(self.term(pos))), self.acc(pos), self.score(pos), self.toBlue(pos), self.toRed(pos))
+            dsp = '* %20s <==> * %20s' % ('','')
         return dsp
 
 #     def dispCandLong(self, pos, red):

@@ -166,8 +166,8 @@ def main():
     data = Data(setts['datafiles'])
     names = [None, None]
     if ( len(setts['labelsfiles'][0] + setts['labelsfiles'][1]) >0):
-        names[0] = utilsIO.getNames(setts['labelsfiles'][0], len(data.colSupps[0]), len(data.colSupps[0])==0)
-        names[1] = utilsIO.getNames(setts['labelsfiles'][1], len(data.colSupps[1]), len(data.colSupps[1])==0)
+        names[0] = utilsIO.getNames(setts['labelsfiles'][0], data.nbCols(0), data.nbCols(0)==0)
+        names[1] = utilsIO.getNames(setts['labelsfiles'][1], data.nbCols(1), data.nbCols(1)==0)
 
     if type(names[0]) == list and len(names[0]) > 0 and type(names[1]) == list and len(names[1]) > 0:
         setts['names'] = True
@@ -203,7 +203,7 @@ def main():
         print 'RULE %i'%ruleNro
         rulesOutFp.write('\t\t\t\t'+currentR.disp(n, names)+'\n')
             
-        rulesOutFp.write(dispRuleCompact(currentR, data, n)+'\n')
+#        rulesOutFp.write(dispRuleCompact(currentR, data, n)+'\n')
         
         ruleNro += 1
     verbPrint(1,'Read all %i rules.'%(ruleNro-1))

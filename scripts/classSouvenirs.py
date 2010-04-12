@@ -6,7 +6,7 @@ class Souvenirs:
     def __init__(self,  nAvailableMo, nAmnesic = False):
         self.rulesList = []
         self.indexes = {}
-        self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
+        self.availableMo = nAvailableMo
         self.amnesic = nAmnesic
 
     def __str__(self):
