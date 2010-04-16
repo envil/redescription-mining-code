@@ -16,42 +16,78 @@ def usage():
     print """
     Usage: %s [options]
 
-    -L, --dataL=FILE
-      Input data file left.
-    -R, --dataR=FILE
-      Input data file right.
-      File names must have an extension indicating their format (sparse|dense|dat).
-    -o, --output=FILE
-      Output file.
-    -O, --support-output=FILE
-      Output file for rule supports.
-    -k INT, --nb-variables=INT
-      Maximum number of variables in a query.
-    -n INT, --nb-rules=INT
-      Maximum number of rules to make. Default = Inf.
-    -c INT/FLOAT, --min-contribution=INT/FLOAT
-      Minimum contribution per column. 
-             as a number of rows (INT >= 1)
-             or as a ratio of the number of the rows (0 <= FLOAT < 1).
-    -f STRING, --score-formula=STRING
-      Score formula used to rank initial pairs.
-    -r FLOAT, --min-score=FLOAT
-      Min score for initial pair to be considered.
-    -R FLOAT, --max-score=FLOAT
-      Max score for initial pair to be considered.
-    -d INT, --draft-capacity=INT
-      Max number of alternatives extensions explored a one step for a pair. (default 1)
-    -D INT, --draft-output=INT
-      Max number of alternatives extensions outputed for a pair. ( INT <= draft-capacity, default 1)
-    -m FLOAT, --min-improvement=FLOAT
-      Min improvement for a redescription to be added to the draft. ( default 0.00001)
-    -A, --amnesic
-      Amnesic mining, does not remember previously seen rules (default disabled)
-    -i, --max-side-identical
-      Max number times the same rule is allowed to appear on one side,
-      when equal to zero, not constrained, rules are printed on the fly,
-      else rules are printed at the end by order of decreasing accuracy  (default 0)
+    Input files:
+    ------------
+        Input filenames must have an extension indicating the data format (sparse|dense|dat|num).
+    -L / --dataL=FILENAME
+    Left-hand side data
+    -R / --dataR=FILENAME
+    Right-hand side data
+    -o / --rules-out=FILENAME
+    Rules output file (default stdout)
+    -O / --support-out=FILENAME
+    Support output file
 
+    -k / --nb-variables=INT
+    Max number of variables on each side
+    -K / --min-len=INT
+    Min overall lenght
+
+    Contribution and support limits:
+    --------------------------------
+        can be specified either
+        * as a number of rows (INT >= 1)
+        * or as a ratio of the number of the rows (0 <= FLOAT < 1).
+    -c / --contribution=INT/FLOAT
+    Min column contribution (default 1)
+    -p / --itm-in=INT/FLOAT
+    Min running intersection (default min contribution)
+    -q / --itm-out=INT/FLOAT
+    Min running left uncovered (default N - min running intersection)
+    -P / --fin-in=INT/FLOAT
+    Min final intersection (default min running intersection)
+    -Q / --fin-out=INT/FLOAT
+    Min final left uncovered (default N - min final intersection)
+
+    Initial pairs:
+    --------------
+    -n / --nb-rules=INT
+    Max number of rules (default 0=unlimited)
+    -N / --meth-sel=(alternate|overall)
+    Method for generating the next pair (default overall)
+    * overall: next best scoring pair
+    * alternate: next best scoring pair for column A,
+    taking all columns i turns alternating between right and left hand side
+    -f / --div-L=INT
+    Sample columns left hand side to generate pairs (default 1, all columns)
+    -F / --div-R=INT
+    Sample columns right hand side to generate pairs (default 1, all columns)
+    -S / --score-formula=STRING
+    Formula to use for sorting the pairs (default suppI[i]/suppU[i])
+    expression can involve suppI, suppU, rand
+    -s / --min-score=FLOAT
+    Min score for a pair to be considered (default 0)
+
+    Greedy redescription generation:
+    --------------------------------
+    -d / --draft-capacity=INT
+    Max number of non-equivalent alternative redescriptions to keep in the draft for one pair (default 1)
+    -D / --draft-output=INT
+    Max number of non-equivalent alternative redescriptions to output for one pair (default 1)
+    -b / --min-improvement=FLOAT
+    Min improvement score for an alternative to be kept in the draft (default 0)
+    -v / --coeff-pvrule=FLOAT
+    Coefficient of the p-value of the rule overlap in the improvement score (default 1)
+    -V / --coeff-pvred=FLOAT
+    Coefficient of the p-value of the redescription overlap in the improvement score (default 1)
+    -A / --amnesic
+    Amnesic, do not remember previously seen rules (default False)
+    -a / --max-side-identical=INT
+    Maximum number of non-equivalent redescriptions for a same rule to be kept (default 2)
+    if unlimited all rules are printed at the end, else they are printed on the fly
+
+    Rule types:
+    -----------
     Options that select the type of the rules used.
     Default is with all enabled.
     --without-and-nots
@@ -73,164 +109,193 @@ def usage():
 
 
 
+
 def getOpts(argv):
     try:
-        opts, args = getopt.getopt(argv, "L:R:o:O:xp:k:n:s:c:f:r:R:d:D:m:Ai:vh", \
-                                   ["help", "dataL=", "dataR=",  \
-                                    "output=", "support-output=", \
-                                    "nb-variables=", "nb-rules=", \
-                                    "limit-support=", "min-contribution=", \
-                                    "score-formula=", "draft-capacity=", "draft-output=", \
-                                    "min-improvement=","amnesic", "max-side-identical=", \
-                                    "without-and-nots", "without-or-nots",\
-                                    "without-nots","without-ands","without-ors", \
-                                    "verbosity=", "help"])
+
+
+        opts, args = getopt.getopt(argv, \
+                                   "L:R:o:O:k:K:c:p:q:P:Q:n:N:f:F:S:s:d:D:b:w:W:Aa:hv" , \
+                                   [ "dataL=", "dataR=", "rules-out=", "support-out=", \
+                                     "nb-variables=", "min-len=", \
+                                     "contribution=", "itm-in=", "itm-out=", "fin-in=", "fin-out=", \
+                                     "nb-rules=", "meth-sel=", "div-L=", "div-R=", "score-formula=", "min-score=", \
+                                     "draft-capacity=", "draft-output=", \
+                                     "min-improvement=", "coeff-pvrule=", "coeff-pvred=", \
+                                     "amnesic", "max-side-identical=", \
+                                     "witout-and-nots", "without-or-nots", \
+                                     "without-nots", "without-ands", "without-ors", \
+                                     "help", "verbosity=" ])
     except getopt.GetoptError, err:
         print str(err)
         usage()
         sys.exit(2)
     global setts
     setts['verb'] = 0
-    
-    setts['datafiles'] = ["inputL.txt", "inputR.txt"]
-    setts['outputfile'] = "output.txt"
-    setts['supportOutputfile'] = "support-output.txt"
+
+    setts['dataFiles'] = ["dataL.dat", "dataR.dat"]
+    setts['rulesOutFile'] = "-"
+    setts['supportOutFile'] = None
+
     setts['nbVariables'] = 1
-    setts['nbRules'] = sys.maxint
-    setts['s'] = 1
-    setts['c'] = 1
+    setts['minLen'] = 2
+    setts['minC'] = None
+    setts['minItmIn'] = None
+    setts['minItmOut'] = None
+    setts['minFinIn'] = None
+    setts['minFinOut'] = None
+
+    setts['nbRules'] = 0
+    setts['methodSel'] = 'overall'
+    setts['divL'] = 1
+    setts['divR'] = 1
     setts['scoreFormula'] = 'suppI[i]/suppU[i]'
-    setts['draft_cap'] = 1
-    setts['draft_out'] = 1
+    setts['minScore'] = None
+
+    setts['draftCap'] = 1
+    setts['draftOut'] = 1
     setts['minImpr'] = 0
+    setts['coeffPVRule'] = 1
+    setts['coeffPVRed'] = 1
     setts['amnesic'] = False
     setts['maxSideIden'] = 0
     ## rule types
-    setts['rule_types'] = {False: set([False, True]), True: set([False, True])}
+    setts['ruleTypes'] = {False: set([False, True]), True: set([False, True])}
     for o, a in opts:
             
-        if o in ("-L", "--dataL"): setts['datafiles'][0] = a
-        if o in ("-R", "--dataR"): setts['datafiles'][1] = a
-        if o in ("-o", "--output"): setts['outputfile'] = a
-        if o in ("-O", "--support-output"): setts['supportOutputfile'] = a
+        if o in ("-L", "--dataL"): setts['dataFiles'][0] = a
+        if o in ("-R", "--dataR"): setts['dataFiles'][1] = a
+        if o in ("-o", "--rules-out"): setts['rulesOutFile'] = a
+        if o in ("-O", "--support-out"): setts['supportOutFile'] = a
+
         if o in ("-k", "--nb-variables"): setts['nbVariables'] = int(a)
-        if o in ("-n", "--nb-rules"): setts['nbRules'] = int(a)
-        if o in ("-s", "--limit-support"): setts['s'] = float(a)
-        if o in ("-c", "--min-contribution"): setts['c'] = float(a)
-        if o in ("-f", "--score-formula"): setts['scoreFormula'] = a
-        if o in ("-d", "--draft-capacity"): setts['draft_cap'] = int(a)
-        if o in ("-D", "--draft-output"): setts['draft_out'] = int(a)
-        if o in ("-m", "--min-improvement"): setts['minImpr'] = float(a)
-        if o in ("-A", "--amnesic"): setts['amnesic'] = True
-        if o in ("-i", "--max-side-identical"): setts['maxSideIden'] = int(a)
+        if o in ("-K", "--min-len"): setts['minLen'] = int(a)
+        if o in ("-c", "--contribution"): setts['minC'] = float(a)
+        if o in ("-p", "--itm-in"): setts['minItmIn'] = float(a)
+        if o in ("-q", "--itm-out"): setts['minItmOut'] = float(a)
+        if o in ("-P", "--fin-in"): setts['minFinIn'] = float(a)
+        if o in ("-Q", "--fin-out"): setts['minFinOut'] = float(a)
         
-        if o == "--witout-and-nots": setts['rule_types'][False].remove(True)
-        if o == "--without-or-nots": setts['rule_types'][True].remove(True)
-        if o == "--without-nots": setts['rule_types'][False].remove(True); setts['rule_types'][True].remove(True)
-        if o == "--without-ands": del setts['rule_types'][False]
-        if o == "--without-ors": del setts['rule_types'][True]
+        if o in ("-n", "--nb-rules"): setts['nbRules'] = int(a)
+        if o in ("-N", "--meth-sel"): setts['methodSel'] = a
+        if o in ("-f", "--div-L"): setts['divL'] = int(a)
+        if o in ("-F", "--div-R"): setts['divR'] = int(a)
+        if o in ("-S", "--score-formula"): setts['scoreFormula'] = a
+        if o in ("-s", "--min-score"): setts['minScore'] = float(a)
+
+        if o in ("-d", "--draft-capacity"): setts['draftCap'] = int(a)
+        if o in ("-D", "--draft-output"): setts['draftOut'] = int(a)
+        if o in ("-b", "--min-improvement"): setts['minImpr'] = float(a)
+        if o in ("-w", "--coeff-pvrule"): setts['coeffPVRule'] = float(a)
+        if o in ("-w", "--coeff-pvred"): setts['coeffPVRed'] = float(a)
+        if o in ("-A", "--amnesic"): setts['amnesic'] = True
+        if o in ("-a", "--max-side-identical"): setts['maxSideIden'] = int(a)
+        
+        if o == "--witout-and-nots": setts['ruleTypes'][False].remove(True)
+        if o == "--without-or-nots": setts['ruleTypes'][True].remove(True)
+        if o == "--without-nots": setts['ruleTypes'][False].remove(True); setts['ruleTypes'][True].remove(True)
+        if o == "--without-ands": del setts['ruleTypes'][False]
+        if o == "--without-ors": del setts['ruleTypes'][True]
             
         if o in ("-h", "--help"):
             usage()
             sys.exit()
-        if o == "-v": setts['verb'] += 1
+        if o == "-v": setts['verb'] += 1 
         if o == "--verbosity": setts['verb'] = int(a)
         
-
 def verbPrint(level, message):
     utilsIO.verbPrint(level, message, setts)
 
-def getKids(currentRedescription, data, minImpr, maxImpr, ruleTypes, excludeCurr):    
-    bests = BestsDraft(currentRedescription.acc())
-    parts = currentRedescription.parts()
-    for x in currentRedescription.availableColsSide(0):
-        data.updateBests(bests, parts, 0, x, ruleTypes)
+def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souvenirs):    
 
-    for y in currentRedescription.availableColsSide(1):
-        data.updateBests(bests, parts, 1, y, ruleTypes)
- 
-    verbPrint(8, currentRedescription)
-    verbPrint(8, bests)
-    kids = set()
-    for i in bests.rank(minImpr, maxImpr, excludeCurr):
-        kids.add(currentRedescription.kid(data, bests.side(i), bests.op(i), bests.term(i) ))
-    return kids
-
-def processDraft(currentDraft, data, minImpr, maxImpr, ruleTypes, souvenirs):    
+    currentDraft = RedescriptionsDraft(draftCap)
+    nextGen = [initialRed]
+    verbPrint(3, "Expanding initial pair %i:  %s" % (data.count, initialRed))
     step = 0
-    verbPrint(4, "Expanding pair, step %i" % (step))
-    verbPrint(5, currentDraft)
-    notBarren = currentDraft.notBarren()
-
-    while len(notBarren) > 0 :
+    
+    while len(nextGen) > 0 :
         step += 1
+        verbPrint(4, "Expanding pair %i, step %i" % (data.count, step))
         kids = set()
-        for red in notBarren : ## code getKids
+        for red in nextGen :
             nb_extensions = red.updateAvailable(souvenirs)
             if red.nbAvailableCols() > 0:
-                tmp_kids = getKids(red, data, minImpr, maxImpr, ruleTypes, nb_extensions > 0)
-                if nb_extensions == 0 or len(tmp_kids) > 0:
-                    kids.update(tmp_kids)
-                    souvenirs.update(tmp_kids)
-                else: ##if nb_extensions > 0 and len(tmp_kids) == 0:
-                    verbPrint(8, 'HERE IS SOME ANCESTOR !')
-                    ##pdb.set_trace()
+                bests = BestsDraft(ruleTypes, data.N, red)
+                for x in red.availableColsSide(0):
+                    data.updateBests(bests, 0, x)
 
+                for y in red.availableColsSide(1):
+                    data.updateBests(bests, 1, y)
+                verbPrint(7, bests)
+                for pos in bests.improving(minImpr, nb_extensions > 0):
+                    kids.add(red.kid(data, bests.side(pos), bests.op(pos), bests.term(pos), bests.supp(pos) ))
+
+        souvenirs.update(kids)
         currentDraft.update(kids)
-        verbPrint(4, "Expanding pair, step %i" % (step))
         verbPrint(5, currentDraft)
         verbPrint(5, souvenirs)
-        ## sort kids and add to the draft
-        notBarren = currentDraft.notBarren()
-
+        nextGen = currentDraft.nextGeneration(BestsDraft.finalOK)
+        
+    currentDraft.cut(draftOut)
+    return currentDraft.redescriptions()
 
 def main():
     getOpts(sys.argv[1:])
     utilsIO.setts = setts
-    data = Data(setts['datafiles'])
-    data.setMinSC(setts['s'], setts['c'])
+
     verbPrint(3, "Settings:\n %s" % (setts))
+    data = Data(setts['dataFiles'])
     verbPrint(3, data)
+    (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut) = data.scaleSuppParams(setts['minC'], setts['minItmIn'], setts['minItmOut'], setts['minFinIn'], setts['minFinOut'])
+    (BestsDraft.minLen, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts['minLen'], setts['coeffPVRule'], setts['coeffPVRed'])
+    verbPrint(3, BestsDraft.dispParams())
     Redescription.nbVariables = setts['nbVariables']
     readyDraft = RedescriptionsDraft()
     souvenirs = Souvenirs(data.nonFull(), setts['amnesic'])
-    criterionsReady = [':red:length(1) + :red:length(0) > %i' % 3 ]
+    if setts['rulesOutFile'] != "-"  and len(setts['rulesOutFile']) > 0 :
+        rulesOutFp = open(setts['rulesOutFile'], 'w')
+    else: rulesOutFp = sys.stdout
 
-    output = open(setts['outputfile'], 'w')
-    supportOutput = open(setts['supportOutputfile'], 'w', 1)
+    if setts['supportOutFile'] != None  and len(setts['supportOutFile']) > 0:
+        supportOutFp = open(setts['supportOutFile'], 'w')
+    else:
+        supportOutFp = None
+    (rulesOutFpTmp, supportOutFpTmp) = (rulesOutFp, supportOutFp) 
+        
+    verbPrint(3, 'Searching for initial pairs (%s, %i/%ix%i/%i) ' % (setts['methodSel'], data.nbNonFull(0), setts['divL'], data.nbNonFull(1), setts['divR']))
+    data.setInitialMSelection(setts['methodSel'], setts['divL'], setts['divR'])
+    data.initializeRedescriptions(setts['nbRules'], setts['ruleTypes'], setts['minScore'])
+    verbPrint(2, '%i initial pairs' % data.nbRed)
+    initialRed = data.getNextInitialRed()
     
-    ## Initialization phase, try all pairs:
-    verbPrint(3, 'Searching for initial pairs')
-    initialReds = data.initializeRedescriptions(setts['nbRules'], setts['rule_types'],  setts['scoreFormula'])
-    verbPrint(3, "%i initial pairs" % len(initialReds))
-    verbPrint(20, "Initial Pairs: %s" % str(initialReds))
+    while initialRed != None :
+        reds = processDraft(initialRed, data, setts['draftCap'], setts['draftOut'], setts['minImpr'], setts['ruleTypes'], souvenirs)
+        
+        verbPrint(2,"Redescriptions output (%i):" % (data.count))
+        if setts['maxSideIden'] > 0 :
+            insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts['maxSideIden'])
+            for i in range(len(reds)):
+                if i in insertedIds.keys():
+                    verbPrint(3,"Redescription (YES):\t"+reds[i].dispSimple())
+                else:
+                    verbPrint(3,"Redescription (NO):\t"+reds[i].dispSimple())
+            if len(insertedIds) > 0:
+                reds = readyDraft.redescriptions()
+                rulesOutFp.seek(0)
+                if supportOutFp != None:
+                    supportOutFp.seek(0)
+            else:
+                reds = []
 
-    while len(initialReds) > 0 :
-         currentDraft = RedescriptionsDraft(setts['draft_cap'])
-         currentDraft.insert(initialReds.pop(0))
+        verbPrint(2,"---------------------------------------")
+        for currentRedescription in reds:
+            verbPrint(2,currentRedescription.disp())
+            currentRedescription.write(rulesOutFp, supportOutFp)
 
-         processDraft(currentDraft, data, setts['minImpr'], float('Inf'), setts['rule_types'], souvenirs)
-         ready = currentDraft.getReady(setts['draft_out'], criterionsReady) #setts['draft_out']
-
-         if setts['maxSideIden'] > 0 :
-             inserted = readyDraft.updateCheckOneSideIdentical(ready, setts['maxSideIden'])
-             if inserted > 0:
-                 verbPrint(7, "Ready draft")
-                 verbPrint(7, readyDraft)
-         else:
-             for currentRedescription in ready:
-                 verbPrint(6,"Redescription:\n"+currentRedescription.disp()+'\n\n')
-                 currentRedescription.write(output, supportOutput)
-    ## END for i in range(len(initialPairs))
+        initialRed = data.getNextInitialRed()
                  
-    if  setts['maxSideIden'] > 0 :           
-## WRITE ALL REDESCRIPTIONS
-        for currentRedescription in readyDraft.getSlice():
-            verbPrint(6,"Redescription:\n"+currentRedescription.disp()+'\n\n')
-            currentRedescription.write(output, supportOutput)
-
-    output.close()
-    supportOutput.close()
+    rulesOutFp.close()
+    supportOutFp.close()
     verbPrint(1, 'END\n')
 ## END of main()
 

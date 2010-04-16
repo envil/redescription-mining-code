@@ -23,48 +23,8 @@ class DataM:
         else:
             return self.suppItem(term.item)
 
-    def nonFull(self):
+    def nonFull(self, minIn, minOut):
         return [col for col in range(self.nbCols())]
-
-
-    def compAcc(op, neg, toColors, lparts):
-        acc = 0
-        if op:
-            if neg:
-                acc = float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0])
-            else:
-                acc = float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0])
-        else:
-            if neg:
-                acc = float(lparts[2] - toColors[1])/(lparts[0] - toColors[0] + lparts[1] + lparts[2])
-            else:
-                acc = float(toColors[1])/(toColors[0] + lparts[1] + lparts[2])
-        return acc
-    compAcc = staticmethod(compAcc)
-
-    def makeBest(t, op, neg, toColors, lparts, noMin=False):
-        b = None
-        if op:
-            if neg:
-                if noMin or ((lparts[1] - toColors[1] >= Data.minC) and ( toColors[0] >= Data.minS )):
-                    b= {'acc': float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]),\
-                        'toRed': lparts[3] - toColors[0], 'toBlue': lparts[1] - toColors[1], 'term': t}
-
-            else:
-                if noMin or ((toColors[1] >= Data.minC) and (lparts[3] - toColors[0] >= Data.minS )):
-                    b= {'acc': float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0]),\
-                        'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
-        else:
-            if neg:
-                if noMin or ((toColors[0] >= Data.minC) and (lparts[2] - toColors[1] >= Data.minS )):
-                    b= {'acc': float(lparts[2] - toColors[1])/(lparts[0] - toColors[0] + lparts[1] + lparts[2]),\
-                        'toRed': lparts[0] - toColors[0], 'toBlue': lparts[2] - toColors[1], 'term': t}
-            else:
-                if noMin or ((lparts[0] - toColors[0] >= Data.minC) and (toColors[1] >= Data.minS )):
-                    b= {'acc': float(toColors[1])/(toColors[0] + lparts[1] + lparts[2]),\
-                        'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
-        return b
-    makeBest = staticmethod(makeBest)
 
 class BoolDataM(DataM):
     type_id = 1
@@ -78,29 +38,29 @@ class BoolDataM(DataM):
     def vect(self, col): ## the term should be the same type as the data on the considered side
         return self.colSupps[col]
 
-    def nonFull(self):
+    def nonFull(self, minIn, minOut):
         it = []
         for col in range(len(self.colSupps)):
-            if len(self.colSupps[col]) >= Data.minC and len(self.colSupps[col]) <= self.nbRows - Data.minC :
+            if len(self.colSupps[col]) >= minIn and self.nbRows -len(self.colSupps[col]) >= minOut :
                 it.append(col)
         return it 
 
-    def computeCol(self, parts, side, col, ruleTypes):
+    def anyAdvanceCol(self, toImprov, side, col):
         toColors = {True:[0,0], False:[0,0]}
         res = []
         if side == 1:
-            (lparts) = (len(parts[1]), len(parts[0]), len(parts[2]), len(parts[3]))
+            (lparts) = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
             (toColors[False][0], toColors[True][1], toColors[False][1], toColors[True][0]) = \
-                                 (len(parts[1] & self.colSupps[col]), len(parts[0] & self.colSupps[col]), len(parts[2] & self.colSupps[col]), len(parts[3] & self.colSupps[col]))
+                                 (len(toImprov.parts[1] & self.colSupps[col]), len(toImprov.parts[0] & self.colSupps[col]), len(toImprov.parts[2] & self.colSupps[col]), len(toImprov.parts[3] & self.colSupps[col]))
         
         else:
-            (lparts) = (len(parts[0]), len(parts[1]), len(parts[2]), len(parts[3]))
+            (lparts) = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
             (toColors[False][0], toColors[True][1], toColors[False][1], toColors[True][0]) = \
-                                 (len(parts[0] & self.colSupps[col]), len(parts[1] & self.colSupps[col]), len(parts[2] & self.colSupps[col]), len(parts[3] & self.colSupps[col]))
+                                 (len(toImprov.parts[0] & self.colSupps[col]), len(toImprov.parts[1] & self.colSupps[col]), len(toImprov.parts[2] & self.colSupps[col]), len(toImprov.parts[3] & self.colSupps[col]))
 
-        for op in ruleTypes.keys():
-            for neg in ruleTypes[op]:
-                b = DataM.makeBest(Term(neg, BoolItem(col)), op, neg, toColors[op], lparts)
+        for op in toImprov.ruleTypesOp():
+            for neg in toImprov.ruleTypesNP(op):
+                b = toImprov.compAdv(Term(neg, BoolItem(col)), op, neg, toColors[op], lparts)
                 if b != None:
                     b.update({'side': side, 'op': Op(op)})
                     res.append(b)
@@ -125,7 +85,6 @@ class CatDataM(DataM):
     
 class NumDataM(DataM):
     type_id = 3
-
     
     def __init__(self, ncolSupps=[], nmaxRowId=-1):
         ## self.colSupps[col] = [[list of values], [list of ids]] ordered by value
@@ -149,46 +108,40 @@ class NumDataM(DataM):
     def __str__(self):
         return "%i x %i numerical" % ( len(self), self.nbCols())
 
-    def fit(self, itemX, suppX, vector_abcd, col, has_neg, side):
-        if has_neg:
-            ruleTypes = {True: [False, True]}
-        else:
-            ruleTypes = {True: [False]}
+    def fit(self, itemX, suppX, vector_abcd, col, toImprov, side):
 
         lparts = (0, len(suppX), 0, len(self) - len(suppX))
         lpartsN = (0, len(self) - len(suppX), 0, len(suppX))
 
         segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col])
-        cand_A = NumDataM.findCover(segments, lparts, side, col, ruleTypes)
-        (suppI, suppU, rand, termsA, termsB) = ([], [], [], [], [])
-
+        cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
+        (scores, termsA, termsB) = ([], [], [])
         for cand in cand_A:
-            suppI.append(float(cand['toBlue']))
-            suppU.append(float(cand['toRed'] + len(suppX)))
-            rand.append(random.random())
+            cand.update({'supp': len(suppX)})
+            scores.append(toImprov.score(cand))
             termsA.append(Term(False, itemX))
             termsB.append(cand['term'])
 
-        if has_neg and len(cand_A) > 0:
+        if toImprov.ruleTypesHasNeg() and len(cand_A) > 0:
             segments = NumDataM.negateSegments(segments, False, True)
-            cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, ruleTypes)
+            cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
 
-            for cand in cand_Ab:
-                suppI.append(float(cand['toBlue']))
-                suppU.append(float(cand['toRed'] + len(self) - len(suppX)))
-                rand.append(random.random())
+            for cand in cand_Ab:            
+                cand.update({'supp': len(self) - len(suppX)})
+                scores.append(toImprov.score(cand))
                 termsA.append(Term(True, itemX))
                 termsB.append(cand['term'])
-        return (suppI, suppU, rand, termsA, termsB)
 
-    def computeCol(self, parts, side, col, ruleTypes):
+        return (scores, termsA, termsB)
+
+    def anyAdvanceCol(self, toImprov, side, col):
         if side==1:
-            lparts = (len(parts[1]), len(parts[0]), len(parts[2]), len(parts[3]))
+            lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
         else:
-            lparts = (len(parts[0]), len(parts[1]), len(parts[2]), len(parts[3]))
+            lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
         
-        segments = NumDataM.makeSegments(parts[4], side, self.colSupps[col])
-        return NumDataM.findCover(segments, lparts, side, col, ruleTypes)
+        segments = NumDataM.makeSegments(toImprov.parts[4], side, self.colSupps[col])
+        return NumDataM.findCover(segments, lparts, side, col, toImprov)
             
     def makeSegments(vector_abcd, side, vectCol):
         ## vector_abcd alpha->0 gamma->1 delta->2 beta->3
@@ -270,19 +223,19 @@ class NumDataM(DataM):
 
     negateSegments = staticmethod(negateSegments)
 
-    def findCover(segments, lparts, side, col, ruleTypes):
+    def findCover(segments, lparts, side, col, toImprov):
         
-        res = NumDataM.findPositiveCover(segments, lparts, side, col, ruleTypes)
-        res.extend(NumDataM.findNegativeCover(segments, lparts, side, col, ruleTypes))
+        res = NumDataM.findPositiveCover(segments, lparts, side, col, toImprov)
+        res.extend(NumDataM.findNegativeCover(segments, lparts, side, col, toImprov))
         return res
         
     findCover = staticmethod(findCover)
 
 
-    def findCoverFullSearch(segments, lparts, side, col, ruleTypes):
+    def findCoverFullSearch(segments, lparts, side, col, toImprov):
         res = []
         maxSeg = 250
-        for op in ruleTypes.keys():
+        for op in toImprov.ruleTypesOp():
             bests = {False: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0},\
                      True: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0}}
 
@@ -295,11 +248,11 @@ class NumDataM(DataM):
                     toColors[0] += segments[op][seg_e][0]
                     toColors[1] += segments[op][seg_e][1]
                     for neg in ruleTypes[op]:
-                        tmp_comp = DataM.makeBest((seg_s, seg_e), op, neg, toColors, lparts)
+                        tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
                         if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                             bests[neg] = tmp_comp
                                 
-            for neg in ruleTypes[op]:
+            for neg in toImprov.ruleTypesNP(op):
                 if bests[neg]['term'][0] != None:
                     if bests[neg]['term'][0] == 0:
                         lowb = float('-Inf')
@@ -314,16 +267,16 @@ class NumDataM(DataM):
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 
-    def findNegativeCover(segments, lparts, side, col, ruleTypes):
+    def findNegativeCover(segments, lparts, side, col, toImprov):
         res = []
-        for op in ruleTypes.keys():
-            if True in ruleTypes[op]:
+        for op in toImprov.ruleTypesOp():
+            if toImprov.ruleTypesHasNeg(op):
                 #print 'INCR SEARCH:'
                 toColors_buff_f = [0,0]
-                bests_f = [(DataM.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+                bests_f = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
                 best_track_f = [0]
                 toColors_buff_b = [0,0]
-                bests_b = [(DataM.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+                bests_b = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
                 best_track_b = [0]
 
                 for  i in range(len(segments[op])):
@@ -332,7 +285,7 @@ class NumDataM(DataM):
                     if  toColors_buff_f[0] == 0 or toColors_buff_f[1]/toColors_buff_f[0] > bests_f[-1][0]:
                         toColors_buff_f[0] += bests_f[-1][-1][0]
                         toColors_buff_f[1] += bests_f[-1][-1][1]
-                        bests_f.append((DataM.compAcc(op, False, toColors_buff_f, lparts), i+1, toColors_buff_f))
+                        bests_f.append((toImprov.compAcc(op, False, toColors_buff_f, lparts), i+1, toColors_buff_f))
                         toColors_buff_f = [0,0]
                     best_track_f.append(len(bests_f)-1)
 
@@ -341,7 +294,7 @@ class NumDataM(DataM):
                     if  toColors_buff_b[0] == 0 or toColors_buff_b[1]/toColors_buff_b[0] > bests_b[-1][0]:
                         toColors_buff_b[0] += bests_b[-1][-1][0]
                         toColors_buff_b[1] += bests_b[-1][-1][1]
-                        bests_b.append((DataM.compAcc(op, False, toColors_buff_b, lparts), i+1, toColors_buff_b))
+                        bests_b.append((toImprov.compAcc(op, False, toColors_buff_b, lparts), i+1, toColors_buff_b))
                         toColors_buff_b = [0,0]
                     best_track_b.append(len(bests_b)-1)
 
@@ -353,9 +306,9 @@ class NumDataM(DataM):
                     else:
                         f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
                     if f[-1][0] == 0 or float(f[-1][1])/f[-1][0] > b[0]:
-                        tmp_comp_tb = DataM.makeBest((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+                        tmp_comp_tb = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
                     else:
-                        tmp_comp_tb = DataM.makeBest((0, len(segments[op]) - (b[1]+1)), op, False, b[-1], lparts)
+                        tmp_comp_tb = toImprov.compAdv((0, len(segments[op]) - (b[1]+1)), op, False, b[-1], lparts)
                     best_tb_l.append(tmp_comp_tb)
                     if BestsDraft.comparePair(tmp_comp_tb, best_t) > 0:
                         best_t = tmp_comp_tb
@@ -367,9 +320,9 @@ class NumDataM(DataM):
                     else:
                         b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
                     if b[-1][0] == 0 or float(b[-1][1])/b[-1][0] > f[0]:
-                        tmp_comp_tf = DataM.makeBest((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+                        tmp_comp_tf = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
                     else:
-                        tmp_comp_tf = DataM.makeBest((f[1], len(segments)-1), op, False, f[-1], lparts)
+                        tmp_comp_tf = toImprov.compAdv((f[1], len(segments)-1), op, False, f[-1], lparts)
                     best_tf_l.append(tmp_comp_tf)
                     if BestsDraft.comparePair(tmp_comp_tf, best_t) > 0:
                         best_t = tmp_comp_tf
@@ -392,10 +345,10 @@ class NumDataM(DataM):
         
     findNegativeCover = staticmethod(findNegativeCover)
 
-    def findPositiveCover(segments, lparts, side, col, ruleTypes):
+    def findPositiveCover(segments, lparts, side, col, toImprov):
         res = []
-        for op in ruleTypes.keys():
-            if False in ruleTypes[op]:    
+        for op in toImprov.ruleTypesOp():
+            if toImprov.ruleTypesHasPos(op):
                 #print 'INCR SEARCH:'
                 toColors_f = [0,0]
                 nb_seg_f = 0
@@ -406,24 +359,24 @@ class NumDataM(DataM):
 
                 for  i in range(len(segments[op])-1):
                     # FORWARD
-                    if i > 0 and (toColors_f[0] == 0 or DataM.compAcc(op, False, segments[op][i][:2], lparts) <  float(toColors_f[1])/float(toColors_f[0])):
+                    if i > 0 and (toColors_f[0] == 0 or toImprov.compAcc(op, False, segments[op][i][:2], lparts) <  float(toColors_f[1])/float(toColors_f[0])):
                         toColors_f = [toColors_f[0] + segments[op][i][0], toColors_f[1] + segments[op][i][1]]
                         nb_seg_f += 1
                     else: 
                         toColors_f = segments[op][i][:2]
                         nb_seg_f = 0
-                    tmp_comp_f = DataM.makeBest((i - nb_seg_f, i), op, False, toColors_f, lparts)
+                    tmp_comp_f = toImprov.compAdv((i - nb_seg_f, i), op, False, toColors_f, lparts)
                     if BestsDraft.comparePair(tmp_comp_f, best_f) > 0 :
                         best_f = tmp_comp_f
 
                     # BACKWARD
-                    if i > 0 and (toColors_b[0] == 0 or  DataM.compAcc(op, False, segments[op][-(i+1)][:2], lparts) <  float(toColors_b[1])/float(toColors_b[0]) ):
+                    if i > 0 and (toColors_b[0] == 0 or  toImprov.compAcc(op, False, segments[op][-(i+1)][:2], lparts) <  float(toColors_b[1])/float(toColors_b[0]) ):
                         toColors_b = [toColors_b[0] + segments[op][-(i+1)][0], toColors_b[1] + segments[op][-(i+1)][1]]
                         nb_seg_b += 1
                     else:
                         toColors_b = segments[op][-(i+1)][:2]
                         nb_seg_b = 0
-                    tmp_comp_b = DataM.makeBest((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), op, False, toColors_b, lparts)
+                    tmp_comp_b = toImprov.compAdv((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), op, False, toColors_b, lparts)
                     if BestsDraft.comparePair(tmp_comp_b, best_b) > 0 :
                         best_b = tmp_comp_b
 
@@ -436,7 +389,7 @@ class NumDataM(DataM):
                         for seg in segments[op][best_b['term'][0]:best_f['term'][1]+1]:
                             toColors_m = [toColors_m[0] + seg[0], toColors_m[1] + seg[1]]
 
-                        tmp_comp_m = DataM.makeBest((best_b['term'][0], best_f['term'][1]), op, False, toColors_m, lparts)
+                        tmp_comp_m = toImprov.compAdv((best_b['term'][0], best_f['term'][1]), op, False, toColors_m, lparts)
                         if tmp_comp_m != None:
                             bests.append(tmp_comp_m)
     #                 for best in bests:
@@ -473,9 +426,9 @@ class NumDataM(DataM):
     #                 for seg_e in range(seg_s,len(segments[op])):
     #                     toColors[0] += segments[op][seg_e][0]
     #                     toColors[1] += segments[op][seg_e][1]
-    #                     if  DataM.compAcc(op, False, toColors, lparts) > best_full[0]:
-    #                         best_full = ( DataM.compAcc(op, False, toColors, lparts),\
-    #                                  '%i <-> %i: %i/%i, %f' % (seg_s, seg_e, toColors[1], toColors[0], DataM.compAcc(op, False, toColors, lparts)))
+    #                     if  toImprov.compAcc(op, False, toColors, lparts) > best_full[0]:
+    #                         best_full = ( toImprov.compAcc(op, False, toColors, lparts),\
+    #                                  '%i <-> %i: %i/%i, %f' % (seg_s, seg_e, toColors[1], toColors[0], toImprov.compAcc(op, False, toColors, lparts)))
     #             print best_full[1]
     #             if best == None or best_full[0] != best['acc']:
     #                 print 'FULL SEARCH GIVES DIFFERENT RESULT !'
@@ -488,8 +441,8 @@ class Data:
     dataTypes = [{'class': NumDataM,  'match':'num$'}, \
                  {'class': CatDataM,  'match':'cat$'}, \
                  {'class': BoolDataM, 'match':'(dense)|(dat)|(sparse)$'}]
-    minC = 1
-    minS = 1
+
+    defaultMinC = 1
     
     def __init__(self, datafiles):
         self.m = [None, None]
@@ -517,139 +470,233 @@ class Data:
 
     def supp(self,side, term): ## the term should be the same type as the data on the considered side
         return self.m[side].supp(term)
-                                
-    def stats(self, side):
-        return self.m[side].stats
         
     def __str__(self):
-        return "Data %s and %s" % ( self.m[0], self.m[1])
-   
-    def setMinSC(self, s, c):
-        if s>= 0 and s < 0.5 :
-            minSupp = int(math.floor(s*self.N))
-        elif s <1:
-            minSupp = int(math.floor((1-s)*self.N))
-        elif s < float(self.N)/2:
-            minSupp = int(math.floor(s))
-        elif s < self.N:
-            minSupp = int(self.N - math.floor(s))
+        return "Data %s and %s" % ( self.m[0], self.m[1])        
+    
+    def scaleF(self, f):
+        if f >= 1:
+            return int(f)
+        elif f >= 0 and f < 1 :
+            return  int(math.round(f*self.N))
+    
+    def scaleSuppParams(self, minC=None, minIn=None, minOut=None, minSIn=None, minSOut=None):
+        if minC == None:
+            rMinC = Data.defaultMinC
         else:
-            minSupp = 0
-
-        Data.minS = minSupp
-                    
-        if c >= 1:
-            minC = int(c)
-        elif c >= 0 and c < 1 :
-            minC = int(math.floor(c*self.N))
-
-        Data.minC = minC
-        self.nf = [self.m[0].nonFull(), self.m[1].nonFull()]
-                    
+            rMinC = self.scaleF(minC)
+        if minIn == None:
+            rMinIn = rMinC
+        else:
+            rMinIn = self.scaleF(minIn)
+        if minOut == None:
+            rMinOut = self.N - rMinIn
+        else:
+            rMinOut = self.scaleF(minOut)
+        if minSIn == None:
+            rMinSIn = rMinIn
+        else:
+            rMinSIn = self.scaleF(minSIn)
+        if minSOut == None:
+            rMinSOut = self.N - rMinSIn
+        else:
+            rMinSOut = self.scaleF(minSOut)
+        self.nf = [self.m[0].nonFull(rMinIn, rMinOut), self.m[1].nonFull(rMinIn, rMinOut)]
+        return (rMinC, rMinIn, rMinOut, rMinSIn, rMinSOut)
+            
     def nonFull(self):
         return [set(self.nf[0]), set(self.nf[1])]
+    def nbNonFull(self, side):
+        return len(self.nf[side])
 
-    def updateBests(self, bests, parts, side, col, ruleTypes):
-        bests.upBest(self.m[side].computeCol(parts, side, col,  ruleTypes))
+    def updateBests(self, bests, side, col):
+        bs = self.m[side].anyAdvanceCol(bests, side, col)
+        for b in range(len(bs)):
+            bs[b].update({'supp': self.supp(bs[b]['side'], bs[b]['term'])})
+        bests.upBests(bs)
 
-    def computePairParts11(self, mA, idA, mB, idB, has_neg, vectors_abcd=[[],[]], side=1):
-        c = float(len(mA.vect(idA) & mB.vect(idB)))
-        a = float(len(mA.vect(idA) - mB.vect(idB)))
-        b = float(len(mB.vect(idB) - mA.vect(idA)))
+    def computePairParts11(self, mA, idA, mB, idB, toImprov, vectors_abcd=[[],[]], side=1):
+        c = len(mA.vect(idA) & mB.vect(idB))
+        a = len(mA.vect(idA) - mB.vect(idB))
+        b = len(mB.vect(idB) - mA.vect(idA))
         ## Evaluate score for AB AbB ABb AbBb
-        I = [ c, b, a, self.N-a-b-c]
-        U = [ a+b+c, self.N-a, self.N-b, self.N-c]
+        toColors = [[a, c], [c, a]]
+        lparts = [[0, b+c, 0, self.N-b-c], [0, self.N-b-c, 0, b+c]]
         nA = [False, True, False, True]
         nB = [False, False, True, True]
 
-        up_to = 1+ has_neg*3
-        (suppI, suppU, rand, termsA, termsB) = ([], [], [], [], [])        
+        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        (scores, termsA, termsB) = ([], [], [])        
         for i in range(up_to):
-            if I[i] >= Data.minC and (self.N - U[i]) >= Data.minS :
-                suppI.append(I[i])
-                suppU.append(U[i])
-                rand.append(random.random())
+            cand = toImprov.compAdv(idA, True, nA[i], toColors[nB[i]], lparts[nB[i]])
+            if cand != None:
+                cand.update({'supp':  lparts[nB[i]][1]})
+                scores.append(toImprov.score(cand))
                 termsA.append(Term(nA[i], BoolItem(idA)))
                 termsB.append(Term(nB[i], BoolItem(idB)))
             
-        return (suppI, suppU, rand, termsA, termsB)
+        return (scores, termsA, termsB)
 
-    def computePairParts12(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=1):
+    def computePairParts12(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         raise Exception('To be implemented !')
-        return (suppI, suppU, rand, termsA, termsB)
+        return (scores, termsA, termsB)
     
-    def computePairParts13(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=1):
-        return mB.fit(BoolItem(idA), mA.vect(idA), vectors_abcd[1-side][idA], idB, has_neg, side)
+    def computePairParts13(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+        return mB.fit(BoolItem(idA), mA.vect(idA), vectors_abcd[1-side][idA], idB, toImprov, side)
        
-    def computePairParts21(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=0):
-        (suppI, suppU, rand, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, has_neg, vectors_abcd, side )
-        return (suppI, suppU, rand, termsA, termsB)
+    def computePairParts21(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
+        (scores, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+        return (scores, termsA, termsB)
 
-    def computePairParts22(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=1):
+    def computePairParts22(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         raise Exception('To be implemented !')
-        return (suppI, suppU, rand, termsA, termsB)
+        return (scores, termsA, termsB)
 
-    def computePairParts23(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=1):
+    def computePairParts23(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         raise Exception('To be implemented !')
-        return (suppI, suppU, rand, termsA, termsB)
+        return (scores, termsA, termsB)
 
-    def computePairParts32(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=0):
-        (suppI, suppU, rand, termsB, termsA)= self.computePairParts23(mB, idB, mA, idA, has_neg, vectors_abcd, side )
-        return (suppI, suppU, rand, termsA, termsB)
+    def computePairParts32(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
+        (scores, termsB, termsA)= self.computePairParts23(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+        return (scores, termsA, termsB)
 
-    def computePairParts31(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=0):
-        (suppI, suppU, rand, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, has_neg, vectors_abcd, side )
-        return (suppI, suppU, rand, termsA, termsB)
+    def computePairParts31(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
+        (scores, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+        return (scores, termsA, termsB)
     
-    def computePairParts33(self, mA, idA, mB, idB, has_neg, vectors_abcd, side=1):
+    def computePairParts33(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         raise Exception('To be implemented !')
-        return (suppI, suppU, rand, termsA, termsB)
+        return (scores, termsA, termsB)
         
-    def computePair(self, idA, idB, vectors_abcd=[[],[]], pairs=[], has_neg = True, scoreFormula='suppI[i]/suppU[i]'):
+    def computePair(self, idA, idB, vectors_abcd, toImprov):
         method_string = 'self.computePairParts%i%i' % (self.m[0].type_id, self.m[1].type_id)
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups this combination does not exist (%i %i)!' % (self.m[0].type_id, self.m[1].type_id))
 
-        (suppI, suppU, rand, termsA, termsB) = method_compute(self.m[0], idA, self.m[1], idB, has_neg, vectors_abcd)
-        for i in range(len(suppI)):
-            pairs.append((eval(scoreFormula), termsA[i], termsB[i]))
-        return pairs
-       
+        return method_compute(self.m[0], idA, self.m[1], idB, toImprov, vectors_abcd)
+        
 
-    def initializeRedescriptions(self, nbRed, ruleTypes, scoreFormula='suppI[i]/suppU[i]'):
-        pairs = []
-        has_neg = False
-        for i in ruleTypes.values():
-            has_neg |= True in i
+    def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
+        self.pairs = []
+        
+        toImprov = BestsDraft(ruleTypes, self.N)
 
         ids= self.nonFull()
-        divL = 1
-        divR = 1
-        print 'generating %i/%ix%i/%i initials' % (len(ids[0]), divL, len(ids[1]), divR)
-
         vectors_abcd = [{},{}]
         cL = 0
         cR = 0  
         for idA in ids[0]:
-            if cL % divL == 0:
+            if cL % self.divL == 0:
                 for idB in ids[1]:
-                    if cR % divR == 0:
-                        if not vectors_abcd[0].has_key(idA):
+                    if cR % self.divR == 0:
+                        if not vectors_abcd[0].has_key(idA): # pairsA has just the same keys
                             vectors_abcd[0][idA] = Redescription.makeVectorABCD(self.m[1].type_id > 1, self.N, self.m[0].vect(idA), set(), set())
-                        if not vectors_abcd[1].has_key(idB):
+                        if not vectors_abcd[1].has_key(idB): # pairsB has just the same keys
                             vectors_abcd[1][idB] = Redescription.makeVectorABCD(self.m[0].type_id > 1, self.N, set(), self.m[1].vect(idB), set())
-                        self.computePair(idA, idB, vectors_abcd, pairs, has_neg, scoreFormula)
+                        (scores, termsA, termsB) = self.computePair(idA, idB, vectors_abcd, toImprov)
+                        for i in range(len(scores)):
+                            if scores[i] >= minScore:
+                                self.methodsP['add'](scores[i], idA, idB)
+                                self.pairs.append((termsA[i], termsB[i]))
                     cR += 1
             cL += 1
 
-        pairs.sort(key=lambda x: x[0], reverse=True)
+        self.methodsP['sort']()
+        self.count = 0
+        if nbRed > 0:
+            self.nbRed = min(nbRed, len(self.pairs))
+        else:
+            self.nbRed = len(self.pairs)
+
+    def setInitialMSelection(self, methodSel='overall', divL=1, divR=1):
+        self.divL = divL
+        self.divR = divR
+        try:
+            self.methodsP = {'init': eval('self.%sInitPairs' % (methodSel)), \
+                             'add': eval('self.%sAddPairs' % (methodSel)), \
+                            'sort': eval('self.%sSortPairs' % (methodSel)), \
+                            'next': eval('self.%sNextPair' % (methodSel)) }    
+        except AttributeError:
+              raise Exception('Oups this selection method does not exist !')
+        self.methodsP['init']()
+
+    def overallInitPairs(self):
+        self.overall = []
         
-        initRed = []
-        while len(pairs) > 0 and len(initRed) <= nbRed :
-            initRed.append(Redescription.fromInitialPair(pairs.pop(0), self))
-        return initRed
+    def overallAddPairs(self, scoP, idA, idB): 
+        self.overall.append((scoP, len(self.pairs)))
+        
+    def overallSortPairs(self):
+        self.overall.sort(key=lambda x: x[0])
+        
+    def overallNextPair(self, nb):
+        (tmp, idP) = self.overall.pop()
+        return self.pairs[idP]
+    
+    def alternateInitPairs(self):
+        self.pairsSide = [{}, {}]
+    
+    def alternateAddPairs(self, scoP, idA, idB):
+        if not self.pairsSide[0].has_key(idA):
+            self.pairsSide[0][idA] = []
+        if not self.pairsSide[1].has_key(idB):
+            self.pairsSide[1][idB] = []
+        self.pairsSide[0][idA].append((scoP, len(self.pairs)))
+        self.pairsSide[1][idB].append((scoP, len(self.pairs)))
+        
+    def alternateSortPairs(self):
+        self.cols = [[],[]]
+        self.alternateSortPairsSide(0)
+        self.alternateSortPairsSide(1)
+        self.countsCols = [0,0]
+    
+    def alternateSortPairsSide(self, side):
+        tmp = []
+        for i in self.pairsSide[side].keys():
+            if len(self.pairsSide[side][i]) > 0:
+                self.pairsSide[side][i].sort(key=lambda x: x[0])
+                tmp.append((self.pairsSide[side][i][-1], i))
+        self.cols[side] = [i[1] for i in sorted(tmp, key=lambda x: x[0], reverse=True)]
+        
+    def alternateNextPair(self, nb):
+        idP = self.alternateNextPairIdSide(nb%2)
+        while idP != None and self.pairs[idP] == None:
+            idP = self.alternateNextPairIdSide(nb%2)
+        if idP == None:
+            idP = self.alternateNextPairIdSide(1-(nb%2))
+            while idP != None and self.pairs[idP] == None:
+                idP = self.alternateNextPairIdSide(1-(nb%2))
+        if idP != None :
+            pair = self.pairs[idP]
+            self.pairs[idP] = None
+        return pair
+        
+    def alternateNextPairIdSide(self, side):
+        if len(self.cols[side]) > 0:
+            try:
+                (tmp, idP) = self.pairsSide[side][self.cols[side][self.countsCols[side]]].pop()
+            except IndexError:
+                raise Warning('Error in returning the next initial pair!')
+                return None
+            if len(self.pairsSide[side][self.cols[side][self.countsCols[side]]]) == 0:
+                self.cols[side].pop(self.countsCols[side])
+            else:
+                self.countsCols[side] += 1
+            if self.countsCols[side] >= len(self.cols[side]):
+                self.countsCols[side] = 0
+            return idP
+        else:
+            return None
+    
+    def getNextInitialRed(self):
+        if self.count < self.nbRed :
+            pair = self.methodsP['next'](self.count)
+            self.count += 1
+            return Redescription.fromInitialPair(pair, self)
+        else:
+            return None
 
     def readInput(datafile):
         ## Read input

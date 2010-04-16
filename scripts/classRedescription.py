@@ -1,5 +1,6 @@
 import re, pickle, sys, pdb
-from scipy.stats import binom, hypergeom
+import utilsStats
+# from scipy.stats import binom, hypergeom
 from classRule import  *
 
 class Redescription:
@@ -15,8 +16,9 @@ class Redescription:
     diff_length = Rule.diff_length
     diff_score = diff_length + 1
     
-    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()]):
+    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1]):
         self.rules = [nruleL, nruleR]
+        self.prs = nPrs
         if nsupps == None:
             self.sAlpha = set()
             self.sBeta = set()
@@ -39,9 +41,11 @@ class Redescription:
     def fromInitialPair(initialPair, data):
         ruleL = Rule()
         ruleR = Rule()
-        ruleL.extend(None, initialPair[1])
-        ruleR.extend(None, initialPair[2])
-        r = Redescription(ruleL, ruleR, [data.supp(0, initialPair[1]), data.supp(1, initialPair[2])], data.N, data.nonFull()) 
+        ruleL.extend(None, initialPair[0])
+        ruleR.extend(None, initialPair[1])
+        suppL = data.supp(0, initialPair[0])
+        suppR = data.supp(1, initialPair[1])
+        r = Redescription(ruleL, ruleR, [suppL, suppR], data.N, data.nonFull(), [float(len(suppL))/data.N, float(len(suppR))/data.N]) 
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
@@ -93,9 +97,11 @@ class Redescription:
     def acc(self):
         return float(len(self.sGamma))/(len(self.sAlpha) + len(self.sBeta) + len(self.sGamma))
 
-#     def pOverlap(self):
-#         return sum(hypergeom.pmf(range(self.lenI()+1,min(self.lenL(),self.lenR())+1), self.N, self.lenL(), self.lenR()))
-    
+    def lenX(self, side):
+        if side == 0:
+            return self.lenL()
+        else:
+            return self.lenR()
     def lenL(self):
         return len(self.sAlpha) + len(self.sGamma)
     def lenR(self):
@@ -106,6 +112,9 @@ class Redescription:
         return len(self.sAlpha) + len(self.sBeta) + len(self.sGamma)
     def acc(self):
         return float(self.lenI())/(self.lenU())
+
+    def proba(self, side, data):
+        return self.rules[side].proba(side, data)
 
     def delta(self):
         return set(range(self.N)) - self.sAlpha - self.sBeta - self.sGamma
@@ -151,12 +160,12 @@ class Redescription:
         return nb_extensions[0]+nb_extensions[1]
 
 
-    def update(self, data, side= -1, op = None, term= None):
+    def update(self, data, side= -1, op = None, term= None, suppX=None):
         if side == -1 :
             self.lAvailableCols = [set(),set()]
         else:
             self.rules[side].extend(op, term)
-            suppX = data.supp(side, term)
+            self.prs[side] = Rule.updateProba(self.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
                     self.sAlpha |= (suppX - self.sBeta - self.sGamma)
@@ -182,14 +191,14 @@ class Redescription:
                 self.lAvailableCols[side].remove(term.col())
             self.vectorABCD = Redescription.makeVectorABCD(self.nbAvailableCols()>0 and data.needsVectorABCD(), self.N, self.sAlpha, self.sBeta, self.sGamma)
 
-    def kid(self, data, side= -1, op = None, term= None):
-        ##pdb.set_trace()
+    def kid(self, data, side= -1, op = None, term= None, suppX=None):
+        
         kid = self.copy()
         if side == -1 :
             kid.lAvailableCols = [set(),set()]
         else:
             kid.rules[side].extend(op, term)
-            suppX = data.supp(side, term)
+            kid.prs[side] = Rule.updateProba(kid.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
                     kid.sAlpha |= (suppX - kid.sBeta - kid.sGamma)
@@ -217,7 +226,9 @@ class Redescription:
         return kid
             
     def copy(self):
-        return Redescription(self.rules[0].copy(), self.rules[1].copy(), [set(self.sAlpha), set(self.sBeta), set(self.sGamma)], self.N, [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )])
+        return Redescription(self.rules[0].copy(), self.rules[1].copy(), \
+                             [set(self.sAlpha), set(self.sBeta), set(self.sGamma)], self.N, \
+                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]])
 
     ## return the support associated to a rule and a list of the items involved in it
     ## the list contains pairs (column id, negated)
@@ -246,98 +257,105 @@ class Redescription:
 
             return ( len(nsAlpha.symmetric_difference(self.sAlpha)) == 0, \
                      len(nsBeta.symmetric_difference(self.sBeta)) == 0, \
-                     len(nsGamma.symmetric_difference(self.sGamma)) == 0 )
-           
-    def compliesWith(self, criterions):
-        complies = True
-        for crit in criterions:
-            complies &= eval(crit.replace(':red:', 'self.')) 
-        return complies
-        
+                     len(nsGamma.symmetric_difference(self.sGamma)) == 0 )        
 
     def __str__(self):
         if self.sGamma != set([-1]):
-            return '(%i %i,  %i / %i\t = %f) %i + %i items:\t (%i): %s <=> %s' \
+            return '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s' \
                   % (self.lenL(), self.lenR(), \
-                     self.lenI(), self.lenU(), self.acc(), \
+                     self.lenI(), self.lenU(), self.acc(), self.pVal(), \
                      self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
                      len(self), self.rules[0], self.rules[1])
         elif hasattr(self, 'readInfo'):
-            return '(%i %i,  %i / %i\t = %f): %s <=> %s' \
+            return '(%i %i,  %i / %i\t = %f, %f): %s <=> %s' \
                   % (self.readInfo['L'], self.readInfo['R'], \
-                     self.readInfo['I'], self.readInfo['L'] + self.readInfo['R'] -self.readInfo['I'], self.readInfo['acc'], \
+                     self.readInfo['I'], self.readInfo['L'] + self.readInfo['R'] -self.readInfo['I'], self.readInfo['acc'], self.readInfo['pVal'], \
                      self.rules[0], self.rules[1])
         else:
             return 'Non printable redescription'
             
-
- #    def dispLong(self):
-#         return '(%i %i,  %i / %i\t = %f, %s) %i + %i items:\t (%i): %s <=> %s' \
-#                   % (self.lenL(), self.lenR(), \
-#                      self.lenI(), self.lenU(), self.acc(), self.surp(), \
-#                      len(self.availableCols(0)), len(self.availableCols(1)), \
-#                      self.rules[0].length() + self.rules[1].length(), self.rules[0].dispIds(), self.rules[1].dispIds())
-
-    def dispCarateristiques(self):
+    def dispCaracteristiques(self):
         if self.sGamma != set([-1]):
-            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i' \
-             % (self.acc(), self.lenL(), self.lenR(), self.lenI())
+            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i pVal:%f' \
+             % (self.acc(), self.lenL(), self.lenR(), self.lenI(), self.pVal())
         elif hasattr(self, 'readInfo'):
-            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i' \
-             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'])
+            return 'acc:%f lenSuppL:%i lenSuppR:%i lenSupp:%i pVal:%f' \
+             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'], self.pVal())
         else:
             return 'Non printable redescription'
         
 
-    def dispCarateristiquesSimple(self):
+    def dispCaracteristiquesSimple(self):
         if self.sGamma != set([-1]):
-            return '%f\t%i\t%i\t%i' \
-             % (self.acc(), self.lenL(), self.lenR(), self.lenI())
+            return '%f\t%i\t%i\t%i\t%f' \
+             % (self.acc(), self.lenL(), self.lenR(), self.lenI(), self.pVal())
         elif hasattr(self, 'readInfo'):
-            return '%f\t%i\t%i\t%i' \
-             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'])
+            return '%f\t%i\t%i\t%i\t%f' \
+             % (self.readInfo['acc'], self.readInfo['L'], self.readInfo['R'], self.readInfo['I'], self.readInfo['pVal'])
         else:
             return 'Non printable redescription'
         
     def disp(self, lenIndex=0, names= [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCarateristiques()+'\n'
+        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()
 
     def dispSimple(self, lenIndex=0, names = [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCarateristiquesSimple()+'\n'
+        return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()
 
     def dispSupp(self):
         supportStr = ''
         for i in sorted(self.suppL()): supportStr += "%i "%i
         supportStr +="\t"
         for i in sorted(self.suppR()): supportStr += "%i "%i
-        supportStr +="\n"
         return supportStr
 
-#     def pValSupp(self, pr):
-#         return 1-binom.cdf(self.lenI()-1,self.N,pr)
-
-#     def pValOver(self):
-#         ## It seems cdf doen't work => sum the pmf instead
-#         return sum(hypergeom.pmf(range(self.lenI()+1,min(self.lenL(),self.lenR())+1), self.N, self.lenL(),self.lenR()))
-#         ## return 1- sum(hypergeom.pmf(range(kInter), n, kOne, kTwo))
+    def pVal(self):
+        return self.pValSupp()
     
-#     def minMaxExpAcc(self):
-#     ##pdb.set_trace()
-#         A = float(self.lenL());
-#         B = float(self.lenR());
-#         N = float(self.N);
-#         return (max(0,(A+B)-N)/min(N, (A+B)), min(A,B)/max(A,B), A*B/(N*(A+B)-A*B))
+    def pValSupp(self):
+        if self.prs == [-1,-1] or self.N == -1:
+            return -1
+        else:
+            return utilsStats.pValSupp(self.N, self.lenI(), self.prs[0]*self.prs[1]) 
 
-#     def surp(self):
+    def pValSupp2(self):
+        if self.N == -1:
+            return -1
+        else:
+            return utilsStats.pValSupp(self.N, self.lenI(), float(self.lenL()*self.lenR())/(self.N*self.N)) 
+
+    def pValOver(self):
+        if self.N == -1:
+            return -1
+        else:
+            return utilsStats.pValOver(self.lenI(), self.N, self.lenL() ,self.lenR())
+    
+    def minMaxExpAcc(self):
+        if self.N == -1:
+            return (-1, -1, -1)
+        else:
+            A = float(self.lenL());
+            B = float(self.lenR());
+            N = float(self.N);
+            return (max(0,(A+B)-N)/min(N, (A+B)), min(A,B)/max(A,B), A*B/(N*(A+B)-A*B))
+
+    def surp(self, data, lenIndex=0, names = [None, None]):
 #         (min_acc, max_acc, exp_acc) = self.minMaxExpAcc()
-#         return 'exp_acc: %f, min_acc: %f, max_acc: %f, d: %f, ratio: %f, pOver: %f' %(exp_acc, min_acc, max_acc, self.acc() -exp_acc, (self.acc()- min_acc)/max(0.001,(max_acc - min_acc)), self.pOverlap())
+#         return 'exp_acc: %f, min_acc: %f, max_acc: %f, d: %f, ratio: %f, pValSupp: %f, pValOver: %f' \
+#                %(exp_acc, min_acc, max_acc, self.acc() -exp_acc, (self.acc()- min_acc)/max(0.001,(max_acc - min_acc)), self.pValSupp(), self.pValOver())
+        
+        #pdb.set_trace()
+        return '\n'+self.rules[0].dispPlus(data, 0, lenIndex, names[0])+'\t'+self.rules[1].dispPlus(data, 1, lenIndex, names[1])+ '\n'+self.dispCaracteristiquesSimple() + \
+               '\nprL1: %f prR1: %f pr1: %f pValSupp1: %f\nprL2: %f prR2: %f pr2: %f pValSupp2: %f \npValOver: %f\n' \
+               %(self.prs[0], self.prs[1],  self.prs[0]* self.prs[1], self.pValSupp(), \
+                 float(self.lenL())/self.N, float(self.lenR())/self.N, float(self.lenL()*self.lenR())/(self.N*self.N), self.pValSupp2(), self.pValOver())
         
 
     def write(self, output, suppOutput):
-        output.write(self.dispSimple())
-        suppOutput.write(self.dispSupp())
+        output.write(self.dispSimple()+'\n')
         output.flush()
-        suppOutput.flush()
+        if suppOutput != None:
+            suppOutput.write(self.dispSupp()+'\n')
+            suppOutput.flush()
 
     def parseSupport(string):
         nsupp = set()
@@ -377,33 +395,44 @@ class Redescription:
         else:
             (left, right, inter) = (-1, -1, -1)
 
-        return (ruleL, ruleR, acc, left, right, inter)
+        if len(parts) >= 7:
+            try :
+                pVal = float(parts[6])
+            except TypeError, detail:
+                raise Exception('Unexpected support in the rule: %s\n' %string)
+        else:
+            pVal = -1
+
+        return (ruleL, ruleR, acc, left, right, inter, pVal)
     parseRules = staticmethod(parseRules)
 
-    def parse(stringRules, stringSupport = None):
-        (ruleL, ruleR, acc, left, right, inter) = Redescription.parseRules(stringRules)
+    def parse(stringRules, stringSupport = None, data = None):
+        (ruleL, ruleR, acc, left, right, inter, pVal) = Redescription.parseRules(stringRules)
 
         if stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
             partsSupp = stringSupport.rsplit('\t')
             nsuppL = Redescription.parseSupport(partsSupp[0])
             nsuppR = Redescription.parseSupport(partsSupp[1])
 
-            r = Redescription(ruleL, ruleR, [nsuppL, nsuppR])
-            
+            if data == None:
+                r = Redescription(ruleL, ruleR, [nsuppL, nsuppR])
+            else:
+                r = Redescription(ruleL, ruleR, [nsuppL, nsuppR], data.N, [set(),set()], [ ruleL.proba(0, data), ruleR.proba(1, data)])
+                
             if r.lenL() != left or r.lenR() != right or r.lenI() != inter :
                 raise Warning("Something wrong in the supports ! (%i ~ %i, %i ~ %i, %i ~ %i)\n" \
                                  % (r.lenL(), left,  r.lenR(), right,  r.lenI(), inter))
         else:
             r = Redescription(ruleL, ruleR)
-            r.readInfo = {'acc':acc, 'L':left, 'R':right, 'I':inter}
+            r.readInfo = {'acc':acc, 'L':left, 'R':right, 'I':inter, 'pVal':pVal}
         return r
     parse = staticmethod(parse)
         
             
-    def load(rulesFp, supportsFp = None):
+    def load(rulesFp, supportsFp = None, data= None):
         stringRules = rulesFp.readline()
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
         else: stringSupp= None
-        return Redescription.parse(stringRules, stringSupp)
+        return Redescription.parse(stringRules, stringSupp, data)
     load = staticmethod(load)

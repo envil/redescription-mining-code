@@ -228,9 +228,9 @@ class NumItem(Item):
 #         if neg:
 #             if self.lowb == float('-Inf'):
 #                 self.lowb = self.upb
-#                 self.upb = float('Inf')
+#                 self.upb = float('-Inf')
 #                 neg = False
-#             elif self.upb == float('Inf'):
+#             elif self.upb == float('-Inf'):
 #                 self.upb = self.lowb
 #                 self.lowb = float('-Inf')
 #                 neg = False
@@ -262,7 +262,7 @@ class NumItem(Item):
             return cmp(self.col, other.col)
         
     def __hash__(self):
-        return int(self.col*self.lowb*self.upb-(self.col)*(self.lowb+1)*(self.upb-1))
+        return int(self.col+hash(self.lowb)+hash(self.upb))
     
     def disp(self, lenIndex=0, names = None):
         if self.lowb > float('-Inf'):
@@ -342,7 +342,6 @@ class Term:
     def copy(self):
         return Term(self.neg.boolVal(), self.item.copy())
             
-
     def disp(self, lenIndex=0, names = None):
         return '%s%s' % (self.neg, self.item.disp(lenIndex, names))
 
@@ -516,10 +515,34 @@ class Rule:
         return None
     parse = staticmethod(parse)
 
+
+    def dispPlus(self, data, side, lenIndex=0, names = None):
+        if len(self) == 0 :
+            string = '[]'
+        else:
+#             if len(self.buk) > 2:
+#                 pdb.set_trace()
+            string = ''
+            op = self.op
+            for cbuk in self.buk:
+                cterms = list(cbuk)
+                cterms.sort()
+                for term in cterms:
+                    spp = len(data.supp(side, term));
+                    string += '%s%s (%i,%f)' % (op, term.disp(lenIndex, names), spp, spp/float(data.N) )
+                op = op.other()
+            string = string[2:]
+        return string
+    
+    def __str__(self):
+        return self.disp()    
+
     def disp(self, lenIndex=0, names = None):
         if len(self) == 0 :
             string = '[]'
         else:
+#             if len(self.buk) > 2:
+#                 pdb.set_trace()
             string = ''
             op = self.op
             for cbuk in self.buk:
@@ -533,7 +556,8 @@ class Rule:
     
     def __str__(self):
         return self.disp()    
-         
+
+    
     ## return the support associated to a rule
     def recompute(self, side, data= None):
 
@@ -555,6 +579,33 @@ class Rule:
                             supp &= data.supp(side, term)
                     op = op.other()
         return supp
+
+    def updateProba(prA, prB, op):
+        if prA == -1:
+            return prB
+        elif op.isOr() :
+            return prA + prB - prA*prB
+        else :
+            return prA*prB
+    updateProba = staticmethod(updateProba)
+          
+    ## return the support associated to a rule
+    def proba(self, side, data= None):
+        #pdb.set_trace()
+        if data==None:
+            pr = -1
+        elif len(self) == 0 :
+            pr = 1
+        else:
+            pr = -1
+            if len(self) > 0:
+                op = self.op
+                for buk in self.buk:
+                    for term in buk:
+                        pr = Rule.updateProba(pr, len(data.supp(side, term))/float(data.N), op)
+                        ##print '%s : pr=%f (%s %f)' % (term, pr, op, len(data.supp(side, term))/float(data.N) )
+                    op = op.other()
+        return pr
     
 #     def invTerms(self):
 #         invTerms = []

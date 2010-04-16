@@ -12,34 +12,19 @@ class RedescriptionsDraft:
     def __len__(self):
         return len(self.draft)
     
-    
     def isFull(self):
         return len(self) >= self.capacity
+
+    def redescriptions(self):
+        return self.draft
     
     def get(self, id):
         if id <  self.count():
             return self.draft[id]
         
-    def getReady(self, maxNb, criterions):
-        ready = []
-        currId = 0
-        if maxNb > 0:
-            while currId < self.count() and (len(ready) < maxNb or self.draft[currId].equivalent(ready[-1])):
-                if self.draft[currId].compliesWith(criterions):
-                    ready.append(self.draft[currId])
-                currId += 1
-        return ready
-        
-    def getSlice(self, first=-1, last=-1, direction=0):
-        if first == -1:
-            return self.draft
-        elif first >= self.count():
-            return []
-        else:
-            if last == -1 or last >= self.count():
-                return self.draft[first:]
-            else:
-                return self.draft[first:self.cutIndex(last+1, direction)]
+    def cut(self, maxNb=-1, direction=0):
+        if maxNb != -1 and maxNb < self.count():
+            self.draft = self.draft[:self.cutIndex(maxNb, direction)]
 
     def cutIndex(self, index=1, direction=1):
         if index >= self.count():
@@ -81,7 +66,7 @@ class RedescriptionsDraft:
             self.draft = self.draft[:self.cutIndex(self.capacity)]
 
     def updateCheckOneSideIdentical(self, redescriptionList, max_iden=0):
-        inserted = 0
+        insertedIds = {}
         if len(redescriptionList) > 0 and self.capacity > 0:
             redescriptionList.sort(reverse=True)
             
@@ -94,15 +79,19 @@ class RedescriptionsDraft:
                 if compare == self.count(): ## if the end has been reached, simply append and go to next one
                     if place == -1:
                         self.draft.append(redescriptionList[to_insert])
-                        inserted += 1
+                        insertedIds[to_insert] = len(self.draft)
                         
                     compare = -1
                     to_insert += 1
                     count_iden = [0, 0]
                     place = -1
+                elif redescriptionList[to_insert] == self.draft[compare]: # FOUND IDENTICAL, SHOULD ONLY HAPPEN WITH AMNESIC
+                    compare = -1
+                    to_insert += 1
                 elif place== -1 and redescriptionList[to_insert] >= self.draft[compare] : ## place has been found, insert
                     place = compare
                     self.draft.insert(place, redescriptionList[to_insert])
+                    insertedIds[to_insert] = place
                 elif redescriptionList[to_insert].oneSideIdentical(self.draft[compare], count_iden, max_iden) :
                     #pdb.set_trace()
                     if not redescriptionList[to_insert].equivalent(self.draft[compare]) : ## if one side identical is found,
@@ -110,7 +99,6 @@ class RedescriptionsDraft:
                             ## remove compared, go to next one continue, might find other side identical ...
                             self.draft.pop(compare)
                             compare -= 1
-                            inserted += 1
                         else: ## else don't insert current, go to next one
                             compare = -1
                             to_insert += 1
@@ -120,7 +108,7 @@ class RedescriptionsDraft:
                     
             if self.capacity < self.count():
                 self.draft = self.draft[:self.cutIndex(self.capacity)]
-        return inserted
+        return insertedIds
 
 #     def updateCheckSubsum(self, redescriptionList):          
 #         if self.count() >= 2:
@@ -140,18 +128,26 @@ class RedescriptionsDraft:
 #                 current -=1 
 #                 comp_to = current - 1
 
-    def notBarren(self):
-        notBarren = []
+    def nextGeneration(self, functFinalOK):
+        nextGen = []
         i = 0
         while i < len(self.draft):
             if self.draft[i].nbAvailableCols() > 0:
-                notBarren.append(self.draft.pop(i))
+                nextGen.append(self.draft.pop(i))
+            elif not functFinalOK(self.draft[i]):
+                self.draft.pop(i)
             else:
                 i += 1
-        return notBarren 
+        return nextGen 
 
     def __str__(self):
         dsp = 'Redescription draft (%i/%s):\n' % (self.count(), self.capacity)
         for i in self.draft :
             dsp += '%s\n' %i
+        return dsp
+
+    def disp(self):
+        dsp = 'Redescription draft (%i/%s):\n' % (self.count(), self.capacity)
+        for i in self.draft :
+            dsp += '%s\n' %i.disp()
         return dsp

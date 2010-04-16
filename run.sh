@@ -1,43 +1,71 @@
 #!/bin/bash
-TIMED="time --append -o time_log "
-OUT=spqrcx_100_25 
-NB=A
 
-DATA_REP=../data/dblp/${OUT}/
-DATAL=${DATA_REP}conference_selected
-DATAR=${DATA_REP}coauthor_selected
+if [ -e ./conf/${1}.conf ]; then
+    CONFIG_FILE=./conf/${1}.conf
+else
+    echo "ERROR ! No config file !"
+    exit
+fi
 
-DAT_EXT=.dat
-NAMES_EXT=.cut_names
+DATE_S=$(date +%y%m%d%H%M%S)
+UNIQ_ID="_DATE_"
+if [ "${2}" ]; then
+    UNIQ_ID=${2}
+fi
+
+source $CONFIG_FILE
+
+UNIQ_ID=$(echo $UNIQ_ID | sed 's/_DATE_/'${DATE_S}'/g')
+echo "UNIQ_ID is ${UNIQ_ID}"
+OUT_BASE=${1}'.'${UNIQ_ID}
+
+
+DATAL=${DATA_REP}${FILE_L}${EXT_L}
+DATAR=${DATA_REP}${FILE_R}${EXT_R}
+
+LABELSL=${DATA_REP}${FILE_L}${LABELS_EXT_L}
+LABELSR=${DATA_REP}${FILE_R}${LABELS_EXT_R}
 
 RULES_EXT=.rul
 SUPP_EXT=.supp
-GRAPH_EXT=.graph
+DENSESUPP_EXT=.dense_supp
+NAMED_EXT=.names
 LOG_EXT=.log
 
-RES_REP=./results/
-OUTPUT=${RES_REP}${OUT}_$NB$RULES_EXT
-SUPPORT_OUTPUT=${RES_REP}${OUT}_$NB$SUPP_EXT
-LOG_OUTPUT=${RES_REP}${OUT}_$NB$LOG_EXT
-GRAPH_OUTPUT=${RES_REP}${OUT}_$NB$GRAPH_EXT
+RULES_OUT=${RES_REP}${OUT_BASE}$RULES_EXT
+NAMED_OUT=${RES_REP}${OUT_BASE}$NAMED_EXT
+SUPPORT_OUT=${RES_REP}${OUT_BASE}$SUPP_EXT
+DENSESUPPORT_OUT=${RES_REP}${OUT_BASE}$DENSESUPP_EXT
+LOG_OUT=${RES_REP}${OUT_BASE}$LOG_EXT
 
-NB_VARIABLES=5
-NB_RULES=100
-LIMIT_SUPPORT=3
-MIN_CONTRIBUTION=5
-SCORE_FORMULA="suppI[i]/suppU[i]"
-DRAFT_CAPACITY=8
-DRAFT_OUTPUT=1
-MIN_IMPROVEMENT=0
-AMNESIC='' 
-MAX_SIDE_IDENTICAL=2
-WITHOUT="--without-nots"
 
-VERBOSITY=3
+if (( ${#RUN_ACTION} > 0 ))
+then
+COMM_LINE=$( echo  ./scripts/greedyRuleFinder6.py \
+       --dataL=$DATAL --dataR=$DATAR --rules-out=$RULES_OUT --support-out=$SUPPORT_OUT \
+       --nb-variables=$NB_VARIABLES --min-len=$MIN_LEN \
+       --contribution=$CONTRIBUTION --itm-in=$ITM_IN --itm-out=$ITM_OUT --fin-in=$FIN_IN --fin-out=$FIN_OUT \
+       --nb-rules=$NB_RULES --meth-sel=$METH_SEL --div-L=$DIV_L --div-R=$DIV_R --min-score=$MIN_SCORE \
+       --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT \
+       --min-improvement=$MIN_IMPROVEMENT --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
+       $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
+       --verbosity=$VERBOSITY)
 
-./scripts/greedyRuleFinder6.py --dataL=$DATAL$DAT_EXT --dataR=$DATAR$DAT_EXT --output=$OUTPUT --support-output=$SUPPORT_OUTPUT \
-    --nb-variables=$NB_VARIABLES --nb-rules=$NB_RULES --limit-support=$LIMIT_SUPPORT --min-contribution=$MIN_CONTRIBUTION --score-formula=$SCORE_FORMULA \
-    --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT --min-improvement=$MIN_IMPROVEMENT $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT --verbosity=$VERBOSITY #> ${OUT}_$NB$LOG_EXT
+if [ "${RUN_ACTION}" = "log" ]
+then         
+    cat $CONFIG_FILE > $LOG_OUT
+    $COMM_LINE >> $LOG_OUT
+else
+    $COMM_LINE
+fi
+fi
 
-#./scripts/display_graph_rules.py --dataL=$DATAL$DAT_EXT --dataR=$DATAR$DAT_EXT  -o ${OUT}_$NB$RULES_EXT -O compare_named$GRAPH_EXT -l $DATAL$NAMES_EXT -r $DATAR$NAMES_EXT
-#./scripts/sanityChecker.py --dataL=$DATAL$DAT_EXT --dataR=$DATAR$DAT_EXT  -O ${OUT}_$NB$SUPP_EXT -o ${OUT}_$NB$RULES_EXT
+if (( ${#POST_ACTIONS} > 0 ))
+then         
+    ./scripts/postProcess.py $POST_ACTIONS \
+    --dataL=$DATAL --dataR=$DATAR \
+    --rules-in=$RULES_OUT  --support-in=$SUPPORT_OUT \
+    --left-labels=$LABELSL --right-labels=$LABELSR \
+    --rules-out=$NAMED_OUT --support-out=$DENSESUPPORT_OUT \
+    --verbosity=$VERBOSITY  
+fi
