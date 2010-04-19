@@ -85,12 +85,60 @@ class CatDataM(DataM):
     
 class NumDataM(DataM):
     type_id = 3
-    
+
+    ## Using suitable reading method returns suitable colSupps :)
+#     def __init__(self, ncolSupps=[], nmaxRowId=-1):
+#         ## self.colSupps[col] = [list of (value, ids] ordered by value
+#         self.colSupps = [ sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0])  for col in range(len(ncolSupps))]
+#         #self.colSupps = [ zip(*sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0]) for col in range(len(ncolSupps)))]
+#         self.nbRows = nmaxRowId+1
+
     def __init__(self, ncolSupps=[], nmaxRowId=-1):
-        ## self.colSupps[col] = [[list of values], [list of ids]] ordered by value
-        self.colSupps = [ sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0])  for col in range(len(ncolSupps))]
-        #self.colSupps = [ zip(*sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0]) for col in range(len(ncolSupps)))]
+        self.colSupps = ncolSupps
         self.nbRows = nmaxRowId+1
+        self.modeSupps = {}
+        for i in range(len(self.colSupps)):
+            if len(self.colSupps[i]) != self.nbRows:
+                tmp = set([r[1] for r in self.colSupps[i] ])
+                if -1 in tmp:
+                    tmp.remove(-1)
+                if 2*len(tmp) > self.nbRows:
+                    self.modeSupps[i] = (-1, set(range(self.nbRows)) - tmp)
+                else:
+                    self.modeSupps[i] = (1, tmp)
+            else:
+                self.modeSupps[i] = (0, None)
+
+    def interMode(self, col, suppX):
+        if self.modeSupps[col][0] == 1:
+            return suppX - self.modeSupps[col][1]
+        elif self.modeSupps[col][0] == -1:
+            return suppX & self.modeSupps[col][1]
+        else:
+            return set()    
+        
+    def lenMode(self, col):
+        if self.modeSupps[col][0] == 1:
+            return self.nbRows - len(self.modeSupps[col][1])
+        elif self.modeSupps[col][0] == -1:
+            return len(self.modeSupps[col][1])
+        else:
+            return 0
+        
+    def modeSupp(self, col):
+        if self.modeSupps[col][0] == 1:
+            return set(range(self.nbRows)) - self.modeSupps[col][1]
+        elif self.modeSupps[col][0] == -1:
+            return self.modeSupps[col][1]
+        else:
+            return set()
+
+    def nonFull(self, minIn, minOut):
+        it = []
+        for col in range(len(self.colSupps)):
+            if (self.nbRows - self.lenMode(col) >= minOut) or (self.nbRows - self.lenMode(col) >= minIn) :
+                it.append(col)
+        return it
 
     def suppItem(self, item):
         ## DO NOT USE INDEX IF THE BOUND ARE NOT ONE OF THE VALUES
@@ -99,7 +147,10 @@ class NumDataM(DataM):
             if val > item.upb :
                 return supp
             elif val >= item.lowb:
-                supp.add(row)
+                if row == -1:
+                    supp.update(self.modeSupp(item.colId()))
+                else:
+                    supp.add(row)
         return supp
 
     def vect(self, col): ## the term should be the same type as the data on the considered side
@@ -109,47 +160,66 @@ class NumDataM(DataM):
         return "%i x %i numerical" % ( len(self), self.nbCols())
 
     def fit(self, itemX, suppX, vector_abcd, col, toImprov, side):
+        (scores, termsA, termsB) = ([], [], [])    
+        #if (self.nbRows - len(self.interMode(col, suppX)) >= toImprov.minNbItmOut()) \
+        if (len(suppX) - len(self.interMode(col, suppX)) >= toImprov.minNbItmIn() ) :
 
-        lparts = (0, len(suppX), 0, len(self) - len(suppX))
-        lpartsN = (0, len(self) - len(suppX), 0, len(suppX))
+            lparts = (0, len(suppX), 0, len(self) - len(suppX))
+            linPartsMode = (0, len(self.modeSupp(col) & suppX), 0, len(self.modeSupp(col) - suppX))
 
-        segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col])
-        cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
-        (scores, termsA, termsB) = ([], [], [])
-        for cand in cand_A:
-            cand.update({'supp': len(suppX)})
-            scores.append(toImprov.score(cand))
-            termsA.append(Term(False, itemX))
-            termsB.append(cand['term'])
+            segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
+            cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
 
-        if toImprov.ruleTypesHasNeg() and len(cand_A) > 0:
-            segments = NumDataM.negateSegments(segments, False, True)
-            cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
-
-            for cand in cand_Ab:            
-                cand.update({'supp': len(self) - len(suppX)})
+            for cand in cand_A:
+                cand.update({'supp': len(suppX)})
                 scores.append(toImprov.score(cand))
-                termsA.append(Term(True, itemX))
+                termsA.append(Term(False, itemX))
                 termsB.append(cand['term'])
+
+            if toImprov.ruleTypesHasNeg() and len(cand_A) > 0:
+                segments = NumDataM.negateSegments(segments, False, True)
+                lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
+                cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
+
+                for cand in cand_Ab:            
+                    cand.update({'supp': len(self) - len(suppX)})
+                    scores.append(toImprov.score(cand))
+                    termsA.append(Term(True, itemX))
+                    termsB.append(cand['term'])
 
         return (scores, termsA, termsB)
 
     def anyAdvanceCol(self, toImprov, side, col):
-        if side==1:
-            lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-        else:
-            lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-        
-        segments = NumDataM.makeSegments(toImprov.parts[4], side, self.colSupps[col])
-        return NumDataM.findCover(segments, lparts, side, col, toImprov)
-            
-    def makeSegments(vector_abcd, side, vectCol):
+        res = []
+        suppX = set(toImprov.parts[2])
+        suppX.update(toImprov.parts[1-side])
+        #if (self.nbRows - len(self.interMode(col, toImprov.parts[2])) >= toImprov.minNbItmOut()) \
+        if ((len(toImprov.parts[2]) - len(self.interMode(col, toImprov.parts[2]))) + \
+            (len(toImprov.parts[1-side]) - len(self.interMode(col, toImprov.parts[1-side])))) >= toImprov.minNbItmIn() :
+
+            linPartsMode = (len(self.modeSupp(col) & toImprov.parts[0]), \
+                            len(self.modeSupp(col) & toImprov.parts[1]), \
+                            len(self.modeSupp(col) & toImprov.parts[2]), \
+                            len(self.modeSupp(col) & toImprov.parts[3]))
+
+            if side==1:
+                lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
+            else:
+                lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
+
+            segments = NumDataM.makeSegments(toImprov.parts[4], side, self.colSupps[col], linPartsMode)
+            res = NumDataM.findCover(segments, lparts, side, col, toImprov)
+        return res
+    
+    def makeSegments(vector_abcd, side, vectCol, linPartsMode):
         ## vector_abcd alpha->0 gamma->1 delta->2 beta->3
         segments = [[],[]]
         if side==0:
+            toColorsMode = [[linPartsMode[0], linPartsMode[2]], [linPartsMode[3], linPartsMode[1]]]
             OR = [Redescription.sym_delta, Redescription.sym_beta]
             BLUE = [Redescription.sym_gamma, Redescription.sym_beta]
         else:
+            toColorsMode = [[linPartsMode[1], linPartsMode[2]], [linPartsMode[3], linPartsMode[0]]]
             OR = [Redescription.sym_delta, Redescription.sym_alpha]
             BLUE = [Redescription.sym_gamma, Redescription.sym_alpha]
 
@@ -159,37 +229,50 @@ class NumDataM(DataM):
         ## buff: [count_red_current_val, count_blue_current_val, highest_val]
         buff_count = [[0,0, None],[0,0, None]]
         for (val, row) in vectCol:
-            op = vector_abcd[row] in OR
-            color = vector_abcd[row] in BLUE
+            if row == -1:
+                
+                for op in [False, True]:
+                    if toColorsMode[op][0]+toColorsMode[op][1] > 0:
+                        if current_segments[op][0]*current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
+                            segments[op].append(current_segments[op])
 
-            if val == buff_count[op][-1]:
-                buff_count[op][color] += 1
+                        buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
+                        segments[op].append(buff_count[op])
+                        buff_count[op] = [toColorsMode[op][0], toColorsMode[op][1], val]
+                        current_segments[op] = [0, 0, val, val]
+                        
+            else :
+                op = vector_abcd[row] in OR
+                color = vector_abcd[row] in BLUE
 
-            ## first loop will go throught this conditional and append the initial segment to the list, removed at the end
-            elif buff_count[op][color] == 0:  ## AND val > current_segments[op][-1]
-                ## Other color encontered, no mixing: push counts, save and start new 
-                current_segments[op][buff_count[op][1]>0] += buff_count[op][buff_count[op][1]>0]  # push counts from buffer
-                current_segments[op][-1] = buff_count[op][-1]                                     # push upper bound from buffer 
-                segments[op].append(current_segments[op])                                         # append to segments
-                buff_count[op] = [1*(not color), 1*color, val]                                    # create new segment
-                current_segments[op] = [0, 0, val, val]                                           # re-initialize buffer
+                if val == buff_count[op][-1]:
+                    buff_count[op][color] += 1
 
-            elif buff_count[op][not color] == 0 : ## AND val > current_segments[op][-1]
-                ## Same color, push counts
-                current_segments[op][color] += buff_count[op][color]
-                current_segments[op][-1] = buff_count[op][-1]
-                buff_count[op][color] = 1
-                buff_count[op][-1] = val
+                ## first loop will go throught this conditional and append the initial segment to the list, removed at the end
+                elif buff_count[op][color] == 0:  ## AND val > current_segments[op][-1]
+                    ## Other color encontered, no mixing: push counts, save and start new 
+                    current_segments[op][buff_count[op][1]>0] += buff_count[op][buff_count[op][1]>0]  # push counts from buffer
+                    current_segments[op][-1] = buff_count[op][-1]                                     # push upper bound from buffer 
+                    segments[op].append(current_segments[op])                                         # append to segments
+                    buff_count[op] = [1*(not color), 1*color, val]                                    # create new segment
+                    current_segments[op] = [0, 0, val, val]                                           # re-initialize buffer
 
-            else: ## buff_count[op][0]*buff_count[op][1] > 0:  ## AND val > current_segments[op][-1]
-                ## Mixing in the previous value: save current segment and previous value separately and start new
-                if current_segments[op][0]+current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
-                    segments[op].append(current_segments[op])
+                elif buff_count[op][not color] == 0 : ## AND val > current_segments[op][-1]
+                    ## Same color, push counts
+                    current_segments[op][color] += buff_count[op][color]
+                    current_segments[op][-1] = buff_count[op][-1]
+                    buff_count[op][color] = 1
+                    buff_count[op][-1] = val
 
-                buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
-                segments[op].append(buff_count[op])
-                buff_count[op] = [1*(not color), 1*color, val]
-                current_segments[op] = [0, 0, val, val]
+                else: ## buff_count[op][0]*buff_count[op][1] > 0:  ## AND val > current_segments[op][-1]
+                    ## Mixing in the previous value: save current segment and previous value separately and start new
+                    if current_segments[op][0]+current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
+                        segments[op].append(current_segments[op])
+
+                    buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
+                    segments[op].append(buff_count[op])
+                    buff_count[op] = [1*(not color), 1*color, val]
+                    current_segments[op] = [0, 0, val, val]
 
         for op in [False, True]:
             if buff_count[op][0]*buff_count[op][1] > 0:
@@ -438,9 +521,9 @@ class NumDataM(DataM):
 
 class Data:
 
-    dataTypes = [{'class': NumDataM,  'match':'num$'}, \
+    dataTypes = [{'class': NumDataM,  'match':'(ndat$)|(num$)'}, \
                  {'class': CatDataM,  'match':'cat$'}, \
-                 {'class': BoolDataM, 'match':'(dense)|(dat)|(sparse)$'}]
+                 {'class': BoolDataM, 'match':'(dense$)|(bdat$)|(sparse$)'}]
 
     defaultMinC = 1
     
@@ -704,12 +787,14 @@ class Data:
         format_f = datafile.split('.').pop()
         if format_f == 'dense':
             (colSuppsTmp, rowIdTmp) = utilsIO.readDense(datafile)
-        elif format_f == 'dat':
+        elif format_f == 'bdat':
             (colSuppsTmp, rowIdTmp) = utilsIO.readMatlab(datafile)
         elif format_f == 'sparse':
             (colSuppsTmp, rowIdTmp) = utilsIO.readSparse(datafile)
         elif format_f == 'num':
             (colSuppsTmp, rowIdTmp) = utilsIO.readNumerical(datafile)
+        elif format_f == 'ndat':
+            (colSuppsTmp, rowIdTmp) = utilsIO.readMatlabNum(datafile)
         elif format_f == 'cat' :
             (colSuppsTmp, rowIdTmp) = utilsIO.readCategorical(datafile)
         else:

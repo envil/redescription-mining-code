@@ -85,6 +85,37 @@ def getNames(filename, lenColSupps, empty):
         names = []
     return names
 
+
+def readMatlabNum(filename):
+    ## Read input
+    ##pdb.set_trace()
+    f = open(filename, 'r')
+    rowId = 0
+    tmpcolSupps = []
+    verbPrint(1,"\nReading matlab input %s\n"%filename)
+    #cols = -1
+    for row in f:
+        a = row.split('\t')
+        id_row = int(a[0])
+        id_col = int(a[1])
+        val = int(a[2])
+        ## For Python 2.4, convert a to INT
+        if tmpcolSupps == []:
+            tmpcolSupps = [[(0, -1)] for i in range(id_col)]
+            rowId = id_row -1
+        elif id_col > len(tmpcolSupps) or id_row-1 > rowId:
+        ## Sanity check
+            sys.stderr.write('\n\nSomething wrong when reading data\n')
+            sys.exit(3)
+        else :
+            tmpcolSupps[id_col-1].append((val, id_row-1))
+    f.close()
+    if len(tmpcolSupps[0]) == 1:
+        sys.stderr.write('\nWARNING ! First column empty !\n')
+    for i in range(len(tmpcolSupps)):
+        tmpcolSupps[i].sort(key=lambda x: x[0])
+    return (tmpcolSupps, rowId)
+
 def readNumerical(filename):
     ## Read input
     ## WARNING: non boolean data stored transposed
@@ -99,7 +130,8 @@ def readNumerical(filename):
             rowId = len(a)
         elif rowId != len(a):
             raise Exception('Inconsistent number of rows !\n')
-        tmpcolSupps.append([float(i) for i in a])
+        #tmpcolSupps.append([float(i) for i in a])
+        tmpcolSupps.append( sorted( [(float(a[i]),i) for i in range(len(a))], key=lambda x: x[0]) )
     f.close()
     return (tmpcolSupps, rowId-1)
 
@@ -176,20 +208,19 @@ def readMatlab(filename):
     #cols = -1
     for row in f:
         a = row.split('\t')
-        ## For Python 2.4, convert a to INT
         id_row = int(a[0])
         id_col = int(a[1])
         val = int(a[2])
-        if id_col > len(tmpcolSupps):
-            tmpcolSupps = tmpcolSupps + \
-                          [set() for i in range(id_col-len(tmpcolSupps))]
+        ## For Python 2.4, convert a to INT
+        if tmpcolSupps == []:
+            tmpcolSupps = [set() for i in range(id_col)]
+            rowId = id_row-1
+        elif id_col > len(tmpcolSupps) or id_row-1 > rowId:
         ## Sanity check
-        if id_col > len(tmpcolSupps):
+#            pdb.set_trace()
             sys.stderr.write('\n\nSomething wrong when reading data\n')
             sys.exit(3)
-        if id_row-1 > rowId :
-            rowId = id_row-1
-        if val != 0 :
+        elif val != 0 :
             tmpcolSupps[id_col-1].add(id_row-1)
     f.close()
     if len(tmpcolSupps[0]) == 0:
@@ -322,14 +353,14 @@ def convertFormat(file, inFormat, outFormat, noOverwrite=False, letter='A', clas
         (colSupps, rowId) = readSparse(inFile)
     elif  inFormat == "dense" :
         (colSupps, rowId) = readDense(inFile)
-    if inFormat == "dat":
+    if inFormat == "bdat":
         (colSupps, rowId) = readMatlab(inFile)
 
 
     ## WRITING OTHER FORMATS
     if outFormat == "sparse" :
         writeSparse(outFile, colSupps, rowId)
-    elif outFormat == "dat":
+    elif outFormat == "bdat":
         writeMatlab(outFile, colSupps, rowId)
     elif outFormat == "dense" :
         writeDense(outFile, colSupps, rowId)

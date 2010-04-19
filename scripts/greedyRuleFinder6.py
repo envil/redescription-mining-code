@@ -119,7 +119,7 @@ def getOpts(argv):
                                    [ "dataL=", "dataR=", "rules-out=", "support-out=", \
                                      "nb-variables=", "min-len=", \
                                      "contribution=", "itm-in=", "itm-out=", "fin-in=", "fin-out=", \
-                                     "nb-rules=", "meth-sel=", "div-L=", "div-R=", "score-formula=", "min-score=", \
+                                     "nb-rules=", "meth-sel=", "div-L=", "div-R=", "min-score=", \
                                      "draft-capacity=", "draft-output=", \
                                      "min-improvement=", "coeff-pvrule=", "coeff-pvred=", \
                                      "amnesic", "max-side-identical=", \
@@ -149,7 +149,6 @@ def getOpts(argv):
     setts['methodSel'] = 'overall'
     setts['divL'] = 1
     setts['divR'] = 1
-    setts['scoreFormula'] = 'suppI[i]/suppU[i]'
     setts['minScore'] = None
 
     setts['draftCap'] = 1
@@ -180,7 +179,6 @@ def getOpts(argv):
         if o in ("-N", "--meth-sel"): setts['methodSel'] = a
         if o in ("-f", "--div-L"): setts['divL'] = int(a)
         if o in ("-F", "--div-R"): setts['divR'] = int(a)
-        if o in ("-S", "--score-formula"): setts['scoreFormula'] = a
         if o in ("-s", "--min-score"): setts['minScore'] = float(a)
 
         if o in ("-d", "--draft-capacity"): setts['draftCap'] = int(a)
@@ -245,6 +243,7 @@ def main():
 
     verbPrint(3, "Settings:\n %s" % (setts))
     data = Data(setts['dataFiles'])
+
     verbPrint(3, data)
     (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut) = data.scaleSuppParams(setts['minC'], setts['minItmIn'], setts['minItmOut'], setts['minFinIn'], setts['minFinOut'])
     (BestsDraft.minLen, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts['minLen'], setts['coeffPVRule'], setts['coeffPVRed'])

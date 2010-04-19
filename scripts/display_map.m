@@ -1,6 +1,6 @@
 function display_map(coordinates_file, supps_file, figures_patt, format)
     coordinates = load(coordinates_file);
-    all_supps = logical(load(supps_file));
+    all_supps = load(supps_file);
     %rules_fid = fopen(rules_file);
     if size(all_supps,1) > size(coordinates,1) 
         error('Size of supports and coordinates do not match !')

@@ -213,7 +213,7 @@ class CatItem(Item):
 
 class NumItem(Item):
     type_id = 3
-    patt = '(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+))?\<(?P<upb>-?\d+(\.\d+)?)))$'
+    patt = '(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+)?)\<(?P<upb>-?\d+(\.\d+)?)))$'
     
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf'):
