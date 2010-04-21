@@ -28,15 +28,15 @@ LABELSR=${DATA_REP}${FILE_R}${LABELS_EXT_R}
 
 RULES_EXT=.rul
 SUPP_EXT=.supp
-DENSESUPP_EXT=.dense_supp
 NAMED_EXT=.names
 LOG_EXT=.log
+CONF_EXT=.conf
 
 RULES_OUT=${RES_REP}${OUT_BASE}$RULES_EXT
 NAMED_OUT=${RES_REP}${OUT_BASE}$NAMED_EXT
 SUPPORT_OUT=${RES_REP}${OUT_BASE}$SUPP_EXT
-DENSESUPPORT_OUT=${RES_REP}${OUT_BASE}$DENSESUPP_EXT
 LOG_OUT=${RES_REP}${OUT_BASE}$LOG_EXT
+CONF_OUT=${RES_REP}${OUT_BASE}$CONF_EXT
 
 
 if (( ${#RUN_ACTION} > 0 ))
@@ -47,14 +47,14 @@ COMM_LINE=$( echo  ./scripts/greedyRuleFinder6.py \
        --contribution=$CONTRIBUTION --itm-in=$ITM_IN --itm-out=$ITM_OUT --fin-in=$FIN_IN --fin-out=$FIN_OUT \
        --nb-rules=$NB_RULES --meth-sel=$METH_SEL --div-L=$DIV_L --div-R=$DIV_R --min-score=$MIN_SCORE \
        --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT \
-       --min-improvement=$MIN_IMPROVEMENT --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
+    --min-improvement=$MIN_IMPROVEMENT --coeff-impacc=$COEFF_IMPACC --coeff-relimpacc=$COEFF_RELIMPACC  --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
        $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
        --verbosity=$VERBOSITY)
 
+cat $CONFIG_FILE > $CONF_OUT
 if [ "${RUN_ACTION}" = "log" ]
 then         
-    cat $CONFIG_FILE > $LOG_OUT
-    $COMM_LINE >> $LOG_OUT
+    $COMM_LINE > $LOG_OUT
 else
     $COMM_LINE
 fi
@@ -66,6 +66,5 @@ then
     --dataL=$DATAL --dataR=$DATAR \
     --rules-in=$RULES_OUT  --support-in=$SUPPORT_OUT \
     --left-labels=$LABELSL --right-labels=$LABELSR \
-    --rules-out=$NAMED_OUT --support-out=$DENSESUPPORT_OUT \
-    --verbosity=$VERBOSITY  
+    --base-out=${RES_REP}${OUT_BASE}  --verbosity=$VERBOSITY  
 fi

@@ -62,9 +62,6 @@ def usage():
     Sample columns left hand side to generate pairs (default 1, all columns)
     -F / --div-R=INT
     Sample columns right hand side to generate pairs (default 1, all columns)
-    -S / --score-formula=STRING
-    Formula to use for sorting the pairs (default suppI[i]/suppU[i])
-    expression can involve suppI, suppU, rand
     -s / --min-score=FLOAT
     Min score for a pair to be considered (default 0)
 
@@ -76,9 +73,13 @@ def usage():
     Max number of non-equivalent alternative redescriptions to output for one pair (default 1)
     -b / --min-improvement=FLOAT
     Min improvement score for an alternative to be kept in the draft (default 0)
-    -v / --coeff-pvrule=FLOAT
+    -u / --coeff-impacc=FLOAT
+    Coefficient of improvement in accuracy in the improvement score (default 1)
+    -U / --coeff-relimpacc=FLOAT
+    Coefficient of the relative inprovement in accuracy in the improvement score (default 0)
+    -w / --coeff-pvrule=FLOAT
     Coefficient of the p-value of the rule overlap in the improvement score (default 1)
-    -V / --coeff-pvred=FLOAT
+    -W / --coeff-pvred=FLOAT
     Coefficient of the p-value of the redescription overlap in the improvement score (default 1)
     -A / --amnesic
     Amnesic, do not remember previously seen rules (default False)
@@ -115,13 +116,13 @@ def getOpts(argv):
 
 
         opts, args = getopt.getopt(argv, \
-                                   "L:R:o:O:k:K:c:p:q:P:Q:n:N:f:F:S:s:d:D:b:w:W:Aa:hv" , \
+                                   "L:R:o:O:k:K:c:p:q:P:Q:n:N:f:F:s:d:D:b:u:U:w:W:Aa:hv" , \
                                    [ "dataL=", "dataR=", "rules-out=", "support-out=", \
                                      "nb-variables=", "min-len=", \
                                      "contribution=", "itm-in=", "itm-out=", "fin-in=", "fin-out=", \
                                      "nb-rules=", "meth-sel=", "div-L=", "div-R=", "min-score=", \
                                      "draft-capacity=", "draft-output=", \
-                                     "min-improvement=", "coeff-pvrule=", "coeff-pvred=", \
+                                     "min-improvement=", "coeff-impacc=", "coeff-relimpacc=", "coeff-pvrule=", "coeff-pvred=", \
                                      "amnesic", "max-side-identical=", \
                                      "witout-and-nots", "without-or-nots", \
                                      "without-nots", "without-ands", "without-ors", \
@@ -154,6 +155,8 @@ def getOpts(argv):
     setts['draftCap'] = 1
     setts['draftOut'] = 1
     setts['minImpr'] = 0
+    setts['coeffImpacc'] = 1
+    setts['coeffRelImpacc'] = 0
     setts['coeffPVRule'] = 1
     setts['coeffPVRed'] = 1
     setts['amnesic'] = False
@@ -184,6 +187,8 @@ def getOpts(argv):
         if o in ("-d", "--draft-capacity"): setts['draftCap'] = int(a)
         if o in ("-D", "--draft-output"): setts['draftOut'] = int(a)
         if o in ("-b", "--min-improvement"): setts['minImpr'] = float(a)
+        if o in ("-w", "--coeff-impacc"): setts['coeffImpacc'] = float(a)
+        if o in ("-w", "--coeff-relimpacc"): setts['coeffRelImpacc'] = float(a)
         if o in ("-w", "--coeff-pvrule"): setts['coeffPVRule'] = float(a)
         if o in ("-w", "--coeff-pvred"): setts['coeffPVRed'] = float(a)
         if o in ("-A", "--amnesic"): setts['amnesic'] = True
@@ -243,10 +248,10 @@ def main():
 
     verbPrint(3, "Settings:\n %s" % (setts))
     data = Data(setts['dataFiles'])
-
     verbPrint(3, data)
     (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut) = data.scaleSuppParams(setts['minC'], setts['minItmIn'], setts['minItmOut'], setts['minFinIn'], setts['minFinOut'])
-    (BestsDraft.minLen, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts['minLen'], setts['coeffPVRule'], setts['coeffPVRed'])
+    (BestsDraft.minLen, BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = \
+                        (setts['minLen'], setts['coeffImpacc'], setts['coeffRelImpacc'], setts['coeffPVRule'], setts['coeffPVRed'])
     verbPrint(3, BestsDraft.dispParams())
     Redescription.nbVariables = setts['nbVariables']
     readyDraft = RedescriptionsDraft()
@@ -272,6 +277,7 @@ def main():
         
         verbPrint(2,"Redescriptions output (%i):" % (data.count))
         if setts['maxSideIden'] > 0 :
+
             insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts['maxSideIden'])
             for i in range(len(reds)):
                 if i in insertedIds.keys():
@@ -279,8 +285,11 @@ def main():
                 else:
                     verbPrint(3,"Redescription (NO):\t"+reds[i].dispSimple())
             if len(insertedIds) > 0:
+                #pdb.set_trace()
                 reds = readyDraft.redescriptions()
+                rulesOutFp.flush()
                 rulesOutFp.seek(0)
+                rulesOutFp.truncate()
                 if supportOutFp != None:
                     supportOutFp.seek(0)
             else:
@@ -290,9 +299,9 @@ def main():
         for currentRedescription in reds:
             verbPrint(2,currentRedescription.disp())
             currentRedescription.write(rulesOutFp, supportOutFp)
-
+        
         initialRed = data.getNextInitialRed()
-                 
+
     rulesOutFp.close()
     supportOutFp.close()
     verbPrint(1, 'END\n')

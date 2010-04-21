@@ -109,6 +109,15 @@ class NumDataM(DataM):
             else:
                 self.modeSupps[i] = (0, None)
 
+    
+    def interNonMode(self, col, suppX):
+        if self.modeSupps[col][0] == -1:
+            return suppX - self.modeSupps[col][1]
+        elif self.modeSupps[col][0] == 1:
+            return suppX & self.modeSupps[col][1]
+        else:
+            return suppX   
+    
     def interMode(self, col, suppX):
         if self.modeSupps[col][0] == 1:
             return suppX - self.modeSupps[col][1]
@@ -116,6 +125,14 @@ class NumDataM(DataM):
             return suppX & self.modeSupps[col][1]
         else:
             return set()    
+        
+    def lenNonMode(self, col):
+        if self.modeSupps[col][0] == -1:
+            return self.nbRows - len(self.modeSupps[col][1])
+        elif self.modeSupps[col][0] == 1:
+            return len(self.modeSupps[col][1])
+        else:
+            return self.nbRows
         
     def lenMode(self, col):
         if self.modeSupps[col][0] == 1:
@@ -125,6 +142,14 @@ class NumDataM(DataM):
         else:
             return 0
         
+    def nonModeSupp(self, col):
+        if self.modeSupps[col][0] == -1:
+            return set(range(self.nbRows)) - self.modeSupps[col][1]
+        elif self.modeSupps[col][0] == 1:
+            return self.modeSupps[col][1]
+        else:
+            return set(range(self.nbRows))
+
     def modeSupp(self, col):
         if self.modeSupps[col][0] == 1:
             return set(range(self.nbRows)) - self.modeSupps[col][1]
@@ -136,7 +161,7 @@ class NumDataM(DataM):
     def nonFull(self, minIn, minOut):
         it = []
         for col in range(len(self.colSupps)):
-            if (self.nbRows - self.lenMode(col) >= minOut) or (self.nbRows - self.lenMode(col) >= minIn) :
+            if self.lenNonMode(col) >= minOut or self.lenNonMode(col) >= minIn :
                 it.append(col)
         return it
 
@@ -154,19 +179,20 @@ class NumDataM(DataM):
         return supp
 
     def vect(self, col): ## the term should be the same type as the data on the considered side
-        return set()
+        return self.nonModeSupp(col)
     
     def __str__(self):
         return "%i x %i numerical" % ( len(self), self.nbCols())
 
     def fit(self, itemX, suppX, vector_abcd, col, toImprov, side):
         (scores, termsA, termsB) = ([], [], [])    
-        #if (self.nbRows - len(self.interMode(col, suppX)) >= toImprov.minNbItmOut()) \
-        if (len(suppX) - len(self.interMode(col, suppX)) >= toImprov.minNbItmIn() ) :
 
-            lparts = (0, len(suppX), 0, len(self) - len(suppX))
-            linPartsMode = (0, len(self.modeSupp(col) & suppX), 0, len(self.modeSupp(col) - suppX))
-
+        lparts = (0, len(suppX), 0, len(self) - len(suppX))
+        lenIntX = len(self.interMode(col, suppX))
+        linPartsMode = (0, lenIntX, 0, self.lenMode(col) - lenIntX)
+        segments = None
+            
+        if lparts[3] >= toImprov.minNbItmOut() and (lparts[1] - linPartsMode[1]) >= toImprov.minNbItmIn() :
             segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
             cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
 
@@ -176,39 +202,50 @@ class NumDataM(DataM):
                 termsA.append(Term(False, itemX))
                 termsB.append(cand['term'])
 
-            if toImprov.ruleTypesHasNeg() and len(cand_A) > 0:
-                segments = NumDataM.negateSegments(segments, False, True)
-                lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
-                cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
+        if toImprov.ruleTypesHasNeg() and lparts[1] >= toImprov.minNbItmOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minNbItmIn():
+            if segments == None:
+                segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
+            segments = NumDataM.negateSegments(segments, False, True)
+            lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
+            cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
 
-                for cand in cand_Ab:            
-                    cand.update({'supp': len(self) - len(suppX)})
-                    scores.append(toImprov.score(cand))
-                    termsA.append(Term(True, itemX))
-                    termsB.append(cand['term'])
+            for cand in cand_Ab:            
+                cand.update({'supp': len(self) - len(suppX)})
+                scores.append(toImprov.score(cand))
+                termsA.append(Term(True, itemX))
+                termsB.append(cand['term'])
 
         return (scores, termsA, termsB)
 
     def anyAdvanceCol(self, toImprov, side, col):
         res = []
-        suppX = set(toImprov.parts[2])
-        suppX.update(toImprov.parts[1-side])
-        #if (self.nbRows - len(self.interMode(col, toImprov.parts[2])) >= toImprov.minNbItmOut()) \
-        if ((len(toImprov.parts[2]) - len(self.interMode(col, toImprov.parts[2]))) + \
-            (len(toImprov.parts[1-side]) - len(self.interMode(col, toImprov.parts[1-side])))) >= toImprov.minNbItmIn() :
+#         if ( len(self.interNonMode(col,toImprov.parts[2])) >= toImprov.minNbItmIn() \
+#              or len(self.interNonMode(col,toImprov.parts[1-side])) >= toImprov.minNbC() ):
 
-            linPartsMode = (len(self.modeSupp(col) & toImprov.parts[0]), \
-                            len(self.modeSupp(col) & toImprov.parts[1]), \
-                            len(self.modeSupp(col) & toImprov.parts[2]), \
-                            len(self.modeSupp(col) & toImprov.parts[3]))
+#             if (( len(toImprov.parts[2])- len(self.interMode(col, toImprov.parts[2]))) + \
+#                 (len(toImprov.parts[1-side]) - len(self.interMode(col, toImprov.parts[1-side])))) < toImprov.minNbItmIn() :
+#                 pdb.set_trace()
 
-            if side==1:
-                lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-            else:
-                lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
+#             linPartsMode = (len(self.interMode(col, toImprov.parts[0])), \
+#                             len(self.interMode(col, toImprov.parts[1])), \
+#                             len(self.interMode(col, toImprov.parts[2])), \
+#                             len(self.interMode(col, toImprov.parts[3])))
+            
+#             if side==1:
+#                 lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
+#             else:
+#                 lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
 
+        linPartsMode = (len(self.interMode(col, toImprov.parts[0])), \
+                        len(self.interMode(col, toImprov.parts[1])), \
+                        len(self.interMode(col, toImprov.parts[2])), \
+                        len(self.interMode(col, toImprov.parts[3])))
+        lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
+
+
+        if lparts[2] - linPartsMode[2] >= toImprov.minNbItmIn() or lparts[1-side] - linPartsMode[1-side] >= toImprov.minNbC(): 
             segments = NumDataM.makeSegments(toImprov.parts[4], side, self.colSupps[col], linPartsMode)
-            res = NumDataM.findCover(segments, lparts, side, col, toImprov)
+            res = NumDataM.findCover(segments, (lparts[side], lparts[1-side], lparts[2], lparts[3]), side, col, toImprov)
         return res
     
     def makeSegments(vector_abcd, side, vectCol, linPartsMode):
@@ -598,10 +635,8 @@ class Data:
             bs[b].update({'supp': self.supp(bs[b]['side'], bs[b]['term'])})
         bests.upBests(bs)
 
-    def computePairParts11(self, mA, idA, mB, idB, toImprov, vectors_abcd=[[],[]], side=1):
-        c = len(mA.vect(idA) & mB.vect(idB))
-        a = len(mA.vect(idA) - mB.vect(idB))
-        b = len(mB.vect(idB) - mA.vect(idA))
+       
+    def computeBooleanPairParts(self, a, b, c, itemA, itemB, toImprov):
         ## Evaluate score for AB AbB ABb AbBb
         toColors = [[a, c], [c, a]]
         lparts = [[0, b+c, 0, self.N-b-c], [0, self.N-b-c, 0, b+c]]
@@ -611,22 +646,27 @@ class Data:
         up_to = 1+ toImprov.ruleTypesHasNeg()*3
         (scores, termsA, termsB) = ([], [], [])        
         for i in range(up_to):
-            cand = toImprov.compAdv(idA, True, nA[i], toColors[nB[i]], lparts[nB[i]])
+            cand = toImprov.compAdv(itemA, True, nA[i], toColors[nB[i]], lparts[nB[i]])
             if cand != None:
                 cand.update({'supp':  lparts[nB[i]][1]})
                 scores.append(toImprov.score(cand))
-                termsA.append(Term(nA[i], BoolItem(idA)))
-                termsB.append(Term(nB[i], BoolItem(idB)))
-            
+                termsA.append(Term(nA[i], itemA))
+                termsB.append(Term(nB[i], itemB))
         return (scores, termsA, termsB)
 
+    def computePairParts11(self, mA, idA, mB, idB, toImprov, vectors_abcd=[[],[]], side=1):
+        c = len(mA.vect(idA) & mB.vect(idB))
+        a = len(mA.vect(idA) - mB.vect(idB))
+        b = len(mB.vect(idB) - mA.vect(idA))
+        return self.computeBooleanPairParts(a, b, c, BoolItem(idA), BoolItem(idB), toImprov)
+    
     def computePairParts12(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         raise Exception('To be implemented !')
         return (scores, termsA, termsB)
     
     def computePairParts13(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         return mB.fit(BoolItem(idA), mA.vect(idA), vectors_abcd[1-side][idA], idB, toImprov, side)
-       
+        
     def computePairParts21(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
         (scores, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, toImprov, vectors_abcd, side )
         return (scores, termsA, termsB)
@@ -648,9 +688,36 @@ class Data:
         return (scores, termsA, termsB)
     
     def computePairParts33(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
-        raise Exception('To be implemented !')
+        bestScore = float('-Inf')
+        (scores, termsA, termsB) = ([], [], [])
+        if mA.lenMode(idA) >= toImprov.minNbItmOut() and mB.lenMode(idB) >= toImprov.minNbItmOut() :
+        #and mA.lenNonMode(idA) >= toImprov.minNbItmIn() and mB.lenNonMode(idB) >= toImprov.minNbItmIn() :
+            ## FIT LHS then RHS
+            (scoresL, termsBL, termsAL) = mA.fit(idB, mB.vect(idB), vectors_abcd[side][idB], idA, toImprov, 1-side)
+            for tA in termsAL:
+                suppA = mA.supp(tA)
+                vector_abcd = Redescription.makeVectorABCD(True, self.N, suppA, set(), set())
+                (scoresLR, termsALR, termsBLR) = mB.fit(tA.item, suppA, vector_abcd, idB, toImprov, side)
+                for i in range(len(scoresLR)):
+                    if scoresLR[i] > bestScore:
+                        (scores, termsA, termsB) = ([scoresLR[i]], [termsALR[i]], [termsBLR[i]])
+                        bestScore = scoresLR[i]
+                        
+            ## FIT RHS then LHS
+            (scoresR, termsAR, termsBR) = mB.fit(idA, mA.vect(idA), vectors_abcd[1-side][idA], idB, toImprov, side)
+            for tB in termsBR:
+                suppB = mB.supp(tB)
+                vector_abcd = Redescription.makeVectorABCD(True, self.N, set(), suppB, set())
+                (scoresRL, termsBRL, termsARL) = mA.fit(tB.item, suppB, vector_abcd, idA, toImprov, 1-side)
+                for i in range(len(scoresRL)):
+                    if scoresRL[i] > bestScore:
+                        (scores, termsA, termsB) = ([scoresRL[i]], [termsARL[i]], [termsBRL[i]])
+                        bestScore = scoresRL[i]
+                        
+#             if len(scores) > 0:
+#                print "%f: %s <-> %s" % (scores[0], termsA[0], termsB[0])
         return (scores, termsA, termsB)
-        
+                
     def computePair(self, idA, idB, vectors_abcd, toImprov):
         method_string = 'self.computePairParts%i%i' % (self.m[0].type_id, self.m[1].type_id)
         try:

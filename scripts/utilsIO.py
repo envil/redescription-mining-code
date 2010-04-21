@@ -61,9 +61,9 @@ def getOpts():
         if o == "-L":
             setts['letter'] = a
 
-def verbPrint(level, message, setts={'verb':0}):
-    if setts['verb'] >= level:
-        sys.stdout.write("%s\n" % message)
+def verbPrint(level, message, setts={'verb':0}, where=sys.stdout):
+    if where != None and setts['verb'] >= level:
+        where.write("%s\n" % message)
 ##         sys.stderr.write("\r                                                 \
 ##                                                                         \r%s"\
 ##                          %message)
@@ -82,7 +82,7 @@ def getNames(filename, lenColSupps, empty):
             names.insert(0,'')
             sys.stderr.write('\nWARNING ! First column empty ! Adding offset to names ...\n')
     if (len(names) !=  lenColSupps):
-        names = []
+        names = None
     return names
 
 

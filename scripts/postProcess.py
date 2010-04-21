@@ -47,12 +47,14 @@ def usage():
  
 def getOpts(argv):
     try:
-        opts, args = getopt.getopt(argv, "L:R:o:O:i:I:n:l:r:vh", \
-                                   ["dataL=", "dataR=", "rules-in=", "support-in=", "rules-out=", "support-out=", \
+        opts, args = getopt.getopt(argv, "L:R:o:O:i:I:n:l:r:a:s:S:vh", \
+                                   ["dataL=", "dataR=", "rules-in=", "support-in=", "base-out=", \
                                     "rows-labels=", "left-labels=", "right-labels=" , \
-                                    "check-sanity", "disp-names", "dense-support", "exp", \
+                                    "check-sanity", "disp-names", "filter", \
+                                    "min-acc=", "min-supp=", "max-supp=", \
                                     "help","verbosity="])
-    except getopt.GetoptError:
+    except getopt.GetoptError, err:
+        print err
         usage()
         sys.exit(2)
     global setts
@@ -60,13 +62,14 @@ def getOpts(argv):
     setts['dataFiles'] = ["dataL.dat", "dataR.dat"]
     setts['rulesInFile'] = "-"
     setts['supportInFile'] = None
-    setts['rulesOutFile'] = "-"
-    setts['supportOutFile'] = None
+    setts['baseOut'] = None
     setts['labelsFiles'] = ["","",""]
     setts['checkSanity'] = False
     setts['dispNames'] = False
-    setts['denseSupport'] = False
-    setts['exp'] = False
+    setts['filter'] = False
+    setts['minAcc'] = 0
+    setts['minSupp'] = 0
+    setts['maxSupp'] = float('Inf')
     if len(opts) == 0:
         usage()
         sys.exit()
@@ -75,15 +78,16 @@ def getOpts(argv):
         if o in ("-R", "--dataR"): setts['dataFiles'][1] = a
         if o in ("-i", "--rules-in"): setts['rulesInFile'] = a
         if o in ("-I", "--support-in"): setts['supportInFile'] = a
-        if o in ("-o", "--rules-out"): setts['rulesOutFile'] = a
-        if o in ("-O", "--support-out"): setts['supportOutFile'] = a
+        if o in ("-o", "--base-out"): setts['baseOut'] = a
         if o in ("-n", "--rows-labels"): setts['labelsFiles'][2] = a
         if o in ("-l", "--left-labels"): setts['labelsFiles'][0] = a
         if o in ("-r", "--right-labels"): setts['labelsFiles'][1] = a
         if o in ("--check-sanity"): setts['checkSanity'] = True
         if o in ("--disp-names"): setts['dispNames'] = True
-        if o in ("--dense-support"): setts['denseSupport'] = True
-        if o in ("--exp"): setts['exp'] = True
+        if o in ("--filter"): setts['filter'] = True
+        if o in ("-s","--min-supp"): setts['minSupp'] = int(a)
+        if o in ("-S","--max-supp"): setts['maxSupp'] = int(a)
+        if o in ("-a","--min-acc"): setts['minAcc'] = float(a)
         if o in ("-h", "--help"):
             usage()
             sys.exit()
@@ -93,13 +97,14 @@ def getOpts(argv):
             setts['verb'] = int(a)  
 
 def verbPrint(level, message):
-    utilsIO.verbPrint(level, message, setts)
+    utilsIO.verbPrint(level, message, setts, sys.stderr)
 
 def main():
     getOpts(sys.argv[1:])
+    verbPrint(2, "setts:%s" % setts)
     data = Data(setts['dataFiles'])
     names = [None, None]
-    if ( len(setts['labelsFiles'][0] + setts['labelsFiles'][1]) >0):
+    if ( setts['dispNames'] and len(setts['labelsFiles'][0] + setts['labelsFiles'][1]) >0):
         names[0] = utilsIO.getNames(setts['labelsFiles'][0], data.nbCols(0), data.nbCols(0)==0)
         names[1] = utilsIO.getNames(setts['labelsFiles'][1], data.nbCols(1), data.nbCols(1)==0)
 
@@ -110,13 +115,23 @@ def main():
     supportInFp = None
     if setts['supportInFile'] != None  and len(setts['supportInFile']) > 0: supportInFp = open(setts['supportInFile'], 'r')
 
-    if setts['dispNames'] :
-        if setts['rulesOutFile'] != "-"  or len(setts['rulesOutFile']) == 0 :
-            rulesOutFp = open(setts['rulesOutFile'], 'w')
-        else: rulesOutFp = sys.stdout
+    rulesOutFp = None
+    rulesNamedOutFp = None
 
-    if setts['denseSupport'] :
-        supports = []
+    if setts['filter']:
+        if setts['baseOut'] != "-" and len(setts['baseOut']) > 0 : 
+            rulesOutFp = open(setts['baseOut']+'_fil.rul', 'w')
+            if names[0] != None and names[1] != None :  
+                rulesNamedOutFp = open(setts['baseOut']+'_fil.names', 'w')
+        elif setts['baseOut'] == "-" :
+            rulesOutFp = sys.stdout 
+            if names[0] != None and names[1] != None :  
+                rulesNamedOutFp = sys.stdout
+    elif names[0] != None and names[1] != None :
+        if len(setts['baseOut']) > 0 : 
+            rulesNamedOutFp = open(setts['baseOut']+'.names', 'w')  
+        elif setts['baseOut'] == "-" :
+            rulesNamedOutFp = sys.stdout
         
     ruleNro = 1
     while True:
@@ -138,24 +153,21 @@ def main():
             else:
                 print "Something happend while analysing rule %i !" % ruleNro
 
-        if setts['dispNames'] :
-            #if currentR.acc() >= 0.25 and currentR.lenI() > 30:
-            rulesOutFp.write(currentR.disp(0, names)+'\n')
- 
-        if setts['exp'] :
-            print currentR.surp(data)
- 
-
-        if setts['denseSupport'] :
-            supports.extend([currentR.suppL(), currentR.suppR()])
-            
+        if not setts['filter'] or \
+               ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] and currentR.lenU() <= setts['maxSupp']):
+            if rulesOutFp != None:
+                rulesOutFp.write(currentR.dispSimple()+'\n')
+            if rulesNamedOutFp != None:
+                rulesNamedOutFp.write(currentR.dispSimple(0, names)+'\n')
+             
         ruleNro += 1
     verbPrint(1,'Read all %i rules.'%(ruleNro-1))
-    if setts['denseSupport'] :
-        utilsIO.writeDense(setts['supportOutFile'], supports, data.N-1)    
-
-    if setts['dispNames'] :
+ 
+    if rulesOutFp != None :
         rulesOutFp.close()     
+ 
+    if rulesNamedOutFp != None :
+        rulesNamedOutFp.close()     
     verbPrint(1,'Done')
         
 ## END of main()

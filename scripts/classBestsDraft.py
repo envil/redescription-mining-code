@@ -18,11 +18,14 @@ class BestsDraft:
     minFinOut = None
     coeffPVRule = 1
     coeffPVRed =1
+    coeffImpacc = 1
+    coeffRelImpacc = 0
 
     def dispParams():
 
-        return "minC:%i, minItmIn:%i, minItmOut:%i, minFinIn:%i, minFinOut:%i, minLen:%i, coeffPVRule:%f, coeffPVRed:%f"\
-               % (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut, BestsDraft.minLen, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed)
+        return "minC:%i, minItmIn:%i, minItmOut:%i, minFinIn:%i, minFinOut:%i, minLen:%i, coeffImpacc:%f, coeffRelImpacc:%f, coeffPVRule:%f, coeffPVRed:%f"\
+               % (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut, BestsDraft.minLen, \
+                  BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed)
     dispParams = staticmethod(dispParams)    
 #     def compSurp(self, pos):
 #         if self.bests[pos] != None:
@@ -191,14 +194,25 @@ class BestsDraft:
         elif cand.has_key('side') and cand['side'] == -1:
             return 0
         else:
-            return self.improv(cand)-self.pValRuleScore(cand) -self.pValRedScore(cand)
+            return BestsDraft.coeffImpacc*self.impacc(cand) \
+                   + BestsDraft.coeffRelImpacc*self.relImpacc(cand) \
+                   - self.pValRuleScore(cand) - self.pValRedScore(cand)
         
-    def improv(self, cand):
+    def relImpacc(self, cand):
         if cand == None:
             return None
         else:
             if self.bests[-1]['acc'] != 0:
                 return (cand['acc']- self.bests[-1]['acc'])/self.bests[-1]['acc']
+            else:
+                return cand['acc']
+        
+    def impacc(self, cand):
+        if cand == None:
+            return None
+        else:
+            if self.bests[-1]['acc'] != 0:
+                return (cand['acc']- self.bests[-1]['acc'])
             else:
                 return cand['acc']
         
