@@ -1,0 +1,44 @@
+#############  DBLP ########################
+RUN_ACTION="log"
+POST_ACTIONS="--disp-names"  #dense-support"
+
+RES_REP=/fs-1/3/galbrun/redescriptors/sandbox/results/
+DATA_REP=/fs-1/3/galbrun/redescriptors/sandbox/dblp_rand/
+FILE_L=conference_boolsel_1
+FILE_R=coauthor_boolsel_1
+
+EXT_L=.bdat
+EXT_R=.bdat
+LABELS_EXT_L=.en.names
+LABELS_EXT_R=.en.names
+
+NB_VARIABLES=4
+MIN_LEN=2
+
+CONTRIBUTION=3
+ITM_IN=3
+ITM_OUT=3
+FIN_IN=3
+FIN_OUT=3
+
+NB_RULES=200
+METH_SEL="overall"
+DIV_L=1
+DIV_R=1
+MIN_SCORE=0.01
+
+DRAFT_CAPACITY=4
+DRAFT_OUTPUT=1
+
+MIN_IMPROVEMENT=0
+COEFF_IMPACC=0
+COEFF_RELIMPACC=1
+COEFF_PVRULE=0
+COEFF_PVRED=0
+
+AMNESIC=""
+MAX_SIDE_IDENTICAL=2
+WITHOUT="--without-nots"
+
+VERBOSITY=8
+TIMED="time --append -o time_log "
