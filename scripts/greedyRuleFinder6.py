@@ -245,7 +245,6 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souve
 def main():
     getOpts(sys.argv[1:])
     utilsIO.setts = setts
-
     verbPrint(3, "Settings:\n %s" % (setts))
     data = Data(setts['dataFiles'])
     verbPrint(3, data)
