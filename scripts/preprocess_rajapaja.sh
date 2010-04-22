@@ -1,11 +1,11 @@
 
-ORG_REP=/fs-1/3/galbrun/redescriptors/data/rajapaja/raw/
+ORG_REP=~/redescriptors/data/rajapaja/raw/
 DATA_MAM=mammals.mat
 DATA_WC=worldclim.mat
 NAMES_MAM=mammals.mul.names
 NAMES_WC=variable_names.txt
 
-OUT_REP=/fs-1/3/galbrun/redescriptors/sandbox/rajapaja/
+OUT_REP=~/redescriptors/sandbox/rajapaja/
 
 COOR=coordinates
 MAM=mammals
@@ -23,6 +23,8 @@ NB_WC_ALT=1
 LANG_E='en'
 LANG_OFF=2
 
+METHOD_PATH=/group/home/hiit_bru/rajapaja/src/
+MAT_PATH=~/redescriptors/sandbox/scripts/
 
 echo "Preprocessing rajapaja labels ..."
 cut -f $LANG_OFF -d ',' ${ORG_REP}${NAMES_MAM} > ${OUT_REP}${MAM}.${LANG_E}.${NAMES_EXT}
@@ -31,8 +33,8 @@ tail -n ${NB_WC_BIO} ${ORG_REP}${NAMES_WC} > ${OUT_REP}${WC_BIO}.${NAMES_EXT}
 
 MATLAB_BIN=/opt/matlab/bin/matlab
 SCRIPT_MATLAB="
-path(path,'/group/home/hiit_bru/rajapaja/src/')
-path(path,'/fs-1/3/galbrun/redescriptors/sandbox/scripts/')
+path(path,'${MAT_PATH}');
+path(path,'${METHOD_PATH}');
 
 mammals = load('${ORG_REP}${DATA_MAM}');
 wc = load('${ORG_REP}${DATA_WC}');

@@ -5,8 +5,8 @@ NB_COPIES=5
 SERIE=bn4
 SUFF_DATA=random
 
-RAND_REP=/fs-1/3/galbrun/redescriptors/sandbox/synthe/${SERIE}/data/
-RES_REP=/fs-1/3/galbrun/redescriptors/sandbox/synthe/${SERIE}/results/
+RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
+RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
 
 EXT_L=bdat
 EXT_R=num
@@ -81,9 +81,9 @@ WITHOUT="--without-nots"
 
 VERBOSITY=8
 
-SCRI_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-MAT_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-METHOD_PATH=/fs-1/3/galbrun/redescriptors/sandbox/synthe/
+SCRI_PATH=~/redescriptors/sandbox/scripts/
+MAT_PATH=~/redescriptors/sandbox/scripts/
+METHOD_PATH=~/redescriptors/sandbox/synthe/
 MATLAB_BIN=/opt/matlab/bin/matlab
  
 mkdir -p ${RAND_REP}

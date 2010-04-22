@@ -1,7 +1,7 @@
 
 ### DATA
 ########
-DATA_REP="/fs-1/3/galbrun/redescriptors/sandbox/dblp/"
+DATA_REP=~/redescriptors/sandbox/dblp/
 DATA1="coauthor"
 SYM1=1
 DATA2="conference"
@@ -13,8 +13,8 @@ IDS_EXT="ids"
 NAMES_EXT="names"
 EN_NAMES_EXT="en.names"
 SUFF_FIL="_filtered"
-SUFF_BOOLSEL="_boolsel"
-SUFF_NUMSEL="_numsel"
+SUFF_BOOLSEL="_boolbdm"
+SUFF_NUMSEL="_numbdm"
 
 ### PARAMETERS
 ##############
@@ -25,18 +25,20 @@ struct('matrix_nb', 1, 'thres', 10, 'dim', 1, 'unique', 1, 'lower', false),
 struct('matrix_nb', 2, 'thres', 100, 'dim', 2, 'unique',1, 'lower', false) 
 }"
 
-METHOD='spqr_cx'
-METHOD_PATH="/fs-1/3/galbrun/redescriptors/existing/others/colselect/"
+#METHOD='spqr_cx'
+#SELECT_ADDITIONAL_PARAMS=""
+METHOD='bdm'
+SELECT_ADDITIONAL_PARAMS=",15"
+METHOD_PATH=~/redescriptors/existing/others/colselect/
 NB_COLS1=100
 NB_COLS2=25
-SELECT_ADDITIONAL_PARAMS=""
 
 ### SCRIPTS
 ###########
-MAT_PATH="/fs-1/3/galbrun/redescriptors/sandbox/scripts/"
+MAT_PATH=~/redescriptors/sandbox/scripts/
 MATLAB_BIN="/opt/matlab/bin/matlab"
 
-SCRIPTS_REP="/fs-1/3/galbrun/redescriptors/sandbox/scripts/"
+SCRIPTS_REP=~/redescriptors/sandbox/scripts/
 AWK_BINARISE=$SCRIPTS_REP"binarise.awk"
 AWK_EXTRACT_NAMES=$SCRIPTS_REP"extract_names.awk"
 AWK_DEMAP_INDICES=$SCRIPTS_REP"demap_indices.awk"
@@ -162,7 +164,7 @@ path(path,'${METHOD_PATH}');
 if issparse(A)
     A = full(A);
 end
-[idx, X, err] = ${METHOD}(A, ${NB_COLS} ${ADDITIONAL_PARAMS});
+[idx, X, err] = ${METHOD}(A, ${NB_COLS} ${SELECT_ADDITIONAL_PARAMS});
 [idx, I] = sort(idx);
 fid = fopen('${DATA_OUT}.${IDS_EXT}','w');
 fprintf(fid, '%i\n', idx-1);
@@ -195,29 +197,29 @@ function f_binarise {
 ### ACTUAL PROCESSING
 #####################
 
-echo "Converting data  from " $MAP_EXT " to " $NDAT_EXT
-f_demap $DATA_REP$DATA1.$MAP_EXT $SYM1 $DATA_REP$DATA1.$NDAT_EXT $DATA_REP$DATA1.$NAMES_EXT
-f_demap $DATA_REP$DATA2.$MAP_EXT $SYM2 $DATA_REP$DATA2.$NDAT_EXT $DATA_REP$DATA2.$NAMES_EXT 
-echo "Filtering data"
-if [ ${#FILTER_RULES} -eq 0 ]; then
-    echo "No filtering, copying data"
-    cp $DATA_REP$DATA1.$NDAT_EXT $DATA_REP$DATA1$SUFF_FIL.$NDAT_EXT
-    awk '{ print FNR-1 "\t" $0 } ' $DATA_REP$DATA1.$NAMES_EXT > $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT
-    cp $DATA_REP$DATA2.$NDAT_EXT $DATA_REP$DATA2$SUFF_FIL.$NDAT_EXT
-    awk '{ print FNR-1 "\t" $0 } ' $DATA_REP$DATA2.$NAMES_EXT > $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT
-else
-    f_filter $DATA_REP$DATA1 $NDAT_EXT $DATA_REP$DATA2 $NDAT_EXT $IDS_EXT $SUFF_FIL $FILTER_RULES
-    f_extract_names $DATA_REP$DATA1$SUFF_FIL.$IDS_EXT $DATA_REP$DATA1.$NAMES_EXT  $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT
-    f_extract_names $DATA_REP$DATA2$SUFF_FIL.$IDS_EXT $DATA_REP$DATA2.$NAMES_EXT  $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT
-fi
+# echo "Converting data  from " $MAP_EXT " to " $NDAT_EXT
+# f_demap $DATA_REP$DATA1.$MAP_EXT $SYM1 $DATA_REP$DATA1.$NDAT_EXT $DATA_REP$DATA1.$NAMES_EXT
+# f_demap $DATA_REP$DATA2.$MAP_EXT $SYM2 $DATA_REP$DATA2.$NDAT_EXT $DATA_REP$DATA2.$NAMES_EXT 
+# echo "Filtering data"
+# if [ ${#FILTER_RULES} -eq 0 ]; then
+#     echo "No filtering, copying data"
+#     cp $DATA_REP$DATA1.$NDAT_EXT $DATA_REP$DATA1$SUFF_FIL.$NDAT_EXT
+#     awk '{ print FNR-1 "\t" $0 } ' $DATA_REP$DATA1.$NAMES_EXT > $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT
+#     cp $DATA_REP$DATA2.$NDAT_EXT $DATA_REP$DATA2$SUFF_FIL.$NDAT_EXT
+#     awk '{ print FNR-1 "\t" $0 } ' $DATA_REP$DATA2.$NAMES_EXT > $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT
+# else
+#     f_filter $DATA_REP$DATA1 $NDAT_EXT $DATA_REP$DATA2 $NDAT_EXT $IDS_EXT $SUFF_FIL $FILTER_RULES
+#     f_extract_names $DATA_REP$DATA1$SUFF_FIL.$IDS_EXT $DATA_REP$DATA1.$NAMES_EXT  $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT
+#     f_extract_names $DATA_REP$DATA2$SUFF_FIL.$IDS_EXT $DATA_REP$DATA2.$NAMES_EXT  $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT
+# fi
 
-cut -f 2 $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT > $DATA_REP$DATA1$SUFF_FIL.$EN_NAMES_EXT
-cut -f 2 $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT > $DATA_REP$DATA2$SUFF_FIL.$EN_NAMES_EXT
+# cut -f 2 $DATA_REP$DATA1$SUFF_FIL.$NAMES_EXT > $DATA_REP$DATA1$SUFF_FIL.$EN_NAMES_EXT
+# cut -f 2 $DATA_REP$DATA2$SUFF_FIL.$NAMES_EXT > $DATA_REP$DATA2$SUFF_FIL.$EN_NAMES_EXT
 
-echo "Turning $DATA1 to binary"
-f_binarise $DATA_REP$DATA1$SUFF_FIL.$NDAT_EXT $DATA_REP$DATA1$SUFF_FIL.$BDAT_EXT
-echo "Turning $DATA2 to binary"
-f_binarise $DATA_REP$DATA2$SUFF_FIL.$NDAT_EXT $DATA_REP$DATA2$SUFF_FIL.$BDAT_EXT
+# echo "Turning $DATA1 to binary"
+# f_binarise $DATA_REP$DATA1$SUFF_FIL.$NDAT_EXT $DATA_REP$DATA1$SUFF_FIL.$BDAT_EXT
+# echo "Turning $DATA2 to binary"
+# f_binarise $DATA_REP$DATA2$SUFF_FIL.$NDAT_EXT $DATA_REP$DATA2$SUFF_FIL.$BDAT_EXT
 
 
 ########### FILTERING ON BOOLEAN

@@ -2,9 +2,9 @@
 NB_COPIES=25
 SERIE=B
 
-RAND_REP=/fs-1/3/galbrun/redescriptors/sandbox/rand_rajapaja/${SERIE}/data/
-RES_REP=/fs-1/3/galbrun/redescriptors/sandbox/rand_rajapaja/${SERIE}/results/
-ORG_REP=/fs-1/3/galbrun/redescriptors/sandbox/rajapaja/
+RAND_REP=~/redescriptors/sandbox/rand_rajapaja/${SERIE}/data/
+RES_REP=~/redescriptors/sandbox/rand_rajapaja/${SERIE}/results/
+ORG_REP=~/redescriptors/sandbox/rajapaja/
 FILE_L=mammals
 FILE_R=worldclim_tp
 EXT_L=bdat
@@ -45,9 +45,9 @@ WITHOUT="--without-nots"
 
 VERBOSITY=8
 
-SCRI_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-MAT_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-METHOD_PATH=/fs-1/3/galbrun/redescriptors/sandbox/swap/
+SCRI_PATH=~/redescriptors/sandbox/scripts/
+MAT_PATH=~/redescriptors/sandbox/scripts/
+METHOD_PATH=~/redescriptors/sandbox/swap/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
 mkdir -p ${RAND_REP}

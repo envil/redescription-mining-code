@@ -3,9 +3,9 @@ SERIE=rajapaja_bio.T
 
 SUPP_EXT=supp
 MAP_EXT=eps
-COORDINATES=/fs-1/3/galbrun/redescriptors/sandbox/rajapaja/coordinates.names
-SUPPORTS_REP=/fs-1/3/galbrun/redescriptors/sandbox/results/
-MAPS_REP=/fs-1/3/galbrun/redescriptors/sandbox/fig/
+COORDINATES=~/redescriptors/sandbox/rajapaja/coordinates.names
+SUPPORTS_REP=~/redescriptors/sandbox/results/
+MAPS_REP=~/redescriptors/sandbox/fig/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
 echo "Generating maps for $SERIE  ..."

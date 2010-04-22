@@ -3,9 +3,9 @@ NB_COPIES=25
 SUFF_DATA=filtered
 SERIE=${SUFF_DATA}_bn
 
-RAND_REP=/fs-1/3/galbrun/redescriptors/sandbox/rand_dblp/${SERIE}/data/
-RES_REP=/fs-1/3/galbrun/redescriptors/sandbox/rand_dblp/${SERIE}/results/
-ORG_REP=/fs-1/3/galbrun/redescriptors/sandbox/dblp/
+RAND_REP=~/redescriptors/sandbox/rand_dblp/${SERIE}/data/
+RES_REP=~/redescriptors/sandbox/rand_dblp/${SERIE}/results/
+ORG_REP=~/redescriptors/sandbox/dblp/
 FILE_L=conference_${SUFF_DATA}
 FILE_R=coauthor_${SUFF_DATA}
 EXT_L=bdat
@@ -46,9 +46,9 @@ WITHOUT="--without-nots"
 
 VERBOSITY=8
 
-SCRI_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-MAT_PATH=/fs-1/3/galbrun/redescriptors/sandbox/scripts/
-METHOD_PATH=/fs-1/3/galbrun/redescriptors/sandbox/swap/
+SCRI_PATH=~/redescriptors/sandbox/scripts/
+MAT_PATH=~/redescriptors/sandbox/scripts/
+METHOD_PATH=~/redescriptors/sandbox/swap/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
 mkdir -p ${RAND_REP}
