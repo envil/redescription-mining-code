@@ -1,34 +1,49 @@
-base_rep = '/fs-1/3/galbrun/redescriptors/sandbox/';
+base_rep = '~/redescriptors/sandbox/';
 path(path,[ base_rep 'scripts/']);
 Xcoauth = load_matrix([ base_rep 'dblp/coauthor_filtered'], 'bdat');
 Xconf = load_matrix([ base_rep 'dblp/conference_filtered'], 'bdat');
 
-Dcoauth = sparse(triu(Xcoauth(1:3000,1:3000)+1));
 
 figure(1)
 subplot(2,1,1)
-imagesc(Dcoauth)
+spy(Xcoauth)
 subplot(2,1,2)
-imagesc(Xconf)
+spy(Xconf)
 
-
-for i = 1:1
-    [Xconf_r,accRatem,realChangesm,attemptsm,Pm] = swap(Xconf);
-    realChangesm/attemptsm
-    [Dcoauth_r,accRatew,realChangesw,attemptsw,Pw] = swap(Dcoauth);
-    realChangesw/attemptsw
+for i = 1:3
+    [Xconf_r] = permute_mat(Xconf);
+    [Xcoauth_r] = permute_ssym(Xcoauth);
     figure(i+1)
-    subplot(2,2,1)
-    imagesc(Xconf_r-Xconf)
-    colorbar
-    subplot(2,2,2)
-    imagesc(Dcoauth_r-Dcoauth)
-    colorbar
-    subplot(2,2,3)
-    imagesc(Xconf)
-    subplot(2,2,4)
-    imagesc(Dcoauth_r)
+    subplot(2,1,1)
+    spy(Xcoauth_r)
+    subplot(2,1,2)
+    spy(Xconf)
 end
+
+% Xmam = load_matrix([ base_rep 'rajapaja/mammals'], 'bdat');
+% Xwc_tp = load_matrix([ base_rep 'rajapaja/worldclim_tp'], 'num');
+% 
+% figure(1)
+% subplot(2,1,1)
+% imagesc(Xmam)
+% subplot(2,1,2)
+% imagesc(Xwc_tp)
+% 
+% for i = 1:3
+%     [Xmam_r] = permute_mat(Xmam);
+%     [Xwc_tp_r] = permute_mat(Xwc_tp);
+%     figure(i+1)
+%     subplot(2,2,1)
+%     imagesc(Xmam_r-Xmam)
+%     colorbar
+%     subplot(2,2,2)
+%     imagesc(Xwc_tp_r-Xwc_tp)
+%     colorbar
+%     subplot(2,2,3)
+%     imagesc(Xmam_r)
+%     subplot(2,2,4)
+%     imagesc(Xwc_tp_r)
+% end
 
 % X = rand(10,5);
 % DX = discretize(X);

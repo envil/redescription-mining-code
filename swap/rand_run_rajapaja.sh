@@ -1,5 +1,6 @@
 
-NB_COPIES=25
+NB_COPIES_SWAP=25
+NB_COPIES_PERM=25
 SERIE=B
 
 RAND_REP=~/redescriptors/sandbox/rand_rajapaja/${SERIE}/data/
@@ -13,6 +14,8 @@ RULES_EXT=rul
 SUPP_EXT=supp
 OUT_BASE=random
 LOG_FILE=${RES_REP}random.log
+SUFF_PERM="_perm"
+SUFF_SWAP="_swap"
 
 ########## MINING SETTINGS
 NB_VARIABLES=4
@@ -57,10 +60,14 @@ echo "Original as copy 0"
 cp ${ORG_REP}${FILE_L}.${EXT_L} ${RAND_REP}${FILE_L}_0.${EXT_L}
 cp ${ORG_REP}${FILE_R}.${EXT_R} ${RAND_REP}${FILE_R}_0.${EXT_R}
 
-echo "Generating randomized copies..."
-SCRIPT_MATLAB="
+function f_gen_swap {
+
+   local NB_COPIES=${1}
+
+   echo "Generating randomized swap copies..."
+   SCRIPT_MATLAB_SWAP="
 path(path,'${MAT_PATH}');
-path(path,'${METHOD_PATH}');
+path(path,'${METHOD_PATH_SWAP}');
 XL = load_matrix('${ORG_REP}${FILE_L}', '${EXT_L}');
 XR = load_matrix('${ORG_REP}${FILE_R}', '${EXT_R}');
 
@@ -74,21 +81,44 @@ for i = 1:${NB_COPIES}
     DR_r = swap(DR);
     SR_r = undiscretize(DR_r, SR);
     XR_r = unscale_data(SR_r, XR);
-    save_matrix(XL_r, ['${RAND_REP}${FILE_L}_' num2str(i)], '${EXT_L}');
-    save_matrix(XR_r, ['${RAND_REP}${FILE_R}_' num2str(i)], '${EXT_R}');
+    save_matrix(XL_r, ['${RAND_REP}${FILE_L}${SUFF_SWAP}' num2str(i)], '${EXT_L}');
+    save_matrix(XR_r, ['${RAND_REP}${FILE_R}${SUFF_SWAP}' num2str(i)], '${EXT_R}');
 end
 "
-echo "${SCRIPT_MATLAB}" | $MATLAB_BIN > /dev/null
+   echo "${SCRIPT_MATLAB_SWAP}" | $MATLAB_BIN > /dev/null
+}
 
+function f_gen_perm {
 
-for (( i=0; i<=${NB_COPIES}; i++ ))
-do
-   echo "Processing copy $i"
+   local NB_COPIES=${1}
+
+   echo "Generating randomized permutation copies..."
+SCRIPT_MATLAB_PERM="
+path(path,'${MAT_PATH}');
+path(path,'${METHOD_PATH_PERM}');
+XL = load_matrix('${ORG_REP}${FILE_L}', '${EXT_L}');
+XR = load_matrix('${ORG_REP}${FILE_R}', '${EXT_R}');
+
+for i = 1:${NB_COPIES}
+    XL_r = permute_mat(XL);
+    XR_r = permute_mat(XR);
+    save_matrix(XL_r, ['${RAND_REP}${FILE_L}${SUFF_PERM}' num2str(i)], '${EXT_L}');
+    save_matrix(XR_r, ['${RAND_REP}${FILE_R}${SUFF_PERM}' num2str(i)], '${EXT_R}');
+end
+"
+echo "${SCRIPT_MATLAB_PERM}" | $MATLAB_BIN > /dev/null
+}
+
+function f_process {
+
+      local COPY_ID=${1}
+
+      echo "Processing copy $COPY_ID"
    
-   DATAL=${RAND_REP}${FILE_L}_${i}.${EXT_L}
-   DATAR=${RAND_REP}${FILE_R}_${i}.${EXT_R}
-   RULES_OUT=${RES_REP}${OUT_BASE}_${i}.$RULES_EXT
-   SUPPORT_OUT=${RES_REP}${OUT_BASE}_${i}.$SUPP_EXT
+   DATAL=${RAND_REP}${FILE_L}${COPY_ID}.${EXT_L}
+   DATAR=${RAND_REP}${FILE_R}${COPY_ID}.${EXT_R}
+   RULES_OUT=${RES_REP}${OUT_BASE}${COPY_ID}.$RULES_EXT
+   SUPPORT_OUT=${RES_REP}${OUT_BASE}${COPY_ID}.$SUPP_EXT
 
 
    ${SCRI_PATH}/greedyRuleFinder6.py \
@@ -101,5 +131,20 @@ do
        --min-improvement=$MIN_IMPROVEMENT --coeff-impacc=$COEFF_IMPACC --coeff-relimpacc=$COEFF_RELIMPACC  --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
        $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
        --verbosity=$VERBOSITY >> $LOG_FILE
+}
 
+
+f_gen_swap $NB_COPIES_SWAP
+f_gen_perm $NB_COPIES_PERM
+
+f_process "_"$i
+
+for (( i=0; i<=${NB_COPIES_SWAP}; i++ ))
+do
+   f_process $SUFF_SWAP$i
+done
+
+for (( i=0; i<=${NB_COPIES_PERM}; i++ ))
+do
+   f_process $SUFF_PERM$i
 done
