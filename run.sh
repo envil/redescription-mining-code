@@ -7,21 +7,23 @@ else
     exit
 fi
 
+DATA_S=${2}
+
 DATE_S=$(date +%y%m%d%H%M%S)
 UNIQ_ID="_DATE_"
-if [ "${2}" ]; then
-    UNIQ_ID=${2}
+if [ "${3}" ]; then
+    UNIQ_ID=${3}
 fi
 
 source $CONFIG_FILE
 
 UNIQ_ID=$(echo $UNIQ_ID | sed 's/_DATE_/'${DATE_S}'/g')
 echo "UNIQ_ID is ${UNIQ_ID}"
-OUT_BASE=${1}'.'${UNIQ_ID}
+OUT_BASE=${1}${DATA_S}'.'${UNIQ_ID}
 
 
-DATAL=${DATA_REP}${FILE_L}${EXT_L}
-DATAR=${DATA_REP}${FILE_R}${EXT_R}
+DATAL=${DATA_REP}${FILE_L}${DATA_S}${EXT_L}
+DATAR=${DATA_REP}${FILE_R}${DATA_S}${EXT_R}
 
 LABELSL=${DATA_REP}${FILE_L}${LABELS_EXT_L}
 LABELSR=${DATA_REP}${FILE_R}${LABELS_EXT_R}
