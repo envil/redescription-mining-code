@@ -1,9 +1,11 @@
 #!/bin/bash
+CONFIG_PATH=~/redescriptors/sandbox/conf/
+SCRI_PATH=~/redescriptors/sandbox/scripts/
 
-if [ -e ./conf/${1}.conf ]; then
-    CONFIG_FILE=./conf/${1}.conf
+if [ -e $CONFIG_PATH${1}.conf ]; then
+    CONFIG_FILE=$CONFIG_PATH${1}.conf
 else
-    echo "ERROR ! No config file !"
+    echo "ERROR ! No config file ! $CONFIG_PATH${1}.conf"
     exit
 fi
 
@@ -43,7 +45,7 @@ CONF_OUT=${RES_REP}${OUT_BASE}$CONF_EXT
 
 if (( ${#RUN_ACTION} > 0 ))
 then
-COMM_LINE=$( echo  ./scripts/greedyRuleFinder6.py \
+COMM_LINE=$( echo  ${SCRI_PATH}greedyRuleFinder6.py \
        --dataL=$DATAL --dataR=$DATAR --rules-out=$RULES_OUT --support-out=$SUPPORT_OUT \
        --nb-variables=$NB_VARIABLES --min-len=$MIN_LEN \
        --contribution=$CONTRIBUTION --itm-in=$ITM_IN --itm-out=$ITM_OUT --fin-in=$FIN_IN --fin-out=$FIN_OUT \
@@ -64,7 +66,7 @@ fi
 
 if (( ${#POST_ACTIONS} > 0 ))
 then         
-    ./scripts/postProcess.py $POST_ACTIONS \
+    ${SCRI_PATH}postProcess.py $POST_ACTIONS \
     --dataL=$DATAL --dataR=$DATAR \
     --rules-in=$RULES_OUT  --support-in=$SUPPORT_OUT \
     --left-labels=$LABELSL --right-labels=$LABELSR \

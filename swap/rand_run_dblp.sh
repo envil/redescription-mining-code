@@ -1,101 +1,54 @@
+if [ -e ../conf/${1}.conf ]; then
+    CONFIG_FILE=../conf/${1}.conf
+else
+    echo "ERROR ! No config file !"
+    exit
+fi
 
-NB_COPIES=25
-SUFF_DATA=filtered
-SERIE=${SUFF_DATA}_bn
+source $CONFIG_FILE
 
-RAND_REP=~/redescriptors/sandbox/rand_dblp/${SERIE}/data/
-RES_REP=~/redescriptors/sandbox/rand_dblp/${SERIE}/results/
-ORG_REP=~/redescriptors/sandbox/dblp/
-FILE_L=conference_${SUFF_DATA}
-FILE_R=coauthor_${SUFF_DATA}
-EXT_L=bdat
-EXT_R=ndat
-RULES_EXT=rul
-SUPP_EXT=supp
-OUT_BASE=random
-LOG_FILE=${RES_REP}random.log
-
-########## MINING SETTINGS
-NB_VARIABLES=4
-MIN_LEN=2
-
-CONTRIBUTION=3
-ITM_IN=3
-ITM_OUT=3
-FIN_IN=3
-FIN_OUT=3
-
-NB_RULES=100
-METH_SEL="overall"
-DIV_L=1
-DIV_R=1
-MIN_SCORE=0.01
-
-DRAFT_CAPACITY=4
-DRAFT_OUTPUT=1
-
-MIN_IMPROVEMENT=0
-COEFF_IMPACC=1
-COEFF_RELIMPACC=0
-COEFF_PVRULE=1
-COEFF_PVRED=1
-
-AMNESIC=""
-MAX_SIDE_IDENTICAL=2
-WITHOUT="--without-nots"
-
-VERBOSITY=8
+NB_PROCESSES=2
+NB_COPIES=3
+SERIE=${1}
+SUFF_ORG=_0
+TODO_LIST=${DATA_REP}todo.list
 
 SCRI_PATH=~/redescriptors/sandbox/scripts/
+RUN_PATH=~/redescriptors/sandbox/
 MAT_PATH=~/redescriptors/sandbox/scripts/
 METHOD_PATH=~/redescriptors/sandbox/swap/
 MATLAB_BIN=/opt/matlab/bin/matlab
+PROC_ID_PLACE_HOLDER="__PROC_ID__"
 
-mkdir -p ${RAND_REP}
+mkdir -p ${DATA_REP}
 mkdir -p ${RES_REP}
 
 echo "Original as copy 0"
-cp ${ORG_REP}${FILE_L}.${EXT_L} ${RAND_REP}${FILE_L}_0.${EXT_L}
-cp ${ORG_REP}${FILE_R}.${EXT_R} ${RAND_REP}${FILE_R}_0.${EXT_R}
+cp ${ORG_REP}${FILE_L}${SUFF_ORG}${EXT_L} ${DATA_REP}${FILE_L}${SUFF_ORG}${EXT_L}
+cp ${ORG_REP}${FILE_R}${SUFF_ORG}${EXT_R} ${DATA_REP}${FILE_R}${SUFF_ORG}${EXT_R}
+echo -e "0\t${RUN_PATH}run.sh $SERIE _0 $PROC_ID_PLACE_HOLDER" >> $TODO_LIST
+
+${SCRI_PATH}sclaves.sh $NB_PROCESSES $TODO_LIST 
 
 echo "Generating randomized copies..."
 SCRIPT_MATLAB="
 path(path,'${MAT_PATH}');
 path(path,'${METHOD_PATH}');
-XL = load_matrix('${ORG_REP}${FILE_L}', '${EXT_L}');
-XR = load_matrix('${ORG_REP}${FILE_R}', '${EXT_R}');
-
-%%IF NEEDED DISCRETIZE
+XL = load_matrix('${ORG_REP}${FILE_L}${SUFF_ORG}', '${EXT_L}');
+XR = load_matrix('${ORG_REP}${FILE_R}${SUFF_ORG}', '${EXT_R}');
 
 for i = 1:${NB_COPIES}
     XL_r = swap(XL);
     XR_r = swap(XR);
-    save_matrix(XL_r, ['${RAND_REP}${FILE_L}_' num2str(i)], '${EXT_L}');
-    save_matrix(XR_r, ['${RAND_REP}${FILE_R}_' num2str(i)], '${EXT_R}');
+    save_matrix(XL_r, ['${DATA_REP}${FILE_L}_perm' num2str(i)], '${EXT_L}');
+    save_matrix(XR_r, ['${DATA_REP}${FILE_R}_perm' num2str(i)], '${EXT_R}');
+    fid = fopen('${TODO_LIST}', 'a');
+    fprintf(fid, '0\t${RUN_PATH}run.sh $SERIE _perm%i $PROC_ID_PLACE_HOLDER\n', i);
 end
 "
 echo "${SCRIPT_MATLAB}" | $MATLAB_BIN > /dev/null
 
-
-for (( i=0; i<=${NB_COPIES}; i++ ))
+for (( i=1; i<=${NB_PROCESSES}; i++ ))
 do
-   echo "Processing copy $i"
-   
-   DATAL=${RAND_REP}${FILE_L}_${i}.${EXT_L}
-   DATAR=${RAND_REP}${FILE_R}_${i}.${EXT_R}
-   RULES_OUT=${RES_REP}${OUT_BASE}_${i}.$RULES_EXT
-   SUPPORT_OUT=${RES_REP}${OUT_BASE}_${i}.$SUPP_EXT
-
-
-   ${SCRI_PATH}/greedyRuleFinder6.py \
-       --dataL=$DATAL --dataR=$DATAR \
-       --rules-out=$RULES_OUT --support-out=$SUPPORT_OUT \
-       --nb-variables=$NB_VARIABLES --min-len=$MIN_LEN \
-       --contribution=$CONTRIBUTION --itm-in=$ITM_IN --itm-out=$ITM_OUT --fin-in=$FIN_IN --fin-out=$FIN_OUT \
-       --nb-rules=$NB_RULES --meth-sel=$METH_SEL --div-L=$DIV_L --div-R=$DIV_R --min-score=$MIN_SCORE \
-       --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT \
-       --min-improvement=$MIN_IMPROVEMENT --coeff-impacc=$COEFF_IMPACC --coeff-relimpacc=$COEFF_RELIMPACC  --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
-       $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
-       --verbosity=$VERBOSITY >> $LOG_FILE
-
+echo -e "0\texit" >> $TODO_LIST
 done

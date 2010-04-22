@@ -1,5 +1,5 @@
-NB_PROCESSES=2
-TODO_FILE=todo.list
+NB_PROCESSES=${1}
+TODO_FILE=${2}
 
 function f_run_sub {
 
