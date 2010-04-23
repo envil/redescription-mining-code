@@ -17,7 +17,7 @@ function f_run_sub {
 	   if (( ${#COMM_ACTION} > 0 )); then
 	       $COMM_ACTION	  
 	   else
-	       sleep 10
+	       sleep 180
 	   fi
       done
       echo "$PROC_ID died..."
