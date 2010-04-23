@@ -100,6 +100,7 @@ def verbPrint(level, message):
     utilsIO.verbPrint(level, message, setts, sys.stderr)
 
 def main():
+#    pdb.set_trace()
     getOpts(sys.argv[1:])
     verbPrint(2, "setts:%s" % setts)
     data = Data(setts['dataFiles'])

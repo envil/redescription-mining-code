@@ -15,6 +15,7 @@ function f_run_sub {
 	   sed -i '0,/^0\t/s//1\t/1' $TODO_F
 	   lockfile-remove $TODO_F
 	   if (( ${#COMM_ACTION} > 0 )); then
+	       echo "$PROC_ID executing $COMM_ACTION ..."
 	       $COMM_ACTION	  
 	   else
 	       sleep 180
