@@ -1,5 +1,7 @@
-NB_PROCESSES=${1}
-TODO_FILE=${2}
+FIRST_PROCESS=${1}
+LAST_PROCESS=${2}
+TODO_FILE=${3}
+MASTER_ID=${4}
 
 function f_run_sub {
 
@@ -27,10 +29,16 @@ function f_run_sub {
 }
 
 
-for (( i=1; i<=${NB_PROCESSES}; i++ ))
+for (( i=${FIRST_PROCESS}; i<=${LAST_PROCESS}; i++ ))
 do
-    (f_run_sub $i $TODO_FILE)& 
+    (f_run_sub $MASTER_ID$i $TODO_FILE)& 
     sleep 1
 done
 
+echo "Sclaves $HOSTNAME $MASTER_ID$FIRST_PROCESS $MASTER_ID$LAST_PROCESS" >> $TODO_FILE.sclaves
+jobs -l >> $TODO_FILE.sclaves
+
+echo "===================================================================="
+echo "Sclaves $HOSTNAME $MASTER_ID$FIRST_PROCESS $MASTER_ID$LAST_PROCESS"
 jobs -l
+echo "===================================================================="
