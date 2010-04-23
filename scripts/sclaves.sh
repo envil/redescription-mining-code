@@ -10,22 +10,17 @@ function f_run_sub {
       echo "Starting" $PROC_ID $TODO_F
        while [ 1 ] 
        do
-	  if [ $(grep -c '^-1' $TODO_F) -eq 0 ]; then
-	      
-	      sed '0,/^0\t/s//-1\t/1' $TODO_F > $TODO_F.${PROC_ID}tmp 
-	      mv $TODO_F.${PROC_ID}tmp $TODO_F
-	      COMM_ACTION=$(grep -m 1 '^-1' $TODO_F | cut -f 2- | sed "s/__PROC_ID__/${PROC_ID}/g")
-	      if (( ${#COMM_ACTION} > 0 )); then
-		  sed '0,/^-1\t/s//1\t/1' $TODO_F > $TODO_F.${PROC_ID}tmp 
- 		  mv $TODO_F.${PROC_ID}tmp $TODO_F
-		  $COMM_ACTION	  
-	      else
-		  sleep 10
-	      fi
-	  else
-	      sleep 0.2
-	  fi 
+	   lockfile-create $TODO_F
+	   COMM_ACTION=$(grep -m 1 '^0' $TODO_F | cut -f 2- | sed "s/__PROC_ID__/${PROC_ID}/g")
+	   sed -i '0,/^0\t/s//1\t/1' $TODO_F
+	   lockfile-remove $TODO_F
+	   if (( ${#COMM_ACTION} > 0 )); then
+	       $COMM_ACTION	  
+	   else
+	       sleep 10
+	   fi
       done
+      echo "$PROC_ID died..."
 }
 
 
