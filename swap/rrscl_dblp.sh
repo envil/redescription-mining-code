@@ -7,10 +7,13 @@ fi
 
 source $CONFIG_FILE
 
+
 FIRST_PROCESS=1
 LAST_PROCESS=2
 MASTER_ID=a
+FIRST_COPIES_SWAP=1
 NB_COPIES_SWAP=3
+FIRST_COPIES_PERM=1
 NB_COPIES_PERM=3
 SERIE=${1}
 SUFF_ORG=_0
@@ -42,7 +45,7 @@ path(path,'${METHOD_PATH}');
 XL = load_matrix('${ORG_REP}${FILE_L}${SUFF_ORG}', '${EXT_L}');
 XR = load_matrix('${ORG_REP}${FILE_R}${SUFF_ORG}', '${EXT_R}');
 
-for i = 1:${NB_COPIES_SWAP}
+for i = ${FIRST_COPY_SWAP}:${FIRST_COPY_SWAP}+${NB_COPIES_SWAP}
     XL_r = swap(XL);
     XR_r = swap(XR);
     save_matrix(XL_r, ['${DATA_REP}${FILE_L}_swap' num2str(i)], '${EXT_L}');
@@ -57,7 +60,7 @@ path(path,'${METHOD_PATH}');
 XL = load_matrix('${ORG_REP}${FILE_L}${SUFF_ORG}', '${EXT_L}');
 XR = load_matrix('${ORG_REP}${FILE_R}${SUFF_ORG}', '${EXT_R}');
 
-for i = 1:${NB_COPIES_PERM}
+for i = ${FIRST_COPY_PERM}:${FIRST_COPY_PERM}+${NB_COPIES_PERM}
     XL_r = permute_mat(XL);
     XR_r = permute_mat(XR);
 
@@ -70,15 +73,13 @@ end
 
 
 if [ "$NB_COPIES_SWAP" > 0 ]; then
-    echo "Generating ${NB_COPIES_SWAP} swap randomized copies..."
+    echo "Generating ${NB_COPIES_SWAP} (${FIRST_COPY_SWAP}...) swap randomized copies..."
     echo "${SCRIPT_MATLAB_SWAP}" | $MATLAB_BIN > /dev/null
 fi
 if [ "$NB_COPIES_PERM" > 0 ]; then
-    echo "Generating ${NB_COPIES_PERM} perm randomized copies..."
+    echo "Generating ${NB_COPIES_PERM} (${FIRST_COPY_PERM}...) perm randomized copies..."
     echo "${SCRIPT_MATLAB_PERM}" | $MATLAB_BIN > /dev/null
 fi
 
-for (( i=${FIRST_PROCESS}; i<=${LAST_PROCESS}; i++ ))
-do
-echo -e "0\texit" >> $TODO_LIST
-done
+echo ${SCRI_PATH}kill_sclaves.sh $TODO_LIST
+${SCRI_PATH}kill_sclaves.sh $TODO_LIST

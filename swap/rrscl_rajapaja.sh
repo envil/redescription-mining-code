@@ -10,7 +10,9 @@ source $CONFIG_FILE
 FIRST_PROCESS=1
 LAST_PROCESS=2
 MASTER_ID=a
+FIRST_COPIES_SWAP=1
 NB_COPIES_SWAP=3
+FIRST_COPIES_PERM=1
 NB_COPIES_PERM=3
 SERIE=${1}
 SUFF_ORG=_0
@@ -32,7 +34,7 @@ if [ ! -e ${DATA_REP}${FILE_L}${SUFF_ORG}${EXT_L} ]; then
     cp ${ORG_REP}${FILE_R}${SUFF_ORG}${EXT_R} ${DATA_REP}${FILE_R}${SUFF_ORG}${EXT_R}
     echo -e "0\t${RUN_PATH}run.sh $SERIE _0 $PROC_ID_PLACE_HOLDER" >> $TODO_LIST
 fi
-
+ 
 echo ${SCRI_PATH}sclaves.sh $FIRST_PROCESS $LAST_PROCESS $TODO_LIST $MASTER_ID
 ${SCRI_PATH}sclaves.sh $FIRST_PROCESS $LAST_PROCESS $TODO_LIST $MASTER_ID
 
@@ -45,7 +47,7 @@ XR = load_matrix('${ORG_REP}${FILE_R}${SUFF_ORG}', '${EXT_R}');
 SR = scale_data(XR);
 DR = discretize(SR);
 
-for i = 1:${NB_COPIES_SWAP}
+for i = ${FIRST_COPY_SWAP}:${FIRST_COPY_SWAP}+${NB_COPIES_SWAP}
     XL_r = swap(XL);
     DR_r = swap(DR);
     SR_r = undiscretize(DR_r, SR);
@@ -62,7 +64,7 @@ path(path,'${METHOD_PATH}');
 XL = load_matrix('${ORG_REP}${FILE_L}${SUFF_ORG}', '${EXT_L}');
 XR = load_matrix('${ORG_REP}${FILE_R}${SUFF_ORG}', '${EXT_R}');
 
-for i = 1:${NB_COPIES_PERM}
+for i = ${FIRST_COPY_PERM}:${FIRST_COPY_PERM}+${NB_COPIES_PERM}
     XL_r = permute_mat(XL);
     XR_r = permute_mat(XR);
 
@@ -75,15 +77,13 @@ end
 
 
 if [ "$NB_COPIES_SWAP" > 0 ]; then
-    echo "Generating ${NB_COPIES_SWAP} swap randomized copies..."
+    echo "Generating ${NB_COPIES_SWAP} (${FIRST_COPY_SWAP}...) swap randomized copies..."
     echo "${SCRIPT_MATLAB_SWAP}" | $MATLAB_BIN > /dev/null
 fi
 if [ "$NB_COPIES_PERM" > 0 ]; then
-    echo "Generating ${NB_COPIES_PERM} perm randomized copies..."
+    echo "Generating ${NB_COPIES_PERM} (${FIRST_COPY_PERM}...) perm randomized copies..."
     echo "${SCRIPT_MATLAB_PERM}" | $MATLAB_BIN > /dev/null
 fi
 
-for (( i=${FIRST_PROCESS}; i<=${LAST_PROCESS}; i++ ))
-do
-echo -e "0\texit" >> $TODO_LIST
-done
+echo ${SCRI_PATH}kill_sclaves.sh $TODO_LIST
+${SCRI_PATH}kill_sclaves.sh $TODO_LIST
