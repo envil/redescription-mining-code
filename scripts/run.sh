@@ -20,7 +20,7 @@ fi
 source $CONFIG_FILE
 
 UNIQ_ID=$(echo $UNIQ_ID | sed 's/_DATE_/'${DATE_S}'/g')
-echo "UNIQ_ID is ${UNIQ_ID}"
+#echo "UNIQ_ID is ${UNIQ_ID}"
 OUT_BASE=${1}${DATA_S}'.'${UNIQ_ID}
 
 

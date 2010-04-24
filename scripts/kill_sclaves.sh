@@ -1,6 +1,7 @@
 TODO_FILE=${1}
 
-COUNT_SCL=$(grep -c 'f_run_sub' $TODO_FILE.sclaves)
+echo "Killed so far" >> $TODO_FILE.sclaves
+COUNT_SCL=$(grep -c 'Running' $TODO_FILE.sclaves)
 
 for (( i=1; i<=${COUNT_SCL}; i++ ))
 do
