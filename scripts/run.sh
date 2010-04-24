@@ -8,8 +8,12 @@ else
     echo "ERROR ! No config file ! $CONFIG_PATH${1}.conf"
     exit
 fi
+if [ "${2}" = "none" ]; then
+    DATA_S=""
+else
+    DATA_S=${2}
+fi
 
-DATA_S=${2}
 
 DATE_S=$(date +%y%m%d%H%M%S)
 UNIQ_ID="_DATE_"

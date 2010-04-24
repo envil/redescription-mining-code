@@ -1,5 +1,5 @@
-RES_PREF=~/redescriptors/sandbox/rajapaja_rand/TP1/results/rajapaja_randTP1
-TYPE=swap
+RES_PREF=~/redescriptors/sandbox/rajapaja_rand/TP2/results/rajapaja_randTP2
+TYPE=perm
 RULE_EXT=.rul
 RES_MATCH=${RES_PREF}'_'${TYPE}*$RULE_EXT
 ORG_RES=${RES_PREF}_0.*$RULE_EXT

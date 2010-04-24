@@ -27,8 +27,8 @@ mkdir -p ${RES_REP}
 
 if [ ! -e ${DATA_REP}${FILE_L}${SUFF_ORG}${EXT_L} ]; then
     echo "Original as copy 0"
-    cp ${ORG_REP}${FILE_L}${SUFF_ORG}${EXT_L} ${DATA_REP}${FILE_L}${SUFF_ORG}${EXT_L}
-    cp ${ORG_REP}${FILE_R}${SUFF_ORG}${EXT_R} ${DATA_REP}${FILE_R}${SUFF_ORG}${EXT_R}
+    cp ${ORG_REP}${FILE_L}${EXT_L} ${DATA_REP}${FILE_L}${SUFF_ORG}${EXT_L}
+    cp ${ORG_REP}${FILE_R}${EXT_R} ${DATA_REP}${FILE_R}${SUFF_ORG}${EXT_R}
     echo -e "0\t${RUN_PATH}run.sh $SERIE _0 $PROC_ID_PLACE_HOLDER" >> $TODO_LIST
 fi
 
