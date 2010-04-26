@@ -83,8 +83,8 @@ def linesCompare(x, y):
     return 1
     
 def dispRuleCompact(currentR, data,  m=3, reversing = True):
-    suppL = currentR.recompute(0, data)
-    suppR = currentR.recompute(1, data)
+    suppL = currentR.recomputeRule(0, data)
+    suppR = currentR.recomputeRule(1, data)
     (invTermsL, invTermsR) = currentR.invTerms()
         
     memb = numpy.zeros(data.N+1,type(1))

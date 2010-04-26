@@ -566,6 +566,7 @@ class Data:
     
     def __init__(self, datafiles):
         self.m = [None, None]
+	self.redunRows = set()
         
         for fileId in (0,1):
             (colSuppsTmp, maxRowIdTmp, dataType) = Data.readInput(datafiles[fileId])
@@ -588,8 +589,11 @@ class Data:
     def nbCols(self,side):
         return self.m[side].nbCols()
 
+    def addRedunRows(self, redunRows):
+	self.redunRows.update(redunRows)
+
     def supp(self,side, term): ## the term should be the same type as the data on the considered side
-        return self.m[side].supp(term)
+        return self.m[side].supp(term)-self.redunRows
         
     def __str__(self):
         return "Data %s and %s" % ( self.m[0], self.m[1])        

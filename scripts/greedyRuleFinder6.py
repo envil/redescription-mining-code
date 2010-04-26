@@ -16,9 +16,9 @@ def usage():
     print """
     Usage: %s [options]
 
-    Input files:
+    File names:
     ------------
-        Input filenames must have an extension indicating the data format (sparse|dense|dat|num).
+        Filenames must have an extension indicating the data format (sparse|dense|ndat|bdat|num).
     -L / --dataL=FILENAME
     Left-hand side data
     -R / --dataR=FILENAME

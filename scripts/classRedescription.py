@@ -232,7 +232,7 @@ class Redescription:
 
     ## return the support associated to a rule and a list of the items involved in it
     ## the list contains pairs (column id, negated)
-    def recompute(self, side, data= None):
+    def recomputeRule(self, side, data= None):
         return self.rules[side].recompute(side, data)
     
     def invTermsSide(self, side):
@@ -246,11 +246,21 @@ class Redescription:
 
     def invCols(self):
         return [self.invColsSide(0), self.invColsSide(1)]
+
+    def recompute(self, data):
+
+        nsuppL = self.recomputeRule(0, data)
+        nsuppR = self.recomputeRule(1, data)
+        self.sAlpha = nsuppL - nsuppR
+        self.sBeta = nsuppR - nsuppL
+        self.sGamma =  nsuppL & nsuppR
+        self.N = data.N
+        self.prs = [self.rules[0].proba(0, data), self.rules[1].proba(1, data)]
     
     def check(self, data):
         if self.sGamma != set([-1]):
-            nsuppL = self.recompute(0, data)
-            nsuppR = self.recompute(1, data)
+            nsuppL = self.recomputeRule(0, data)
+            nsuppR = self.recomputeRule(1, data)
             nsAlpha = nsuppL - nsuppR
             nsBeta = nsuppR - nsuppL
             nsGamma =  nsuppL & nsuppR

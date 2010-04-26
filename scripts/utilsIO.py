@@ -8,19 +8,18 @@ setts = {}
 def usage():
     print """
     Usage: %s [options]
-
-    -d FILENAME
-      Base filename (not containing the suffix indicating the format)
-    -i FORMAT (sparse|dense|dat|ibm)
-      Input format (if ibm input then output must be sparse)
-    -o FORMAT (sparse|dense|ibm|cart|compact|dat)
-      Output format
-    -L Letter
+    File names:
+    ------------
+        Filenames must have an extension indicating the data format (sparse|dense|bdat|ndat|num ...)
+    -i/ --input=FILENAME
+    input data
+    -o / --output=FILENAME
+    output data
+    -l /--letter=CHAR
       Name for the variable, Cart format
-    --classes
+    -c / --classes
       Generate classes file, for Cart
-      Force overwrite
-    --overwrite
+    -w / --overwrite
       Force overwrite
     -h, --help
       This text.
@@ -29,18 +28,17 @@ def usage():
 
 def getOpts():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:i:o:L:h", \
-                                   ["help","overwrite","classes"])
+        opts, args = getopt.getopt(sys.argv[1:], "i:o:l:wch", \
+                                   ["help","input", "output", "letter","classes", "overwrite"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
     global setts
-    setts['file'] = "data"
-    setts['inFormat'] = "dense"
-    setts['outFormat'] = "sparse"
-    setts['noOverwrite'] = True
+    setts['inFile'] = "-"
+    setts['outFile'] = "-"
     setts['letter'] = "A"
     setts['classes'] = False
+    setts['overwrite'] = False
     if len(opts) == 0:
         usage()
         sys.exit()
@@ -48,18 +46,11 @@ def getOpts():
         if o in ("-h", "--help"):
             usage()
             sys.exit()
-        if o == "--overwrite":
-            setts['noOverwrite'] = False
-        if o == "--classes":
-            setts['classes'] = True
-        if o == "-i":
-            setts['inFormat'] = a
-        if o == "-d":
-            setts['file'] = a
-        if o == "-o":
-            setts['outFormat'] = a
-        if o == "-L":
-            setts['letter'] = a
+	if o in ("-i", "--input"): setts['inFile'] = a
+	if o in ("-o", "--output"): setts['outFile'] = a
+	if o in ("-l", "--letter"): setts['letter'] = a
+	if o in ("-c", "--classes"): setts['classes'] = True
+	if o in ("-w", "--overwrite"): setts['overwrite'] = True
 
 def verbPrint(level, message, setts={'verb':0}, where=sys.stdout):
     if where != None and setts['verb'] >= level:
@@ -327,54 +318,62 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
 # sparse to IBM :
 # nl ./data/houseVotes/house-votes-84_sparse | nl | expand | sed 's/  */ /g' | sed 's/^ //g' > ./data/houseVotes/house-votes-84_ibm
 
-def convertFormat(file, inFormat, outFormat, noOverwrite=False, letter='A', classes=False):
+def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
+    format_in = inFile.split('.').pop()
+    format_out = outFile.split('.').pop()
+    if format_in == format_out:
+        sys.stderr.write("\nError, input and output format are the same (%s %s)!" % (format_in, format_out))
+        sys.exit(1)
 
-    inFile = file+"."+inFormat
-    outFile = file+"."+outFormat
+    if ( not overwrite and os.path.isfile(outFile) ):
+        sys.stderr.write("\nOutput file %s already exists, not overwriting (add --overwrite to force)\n"% ( outFile))
+        sys.exit(1)
 
-    if ( noOverwrite and os.path.isfile(outFile) ):
-           sys.stderr.write("\nOutput file %s already exists, not overwriting (add --overwrite to force)\n"% ( outFile))
-           sys.exit(1)
-        
+        ## FROM IBM FORMAT -> shell commands
+    if format_in == "ibm" and  format_out == "sparse" :
+       verbPrint(1,"\nIbm to sparse  %s -> %s\n"% ( inFile, outFile))
+       os.system("cut -f4- -d ' ' "+inFile+" > "+outFile)
+       (colSupps, rowId) = readSparse(outFile)
+       #pdb.set_trace()
+       del colSupps[0]
+       writeSparse(outFile, colSupps, rowId)
+       inFormat = "done"
+       outFormat = "done"
 
-    ## FROM IBM FORMAT -> shell commands
-    if inFormat == "ibm" and  outFormat == "sparse" :
-           verbPrint(1,"\nIbm to sparse  %s -> %s\n"% ( inFile, outFile))
-           os.system("cut -f4- -d ' ' "+inFile+" > "+outFile)
-           (colSupps, rowId) = readSparse(outFile)
-           #pdb.set_trace()
-           del colSupps[0]
-           writeSparse(outFile, colSupps, rowId)
-           inFormat = "done"
-           outFormat = "done"
-
-    ## READING OTHER FORMATS
-    if inFormat == "sparse":
-        (colSupps, rowId) = readSparse(inFile)
-    elif  inFormat == "dense" :
+    elif format_in == 'dense':
         (colSupps, rowId) = readDense(inFile)
-    if inFormat == "bdat":
+    elif format_in == 'bdat':
         (colSupps, rowId) = readMatlab(inFile)
-
+    elif format_in == 'sparse':
+        (colSupps, rowId) = readSparse(inFile)
+    elif format_in == 'num':
+        (colSupps, rowId) = readNumerical(inFile)
+    elif format_in == 'ndat':
+        (colSupps, rowId) = readMatlabNum(inFile)
+    elif format_in == 'cat' :
+        (colSupps, rowId) = readCategorical(inFile)
+    else:
+        (colSupps, rowId) =  (None, None)
+        raise Warning('Unknown format !')
 
     ## WRITING OTHER FORMATS
-    if outFormat == "sparse" :
+    if format_out == "sparse" :
         writeSparse(outFile, colSupps, rowId)
-    elif outFormat == "bdat":
+    elif format_out == "bdat":
         writeMatlab(outFile, colSupps, rowId)
-    elif outFormat == "dense" :
+    elif format_out == "dense" :
         writeDense(outFile, colSupps, rowId)
-    elif outFormat == "compact":
+    elif format_out == "compact":
         writeCompact(outFile, colSupps, rowId)
-    elif outFormat == "ibm":
+    elif format_out == "ibm":
         writeIbm(outFile, colSupps, rowId)
-    elif outFormat == "cart":
+    elif format_out == "cart":
         writeCart(outFile, colSupps, rowId, classes, letter)
 
 def main():
 
     getOpts()
-    convertFormat(setts['file'], setts['inFormat'], setts['outFormat'], setts['noOverwrite'], setts['letter'], setts['classes'])
+    convertFormat(setts['inFile'], setts['outFile'], setts['overwrite'], setts['letter'], setts['classes'])
    
         
 ## END of main()

@@ -36,8 +36,8 @@ def usage():
        Perform sanity check of the rules
     --disp-names
        Display rules with names
-    --dense-support
-       Write dense support
+    --recompute
+       Recompute redescription
     -v, --verbosity=INT
       Verbosity level, use either many v's or verbosity.
     -h, --help
@@ -47,11 +47,11 @@ def usage():
  
 def getOpts(argv):
     try:
-        opts, args = getopt.getopt(argv, "L:R:o:O:i:I:n:l:r:a:s:S:vh", \
+        opts, args = getopt.getopt(argv, "L:R:o:O:i:I:n:l:r:a:s:S:p:vh", \
                                    ["dataL=", "dataR=", "rules-in=", "support-in=", "base-out=", \
                                     "rows-labels=", "left-labels=", "right-labels=" , \
-                                    "check-sanity", "disp-names", "filter", \
-                                    "min-acc=", "min-supp=", "max-supp=", \
+                                    "redundancy", "check-sanity", "disp-names", "recompute", "filter", \
+                                    "min-acc=", "min-supp=", "max-supp=", "max-pval=", \
                                     "help","verbosity="])
     except getopt.GetoptError, err:
         print err
@@ -64,12 +64,15 @@ def getOpts(argv):
     setts['supportInFile'] = None
     setts['baseOut'] = None
     setts['labelsFiles'] = ["","",""]
+    setts['recompute'] = False
     setts['checkSanity'] = False
     setts['dispNames'] = False
     setts['filter'] = False
+    setts['redundancy'] = False
     setts['minAcc'] = 0
     setts['minSupp'] = 0
     setts['maxSupp'] = float('Inf')
+    setts['maxPVal'] = 1
     if len(opts) == 0:
         usage()
         sys.exit()
@@ -82,12 +85,15 @@ def getOpts(argv):
         if o in ("-n", "--rows-labels"): setts['labelsFiles'][2] = a
         if o in ("-l", "--left-labels"): setts['labelsFiles'][0] = a
         if o in ("-r", "--right-labels"): setts['labelsFiles'][1] = a
-        if o in ("--check-sanity"): setts['checkSanity'] = True
-        if o in ("--disp-names"): setts['dispNames'] = True
-        if o in ("--filter"): setts['filter'] = True
+        if o == "--check-sanity" : setts['checkSanity'] = True
+        if o == "--recompute" : setts['recompute'] = True
+        if o == "--redundancy": setts['redundancy'] = True
+        if o == "--disp-names": setts['dispNames'] = True
+        if o == "--filter": setts['filter'] = True
         if o in ("-s","--min-supp"): setts['minSupp'] = int(a)
         if o in ("-S","--max-supp"): setts['maxSupp'] = int(a)
         if o in ("-a","--min-acc"): setts['minAcc'] = float(a)
+        if o in ("-p","--max-pval"): setts['maxPVal'] = float(a)
         if o in ("-h", "--help"):
             usage()
             sys.exit()
@@ -119,7 +125,7 @@ def main():
     rulesOutFp = None
     rulesNamedOutFp = None
 
-    if setts['filter']:
+    if setts['filter'] or setts['redundancy']:
         if setts['baseOut'] != "-" and len(setts['baseOut']) > 0 : 
             rulesOutFp = open(setts['baseOut']+'_fil.rul', 'w')
             if names[0] != None and names[1] != None :  
@@ -161,8 +167,23 @@ def main():
                 else:
                     print "Something happend while analysing rule %i !" % ruleNro
 
+
+
+	    if setts['redundancy'] and data != None :
+		currentRedun = currentR.copy()
+		currentRedun.recompute(data)
+                comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
+	        if currentRedun.acc() >= setts['minAcc'] and currentRedun.lenI() >= setts['minSupp'] \
+			and currentRedun.lenU() <= setts['maxSupp'] and currentRedun.pVal() <= setts['maxPVal']:
+			data.addRedunRows(currentRedun.suppI())
+		else:
+			comment = '# REDUNDANT RULE ' + comment
+
+	    if (setts['filter'] or setts['recompute']) and data != None :
+		currentR.recompute(data)
             if not setts['filter'] or \
                    ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] and currentR.lenU() <= setts['maxSupp']):
+                #pdb.set_trace()
                 if rulesOutFp != None:
                     rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
                 if rulesNamedOutFp != None:
