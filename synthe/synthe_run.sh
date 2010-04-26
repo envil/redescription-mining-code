@@ -2,7 +2,7 @@ GENERATE_ACTION= #"gen"
 RUN_ACTION="run"
 
 NB_COPIES=5
-SERIE=bn4
+SERIE=BN_2
 SUFF_DATA=random
 
 RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/

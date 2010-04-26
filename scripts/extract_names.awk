@@ -4,12 +4,11 @@ BEGIN {
   FS="\t"
 }
 {
-    if (ARGIND == 1) ids[$0+1] = i++ ;
-    else if (ARGIND == 2) {
+    if (FILENAME == ARGV[1]) ids[$0+1] = i++ ;
+    else if (FILENAME == ARGV[2]) {
 	if (FNR in ids) {
 	    print  ids[FNR] "\t" FNR-1 "\t" $0
 	}
-
     }
 }
 # 'BEGIN { FS="\t"; i=0; while ((getline item_id < "'${SUB_IDS_F}'") > 0)

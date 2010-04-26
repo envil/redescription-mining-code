@@ -15,7 +15,7 @@ do
 	echo $(date ) "$PROC_ID done with $COMM_ACTION ..." >> $TODO_F.log$PROC_ID
     else
 	echo $(date ) "$PROC_ID waiting ..." >> $TODO_F.log$PROC_ID
-	sleep 3
+	sleep 60
     fi
 done
 echo $(date ) "$PROC_ID died..." >> $TODO_F.log$PROC_ID
