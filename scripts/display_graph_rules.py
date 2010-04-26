@@ -194,7 +194,7 @@ def main():
     
     ruleNro = 1
     while True:
-        currentR = Redescription.load(rulesFp)
+        (currentR, comment) = Redescription.load(rulesFp)
 
         if len(currentR) == 0 :
             break

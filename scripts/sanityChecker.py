@@ -74,7 +74,7 @@ def main():
     ruleNro = 1
     while True:
         verbPrint(10,'Reading rule # %i'%ruleNro)
-        currentR = Redescription.load(rulesFp, supportsFp)
+        (currentR, comment) = Redescription.load(rulesFp, supportsFp)
         if len(currentR) == 0:
             break
         res = currentR.check(data)

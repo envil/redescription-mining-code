@@ -431,8 +431,14 @@ class Redescription:
             
     def load(rulesFp, supportsFp = None, data= None):
         stringRules = rulesFp.readline()
+        indComm = stringRules.find('#')
+        comment = ''
+        if indComm != -1 :
+            comment = stringRules[indComm:].rstrip()
+            stringRules = stringRules[:indComm]
+        
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
         else: stringSupp= None
-        return Redescription.parse(stringRules, stringSupp, data)
+        return (Redescription.parse(stringRules, stringSupp, data), comment)
     load = staticmethod(load)

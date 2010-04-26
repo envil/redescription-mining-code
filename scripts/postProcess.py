@@ -136,32 +136,39 @@ def main():
         
     ruleNro = 1
     while True:
-        currentR = Redescription.load(rulesInFp, supportInFp, data)
-        if len(currentR) == 0 :
-            break
-        verbPrint(5,'Reading rule # %i'%ruleNro)
-        
-        if setts['checkSanity'] :
-            res = currentR.check(data)
-
-            if res == None:
-                print 'Rule has toy supports !'
-            elif type(res) == tuple and len(res)==3:
-                if res[0] *res[1] *res[2] == 1:
-                    print "Rule %i OK !" % ruleNro
-                else:
-                    print "Rule %i WRONG ! (%s)" % (ruleNro, res)
+        (currentR, comment)= Redescription.load(rulesInFp, supportInFp, data)
+        if len(currentR) == 0:
+            if comment == '':
+                break
             else:
-                print "Something happend while analysing rule %i !" % ruleNro
+               if rulesOutFp != None:
+                   rulesOutFp.write(comment+'\n')
+               if rulesNamedOutFp != None:
+                   rulesNamedOutFp.write(comment+'\n')
+        else:
+            verbPrint(5,'Reading rule # %i'%ruleNro)
 
-        if not setts['filter'] or \
-               ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] and currentR.lenU() <= setts['maxSupp']):
-            if rulesOutFp != None:
-                rulesOutFp.write(currentR.dispSimple()+'\n')
-            if rulesNamedOutFp != None:
-                rulesNamedOutFp.write(currentR.dispSimple(0, names)+'\n')
-             
-        ruleNro += 1
+            if setts['checkSanity'] :
+                res = currentR.check(data)
+
+                if res == None:
+                    print 'Rule has toy supports !'
+                elif type(res) == tuple and len(res)==3:
+                    if res[0] *res[1] *res[2] == 1:
+                        print "Rule %i OK !" % ruleNro
+                    else:
+                        print "Rule %i WRONG ! (%s)" % (ruleNro, res)
+                else:
+                    print "Something happend while analysing rule %i !" % ruleNro
+
+            if not setts['filter'] or \
+                   ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] and currentR.lenU() <= setts['maxSupp']):
+                if rulesOutFp != None:
+                    rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
+                if rulesNamedOutFp != None:
+                    rulesNamedOutFp.write(currentR.dispSimple(0, names)+' '+comment+'\n')
+
+            ruleNro += 1
     verbPrint(1,'Read all %i rules.'%(ruleNro-1))
  
     if rulesOutFp != None :
