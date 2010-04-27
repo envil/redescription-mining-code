@@ -85,6 +85,7 @@ class CatDataM(DataM):
     
 class NumDataM(DataM):
     type_id = 3
+    maxSeg = 50
 
     ## Using suitable reading method returns suitable colSupps :)
 #     def __init__(self, ncolSupps=[], nmaxRowId=-1):
@@ -164,6 +165,29 @@ class NumDataM(DataM):
             if self.lenNonMode(col) >= minOut or self.lenNonMode(col) >= minIn :
                 it.append(col)
         return it
+
+
+    def makeBuckets(self, col):
+        if self.colSupps[col][0][1] != -1 :
+            bucketsSupp = [set(self.colSupps[col][0][1])]
+        else:
+            bucketsSupp = [set()]
+        bucketsVal = [self.colSupps[col][0][0]]
+        bukMode = None
+        for (val , row) in self.colSupps[col]:
+            if row == -1: 
+                if val != bucketsVal[-1]: # should be ...
+                    bucketsVal.append(val)
+                    bucketsSupp.append(set())
+                bukMode = len(bucketsVal)-1
+            else:
+                if val == bucketsVal[-1]:
+                    bucketsSupp[-1].add(row)
+                else:
+                    bucketsVal.append(val)
+                    bucketsSupp.append(set([row]))
+        return (bucketsSupp, bucketsVal, bukMode)
+
 
     def suppItem(self, item):
         ## DO NOT USE INDEX IF THE BOUND ARE NOT ONE OF THE VALUES
@@ -344,214 +368,192 @@ class NumDataM(DataM):
     negateSegments = staticmethod(negateSegments)
 
     def findCover(segments, lparts, side, col, toImprov):
-        
-        res = NumDataM.findPositiveCover(segments, lparts, side, col, toImprov)
-        res.extend(NumDataM.findNegativeCover(segments, lparts, side, col, toImprov))
+        res = []
+        for op in toImprov.ruleTypesOp():
+            if len(segments[op]) < NumDataM.maxSeg:
+                res.extend(NumDataM.findCoverFullSearch(op, segments, lparts, side, col, toImprov))
+            else:
+                if toImprov.ruleTypesHasPos(op):
+                    res.extend(NumDataM.findPositiveCover(op, segments, lparts, side, col, toImprov))
+                if toImprov.ruleTypesHasNeg(op):
+                    res.extend(NumDataM.findNegativeCover(op, segments, lparts, side, col, toImprov))
         return res
-        
     findCover = staticmethod(findCover)
 
 
-    def findCoverFullSearch(segments, lparts, side, col, toImprov):
+    def findCoverFullSearch(op, segments, lparts, side, col, toImprov):
         res = []
-        maxSeg = 250
-        for op in toImprov.ruleTypesOp():
-            bests = {False: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0},\
-                     True: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0}}
+        bests = {False: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0},\
+                 True: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0}}
 
-            nb_seg = len(segments[op])
-            if nb_seg > maxSeg:
-                nb_seg = 0
-            for seg_s in range(nb_seg):
-                toColors = [0,0]
-                for seg_e in range(seg_s,len(segments[op])):
-                    toColors[0] += segments[op][seg_e][0]
-                    toColors[1] += segments[op][seg_e][1]
-                    for neg in ruleTypes[op]:
-                        tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
-                        if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
-                            bests[neg] = tmp_comp
-                                
-            for neg in toImprov.ruleTypesNP(op):
-                if bests[neg]['term'][0] != None:
-                    if bests[neg]['term'][0] == 0:
-                        lowb = float('-Inf')
-                    else:
-                        lowb = segments[op][bests[neg]['term'][0]][-2]
-                    if bests[neg]['term'][1] == len(segments[op])-1 :
-                        upb = float('Inf')
-                    else:
-                        upb = segments[op][bests[neg]['term'][1]][-1]
-                    bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, NumItem(col, lowb, upb))})
-                    res.append(bests[neg])
+        for seg_s in range(len(segments[op])):
+            toColors = [0,0]
+            for seg_e in range(seg_s,len(segments[op])):
+                toColors[0] += segments[op][seg_e][0]
+                toColors[1] += segments[op][seg_e][1]
+                for neg in toImprov.ruleTypesNP(op):
+                    tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
+                    if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
+                        bests[neg] = tmp_comp
+
+        for neg in toImprov.ruleTypesNP(op):
+            if bests[neg]['term'][0] != None:
+                if bests[neg]['term'][0] == 0:
+                    lowb = float('-Inf')
+                else:
+                    lowb = segments[op][bests[neg]['term'][0]][-2]
+                if bests[neg]['term'][1] == len(segments[op])-1 :
+                    upb = float('Inf')
+                else:
+                    upb = segments[op][bests[neg]['term'][1]][-1]
+                bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, NumItem(col, lowb, upb))})
+                res.append(bests[neg])
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 
-    def findNegativeCover(segments, lparts, side, col, toImprov):
+    def findNegativeCover(op, segments, lparts, side, col, toImprov):
         res = []
-        for op in toImprov.ruleTypesOp():
-            if toImprov.ruleTypesHasNeg(op):
-                #print 'INCR SEARCH:'
+        #print 'INCR SEARCH:'
+        toColors_buff_f = [0,0]
+        bests_f = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+        best_track_f = [0]
+        toColors_buff_b = [0,0]
+        bests_b = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+        best_track_b = [0]
+
+        for  i in range(len(segments[op])):
+            # FORWARD
+            toColors_buff_f = [toColors_buff_f[0] + segments[op][i][0], toColors_buff_f[1] + segments[op][i][1]]
+            if  toColors_buff_f[0] == 0 or toColors_buff_f[1]/toColors_buff_f[0] > bests_f[-1][0]:
+                toColors_buff_f[0] += bests_f[-1][-1][0]
+                toColors_buff_f[1] += bests_f[-1][-1][1]
+                bests_f.append((toImprov.compAcc(op, False, toColors_buff_f, lparts), i+1, toColors_buff_f))
                 toColors_buff_f = [0,0]
-                bests_f = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
-                best_track_f = [0]
+            best_track_f.append(len(bests_f)-1)
+
+            # FORWARD
+            toColors_buff_b = [toColors_buff_b[0] + segments[op][-(i+1)][0], toColors_buff_b[1] + segments[op][-(i+1)][1]]
+            if  toColors_buff_b[0] == 0 or toColors_buff_b[1]/toColors_buff_b[0] > bests_b[-1][0]:
+                toColors_buff_b[0] += bests_b[-1][-1][0]
+                toColors_buff_b[1] += bests_b[-1][-1][1]
+                bests_b.append((toImprov.compAcc(op, False, toColors_buff_b, lparts), i+1, toColors_buff_b))
                 toColors_buff_b = [0,0]
-                bests_b = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
-                best_track_b = [0]
+            best_track_b.append(len(bests_b)-1)
 
-                for  i in range(len(segments[op])):
-                    # FORWARD
-                    toColors_buff_f = [toColors_buff_f[0] + segments[op][i][0], toColors_buff_f[1] + segments[op][i][1]]
-                    if  toColors_buff_f[0] == 0 or toColors_buff_f[1]/toColors_buff_f[0] > bests_f[-1][0]:
-                        toColors_buff_f[0] += bests_f[-1][-1][0]
-                        toColors_buff_f[1] += bests_f[-1][-1][1]
-                        bests_f.append((toImprov.compAcc(op, False, toColors_buff_f, lparts), i+1, toColors_buff_f))
-                        toColors_buff_f = [0,0]
-                    best_track_f.append(len(bests_f)-1)
+        best_t = None
+        best_tb_l = []
+        for b in bests_b:
+            if b[1] == len(segments[op]):
+                f = bests_f[0]
+            else:
+                f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
+            if f[-1][0] == 0 or float(f[-1][1])/f[-1][0] > b[0]:
+                tmp_comp_tb = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+            else:
+                tmp_comp_tb = toImprov.compAdv((0, len(segments[op]) - (b[1]+1)), op, False, b[-1], lparts)
+            best_tb_l.append(tmp_comp_tb)
+            if BestsDraft.comparePair(tmp_comp_tb, best_t) > 0:
+                best_t = tmp_comp_tb
 
-                    # FORWARD
-                    toColors_buff_b = [toColors_buff_b[0] + segments[op][-(i+1)][0], toColors_buff_b[1] + segments[op][-(i+1)][1]]
-                    if  toColors_buff_b[0] == 0 or toColors_buff_b[1]/toColors_buff_b[0] > bests_b[-1][0]:
-                        toColors_buff_b[0] += bests_b[-1][-1][0]
-                        toColors_buff_b[1] += bests_b[-1][-1][1]
-                        bests_b.append((toImprov.compAcc(op, False, toColors_buff_b, lparts), i+1, toColors_buff_b))
-                        toColors_buff_b = [0,0]
-                    best_track_b.append(len(bests_b)-1)
+        best_tf_l = []
+        for f in bests_f:
+            if f[1] == len(segments[op]):
+                b = bests_b[0]
+            else:
+                b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
+            if b[-1][0] == 0 or float(b[-1][1])/b[-1][0] > f[0]:
+                tmp_comp_tf = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+            else:
+                tmp_comp_tf = toImprov.compAdv((f[1], len(segments)-1), op, False, f[-1], lparts)
+            best_tf_l.append(tmp_comp_tf)
+            if BestsDraft.comparePair(tmp_comp_tf, best_t) > 0:
+                best_t = tmp_comp_tf
 
-                best_t = None
-                best_tb_l = []
-                for b in bests_b:
-                    if b[1] == len(segments[op]):
-                        f = bests_f[0]
-                    else:
-                        f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
-                    if f[-1][0] == 0 or float(f[-1][1])/f[-1][0] > b[0]:
-                        tmp_comp_tb = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
-                    else:
-                        tmp_comp_tb = toImprov.compAdv((0, len(segments[op]) - (b[1]+1)), op, False, b[-1], lparts)
-                    best_tb_l.append(tmp_comp_tb)
-                    if BestsDraft.comparePair(tmp_comp_tb, best_t) > 0:
-                        best_t = tmp_comp_tb
-
-                best_tf_l = []
-                for f in bests_f:
-                    if f[1] == len(segments[op]):
-                        b = bests_b[0]
-                    else:
-                        b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
-                    if b[-1][0] == 0 or float(b[-1][1])/b[-1][0] > f[0]:
-                        tmp_comp_tf = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
-                    else:
-                        tmp_comp_tf = toImprov.compAdv((f[1], len(segments)-1), op, False, f[-1], lparts)
-                    best_tf_l.append(tmp_comp_tf)
-                    if BestsDraft.comparePair(tmp_comp_tf, best_t) > 0:
-                        best_t = tmp_comp_tf
-
-                if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
-                    #print '%i <-> %i: %i/%i=%f' \
-                    #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
-                    if best_t['term'][0] == 0:
-                        lowb = float('-Inf')
-                    else:
-                        lowb = segments[op][best_t['term'][0]][-2]
-                    if best_t['term'][1] == len(segments[op])-1 :
-                        upb = float('Inf')
-                    else:
-                        upb = segments[op][best_t['term'][1]][-1]
-                    best_t.update({'side': side, 'op': Op(op), 'term': Term(True, NumItem(col, lowb, upb))})
-                    res.append(best_t)
+        if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
+            #print '%i <-> %i: %i/%i=%f' \
+            #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
+            if best_t['term'][0] == 0:
+                lowb = float('-Inf')
+            else:
+                lowb = segments[op][best_t['term'][0]][-2]
+            if best_t['term'][1] == len(segments[op])-1 :
+                upb = float('Inf')
+            else:
+                upb = segments[op][best_t['term'][1]][-1]
+            best_t.update({'side': side, 'op': Op(op), 'term': Term(True, NumItem(col, lowb, upb))})
+            res.append(best_t)
 
         return res
-        
     findNegativeCover = staticmethod(findNegativeCover)
 
-    def findPositiveCover(segments, lparts, side, col, toImprov):
+    def findPositiveCover(op, segments, lparts, side, col, toImprov):
         res = []
-        for op in toImprov.ruleTypesOp():
-            if toImprov.ruleTypesHasPos(op):
-                #print 'INCR SEARCH:'
-                toColors_f = [0,0]
+        #print 'INCR SEARCH:'
+        toColors_f = [0,0]
+        nb_seg_f = 0
+        best_f = None
+        toColors_b = [0,0]
+        nb_seg_b = 0
+        best_b = None 
+
+        for  i in range(len(segments[op])-1):
+            # FORWARD
+            if i > 0 and (toColors_f[0] == 0 \
+                          or toImprov.compAcc(op, False, segments[op][i][:2], lparts) <  float(toColors_f[1])/float(toColors_f[0])):
+                toColors_f = [toColors_f[0] + segments[op][i][0], toColors_f[1] + segments[op][i][1]]
+                nb_seg_f += 1
+            else: 
+                toColors_f = segments[op][i][:2]
                 nb_seg_f = 0
-                best_f = None
-                toColors_b = [0,0]
+            tmp_comp_f = toImprov.compAdv((i - nb_seg_f, i), op, False, toColors_f, lparts)
+            if BestsDraft.comparePair(tmp_comp_f, best_f) > 0 :
+                best_f = tmp_comp_f
+
+            # BACKWARD
+            if i > 0 and (toColors_b[0] == 0 \
+                          or toImprov.compAcc(op, False, segments[op][-(i+1)][:2], lparts) <  float(toColors_b[1])/float(toColors_b[0]) ):
+                toColors_b = [toColors_b[0] + segments[op][-(i+1)][0], toColors_b[1] + segments[op][-(i+1)][1]]
+                nb_seg_b += 1
+            else:
+                toColors_b = segments[op][-(i+1)][:2]
                 nb_seg_b = 0
-                best_b = None 
+            tmp_comp_b = toImprov.compAdv((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), op, False, toColors_b, lparts)
+            if BestsDraft.comparePair(tmp_comp_b, best_b) > 0 :
+                best_b = tmp_comp_b
 
-                for  i in range(len(segments[op])-1):
-                    # FORWARD
-                    if i > 0 and (toColors_f[0] == 0 or toImprov.compAcc(op, False, segments[op][i][:2], lparts) <  float(toColors_f[1])/float(toColors_f[0])):
-                        toColors_f = [toColors_f[0] + segments[op][i][0], toColors_f[1] + segments[op][i][1]]
-                        nb_seg_f += 1
-                    else: 
-                        toColors_f = segments[op][i][:2]
-                        nb_seg_f = 0
-                    tmp_comp_f = toImprov.compAdv((i - nb_seg_f, i), op, False, toColors_f, lparts)
-                    if BestsDraft.comparePair(tmp_comp_f, best_f) > 0 :
-                        best_f = tmp_comp_f
 
-                    # BACKWARD
-                    if i > 0 and (toColors_b[0] == 0 or  toImprov.compAcc(op, False, segments[op][-(i+1)][:2], lparts) <  float(toColors_b[1])/float(toColors_b[0]) ):
-                        toColors_b = [toColors_b[0] + segments[op][-(i+1)][0], toColors_b[1] + segments[op][-(i+1)][1]]
-                        nb_seg_b += 1
-                    else:
-                        toColors_b = segments[op][-(i+1)][:2]
-                        nb_seg_b = 0
-                    tmp_comp_b = toImprov.compAdv((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), op, False, toColors_b, lparts)
-                    if BestsDraft.comparePair(tmp_comp_b, best_b) > 0 :
-                        best_b = tmp_comp_b
+        if best_b != None and best_f != None :
+            bests = [best_b, best_f]
 
-                    
-                if best_b != None and best_f != None :
-                    bests = [best_b, best_f]
+            if best_b['term'][0] > best_f['term'][0] and best_b['term'][1] > best_f['term'][1] and best_b['term'][0] <= best_f['term'][1]:
+                toColors_m = [0,0]
+                for seg in segments[op][best_b['term'][0]:best_f['term'][1]+1]:
+                    toColors_m = [toColors_m[0] + seg[0], toColors_m[1] + seg[1]]
 
-                    if best_b['term'][0] > best_f['term'][0] and best_b['term'][1] > best_f['term'][1] and best_b['term'][0] <= best_f['term'][1]:
-                        toColors_m = [0,0]
-                        for seg in segments[op][best_b['term'][0]:best_f['term'][1]+1]:
-                            toColors_m = [toColors_m[0] + seg[0], toColors_m[1] + seg[1]]
+                tmp_comp_m = toImprov.compAdv((best_b['term'][0], best_f['term'][1]), op, False, toColors_m, lparts)
+                if tmp_comp_m != None:
+                    bests.append(tmp_comp_m)
 
-                        tmp_comp_m = toImprov.compAdv((best_b['term'][0], best_f['term'][1]), op, False, toColors_m, lparts)
-                        if tmp_comp_m != None:
-                            bests.append(tmp_comp_m)
-    #                 for best in bests:
-    #                     print '%i <-> %i: %i/%i=%f' \
-    #                         % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
+            best = sorted(bests, cmp=BestsDraft.comparePair)[-1]
 
-                    best = sorted(bests, cmp=BestsDraft.comparePair)[-1]
+        elif best_f == None:
+            best = best_f
+        else:
+            best = best_b
 
-                elif best_f == None:
-                    best = best_f
-                else:
-                    best = best_b
-
-                if best != None :
-                    #print '%i <-> %i: %i/%i=%f' \
-                    #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
-                    if best['term'][0] == 0:
-                        lowb = float('-Inf')
-                    else:
-                        lowb = segments[op][best['term'][0]][-2]
-                    if best['term'][1] == len(segments[op])-1 :
-                        upb = float('Inf')
-                    else:
-                        upb = segments[op][best['term'][1]][-1]
-                    best.update({'side': side, 'op': Op(op), 'term': Term(False, NumItem(col, lowb, upb))})
-                    res.append(best)
-
-                # else:
-    #                 print 'No candidate !'
-    #             print 'FULL SEARCH:'
-    #             best_full = (0, '')
-    #             for seg_s in range(len(segments[op])):
-    #                 toColors = [0,0]
-    #                 for seg_e in range(seg_s,len(segments[op])):
-    #                     toColors[0] += segments[op][seg_e][0]
-    #                     toColors[1] += segments[op][seg_e][1]
-    #                     if  toImprov.compAcc(op, False, toColors, lparts) > best_full[0]:
-    #                         best_full = ( toImprov.compAcc(op, False, toColors, lparts),\
-    #                                  '%i <-> %i: %i/%i, %f' % (seg_s, seg_e, toColors[1], toColors[0], toImprov.compAcc(op, False, toColors, lparts)))
-    #             print best_full[1]
-    #             if best == None or best_full[0] != best['acc']:
-    #                 print 'FULL SEARCH GIVES DIFFERENT RESULT !'
+        if best != None :
+            #print '%i <-> %i: %i/%i=%f' \
+            #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
+            if best['term'][0] == 0:
+                lowb = float('-Inf')
+            else:
+                lowb = segments[op][best['term'][0]][-2]
+            if best['term'][1] == len(segments[op])-1 :
+                upb = float('Inf')
+            else:
+                upb = segments[op][best['term'][1]][-1]
+            best.update({'side': side, 'op': Op(op), 'term': Term(False, NumItem(col, lowb, upb))})
+            res.append(best)
             
         return res
     findPositiveCover = staticmethod(findPositiveCover)
@@ -690,8 +692,19 @@ class Data:
     def computePairParts31(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
         (scores, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, toImprov, vectors_abcd, side )
         return (scores, termsA, termsB)
+
     
     def computePairParts33(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+        if len(vectors_abcd[1-side][idA]) == 3: # fit FULL
+            if len(vectors_abcd[1-side][idA][0]) > len(vectors_abcd[side][idB][0]): 
+                (scores, termsB, termsA)= self.computePairParts33Full(mB, idB, mA, idA, toImprov, vectors_abcd, 1-side )
+                return (scores, termsA, termsB)
+            else:
+                return self.computePairParts33Full(mA, idA, mB, idB, toImprov, vectors_abcd, side)
+        else:
+            return self.computePairParts33Heur(mA, idA, mB, idB, toImprov, vectors_abcd, side)
+    
+    def computePairParts33Heur(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         bestScore = float('-Inf')
         (scores, termsA, termsB) = ([], [], [])
         if mA.lenMode(idA) >= toImprov.minNbItmOut() and mB.lenMode(idB) >= toImprov.minNbItmOut() :
@@ -721,6 +734,110 @@ class Data:
 #             if len(scores) > 0:
 #                print "%f: %s <-> %s" % (scores[0], termsA[0], termsB[0])
         return (scores, termsA, termsB)
+
+    def computePairParts33Full(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+        interMat = []
+        (scores, termsA, termsB) = ([], [], [])
+        if mA.lenMode(idA) >= toImprov.minNbItmOut() and mB.lenMode(idB) >= toImprov.minNbItmOut() \
+           and (mA.lenNonMode(idA) >= toImprov.minNbItmIn() and mB.lenNonMode(idB) >= toImprov.minNbItmIn()): 
+
+            margA = [len(intA) for intA in vectors_abcd[1-side][idA][0]]
+            margB = [len(intB) for intB in vectors_abcd[side][idB][0]]
+
+            for bukA in vectors_abcd[1-side][idA][0]:
+                interMat.append([len(bukA & bukB) for bukB in vectors_abcd[side][idB][0]])
+
+            if vectors_abcd[1-side][idA][2] != None :
+                margA[vectors_abcd[1-side][idA][2]] += mA.lenMode(idA)
+                for bukBId in range(len(vectors_abcd[side][idB][0])):
+                    interMat[vectors_abcd[1-side][idA][2]][bukBId] += len(mA.interMode(idA, vectors_abcd[side][idB][0][bukBId])) 
+
+            if vectors_abcd[side][idB][2] != None :
+                margB[vectors_abcd[side][idB][2]] += mB.lenMode(idB)
+                for bukAId in range(len(vectors_abcd[1-side][idA][0])):
+                    interMat[bukAId][vectors_abcd[side][idB][2]] += len(mB.interMode(idB, vectors_abcd[1-side][idA][0][bukAId]))        
+
+            if vectors_abcd[1-side][idA][2] != None and vectors_abcd[side][idB][2] != None:
+                interMat[vectors_abcd[1-side][idA][2]][vectors_abcd[side][idB][2]] += len(mB.interMode(idB, mA.modeSupp(idA)))
+
+            ### check marginals
+            totA = 0
+            for iA in range(len(vectors_abcd[1-side][idA][0])):
+                sA = sum(interMat[iA])
+                if sA != margA[iA]:
+                    raise Error('Error in computing the marginals (1)')
+                totA += sA
+
+            totB = 0
+            for iB in range(len(vectors_abcd[side][idB][0])):
+                sB = sum([intA[iB] for intA in interMat])
+                if sB != margB[iB]:
+                    raise Error('Error in computing the marginals (2)')
+                totB += sB
+
+            if totB != totA or totB != self.N:
+                raise Error('Error in computing the marginals (3)')
+
+            best = None
+            belowA = 0
+            lowA = 0
+            while lowA < len(interMat) and self.N - belowA >= toImprov.minNbItmIn():
+                aboveA = 0
+                upA = len(interMat)-1
+                while upA >= lowA and self.N - belowA - aboveA >= toImprov.minNbItmIn():
+                    if belowA + aboveA  >= toImprov.minNbItmOut():
+                        Bina = [sum([interMat[iA][iB] for iA in range(lowA,upA+1)]) for iB in range(len(interMat[lowA]))]
+                        totBina = sum(Bina)
+                        belowBa = 0
+                        lowB = 0
+                        while lowB < len(interMat[lowA]) and totBina - belowBa >= toImprov.minNbItmIn():
+                            aboveBa = 0
+                            upB = len(interMat[lowA])-1
+                            while upB >= lowB and totBina - belowBa - aboveBa >= toImprov.minNbItmIn():
+                                suppI = totBina - belowBa - aboveBa
+                                suppB = sum(margB[lowB:upB+1])
+                                #print (self.N - belowA - aboveA, lowA, upA, lowB, upB), idA, idB, (suppB-suppI, suppI), (0, self.N - belowA - aboveA, 0, belowA + aboveA)
+                                tmp_comp = toImprov.compAdv((self.N - belowA - aboveA, lowA, upA, lowB, upB), True, False, (suppB-suppI, suppI), (0, self.N - belowA - aboveA, 0, belowA + aboveA))
+                                if BestsDraft.comparePair(tmp_comp, best) > 0:
+                                    best = tmp_comp
+
+                                aboveBa+=Bina[upB]
+                                upB-=1
+                            belowBa+=Bina[lowB]
+                            lowB+=1
+                    aboveA+=margA[upA]
+                    upA-=1
+                belowA+=margA[lowA]
+                lowA+=1
+
+            if best != None:            
+                best.update({'supp': best['term'][0]})
+                scores.append(toImprov.score(best))
+
+                if best['term'][1] == 0:
+                    lowa = float('-Inf')
+                else:
+                    lowa = vectors_abcd[1-side][idA][1][best['term'][1]]
+                if best['term'][2] == len(vectors_abcd[1-side][idA][1])-1 :
+                    upa = float('Inf')
+                else:
+                    upa = vectors_abcd[1-side][idA][1][best['term'][2]]
+
+                if best['term'][3] == 0:
+                    lowb = float('-Inf')
+                else:
+                    lowb = vectors_abcd[side][idB][1][best['term'][3]]
+                if best['term'][4] == len(vectors_abcd[side][idB][1])-1 :
+                    upb = float('Inf')
+                else:
+                    upb = vectors_abcd[side][idB][1][best['term'][4]]
+
+                termsA.append(Term(False, NumItem(idA, lowa, upa)))
+                termsB.append(Term(False, NumItem(idB, lowb, upb)))
+            
+        return (scores, termsA, termsB)
+
+    
                 
     def computePair(self, idA, idB, vectors_abcd, toImprov):
         method_string = 'self.computePairParts%i%i' % (self.m[0].type_id, self.m[1].type_id)
@@ -734,7 +851,7 @@ class Data:
 
     def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
         self.pairs = []
-        
+        fitFull = False
         toImprov = BestsDraft(ruleTypes, self.N)
 
         ids= self.nonFull()
@@ -746,10 +863,18 @@ class Data:
                 for idB in ids[1]:
                     if cR % self.divR == 0:
                         if not vectors_abcd[0].has_key(idA): # pairsA has just the same keys
-                            vectors_abcd[0][idA] = Redescription.makeVectorABCD(self.m[1].type_id > 1, self.N, self.m[0].vect(idA), set(), set())
+                            if fitFull and self.m[1].type_id == 3 and self.m[0].type_id == 3 :
+                                vectors_abcd[0][idA] = self.m[0].makeBuckets(idA)
+                            else:
+                                vectors_abcd[0][idA] = Redescription.makeVectorABCD(self.m[1].type_id > 1, self.N, self.m[0].vect(idA), set(), set())
+
                         if not vectors_abcd[1].has_key(idB): # pairsB has just the same keys
-                            vectors_abcd[1][idB] = Redescription.makeVectorABCD(self.m[0].type_id > 1, self.N, set(), self.m[1].vect(idB), set())
+                            if fitFull and self.m[1].type_id == 3 and self.m[0].type_id == 3 :
+                                vectors_abcd[1][idB] = self.m[1].makeBuckets(idB)
+                            else:
+                                vectors_abcd[1][idB] = Redescription.makeVectorABCD(self.m[0].type_id > 1, self.N, set(), self.m[1].vect(idB), set())
                         (scores, termsA, termsB) = self.computePair(idA, idB, vectors_abcd, toImprov)
+                        
                         for i in range(len(scores)):
                             if scores[i] >= minScore:
                                 self.methodsP['add'](scores[i], idA, idB)

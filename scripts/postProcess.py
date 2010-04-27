@@ -170,15 +170,19 @@ def main():
 
 
 	    if setts['redundancy'] and data != None :
-		currentRedun = currentR.copy()
-		currentRedun.recompute(data)
-                comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
-	        if currentRedun.acc() >= setts['minAcc'] and currentRedun.lenI() >= setts['minSupp'] \
-			and currentRedun.lenU() <= setts['maxSupp'] and currentRedun.pVal() <= setts['maxPVal']:
-			data.addRedunRows(currentRedun.suppI())
-		else:
-			comment = '# REDUNDANT RULE ' + comment
-
+                
+                currentRedun = currentR.copy()
+                currentRedun.recompute(data)
+                if currentRedun.lenU() == 0 :
+                    comment = '# REDUNDANT RULE NO SUPPORT LEFT ' + comment
+                elif currentRedun.acc() >= setts['minAcc'] and currentRedun.lenI() >= setts['minSupp'] \
+                       and currentRedun.lenU() <= setts['maxSupp'] and currentRedun.pVal() <= setts['maxPVal']:
+                    comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
+                    data.addRedunRows(currentRedun.suppI())
+                else:
+                    comment = '# REDUNDANT RULE ' + currentRedun.dispCaracteristiquesSimple() + comment
+                        
+                        
 	    if (setts['filter'] or setts['recompute']) and data != None :
 		currentR.recompute(data)
             if not setts['filter'] or \
