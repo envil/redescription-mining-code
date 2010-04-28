@@ -68,8 +68,13 @@ function f_convert_mat {
     local SCRIPT_MATLAB="
     path(path,'${MAT_PATH}');
     [tmp, sym_tmp] = load_matrix('${DATA}','${EXT_IN}');
-    if sym_tmp
-       data = tmp+tmp';
+    if sym_tmp 
+        [n,m] = size(tmp);
+        if n~=m
+            t = max(n,m);
+            tmp(t,t) = 0;
+        end
+        data = tmp+tmp';
     else
        data = tmp;
     end
@@ -92,6 +97,12 @@ function f_filter {
     path(path,'${MAT_PATH}');
     [tmp, sym_tmp] = load_matrix('${DATA1}','${EXT1}');
     if sym_tmp
+        [n,m] = size(tmp);
+        if n~=m
+            t = max(n,m);
+            tmp(t,t) = 0;
+        end
+        data = tmp+tmp';
         data{1}.matrix = tmp+tmp';
         data{1}.sym = 1;
         [n, m] = size(tmp);

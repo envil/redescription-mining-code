@@ -89,7 +89,7 @@ def readMatlabNum(filename):
         a = row.split('\t')
         id_row = int(a[0])
         id_col = int(a[1])
-        val = int(a[2])
+        val = float(a[2])
         ## For Python 2.4, convert a to INT
         if tmpcolSupps == []:
             tmpcolSupps = [[(0, -1)] for i in range(id_col)]

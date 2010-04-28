@@ -85,7 +85,7 @@ class CatDataM(DataM):
     
 class NumDataM(DataM):
     type_id = 3
-    maxSeg = 50
+    maxSeg = 100
 
     ## Using suitable reading method returns suitable colSupps :)
 #     def __init__(self, ncolSupps=[], nmaxRowId=-1):
@@ -397,7 +397,7 @@ class NumDataM(DataM):
                         bests[neg] = tmp_comp
 
         for neg in toImprov.ruleTypesNP(op):
-            if bests[neg]['term'][0] != None:
+            if bests[neg]['term'][0] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
                 if bests[neg]['term'][0] == 0:
                     lowb = float('-Inf')
                 else:
@@ -541,7 +541,7 @@ class NumDataM(DataM):
         else:
             best = best_b
 
-        if best != None :
+        if best != None and (best['term'][0] != 0 or  best['term'][1] != len(segments[op])-1)  :
             #print '%i <-> %i: %i/%i=%f' \
             #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
             if best['term'][0] == 0:
@@ -760,23 +760,23 @@ class Data:
             if vectors_abcd[1-side][idA][2] != None and vectors_abcd[side][idB][2] != None:
                 interMat[vectors_abcd[1-side][idA][2]][vectors_abcd[side][idB][2]] += len(mB.interMode(idB, mA.modeSupp(idA)))
 
-            ### check marginals
-            totA = 0
-            for iA in range(len(vectors_abcd[1-side][idA][0])):
-                sA = sum(interMat[iA])
-                if sA != margA[iA]:
-                    raise Error('Error in computing the marginals (1)')
-                totA += sA
+#             ### check marginals
+#             totA = 0
+#             for iA in range(len(vectors_abcd[1-side][idA][0])):
+#                 sA = sum(interMat[iA])
+#                 if sA != margA[iA]:
+#                     raise Error('Error in computing the marginals (1)')
+#                 totA += sA
 
-            totB = 0
-            for iB in range(len(vectors_abcd[side][idB][0])):
-                sB = sum([intA[iB] for intA in interMat])
-                if sB != margB[iB]:
-                    raise Error('Error in computing the marginals (2)')
-                totB += sB
+#             totB = 0
+#             for iB in range(len(vectors_abcd[side][idB][0])):
+#                 sB = sum([intA[iB] for intA in interMat])
+#                 if sB != margB[iB]:
+#                     raise Error('Error in computing the marginals (2)')
+#                 totB += sB
 
-            if totB != totA or totB != self.N:
-                raise Error('Error in computing the marginals (3)')
+#             if totB != totA or totB != self.N:
+#                 raise Error('Error in computing the marginals (3)')
 
             best = None
             belowA = 0
@@ -810,7 +810,9 @@ class Data:
                 belowA+=margA[lowA]
                 lowA+=1
 
-            if best != None:            
+            if best != None \
+                   and (best['term'][1] == 0 or best['term'][2] == len(vectors_abcd[1-side][idA][1])-1) \
+                   and (best['term'][3] == 0 or best['term'][4] == len(vectors_abcd[side][idB][1])-1):            
                 best.update({'supp': best['term'][0]})
                 scores.append(toImprov.score(best))
 
@@ -851,7 +853,7 @@ class Data:
 
     def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
         self.pairs = []
-        fitFull = False
+        fitFull = True
         toImprov = BestsDraft(ruleTypes, self.N)
 
         ids= self.nonFull()

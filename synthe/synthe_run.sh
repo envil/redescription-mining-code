@@ -1,38 +1,40 @@
-GENERATE_ACTION= #"gen"
+GENERATE_ACTION="gen"
 RUN_ACTION="run"
 
-NB_COPIES=5
-SERIE=BN_2
+NB_COPIES=20
+SERIE=bool0.7
 SUFF_DATA=random
 
 RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
 RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
 
-EXT_L=bdat
-EXT_R=num
-RULES_EXT=rul
-SUPP_EXT=supp
-LOG_FILE=${RES_REP}random.log
-INFO_EXT=info
-GEN_LOG_INFO=${RAND_REP}${SUFF_DATA}.${INFO_EXT} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
+EXT_L=.bdat
+EXT_R=.bdat
+RULES_EXT=.rul
+SUPP_EXT=.supp
+LOG_EXT=.log
+INFO_EXT=.info
+GEN_LOG_INFO=${RAND_REP}${SUFF_DATA}${INFO_EXT} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
+CONF_LOG_INFO=${RES_REP}${SUFF_DATA}${INFO_EXT} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
 SIDE_PLACE_HOLDER='::SIDE::'
 
 ########## GENERATION SETTINGS
 
-gen_nb_rows='100' # total nb of rows
-gen_nb_cols_L='20' # number of columns of the left hand side matrix
-gen_nb_cols_R='20' # number of columns of the right hand side matrix
-gen_supp_rows_L='25' # number of supporting rows of the left hand side matrix
-gen_supp_rows_R='25' # number of supporting rows of the right hand side matrix
-gen_nb_variables_L='5' # number of supporting variables of the left hand side matrix
-gen_nb_variables_R='5' # number of supporting variables of the right hand side matrix
+gen_nb_rows='500' # total nb of rows
+gen_nb_cols_L='10' # number of columns of the left hand side matrix
+gen_nb_cols_R='10' # number of columns of the right hand side matrix
+gen_supp_rows_L='50' # number of supporting rows of the left hand side matrix
+gen_supp_rows_R='50' # number of supporting rows of the right hand side matrix
+gen_nb_variables_L='3' # number of supporting variables of the left hand side matrix
+gen_nb_variables_R='3' # number of supporting variables of the right hand side matrix
+gen_c='4' # contribution
 gen_offset='0' # offset before support of right hand side matrix
-gen_preserving='true' # boolean, is the original support of the rules perserved when adding noise
+gen_preserving='false' # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
-gen_margin_R='0.5' # margin right 1=boolean
-gen_density='0' # noise density
-gen_density_blurr_OR='0.5' # supporting columns blurr density
-gen_density_blurr_AND='0.5' # supporting columns blurr density
+gen_margin_R='1' # margin right 1=boolean
+gen_density='0.01' # noise density
+gen_density_blurr_OR='0.6' # supporting columns blurr density
+gen_density_blurr_AND='0.6' # supporting columns blurr density
 
 # gen_nb_rows='100' # total nb of rows
 # gen_nb_cols_L='20' # number of columns of the left hand side matrix
@@ -54,13 +56,13 @@ gen_density_blurr_AND='0.5' # supporting columns blurr density
 NB_VARIABLES=4
 MIN_LEN=2
 
-CONTRIBUTION=1
+CONTRIBUTION=3
 ITM_IN=3
 ITM_OUT=3
 FIN_IN=5
 FIN_OUT=5
 
-NB_RULES=10
+NB_RULES=30
 METH_SEL="overall"
 DIV_L=1
 DIV_R=1
@@ -72,7 +74,7 @@ DRAFT_OUTPUT=1
 MIN_IMPROVEMENT=0
 COEFF_IMPACC=1
 COEFF_RELIMPACC=0
-COEFF_PVRULE=1
+COEFF_PVRULE=0
 COEFF_PVRED=1
 
 AMNESIC=""
@@ -80,6 +82,8 @@ MAX_SIDE_IDENTICAL=2
 WITHOUT="--without-nots"
 
 VERBOSITY=8
+
+NB_lines_conf=$LINENO
 
 SCRI_PATH=~/redescriptors/sandbox/scripts/
 MAT_PATH=~/redescriptors/sandbox/scripts/
@@ -110,6 +114,7 @@ setts = struct( 'nb_rows', {$gen_nb_rows}, ... % total nb of rows
             'supp_rows_R', {$gen_supp_rows_R}, ... % number of supporting rows of the right hand side matrix
             'nb_variables_L', {$gen_nb_variables_L}, ... % number of supporting variables of the left hand side matrix
             'nb_variables_R', {$gen_nb_variables_R}, ... % number of supporting variables of the right hand side matrix
+            'c', {$gen_c}, ... % contribution
             'offset', {$gen_offset}, ... % offset before support of right hand side matrix
             'preserving', {$gen_preserving} , ... % boolean, is the original support of the rules perserved when adding noise
             'margin_L', {$gen_margin_L}, ... % margin left 1=boolean data
@@ -125,10 +130,13 @@ confs = struct( 'OR_L', {true, true, false, false}, ...
       
 [log_info] = synthetic_data(params, setts, confs );
 "
+
+head -n $((NB_lines_conf -1 )) $0 > $CONF_LOG_INFO
+
 if (( ${#GENERATE_ACTION} > 0 ))
 then         
     echo "Generating randomized matrices..."
-    echo "${SCRIPT_MATLAB}" | $MATLAB_BIN > /dev/null
+    echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
 fi
 
 if (( ${#RUN_ACTION} > 0 ))
@@ -142,10 +150,11 @@ while read line
    OUT_BASE=$(echo $line | cut -d ' ' -f 1 | sed 's/'${SIDE_PLACE_HOLDER}'/O/')
 
 
-   DATAL=${RAND_REP}${FILE_L}.${EXT_L}
-   DATAR=${RAND_REP}${FILE_R}.${EXT_R}
-   RULES_OUT=${RES_REP}${OUT_BASE}.$RULES_EXT
-   SUPPORT_OUT=${RES_REP}${OUT_BASE}.$SUPP_EXT
+   DATAL=${RAND_REP}${FILE_L}${EXT_L}
+   DATAR=${RAND_REP}${FILE_R}${EXT_R}
+   RULES_OUT=${RES_REP}${OUT_BASE}$RULES_EXT
+   SUPPORT_OUT=${RES_REP}${OUT_BASE}$SUPP_EXT
+   LOG_OUT=${RES_REP}${OUT_BASE}$LOG_EXT
 
    echo "Processing $OUT_BASE ..."
 
@@ -158,9 +167,7 @@ while read line
        --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT \
        --min-improvement=$MIN_IMPROVEMENT --coeff-impacc=$COEFF_IMPACC --coeff-relimpacc=$COEFF_RELIMPACC  --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
        $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
-       --verbosity=$VERBOSITY >> $LOG_FILE
-
-	
+       --verbosity=$VERBOSITY >> $LOG_OUT	
 done < $GEN_LOG_INFO
 
 fi

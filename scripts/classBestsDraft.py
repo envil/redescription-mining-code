@@ -1,4 +1,4 @@
-## needs Redescription
+from classRedescription import  *
 import utilsStats
 import pdb
         
@@ -33,16 +33,33 @@ class BestsDraft:
 #                 if self.bests[pos]['op'].isOr():
 #                     return [self.red.prs[0], +self.red.prs[0]]
 
+    # def minNbItmIn(self):
+#         return BestsDraft.minItmIn
+#     def minNbItmOut(self):
+#         return BestsDraft.minItmOut
+#     def minNbFinIn(self):
+#         return BestsDraft.minFinIn
+#     def minNbFinOut(self):
+#         return BestsDraft.minFinOut
+#     def minNbC(self):
+#         return BestsDraft.minC
+    
     def minNbItmIn(self):
-        return BestsDraft.minItmIn
+        return BestsDraft.minFinIn #+(Redescription.nbVariables- self.lenRed()/float(2))*BestsDraft.minC
     def minNbItmOut(self):
-        return BestsDraft.minItmOut
+        return BestsDraft.minFinOut #-(Redescription.nbVariables- self.lenRed()/float(2))*BestsDraft.minC
     def minNbFinIn(self):
         return BestsDraft.minFinIn
     def minNbFinOut(self):
         return BestsDraft.minFinOut
     def minNbC(self):
         return BestsDraft.minC
+
+    def lenRed(self):
+        if self.red == None:
+            return 2
+        else:
+            return len(self.red)
 
     def compAcc(self, op, neg, toColors, lparts):
         acc = 0
