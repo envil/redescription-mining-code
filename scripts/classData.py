@@ -211,12 +211,19 @@ class NumDataM(DataM):
     def fit(self, itemX, suppX, vector_abcd, col, toImprov, side):
         (scores, termsA, termsB) = ([], [], [])    
 
-        lparts = (0, len(suppX), 0, len(self) - len(suppX))
-        lenIntX = len(self.interMode(col, suppX))
-        linPartsMode = (0, lenIntX, 0, self.lenMode(col) - lenIntX)
+        if side == 0:
+            lparts = (0, len(suppX), 0, len(self) - len(suppX))
+            lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
+            lenIntX = len(self.interMode(col, suppX))
+            linPartsMode = (0, lenIntX, 0, self.lenMode(col) - lenIntX)
+        else:
+            lparts = (len(suppX), 0, 0, len(self) - len(suppX))
+            lpartsN = (lparts[3], lparts[1], lparts[2], lparts[0])
+            lenIntX = len(self.interMode(col, suppX))
+            linPartsMode = (lenIntX, 0, 0, self.lenMode(col) - lenIntX)
         segments = None
             
-        if lparts[3] >= toImprov.minNbItmOut() and (lparts[1] - linPartsMode[1]) >= toImprov.minNbItmIn() :
+        if lparts[3] >= toImprov.minNbItmOut() and (lparts[1-side] - linPartsMode[1-side]) >= toImprov.minNbItmIn() :
             segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
             cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
 
@@ -226,11 +233,10 @@ class NumDataM(DataM):
                 termsA.append(Term(False, itemX))
                 termsB.append(cand['term'])
 
-        if toImprov.ruleTypesHasNeg() and lparts[1] >= toImprov.minNbItmOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minNbItmIn():
+        if toImprov.ruleTypesHasNeg() and lparts[1-side] >= toImprov.minNbItmOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minNbItmIn() :
             if segments == None:
                 segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
             segments = NumDataM.negateSegments(segments, False, True)
-            lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
             cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
 
             for cand in cand_Ab:            
@@ -470,8 +476,8 @@ class NumDataM(DataM):
                 best_t = tmp_comp_tf
 
         if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
-            #print '%i <-> %i: %i/%i=%f' \
-            #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
+            print '%i <-> %i: %i/%i=%f %s' \
+                    % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'], lparts)
             if best_t['term'][0] == 0:
                 lowb = float('-Inf')
             else:
@@ -883,7 +889,6 @@ class Data:
                                 self.pairs.append((termsA[i], termsB[i]))
                     cR += 1
             cL += 1
-
         self.methodsP['sort']()
         self.count = 0
         if nbRed > 0:
