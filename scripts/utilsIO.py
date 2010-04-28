@@ -291,10 +291,10 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
     d = []
     for column in range(len(tmpcolSupps)):
         for row in tmpcolSupps[column]:
-            d.append("%s%08i\t%s%08i"% (letterRow, row+1, letterColumn, column+1))
+            d.append("%s%08i\t%s%08i"% (letterRow, row, letterColumn, column))
     d.sort()
     to_write = '\n'.join(d).strip()
-    f.write(re.sub("([A-Z])0*","\g<1>",to_write))
+    f.write(re.sub("([A-Z])0*([0-9])","\g<1>\g<2>",to_write))
     f.close()
 
     if (classes):
@@ -305,11 +305,11 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
         neg = list(set(range(rowId+1))-pos)
         pos = list(pos)
         
-        d = ["%s%08i\t%s%i"% (letterRow, pos[i]+1, letterColumn, col) for i in range(len(pos))]
-        d.extend(["%s%08i\texc-%s%i"% (letterRow, neg[i]+1, letterColumn, col) for i in range(len(neg))])
+        d = ["%s%08i\t%s%i"% (letterRow, pos[i], letterColumn, col) for i in range(len(pos))]
+        d.extend(["%s%08i\texc-%s%i"% (letterRow, neg[i], letterColumn, col) for i in range(len(neg))])
         d.sort()
         to_write = '\n'.join(d).strip()
-        f.write(re.sub("([A-Z])0*","\g<1>",to_write))
+        f.write(re.sub("([A-Z])0*([0-9])","\g<1>\g<2>",to_write))
         f.close()
 
 # IBM to sparse :

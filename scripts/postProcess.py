@@ -186,7 +186,8 @@ def main():
 	    if (setts['filter'] or setts['recompute']) and data != None :
 		currentR.recompute(data)
             if not setts['filter'] or \
-                   ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] and currentR.lenU() <= setts['maxSupp']):
+                   ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] \
+                         and currentR.lenU() <= setts['maxSupp'] and currentR.pVal() <= setts['maxPVal']):
                 #pdb.set_trace()
                 if rulesOutFp != None:
                     rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')

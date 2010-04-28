@@ -13,9 +13,9 @@ mkdir -p $LOG_REP
 
 ### DATA
 ########
-DATA_REP=~/redescriptors/sandbox/others/data/
-FILE_L=conference_picked
-FILE_R=coauthor_picked
+DATA_REP=~/redescriptors/sandbox/others/randomized/
+FILE_L=conference_sBDM_swap1
+FILE_R=coauthor_sBDM_swap1
 EXT_ORG=.bdat
 EXT_IN=.cart
 
