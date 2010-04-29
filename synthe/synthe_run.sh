@@ -1,8 +1,8 @@
 GENERATE_ACTION="gen"
-RUN_ACTION="run"
+RUN_ACTION= #"run"
 
-NB_COPIES=20
-SERIE=bool0.7
+NB_COPIES=1
+SERIE=A
 SUFF_DATA=random
 
 RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
@@ -21,20 +21,20 @@ SIDE_PLACE_HOLDER='::SIDE::'
 ########## GENERATION SETTINGS
 
 gen_nb_rows='500' # total nb of rows
-gen_nb_cols_L='10' # number of columns of the left hand side matrix
-gen_nb_cols_R='10' # number of columns of the right hand side matrix
+gen_nb_cols_L='25' # number of columns of the left hand side matrix
+gen_nb_cols_R='25' # number of columns of the right hand side matrix
 gen_supp_rows_L='50' # number of supporting rows of the left hand side matrix
 gen_supp_rows_R='50' # number of supporting rows of the right hand side matrix
-gen_nb_variables_L='3' # number of supporting variables of the left hand side matrix
-gen_nb_variables_R='3' # number of supporting variables of the right hand side matrix
+gen_nb_variables_L='2' # number of supporting variables of the left hand side matrix
+gen_nb_variables_R='2' # number of supporting variables of the right hand side matrix
 gen_c='4' # contribution
 gen_offset='0' # offset before support of right hand side matrix
-gen_preserving='false' # boolean, is the original support of the rules perserved when adding noise
+gen_preserving='2' # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
 gen_margin_R='1' # margin right 1=boolean
 gen_density='0.01' # noise density
-gen_density_blurr_OR='0.6' # supporting columns blurr density
-gen_density_blurr_AND='0.6' # supporting columns blurr density
+gen_density_blurr_OR='0.1' # supporting columns blurr density
+gen_density_blurr_AND='0.1' # supporting columns blurr density
 
 # gen_nb_rows='100' # total nb of rows
 # gen_nb_cols_L='20' # number of columns of the left hand side matrix
@@ -136,7 +136,7 @@ head -n $((NB_lines_conf -1 )) $0 > $CONF_LOG_INFO
 if (( ${#GENERATE_ACTION} > 0 ))
 then         
     echo "Generating randomized matrices..."
-    echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
+    echo "${SCRIPT_MATLAB}" #| $MATLAB_BIN -nosplash -nodesktop > /dev/null
 fi
 
 if (( ${#RUN_ACTION} > 0 ))

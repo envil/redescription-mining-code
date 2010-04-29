@@ -111,13 +111,20 @@ function [L, R, acc] = synthetic_boolean_data_pair( nb_rows, nb_cols_L, nb_cols_
     end
     
 
-    n = full(sprand(nb_rows, nb_cols_L+nb_cols_R,density) > 0);
-    if not(preserving)
+    n = full(sprand(nb_rows, nb_cols_L+nb_cols_R,density) > 0); 
+    if not(mod(preserving,2) ) 
         rulec_L = bitxor(rulec_L, n(:, 1:nb_variables_L));
         rulec_R = bitxor(rulec_R, n(:, nb_cols_L+1:nb_cols_L+nb_variables_R));
     end
     L = [rulec_L n(:, nb_variables_L+1:nb_cols_L)];
     R = [rulec_R n(:, nb_cols_L+nb_variables_R+1:end)];
+    if preserving > 1
+        idsE = find(sum(L,2)==0);
+        L(idsE, nb_cols_L+randi(nb_cols_L-nb_variables_L, [length(idsE), 1]))=1;
+        idsE = find(sum(R,2)==0);
+        R(idsE, nb_cols_R+randi(nb_cols_R-nb_variables_R, [length(idsE), 1]))=1;
+    end
+    
 
     prec_L=100
     prec_R=100;
