@@ -1,15 +1,20 @@
 GENERATE_ACTION="gen"
 RUN_ACTION= #"run"
 
+<<<<<<< .mine
+NB_COPIES=20
+SERIE=bonu2
+=======
 NB_COPIES=1
 SERIE=A
+>>>>>>> .r63
 SUFF_DATA=random
 
 RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
 RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
 
 EXT_L=.bdat
-EXT_R=.bdat
+EXT_R=.num
 RULES_EXT=.rul
 SUPP_EXT=.supp
 LOG_EXT=.log
@@ -29,12 +34,21 @@ gen_nb_variables_L='2' # number of supporting variables of the left hand side ma
 gen_nb_variables_R='2' # number of supporting variables of the right hand side matrix
 gen_c='4' # contribution
 gen_offset='0' # offset before support of right hand side matrix
+<<<<<<< .mine
+gen_preserving='true' # boolean, is the original support of the rules perserved when adding noise
+=======
 gen_preserving='2' # boolean, is the original support of the rules perserved when adding noise
+>>>>>>> .r63
 gen_margin_L='1' # margin left 1=boolean
-gen_margin_R='1' # margin right 1=boolean
+gen_margin_R='0.3' # margin right 1=boolean
 gen_density='0.01' # noise density
+<<<<<<< .mine
+gen_density_blurr_OR='1' # supporting columns blurr density
+gen_density_blurr_AND='1' # supporting columns blurr density
+=======
 gen_density_blurr_OR='0.1' # supporting columns blurr density
 gen_density_blurr_AND='0.1' # supporting columns blurr density
+>>>>>>> .r63
 
 # gen_nb_rows='100' # total nb of rows
 # gen_nb_cols_L='20' # number of columns of the left hand side matrix
@@ -75,7 +89,7 @@ MIN_IMPROVEMENT=0
 COEFF_IMPACC=1
 COEFF_RELIMPACC=0
 COEFF_PVRULE=0
-COEFF_PVRED=1
+COEFF_PVRED=0
 
 AMNESIC=""
 MAX_SIDE_IDENTICAL=2
@@ -135,7 +149,7 @@ head -n $((NB_lines_conf -1 )) $0 > $CONF_LOG_INFO
 
 if (( ${#GENERATE_ACTION} > 0 ))
 then         
-    echo "Generating randomized matrices..."
+    echo "Generating synthetic matrices..."
     echo "${SCRIPT_MATLAB}" #| $MATLAB_BIN -nosplash -nodesktop > /dev/null
 fi
 
