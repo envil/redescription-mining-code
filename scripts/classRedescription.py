@@ -94,8 +94,6 @@ class Redescription:
         return self.sGamma
     def suppU(self):
         return self.sAlpha | self.sBeta | self.sGamma
-    def acc(self):
-        return float(len(self.sGamma))/(len(self.sAlpha) + len(self.sBeta) + len(self.sGamma))
 
     def lenX(self, side):
         if side == 0:
@@ -111,7 +109,11 @@ class Redescription:
     def lenU(self):
         return len(self.sAlpha) + len(self.sBeta) + len(self.sGamma)
     def acc(self):
-        return float(self.lenI())/(self.lenU())
+        lU = self.lenU()
+        if lU > 0:
+            return float(self.lenI())/lU
+        else:
+            return 0
 
     def proba(self, side, data):
         return self.rules[side].proba(side, data)

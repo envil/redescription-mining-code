@@ -476,8 +476,8 @@ class NumDataM(DataM):
                 best_t = tmp_comp_tf
 
         if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
-            print '%i <-> %i: %i/%i=%f %s' \
-                    % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'], lparts)
+            #print '%i <-> %i: %i/%i=%f %s' \
+            #        % (best_t['term'][0], best_t['term'][1], best_t['toBlue'], best_t['toRed'], best_t['acc'], lparts)
             if best_t['term'][0] == 0:
                 lowb = float('-Inf')
             else:

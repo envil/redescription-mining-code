@@ -125,7 +125,7 @@ def main():
     rulesOutFp = None
     rulesNamedOutFp = None
 
-    if setts['filter'] or setts['redundancy']:
+    if setts['filter'] or setts['redundancy'] or setts['recompute']:
         if setts['baseOut'] != "-" and len(setts['baseOut']) > 0 : 
             rulesOutFp = open(setts['baseOut']+'_fil.rul', 'w')
             if names[0] != None and names[1] != None :  
@@ -185,6 +185,7 @@ def main():
                         
 	    if (setts['filter'] or setts['recompute']) and data != None :
 		currentR.recompute(data)
+        
             if not setts['filter'] or \
                    ( currentR.acc() >= setts['minAcc'] and currentR.lenI() >= setts['minSupp'] \
                          and currentR.lenU() <= setts['maxSupp'] and currentR.pVal() <= setts['maxPVal']):

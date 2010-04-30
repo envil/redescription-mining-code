@@ -1,20 +1,18 @@
 GENERATE_ACTION="gen"
-RUN_ACTION= #"run"
+RUN_ACTION="run"
 
-<<<<<<< .mine
-NB_COPIES=20
-SERIE=bonu2
-=======
-NB_COPIES=1
-SERIE=A
->>>>>>> .r63
+NB_COPIES=3
+SERIE=CURRENT
 SUFF_DATA=random
 
-RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
-RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
+#RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
+#RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
+
+RAND_REP=~/redescriptors/sandbox/others/${SERIE}/data/
+RES_REP=~/redescriptors/sandbox/others/${SERIE}/results/
 
 EXT_L=.bdat
-EXT_R=.num
+EXT_R=.bdat
 RULES_EXT=.rul
 SUPP_EXT=.supp
 LOG_EXT=.log
@@ -25,30 +23,21 @@ SIDE_PLACE_HOLDER='::SIDE::'
 
 ########## GENERATION SETTINGS
 
-gen_nb_rows='500' # total nb of rows
-gen_nb_cols_L='25' # number of columns of the left hand side matrix
-gen_nb_cols_R='25' # number of columns of the right hand side matrix
-gen_supp_rows_L='50' # number of supporting rows of the left hand side matrix
-gen_supp_rows_R='50' # number of supporting rows of the right hand side matrix
+gen_nb_rows='50' # total nb of rows
+gen_nb_cols_L='100' # number of columns of the left hand side matrix
+gen_nb_cols_R='100' # number of columns of the right hand side matrix
+gen_supp_rows_L='10' # number of supporting rows of the left hand side matrix
+gen_supp_rows_R='10' # number of supporting rows of the right hand side matrix
 gen_nb_variables_L='2' # number of supporting variables of the left hand side matrix
 gen_nb_variables_R='2' # number of supporting variables of the right hand side matrix
 gen_c='4' # contribution
 gen_offset='0' # offset before support of right hand side matrix
-<<<<<<< .mine
-gen_preserving='true' # boolean, is the original support of the rules perserved when adding noise
-=======
-gen_preserving='2' # boolean, is the original support of the rules perserved when adding noise
->>>>>>> .r63
+gen_preserving='3' # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
-gen_margin_R='0.3' # margin right 1=boolean
+gen_margin_R='1' # margin right 1=boolean
 gen_density='0.01' # noise density
-<<<<<<< .mine
-gen_density_blurr_OR='1' # supporting columns blurr density
-gen_density_blurr_AND='1' # supporting columns blurr density
-=======
-gen_density_blurr_OR='0.1' # supporting columns blurr density
-gen_density_blurr_AND='0.1' # supporting columns blurr density
->>>>>>> .r63
+gen_density_blurr_OR='0.5' # supporting columns blurr density
+gen_density_blurr_AND='0.5' # supporting columns blurr density
 
 # gen_nb_rows='100' # total nb of rows
 # gen_nb_cols_L='20' # number of columns of the left hand side matrix
@@ -150,7 +139,7 @@ head -n $((NB_lines_conf -1 )) $0 > $CONF_LOG_INFO
 if (( ${#GENERATE_ACTION} > 0 ))
 then         
     echo "Generating synthetic matrices..."
-    echo "${SCRIPT_MATLAB}" #| $MATLAB_BIN -nosplash -nodesktop > /dev/null
+    echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
 fi
 
 if (( ${#RUN_ACTION} > 0 ))
@@ -172,7 +161,7 @@ while read line
 
    echo "Processing $OUT_BASE ..."
 
-   ${SCRI_PATH}greedyRuleFinder6.py \
+   echo ${SCRI_PATH}greedyRuleFinder6.py \
        --dataL=$DATAL --dataR=$DATAR \
        --rules-out=$RULES_OUT --support-out=$SUPPORT_OUT \
        --nb-variables=$NB_VARIABLES --min-len=$MIN_LEN \

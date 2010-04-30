@@ -16,6 +16,11 @@ DELAY_MIN=30
 RUN_SCRIPT=~/redescriptors/sandbox/scripts/run.sh
 PID_PLACH="__PROC_ID__"
 
+if [ -e flush.tmp ]; then
+    echo "flush.tmp already exists ! Not doing anything ..."
+    exit
+fi
+
 
 for file_gen in ${DATA_REP}${FILE_R}*${EXT_R}
 do
@@ -32,12 +37,12 @@ do
     fi
 done
 if [ -e flush.tmp ]; then
-     lockfile-create $TODO_F
-     cat flush.tmp >> $TODO_F
-     echo "ADDED:"
-     cat flush.tmp
-     rm flush.tmp
-     lockfile-remove $TODO_F
+#     lockfile-create $TODO_F
+#     cat flush.tmp >> $TODO_F
+     echo "TO BE ADDED:"$(wc -l flush.tmp)
+#     cat flush.tmp
+#     rm flush.tmp
+#     lockfile-remove $TODO_F
 else
     echo "NONE ADDED"
 fi

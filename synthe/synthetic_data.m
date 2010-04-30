@@ -53,8 +53,8 @@ function [log_info] = synthetic_data(params, setts, confs )
                 to_log_setts = [i, l, j, acc, setts(i).nb_variables_L, setts(i).nb_variables_R, confs(l).OR_L, confs(l).OR_R, setts(i).offset, setts(i).supp_rows_L, setts(i).supp_rows_R, setts(i).preserving,  setts(i).margin_L, setts(i).margin_R, setts(i).density, setts(i).density_blurr_OR, setts(i).density_blurr_AND];
                 format_setts = strrep([filename ' %i %i %i %f %i %i %i %i %i %i %i %i %f %f %f %f %f\n'], ' ', '\t');
                 if length(params.directory_out) > 0
-                    %save_matrix(L, strrep([params.directory_out filename], params.side_place_holder, 'L'), params.dat_ext_L);
-                    %save_matrix(R, strrep([params.directory_out filename], params.side_place_holder, 'R'), params.dat_ext_R);
+                    save_matrix(L, strrep([params.directory_out filename], params.side_place_holder, 'L'), params.dat_ext_L);
+                    save_matrix(R, strrep([params.directory_out filename], params.side_place_holder, 'R'), params.dat_ext_R);
                 end
                 fprintf(fid, format_setts, to_log_setts);
             end
