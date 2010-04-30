@@ -19,12 +19,18 @@ function display_map(coordinates_file, supp_file, figures_patt, format)
 end
 
 function display_red(coordinates, suppO, suppL, suppR, suppI)
-    scatter([ -30; coordinates(suppO,2)], [80; coordinates(suppO,1)],25, 'k.')
+    scatter([ -30; coordinates(suppO,2)], [80; coordinates(suppO,1)],15, 'k.')
     hold on
-    scatter([ -30; coordinates(suppL,2)], [80; coordinates(suppL,1)],25, 'b.');
-    scatter([ -30; coordinates(suppR,2)], [80; coordinates(suppR,1)],25, 'r.');
-    scatter([ -30; coordinates(suppI,2)], [80; coordinates(suppI,1)],25, 'g.');
-    legend('European continent','Left rule holds','Right rule holds','Both rules hold',2)
+    scatter([ -30; coordinates(suppL,2)], [80; coordinates(suppL,1)],10, 'c+');
+    scatter([ -30; coordinates(suppR,2)], [80; coordinates(suppR,1)],10, 'mx');
+    scatter([ -30; coordinates(suppI,2)], [80; coordinates(suppI,1)],10,'b*');
+    %% BLACK AND WHITE
+%     scatter([ -30; coordinates(suppO,2)], [80; coordinates(suppO,1)],15, 'k.')
+%     hold on
+%     scatter([ -30; coordinates(suppL,2)], [80; coordinates(suppL,1)],10, 'k+');
+%     scatter([ -30; coordinates(suppR,2)], [80; coordinates(suppR,1)],10, 'kx');
+%     scatter([ -30; coordinates(suppI,2)], [80; coordinates(suppI,1)],10, 'k*');
+    legend('European continent','Left query holds','Right query holds','Both queries hold',2)
 end
 
 function s = line_supp(line, idx, mask)
