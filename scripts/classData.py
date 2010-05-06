@@ -69,19 +69,106 @@ class BoolDataM(DataM):
 class CatDataM(DataM):
     type_id = 2
 
+    def __init__(self, ncolSupps=[], nmaxRowId=-1):
+        self.colSupps = ncolSupps
+        self.nbRows = nmaxRowId+1
+        self.cards = []
+        for i in range(len(self.colSupps)):
+            tmp = {}
+            for cat in self.colSupps[i].keys():
+                c = len(self.colSupps[i][cat])
+                if tmp.has_key(c):
+                    tmp[c].add(cat)
+                else:
+                    tmp[c] = set([cat])
+            self.cards.append(tmp)
+            
+            
     def suppItem(self, item):
-        colX = self.colSupps[item.colId()]
-        supp = set()
-        for idRow in range(len(colX)):
-            if colX[idRow] == item.cat:
-                supp.add(idRow)
-        return supp
+        if item.cat in self.colSupps.keys():
+            return self.colSupps[item.cat]
+        else:
+            return set()
 
-    def vect(self, col): ## the term should be the same type as the data on the considered side
-        return set()
-    
     def __str__(self):
         return "%i x %i categorical" % ( len(self), self.nbCols())
+
+#     def vect(self, col): ## the term should be the same type as the data on the considered side
+#         return self.colSupps[col]
+
+    def nonFull(self, minIn, minOut):
+        it = []
+        for col in range(len(self.colSupps)):
+            if max(self.cards[col].keys()) >= minIn and self.nbRows - min(self.cards[col].keys()) >= minOut :
+                it.append(col)
+        return it 
+
+    def fit(self, itemX, suppX, suppXb, col, toImprov, side):
+        (scores, termsA, termsB) = ([], [], [])    
+        if side == 0:
+            parts = (0, suppX, 0, suppXb)
+        else:
+            parts = (suppX, 0, 0, suppXb)
+        
+        (cand_A, cand_Ab) = CatDataM.findCover(self.colSupps[col], parts, side, col, toImprov, True )
+
+        for cand in cand_A:
+            cand.update({'supp': len(suppX)})
+            scores.append(toImprov.score(cand))
+            termsA.append(Term(False, itemX))
+            termsB.append(cand['term'])
+
+        for cand in cand_Ab:
+            cand.update({'supp': len(suppXb)})
+            scores.append(toImprov.score(cand))
+            termsA.append(Term(True, itemX))
+            termsB.append(cand['term'])
+        return (scores, termsA, termsB)
+
+    def anyAdvanceCol(self, toImprov, side, col):
+        return CatDataM.findCover(self.colSupps[col], (toImprov.parts[side], toImprov.parts[1-side], toImprov.parts[2], toImprov.parts[3]), side, col, toImprov, False )
+
+    def findCover(catsSupp, parts, side, col, toImprov, negB):
+        res = []
+        doNegB = negB  and toImprov.ruleTypesHasNeg()
+        resNegB = []
+        lparts = (len(parts[0]), len(parts[1]), len(parts[2]), len(parts[3]))
+        colop_ids = ((0,2),(3,1))
+        
+        for op in toImprov.ruleTypesOp():
+            if lparts[colop_ids[op][0]] + lparts[colop_ids[op][1]] >= self.minNbC():
+                bests = {False: None, True: None}
+                if doNegB :
+                    bestsNegB = {False: None, True: None}
+                
+                for cat in catsSupp.keys(): ### TODO: check cardinalities
+                    toColors = (len(catsSupp[cat] & parts[colop_ids[op][0]]),\
+                                len(catsSupp[col][cat] & parts[colop_ids[op][1]])) 
+
+                    for neg in toImprov.ruleTypesNP(op):
+                        tmp_comp = toImprov.compAdv(cat, op, neg, toColors[op], lparts)
+                        if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
+                            bests[neg] = tmp_comp
+                        if doNegB :
+                            tmp_comp = toImprov.compAdv(cat, op, neg, [toColors[op][1],toColors[op][0]] , (lparts[2], lparts[3], lparts[0], lparts[1]))
+                            if BestsDraft.comparePair(tmp_comp, bestsNegB[neg]) > 0:
+                                bestsNegB[neg] = tmp_comp
+                        
+        
+                for neg in toImprov.ruleTypesNP(op):
+                    if bests[neg] != None  :
+                        t = bests[neg]['term']
+                        bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, CatItem(col, t))})
+                        res.append(bests[neg])
+                    if doNegB and bestsNegB[neg] != None  :
+                        t = bestsNegB[neg]['term']
+                        bestsNegB[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, CatItem(col, t))})
+                        resNegB.append(bestsNegB[neg])
+        if negB:
+            return (res, resNegB)
+        else:
+            return res
+    findCover = staticmethod(findCover)
     
 class NumDataM(DataM):
     type_id = 3
@@ -213,12 +300,12 @@ class NumDataM(DataM):
 
         if side == 0:
             lparts = (0, len(suppX), 0, len(self) - len(suppX))
-            lpartsN = (lparts[0], lparts[3], lparts[2], lparts[1])
+            lpartsN = (lparts[2], lparts[3], lparts[0], lparts[1])
             lenIntX = len(self.interMode(col, suppX))
             linPartsMode = (0, lenIntX, 0, self.lenMode(col) - lenIntX)
         else:
             lparts = (len(suppX), 0, 0, len(self) - len(suppX))
-            lpartsN = (lparts[3], lparts[1], lparts[2], lparts[0])
+            lpartsN = (lparts[3], lparts[2], lparts[1], lparts[0])
             lenIntX = len(self.interMode(col, suppX))
             linPartsMode = (lenIntX, 0, 0, self.lenMode(col) - lenIntX)
         segments = None
@@ -283,12 +370,12 @@ class NumDataM(DataM):
         segments = [[],[]]
         if side==0:
             toColorsMode = [[linPartsMode[0], linPartsMode[2]], [linPartsMode[3], linPartsMode[1]]]
-            OR = [Redescription.sym_delta, Redescription.sym_beta]
-            BLUE = [Redescription.sym_gamma, Redescription.sym_beta]
+            OR = [Data.sym_delta, Data.sym_beta]
+            BLUE = [Data.sym_gamma, Data.sym_beta]
         else:
             toColorsMode = [[linPartsMode[1], linPartsMode[2]], [linPartsMode[3], linPartsMode[0]]]
-            OR = [Redescription.sym_delta, Redescription.sym_alpha]
-            BLUE = [Redescription.sym_gamma, Redescription.sym_alpha]
+            OR = [Data.sym_delta, Data.sym_alpha]
+            BLUE = [Data.sym_gamma, Data.sym_alpha]
 
         ## segment: [count_red, count_blue, start_val, end_val]
         current_segments = [[0,0, None, None],[0,0, None, None]] # [AND [RED, BLUE] , OR [RED, BLUE]]
@@ -389,8 +476,7 @@ class NumDataM(DataM):
 
     def findCoverFullSearch(op, segments, lparts, side, col, toImprov):
         res = []
-        bests = {False: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0},\
-                 True: { 'term': (None, None), 'acc': float('-Inf'), 'toRed': 0, 'toBlue': 0}}
+        bests = {False: None, True: None}
 
         for seg_s in range(len(segments[op])):
             toColors = [0,0]
@@ -403,7 +489,7 @@ class NumDataM(DataM):
                         bests[neg] = tmp_comp
 
         for neg in toImprov.ruleTypesNP(op):
-            if bests[neg]['term'][0] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
+            if bests[neg] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
                 if bests[neg]['term'][0] == 0:
                     lowb = float('-Inf')
                 else:
@@ -565,7 +651,11 @@ class NumDataM(DataM):
     findPositiveCover = staticmethod(findPositiveCover)
 
 class Data:
-
+    sym_alpha = 0
+    sym_beta = 1
+    sym_gamma = 2
+    sym_delta = 3
+    
     dataTypes = [{'class': NumDataM,  'match':'(ndat$)|(num$)'}, \
                  {'class': CatDataM,  'match':'cat$'}, \
                  {'class': BoolDataM, 'match':'(dense$)|(bdat$)|(sparse$)'}]
@@ -591,8 +681,30 @@ class Data:
         self.N = len(self.m[0])    
         self.nf = [[i for i in range(self.nbCols(0))], [i for i in range(self.nbCols(1))]]
 
-    def needsVectorABCD(self):
-        return self.m[0].type_id +self.m[1].type_id > 2
+
+    def makeVectorABCD(self, alpha, beta, gamma):
+        if max(self.m[0].type_id, self.m[1].type_id) == 3 :
+            vect = [Data.sym_delta for i in range(self.N)]
+            sets = [(Data.sym_gamma, gamma), (Data.sym_beta, beta), (Data.sym_alpha, alpha)]
+            for (val, s) in sets:
+                for i in s:
+                    vect[i] = val
+        else:
+            vect = None
+        return vect
+
+    def makeInitInfo(self, ids, side, fitFull):
+        if fitFull and self.m[1].type_id == 3 and self.m[0].type_id == 3 :
+            return self.m[side].makeBuckets(ids[side])
+        elif self.m[1-side].type_id == 3 :
+            if side == 1:
+                return self.makeVectorABCD( set(), self.m[side].vect(ids[side]), set())        
+            else:
+                return self.makeVectorABCD( self.m[side].vect(ids[side]), set(), set())        
+        elif self.m[1-side].type_id == 2 and self.m[side].type_id == 1:
+            return self.m[side].supp(Term(True, BoolItem(ids[side])))
+        else:
+            return None
         
     def nbCols(self,side):
         return self.m[side].nbCols()
@@ -666,49 +778,48 @@ class Data:
                 termsB.append(Term(nB[i], itemB))
         return (scores, termsA, termsB)
 
-    def computePairParts11(self, mA, idA, mB, idB, toImprov, vectors_abcd=[[],[]], side=1):
+    def computePairParts11(self, mA, idA, mB, idB, toImprov, init_info=[[],[]], side=1):
         c = len(mA.vect(idA) & mB.vect(idB))
         a = len(mA.vect(idA) - mB.vect(idB))
         b = len(mB.vect(idB) - mA.vect(idA))
         return self.computeBooleanPairParts(a, b, c, BoolItem(idA), BoolItem(idB), toImprov)
     
-    def computePairParts12(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
-        raise Exception('To be implemented !')
-        return (scores, termsA, termsB)
+    def computePairParts12(self, mA, idA, mB, idB, toImprov, init_info, side=1):
+        return mB.fit(BoolItem(idA), mA.vect(idA), init_info[1-side][idA], idB, toImprov, side)
     
-    def computePairParts13(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
-        return mB.fit(BoolItem(idA), mA.vect(idA), vectors_abcd[1-side][idA], idB, toImprov, side)
+    def computePairParts13(self, mA, idA, mB, idB, toImprov, init_info, side=1):
+        return mB.fit(BoolItem(idA), mA.vect(idA), init_info[1-side][idA], idB, toImprov, side)
         
-    def computePairParts21(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
-        (scores, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+    def computePairParts21(self, mA, idA, mB, idB, toImprov, init_info, side=0):
+        (scores, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, toImprov, init_info, side )
         return (scores, termsA, termsB)
 
-    def computePairParts22(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+    def computePairParts22(self, mA, idA, mB, idB, toImprov, init_info, side=1):
         raise Exception('To be implemented !')
         return (scores, termsA, termsB)
 
-    def computePairParts23(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+    def computePairParts23(self, mA, idA, mB, idB, toImprov, init_info, side=1):
         raise Exception('To be implemented !')
         return (scores, termsA, termsB)
 
-    def computePairParts32(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
-        (scores, termsB, termsA)= self.computePairParts23(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+    def computePairParts32(self, mA, idA, mB, idB, toImprov, init_info, side=0):
+        (scores, termsB, termsA)= self.computePairParts23(mB, idB, mA, idA, toImprov, init_info, side )
         return (scores, termsA, termsB)
 
-    def computePairParts31(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=0):
-        (scores, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, toImprov, vectors_abcd, side )
+    def computePairParts31(self, mA, idA, mB, idB, toImprov, init_info, side=0):
+        (scores, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, toImprov, init_info, side )
         return (scores, termsA, termsB)
 
     
-    def computePairParts33(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
-        if len(vectors_abcd[1-side][idA]) == 3: # fit FULL
-            if len(vectors_abcd[1-side][idA][0]) > len(vectors_abcd[side][idB][0]): 
-                (scores, termsB, termsA)= self.computePairParts33Full(mB, idB, mA, idA, toImprov, vectors_abcd, 1-side )
+    def computePairParts33(self, mA, idA, mB, idB, toImprov, init_info, side=1):
+        if len(init_info[1-side][idA]) == 3: # fit FULL
+            if len(init_info[1-side][idA][0]) > len(init_info[side][idB][0]): 
+                (scores, termsB, termsA)= self.computePairParts33Full(mB, idB, mA, idA, toImprov, init_info, 1-side )
                 return (scores, termsA, termsB)
             else:
-                return self.computePairParts33Full(mA, idA, mB, idB, toImprov, vectors_abcd, side)
+                return self.computePairParts33Full(mA, idA, mB, idB, toImprov, init_info, side)
         else:
-            return self.computePairParts33Heur(mA, idA, mB, idB, toImprov, vectors_abcd, side)
+            return self.computePairParts33Heur(mA, idA, mB, idB, toImprov, init_info, side)
     
     def computePairParts33Heur(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
         bestScore = float('-Inf')
@@ -741,41 +852,41 @@ class Data:
 #                print "%f: %s <-> %s" % (scores[0], termsA[0], termsB[0])
         return (scores, termsA, termsB)
 
-    def computePairParts33Full(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
+    def computePairParts33Full(self, mA, idA, mB, idB, toImprov, buckets, side=1):
         interMat = []
         (scores, termsA, termsB) = ([], [], [])
         if mA.lenMode(idA) >= toImprov.minNbItmOut() and mB.lenMode(idB) >= toImprov.minNbItmOut() \
            and (mA.lenNonMode(idA) >= toImprov.minNbItmIn() and mB.lenNonMode(idB) >= toImprov.minNbItmIn()): 
 
-            margA = [len(intA) for intA in vectors_abcd[1-side][idA][0]]
-            margB = [len(intB) for intB in vectors_abcd[side][idB][0]]
+            margA = [len(intA) for intA in buckets[1-side][idA][0]]
+            margB = [len(intB) for intB in buckets[side][idB][0]]
 
-            for bukA in vectors_abcd[1-side][idA][0]:
-                interMat.append([len(bukA & bukB) for bukB in vectors_abcd[side][idB][0]])
+            for bukA in buckets[1-side][idA][0]:
+                interMat.append([len(bukA & bukB) for bukB in buckets[side][idB][0]])
 
-            if vectors_abcd[1-side][idA][2] != None :
-                margA[vectors_abcd[1-side][idA][2]] += mA.lenMode(idA)
-                for bukBId in range(len(vectors_abcd[side][idB][0])):
-                    interMat[vectors_abcd[1-side][idA][2]][bukBId] += len(mA.interMode(idA, vectors_abcd[side][idB][0][bukBId])) 
+            if buckets[1-side][idA][2] != None :
+                margA[buckets[1-side][idA][2]] += mA.lenMode(idA)
+                for bukBId in range(len(buckets[side][idB][0])):
+                    interMat[buckets[1-side][idA][2]][bukBId] += len(mA.interMode(idA, buckets[side][idB][0][bukBId])) 
 
-            if vectors_abcd[side][idB][2] != None :
-                margB[vectors_abcd[side][idB][2]] += mB.lenMode(idB)
-                for bukAId in range(len(vectors_abcd[1-side][idA][0])):
-                    interMat[bukAId][vectors_abcd[side][idB][2]] += len(mB.interMode(idB, vectors_abcd[1-side][idA][0][bukAId]))        
+            if buckets[side][idB][2] != None :
+                margB[buckets[side][idB][2]] += mB.lenMode(idB)
+                for bukAId in range(len(buckets[1-side][idA][0])):
+                    interMat[bukAId][buckets[side][idB][2]] += len(mB.interMode(idB, buckets[1-side][idA][0][bukAId]))        
 
-            if vectors_abcd[1-side][idA][2] != None and vectors_abcd[side][idB][2] != None:
-                interMat[vectors_abcd[1-side][idA][2]][vectors_abcd[side][idB][2]] += len(mB.interMode(idB, mA.modeSupp(idA)))
+            if buckets[1-side][idA][2] != None and buckets[side][idB][2] != None:
+                interMat[buckets[1-side][idA][2]][buckets[side][idB][2]] += len(mB.interMode(idB, mA.modeSupp(idA)))
 
 #             ### check marginals
 #             totA = 0
-#             for iA in range(len(vectors_abcd[1-side][idA][0])):
+#             for iA in range(len(buckets[1-side][idA][0])):
 #                 sA = sum(interMat[iA])
 #                 if sA != margA[iA]:
 #                     raise Error('Error in computing the marginals (1)')
 #                 totA += sA
 
 #             totB = 0
-#             for iB in range(len(vectors_abcd[side][idB][0])):
+#             for iB in range(len(buckets[side][idB][0])):
 #                 sB = sum([intA[iB] for intA in interMat])
 #                 if sB != margB[iB]:
 #                     raise Error('Error in computing the marginals (2)')
@@ -817,71 +928,154 @@ class Data:
                 lowA+=1
 
             if best != None \
-                   and (best['term'][1] == 0 or best['term'][2] == len(vectors_abcd[1-side][idA][1])-1) \
-                   and (best['term'][3] == 0 or best['term'][4] == len(vectors_abcd[side][idB][1])-1):            
+                   and (best['term'][1] == 0 or best['term'][2] == len(buckets[1-side][idA][1])-1) \
+                   and (best['term'][3] == 0 or best['term'][4] == len(buckets[side][idB][1])-1):            
                 best.update({'supp': best['term'][0]})
                 scores.append(toImprov.score(best))
 
                 if best['term'][1] == 0:
                     lowa = float('-Inf')
                 else:
-                    lowa = vectors_abcd[1-side][idA][1][best['term'][1]]
-                if best['term'][2] == len(vectors_abcd[1-side][idA][1])-1 :
+                    lowa = buckets[1-side][idA][1][best['term'][1]]
+                if best['term'][2] == len(buckets[1-side][idA][1])-1 :
                     upa = float('Inf')
                 else:
-                    upa = vectors_abcd[1-side][idA][1][best['term'][2]]
+                    upa = buckets[1-side][idA][1][best['term'][2]]
 
                 if best['term'][3] == 0:
                     lowb = float('-Inf')
                 else:
-                    lowb = vectors_abcd[side][idB][1][best['term'][3]]
-                if best['term'][4] == len(vectors_abcd[side][idB][1])-1 :
+                    lowb = buckets[side][idB][1][best['term'][3]]
+                if best['term'][4] == len(buckets[side][idB][1])-1 :
                     upb = float('Inf')
                 else:
-                    upb = vectors_abcd[side][idB][1][best['term'][4]]
+                    upb = buckets[side][idB][1][best['term'][4]]
 
                 termsA.append(Term(False, NumItem(idA, lowa, upa)))
                 termsB.append(Term(False, NumItem(idB, lowb, upb)))
             
         return (scores, termsA, termsB)
 
-    
+    def computePairParts22Full(self, mA, idA, mB, idB, toImprov, init_info, side=1):
+
+        nA = [False, True, False, True]
+        nB = [False, False, True, True]
+
+        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        best = [ None for i in range(up_to)]
+        
+        for catA in mA.colSupps[idA].keys():
+            for catB in mB.colSupps[idB].keys():
+                suppI = len(mA.colSupps[idA][catA] & mB.colSupps[idB][catB])
+                suppsB = (len(mB.colSupps[idB][catB]), self.N-len(mB.colSupps[idB][catB]))
+                for i in range(up_to):
+                    tmp_comp = toImprov.compAdv((suppsB[nB[i]], catA, catB), True, nA[i], (len(mA.colSupps[idA][catA]) - suppI, suppI), (0, suppsB[nB[i]], 0, suppsB[not nB[i]])))
+                    if BestsDraft.comparePair(tmp_comp, best[i]) > 0:
+                        best[i] = tmp_comp
+
+        (scores, termsA, termsB) = ([], [], [])
+        
+        for i in range(up_to):
+            if best[i] != None:
+                best[i].update({'supp': best[i]['term'][0]})
+                scores.append(toImprov.score(best[i]))
+                termsA.append(Term(nA[i], CatItem(idA, best[i]['term'][1])))
+                termsB.append(Term(nB[i], CatItem(idB, best[i]['term'][2])))
+            
+        return (scores, termsA, termsB)
+
+    def computePairParts23Full(self, mA, idA, mB, idB, toImprov, buckets, side=1):
+
+        nA = [False, True, False, True]
+        nB = [False, False, True, True]
+
+        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        best = [ None for i in range(up_to)]
+
+        interMat = []
+        (scores, termsA, termsB) = ([], [], [])
+        if mA.lenMode(idA) >= toImprov.minNbItmOut() and mA.lenNonMode(idA) >= toImprov.minNbItmIn():
+            margB = [len(intB) for intB in buckets[side][idB][0]]
+
+            for catA in mA.colSupps[idA].keys():
+                interMat = [len(mA.colSupps[idA][catA] & bukB) for bukB in buckets[side][idB][0]]
+                totBina = len(mA.colSupps[idA][catA])
+                        
+                belowBa = 0
+                lowB = 0
+                while lowB < len(interMat) and totBina - belowBa >= toImprov.minNbItmIn():
+                    aboveBa = 0
+                    upB = len(interMat)-1
+                    while upB >= lowB and totBina - belowBa - aboveBa >= toImprov.minNbItmIn():
+                        suppI = totBina - belowBa - aboveBa
+                        suppB = sum(margB[lowB:upB+1])
+                        suppsB = (suppB, self.N-suppB)
+                        for i in range(up_to):
+                            tmp_comp = toImprov.compAdv((suppsB[nB[i]], catA, lowB, upB), True, nA[i], (len(mA.colSupps[idA][catA]) - lInter, lInter), (0, suppsB[nB[i]], 0, suppsB[not nB[i]])))
+                            if BestsDraft.comparePair(tmp_comp, best[i]) > 0:
+                                best[i] = tmp_comp
+
+                        aboveBa+=interMat[upB]
+                        upB-=1
+                    belowBa+=interMat[lowB]
+                    lowB+=1
+
+        (scores, termsA, termsB) = ([], [], [])
+        
+        for i in range(up_to):
+            if best[i] != None and ( best[i]['term'][2] != 0 or best[i]['term'][3] != len(buckets[side][idB][1])-1 ):
                 
-    def computePair(self, idA, idB, vectors_abcd, toImprov):
+                if best['term'][2] == 0:
+                    lowb = float('-Inf')
+                else:
+                    lowb = buckets[side][idB][1][best['term'][2]]
+                if best['term'][3] == len(buckets[side][idB][1])-1 :
+                    upb = float('Inf')
+                else:
+                    upb = buckets[side][idB][1][best['term'][3]]
+
+                best[i].update({'supp': best[i]['term'][0]})
+                scores.append(toImprov.score(best[i]))
+                termsA.append(Term(nA[i], CatItem(idA, best[i]['term'][1])))
+                termsA.append(Term(nB[i], NumItem(idB, lowB, upB)))
+                
+        return (scores, termsA, termsB)
+
+    def computePair(self, idA, idB, init_info, toImprov):
         method_string = 'self.computePairParts%i%i' % (self.m[0].type_id, self.m[1].type_id)
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups this combination does not exist (%i %i)!' % (self.m[0].type_id, self.m[1].type_id))
 
-        return method_compute(self.m[0], idA, self.m[1], idB, toImprov, vectors_abcd)
+        return method_compute(self.m[0], idA, self.m[1], idB, toImprov, init_info)
         
 
     def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
         self.pairs = []
         fitFull = True
-        toImprov = BestsDraft(ruleTypes, self.N)
+        pairsRType = {True: set()}
+        if True in ruleTypes[True] or True in ruleTypes[False]:
+            pairsRType[True].add(True)
+        if False in ruleTypes[True] or False in ruleTypes[False]:
+            pairsRType[True].add(False)
+        toImprov = BestsDraft(pairsRType, self.N)
 
         ids= self.nonFull()
-        vectors_abcd = [{},{}]
+        init_info = [{},{}]
         cL = 0
         cR = 0  
         for idA in ids[0]:
             if cL % self.divL == 0:
                 for idB in ids[1]:
                     if cR % self.divR == 0:
-                        if not vectors_abcd[0].has_key(idA): # pairsA has just the same keys
-                            if fitFull and self.m[1].type_id == 3 and self.m[0].type_id == 3 :
-                                vectors_abcd[0][idA] = self.m[0].makeBuckets(idA)
-                            else:
-                                vectors_abcd[0][idA] = Redescription.makeVectorABCD(self.m[1].type_id > 1, self.N, self.m[0].vect(idA), set(), set())
-
-                        if not vectors_abcd[1].has_key(idB): # pairsB has just the same keys
-                            if fitFull and self.m[1].type_id == 3 and self.m[0].type_id == 3 :
-                                vectors_abcd[1][idB] = self.m[1].makeBuckets(idB)
-                            else:
-                                vectors_abcd[1][idB] = Redescription.makeVectorABCD(self.m[0].type_id > 1, self.N, set(), self.m[1].vect(idB), set())
-                        (scores, termsA, termsB) = self.computePair(idA, idB, vectors_abcd, toImprov)
+                        if not init_info[0].has_key(idA): # pairsA has just the same keys
+                            init_info[0][idA] = self.makeInitInfo((idA, idB), 0, fitFull) 
+                            
+                        if not init_info[1].has_key(idB): # pairsB has just the same keys
+                            init_info[1][idB] = self.makeInitInfo((idA, idB), 1, fitFull)
+                            
+                        (scores, termsA, termsB) = self.computePair(idA, idB, init_info, toImprov)
                         
                         for i in range(len(scores)):
                             if scores[i] >= minScore:

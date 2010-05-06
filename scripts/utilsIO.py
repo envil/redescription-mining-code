@@ -133,14 +133,17 @@ def readCategorical(filename):
     rowId = -1
     f = open(filename, 'r')
     tmpcolSupps = []
-    verbPrint(1,"\nReading dense input %s\n"%filename)
+    verbPrint(1,"\nReading categorical input %s\n"%filename)
     for row in f:
         a = (row.strip()).split(' ')
         if rowId == -1:
             rowId = len(a)
         elif rowId != len(a):
             raise Exception('Inconsistent number of rows !\n')
-        tmpcolSupps.append(a)
+        tmp = fromkeys(set(a), set())
+        for row in range(len(a)):
+            tmp[a[row]].add(row)
+        tmpcolSupps.append(tmp)
     f.close()
     return (tmpcolSupps, rowId-1)
 
