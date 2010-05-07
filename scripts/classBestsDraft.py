@@ -87,13 +87,11 @@ class BestsDraft:
         b = None
         if op:
             if neg:
-#                pdb.set_trace()
                 if (lparts[1] - toColors[1] >= self.minItmC() ) and ( toColors[0] >= self.minItmSuppOut() ):
                     b= {'acc': float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]),\
                         'toRed': lparts[3] - toColors[0], 'toBlue': lparts[1] - toColors[1], 'term': t}
 
             else:
-#                pdb.set_trace()
                 if (toColors[1] >= self.minItmC() ) and (lparts[3] - toColors[0] >= self.minItmSuppOut() ):
                     b= {'acc': float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0]),\
                         'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
