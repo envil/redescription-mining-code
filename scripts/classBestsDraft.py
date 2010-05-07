@@ -1,4 +1,5 @@
-from classRedescription import  *
+from classLog import Log
+from classRedescription import  Redescription
 import utilsStats
 import pdb
         
@@ -10,50 +11,57 @@ class BestsDraft:
     diff_acc = 5
     diff_none = 6
 
-    minItmIn = None
-    minItmOut = None
-    minLen = None
-    minC = None
-    minFinIn = None
-    minFinOut = None
+    logger = Log(0)
+
+    minSuppIn = None
+    minSuppOut = None
+
+    minLen = 0
+    minAcc = 0
+    maxPVal = 1
+
+    minC = 0
+    
     coeffPVRule = 1
     coeffPVRed =1
     coeffImpacc = 1
     coeffRelImpacc = 0
 
-    def dispParams():
-
-        return "minC:%i, minItmIn:%i, minItmOut:%i, minFinIn:%i, minFinOut:%i, minLen:%i, coeffImpacc:%f, coeffRelImpacc:%f, coeffPVRule:%f, coeffPVRed:%f"\
-               % (BestsDraft.minC, BestsDraft.minItmIn, BestsDraft.minItmOut, BestsDraft.minFinIn, BestsDraft.minFinOut, BestsDraft.minLen, \
-                  BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed)
-    dispParams = staticmethod(dispParams)    
-#     def compSurp(self, pos):
-#         if self.bests[pos] != None:
-#             if self.bests[pos]['side'] == 0:
-#                 if self.bests[pos]['op'].isOr():
-#                     return [self.red.prs[0], +self.red.prs[0]]
-
-    # def minNbItmIn(self):
-#         return BestsDraft.minItmIn
-#     def minNbItmOut(self):
-#         return BestsDraft.minItmOut
-#     def minNbFinIn(self):
-#         return BestsDraft.minFinIn
-#     def minNbFinOut(self):
-#         return BestsDraft.minFinOut
-#     def minNbC(self):
-#         return BestsDraft.minC
-    
-    def minNbItmIn(self):
-        return BestsDraft.minFinIn #+(Redescription.nbVariables- self.lenRed()/float(2))*BestsDraft.minC
-    def minNbItmOut(self):
-        return BestsDraft.minFinOut #-(Redescription.nbVariables- self.lenRed()/float(2))*BestsDraft.minC
-    def minNbFinIn(self):
-        return BestsDraft.minFinIn
-    def minNbFinOut(self):
-        return BestsDraft.minFinOut
-    def minNbC(self):
+    def minItmSuppIn(self):
+        return BestsDraft.minSuppIn
+    def minItmSuppOut(self):
+        return BestsDraft.minSuppOut
+    def minItmC(self):
         return BestsDraft.minC
+    def minFinSuppIn():
+        return BestsDraft.minSuppIn
+    minFinSuppIn = staticmethod(minFinSuppIn)
+    def minFinSuppOut():
+        return BestsDraft.minSuppOut
+    minFinSuppOut = staticmethod(minFinSuppOut)
+    def minFinLength():
+        return BestsDraft.minLen
+    minFinLength = staticmethod(minFinLength)
+    def maxFinPVal():
+        return BestsDraft.maxPVal    
+    maxFinPVal = staticmethod(maxFinPVal)
+    def minFinAcc():
+        return BestsDraft.minAcc
+    minFinAcc = staticmethod(minFinAcc)
+
+    def checkFinalConstraints(red):
+        if red.length(0) + red.length(1) >= BestsDraft.minFinLength() \
+                   and red.N - red.lenU() >= BestsDraft.minFinSuppOut() \
+                   and red.lenI() >= BestsDraft.minFinSuppIn() \
+                   and red.acc()  >= BestsDraft.minFinAcc() \
+                   and red.pVal() <= BestsDraft.maxFinPVal():
+            BestsDraft.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
+            return True
+        else:
+            BestsDraft.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
+            return False
+    checkFinalConstraints = staticmethod(checkFinalConstraints) 
+
 
     def lenRed(self):
         if self.red == None:
@@ -79,21 +87,23 @@ class BestsDraft:
         b = None
         if op:
             if neg:
-                if (lparts[1] - toColors[1] >= self.minNbC() ) and ( toColors[0] >= self.minNbItmOut() ):
+#                pdb.set_trace()
+                if (lparts[1] - toColors[1] >= self.minItmC() ) and ( toColors[0] >= self.minItmSuppOut() ):
                     b= {'acc': float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]),\
                         'toRed': lparts[3] - toColors[0], 'toBlue': lparts[1] - toColors[1], 'term': t}
 
             else:
-                if (toColors[1] >= self.minNbC() ) and (lparts[3] - toColors[0] >= self.minNbItmOut() ):
+#                pdb.set_trace()
+                if (toColors[1] >= self.minItmC() ) and (lparts[3] - toColors[0] >= self.minItmSuppOut() ):
                     b= {'acc': float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0]),\
                         'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
         else:
             if neg:
-                if (toColors[0] >= self.minNbC() ) and (lparts[2] - toColors[1] >= self.minNbItmIn() ):
+                if (toColors[0] >= self.minItmC() ) and (lparts[2] - toColors[1] >= self.minItmSuppIn() ):
                     b= {'acc': float(lparts[2] - toColors[1])/(lparts[0] - toColors[0] + lparts[1] + lparts[2]),\
                         'toRed': lparts[0] - toColors[0], 'toBlue': lparts[2] - toColors[1], 'term': t}
             else:
-                if (lparts[0] - toColors[0] >= self.minNbC() ) and (toColors[1] >= self.minNbItmIn() ):
+                if (lparts[0] - toColors[0] >= self.minItmC() ) and (toColors[1] >= self.minItmSuppIn() ):
                     b= {'acc': float(toColors[1])/(toColors[0] + lparts[1] + lparts[2]),\
                         'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
         return b
@@ -106,6 +116,14 @@ class BestsDraft:
     pos = staticmethod(pos)    
 
     def __init__(self, ruleTypes, N,  currRed=None):
+#        pdb.set_trace()
+        try:
+            self.pValRule = eval('self.pVal%sRule' % (Redescription.methodpVal))
+            self.pValRed = eval('self.pVal%sRed' % (Redescription.methodpVal))
+        except AttributeError:
+              raise Exception('Oups method to compute the p-value does not exist !')
+
+        
         currBest = {'side': -1, 'acc':0, 'op': None, 'term': None, 'toBlue': 0, 'toRed': 0, 'supp': set()}
         self.parts = None
         if currRed != None:
@@ -117,7 +135,7 @@ class BestsDraft:
         self.N = N
 
     def ruleTypesOp(self):
-        return self.ruleTypes.keys()
+        return [i for i in self.ruleTypes.keys() if len(self.ruleTypes[i])> 0]
 
     def ruleTypesNP(self, opOR):
         return self.ruleTypes[opOR]
@@ -146,10 +164,10 @@ class BestsDraft:
         return self.bests[pos]['supp']
 
     def comparePair(x, y):
-        if y == None:
-            return BestsDraft.diff_none
-        elif x == None:
+        if x == None:
             return -BestsDraft.diff_none
+        elif y == None:
+            return BestsDraft.diff_none
         else:
             if x['acc'] > y['acc']:
                 return BestsDraft.diff_acc
@@ -186,26 +204,22 @@ class BestsDraft:
             #if BestsDraft.comparePair(candi, self.bests[pos]) > 0 :
                 self.bests[pos] = candi
 
-
-    def pValRule(self, cand):
-        return self.pValSupp2Rule(cand)
+    def improving(self, minScore = 0, excludeCurr = False):
         
-    def pValRed(self, cand):
-        return self.pValSupp2Red(cand)
+        if BestsDraft.logger.verbosity >= 4:
+            BestsDraft.logger.printL(4, self)
 
-    def pValRuleScore(self, cand):
-        if BestsDraft.coeffPVRule != 0:
-            return BestsDraft.coeffPVRule*self.pValRule(cand)
+        if excludeCurr or self.score(self.bests[-1]) < minScore:
+            r = []
         else:
-            return 0
-
-    def pValRedScore(self, cand):
-        if BestsDraft.coeffPVRed != 0:
-            return BestsDraft.coeffPVRed*self.pValRed(cand)
-        else:
-            return 0
+            r = [-1]
+        for pos in range(len(self.bests)-1):
+            if self.score(self.bests[pos]) >= minScore:
+               r.append(pos)
+        return r
     
     def score(self, cand):
+        #pdb.set_trace()
         if cand == None:
             return None
         elif cand.has_key('side') and cand['side'] == -1:
@@ -213,7 +227,7 @@ class BestsDraft:
         else:
             return BestsDraft.coeffImpacc*self.impacc(cand) \
                    + BestsDraft.coeffRelImpacc*self.relImpacc(cand) \
-                   - self.pValRuleScore(cand) - self.pValRedScore(cand)
+                   + self.pValRuleScore(cand) + self.pValRedScore(cand)
         
     def relImpacc(self, cand):
         if cand == None:
@@ -232,34 +246,23 @@ class BestsDraft:
                 return (cand['acc']- self.bests[-1]['acc'])
             else:
                 return cand['acc']
-        
-    def finalOK(red):
-        return red.length(0) + red.length(1) >= BestsDraft.minLen \
-                   and red.N - red.lenU() >= BestsDraft.minFinOut \
-                   and red.lenI() >= BestsDraft.minFinIn  
-    finalOK = staticmethod(finalOK) 
-        
-    def improving(self, minScore = 0, excludeCurr = False):
-        if excludeCurr or self.score(self.bests[-1]) < minScore:
-            r = []
-        else:
-            r = [-1]
-        for pos in range(len(self.bests)-1):
-            if self.score(self.bests[pos]) >= minScore:
-               r.append(pos)
-        return r
-    
-    def dispCand(self, cand):
-        if cand == None:
-            dsp = '* %20s <==> * %20s' % ('','')
-        elif cand['side'] == 0:
-            dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' \
-                  % ((str(cand['op']) + str(cand['term'])), '', cand['acc'], self.score(cand), cand['toBlue'], cand['toRed'])
-        elif cand['side'] == 1:
-            dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t' \
-                  % ('', (str(cand['op']) + str(cand['term'])), cand['acc'], self.score(cand), cand['toBlue'], cand['toRed'])
-        return dsp
 
+    def pValRuleScore(self, cand):
+        if BestsDraft.coeffPVRule < 0:
+            return BestsDraft.coeffPVRule * self.pValRule(cand)
+        elif BestsDraft.coeffPVRule > 0:
+            return -10*(BestsDraft.coeffPVRule < self.pValRule(cand))
+        else:
+            return 0
+
+    def pValRedScore(self, cand):
+        if BestsDraft.coeffPVRed < 0:
+            return BestsDraft.coeffPVRed * self.pValRed(cand)
+        elif BestsDraft.coeffPVRed > 0:
+            return -10*(BestsDraft.coeffPVRed < self.pValRed(cand))
+        else:
+            return 0
+    
     def pValSuppRule(self, cand):
         if cand == None:
             return -1
@@ -273,7 +276,7 @@ class BestsDraft:
                 return utilsStats.pValSupp(self.N, cand['toBlue'] + cand['toRed'], \
                                            self.red.prs[cand['side']]*float(len(cand['supp']))/(self.N))
 
-    def pValSupp2Rule(self, cand):
+    def pValMargRule(self, cand):
         if cand == None:
             return -1
         elif  self.red == None or cand['side'] == -1:
@@ -316,7 +319,7 @@ class BestsDraft:
                 return utilsStats.pValSupp(self.N, cand['toBlue'], \
                                           self.red.prs[1-cand['side']]*self.red.prs[cand['side']] *float(len(cand['supp']))/(self.N))
 
-    def pValSupp2Red(self, cand):
+    def pValMargRed(self, cand):
         if cand == None:
             return -1
         elif self.red == None: # in the case of an initial pair WARNING   in that case supp is the len of the support of the other side !
@@ -348,47 +351,41 @@ class BestsDraft:
                 return utilsStats.pValOver(cand['toBlue'],\
                                     self.N, self.red.lenX(1-cand['side']), cand['toBlue'] + cand['toRed'])
 
-    def expOver(self, cand):
-        if cand == None:
-            return (-1,-1)
-        elif self.red == None: # in the case of an initial pair WARNING  in that case supp is the support of the other side !
-            return ( float(cand['supp'] * (cand['toBlue'] + cand['toRed']))/(self.N), cand['toBlue'])
-        elif cand['side'] == -1:
-            return (0,0)
-        else:
-            if cand['op'].isOr():
-                return ( float(len(cand['supp']) * self.red.lenX(cand['side']))/(self.N), len(cand['supp']) - cand['toBlue'] - cand['toRed'])
-                
-            else: 
-                return ( float(len(cand['supp']) * self.red.lenX(cand['side']))/(self.N), cand['toBlue'] + cand['toRed'])
-                
 
-    def dispCandSurp(self, cand):
+    def dispCand(self, cand):
         if cand == None:
-            ext = ''
             dsp = '* %20s <==> * %20s' % ('','')
-        else:
-#            pdb.set_trace()
-            #ext = '\n\t\t\tpValSuppS1: %f pValSuppS2: %f pValOverS: %f\n\t\t\tpValSuppN1: %f pValSuppN2: %f pValOverN: %f' \
-            ext = '\n\t\t\t%f %f %f --- %f %f %f --- %s' \
-                  %( self.pValSuppRule(cand), self.pValSupp2Rule(cand), self.pValOverRule(cand), self.pValSuppRed(cand), self.pValSupp2Red(cand), self.pValOverRed(cand), self.expOver(cand))
-            dsp = ''
-            if cand['side'] == 0:
-                dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t% 5i' \
-                      % ((str(cand['op']) + str(cand['term'])), '', cand['acc'], self.score(cand), cand['toBlue'], cand['toRed'], len(cand['supp']))
-            elif cand['side'] == 1:
-                dsp = '* %20s <==> * %20s\t\t%1.7f \t%+1.7f \t\t% 5i \t% 5i\t% 5i' \
-                      % ('', (str(cand['op']) + str(cand['term'])), cand['acc'], self.score(cand), cand['toBlue'], cand['toRed'], len(cand['supp']))
-        return '\n'+dsp+ext
+            scoring = ''
 
+        elif cand['side'] == 0:
+            dsp = '* %20s <==> * %20s' \
+                  % ((str(cand['op']) + str(cand['term'])), '')
+            
+            scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
+                      % (self.score(cand), cand['acc'],  self.pValRule(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
+            
+        elif cand['side'] == 1:
+            dsp = '* %20s <==> * %20s' \
+                  % ('', (str(cand['op']) + str(cand['term'])))
+            
+            scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
+                      % (self.score(cand), cand['acc'],  self.pValRule(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
+            
+        return dsp+scoring
         
     def __str__(self):
-        dsp  = 'Bests Draft:  improving:%s\n' % (self.improving())
+        dsp  = 'Bests Draft:\n'
         if self.red != None:
             dsp += str(self.red)
         else:
             dsp += 'empty redescription'
+        dsp += '\n\t  %20s        %20s' \
+                  % ('LHS extension', 'RHS extension')
+            
+        dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
+                      % ('score', 'Accuracy',  'Rule pV','Red pV', 'toBlue', 'toRed')
+            
         for cand in self.bests[:-1]: ## Do not print the last: current redescription
-            dsp += '\n\t'+self.dispCandSurp(cand)
+            dsp += '\n\t'+self.dispCand(cand)
         return dsp
     

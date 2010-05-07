@@ -1,6 +1,8 @@
+from classLog import Log
 from classRule import *
 import pdb
 class Souvenirs:
+    logger = Log(0)
     format_index_pref = ':%(lengthL)i:%(lengthR)i:%(side)i:%(op)i:'
     format_index_suff = '%(buk)i:%(col)i:'
     def __init__(self,  nAvailableMo, nAmnesic = False):
@@ -139,3 +141,5 @@ class Souvenirs:
         for red in redList:
             if not self.amnesic:
                 self.add(red)
+        Souvenirs.logger.printL(4, self)
+        

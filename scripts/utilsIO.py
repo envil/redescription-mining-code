@@ -3,7 +3,8 @@
 import sys, getopt, os, re, random
 import pdb
 
-setts = {}
+from classLog import Log
+logger = Log()
 
 def usage():
     print """
@@ -52,13 +53,6 @@ def getOpts():
 	if o in ("-c", "--classes"): setts['classes'] = True
 	if o in ("-w", "--overwrite"): setts['overwrite'] = True
 
-def verbPrint(level, message, setts={'verb':0}, where=sys.stdout):
-    if where != None and setts['verb'] >= level:
-        where.write("%s\n" % message)
-##         sys.stderr.write("\r                                                 \
-##                                                                         \r%s"\
-##                          %message)
-
 def loadColumnNames(filename):
     f = open(filename, 'r')
     a = []
@@ -83,7 +77,7 @@ def readMatlabNum(filename):
     f = open(filename, 'r')
     rowId = 0
     tmpcolSupps = []
-    verbPrint(1,"\nReading matlab input %s\n"%filename)
+    logger.printL(2,"\nReading dat numerical input %s\n"%filename)
     #cols = -1
     for row in f:
         a = row.split('\t')
@@ -114,7 +108,7 @@ def readNumerical(filename):
     rowId = -1
     f = open(filename, 'r')
     tmpcolSupps = []
-    verbPrint(1,"\nReading dense input %s\n"%filename)
+    logger.printL(2,"\nReading dense numerical input %s (Warning ! transposed)\n"%filename)
     for row in f:
         a = (row.strip()).split(' ')
         if rowId == -1:
@@ -133,16 +127,20 @@ def readCategorical(filename):
     rowId = -1
     f = open(filename, 'r')
     tmpcolSupps = []
-    verbPrint(1,"\nReading categorical input %s\n"%filename)
+    logger.printL(2,"\nReading dense categorical input %s (Warning ! transposed)\n"%filename)
     for row in f:
         a = (row.strip()).split(' ')
         if rowId == -1:
             rowId = len(a)
         elif rowId != len(a):
             raise Exception('Inconsistent number of rows !\n')
-        tmp = fromkeys(set(a), set())
+        tmp = {}
         for row in range(len(a)):
-            tmp[a[row]].add(row)
+            cat = int(a[row])
+            if tmp.has_key(cat):
+                tmp[cat].add(row)
+            else:
+                tmp[cat] = set([row])
         tmpcolSupps.append(tmp)
     f.close()
     return (tmpcolSupps, rowId-1)
@@ -153,7 +151,7 @@ def readDense(filename):
     rowId = -1
     f = open(filename, 'r')
     tmpcolSupps = []
-    verbPrint(1,"\nReading dense input %s\n"%filename)
+    logger.printL(2,"\nReading dense boolean input %s\n"%filename)
     for row in f:
         a = (row.strip()).split(' ')
         if rowId == -1:
@@ -170,7 +168,7 @@ def readSparse(filename):
     rowId = -1
     f = open(filename, 'r')
     tmpcolSupps = []
-    verbPrint(1,"\nReading sparse input %s\n"%filename)
+    logger.printL(2,"\nReading sparse boolean input %s\n"%filename)
     #cols = -1
     for row in f:
         a = row.split()
@@ -198,7 +196,7 @@ def readMatlab(filename):
     f = open(filename, 'r')
     rowId = 0
     tmpcolSupps = []
-    verbPrint(1,"\nReading matlab input %s\n"%filename)
+    logger.printL(2,"\nReading dat boolean input %s\n"%filename)
     #cols = -1
     for row in f:
         a = row.split('\t')
@@ -222,7 +220,7 @@ def readMatlab(filename):
     return (tmpcolSupps, rowId)
 
 def writeSparse(filename, tmpcolSupps, rowId):
-    verbPrint(1,"\nWriting sparse output %s\n"%filename)
+    logger.printL(2,"\nWriting sparse output %s\n"%filename)
     e = ['' for i in range(rowId+1)]
     f = open(filename, 'w')
     for i in range(len(tmpcolSupps)):
@@ -235,7 +233,7 @@ def writeSparse(filename, tmpcolSupps, rowId):
     
 def writeCompact(filename, tmpcolSupps, rowId):
     ## DELETE EMPTY COLUMNS
-    verbPrint(1,"\nWriting compact output %s\n"%filename)
+    logger.printL(2,"\nWriting compact output %s\n"%filename)
     e = ['' for i in range(rowId+1)]
     f = open(filename, 'w')
     k = 0
@@ -251,7 +249,7 @@ def writeCompact(filename, tmpcolSupps, rowId):
 
 def writeIbm(filename, tmpcolSupps, rowId):
     ## WARNING COLIDS WILL START FROM 1
-    verbPrint(1,"\nWriting ibm output %s\n"%filename)
+    logger.printL(2,"\nWriting ibm output %s\n"%filename)
     #pdb.set_trace()
     e = ['' for i in range(rowId+1)]
     f = open(filename, 'w')
@@ -266,7 +264,7 @@ def writeIbm(filename, tmpcolSupps, rowId):
     f.close()
 
 def writeDense(filename, tmpcolSupps, rowId):
-    verbPrint(1,"\nWriting dense output %s\n"%filename)
+    logger.printL(2,"\nWriting dense output %s\n"%filename)
 
     e = ['' for i in range(rowId+1)]
     f = open(filename, 'w')
@@ -278,7 +276,7 @@ def writeDense(filename, tmpcolSupps, rowId):
     f.close()
 
 def writeMatlab(filename, tmpcolSupps, rowId): 
-    verbPrint(1,"\nWriting matlab output %s\n"%filename)
+    logger.printL(2,"\nWriting matlab output %s\n"%filename)
 
     f = open(filename, 'w')
     f.write('%i\t%i\t0\n'% (rowId+1, len(tmpcolSupps))) ## To ensure that the sparse matrix will have the right size
@@ -288,7 +286,7 @@ def writeMatlab(filename, tmpcolSupps, rowId):
     f.close()
     
 def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterRow='G'): 
-    verbPrint(1,"\nWriting cart output %s\n"%filename)
+    logger.printL(2,"\nWriting cart output %s\n"%filename)
 
     f = open(filename, 'w')
     d = []
@@ -301,7 +299,7 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
     f.close()
 
     if (classes):
-        verbPrint(1,"\nWriting cart classes %s\n"%filename)
+        logger.printL(2,"\nWriting cart classes %s\n"%filename)
         f = open(filename+".classes", 'w')
         col = random.randint(1,len(tmpcolSupps))
         pos = tmpcolSupps[col-1]
@@ -334,7 +332,7 @@ def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
 
         ## FROM IBM FORMAT -> shell commands
     if format_in == "ibm" and  format_out == "sparse" :
-       verbPrint(1,"\nIbm to sparse  %s -> %s\n"% ( inFile, outFile))
+       logger.printL(2,"\nIbm to sparse  %s -> %s\n"% ( inFile, outFile))
        os.system("cut -f4- -d ' ' "+inFile+" > "+outFile)
        (colSupps, rowId) = readSparse(outFile)
        #pdb.set_trace()

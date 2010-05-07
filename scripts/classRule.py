@@ -177,7 +177,7 @@ class CatItem(Item):
             return self.cmpCol(other)
     
     def __hash__(self):
-        return self.col*self.cat+(self.col-1)*(self.cat+1)
+        return self.col*hash(self.cat)+(self.col-1)*(hash(self.cat)+1)
     
     def disp(self, lenIndex=0, names = None):
         if lenIndex > 0 :

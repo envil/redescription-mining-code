@@ -1,6 +1,8 @@
+from classLog import Log
 from classRedescription import *
 
 class RedescriptionsDraft:
+    logger = Log(0)
     
     def __init__(self, ncapacity=float('Inf')):
         self.capacity = ncapacity
@@ -64,10 +66,16 @@ class RedescriptionsDraft:
                 if self.capacity > self.count() and to_insert < len(redescriptionList):
                     self.draft.extend(redescriptionList[to_insert:])
             self.draft = self.draft[:self.cutIndex(self.capacity)]
+        RedescriptionsDraft.logger.printL(2, self)
 
     def updateCheckOneSideIdentical(self, redescriptionList, max_iden=0):
         insertedIds = {}
-        if len(redescriptionList) > 0 and self.capacity > 0:
+        lenDraftB = len(self.draft)
+        if max_iden == 0:
+            self.draft.extend(redescriptionList)
+            self.draft.sort(reverse=True)
+        
+        elif len(redescriptionList) > 0 and self.capacity > 0:
             redescriptionList.sort(reverse=True)
             
             to_insert = 0
@@ -106,8 +114,17 @@ class RedescriptionsDraft:
                             place = -1
                 compare += 1
                     
-            if self.capacity < self.count():
-                self.draft = self.draft[:self.cutIndex(self.capacity)]
+        if self.capacity < self.count():
+            self.draft = self.draft[:self.cutIndex(self.capacity)]
+
+        if RedescriptionsDraft.logger.verbosity >= 1:
+            disp = "Updated redescription draft checking for identicals (%i -> %i)\n" %(lenDraftB, len(self.draft))
+            for i in range(len(redescriptionList)):
+                if i in insertedIds.keys():
+                    disp += "Redescription (YES):\t"+redescriptionList[i].dispSimple()+"\n"
+                else:
+                    disp += "Redescription (NO):\t"+redescriptionList[i].dispSimple()+"\n"
+            RedescriptionsDraft.logger.printL(1,disp)
         return insertedIds
 
 #     def updateCheckSubsum(self, redescriptionList):          

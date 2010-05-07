@@ -1,18 +1,30 @@
 import re, pickle, sys, pdb
+from classLog import Log
 import utilsStats
 # from scipy.stats import binom, hypergeom
 from classRule import  *
 
 class Redescription:
+    logger = Log(0)
     nbVariables = 3
+    sym_alpha = 0
+    sym_beta = 1
+    sym_gamma = 2
+    sym_delta = 3
     diff_terms = Rule.diff_terms
     diff_cols = Rule.diff_cols
     diff_op = Rule.diff_op
     diff_balance = Rule.diff_balance
     diff_length = Rule.diff_length
     diff_score = diff_length + 1
+    methodpVal = 'Marg'
     
     def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1]):
+        try:
+            self.pVal = eval('self.pVal%s' % (Redescription.methodpVal))
+        except AttributeError:
+              raise Exception('Oups method to compute the p-value does not exist !')
+        
         self.rules = [nruleL, nruleR]
         self.prs = nPrs
         if nsupps == None:
@@ -174,10 +186,13 @@ class Redescription:
                     
             if len(self.rules[side]) >= self.nbVariables :
                 self.lAvailableCols[side] = set()
-                self.vectorABCD = None
             else:
                 self.lAvailableCols[side].remove(term.col())
+            if self.nbAvailableCols() > 0:
                 self.vectorABCD = data.makeVectorABCD(self.sAlpha, self.sBeta, self.sGamma)
+            else:
+                self.vectorABCD = None
+                
 
     def kid(self, data, side= -1, op = None, term= None, suppX=None):
         
@@ -208,10 +223,14 @@ class Redescription:
                     
             if len(kid.rules[side]) >= kid.nbVariables :
                 kid.lAvailableCols[side] = set()
-                kid.vectorABCD = None
             else:
                 kid.lAvailableCols[side].remove(term.col())
+                
+            if kid.nbAvailableCols() > 0:
                 kid.vectorABCD = data.makeVectorABCD(kid.sAlpha, kid.sBeta, kid.sGamma)
+            else:
+                kid.vectorABCD = None
+                
         return kid
             
     def copy(self):
@@ -306,9 +325,6 @@ class Redescription:
         supportStr +="\t"
         for i in sorted(self.suppR()): supportStr += "%i "%i
         return supportStr
-
-    def pVal(self):
-        return self.pValSupp()
     
     def pValSupp(self):
         if self.prs == [-1,-1] or self.N == -1:
@@ -316,7 +332,7 @@ class Redescription:
         else:
             return utilsStats.pValSupp(self.N, self.lenI(), self.prs[0]*self.prs[1]) 
 
-    def pValSupp2(self):
+    def pValMarg(self):
         if self.N == -1:
             return -1
         else:
@@ -336,18 +352,6 @@ class Redescription:
             B = float(self.lenR());
             N = float(self.N);
             return (max(0,(A+B)-N)/min(N, (A+B)), min(A,B)/max(A,B), A*B/(N*(A+B)-A*B))
-
-    def surp(self, data, lenIndex=0, names = [None, None]):
-#         (min_acc, max_acc, exp_acc) = self.minMaxExpAcc()
-#         return 'exp_acc: %f, min_acc: %f, max_acc: %f, d: %f, ratio: %f, pValSupp: %f, pValOver: %f' \
-#                %(exp_acc, min_acc, max_acc, self.acc() -exp_acc, (self.acc()- min_acc)/max(0.001,(max_acc - min_acc)), self.pValSupp(), self.pValOver())
-        
-        #pdb.set_trace()
-        return '\n'+self.rules[0].dispPlus(data, 0, lenIndex, names[0])+'\t'+self.rules[1].dispPlus(data, 1, lenIndex, names[1])+ '\n'+self.dispCaracteristiquesSimple() + \
-               '\nprL1: %f prR1: %f pr1: %f pValSupp1: %f\nprL2: %f prR2: %f pr2: %f pValSupp2: %f \npValOver: %f\n' \
-               %(self.prs[0], self.prs[1],  self.prs[0]* self.prs[1], self.pValSupp(), \
-                 float(self.lenL())/self.N, float(self.lenR())/self.N, float(self.lenL()*self.lenR())/(self.N*self.N), self.pValSupp2(), self.pValOver())
-        
 
     def write(self, output, suppOutput):
         output.write(self.dispSimple()+'\n')
@@ -438,6 +442,12 @@ class Redescription:
         
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
-        else: stringSupp= None
-        return (Redescription.parse(stringRules, stringSupp, data), comment)
+            indComm = stringSupp.find('#')
+            commentSupp = ''
+            if indComm != -1 :
+                commentSupp = stringSupp[indComm:].rstrip()
+                stringSupp = stringSupp[:indComm]
+
+        else: stringSupp= None; commentSupp = ''
+        return (Redescription.parse(stringRules, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
