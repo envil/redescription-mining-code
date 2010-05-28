@@ -17,14 +17,14 @@ def getOpts(conf_filename):
     # Default settings
     setts = { 'verbosity': 1, 'logfile': '-',
               'data_rep': './',
-              'data_l': 'left', 'ext_l':'.bdat',
-              'data_r': 'right', 'ext_r':'.bdat',
+              'data_l': 'left', 'ext_l':'.datbool',
+              'data_r': 'right', 'ext_r':'.datbool',
               'result_rep': './', 'out_base': 'out' , 'ext_rules': '.rul', 'ext_support': '.supp',
               'nb_variables': 4, 'min_length': 2, 'contribution': 3,	                
               'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05, 'method_pval' : 'marg',
               'nb_pairs': 0, 'method_pairs': 'overall', 'div_l': 1, 'div_r': 1, 'min_score': 0.01,
               'draft_capacity': 4, 'draft_output': 1, 'min_improvement': 0.0,
-              'coeff_impacc': 1.0, 'coeff_relimpacc': 0.0, 'coeff_pvrule': 1.0, 'coeff_pvred': 1.0,
+              'coeff_impacc': 1.0, 'coeff_relimpacc': 0.0, 'coeff_pvrule': 0.05, 'coeff_pvred': 0.05,
               'amnesic': False, 'max_side_identical': 2, 'forbid_rules': ''
               }
 

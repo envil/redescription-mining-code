@@ -1192,13 +1192,17 @@ def readMatrix(filename):
     type_ids = set()
     f = open(filename, 'r')
     try:
-        row = f.next()
-        a = row.split()
-        nbRows = int(a[0])
-        nbCols = int(a[1])
         type_all = filename.split('.').pop()
-        
-        if len(type_all) >= 3 and type_all[0:3] == 'dat':
+        nbRows = None
+        nbCols = None
+	
+     	if len(type_all) >= 3 and (type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
+	    row = f.next()
+            a = row.split()
+            nbRows = int(a[0])
+            nbCols = int(a[1])
+
+	if len(type_all) >= 3 and type_all[0:3] == 'dat':
             method_parse =  eval('parseCell%s' % (type_all.capitalize()))
             method_prepare = eval('prepare%s' % (type_all.capitalize()))
             method_finish = eval('finish%s' % (type_all.capitalize()))
@@ -1211,12 +1215,17 @@ def readMatrix(filename):
 
     tmpCols = method_prepare(nbRows, nbCols)
 
-    Data.logger.printL(2,"Reading input data %s (%i x %i %s)"% (filename, nbRows, nbCols, type_all))
-                
+    Data.logger.printL(2,"Reading input data %s (%s)"% (filename, type_all))
     for row in f:
+        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows == None:
+            nbRows = len(row.split())
         method_parse(tmpCols, row.split(), nbRows, nbCols)
 
-    Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, nbCols, type_all))
+    if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols == None:
+        nbCols = len(tmpCols)
+
+
+    Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all))
     (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
     return (cols, type_ids, nbRows, nbCols)
     
@@ -1278,6 +1287,7 @@ def parseCellDatbool(tmpCols, a, nbRows, nbCols):
 def finishDatbool(tmpCols, nbRows, nbCols):
     return ([BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], set([BoolColM.type_id]))
 
+
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
         tmp = []
@@ -1324,6 +1334,7 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
         tmpCols.append(BoolColM( tmp, nbRows , miss))
     else:
         raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+    
                         
 def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
     tmp = set()
