@@ -1,4 +1,5 @@
 import re, pdb
+from classSParts import  SParts
 
 class Op:
     
@@ -282,6 +283,24 @@ class NumItem(Item):
         else:
             return ('%'+lenIndex+'i%s%s ') % (self.col, lb, ub)
 
+#     def disp(self, lenIndex=0, names = None):
+#         if self.lowb > float('-Inf'):
+#             lb = '%i' % (round(self.lowb/10))
+#         else:
+#             lb = '-\infty'
+#         if self.upb < float('Inf'):
+#             ub = '%i' % (round(self.upb/10))
+#         else:
+#             ub = '+\infty'
+#         if lenIndex > 0 :
+#             lenIndex = str(lenIndex)
+#         else:
+#             lenIndex = ''
+#         if type(names) == list  and len(names) > 0:
+#             return ('%'+lenIndex+'s \in [%s,%s] ') % (names[self.col], lb, ub)
+#         else:
+#             return ('%'+lenIndex+'i%s%s ') % (self.col, lb, ub)
+
     def __str__(self):
         return self.disp()
 
@@ -529,7 +548,7 @@ class Rule:
                 cterms.sort()
                 for term in cterms:
                     spp = len(data.supp(side, term));
-                    string += '%s%s (%i,%f)' % (op, term.disp(lenIndex, names), spp, spp/float(data.N) )
+                    string += '%s%s (%i,%f)' % (op, term.disp(lenIndex, names), spp, spp/float(data.nbRows()) )
                 op = op.other()
             string = string[2:]
         return string
@@ -557,67 +576,7 @@ class Rule:
     def __str__(self):
         return self.disp()    
 
-    
-    ## return the support associated to a rule
-    def recompute(self, side, data= None):
 
-        if len(self) == 0 or data==None:
-            supp = set()
-        else:
-            ## initialize support
-            sterms = list(self.buk[0])
-            sterms.sort()
-            supp = data.supp(side, sterms[0])
-
-            if len(self) > 1:
-                op = self.op
-                for buk in self.buk:
-                    for term in buk:
-                        if op.isOr() :
-                            supp |= data.supp(side, term)
-                        else :
-                            supp &= data.supp(side, term)
-                    op = op.other()
-        return supp
-
-    def updateProba(prA, prB, op):
-        if prA == -1:
-            return prB
-        elif op.isOr() :
-            return prA + prB - prA*prB
-        else :
-            return prA*prB
-    updateProba = staticmethod(updateProba)
-          
-    ## return the support associated to a rule
-    def proba(self, side, data= None):
-        #pdb.set_trace()
-        if data==None:
-            pr = -1
-        elif len(self) == 0 :
-            pr = 1
-        else:
-            pr = -1
-            if len(self) > 0:
-                op = self.op
-                for buk in self.buk:
-                    for term in buk:
-                        pr = Rule.updateProba(pr, len(data.supp(side, term))/float(data.N), op)
-                        ##print '%s : pr=%f (%s %f)' % (term, pr, op, len(data.supp(side, term))/float(data.N) )
-                    op = op.other()
-        return pr
-    
-#     def invTerms(self):
-#         invTerms = []
-#         OR = self.opBukIsOR(1)
-#         for part in self.rule[1:] :
-#             spart = list(part)
-#             spart.sort()
-#             for item in spart :
-#                 invItems.append((rule_itemId(item), rule_itemNot(item), OR))    
-#             OR = not OR
-#         return invItems
-    
     def invCols(self):
         invCols = set()
         for buk in self.buk :
@@ -638,4 +597,47 @@ class Rule:
             for term in list(self.buk[buk_nb]) :
                 indexes.append(format_str % {'col': term.col(), 'buk': buk_nb}) 
         return indexes
+    
+    ## return the support associated to a rule
+    def recompute(self, side, data= None):
+
+        if len(self) == 0 or data==None:
+            sm = (set(), set())
+        else:
+            sm = None
+
+            if len(self) > 0:
+                op = self.op
+                for buk in self.buk:
+                    for term in buk:
+                        sm  = SParts.partsSuppMiss(op.isOr(), sm, data.termSuppMiss(side, term))
+                    op = op.other()
+        return sm
+          
+    def proba(self, side, data= None):
+        if data==None:
+            pr = -1
+        elif len(self) == 0 :
+            pr = 1
+        else:
+            pr = -1
+            if len(self) > 0:
+                op = self.op
+                for buk in self.buk:
+                    for term in buk:
+                        pr = SParts.updateProba(pr, len(data.supp(side, term))/float(data.nbRows()), op.isOr())
+                        ##print '%s : pr=%f (%s %f)' % (term, pr, op, len(data.supp(side, term))/float(data.nbRows()) )
+                    op = op.other()
+        return pr
+    
+#     def invTerms(self):
+#         invTerms = []
+#         OR = self.opBukIsOR(1)
+#         for part in self.rule[1:] :
+#             spart = list(part)
+#             spart.sort()
+#             for item in spart :
+#                 invItems.append((rule_itemId(item), rule_itemNot(item), OR))    
+#             OR = not OR
+#         return invItems
     

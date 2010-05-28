@@ -1,266 +1,259 @@
-import math, random, re, utilsIO
+import math, random, re
 from classLog import Log
 from classRule import Op, Item, BoolItem, CatItem, NumItem, Term, Rule 
 from classRedescription import Redescription
+from classSParts import SParts
 from classBestsDraft import BestsDraft
 import pdb
 
-class DataM:
-    type_id = 0
-    
-    def __init__(self, ncolSupps=[], nmaxRowId=-1):
-        self.colSupps = ncolSupps
-        self.nbRows = nmaxRowId+1
+class ColM:
 
-    def __len__(self):
-        return self.nbRows
+    def miss(self):
+        return self.missing
 
-    def nbCols(self):
-        return len(self.colSupps)
-        
-    def supp(self, term): ## the term should be the same type as the data on the considered side
+    def suppTerm(self, term):
         if term.isNeg():
-            return set(range(self.nbRows)) - self.suppItem(term.item)
+            return set(range(self.N)) - self.suppItem(term.item) - self.miss()
         else:
             return self.suppItem(term.item)
 
-    def nonFull(self, minIn, minOut):
-        return [col for col in range(self.nbCols())]
+    def lMiss(self):
+        return len(self.missing)
 
-class BoolDataM(DataM):
+    def lSuppTerm(self, term):
+        if term.isNeg():
+            return self.N - len(self.suppItem(term.item)) - len(self.miss())
+        else:
+            return len(self.suppItem(term.item))
+
+    def nbRows(self):
+        return self.N
+
+class BoolColM(ColM):
     type_id = 1
 
-    def suppItem(self, item):
-        return set(self.colSupps[item.colId()])
-
     def __str__(self):
-        return "%i x %i boolean" % ( len(self), self.nbCols())
+        return "boolean variable (density=%i/%i, %i missing values)" %(self.lTrue(), self.N, len(self.miss()))
 
-    def vect(self, col): ## the term should be the same type as the data on the considered side
-        return self.colSupps[col]
+    def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
+        self.hold = ncolSupp
+        self.N = N
+        self.missing = nmiss
+
+    def supp(self):
+        return self.hold
+    
+    def suppItem(self, item):
+        return set(self.hold)
+
+    def lTrue(self):
+        return len(self.hold)
+
+    def lFalse(self):
+        return self.nbRows() - self.lTrue() - len(self.miss())
 
     def nonFull(self, minIn, minOut):
-        it = []
-        for col in range(len(self.colSupps)):
-            if len(self.colSupps[col]) >= minIn and self.nbRows -len(self.colSupps[col]) >= minOut :
-                it.append(col)
-        return it 
+        if self.lTrue() >= minIn and self.lFalse() >= minOut :
+            return True
+        return False
 
-    def anyAdvanceCol(self, toImprov, side, col):
-        toColors = {True:[0,0], False:[0,0]}
+    def anyAdvance(self, constraints, supports, side, col):
         res = []
-        if side == 1:
-            (lparts) = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-            (toColors[False][0], toColors[True][1], toColors[False][1], toColors[True][0]) = \
-                                 (len(toImprov.parts[1] & self.colSupps[col]), len(toImprov.parts[0] & self.colSupps[col]), len(toImprov.parts[2] & self.colSupps[col]), len(toImprov.parts[3] & self.colSupps[col]))
-        
-        else:
-            (lparts) = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-            (toColors[False][0], toColors[True][1], toColors[False][1], toColors[True][0]) = \
-                                 (len(toImprov.parts[0] & self.colSupps[col]), len(toImprov.parts[1] & self.colSupps[col]), len(toImprov.parts[2] & self.colSupps[col]), len(toImprov.parts[3] & self.colSupps[col]))
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(self.missing)
+        lin = supports.lpartsInterX(self.hold)
 
-        for op in toImprov.ruleTypesOp():
-            for neg in toImprov.ruleTypesNP(op):
-                b = toImprov.compAdv(Term(neg, BoolItem(col)), op, neg, toColors[op], lparts)
+        for op in constraints.ruleTypesOp():
+            for neg in constraints.ruleTypesNP(op):
+                b = constraints.compAdv(Term(neg, BoolItem(col)), side, op, neg, lparts, lmiss, lin)
                 if b != None:
-                    b.update({'side': side, 'op': Op(op)})
                     res.append(b)
         return res
     
-class CatDataM(DataM):
+class CatColM(ColM):
     type_id = 2
 
-    def __init__(self, ncolSupps=[], nmaxRowId=-1):
-        self.colSupps = ncolSupps
-        self.nbRows = nmaxRowId+1
-        self.cards = []
-        for i in range(len(self.colSupps)):
-            tmp = {}
-            for cat in self.colSupps[i].keys():
-                c = len(self.colSupps[i][cat])
-                if tmp.has_key(c):
-                    tmp[c].add(cat)
-                else:
-                    tmp[c] = set([cat])
-            self.cards.append(tmp)
+    def __str__(self):
+        return "categorical variable (%i categories, %i rows, %i missing values)" %(len(self.cats()), self.nbRows(), len(self.miss()))
+
+    def __init__(self, ncolSupp=[], N=-1, nmiss= set()):
+        self.sCats = ncolSupp
+        self.N = N
+        self.missing = nmiss
+        self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
             
-            
-    def suppItem(self, item):
-        if item.cat in self.colSupps[item.col].keys():
-            return self.colSupps[item.col][item.cat]
+    def cats(self):
+        return self.sCats.keys()
+
+    def suppCat(self, cat):
+        if cat in self.sCats.keys():
+            return self.sCats[cat]
         else:
             return set()
-
-    def __str__(self):
-        return "%i x %i categorical" % ( len(self), self.nbCols())
-
-#    def vect(self, col): ## the term should be the same type as the data on the considered side
-#        return self.colSupps[col]
+            
+    def suppItem(self, item):
+        return self.suppCat(item.cat)
 
     def nonFull(self, minIn, minOut):
-        it = []
-        for col in range(len(self.colSupps)):
-            if max(self.cards[col].keys()) >= minIn and self.nbRows - min(self.cards[col].keys()) >= minOut :
-                it.append(col)
-        return it 
+        if self.cards[-1][1] >= minIn and self.nbRows() - self.cards[0][1] >= minOut :
+            return True
+        return False
 
-    def fit(self, itemX, suppX, suppXb, col, toImprov, side):
-        (scores, termsA, termsB) = ([], [], [])    
-        #if side == 0:
-        parts = (set(), suppX, set(), suppXb)
-        #else:
-        #    parts = (suppX, set(), set(), suppXb)
-        (cand_A, cand_Ab) = CatDataM.findCover(self.colSupps[col], parts, side, col, toImprov, True )
-
-        for cand in cand_A:
-            cand.update({'supp': len(suppX)})
-            scores.append(toImprov.score(cand))
-            termsA.append(Term(False, itemX))
-            termsB.append(cand['term'])
-
-        for cand in cand_Ab:
-            cand.update({'supp': len(suppXb)})
-            scores.append(toImprov.score(cand))
-            termsA.append(Term(True, itemX))
-            termsB.append(cand['term'])
-        return (scores, termsA, termsB)
-
-    def anyAdvanceCol(self, toImprov, side, col):
-        return CatDataM.findCover(self.colSupps[col], (toImprov.parts[side], toImprov.parts[1-side], toImprov.parts[2], toImprov.parts[3]), side, col, toImprov, False )
-
-    def findCover(catsSupp, parts, side, col, toImprov, negB):
-        res = []
-        doNegB = negB  and toImprov.ruleTypesHasNeg()
-        resNegB = []
-        lparts = (len(parts[0]), len(parts[1]), len(parts[2]), len(parts[3]))
-        colop_ids = ((0,2),(3,1))
-        for op in toImprov.ruleTypesOp():
-            if lparts[colop_ids[op][0]] + lparts[colop_ids[op][1]] >= toImprov.minItmC():
-                bests = {False: None, True: None}
-                if doNegB :
-                    bestsNegB = {False: None, True: None}
-                
-                for cat in catsSupp.keys(): ### TODO: check cardinalities
-                    toColors = (len(catsSupp[cat] & parts[colop_ids[op][0]]),\
-                                len(catsSupp[cat] & parts[colop_ids[op][1]])) 
-
-                    for neg in toImprov.ruleTypesNP(op):
-                        tmp_comp = toImprov.compAdv(cat, op, neg, toColors, lparts)
-                        if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
-                            bests[neg] = tmp_comp
-                        if doNegB :
-                            tmp_comp = toImprov.compAdv(cat, op, neg, [toColors[1],toColors[0]] , (lparts[2], lparts[3], lparts[0], lparts[1]))
-                            if BestsDraft.comparePair(tmp_comp, bestsNegB[neg]) > 0:
-                                bestsNegB[neg] = tmp_comp
-                        
+    def fit(self, constraints, supports, side, col, itemX):
+        (scores, termsFix, termsExt) = ([], [], [])   
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(self.miss())
         
-                for neg in toImprov.ruleTypesNP(op):
-                    if bests[neg] != None  :
-                        t = bests[neg]['term']
-                        bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, CatItem(col, t))})
-                        res.append(bests[neg])
-                    if doNegB and bestsNegB[neg] != None  :
-                        t = bestsNegB[neg]['term']
-                        bestsNegB[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, CatItem(col, t))})
-                        resNegB.append(bestsNegB[neg])
+        (cand_Fix, cand_FixB) = CatColM.findCoverFullSearch(True, constraints, lparts, lmiss, self.sCats, supports, side, col, True )
+
+        for cand in cand_Fix:
+            scores.append(BestsDraft.score(cand, self.nbRows()))
+            termsFix.append(Term(False, itemX))
+            termsExt.append(cand['term'])
+
+        for cand in cand_FixB:
+            scores.append(BestsDraft.score(cand, self.nbRows()))
+            termsFix.append(Term(True, itemX))
+            termsExt.append(cand['term'])
+        return (scores, termsFix, termsExt)
+
+    
+    def anyAdvance(self, constraints, supports, side, col):
+        res = []
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(self.miss())
+
+        for op in constraints.ruleTypesOp():
+            if constraints.inSuppBounds(side, op, lparts): ### DOABLE 
+                res.extend(CatColM.findCoverFullSearch(op, constraints, lparts, lmiss, self.sCats, supports, side, col))
+        return res
+
+    def findCoverFullSearch(op, constraints, lparts, lmiss, scats, supports, side, col, negB=False):
+        res = []
+        doNegB = negB  and (True in constraints.ruleTypesNP(op))
+        resNegB = [] 
+        bests = [None, None]
+        bestsNegB = [None, None]
+        
+        for (cat, supp) in scats.iteritems():
+            lin = supports.lpartsInterX(supp)
+            for neg in constraints.ruleTypesNP(op):
+                tmp_comp = constraints.compAdv(cat, side, op, neg, lparts, lmiss, lin)
+                if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
+                    bests[neg] = tmp_comp
+
+                if doNegB :
+                    tmp_comp = constraints.compAdv(cat, side, op, neg, SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
+                    if BestsDraft.comparePair(tmp_comp, bestsNegB[neg]) > 0:
+                        bestsNegB[neg] = tmp_comp
+
+        for neg in constraints.ruleTypesNP(op):
+            if bests[neg] != None  :
+                t = bests[neg]['term']
+                bests[neg].update({'term': Term(neg, CatItem(col, t))})
+                res.append(bests[neg])
+            if doNegB and bestsNegB[neg] != None  :
+                t = bestsNegB[neg]['term']
+                bestsNegB[neg].update({'term': Term(neg, CatItem(col, t))})
+                resNegB.append(bestsNegB[neg])
         if negB:
             return (res, resNegB)
         else:
             return res
-    findCover = staticmethod(findCover)
+    findCoverFullSearch = staticmethod(findCoverFullSearch)
     
-class NumDataM(DataM):
+class NumColM(ColM):
     type_id = 3
     maxSeg = 100
 
-    ## Using suitable reading method returns suitable colSupps :)
-#     def __init__(self, ncolSupps=[], nmaxRowId=-1):
-#         ## self.colSupps[col] = [list of (value, ids] ordered by value
-#         self.colSupps = [ sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0])  for col in range(len(ncolSupps))]
-#         #self.colSupps = [ zip(*sorted( [(ncolSupps[col][i],i) for i in range(len(ncolSupps[col]))], key=lambda x: x[0]) for col in range(len(ncolSupps)))]
-#         self.nbRows = nmaxRowId+1
+    def __str__(self):
+        return "numerical variable (%i values not in mode, %i rows, %i missing values)" %(self.lenNonMode(), self.nbRows(), len(self.miss()))
 
-    def __init__(self, ncolSupps=[], nmaxRowId=-1):
-        self.colSupps = ncolSupps
-        self.nbRows = nmaxRowId+1
-        self.modeSupps = {}
-        for i in range(len(self.colSupps)):
-            if len(self.colSupps[i]) != self.nbRows:
-                tmp = set([r[1] for r in self.colSupps[i] ])
-                if -1 in tmp:
-                    tmp.remove(-1)
-                if 2*len(tmp) > self.nbRows:
-                    self.modeSupps[i] = (-1, set(range(self.nbRows)) - tmp)
-                else:
-                    self.modeSupps[i] = (1, tmp)
+    def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
+        self.sVals = ncolSupp
+        self.N = N
+        self.missing = nmiss
+        self.mode = {}
+        self.buk = None
+        
+        if len(self.sVals)+len(self.missing) != self.N :
+            tmp = set([r[1] for r in self.sVals])
+            if -1 in tmp:
+                tmp.remove(-1)
+            if 2*len(tmp) > self.N:
+                self.mode = (-1, set(range(self.N)) - tmp - self.missing)
             else:
-                self.modeSupps[i] = (0, None)
+                self.mode = (1, tmp)
+        else:
+            self.mode = (0, None)
+    
+    def interNonMode(self, suppX):
+        if self.mode[0] == -1:
+            return suppX - self.mode[1] - self.miss()
+        elif self.mode[0] == 1:
+            return suppX & self.mode[1]
+        else:
+            return suppX - self.miss()  
 
     
-    def interNonMode(self, col, suppX):
-        if self.modeSupps[col][0] == -1:
-            return suppX - self.modeSupps[col][1]
-        elif self.modeSupps[col][0] == 1:
-            return suppX & self.modeSupps[col][1]
-        else:
-            return suppX   
-    
-    def interMode(self, col, suppX):
-        if self.modeSupps[col][0] == 1:
-            return suppX - self.modeSupps[col][1]
-        elif self.modeSupps[col][0] == -1:
-            return suppX & self.modeSupps[col][1]
+    def interMode(self, suppX):
+        if self.mode[0] == 1:
+            return suppX - self.mode[1] - self.miss()
+        elif self.mode[0] == -1:
+            return suppX & self.mode[1]
         else:
             return set()    
         
-    def lenNonMode(self, col):
-        if self.modeSupps[col][0] == -1:
-            return self.nbRows - len(self.modeSupps[col][1])
-        elif self.modeSupps[col][0] == 1:
-            return len(self.modeSupps[col][1])
+    def lenNonMode(self):
+        if self.mode[0] == -1:
+            return self.nbRows() - len(self.mode[1]) - len(self.miss())
+        elif self.mode[0] == 1:
+            return len(self.mode[1])
         else:
-            return self.nbRows
+            return self.nbRows() - len(self.miss())
         
-    def lenMode(self, col):
-        if self.modeSupps[col][0] == 1:
-            return self.nbRows - len(self.modeSupps[col][1])
-        elif self.modeSupps[col][0] == -1:
-            return len(self.modeSupps[col][1])
+    def lenMode(self):
+        if self.mode[0] == 1:
+            return self.nbRows() - len(self.mode[1]) - len(self.miss())
+        elif self.mode[0] == -1:
+            return len(self.mode[1])
         else:
             return 0
         
-    def nonModeSupp(self, col):
-        if self.modeSupps[col][0] == -1:
-            return set(range(self.nbRows)) - self.modeSupps[col][1]
-        elif self.modeSupps[col][0] == 1:
-            return self.modeSupps[col][1]
+    def nonModeSupp(self):
+        if self.mode[0] == -1:
+            return set(range(self.nbRows())) - self.mode[1] - self.miss()
+        elif self.mode[0] == 1:
+            return self.mode[1]
         else:
-            return set(range(self.nbRows))
+            return set(range(self.nbRows()))-self.miss()
 
-    def modeSupp(self, col):
-        if self.modeSupps[col][0] == 1:
-            return set(range(self.nbRows)) - self.modeSupps[col][1]
-        elif self.modeSupps[col][0] == -1:
-            return self.modeSupps[col][1]
+    def modeSupp(self):
+        if self.mode[0] == 1:
+            return set(range(self.nbRows())) - self.mode[1] -self.miss()
+        elif self.mode[0] == -1:
+            return self.mode[1]
         else:
             return set()
 
     def nonFull(self, minIn, minOut):
-        it = []
-        for col in range(len(self.colSupps)):
-            if self.lenNonMode(col) >= minOut or self.lenNonMode(col) >= minIn :
-                it.append(col)
-        return it
+        if self.lenNonMode() >= minOut or self.lenNonMode() >= minIn :
+            return True
+        return False
 
+    def buckets(self):
+        if self.buk == None:
+            self.buk = self.makeBuckets()
+        return self.buk
 
-    def makeBuckets(self, col):
-        if self.colSupps[col][0][1] != -1 :
-            bucketsSupp = [set(self.colSupps[col][0][1])]
+    def makeBuckets(self):
+        if self.sVals[0][1] != -1 :
+            bucketsSupp = [set([self.sVals[0][1]])]
         else:
             bucketsSupp = [set()]
-        bucketsVal = [self.colSupps[col][0][0]]
+        bucketsVal = [self.sVals[0][0]]
         bukMode = None
-        for (val , row) in self.colSupps[col]:
+        for (val , row) in self.sVals:
             if row == -1: 
                 if val != bucketsVal[-1]: # should be ...
                     bucketsVal.append(val)
@@ -274,263 +267,150 @@ class NumDataM(DataM):
                     bucketsSupp.append(set([row]))
         return (bucketsSupp, bucketsVal, bukMode)
 
-
     def suppItem(self, item):
-        ## DO NOT USE INDEX IF THE BOUND ARE NOT ONE OF THE VALUES
-        supp = set()
-        for (val , row) in self.colSupps[item.colId()]:
+        suppIt = set()
+        for (val , row) in self.sVals:
             if val > item.upb :
-                return supp
+                return suppIt
             elif val >= item.lowb:
                 if row == -1:
-                    supp.update(self.modeSupp(item.colId()))
+                    suppIt.update(self.modeSupp())
                 else:
-                    supp.add(row)
-        return supp
+                    suppIt.add(row)
+        return suppIt
 
-    def vect(self, col): ## the term should be the same type as the data on the considered side
-        return self.nonModeSupp(col)
-    
-    def __str__(self):
-        return "%i x %i numerical" % ( len(self), self.nbCols())
+    def fit(self, constraints, supports, side, col, itemX):
+        (scores, termsFix, termsExt) = ([], [], [])    
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(self.miss())
 
-    def fit(self, itemX, suppX, vector_abcd, col, toImprov, side):
-        (scores, termsA, termsB) = ([], [], [])    
+        if constraints.inSuppBounds(side, True, lparts): ### DOABLE
+            segments = self.makeSegments(side, supports, constraints.ruleTypesOp())
+            res = NumColM.findCover(segments, lparts, lmiss, side, col, constraints)
+ 
+            for cand in res:
+                scores.append(BestsDraft.score(cand, self.nbRows()))
+                termsFix.append(Term(False, itemX))
+                termsExt.append(cand['term'])
 
-        if side == 0:
-            lparts = (0, len(suppX), 0, len(self) - len(suppX))
-            lpartsN = (lparts[2], lparts[3], lparts[0], lparts[1])
-            lenIntX = len(self.interMode(col, suppX))
-            linPartsMode = (0, lenIntX, 0, self.lenMode(col) - lenIntX)
-        else:
-            lparts = (len(suppX), 0, 0, len(self) - len(suppX))
-            lpartsN = (lparts[3], lparts[2], lparts[1], lparts[0])
-            lenIntX = len(self.interMode(col, suppX))
-            linPartsMode = (lenIntX, 0, 0, self.lenMode(col) - lenIntX)
-        segments = None
+        nlparts = SParts.negateParts(1-side, lparts)
+        nlmiss = SParts.negateParts(1-side, lmiss)
+
+        if len(constraints.negTypesInit()) == 4 and constraints.inSuppBounds(side, True, lparts): ### DOABLE
+            nsegments = self.makeSegments(side, supports.negate(1-side), constraints.ruleTypesOp())
+            res = NumColM.findCover(nsegments, nlparts, nlmiss, side, col, constraints)
             
-        if lparts[3] >= toImprov.minItmSuppOut() and (lparts[1-side] - linPartsMode[1-side]) >= toImprov.minItmSuppIn() :
-            segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
-            cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
+            for cand in res:            
+                scores.append(BestsDraft.score(cand, self.nbRows()))
+                termsFix.append(Term(True, itemX))
+                termsExt.append(cand['term'])
 
-            for cand in cand_A:
-                cand.update({'supp': len(suppX)})
-                scores.append(toImprov.score(cand))
-                termsA.append(Term(False, itemX))
-                termsB.append(cand['term'])
+        return (scores, termsFix, termsExt)
 
-        if toImprov.ruleTypesHasNeg() and lparts[1-side] >= toImprov.minItmSuppOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minItmSuppIn() :
-            if segments == None:
-                segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
-            segments = NumDataM.negateSegments(segments, False, True)
-            cand_Ab = NumDataM.findCover(segments, lpartsN, side, col, toImprov)
-
-            for cand in cand_Ab:            
-                cand.update({'supp': len(self) - len(suppX)})
-                scores.append(toImprov.score(cand))
-                termsA.append(Term(True, itemX))
-                termsB.append(cand['term'])
-
-        return (scores, termsA, termsB)
-
-    def anyAdvanceCol(self, toImprov, side, col):
+    def anyAdvance(self, constraints, supports, side, col):
         res = []
-#         if ( len(self.interNonMode(col,toImprov.parts[2])) >= toImprov.minItmSuppIn() \
-#              or len(self.interNonMode(col,toImprov.parts[1-side])) >= toImprov.minItmC() ):
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(self.miss())
 
-#             if (( len(toImprov.parts[2])- len(self.interMode(col, toImprov.parts[2]))) + \
-#                 (len(toImprov.parts[1-side]) - len(self.interMode(col, toImprov.parts[1-side])))) < toImprov.minItmSuppIn() :
-#                 pdb.set_trace()
-
-#             linPartsMode = (len(self.interMode(col, toImprov.parts[0])), \
-#                             len(self.interMode(col, toImprov.parts[1])), \
-#                             len(self.interMode(col, toImprov.parts[2])), \
-#                             len(self.interMode(col, toImprov.parts[3])))
-            
-#             if side==1:
-#                 lparts = (len(toImprov.parts[1]), len(toImprov.parts[0]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-#             else:
-#                 lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-
-        linPartsMode = (len(self.interMode(col, toImprov.parts[0])), \
-                        len(self.interMode(col, toImprov.parts[1])), \
-                        len(self.interMode(col, toImprov.parts[2])), \
-                        len(self.interMode(col, toImprov.parts[3])))
-        lparts = (len(toImprov.parts[0]), len(toImprov.parts[1]), len(toImprov.parts[2]), len(toImprov.parts[3]))
-
-
-        if lparts[2] - linPartsMode[2] >= toImprov.minItmSuppIn() or lparts[1-side] - linPartsMode[1-side] >= toImprov.minItmC(): 
-            segments = NumDataM.makeSegments(toImprov.parts[4], side, self.colSupps[col], linPartsMode)
-            res = NumDataM.findCover(segments, (lparts[side], lparts[1-side], lparts[2], lparts[3]), side, col, toImprov)
+        if constraints.inSuppBounds(side, True, lparts) or constraints.inSuppBounds(side, False, lparts):  ### DOABLE
+            segments = self.makeSegments(side, supports, constraints.ruleTypesOp())
+            res = NumColM.findCover(segments, lparts, lmiss, side, col, constraints)
         return res
     
-    def makeSegments(vector_abcd, side, vectCol, linPartsMode):
-        ## vector_abcd alpha->0 gamma->1 delta->2 beta->3
-        segments = [[],[]]
-        if side==0:
-            toColorsMode = [[linPartsMode[0], linPartsMode[2]], [linPartsMode[3], linPartsMode[1]]]
-            OR = [Data.sym_delta, Data.sym_beta]
-            BLUE = [Data.sym_gamma, Data.sym_beta]
-        else:
-            toColorsMode = [[linPartsMode[1], linPartsMode[2]], [linPartsMode[3], linPartsMode[0]]]
-            OR = [Data.sym_delta, Data.sym_alpha]
-            BLUE = [Data.sym_gamma, Data.sym_alpha]
+    def makeSegments(self, side, supports, ops =[ False, True]):
+        supports.makeVectorABCD()
+        segments = [[[self.sVals[0][0], None, SParts.makeLParts()]], [[self.sVals[0][0], None, SParts.makeLParts()]]]
+        current_valseg = [[self.sVals[0][0], self.sVals[0][0], SParts.makeLParts()], [self.sVals[0][0], self.sVals[0][0], SParts.makeLParts()]]
+        for (val, row) in self.sVals+[(None, None)]:
+            tmp_lparts = supports.lpartsRow(row, self)
 
-        ## segment: [count_red, count_blue, start_val, end_val]
-        current_segments = [[0,0, None, None],[0,0, None, None]] # [AND [RED, BLUE] , OR [RED, BLUE]]
-        
-        ## buff: [count_red_current_val, count_blue_current_val, highest_val]
-        buff_count = [[0,0, None],[0,0, None]]
-        for (val, row) in vectCol:
-            if row == -1:
-                
-                for op in [False, True]:
-                    if toColorsMode[op][0]+toColorsMode[op][1] > 0:
-                        if current_segments[op][0]*current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
-                            segments[op].append(current_segments[op])
-
-                        buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
-                        segments[op].append(buff_count[op])
-                        buff_count[op] = [toColorsMode[op][0], toColorsMode[op][1], val]
-                        current_segments[op] = [0, 0, val, val]
-                        
-            else :
-                op = vector_abcd[row] in OR
-                color = vector_abcd[row] in BLUE
-
-                if val == buff_count[op][-1]:
-                    buff_count[op][color] += 1
-
-                ## first loop will go throught this conditional and append the initial segment to the list, removed at the end
-                elif buff_count[op][color] == 0:  ## AND val > current_segments[op][-1]
-                    ## Other color encontered, no mixing: push counts, save and start new 
-                    current_segments[op][buff_count[op][1]>0] += buff_count[op][buff_count[op][1]>0]  # push counts from buffer
-                    current_segments[op][-1] = buff_count[op][-1]                                     # push upper bound from buffer 
-                    segments[op].append(current_segments[op])                                         # append to segments
-                    buff_count[op] = [1*(not color), 1*color, val]                                    # create new segment
-                    current_segments[op] = [0, 0, val, val]                                           # re-initialize buffer
-
-                elif buff_count[op][not color] == 0 : ## AND val > current_segments[op][-1]
-                    ## Same color, push counts
-                    current_segments[op][color] += buff_count[op][color]
-                    current_segments[op][-1] = buff_count[op][-1]
-                    buff_count[op][color] = 1
-                    buff_count[op][-1] = val
-
-                else: ## buff_count[op][0]*buff_count[op][1] > 0:  ## AND val > current_segments[op][-1]
-                    ## Mixing in the previous value: save current segment and previous value separately and start new
-                    if current_segments[op][0]+current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
-                        segments[op].append(current_segments[op])
-
-                    buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
-                    segments[op].append(buff_count[op])
-                    buff_count[op] = [1*(not color), 1*color, val]
-                    current_segments[op] = [0, 0, val, val]
-
-        for op in [False, True]:
-            if buff_count[op][0]*buff_count[op][1] > 0:
-                ## Mixing in the last value: save current segment and last value separately
-                if current_segments[op][0]+current_segments[op][1] > 0: ## if current segment is non empty (not two successive mixing), save
-                    segments[op].append(current_segments[op])
-                    
-                buff_count[op].append(buff_count[op][-1]) ## transform the buff in segment by setting end_val == start_val <- highest_val
-                segments[op].append(buff_count[op])                
-            else:
-                ## no mixing: push counts and save
-                current_segments[op][buff_count[op][1]>0] += buff_count[op][buff_count[op][1]>0] # push counts from buffer
-                current_segments[op][-1] = buff_count[op][-1]                                    # push upper bound from buffer
-                segments[op].append(current_segments[op])                                        # append to segments
-                
-            ## pop the first segment: it is empty
-            segments[op].pop(0)
-
-        #print 'nb_seg: %ix%i' % (len(segments[0]), len(segments[1]))
+            for op in ops:
+                if val != None and val == current_valseg[op][0]: 
+                    current_valseg[op][2] = SParts.addition(current_valseg[op][2], tmp_lparts)
+                else:
+                    tmp_pushadd = SParts.addition(segments[op][-1][2], current_valseg[op][2]) 
+                    if segments[op][-1][1]==None or SParts.sumPartsId(side, SParts.IDS_varnum[op], tmp_pushadd)*SParts.sumPartsId(side, SParts.IDS_varden[op], tmp_pushadd) == 0:
+                        segments[op][-1][2] = tmp_pushadd
+                        segments[op][-1][1] = current_valseg[op][1]
+                    else:
+                        segments[op].append(current_valseg[op])
+                    current_valseg[op] = [val, val, SParts.addition(SParts.makeLParts(),tmp_lparts)]
         return segments
-    makeSegments = staticmethod(makeSegments)
             
-    def negateSegments(segments, negateL, negateR):
-        if negateL:
-            segments = [segments[1], segments[0]]
-        if negateR:
-            for op in [0,1]:
-                for seg in range(len(segments[op])):
-                    segments[op][seg]=(segments[op][seg][1], segments[op][seg][0], segments[op][seg][2], segments[op][seg][3])
-        return segments
-
-    negateSegments = staticmethod(negateSegments)
-
-    def findCover(segments, lparts, side, col, toImprov):
+    def findCover(segments, lparts, lmiss, side, col, constraints):
         res = []
-        for op in toImprov.ruleTypesOp():
-            if len(segments[op]) < NumDataM.maxSeg:
+        for op in constraints.ruleTypesOp():
+            if len(segments[op]) < NumColM.maxSeg:
                 Data.logger.printL(100,'---Doing the full search---')
-                res.extend(NumDataM.findCoverFullSearch(op, segments, lparts, side, col, toImprov))
+                res.extend(NumColM.findCoverFullSearch(op, segments, lparts, lmiss, side, col, constraints))
             else:
                 Data.logger.printL(100,'---Doing the fast search---')
-                if toImprov.ruleTypesHasPos(op):
-                    res.extend(NumDataM.findPositiveCover(op, segments, lparts, side, col, toImprov))
-                if toImprov.ruleTypesHasNeg(op):
-                    res.extend(NumDataM.findNegativeCover(op, segments, lparts, side, col, toImprov))
+                if (False in constraints.ruleTypesNP(op)):
+                    res.extend(NumColM.findPositiveCover(op, segments, lparts, lmiss, side, col, constraints))
+                if (True in constraints.ruleTypesNP(op)):
+                    res.extend(NumColM.findNegativeCover(op, segments, lparts, lmiss, side, col, constraints))
         return res
     findCover = staticmethod(findCover)
 
-
-    def findCoverFullSearch(op, segments, lparts, side, col, toImprov):
+    def findCoverFullSearch(op, segments, lparts, lmiss, side, col, constraints):
         res = []
         bests = {False: None, True: None}
 
         for seg_s in range(len(segments[op])):
-            toColors = [0,0]
+            lin = SParts.makeLParts()
+
             for seg_e in range(seg_s,len(segments[op])):
-                toColors[0] += segments[op][seg_e][0]
-                toColors[1] += segments[op][seg_e][1]
-                for neg in toImprov.ruleTypesNP(op):
-                    tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
+                lin = SParts.addition(lin, segments[op][seg_e][2])
+                for neg in constraints.ruleTypesNP(op):
+                    tmp_comp = constraints.compAdv((seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
                     if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                         bests[neg] = tmp_comp
+        for neg in constraints.ruleTypesNP(op):
+            
+            if bests[neg] != None:
+                (n, t) = NumColM.makeTermSeg(neg, segments[op], col, bests[neg]['term'])
+                if t != None:
+                    bests[neg].update({'term': t, 'neg':n })
+                    res.append(bests[neg])
 
-        for neg in toImprov.ruleTypesNP(op):
-            if bests[neg] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
-                if bests[neg]['term'][0] == 0:
-                    lowb = float('-Inf')
-                else:
-                    lowb = segments[op][bests[neg]['term'][0]][-2]
-                if bests[neg]['term'][1] == len(segments[op])-1 :
-                    upb = float('Inf')
-                else:
-                    upb = segments[op][bests[neg]['term'][1]][-1]
-                bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, NumItem(col, lowb, upb))})
-                res.append(bests[neg])
+#             if bests[neg] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
+#                 if bests[neg]['term'][0] == 0:
+#                     lowb = float('-Inf')
+#                 else:
+#                     lowb = segments[op][bests[neg]['term'][0]][0]
+#                 if bests[neg]['term'][1] == len(segments[op])-1 :
+#                     upb = float('Inf')
+#                 else:
+#                     upb = segments[op][bests[neg]['term'][1]][1]
+#                 bests[neg].update({'term': Term(neg, NumItem(col, lowb, upb))})
+#                 res.append(bests[neg])
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 
-    def findNegativeCover(op, segments, lparts, side, col, toImprov):
+    def findNegativeCover(op, segments, lparts, lmiss, side, col, constraints):
         res = []
-        #print 'INCR SEARCH:'
-        toColors_buff_f = [0,0]
-        bests_f = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+        lin_f = SParts.makeLParts()
+        bests_f = [(constraints.compAcc(side, op, False, lparts, lmiss, lin_f), 0, lin_f)] 
         best_track_f = [0]
-        toColors_buff_b = [0,0]
-        bests_b = [(toImprov.compAcc(op, False, [0,0], lparts), 0, (0,0))] 
+        lin_b = SParts.makeLParts()
+        bests_b = [(constraints.compAcc(side, op, False, lparts, lmiss, lin_b), 0, lin_f)]
         best_track_b = [0]
 
         for  i in range(len(segments[op])):
             # FORWARD
-            toColors_buff_f = [toColors_buff_f[0] + segments[op][i][0], toColors_buff_f[1] + segments[op][i][1]]
-            if  toColors_buff_f[0] == 0 or toColors_buff_f[1]/toColors_buff_f[0] > bests_f[-1][0]:
-                toColors_buff_f[0] += bests_f[-1][-1][0]
-                toColors_buff_f[1] += bests_f[-1][-1][1]
-                bests_f.append((toImprov.compAcc(op, False, toColors_buff_f, lparts), i+1, toColors_buff_f))
-                toColors_buff_f = [0,0]
+            lin_f = SParts.addition(lin_f, segments[op][i][2])
+            if  SParts.compRatioVar(side, op, lin_f) > bests_f[-1][0]:
+                lin_f = SParts.addition(lin_f, bests_f[-1][2])
+                bests_f.append((constraints.compAcc(side, op, False, lparts, lmiss, lin_f), i+1, lin_f))
+                lin_f = SParts.makeLParts()
             best_track_f.append(len(bests_f)-1)
 
-            # FORWARD
-            toColors_buff_b = [toColors_buff_b[0] + segments[op][-(i+1)][0], toColors_buff_b[1] + segments[op][-(i+1)][1]]
-            if  toColors_buff_b[0] == 0 or toColors_buff_b[1]/toColors_buff_b[0] > bests_b[-1][0]:
-                toColors_buff_b[0] += bests_b[-1][-1][0]
-                toColors_buff_b[1] += bests_b[-1][-1][1]
-                bests_b.append((toImprov.compAcc(op, False, toColors_buff_b, lparts), i+1, toColors_buff_b))
-                toColors_buff_b = [0,0]
+            # BACKWARD
+            lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
+            if  SParts.compRatioVar(side, op, lin_b) > bests_b[-1][0]:
+                lin_b = SParts.addition(lin_b, bests_b[-1][2])
+                bests_b.append((SParts.compAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
+                lin_b = SParts.makeLParts()
             best_track_b.append(len(bests_b)-1)
 
         best_t = None
@@ -540,10 +420,10 @@ class NumDataM(DataM):
                 f = bests_f[0]
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
-            if f[-1][0] == 0 or float(f[-1][1])/f[-1][0] > b[0]:
-                tmp_comp_tb = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+            if SParts.compRatioVar(side, op, f[2]) > b[0]:
+                tmp_comp_tb = constraints.compAdv((f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                tmp_comp_tb = toImprov.compAdv((0, len(segments[op]) - (b[1]+1)), op, False, b[-1], lparts)
+                tmp_comp_tb = constraints.compAdv((0, len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, b[2])
             best_tb_l.append(tmp_comp_tb)
             if BestsDraft.comparePair(tmp_comp_tb, best_t) > 0:
                 best_t = tmp_comp_tb
@@ -554,63 +434,66 @@ class NumDataM(DataM):
                 b = bests_b[0]
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
-            if b[-1][0] == 0 or float(b[-1][1])/b[-1][0] > f[0]:
-                tmp_comp_tf = toImprov.compAdv((f[1], len(segments[op]) - (b[1]+1)), op, False, [f[-1][0]+b[-1][0],f[-1][1]+b[-1][1]], lparts)
+            if SParts.compRatioVar(side, op, b[2]) > f[0]: 
+                tmp_comp_tf = constraints.compAdv((f[1], len(segments[op]) - (b[1]+1)), side,  op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                tmp_comp_tf = toImprov.compAdv((f[1], len(segments)-1), op, False, f[-1], lparts)
+                tmp_comp_tf = constraints.compAdv((f[1], len(segments)-1), side, op, False, lparts, lmiss, f[2])
             best_tf_l.append(tmp_comp_tf)
             if BestsDraft.comparePair(tmp_comp_tf, best_t) > 0:
                 best_t = tmp_comp_tf
 
-        if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
-            #print '%i <-> %i: %i/%i=%f %s' \
-            #        % (best_t['term'][0], best_t['term'][1], best_t['toBlue'], best_t['toRed'], best_t['acc'], lparts)
-            if best_t['term'][0] == 0:
-                lowb = float('-Inf')
-            else:
-                lowb = segments[op][best_t['term'][0]][-2]
-            if best_t['term'][1] == len(segments[op])-1 :
-                upb = float('Inf')
-            else:
-                upb = segments[op][best_t['term'][1]][-1]
-            best_t.update({'side': side, 'op': Op(op), 'term': Term(True, NumItem(col, lowb, upb))})
-            res.append(best_t)
 
+        if best_t != None:
+            (n, t) = NumColM.makeTermSeg(True, segments[op], col, best_t['term'])
+            if t != None:
+                best_t.update({'term': t, 'neg':n })
+                res.append(best_t)
+
+#         if best_t != None and best_t['term'][0] <= best_t['term'][1] and ((best_t['term'][0] != 0) or (best_t['term'][1] != len(segments[op])-1)) :
+#             if best_t['term'][0] == 0:
+#                 lowb = float('-Inf')
+#             else:
+#                 lowb = segments[op][best_t['term'][0]][0]
+#             if best_t['term'][1] == len(segments[op])-1 :
+#                 upb = float('Inf')
+#             else:
+#                 upb = segments[op][best_t['term'][1]][1]
+#             best_t.update({'term': Term(True, NumItem(col, lowb, upb))})
+#             res.append(best_t)
         return res
     findNegativeCover = staticmethod(findNegativeCover)
 
-    def findPositiveCover(op, segments, lparts, side, col, toImprov):
+    def findPositiveCover(op, segments, lparts, lmiss, side, col, constraints):
         res = []
-        #print 'INCR SEARCH:'
-        toColors_f = [0,0]
+        lin_f = SParts.makeLParts()
         nb_seg_f = 0
         best_f = None
-        toColors_b = [0,0]
+        lin_b = SParts.makeLParts()
         nb_seg_b = 0
         best_b = None 
 
         for  i in range(len(segments[op])-1):
             # FORWARD
-            if i > 0 and (toColors_f[0] == 0 \
-                          or toImprov.compAcc(op, False, segments[op][i][:2], lparts) <  float(toColors_f[1])/float(toColors_f[0])):
-                toColors_f = [toColors_f[0] + segments[op][i][0], toColors_f[1] + segments[op][i][1]]
+            if i > 0 and \
+               constraints.compAcc(side, op, False, lparts, lmiss, segments[op][i][2]) < SParts.compRatioVar(side, op, lin_f):
+                lin_f = SParts.addition(lin_f, segments[op][i][2])
                 nb_seg_f += 1
             else: 
-                toColors_f = segments[op][i][:2]
+                lin_f = segments[op][i][2]
                 nb_seg_f = 0
-            tmp_comp_f = toImprov.compAdv((i - nb_seg_f, i), op, False, toColors_f, lparts)
+            tmp_comp_f = constraints.compAdv((i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f)
             if BestsDraft.comparePair(tmp_comp_f, best_f) > 0 :
                 best_f = tmp_comp_f
 
             # BACKWARD
-            if i > 0 and (toColors_b[0] == 0 \
-                          or toImprov.compAcc(op, False, segments[op][-(i+1)][:2], lparts) <  float(toColors_b[1])/float(toColors_b[0]) ):
-                toColors_b = [toColors_b[0] + segments[op][-(i+1)][0], toColors_b[1] + segments[op][-(i+1)][1]]
+            if i > 0 and \
+               constraints.compAcc(side, op, False, lparts, lmiss, segments[op][-(i+1)][2]) < SParts.compRatioVar(side, op, lin_b):
+                lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
                 nb_seg_b += 1
             else:
-                toColors_b = segments[op][-(i+1)][:2]
+                lin_b = segments[op][-(i+1)][2]
                 nb_seg_b = 0
-            tmp_comp_b = toImprov.compAdv((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), op, False, toColors_b, lparts)
+            tmp_comp_b = constraints.compAdv((len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), side, op, False, lparts, lmiss, lin_b)
             if BestsDraft.comparePair(tmp_comp_b, best_b) > 0 :
                 best_b = tmp_comp_b
 
@@ -619,14 +502,15 @@ class NumDataM(DataM):
             bests = [best_b, best_f]
 
             if best_b['term'][0] > best_f['term'][0] and best_b['term'][1] > best_f['term'][1] and best_b['term'][0] <= best_f['term'][1]:
-                toColors_m = [0,0]
+                lin_m = SParts.makeLParts()
                 for seg in segments[op][best_b['term'][0]:best_f['term'][1]+1]:
-                    toColors_m = [toColors_m[0] + seg[0], toColors_m[1] + seg[1]]
+                    lin_m = SParts.addition(lin_m, seg[2])
 
-                tmp_comp_m = toImprov.compAdv((best_b['term'][0], best_f['term'][1]), op, False, toColors_m, lparts)
+
+                tmp_comp_m = constraints.compAdv((best_b['term'][0], best_f['term'][1]), side, op, False, lparts, lmiss, lin_m)
                 if tmp_comp_m != None:
                     bests.append(tmp_comp_m)
-
+                        
             best = sorted(bests, cmp=BestsDraft.comparePair)[-1]
 
         elif best_f == None:
@@ -634,98 +518,114 @@ class NumDataM(DataM):
         else:
             best = best_b
 
-        if best != None and (best['term'][0] != 0 or  best['term'][1] != len(segments[op])-1)  :
-            #print '%i <-> %i: %i/%i=%f' \
-            #        % (best['term'][0], best['term'][1], best['toBlue'], best['toRed'], best['acc'])
-            if best['term'][0] == 0:
-                lowb = float('-Inf')
-            else:
-                lowb = segments[op][best['term'][0]][-2]
-            if best['term'][1] == len(segments[op])-1 :
-                upb = float('Inf')
-            else:
-                upb = segments[op][best['term'][1]][-1]
-            best.update({'side': side, 'op': Op(op), 'term': Term(False, NumItem(col, lowb, upb))})
-            res.append(best)
-            
+        if best != None:
+            (n, t) = NumColM.makeTermSeg(False, segments[op], col, best['term'])
+            if t != None:
+                best.update({'term': t, 'neg':n })
+                res.append(best)
         return res
     findPositiveCover = staticmethod(findPositiveCover)
 
+    def makeTermSeg(neg, segments_op, col, bound_ids):
+        if bound_ids[0] == 0 and bound_ids[1] == len(segments_op)-1:
+            return (neg, None)
+        elif bound_ids[0] == 0 :
+            if neg:
+                lowb = segments_op[bound_ids[1]+1][0]
+                upb = float('Inf')
+                n = False
+            else:
+                lowb = float('-Inf')
+                upb = segments_op[bound_ids[1]][1]
+                n = False
+        elif bound_ids[1] == len(segments_op)-1 :
+            if neg:
+                lowb = float('-Inf') 
+                upb = segments_op[bound_ids[0]-1][1]
+                n = False
+            else:
+                lowb = segments_op[bound_ids[0]][0]
+                upb = float('Inf') 
+                n = False
+        else:
+            lowb = segments_op[bound_ids[0]][0]
+            upb = segments_op[bound_ids[1]][1]
+            n = neg
+        return (n, Term(n, NumItem(col, lowb, upb)))
+    makeTermSeg = staticmethod(makeTermSeg)
+
+
+    def makeTermBuk(neg, buk_op, col, bound_ids):
+        if bound_ids[0] == 0 and bound_ids[1] == len(buk_op)-1:
+            return (neg, None)
+        elif bound_ids[0] == 0 :
+            if neg:
+                lowb = buk_op[bound_ids[1]+1]
+                upb = float('Inf')
+                n = False
+            else:
+                lowb = float('-Inf')
+                upb = buk_op[bound_ids[1]]
+                n = False
+        elif bound_ids[1] == len(buk_op)-1 :
+            if neg:
+                lowb = float('-Inf') 
+                upb = buk_op[bound_ids[0]-1]
+                n = False
+            else:
+                lowb = buk_op[bound_ids[0]]
+                upb = float('Inf') 
+                n = False
+        else:
+            lowb = buk_op[bound_ids[0]]
+            upb = buk_op[bound_ids[1]]
+            n = neg
+        return (n, Term(n, NumItem(col, lowb, upb)))
+    makeTermBuk = staticmethod(makeTermBuk)
+
+
 class Data:
-    sym_alpha = 0
-    sym_beta = 1
-    sym_gamma = 2
-    sym_delta = 3
-    
-    dataTypes = [{'class': NumDataM,  'match':'(ndat$)|(num$)'}, \
-                 {'class': CatDataM,  'match':'cat$'}, \
-                 {'class': BoolDataM, 'match':'(dense$)|(bdat$)|(sparse$)'}]
 
     defaultMinC = 1
     logger = Log(0)
     
     def __init__(self, datafiles):
-        self.m = [None, None]
-	self.redunRows = set()
-        
-        for fileId in (0,1):
-            (colSuppsTmp, maxRowIdTmp, dataType) = Data.readInput(datafiles[fileId])
-            if dataType == None:
-                raise Exception("\nUnknown data type for file %s!" % datafiles[fileId])
-            else:
-                self.m[fileId] = Data.dataTypes[dataType]['class'](colSuppsTmp, maxRowIdTmp)
-                
-        if len(self.m[0]) != len(self.m[1]):
-            raise Exception("\n\nData matrices do not have same number of rows,\
-            first has %i, but second has %i!"%(len(self.m[0]), len(self.m[1])))
-
-        ## Variable Numbers:
-        self.N = len(self.m[0])    
+        (self.cols, self.type_ids, self.N) = readData(datafiles)
+        self.redunRows = set()
         self.nf = [[i for i in range(self.nbCols(0))], [i for i in range(self.nbCols(1))]]
+        Data.logger.printL(7, 'Left Hand side columns')
+        for col in self.cols[0]:
+            Data.logger.printL(7, col)
+        Data.logger.printL(7, 'Right Hand side columns')
+        for col in self.cols[1]:
+            Data.logger.printL(7, col)
+            
+    def __str__(self):
+        return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
 
+    def nbRows(self):
+        return self.N
 
-    def makeVectorABCD(self, alpha, beta, gamma):
-        if max(self.m[0].type_id, self.m[1].type_id) == 3 :
-            vect = [Data.sym_delta for i in range(self.N)]
-            sets = [(Data.sym_gamma, gamma), (Data.sym_beta, beta), (Data.sym_alpha, alpha)]
-            for (val, s) in sets:
-                for i in s:
-                    vect[i] = val
-        else:
-            vect = None
-        return vect
-
-    def makeInitInfo(self, ids, side, fitFull):
-        types_id = (self.m[side].type_id, self.m[1-side].type_id)
-        if (types_id  == (3,3) and fitFull)  or types_id  == (3,2):
-            return self.m[side].makeBuckets(ids[side])
-        elif (types_id  == (3,3) and not fitFull) or types_id == (1,3):
-            if side == 1:
-                return self.makeVectorABCD( set(), self.m[side].vect(ids[side]), set())        
-            else:
-                return self.makeVectorABCD( self.m[side].vect(ids[side]), set(), set())        
-        elif types_id  == (1,2):
-            return self.m[side].supp(Term(True, BoolItem(ids[side])))
-        else:
-            return None
+    def nbCols(self, side):
+        return len(self.cols[side])
         
-    def nbCols(self,side):
-        return self.m[side].nbCols()
+    def supp(self, side, term): 
+        return self.cols[side][term.item.colId()].suppTerm(term)- self.redunRows
 
+    def miss(self, side, term): 
+        return self.cols[side][term.item.colId()].miss()- self.redunRows
+
+    def termSuppMiss(self, side, term):
+        return (self.supp(side, term), self.miss(side,term))
+        
     def addRedunRows(self, redunRows):
 	self.redunRows.update(redunRows)
-
-    def supp(self,side, term): ## the term should be the same type as the data on the considered side
-        return self.m[side].supp(term)-self.redunRows
-        
-    def __str__(self):
-        return "Data %s and %s" % ( self.m[0], self.m[1])        
     
     def scaleF(self, f):
         if f >= 1:
             return int(f)
         elif f >= 0 and f < 1 :
-            return  int(round(f*self.N))
+            return  int(round(f*self.nbRows()))
     
     def scaleSuppParams(self, minC=None, minIn=None, minOut=None):
         if minC == None:
@@ -740,7 +640,8 @@ class Data:
             rMinOut = self.N - rMinIn
         else:
             rMinOut = self.scaleF(minOut)
-        self.nf = [self.m[0].nonFull(rMinC, rMinC), self.m[1].nonFull(rMinC, rMinC)]
+        self.nf = [[col for col in range(len(self.cols[0])) if self.cols[0][col].nonFull(rMinC, rMinC)], \
+             [col for col in range(len(self.cols[1])) if self.cols[1][col].nonFull(rMinC, rMinC)] ]
         return (rMinC, rMinIn, rMinOut)
             
     def nonFull(self):
@@ -748,347 +649,405 @@ class Data:
     def nbNonFull(self, side):
         return len(self.nf[side])
 
-    def updateBests(self, bests, side, col):
-        bs = self.m[side].anyAdvanceCol(bests, side, col)
-        for b in range(len(bs)):
-            bs[b].update({'supp': self.supp(bs[b]['side'], bs[b]['term'])})
-        bests.upBests(bs)
+    def updateBests(self, bests, constraints, supports, side, col):
+        bests.upBests(self.cols[side][col].anyAdvance(constraints, supports, side, col))
 
-       
-    def computeBooleanPairParts(self, a, b, c, itemA, itemB, toImprov):
-        ## Evaluate score for AB AbB ABb AbBb
-        toColors = [[a, c], [c, a]]
-        lparts = [[0, b+c, 0, self.N-b-c], [0, self.N-b-c, 0, b+c]]
-        nA = [False, True, False, True]
-        nB = [False, False, True, True]
+    def computePairParts11(self, colL, idL, colR, idR, constraints, side):
+        supports = SParts(self.nbRows(), [colL.supp(), set(), colL.miss(), set()])
+        lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(colR.miss())
+        lin = supports.lpartsInterX(colR.supp())
+        (scores, termsFix, termsExt) = ([], [], [])        
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
-        (scores, termsA, termsB) = ([], [], [])        
-        for i in range(up_to):
-            cand = toImprov.compAdv(itemA, True, nA[i], toColors[nB[i]], lparts[nB[i]])
-            if cand != None:
-                cand.update({'supp':  lparts[nB[i]][1]})
-                scores.append(toImprov.score(cand))
-                termsA.append(Term(nA[i], itemA))
-                termsB.append(Term(nB[i], itemB))
-        return (scores, termsA, termsB)
-
-    def computePairParts11(self, mA, idA, mB, idB, toImprov, init_info=[[],[]], side=1):
-        c = len(mA.vect(idA) & mB.vect(idB))
-        a = len(mA.vect(idA) - mB.vect(idB))
-        b = len(mB.vect(idB) - mA.vect(idA))
-        return self.computeBooleanPairParts(a, b, c, BoolItem(idA), BoolItem(idB), toImprov)
-    
-    def computePairParts12(self, mA, idA, mB, idB, toImprov, init_info, side=1):
-        return mB.fit(BoolItem(idA), mA.vect(idA), init_info[1-side][idA], idB, toImprov, side)
-    
-    def computePairParts13(self, mA, idA, mB, idB, toImprov, init_info, side=1):
-        return mB.fit(BoolItem(idA), mA.vect(idA), init_info[1-side][idA], idB, toImprov, side)
-        
-    def computePairParts21(self, mA, idA, mB, idB, toImprov, init_info, side=0):
-        (scores, termsB, termsA)= self.computePairParts12(mB, idB, mA, idA, toImprov, init_info, side )
-        return (scores, termsA, termsB)
-
-    def computePairParts22(self, mA, idA, mB, idB, toImprov, init_info, side=1):
-        return self.computePairParts22Full(mA, idA, mB, idB, toImprov, init_info, side)
-
-    def computePairParts23(self, mA, idA, mB, idB, toImprov, init_info, side=1):
-        return self.computePairParts23Full(mA, idA, mB, idB, toImprov, init_info, side)
-        
-    def computePairParts32(self, mA, idA, mB, idB, toImprov, init_info, side=0):
-        (scores, termsB, termsA)= self.computePairParts23(mB, idB, mA, idA, toImprov, init_info, side )
-        return (scores, termsA, termsB)
-
-    def computePairParts31(self, mA, idA, mB, idB, toImprov, init_info, side=0):
-        (scores, termsB, termsA)= self.computePairParts13(mB, idB, mA, idA, toImprov, init_info, side )
-        return (scores, termsA, termsB)
-
-    
-    def computePairParts33(self, mA, idA, mB, idB, toImprov, init_info, side=1):
-        if len(init_info[1-side][idA]) == 3: # fit FULL
-            if len(init_info[1-side][idA][0]) > len(init_info[side][idB][0]): 
-                (scores, termsB, termsA)= self.computePairParts33Full(mB, idB, mA, idA, toImprov, init_info, 1-side )
-                return (scores, termsA, termsB)
+        for (i, nL, nR) in constraints.negTypesInit():
+            if nL:
+                tmp_lparts = SParts.negateParts(0, lparts)
+                tmp_lmiss = SParts.negateParts(0, lmiss)
+                tmp_lin = SParts.negateParts(0, lin)
             else:
-                return self.computePairParts33Full(mA, idA, mB, idB, toImprov, init_info, side)
+                tmp_lparts = lparts
+                tmp_lmiss = lmiss
+                tmp_lin = lin
+
+            if constraints.inSuppBounds(side, True, tmp_lparts): ### DOABLE
+                cand = constraints.compAdv(idR, 1, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
+                if cand != None:
+                    scores.append(BestsDraft.score(cand, self.nbRows()))
+                    termsFix.append(Term(nL, BoolItem(idL)))
+                    termsExt.append(Term(nR, BoolItem(idR)))
+        return (scores, termsFix, termsExt)
+
+    def computePairPartsBoolNonBool(self, colL, idL, colR, idR, constraints, side):
+        if side == 1:
+            (supports, fixCol, fixItem, extCol, extId) = (SParts(self.nbRows(), [colL.supp(), set(), colL.miss(), set()]), colL, BoolItem(idL), colR, idR)
         else:
-            return self.computePairParts33Heur(mA, idA, mB, idB, toImprov, init_info, side)
+            (supports, fixCol, fixItem, extCol, extId) = (SParts(self.nbRows(), [set(), colR.supp(), set(), colR.miss()]), colR, BoolItem(idR), colL, idL)
+
+        return extCol.fit(constraints, supports, side, extId, fixItem)
     
-    def computePairParts33Heur(self, mA, idA, mB, idB, toImprov, vectors_abcd, side=1):
-        bestScore = float('-Inf')
-        (scores, termsA, termsB) = ([], [], [])
-        if mA.lenMode(idA) >= toImprov.minItmSuppOut() and mB.lenMode(idB) >= toImprov.minItmSuppOut() :
-        #and mA.lenNonMode(idA) >= toImprov.minItmSuppIn() and mB.lenNonMode(idB) >= toImprov.minItmSuppIn() :
+    def computePairParts12(self, colL, idL, colR, idR, constraints, side):
+        return self.computePairPartsBoolNonBool(colL, idL, colR, idR, constraints, side)
+        
+    def computePairParts13(self, colL, idL, colR, idR, constraints, side):
+        return self.computePairPartsBoolNonBool(colL, idL, colR, idR, constraints, side)
+        
+    def computePairParts22(self, colL, idL, colR, idR, constraints, side):
+        return self.computePairParts22Full(colL, idL, colR, idR, constraints, side)
+
+    def computePairParts23(self, colL, idL, colR, idR, constraints, side):
+        return self.computePairParts23Full(colL, idL, colR, idR, constraints, side)
+    
+    def computePairParts33(self, colL, idL, colR, idR, constraints, side):
+#         if len(init_info[1-side]) == 3: # fit FULL
+#             if len(init_info[1-side][0]) > len(init_info[side][0]): 
+#                 (scores, termsB, termsA)= self.computePairParts33Full(colL, idL, colR, idR, constraints, side)
+#                 return (scores, termsA, termsB)
+#             else:
+#                 return self.computePairParts33Full(colL, idL, colR, idR, constraints, side)
+#         else:
+#             return self.computePairParts33Heur(colL, idL, colR, idR, constraints, side)
+        if len(colL.interNonMode(colR.nonModeSupp())) >= constraints.minItmSuppIn() :
+            return self.computePairParts33Full(colL, idL, colR, idR, constraints, side)
+        else:
+            return ([], [], [])
+    
+    def computePairParts33Heur(self, colL, idL, colR, idR, constraints, side):
+        bestScore = None
+        if constraints.inSuppBoundsMode(colL.lenMode(), colR.lenMode(), self.nbRows()): ### DOABLE
             ## FIT LHS then RHS
-            (scoresL, termsBL, termsAL) = mA.fit(idB, mB.vect(idB), vectors_abcd[side][idB], idA, toImprov, 1-side)
-            for tA in termsAL:
-                suppA = mA.supp(tA)
-                vector_abcd = Redescription.makeVectorABCD(True, self.N, suppA, set(), set())
-                (scoresLR, termsALR, termsBLR) = mB.fit(tA.item, suppA, vector_abcd, idB, toImprov, side)
-                for i in range(len(scoresLR)):
-                    if scoresLR[i] > bestScore:
-                        (scores, termsA, termsB) = ([scoresLR[i]], [termsALR[i]], [termsBLR[i]])
-                        bestScore = scoresLR[i]
+            supports = SParts(self.N, [set(), colR.nonModeSupp(), set(), colR.miss()])
+            (scoresL, termsFixL, termsExtL) = colL.fit(constraints, supports, 0, idL, idR)
+            for tL in termsExtL:
+                suppL = self.supp(0,tL)
+                supports = SParts(self.nbRows(), [suppL, set(), colL.miss(), set()])
+                (scoresR, termsFixR, termsExtR) = colR.fit(constraints, supports, 1, idR, idL)
+                for i in range(len(scoresR)):
+                    if scoresR[i] > bestScore:
+                        (scores, termsL, termsR) = ([scoresR[i]], [termsFixR[i]], [termsExtR[i]])
+                        bestScore = scoresR[i]
                         
             ## FIT RHS then LHS
-            (scoresR, termsAR, termsBR) = mB.fit(idA, mA.vect(idA), vectors_abcd[1-side][idA], idB, toImprov, side)
-            for tB in termsBR:
-                suppB = mB.supp(tB)
-                vector_abcd = Redescription.makeVectorABCD(True, self.N, set(), suppB, set())
-                (scoresRL, termsBRL, termsARL) = mA.fit(tB.item, suppB, vector_abcd, idA, toImprov, 1-side)
-                for i in range(len(scoresRL)):
-                    if scoresRL[i] > bestScore:
-                        (scores, termsA, termsB) = ([scoresRL[i]], [termsARL[i]], [termsBRL[i]])
-                        bestScore = scoresRL[i]
+            supports = SParts(self.nbRows(), [colL.nonModeSupp(), set(), colL.miss(), set()])
+            (scoresR, termsFixR, termsExtR) = colR.fit(constraints, supports, 1, idR, idL)
+            for tR in termsExtR:
+                suppR = self.supp(1,tR)
+                supports = SParts(self.N, [set(), suppR, set(), colR.miss()])
+                (scoresL, termsFixL, termsExtL) = colL.fit(constraints, supports, 0, idL, idR)
+                for i in range(len(scoresL)):
+                    if scoresL[i] > bestScore:
+                        (scores, termsL, termsR) = ([scoresR[i]], [termsExtL[i]], [termsFixL[i]])
+                        bestScore = scoresL[i]
                         
 #             if len(scores) > 0:
 #                print "%f: %s <-> %s" % (scores[0], termsA[0], termsB[0])
-        return (scores, termsA, termsB)
+        return (scores, termsL, termsR)
 
-    def computePairParts33Full(self, mA, idA, mB, idB, toImprov, buckets, side=1):
+    def computePairParts33Full(self, colL, idL, colR, idR, constraints, side):
+        best =  None
+        
         interMat = []
-        (scores, termsA, termsB) = ([], [], [])
-        if mA.lenMode(idA) >= toImprov.minItmSuppOut() and mB.lenMode(idB) >= toImprov.minItmSuppOut() \
-           and (mA.lenNonMode(idA) >= toImprov.minItmSuppIn() and mB.lenNonMode(idB) >= toImprov.minItmSuppIn()): 
+        bucketsL = colL.buckets()
+        bucketsR = colR.buckets()
 
-            margA = [len(intA) for intA in buckets[1-side][idA][0]]
-            margB = [len(intB) for intB in buckets[side][idB][0]]
+        if len(bucketsL[0]) > len(bucketsR[0]):
+            bucketsF = bucketsR; colF = colR; idF = idR; bucketsE = bucketsL; colE = colL; idE = idL; side = 1-side; flip_side = True
+        else:
+            bucketsF = bucketsL; colF = colL; idF = idL; bucketsE = bucketsR; colE = colR; idE = idR; flip_side = False
+            
+        (scores, termsF, termsE) = ([], [], [])
+        ## DOABLE
+        if ( len(bucketsF) * len(bucketsE) <= 1000 ): 
 
-            for bukA in buckets[1-side][idA][0]:
-                interMat.append([len(bukA & bukB) for bukB in buckets[side][idB][0]])
+            partsMubB = len(colF.miss())
+            missMubB = len(colF.miss() & colE.miss())
+            totInt = self.nbRows() - len(colF.miss()) - len(colE.miss()) + missMubB
+            #margE = [len(intE) for intE in bucketsE[0]]
+            
+            lmissFinE = [len(colF.miss() & bukE) for bukE in bucketsE[0]]
+            lmissEinF = [len(colE.miss() & bukF) for bukF in bucketsF[0]]
+            margF = [len(bucketsF[0][i]) - lmissEinF[i] for i in range(len(bucketsF[0]))]
+            totMissE = len(colE.miss())
+            totMissEinF = sum(lmissEinF)
+            
+            for bukF in bucketsF[0]: 
+                interMat.append([len(bukF & bukE) for bukE in bucketsE[0]])
+            
+            if bucketsF[2] != None :
+                margF[bucketsF[2]] += colF.lenMode()
+                for bukEId in range(len(bucketsE[0])):
+                    interMat[bucketsF[2]][bukEId] += len(colF.interMode(bucketsE[0][bukEId])) 
 
-            if buckets[1-side][idA][2] != None :
-                margA[buckets[1-side][idA][2]] += mA.lenMode(idA)
-                for bukBId in range(len(buckets[side][idB][0])):
-                    interMat[buckets[1-side][idA][2]][bukBId] += len(mA.interMode(idA, buckets[side][idB][0][bukBId])) 
+            if bucketsE[2] != None :
+                #margE[bucketsE[2]] += colE.lenMode()
+                for bukFId in range(len(bucketsF[0])):
+                    interMat[bukFId][bucketsE[2]] += len(colE.interMode(bucketsF[0][bukFId]))        
 
-            if buckets[side][idB][2] != None :
-                margB[buckets[side][idB][2]] += mB.lenMode(idB)
-                for bukAId in range(len(buckets[1-side][idA][0])):
-                    interMat[bukAId][buckets[side][idB][2]] += len(mB.interMode(idB, buckets[1-side][idA][0][bukAId]))        
-
-            if buckets[1-side][idA][2] != None and buckets[side][idB][2] != None:
-                interMat[buckets[1-side][idA][2]][buckets[side][idB][2]] += len(mB.interMode(idB, mA.modeSupp(idA)))
+            if bucketsF[2] != None and bucketsE[2] != None:
+                interMat[bucketsF[2]][bucketsE[2]] += len(colE.interMode(colF.modeSupp()))
 
 #             ### check marginals
-#             totA = 0
-#             for iA in range(len(buckets[1-side][idA][0])):
-#                 sA = sum(interMat[iA])
-#                 if sA != margA[iA]:
+#             totF = 0
+#             for iF in range(len(bucketsF[0])):
+#                 sF = sum(interMat[iF])
+#                 if sF != margF[iF]:
 #                     raise Error('Error in computing the marginals (1)')
-#                 totA += sA
+#                 totF += sF
 
-#             totB = 0
-#             for iB in range(len(buckets[side][idB][0])):
-#                 sB = sum([intA[iB] for intA in interMat])
-#                 if sB != margB[iB]:
+#             totE = 0
+#             for iE in range(len(bucketsE[0])):
+#                 sE = sum([intF[iE] for intF in interMat])
+#                 if sE != margE[iE]:
 #                     raise Error('Error in computing the marginals (2)')
-#                 totB += sB
+#                 totE += sE
 
-#             if totB != totA or totB != self.N:
+#             if totE != totF or totE != self.nbRows():
 #                 raise Error('Error in computing the marginals (3)')
 
-            best = None
-            belowA = 0
-            lowA = 0
-            while lowA < len(interMat) and self.N - belowA >= toImprov.minItmSuppIn():
-                aboveA = 0
-                upA = len(interMat)-1
-                while upA >= lowA and self.N - belowA - aboveA >= toImprov.minItmSuppIn():
-                    if belowA + aboveA  >= toImprov.minItmSuppOut():
-                        Bina = [sum([interMat[iA][iB] for iA in range(lowA,upA+1)]) for iB in range(len(interMat[lowA]))]
-                        totBina = sum(Bina)
-                        belowBa = 0
-                        lowB = 0
-                        while lowB < len(interMat[lowA]) and totBina - belowBa >= toImprov.minItmSuppIn():
-                            aboveBa = 0
-                            upB = len(interMat[lowA])-1
-                            while upB >= lowB and totBina - belowBa - aboveBa >= toImprov.minItmSuppIn():
-                                suppI = totBina - belowBa - aboveBa
-                                suppB = sum(margB[lowB:upB+1])
-                                #print (self.N - belowA - aboveA, lowA, upA, lowB, upB), idA, idB, (suppB-suppI, suppI), (0, self.N - belowA - aboveA, 0, belowA + aboveA)
-                                tmp_comp = toImprov.compAdv((self.N - belowA - aboveA, lowA, upA, lowB, upB), True, False, (suppB-suppI, suppI), (0, self.N - belowA - aboveA, 0, belowA + aboveA))
-                                if BestsDraft.comparePair(tmp_comp, best) > 0:
+
+            belowF = 0
+            lowF = 0
+            while lowF < len(interMat) and totInt - belowF >= constraints.minItmSuppIn():
+                aboveF = 0
+                upF = len(interMat)-1
+                while upF >= lowF and totInt - belowF - aboveF >= constraints.minItmSuppIn():
+                    if belowF + aboveF  >= constraints.minItmSuppOut():
+                        EinF = [sum([interMat[iF][iE] for iF in range(lowF,upF+1)]) for iE in range(len(interMat[lowF]))]
+                        EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
+                        lmissE = sum(lmissEinF[lowF:upF+1])
+                        #totEinF = sum(EinF)
+                        
+                        lparts = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - aboveF - belowF + lmissE), \
+                                                    (SParts.partId(SParts.mubB, 1-side), partsMubB ), \
+                                                    (SParts.partId(SParts.delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
+                        lmiss  = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), lmissE ), \
+                                                    (SParts.partId(SParts.mubB, 1-side), missMubB ), \
+                                                    (SParts.partId(SParts.delta, 1-side), totMissEinF - lmissE )], 0)
+
+                        belowEF = 0
+                        outBelowEF = 0
+                        lowE = 0
+                        while lowE < len(interMat[lowF]) and totInt - belowF - aboveF - belowEF >= constraints.minItmSuppIn():
+                            aboveEF = 0
+                            outAboveEF = 0
+                            upE = len(interMat[lowF])-1
+                            while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= constraints.minItmSuppIn():
+                                
+                                lmissF = sum(lmissFinE[lowE:upE+1])
+                                lin = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
+                                                         (SParts.partId(SParts.mubB, 1-side), lmissF ), \
+                                                         (SParts.partId(SParts.delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
+                                tmp_comp = constraints.compAdv((lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin) 
+                                if tmp_comp != None and BestsDraft.comparePair(tmp_comp, best) > 0:
                                     best = tmp_comp
+                                aboveEF+=EinF[upE]
+                                outAboveEF+=EoutF[upE]
+                                upE-=1
+                            belowEF+=EinF[lowE]
+                            outBelowEF+=EoutF[lowE]
+                            lowE+=1
+                    aboveF+=margF[upF]
+                    upF-=1
+                belowF+=margF[lowF]
+                lowF+=1
 
-                                aboveBa+=Bina[upB]
-                                upB-=1
-                            belowBa+=Bina[lowB]
-                            lowB+=1
-                    aboveA+=margA[upA]
-                    upA-=1
-                belowA+=margA[lowA]
-                lowA+=1
+        if best != None:
+            (nF, tF) = NumColM.makeTermBuk(False, bucketsF[1], idF, best['term'][0:2])
+            (nE, tE) = NumColM.makeTermBuk(False, bucketsE[1], idE, best['term'][2:])
+            if tF != None and tE != None:
+                termsF.append(tF)
+                termsE.append(tE)
+                scores.append(BestsDraft.score(best, self.nbRows()))
 
-            if best != None \
-                   and (best['term'][1] == 0 or best['term'][2] == len(buckets[1-side][idA][1])-1) \
-                   and (best['term'][3] == 0 or best['term'][4] == len(buckets[side][idB][1])-1):            
-                best.update({'supp': best['term'][0]})
-                scores.append(toImprov.score(best))
 
-                if best['term'][1] == 0:
-                    lowa = float('-Inf')
-                else:
-                    lowa = buckets[1-side][idA][1][best['term'][1]]
-                if best['term'][2] == len(buckets[1-side][idA][1])-1 :
-                    upa = float('Inf')
-                else:
-                    upa = buckets[1-side][idA][1][best['term'][2]]
+#         if best != None \
+#                and (best['term'][0] != 0 or best['term'][1] != len(bucketsF[1])-1) \
+#                and (best['term'][2] != 0 or best['term'][3] != len(bucketsE[1])-1):            
 
-                if best['term'][3] == 0:
-                    lowb = float('-Inf')
-                else:
-                    lowb = buckets[side][idB][1][best['term'][3]]
-                if best['term'][4] == len(buckets[side][idB][1])-1 :
-                    upb = float('Inf')
-                else:
-                    upb = buckets[side][idB][1][best['term'][4]]
+#             if best['term'][0] == 0:
+#                 lowa = float('-Inf')
+#             else:
+#                 lowa = bucketsF[1][best['term'][0]]
+#             if best['term'][1] == len(bucketsF[1])-1 :
+#                 upa = float('Inf')
+#             else:
+#                 upa = bucketsF[1][best['term'][1]]
 
-                termsA.append(Term(False, NumItem(idA, lowa, upa)))
-                termsB.append(Term(False, NumItem(idB, lowb, upb)))
-            
-        return (scores, termsA, termsB)
+#             if best['term'][2] == 0:
+#                 lowb = float('-Inf')
+#             else:
+#                 lowb = bucketsE[1][best['term'][2]]
+#             if best['term'][3] == len(bucketsE[1])-1 :
+#                 upb = float('Inf')
+#             else:
+#                 upb = bucketsE[1][best['term'][3]]
 
-    def computePairParts22Full(self, mA, idA, mB, idB, toImprov, init_info, side=1):
+#             termsF.append(Term(False, NumItem(idF, lowa, upa)))
+#             termsE.append(Term(False, NumItem(idE, lowb, upb)))
+# #            pdb.set_trace()
+#             scores.append(BestsDraft.score(best, self.nbRows()))
+        if flip_side:
+            return (scores, termsE, termsF)
+        else:
+            return (scores, termsF, termsE)
+
+    def computePairParts22Full(self, colL, idL, colR, idR, constraints, side):
+        best = [ None for i in constraints.negTypesInit()]
         
-        nA = [False, True, False, True]
-        nB = [False, False, True, True]
+        for catL in colL.cats():
+            ### TODO DOABLE
+            supports = SParts(self.nbRows(), [colL.suppCat(catL), set(), colL.miss(), set()])
+            lparts = supports.lparts()
+            lmiss = supports.lpartsInterX(colR.miss())
+            
+            for catR in colR.cats():
+                lin = supports.lpartsInterX(colR.suppCat(catR))
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
-        best = [ None for i in range(up_to)]
+                for (i, nL, nR) in constraints.negTypesInit():
+                    if nL:
+                        tmp_lparts = SParts.negateParts(0, lparts)
+                        tmp_lmiss = SParts.negateParts(0, lmiss)
+                        tmp_lin = SParts.negateParts(0, lin)
+                    else:
+                        tmp_lparts = lparts
+                        tmp_lmiss = lmiss
+                        tmp_lin = lin
 
-        for catA in mA.colSupps[idA].keys():
-            for catB in mB.colSupps[idB].keys():
-                suppB = len(mB.colSupps[idB][catB])
-                suppI = len(mA.colSupps[idA][catA] & mB.colSupps[idB][catB])
-                suppsI = (suppI, len(mA.colSupps[idA][catA]) - suppI)
-                suppsB = (suppB, self.N-suppB)
-                for i in range(up_to):
-                    tmp_comp = toImprov.compAdv((suppsB[nB[i]], catA, catB), True, nA[i], (suppsI[not nB[i]], suppsI[nB[i]]), (0, suppsB[nB[i]], 0, suppsB[not nB[i]] ))
+                    tmp_comp = constraints.compAdv((catL, catR), 1, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
                     if tmp_comp != None and BestsDraft.comparePair(tmp_comp, best[i]) > 0:
-#                        print (suppsB[nB[i]], catA, catB), True, nA[i], (suppsI[not nB[i]], suppsI[nB[i]]), (0, suppsB[nB[i]], 0, suppsB[not nB[i]], tmp_comp )
                         best[i] = tmp_comp
 
-        (scores, termsA, termsB) = ([], [], [])
-        
-        for i in range(up_to):
+        (scores, termsFix, termsExt) = ([], [], [])
+
+        for (i, nL, nR) in constraints.negTypesInit():
             if best[i] != None:
-                best[i].update({'supp': best[i]['term'][0]})
-                scores.append(toImprov.score(best[i]))
-                termsA.append(Term(nA[i], CatItem(idA, best[i]['term'][1])))
-                termsB.append(Term(nB[i], CatItem(idB, best[i]['term'][2])))
-#        pdb.set_trace()
-        return (scores, termsA, termsB)
+                scores.append(BestsDraft.score(best[i], self.nbRows()))
+                termsFix.append(Term(nL, CatItem(idL, best[i]['term'][0])))
+                termsExt.append(Term(nR, CatItem(idR, best[i]['term'][1])))
+        return (scores, termsFix, termsExt)
 
-    def computePairParts23Full(self, mA, idA, mB, idB, toImprov, buckets, side=1):
 
-        nA = [False, True, False, True]
-        nB = [False, False, True, True]
+    def computePairParts23Full(self, colL, idL, colR, idR, constraints, side):
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
-        best = [ None for i in range(up_to)]
+        if side == 0:
+            (colF, idF, colE, idE) = (colR, idR, colL, idL)
+        else:
+            (colF, idF, colE, idE) = (colL, idL, colR, idR)
+            
+        best = [ None for i in constraints.negTypesInit()]
+        buckets = colE.buckets()
+        ### TODO DOABLE
+        if True : # (colF.lenMode() >= constraints.minItmSuppOut() and colE.lenNonMode() >= constraints.minItmSuppIn()) or ( len(buckets) <= 100 ):
+            partsMubB = len(colF.miss())
+            missMubB = len(colF.miss() & colE.miss())
+            
+            missMat = [len(colF.miss() & buk) for buk in buckets[0]]
+            totMiss = sum(missMat)
 
-        interMat = []
-        (scores, termsA, termsB) = ([], [], [])
-        if mB.lenMode(idB) >= toImprov.minItmSuppOut() and mB.lenNonMode(idB) >= toImprov.minItmSuppIn():
+            marg = [len(buk) for buk in buckets[0]]
+            if buckets[2] != None :
+                marg[buckets[2]] += colE.lenMode()
 
-            margB = [len(intB) for intB in buckets[side][idB][0]]
-            if buckets[side][idB][2] != None :
-                margB[buckets[side][idB][2]] += mB.lenMode(idB)
+            for cat in colF.cats():
+                lparts = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat)) ), (SParts.mubB, partsMubB ), (SParts.delta, - self.nbRows())], 1-side)
+                lmiss  = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat) & colE.miss()) ), (SParts.mubB, missMubB ), (SParts.delta, -len(colE.miss()) )], 1-side)
+                
+                interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
+                if buckets[2] != None :
+                    interMat[buckets[2]] += len(colE.interMode(colF.suppCat(cat)))        
 
-            for catA in mA.colSupps[idA].keys():
-                interMat = [len(mA.colSupps[idA][catA] & bukB) for bukB in buckets[side][idB][0]]
-                if buckets[side][idB][2] != None :
-                    interMat[buckets[side][idB][2]] += len(mB.interMode(idB, mA.colSupps[idA][catA]))        
-
-                totBina = len(mA.colSupps[idA][catA])
-                        
-                belowBa = 0
-                lowB = 0
-                while lowB < len(interMat) and \
-                          (totBina - belowBa >= toImprov.minItmSuppIn() or totBina - belowBa >= toImprov.minItmSuppOut()):
-                    aboveBa = 0
-                    upB = len(interMat)-1
-                    while upB >= lowB and \
-                          (totBina - belowBa - aboveBa >= toImprov.minItmSuppIn() or totBina - belowBa - aboveBa >= toImprov.minItmSuppOut()):
-                        suppsI = (totBina - belowBa - aboveBa, belowBa + aboveBa)
-                        suppB = sum(margB[lowB:upB+1])
-                        suppsB = (suppB, self.N-suppB)
-                        for i in range(up_to):
-                            tmp_comp = toImprov.compAdv((suppsB[nB[i]], catA, lowB, upB), True, nA[i], (suppsI[not nB[i]], suppsI[nB[i]]), (0, suppsB[nB[i]], 0, suppsB[not nB[i]]))
-                            if BestsDraft.comparePair(tmp_comp, best[i]) > 0:
- #                               print (suppsB[nB[i]], catA, lowB, upB), True, nA[i], (suppsI[not nB[i]], suppsI[nB[i]]), (0, suppsB[nB[i]], 0, suppsB[not nB[i]], tmp_comp)
+                totIn = sum(interMat) 
+                below = 0
+                missBelow = 0
+                low = 0
+                while low < len(interMat) and \
+                          (totIn - below >= constraints.minItmSuppIn() or totIn - below >= constraints.minItmSuppOut()):
+                    above = 0
+                    missAbove = 0
+                    up = len(interMat)-1
+                    while up >= low and \
+                          (totIn - below - above >= constraints.minItmSuppIn() or totIn - below - above >= constraints.minItmSuppOut()):
+                        lin = SParts.makeLParts([(SParts.alpha, totIn - below - above), (SParts.mubB, totMiss - missBelow - missAbove ), (SParts.delta, -sum(marg[low:up+1]))], 1-side)
+                        for (i, nF, nE) in constraints.negTypesInit():
+                            if nF:
+                                tmp_lparts = SParts.negateParts(1-side, lparts)
+                                tmp_lmiss = SParts.negateParts(1-side, lmiss)
+                                tmp_lin = SParts.negateParts(1-side, lin)
+                            else:
+                                tmp_lparts = lparts
+                                tmp_lmiss = lmiss
+                                tmp_lin = lin
+ 
+                            tmp_comp = constraints.compAdv((cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
+                            if tmp_comp != None and BestsDraft.comparePair(tmp_comp, best[i]) > 0:
                                 best[i] = tmp_comp
 
-                        aboveBa+=interMat[upB]
-                        upB-=1
-                    belowBa+=interMat[lowB]
-                    lowB+=1
+                        above+=interMat[up]
+                        missAbove+=missMat[up]
+                        up-=1
+                    below+=interMat[low]
+                    missBelow+=missMat[low]
+                    low+=1
 
-        (scores, termsA, termsB) = ([], [], [])
         
-        for i in range(up_to):
-            if best[i] != None and ( best[i]['term'][2] != 0 or best[i]['term'][3] != len(buckets[side][idB][1])-1 ):
-                
-                if best[i]['term'][2] == 0:
-                    lowb = float('-Inf')
-                else:
-                    lowb = buckets[side][idB][1][best[i]['term'][2]]
-                if best[i]['term'][3] == len(buckets[side][idB][1])-1 :
-                    upb = float('Inf')
-                else:
-                    upb = buckets[side][idB][1][best[i]['term'][3]]
+        (scores, termsFix, termsExt) = ([], [], [])
+        for (i, nF, nE) in constraints.negTypesInit():
 
-                best[i].update({'supp': best[i]['term'][0]})
-                scores.append(toImprov.score(best[i]))
-                termsA.append(Term(nA[i], CatItem(idA, best[i]['term'][1])))
-                termsB.append(Term(nB[i], NumItem(idB, lowb, upb)))
+            if best[i] != None:
+                (nE, tE) = NumColM.makeTermBuk(False, buckets[1], idE, best[i]['term'][1:])
+                if tE != None:
+                    termsExt.append(tE)
+                    termsFix.append(Term(nF, CatItem(idF, best[i]['term'][0])))
+                    scores.append(BestsDraft.score(best[i], self.nbRows()))
 
-#        print scores
-        return (scores, termsA, termsB)
+            # if best[i] != None and ( best[i]['term'][1] != 0 or best[i]['term'][2] != len(buckets[1])-1 ):
+            
+#                 if best[i]['term'][1] == 0:
+#                     lowb = float('-Inf')
+#                 else:
+#                     lowb = buckets[1][best[i]['term'][1]]
+#                 if best[i]['term'][2] == len(buckets[1])-1 :
+#                     upb = float('Inf')
+#                 else:
+#                     upb = buckets[1][best[i]['term'][2]]
+#                termsFix.append(Term(nF, CatItem(idF, best[i]['term'][0])))
+#                 scores.append(BestsDraft.score(best[i], self.nbRows()))
 
-    def computePair(self, idA, idB, init_info, toImprov):
-        method_string = 'self.computePairParts%i%i' % (self.m[0].type_id, self.m[1].type_id)
+#                 termsExt.append(Term(nE, NumItem(idE, lowb, upb)))
+        return (scores, termsFix, termsExt)
+
+    def computePair(self, idL, idR, constraints):
+        min_type = min(self.cols[0][idL].type_id, self.cols[1][idR].type_id)
+        max_type = max(self.cols[0][idL].type_id, self.cols[1][idR].type_id)
+        method_string = 'self.computePairParts%i%i' % (min_type, max_type)
         try:
             method_compute =  eval(method_string)
         except AttributeError:
-              raise Exception('Oups this combination does not exist (%i %i)!' % (self.m[0].type_id, self.m[1].type_id))
-
-        return method_compute(self.m[0], idA, self.m[1], idB, toImprov, init_info)
+              raise Exception('Oups this combination does not exist (%i %i)!'  % (min_type, max_type))
+        if self.cols[0][idL].type_id == min_type:
+            (scores, termsL, termsR) = method_compute(self.cols[0][idL], idL, self.cols[1][idR], idR, constraints, 1)
+        else:
+            (scores, termsR, termsL) =  method_compute(self.cols[0][idL], idL, self.cols[1][idR], idR, constraints, 0)
+        return (scores, termsL, termsR)
         
-
-    def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
+    def initializeRedescriptions(self, nbRed, constraints, minScore=0):
         Data.logger.printL(1, 'Starting the search for initial pairs...')
         self.pairs = []
-        fitFull = True
-        pairsRType = {True: set(), False: set()}
-        if True in ruleTypes[True] or True in ruleTypes[False]:
-            pairsRType[True].add(True)
-        if False in ruleTypes[True] or False in ruleTypes[False]:
-            pairsRType[True].add(False)
-        toImprov = BestsDraft(pairsRType, self.N)
-
+        
         ids= self.nonFull()
-        init_info = [{},{}]
         cL = 0
         cR = 0  
-        for idA in ids[0]:
+        for idL in ids[0]:
             if cL % self.divL == 0:
-                Data.logger.printL(4, 'Searching pairs %i <=> *...' %(idA))
-                for idB in ids[1]:
+                Data.logger.printL(4, 'Searching pairs %i <=> *...' %(idL))
+                for idR in ids[1]:
                     if cR % self.divR == 0:
-                        if not init_info[0].has_key(idA): # pairsA has just the same keys
-                            init_info[0][idA] = self.makeInitInfo((idA, idB), 0, fitFull) 
-                            
-                        if not init_info[1].has_key(idB): # pairsB has just the same keys
-                            init_info[1][idB] = self.makeInitInfo((idA, idB), 1, fitFull)
-                            
-                        (scores, termsA, termsB) = self.computePair(idA, idB, init_info, toImprov)
-                        
+                        Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR))
+                        (scores, termsL, termsR) = self.computePair(idL, idR, constraints)                        
                         for i in range(len(scores)):
-                            if scores[i] >= minScore:
-                                self.methodsP['add'](scores[i], idA, idB)
-                                self.pairs.append((termsA[i], termsB[i]))
+                            if scores[i] >= constraints.minPairsScore():
+                                Data.logger.printL(9, 'Score:%f %s <=> %s' % (scores[i], termsL[i], termsR[i]))
+                                self.methodsP['add'](scores[i], idL, idR)
+                                self.pairs.append((termsL[i], termsR[i]))
                     cR += 1
             cL += 1
         self.methodsP['sort']()
@@ -1122,6 +1081,7 @@ class Data:
         
     def overallNextPair(self, nb):
         (tmp, idP) = self.overall.pop()
+        Data.logger.printL(5, 'Next initial pair score %f' %(tmp))
         return self.pairs[idP]
     
     def alternateInitPairs(self):
@@ -1136,7 +1096,7 @@ class Data:
         self.pairsSide[1][idB].append((scoP, len(self.pairs)))
         
     def alternateSortPairs(self):
-        self.cols = [[],[]]
+        self.colsIds = [[],[]]
         self.alternateSortPairsSide(0)
         self.alternateSortPairsSide(1)
         self.countsCols = [0,0]
@@ -1147,7 +1107,7 @@ class Data:
             if len(self.pairsSide[side][i]) > 0:
                 self.pairsSide[side][i].sort(key=lambda x: x[0])
                 tmp.append((self.pairsSide[side][i][-1], i))
-        self.cols[side] = [i[1] for i in sorted(tmp, key=lambda x: x[0], reverse=True)]
+        self.colsIds[side] = [i[1] for i in sorted(tmp, key=lambda x: x[0], reverse=True)]
         
     def alternateNextPair(self, nb):
         idP = self.alternateNextPairIdSide(nb%2)
@@ -1163,17 +1123,18 @@ class Data:
         return pair
         
     def alternateNextPairIdSide(self, side):
-        if len(self.cols[side]) > 0:
+        if len(self.colsIds[side]) > 0:
             try:
-                (tmp, idP) = self.pairsSide[side][self.cols[side][self.countsCols[side]]].pop()
+                (tmp, idP) = self.pairsSide[side][self.colsIds[side][self.countsCols[side]]].pop()
+                Data.logger.printL(5, 'Next initial pair score %f' %(tmp))
             except IndexError:
                 raise Warning('Error in returning the next initial pair!')
                 return None
-            if len(self.pairsSide[side][self.cols[side][self.countsCols[side]]]) == 0:
-                self.cols[side].pop(self.countsCols[side])
+            if len(self.pairsSide[side][self.colsIds[side][self.countsCols[side]]]) == 0:
+                self.colsIds[side].pop(self.countsCols[side])
             else:
                 self.countsCols[side] += 1
-            if self.countsCols[side] >= len(self.cols[side]):
+            if self.countsCols[side] >= len(self.colsIds[side]):
                 self.countsCols[side] = 0
             return idP
         else:
@@ -1187,31 +1148,189 @@ class Data:
         else:
             return None
 
-    def readInput(datafile):
-        ## Read input
 
-        utilsIO.logger = Data.logger
-        format_f = datafile.split('.').pop()
-        if format_f == 'dense':
-            (colSuppsTmp, rowIdTmp) = utilsIO.readDense(datafile)
-        elif format_f == 'bdat':
-            (colSuppsTmp, rowIdTmp) = utilsIO.readMatlab(datafile)
-        elif format_f == 'sparse':
-            (colSuppsTmp, rowIdTmp) = utilsIO.readSparse(datafile)
-        elif format_f == 'num':
-            (colSuppsTmp, rowIdTmp) = utilsIO.readNumerical(datafile)
-        elif format_f == 'ndat':
-            (colSuppsTmp, rowIdTmp) = utilsIO.readMatlabNum(datafile)
-        elif format_f == 'cat' :
-            (colSuppsTmp, rowIdTmp) = utilsIO.readCategorical(datafile)
+def loadColumnNames(filename):
+    f = open(filename, 'r')
+    a = []
+    for line in f.readlines():
+        a.append(line.strip())
+    return a
+
+def getNames(filename, lenColSupps, empty):
+    names = loadColumnNames(filename)
+    if (len(names) ==  lenColSupps):
+        if(empty):
+            names.insert(0,'')
+            raise Warning('First column empty ! Adding offset to names ...')
+    if (len(names) !=  lenColSupps):
+        names = None
+        raise Warning('Number of names does not match number of variables ! Not returning names')
+    return names
+
+def readData(filenames):
+    data = []; nbRowsT = None;
+    for filename in filenames:
+        (cols, type_ids_tmp, nbRows, nbCols) = readMatrix(filename)
+        if len(cols) != nbCols:
+            raise Exception('Matrix in %s does not have the expected number of variables !' % filename)
+
         else:
-            (colSuppsTmp, rowIdTmp) =  (None, None)
-            raise Warning('Unknown format !')
-            
-        dataType = None
-        for i in range(len(Data.dataTypes)):
-            if re.match(Data.dataTypes[i]['match'],format_f):
-                dataType = i
+            if nbRowsT == None:
+                nbRowsT = nbRows
+                type_ids = type_ids_tmp
+                data.append(cols)
+            elif nbRowsT == nbRows:
+                data.append(cols)
+                type_ids.update(type_ids_tmp)
+            else:
+                raise Exception('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))
+    return (data, type_ids, nbRows)
 
-        return (colSuppsTmp, rowIdTmp, dataType)
-    readInput = staticmethod(readInput)
+def readMatrix(filename):
+    ## Read input
+    nbRows = None
+    type_ids = set()
+    f = open(filename, 'r')
+    try:
+        row = f.next()
+        a = row.split()
+        nbRows = int(a[0])
+        nbCols = int(a[1])
+        type_all = filename.split('.').pop()
+        
+        if len(type_all) >= 3 and type_all[0:3] == 'dat':
+            method_parse =  eval('parseCell%s' % (type_all.capitalize()))
+            method_prepare = eval('prepare%s' % (type_all.capitalize()))
+            method_finish = eval('finish%s' % (type_all.capitalize()))
+        else:
+            method_parse =  eval('parseVar%s' % (type_all.capitalize()))
+            method_prepare = eval('prepareNonDat')
+            method_finish = eval('finishNonDat')
+    except (AttributeError, ValueError, StopIteration):
+        raise Exception('Size and type header is not right')
+
+    tmpCols = method_prepare(nbRows, nbCols)
+
+    Data.logger.printL(2,"Reading input data %s (%i x %i %s)"% (filename, nbRows, nbCols, type_all))
+                
+    for row in f:
+        method_parse(tmpCols, row.split(), nbRows, nbCols)
+
+    Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, nbCols, type_all))
+    (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
+    return (cols, type_ids, nbRows, nbCols)
+    
+def prepareNonDat(nbRows, nbCols):
+    return []
+
+def parseVarMix(tmpCols, a, nbRows, nbCols):
+    name = a.pop(0)
+    type_row = a.pop(0)
+    if type_row[0:3] == 'dat':
+        raise Exception('Oups this row format is not allowed for mixed datat (%s)!' % (type_row))
+    try:
+        method_parse =  eval('parseVar%s' % (type_row.capitalize()))
+    except AttributeError:
+        raise Exception('Oups this row format does not exist (%s)!' % (type_row))
+    method_parse(tmpCols, a, nbRows, nbCols)
+
+def finishNonDat(tmpCols, nbRows, nbCols):
+    type_ids = set()
+    for col in tmpCols:
+        type_ids.add(col.type_id)
+    return (tmpCols, type_ids)
+
+def prepareDatnum(nbRows, nbCols):
+    return [[[(0, -1)], set()] for i in range(nbCols)]
+
+def parseCellDatnum(tmpCols, a, nbRows, nbCols):
+    id_row = int(a[0])-1
+    id_col = int(a[1])-1
+    if id_col >= nbCols or id_row >= nbRows:
+        raise Exception('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
+    else :
+        try:
+            val = float(a[2])
+            if val != 0:
+                tmpCols[id_col][0].append((val, id_row))
+        except ValueError:
+            tmpCols[id_col][1].add(id_row)
+            
+def finishDatnum(tmpCols, nbRows, nbCols):
+    return ([NumColM(sorted(tmpCols[col][0], key=lambda x: x[0]), nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], set([NumColM.type_id]))
+        
+def prepareDatbool(nbRows, nbCols):
+    return [[set(), set()] for i in range(nbCols)]
+
+def parseCellDatbool(tmpCols, a, nbRows, nbCols):
+    id_row = int(a[0])-1
+    id_col = int(a[1])-1
+    if id_col >= nbCols or id_row >= nbRows:
+        raise Exception('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
+    else :
+        try:
+            val = float(a[2])
+            if val != 0:
+                tmpCols[id_col][0].add(id_row)
+        except ValueError:
+            tmpCols[id_col][1].add(id_row)
+        
+def finishDatbool(tmpCols, nbRows, nbCols):
+    return ([BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], set([BoolColM.type_id]))
+
+def parseVarDensenum(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = []
+        miss = set()
+        for i in range(len(a)):
+            try:
+                val = float(a[i])
+                tmp.append((val,i))
+            except ValueError:
+                miss.add(i)
+        tmp.sort(key=lambda x: x[0])
+        tmpCols.append(NumColM( tmp, nbRows, miss ))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+
+                        
+def parseVarDensecat(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = {}
+        miss = set()
+        for i in range(len(a)):
+            try:
+                cat = float(a[i])
+                if tmp.has_key(cat):
+                    tmp[cat].add(i)
+                else:
+                    tmp[cat] = set([i])
+            except ValueError:
+                miss.add(i) 
+        tmpCols.append(CatColM(tmp, nbRows, miss))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+
+def parseVarDensebool(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = set()
+        miss = set()
+        for i in range(len(a)):
+            try:
+                val = float(a[i])
+                if val != 0: tmp.add(i)
+            except ValueError:
+                miss.add(i) 
+        tmpCols.append(BoolColM( tmp, nbRows , miss))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+                        
+def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
+    tmp = set()
+    for i in range(len(a)):
+        tmp.add(int(a[i]))
+    if max(tmp) >= nbRows:
+        raise Exception('Too many rows (%i ~ %i)' % (nbRows, max(tmp)))
+    else:
+        tmpCols.append(BoolColM( tmp, nbRows ))
+

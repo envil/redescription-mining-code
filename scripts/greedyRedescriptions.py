@@ -1,13 +1,15 @@
 #!/usr/bin/python
 
 import ConfigParser
-import sys, re
+import sys
 from classLog import Log
 from classData import Data
 from classRedescription import Redescription
 from classRedescriptionsDraft import RedescriptionsDraft
 from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
+from classSParts import SParts
+from classConstraints import Constraints
 import pdb
 
 def getOpts(conf_filename):
@@ -39,17 +41,9 @@ def getOpts(conf_filename):
                         setts[opti] = type(setts[opti])(val)
                     except ValueError:
                         raise Exception('Unexpected value for %s %s, default is %s.' %(opti, val, setts[opti]))
-
-    setts['rule_types'] = {False: set([False, True]), True: set([False, True])}
-    if re.search('(^|,)andnots($|,)', setts['forbid_rules']): setts['rule_types'][False].remove(True)
-    if re.search('(^|,)ornots($|,)', setts['forbid_rules']): setts['rule_types'][True].remove(True)
-    if re.search('(^|,)nots($|,)', setts['forbid_rules']): setts['rule_types'][False].remove(True); setts['rule_types'][True].remove(True)
-    if re.search('(^|,)ands($|,)', setts['forbid_rules']): del setts['rule_types'][False]
-    if re.search('(^|,)ors($|,)', setts['forbid_rules']): del setts['rule_types'][True]
-
     return setts
 
-def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souvenirs, logger):    
+def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, souvenirs, logger):    
 
     currentDraft = RedescriptionsDraft(draftCap)
     nextGen = [initialRed]
@@ -63,19 +57,32 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souve
         for red in nextGen :
             nb_extensions = red.updateAvailable(souvenirs)
             if red.nbAvailableCols() > 0:
-                bests = BestsDraft(ruleTypes, data.N, red)
+                constraints.setRedLength(len(red))
+                bests = BestsDraft(data.nbRows(), red.acc(), red.probas())
                 for x in red.availableColsSide(0):
-                    data.updateBests(bests, 0, x)
+                    data.updateBests(bests, constraints, red.supports(), 0, x)
 
                 for y in red.availableColsSide(1):
-                    data.updateBests(bests, 1, y)
+                    data.updateBests(bests, constraints, red.supports(), 1, y)
 
-                for pos in bests.improving(minImpr, nb_extensions > 0):
-                    kids.add(red.kid(data, bests.side(pos), bests.op(pos), bests.term(pos), bests.supp(pos) ))
+                if logger.verbosity >= 4:
+                    logger.printL(4, "Redescription %s" % (red))
+                    logger.printL(4, bests)
+        
+                for pos in bests.improving(minImpr):
+                    t = red.kid(data, bests.side(pos), bests.op(pos), bests.term(pos), data.supp(bests.side(pos), bests.term(pos)), data.miss(bests.side(pos), bests.term(pos)) )
+                    if t.acc() != bests.acc(pos):
+                        print 'OUPS'
+                        print '%s <~> %s %f ' % (t, bests.term(pos), bests.acc(pos))
+                        pdb.set_trace()
+                    kids.add(t)
+                if nb_extensions == 0:
+                    red.removeAvailables()
+                    kids.add(red)
 
         souvenirs.update(kids)
         currentDraft.update(kids)
-        nextGen = currentDraft.nextGeneration(BestsDraft.checkFinalConstraints)
+        nextGen = currentDraft.nextGeneration(constraints.checkFinalConstraints)
         
     currentDraft.cut(draftOut)
     return currentDraft.redescriptions()
@@ -88,8 +95,8 @@ def main():
     setts = getOpts(conf_filename)
     logger = Log(setts['verbosity'], setts['logfile'])
     logger.printL(2,"Settings:\n %s" % (setts))
-    Data.logger = logger; Redescription.logger = logger; RedescriptionsDraft.logger = logger; BestsDraft.logger = logger; Souvenirs.logger = logger
-    
+    Data.logger = logger; Redescription.logger = logger; RedescriptionsDraft.logger = logger; BestsDraft.logger = logger; Souvenirs.logger = logger; Constraints.logger = logger
+
     data = Data([setts['data_rep']+setts['data_l']+setts['ext_l'], setts['data_rep']+setts['data_r']+setts['ext_r']])
     logger.printL(2, data)
 
@@ -102,21 +109,20 @@ def main():
     else:
         supportOutFp = None
 
-    Redescription.methodpVal = setts['method_pval'].capitalize()
-    (BestsDraft.minC, BestsDraft.minSuppIn, BestsDraft.minSuppOut) = data.scaleSuppParams(setts['contribution'], setts['min_suppin'], setts['min_suppout'])
+    constraints = Constraints(data, setts)
     (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts['coeff_impacc'], setts['coeff_relimpacc'], setts['coeff_pvrule'], setts['coeff_pvred'])
-    (BestsDraft.minLen, BestsDraft.minAcc, BestsDraft.maxPVal) = (setts['min_length'], setts['min_acc'], setts['max_pval'])
+    SParts.setMethodPVal(setts['method_pval'].capitalize())
     Redescription.nbVariables = setts['nb_variables']
     readyDraft = RedescriptionsDraft()
     souvenirs = Souvenirs(data.nonFull(), setts['amnesic'])
         
     data.setInitialMSelection(setts['method_pairs'], setts['div_l'], setts['div_r'])
-    data.initializeRedescriptions(setts['nb_pairs'], setts['rule_types'], setts['min_score'])
+    data.initializeRedescriptions(setts['nb_pairs'], constraints )
     initialRed = data.getNextInitialRed()
 
     while initialRed != None :
         try:
-            reds = processDraft(initialRed, data, setts['draft_capacity'], setts['draft_output'], setts['min_improvement'], setts['rule_types'], souvenirs, logger)
+            reds = processDraft(initialRed, data, setts['draft_capacity'], setts['draft_output'], setts['min_improvement'], constraints, souvenirs, logger)
             if setts['max_side_identical'] == 0 and len(reds) > 0 :
                 logger.printL(2, 'Appending reds...')
                 for currentRedescription in reds: 
