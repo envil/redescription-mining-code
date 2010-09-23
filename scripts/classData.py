@@ -1196,7 +1196,7 @@ def readMatrix(filename):
         nbRows = None
         nbCols = None
 	
-     	if len(type_all) >= 3 and (type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
+     	if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
 	    row = f.next()
             a = row.split()
             nbRows = int(a[0])

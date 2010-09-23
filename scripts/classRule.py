@@ -132,13 +132,17 @@ class BoolItem(Item):
     
     def disp(self, lenIndex=0, names = None):
         if lenIndex > 0 :
-            lenIndex = str(lenIndex)
+            lenIndex = max(lenIndex-1,3)
+            slenIndex = str(lenIndex)
         else:
-            lenIndex = ''
+            slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            return ('%'+lenIndex+'s ') % names[self.col]
+            lab = ('%'+slenIndex+'s') % names[self.col]
+            if len(lab) > lenIndex & lenIndex > 0:
+                lab = lab[:lenIndex]
+            return lab + ' '
         else:
-            return ('%'+lenIndex+'i ') % self.col
+            return ('%'+slenIndex+'i ') % self.col
 
     def __str__(self):
         return self.disp()
@@ -181,14 +185,19 @@ class CatItem(Item):
         return self.col*hash(self.cat)+(self.col-1)*(hash(self.cat)+1)
     
     def disp(self, lenIndex=0, names = None):
+        strcat = '=%i ' % self.cat
         if lenIndex > 0 :
-            lenIndex = str(lenIndex)
+            lenIndex = max(lenIndex-len(strcat),3)
+            slenIndex = str(lenIndex)
         else:
-            lenIndex = ''
+            slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            return ('%'+lenIndex+'s=%i ') % (names[self.col], self.cat)
+            lab = ('%'+slenIndex+'s') % names[self.col]
+            if len(lab) > lenIndex & lenIndex > 0:
+                lab = lab[:lenIndex]
+            return lab + strcat
         else:
-            return ('%'+lenIndex+'i=%i ') % (self.col, self.cat)
+            return (('%'+slenIndex+'i') % self.col) + strcat
 
     def __str__(self):
         return self.disp()
@@ -274,14 +283,19 @@ class NumItem(Item):
             ub = '<%s' % self.upb
         else:
             ub = ''
+        strbounds = '%s%s ' % (lb, ub)
         if lenIndex > 0 :
-            lenIndex = str(lenIndex)
+            lenIndex = max(lenIndex-len(strbounds),3)
+            slenIndex = str(lenIndex)
         else:
-            lenIndex = ''
+            slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            return ('%'+lenIndex+'s%s%s ') % (names[self.col], lb, ub)
+            lab = ('%'+slenIndex+'s') % names[self.col]
+            if len(lab) > lenIndex & lenIndex > 0:
+                lab = lab[:lenIndex]
+            return lab + strbounds
         else:
-            return ('%'+lenIndex+'i%s%s ') % (self.col, lb, ub)
+            return (('%'+slenIndex+'i') % self.col) + strbounds
 
 #     def disp(self, lenIndex=0, names = None):
 #         if self.lowb > float('-Inf'):
@@ -362,7 +376,8 @@ class Term:
         return Term(self.neg.boolVal(), self.item.copy())
             
     def disp(self, lenIndex=0, names = None):
-        return '%s%s' % (self.neg, self.item.disp(lenIndex, names))
+        strneg = '%s' % self.neg
+        return strneg + self.item.disp(lenIndex-len(strneg), names)
 
     def __str__(self):
         return self.disp()

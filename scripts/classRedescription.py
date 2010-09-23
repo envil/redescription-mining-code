@@ -165,6 +165,8 @@ class Redescription:
                      len(missL.symmetric_difference(self.sParts.miss(0))) == 0, \
                      len(missR.symmetric_difference(self.sParts.miss(1))) == 0 )        
 
+    def hasMissing(self):
+        return self.sParts.hasMissing()
 
     def __str__(self):
         return '%i + %i items:\t (%i): %s' \
@@ -182,7 +184,10 @@ class Redescription:
             return SParts.dispCharList(self.readInfo)
         else:
             return SParts.dispCharList(self.sParts.listLPartsChar())
-        
+
+    def dispRulesSimple(self, lenIndex=0, names= [None, None]):
+        return '%s %s' % (self.rules[0].disp(lenIndex, names[0]), self.rules[1].disp(lenIndex, names[1]))
+    
     def dispSimple(self, lenIndex=0, names= [None, None]):
         return '%s\t%s\t%s' % (self.rules[0].disp(lenIndex, names[0]), self.rules[1].disp(lenIndex, names[1]), self.dispLPartsSimple())
 
@@ -218,13 +223,13 @@ class Redescription:
 
         r = None
         if data != None and stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
-            supports = SParts.parseSupport(stringSupport, data.N)
-            if supports != None:
-                r = Redescription(ruleL, ruleR, supports.copSupp(), data.nbRows(), [set(),set()], [ ruleL.proba(0, data), ruleR.proba(1, data)])
+            supportsS = SParts.parseSupport(stringSupport, data.N)
+            if supportsS != None:
+                r = Redescription(ruleL, ruleR, supportsS.copSupp(), data.nbRows(), [set(),set()], [ ruleL.proba(0, data), ruleR.proba(1, data)])
 
                 if lpartsList[2:] != r.sParts.listLPartsChar()[2:]:
                     raise Warning("Something wrong in the supports ! (%s ~ %s)\n" \
-                                  % (SParts.dispCharList(lpartsList), SParts.dispCharList(r.supports.listLPartsChar()) ))
+                                  % (SParts.dispCharList(lpartsList), SParts.dispCharList(r.sParts.listLPartsChar()) ))
         if r == None:
             r = Redescription(ruleL, ruleR)
             r.readInfo = lpartsList

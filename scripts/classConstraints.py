@@ -17,12 +17,13 @@ class Constraints:
         (self.cminC, self.cminSuppIn, self.cminSuppOut) = data.scaleSuppParams(setts['contribution'], setts['min_suppin'], setts['min_suppout'])
         (self.cminLen, self.cminAcc, self.cmaxPVal) = (setts['min_length'], setts['min_acc'], setts['max_pval'])
 
+        #pdb.set_trace()
         self.cruleTypes = {False: set([False, True]), True: set([False, True])}
         if re.search('(^|,)andnots($|,)', setts['forbid_rules']): self.cruleTypes[False].remove(True)
         if re.search('(^|,)ornots($|,)', setts['forbid_rules']): self.cruleTypes[True].remove(True)
         if re.search('(^|,)nots($|,)', setts['forbid_rules']): self.cruleTypes[False].remove(True); self.cruleTypes[True].remove(True)
-        if re.search('(^|,)ands($|,)', setts['forbid_rules']): del self.cruleTypes[False]
-        if re.search('(^|,)ors($|,)', setts['forbid_rules']): del self.cruleTypes[True]
+        if re.search('(^|,)ands($|,)', setts['forbid_rules']): self.cruleTypes[False] = set()
+        if re.search('(^|,)ors($|,)', setts['forbid_rules']): self.cruleTypes[True] = set()
         
         self.credLength = 0
         
@@ -91,7 +92,7 @@ class Constraints:
 
     def inSuppBounds(self, side, op, lparts):
         return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.minItmSuppIn() \
-               or SParts.sumPartsId(side, SParts.IDS_cont[op], lparts) >= self.minItmC()
+               and SParts.sumPartsId(side, SParts.IDS_cont[op], lparts) >= self.minItmC()
     
     def inSuppBoundsMode(self, lenModeL, lenModeR, N, nbBuksL=1, nbBuksR=1):
         return (lenMode >= self.minItmSuppIn() and lenMode >= self.minItmC()) 

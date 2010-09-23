@@ -117,6 +117,7 @@ def main():
     souvenirs = Souvenirs(data.nonFull(), setts['amnesic'])
         
     data.setInitialMSelection(setts['method_pairs'], setts['div_l'], setts['div_r'])
+#    pdb.set_trace()
     data.initializeRedescriptions(setts['nb_pairs'], constraints )
     initialRed = data.getNextInitialRed()
 

@@ -327,6 +327,10 @@ class SParts:
             self.missing = False
             self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
 
+    # contains missing values
+    def hasMissing(self):
+        return self.missing
+
     # return copy of the probas
     def probas(self):
         return list(self.prs)
