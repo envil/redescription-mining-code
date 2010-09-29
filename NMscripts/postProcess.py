@@ -18,7 +18,7 @@ def getOpts(conf_filename):
               'data_l': 'left', 'ext_l':'.bdat', 'labels_l': '',
               'data_r': 'right', 'ext_r':'.bdat', 'labels_r': '',
               'result_rep': './', 'out_base': 'out' , 'ext_rules': '.rul', 'ext_support': '.supp', 'ext_names': '.names',
-              'min_length':2, 'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05,
+              'min_length':2, 'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05, 'method_pval' : 'marg',
               'sanity_check': False,'recompute': False, 'filtrate': False, 'redundancy_mark': False, 'redundancy_prune': False
               }
 
