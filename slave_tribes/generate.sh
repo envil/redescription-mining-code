@@ -47,8 +47,8 @@ SCRIPT_MATLAB="
     awk -f ${SCRIPT_REP}bins_names.awk ${BASE_REP}/${DATA}.${NAMES} ${BASE_REP}/${DATA}${SUFF}.${BOUNDS} > ${BASE_REP}/${DATA}${SUFF}.${NAMES}
 
 
-${SCRIPT_REP}greedyRedescriptions.py ${BASE_REP}${OUT}${SUFF}.conf
-${SCRIPT_REP}postProcess.py ${BASE_REP}${OUT}${SUFF}.conf
+#${SCRIPT_REP}greedyRedescriptions.py ${BASE_REP}${OUT}${SUFF}.conf
+#${SCRIPT_REP}postProcess.py ${BASE_REP}${OUT}${SUFF}.conf
 
 
 

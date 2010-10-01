@@ -2,9 +2,10 @@
 
 
 CONF_FILE=../binning_exp/template.conf
-NB_SL=3
+NB_SL=4
+#'height' 'width' 'means' 'segments'
 
-for HOW in 'height' 'width' 'means'
+for HOW in 'height' 'width'
 do
     for N in 10 20 30 50 75 100 150
     do
