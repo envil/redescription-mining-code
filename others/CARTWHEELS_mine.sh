@@ -2,10 +2,10 @@
 
 ### DIRECTORIES
 ###############
-UTILS_REP=~/redescriptors/sandbox/scripts/
+UTILS_REP=~/redescriptors/sandbox/NMscripts/
 ORGALG_REP=~/redescriptors/existing/VT/CARTwheels/
-RESULTS_REP=~/redescriptors/sandbox/others/results/
-LOG_REP=~/redescriptors/sandbox/others/logs/
+RESULTS_REP=~/redescriptors/sandbox/others/binning/
+LOG_REP=~/redescriptors/sandbox/others/binning/
 
 mkdir -p $RESULTS_REP
 mkdir -p $LOG_REP 
@@ -13,10 +13,10 @@ mkdir -p $LOG_REP
 
 ### DATA
 ########
-DATA_REP=~/redescriptors/sandbox/others/randomized/
-FILE_L=conference_sBDM_swap1
-FILE_R=coauthor_sBDM_swap1
-EXT_ORG=.bdat
+DATA_REP=~/redescriptors/sandbox/others/binning/
+FILE_L=mammals
+FILE_R=worldclim_tp_75segments
+EXT_ORG=.datbool
 EXT_IN=.cart
 
 ### PARAMETERS
