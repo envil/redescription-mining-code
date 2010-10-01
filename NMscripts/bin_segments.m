@@ -1,4 +1,4 @@
-function [assign, bounds, cost, k] = segment(V,max_k)
+function [assign, bounds, cost, opt_k] = bin_segments(V,max_k)
 %V = [1 3 5 6 7 8 9 9 10];
 %T = [1 3 5 6 7 8 9 10];
 
@@ -41,7 +41,7 @@ buckets = zeros(1,n);
 bounds = [];
 for i=1:length(cuts)-1
     buckets(cuts(i)+1:cuts(i+1)) = i;
-    bounds = [bounds T(cuts(i)+1)];
+    bounds = [bounds; T(cuts(i)+1)];
 end
 
 bounds = bounds(2:end);
