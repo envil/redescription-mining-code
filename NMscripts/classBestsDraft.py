@@ -89,23 +89,27 @@ class BestsDraft:
             if neg:
 #                pdb.set_trace()
                 if (lparts[1] - toColors[1] >= self.minItmC() ) and ( toColors[0] >= self.minItmSuppOut() ):
-                    b= {'acc': float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]),\
-                        'toRed': lparts[3] - toColors[0], 'toBlue': lparts[1] - toColors[1], 'term': t}
+                    if ((lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]) > 0):
+                        b= {'acc': float(lparts[2] + lparts[1] - toColors[1])/(lparts[0] + lparts[1] + lparts[2] + lparts[3] - toColors[0]),\
+                            'toRed': lparts[3] - toColors[0], 'toBlue': lparts[1] - toColors[1], 'term': t}
 
             else:
 #                pdb.set_trace()
                 if (toColors[1] >= self.minItmC() ) and (lparts[3] - toColors[0] >= self.minItmSuppOut() ):
-                    b= {'acc': float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0]),\
-                        'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
+                    if ((lparts[0] + lparts[1] + lparts[2] + toColors[0]) > 0):
+                        b= {'acc': float(lparts[2] + toColors[1])/(lparts[0] + lparts[1] + lparts[2] + toColors[0]),\
+                            'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
         else:
             if neg:
                 if (toColors[0] >= self.minItmC() ) and (lparts[2] - toColors[1] >= self.minItmSuppIn() ):
-                    b= {'acc': float(lparts[2] - toColors[1])/(lparts[0] - toColors[0] + lparts[1] + lparts[2]),\
-                        'toRed': lparts[0] - toColors[0], 'toBlue': lparts[2] - toColors[1], 'term': t}
+                    if ( (lparts[0] - toColors[0] + lparts[1] + lparts[2]) > 0 ):
+                        b= {'acc': float(lparts[2] - toColors[1])/(lparts[0] - toColors[0] + lparts[1] + lparts[2]),\
+                            'toRed': lparts[0] - toColors[0], 'toBlue': lparts[2] - toColors[1], 'term': t}
             else:
                 if (lparts[0] - toColors[0] >= self.minItmC() ) and (toColors[1] >= self.minItmSuppIn() ):
-                    b= {'acc': float(toColors[1])/(toColors[0] + lparts[1] + lparts[2]),\
-                        'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
+                    if ((toColors[0] + lparts[1] + lparts[2]) > 0 ):
+                        b= {'acc': float(toColors[1])/(toColors[0] + lparts[1] + lparts[2]),\
+                            'toRed': toColors[0], 'toBlue': toColors[1], 'term': t}
         return b
     
     def pos(side, op):

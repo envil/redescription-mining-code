@@ -44,8 +44,8 @@ def getOpts(conf_filename):
     if re.search('(^|,)andnots($|,)', setts['forbid_rules']): setts['rule_types'][False].remove(True)
     if re.search('(^|,)ornots($|,)', setts['forbid_rules']): setts['rule_types'][True].remove(True)
     if re.search('(^|,)nots($|,)', setts['forbid_rules']): setts['rule_types'][False].remove(True); setts['rule_types'][True].remove(True)
-    if re.search('(^|,)ands($|,)', setts['forbid_rules']): del setts['rule_types'][False]
-    if re.search('(^|,)ors($|,)', setts['forbid_rules']): del setts['rule_types'][True]
+    if re.search('(^|,)ands($|,)', setts['forbid_rules']): setts['rule_types'][False]=set()
+    if re.search('(^|,)ors($|,)', setts['forbid_rules']): setts['rule_types'][True]=set()
 
     return setts
 
@@ -123,13 +123,13 @@ def main():
                     currentRedescription.write(rulesOutFp, supportOutFp)
             else:
                 insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts['max_side_identical'])
-                if len(insertedIds) > 0 :
-                    logger.printL(2, 'Printing reds...')
-                    rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
-                    if supportOutFp != None:
-                        supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
-                    for currentRedescription in readyDraft.redescriptions():
-                        currentRedescription.write(rulesOutFp, supportOutFp)
+                # if len(insertedIds) > 0 :
+#                     logger.printL(2, 'Printing reds...')
+#                     rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
+#                     if supportOutFp != None:
+#                         supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
+#                     for currentRedescription in readyDraft.redescriptions():
+#                         currentRedescription.write(rulesOutFp, supportOutFp)
                     
             initialRed = data.getNextInitialRed()
 

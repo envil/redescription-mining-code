@@ -69,7 +69,7 @@ def main():
     if setts['redundancy_prune']:
         setts['redundancy_mark'] = False
         suff = '_pruned'
-
+        
     rulesInFp = None
     rulesOutFp = None
     supportInFp = None
@@ -155,13 +155,13 @@ def main():
                         comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
                     dataRed.addRedunRows(currentRedun.suppI())
 
-                ################# WRITING OUT
-                if currentR != None and rulesOutFp != None:
-                    rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
-                if currentR != None and supportOutFp != None:
-                    supportOutFp.write(currentR.dispSupp()+' '+commentSupp+'\n')
-                if currentR != None and namesOutFp != None:
-                    namesOutFp.write(currentR.dispSimple(0, names)+' '+comment+'\n')
+            ################# WRITING OUT
+            if currentR != None and rulesOutFp != None:
+                rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
+            if currentR != None and supportOutFp != None:
+                supportOutFp.write(currentR.dispSupp()+' '+commentSupp+'\n')
+            if currentR != None and namesOutFp != None:
+                namesOutFp.write(currentR.dispSimple(0, names)+' '+comment+'\n')
 
             ruleNro += 1
     logger.printL(2,'Read all %i rules.'%(ruleNro-1))

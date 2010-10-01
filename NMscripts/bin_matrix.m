@@ -16,7 +16,7 @@ if strcmp(how, 'width')
         mi = min(mat_real(:,i));
         ma = max(mat_real(:,i))+eps;
         width = (ma-mi)/N(i);
-        bounds{i} = mi + (1:N(i)-1)*width;
+        bounds{i} = mi + (1:N(i)-1)'*width;
         for j=1:N(i)
             mat_bin(((mat_real(:,i)>=(mi+(j-1)*width)) & (mat_real(:,i)<(mi+(j)*width))),sum(N(1:i-1))+j) = 1;
         end
@@ -26,7 +26,7 @@ elseif strcmp(how, 'height')
     for i=1:m
         ptiles = prctile(mat_real(:,i), [0:N(i)]*100/N(i));
         ptiles(end) = ptiles(end)+eps;
-        bounds{i} = ptiles(2:end-1);
+        bounds{i} = ptiles(2:end-1)';
         for j=1:N(i)
             mat_bin(((mat_real(:,i)>=ptiles(j)) & (mat_real(:,i)<ptiles(j+1))),sum(N(1:i-1))+j) = 1;
         end
@@ -47,7 +47,7 @@ elseif strcmp(how, 'means')
  elseif strcmp(how, 'segments')
     max_N = N;
     for i=1:m
-        [assign, bounds{i}, cost, N(i)] = segment(mat_real(:,i),max_N(i));
+        [assign, bounds{i}, cost, N(i)] = bin_segments(mat_real(:,i),max_N(i));
         mat_bin(sub2ind(size(mat_bin), [1:n],assign+sum(N(1:i-1))))=1;
     end     
 

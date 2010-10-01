@@ -6,6 +6,8 @@ import pdb
 from classLog import Log
 logger = Log()
 
+## Global variables
+setts={}
 def usage():
     print """
     Usage: %s [options]
@@ -341,28 +343,28 @@ def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
        inFormat = "done"
        outFormat = "done"
 
-    elif format_in == 'dense':
+    elif format_in == 'densebool':
         (colSupps, rowId) = readDense(inFile)
-    elif format_in == 'bdat':
+    elif format_in == 'datbool':
         (colSupps, rowId) = readMatlab(inFile)
-    elif format_in == 'sparse':
+    elif format_in == 'sparsebool':
         (colSupps, rowId) = readSparse(inFile)
-    elif format_in == 'num':
+    elif format_in == 'densenum':
         (colSupps, rowId) = readNumerical(inFile)
-    elif format_in == 'ndat':
+    elif format_in == 'datnum':
         (colSupps, rowId) = readMatlabNum(inFile)
-    elif format_in == 'cat' :
+    elif format_in == 'densecat' :
         (colSupps, rowId) = readCategorical(inFile)
     else:
         (colSupps, rowId) =  (None, None)
         raise Warning('Unknown format !')
 
     ## WRITING OTHER FORMATS
-    if format_out == "sparse" :
+    if format_out == "sparsebool" :
         writeSparse(outFile, colSupps, rowId)
-    elif format_out == "bdat":
+    elif format_out == "datbool":
         writeMatlab(outFile, colSupps, rowId)
-    elif format_out == "dense" :
+    elif format_out == "densebool" :
         writeDense(outFile, colSupps, rowId)
     elif format_out == "compact":
         writeCompact(outFile, colSupps, rowId)
