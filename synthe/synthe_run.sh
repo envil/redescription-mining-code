@@ -1,30 +1,57 @@
-NB_COPIES=4
-SERIE=bool_conservative3
-SUFF_DATA=random
+#!/bin/bash
 
-BASE_REP=~/redescriptors/sandbox/synthe/${SERIE}/
+#####################################################################
+### CHANGING PARAMETERS :
+
+# ## BOOL CONSERVATIVE
+# ####################
+# NB_COPIES=50
+# SERIE=bool_conservative
+# EXT_L=.datbool
+# EXT_R=.datbool
+# PRESERVING='3'
+# GEN_MARGIN_R='1'
+# MINE_CONF=~/redescriptors/sandbox/synthe_new/synthebool_template.conf
+
+# ## BOOL DESTRUCTIVE
+# ####################
+# NB_COPIES=50
+# SERIE=bool_destructive
+# EXT_L=.datbool
+# EXT_R=.datbool
+# PRESERVING='2'
+# GEN_MARGIN_R='1'
+# MINE_CONF=~/redescriptors/sandbox/synthe_new/synthebool_template.conf
+
+## REAL VALUED
+####################
+NB_COPIES=1
+SERIE=realvalued_conservative
+EXT_L=.datbool
+EXT_R=.densenum
+PRESERVING='3'
+GEN_MARGIN_R='0.25'
+#####################################################################
+
+SUFF_DATA=random
+BASE_REP=~/redescriptors/sandbox/synthe_new/${SERIE}/
 DATA_REP=${BASE_REP}data/
 RESULTS_REP=${BASE_REP}results/
-MINE_CONF=~/redescriptors/sandbox/synthe/synthe_template.conf
 
 SCRIPTS_PATH=~/redescriptors/sandbox/NMscripts/
 MINE_SCRIPT=${SCRIPTS_PATH}greedyRedescriptions.py
 MAT_PATH=${SCRIPTS_PATH}
-METHOD_PATH=~/redescriptors/sandbox/synthe/
+METHOD_PATH=~/redescriptors/sandbox/synthe_new/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
-EXT_L=.datbool
-EXT_R=.datbool
 EXT_RULES=.rul
 EXT_INFO=.info
 EXT_TIME=.time
 
+MINE_CONF=~/redescriptors/sandbox/synthe_new/synthe_template.conf
 GEN_LOG_INFO=${DATA_REP}${SUFF_DATA}${EXT_INFO} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
 RES_LOG_INFO=${BASE_REP}${SUFF_DATA}.results
 STATS_LOG_INFO=${BASE_REP}${SUFF_DATA}.stats
-
-OTHER_VAR_PARAMS='::DATA_REP::='$DATA_REP',::RESULTS_REP::='$RESULTS_REP',::EXT_RULES::='$EXT_RULES',::EXT_L::='$EXT_L',::EXT_R::='$EXT_R',::SUFF_DATA::='$SUFF_DATA
-TIME_FORMAT="%e %U %S\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps"
 
 ########## GENERATION SETTINGS
 
@@ -37,15 +64,31 @@ gen_nb_variables_L='3' # number of supporting variables of the left hand side ma
 gen_nb_variables_R='3' # number of supporting variables of the right hand side matrix
 gen_c='3' # contribution
 gen_offset='0' # offset before support of right hand side matrix
-gen_preserving='3' # boolean, is the original support of the rules perserved when adding noise
+gen_preserving=$PRESERVING # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
-gen_margin_R='1' # margin right 1=boolean
-gen_density='0.01, 0.025, 0.05, 0.1' # noise density
+gen_margin_R=$GEN_MARGIN_R # margin right 1=boolean
+gen_density='0.01' #, 0.025, 0.05, 0.1' # noise density
 gen_density_blurr_OR='0.5' # supporting columns blurr density
 gen_density_blurr_AND='0.5' # supporting columns blurr density
 
 mkdir -p ${DATA_REP}
 mkdir -p ${RESULTS_REP}
+
+if [[ $EXT_L == *bool ]]; then
+    BOOL_LEFT=1
+else
+    BOOL_LEFT=0
+fi
+if [[ $EXT_R == *bool ]]; then
+    BOOL_RIGHT=1
+else
+    BOOL_RIGHT=0
+fi
+FULL_BOOL=$(( $BOOL_RIGHT * $BOOL_LEFT ))
+
+OTHER_VAR_PARAMS='::DATA_REP::='$DATA_REP',::RESULTS_REP::='$RESULTS_REP',::EXT_RULES::='$EXT_RULES',::EXT_L::='$EXT_L',::EXT_R::='$EXT_R',::SUFF_DATA::='$SUFF_DATA',::MIN_IMPROV::='$(( $FULL_BOOL * -1 ))
+TIME_FORMAT="%e %U %S\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps"
+
 
 SCRIPT_MATLAB="
 path(path,'${MAT_PATH}');
@@ -94,6 +137,7 @@ function f_make_rule {
 
 	local OR_P=${1}
 	local NB_VAR=${2}
+	local BOOL_S=${3}
 	local CAR_OP_OR='|'
 	local CAR_OP_AND='&'
 	local LEN_INDEX=3
@@ -103,10 +147,16 @@ function f_make_rule {
 	else
 	    CAR_OP=${CAR_OP_AND}
 	fi
-	RULE_P=$(printf '  % '${LEN_INDEX}'i ' 0)
+	if (( $BOOL_S == 1 )); then
+	    CAR_BOUNDS=' '
+	else
+	    CAR_BOUNDS='[<>0-9\.]* '
+	fi
+	
+	RULE_P=$(printf '  % '${LEN_INDEX}'i' 0)${CAR_BOUNDS}
 	for i in $(seq 1 $((${NB_VAR}-1)) )
 	do
-	   RULE_P=${RULE_P}' '${CAR_OP}$(printf '  % '${LEN_INDEX}'i ' $i)
+	   RULE_P=${RULE_P}' '${CAR_OP}$(printf '  % '${LEN_INDEX}'i' $i)${CAR_BOUNDS} 
 	done
 	echo $RULE_P
 }
@@ -154,8 +204,8 @@ END {
 }'
 ############ 
 
-echo "Generating synthetic matrices..."
-echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
+# echo "Generating synthetic matrices..."
+# echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
 
 echo 'Mining_ok Found_planted nb_rules_acc_geq nb_total_rules elapsed_time user_time system_time conf_id rule_type_id serie_id out_name' > $RES_LOG_INFO
 while read line
@@ -175,21 +225,23 @@ do
 	OR_L=$(echo $line | cut -d ' ' -f 8)
 	OR_R=$(echo $line | cut -d ' ' -f 9)
 	MAX_K=$(echo $line | cut -d ' ' -f 14)
-	RULE_L=$(f_make_rule ${OR_L} ${NB_VAR_L})
-	RULE_R=$(f_make_rule ${OR_R} ${NB_VAR_R})
+	RULE_L=$(f_make_rule ${OR_L} ${NB_VAR_L} ${BOOL_LEFT})
+	RULE_R=$(f_make_rule ${OR_R} ${NB_VAR_R} ${BOOL_RIGHT})
 	MATCH_RULE='^'${RULE_L}'[[:space:]]*'${RULE_R}'[[:space:]]*[^|&][[:space:]]'
 	LINE_OUT=$(echo $line | cut -d ' ' -f 2-4 )" "$OUT
 
 
-	echo "Mining ${SERIES} ..." 1>&2
-	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
+ 	echo "Mining ${SERIES} ..." 1>&2
+ 	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
 
 	LINE_TIME=$(head -1 ${OUT}$EXT_TIME )
 	found_p=0
 	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | cut -d ' ' -f 1)
 	do
-	    if [ "$(f_remove_point_float $found_acc )" == "$NACC" ]; then 
-		if [ "$found_p" != "0" -a "$AMNESIC" != "-A" ]; then 
+	    if (( $FULL_BOOL == 0 )); then
+		let found_p++
+	    elif [ "$(f_remove_point_float $found_acc )" == "$NACC" ]; then 
+		if [ "$found_p" != "0" ]; then 
 		    echo 'Same formula occurred several times !' 1>&2
 		    OK_F=0
 		fi
@@ -227,4 +279,3 @@ if [ $ERR_C -gt 0 ]; then
 else
     awk "$SCRIPT_RESULTS_AWK" < $RES_LOG_INFO  > $STATS_LOG_INFO
 fi
-
