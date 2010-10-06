@@ -11,7 +11,7 @@
 # EXT_R=.datbool
 # PRESERVING='3'
 # GEN_MARGIN_R='1'
-# MINE_CONF=~/redescriptors/sandbox/synthe_new/synthebool_template.conf
+# MINE_CONF=~/redescriptors/sandbox/synthe/synthebool_template.conf
 
 # ## BOOL DESTRUCTIVE
 # ####################
@@ -21,11 +21,11 @@
 # EXT_R=.datbool
 # PRESERVING='2'
 # GEN_MARGIN_R='1'
-# MINE_CONF=~/redescriptors/sandbox/synthe_new/synthebool_template.conf
+# MINE_CONF=~/redescriptors/sandbox/synthe/synthebool_template.conf
 
 ## REAL VALUED
 ####################
-NB_COPIES=1
+NB_COPIES=5
 SERIE=realvalued_conservative
 EXT_L=.datbool
 EXT_R=.densenum
@@ -34,21 +34,21 @@ GEN_MARGIN_R='0.25'
 #####################################################################
 
 SUFF_DATA=random
-BASE_REP=~/redescriptors/sandbox/synthe_new/${SERIE}/
+BASE_REP=~/redescriptors/sandbox/synthe/${SERIE}/
 DATA_REP=${BASE_REP}data/
 RESULTS_REP=${BASE_REP}results/
 
 SCRIPTS_PATH=~/redescriptors/sandbox/NMscripts/
 MINE_SCRIPT=${SCRIPTS_PATH}greedyRedescriptions.py
 MAT_PATH=${SCRIPTS_PATH}
-METHOD_PATH=~/redescriptors/sandbox/synthe_new/
+METHOD_PATH=~/redescriptors/sandbox/synthe/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
 EXT_RULES=.rul
 EXT_INFO=.info
 EXT_TIME=.time
 
-MINE_CONF=~/redescriptors/sandbox/synthe_new/synthe_template.conf
+MINE_CONF=~/redescriptors/sandbox/synthe/synthe_template.conf
 GEN_LOG_INFO=${DATA_REP}${SUFF_DATA}${EXT_INFO} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
 RES_LOG_INFO=${BASE_REP}${SUFF_DATA}.results
 STATS_LOG_INFO=${BASE_REP}${SUFF_DATA}.stats
