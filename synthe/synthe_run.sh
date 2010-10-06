@@ -11,7 +11,7 @@
 # EXT_R=.datbool
 # PRESERVING='3'
 # GEN_MARGIN_R='1'
-# MINE_CONF=~/redescriptors/sandbox/synthe/synthebool_template.conf
+# CONTRIBUTION=3
 
 # ## BOOL DESTRUCTIVE
 # ####################
@@ -21,16 +21,18 @@
 # EXT_R=.datbool
 # PRESERVING='2'
 # GEN_MARGIN_R='1'
-# MINE_CONF=~/redescriptors/sandbox/synthe/synthebool_template.conf
+# CONTRIBUTION=3
 
-## REAL VALUED
-####################
+## REAL VALUED CONSERVATIVE
+############################
 NB_COPIES=5
 SERIE=realvalued_conservative
 EXT_L=.datbool
 EXT_R=.densenum
 PRESERVING='3'
 GEN_MARGIN_R='0.25'
+CONTRIBUTION=5
+
 #####################################################################
 
 SUFF_DATA=random
@@ -62,12 +64,12 @@ gen_supp_rows_L='50' # number of supporting rows of the left hand side matrix
 gen_supp_rows_R='50' # number of supporting rows of the right hand side matrix
 gen_nb_variables_L='3' # number of supporting variables of the left hand side matrix
 gen_nb_variables_R='3' # number of supporting variables of the right hand side matrix
-gen_c='3' # contribution
+gen_c=$CONTRIBUTION # contribution
 gen_offset='0' # offset before support of right hand side matrix
 gen_preserving=$PRESERVING # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
 gen_margin_R=$GEN_MARGIN_R # margin right 1=boolean
-gen_density='0.01' #, 0.025, 0.05, 0.1' # noise density
+gen_density='0.01, 0.025, 0.05, 0.1' # noise density
 gen_density_blurr_OR='0.5' # supporting columns blurr density
 gen_density_blurr_AND='0.5' # supporting columns blurr density
 
@@ -86,7 +88,7 @@ else
 fi
 FULL_BOOL=$(( $BOOL_RIGHT * $BOOL_LEFT ))
 
-OTHER_VAR_PARAMS='::DATA_REP::='$DATA_REP',::RESULTS_REP::='$RESULTS_REP',::EXT_RULES::='$EXT_RULES',::EXT_L::='$EXT_L',::EXT_R::='$EXT_R',::SUFF_DATA::='$SUFF_DATA',::MIN_IMPROV::='$(( $FULL_BOOL * -1 ))
+OTHER_VAR_PARAMS='::DATA_REP::='$DATA_REP',::RESULTS_REP::='$RESULTS_REP',::EXT_RULES::='$EXT_RULES',::EXT_L::='$EXT_L',::EXT_R::='$EXT_R',::SUFF_DATA::='$SUFF_DATA',::CONTRIBUTION::='$CONTRIBUTION',::MIN_IMPROV::='$(( $FULL_BOOL * -1 ))
 TIME_FORMAT="%e %U %S\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps"
 
 
@@ -185,7 +187,8 @@ BEGIN {
 if (FNR != 1) {
    found_r[$8 " " $9]+=$2
    better_r[$8 " " $9]+=$3
-   total_r[$8 " " $9]+=$4
+   neither_fb[$8 " " $9]+=($2+$3)<=0
+   total_r[$8 " " $9]+=$4   
    if ( $10 == 0) serie_name[$8 " " $9]=$11
    series[$8 " " $9]+=1
 
@@ -198,80 +201,80 @@ if (FNR != 1) {
    }
 } 
 END {
-     print "conf_id rule_type_id nb_found_planted nb_series nb_better nb_total ratio_found_planted ratio_better avg_elapsed_time max_elapsed_time avg_user_time max_user_time avg_system_time max_system_time"
+     print "conf_id rule_type_id nb_found_planted nb_series nb_better nb_neither_fb nb_total ratio_found_planted ratio_better avg_elapsed_time max_elapsed_time avg_user_time max_user_time avg_system_time max_system_time"
      for (setts_type in series) 
-         printf "%s %i %i %i %i %f %f %f %f %f %f %f %f %s\n", setts_type, found_r[setts_type], series[setts_type], better_r[setts_type], total_r[setts_type], found_r[setts_type]/series[setts_type], better_r[setts_type]/total_r[setts_type], elapsed_t[setts_type]/series[setts_type], elapsed_max[setts_type], user_t[setts_type]/series[setts_type], user_max[setts_type], system_t[setts_type]/series[setts_type], system_max[setts_type], serie_name[setts_type]
+         printf "%s %i %i %i %i %i %f %f %f %f %f %f %f %f %s\n", setts_type, found_r[setts_type], series[setts_type], better_r[setts_type], neither_fb[setts_type], total_r[setts_type], found_r[setts_type]/series[setts_type], better_r[setts_type]/total_r[setts_type], elapsed_t[setts_type]/series[setts_type], elapsed_max[setts_type], user_t[setts_type]/series[setts_type], user_max[setts_type], system_t[setts_type]/series[setts_type], system_max[setts_type], serie_name[setts_type]
 }'
 ############ 
 
 # echo "Generating synthetic matrices..."
 # echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
 
-echo 'Mining_ok Found_planted nb_rules_acc_geq nb_total_rules elapsed_time user_time system_time conf_id rule_type_id serie_id out_name' > $RES_LOG_INFO
-while read line
-do
-   ## fetch parameters
-	ACC=$(echo $line | cut -d ' ' -f 5 )
-	NACC=$(f_remove_point_float $ACC )
-	if [ ${#NACC} == 0 ]; then
-	    OK_F=0
-	else
-	    OK_F=1
-	fi
-	SERIES=$(echo $line | cut -d ' ' -f 1)
-	OUT=${RESULTS_REP}${SERIES}_${SUFF_DATA}
-	NB_VAR_L=$(echo $line | cut -d ' ' -f 6)
-	NB_VAR_R=$(echo $line | cut -d ' ' -f 7)
-	OR_L=$(echo $line | cut -d ' ' -f 8)
-	OR_R=$(echo $line | cut -d ' ' -f 9)
-	MAX_K=$(echo $line | cut -d ' ' -f 14)
-	RULE_L=$(f_make_rule ${OR_L} ${NB_VAR_L} ${BOOL_LEFT})
-	RULE_R=$(f_make_rule ${OR_R} ${NB_VAR_R} ${BOOL_RIGHT})
-	MATCH_RULE='^'${RULE_L}'[[:space:]]*'${RULE_R}'[[:space:]]*[^|&][[:space:]]'
-	LINE_OUT=$(echo $line | cut -d ' ' -f 2-4 )" "$OUT
+# echo 'Mining_ok Found_planted nb_rules_acc_geq nb_total_rules elapsed_time user_time system_time conf_id rule_type_id serie_id out_name' > $RES_LOG_INFO
+# while read line
+# do
+#    ## fetch parameters
+# 	ACC=$(echo $line | cut -d ' ' -f 5 )
+# 	NACC=$(f_remove_point_float $ACC )
+# 	if [ ${#NACC} == 0 ]; then
+# 	    OK_F=0
+# 	else
+# 	    OK_F=1
+# 	fi
+# 	SERIES=$(echo $line | cut -d ' ' -f 1)
+# 	OUT=${RESULTS_REP}${SERIES}_${SUFF_DATA}
+# 	NB_VAR_L=$(echo $line | cut -d ' ' -f 6)
+# 	NB_VAR_R=$(echo $line | cut -d ' ' -f 7)
+# 	OR_L=$(echo $line | cut -d ' ' -f 8)
+# 	OR_R=$(echo $line | cut -d ' ' -f 9)
+# 	MAX_K=$(echo $line | cut -d ' ' -f 14)
+# 	RULE_L=$(f_make_rule ${OR_L} ${NB_VAR_L} ${BOOL_LEFT})
+# 	RULE_R=$(f_make_rule ${OR_R} ${NB_VAR_R} ${BOOL_RIGHT})
+# 	MATCH_RULE='^'${RULE_L}'[[:space:]]*'${RULE_R}'[[:space:]]*[^|&][[:space:]]'
+# 	LINE_OUT=$(echo $line | cut -d ' ' -f 2-4 )" "$OUT
 
 
- 	echo "Mining ${SERIES} ..." 1>&2
- 	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
+#  	echo "Mining ${SERIES} ..." 1>&2
+#  	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
 
-	LINE_TIME=$(head -1 ${OUT}$EXT_TIME )
-	found_p=0
-	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | cut -d ' ' -f 1)
-	do
-	    if (( $FULL_BOOL == 0 )); then
-		let found_p++
-	    elif [ "$(f_remove_point_float $found_acc )" == "$NACC" ]; then 
-		if [ "$found_p" != "0" ]; then 
-		    echo 'Same formula occurred several times !' 1>&2
-		    OK_F=0
-		fi
-		let found_p++
-	    else
-		echo 'Found acc ('$ACC') is not as expected ('$found_acc') !' 1>&2
-		OK_F=0
-	    fi
-	done
+# 	LINE_TIME=$(head -1 ${OUT}$EXT_TIME )
+# 	found_p=0
+# 	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | cut -d ' ' -f 1)
+# 	do
+# 	    if (( $FULL_BOOL == 0 )); then
+# 		let found_p++
+# 	    elif [ "$(f_remove_point_float $found_acc )" == "$NACC" ]; then 
+# 		if [ "$found_p" != "0" ]; then 
+# 		    echo 'Same formula occurred several times !' 1>&2
+# 		    OK_F=0
+# 		fi
+# 		let found_p++
+# 	    else
+# 		echo 'Found acc ('$ACC') is not as expected ('$found_acc') !' 1>&2
+# 		OK_F=0
+# 	    fi
+# 	done
 	
-	better=0
-	total=0
-	for curr_acc in $(cut -f 3 ${OUT}$EXT_RULES | cut -f 1 -d ' ')
-	do
-	    ncurr_acc=$(f_remove_point_float $curr_acc )
-	    if [ ${#ncurr_acc} == 0 ]; then
-		echo 'Trouble with floating point '$ncurr_acc' '$curr_acc 1>&2
-		OK_F=0
-	    else
-		let total++
-		if [ $ncurr_acc -ge $NACC ]; then 
- 		    let better++
-		fi
-	    fi
+# 	better=0
+# 	total=0
+# 	for curr_acc in $(cut -f 3 ${OUT}$EXT_RULES | cut -f 1 -d ' ')
+# 	do
+# 	    ncurr_acc=$(f_remove_point_float $curr_acc )
+# 	    if [ ${#ncurr_acc} == 0 ]; then
+# 		echo 'Trouble with floating point '$ncurr_acc' '$curr_acc 1>&2
+# 		OK_F=0
+# 	    else
+# 		let total++
+# 		if [ $ncurr_acc -ge $NACC ]; then 
+#  		    let better++
+# 		fi
+# 	    fi
 	    
-	done
-	better=$(( better - found_p ))
-	echo "$OK_F $found_p $better $total $LINE_TIME $LINE_OUT" >> $RES_LOG_INFO
+# 	done
+# 	better=$(( better - found_p ))
+# 	echo "$OK_F $found_p $better $total $LINE_TIME $LINE_OUT" >> $RES_LOG_INFO
 	
-done < $GEN_LOG_INFO
+# done < $GEN_LOG_INFO
  
 ERR_C=$(grep -c '^0' $RES_LOG_INFO)
 if [ $ERR_C -gt 0 ]; then
