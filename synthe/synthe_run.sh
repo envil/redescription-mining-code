@@ -1,114 +1,64 @@
-GENERATE_ACTION="gen"
-RUN_ACTION="run"
-
-NB_COPIES=3
-SERIE=CURRENT
+NB_COPIES=4
+SERIE=bool_conservative3
 SUFF_DATA=random
 
-#RAND_REP=~/redescriptors/sandbox/synthe/${SERIE}/data/
-#RES_REP=~/redescriptors/sandbox/synthe/${SERIE}/results/
+BASE_REP=~/redescriptors/sandbox/synthe/${SERIE}/
+DATA_REP=${BASE_REP}data/
+RESULTS_REP=${BASE_REP}results/
+MINE_CONF=~/redescriptors/sandbox/synthe/synthe_template.conf
 
-RAND_REP=~/redescriptors/sandbox/others/${SERIE}/data/
-RES_REP=~/redescriptors/sandbox/others/${SERIE}/results/
+SCRIPTS_PATH=~/redescriptors/sandbox/NMscripts/
+MINE_SCRIPT=${SCRIPTS_PATH}greedyRedescriptions.py
+MAT_PATH=${SCRIPTS_PATH}
+METHOD_PATH=~/redescriptors/sandbox/synthe/
+MATLAB_BIN=/opt/matlab/bin/matlab
 
-EXT_L=.bdat
-EXT_R=.bdat
-RULES_EXT=.rul
-SUPP_EXT=.supp
-LOG_EXT=.log
-INFO_EXT=.info
-GEN_LOG_INFO=${RAND_REP}${SUFF_DATA}${INFO_EXT} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
-CONF_LOG_INFO=${RES_REP}${SUFF_DATA}${INFO_EXT} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
-SIDE_PLACE_HOLDER='::SIDE::'
+EXT_L=.datbool
+EXT_R=.datbool
+EXT_RULES=.rul
+EXT_INFO=.info
+EXT_TIME=.time
+
+GEN_LOG_INFO=${DATA_REP}${SUFF_DATA}${EXT_INFO} ## WARNING NAME REBUILT IN MATLAB, DO NOT MODIFY
+RES_LOG_INFO=${BASE_REP}${SUFF_DATA}.results
+STATS_LOG_INFO=${BASE_REP}${SUFF_DATA}.stats
+
+OTHER_VAR_PARAMS='::DATA_REP::='$DATA_REP',::RESULTS_REP::='$RESULTS_REP',::EXT_RULES::='$EXT_RULES',::EXT_L::='$EXT_L',::EXT_R::='$EXT_R',::SUFF_DATA::='$SUFF_DATA
+TIME_FORMAT="%e %U %S\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps"
 
 ########## GENERATION SETTINGS
 
-gen_nb_rows='50' # total nb of rows
-gen_nb_cols_L='100' # number of columns of the left hand side matrix
-gen_nb_cols_R='100' # number of columns of the right hand side matrix
-gen_supp_rows_L='10' # number of supporting rows of the left hand side matrix
-gen_supp_rows_R='10' # number of supporting rows of the right hand side matrix
-gen_nb_variables_L='2' # number of supporting variables of the left hand side matrix
-gen_nb_variables_R='2' # number of supporting variables of the right hand side matrix
-gen_c='4' # contribution
+gen_nb_rows='500' # total nb of rows
+gen_nb_cols_L='10' # number of columns of the left hand side matrix
+gen_nb_cols_R='10' # number of columns of the right hand side matrix
+gen_supp_rows_L='50' # number of supporting rows of the left hand side matrix
+gen_supp_rows_R='50' # number of supporting rows of the right hand side matrix
+gen_nb_variables_L='3' # number of supporting variables of the left hand side matrix
+gen_nb_variables_R='3' # number of supporting variables of the right hand side matrix
+gen_c='3' # contribution
 gen_offset='0' # offset before support of right hand side matrix
 gen_preserving='3' # boolean, is the original support of the rules perserved when adding noise
 gen_margin_L='1' # margin left 1=boolean
 gen_margin_R='1' # margin right 1=boolean
-gen_density='0.01' # noise density
+gen_density='0.01, 0.025, 0.05, 0.1' # noise density
 gen_density_blurr_OR='0.5' # supporting columns blurr density
 gen_density_blurr_AND='0.5' # supporting columns blurr density
 
-# gen_nb_rows='100' # total nb of rows
-# gen_nb_cols_L='20' # number of columns of the left hand side matrix
-# gen_nb_cols_R='20' # number of columns of the right hand side matrix
-# gen_supp_rows_L='25' # number of supporting rows of the left hand side matrix
-# gen_supp_rows_R='25' # number of supporting rows of the right hand side matrix
-# gen_nb_variables_L='5' # number of supporting variables of the left hand side matrix
-# gen_nb_variables_R='5' # number of supporting variables of the right hand side matrix
-# gen_offset='0' # offset before support of right hand side matrix
-# gen_preserving='true, false'$(printf ', true%.0s' {1..4} )$(printf ', false%.0s' {1..4} ) # boolean, is the original support of the rules perserved when adding noise
-# gen_margin_L='1' # margin left 1=boolean
-# gen_margin_R='0.5' # margin right 1=boolean
-# gen_density='0.01' # noise density
-# gen_density_blurr_OR='0, 0, 0.25,0.5,0.75,0.9, 0.5,0.75,0.8,0.9' # supporting columns blurr density
-# gen_density_blurr_AND='0, 0, 0.6,0.75,0.8,0.9, 0.25,0.33,0.45,0.5' # supporting columns blurr density
-
-
-########## MINING SETTINGS
-NB_VARIABLES=4
-MIN_LEN=2
-
-CONTRIBUTION=3
-ITM_IN=3
-ITM_OUT=3
-FIN_IN=5
-FIN_OUT=5
-
-NB_RULES=30
-METH_SEL="overall"
-DIV_L=1
-DIV_R=1
-MIN_SCORE=0.01
-
-DRAFT_CAPACITY=4
-DRAFT_OUTPUT=1
-
-MIN_IMPROVEMENT=0
-COEFF_IMPACC=1
-COEFF_RELIMPACC=0
-COEFF_PVRULE=0
-COEFF_PVRED=0
-
-AMNESIC=""
-MAX_SIDE_IDENTICAL=2
-WITHOUT="--without-nots"
-
-VERBOSITY=8
-
-NB_lines_conf=$LINENO
-
-SCRI_PATH=~/redescriptors/sandbox/scripts/
-MAT_PATH=~/redescriptors/sandbox/scripts/
-METHOD_PATH=~/redescriptors/sandbox/synthe/
-MATLAB_BIN=/opt/matlab/bin/matlab
- 
-mkdir -p ${RAND_REP}
-mkdir -p ${RES_REP}
+mkdir -p ${DATA_REP}
+mkdir -p ${RESULTS_REP}
 
 SCRIPT_MATLAB="
 path(path,'${MAT_PATH}');
 path(path,'${METHOD_PATH}');
 
-params = struct( 'directory_out', '${RAND_REP}', ...
+params = struct( 'directory_out', '${DATA_REP}', ...
         'suffix', '${SUFF_DATA}', ...
         'differents', ${NB_COPIES}, ...
         'disp', false, ...
         'log_to_file', true, ...
-        'side_place_holder', '${SIDE_PLACE_HOLDER}', ...
         'dat_ext_L', '${EXT_L}', ...
         'dat_ext_R', '${EXT_R}', ...
-        'info_ext', '${INFO_EXT}');
+        'info_ext', '${EXT_INFO}');
 
 setts = struct( 'nb_rows', {$gen_nb_rows}, ... % total nb of rows
             'nb_cols_L', {$gen_nb_cols_L}, ... % number of columns of the left hand side matrix
@@ -129,48 +79,152 @@ setts = struct( 'nb_rows', {$gen_nb_rows}, ... % total nb of rows
 confs = struct( 'OR_L', {true, true, false, false}, ... 
                 'OR_R', {true, false, true, false}, ... 
                 'label', {'OO', 'OA', 'AO', 'AA'});
- 
-      
+       
 [log_info] = synthetic_data(params, setts, confs );
 "
 
-head -n $((NB_lines_conf -1 )) $0 > $CONF_LOG_INFO
+# confs = struct( 'OR_L', {false}, ... 
+#                 'OR_R', {false}, ... 
+#                 'label', {'AA'});
 
-if (( ${#GENERATE_ACTION} > 0 ))
-then         
-    echo "Generating synthetic matrices..."
-    echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
-fi
 
-if (( ${#RUN_ACTION} > 0 ))
-then         
+############ 
 
+function f_make_rule {
+
+	local OR_P=${1}
+	local NB_VAR=${2}
+	local CAR_OP_OR='|'
+	local CAR_OP_AND='&'
+	local LEN_INDEX=3
+
+	if (( $OR_P == 1 )); then
+	    CAR_OP=${CAR_OP_OR}
+	else
+	    CAR_OP=${CAR_OP_AND}
+	fi
+	RULE_P=$(printf '  % '${LEN_INDEX}'i ' 0)
+	for i in $(seq 1 $((${NB_VAR}-1)) )
+	do
+	   RULE_P=${RULE_P}' '${CAR_OP}$(printf '  % '${LEN_INDEX}'i ' $i)
+	done
+	echo $RULE_P
+}
+
+function f_remove_point_float {
+	local ACC=${1}
+	if [[ "$ACC" =~ ^[0-9]\.[0-9]{6}$ ]]; then
+	    echo ${ACC:0:1}${ACC:2}
+	else
+	    echo -1
+	    echo 'Floating point number does not have expected format ! '$ACC 1>&2
+	fi
+}
+############ 
+## Input fields on each line: (first contains labels)
+## 1:Mining_ok, 2:Found_planted, 3:nb_rules_acc_geq, 4:nb_total_rules, 5:elapsed_time, 6:user_time, 7:system_time, 8:conf_id, 9:rule_type_id, 10:serie_id, 11:out_name
+## Output fields on each line: (first contains labels)
+## 1:conf_id, 2:rule_type_id, 3:nb_found_planted, 4:nb_series, 5:nb_better, 6:nb_total, 7:ratio_found_planted, 8:ratio_better, 
+## 9:avg_elapsed_time, 10:max_elapsed_time, 11:avg_user_time, 12:max_user_time, 13:avg_system_time, 14:max_system_time, 15:serie_name 
+
+SCRIPT_RESULTS_AWK='
+BEGIN {
+    FS=" "
+}
+{
+if (FNR != 1) {
+   found_r[$8 " " $9]+=$2
+   better_r[$8 " " $9]+=$3
+   total_r[$8 " " $9]+=$4
+   if ( $10 == 0) serie_name[$8 " " $9]=$11
+   series[$8 " " $9]+=1
+
+   elapsed_t[$8 " " $9]+=$5
+   if (elapsed_max[$8 " " $9] < $5) elapsed_max[$8 " " $9]=$5
+   user_t[$8 " " $9]+=$6
+   if (user_max[$8 " " $9] < $6) user_max[$8 " " $9]=$6
+   system_t[$8 " " $9]+=$7
+   if (system_max[$8 " " $9] < $7) system_max[$8 " " $9]=$7
+   }
+} 
+END {
+     print "conf_id rule_type_id nb_found_planted nb_series nb_better nb_total ratio_found_planted ratio_better avg_elapsed_time max_elapsed_time avg_user_time max_user_time avg_system_time max_system_time"
+     for (setts_type in series) 
+         printf "%s %i %i %i %i %f %f %f %f %f %f %f %f %s\n", setts_type, found_r[setts_type], series[setts_type], better_r[setts_type], total_r[setts_type], found_r[setts_type]/series[setts_type], better_r[setts_type]/total_r[setts_type], elapsed_t[setts_type]/series[setts_type], elapsed_max[setts_type], user_t[setts_type]/series[setts_type], user_max[setts_type], system_t[setts_type]/series[setts_type], system_max[setts_type], serie_name[setts_type]
+}'
+############ 
+
+echo "Generating synthetic matrices..."
+echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
+
+echo 'Mining_ok Found_planted nb_rules_acc_geq nb_total_rules elapsed_time user_time system_time conf_id rule_type_id serie_id out_name' > $RES_LOG_INFO
 while read line
-    do
+do
    ## fetch parameters
-   FILE_L=$(echo $line | cut -d ' ' -f 1 | sed 's/'${SIDE_PLACE_HOLDER}'/L/')
-   FILE_R=$(echo $line | cut -d ' ' -f 1 | sed 's/'${SIDE_PLACE_HOLDER}'/R/')
-   OUT_BASE=$(echo $line | cut -d ' ' -f 1 | sed 's/'${SIDE_PLACE_HOLDER}'/O/')
+	ACC=$(echo $line | cut -d ' ' -f 5 )
+	NACC=$(f_remove_point_float $ACC )
+	if [ ${#NACC} == 0 ]; then
+	    OK_F=0
+	else
+	    OK_F=1
+	fi
+	SERIES=$(echo $line | cut -d ' ' -f 1)
+	OUT=${RESULTS_REP}${SERIES}_${SUFF_DATA}
+	NB_VAR_L=$(echo $line | cut -d ' ' -f 6)
+	NB_VAR_R=$(echo $line | cut -d ' ' -f 7)
+	OR_L=$(echo $line | cut -d ' ' -f 8)
+	OR_R=$(echo $line | cut -d ' ' -f 9)
+	MAX_K=$(echo $line | cut -d ' ' -f 14)
+	RULE_L=$(f_make_rule ${OR_L} ${NB_VAR_L})
+	RULE_R=$(f_make_rule ${OR_R} ${NB_VAR_R})
+	MATCH_RULE='^'${RULE_L}'[[:space:]]*'${RULE_R}'[[:space:]]*[^|&][[:space:]]'
+	LINE_OUT=$(echo $line | cut -d ' ' -f 2-4 )" "$OUT
 
 
-   DATAL=${RAND_REP}${FILE_L}${EXT_L}
-   DATAR=${RAND_REP}${FILE_R}${EXT_R}
-   RULES_OUT=${RES_REP}${OUT_BASE}$RULES_EXT
-   SUPPORT_OUT=${RES_REP}${OUT_BASE}$SUPP_EXT
-   LOG_OUT=${RES_REP}${OUT_BASE}$LOG_EXT
+	echo "Mining ${SERIES} ..." 1>&2
+	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
 
-   echo "Processing $OUT_BASE ..."
-
-   echo ${SCRI_PATH}greedyRuleFinder6.py \
-       --dataL=$DATAL --dataR=$DATAR \
-       --rules-out=$RULES_OUT --support-out=$SUPPORT_OUT \
-       --nb-variables=$NB_VARIABLES --min-len=$MIN_LEN \
-       --contribution=$CONTRIBUTION --itm-in=$ITM_IN --itm-out=$ITM_OUT --fin-in=$FIN_IN --fin-out=$FIN_OUT \
-       --nb-rules=$NB_RULES --meth-sel=$METH_SEL --div-L=$DIV_L --div-R=$DIV_R --min-score=$MIN_SCORE \
-       --draft-capacity=$DRAFT_CAPACITY --draft-output=$DRAFT_OUTPUT \
-       --min-improvement=$MIN_IMPROVEMENT --coeff-impacc=$COEFF_IMPACC --coeff-relimpacc=$COEFF_RELIMPACC  --coeff-pvrule=$COEFF_PVRULE --coeff-pvred=$COEFF_PVRED \
-       $AMNESIC --max-side-identical=$MAX_SIDE_IDENTICAL $WITHOUT \
-       --verbosity=$VERBOSITY >> $LOG_OUT	
+	LINE_TIME=$(head -1 ${OUT}$EXT_TIME )
+	found_p=0
+	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | cut -d ' ' -f 1)
+	do
+	    if [ "$(f_remove_point_float $found_acc )" == "$NACC" ]; then 
+		if [ "$found_p" != "0" -a "$AMNESIC" != "-A" ]; then 
+		    echo 'Same formula occurred several times !' 1>&2
+		    OK_F=0
+		fi
+		let found_p++
+	    else
+		echo 'Found acc ('$ACC') is not as expected ('$found_acc') !' 1>&2
+		OK_F=0
+	    fi
+	done
+	
+	better=0
+	total=0
+	for curr_acc in $(cut -f 3 ${OUT}$EXT_RULES | cut -f 1 -d ' ')
+	do
+	    ncurr_acc=$(f_remove_point_float $curr_acc )
+	    if [ ${#ncurr_acc} == 0 ]; then
+		echo 'Trouble with floating point '$ncurr_acc' '$curr_acc 1>&2
+		OK_F=0
+	    else
+		let total++
+		if [ $ncurr_acc -ge $NACC ]; then 
+ 		    let better++
+		fi
+	    fi
+	    
+	done
+	better=$(( better - found_p ))
+	echo "$OK_F $found_p $better $total $LINE_TIME $LINE_OUT" >> $RES_LOG_INFO
+	
 done < $GEN_LOG_INFO
-
+ 
+ERR_C=$(grep -c '^0' $RES_LOG_INFO)
+if [ $ERR_C -gt 0 ]; then
+    echo 'Errors in the results, not doing stats !'  1>&2
+else
+    awk "$SCRIPT_RESULTS_AWK" < $RES_LOG_INFO  > $STATS_LOG_INFO
 fi
+

@@ -3,14 +3,13 @@ function [log_info] = synthetic_data(params, setts, confs )
     %mining experiments with given parameters.
     % EXAMPLE PARAMETERS:
     % -------------------
-    %      params = struct( 'directory_out', './data1/', ...
+    %      params = struct( 'directory_out', './data/', ...
     %             'suffix','synthe', ...
     %             'differents', 10, ...
     %             'disp', true, ...
     %             'log_to_file', true, ...
-    %             'side_place_holder', '::SIDE::', ...
-    %             'dat_ext_L', 'bdat', ...
-    %             'dat_ext_R', 'bdat', ...
+    %             'dat_ext_L', 'datbool', ...
+    %             'dat_ext_R', 'datbool', ...
     %             'info_ext', 'info');
     % 
     %     setts = struct( 'nb_rows', {100}, ... % total nb of rows
@@ -38,9 +37,11 @@ function [log_info] = synthetic_data(params, setts, confs )
     if params.log_to_file
         log_info = [params.directory_out params.suffix  params.info_ext];
         fid = fopen(log_info,'w');
+        %fprintf(fid, strrep('##basename\t i(sett_id) l(conf_id) j(copy_id) acc nb_variables_L nb_variables_R OR_L OR_R offset supp_rows_L supp_rows_R preserving margin_L margin_R density density_blurr_OR density_blurr_AND\n', ' ', '\t'));
     else
         log_info = '-';
         fid = 1; % stdout
+        
     end    
     for i = 1:length(setts)
         titles_fig = [setts(i).preserving setts(i).density setts(i).density_blurr_OR setts(i).density_blurr_AND];
@@ -49,12 +50,11 @@ function [log_info] = synthetic_data(params, setts, confs )
                 [L, R, acc] = synthetic_boolean_data_pair(setts(i).nb_rows, setts(i).nb_cols_L, setts(i).nb_cols_R, ...
                             setts(i).supp_rows_L, setts(i).supp_rows_R, setts(i).nb_variables_L, setts(i).nb_variables_R, setts(i).c, confs(l).OR_L, confs(l).OR_R, setts(i).offset, ...
                             setts(i).preserving, setts(i).margin_L, setts(i).margin_R, setts(i).density, setts(i).density_blurr_OR, setts(i).density_blurr_AND);
-                filename = [ params.side_place_holder num2str(i) confs(l).label '-' num2str(j) '_' params.suffix];
                 to_log_setts = [i, l, j, acc, setts(i).nb_variables_L, setts(i).nb_variables_R, confs(l).OR_L, confs(l).OR_R, setts(i).offset, setts(i).supp_rows_L, setts(i).supp_rows_R, setts(i).preserving,  setts(i).margin_L, setts(i).margin_R, setts(i).density, setts(i).density_blurr_OR, setts(i).density_blurr_AND];
-                format_setts = strrep([filename ' %i %i %i %f %i %i %i %i %i %i %i %i %f %f %f %f %f\n'], ' ', '\t');
+                format_setts = strrep([num2str(i) confs(l).label '-' num2str(j) ' %i %i %i %f %i %i %i %i %i %i %i %i %f %f %f %f %f\n'], ' ', '\t');
                 if length(params.directory_out) > 0
-                    %save_matrix(L, strrep([params.directory_out filename], params.side_place_holder, 'L'), params.dat_ext_L);
-                    %save_matrix(R, strrep([params.directory_out filename], params.side_place_holder, 'R'), params.dat_ext_R);
+                    save_matrix(L, [params.directory_out 'L' num2str(i) confs(l).label '-' num2str(j) '_' params.suffix], params.dat_ext_L);
+                    save_matrix(R, [params.directory_out 'R' num2str(i) confs(l).label '-' num2str(j) '_' params.suffix], params.dat_ext_R);
                 end
                 fprintf(fid, format_setts, to_log_setts);
             end
