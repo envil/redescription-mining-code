@@ -10,14 +10,14 @@ from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
 import pdb
 
-def getOpts(conf_filename):
+def getOpts(conf_filename, substitutions_str=''):
     
-    # Default settings
+    # Default settings 
     setts = { 'verbosity': 1, 'logfile': '-',
               'data_rep': './',
               'data_l': 'left', 'ext_l':'.bdat',
               'data_r': 'right', 'ext_r':'.bdat',
-              'result_rep': './', 'out_base': 'out' , 'ext_rules': '.rul', 'ext_support': '.supp',
+              'result_rep': './', 'out_base': '::SERIES::' , 'ext_rules': '.rul', 'ext_support': '.supp',
               'nb_variables': 4, 'min_length': 2, 'contribution': 3,	                
               'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05, 'method_pval' : 'Supp',
               'nb_pairs': 0, 'method_pairs': 'overall', 'div_l': 1, 'div_r': 1, 'min_score': 0.01,
@@ -26,8 +26,62 @@ def getOpts(conf_filename):
               'amnesic': False, 'max_side_identical': 2, 'forbid_rules': ''
               }
 
+    setts_help = {'log': {'verbosity' : 'INT level of verbosity, 0: silent, 10:verbose',
+                          'logfile':'(-|+|FILENAME) logfile, -:stdout, +:result_rep outbase .runlog, FILENAME'},
+                  'files': {'data_rep': 'data repertory',
+                            'data_l': 'left data name',
+                            'ext_l':'left data extension',
+                            'data_r': 'right',
+                            'ext_r':'.bdat',
+                            'result_rep': './',
+                            'out_base': '::SERIES::' ,
+                            'ext_rules': '.rul',
+                            'ext_support': '.supp'},
+                  'mine': { 'nb_variables': 'nb var',
+                            'min_length': 'length',
+                            'contribution': 'contrib',	                
+                            'min_suppin': 'mini supp',
+                            'min_suppout': 'mini supp out',
+                            'min_acc': 'mini acc',
+                            'max_pval': 'mac p-val',
+                            'method_pval' : 'Supp',
+                            'nb_pairs': 'nb init pairs',
+                            'method_pairs': 'method pairs',
+                            'div_l': 'div l',
+                            'div_r': 'div r',
+                            'min_score': 'mini score pairs',
+                            'draft_capacity': 'draft capa',
+                            'draft_output': 'draft output',
+                            'min_improvement': 'mini improvement',
+                            'coeff_impacc': 'coeff imp',
+                            'coeff_relimpacc': 'coeff relimpacc',
+                            'coeff_pvrule': 'coeff pvrule',
+                            'coeff_pvred': 'coeff pvred',
+                            'amnesic': 'amnesic',
+                            'max_side_identical': 'max identical',
+                            'forbid_rules': 'rules forbid'}
+                  }
+    
     # Sections to read in the config file
     sections_read = ['log', 'files', 'mine']
+    if conf_filename in ( '-h', '--help'):
+        for section in sections_read:
+            print '\n[%s]' % section
+            for (item,help_str) in setts_help[section].iteritems():
+                print '%s=%s\t\t\t## %s' % (item, str(setts[item]), help_str)
+        sys.exit(2)
+
+    ## Substituting series place holder
+    substitutions={'::SERIES::':'out', '::HOME::':'~/' }
+    if len(substitutions_str) > 0:
+        parts = substitutions_str.split(',')
+        for substi in parts:
+            tmp = substi.split('=')
+            if len(tmp) == 2:
+                substitutions[tmp[0]] = tmp[1]
+            else:
+                substitutions['::SERIES::']=tmp[0]
+
 
     config = ConfigParser.ConfigParser() 
     config.read(conf_filename)
@@ -36,7 +90,11 @@ def getOpts(conf_filename):
             for (opti,val) in config.items(sect):
                 if setts.has_key(opti):
                     try:
-                        setts[opti] = type(setts[opti])(val)
+                        valclean = val.split('#')[0].strip()
+                        for (place_holder, token) in substitutions.iteritems():
+                            valclean = valclean.replace(place_holder, token)    
+
+                        setts[opti] = type(setts[opti])(valclean)
                     except ValueError:
                         raise Exception('Unexpected value for %s %s, default is %s.' %(opti, val, setts[opti]))
 
@@ -46,6 +104,8 @@ def getOpts(conf_filename):
     if re.search('(^|,)nots($|,)', setts['forbid_rules']): setts['rule_types'][False].remove(True); setts['rule_types'][True].remove(True)
     if re.search('(^|,)ands($|,)', setts['forbid_rules']): setts['rule_types'][False]=set()
     if re.search('(^|,)ors($|,)', setts['forbid_rules']): setts['rule_types'][True]=set()
+
+    if setts['logfile'] == '+': setts['logfile'] = setts['result_rep']+setts['out_base']+'.runlog'
 
     return setts
 
@@ -81,11 +141,17 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souve
     return currentDraft.redescriptions()
 
 def main():
+    
+    if len(sys.argv) > 2:
+        substitutions_str = sys.argv[2]
+    else:
+        substitutions_str = ''
     if len(sys.argv) > 1:
         conf_filename = sys.argv[1]
     else:
         conf_filename = ''
-    setts = getOpts(conf_filename)
+
+    setts = getOpts(conf_filename, substitutions_str)
     logger = Log(setts['verbosity'], setts['logfile'])
     logger.printL(2,"Settings:\n %s" % (setts))
     Data.logger = logger; Redescription.logger = logger; RedescriptionsDraft.logger = logger; BestsDraft.logger = logger; Souvenirs.logger = logger
@@ -117,19 +183,20 @@ def main():
     while initialRed != None :
         try:
             reds = processDraft(initialRed, data, setts['draft_capacity'], setts['draft_output'], setts['min_improvement'], setts['rule_types'], souvenirs, logger)
-            if setts['max_side_identical'] == 0 and len(reds) > 0 :
-                logger.printL(2, 'Appending reds...')
-                for currentRedescription in reds: 
-                    currentRedescription.write(rulesOutFp, supportOutFp)
-            else:
-                insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts['max_side_identical'])
-                # if len(insertedIds) > 0 :
-#                     logger.printL(2, 'Printing reds...')
-#                     rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
-#                     if supportOutFp != None:
-#                         supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
-#                     for currentRedescription in readyDraft.redescriptions():
-#                         currentRedescription.write(rulesOutFp, supportOutFp)
+            if len(reds) > 0:
+                if setts['max_side_identical'] == 0 :
+                    logger.printL(2, 'Appending reds...')
+                    for currentRedescription in reds: 
+                        currentRedescription.write(rulesOutFp, supportOutFp)
+                else :
+                    insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts['max_side_identical'])
+                    # if len(insertedIds) > 0 :
+    #                     logger.printL(2, 'Printing reds...')
+    #                     rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
+    #                     if supportOutFp != None:
+    #                         supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
+    #                     for currentRedescription in readyDraft.redescriptions():
+    #                         currentRedescription.write(rulesOutFp, supportOutFp)
                     
             initialRed = data.getNextInitialRed()
 

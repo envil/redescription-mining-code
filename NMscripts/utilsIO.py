@@ -20,8 +20,6 @@ def usage():
     output data
     -l /--letter=CHAR
       Name for the variable, Cart format
-    -c / --classes
-      Generate classes file, for Cart
     -w / --overwrite
       Force overwrite
     -h, --help
@@ -40,7 +38,6 @@ def getOpts():
     setts['inFile'] = "-"
     setts['outFile'] = "-"
     setts['letter'] = "A"
-    setts['classes'] = False
     setts['overwrite'] = False
     if len(opts) == 0:
         usage()
@@ -52,7 +49,6 @@ def getOpts():
 	if o in ("-i", "--input"): setts['inFile'] = a
 	if o in ("-o", "--output"): setts['outFile'] = a
 	if o in ("-l", "--letter"): setts['letter'] = a
-	if o in ("-c", "--classes"): setts['classes'] = True
 	if o in ("-w", "--overwrite"): setts['overwrite'] = True
 
 def loadColumnNames(filename):
@@ -287,7 +283,7 @@ def writeMatlab(filename, tmpcolSupps, rowId):
             f.write('%i\t%i\t1\n'% (row+1, column+1))
     f.close()
     
-def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterRow='G'): 
+def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterRow='G', col = None): 
     logger.printL(2,"\nWriting cart output %s\n"%filename)
 
     f = open(filename, 'w')
@@ -299,21 +295,6 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
     to_write = '\n'.join(d).strip()
     f.write(re.sub("([A-Z])0*([0-9])","\g<1>\g<2>",to_write))
     f.close()
-
-    if (classes):
-        logger.printL(2,"\nWriting cart classes %s\n"%filename)
-        f = open(filename+".classes", 'w')
-        col = random.randint(1,len(tmpcolSupps))
-        pos = tmpcolSupps[col-1]
-        neg = list(set(range(rowId+1))-pos)
-        pos = list(pos)
-        
-        d = ["%s%08i\t%s%i"% (letterRow, pos[i], letterColumn, col) for i in range(len(pos))]
-        d.extend(["%s%08i\texc-%s%i"% (letterRow, neg[i], letterColumn, col) for i in range(len(neg))])
-        d.sort()
-        to_write = '\n'.join(d).strip()
-        f.write(re.sub("([A-Z])0*([0-9])","\g<1>\g<2>",to_write))
-        f.close()
 
 # IBM to sparse :
 # cut -f4- -d ' ' filename
@@ -328,9 +309,9 @@ def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
         sys.stderr.write("\nError, input and output format are the same (%s %s)!" % (format_in, format_out))
         sys.exit(1)
 
-    if ( not overwrite and os.path.isfile(outFile) ):
-        sys.stderr.write("\nOutput file %s already exists, not overwriting (add --overwrite to force)\n"% ( outFile))
-        sys.exit(1)
+#    if ( not overwrite and os.path.isfile(outFile) ):
+#        sys.stderr.write("\nOutput file %s already exists, not overwriting (add --overwrite to force)\n"% ( outFile))
+#        sys.exit(1)
 
         ## FROM IBM FORMAT -> shell commands
     if format_in == "ibm" and  format_out == "sparse" :

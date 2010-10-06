@@ -124,7 +124,7 @@ class RedescriptionsDraft:
                     disp += "Redescription (YES):\t"+redescriptionList[i].dispSimple()+"\n"
                 else:
                     disp += "Redescription (NO):\t"+redescriptionList[i].dispSimple()+"\n"
-            RedescriptionsDraft.logger.printL(1,disp)
+            RedescriptionsDraft.logger.printL(2,disp)
         return insertedIds
 
 #     def updateCheckSubsum(self, redescriptionList):          
