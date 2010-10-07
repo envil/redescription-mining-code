@@ -13,9 +13,10 @@ mkdir -p $LOG_REP
 
 ### DATA
 ########
+ORG_REP=~/redescriptors/sandbox/binning_exp/
 DATA_REP=~/redescriptors/sandbox/others/binning/
-FILE_L=mammals
-FILE_R=worldclim_tp_75segments
+FILE_L=mammals_small
+FILE_R=worldclim_tp_small_10segments
 EXT_ORG=.datbool
 EXT_IN=.cart
 
@@ -39,12 +40,12 @@ LOG_INIT=${LOG_REP}cartwheels_init_${EXPID}.txt
 
 ### COMMANDS
 ############
-$PROG_CONVERT -i $DATA_REP$FILE_L$EXT_ORG -o $DATA_REP$FILE_L$EXT_IN -l L --classes
-$PROG_CONVERT -i $DATA_REP$FILE_R$EXT_ORG -o $DATA_REP$FILE_R$EXT_IN -l R
-mv $DATA_REP$FILE_L$EXT_IN.classes class.txt
-mv $DATA_REP$FILE_L$EXT_IN init1.txt
-mv $DATA_REP$FILE_R$EXT_IN init2.txt
-$PROG > $LOG
+$PROG_CONVERT -i $ORG_REP$FILE_L$EXT_ORG -o $DATA_REP$FILE_L$EXT_IN -l L --classes
+#$PROG_CONVERT -i $ORG_REP$FILE_R$EXT_ORG -o $DATA_REP$FILE_R$EXT_IN -l R
+#cp $DATA_REP$FILE_L$EXT_IN.classes class.txt
+#cp $DATA_REP$FILE_L$EXT_IN init1.txt
+#cp $DATA_REP$FILE_R$EXT_IN init2.txt
+#$PROG > $LOG
 # echo "
 # " | cat ${ORGALG_REP}class.txt - >  $LOG_INIT
 # echo "
