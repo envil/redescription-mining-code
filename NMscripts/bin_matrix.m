@@ -43,14 +43,26 @@ elseif strcmp(how, 'means')
         end
         bounds{i} = y(1:end-1) + diff(y)/2;
     end
-
- elseif strcmp(how, 'segments')
+elseif strcmp(how, 'segments')
     max_N = N;
     for i=1:m
         [assign, bounds{i}, cost, N(i)] = bin_segments(mat_real(:,i),max_N(i));
         mat_bin(sub2ind(size(mat_bin), [1:n],assign+sum(N(1:i-1))))=1;
     end     
+    mat_bin(:,sum(N)+1:end)=[];
 
+ elseif strcmp(how, 'sparseg')
+    max_N = N;
+    for i=1:m
+        [assign, bounds{i}, cost, N(i)] = bin_segments(mat_real(:,i),max_N(i));
+        inds = find(assign-1);
+        N(i)=N(i)-1;
+        if length(inds) < n
+            length(inds);
+            mat_bin(sub2ind(size(mat_bin), inds,assign(inds)-1+sum(N(1:i-1))))=1;
+        end
+    end     
+    mat_bin(:,sum(N)+1:end)=[];
 else
     error('How do you want to bin the data (width/height/means/segments)?')
 end

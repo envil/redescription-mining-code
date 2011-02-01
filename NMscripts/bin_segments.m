@@ -36,7 +36,7 @@ for j = opt_k-1:-1:2
     tmp = B(j,cuts(1));
     cuts = [tmp cuts];
 end
-cuts = [0 cuts];
+cuts = unique([0 cuts]);
 buckets = zeros(1,n);
 bounds = [];
 for i=1:length(cuts)-1
@@ -44,8 +44,12 @@ for i=1:length(cuts)-1
     bounds = [bounds; T(cuts(i)+1)];
 end
 
-bounds = bounds(2:end);
-assign = buckets(J);
+bounds = full(bounds(2:end));
+
+assign = buckets(J');
+if size(assign,1) > 1
+    size(assign)
+end
 
 % E
 % B

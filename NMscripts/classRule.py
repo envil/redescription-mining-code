@@ -3,6 +3,7 @@ import re, pdb
 class Op:
     
     ops = {0: 'X', 1: '|', -1: '&'}
+    printops = {0: 'X', 1: '\lor', -1: '\land'}
     
     def __init__(self, nval=0):
         if type(nval) == bool :
@@ -32,6 +33,9 @@ class Op:
     
     def __str__(self):
         return Op.ops[self.val]+' '
+
+    def dispPrint(self):
+        return Op.printops[self.val]
 
     def __cmp__(self, other):
         if other == None:
@@ -128,7 +132,7 @@ class BoolItem(Item):
         
     def __hash__(self):
         return self.col
-    
+
     def disp(self, lenIndex=0, names = None):
         if lenIndex > 0 :
             lenIndex = str(lenIndex)
@@ -138,6 +142,20 @@ class BoolItem(Item):
             return ('%'+lenIndex+'s ') % names[self.col]
         else:
             return ('%'+lenIndex+'i ') % self.col
+
+    
+    def dispPrint(self, neg, names = None):
+        if type(names) == list  and len(names) > 0:
+            if neg:
+                return '\\neg %s' % names[self.col]
+            else:
+                return '%s' % names[self.col]
+        
+        else:
+            if neg:
+                return '\\neg %i' % self.col
+            else:
+                return '%i' % self.col
 
     def __str__(self):
         return self.disp()
@@ -189,6 +207,18 @@ class CatItem(Item):
         else:
             return ('%'+lenIndex+'i=%i ') % (self.col, self.cat)
 
+    def dispPrint(self, neg, names = None):
+        if neg:
+            instr = '\\not\\in'
+        else:
+            instr= '\\in'
+        if type(names) == list  and len(names) > 0:
+            idcol = '%s ' % names[self.col]
+        else:
+            idcol = '%i' % self.col
+        catstr = '%i' % self.cat
+        return ' '+idcol+' '+instr+catstr+' '
+    
     def __str__(self):
         return self.disp()
     
@@ -282,6 +312,46 @@ class NumItem(Item):
         else:
             return ('%'+lenIndex+'i%s%s ') % (self.col, lb, ub)
 
+
+    def dispPrint1(self, neg, names = None):
+        if self.lowb > float('-Inf'):
+            lb = '[%s' % self.lowb
+        else:
+            lb = '(-\\infty'
+        if self.upb < float('Inf'):
+            ub = '%s]' % self.upb
+        else:
+            ub = '+\\infty)'
+        if neg:
+            instr = '\\not\\in'
+        else:
+            instr= '\\in'
+        if type(names) == list  and len(names) > 0:
+            idcol = '%s ' % names[self.col]
+        else:
+            idcol = '%i' % self.col
+        return ' '+idcol+' '+instr+lb+','+ub+' '
+
+    def dispPrint(self, neg, names = None):
+        if self.lowb > float('-Inf'):
+            lb = '[%s\\leq{}' % self.lowb
+        else:
+            lb = '['
+        if self.upb < float('Inf'):
+            ub = '\\leq{}%s]' % self.upb
+        else:
+            ub = ']'
+        if neg:
+            negstr = ' \\not '
+        else:
+            negstr= ''
+        if type(names) == list  and len(names) > 0:
+            idcol = '%s' % names[self.col]
+        else:
+            idcol = '%i' % self.col
+        return ''+negstr+lb+idcol+ub+''
+
+
     def __str__(self):
         return self.disp()
 
@@ -344,6 +414,10 @@ class Term:
             
     def disp(self, lenIndex=0, names = None):
         return '%s%s' % (self.neg, self.item.disp(lenIndex, names))
+
+    def dispPrint(self, names = None):
+        return self.item.dispPrint(self.neg.boolVal(), names)
+
 
     def __str__(self):
         return self.disp()
@@ -553,6 +627,31 @@ class Rule:
                 op = op.other()
             string = string[2:]
         return string
+
+    def dispPrint(self, names = None):
+        if len(self) == 0 :
+            string = ''
+        else:
+#             if len(self.buk) > 2:
+#                 pdb.set_trace()
+            string = ''
+            first = 0
+            op = self.op
+            for cbuk in self.buk:
+                if first != 0:
+                    string = '(' + string + ')'
+                cterms = list(cbuk)
+                cterms.sort()
+                for term in cterms:
+                    if first == 0:
+                        first = 1
+                        string += '%s' % (term.dispPrint(names))
+                    else:
+                        string += ' %s %s' % (op.dispPrint(), term.dispPrint(names))
+                op = op.other()
+            
+        return '$' + string + '$'
+    
     
     def __str__(self):
         return self.disp()    

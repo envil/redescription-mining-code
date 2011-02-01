@@ -3,6 +3,7 @@ from classLog import Log
 import utilsStats
 # from scipy.stats import binom, hypergeom
 from classRule import  *
+from classCWRule import  *
 
 class Redescription:
     logger = Log(0)
@@ -18,8 +19,19 @@ class Redescription:
     diff_length = Rule.diff_length
     diff_score = diff_length + 1
     methodpVal = 'Marg'
+
+    def histoUpdate(self, opk=None, side=None):
+        if type(opk) == int :
+            self.histo = [k]
+        elif type(self.histo) == list and opk!= None and side != None:
+            self.histo.append(int(opk)*(side+1)) 
+            
     
-    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1]):
+    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1], nHisto=None):
+        if type(nHisto) == list :
+            self.histo = nHisto
+        else:
+            self.histo = []
         try:
             self.pVal = eval('self.pVal%s' % (Redescription.methodpVal))
         except AttributeError:
@@ -46,14 +58,14 @@ class Redescription:
         self.lAvailableCols = navailableCols
         self.vectorABCD = None #Redescription.makeVectorABCD(self.nbAvailableCols()>0, self.N, self.sAlpha, self.sBeta, self.sGamma)
         
-    def fromInitialPair(initialPair, data):
+    def fromInitialPair(initialPair, data, pairId=0):
         ruleL = Rule()
         ruleR = Rule()
         ruleL.extend(None, initialPair[0])
         ruleR.extend(None, initialPair[1])
         suppL = data.supp(0, initialPair[0])
         suppR = data.supp(1, initialPair[1])
-        r = Redescription(ruleL, ruleR, [suppL, suppR], data.N, data.nonFull(), [float(len(suppL))/data.N, float(len(suppR))/data.N]) 
+        r = Redescription(ruleL, ruleR, [suppL, suppR], data.N, data.nonFull(), [float(len(suppL))/data.N, float(len(suppR))/data.N], [pairId]) 
         r.vectorABCD = data.makeVectorABCD(r.sAlpha, r.sBeta, r.sGamma)
         return r
     fromInitialPair = staticmethod(fromInitialPair)
@@ -171,6 +183,7 @@ class Redescription:
         if side == -1 :
             self.lAvailableCols = [set(),set()]
         else:
+            self.histoUpdate(op, side)
             self.rules[side].extend(op, term)
             self.prs[side] = Rule.updateProba(self.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
@@ -209,6 +222,7 @@ class Redescription:
             kid.lAvailableCols = [set(),set()]
         else:
             kid.rules[side].extend(op, term)
+            kid.histoUpdate(op, side)
             kid.prs[side] = Rule.updateProba(kid.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
@@ -244,7 +258,7 @@ class Redescription:
     def copy(self):
         return Redescription(self.rules[0].copy(), self.rules[1].copy(), \
                              [set(self.sAlpha), set(self.sBeta), set(self.sGamma)], self.N, \
-                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]])
+                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]], list(self.histo))
 
     ## return the support associated to a rule and a list of the items involved in it
     ## the list contains pairs (column id, negated)
@@ -287,11 +301,11 @@ class Redescription:
 
     def __str__(self):
         if self.sGamma != set([-1]):
-            return '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s' \
+            return '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s\tHISTO:%s' \
                   % (self.lenL(), self.lenR(), \
                      self.lenI(), self.lenU(), self.acc(), self.pVal(), \
                      self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
-                     len(self), self.rules[0], self.rules[1])
+                     len(self), self.rules[0], self.rules[1], self.histo)
         elif hasattr(self, 'readInfo'):
             return '(%i %i,  %i / %i\t = %f, %f): %s <=> %s' \
                   % (self.readInfo['A'] + self.readInfo['C'], self.readInfo['B'] + self.readInfo['C'], \
@@ -309,8 +323,21 @@ class Redescription:
              % (self.readInfo['acc'], self.pVal(), self.readInfo['A'], self.readInfo['B'], self.readInfo['C'], self.readInfo['D'])
         else:
             return 'Non printable redescription'
-        
 
+    def dispCaracteristiquesPrintHeader():
+        return     ' $\\jacc$ & $\\supp$ & \\pValue '
+    dispCaracteristiquesPrintHeader = staticmethod(dispCaracteristiquesPrintHeader)        
+
+    def dispCaracteristiquesPrint(self):
+        if self.sGamma != set([-1]):
+            return '$%1.3f$ & $%i$ & $%1.3f$' \
+             % (round(self.acc(),3), self.lenGamma(), round(self.pVal(),3))
+        elif hasattr(self, 'readInfo'):
+            return '$%1.3f$ & $%i$ & $%1.3f$' \
+             % (round(self.readInfo['acc'],3), self.readInfo['C'], round(self.readInfo['pVal'],3))
+        else:
+            return 'Non printable redescription'
+        
     def dispCaracteristiquesSimple(self):
         if self.sGamma != set([-1]):
             return '%f %f %i %i %i %i' \
@@ -322,18 +349,33 @@ class Redescription:
             return 'Non printable redescription'
         
     def disp(self, lenIndex=0, names= [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()
+        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()+('\tHISTO:%s' % self.histo)
 
     def dispSimple(self, lenIndex=0, names = [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()
+        return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()+('\tHISTO:%s' % self.histo)
 
-    def dispSupp(self):
+    def dispPrintHeader():
+        return ' & $q_\iLHS$ & $q_\iRHS$ &' + Redescription.dispCaracteristiquesPrintHeader()+' \\\\'
+    dispPrintHeader = staticmethod(dispPrintHeader)
+
+    def dispPrint(self, rulId, names = [None, None]):
+        rulidStr = '(%i)' % rulId
+        return rulidStr + ' & ' + self.rules[0].dispPrint(names[0])+' & '+self.rules[1].dispPrint(names[1])+' & '+self.dispCaracteristiquesPrint()+' \\\\'
+
+
+    def dispSuppRL(self):
         supportStr = ''
         for i in sorted(self.suppL()): supportStr += "%i "%i
         supportStr +="\t"
         for i in sorted(self.suppR()): supportStr += "%i "%i
         return supportStr
     
+    def dispSupp(self):
+        supportStr = ''
+        for i in sorted(self.suppI()): supportStr += "%i "%i
+        return supportStr
+
+
     def pValSupp(self):
         if self.prs == [-1,-1] or self.N == -1:
             return -1
@@ -380,10 +422,14 @@ class Redescription:
 
     def parseRules(string):
         parts = string.rsplit('\t')
-
         if len(parts) >= 2:
-            ruleL = Rule.parse(parts[0])
-            ruleR = Rule.parse(parts[1])
+            if parts[0].startswith('('):
+                ruleL = CWRule.parse(parts[0])
+                ruleR = CWRule.parse(parts[1])
+
+            else:
+                ruleL = Rule.parse(parts[0])
+                ruleR = Rule.parse(parts[1])
         else:
             ruleL = Rule()
             ruleR = Rule()

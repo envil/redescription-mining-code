@@ -1183,7 +1183,7 @@ class Data:
         if self.count < self.nbRed :
             pair = self.methodsP['next'](self.count)
             self.count += 1
-            return Redescription.fromInitialPair(pair, self)
+            return Redescription.fromInitialPair(pair, self, self.count)
         else:
             return None
 

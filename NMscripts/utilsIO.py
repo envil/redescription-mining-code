@@ -30,7 +30,7 @@ def usage():
 def getOpts():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "i:o:l:wch", \
-                                   ["help","input", "output", "letter","classes", "overwrite"])
+                                   ["help","input", "output", "letter", "overwrite"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -283,7 +283,7 @@ def writeMatlab(filename, tmpcolSupps, rowId):
             f.write('%i\t%i\t1\n'% (row+1, column+1))
     f.close()
     
-def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterRow='G', col = None): 
+def writeCart(filename, tmpcolSupps, rowId, letterColumn = 'C', letterRow='G', col = None): 
     logger.printL(2,"\nWriting cart output %s\n"%filename)
 
     f = open(filename, 'w')
@@ -302,7 +302,7 @@ def writeCart(filename, tmpcolSupps, rowId, classes, letterColumn = 'C', letterR
 # sparse to IBM :
 # nl ./data/houseVotes/house-votes-84_sparse | nl | expand | sed 's/  */ /g' | sed 's/^ //g' > ./data/houseVotes/house-votes-84_ibm
 
-def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
+def convertFormat(inFile, outFile, overwrite=False, letter='A'):
     format_in = inFile.split('.').pop()
     format_out = outFile.split('.').pop()
     if format_in == format_out:
@@ -352,12 +352,12 @@ def convertFormat(inFile, outFile, overwrite=False, letter='A', classes=False):
     elif format_out == "ibm":
         writeIbm(outFile, colSupps, rowId)
     elif format_out == "cart":
-        writeCart(outFile, colSupps, rowId, classes, letter)
+        writeCart(outFile, colSupps, rowId, letter)
 
 def main():
 
     getOpts()
-    convertFormat(setts['inFile'], setts['outFile'], setts['overwrite'], setts['letter'], setts['classes'])
+    convertFormat(setts['inFile'], setts['outFile'], setts['overwrite'], setts['letter'])
    
         
 ## END of main()
