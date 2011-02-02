@@ -22,7 +22,7 @@ class BestsDraft:
 
     minC = 0
     
-    coeffPVRule = 1
+    coeffPVQuery = 1
     coeffPVRed =1
     coeffImpacc = 1
     coeffRelImpacc = 0
@@ -119,10 +119,10 @@ class BestsDraft:
             return side*2 + op.isOr()*1
     pos = staticmethod(pos)    
 
-    def __init__(self, ruleTypes, N,  currRed=None):
+    def __init__(self, queryTypes, N,  currRed=None):
 #        pdb.set_trace()
         try:
-            self.pValRule = eval('self.pVal%sRule' % (Redescription.methodpVal))
+            self.pValQuery = eval('self.pVal%sQuery' % (Redescription.methodpVal))
             self.pValRed = eval('self.pVal%sRed' % (Redescription.methodpVal))
         except AttributeError:
               raise Exception('Oups method to compute the p-value does not exist !')
@@ -133,25 +133,25 @@ class BestsDraft:
         if currRed != None:
             self.parts = currRed.parts()
             currBest['acc'] = currRed.acc()
-        self.bests = [None, None, None, None, currBest] ## last contains current rule
+        self.bests = [None, None, None, None, currBest] ## last contains current query
         self.red = currRed
-        self.ruleTypes = ruleTypes
+        self.queryTypes = queryTypes
         self.N = N
 
-    def ruleTypesOp(self):
-        return [i for i in self.ruleTypes.keys() if len(self.ruleTypes[i])> 0]
+    def queryTypesOp(self):
+        return [i for i in self.queryTypes.keys() if len(self.queryTypes[i])> 0]
 
-    def ruleTypesNP(self, opOR):
-        return self.ruleTypes[opOR]
+    def queryTypesNP(self, opOR):
+        return self.queryTypes[opOR]
 
-    def ruleTypesHasPos(self, opOR):
-        return False in self.ruleTypes[opOR]
+    def queryTypesHasPos(self, opOR):
+        return False in self.queryTypes[opOR]
     
-    def ruleTypesHasNeg(self, opOR=None):
+    def queryTypesHasNeg(self, opOR=None):
         if opOR == None:
-            return (True in self.ruleTypes[False]) or (True in self.ruleTypes[True])
+            return (True in self.queryTypes[False]) or (True in self.queryTypes[True])
         else:
-            return True in self.ruleTypes[opOR]
+            return True in self.queryTypes[opOR]
         
     def term(self, pos):
         return self.bests[pos]['term']
@@ -231,7 +231,7 @@ class BestsDraft:
         else:
             return BestsDraft.coeffImpacc*self.impacc(cand) \
                    + BestsDraft.coeffRelImpacc*self.relImpacc(cand) \
-                   + self.pValRuleScore(cand) + self.pValRedScore(cand)
+                   + self.pValQueryScore(cand) + self.pValRedScore(cand)
         
     def relImpacc(self, cand):
         if cand == None:
@@ -251,11 +251,11 @@ class BestsDraft:
             else:
                 return cand['acc']
 
-    def pValRuleScore(self, cand):
-        if BestsDraft.coeffPVRule < 0:
-            return BestsDraft.coeffPVRule * self.pValRule(cand)
-        elif BestsDraft.coeffPVRule > 0:
-            return -10*(BestsDraft.coeffPVRule < self.pValRule(cand))
+    def pValQueryScore(self, cand):
+        if BestsDraft.coeffPVQuery < 0:
+            return BestsDraft.coeffPVQuery * self.pValQuery(cand)
+        elif BestsDraft.coeffPVQuery > 0:
+            return -10*(BestsDraft.coeffPVQuery < self.pValQuery(cand))
         else:
             return 0
 
@@ -267,7 +267,7 @@ class BestsDraft:
         else:
             return 0
     
-    def pValSuppRule(self, cand):
+    def pValSuppQuery(self, cand):
         if cand == None:
             return -1
         elif self.red == None or cand['side'] == -1:
@@ -280,7 +280,7 @@ class BestsDraft:
                 return utilsStats.pValSupp(self.N, cand['toBlue'] + cand['toRed'], \
                                            self.red.prs[cand['side']]*float(len(cand['supp']))/(self.N))
 
-    def pValMargRule(self, cand):
+    def pValMargQuery(self, cand):
         if cand == None:
             return -1
         elif  self.red == None or cand['side'] == -1:
@@ -293,7 +293,7 @@ class BestsDraft:
                 return utilsStats.pValSupp(self.N, cand['toBlue'] + cand['toRed'], \
                                            float(len(cand['supp']) * self.red.lenX(cand['side']))/(self.N*self.N))
 
-    def pValOverRule(self, cand):
+    def pValOverQuery(self, cand):
         if cand == None:
             return -1
         elif  self.red == None or cand['side'] == -1 : 
@@ -366,14 +366,14 @@ class BestsDraft:
                   % ((str(cand['op']) + str(cand['term'])), '')
             
             scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
-                      % (self.score(cand), cand['acc'],  self.pValRule(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
+                      % (self.score(cand), cand['acc'],  self.pValQuery(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
             
         elif cand['side'] == 1:
             dsp = '* %20s <==> * %20s' \
                   % ('', (str(cand['op']) + str(cand['term'])))
             
             scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
-                      % (self.score(cand), cand['acc'],  self.pValRule(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
+                      % (self.score(cand), cand['acc'],  self.pValQuery(cand), self.pValRed(cand), cand['toBlue'], cand['toRed'])
             
         return dsp+scoring
         
@@ -387,7 +387,7 @@ class BestsDraft:
                   % ('LHS extension', 'RHS extension')
             
         dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
-                      % ('score', 'Accuracy',  'Rule pV','Red pV', 'toBlue', 'toRed')
+                      % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')
             
         for cand in self.bests[:-1]: ## Do not print the last: current redescription
             dsp += '\n\t'+self.dispCand(cand)

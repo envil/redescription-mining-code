@@ -1,6 +1,6 @@
 import math, random, re, utilsIO
 from classLog import Log
-from classRule import Op, Item, BoolItem, CatItem, NumItem, Term, Rule 
+from classQuery import Op, Item, BoolItem, CatItem, NumItem, Term, Query 
 from classRedescription import Redescription
 from classBestsDraft import BestsDraft
 import pdb
@@ -59,8 +59,8 @@ class BoolDataM(DataM):
             (toColors[False][0], toColors[True][1], toColors[False][1], toColors[True][0]) = \
                                  (len(toImprov.parts[0] & self.colSupps[col]), len(toImprov.parts[1] & self.colSupps[col]), len(toImprov.parts[2] & self.colSupps[col]), len(toImprov.parts[3] & self.colSupps[col]))
 
-        for op in toImprov.ruleTypesOp():
-            for neg in toImprov.ruleTypesNP(op):
+        for op in toImprov.queryTypesOp():
+            for neg in toImprov.queryTypesNP(op):
                 b = toImprov.compAdv(Term(neg, BoolItem(col)), op, neg, toColors[op], lparts)
                 if b != None:
                     b.update({'side': side, 'op': Op(op)})
@@ -130,11 +130,11 @@ class CatDataM(DataM):
 
     def findCover(catsSupp, parts, side, col, toImprov, negB):
         res = []
-        doNegB = negB  and toImprov.ruleTypesHasNeg()
+        doNegB = negB  and toImprov.queryTypesHasNeg()
         resNegB = []
         lparts = (len(parts[0]), len(parts[1]), len(parts[2]), len(parts[3]))
         colop_ids = ((0,2),(3,1))
-        for op in toImprov.ruleTypesOp():
+        for op in toImprov.queryTypesOp():
             if lparts[colop_ids[op][0]] + lparts[colop_ids[op][1]] >= toImprov.minItmC():
                 bests = {False: None, True: None}
                 if doNegB :
@@ -144,7 +144,7 @@ class CatDataM(DataM):
                     toColors = (len(catsSupp[cat] & parts[colop_ids[op][0]]),\
                                 len(catsSupp[cat] & parts[colop_ids[op][1]])) 
 
-                    for neg in toImprov.ruleTypesNP(op):
+                    for neg in toImprov.queryTypesNP(op):
                         tmp_comp = toImprov.compAdv(cat, op, neg, toColors, lparts)
                         if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                             bests[neg] = tmp_comp
@@ -154,7 +154,7 @@ class CatDataM(DataM):
                                 bestsNegB[neg] = tmp_comp
                         
         
-                for neg in toImprov.ruleTypesNP(op):
+                for neg in toImprov.queryTypesNP(op):
                     if bests[neg] != None  :
                         t = bests[neg]['term']
                         bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, CatItem(col, t))})
@@ -319,7 +319,7 @@ class NumDataM(DataM):
                 termsA.append(Term(False, itemX))
                 termsB.append(cand['term'])
 
-        if toImprov.ruleTypesHasNeg() and lparts[1-side] >= toImprov.minItmSuppOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minItmSuppIn() :
+        if toImprov.queryTypesHasNeg() and lparts[1-side] >= toImprov.minItmSuppOut() and (lparts[3] - linPartsMode[3]) >= toImprov.minItmSuppIn() :
             if segments == None:
                 segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
             segments = NumDataM.negateSegments(segments, False, True)
@@ -461,15 +461,15 @@ class NumDataM(DataM):
 
     def findCover(segments, lparts, side, col, toImprov):
         res = []
-        for op in toImprov.ruleTypesOp():
+        for op in toImprov.queryTypesOp():
             if len(segments[op]) < NumDataM.maxSeg:
                 Data.logger.printL(100,'---Doing the full search---')
                 res.extend(NumDataM.findCoverFullSearch(op, segments, lparts, side, col, toImprov))
             else:
                 Data.logger.printL(100,'---Doing the fast search---')
-                if toImprov.ruleTypesHasPos(op):
+                if toImprov.queryTypesHasPos(op):
                     res.extend(NumDataM.findPositiveCover(op, segments, lparts, side, col, toImprov))
-                if toImprov.ruleTypesHasNeg(op):
+                if toImprov.queryTypesHasNeg(op):
                     res.extend(NumDataM.findNegativeCover(op, segments, lparts, side, col, toImprov))
         return res
     findCover = staticmethod(findCover)
@@ -484,12 +484,12 @@ class NumDataM(DataM):
             for seg_e in range(seg_s,len(segments[op])):
                 toColors[0] += segments[op][seg_e][0]
                 toColors[1] += segments[op][seg_e][1]
-                for neg in toImprov.ruleTypesNP(op):
+                for neg in toImprov.queryTypesNP(op):
                     tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
                     if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                         bests[neg] = tmp_comp
 
-        for neg in toImprov.ruleTypesNP(op):
+        for neg in toImprov.queryTypesNP(op):
             if bests[neg] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
                 if bests[neg]['term'][0] == 0:
                     lowb = float('-Inf')
@@ -762,7 +762,7 @@ class Data:
         nA = [False, True, False, True]
         nB = [False, False, True, True]
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        up_to = 1+ toImprov.queryTypesHasNeg()*3
         (scores, termsA, termsB) = ([], [], [])        
         for i in range(up_to):
             cand = toImprov.compAdv(itemA, True, nA[i], toColors[nB[i]], lparts[nB[i]])
@@ -954,7 +954,7 @@ class Data:
         nA = [False, True, False, True]
         nB = [False, False, True, True]
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        up_to = 1+ toImprov.queryTypesHasNeg()*3
         best = [ None for i in range(up_to)]
 
         for catA in mA.colSupps[idA].keys():
@@ -985,7 +985,7 @@ class Data:
         nA = [False, True, False, True]
         nB = [False, False, True, True]
 
-        up_to = 1+ toImprov.ruleTypesHasNeg()*3
+        up_to = 1+ toImprov.queryTypesHasNeg()*3
         best = [ None for i in range(up_to)]
 
         interMat = []
@@ -1057,14 +1057,14 @@ class Data:
         return method_compute(self.m[0], idA, self.m[1], idB, toImprov, init_info)
         
 
-    def initializeRedescriptions(self, nbRed, ruleTypes, minScore=0):
+    def initializeRedescriptions(self, nbRed, queryTypes, minScore=0):
         Data.logger.printL(1, 'Starting the search for initial pairs...')
         self.pairs = []
         fitFull = True
         pairsRType = {True: set(), False: set()}
-        if True in ruleTypes[True] or True in ruleTypes[False]:
+        if True in queryTypes[True] or True in queryTypes[False]:
             pairsRType[True].add(True)
-        if False in ruleTypes[True] or False in ruleTypes[False]:
+        if False in queryTypes[True] or False in queryTypes[False]:
             pairsRType[True].add(False)
         toImprov = BestsDraft(pairsRType, self.N)
 

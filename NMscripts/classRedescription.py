@@ -2,8 +2,8 @@ import re, pickle, sys, pdb
 from classLog import Log
 import utilsStats
 # from scipy.stats import binom, hypergeom
-from classRule import  *
-from classCWRule import  *
+from classQuery import  *
+from classCWQuery import  *
 
 class Redescription:
     logger = Log(0)
@@ -12,11 +12,11 @@ class Redescription:
     sym_beta = 1
     sym_gamma = 2
     sym_delta = 3
-    diff_terms = Rule.diff_terms
-    diff_cols = Rule.diff_cols
-    diff_op = Rule.diff_op
-    diff_balance = Rule.diff_balance
-    diff_length = Rule.diff_length
+    diff_terms = Query.diff_terms
+    diff_cols = Query.diff_cols
+    diff_op = Query.diff_op
+    diff_balance = Query.diff_balance
+    diff_length = Query.diff_length
     diff_score = diff_length + 1
     methodpVal = 'Marg'
     trackHisto = False
@@ -29,7 +29,7 @@ class Redescription:
                 self.histo.append(int(opk)*(side+1)) 
             
     
-    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1], nHisto=None):
+    def __init__(self, nqueryL, nqueryR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1], nHisto=None):
         if Redescription.trackHisto:
             if type(nHisto) == list :
                 self.histo = nHisto
@@ -41,7 +41,7 @@ class Redescription:
         except AttributeError:
               raise Exception('Oups method to compute the p-value does not exist !')
         
-        self.rules = [nruleL, nruleR]
+        self.queries = [nqueryL, nqueryR]
         self.prs = nPrs
         if nsupps == None:
             self.sAlpha = set()
@@ -63,13 +63,13 @@ class Redescription:
         self.vectorABCD = None #Redescription.makeVectorABCD(self.nbAvailableCols()>0, self.N, self.sAlpha, self.sBeta, self.sGamma)
         
     def fromInitialPair(initialPair, data, pairId=0):
-        ruleL = Rule()
-        ruleR = Rule()
-        ruleL.extend(None, initialPair[0])
-        ruleR.extend(None, initialPair[1])
+        queryL = Query()
+        queryR = Query()
+        queryL.extend(None, initialPair[0])
+        queryR.extend(None, initialPair[1])
         suppL = data.supp(0, initialPair[0])
         suppR = data.supp(1, initialPair[1])
-        r = Redescription(ruleL, ruleR, [suppL, suppR], data.N, data.nonFull(), [float(len(suppL))/data.N, float(len(suppR))/data.N], [pairId]) 
+        r = Redescription(queryL, queryR, [suppL, suppR], data.N, data.nonFull(), [float(len(suppL))/data.N, float(len(suppR))/data.N], [pairId]) 
         r.vectorABCD = data.makeVectorABCD(r.sAlpha, r.sBeta, r.sGamma)
         return r
     fromInitialPair = staticmethod(fromInitialPair)
@@ -78,7 +78,7 @@ class Redescription:
         if x.score() > y.score():
             return Redescription.diff_score
         elif x.score() == y.score():
-            return Rule.comparePair(x.rules[0], x.rules[1], y.rules[0], y.rules[1])
+            return Query.comparePair(x.queries[0], x.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
     compare = staticmethod(compare)
@@ -93,17 +93,17 @@ class Redescription:
             return Redescription.compare(self,other)
         
     def __hash__(self):
-        return int(hash(self.rules[0])+ hash(self.rules[1])*100*self.score())
+        return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
         
     def __len__(self):
-        return len(self.rules[0]) + len(self.rules[1])
+        return len(self.queries[0]) + len(self.queries[1])
         
     def oneSideIdentical(self, redescription, count_ids= [0,0], max_iden = 0):
         found = False
-        if self.rules[0] == redescription.rules[0]:
+        if self.queries[0] == redescription.queries[0]:
             count_ids[0] += 1
             found |= (count_ids[0] >= max_iden)
-        if self.rules[1] == redescription.rules[1]:
+        if self.queries[1] == redescription.queries[1]:
             count_ids[1] += 1
             found |= (count_ids[1] >= max_iden)
         return found
@@ -149,7 +149,7 @@ class Redescription:
             return 0
 
     def proba(self, side, data):
-        return self.rules[side].proba(side, data)
+        return self.queries[side].proba(side, data)
 
     def delta(self):
         return set(range(self.N)) - self.sAlpha - self.sBeta - self.sGamma
@@ -157,16 +157,16 @@ class Redescription:
     def parts(self):
         return ( self.sAlpha, self.sBeta, self.sGamma, self.delta(), self.vectorABCD)
     
-    def rule(self, side):
-        return self.rules[side]
+    def query(self, side):
+        return self.queries[side]
     
     def cutShort(self):
         return not self.hasAvailableCols() and (not self.fullLength(0) or not self.fullLength(1))
     
     def fullLength(self, side):
-        return len(self.rules[side]) >= self.nbVariables
+        return len(self.queries[side]) >= self.nbVariables
     def length(self, side):
-        return len(self.rules[side])
+        return len(self.queries[side])
         
     def availableColsSide(self, side):
         return self.lAvailableCols[side]
@@ -189,8 +189,8 @@ class Redescription:
         else:
             if Redescription.trackHisto:
                 self.histoUpdate(op, side)
-            self.rules[side].extend(op, term)
-            self.prs[side] = Rule.updateProba(self.prs[side], len(suppX)/float(data.N), op)
+            self.queries[side].extend(op, term)
+            self.prs[side] = Query.updateProba(self.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
                     self.sAlpha |= (suppX - self.sBeta - self.sGamma)
@@ -210,7 +210,7 @@ class Redescription:
                     self.sGamma &= suppX 
                     self.sBeta &= suppX
                     
-            if len(self.rules[side]) >= self.nbVariables :
+            if len(self.queries[side]) >= self.nbVariables :
                 self.lAvailableCols[side] = set()
             else:
                 self.lAvailableCols[side].remove(term.col())
@@ -226,10 +226,10 @@ class Redescription:
         if side == -1 :
             kid.lAvailableCols = [set(),set()]
         else:
-            kid.rules[side].extend(op, term)
+            kid.queries[side].extend(op, term)
             if Redescription.trackHisto:
                 kid.histoUpdate(op, side)
-            kid.prs[side] = Rule.updateProba(kid.prs[side], len(suppX)/float(data.N), op)
+            kid.prs[side] = Query.updateProba(kid.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
                     kid.sAlpha |= (suppX - kid.sBeta - kid.sGamma)
@@ -249,7 +249,7 @@ class Redescription:
                     kid.sGamma &= suppX 
                     kid.sBeta &= suppX
                     
-            if len(kid.rules[side]) >= kid.nbVariables :
+            if len(kid.queries[side]) >= kid.nbVariables :
                 kid.lAvailableCols[side] = set()
             else:
                 kid.lAvailableCols[side].remove(term.col())
@@ -266,41 +266,41 @@ class Redescription:
             histo = list(self.histo)
         else:
             histo = None
-        return Redescription(self.rules[0].copy(), self.rules[1].copy(), \
+        return Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              [set(self.sAlpha), set(self.sBeta), set(self.sGamma)], self.N, \
                              [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]], histo)
 
-    ## return the support associated to a rule and a list of the items involved in it
+    ## return the support associated to a query and a list of the items involved in it
     ## the list contains pairs (column id, negated)
-    def recomputeRule(self, side, data= None):
-        return self.rules[side].recompute(side, data)
+    def recomputeQuery(self, side, data= None):
+        return self.queries[side].recompute(side, data)
     
     def invTermsSide(self, side):
-        return self.rules[side].invTerms()
+        return self.queries[side].invTerms()
 
     def invTerms(self):
         return [self.invTermsSide(0), self.invTermsSide(1)]
     
     def invColsSide(self, side):
-        return self.rules[side].invCols()
+        return self.queries[side].invCols()
 
     def invCols(self):
         return [self.invColsSide(0), self.invColsSide(1)]
 
     def recompute(self, data):
 
-        nsuppL = self.recomputeRule(0, data)
-        nsuppR = self.recomputeRule(1, data)
+        nsuppL = self.recomputeQuery(0, data)
+        nsuppR = self.recomputeQuery(1, data)
         self.sAlpha = nsuppL - nsuppR
         self.sBeta = nsuppR - nsuppL
         self.sGamma =  nsuppL & nsuppR
         self.N = data.N
-        self.prs = [self.rules[0].proba(0, data), self.rules[1].proba(1, data)]
+        self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
     
     def check(self, data):
         if self.sGamma != set([-1]):
-            nsuppL = self.recomputeRule(0, data)
-            nsuppR = self.recomputeRule(1, data)
+            nsuppL = self.recomputeQuery(0, data)
+            nsuppR = self.recomputeQuery(1, data)
             nsAlpha = nsuppL - nsuppR
             nsBeta = nsuppR - nsuppL
             nsGamma =  nsuppL & nsuppR
@@ -315,7 +315,7 @@ class Redescription:
                   % (self.lenL(), self.lenR(), \
                      self.lenI(), self.lenU(), self.acc(), self.pVal(), \
                      self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
-                     len(self), self.rules[0], self.rules[1])
+                     len(self), self.queries[0], self.queries[1])
             if Redescription.trackHisto:
                 str_red += ('\tHISTO:%s' % self.histo)
             return str_red
@@ -323,7 +323,7 @@ class Redescription:
             return '(%i %i,  %i / %i\t = %f, %f): %s <=> %s' \
                   % (self.readInfo['A'] + self.readInfo['C'], self.readInfo['B'] + self.readInfo['C'], \
                      self.readInfo['C'], self.readInfo['A'] + self.readInfo['C'] + self.readInfo['B'], self.readInfo['acc'], self.readInfo['pVal'], \
-                     self.rules[0], self.rules[1])
+                     self.queries[0], self.queries[1])
         else:
             return 'Non printable redescription'
             
@@ -365,13 +365,13 @@ class Redescription:
             return 'Non printable redescription'
         
     def disp(self, lenIndex=0, names= [None, None]):
-        str_red = self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()
+        str_red = self.queries[0].disp(lenIndex, names[0])+'\t<==>\t'+self.queries[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()
         if Redescription.trackHisto:
             str_red += ('\tHISTO:%s' % self.histo)
         return str_red
 
     def dispSimple(self, lenIndex=0, names = [None, None]):
-        str_red = self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()
+        str_red = self.queries[0].disp(lenIndex, names[0])+'\t'+self.queries[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()
         if Redescription.trackHisto:
             str_red += ('\tHISTO:%s' % self.histo)
         return str_red
@@ -381,9 +381,9 @@ class Redescription:
         return ' & $q_\iLHS$ & $q_\iRHS$ &' + Redescription.dispCaracteristiquesPrintHeader()+' \\\\'
     dispPrintHeader = staticmethod(dispPrintHeader)
 
-    def dispPrint(self, rulId, names = [None, None]):
-        rulidStr = '(%i)' % rulId
-        return rulidStr + ' & ' + self.rules[0].dispPrint(names[0])+' & '+self.rules[1].dispPrint(names[1])+' & '+self.dispCaracteristiquesPrint()+' \\\\'
+    def dispPrint(self, queryId, names = [None, None]):
+        queryidStr = '(%i)' % queryId
+        return queryidStr + ' & ' + self.queries[0].dispPrint(names[0])+' & '+self.queries[1].dispPrint(names[1])+' & '+self.dispCaracteristiquesPrint()+' \\\\'
 
 
     def dispSuppRL(self):
@@ -443,19 +443,19 @@ class Redescription:
         return nsupp
     parseSupport = staticmethod(parseSupport)
 
-    def parseRules(string):
+    def parseQuerys(string):
         parts = string.rsplit('\t')
         if len(parts) >= 2:
             if parts[0].startswith('('):
-                ruleL = CWRule.parse(parts[0])
-                ruleR = CWRule.parse(parts[1])
+                queryL = CWQuery.parse(parts[0])
+                queryR = CWQuery.parse(parts[1])
 
             else:
-                ruleL = Rule.parse(parts[0])
-                ruleR = Rule.parse(parts[1])
+                queryL = Query.parse(parts[0])
+                queryR = Query.parse(parts[1])
         else:
-            ruleL = Rule()
-            ruleR = Rule()
+            queryL = Query()
+            queryR = Query()
 
         if len(parts) >= 3:
 		chparts=parts[2].rsplit(' ')
@@ -465,7 +465,7 @@ class Redescription:
             try :
                 acc = float(chparts[0])
             except TypeError, detail:
-                raise Exception('Unexpected accurracy in the rule: %s\n' %string)
+                raise Exception('Unexpected accurracy in the query: %s\n' %string)
         else:
             acc = -1
 
@@ -473,7 +473,7 @@ class Redescription:
             try :
                 pVal = float(chparts[1])
             except TypeError, detail:
-                raise Exception('Unexpected support in the rule: %s\n' %string)
+                raise Exception('Unexpected support in the query: %s\n' %string)
         else:
             pVal = -1
 
@@ -484,17 +484,17 @@ class Redescription:
                 gamma = int(chparts[4])
                 delta = int(chparts[5])
             except TypeError, detail:
-                raise Exception('Unexpected support in the rule: %s\n' %string)
+                raise Exception('Unexpected support in the query: %s\n' %string)
         else:
             (alpha, beta, gamma, delta) = (-1, -1, -1, -1)
 
         
 
-        return (ruleL, ruleR, acc, pVal, alpha, beta, gamma, delta)
-    parseRules = staticmethod(parseRules)
+        return (queryL, queryR, acc, pVal, alpha, beta, gamma, delta)
+    parseQuerys = staticmethod(parseQuerys)
 
-    def parse(stringRules, stringSupport = None, data = None):
-        (ruleL, ruleR, acc, pVal, alpha, beta, gamma, delta) = Redescription.parseRules(stringRules)
+    def parse(stringQuerys, stringSupport = None, data = None):
+        (queryL, queryR, acc, pVal, alpha, beta, gamma, delta) = Redescription.parseQuerys(stringQuerys)
 
         if stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
             partsSupp = stringSupport.rsplit('\t')
@@ -502,27 +502,27 @@ class Redescription:
             nsuppR = Redescription.parseSupport(partsSupp[1])
 
             if data == None:
-                r = Redescription(ruleL, ruleR, [nsuppL, nsuppR])
+                r = Redescription(queryL, queryR, [nsuppL, nsuppR])
             else:
-                r = Redescription(ruleL, ruleR, [nsuppL, nsuppR], data.N, [set(),set()], [ ruleL.proba(0, data), ruleR.proba(1, data)])
+                r = Redescription(queryL, queryR, [nsuppL, nsuppR], data.N, [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
                 
             if r.lenAlpha() != alpha or r.lenBeta() != beta or r.lenGamma() != gamma  or r.lenDelta() != delta :
                 raise Warning("Something wrong in the supports ! (%i ~ %i, %i ~ %i, %i ~ %i, %i ~ %i)\n" \
                                  % (r.lenAlpha(), alpha, r.lenBeta(), r.lenGamma(), r.lenDelta(), delta))
         else:
-            r = Redescription(ruleL, ruleR)
+            r = Redescription(queryL, queryR)
             r.readInfo = {'acc':acc, 'pVal':pVal, 'A':alpha, 'B':beta, 'C':gamma, 'D':delta}
         return r
     parse = staticmethod(parse)
         
             
-    def load(rulesFp, supportsFp = None, data= None):
-        stringRules = rulesFp.readline()
-        indComm = stringRules.find('#')
+    def load(queriesFp, supportsFp = None, data= None):
+        stringQuerys = queriesFp.readline()
+        indComm = stringQuerys.find('#')
         comment = ''
         if indComm != -1 :
-            comment = stringRules[indComm:].rstrip()
-            stringRules = stringRules[:indComm]
+            comment = stringQuerys[indComm:].rstrip()
+            stringQuerys = stringQuerys[:indComm]
         
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
@@ -533,5 +533,5 @@ class Redescription:
                 stringSupp = stringSupp[:indComm]
 
         else: stringSupp= None; commentSupp = ''
-        return (Redescription.parse(stringRules, stringSupp, data), comment, commentSupp)
+        return (Redescription.parse(stringQuerys, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)

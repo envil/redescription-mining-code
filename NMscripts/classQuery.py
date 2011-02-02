@@ -454,7 +454,7 @@ class Term:
             return (None, tmp_pos)
     parse = staticmethod(parse)
             
-class Rule:
+class Query:
     diff_terms = 1
     diff_cols = 2
     diff_op = 3
@@ -479,13 +479,13 @@ class Rule:
         return h
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
-        if nb % 2 == 0: # even bucket: rule operator, else other
+        if nb % 2 == 0: # even bucket: query operator, else other
             return self.op.copy()
         else: 
             return self.op.other()
 
     def copy(self):
-        c = Rule()
+        c = Query()
         c.op = self.op.copy()
         c.buk = []
         for buk in self.buk:
@@ -496,70 +496,70 @@ class Rule:
         if x.op == y.op and x.buk == y.buk:
             return 0
         
-        if len(x) < len(y): ## nb of terms in the rule, shorter better
-            return Rule.diff_length
+        if len(x) < len(y): ## nb of terms in the query, shorter better
+            return Query.diff_length
         elif len(x) == len(y):
-            if len(x.buk)  < len(y.buk) : ## nb of buckets in the rule, shorter better
-                return Rule.diff_balance
+            if len(x.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
+                return Query.diff_balance
             elif len(x.buk) == len(y.buk) :
                 if x.op > y.op : ## operator
-                    return Rule.diff_op
+                    return Query.diff_op
                 elif x.op == y.op :
-                    if x.invCols() > y.invCols(): ## terms in the rule
-                        return Rule.diff_cols
+                    if x.invCols() > y.invCols(): ## terms in the query
+                        return Query.diff_cols
                     elif x.invCols() == y.invCols():
-                        return Rule.diff_terms
+                        return Query.diff_terms
                     else:
-                        return -Rule.diff_cols
+                        return -Query.diff_cols
                 else:
-                    return -Rule.diff_op
+                    return -Query.diff_op
             else:
-                return -Rule.diff_balance
+                return -Query.diff_balance
         else:
-            return -Rule.diff_length
+            return -Query.diff_length
     compare = staticmethod(compare)
     
     def __cmp__(self, other):
         if other == None:
             return 1
         else:
-            return Rule.compare(self, other)
+            return Query.compare(self, other)
     
     def comparePair(x0, x1, y0, y1):
         if ( x0.op == y0.op and x0.buk == y0.buk and x1.op == y1.op and x1.buk == y1.buk ):
             return 0
 
-        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of items in the rule, shorter better
-            return Rule.diff_length
+        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of items in the query, shorter better
+            return Query.diff_length
         
         elif len(x0) + len(x1) == len(y0) + len(y1):
-            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of items in the rule, shorter better
-                return Rule.diff_balance
+            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of items in the query, shorter better
+                return Query.diff_balance
             elif len(x0.buk) + len(x1.buk) == len(y0.buk) + len(y1.buk):
-                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of items in the rule, more balanced is better
-                    return Rule.diff_balance
+                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of items in the query, more balanced is better
+                    return Query.diff_balance
                 elif max(len(x0), len(x1)) == max(len(y0), len(y1)):
-                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of items in the rule, more balanced is better
-                        return Rule.diff_balance
+                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of items in the query, more balanced is better
+                        return Query.diff_balance
                     
                     elif max(len(x0.buk), len(x1.buk) ) == max(len(y0.buk), len(y1.buk)):
                         if x0.op > y0.op : ## operator on the left
-                            return Rule.diff_op
+                            return Query.diff_op
                         elif x0.op == y0.op:
                             if x1.op > y1.op : ## operator on the right
-                                return Rule.diff_op
+                                return Query.diff_op
                             elif x1.op == y1.op:
                                 if x0.invCols() > y0.invCols() :
-                                    return Rule.diff_cols
+                                    return Query.diff_cols
                                 elif x0.invCols() == y0.invCols() :
                                     if x1.invCols() > y1.invCols() :
-                                        return Rule.diff_cols
+                                        return Query.diff_cols
                                     elif x1.invCols() == y1.invCols() :
-                                        return Rule.diff_terms
-                                return -Rule.diff_cols
-                        return -Rule.diff_op
-            return -Rule.diff_balance
-        return -Rule.diff_length
+                                        return Query.diff_terms
+                                return -Query.diff_cols
+                        return -Query.diff_op
+            return -Query.diff_balance
+        return -Query.diff_length
     comparePair = staticmethod(comparePair)
     
     def extend(self, op, term):
@@ -576,7 +576,7 @@ class Rule:
     def parse(string):
         parts = string.split()
         if len(parts) > 0:
-            r = Rule()
+            r = Query()
             (op, pos) = (Op(0), 0)
             (t, pos) = Term.parse(parts, pos)
             while pos < len(parts) and (op != None) and (t != None):
@@ -657,7 +657,7 @@ class Rule:
         return self.disp()    
 
     
-    ## return the support associated to a rule
+    ## return the support associated to a query
     def recompute(self, side, data= None):
 
         if len(self) == 0 or data==None:
@@ -688,7 +688,7 @@ class Rule:
             return prA*prB
     updateProba = staticmethod(updateProba)
           
-    ## return the support associated to a rule
+    ## return the support associated to a query
     def proba(self, side, data= None):
         #pdb.set_trace()
         if data==None:
@@ -701,7 +701,7 @@ class Rule:
                 op = self.op
                 for buk in self.buk:
                     for term in buk:
-                        pr = Rule.updateProba(pr, len(data.supp(side, term))/float(data.N), op)
+                        pr = Query.updateProba(pr, len(data.supp(side, term))/float(data.N), op)
                         ##print '%s : pr=%f (%s %f)' % (term, pr, op, len(data.supp(side, term))/float(data.N) )
                     op = op.other()
         return pr
@@ -709,11 +709,11 @@ class Rule:
 #     def invTerms(self):
 #         invTerms = []
 #         OR = self.opBukIsOR(1)
-#         for part in self.rule[1:] :
+#         for part in self.query[1:] :
 #             spart = list(part)
 #             spart.sort()
 #             for item in spart :
-#                 invItems.append((rule_itemId(item), rule_itemNot(item), OR))    
+#                 invItems.append((query_itemId(item), query_itemNot(item), OR))    
 #             OR = not OR
 #         return invItems
     

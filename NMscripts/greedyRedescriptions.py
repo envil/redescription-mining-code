@@ -11,7 +11,7 @@ from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
 import pdb
 
-def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souvenirs, logger):    
+def processDraft(initialRed, data, draftCap, draftOut, minImpr, queryTypes, souvenirs, logger):    
 
     currentDraft = RedescriptionsDraft(draftCap)
     nextGen = [initialRed]
@@ -25,7 +25,7 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, ruleTypes, souve
         for red in nextGen :
             nb_extensions = red.updateAvailable(souvenirs)
             if red.nbAvailableCols() > 0:
-                bests = BestsDraft(ruleTypes, data.N, red)
+                bests = BestsDraft(queryTypes, data.N, red)
                 for x in red.availableColsSide(0):
                     data.updateBests(bests, 0, x)
 
@@ -59,9 +59,9 @@ def main():
     data = Data([setts.param['data_rep']+setts.param['data_l']+setts.param['ext_l'], setts.param['data_rep']+setts.param['data_r']+setts.param['ext_r']])
     logger.printL(2, data)
 
-    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_rules']) > 0:
-        rulesOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_rules'], 'w')
-    else: rulesOutFp = sys.stdout
+    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_queries']) > 0:
+        queriesOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_queries'], 'w')
+    else: queriesOutFp = sys.stdout
 
     if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_support']) > 0:
         supportOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_support'], 'w')
@@ -70,33 +70,33 @@ def main():
 
     (Redescription.methodpVal, Redescription.nbVariables, Redescription.trackHisto) = (setts.param['method_pval'].capitalize(), setts.param['nb_variables'], setts.param['track_histo'])
     (BestsDraft.minC, BestsDraft.minSuppIn, BestsDraft.minSuppOut) = data.scaleSuppParams(setts.param['contribution'], setts.param['min_suppin'], setts.param['min_suppout'])
-    (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvrule'], setts.param['coeff_pvred'])
+    (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVQuery, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvquery'], setts.param['coeff_pvred'])
     (BestsDraft.minLen, BestsDraft.minAcc, BestsDraft.maxPVal) = (setts.param['min_length'], setts.param['min_acc'], setts.param['max_pval'])
 
     readyDraft = RedescriptionsDraft()
     souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
         
     data.setInitialMSelection(setts.param['method_pairs'], setts.param['div_l'], setts.param['div_r'])
-    data.initializeRedescriptions(setts.param['nb_pairs'], setts.param['rule_types'], setts.param['min_score'])
+    data.initializeRedescriptions(setts.param['nb_pairs'], setts.param['query_types'], setts.param['min_score'])
     initialRed = data.getNextInitialRed()
 
     while initialRed != None :
         try:
-            reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], setts.param['rule_types'], souvenirs, logger)
+            reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], setts.param['query_types'], souvenirs, logger)
             if len(reds) > 0:
                 if setts.param['max_side_identical'] == 0 :
                     logger.printL(2, 'Appending reds...')
                     for currentRedescription in reds: 
-                        currentRedescription.write(rulesOutFp, supportOutFp)
+                        currentRedescription.write(queriesOutFp, supportOutFp)
                 else :
                     insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts.param['max_side_identical'])
                     if len(insertedIds) > 0 :
                         logger.printL(2, 'Printing reds...')
-                        rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
+                        queriesOutFp.flush(); queriesOutFp.seek(0); queriesOutFp.truncate()
                         if supportOutFp != None:
                             supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
                         for currentRedescription in readyDraft.redescriptions():
-                            currentRedescription.write(rulesOutFp, supportOutFp)
+                            currentRedescription.write(queriesOutFp, supportOutFp)
                     
             initialRed = data.getNextInitialRed()
 
@@ -106,13 +106,13 @@ def main():
                     
     if setts.param['max_side_identical'] > 0:
         logger.printL(2, 'Printing reds...')
-        rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
+        queriesOutFp.flush(); queriesOutFp.seek(0); queriesOutFp.truncate()
         if supportOutFp != None:
             supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
         for currentRedescription in readyDraft.redescriptions():
-            currentRedescription.write(rulesOutFp, supportOutFp)
+            currentRedescription.write(queriesOutFp, supportOutFp)
 
-    rulesOutFp.close()
+    queriesOutFp.close()
     supportOutFp.close()
 
     tac = datetime.datetime.now()

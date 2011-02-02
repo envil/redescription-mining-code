@@ -12,7 +12,7 @@ class Settings:
                             'ext_r':' >< STRING right data extension',
                             'result_rep': ' >< STRING results repertory',
                             'out_base': '    STRING results base filename' ,
-                            'ext_rules': '    STRING results rules extension',
+                            'ext_queries': '    STRING results queries extension',
                             'ext_support': '    STRING results supports extension'},
                   'mine': { 'nb_variables': ' >< INT number of variables per query',
                             'min_length': '    INT minimum length of redescription, i.e., sum of the lengths of the queries',
@@ -32,14 +32,14 @@ class Settings:
                             'min_improvement': '    FLOAT minimum score improvement over parent redescription for an extension to be added to the draft',
                             'coeff_impacc': '    FLOAT coefficient in the score for the accuracy improvement',
                             'coeff_relimpacc': '    FLOAT coefficient in the score for the relative accuracy improvement',
-                            'coeff_pvrule': '    FLOAT negative value: coefficient in the score for the querie\'s p-value, positive value: acceptable p-value threshold',
+                            'coeff_pvquery': '    FLOAT negative value: coefficient in the score for the querie\'s p-value, positive value: acceptable p-value threshold',
                             'coeff_pvred': '    FLOAT negative value: coefficient in the score for the redescription\'s p-value, positive value: acceptable p-value threshold',
                             'amnesic': '    BOOL do not record redescriptions already explored',
                             'track_histo': '    BOOL track the history of expansion for each redescription',
                             'max_side_identical': '    INT maximum number of redescription sharing an identical query',
-                            'forbid_rules': ' >< (nots|ands|ors|andnots|ornots and comma or _ separated combinations thereof) >< forbidden types of queries'},
-                  'post': { 'ext_names': '    STRING results labelled rules extension',
-                            'ext_print': '    STRING results rules formatted as LaTeX table extension',
+                            'forbid_queries': ' >< (nots|ands|ors|andnots|ornots and comma or _ separated combinations thereof) >< forbidden types of queries'},
+                  'post': { 'ext_names': '    STRING results labelled queries extension',
+                            'ext_print': '    STRING results queries formatted as LaTeX table extension',
                             'labels_l': ' >< STRING left data labels extension, leave empty if there is no labels file',
                             'labels_r': ' >< STRING left data labels extension, leave empty if there is no labels file',
                             'min_length': '    INT minimum length of redescription, i.e., sum of the lengths of the queries',
@@ -86,24 +86,24 @@ class Settings:
         '### "%(script_name)s config_file ::MSIN::=200,::MSOUT::=400"\n'+ \
         '### "%(script_name)s config_file ::MSIN::=100,::MSOUT::=500" etc.\n'+ \
         '### to test different supports with all other parameters remaining equal and save\n'+ \
-        '### the results in files with corresponding names (results_100-50.rul, results_200-400.rul, etc.).\n###',
+        '### the results in files with corresponding names (results_100-50.query, results_200-400.query, etc.).\n###',
 
         'sections_read':['log', 'files', 'mine'],
         'substitutions':{'::SERIES::':'out', '::HOME::':'~/' },
-        'additional_methods':['setRules', 'setLogfile'],
+        'additional_methods':['setQuerys', 'setLogfile'],
         'log_ext':'.minelog'
         }
     default_setts['mine']= {'verbosity': 1, 'logfile': '-',
                               'data_rep': './',
                               'data_l': 'left', 'ext_l':'.bdat',
                               'data_r': 'right', 'ext_r':'.bdat',
-                              'result_rep': './', 'out_base': '::SERIES::', 'ext_rules': '.rul', 'ext_support': '.supp',
+                              'result_rep': './', 'out_base': '::SERIES::', 'ext_queries': '.queries', 'ext_support': '.supports',
                               'nb_variables': 4, 'min_length': 2, 'contribution': 3,	                
                               'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05, 'method_pval' : 'Supp',
                               'nb_pairs': 0, 'method_pairs': 'overall', 'div_l': 1, 'div_r': 1, 'min_score': 0.01,
                               'draft_capacity': 4, 'draft_output': 1, 'min_improvement': 0.0,
-                              'coeff_impacc': 1.0, 'coeff_relimpacc': 0.0, 'coeff_pvrule': 1.0, 'coeff_pvred': 1.0,
-                              'amnesic': False, 'track_histo': False, 'max_side_identical': 2, 'forbid_rules': ''
+                              'coeff_impacc': 1.0, 'coeff_relimpacc': 0.0, 'coeff_pvquery': 1.0, 'coeff_pvred': 1.0,
+                              'amnesic': False, 'track_histo': False, 'max_side_identical': 2, 'forbid_queries': ''
                           }
     
     # Default settings for postprocessing
@@ -133,7 +133,7 @@ class Settings:
         '### "%(script_name)s config_file ::MSIN::=200,::MSOUT::=400"\n'+ \
         '### "%(script_name)s config_file ::MSIN::=100,::MSOUT::=500" etc.\n'+ \
         '### to test different supports with all other parameters remaining equal and save\n'+ \
-        '### the results in files with corresponding names (results_100-50.rul, results_200-400.rul, etc.).\n###',
+        '### the results in files with corresponding names (results_100-50.query, results_200-400.query, etc.).\n###',
 
         'sections_read':['log', 'files', 'post'],
         'substitutions':{'::SERIES::':'out', '::HOME::':'~/' },
@@ -144,7 +144,7 @@ class Settings:
                              'data_rep': './',
                              'data_l': 'left', 'ext_l':'.datbool', 'labels_l': '.names',
                              'data_r': 'right', 'ext_r':'.datbool', 'labels_r': '.names',
-                             'result_rep': './', 'out_base': '::SERIES::' , 'ext_rules': '.rul', 'ext_print': '', 'ext_support': '.supp', 'ext_names': '.names',
+                             'result_rep': './', 'out_base': '::SERIES::' , 'ext_queries': '.queries', 'ext_print': '', 'ext_support': '.supports', 'ext_names': '.names',
                              'min_length':2, 'min_suppin': 0.1, 'min_suppout': 0.7, 'min_acc': 0.0, 'max_pval': 0.05, 'method_pval' : 'marg',
                              'sanity_check': False,'recompute': False, 'filtrate': False, 'redundancy_mark': False, 'redundancy_prune': False,
                              'duplicate_mark': 0, 'duplicate_prune': 0
@@ -224,13 +224,13 @@ class Settings:
                             raise Exception('Unexpected value for %s %s, default is %s.' %(opti, val, self.param[opti]))
 
 
-    def setRules(self):
-        self.param['rule_types'] = {False: set([False, True]), True: set([False, True])}
-        if re.search('(^|_|,)andnots($|_|,)', self.param['forbid_rules']): self.param['rule_types'][False].remove(True)
-        if re.search('(^|_|,)ornots($|_|,)', self.param['forbid_rules']): self.param['rule_types'][True].remove(True)
-        if re.search('(^|_|,)nots($|_|,)', self.param['forbid_rules']): self.param['rule_types'][False].remove(True); self.param['rule_types'][True].remove(True)
-        if re.search('(^|_|,)ands($|_|,)', self.param['forbid_rules']): self.param['rule_types'][False]=set()
-        if re.search('(^|_|,)ors($|_|,)', self.param['forbid_rules']): self.param['rule_types'][True]=set()
+    def setQuerys(self):
+        self.param['query_types'] = {False: set([False, True]), True: set([False, True])}
+        if re.search('(^|_|,)andnots($|_|,)', self.param['forbid_queries']): self.param['query_types'][False].remove(True)
+        if re.search('(^|_|,)ornots($|_|,)', self.param['forbid_queries']): self.param['query_types'][True].remove(True)
+        if re.search('(^|_|,)nots($|_|,)', self.param['forbid_queries']): self.param['query_types'][False].remove(True); self.param['query_types'][True].remove(True)
+        if re.search('(^|_|,)ands($|_|,)', self.param['forbid_queries']): self.param['query_types'][False]=set()
+        if re.search('(^|_|,)ors($|_|,)', self.param['forbid_queries']): self.param['query_types'][True]=set()
 
     def setLogfile(self):
         if self.param['logfile'] == '+': self.param['logfile'] = self.param['result_rep']+self.param['out_base']+self.specifics['log_ext']

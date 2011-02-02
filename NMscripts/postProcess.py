@@ -34,7 +34,7 @@ def main():
         names[0] = utilsIO.getNames(setts.param['data_rep']+setts.param['data_l']+setts.param['labels_l'], data.nbCols(0), data.nbCols(0)==0)
         names[1] = utilsIO.getNames(setts.param['data_rep']+setts.param['data_r']+setts.param['labels_r'], data.nbCols(1), data.nbCols(1)==0)
         if  names[0] == None or names[1] == None  :
-            logger.printL(1,'Labels are missing or incorrect, will not be able to print named rules ...')
+            logger.printL(1,'Labels are missing or incorrect, will not be able to print named queries ...')
         else:
             setts.param['name'] = True
         
@@ -60,17 +60,17 @@ def main():
         readyDraft = RedescriptionsDraft()
     
         
-    rulesInFp = None
-    rulesOutFp = None
+    queriesInFp = None
+    queriesOutFp = None
     supportInFp = None
     supportOutFp = None
     namesOutFp = None
     printOutFp = None
 
-    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_rules']) > 0:
-        rulesInFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_rules'], 'r')
+    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_queries']) > 0:
+        queriesInFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_queries'], 'r')
         if suff != '':
-            rulesOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_rules'], 'w')
+            queriesOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_queries'], 'w')
 
         if setts.param['name']:
             namesOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_names'], 'w')
@@ -78,16 +78,16 @@ def main():
         if setts.param['ext_print']!='':
             printOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_print'], 'w')
             printOutFp.write('\\begin{tabular}{@{\\hspace*{0.5ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n')
-            printOutFp.write('\\toprule\n'+Redescription.dispPrintHeader()+'\n\\midrule\n')
+            printOutFp.write('\\topquery\n'+Redescription.dispPrintHeader()+'\n\\midquery\n')
             
 
     else:
-        rulesInFp = sys.stdin
+        queriesInFp = sys.stdin
         if suff != None:
             if setts.param['name']:
                 namesOutFp = sys.stdout
             else:
-                rulesOutFp = sys.stdout
+                queriesOutFp = sys.stdout
 
     if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_support']) > 0:
         if not setts.param['recompute']:
@@ -95,27 +95,27 @@ def main():
         if len(setts.param['ext_support']) > 0 and suff != '':
             supportOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_support'], 'w')
 
-    ruleNro = 1
+    queryNro = 1
     while True:
 
-        (currentR, comment, commentSupp)= Redescription.load(rulesInFp, supportInFp, data)
+        (currentR, comment, commentSupp)= Redescription.load(queriesInFp, supportInFp, data)
         if len(currentR) == 0 and comment == '':
                 break
         else:
-            logger.printL(2,'Reading rule # %i'%ruleNro)
+            logger.printL(2,'Reading query # %i'%queryNro)
 #            pdb.set_trace()
             ################# SANITY CHECK
             if setts.param['sanity_check'] :
                 res = currentR.check(data)
                 if res == None:
-                    logger.printL(0,'Rule has toy supports !')
+                    logger.printL(0,'Query has toy supports !')
                 elif type(res) == tuple and len(res)==3:
                     if res[0] *res[1] *res[2] == 1:
-                        logger.printL(0,"Rule %i Sanity check OK !" % ruleNro)
+                        logger.printL(0,"Query %i Sanity check OK !" % queryNro)
                     else:
-                        logger.printL(0,"Rule %i Sanity check KO ! (%s)" % (ruleNro, res))
+                        logger.printL(0,"Query %i Sanity check KO ! (%s)" % (queryNro, res))
                 else:
-                    logger.printL(0,"Something happend while analysing rule %i !" % ruleNro)
+                    logger.printL(0,"Something happend while analysing query %i !" % queryNro)
 
             ################# RECOMPUTE
             if setts.param['recompute'] and data != None :
@@ -129,7 +129,7 @@ def main():
                    or currentR.acc()  < setts.param['min_acc'] \
                    or currentR.pVal() > setts.param['max_pval']):
                 currentR = None
-                logger.printL(0,"Rule %i filtered out!" % ruleNro)
+                logger.printL(0,"Query %i filtered out!" % queryNro)
 
             ################# REDUNDANCY
 	    if currentR != None and (setts.param['redundancy_prune'] or setts.param['redundancy_mark']) and data != None :
@@ -141,7 +141,7 @@ def main():
                         commentSupp = '# REDUNDANT RULE NO SUPPORT LEFT ' + commentSupp
                     else:
                         currentR = None
-                        logger.printL(0,"Rule %i redundant no support left, pruned!" % ruleNro)
+                        logger.printL(0,"Query %i redundant no support left, pruned!" % queryNro)
                 elif ( currentRedun.length(0) + currentRedun.length(1) < setts.param['min_length'] \
                    or currentRedun.N - currentRedun.lenU() < setts.param['min_suppout'] \
                    or currentRedun.lenI() < setts.param['min_suppin'] \
@@ -152,7 +152,7 @@ def main():
                         commentSupp = '# REDUNDANT RULE ' + commentSupp
                     else:
                         currentR = None
-                        logger.printL(0,"Rule %i redundant do not comply with filtering, pruned!" % ruleNro)                    
+                        logger.printL(0,"Query %i redundant do not comply with filtering, pruned!" % queryNro)                    
                 else:
                     if setts.param['redundancy_mark']:
                         comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
@@ -165,34 +165,34 @@ def main():
                 if len(insertedIds) == 0 :
                     if setts.param['duplicate_prune'] > 0:
                         currentR = None
-                        logger.printL(0,"Rule %i duplicate, pruned!" % ruleNro)
+                        logger.printL(0,"Query %i duplicate, pruned!" % queryNro)
                     else:
                         comment = '# DUPLICATE RULE ' + comment
                         commentSupp = '# DUPLICATE RULE ' + commentSupp
 
 
             ################# WRITING OUT
-            if currentR != None and rulesOutFp != None:
-                rulesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
+            if currentR != None and queriesOutFp != None:
+                queriesOutFp.write(currentR.dispSimple()+' '+comment+'\n')
             if currentR != None and supportOutFp != None:
                 supportOutFp.write(currentR.dispSupp()+' '+commentSupp+'\n')
             if currentR != None and namesOutFp != None:
                 namesOutFp.write(currentR.dispSimple(0, names)+' '+comment+'\n')
             if currentR != None and printOutFp != None:
-                printOutFp.write(currentR.dispPrint(ruleNro, names)+' '+comment+'\n')
+                printOutFp.write(currentR.dispPrint(queryNro, names)+' '+comment+'\n')
 
 
-            ruleNro += 1
-    logger.printL(2,'Read all %i rules.'%(ruleNro-1))
+            queryNro += 1
+    logger.printL(2,'Read all %i queries.'%(queryNro-1))
  
-    if rulesOutFp != None :
-        rulesOutFp.close()     
+    if queriesOutFp != None :
+        queriesOutFp.close()     
  
     if namesOutFp != None :
         namesOutFp.close()     
 
     if printOutFp != None :
-        printOutFp.write('\\bottomrule\n\\end{tabular}\n\n')
+        printOutFp.write('\\bottomquery\n\\end{tabular}\n\n')
         printOutFp.close()
  
     if supportOutFp != None :
