@@ -49,7 +49,7 @@ def main():
         print setts.dispHelp()
         sys.exit(2)
     logger = Log(setts.param['verbosity'], setts.param['logfile'])
-    logger.printL(2,'Settings:\n' + setts.dispParams())
+    logger.printL(5,'Settings:\n' + setts.dispParams())
 
     tic = datetime.datetime.now()
     logger.printL(1,"TIC... Started: %s" % tic)
@@ -68,11 +68,11 @@ def main():
     else:
         supportOutFp = None
 
-    Redescription.methodpVal = setts.param['method_pval'].capitalize()
+    (Redescription.methodpVal, Redescription.nbVariables, Redescription.trackHisto) = (setts.param['method_pval'].capitalize(), setts.param['nb_variables'], setts.param['track_histo'])
     (BestsDraft.minC, BestsDraft.minSuppIn, BestsDraft.minSuppOut) = data.scaleSuppParams(setts.param['contribution'], setts.param['min_suppin'], setts.param['min_suppout'])
     (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVRule, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvrule'], setts.param['coeff_pvred'])
     (BestsDraft.minLen, BestsDraft.minAcc, BestsDraft.maxPVal) = (setts.param['min_length'], setts.param['min_acc'], setts.param['max_pval'])
-    Redescription.nbVariables = setts.param['nb_variables']
+
     readyDraft = RedescriptionsDraft()
     souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
         
@@ -90,13 +90,13 @@ def main():
                         currentRedescription.write(rulesOutFp, supportOutFp)
                 else :
                     insertedIds = readyDraft.updateCheckOneSideIdentical(reds, setts.param['max_side_identical'])
-                    # if len(insertedIds) > 0 :
-    #                     logger.printL(2, 'Printing reds...')
-    #                     rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
-    #                     if supportOutFp != None:
-    #                         supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
-    #                     for currentRedescription in readyDraft.redescriptions():
-    #                         currentRedescription.write(rulesOutFp, supportOutFp)
+                    if len(insertedIds) > 0 :
+                        logger.printL(2, 'Printing reds...')
+                        rulesOutFp.flush(); rulesOutFp.seek(0); rulesOutFp.truncate()
+                        if supportOutFp != None:
+                            supportOutFp.flush(); supportOutFp.seek(0); supportOutFp.truncate()
+                        for currentRedescription in readyDraft.redescriptions():
+                            currentRedescription.write(rulesOutFp, supportOutFp)
                     
             initialRed = data.getNextInitialRed()
 

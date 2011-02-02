@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
-import sys, getopt, numpy,
+import sys, getopt, numpy
 import utilsIO
+from classSettings import Settings
 from classLog import Log
 from classRedescription import *
 from classData import *
@@ -13,12 +14,12 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 def main():
 
-    setts = Settings('mine', sys.argv)
+    setts = Settings('post', sys.argv)
     if setts.getParams() == 0:
         print setts.dispHelp()
         sys.exit(2)
     logger = Log(setts.param['verbosity'], setts.param['logfile'])
-    logger.printL(2,'Settings:\n' + setts.dispParams())
+    logger.printL(5,'Settings:\n' + setts.dispParams())
     if setts.param['ext_l'] != '' and setts.param['ext_r'] != '' :
         data = Data([setts.param['data_rep']+setts.param['data_l']+setts.param['ext_l'], setts.param['data_rep']+setts.param['data_r']+setts.param['ext_r']])
         dataRed = Data([setts.param['data_rep']+setts.param['data_l']+setts.param['ext_l'], setts.param['data_rep']+setts.param['data_r']+setts.param['ext_r']])
@@ -53,6 +54,10 @@ def main():
         suff = '_dupmarked'
         setts.param['max_side_identical']=setts.param['duplicate_mark']
         readyDraft = RedescriptionsDraft()
+    if setts.param['duplicate_prune']>0:
+        suff = '_duppruned'
+        setts.param['max_side_identical']=setts.param['duplicate_prune']
+        readyDraft = RedescriptionsDraft()
     
         
     rulesInFp = None
@@ -61,8 +66,6 @@ def main():
     supportOutFp = None
     namesOutFp = None
     printOutFp = None
-
-#    pdb.set_trace()
 
     if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_rules']) > 0:
         rulesInFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_rules'], 'r')
@@ -92,7 +95,6 @@ def main():
         if len(setts.param['ext_support']) > 0 and suff != '':
             supportOutFp = open(setts.param['result_rep']+setts.param['out_base']+suff+setts.param['ext_support'], 'w')
 
-
     ruleNro = 1
     while True:
 
@@ -109,9 +111,9 @@ def main():
                     logger.printL(0,'Rule has toy supports !')
                 elif type(res) == tuple and len(res)==3:
                     if res[0] *res[1] *res[2] == 1:
-                        logger.printL(0,"Rule %i OK !" % ruleNro)
+                        logger.printL(0,"Rule %i Sanity check OK !" % ruleNro)
                     else:
-                        logger.printL(0,"Rule %i WRONG ! (%s)" % (ruleNro, res))
+                        logger.printL(0,"Rule %i Sanity check KO ! (%s)" % (ruleNro, res))
                 else:
                     logger.printL(0,"Something happend while analysing rule %i !" % ruleNro)
 
@@ -127,6 +129,7 @@ def main():
                    or currentR.acc()  < setts.param['min_acc'] \
                    or currentR.pVal() > setts.param['max_pval']):
                 currentR = None
+                logger.printL(0,"Rule %i filtered out!" % ruleNro)
 
             ################# REDUNDANCY
 	    if currentR != None and (setts.param['redundancy_prune'] or setts.param['redundancy_mark']) and data != None :
@@ -138,6 +141,7 @@ def main():
                         commentSupp = '# REDUNDANT RULE NO SUPPORT LEFT ' + commentSupp
                     else:
                         currentR = None
+                        logger.printL(0,"Rule %i redundant no support left, pruned!" % ruleNro)
                 elif ( currentRedun.length(0) + currentRedun.length(1) < setts.param['min_length'] \
                    or currentRedun.N - currentRedun.lenU() < setts.param['min_suppout'] \
                    or currentRedun.lenI() < setts.param['min_suppin'] \
@@ -148,6 +152,7 @@ def main():
                         commentSupp = '# REDUNDANT RULE ' + commentSupp
                     else:
                         currentR = None
+                        logger.printL(0,"Rule %i redundant do not comply with filtering, pruned!" % ruleNro)                    
                 else:
                     if setts.param['redundancy_mark']:
                         comment = '# ' + currentRedun.dispCaracteristiquesSimple() + comment
@@ -160,6 +165,7 @@ def main():
                 if len(insertedIds) == 0 :
                     if setts.param['duplicate_prune'] > 0:
                         currentR = None
+                        logger.printL(0,"Rule %i duplicate, pruned!" % ruleNro)
                     else:
                         comment = '# DUPLICATE RULE ' + comment
                         commentSupp = '# DUPLICATE RULE ' + commentSupp

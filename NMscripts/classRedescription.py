@@ -19,19 +19,23 @@ class Redescription:
     diff_length = Rule.diff_length
     diff_score = diff_length + 1
     methodpVal = 'Marg'
+    trackHisto = False
 
     def histoUpdate(self, opk=None, side=None):
-        if type(opk) == int :
-            self.histo = [k]
-        elif type(self.histo) == list and opk!= None and side != None:
-            self.histo.append(int(opk)*(side+1)) 
+        if Redescription.trackHisto:
+            if type(opk) == int :
+                self.histo = [k]
+            elif type(self.histo) == list and opk!= None and side != None:
+                self.histo.append(int(opk)*(side+1)) 
             
     
     def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1], nHisto=None):
-        if type(nHisto) == list :
-            self.histo = nHisto
-        else:
-            self.histo = []
+        if Redescription.trackHisto:
+            if type(nHisto) == list :
+                self.histo = nHisto
+            else:
+                self.histo = []
+
         try:
             self.pVal = eval('self.pVal%s' % (Redescription.methodpVal))
         except AttributeError:
@@ -183,7 +187,8 @@ class Redescription:
         if side == -1 :
             self.lAvailableCols = [set(),set()]
         else:
-            self.histoUpdate(op, side)
+            if Redescription.trackHisto:
+                self.histoUpdate(op, side)
             self.rules[side].extend(op, term)
             self.prs[side] = Rule.updateProba(self.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
@@ -222,7 +227,8 @@ class Redescription:
             kid.lAvailableCols = [set(),set()]
         else:
             kid.rules[side].extend(op, term)
-            kid.histoUpdate(op, side)
+            if Redescription.trackHisto:
+                kid.histoUpdate(op, side)
             kid.prs[side] = Rule.updateProba(kid.prs[side], len(suppX)/float(data.N), op)
             if side == 0:
                 if op.isOr():
@@ -256,9 +262,13 @@ class Redescription:
         return kid
             
     def copy(self):
+        if Redescription.trackHisto and type(self.histo) == list :
+            histo = list(self.histo)
+        else:
+            histo = None
         return Redescription(self.rules[0].copy(), self.rules[1].copy(), \
                              [set(self.sAlpha), set(self.sBeta), set(self.sGamma)], self.N, \
-                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]], list(self.histo))
+                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], [self.prs[0], self.prs[1]], histo)
 
     ## return the support associated to a rule and a list of the items involved in it
     ## the list contains pairs (column id, negated)
@@ -301,11 +311,14 @@ class Redescription:
 
     def __str__(self):
         if self.sGamma != set([-1]):
-            return '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s\tHISTO:%s' \
+            str_red = '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s' \
                   % (self.lenL(), self.lenR(), \
                      self.lenI(), self.lenU(), self.acc(), self.pVal(), \
                      self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
-                     len(self), self.rules[0], self.rules[1], self.histo)
+                     len(self), self.rules[0], self.rules[1])
+            if Redescription.trackHisto:
+                str_red += ('\tHISTO:%s' % self.histo)
+            return str_red
         elif hasattr(self, 'readInfo'):
             return '(%i %i,  %i / %i\t = %f, %f): %s <=> %s' \
                   % (self.readInfo['A'] + self.readInfo['C'], self.readInfo['B'] + self.readInfo['C'], \
@@ -316,8 +329,11 @@ class Redescription:
             
     def dispCaracteristiques(self):
         if self.sGamma != set([-1]):
-            return 'acc:%f pVal:%f lenSuppAlpha:%i lenSuppBeta:%i lenSuppGamma:%i lenSuppDelta:%i' \
+            str_red = 'acc:%f pVal:%f lenSuppAlpha:%i lenSuppBeta:%i lenSuppGamma:%i lenSuppDelta:%i' \
              % (self.acc(), self.pVal(), self.lenAlpha(), self.lenBeta(), self.lenGamma(), self.lenDelta())
+            if Redescription.trackHisto:
+                str_red += (' histo:%s' % self.histo)
+            return str_red
         elif hasattr(self, 'readInfo'):
             return 'acc:%f pVal:%f lenSuppAlpha:%i lenSuppBeta:%i lenSuppGamma:%i lenSuppDelta:%i' \
              % (self.readInfo['acc'], self.pVal(), self.readInfo['A'], self.readInfo['B'], self.readInfo['C'], self.readInfo['D'])
@@ -349,10 +365,17 @@ class Redescription:
             return 'Non printable redescription'
         
     def disp(self, lenIndex=0, names= [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()+('\tHISTO:%s' % self.histo)
+        str_red = self.rules[0].disp(lenIndex, names[0])+'\t<==>\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiques()
+        if Redescription.trackHisto:
+            str_red += ('\tHISTO:%s' % self.histo)
+        return str_red
 
     def dispSimple(self, lenIndex=0, names = [None, None]):
-        return self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()+('\tHISTO:%s' % self.histo)
+        str_red = self.rules[0].disp(lenIndex, names[0])+'\t'+self.rules[1].disp(lenIndex, names[1])+'\t'+self.dispCaracteristiquesSimple()
+        if Redescription.trackHisto:
+            str_red += ('\tHISTO:%s' % self.histo)
+        return str_red
+
 
     def dispPrintHeader():
         return ' & $q_\iLHS$ & $q_\iRHS$ &' + Redescription.dispCaracteristiquesPrintHeader()+' \\\\'
@@ -407,7 +430,7 @@ class Redescription:
         output.write(self.dispSimple()+'\n')
         output.flush()
         if suppOutput != None:
-            suppOutput.write(self.dispSupp()+'\n')
+            suppOutput.write(self.dispSuppRL()+'\n')
             suppOutput.flush()
 
     def parseSupport(string):
