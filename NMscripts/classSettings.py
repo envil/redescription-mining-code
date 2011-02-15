@@ -90,7 +90,7 @@ class Settings:
 
         'sections_read':['log', 'files', 'mine'],
         'substitutions':{'::SERIES::':'out', '::HOME::':'~/' },
-        'additional_methods':['setQuerys', 'setLogfile'],
+        'additional_methods':['setQueries', 'setLogfile'],
         'log_ext':'.minelog'
         }
     default_setts['mine']= {'verbosity': 1, 'logfile': '-',
@@ -224,7 +224,7 @@ class Settings:
                             raise Exception('Unexpected value for %s %s, default is %s.' %(opti, val, self.param[opti]))
 
 
-    def setQuerys(self):
+    def setQueries(self):
         self.param['query_types'] = {False: set([False, True]), True: set([False, True])}
         if re.search('(^|_|,)andnots($|_|,)', self.param['forbid_queries']): self.param['query_types'][False].remove(True)
         if re.search('(^|_|,)ornots($|_|,)', self.param['forbid_queries']): self.param['query_types'][True].remove(True)

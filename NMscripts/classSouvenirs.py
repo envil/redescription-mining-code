@@ -52,14 +52,14 @@ class Souvenirs:
             lengthL = red.length(0)+(1-side)
             lengthR = red.length(1)+side
 
-            queries_ids_other_side = self.lookForQuerys(self.makeIndexes(red, lengthL, lengthR, other_side, red.queries[other_side].opBuk(0)))
+            queries_ids_other_side = self.lookForQueries(self.makeIndexes(red, lengthL, lengthR, other_side, red.queries[other_side].opBuk(0)))
             if len(queries_ids_other_side ) > 0:
 #                pdb.set_trace()
                 if red.length(side) == 1:
-                    queries_ids = self.lookForQuerys(self.makeIndexes(red, lengthL, lengthR, side, Op(True))) 
-                    queries_ids |= self.lookForQuerys(self.makeIndexes(red, lengthL, lengthR, side, Op(False)))
+                    queries_ids = self.lookForQueries(self.makeIndexes(red, lengthL, lengthR, side, Op(True))) 
+                    queries_ids |= self.lookForQueries(self.makeIndexes(red, lengthL, lengthR, side, Op(False)))
                 else:
-                    queries_ids = self.lookForQuerys(self.makeIndexes(red, lengthL, lengthR, side, red.queries[side].opBuk(0)))
+                    queries_ids = self.lookForQueries(self.makeIndexes(red, lengthL, lengthR, side, red.queries[side].opBuk(0)))
 
                 queries_ids &= queries_ids_other_side
                 if len(queries_ids) > 0:
@@ -90,11 +90,11 @@ class Souvenirs:
 #             indexes_OR = [(self.format_index_pref + self.format_index_suff) % {'lengthL': lengthL, 'lengthR': lengthR, 'side': side, 'op': 1, 'col': col_side, 'buk': 1} ]
 #             indexes_AND = [(self.format_index_pref + self.format_index_suff) % {'lengthL': lengthL, 'lengthR': lengthR, 'side': side, 'op': 0, 'col': col_side, 'buk': 1} ]
 
-#             queries_ids_other_side = self.lookForQuerys(indexes_other_side)
+#             queries_ids_other_side = self.lookForQueries(indexes_other_side)
 #             if len(queries_ids_other_side ) > 0:
 #                 #pdb.set_trace()
-#                 queries_ids = self.lookForQuerys(indexes_OR)
-#                 queries_ids |= self.lookForQuerys(indexes_AND)
+#                 queries_ids = self.lookForQueries(indexes_OR)
+#                 queries_ids |= self.lookForQueries(indexes_AND)
 #                 queries_ids &= queries_ids_other_side
 #                 if len(queries_ids) > 0:
                     
@@ -121,7 +121,7 @@ class Souvenirs:
             cols |= self.queriesList[idr][side].invCols()
         return cols  
 
-    def lookForQuerys(self, indexes_p):
+    def lookForQueries(self, indexes_p):
         if len(indexes_p) > 0 and not self.amnesic:
             query_ids = set([-1])
             id_inds = 0

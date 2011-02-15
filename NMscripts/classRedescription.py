@@ -443,7 +443,7 @@ class Redescription:
         return nsupp
     parseSupport = staticmethod(parseSupport)
 
-    def parseQuerys(string):
+    def parseQueries(string):
         parts = string.rsplit('\t')
         if len(parts) >= 2:
             if parts[0].startswith('('):
@@ -491,10 +491,10 @@ class Redescription:
         
 
         return (queryL, queryR, acc, pVal, alpha, beta, gamma, delta)
-    parseQuerys = staticmethod(parseQuerys)
+    parseQueries = staticmethod(parseQueries)
 
-    def parse(stringQuerys, stringSupport = None, data = None):
-        (queryL, queryR, acc, pVal, alpha, beta, gamma, delta) = Redescription.parseQuerys(stringQuerys)
+    def parse(stringQueries, stringSupport = None, data = None):
+        (queryL, queryR, acc, pVal, alpha, beta, gamma, delta) = Redescription.parseQueries(stringQueries)
 
         if stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
             partsSupp = stringSupport.rsplit('\t')
@@ -517,12 +517,12 @@ class Redescription:
         
             
     def load(queriesFp, supportsFp = None, data= None):
-        stringQuerys = queriesFp.readline()
-        indComm = stringQuerys.find('#')
+        stringQueries = queriesFp.readline()
+        indComm = stringQueries.find('#')
         comment = ''
         if indComm != -1 :
-            comment = stringQuerys[indComm:].rstrip()
-            stringQuerys = stringQuerys[:indComm]
+            comment = stringQueries[indComm:].rstrip()
+            stringQueries = stringQueries[:indComm]
         
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
@@ -533,5 +533,5 @@ class Redescription:
                 stringSupp = stringSupp[:indComm]
 
         else: stringSupp= None; commentSupp = ''
-        return (Redescription.parse(stringQuerys, stringSupp, data), comment, commentSupp)
+        return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
