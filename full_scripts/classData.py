@@ -308,7 +308,8 @@ class NumDataM(DataM):
             lenIntX = len(self.interMode(col, suppX))
             linPartsMode = (lenIntX, 0, 0, self.lenMode(col) - lenIntX)
         segments = None
-            
+
+        #### BREAK
         if lparts[3] >= toImprov.minItmSuppOut() and (lparts[1-side] - linPartsMode[1-side]) >= toImprov.minItmSuppIn() :
             segments = NumDataM.makeSegments(vector_abcd, side, self.colSupps[col], linPartsMode)
             cand_A = NumDataM.findCover(segments, lparts, side, col, toImprov)
@@ -464,9 +465,11 @@ class NumDataM(DataM):
         for op in toImprov.queryTypesOp():
             if len(segments[op]) < NumDataM.maxSeg:
                 Data.logger.printL(100,'---Doing the full search---')
+#                pdb.set_trace()
                 res.extend(NumDataM.findCoverFullSearch(op, segments, lparts, side, col, toImprov))
             else:
                 Data.logger.printL(100,'---Doing the fast search---')
+#                pdb.set_trace()
                 if toImprov.queryTypesHasPos(op):
                     res.extend(NumDataM.findPositiveCover(op, segments, lparts, side, col, toImprov))
                 if toImprov.queryTypesHasNeg(op):
@@ -485,7 +488,11 @@ class NumDataM(DataM):
                 toColors[0] += segments[op][seg_e][0]
                 toColors[1] += segments[op][seg_e][1]
                 for neg in toImprov.queryTypesNP(op):
+                    if (seg_s, seg_e) == (0,16):
+                        pdb.set_trace()
                     tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
+                    if tmp_comp != None:
+                        print (seg_s, seg_e, tmp_comp['acc'])
                     if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                         bests[neg] = tmp_comp
 
@@ -501,6 +508,8 @@ class NumDataM(DataM):
                     upb = segments[op][bests[neg]['term'][1]][-1]
                 bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, NumItem(col, lowb, upb))})
                 res.append(bests[neg])
+        print res
+        exit()
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 
@@ -1070,6 +1079,11 @@ class Data:
 
         ids= self.nonFull()
         init_info = [{},{}]
+        
+        init_info[0][7] = self.makeInitInfo((7, 0), 0, fitFull) 
+        init_info[1][0] = self.makeInitInfo((7, 0), 1, fitFull)
+        (scores, termsA, termsB) = self.computePair(7, 0, init_info, toImprov)
+
         cL = 0
         cR = 0  
         for idA in ids[0]:
@@ -1077,16 +1091,16 @@ class Data:
                 Data.logger.printL(4, 'Searching pairs %i <=> *...' %(idA))
                 for idB in ids[1]:
                     if cR % self.divR == 0:
+                        Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idA, idB))
                         if not init_info[0].has_key(idA): # pairsA has just the same keys
                             init_info[0][idA] = self.makeInitInfo((idA, idB), 0, fitFull) 
                             
                         if not init_info[1].has_key(idB): # pairsB has just the same keys
                             init_info[1][idB] = self.makeInitInfo((idA, idB), 1, fitFull)
-                            
                         (scores, termsA, termsB) = self.computePair(idA, idB, init_info, toImprov)
-                        
                         for i in range(len(scores)):
                             if scores[i] >= minScore:
+                                Data.logger.printL(9, 'Score:%f %s <=> %s' % (scores[i], termsA[i], termsB[i]))
                                 self.methodsP['add'](scores[i], idA, idB)
                                 self.pairs.append((termsA[i], termsB[i]))
                     cR += 1

@@ -1,5 +1,5 @@
 from classLog import Log
-from classRule import Op
+from classQuery import Op
 from classRedescription import  Redescription
 from classSParts import SParts
 import pdb
@@ -14,11 +14,16 @@ class BestsDraft:
 
     logger = Log(0)
 
-    coeffPVRule = 1
+    coeffPVQuery = 1
     coeffPVRed =1
     coeffImpacc = 1
     coeffRelImpacc = 0
     thresfact = 1    
+
+    def settings(setts):
+        (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVQuery, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvquery'], setts.param['coeff_pvred'])
+    settings = staticmethod(settings)
+
 
     def pos(side, op):
         if side == -1:
@@ -34,7 +39,7 @@ class BestsDraft:
 
             return BestsDraft.coeffImpacc*BestsDraft.impacc(cand, baseAcc) \
                    + BestsDraft.coeffRelImpacc*BestsDraft.relImpacc(cand, baseAcc) \
-                   + BestsDraft.pValRedScore(cand, N, prs) + BestsDraft.pValRuleScore(cand, N, prs)
+                   + BestsDraft.pValRedScore(cand, N, prs) + BestsDraft.pValQueryScore(cand, N, prs)
     score = staticmethod(score)
         
     def relImpacc(cand, baseAcc=0):
@@ -57,14 +62,14 @@ class BestsDraft:
                 return cand['acc']
     impacc = staticmethod(impacc)
 
-    def pValRuleScore(cand, N, prs):
-        if BestsDraft.coeffPVRule < 0:
-            return BestsDraft.coeffPVRule * SParts.pValRuleCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], N, prs)
-        elif BestsDraft.coeffPVRule > 0:
-            return -BestsDraft.thresfact*(BestsDraft.coeffPVRule < SParts.pValRuleCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], N, prs))
+    def pValQueryScore(cand, N, prs):
+        if BestsDraft.coeffPVQuery < 0:
+            return BestsDraft.coeffPVQuery * SParts.pValQueryCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], N, prs)
+        elif BestsDraft.coeffPVQuery > 0:
+            return -BestsDraft.thresfact*(BestsDraft.coeffPVQuery < SParts.pValQueryCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], N, prs))
         else:
             return 0
-    pValRuleScore = staticmethod(pValRuleScore)
+    pValQueryScore = staticmethod(pValQueryScore)
 
     def pValRedScore(cand, N, prs):
         if BestsDraft.coeffPVRed < 0:
@@ -157,7 +162,7 @@ class BestsDraft:
             
             scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
                       % (BestsDraft.score(cand, self.N, self.baseAcc, self.prs), cand['acc'], \
-                         SParts.pValRuleCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs), \
+                         SParts.pValQueryCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs), \
                          SParts.pValRedCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs) , cand['toBlue'], cand['toRed'])
             
         elif cand['side'] == 1:
@@ -166,7 +171,7 @@ class BestsDraft:
             
             scoring = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
                      % (BestsDraft.score(cand, self.N, self.baseAcc, self.prs), cand['acc'], \
-                         SParts.pValRuleCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs), \
+                         SParts.pValQueryCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs), \
                          SParts.pValRedCand(cand['side'], cand['op'], cand['neg'], cand['lparts'], self.N, self.prs) , cand['toBlue'], cand['toRed'])
             
         return dsp+scoring
@@ -177,7 +182,7 @@ class BestsDraft:
                   % ('LHS extension', 'RHS extension')
             
         dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
-                      % ('score', 'Accuracy',  'Rule pV','Red pV', 'toBlue', 'toRed')
+                      % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')
             
         for cand in self.bests: ## Do not print the last: current redescription
             dsp += '\n\t'+self.dispCand(cand)

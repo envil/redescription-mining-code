@@ -27,6 +27,11 @@ class BestsDraft:
     coeffImpacc = 1
     coeffRelImpacc = 0
 
+
+    def settings(setts):
+        (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVQuery, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvquery'], setts.param['coeff_pvred'])
+    settings = staticmethod(settings)
+
     def minItmSuppIn(self):
         return BestsDraft.minSuppIn
     def minItmSuppOut(self):
@@ -48,20 +53,6 @@ class BestsDraft:
     def minFinAcc():
         return BestsDraft.minAcc
     minFinAcc = staticmethod(minFinAcc)
-
-    def checkFinalConstraints(red):
-        if red.length(0) + red.length(1) >= BestsDraft.minFinLength() \
-                   and red.N - red.lenU() >= BestsDraft.minFinSuppOut() \
-                   and red.lenI() >= BestsDraft.minFinSuppIn() \
-                   and red.acc()  >= BestsDraft.minFinAcc() \
-                   and red.pVal() <= BestsDraft.maxFinPVal():
-            BestsDraft.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
-            return True
-        else:
-            BestsDraft.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
-            return False
-    checkFinalConstraints = staticmethod(checkFinalConstraints) 
-
 
     def lenRed(self):
         if self.red == None:

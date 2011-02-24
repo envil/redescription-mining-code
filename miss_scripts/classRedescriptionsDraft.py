@@ -133,8 +133,8 @@ class RedescriptionsDraft:
 #             comp_to = current - 1
 #             while current >= 1:
 #                 while comp_to >= 0:
-#                     den0 = Rule.denominator(self.draft[-1].rules[0], self.draft[comp_to].rules[0])
-#                     den1 = Rule.denominator(self.draft[-1].rules[0], self.draft[comp_to].rules[0])
+#                     den0 = Query.denominator(self.draft[-1].queries[0], self.draft[comp_to].queries[0])
+#                     den1 = Query.denominator(self.draft[-1].queries[0], self.draft[comp_to].queries[0])
 #                     if abs(Redescription.compare(self.draft[-1], self.draft[comp_to])) != Redescription.diff_indexes \
 #                            and (den0.length() == self.draft[-1].length(0) or  den1.length() == self.draft[-1].length(1) ):
 #                         self.draft.pop(current)

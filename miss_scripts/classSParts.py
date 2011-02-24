@@ -58,7 +58,7 @@ class SParts:
     # Parts in contribution (CONT), (always dependent of X)
     # Contribution: AND entities removed from alpha, OR: entities added to gamma
     IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
-    # Parts in the new support of the extended rule
+    # Parts in the new support of the extended query
     IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)], [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
 
     #### TO COMPUTE ACCURACY after building, INDEXED BY TYPE OF ACCURRACY (0: grounded, 1: optimistic, 2: pessimistic)
@@ -150,7 +150,7 @@ class SParts:
                SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op] + SParts.IDS_fixden[op], lParts)
     compAcc = staticmethod(compAcc)
 
-    # compute the advance resulting of appending X on given side with given operator and negation
+# compute the advance resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (lParts)            
     def compAdv(t, side, op, neg, lParts, bounds):
         b = None
@@ -173,27 +173,27 @@ class SParts:
     def setMethodPVal(methodpVal):
         try:
             SParts.methodpVal = methodpVal
-            SParts.pValRuleCand = staticmethod(eval('SParts.pVal%sRuleCand' % (SParts.methodpVal)))
+            SParts.pValQueryCand = staticmethod(eval('SParts.pVal%sQueryCand' % (SParts.methodpVal)))
             SParts.pValRedCand = staticmethod(eval('SParts.pVal%sRedCand' % (SParts.methodpVal)))
         except AttributeError:
             raise Exception('Oups method to compute the p-value does not exist !')
     setMethodPVal = staticmethod(setMethodPVal)
 
-    # rule p-value using support probabilities (binomial), for candidates
-    def pValSuppRuleCand(side, op, neg, lParts, N, prs = None):
+    # query p-value using support probabilities (binomial), for candidates
+    def pValSuppQueryCand(side, op, neg, lParts, N, prs = None):
         if prs == None:
             return 0
         else:
             lInter = SParts.sumPartsId(side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.into, neg)])
             lX = float(sum(lParts[SParts.inOutId(SParts.into, neg)]))     
             if op:
-                return 1-utilsStats.pValSupp(N, lInter, prs[cand['side']] + lX/N - prs[cand['side']]*lX/N)
+                return 1-utilsStats.pValSupp(N, lInter, prs[side] + lX/N - prs[side]*lX/N)
             else: 
-                return utilsStats.pValSupp(N, lInter, prs[cand['side']]*lX/N)
-    pValSuppRuleCand = staticmethod(pValSuppRuleCand)
+                return utilsStats.pValSupp(N, lInter, prs[side]*lX/N)
+    pValSuppQueryCand = staticmethod(pValSuppQueryCand)
 
-    # rule p-value using marginals (binomial), for candidates
-    def pValMargRuleCand(side, op, neg, lParts, N, prs = None):
+    # query p-value using marginals (binomial), for candidates
+    def pValMargQueryCand(side, op, neg, lParts, N, prs = None):
         if prs == None:
             return 0
         else:
@@ -204,10 +204,10 @@ class SParts:
                 return 1-utilsStats.pValSupp(N, lInter, lsupp*lX/(N*N))
             else: 
                 return utilsStats.pValSupp(N, lInter, lsupp*lX/(N*N))
-    pValMargRuleCand = staticmethod(pValMargRuleCand)
+    pValMargQueryCand = staticmethod(pValMargQueryCand)
 
-    # rule p-value using support sizes (hypergeom), for candidates
-    def pValOverRuleCand(side, op, neg, lParts, N, prs = None):
+    # query p-value using support sizes (hypergeom), for candidates
+    def pValOverQueryCand(side, op, neg, lParts, N, prs = None):
         if prs == None:
             return 0
         else:
@@ -218,7 +218,7 @@ class SParts:
                 return 1-utilsStats.pValOver(lInter, N, lsupp, lX)
             else: 
                 return utilsStats.pValOver(lInter, N, lsupp, lX)
-    pValOverRuleCand = staticmethod(pValOverRuleCand)
+    pValOverQueryCand = staticmethod(pValOverQueryCand)
     
     # redescription p-value using support probabilities (binomial), for candidates
     def pValSuppRedCand(side, op, neg, lParts, N, prs = None):
@@ -228,9 +228,9 @@ class SParts:
             lO = SParts.sumPartsId(1-side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.tot, neg)])
             return utilsStats.pValSupp(N, lInter, float(lO*lX)/(N*N))
         elif op:
-            return utilsStats.pValSupp(N, lInter, prs[1-cand['side']]*(prs[cand['side']] + lX/N - prs[cand['side']]*lX/N))
+            return utilsStats.pValSupp(N, lInter, prs[1-side]*(prs[side] + lX/N - prs[side]*lX/N))
         else: 
-            return utilsStats.pValSupp(N, lInter, prs[1-cand['side']]*(prs[cand['side']] * lX/N))
+            return utilsStats.pValSupp(N, lInter, prs[1-side]*(prs[side] * lX/N))
     pValSuppRedCand = staticmethod(pValSuppRedCand)
 
     # redescription p-value using marginals (binomial), for candidates

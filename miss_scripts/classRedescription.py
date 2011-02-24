@@ -1,21 +1,41 @@
 import re, pdb
 from classLog import Log
-from classRule import  *
+from classQuery import  *
 from classSParts import  SParts
-
+from classCWQuery import  *
 
 class Redescription:
     logger = Log(0)
     nbVariables = 3
-    diff_terms = Rule.diff_terms
-    diff_cols = Rule.diff_cols
-    diff_op = Rule.diff_op
-    diff_balance = Rule.diff_balance
-    diff_length = Rule.diff_length
+    diff_terms = Query.diff_terms
+    diff_cols = Query.diff_cols
+    diff_op = Query.diff_op
+    diff_balance = Query.diff_balance
+    diff_length = Query.diff_length
     diff_score = diff_length + 1
-    
-    def __init__(self, nruleL, nruleR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1]):
-        self.rules = [nruleL, nruleR]
+    trackHisto = False
+        
+    def settings(setts):
+        (Redescription.nbVariables, Redescription.trackHisto) = (setts.param['nb_variables'], setts.param['track_histo'])
+        SParts.setMethodPVal(setts.param['method_pval'].capitalize()) 
+    settings = staticmethod(settings)
+
+    def histoUpdate(self, opk=None, side=None):
+        if Redescription.trackHisto:
+            if type(opk) == int :
+                self.histo = [k]
+            elif type(self.histo) == list and opk!= None and side != None:
+                self.histo.append(int(opk)*(side+1)) 
+
+
+    def __init__(self, nqueryL, nqueryR, nsupps = None, nN = -1, navailableCols = [set(),set()], nPrs = [-1,-1], nHisto=None):
+        if Redescription.trackHisto:
+            if type(nHisto) == list :
+                self.histo = nHisto
+            else:
+                self.histo = []
+
+        self.queries = [nqueryL, nqueryR]
         if nsupps != None:
             self.sParts = SParts(nN, nsupps, nPrs)
         else:
@@ -25,13 +45,13 @@ class Redescription:
         self.vectorABCD = None
         
     def fromInitialPair(initialPair, data):
-        ruleL = Rule()
-        ruleR = Rule()
-        ruleL.extend(None, initialPair[0])
-        ruleR.extend(None, initialPair[1])
+        queryL = Query()
+        queryR = Query()
+        queryL.extend(None, initialPair[0])
+        queryR.extend(None, initialPair[1])
         (suppL, missL) = data.termSuppMiss(0, initialPair[0])
         (suppR, missR) = data.termSuppMiss(1, initialPair[1])
-        r = Redescription(ruleL, ruleR, [suppL, suppR, missL, missR], data.nbRows(), data.nonFull(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])  
+        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), data.nonFull(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])  
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
@@ -39,7 +59,7 @@ class Redescription:
         if x.score() > y.score():
             return Redescription.diff_score
         elif x.score() == y.score():
-            return Rule.comparePair(x.rules[0], x.rules[1], y.rules[0], y.rules[1])
+            return Query.comparePair(x.queries[0], x.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
     compare = staticmethod(compare)
@@ -54,23 +74,41 @@ class Redescription:
             return Redescription.compare(self,other)
         
     def __hash__(self):
-        return int(hash(self.rules[0])+ hash(self.rules[1])*100*self.score())
+        return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
         
     def __len__(self):
-        return len(self.rules[0]) + len(self.rules[1])
+        return len(self.queries[0]) + len(self.queries[1])
         
     def oneSideIdentical(self, redescription, count_ids= [0,0], max_iden = 0):
         found = False
-        if self.rules[0] == redescription.rules[0]:
+        if self.queries[0] == redescription.queries[0]:
             count_ids[0] += 1
             found |= (count_ids[0] >= max_iden)
-        if self.rules[1] == redescription.rules[1]:
+        if self.queries[1] == redescription.queries[1]:
             count_ids[1] += 1
             found |= (count_ids[1] >= max_iden)
         return found
 
     def acc(self):
         return self.sParts.acc()
+
+    def lenI(self):
+        return self.sParts.lenI()
+
+    def suppI(self):
+        return self.sParts.suppI()
+    
+    def lenO(self):
+        return self.sParts.lenO()
+
+    def suppO(self):
+        return self.sParts.suppO()
+    
+    def lenU(self):
+        return self.sParts.lenU()
+
+    def suppU(self):
+        return self.sParts.suppU()
 
     def pVal(self):
         return self.sParts.pVal()
@@ -81,16 +119,16 @@ class Redescription:
     def supports(self):
         return self.sParts
     
-    def rule(self, side):
-        return self.rules[side]
+    def query(self, side):
+        return self.queries[side]
     
     def probas(self):
         return self.sParts.probas()
     
     def fullLength(self, side):
-        return len(self.rules[side]) >= self.nbVariables
+        return len(self.queries[side]) >= self.nbVariables
     def length(self, side):
-        return len(self.rules[side])
+        return len(self.queries[side])
         
     def availableColsSide(self, side):
         return self.lAvailableCols[side]
@@ -114,9 +152,11 @@ class Redescription:
             self.removeAvailables()
         else:
             op = Op(opBool)
-            self.rules[side].extend(op, term)
+            if Redescription.trackHisto:
+                self.histoUpdate(op, side)
+            self.queries[side].extend(op, term)
             self.sParts.update(side, op.isOr(), suppX, missX)
-            if len(self.rules[side]) >= self.nbVariables :
+            if len(self.queries[side]) >= self.nbVariables :
                 self.lAvailableCols[side] = set()
             else:
                 self.lAvailableCols[side].remove(term.col())
@@ -127,43 +167,54 @@ class Redescription:
         return kid
             
     def copy(self):
-        return Redescription(self.rules[0].copy(), self.rules[1].copy(), \
+        
+        if Redescription.trackHisto and type(self.histo) == list :
+            histo = list(self.histo)
+        else:
+            histo = None
+        return Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              self.sParts.copSupp(), self.sParts.N, \
-                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], self.probas())
+                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], self.probas(), histo)
 
-    def recomputeRule(self, side, data= None):
-        return self.rules[side].recompute(side, data)
+    def recomputeQuery(self, side, data= None):
+        return self.queries[side].recompute(side, data)
     
     def invTermsSide(self, side):
-        return self.rules[side].invTerms()
+        return self.queries[side].invTerms()
 
     def invTerms(self):
         return [self.invTermsSide(0), self.invTermsSide(1)]
     
     def invColsSide(self, side):
-        return self.rules[side].invCols()
+        return self.queries[side].invCols()
 
     def invCols(self):
         return [self.invColsSide(0), self.invColsSide(1)]
 
     def recompute(self, data):
-        (nsuppL, missL) = self.recomputeRule(0, data)
-        (nsuppR, missR) = self.recomputeRule(1, data)
+        (nsuppL, missL) = self.recomputeQuery(0, data)
+        (nsuppR, missR) = self.recomputeQuery(1, data)
         if len(missL) + len(missR) > 0:
             self.sParts = SParts(data.N, [nsuppL, nsuppR, missL, missR])
         else:
             self.sParts = SParts(data.N, [nsuppL, nsuppR])
-        self.prs = [self.rules[0].proba(0, data), self.rules[1].proba(1, data)]
+        self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
     
     def check(self, data):
+        result = 0
+        details = None
         if self.sParts != None:
-            (nsuppL, missL) = self.recomputeRule(0, data)
-            (nsuppR, missR) = self.recomputeRule(1, data)
+            (nsuppL, missL) = self.recomputeQuery(0, data)
+            (nsuppR, missR) = self.recomputeQuery(1, data)
             
-            return ( len(nsuppL.symmetric_difference(self.sParts.supp(0))) == 0, \
+            details = ( len(nsuppL.symmetric_difference(self.sParts.supp(0))) == 0, \
                      len(nsuppR.symmetric_difference(self.sParts.supp(1))) == 0, \
                      len(missL.symmetric_difference(self.sParts.miss(0))) == 0, \
                      len(missR.symmetric_difference(self.sParts.miss(1))) == 0 )        
+            result = 1
+            for detail in details:
+                result*=detail
+        return (result, details)
 
     def hasMissing(self):
         return self.sParts.hasMissing()
@@ -185,15 +236,44 @@ class Redescription:
         else:
             return SParts.dispCharList(self.sParts.listLPartsChar())
 
-    def dispRulesSimple(self, lenIndex=0, names= [None, None]):
-        return '%s %s' % (self.rules[0].disp(lenIndex, names[0]), self.rules[1].disp(lenIndex, names[1]))
+    def dispQueriesSimple(self, lenIndex=0, names= [None, None]):
+        return '%s %s' % (self.queries[0].disp(lenIndex, names[0]), self.queries[1].disp(lenIndex, names[1]))
     
     def dispSimple(self, lenIndex=0, names= [None, None]):
-        return '%s\t%s\t%s' % (self.rules[0].disp(lenIndex, names[0]), self.rules[1].disp(lenIndex, names[1]), self.dispLPartsSimple())
+        str_red = '%s\t%s\t%s' % (self.queries[0].disp(lenIndex, names[0]), self.queries[1].disp(lenIndex, names[1]), self.dispLPartsSimple())
+        if Redescription.trackHisto:
+            str_red += ('\thisto:%s' % self.histo)
+        return str_red
 
+    def dispPrintHeader():
+        return ' & $q_\iLHS$ & $q_\iRHS$ & $\\jacc$ & $\\supp$ & \\pValue  \\\\'
+    dispPrintHeader = staticmethod(dispPrintHeader)
+
+    def dispPrint(self, queryId, names = [None, None]):
+        queryidStr = '(%i)' % queryId
+        format_list = []
+        return queryidStr + ' & ' + self.queries[0].dispPrint(names[0])+' & '+self.queries[1].dispPrint(names[1])+ ' & ' +self.dispCaracteristiquesPrint()+' \\\\'
+
+    def dispCaracteristiquesPrint(self):
+        if self.sParts != None:
+            return '$%1.3f$ & $%i$ & $%1.3f$' \
+             % (round(self.acc(),3), self.lenI(), round(self.pVal(),3))
+        elif hasattr(self, 'readInfo'):
+            dict_info = dict([[item[0], item[2]] for item in self.readInfo])
+            return '$%1.3f$ & $%i$ & $%1.3f$' \
+             % (round(dict_info['acc'],3), dict_info['gamma'], round(dict_info['pVal'],3))
+        else:
+            return 'Non printable redescription'
+    
     def disp(self, lenIndex=0, names= [None, None]):
-        return '%s\t<==>\t%s\t%s' % (self.rules[0].disp(lenIndex, names[0]), self.rules[1].disp(lenIndex, names[1]), self.dispLParts())
-        
+        str_red = '%s\t<==>\t%s\t%s' % (self.queries[0].disp(lenIndex, names[0]), self.queries[1].disp(lenIndex, names[1]), self.dispLParts())
+        if Redescription.trackHisto:
+            str_red += ('\tHISTO:%s' % self.histo)
+        return str_red
+
+    def dispSupp(self):
+        return self.sParts.dispSupp()
+    
     def write(self, output, suppOutput):
         output.write(self.dispSimple()+'\n')
         output.flush()
@@ -201,48 +281,54 @@ class Redescription:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()
 
-    def parseRules(string):
+    def parseQueries(string):
         parts = string.rsplit('\t')
 
         if len(parts) >= 2:
-            ruleL = Rule.parse(parts[0])
-            ruleR = Rule.parse(parts[1])
+            if parts[0].startswith('('):
+                queryL = CWQuery.parse(parts[0])
+                queryR = CWQuery.parse(parts[1])
+
+            else:
+
+                queryL = Query.parse(parts[0])
+                queryR = Query.parse(parts[1])
         else:
-            ruleL = Rule()
-            ruleR = Rule()
+            queryL = Query()
+            queryR = Query()
 
         if len(parts) >= 3:
             lpartsList = SParts.parseLPartsChar(parts[2])
         else:
             lpartsList = []
-        return (ruleL, ruleR, lpartsList)
-    parseRules = staticmethod(parseRules)
+        return (queryL, queryR, lpartsList)
+    parseQueries = staticmethod(parseQueries)
 
-    def parse(stringRules, stringSupport = None, data = None):
-        (ruleL, ruleR, lpartsList) = Redescription.parseRules(stringRules)
+    def parse(stringQueries, stringSupport = None, data = None):
+        (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries)
 
         r = None
         if data != None and stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
             supportsS = SParts.parseSupport(stringSupport, data.N)
             if supportsS != None:
-                r = Redescription(ruleL, ruleR, supportsS.copSupp(), data.nbRows(), [set(),set()], [ ruleL.proba(0, data), ruleR.proba(1, data)])
+                r = Redescription(queryL, queryR, supportsS.copSupp(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
 
                 if lpartsList[2:] != r.sParts.listLPartsChar()[2:]:
                     raise Warning("Something wrong in the supports ! (%s ~ %s)\n" \
                                   % (SParts.dispCharList(lpartsList), SParts.dispCharList(r.sParts.listLPartsChar()) ))
         if r == None:
-            r = Redescription(ruleL, ruleR)
+            r = Redescription(queryL, queryR)
             r.readInfo = lpartsList
         return r
     parse = staticmethod(parse)
             
-    def load(rulesFp, supportsFp = None, data= None):
-        stringRules = rulesFp.readline()
-        indComm = stringRules.find('#')
+    def load(queriesFp, supportsFp = None, data= None):
+        stringQueries = queriesFp.readline()
+        indComm = stringQueries.find('#')
         comment = ''
         if indComm != -1 :
-            comment = stringRules[indComm:].rstrip()
-            stringRules = stringRules[:indComm]
+            comment = stringQueries[indComm:].rstrip()
+            stringQueries = stringQueries[:indComm]
         
         if type(supportsFp) == file :
             stringSupp = supportsFp .readline()
@@ -253,5 +339,5 @@ class Redescription:
                 stringSupp = stringSupp[:indComm]
 
         else: stringSupp= None; commentSupp = ''
-        return (Redescription.parse(stringRules, stringSupp, data), comment, commentSupp)
+        return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)

@@ -1,6 +1,6 @@
 import math, random, re
 from classLog import Log
-from classRule import Op, Item, BoolItem, CatItem, NumItem, Term, Rule 
+from classQuery import Op, Item, BoolItem, CatItem, NumItem, Term, Query 
 from classRedescription import Redescription
 from classSParts import SParts
 from classBestsDraft import BestsDraft
@@ -63,8 +63,8 @@ class BoolColM(ColM):
         lmiss = supports.lpartsInterX(self.missing)
         lin = supports.lpartsInterX(self.hold)
 
-        for op in constraints.ruleTypesOp():
-            for neg in constraints.ruleTypesNP(op):
+        for op in constraints.queryTypesOp():
+            for neg in constraints.queryTypesNP(op):
                 b = constraints.compAdv(Term(neg, BoolItem(col)), side, op, neg, lparts, lmiss, lin)
                 if b != None:
                     res.append(b)
@@ -123,21 +123,21 @@ class CatColM(ColM):
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(self.miss())
 
-        for op in constraints.ruleTypesOp():
+        for op in constraints.queryTypesOp():
             if constraints.inSuppBounds(side, op, lparts): ### DOABLE 
                 res.extend(CatColM.findCoverFullSearch(op, constraints, lparts, lmiss, self.sCats, supports, side, col))
         return res
 
     def findCoverFullSearch(op, constraints, lparts, lmiss, scats, supports, side, col, negB=False):
         res = []
-        doNegB = negB  and (True in constraints.ruleTypesNP(op))
+        doNegB = negB  and (True in constraints.queryTypesNP(op))
         resNegB = [] 
         bests = [None, None]
         bestsNegB = [None, None]
         
         for (cat, supp) in scats.iteritems():
             lin = supports.lpartsInterX(supp)
-            for neg in constraints.ruleTypesNP(op):
+            for neg in constraints.queryTypesNP(op):
                 tmp_comp = constraints.compAdv(cat, side, op, neg, lparts, lmiss, lin)
                 if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                     bests[neg] = tmp_comp
@@ -147,7 +147,7 @@ class CatColM(ColM):
                     if BestsDraft.comparePair(tmp_comp, bestsNegB[neg]) > 0:
                         bestsNegB[neg] = tmp_comp
 
-        for neg in constraints.ruleTypesNP(op):
+        for neg in constraints.queryTypesNP(op):
             if bests[neg] != None  :
                 t = bests[neg]['term']
                 bests[neg].update({'term': Term(neg, CatItem(col, t))})
@@ -283,9 +283,9 @@ class NumColM(ColM):
         (scores, termsFix, termsExt) = ([], [], [])    
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(self.miss())
-
+        #### BREAK
         if constraints.inSuppBounds(side, True, lparts): ### DOABLE
-            segments = self.makeSegments(side, supports, constraints.ruleTypesOp())
+            segments = self.makeSegments(side, supports, constraints.queryTypesOp())
             res = NumColM.findCover(segments, lparts, lmiss, side, col, constraints)
  
             for cand in res:
@@ -297,7 +297,7 @@ class NumColM(ColM):
         nlmiss = SParts.negateParts(1-side, lmiss)
 
         if len(constraints.negTypesInit()) == 4 and constraints.inSuppBounds(side, True, lparts): ### DOABLE
-            nsegments = self.makeSegments(side, supports.negate(1-side), constraints.ruleTypesOp())
+            nsegments = self.makeSegments(side, supports.negate(1-side), constraints.queryTypesOp())
             res = NumColM.findCover(nsegments, nlparts, nlmiss, side, col, constraints)
             
             for cand in res:            
@@ -313,7 +313,7 @@ class NumColM(ColM):
         lmiss = supports.lpartsInterX(self.miss())
 
         if constraints.inSuppBounds(side, True, lparts) or constraints.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = self.makeSegments(side, supports, constraints.ruleTypesOp())
+            segments = self.makeSegments(side, supports, constraints.queryTypesOp())
             res = NumColM.findCover(segments, lparts, lmiss, side, col, constraints)
         return res
     
@@ -339,15 +339,17 @@ class NumColM(ColM):
             
     def findCover(segments, lparts, lmiss, side, col, constraints):
         res = []
-        for op in constraints.ruleTypesOp():
+        for op in constraints.queryTypesOp():
             if len(segments[op]) < NumColM.maxSeg:
                 Data.logger.printL(100,'---Doing the full search---')
+#                pdb.set_trace()
                 res.extend(NumColM.findCoverFullSearch(op, segments, lparts, lmiss, side, col, constraints))
             else:
                 Data.logger.printL(100,'---Doing the fast search---')
-                if (False in constraints.ruleTypesNP(op)):
+#                pdb.set_trace()
+                if (False in constraints.queryTypesNP(op)):
                     res.extend(NumColM.findPositiveCover(op, segments, lparts, lmiss, side, col, constraints))
-                if (True in constraints.ruleTypesNP(op)):
+                if (True in constraints.queryTypesNP(op)):
                     res.extend(NumColM.findNegativeCover(op, segments, lparts, lmiss, side, col, constraints))
         return res
     findCover = staticmethod(findCover)
@@ -361,18 +363,21 @@ class NumColM(ColM):
 
             for seg_e in range(seg_s,len(segments[op])):
                 lin = SParts.addition(lin, segments[op][seg_e][2])
-                for neg in constraints.ruleTypesNP(op):
+                for neg in constraints.queryTypesNP(op):
                     tmp_comp = constraints.compAdv((seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
+                    # if tmp_comp != None:
+                    #     print (seg_s, seg_e, tmp_comp['acc'])
                     if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                         bests[neg] = tmp_comp
-        for neg in constraints.ruleTypesNP(op):
+        for neg in constraints.queryTypesNP(op):
             
             if bests[neg] != None:
                 (n, t) = NumColM.makeTermSeg(neg, segments[op], col, bests[neg]['term'])
                 if t != None:
                     bests[neg].update({'term': t, 'neg':n })
                     res.append(bests[neg])
-
+        # print res
+        # exit()
 #             if bests[neg] != None and (bests[neg]['term'][0] != 0 or  bests[neg]['term'][1] != len(segments[op])-1)  :
 #                 if bests[neg]['term'][0] == 0:
 #                     lowb = float('-Inf')
@@ -384,6 +389,7 @@ class NumColM(ColM):
 #                     upb = segments[op][bests[neg]['term'][1]][1]
 #                 bests[neg].update({'term': Term(neg, NumItem(col, lowb, upb))})
 #                 res.append(bests[neg])
+
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 
@@ -1032,7 +1038,9 @@ class Data:
     def initializeRedescriptions(self, nbRed, constraints, minScore=0):
         Data.logger.printL(1, 'Starting the search for initial pairs...')
         self.pairs = []
-        
+
+#        (scores, termsL, termsR) = self.computePair(7, 0, constraints)                        
+                                
         ids= self.nonFull()
         cL = 0
         cR = 0  
@@ -1043,6 +1051,7 @@ class Data:
                     if cR % self.divR == 0:
                         Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR))
                         (scores, termsL, termsR) = self.computePair(idL, idR, constraints)                        
+                        
                         for i in range(len(scores)):
                             if scores[i] >= constraints.minPairsScore():
                                 Data.logger.printL(9, 'Score:%f %s <=> %s' % (scores[i], termsL[i], termsR[i]))

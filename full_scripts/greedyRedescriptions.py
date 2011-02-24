@@ -9,9 +9,10 @@ from classRedescription import Redescription
 from classRedescriptionsDraft import RedescriptionsDraft
 from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
+from classConstraints import Constraints
 import pdb
 
-def processDraft(initialRed, data, draftCap, draftOut, minImpr, queryTypes, souvenirs, logger):    
+def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, souvenirs, logger):    
 
     currentDraft = RedescriptionsDraft(draftCap)
     nextGen = [initialRed]
@@ -25,7 +26,7 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, queryTypes, souv
         for red in nextGen :
             nb_extensions = red.updateAvailable(souvenirs)
             if red.nbAvailableCols() > 0:
-                bests = BestsDraft(queryTypes, data.N, red)
+                bests = BestsDraft(constraints.queryTypes(), data.N, red)
                 for x in red.availableColsSide(0):
                     data.updateBests(bests, 0, x)
 
@@ -37,7 +38,7 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, queryTypes, souv
 
         souvenirs.update(kids)
         currentDraft.update(kids)
-        nextGen = currentDraft.nextGeneration(BestsDraft.checkFinalConstraints)
+        nextGen = currentDraft.nextGeneration(constraints.checkFinalConstraints)
         
     currentDraft.cut(draftOut)
     return currentDraft.redescriptions()
@@ -68,9 +69,11 @@ def main():
     else:
         supportOutFp = None
 
-    (Redescription.methodpVal, Redescription.nbVariables, Redescription.trackHisto) = (setts.param['method_pval'].capitalize(), setts.param['nb_variables'], setts.param['track_histo'])
+    constraints = Constraints(data, setts)
+    Redescription.settings(setts)
+    BestsDraft.settings(setts)
+
     (BestsDraft.minC, BestsDraft.minSuppIn, BestsDraft.minSuppOut) = data.scaleSuppParams(setts.param['contribution'], setts.param['min_suppin'], setts.param['min_suppout'])
-    (BestsDraft.coeffImpacc, BestsDraft.coeffRelImpacc, BestsDraft.coeffPVQuery, BestsDraft.coeffPVRed) = (setts.param['coeff_impacc'], setts.param['coeff_relimpacc'], setts.param['coeff_pvquery'], setts.param['coeff_pvred'])
     (BestsDraft.minLen, BestsDraft.minAcc, BestsDraft.maxPVal) = (setts.param['min_length'], setts.param['min_acc'], setts.param['max_pval'])
 
     readyDraft = RedescriptionsDraft()
@@ -82,7 +85,7 @@ def main():
 
     while initialRed != None :
         try:
-            reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], setts.param['query_types'], souvenirs, logger)
+            reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], constraints, souvenirs, logger)
             if len(reds) > 0:
                 if setts.param['max_side_identical'] == 0 :
                     logger.printL(2, 'Appending reds...')

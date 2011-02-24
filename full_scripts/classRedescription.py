@@ -21,6 +21,11 @@ class Redescription:
     methodpVal = 'Marg'
     trackHisto = False
 
+    
+    def settings(setts):
+        (Redescription.methodpVal, Redescription.nbVariables, Redescription.trackHisto) = (setts.param['method_pval'].capitalize(), setts.param['nb_variables'], setts.param['track_histo'])
+    settings = staticmethod(settings)
+
     def histoUpdate(self, opk=None, side=None):
         if Redescription.trackHisto:
             if type(opk) == int :
@@ -298,6 +303,8 @@ class Redescription:
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
     
     def check(self, data):
+        result = 0
+        details = None
         if self.sGamma != set([-1]):
             nsuppL = self.recomputeQuery(0, data)
             nsuppR = self.recomputeQuery(1, data)
@@ -305,10 +312,14 @@ class Redescription:
             nsBeta = nsuppR - nsuppL
             nsGamma =  nsuppL & nsuppR
 
-            return ( len(nsAlpha.symmetric_difference(self.sAlpha)) == 0, \
+            details = ( len(nsAlpha.symmetric_difference(self.sAlpha)) == 0, \
                      len(nsBeta.symmetric_difference(self.sBeta)) == 0, \
                      len(nsGamma.symmetric_difference(self.sGamma)) == 0 )        
-
+            result = 1
+            for detail in details:
+                result*=detail
+        return (result, details)
+        
     def __str__(self):
         if self.sGamma != set([-1]):
             str_red = '(%i %i,  %i / %i\t = %f, %f) %i + %i items:\t (%i): %s <=> %s' \

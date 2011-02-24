@@ -1,5 +1,4 @@
 import sys
-import pdb
 class Log:
     
     def __init__(self,  verbosity=1, output = '-'):

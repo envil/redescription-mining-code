@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import sys, getopt, numpy
-import utilsIO
+import sys, getopt, numpy #, utilsIO
 from classSettings import Settings
+from classConstraintsNM import Constraints
 from classLog import Log
 from classRedescription import *
 from classData import *
@@ -26,6 +26,7 @@ def main():
     else:
         data = None
         dataRed = None
+    constraints = Constraints(data, setts)
     Redescription.methodpVal = setts.param['method_pval'].capitalize()
 
     setts.param['name'] = False
@@ -106,14 +107,13 @@ def main():
 #            pdb.set_trace()
             ################# SANITY CHECK
             if setts.param['sanity_check'] :
-                res = currentR.check(data)
-                if res == None:
+                (res, details) = currentR.check(data)
+                if res == 0:
                     logger.printL(0,'Query has toy supports !')
-                elif type(res) == tuple and len(res)==3:
-                    if res[0] *res[1] *res[2] == 1:
-                        logger.printL(0,"Query %i Sanity check OK !" % queryNro)
-                    else:
-                        logger.printL(0,"Query %i Sanity check KO ! (%s)" % (queryNro, res))
+                elif res == 1:
+                    logger.printL(0,"Query %i Sanity check OK !" % queryNro)
+                elif res == -1:
+                    logger.printL(0,"Query %i Sanity check KO ! (%s)" % (queryNro, details))
                 else:
                     logger.printL(0,"Something happend while analysing query %i !" % queryNro)
 
@@ -122,12 +122,7 @@ def main():
                 currentR.recompute(data)
 
             ################# FILTRATE
-            if setts.param['filtrate'] and \
-                   ( currentR.length(0) + currentR.length(1) < setts.param['min_length'] \
-                   or currentR.N - currentR.lenU() < setts.param['min_suppout'] \
-                   or currentR.lenI() < setts.param['min_suppin'] \
-                   or currentR.acc()  < setts.param['min_acc'] \
-                   or currentR.pVal() > setts.param['max_pval']):
+            if setts.param['filtrate'] and  constraints.checkFinalConstraints(currentR):
                 currentR = None
                 logger.printL(0,"Query %i filtered out!" % queryNro)
 
@@ -142,11 +137,7 @@ def main():
                     else:
                         currentR = None
                         logger.printL(0,"Query %i redundant no support left, pruned!" % queryNro)
-                elif ( currentRedun.length(0) + currentRedun.length(1) < setts.param['min_length'] \
-                   or currentRedun.N - currentRedun.lenU() < setts.param['min_suppout'] \
-                   or currentRedun.lenI() < setts.param['min_suppin'] \
-                   or currentRedun.acc()  < setts.param['min_acc'] \
-                   or currentRedun.pVal() > setts.param['max_pval']):
+                elif constraints.checkFinalConstraints(currentRedun):
                     if setts.param['redundancy_mark']:
                         comment = '# REDUNDANT RULE ' + currentRedun.dispCaracteristiquesSimple() + comment
                         commentSupp = '# REDUNDANT RULE ' + commentSupp

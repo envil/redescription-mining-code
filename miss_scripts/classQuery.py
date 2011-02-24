@@ -4,6 +4,7 @@ from classSParts import  SParts
 class Op:
     
     ops = {0: 'X', 1: '|', -1: '&'}
+    printops = {0: 'X', 1: '\lor', -1: '\land'}
     
     def __init__(self, nval=0):
         if type(nval) == bool :
@@ -19,6 +20,7 @@ class Op:
     def isSet(self):
         return self.val != 0
 
+
     def copy(self):
         return Op(self.val)
     
@@ -33,6 +35,9 @@ class Op:
     
     def __str__(self):
         return Op.ops[self.val]+' '
+
+    def dispPrint(self):
+        return Op.printops[self.val]
 
     def __cmp__(self, other):
         if other == None:
@@ -146,6 +151,21 @@ class BoolItem(Item):
 
     def __str__(self):
         return self.disp()
+
+
+    def dispPrint(self, neg, names = None):
+        if type(names) == list  and len(names) > 0:
+            if neg:
+                return '\\neg %s' % names[self.col]
+            else:
+                return '%s' % names[self.col]
+        
+        else:
+            if neg:
+                return '\\neg %i' % self.col
+            else:
+                return '%i' % self.col
+
             
     def parse(parts, pos):
         partsU = re.match(BoolItem.patt, parts[pos])
@@ -201,6 +221,20 @@ class CatItem(Item):
 
     def __str__(self):
         return self.disp()
+
+
+    def dispPrint(self, neg, names = None):
+        if neg:
+            instr = '\\not\\in'
+        else:
+            instr= '\\in'
+        if type(names) == list  and len(names) > 0:
+            idcol = '%s ' % names[self.col]
+        else:
+            idcol = '%i' % self.col
+        catstr = '%i' % self.cat
+        return ' '+idcol+' '+instr+catstr+' '
+
     
     def parse(parts, pos):
         partsU = re.match(CatItem.patt, parts[pos])
@@ -318,6 +352,28 @@ class NumItem(Item):
     def __str__(self):
         return self.disp()
 
+
+    def dispPrint(self, neg, names = None):
+        if self.lowb > float('-Inf'):
+            lb = '[%s\\leq{}' % self.lowb
+        else:
+            lb = '['
+        if self.upb < float('Inf'):
+            ub = '\\leq{}%s]' % self.upb
+        else:
+            ub = ']'
+        if neg:
+            negstr = ' \\not '
+        else:
+            negstr= ''
+        if type(names) == list  and len(names) > 0:
+            idcol = '%s' % names[self.col]
+        else:
+            idcol = '%i' % self.col
+        return ''+negstr+lb+idcol+ub+''
+
+
+
     def parse(parts, pos):
         partsU = re.match(NumItem.patt, parts[pos])
         if partsU != None :
@@ -382,6 +438,9 @@ class Term:
     def __str__(self):
         return self.disp()
 
+    def dispPrint(self, names = None):
+        return self.item.dispPrint(self.neg.boolVal(), names)
+
     def __cmp__(self, other):
         if other == None:
             return 1
@@ -401,7 +460,7 @@ class Term:
     
     def parse(parts, pos):
         tmp_pos = pos
-        (neg, pos) = Neg.parse(parts, pos)
+        (neg, pos) = Neg.parse(parts,pos)
         i = 0
         item = None
         while i < len(Term.itemTypes) and item == None:
@@ -414,7 +473,7 @@ class Term:
             return (None, tmp_pos)
     parse = staticmethod(parse)
             
-class Rule:
+class Query:
     diff_terms = 1
     diff_cols = 2
     diff_op = 3
@@ -439,13 +498,13 @@ class Rule:
         return h
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
-        if nb % 2 == 0: # even bucket: rule operator, else other
+        if nb % 2 == 0: # even bucket: query operator, else other
             return self.op.copy()
         else: 
             return self.op.other()
 
     def copy(self):
-        c = Rule()
+        c = Query()
         c.op = self.op.copy()
         c.buk = []
         for buk in self.buk:
@@ -456,70 +515,70 @@ class Rule:
         if x.op == y.op and x.buk == y.buk:
             return 0
         
-        if len(x) < len(y): ## nb of terms in the rule, shorter better
-            return Rule.diff_length
+        if len(x) < len(y): ## nb of terms in the query, shorter better
+            return Query.diff_length
         elif len(x) == len(y):
-            if len(x.buk)  < len(y.buk) : ## nb of buckets in the rule, shorter better
-                return Rule.diff_balance
+            if len(x.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
+                return Query.diff_balance
             elif len(x.buk) == len(y.buk) :
                 if x.op > y.op : ## operator
-                    return Rule.diff_op
+                    return Query.diff_op
                 elif x.op == y.op :
-                    if x.invCols() > y.invCols(): ## terms in the rule
-                        return Rule.diff_cols
+                    if x.invCols() > y.invCols(): ## terms in the query
+                        return Query.diff_cols
                     elif x.invCols() == y.invCols():
-                        return Rule.diff_terms
+                        return Query.diff_terms
                     else:
-                        return -Rule.diff_cols
+                        return -Query.diff_cols
                 else:
-                    return -Rule.diff_op
+                    return -Query.diff_op
             else:
-                return -Rule.diff_balance
+                return -Query.diff_balance
         else:
-            return -Rule.diff_length
+            return -Query.diff_length
     compare = staticmethod(compare)
     
     def __cmp__(self, other):
         if other == None:
             return 1
         else:
-            return Rule.compare(self, other)
+            return Query.compare(self, other)
     
     def comparePair(x0, x1, y0, y1):
         if ( x0.op == y0.op and x0.buk == y0.buk and x1.op == y1.op and x1.buk == y1.buk ):
             return 0
 
-        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of items in the rule, shorter better
-            return Rule.diff_length
+        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of items in the query, shorter better
+            return Query.diff_length
         
         elif len(x0) + len(x1) == len(y0) + len(y1):
-            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of items in the rule, shorter better
-                return Rule.diff_balance
+            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of items in the query, shorter better
+                return Query.diff_balance
             elif len(x0.buk) + len(x1.buk) == len(y0.buk) + len(y1.buk):
-                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of items in the rule, more balanced is better
-                    return Rule.diff_balance
+                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of items in the query, more balanced is better
+                    return Query.diff_balance
                 elif max(len(x0), len(x1)) == max(len(y0), len(y1)):
-                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of items in the rule, more balanced is better
-                        return Rule.diff_balance
+                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of items in the query, more balanced is better
+                        return Query.diff_balance
                     
                     elif max(len(x0.buk), len(x1.buk) ) == max(len(y0.buk), len(y1.buk)):
                         if x0.op > y0.op : ## operator on the left
-                            return Rule.diff_op
+                            return Query.diff_op
                         elif x0.op == y0.op:
                             if x1.op > y1.op : ## operator on the right
-                                return Rule.diff_op
+                                return Query.diff_op
                             elif x1.op == y1.op:
                                 if x0.invCols() > y0.invCols() :
-                                    return Rule.diff_cols
+                                    return Query.diff_cols
                                 elif x0.invCols() == y0.invCols() :
                                     if x1.invCols() > y1.invCols() :
-                                        return Rule.diff_cols
+                                        return Query.diff_cols
                                     elif x1.invCols() == y1.invCols() :
-                                        return Rule.diff_terms
-                                return -Rule.diff_cols
-                        return -Rule.diff_op
-            return -Rule.diff_balance
-        return -Rule.diff_length
+                                        return Query.diff_terms
+                                return -Query.diff_cols
+                        return -Query.diff_op
+            return -Query.diff_balance
+        return -Query.diff_length
     comparePair = staticmethod(comparePair)
     
     def extend(self, op, term):
@@ -536,7 +595,7 @@ class Rule:
     def parse(string):
         parts = string.split()
         if len(parts) > 0:
-            r = Rule()
+            r = Query()
             (op, pos) = (Op(0), 0)
             (t, pos) = Term.parse(parts, pos)
             while pos < len(parts) and (op != None) and (t != None):
@@ -587,6 +646,31 @@ class Rule:
                 op = op.other()
             string = string[2:]
         return string
+
+    def dispPrint(self, names = None):
+        if len(self) == 0 :
+            string = ''
+        else:
+#             if len(self.buk) > 2:
+#                 pdb.set_trace()
+            string = ''
+            first = 0
+            op = self.op
+            for cbuk in self.buk:
+                if first != 0:
+                    string = '(' + string + ')'
+                cterms = list(cbuk)
+                cterms.sort()
+                for term in cterms:
+                    if first == 0:
+                        first = 1
+                        string += '%s' % (term.dispPrint(names))
+                    else:
+                        string += ' %s %s' % (op.dispPrint(), term.dispPrint(names))
+                op = op.other()
+            
+        return '$' + string + '$'
+    
     
     def __str__(self):
         return self.disp()    
@@ -613,7 +697,7 @@ class Rule:
                 indexes.append(format_str % {'col': term.col(), 'buk': buk_nb}) 
         return indexes
     
-    ## return the support associated to a rule
+    ## return the support associated to a query
     def recompute(self, side, data= None):
 
         if len(self) == 0 or data==None:
@@ -648,11 +732,11 @@ class Rule:
 #     def invTerms(self):
 #         invTerms = []
 #         OR = self.opBukIsOR(1)
-#         for part in self.rule[1:] :
+#         for part in self.query[1:] :
 #             spart = list(part)
 #             spart.sort()
 #             for item in spart :
-#                 invItems.append((rule_itemId(item), rule_itemNot(item), OR))    
+#                 invItems.append((query_itemId(item), query_itemNot(item), OR))    
 #             OR = not OR
 #         return invItems
     
