@@ -175,6 +175,7 @@ class NumColM(ColM):
         self.missing = nmiss
         self.mode = {}
         self.buk = None
+        self.colbuk = None
         
         if len(self.sVals)+len(self.missing) != self.N :
             tmp = set([r[1] for r in self.sVals])
@@ -240,6 +241,34 @@ class NumColM(ColM):
         if self.lenNonMode() >= minOut or self.lenNonMode() >= minIn :
             return True
         return False
+
+
+    def collapsedBuckets(self):
+        if self.colbuk == None:
+            self.colbuk = self.collapseBuckets()
+        return self.colbuk
+    
+    def collapseBuckets(self):
+        tmp = self.buckets()
+
+        agg_max= 15;
+        tmp_supp=set([])
+        bucket_min=tmp[1][0]
+        colB_supp = []
+        colB_max= []
+        colB_min= []
+        for i in range(len(tmp[1])):
+            if len(tmp_supp) > agg_max:
+                colB_supp.append(tmp_supp)
+                colB_min.append(bucket_min)
+                colB_max.append(tmp[1][i-1])
+                bucket_min=tmp[1][i]
+                tmp_supp=set([])
+            tmp_supp.update(tmp[0][i])
+        colB_supp.append(tmp_supp)
+        colB_min.append(bucket_min)
+        colB_max.append(tmp[1][-1])
+        return (colB_supp, colB_min, 0, colB_max)
 
     def buckets(self):
         if self.buk == None:
@@ -561,7 +590,7 @@ class NumColM(ColM):
     makeTermSeg = staticmethod(makeTermSeg)
 
 
-    def makeTermBuk(neg, buk_op, col, bound_ids):
+    def makeTermBuk(neg, buk_op, col, bound_ids, flag=0):
         if bound_ids[0] == 0 and bound_ids[1] == len(buk_op)-1:
             return (neg, None)
         elif bound_ids[0] == 0 :
@@ -571,7 +600,7 @@ class NumColM(ColM):
                 n = False
             else:
                 lowb = float('-Inf')
-                upb = buk_op[bound_ids[1]]
+                upb = buk_op[bound_ids[1]+flag]-flag
                 n = False
         elif bound_ids[1] == len(buk_op)-1 :
             if neg:
@@ -584,7 +613,7 @@ class NumColM(ColM):
                 n = False
         else:
             lowb = buk_op[bound_ids[0]]
-            upb = buk_op[bound_ids[1]]
+            upb = buk_op[bound_ids[1]+flag]-flag
             n = neg
         return (n, Term(n, NumItem(col, lowb, upb)))
     makeTermBuk = staticmethod(makeTermBuk)
@@ -750,7 +779,7 @@ class Data:
 
     def computePairParts33Full(self, colL, idL, colR, idR, constraints, side):
         best =  None
-        
+        flag=0
         interMat = []
         bucketsL = colL.buckets()
         bucketsR = colR.buckets()
@@ -762,8 +791,15 @@ class Data:
             
         (scores, termsF, termsE) = ([], [], [])
         ## DOABLE
-        if ( len(bucketsF) * len(bucketsE) <= 1000 ): 
 
+        Data.logger.printL(6,"Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1])))
+        if ( len(bucketsF[1]) * len(bucketsE[1]) > 5000 ): 
+            if len(bucketsE[1])> 20:
+                bucketsE = colE.collapsedBuckets()
+                #pdb.set_trace()
+                flag=1 ## in case of collapsed bucket the threshold is different
+        if ( len(bucketsF[1]) * len(bucketsE[1]) <= 5000 ): 
+        #if (True): ## Test
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
             totInt = self.nbRows() - len(colF.miss()) - len(colE.miss()) + missMubB
@@ -813,6 +849,7 @@ class Data:
             belowF = 0
             lowF = 0
             while lowF < len(interMat) and totInt - belowF >= constraints.minItmSuppIn():
+
                 aboveF = 0
                 upF = len(interMat)-1
                 while upF >= lowF and totInt - belowF - aboveF >= constraints.minItmSuppIn():
@@ -856,9 +893,10 @@ class Data:
                 belowF+=margF[lowF]
                 lowF+=1
 
+#        pdb.set_trace()
         if best != None:
             (nF, tF) = NumColM.makeTermBuk(False, bucketsF[1], idF, best['term'][0:2])
-            (nE, tE) = NumColM.makeTermBuk(False, bucketsE[1], idE, best['term'][2:])
+            (nE, tE) = NumColM.makeTermBuk(False, bucketsE[1], idE, best['term'][2:],flag)
             if tF != None and tE != None:
                 termsF.append(tF)
                 termsE.append(tE)
@@ -999,7 +1037,7 @@ class Data:
         for (i, nF, nE) in constraints.negTypesInit():
 
             if best[i] != None:
-                (nE, tE) = NumColM.makeTermBuk(False, buckets[1], idE, best[i]['term'][1:])
+                (nE, tE) = NumColM.makeTermBuk(False, buckets[1], idE, best[i]['term'][1:],flag)
                 if tE != None:
                     termsExt.append(tE)
                     termsFix.append(Term(nF, CatItem(idF, best[i]['term'][0])))

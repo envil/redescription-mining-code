@@ -488,11 +488,9 @@ class NumDataM(DataM):
                 toColors[0] += segments[op][seg_e][0]
                 toColors[1] += segments[op][seg_e][1]
                 for neg in toImprov.queryTypesNP(op):
-                    if (seg_s, seg_e) == (0,16):
-                        pdb.set_trace()
                     tmp_comp = toImprov.compAdv((seg_s, seg_e), op, neg, toColors, lparts)
-                    if tmp_comp != None:
-                        print (seg_s, seg_e, tmp_comp['acc'])
+                    # if tmp_comp != None:
+                    #     print (seg_s, seg_e, tmp_comp['acc'])
                     if BestsDraft.comparePair(tmp_comp, bests[neg]) > 0:
                         bests[neg] = tmp_comp
 
@@ -508,8 +506,8 @@ class NumDataM(DataM):
                     upb = segments[op][bests[neg]['term'][1]][-1]
                 bests[neg].update({'side': side, 'op': Op(op), 'term': Term(neg, NumItem(col, lowb, upb))})
                 res.append(bests[neg])
-        print res
-        exit()
+        # print res
+        # exit()
         return res
     findCoverFullSearch = staticmethod(findCoverFullSearch)
 

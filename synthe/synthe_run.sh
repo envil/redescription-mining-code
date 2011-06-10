@@ -5,12 +5,12 @@
 
 # ## BOOL CONSERVATIVE
 # ####################
-# NB_COPIES=50
-# SERIE=bool_conservative
-# EXT_L=.datbool
-# EXT_R=.datbool
-# PRESERVING='3'
-# GEN_MARGIN_R='1'
+NB_COPIES=2
+SERIE=bool_conservative
+EXT_L=.datbool
+EXT_R=.datbool
+PRESERVING='3'
+GEN_MARGIN_R='1'
 
 # ## BOOL DESTRUCTIVE
 # ####################
@@ -23,12 +23,12 @@
 
 ## REAL VALUED CONSERVATIVE
 ############################
-NB_COPIES=5
-SERIE=realvalued_conservative
-EXT_L=.datbool
-EXT_R=.densenum
-PRESERVING='3'
-GEN_MARGIN_R='0.3'
+# NB_COPIES=5
+# SERIE=realvalued_conservative
+# EXT_L=.datbool
+# EXT_R=.densenum
+# PRESERVING='3'
+# GEN_MARGIN_R='0.3'
 
 #####################################################################
 
@@ -37,13 +37,14 @@ BASE_REP=~/redescriptors/sandbox/synthe/${SERIE}/
 DATA_REP=${BASE_REP}data/
 RESULTS_REP=${BASE_REP}results/
 
-SCRIPTS_PATH=~/redescriptors/sandbox/NMscripts/
+SCRIPTS_PATH=~/redescriptors/sandbox/miss_scripts/
+TOOLS_PATH=~/redescriptors/sandbox/tools_scripts/
 MINE_SCRIPT=${SCRIPTS_PATH}greedyRedescriptions.py
-MAT_PATH=${SCRIPTS_PATH}
+MAT_PATH=${TOOLS_PATH}
 METHOD_PATH=~/redescriptors/sandbox/synthe/
 MATLAB_BIN=/opt/matlab/bin/matlab
 
-EXT_RULES=.rul
+EXT_RULES=.queries
 EXT_INFO=.info
 EXT_TIME=.time
 
@@ -109,7 +110,7 @@ setts = struct( 'nb_rows', {$gen_nb_rows}, ... % total nb of rows
             'supp_rows_R', {$gen_supp_rows_R}, ... % number of supporting rows of the right hand side matrix
             'nb_variables_L', {$gen_nb_variables_L}, ... % number of supporting variables of the left hand side matrix
             'nb_variables_R', {$gen_nb_variables_R}, ... % number of supporting variables of the right hand side matrix
-            'contrib', {$gen_contrib}, ... % contribution
+            'c', {$gen_contrib}, ... % contribution
             'offset', {$gen_offset}, ... % offset before support of right hand side matrix
             'preserving', {$gen_preserving} , ... % boolean, is the original support of the rules perserved when adding noise
             'margin_L', {$gen_margin_L}, ... % margin left 1=boolean data

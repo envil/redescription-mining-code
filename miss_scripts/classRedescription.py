@@ -230,7 +230,7 @@ class Redescription:
         else:
             return SParts.dispCharListSimple(self.sParts.listLPartsChar())
         
-    def dispLParts(self):
+    def dispLParts(self): 
         if self.sParts == None:
             return SParts.dispCharList(self.readInfo)
         else:
@@ -264,7 +264,11 @@ class Redescription:
              % (round(dict_info['acc'],3), dict_info['gamma'], round(dict_info['pVal'],3))
         else:
             return 'Non printable redescription'
+
     
+    def dispCaracteristiquesSimple(self):
+        return self.dispLPartsSimple()
+        
     def disp(self, lenIndex=0, names= [None, None]):
         str_red = '%s\t<==>\t%s\t%s' % (self.queries[0].disp(lenIndex, names[0]), self.queries[1].disp(lenIndex, names[1]), self.dispLParts())
         if Redescription.trackHisto:

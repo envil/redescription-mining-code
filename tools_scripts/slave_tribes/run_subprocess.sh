@@ -1,6 +1,7 @@
 PROC_ID=${1}
 TODO_F=${2}
 
+own_pid=$$
 echo $(date ) "Starting" $PROC_ID $TODO_F >> $TODO_F.log$PROC_ID
 while [ 1 ] 
 do
