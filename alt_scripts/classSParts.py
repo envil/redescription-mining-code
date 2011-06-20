@@ -220,10 +220,10 @@ class SParts:
     def compAdv(t, side, op, neg, lParts, bounds):
         b = None
         contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], lParts)
-        if (True):
-       #if ( contri >= bounds[0] \
-             #and SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op] + SParts.IDS_varnum[op], lParts) >= bounds[1] \
-             #and  SParts.sumPartsIdInOut(side, neg, SParts.IDS_out[op], lParts) >= bounds[2] ):
+        #if (True):
+        if ( contri >= bounds[0] \
+             and SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op] + SParts.IDS_varnum[op], lParts) >= bounds[1] \
+             and  SParts.sumPartsIdInOut(side, neg, SParts.IDS_out[op], lParts) >= bounds[2] ):
             varBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varnum[op], lParts)
             varRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op], lParts)
             fixBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op], lParts) 
