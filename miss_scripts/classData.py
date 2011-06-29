@@ -251,7 +251,7 @@ class NumColM(ColM):
     def collapseBuckets(self):
         tmp = self.buckets()
 
-        agg_max= 15;
+        agg_max= 100;
         tmp_supp=set([])
         bucket_min=tmp[1][0]
         colB_supp = []
@@ -268,6 +268,7 @@ class NumColM(ColM):
         colB_supp.append(tmp_supp)
         colB_min.append(bucket_min)
         colB_max.append(tmp[1][-1])
+#        print len(colB_min)
         return (colB_supp, colB_min, 0, colB_max)
 
     def buckets(self):
@@ -796,9 +797,12 @@ class Data:
         if ( len(bucketsF[1]) * len(bucketsE[1]) > 5000 ): 
             if len(bucketsE[1])> 20:
                 bucketsE = colE.collapsedBuckets()
+                bucketsF = colF.collapsedBuckets()
                 #pdb.set_trace()
                 flag=1 ## in case of collapsed bucket the threshold is different
+        Data.logger.printL(6,"Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1])))
         if ( len(bucketsF[1]) * len(bucketsE[1]) <= 5000 ): 
+
         #if (True): ## Test
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
@@ -849,7 +853,6 @@ class Data:
             belowF = 0
             lowF = 0
             while lowF < len(interMat) and totInt - belowF >= constraints.minItmSuppIn():
-
                 aboveF = 0
                 upF = len(interMat)-1
                 while upF >= lowF and totInt - belowF - aboveF >= constraints.minItmSuppIn():

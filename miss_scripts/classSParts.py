@@ -44,6 +44,9 @@ class SParts:
     # indexed for the intersections with parts when considering positive or negative X
     neg_index = [[0, 1, 2, 3], [1, 0, 2, 3]]
 
+##############################################################
+#### GROUNDED
+##############################################################
     ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
     # Parts in numerator (BLUE), independent of X 
     IDS_fixnum = [[], [(tot, gamma)]]
@@ -61,10 +64,53 @@ class SParts:
     # Parts in the new support of the extended query
     IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)], [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
 
-    #### TO COMPUTE ACCURACY after building, INDEXED BY TYPE OF ACCURRACY (0: grounded, 1: optimistic, 2: pessimistic)
-    IDS_diff = [[alpha, beta], [alpha, beta], [alpha, beta, mub, mua, mubB, muaB]]
-    IDS_inter = [[gamma], [gamma, mub, mua], [gamma]]
-    IDS_uncovered = [[delta], [delta], [delta]]
+    #### TO COMPUTE ACCURACY after building
+    IDS_diff = [alpha, beta]
+    IDS_inter = [gamma]
+    IDS_uncovered = [delta]
+
+ 
+# ##############################################################
+# #### OPTIMISTIC
+# ##############################################################
+#     ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+
+#     IDS_fixnum = [[(miss,mua), (miss, mub), (miss, mud), (miss, gamma)],[(tot, mua), (tot, gamma), (tot, mud), (tot, mub), (miss, muaB), (miss, beta)]]
+#     IDS_varnum = [[(into, mua), (into, gamma), (into, mub), (into, mud)],[(into, muaB), (into, beta)]]
+#     IDS_fixden = [[(tot, gamma), (tot, mub), (miss, mua), (miss, mud), (tot, beta)],[(tot, mua), (tot, gamma), (tot, mub), (tot, mud), (miss, muaB), (tot, beta), (tot, alpha)]]
+#     IDS_varden = [[(into, alpha), (into, mua), (into, mud)],[(into, delta), (into, mubB), (into, muaB)]]
+
+#     IDS_out = [[(out, alpha), (miss, alpha), (out, mua), (tot, delta), (tot, mubB), (out, mud), (tot, muaB)],[(out, delta), (miss, delta), (out, mubB), (miss,mubB), (out,muaB)]]
+#     IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
+#     IDS_nsupp = [[(into, alpha), (into, mua), (into, gamma), (into, mub), (into, mud)],[(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud), (into, muaB)]]
+  
+#     #### TO COMPUTE ACCURACY after building
+#     IDS_diff = [alpha, beta]
+#     IDS_inter = [gamma, mub, mua, mud]
+#     IDS_uncovered = [delta, mubB, muaB]
+
+
+# ##############################################################
+# #### PESSIMISTIC
+# ##############################################################
+#     ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+
+#     IDS_fixnum = [[], [(tot, gamma)]]
+#     IDS_varnum = [[(into, gamma)] ,[(into, beta), (into, mub)]]
+#     IDS_fixden = [[(miss, alpha), (tot, mua), (tot, gamma), (tot, mub), (tot, beta), (miss, mubB), (tot, mud), (tot, muaB)], [(tot, gamma), (tot, alpha), (tot, beta), (tot, mua), (tot, muaB), (tot, mub), (tot, mubB), (tot, mud)]]
+#     IDS_varden = [[(into, alpha), (into, mubB)], [(into, delta), (miss, delta)]]
+
+#     IDS_out = [[(out, alpha), (out, mubB), (tot, delta)], [(out, delta)]]
+#     IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
+#     IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)], [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
+
+#     #### TO COMPUTE ACCURACY after building
+#     IDS_diff = [alpha, beta, mub, mua, mubB, muaB, mud]
+#     IDS_inter =  [gamma]
+#     IDS_uncovered = [delta]
+
+##############################################################
+
 
     #### TO COMPUTE SUPPORTS, no index
     IDS_supp = (gamma, alpha, mua)
@@ -155,16 +201,22 @@ class SParts:
     def compAdv(t, side, op, neg, lParts, bounds):
         b = None
         contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], lParts)
+        #if (True):
         if ( contri >= bounds[0] \
              and SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op] + SParts.IDS_varnum[op], lParts) >= bounds[1] \
              and  SParts.sumPartsIdInOut(side, neg, SParts.IDS_out[op], lParts) >= bounds[2] ):
-
             varBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varnum[op], lParts)
             varRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op], lParts)
             fixBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op], lParts) 
             fixRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixden[op], lParts)
-            
-            b= {'acc': float( varBlue + fixBlue ) / ( varRed + fixRed ) , \
+            if ( (varRed + fixRed ) == 0):
+                acc=0
+            else:
+                acc = float( varBlue + fixBlue ) / ( varRed + fixRed )
+            # if ( ( varBlue, fixBlue, varRed, fixRed ) == (1,2,1,3)):
+            #     pdb.set_trace()
+            #     print (lParts, varBlue, fixBlue, varRed, fixRed )
+            b= {'acc': acc , \
                 'toRed': varRed, 'toBlue': varBlue, 'term': t, 'side': side, 'op': op, 'neg': neg, 'lparts': lParts, 'cont': contri}
         return b
     compAdv = staticmethod(compAdv)
@@ -326,6 +378,7 @@ class SParts:
         else:
             self.missing = False
             self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
+            
 
     # contains missing values
     def hasMissing(self):
@@ -434,37 +487,32 @@ class SParts:
             return self.lparts_union(SParts.miss_ids, side)
 
     # return support of symmetrical difference (suppA + suppB - (suppA inter suppB))
-    def suppD(self, typ=0, side=0):
-        if not self.missing: typ=0
-        return self.part_union(SParts.IDS_diff[typ], side)
+    def suppD(self, side=0):
+        return self.part_union(SParts.IDS_diff, side)
     # return support of intersection (suppA inter suppB)
-    def suppI(self, typ=0, side=0):
-        if not self.missing: typ=0
-        return self.part_union(SParts.IDS_inter[typ], side)
+    def suppI(self, side=0):
+        return self.part_union(SParts.IDS_inter, side)
     # return support of union (suppA union suppB)
-    def suppU(self, typ=0, side=0):
-        return self.suppI(typ, side) | self.suppD(typ, side)
+    def suppU(self, side=0):
+        return self.suppI(side) | self.suppD(side)
 
     ## corresponding lengths
-    def lenD(self, typ=0, side=0):
-        if not self.missing: typ=0
-        return self.lparts_union(SParts.IDS_diff[typ], side)
-    def lenI(self, typ=0, side=0):
-        if not self.missing: typ=0
-        return self.lparts_union(SParts.IDS_inter[typ], side)
-    def lenO(self, typ=0, side=0):
-        if not self.missing: typ=0
-        return self.lparts_union(SParts.IDS_uncovered[typ], side)
-    def lenU(self, typ=0, side=0):
-        return self.lenD(typ, side)+self.lenI(typ, side)
+    def lenD(self, side=0):
+        return self.lparts_union(SParts.IDS_diff, side)
+    def lenI(self, side=0):
+        return self.lparts_union(SParts.IDS_inter, side)
+    def lenO(self, side=0):
+        return self.lparts_union(SParts.IDS_uncovered, side)
+    def lenU(self, side=0):
+        return self.lenD(side)+self.lenI(side)
 
     # accuracy
-    def acc(self, typ=0, side=0):
-        lenI = self.lenI(typ, side)
+    def acc(self, side=0):
+        lenI = self.lenI( side)
         if lenI == 0:
             return 0
         else:
-            return lenI/float(lenI+self.lenD(typ, side))
+            return lenI/float(lenI+self.lenD(side))
 
     # redescription p-value using support probabilities (binomial), for redescriptions
     def pValSupp(self):

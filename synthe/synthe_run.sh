@@ -5,7 +5,7 @@
 
 # ## BOOL CONSERVATIVE
 # ####################
-NB_COPIES=2
+NB_COPIES=50
 SERIE=bool_conservative
 EXT_L=.datbool
 EXT_R=.datbool
@@ -206,8 +206,8 @@ END {
 	'
 ############ 
 
-echo "Generating synthetic matrices..."
-echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
+# echo "Generating synthetic matrices..."
+# echo "${SCRIPT_MATLAB}" | $MATLAB_BIN -nosplash -nodesktop > /dev/null
  
 echo 'Mining_ok Found_planted nb_rules_acc_geq nb_total_rules elapsed_time user_time system_time conf_id rule_type_id serie_id out_name' > $RES_LOG_INFO
 while read line
@@ -234,10 +234,10 @@ do
 
 
  	echo "Mining ${SERIES} ..." 1>&2
- 	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
+# 	/usr/bin/time -f "$TIME_FORMAT" -o ${OUT}$EXT_TIME  $MINE_SCRIPT $MINE_CONF '::SERIES::='$SERIES','$OTHER_VAR_PARAMS	
 	LINE_TIME=$(head -1 ${OUT}$EXT_TIME )
 	found_p=0
-	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | cut -d ' ' -f 1)
+	for found_acc in $(grep "$MATCH_RULE" ${OUT}$EXT_RULES | cut -f 3 | sed 's/^ *//g' | cut -d ' ' -f 1)
 	do
 	    if (( $FULL_BOOL == 0 )); then
 		let found_p++
@@ -255,7 +255,7 @@ do
 	
 	better=0
 	total=0
-	for curr_acc in $(cut -f 3 ${OUT}$EXT_RULES | cut -f 1 -d ' ')
+	for curr_acc in $(cut -f 3 ${OUT}$EXT_RULES  | sed 's/^ *//g' | cut -f 1 -d ' ')
 	do
 	    ncurr_acc=$(f_remove_point_float $curr_acc )
 	    if [ ${#ncurr_acc} == 0 ]; then
