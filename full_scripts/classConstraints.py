@@ -7,11 +7,18 @@ class Constraints:
     logger = Log(0)
 
     def __init__(self, data, setts_cust=None):
-        self.cminPairsScore = setts_cust.param['min_score']
-        (self.cminC, self.cminSuppIn, self.cminSuppOut) = data.scaleSuppParams(setts_cust.param['contribution'], setts_cust.param['min_suppin'], setts_cust.param['min_suppout'])
-        (self.cminLen, self.cminAcc, self.cmaxPVal) = (setts_cust.param['min_length'], setts_cust.param['min_acc'], setts_cust.param['max_pval'])
-        self.cqueryTypes = setts_cust.param['query_types']
-        self.credLength = 0
+	if setts_cust.param.has_key('min_score'):
+        	self.cminPairsScore = setts_cust.param['min_score']
+        	(self.cminC, self.cminSuppIn, self.cminSuppOut) = data.scaleSuppParams(setts_cust.param['contribution'], setts_cust.param['min_suppin'], setts_cust.param['min_suppout'])
+        	(self.cminLen, self.cminAcc, self.cmaxPVal) = (setts_cust.param['min_length'], setts_cust.param['min_acc'], setts_cust.param['max_pval'])
+        	self.cqueryTypes = setts_cust.param['query_types']
+        	self.credLength = 0
+	else:
+		self.cminPairsScore = 0
+        	(self.cminC, self.cminSuppIn, self.cminSuppOut) = data.scaleSuppParams(0, setts_cust.param['min_suppin'], setts_cust.param['min_suppout'])
+        	(self.cminLen, self.cminAcc, self.cmaxPVal) = (setts_cust.param['min_length'], setts_cust.param['min_acc'], setts_cust.param['max_pval'])
+        	self.cqueryTypes = {}
+        	self.credLength = 0
 
     def queryTypes(self):
         return self.cqueryTypes

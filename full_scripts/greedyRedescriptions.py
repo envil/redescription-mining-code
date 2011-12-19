@@ -84,6 +84,7 @@ def main():
     initialRed = data.getNextInitialRed()
 
     while initialRed != None :
+        initialRed.write(queriesOutFp, supportOutFp)
         try:
             reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], constraints, souvenirs, logger)
             if len(reds) > 0:

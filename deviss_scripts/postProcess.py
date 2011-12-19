@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, getopt, numpy #, utilsIO
+import sys, getopt, numpy , utilsIO
 from classSettings import Settings
 from classConstraints import Constraints
 from classLog import Log
@@ -137,7 +137,7 @@ def main():
                     else:
                         currentR = None
                         logger.printL(0,"Query %i redundant no support left, pruned!" % queryNro)
-                elif constraints.checkFinalConstraints(currentRedun):
+                elif not constraints.checkFinalConstraints(currentRedun):
                     if setts.param['redundancy_mark']:
                         comment = '# REDUNDANT RULE ' + currentRedun.dispCaracteristiquesSimple() + comment
                         commentSupp = '# REDUNDANT RULE ' + commentSupp

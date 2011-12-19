@@ -1,0 +1,416 @@
+
+    # def nextGen(self, currGen, idsRed, constraints, tmpCurrGen, tmpIdsSets):
+    #     print "%s (%d)" % (idS, len(idsRed))
+    #     pdb.set_trace()
+    #     for idRedA in range(len(idsRed)):
+    #         redA = currGen[idsRed[idRedA]]
+    #         redAStr = set(redA.invStr().split(':'))
+    #         for idRedB in range(idRedA):
+    #             redB = currGen[idsRed[idRedB]]
+                
+    #             if redA.query(0).op == redB.query(0).op and redA.query(1).op == redB.query(1).op: 
+                    
+    #                 redBStr = set(redB.invStr().split(':'))
+    #                 diffA = redAStr - redBStr
+    #                 diffB = redBStr - redAStr
+    #                 interAB = redAStr & redBStr
+                    
+    #                 if len(diffA) ==1 and len(diffB) == 1:
+
+    #                     all_parts = list(interAB | diffA | diffB)
+    #                     currKey = ':'.join(all_parts)
+                        
+    #                     if currKey not in seen:
+    #                         seen.append(currKey)
+                            
+    #                         adjust = []
+    #                         unmatch = []
+    #                         for part in interAB:
+    #                             tA = redA.searchTerm(part)
+    #                             tB = redB.searchTerm(part)
+    #                             if tA != None and tB != None:
+    #                                 if tA['buk'] == tB['buk'] and tA['pos'] == tB['pos']:
+    #                                     if tA['term'].item.type_id == 3:
+    #                                         boundsT = [self.cols[tA['side']][tA['col']].min, self.cols[tA['side']][tA['col']].max]
+    #                                         boundsA = [tA['term'].item.lowb, tA['term'].item.upb]
+    #                                         boundsB = [tB['term'].item.lowb, tB['term'].item.upb]
+    #                                         (black, grey, white) = Data.computeOverlap(boundsT, boundsA, boundsB)
+    #                                         if  (black + grey) > 0  and black / (black + grey) > 0.5:
+    #                                             adjust.append((tA, tB, black, grey, white))
+    #                                         else:
+    #                                             unmatch.append(part)
+    #                                 else:
+    #                                     unmatch.append(part)
+    #                             else:
+    #                                 unmatch.append(part)
+
+    #                         if len(unmatch) == 0:
+    #                             tA = redA.searchTerm(diffA.pop())
+    #                             tB = redB.searchTerm(diffB.pop())
+
+    #                             if tA != None and tB != None and tA != tB:
+
+    #                                 for op in constraints.queryTypesOp(tB['side']):
+    #                                     redE = redA.cousin(self, tB['side'], op, tB['term'], adjust)
+                                    
+    #                                     if constraints.isGoodKid(redE, redA, redB, op):
+    #                                         ind_c = len(tmpCurrGen)
+    #                                         tmpCurrGen.append(redE)
+    #                                         tmp = redE.invStr().split(':')
+    #                                         for sList in Data.subLists(tmp):
+    #                                             i = ':'.join(sList)
+    #                                             if not tmpIdsSets.has_key(i):
+    #                                                 tmpIdsSets[i] = []
+    #                                             tmpIdsSets[i].append(ind_c)
+
+
+    def nextGenBool(self, idS, currGen, idsRed, constraints, tmpCurrGen, tmpIdsSets):
+        self.O = 0
+        print "%s (%d)" % (idS, len(idsRed))
+        # if len(idsRed) > 20:
+        #     idsRed.sort(key= lambda x: currGen[x].acc(), reverse=True)
+        
+        for idRedA in range(len(idsRed)):
+            redA = currGen[idsRed[idRedA]]
+            redAStr = set(redA.invStr().split(':'))
+            for idRedB in range(idRedA):
+                redB = currGen[idsRed[idRedB]]
+                
+                if redA.query(0).op == redB.query(0).op and redA.query(1).op == redB.query(1).op: 
+                    
+                    redBStr = set(redB.invStr().split(':'))
+                    diffA = redAStr - redBStr
+                    diffB = redBStr - redAStr
+                    interAB = redAStr & redBStr
+                    
+                    if len(diffA) ==1 and len(diffB) == 1:
+
+                        all_parts = list(interAB | diffA | diffB)
+                        currKey = ':'.join(all_parts)
+
+                        extA = redA.searchTerm(diffA.pop())
+                        extB = redB.searchTerm(diffB.pop())
+
+                        if extA != None and extB != None and extA['term'].col() != extB['term'].col():
+                            
+                            adjust = []
+                            unmatch = []
+                            for part in interAB:
+                                tA = redA.searchTerm(part)
+                                tB = redB.searchTerm(part)
+                                if tA != None and tB != None and tA['buk'] == tB['buk'] and tA['pos'] == tB['pos']:
+                                    if tA!= tB and tA['term'].item.type_id == 3:
+                                        boundsT = [self.cols[tA['side']][tA['col']].min, self.cols[tA['side']][tA['col']].max]
+                                        boundsA = [tA['term'].item.lowb, tA['term'].item.upb]
+                                        boundsB = [tB['term'].item.lowb, tB['term'].item.upb]
+                                        (black, grey, white) = Data.computeOverlap(boundsT, boundsA, boundsB)
+                                        if  (black + grey) > 0  and black / (black + grey) > 0.5:
+                                            adjust.append((tA, tB, black, grey, white))
+                                        else:
+                                            unmatch.append(part)
+                                else:
+                                    unmatch.append(part)
+
+                            if len(unmatch) == 0:
+
+                                for op in constraints.queryTypesOp(extB['side']):
+                                    redE = redA.cousin(self, extB['side'], op, extB['term'], adjust)
+                                    
+                                    if constraints.isGoodKid(redE, redA, redB, op):
+                                        ind_c = len(tmpCurrGen)
+                                        tmpCurrGen.append(redE)
+                                        tmp = redE.invStr().split(':')
+                                        for sList in Data.subLists(tmp):
+                                            i = ':'.join(sList)
+                                            if not tmpIdsSets.has_key(i):
+                                                tmpIdsSets[i] = []
+                                            tmpIdsSets[i].append(ind_c)
+
+
+
+    def nextGenNum(self, idS, currGen, idsRed, constraints, tmpCurrGen, tmpIdsSets):
+
+        self.O = 0
+#        pdb.set_trace()
+        print "%s (%d)" % (idS, len(idsRed))
+        if len(idsRed) > 20:
+            idsRed.sort(key=lambda x: currGen[x].queries[1].buk[0][0].item)
+#            idsRed.sort(key= lambda x: currGen[x].queries[1].buk[0][0].item.lowb)
+        
+        for idRedA in range(len(idsRed)):
+            redA = currGen[idsRed[idRedA]]
+            redAStr = set(redA.invStr().split(':'))
+            idRedB = idRedA+1
+            while idRedB < len(idsRed) and currGen[idsRed[idRedA]].queries[1].buk[0][0].item.upb > currGen[idsRed[idRedB]].queries[1].buk[0][0].item.lowb:
+
+                if currGen[idsRed[idRedA]].queries[0].buk[0][0].item == currGen[idsRed[idRedB]].queries[0].buk[0][0].item :
+#                    print "### %d %d NO" % (idRedA, idRedB)
+                    idRedB+=1
+                    continue
+
+                redB = currGen[idsRed[idRedB]]
+                
+                if redA.query(0).op == redB.query(0).op and redA.query(1).op == redB.query(1).op: 
+                    
+                    redBStr = set(redB.invStr().split(':'))
+                    diffA = redAStr - redBStr
+                    diffB = redBStr - redAStr
+                    interAB = redAStr & redBStr
+                    
+                    if len(diffA) ==1 and len(diffB) == 1:
+
+                        all_parts = list(interAB | diffA | diffB)
+
+                        extA = redA.searchTerm(diffA.pop())
+                        extB = redB.searchTerm(diffB.pop())
+
+#                        print "# %s %s" % ( extA['term'], extB['term'])
+                        if extA != None and extB != None and extA['term'].col() != extB['term'].col():
+                            adjust = []
+                            unmatch = []
+                            for part in interAB:
+                                tA = redA.searchTerm(part)
+                                tB = redB.searchTerm(part)
+                                if tA != None and tB != None and tA['buk'] == tB['buk'] and tA['pos'] == tB['pos']:
+                                    if tA!= tB and tA['term'].item.type_id == 3:
+                                        boundsT = [self.cols[tA['side']][tA['col']].min, self.cols[tA['side']][tA['col']].max]
+                                        boundsA = [tA['term'].item.lowb, tA['term'].item.upb]
+                                        boundsB = [tB['term'].item.lowb, tB['term'].item.upb]
+                                        (black, grey, white) = Data.computeOverlap(boundsT, boundsA, boundsB)
+                                        if  (black + grey) > 0  and black / (black + grey) > 0.5:
+                                            adjust.append((tA, tB, black, grey, white))
+                                        else:
+                                            unmatch.append(part)
+                                else:
+                                    unmatch.append(part)
+
+                            if len(unmatch) == 0:
+
+                                for op in constraints.queryTypesOp(extB['side']):
+                                    redE = redA.cousin(self, extB['side'], op, extB['term'], adjust)
+                                    
+                                    if constraints.isGoodKid(redE, redA, redB, op):
+                                        ind_c = len(tmpCurrGen)
+                                        tmpCurrGen.append(redE)
+                                        for i in [redE.invStr(), redE.invStr()]:
+                                            if not tmpIdsSets.has_key(i):
+                                                tmpIdsSets[i] = []
+                                            tmpIdsSets[i].append(ind_c)
+                idRedB+=1
+
+
+
+tmp_keys = keysParts
+                    tmp_rem = removables
+                    
+
+            keysSides = [[],[]]
+            for part in idsKey.split(':'):
+                if part.startswith('0-'):
+                    keysSides[0].append(part)
+                else:
+                    keysSides[1].append(part)
+                    
+            matchKeyLeft = idsKey.replace(':1-',':(?P<part_key>(?P<side>0)-(?P<col>\d*)-(?P<neg>\d*)):1-')
+            matchKeyRight = idsKey + ':(?P<part_key>(?P<side>1)-(?P<col>\d*)-(?P<neg>\d*))'
+
+            cands = []
+            for candId in idsSets[idsKey]:
+                candKey = currGen[candId].invStr()
+                for matchKey in [matchKeyLeft, matchKeyRight]: ## obviously at most one will match
+                    m = re.match(matchKey, candKey)
+                    if m != None:
+                        try:
+                            side = int(m.group('side'))
+                            part_key = m.group('part_key')
+                        except ValueError:
+                            pass
+                        cands.append((candId, side, part_key))
+
+            cands.sort(key=lambda x: x[2])
+            print "----------- %s " % idsKey
+            for (candId, side, part_key) in cands:
+                    
+                # indC = ext_list.index(part_key)
+                # match = set(ext_list[indC+1:])
+                match = set(ext_list)
+                    
+                i = 0
+                while i < len(keysSides[side]) and len(match)>0:
+                    tmp = [keysSides[0], keysSides[1]] 
+                    tmp[side].pop(i)
+                    tmp[side].append(part_key)
+                    tmp[side].sort()
+
+                    if extKeys.has_key(checkKey):
+                        match &= extKeys[checkKey]
+                    else:
+                        match = set()
+                    i+=1
+
+
+########################################################################
+
+
+            matchKeyLeft = idsKey.replace(':1-',':(?P<part_key>(?P<side>0)-(?P<col>\d*)-(?P<neg>\d*)):1-')
+            matchKeyRight = idsKey + ':(?P<part_key>(?P<side>1)-(?P<col>\d*)-(?P<neg>\d*))'
+            map_red = {}
+            for candId in idsSets[idsKey]:
+                candKey = currGen[candId].invStr()
+                for matchKey in [matchKeyLeft, matchKeyRight]: ## obviously at most one will match
+                    m = re.match(matchKey, candKey)
+                    if m != None:
+                        try:
+                            side = int(m.group('side'))
+                            part_key = m.group('part_key')
+                        except ValueError:
+                            pass
+                        if not map_red.has_key(part_key):
+                            map_red[part_key] = [candId]
+                        else:
+                            map_red[part_key].append(candId)
+
+
+####################################################################
+
+    # def mergeExtend(self, op, term):
+    #     if len(query.buk[-1]) == 1:
+    #         self.buk[-1].add(query.buk[-1].pop())
+    #         self.op = Op(op)
+
+
+    # def mergeSqueeze(self, op, query):
+    #     if len(self.buk[-1]) == 1 and len(query.buk[-1]) == 1:
+    #         termA = self.buk[-1].pop()
+    #         termB = query.buk[-1].pop()
+    #         if termA != termB and termA.item.type_id == NumItem.type_id and termA.item.type_id == NumItem.type_id and termA.neg == termB.neg :
+    #             if op :
+    #                 if termA.item.lowb > termB.item.lowb:
+    #                     termA.item.lowb = termB.item.lowb
+    #                 if termA.item.upb < termB.item.upb:
+    #                     termA.item.upb = termB.item.upb
+    #             else:
+    #                 if termA.item.lowb < termB.item.lowb:
+    #                     termA.item.lowb = termB.item.lowb
+    #                 if termA.item.upb > termB.item.upb:
+    #                     termA.item.upb = termB.item.upb
+    #         self.buk[-1].add(termA)
+
+
+#######################################################################
+
+
+ 
+        exts = {}
+        easy = []
+        for sideExt in [0,1]:
+            if len(parents[1-sideExt])==0:
+                for parent in parents[sideExt]:
+                    parent_parts = parent[0].split(':')
+                    parent_parts.append(parent[1])
+                    parent_parts.sort()
+                    parent_key = ':'.join(parent_parts)
+                    if exts.has_key(parent_key):
+                        ### this is not needed
+                        exts[parent_key] &= set(extKeys[parent[0]][parent[1]])
+                    else:
+                        exts[parent_key] = set(extKeys[parent[0]][parent[1]])
+
+                tmp = [[],[]]
+                for (parent_key, redIds) in exts.items():
+                    for redId in redIds:
+                        indOp = currGen[redId].queries[sideExt].op.ind()
+                        if not redId in tmp[indOp] and len(currGen[redId].queries[sideExt].buk)==1:
+                            tmp[indOp].append(redId)
+                for opInd in [0,1]:
+                    if len(tmp[opInd])==len(exts) and len(exts)>2:
+                        easy.append((sideExt, opInd==1, tmp[opInd])) 
+
+        for (side, op, parentsIds) in easy:
+
+            strBasis = list(set((currGen[parentsIds[0]].invStr()+':'+currGen[parentsIds[1]].invStr()).split(':')))
+            strBasis.sort()
+
+            adjust = []
+            unmatch = []
+            fit = []
+            parts = []
+            extParents = {}
+            for part in strBasis:
+                parts.append({})
+                for i in parentsIds:
+                    tmp = currGen[i].searchTerm(part)
+                    if tmp != None:
+                        ti = tmp['term'].item.type_id
+                        parts[-1][i] = tmp
+                    else:
+                        if not extParents.has_key(i):
+                            extParents[i] = part
+                        else:
+                            pdb.set_trace()
+                            print "%d::%s" % (i, part)
+                ### HERE GET THE EXTENSION TERM FOR EACH PARENT        
+
+                if ti == 3:
+                    max_lowb = max([t['term'].item.lowb for t in parts[-1].values()])
+                    min_upb = min([t['term'].item.upb for t in parts[-1].values()])
+                    min_lowb = min([t['term'].item.lowb for t in parts[-1].values()])
+                    max_upb = max([t['term'].item.upb for t in parts[-1].values()])
+                    if max_lowb == min_lowb and max_upb == min_upb:
+                        fit.append(len(parts)-1)
+                    if max_lowb > min_upb:
+                        unmatch.append(len(parts)-1)
+                    else:
+                        adjust.append(len(parts)-1)
+                else:
+                    fit.append(len(parts)-1)
+        
+            basis=None
+            ext_term=None
+            parti=None
+            if len(unmatch)==0:
+                i=0
+                while basis==None and i<len(fit):
+                    if len(parts[fit[i]]) < len(parentsIds):
+                        tmp = set(parentsIds) - set(parts[fit[i]].keys())
+                        basis = tmp.pop()
+                        ext_term = parts[fit[i]].values()[0]['term'].copy()
+                        parti=fit[i]
+                    i+=1
+                i=0
+                while basis==None and i<len(adjust):
+                    if len(parts[adjust[i]]) < len(parentsIds):
+                        tmp = set(parentsIds) - set(parts[adjust[i]].keys())
+                        basis = tmp.pop()
+                        tmp_terms = parts[adjust[i]].values()
+                        ext_term = tmp_terms[0]['term'].copy()
+                        ext_term.squeeze(op, [t['term'] for t in tmp_terms])
+                        parti=adjust[i]
+                    i+=1
+                adj_terms = []
+                for adjk in adjust:
+                    if adjk != parti:
+                        tmp_adj = parts[adjk][basis]
+                        tmp_adj['terms'] = [tmp_adj['term']] 
+                        for redi in parts[adjk].keys():
+                            if redi != basis:
+                                tmp_adj['terms'].append(parts[adjk][redi]['term'])
+                        adj_terms.append(tmp_adj)
+
+                redE = currGen[basis].cousin(self, side, op, ext_term, adj_terms)
+                print "-------------%s" % idsKey
+                for parentId in parentsIds:
+                    print "%s" % currGen[parentId]
+                print redE
+                
+                if constraints.isGoodKid(redE, [currGen[i] for i in parentsIds], op):
+                    print "GOOD"
+                    ind_c = len(tmpCurrGen)
+                    tmpCurrGen.append(redE)
+                    for (parId, keyExt) in extParents.items():
+                        keyRoot = currGen[parId].invStr()
+                        if not tmpExtKeys.has_key(keyRoot):
+                            tmpExtKeys[keyRoot] = {}
+                        if not tmpExtKeys[keyRoot].has_key(keyExt):
+                            tmpExtKeys[keyRoot][keyExt] = []
+                        tmpExtKeys[keyRoot][keyExt].append(ind_c)

@@ -91,10 +91,19 @@ def main():
         
     data.setInitialMSelection(setts.param['method_pairs'], setts.param['div_l'], setts.param['div_r'])
 #    pdb.set_trace()
+    tuc = datetime.datetime.now()
+    logger.printL(1,"TUC... Start Pairs %s" % tuc)
+
     data.initializeRedescriptions(setts.param['nb_pairs'], constraints )
+    
+    tuc = datetime.datetime.now()
+    logger.printL(1,"TUC... End Pairs %s" % tuc)
+    
     initialRed = data.getNextInitialRed()
 
     while initialRed != None :
+        tuc = datetime.datetime.now()
+        logger.printL(1,"TUC... Start Expand %s" % tuc)
         try:
             reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], constraints, souvenirs, logger)
             if len(reds) > 0:
