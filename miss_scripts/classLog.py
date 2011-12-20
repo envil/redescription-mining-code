@@ -1,4 +1,5 @@
 import sys
+import pdb
 class Log:
     
     def __init__(self,  verbosity=1, output = '-'):
@@ -7,6 +8,7 @@ class Log:
         if output == '-':
             self.out = sys.stdout
         elif output != None  and len(output) > 0:
+#            pdb.set_trace()
             self.out = open(output, 'w')
         self.verbosity = verbosity
 

@@ -55,6 +55,12 @@ class Redescription:
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
+    def fromQueriesPair(queries, data):
+        r = Redescription(queries[0].copy(), queries[1].copy())
+        r.recompute(data)
+        return r
+    fromQueriesPair = staticmethod(fromQueriesPair)
+
     def compare(x, y):
         if x.score() > y.score():
             return Redescription.diff_score
