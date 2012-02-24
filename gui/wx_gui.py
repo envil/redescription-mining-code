@@ -53,11 +53,16 @@ class BarsFrame(wx.Frame):
         self.textbox_coo_filename.SetValue(str(self.coo_filename))
         self.textbox_queries_filename.SetValue(str(self.queries_filename))
         self.fillListRed()
+        self.redsc = self.reds[6]
+        self.redMapQL.SetValue(self.redsc.queries[0].dispU(self.names[0]))
+        self.redMapQR.SetValue(self.redsc.queries[1].dispU(self.names[1]))
+        self.redMapInfo.SetValue(self.redsc.dispCaracteristiquesSimple())
+        self.redraw_map()
 
     def fillListRed(self):
         tmp = []
         for red in self.reds:
-            tmp.append(red.dispQueriesSimple(0, self.names))
+            tmp.append(red.dispQueriesU(self.names))
         self.redList.Set(tmp)
 
     def create_menu(self):
@@ -94,15 +99,16 @@ class BarsFrame(wx.Frame):
 	self.button_queries_filename.Bind(wx.EVT_BUTTON, self.doOpenFileQ)
 	self.textbox_queries_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
  
-        self.redMapNames = wx.TextCtrl(self.panel3, size=(900,-1), style=wx.TE_READONLY)
-        self.redMapNum = wx.TextCtrl(self.panel3, size=(900,-1), style=wx.TE_PROCESS_ENTER)
+        self.redMapQL = wx.TextCtrl(self.panel3, size=(900,-1), style=wx.TE_PROCESS_ENTER)
+        self.redMapQR = wx.TextCtrl(self.panel3, size=(900,-1), style=wx.TE_PROCESS_ENTER)
         self.redMapInfo = wx.TextCtrl(self.panel3, size=(300,-1), style=wx.TE_READONLY)
-        self.redList = wx.ListBox(self.panel3, 26, wx.DefaultPosition, (500, 550), [], wx.LB_SINGLE)
-        self.redList.SetFont(wx.Font(9, wx.FONTFAMILY_DEFAULT, wx.FONTWEIGHT_NORMAL, wx.FONTSTYLE_NORMAL))
+        self.redList = wx.ListBox(self.panel3, 26, wx.DefaultPosition, (770, 550), [], wx.LB_SINGLE)
+        self.redList.SetFont(wx.Font(9, wx.FONTFAMILY_MODERN, wx.FONTWEIGHT_NORMAL, wx.FONTSTYLE_NORMAL))
         self.redList.Bind(wx.EVT_LISTBOX, self.OnSelectListRed)
-        self.redMapNum.Bind(wx.EVT_TEXT_ENTER, self.redraw_map)
+        self.redMapQL.Bind(wx.EVT_TEXT_ENTER, self.redraw_map)
+        self.redMapQR.Bind(wx.EVT_TEXT_ENTER, self.redraw_map)
 
-        self.figMap = plt.figure(figsize=(7,7))
+        self.figMap = plt.figure(figsize=(6,7))
         self.curr_mapi = 0
         self.canvasMap = FigCanvas(self.panel3, -1, self.figMap)
         self.draw_map()
@@ -157,8 +163,8 @@ class BarsFrame(wx.Frame):
         flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
 
         self.vbox300 = wx.BoxSizer(wx.VERTICAL)
-        self.vbox300.Add(self.redMapNames, 0, border=3, flag=flags)
-        self.vbox300.Add(self.redMapNum, 0, border=3, flag=flags)
+        self.vbox300.Add(self.redMapQL, 0, border=3, flag=flags)
+        self.vbox300.Add(self.redMapQR, 0, border=3, flag=flags)
         self.hbox30.Add(self.vbox300, 0, border=3, flag=flags)
 
         self.vbox301 = wx.BoxSizer(wx.VERTICAL)
@@ -274,17 +280,16 @@ class BarsFrame(wx.Frame):
     def OnSelectListRed(self, event):
         index = event.GetSelection()
         self.redsc = self.reds[index]
-        self.redMapNames.SetValue(self.redsc.dispQueriesSimple(0, self.names))
-        self.redMapNum.SetValue(self.redsc.dispQueriesSimple())
+        self.redMapQL.SetValue(self.redsc.queries[0].dispU(self.names[0]))
+        self.redMapQR.SetValue(self.redsc.queries[1].dispU(self.names[1]))
         self.redMapInfo.SetValue(self.redsc.dispCaracteristiquesSimple())
         self.redraw_map()
 
     def parseRed(self):
-        redsc = self.redMapNum.GetValue()
-        parts = redsc.strip().split('\t')
-        if len(parts) > 1:
-            queryL = Query.parse(parts[0])
-            queryR = Query.parse(parts[1])
+        ### TODO HERE COMES THE HARD WORK...
+        queryL = Query.parseU(self.redMapQL.GetValue().strip(), self.names[0])
+        queryR = Query.parseU(self.redMapQR.GetValue().strip(), self.names[1])
+        if queryL != None and queryR != None: 
             return Redescription.fromQueriesPair([queryL, queryR], self.data) 
         
     def draw_map(self):
@@ -321,7 +326,8 @@ class BarsFrame(wx.Frame):
             return
 
         self.redsc = redesc
-        self.redMapNames.SetValue(self.redsc.dispQueriesSimple(0, self.names))
+        self.redMapQL.SetValue(self.redsc.queries[0].dispU(self.names[0]))
+        self.redMapQR.SetValue(self.redsc.queries[1].dispU(self.names[1]))
         self.redMapInfo.SetValue(self.redsc.dispCaracteristiquesSimple())
         m = self.axe
         colors = ['b', 'r', 'purple']
@@ -413,6 +419,222 @@ class BarsFrame(wx.Frame):
                 red = Redescription.fromQueriesPair([queryL, queryR], self.data) 
                 if red != None:
                     self.reds.append(red)
+
+
+class MapFrame(wx.Frame):
+    """ The map frame of the application
+    """
+    title = 'Map'
+    
+    def __init__(self):
+        wx.Frame.__init__(self, None, -1, self.title)
+	
+        self.create_menu()
+        self.create_main_panel()
+
+    def set_redsc(self, redsc):
+        self.redsc = redesc
+        self.redMapQL.SetValue(self.redsc.queries[0].dispU(self.names[0]))
+        self.redMapQR.SetValue(self.redsc.queries[1].dispU(self.names[1]))
+        self.redMapInfo.SetValue(self.redsc.dispCaracteristiquesSimple())
+        self.redraw_map()
+
+ 
+    def create_main_panel(self):
+        """ Creates the main panel with all the controls on it:
+             * mpl canvas 
+             * mpl navigation toolbar
+             * Control panel for interaction
+        """
+
+	self.tabbed = wx.Notebook(self, -1, style=(wx.NB_TOP))
+        self.panel1 = wx.Panel(self.tabbed, -1)
+        self.panel3 = wx.Panel(self.tabbed, -1)
+        self.tabbed.AddPage(self.panel3, "Map")
+        self.tabbed.AddPage(self.panel1, "Files")
+        
+ 
+        self.redMapQL = wx.TextCtrl(self, size=(900,-1), style=wx.TE_PROCESS_ENTER)
+        self.redMapQR = wx.TextCtrl(self, size=(900,-1), style=wx.TE_PROCESS_ENTER)
+        self.redMapInfo = wx.TextCtrl(self, size=(300,-1), style=wx.TE_READONLY)
+        self.redMapQL.Bind(wx.EVT_TEXT_ENTER, self.redraw_map)
+        self.redMapQR.Bind(wx.EVT_TEXT_ENTER, self.redraw_map)
+
+        self.figMap = plt.figure(figsize=(6,7))
+        self.curr_mapi = 0
+        self.canvasMap = FigCanvas(self.panel3, -1, self.figMap)
+        self.draw_map()
+
+        # self.buttonPlotMap = wx.Button(self.panel3, wx.NewId(), "Plot")
+        # self.figurecanvas.Bind(wx.EVT_LEFT_DCLICK, self.on_dclick)
+        # self.buttonPlotMap.Bind(wx.EVT_BUTTON, self.draw_map)
+        self.toolbarMap = NavigationToolbar(self.canvasMap)
+        # self.subframe_opened = False
+        #
+        # Layout with box sizers
+        #
+
+	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
+        
+        self.hboxL1 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        self.hboxL1.Add(self.button_num_filename, 0, border=3, flag=flags)
+	self.hboxL1.AddSpacer(10)
+        self.hboxL1.Add(self.textbox_num_filename, 0, border=3, flag=flags)
+
+        self.hboxR1 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        self.hboxR1.Add(self.button_bool_filename, 0, border=3, flag=flags)
+	self.hboxR1.AddSpacer(10)
+        self.hboxR1.Add(self.textbox_bool_filename, 0, border=3, flag=flags)
+
+        self.hboxC1 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        self.hboxC1.Add(self.button_coo_filename, 0, border=3, flag=flags)
+	self.hboxC1.AddSpacer(10)
+        self.hboxC1.Add(self.textbox_coo_filename, 0, border=3, flag=flags)
+
+        self.hboxQ1 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        self.hboxQ1.Add(self.button_queries_filename, 0, border=3, flag=flags)
+	self.hboxQ1.AddSpacer(10)
+        self.hboxQ1.Add(self.textbox_queries_filename, 0, border=3, flag=flags)
+
+        self.vbox1.Add(self.hboxL1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
+        self.vbox1.Add(self.hboxR1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
+        self.vbox1.Add(self.hboxC1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
+        self.vbox1.Add(self.hboxQ1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
+        
+        self.panel1.SetSizer(self.vbox1)
+        self.vbox1.Fit(self)
+
+
+        self.vbox3 = wx.BoxSizer(wx.VERTICAL)
+
+        self.hbox30 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+
+        self.vbox300 = wx.BoxSizer(wx.VERTICAL)
+        self.vbox300.Add(self.redMapQL, 0, border=3, flag=flags)
+        self.vbox300.Add(self.redMapQR, 0, border=3, flag=flags)
+        self.hbox30.Add(self.vbox300, 0, border=3, flag=flags)
+
+        self.vbox301 = wx.BoxSizer(wx.VERTICAL)
+        self.vbox301.Add(self.redMapInfo, 0, border=3, flag=flags)
+        self.vbox301.Add(self.toolbarMap, 0, wx.EXPAND)
+        self.hbox30.Add(self.vbox301, 0, border=3, flag=flags)
+        
+        self.hbox30.AddSpacer(10)
+        
+        self.vbox3.Add(self.hbox30, 0, border=3, flag=flags)
+
+        self.hbox3 = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_LEFT | wx.ALL  | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL
+        
+        #self.vvbox32 = wx.BoxSizer(wx.VERTICAL)
+        self.hbox3.Add(self.redList, 0, border=3, flag=flags)
+        #self.hbox3.Add(self.vvbox32, 0, flag = wx.ALIGN_CENTER | wx.EXPAND)
+
+        #self.vvbox31 = wx.BoxSizer(wx.VERTICAL)
+        self.hbox3.Add(self.canvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        #self.hbox3.Add(self.vvbox31, 0, flag = wx.ALIGN_CENTER | wx.EXPAND)
+
+	#self.hbox3.AddSpacer(10)
+
+        self.vbox3.Add(self.hbox3, 0, flag = wx.ALIGN_CENTER | wx.EXPAND)
+
+        self.panel3.SetSizer(self.vbox3)
+        self.vbox3.Fit(self)
+
+        # self.vbox3.Add(self.hbox3, 0, flag = wx.ALIGN_LEFT | wx.TOP)
+        # self.panel3.SetSizer(self.vbox3)
+        # self.vbox3.Fit(self)
+
+    def parseRed(self):
+        ### TODO HERE COMES THE HARD WORK...
+        queryL = Query.parseU(self.redMapQL.GetValue().strip(), self.names[0])
+        queryR = Query.parseU(self.redMapQR.GetValue().strip(), self.names[1])
+        if queryL != None and queryR != None: 
+            return Redescription.fromQueriesPair([queryL, queryR], self.data) 
+        
+    def draw_map(self):
+        """ Draws the map
+        """
+        
+        self.figMap.clear()
+        m = Basemap(llcrnrlon=self.coord_extrema[0][0], \
+                llcrnrlat=self.coord_extrema[1][0], \
+                urcrnrlon=self.coord_extrema[0][1], \
+                urcrnrlat=self.coord_extrema[1][1], \
+                resolution = 'c', \
+                projection = 'mill', \
+                lon_0 = self.coord_extrema[0][0] + (self.coord_extrema[0][1]-self.coord_extrema[0][0])/2.0, \
+                lat_0 = self.coord_extrema[1][0] + (self.coord_extrema[1][1]-self.coord_extrema[1][0])/2.04)
+        self.axe = m
+        m.ax = self.figMap.add_axes([0, 0, 1, 1])
+
+        m.drawcoastlines(color='gray')
+        m.drawcountries(color='gray')
+        m.drawmapboundary(fill_color='#EEFFFF') 
+        m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
+#        m.etopo()
+        self.coord_proj = m(self.coord[0], self.coord[1])
+        height = 3; width = 3
+#        self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
+        self.canvasMap.draw()
+
+    def redraw_map(self, event=None):
+        """ Redraws the map
+        """
+        redesc = self.parseRed()
+        if redesc == None:
+            return
+
+        self.redsc = redesc
+        self.redMapQL.SetValue(self.redsc.queries[0].dispU(self.names[0]))
+        self.redMapQR.SetValue(self.redsc.queries[1].dispU(self.names[1]))
+        self.redMapInfo.SetValue(self.redsc.dispCaracteristiquesSimple())
+        m = self.axe
+        colors = ['b', 'r', 'purple']
+        sizes = [3, 3, 4]
+        markers = ['s', 's', 's']
+        i = 0
+        while len(self.lines):
+#            plt.gca().patches.remove(self.lines.pop())
+            plt.gca().axes.lines.remove(self.lines.pop())
+
+        for part in redesc.partsNoMiss():
+            if len(part) > 0:
+                # for id in part:
+                #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
+                    
+                ids = np.array(list(part))
+                self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5))
+            else:
+                self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
+            i += 1
+        plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
+        self.canvasMap.draw()
+
+    def on_save_plot(self, event):
+        file_choices = "PNG (*.png)|*.png"
+        
+        dlg = wx.FileDialog(
+            self, 
+            message="Save plot as...",
+            defaultDir=os.getcwd(),
+            defaultFile="plot.png",
+            wildcard=file_choices,
+            style=wx.SAVE)
+        
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            self.canvas.print_figure(path, dpi=self.dpi)
+            self.flash_status_message("Saved to %s" % path)
+        
+    def on_exit(self, event):
+        self.Destroy()
+
 
 if __name__ == '__main__':
     app = wx.PySimpleApp()
