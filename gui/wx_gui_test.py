@@ -37,10 +37,10 @@ class Siren():
         self.data = None
 
         self.lines = []
-        self.num_filename='/home/galbrun/TKTL/redescriptors/sandbox/rajapaja/worldclim_tp.densenum'
-        self.bool_filename='/home/galbrun/TKTL/redescriptors/sandbox/rajapaja/mammals.datbool'
-        self.coo_filename='/home/galbrun/TKTL/redescriptors/sandbox/rajapaja/coordinates.names'
-        self.queries_filename='/home/galbrun/TKTL/redescriptors/sandbox/rajapaja/rajapaja.queries'
+        self.num_filename='./rajapaja/worldclim_tp.densenum'
+        self.bool_filename='./rajapaja/mammals.datbool'
+        self.coo_filename='./rajapaja/coordinates.names'
+        self.queries_filename='./rajapaja/rajapaja.queries'
         self.reds = []
 
         self.loadData()

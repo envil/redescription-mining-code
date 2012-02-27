@@ -1200,16 +1200,22 @@ class Data:
         names = []
         i = 0
         for filename in filenames:
-            filename_parts = filename.split('.')
-            filename_parts.pop()
-            filename_names = '.'.join(filename_parts) + extension
-            if os.path.exists(filename_names):
+            if isinstance(filename, file):
                 names.append(getNames(filename_names, self.nbCols(i), self.nbCols(i)==0))
+            else:
+                filename_parts = filename.split('.')
+                filename_parts.pop()
+                filename_names = '.'.join(filename_parts) + extension
+                if os.path.exists(filename_names):
+                    names.append(getNames(filename_names, self.nbCols(i), self.nbCols(i)==0))
             i+=1
         return names
 
 def loadColumnNames(filename):
-    f = open(filename, 'r')
+    if isinstance(filename, file):
+        f = filename
+    else:
+        f = open(filename, 'r')
     a = []
     for line in f.readlines():
         a.append(parseUnicodes(line.strip()))
@@ -1258,7 +1264,11 @@ def readMatrix(filename):
     nbRows = None
     names = []
     type_ids = set()
-    f = open(filename, 'r')
+    if isinstance(filename, file):
+        f = filename
+        filename = f.name
+    else:
+        f = open(filename, 'r')
     try:
         filename_parts = filename.split('.')
         type_all = filename_parts.pop()
