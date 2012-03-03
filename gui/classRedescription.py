@@ -151,6 +151,13 @@ class Redescription:
                 self.lAvailableCols[side] =  souvenirs.availableMo[side] - souvenirs.extOneStep(self, side)
                 nb_extensions[side] = len(souvenirs.availableMo[side]) - self.length(side) - self.nbAvailableColsSide(side)
         return nb_extensions[0]+nb_extensions[1]
+    def initAvailable(self, souvenirs):
+        nb_extensions = [0,0]
+        for side in [0,1]:
+           self.lAvailableCols[side] =  souvenirs.availableMo[side] - souvenirs.extOneStep(self, side)
+           nb_extensions[side] = len(souvenirs.availableMo[side]) - self.length(side) - self.nbAvailableColsSide(side)
+        return nb_extensions[0]+nb_extensions[1]
+
 
     def removeAvailables(self):
         self.lAvailableCols = [set(),set()]
@@ -247,7 +254,22 @@ class Redescription:
         if lenField > 0:
             return string.ljust(self.queries[0].dispU(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispU(names[1]), lenField)[:lenField]
         return self.queries[0].dispU(names[0]) +"\t"+ self.queries[1].dispU(names[1])
+
+    def getQueryLU(self, details):
+        if details.has_key('names'):
+            return self.queries[0].dispU(details['names'][0])
+        return ""
     
+    def getQueryRU(self, details):
+        if details.has_key('names'):
+            return self.queries[1].dispU(details['names'][1])
+        return ""
+    def getAcc(self, details):
+        return self.acc()
+
+    def getPVal(self, details):
+        return self.pVal()
+
 
     def dispTexHeader():
         return ' & $q_\iLHS$ & $q_\iRHS$ & $\\jacc$ & $\\supp$ & \\pValue  \\\\'

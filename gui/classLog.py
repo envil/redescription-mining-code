@@ -1,11 +1,14 @@
 import sys
 import pdb
+import wx
 class Log:
     
     def __init__(self,  verbosity=1, output = '-'):
         
         self.out = None
-        if output == '-':
+        if type(output) == wx.TextCtrl:
+            self.out = output
+        elif output == '-':
             self.out = sys.stdout
         elif output != None  and len(output) > 0:
 #            pdb.set_trace()
@@ -14,4 +17,9 @@ class Log:
 
     def printL(self, level, message):
         if self.out != None and self.verbosity >= level:
-            self.out.write("%s\n" % message)
+            if type(self.out) == wx.TextCtrl:
+                self.out.AppendText("%s\n" % message)
+            else:
+                self.out.write("%s\n" % message)
+        
+        

@@ -4,10 +4,24 @@ from classLog import Log
 from classQuery import Op, Item, BoolItem, CatItem, NumItem, Term, Query 
 from classRedescription import Redescription
 from classSParts import SParts
-#from classBestsDraft import BestsDraft
+from classBestsDraft import BestsDraft
 import pdb
 
 class ColM:
+    def getName(self, details):
+        if details.has_key('names') and self.side < len(details['names']) and self.id < len(details['names'][self.side]):
+            return details['names'][self.side][self.id]
+        else:
+            return "Undefined"
+        
+    def getSide(self, details):
+        return self.side
+
+    def getId(self, details):
+        return self.id
+
+    def getType(self, details):
+        return "-"
 
     def miss(self):
         return self.missing
@@ -33,13 +47,24 @@ class ColM:
 class BoolColM(ColM):
     type_id = 1
 
+    def getItem(self):
+        return BoolItem(self.id)
+
     def __str__(self):
         return "boolean variable (density=%i/%i, %i missing values)" %(self.lTrue(), self.N, len(self.miss()))
+
+    def getType(self, details):
+        return "Boolean"
+
+    def getDensity(self, details):
+        return self.lTrue()
 
     def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
         self.hold = ncolSupp
         self.N = N
         self.missing = nmiss
+        self.id = None
+        self.side = None
 
     def supp(self):
         return self.hold
@@ -74,15 +99,27 @@ class BoolColM(ColM):
 class CatColM(ColM):
     type_id = 2
 
+    def getItem(self):
+        return CatItem(self.id, self.cats()[0])
+
     def __str__(self):
         return "categorical variable (%i categories, %i rows, %i missing values)" %(len(self.cats()), self.nbRows(), len(self.miss()))
+
+    def getCategories(self, details):
+        return ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
+
+    def getType(self, details):
+        return "categorical"
+
 
     def __init__(self, ncolSupp=[], N=-1, nmiss= set()):
         self.sCats = ncolSupp
         self.N = N
         self.missing = nmiss
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
-            
+        self.id = None
+        self.side = None
+
     def cats(self):
         return self.sCats.keys()
 
@@ -167,8 +204,19 @@ class NumColM(ColM):
     type_id = 3
     maxSeg = 100
 
+    def getItem(self):
+        return NumItem(self.id, self.sVals[0][0], self.sVals[-1][0])
+
     def __str__(self):
         return "numerical variable (%i values not in mode, %i rows, %i missing values)" %(self.lenNonMode(), self.nbRows(), len(self.miss()))
+
+    def getType(self, details):
+        return "numerical"
+
+    def getMin(self, details):
+        return self.sVals[0][0]
+    def getMax(self, details):
+        return self.sVals[-1][0]
 
     def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
         self.sVals = ncolSupp
@@ -177,7 +225,9 @@ class NumColM(ColM):
         self.mode = {}
         self.buk = None
         self.colbuk = None
-        
+        self.id = None
+        self.side = None
+
         if len(self.sVals)+len(self.missing) != self.N :
             tmp = set([r[1] for r in self.sVals])
             if -1 in tmp:
@@ -1242,8 +1292,8 @@ def parseUnicodes(text):
 
 def readData(filenames):
     data = []; nbRowsT = None;
-    for filename in filenames:
-        (cols, type_ids_tmp, nbRows, nbCols) = readMatrix(filename)
+    for side, filename in enumerate(filenames):
+        (cols, type_ids_tmp, nbRows, nbCols) = readMatrix(filename, side)
         if len(cols) != nbCols:
             raise Exception('Matrix in %s does not have the expected number of variables !' % filename)
 
@@ -1259,7 +1309,7 @@ def readData(filenames):
                 raise Exception('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))
     return (data, type_ids, nbRows)
 
-def readMatrix(filename):
+def readMatrix(filename, side = None):
     ## Read input
     nbRows = None
     names = []
@@ -1306,6 +1356,9 @@ def readMatrix(filename):
 
     Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all))
     (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
+    for (cid, col) in enumerate(cols):
+        col.id = cid
+        col.side = side
     return (cols, type_ids, nbRows, nbCols)
     
 def prepareNonDat(nbRows, nbCols):

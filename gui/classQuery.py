@@ -180,6 +180,9 @@ class BoolItem(Item):
         return self.disp()
 
     def disp(self, neg=None, names = None, lenIndex=0):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if neg == None:
             strneg = ''
         else:
@@ -198,12 +201,18 @@ class BoolItem(Item):
             return ('%s%'+slenIndex+'i ') % (strneg, self.col)
 
     def dispTex(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if type(names) == list  and len(names) > 0:
             return '%s%s' % ( neg.dispTex(), names[self.col])
         else:
             return '%s%i' % ( neg.dispTex(), self.col)
 
     def dispU(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if type(names) == list  and len(names) > 0:
             return '%s%s' % ( neg.dispU(), names[self.col])
         else:
@@ -259,6 +268,9 @@ class CatItem(Item):
         return self.disp()
     
     def disp(self, neg=None, names = None, lenIndex=0):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if neg == None:
             strneg = ''
         else:
@@ -278,12 +290,18 @@ class CatItem(Item):
             return strneg+(('%s%'+slenIndex+'i') % (strneg, self.col)) + strcat
 
     def dispTex(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if type(names) == list  and len(names) > 0:
             return '%s %s\\in %i' % (names[self.col], neg.dispTex(), self.cat)
         else:
             return '%i %s\\in %i' % (self.col, neg.dispTex(), self.cat)
 
     def dispU(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if neg.boolVal():
             symbIn = u'\u2209'
         else:
@@ -398,6 +416,9 @@ class NumItem(Item):
         return self.disp()
 
     def disp(self, neg=None, names = None, lenIndex=0):
+        if type(neg) == bool:
+            neg = Neg(neg)
+
         if neg == None:
             strneg = ''
         else:
@@ -425,6 +446,8 @@ class NumItem(Item):
             return strneg+(('%'+slenIndex+'i') % self.col) + strbounds
 
     def dispTex(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
         if self.lowb > float('-Inf'):
             lb = '[%s\\leq{}' % self.lowb
         else:
@@ -441,6 +464,8 @@ class NumItem(Item):
         return ''+negstr+lb+idcol+ub+''
 
     def dispU(self, neg, names = None):
+        if type(neg) == bool:
+            neg = Neg(neg)
         if self.lowb > float('-Inf'):
             lb = u'[%s \u2a7d ' % self.lowb
         else:
@@ -949,3 +974,12 @@ class Query:
                     pi+=1
         return r
     parseU = staticmethod(parseU)
+
+    def parseAny(string, names=None):
+        r = Query.parseU(string, names)
+        if r == None:
+            r = Query.parseTex(string, names)
+            if r == None:
+                r = Query.parse(string)
+        return r
+    parseAny = staticmethod(parseAny)
