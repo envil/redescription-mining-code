@@ -2,6 +2,7 @@ import os
 import pprint
 import random
 import wx, wx.grid
+from threading import *
 import warnings
 warnings.simplefilter("ignore")
 
@@ -27,6 +28,41 @@ from classSettings import Settings
 from classLog import Log
 import greedyRedescriptions as greedyRed
 
+
+# Define notification event for thread completion
+EVT_RESULT_ID = wx.NewId()
+
+def EVT_RESULT(win, func):
+    """Define Result Event."""
+    win.Connect(-1, -1, EVT_RESULT_ID, func)
+
+class ResultEvent(wx.PyEvent):
+    """Simple event to carry arbitrary result data."""
+    def __init__(self, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(EVT_RESULT_ID)
+        self.data = data
+        
+# Thread class that executes processing
+class WorkerThread(Thread):
+    """Worker Thread Class."""
+    def __init__(self, notify_window, data, setts, red, logger):
+        """Init Worker Thread Class."""
+        Thread.__init__(self)
+        self._notify_window = notify_window
+        self.data = data
+        self.setts = setts
+        self.red = red
+        self.logger = logger
+
+        # This starts the thread running on creation, but you could
+        # also make the GUI thread responsible for calling this
+        self.start()
+
+    def run(self):
+        tmpE = greedyRed.part_run(self.data, self.setts, self.red, self.logger)
+        wx.PostEvent(self._notify_window, ResultEvent(tmpE))
 
 class MyGridTable(wx.grid.PyGridTableBase):
     def __init__(self):
@@ -172,6 +208,9 @@ class Siren():
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.mapFrame = wx.Frame(None, -1, self.titleMap)
 
+        EVT_RESULT(self.toolFrame,self.OnResult)
+        Log.EVT_LOGGER(self.toolFrame, self.OnLogger)
+
         self.coord = None
         self.coord_proj = None
         self.data = None
@@ -216,6 +255,16 @@ class Siren():
         self.expList.table.updateData([], self.fieldsRed, self.details)
         self.setCurrentRed(redsTmp[0])
         self.updateRed()
+
+    def OnResult(self, event):
+        """Show Result status."""
+        if event.data != None:
+            self.expList.table.updateData(event.data, self.fieldsRed, self.details)
+
+    def OnLogger(self, event):
+        """Show Result status."""
+        if event.data != None:
+            self.text_log.AppendText(event.data)
         
     def showFrames(self):
         self.toolFrame.Show()
@@ -307,7 +356,7 @@ class Siren():
         self.histList.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectHistRed) #EVT_GRID_SELECT_CELL
 
 	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
-        self.logger = Log(self.setts.param['verbosity'], self.text_log)
+        self.logger = Log(self.setts.param['verbosity'], (self.toolFrame,0))
 
 	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
         
@@ -609,9 +658,7 @@ class Siren():
         ### POSITION DEPENDENT UPDATE
         self.tabbed.ChangeSelection(6) #self.tabbed.HitTest(self.panelLog))
         red = self.redraw_map()
-        expTmp = greedyRed.part_run(self.data, self.setts, red, self.logger)
-        self.tabbed.ChangeSelection(5) #self.tabbed.HitTest(self.expList))
-        self.expList.table.updateData(expTmp, self.fieldsRed, self.details)
+        prt = WorkerThread(self.toolFrame, self.data, self.setts, red, self.logger)
 
     def populateReds(self):
         reds_fp = open(self.queries_filename)

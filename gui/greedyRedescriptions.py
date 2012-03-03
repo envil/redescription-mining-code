@@ -211,7 +211,6 @@ def part_run(data, setts, redesc, log=None):
     else:
         logger = log
     logger.printL(5,'Settings:\n' + setts.dispParams())
-
     tic = datetime.datetime.now()
     Data.logger = logger; Redescription.logger = logger; RedescriptionsDraft.logger = logger; BestsDraft.logger = logger; Souvenirs.logger = logger
     logger.printL(1,"TIC... Started: %s" % tic)
@@ -224,8 +223,10 @@ def part_run(data, setts, redesc, log=None):
     souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
 
     redesc.initAvailable(souvenirs)
-    return processDraft(redesc, data, setts.param['draft_capacity'], -1, setts.param['min_improvement'], constraints, souvenirs, logger, True)
-
+    tmpRed = processDraft(redesc, data, setts.param['draft_capacity'], -1, setts.param['min_improvement'], constraints, souvenirs, logger, True)
+    tac = datetime.datetime.now()
+    logger.printL(1,"TAC... Finished: %s" % tac)
+    return tmpRed
 
 if __name__ == "__main__":
     run(sys.argv)

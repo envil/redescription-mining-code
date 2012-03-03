@@ -361,7 +361,7 @@ class NumItem(Item):
 
     patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+)?)\<(?P<upb>-?\d+(\.\d+)?)))\s*$'
     pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*\\\\leq{}\s*)(?P<col>.+)?(\s*\\\\leq{}\s*(?P<upbs>-?\d+(\.\d+)?))\s*\]\s*$'
-    pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*[' + ur'\u2a7d' +'<]\s*)?(?P<col>[^'+ ur'\u2a7d'+'<]+)(\s*[' + ur'\u2a7d' +'<]\s*(?P<upbs>-?\d+(\.\d+)?))?\s*\]\s*$'
+    pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*(' + ur'\u2a7d' +'|<<)\s*)?(?P<col>[^'+ ur'\u2a7d'+'<]+)(\s*[' + ur'\u2a7d' +'<]\s*(?P<upbs>-?\d+(\.\d+)?))?\s*\]\s*$'
     
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf'):
@@ -583,7 +583,7 @@ class Term:
             return None
     parse = staticmethod(parse)
 
-    def parseTex(string):
+    def parseTex(string, names=None):
         i = 0
         item = None
         while i < len(Term.itemTypes) and item == None:
@@ -645,7 +645,7 @@ class Query:
         c.op = self.op.copy()
         c.buk = []
         for buk in self.buk:
-            c.buk.append(set([t.copy() for t in buk]))
+            c.buk.append(set([t.copy() for t in buk if t != None]))
         return c
             
     def compare(x, y): ## same as compare pair with empty right

@@ -696,10 +696,16 @@ class Data:
         return len(self.cols[side])
         
     def supp(self, side, term): 
-        return self.cols[side][term.item.colId()].suppTerm(term)- self.redunRows
+        if term.item.colId() < len(self.cols[side]):
+            return self.cols[side][term.item.colId()].suppTerm(term)- self.redunRows
+        else:
+            return set()
 
-    def miss(self, side, term): 
-        return self.cols[side][term.item.colId()].miss()- self.redunRows
+    def miss(self, side, term):
+        if term.item.colId() < len(self.cols[side]):
+            return self.cols[side][term.item.colId()].miss()- self.redunRows
+        else:
+            return set()
 
     def termSuppMiss(self, side, term):
         return (self.supp(side, term), self.miss(side,term))
