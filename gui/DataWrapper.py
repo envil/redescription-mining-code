@@ -23,9 +23,10 @@ class DataWrapper():
     NAME_FILENAMES_SUFFIX = '.names'
     QUERIES_FILENAME = 'queries.txt'
     PLIST_FILE = 'info.plist'
+    PACKAGE_NAME = 'sirene_package'
 
     # Stuff to write to plist
-    FILETYPE_VERSION = 1
+    FILETYPE_VERSION = 2
     CREATOR = 'DataWrapper'
 
     def __init__(self, coo_filename = None, data_filenames = None, queries_filename = None, package_filename = None):
@@ -41,6 +42,7 @@ class DataWrapper():
         self.reds = None
         self.queries_filename = None
         self.package_filename = None
+        self.package_name = None
         self.isChanged = False
         self.isFromPackage = False
 
@@ -58,8 +60,8 @@ class DataWrapper():
             self.package_filename = None
             raise
             ## TODO exception handling
-        self.package_filename = package_filename
-        self.isFromPackage = True
+            #self.package_filename = package_filename
+            #self.isFromPackage = True
 
 
 
@@ -180,7 +182,7 @@ class DataWrapper():
     ## The loaders
     def loadCoordFromFile(self, filename):
         try:
-            coord = np.loadtxt(self.coo_filename, unpack=True, usecols=(1,0))
+            coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
         except:
             raise
         return coord
@@ -192,6 +194,13 @@ class DataWrapper():
             raise
         return data
 
+    def loadNamesFromFiles(self, filenames):
+        try:
+            names = self.data.getNames(filenames)
+        except:
+            raise
+        return names
+    
     def loadQueriesFromFile(self, filename):
         if self.data is None:
             return None
@@ -223,17 +232,91 @@ class DataWrapper():
         
         with zipfile.ZipFile(filename, 'r') as package:
             files = package.namelist()
-            (package_name, foo) = os.path.split(files[0])
+            
 
             # Read info.plist
-            plist_fd = package.open(os.path.join(package_name, self.PLIST_FILE), 'r')
-            plist = plistlib.readPlist(plist_fd)
+            plist_fd = package.open(self.PLIST_FILE, 'r')
+            try:
+                plist = plistlib.readPlist(plist_fd)
+            except:
+                raise
 
             if plist['filetype_version'] > self.FILETYPE_VERSION:
                 raise Error('Too new filetype')
 
-            ## TODO ##
-        
+            package_name = plist['package_name']
+
+            # Load data
+            if 'data_filenames' in plist:
+                try:
+                    fd = package.open(plist['data_filenames'], 'r')
+                    data = self.loadDataFromFiles(fd)
+                except:
+                    raise
+                finally:
+                    fd.close()
+  
+            # Load names
+            if 'name_filenames' in plist:
+                try:
+                    fd = package.open(plist['name_filenames'], 'r')
+                    names = self.loadNamesFromFiles(fd)
+                except:
+                    raise
+                finally:
+                    fd.close()
+
+            # Load coordinates
+            if 'coo_filename' in plist:
+                try:
+                    fd = package.open(plist['coo_filename'], 'r')
+                    coord = self.loadCoordFromFile(fd)
+                except:
+                    raise
+                finally:
+                    fd.close()
+                    
+            # Load queries
+            if 'queries_filename' in plist:
+                try:
+                    fd = package.open(plist['queries_filename'], 'r')
+                    reds = self.loadQueriesFromFile(fd)
+                except:
+                    raise
+                finally:
+                    fd.close()
+
+
+        # Closes with ZipFile
+        # Move data class variables
+        self.package_name = package_name
+        if 'data_filenames' in plist:
+            self.data = data
+            self.data_filenames = plist['data_filenames']
+            self.number_of_datafiles = len(plist['data_filenames'])
+        else:
+            self.data = None
+            self.data_filenames = None
+            self.number_of_datafiles = 0
+        if 'name_filenames' in plist:
+            self.names = names
+        else:
+            self.names = None
+        if 'coo_filename' in plist:
+            self.coord = coord
+            self.coo_filename = plist['coo_filename']
+        else:
+            self.coord = None
+            self.coo_filename = None
+        if 'queries_filename' in plist:
+            self.reds = reds
+            self.queries_filename = plist['queries_filename']
+        else:
+            self.reds = None
+            self.queries_filename = None
+        self.package_filename = os.path.abspath(filename)
+        self.isChanged = False
+        self.isFromPackage = True
 
 
     ## The saving function
@@ -242,56 +325,64 @@ class DataWrapper():
 
         # Test that we can write to filename
         try:
-            f = open(''.join([filename, '.', suffix]), 'w')
+            f = open(os.path.abspath(''.join([filename, '.', suffix])), 'w')
         except IOError as arg:
             print "Cannot write to file", arg
             return
         else:
             f.close()
 
+        # Store old package_filename
+        old_package_filename = self.package_filename
+        self.package_filename = os.path.abspath(''.join([filename, '.', suffix]))
         # Get a temp folder
         tmp_dir = tempfile.mkdtemp(prefix='siren')
-        package_dir = os.path.join(tmp_dir, filename)
-        os.mkdir(package_dir)
+        #package_dir = os.path.join(tmp_dir, filename)
+        #os.mkdir(package_dir)
 
         # Write plist
         plist = self.__makePlistDict()
         try:
-            plistlib.writePlist(plist, os.path.join(package_dir, self.PLIST_FILE))
+            plistlib.writePlist(plist, os.path.join(tmp_dir, self.PLIST_FILE))
         except IOError:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # Write coordinates
         try:
             if self.coord is not None:
-                self.saveCoordinates(os.path.join(package_dir, self.COO_FILENAME), toPackage = True)
+                self.saveCoordinates(os.path.join(tmp_dir, plist['coo_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # Write data files
         try:
             if self.data is not None:
-                self.saveDatafiles([os.path.join(package_dir, file) for file in plist['data_filenames']], toPackage = True)
+                self.saveDatafiles([os.path.join(tmp_dir, file) for file in plist['data_filenames']], toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # Write name files
         try:
             if self.names is not None:
-                self.saveNamefiles([os.path.join(package_dir, file) for file in plist['name_filenames']], toPackage = True)
+                self.saveNamefiles([os.path.join(tmp_dir, file) for file in plist['name_filenames']], toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # Write queries
         try:
             if self.reds is not None:
-                self.saveQueries(self.QUERIES_FILENAME, toPackage = True)
+                self.saveQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # All's there, so pack
@@ -299,11 +390,11 @@ class DataWrapper():
             # DEBUG
             #print 'Writing to', ''.join((filename, '.', suffix))
             with zipfile.ZipFile(''.join((filename, '.', suffix)), 'w') as package:
-                package.write(os.path.join(package_dir, self.PLIST_FILE),
-                              arcname = os.path.join(filename, self.PLIST_FILE))
+                package.write(os.path.join(tmp_dir, self.PLIST_FILE),
+                              arcname = os.path.join('.', self.PLIST_FILE))
                 if self.coord is not None:
-                    package.write(os.path.join(package_dir, self.COO_FILENAME),
-                                  arcname = os.path.join(filename, self.COO_FILENAME),
+                    package.write(os.path.join(tmp_dir, plist['coo_filename']),
+                                  arcname = os.path.join('.', plist['coo_filename']),
                         compress_type = zipfile.ZIP_DEFLATED)
                 if self.data is not None:
                     tmp_data_filenames = plist['data_filenames']
@@ -312,20 +403,21 @@ class DataWrapper():
                 if self.names is not None:
                     tmp_name_filenames = plist['name_filenames']
                 for i in range(len(tmp_data_filenames)):
-                    package.write(os.path.join(package_dir, tmp_data_filenames[i]),
-                                  arcname = os.path.join(filename, tmp_data_filenames[i]),
+                    package.write(os.path.join(tmp_dir, tmp_data_filenames[i]),
+                                  arcname = os.path.join('.', tmp_data_filenames[i]),
                         compress_type = zipfile.ZIP_DEFLATED)
                     if self.names is not None:
-                        package.write(os.path.join(package_dir, tmp_name_filenames[i]),
-                                      arcname = os.path.join(filename, tmp_name_filenames[i]),
+                        package.write(os.path.join(tmp_dir, tmp_name_filenames[i]),
+                                      arcname = os.path.join('.', tmp_name_filenames[i]),
                             compress_type = zipfile.ZIP_DEFLATED)
                 if self.reds is not None:
-                    package.write(os.path.join(package_dir, self.QUERIES_FILENAME),
-                                  arcname = os.path.join(filename,
-                                                         self.QUERIES_FILENAME),
+                    package.write(os.path.join(tmp_dir, plist['queries_filename']),
+                                  arcname = os.path.join('.',
+                                                         plist['queries_filename']),
                         compress_type = zipfile.ZIP_DEFLATED)
         except:
             shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
             raise
 
         # All's done, delete temp file
@@ -336,7 +428,13 @@ class DataWrapper():
         ## END THE SAVING FUNCTION
 
     def saveCoordinates(self, filename, toPackage = False):
-        pass
+        c = np.vstack((self.coord[1,:], self.coord[0,:]))
+        try:
+            np.savetxt(filename, c.transpose())
+        except:
+            raise
+        if not toPackage:
+            self.coo_filename = filename
 
     def saveDatafiles(self, filename, toPackage = False):
         pass
@@ -352,27 +450,46 @@ class DataWrapper():
         """Makes a dict to write to plist."""
         d = dict(creator = self.CREATOR,
             filetype_version = self.FILETYPE_VERSION)
+        
+        if self.package_filename is None:
+            d['package_name'] = self.PACKAGE_NAME
+        else:
+            (pn, suffix) = os.path.splitext(os.path.basename(self.package_filename))
+            if len(pn) > 0:
+                d['package_name'] = pn
+            else:
+                d['package_name'] = self.PACKAGE_NAME
             
         if self.coord is not None:
-            d['coo_filename'] = self.COO_FILENAME
+            if self.coo_filename is not None:
+                d['coo_filename'] = os.path.basename(self.coo_filename)
+            else:
+                d['coo_filename'] = self.COO_FILENAME
+                
         if self.data is not None:
-            d['data_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.DATA_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+            if self.data_filenames is not None:
+                d['data_filenames'] = [os.path.basename(df) for df in self.data_filenames]
+            else:
+                d['data_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.DATA_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+                
         if self.names is not None:
-            d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+            if self.data_filenames is not None:
+                name_filenames = []
+                for i in range(len(self.data_filenames)):
+                    (nf, ext) = os.path.splitext(os.path.basename(self.data_filenames[i]))
+                    name_filenames.append(str(nf) + str(self.NAME_FILENAMES_SUFFIX))
+                d['name_filenames'] = name_filenames
+            else:
+                d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+                
         if self.reds is not None:
-            d['queries_filename'] = self.QUERIES_FILENAME
+            if self.queries_filename is not None:
+                d['queries_filename'] = os.path.basename(self.queries_filename)
+            else:
+                d['queries_filename'] = self.QUERIES_FILENAME
             
         return d
             
 
-    ## The loaders
-    def loadCoordFromFile(self, filename):
-        pass
-
-    def loadDataFromFiles(self, filenames):
-        pass
-
-    def loadQueriesFromFile(self, filename):
-        pass
 
             
