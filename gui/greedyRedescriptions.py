@@ -10,9 +10,10 @@ from classRedescriptionsDraft import RedescriptionsDraft
 from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
+import utilsTools as ut
 import pdb
 
-def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, souvenirs, logger, keep=False):    
+def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, souvenirs, logger, keep=False, notify=None):    
     keepDraft = None
     if keep:
         keepDraft = RedescriptionsDraft()
@@ -39,7 +40,7 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, sou
                 if logger.verbosity >= 4:
                     logger.printL(4, "Redescription %s" % (red))
                     logger.printL(4, bests)
-        
+
                 for pos in bests.improving(minImpr):
                     t = red.kid(data, bests.side(pos), bests.op(pos), bests.term(pos), data.supp(bests.side(pos), bests.term(pos)), data.miss(bests.side(pos), bests.term(pos)) )
                     if t.acc() != bests.acc(pos):
@@ -55,7 +56,12 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, sou
         currentDraft.update(kids)
         if keepDraft != None:
 #            keepDraft.updateCheckOneSideIdentical(kids)
-            keepDraft.update(kids)
+            insertedIds = keepDraft.update(kids)
+            if notify != None:
+                tmpE = []
+                for (i,k) in insertedIds.items():
+                    tmpE.append(keepDraft.redescriptions()[i])
+                ut.sendResult(tmpE, notify)
         nextGen = currentDraft.nextGeneration(constraints.checkFinalConstraints)
         
     currentDraft.cut(draftOut)
@@ -204,7 +210,7 @@ def full_run(data, setts):
 ## END of main()
 
 
-def part_run(data, setts, redesc, log=None):
+def part_run(data, setts, redesc, log=None, notify=None):
     data.count = 0
     if log == None:
         logger = Log(setts.param['verbosity'], setts.param['logfile'])
@@ -223,7 +229,7 @@ def part_run(data, setts, redesc, log=None):
     souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
 
     redesc.initAvailable(souvenirs)
-    tmpRed = processDraft(redesc, data, setts.param['draft_capacity'], -1, setts.param['min_improvement'], constraints, souvenirs, logger, True)
+    tmpRed = processDraft(redesc, data, setts.param['draft_capacity'], -1, setts.param['min_improvement'], constraints, souvenirs, logger, True, notify)
     tac = datetime.datetime.now()
     logger.printL(1,"TAC... Finished: %s" % tac)
     return tmpRed

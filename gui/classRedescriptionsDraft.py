@@ -50,11 +50,13 @@ class RedescriptionsDraft:
             self.draft= self.draft[:self.cutIndex(self.capacity)]
 
     def update(self, redescriptionSet):
+        insertedIds = {}
         if len(redescriptionSet) > 0:
             redescriptionList = list(redescriptionSet)
             redescriptionList.sort(reverse=True)
             if self.count() == 0:
                 self.draft = redescriptionList
+                insertedIds = dict([[i,i] for i in range(len(redescriptionList))])
             else:
                 to_insert = 0
                 place = 0
@@ -64,12 +66,19 @@ class RedescriptionsDraft:
                         place -=1
                     elif redescriptionList[to_insert] > self.draft[place] :
                         self.draft.insert(place, redescriptionList[to_insert])
+                        insertedIds[to_insert] = place
                         to_insert += 1
                     place += 1
                 if self.capacity > self.count() and to_insert < len(redescriptionList):
+                    insertedIds.update(dict([[to_insert+i, len(self.draft)+i] for i in range(len(redescriptionList) - to_insert)]))
                     self.draft.extend(redescriptionList[to_insert:])
+            keys = insertedIds.keys()
+            for k in keys:
+                if insertedIds[k] >= self.capacity:
+                    del insertedIds[k]
             self.draft = self.draft[:self.cutIndex(self.capacity)]
         RedescriptionsDraft.logger.printL(2, self)
+        return insertedIds
 
     def updateCheckOneSideIdentical(self, redescriptionList, max_iden=0):
         insertedIds = {}
@@ -127,7 +136,7 @@ class RedescriptionsDraft:
                     disp += "Redescription (YES):\t"+redescriptionList[i].dispSimple()+"\n"
                 else:
                     disp += "Redescription (NO):\t"+redescriptionList[i].dispSimple()+"\n"
-            RedescriptionsDraft.logger.printL(1,disp)
+            RedescriptionsDraft.logger.printL(2,disp)
         return insertedIds
 
 #     def updateCheckSubsum(self, redescriptionList):          

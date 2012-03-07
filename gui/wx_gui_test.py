@@ -27,23 +27,8 @@ from classQuery import Query
 from classSettings import Settings
 from classLog import Log
 import greedyRedescriptions as greedyRed
+import utilsTools as ut
 
-
-# Define notification event for thread completion
-EVT_RESULT_ID = wx.NewId()
-
-def EVT_RESULT(win, func):
-    """Define Result Event."""
-    win.Connect(-1, -1, EVT_RESULT_ID, func)
-
-class ResultEvent(wx.PyEvent):
-    """Simple event to carry arbitrary result data."""
-    def __init__(self, data):
-        """Init Result Event."""
-        wx.PyEvent.__init__(self)
-        self.SetEventType(EVT_RESULT_ID)
-        self.data = data
-        
 # Thread class that executes processing
 class WorkerThread(Thread):
     """Worker Thread Class."""
@@ -61,8 +46,8 @@ class WorkerThread(Thread):
         self.start()
 
     def run(self):
-        tmpE = greedyRed.part_run(self.data, self.setts, self.red, self.logger)
-        wx.PostEvent(self._notify_window, ResultEvent(tmpE))
+        tmpE = greedyRed.part_run(self.data, self.setts, self.red, self.logger, self._notify_window)
+
 
 class MyGridTable(wx.grid.PyGridTableBase):
     def __init__(self):
@@ -115,7 +100,7 @@ class MyGridTable(wx.grid.PyGridTableBase):
         if row < len(self.data) and col < len(self.fields):
             x = self.data[row]
             methode = eval(self.fields[col][0])
-            return methode(self.details)
+            return "%s" % methode(self.details)
         else:
             return None
                                   
@@ -135,6 +120,11 @@ class MyGridTable(wx.grid.PyGridTableBase):
             self.data.append(rowD)
             self.ResetView()
             self.currentRows = len(self.data)
+
+    def extendData(self, rowsD):
+        self.data.extend(rowsD)
+        self.ResetView()
+        self.currentRows = len(self.data)
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -190,8 +180,10 @@ class MySheet(wx.grid.Grid):
 class Siren():
     """ The main frame of the application
     """
-    titleTool = 'SpatIal REdescription miniNg :: TOOLS'
-    titleMap = 'SpatIal REdescription miniNg :: MAPS'
+    # titleTool = 'SpatIal REdescription miniNg :: TOOLS'
+    # titleMap = 'SpatIal REdescription miniNg :: MAPS'
+    titleTool = 'SIREN :: tools'
+    titleMap = 'SIREN :: maps'
 
     fieldsRed = [('x.getQueryLU', 'Query LHS'), ('x.getQueryRU', 'Query RHS'), ('x.getAcc', 'Acc'), ('x.getPVal', 'p-Value')]
     fieldsVar = [('x.getId', 'Id'), ('x.getName', 'Name'), ('x.getType', 'Type')]
@@ -208,7 +200,7 @@ class Siren():
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.mapFrame = wx.Frame(None, -1, self.titleMap)
 
-        EVT_RESULT(self.toolFrame,self.OnResult)
+        ut.EVT_RESULT(self.toolFrame, self.OnResult)
         Log.EVT_LOGGER(self.toolFrame, self.OnLogger)
 
         self.coord = None
@@ -239,6 +231,8 @@ class Siren():
         self.textbox_queries_filename.SetValue(str(self.queries_filename))
         self.textbox_settings_filename.SetValue(str(self.settings_filename))
 
+		
+        self.text_setts.LoadFile(self.settings_filename)
         self.draw_map()
 
         ## Initialize variable lists data
@@ -259,7 +253,7 @@ class Siren():
     def OnResult(self, event):
         """Show Result status."""
         if event.data != None:
-            self.expList.table.updateData(event.data, self.fieldsRed, self.details)
+            self.expList.table.extendData(event.data)
 
     def OnLogger(self, event):
         """Show Result status."""
@@ -318,13 +312,14 @@ class Siren():
              * Control panel for interaction
         """
 
-	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP))
+	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
         self.panel1 = wx.Panel(self.tabbed, -1)
         self.varList = [MySheet(self.tabbed), MySheet(self.tabbed)]
         self.redList = MySheet(self.tabbed)
         self.expList = MySheet(self.tabbed)
         self.histList = MySheet(self.tabbed)
         self.panelLog = wx.Panel(self.tabbed, -1)
+        self.panelSetts = wx.Panel(self.tabbed, -1)
         self.tabbed.AddPage(self.panel1, "Files")
         self.tabbed.AddPage(self.varList[0], "LHS Variables")
         self.tabbed.AddPage(self.varList[1], "RHS Variables")
@@ -332,6 +327,7 @@ class Siren():
         self.tabbed.AddPage(self.expList, "Expanding")
         self.tabbed.AddPage(self.histList, "History")
         self.tabbed.AddPage(self.panelLog, "Log")
+        self.tabbed.AddPage(self.panelSetts, "Settings")
         
 	self.button_num_filename = wx.Button(self.panel1, size=(150,-1), label="Change Left File")
 	self.button_num_filename.Bind(wx.EVT_BUTTON, self.doOpenFileN)
@@ -357,6 +353,43 @@ class Siren():
 
 	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
         self.logger = Log(self.setts.param['verbosity'], (self.toolFrame,0))
+
+        self.text_setts = wx.TextCtrl(self.panelSetts, size=(-1,-1), style=wx.TE_MULTILINE)
+
+        menuBar = wx.MenuBar()
+        menu = wx.Menu()
+        submenu = wx.Menu()
+
+        ID_IMPORT = wx.NewId()
+        ID_IMPORT_DATA = wx.NewId()
+        ID_IMPORT_COORD = wx.NewId()
+        ID_IMPORT_QUERIES = wx.NewId()
+        ID_EXPORT = wx.NewId()
+
+        m_open = menu.Append(wx.ID_OPEN, "&Open", "Open a project.")
+        m_save = menu.Append(wx.ID_SAVE, "&Save", "Save the current project.")
+        m_saveas = menu.Append(wx.ID_SAVEAS, "Save &As...", "Save the current project as...")
+
+        m_impData = submenu.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
+        m_impCoord = submenu.Append(ID_IMPORT_COORD, "Import &Coordinates", "Import coordinates into ths project.")
+        m_impQueries = submenu.Append(ID_IMPORT_QUERIES, "Import &Queries", "Import queries into the project.")
+        
+        m_import = menu.AppendMenu(ID_IMPORT, "Import", submenu)
+        m_export = menu.Append(ID_EXPORT, "Export Redescriptions", "Export redescriptions.")
+        m_exit = menu.Append(wx.ID_EXIT, "E&xit", "Close window and exit program.")
+
+
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnSave, m_save)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnExport, m_export)
+        self.toolFrame.Bind(wx.EVT_MENU, self.OnExit, m_exit)
+        
+        menuBar.Append(menu, "&File")
+        self.toolFrame.SetMenuBar(menuBar)
 
 	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
         
@@ -402,37 +435,34 @@ class Siren():
         self.vboxL = wx.BoxSizer(wx.VERTICAL)
         self.vboxL.Add(self.text_log, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.panelLog.SetSizer(self.vboxL)
-        self.vbox1.Fit(self.toolFrame)
-        
-    def on_exit(self, event):
+#        self.vboxL.Fit(self.toolFrame)
+
+        self.vboxS = wx.BoxSizer(wx.VERTICAL)
+        self.vboxS.Add(self.text_setts, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        self.panelSetts.SetSizer(self.vboxS)
+#        self.vboxS.Fit(self.toolFrame)
+
+        self.toolFrame
+
+    def OnOpen(self, event):
+        pass
+    def OnSave(self, event):
+        pass
+    def OnSaveAs(self, event):
+        pass
+    def OnImportData(self, event):
+        pass
+    def OnImportCoord(self, event):
+        pass
+    def OnImportQueries(self, event):
+        pass
+    def OnExport(self, event):
+        pass
+    
+    def OnExit(self, event):
         self.toolFrame.Destroy()
         self.mapFrame.Destroy()
-
-    def on_draw_button(self, event):
-        self.draw_figure()
-    
-    def on_button_plot_map(self, event):
-        print "replot"
-
-    def on_text_enter(self, event):
-	print "TEXT => DRAW"
-        self.draw_figure()
-
-    def on_save_plot(self, event):
-        file_choices = "PNG (*.png)|*.png"
-        
-        dlg = wx.FileDialog(
-            self.mapFrame, 
-            message="Save plot as...",
-            defaultDir=os.getcwd(),
-            defaultFile="plot.png",
-            wildcard=file_choices,
-            style=wx.SAVE)
-        
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            self.canvas.print_figure(path, dpi=self.dpi)
-            self.flash_status_message("Saved to %s" % path)
+        exit()
 
     def doOpenFileB(self, event):
         file_name = os.path.basename(self.bool_filename)
@@ -525,7 +555,7 @@ class Siren():
                 file = open(path, 'r')
 		self.settings_filename = path
 		self.textbox_settings_filename.SetValue(str(self.settings_filename))
-
+                self.text_setts.LoadFile(path)
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
