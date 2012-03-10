@@ -1,10 +1,10 @@
 import os
 import pprint
 import random
-import wx, wx.grid
+import wx, wx.grid, wx.html
 from threading import *
-import warnings
-warnings.simplefilter("ignore")
+# import warnings
+# warnings.simplefilter("ignore")
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -27,15 +27,14 @@ from classQuery import Query
 from classSettings import Settings
 from classLog import Log
 import greedyRedescriptions as greedyRed
-import utilsTools as ut
 
 # Thread class that executes processing
-class WorkerThread(Thread):
-    """Worker Thread Class."""
-    def __init__(self, notify_window, data, setts, red, logger):
-        """Init Worker Thread Class."""
+class ExpanderThread(Thread):
+    """Expander Thread Class."""
+    def __init__(self, data, setts, red, logger):
+        """Init Expander Thread Class."""
         Thread.__init__(self)
-        self._notify_window = notify_window
+        self.want_to_live = True
         self.data = data
         self.setts = setts
         self.red = red
@@ -46,22 +45,61 @@ class WorkerThread(Thread):
         self.start()
 
     def run(self):
-        tmpE = greedyRed.part_run(self.data, self.setts, self.red, self.logger, self._notify_window)
+        tmpE = greedyRed.part_run(self)
 
+    def abort(self):
+        self.want_to_live = False
+
+class MinerThread(Thread):
+    """Miner Thread Class."""
+    def __init__(self, data, setts, logger):
+        """Init Miner Thread Class."""
+        Thread.__init__(self)
+        self.want_to_live = True
+        self.data = data
+        self.setts = setts
+        self.logger = logger
+
+        # This starts the thread running on creation, but you could
+        # also make the GUI thread responsible for calling this
+        self.start()
+
+    def run(self):
+        tmpE = greedyRed.full_run(self)
+        
+    def abort(self):
+        self.want_to_live = False
+
+
+class Message(wx.PyEvent):
+    TYPES_MESSAGES = {None: wx.NewId(), 'result': wx.NewId(), 'progress': wx.NewId(), 'status': wx.NewId()}
+    
+    """Simple event for communication purposes."""
+    def __init__(self, type_event, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(type_event)
+        self.data = data
+
+    def sendMessage(output, message, type_message):
+        if Message.TYPES_MESSAGES.has_key(type_message):
+           wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], message))
+    sendMessage = staticmethod(sendMessage)
 
 class MyGridTable(wx.grid.PyGridTableBase):
     def __init__(self):
         wx.grid.PyGridTableBase.__init__(self)
         self.fields = []
         self.data = []
+        self.sortids = []
         self.details = {}
         self.sortP = (None, False)
-        self.currentRows = len(self.data)
+        self.currentRows = len(self.sortids)
         self.currentColumns = len(self.fields)
 
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
-        return len(self.data)
+        return len(self.sortids)
 
     def GetColLabelValue(self, col):
         """Return the number of rows in the grid"""
@@ -79,8 +117,8 @@ class MyGridTable(wx.grid.PyGridTableBase):
 
     def IsEmptyCell(self, row, col):
         """Return True if the cell is empty"""
-        if row < len(self.data) and col < len(self.fields):
-            x = self.data[row]
+        if row < len(self.sortids) and col < len(self.fields):
+            x = self.sortids[row]
             methode = eval(self.fields[col][0])
             return methode(self.details) == None
         else:
@@ -88,8 +126,8 @@ class MyGridTable(wx.grid.PyGridTableBase):
 
     def GetTypeName(self, row, col):
         """Return the name of the data type of the value in the cell"""
-        if row < len(self.data) and col < len(self.fields):
-            x = self.data[row]
+        if row < len(self.sortids) and col < len(self.fields):
+            x = self.sortids[row]
             methode = eval(self.fields[col][0])
             return type(methode(self.details))
         else:
@@ -97,10 +135,17 @@ class MyGridTable(wx.grid.PyGridTableBase):
 
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < len(self.data) and col < len(self.fields):
-            x = self.data[row]
+        if row < len(self.sortids) and col < len(self.fields):
+            x = self.sortids[row]
             methode = eval(self.fields[col][0])
             return "%s" % methode(self.details)
+        else:
+            return None
+
+    def GetRowData(self, row):
+        """Return the data of a row"""
+        if row < len(self.sortids):
+            return self.data[self.sortids[row]]
         else:
             return None
                                   
@@ -108,23 +153,33 @@ class MyGridTable(wx.grid.PyGridTableBase):
         pass
 
     def updateData(self, data, fieldsRed, details):
-        self.data = data
         self.details = details
         self.fields = fieldsRed
-        self.ResetView()
-        self.currentRows = len(self.data)
+        self.resetData(data)
         self.currentColumns = len(self.fields)
 
     def appendRow(self, rowD):
-        if len(self.data) == 0 or self.data[-1] != rowD:
+        if len(self.sortids) == 0 or self.data[self.sortids[-1]] != rowD:
+            self.sortids.append(len(self.data))
             self.data.append(rowD)
+            self.updateSort()
             self.ResetView()
-            self.currentRows = len(self.data)
+            self.currentRows = len(self.sortids)
 
     def extendData(self, rowsD):
+        self.sortids.extend([len(self.data)+ i for i in range(len(rowsD))])
         self.data.extend(rowsD)
+        self.updateSort()
         self.ResetView()
-        self.currentRows = len(self.data)
+        self.currentRows = len(self.sortids)
+
+    def resetData(self, rowsD):
+        self.data = rowsD
+        self.sortids = range(len(rowsD))
+        self.updateSort()
+        self.ResetView()
+        self.currentRows = len(self.sortids)
+        
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -152,10 +207,12 @@ class MyGridTable(wx.grid.PyGridTableBase):
         self.GetView().AutoSize()
 
     def HighlightRow(self, row):
-        pass
+        #pass
+        self.GetView().SelectRow(row)
+        self.GetView().SetGridCursor(row,0)
         # for j in range(self.GetNumberCols()):
         #     self.GetView().SetCellBackgroundColour(row,j,'#DBD4FF')
-        # self.GetView().ForceRefresh()
+        self.GetView().ForceRefresh()
         
     def sortData(self, event):
         colS = event.GetCol()
@@ -163,9 +220,21 @@ class MyGridTable(wx.grid.PyGridTableBase):
         if self.sortP[0] == colS:
             self.sortP = (self.sortP[0], not self.sortP[1])
         else:
-            self.sortP = (colS, False)
-        self.data.sort(key= lambda x: eval(self.fields[self.sortP[0]][0])(self.details), reverse=self.sortP[1])
+            self.sortP = (colS, True)
+        self.updateSort()
         self.ResetView()
+        
+    def updateSort(self):
+        selected_rows = self.GetView().GetSelectedRows()
+        selected_id = None
+        if len(selected_rows) > 0:
+            selected_id = self.sortids[selected_rows[0]]
+
+        if self.sortP[0] != None:
+            self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][0])(self.details), reverse=self.sortP[1])
+        if selected_id != None:
+            self.HighlightRow(self.sortids.index(selected_id))
+
 
 class MySheet(wx.grid.Grid):
     def __init__(self, parent):
@@ -176,106 +245,23 @@ class MySheet(wx.grid.Grid):
         self.SetLabelBackgroundColour('#DBD4D4')
         self.EnableEditing(False)
         self.AutoSizeColumns(True)
-        
-class Siren():
-    """ The main frame of the application
-    """
-    # titleTool = 'SpatIal REdescription miniNg :: TOOLS'
-    # titleMap = 'SpatIal REdescription miniNg :: MAPS'
-    titleTool = 'SIREN :: tools'
-    titleMap = 'SIREN :: maps'
 
-    fieldsRed = [('x.getQueryLU', 'Query LHS'), ('x.getQueryRU', 'Query RHS'), ('x.getAcc', 'Acc'), ('x.getPVal', 'p-Value')]
-    fieldsVar = [('x.getId', 'Id'), ('x.getName', 'Name'), ('x.getType', 'Type')]
-    fieldsVarTypes = {1: [('x.getDensity', 'Density')], 2:[('x.getCategories', 'Categories')], 3:[('x.getMin', 'Min'), ('x.getMax', 'Max')]}
 
-    def getFieldRed(red, fieldId):
-        methode = eval(Siren.fieldsRed[fieldId][0])
-        return methode(self.details)
-
-    def getFieldLabel(fieldId):
-        return Siren.fieldsRed[fieldId][1]
-
-    def __init__(self):
-        self.toolFrame = wx.Frame(None, -1, self.titleTool)
-        self.mapFrame = wx.Frame(None, -1, self.titleMap)
-
-        ut.EVT_RESULT(self.toolFrame, self.OnResult)
-        Log.EVT_LOGGER(self.toolFrame, self.OnLogger)
-
-        self.coord = None
-        self.coord_proj = None
-        self.data = None
-
+class MapView:
+    def __init__(self, parent, vid):
+        self.parent = parent
+        self.vid = vid
         self.lines = []
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
-
-        self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
-        self.setts.getParams()
-        
-        self.create_tool_panel()
-        self.create_map_panel()
-
-        Data.logger = self.logger
-        self.loadData()
-        self.loadCoordinates()
-        redsTmp = self.populateReds()
-
-	self.textbox_num_filename.SetValue(str(self.num_filename))
-	self.textbox_bool_filename.SetValue(str(self.bool_filename))
-        self.textbox_coo_filename.SetValue(str(self.coo_filename))
-        self.textbox_queries_filename.SetValue(str(self.queries_filename))
-        self.textbox_settings_filename.SetValue(str(self.settings_filename))
-
-		
-        self.text_setts.LoadFile(self.settings_filename)
-        self.draw_map()
-
-        ## Initialize variable lists data
-        for side in [0,1]:
-            fieldsVar = []
-            fieldsVar.extend(self.fieldsVar)
-            for tyid in set([r.type_id for r in self.data.cols[side]]):
-                fieldsVar.extend(self.fieldsVarTypes[tyid])
-            self.varList[side].table.updateData(self.data.cols[side], fieldsVar, self.details)
-
-        ## Initialize red lists data
-        self.histList.table.updateData([], self.fieldsRed, self.details)
-        self.redList.table.updateData(redsTmp, self.fieldsRed, self.details)
-        self.expList.table.updateData([], self.fieldsRed, self.details)
-        self.setCurrentRed(redsTmp[0])
-        self.updateRed()
-
-    def OnResult(self, event):
-        """Show Result status."""
-        if event.data != None:
-            self.expList.table.extendData(event.data)
-
-    def OnLogger(self, event):
-        """Show Result status."""
-        if event.data != None:
-            self.text_log.AppendText(event.data)
-        
-    def showFrames(self):
-        self.toolFrame.Show()
-        self.mapFrame.Show()
-
-    def create_map_panel(self):
-        """ Creates the main panel with all the controls on it:
-             * mpl canvas 
-             * mpl navigation toolbar
-             * Control panel for interaction
-        """
-
+        self.coord_proj = None
+        self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
+        self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.MapredMapQL = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
         self.MapredMapQR = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
         self.MapredMapInfo = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_READONLY)
         self.button_expand = wx.Button(self.mapFrame, size=(80,-1), label="Expand")
-        self.button_expand.Bind(wx.EVT_BUTTON, self.expandRed)
+        self.button_stop = wx.Button(self.mapFrame, size=(80,-1), label="Stop")
+        self.button_expand.Bind(wx.EVT_BUTTON, self.parent.OnExpand)
+        self.button_stop.Bind(wx.EVT_BUTTON, self.parent.OnStop)
         self.MapredMapQL.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
         self.MapredMapQR.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
 
@@ -295,6 +281,7 @@ class Siren():
         self.Maphbox1.Add(self.Mapvbox0, 0, border=3, flag=flags)
 #	self.Maphbox1.AddSpacer(10)
         self.Maphbox1.Add(self.button_expand, 0, border=3, flag=flags)
+        self.Maphbox1.Add(self.button_stop, 0, border=3, flag=flags)
 
         self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
@@ -304,6 +291,206 @@ class Siren():
         self.Mapvbox3.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
+        self.draw_map()
+        self.mapFrame.Show()
+
+    def OnQuit(self, event):
+        self.parent.deleteView(self.vid)
+        
+    def OnEditRed(self, event):
+        self.updateRed()
+
+    def setCurrentRed(self, red):
+        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
+        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
+        self.MapredMapInfo.ChangeValue(red.dispLParts())
+
+    def updateRed(self, addHist=True):
+        red = self.redraw_map()
+        if red != None and addHist:
+            self.parent.histList.table.appendRow(red)
+        return red
+        
+    def parseRed(self):
+        queryL = Query.parseAny(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
+        queryR = Query.parseAny(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
+        if queryL != None and queryR != None: 
+            return Redescription.fromQueriesPair([queryL, queryR], self.parent.data) 
+        
+    def draw_map(self):
+        """ Draws the map
+        """
+        
+        self.MapfigMap.clear()
+        m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
+                llcrnrlat=self.parent.coord_extrema[1][0], \
+                urcrnrlon=self.parent.coord_extrema[0][1], \
+                urcrnrlat=self.parent.coord_extrema[1][1], \
+                resolution = 'c', \
+                projection = 'mill', \
+                lon_0 = self.parent.coord_extrema[0][0] + (self.parent.coord_extrema[0][1]-self.parent.coord_extrema[0][0])/2.0, \
+                lat_0 = self.parent.coord_extrema[1][0] + (self.parent.coord_extrema[1][1]-self.parent.coord_extrema[1][0])/2.04)
+        self.axe = m
+        m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
+
+        m.drawcoastlines(color='gray')
+        m.drawcountries(color='gray')
+        m.drawmapboundary(fill_color='#EEFFFF') 
+        m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
+#        m.etopo()
+        self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
+        height = 3; width = 3
+#        self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
+        self.MapcanvasMap.draw()
+
+    def redraw_map(self, event=None):
+        """ Redraws the map
+        """
+        red = self.parseRed()
+        if red == None:
+            return self.parent.histList.table.data[-1]
+
+        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
+        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
+        self.MapredMapInfo.ChangeValue(red.dispLParts())
+        m = self.axe
+        colors = ['b', 'r', 'purple']
+        sizes = [3, 3, 4]
+        markers = ['s', 's', 's']
+        i = 0
+        while len(self.lines):
+#            plt.gca().patches.remove(self.lines.pop())
+            plt.gca().axes.lines.remove(self.lines.pop())
+
+        for part in red.partsNoMiss():
+            if len(part) > 0:
+                # for id in part:
+                #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
+                    
+                ids = np.array(list(part))
+                self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5))
+            else:
+                self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
+            i += 1
+        plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
+        self.MapcanvasMap.draw()
+        return red
+
+        
+class Siren():
+    """ The main frame of the application
+    """
+    # titleTool = 'SpatIal REdescription miniNg :: TOOLS'
+    # titleMap = 'SpatIal REdescription miniNg :: MAPS'
+    titleTool = 'SIREN :: tools'
+    titleMap = 'SIREN :: maps'
+    titleHelp = 'SIREN :: help'
+    helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
+    fieldsRed = [('self.data[x].getQueryLU', 'Query LHS'), ('self.data[x].getQueryRU', 'Query RHS'), ('self.data[x].getAcc', 'Acc'), ('self.data[x].getPVal', 'p-Value')]
+    fieldsVar = [('self.data[x].getId', 'Id'), ('self.data[x].getName', 'Name'), ('self.data[x].getType', 'Type')]
+    fieldsVarTypes = {1: [('self.data[x].getDensity', 'Density')], 2:[('self.data[x].getCategories', 'Categories')], 3:[('self.data[x].getMin', 'Min'), ('self.data[x].getMax', 'Max')]}
+
+    def getFieldRed(red, fieldId):
+        methode = eval(Siren.fieldsRed[fieldId][0])
+        return methode(self.details)
+
+    def getFieldLabel(fieldId):
+        return Siren.fieldsRed[fieldId][1]
+
+    def __init__(self):
+        self.toolFrame = wx.Frame(None, -1, self.titleTool)
+        self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+
+        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES[None], self.OnLogger)
+        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnResult)
+        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnProgress)
+        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnStatus)
+
+        self.coord = None
+        self.data = None
+        self.worker = None
+        
+        self.num_filename='./rajapaja/worldclim_tp.densenum'
+        self.bool_filename='./rajapaja/mammals.datbool'
+        self.coo_filename='./rajapaja/coordinates.names'
+        self.queries_filename='./rajapaja/rajapaja.queries'
+        self.settings_filename='./rajapaja/rajapaja.conf'
+
+        self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
+        self.setts.getParams()
+        
+        self.create_tool_panel()
+        
+        Data.logger = self.logger
+        self.loadData()
+        self.loadCoordinates()
+        redsTmp = self.populateReds()
+
+	self.textbox_num_filename.SetValue(str(self.num_filename))
+	self.textbox_bool_filename.SetValue(str(self.bool_filename))
+        self.textbox_coo_filename.SetValue(str(self.coo_filename))
+        self.textbox_queries_filename.SetValue(str(self.queries_filename))
+        self.textbox_settings_filename.SetValue(str(self.settings_filename))
+	
+        self.text_setts.LoadFile(self.settings_filename)
+
+        self.mapViews = []
+        self.selectedMap = -1
+
+        ## Initialize variable lists data
+        for side in [0,1]:
+            fieldsVar = []
+            fieldsVar.extend(self.fieldsVar)
+            for tyid in set([r.type_id for r in self.data.cols[side]]):
+                fieldsVar.extend(self.fieldsVarTypes[tyid])
+            self.varList[side].table.updateData(self.data.cols[side], fieldsVar, self.details)
+
+        ## Initialize red lists data
+        self.histList.table.updateData([], self.fieldsRed, self.details)
+        self.redList.table.updateData(redsTmp, self.fieldsRed, self.details)
+        self.expList.table.updateData([], self.fieldsRed, self.details)
+        self.getSelectedMapView().setCurrentRed(redsTmp[0])
+        self.getSelectedMapView().updateRed()
+
+    def deleteView(self, vid):
+        if vid >= 0 and vid < len(self.mapViews):
+            self.mapViews.pop(vid).mapFrame.Destroy()
+
+    def getSelectedMapView(self):
+        if self.selectedMap < 0 or self.selectedMap >= len(self.mapViews):
+            self.selectedMap = len(self.mapViews)
+            self.mapViews.append(MapView(self, self.selectedMap))    
+        return self.mapViews[self.selectedMap]
+
+    def OnStop(self, event):
+        """Show Result status."""
+        if self.worker != None:
+            self.worker.abort()
+        
+    def OnResult(self, event):
+        """Show Result status."""
+        if event.data != None:
+            if event.data[0] == 1:
+                self.expList.table.extendData(event.data[1])
+            if event.data[0] == 0:
+                self.expList.table.resetData(event.data[1])
+
+    def OnProgress(self, event):
+        """Update progress status."""
+        brange, bvalue = event.data
+        if self.progress_bar.GetRange() != brange:
+            self.progress_bar.SetRange(brange)
+        self.progress_bar.SetValue(bvalue)
+
+    def OnLogger(self, event):
+        """Show Result status."""
+        if event.data != None:
+            self.text_log.AppendText("%s\n" % event.data)
+
+    def OnStatus(self, event):
+        """Show Result status."""
+        if event.data != None:
+            self.statusbar.SetStatusText("%s" % event.data, 0)
 
     def create_tool_panel(self):
         """ Creates the main panel with all the controls on it:
@@ -311,15 +498,19 @@ class Siren():
              * mpl navigation toolbar
              * Control panel for interaction
         """
-
+	self.makeMenu(self.toolFrame)
+        self.makeStatus(self.toolFrame)
 	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
         self.panel1 = wx.Panel(self.tabbed, -1)
         self.varList = [MySheet(self.tabbed), MySheet(self.tabbed)]
         self.redList = MySheet(self.tabbed)
         self.expList = MySheet(self.tabbed)
         self.histList = MySheet(self.tabbed)
+        self.histList.Hide()
         self.panelLog = wx.Panel(self.tabbed, -1)
+        self.panelLog.Hide()
         self.panelSetts = wx.Panel(self.tabbed, -1)
+        self.panelSetts.Hide()
         self.tabbed.AddPage(self.panel1, "Files")
         self.tabbed.AddPage(self.varList[0], "LHS Variables")
         self.tabbed.AddPage(self.varList[1], "RHS Variables")
@@ -352,44 +543,9 @@ class Siren():
         self.histList.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectHistRed) #EVT_GRID_SELECT_CELL
 
 	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
-        self.logger = Log(self.setts.param['verbosity'], (self.toolFrame,0))
+        self.logger = Log(self.setts.param['verbosity'], self.toolFrame, Message.sendMessage)
 
         self.text_setts = wx.TextCtrl(self.panelSetts, size=(-1,-1), style=wx.TE_MULTILINE)
-
-        menuBar = wx.MenuBar()
-        menu = wx.Menu()
-        submenu = wx.Menu()
-
-        ID_IMPORT = wx.NewId()
-        ID_IMPORT_DATA = wx.NewId()
-        ID_IMPORT_COORD = wx.NewId()
-        ID_IMPORT_QUERIES = wx.NewId()
-        ID_EXPORT = wx.NewId()
-
-        m_open = menu.Append(wx.ID_OPEN, "&Open", "Open a project.")
-        m_save = menu.Append(wx.ID_SAVE, "&Save", "Save the current project.")
-        m_saveas = menu.Append(wx.ID_SAVEAS, "Save &As...", "Save the current project as...")
-
-        m_impData = submenu.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
-        m_impCoord = submenu.Append(ID_IMPORT_COORD, "Import &Coordinates", "Import coordinates into ths project.")
-        m_impQueries = submenu.Append(ID_IMPORT_QUERIES, "Import &Queries", "Import queries into the project.")
-        
-        m_import = menu.AppendMenu(ID_IMPORT, "Import", submenu)
-        m_export = menu.Append(ID_EXPORT, "Export Redescriptions", "Export redescriptions.")
-        m_exit = menu.Append(wx.ID_EXIT, "E&xit", "Close window and exit program.")
-
-
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnSave, m_save)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnExport, m_export)
-        self.toolFrame.Bind(wx.EVT_MENU, self.OnExit, m_exit)
-        
-        menuBar.Append(menu, "&File")
-        self.toolFrame.SetMenuBar(menuBar)
 
 	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
         
@@ -441,8 +597,93 @@ class Siren():
         self.vboxS.Add(self.text_setts, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.panelSetts.SetSizer(self.vboxS)
 #        self.vboxS.Fit(self.toolFrame)
+        self.toolFrame.Show()
 
-        self.toolFrame
+    def makeStatus(self, frame):
+        ### status bar
+        self.statusbar = frame.CreateStatusBar()
+        self.statusbar.SetFieldsCount(3)
+        self.statusbar.SetStatusWidths([300, 150, -1])
+
+        self.progress_bar = wx.Gauge(self.statusbar, -1, style=wx.GA_HORIZONTAL|wx.GA_SMOOTH)
+        rect = self.statusbar.GetFieldRect(1)
+        self.progress_bar.SetPosition((rect.x+2, rect.y+2))
+        self.progress_bar.SetSize((rect.width-2, rect.height-2))
+        self.progress_bar.Hide()
+
+
+    def makeMenu(self, frame):
+        ### menu bar
+        menuBar = wx.MenuBar()
+        menuFile = wx.Menu()
+        menuRed = wx.Menu()
+        menuWindow = wx.Menu()
+        menuHelp = wx.Menu()
+        submenuFile = wx.Menu()
+
+        ID_IMPORT = wx.NewId()
+        ID_IMPORT_DATA = wx.NewId()
+        ID_IMPORT_COORD = wx.NewId()
+        ID_IMPORT_QUERIES = wx.NewId()
+        ID_EXPORT = wx.NewId()
+
+        m_open = menuFile.Append(wx.ID_OPEN, "&Open", "Open a project.")
+        m_save = menuFile.Append(wx.ID_SAVE, "&Save", "Save the current project.")
+        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...", "Save the current project as...")
+
+        m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
+        m_impCoord = submenuFile.Append(ID_IMPORT_COORD, "Import C&oordinates", "Import coordinates into ths project.")
+        m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
+        
+        m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuFile)
+        m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions", "Export redescriptions.")
+        m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
+
+        ID_EXPAND = wx.NewId()
+
+        m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
+        m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
+        m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+
+        ID_HISTW = wx.NewId()
+        ID_LOGW = wx.NewId()
+        ID_SETTSW = wx.NewId()
+        
+        m_histw = menuWindow.AppendCheckItem(ID_HISTW, "&History", "Show History.")        
+        m_logw = menuWindow.AppendCheckItem(ID_LOGW, "&Log", "Show log.")
+        m_settsw = menuWindow.AppendCheckItem(ID_SETTSW, "&Settings", "Show settings.")
+
+        m_help = menuHelp.Append(wx.ID_HELP, "&Help", "Access the instructions.")
+        m_about = menuHelp.Append(wx.ID_ABOUT, "&About", "About...")
+
+        frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
+        frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
+        frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
+        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
+        frame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
+        frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
+        frame.Bind(wx.EVT_MENU, self.OnExport, m_export)
+        frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
+        frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+        frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
+        frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+        frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+        frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
+        frame.Bind(wx.EVT_MENU, self.OnSettsW, m_settsw)
+        frame.Bind(wx.EVT_MENU, self.OnHistW, m_histw)
+        frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
+        frame.Bind(wx.EVT_MENU, self.OnAbout, m_about)
+        self.check_logw = m_logw
+        self.check_settsw = m_settsw
+        self.check_histw = m_histw
+
+        menuBar.Append(menuFile, "&File")
+        menuBar.Append(menuRed, "&Redescriptions")
+        menuBar.Append(menuWindow, "&Window")
+        menuBar.Append(menuHelp, "&Help")
+        frame.SetMenuBar(menuBar)
+
 
     def OnOpen(self, event):
         pass
@@ -458,10 +699,44 @@ class Siren():
         pass
     def OnExport(self, event):
         pass
+    def OnCopy(self, event):
+        pass
+    def OnPaste(self, event):
+        pass
+
+    def OnHistW(self, event):
+        if self.check_histw.IsChecked():
+            self.histList.Show()
+        else:
+            self.histList.Hide()
+
+    def OnLogW(self, event):
+        if self.check_logw.IsChecked():
+            self.panelLog.Show()
+        else:
+            self.panelLog.Hide()
+
+    def OnSettsW(self, event):
+        if self.check_settsw.IsChecked():
+            self.panelSetts.Show()
+        else:
+            self.panelSetts.Hide()
+
+    def OnHelp(self, event):
+        self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
+        html = wx.html.HtmlWindow(self.helpFrame)
+        if "gtk2" in wx.PlatformInfo:
+            html.SetStandardFonts()        
+        wx.CallAfter(html.LoadPage, self.helpURL)
+        self.helpFrame.Show()
+
+    def OnAbout(self, event):
+        pass
     
-    def OnExit(self, event):
+    def OnQuit(self, event):
         self.toolFrame.Destroy()
-        self.mapFrame.Destroy()
+        for mapV in self.mapViews:
+            mapV.mapFrame.Destroy()
         exit()
 
     def doOpenFileB(self, event):
@@ -561,119 +836,44 @@ class Siren():
                 dlg.ShowModal()
         open_dlg.Destroy()
 
-        
-    def OnEditRed(self, event):
-        self.updateRed()
-
     def OnSelectLHSVar(self, event):
         if event.GetRow() < len(self.varList[0].table.data):
             self.varList[0].table.HighlightRow(event.GetRow())
-            self.MapredMapQL.ChangeValue(self.varList[0].table.data[event.GetRow()].getItem().dispU(False, self.details['names'][0]))
-            self.MapredMapQR.ChangeValue("")
-            self.MapredMapInfo.ChangeValue("")
-            self.updateRed(False)
+            mapV = self.getSelectedMapView()
+            mapV.MapredMapQL.ChangeValue(self.varList[0].table.GetRowData(event.GetRow()).getItem().dispU(False, self.details['names'][0]))
+            mapV.MapredMapQR.ChangeValue("")
+            mapV.MapredMapInfo.ChangeValue("")
+            mapV.updateRed(False)
 
     def OnSelectRHSVar(self, event):
         if event.GetRow() < len(self.varList[1].table.data):
             self.varList[1].table.HighlightRow(event.GetRow())
-            self.MapredMapQR.ChangeValue(self.varList[1].table.data[event.GetRow()].getItem().dispU(False, self.details['names'][1]))
-            self.MapredMapQL.ChangeValue("")
-            self.MapredMapInfo.ChangeValue("")
-            self.updateRed(False)
+            mapV = self.getSelectedMapView()
+            mapV.MapredMapQR.ChangeValue(self.varList[1].table.GetRowData(event.GetRow()).getItem().dispU(False, self.details['names'][1]))
+            mapV.MapredMapQL.ChangeValue("")
+            mapV.MapredMapInfo.ChangeValue("")
+            mapV.updateRed(False)
 
     def OnSelectListRed(self, event):
         if event.GetRow() < len(self.redList.table.data):
             self.redList.table.HighlightRow(event.GetRow())
-            self.setCurrentRed(self.redList.table.data[event.GetRow()])
-            self.updateRed()
+            mapV = self.getSelectedMapView()
+            mapV.setCurrentRed(self.redList.table.GetRowData(event.GetRow()))
+            mapV.updateRed()
         
     def OnSelectExpRed(self, event):
         if event.GetRow() < len(self.expList.table.data):
             self.expList.table.HighlightRow(event.GetRow())
-            self.setCurrentRed(self.expList.table.data[event.GetRow()])
-            self.updateRed()
+            mapV = self.getSelectedMapView()
+            mapV.setCurrentRed(self.expList.table.GetRowData(event.GetRow()))
+            mapV.updateRed()
 
     def OnSelectHistRed(self, event):
         if event.GetRow() < len(self.histList.table.data):
             self.histList.table.HighlightRow(event.GetRow())
-            self.setCurrentRed(self.histList.table.data[event.GetRow()])
-            self.updateRed(False)
-
-    def setCurrentRed(self, red):
-        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.details['names'][0]))
-        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.details['names'][1]))
-        self.MapredMapInfo.ChangeValue(red.dispLParts())
-
-    def updateRed(self, addHist=True):
-        red = self.redraw_map()
-        if red != None and addHist:
-            self.histList.table.appendRow(red)
-        return red
-        
-    def parseRed(self):
-        queryL = Query.parseAny(self.MapredMapQL.GetValue().strip(), self.details['names'][0])
-        queryR = Query.parseAny(self.MapredMapQR.GetValue().strip(), self.details['names'][1])
-        if queryL != None and queryR != None: 
-            return Redescription.fromQueriesPair([queryL, queryR], self.data) 
-        
-    def draw_map(self):
-        """ Draws the map
-        """
-        
-        self.MapfigMap.clear()
-        m = Basemap(llcrnrlon=self.coord_extrema[0][0], \
-                llcrnrlat=self.coord_extrema[1][0], \
-                urcrnrlon=self.coord_extrema[0][1], \
-                urcrnrlat=self.coord_extrema[1][1], \
-                resolution = 'c', \
-                projection = 'mill', \
-                lon_0 = self.coord_extrema[0][0] + (self.coord_extrema[0][1]-self.coord_extrema[0][0])/2.0, \
-                lat_0 = self.coord_extrema[1][0] + (self.coord_extrema[1][1]-self.coord_extrema[1][0])/2.04)
-        self.axe = m
-        m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
-
-        m.drawcoastlines(color='gray')
-        m.drawcountries(color='gray')
-        m.drawmapboundary(fill_color='#EEFFFF') 
-        m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
-#        m.etopo()
-        self.coord_proj = m(self.coord[0], self.coord[1])
-        height = 3; width = 3
-#        self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
-        self.MapcanvasMap.draw()
-
-    def redraw_map(self, event=None):
-        """ Redraws the map
-        """
-        red = self.parseRed()
-        if red == None:
-            return self.histList.table.data[-1]
-
-        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.details['names'][0]))
-        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.details['names'][1]))
-        self.MapredMapInfo.ChangeValue(red.dispLParts())
-        m = self.axe
-        colors = ['b', 'r', 'purple']
-        sizes = [3, 3, 4]
-        markers = ['s', 's', 's']
-        i = 0
-        while len(self.lines):
-#            plt.gca().patches.remove(self.lines.pop())
-            plt.gca().axes.lines.remove(self.lines.pop())
-
-        for part in red.partsNoMiss():
-            if len(part) > 0:
-                # for id in part:
-                #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
-                    
-                ids = np.array(list(part))
-                self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5))
-            else:
-                self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
-            i += 1
-        plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
-        self.MapcanvasMap.draw()
-        return red
+            mapV = self.getSelectedMapView()
+            mapV.setCurrentRed(self.histList.table.GetRowData(event.GetRow()))
+            mapV.updateRed(False)
 
     def loadData(self):
         self.data = Data([self.bool_filename, self.num_filename])
@@ -684,12 +884,14 @@ class Siren():
         self.coord = np.loadtxt(self.coo_filename, unpack=True, usecols=(1,0))
         self.coord_extrema = [[min(self.coord[0]), max(self.coord[0])],[min(self.coord[1]), max(self.coord[1])]]
 
-    def expandRed(self, event):
-        ### POSITION DEPENDENT UPDATE
-        self.tabbed.ChangeSelection(6) #self.tabbed.HitTest(self.panelLog))
-        red = self.redraw_map()
-        prt = WorkerThread(self.toolFrame, self.data, self.setts, red, self.logger)
-
+    def OnExpand(self, event):
+        self.progress_bar.Show()
+        red = self.getSelectedMapView().redraw_map()
+        if red.length(0) + red.length(1) > 0:
+            self.worker = ExpanderThread(self.data, self.setts, red, self.logger)
+        else:
+            self.worker = MinerThread(self.data, self.setts, self.logger)
+            
     def populateReds(self):
         reds_fp = open(self.queries_filename)
         reds = []
@@ -706,5 +908,4 @@ class Siren():
 if __name__ == '__main__':
     app = wx.PySimpleApp()
     app.frame = Siren()
-    app.frame.showFrames()
     app.MainLoop()

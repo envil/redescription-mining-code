@@ -117,7 +117,7 @@ class Redescription:
 
     def pVal(self):
         return self.sParts.pVal()
-
+    
     def score(self):
         return self.acc()
 

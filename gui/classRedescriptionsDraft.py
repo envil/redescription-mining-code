@@ -99,7 +99,7 @@ class RedescriptionsDraft:
                 if compare == self.count(): ## if the end has been reached, simply append and go to next one
                     if place == -1:
                         self.draft.append(redescriptionList[to_insert])
-                        insertedIds[to_insert] = len(self.draft)
+                        insertedIds[to_insert] = len(self.draft)-1
                         
                     compare = -1
                     to_insert += 1
@@ -133,9 +133,9 @@ class RedescriptionsDraft:
             disp = "Updated redescription draft checking for identicals (%i -> %i)\n" %(lenDraftB, len(self.draft))
             for i in range(len(redescriptionList)):
                 if i in insertedIds.keys():
-                    disp += "Redescription (YES):\t"+redescriptionList[i].dispSimple()+"\n"
+                    disp += "Redescription (YES):\t"+redescriptionList[i].disp()+"\n"
                 else:
-                    disp += "Redescription (NO):\t"+redescriptionList[i].dispSimple()+"\n"
+                    disp += "Redescription (NO):\t"+redescriptionList[i].disp()+"\n"
             RedescriptionsDraft.logger.printL(2,disp)
         return insertedIds
 

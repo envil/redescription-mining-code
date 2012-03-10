@@ -470,6 +470,8 @@ class SParts:
     def pValSupp(self):
         if self.prs == [-1,-1] or self.N == -1:
             return -1
+        elif self.lenSupp(0)*self.lenSupp(1) == 0:
+            return 0
         else:
             return utilsStats.pValSupp(self.N, self.lenI(), self.prs[0]*self.prs[1]) 
 
@@ -477,6 +479,8 @@ class SParts:
     def pValMarg(self):
         if self.N == -1:
             return -1
+        elif self.lenSupp(0)*self.lenSupp(1) == 0:
+            return 0
         else:
             return utilsStats.pValSupp(self.N, self.lenI(), float(self.lenSupp(0)*self.lenSupp(1))/(self.N*self.N)) 
 
@@ -484,6 +488,8 @@ class SParts:
     def pValOver(self):
         if self.N == -1:
             return -1
+        elif self.lenSupp(0)*self.lenSupp(1) == 0:
+            return 0
         else:
             return utilsStats.pValOver(self.lenI(), self.N, self.lenSupp(0) ,self.lenSupp(1))
 

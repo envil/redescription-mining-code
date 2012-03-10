@@ -228,6 +228,8 @@ class NumColM(ColM):
         self.id = None
         self.side = None
 
+        ### The mode is indicated by a special entry in sVals with row id -1,
+        ### all rows which are not listed in either sVals or missing take that value
         if len(self.sVals)+len(self.missing) != self.N :
             tmp = set([r[1] for r in self.sVals])
             if -1 in tmp:
@@ -1130,32 +1132,38 @@ class Data:
             (scores, termsR, termsL) =  method_compute(self.cols[0][idL], idL, self.cols[1][idR], idR, constraints, 0)
         return (scores, termsL, termsR)
         
-    def initializeRedescriptions(self, nbRed, constraints, minScore=0):
-        Data.logger.printL(1, 'Starting the search for initial pairs...')
+    def initializeRedescriptions(self, nbRed, constraints, minScore=0, worker = None):
+        Data.logger.printL(1, 'Searching for initial pairs...', 'status')
         self.pairs = []
+        self.count = 0
 
 #        (scores, termsL, termsR) = self.computePair(7, 0, constraints)                        
-                                
-        ids= self.nonFull()
-        cL = 0
-        cR = 0  
-        for idL in ids[0]:
+
+        Data.logger.printL(-1, (0, 100), 'progress')
+        ids = self.nonFull()
+        total_pairs = (float(len(ids[0]))/self.divL)*(float(len(ids[1]))/self.divR)
+        count_pairs = 0
+        for cL, idL in enumerate(ids[0]):
             if cL % self.divL == 0:
                 Data.logger.printL(4, 'Searching pairs %i <=> *...' %(idL))
-                for idR in ids[1]:
+                for cR, idR in enumerate(ids[1]):
                     if cR % self.divR == 0:
-                        Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR))
-                        (scores, termsL, termsR) = self.computePair(idL, idR, constraints)                        
-                        
+                        if worker != None:
+                            if not worker.want_to_live:
+                                self.nbRed = 0
+                                Data.logger.printL(1, 'Interrupted...', 'status')
+                                Data.logger.printL(-1, (100, 100), 'progress')
+                                return
+                        Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR), 'status')
+                        count_pairs += 1
+                        Data.logger.printL(-1, (total_pairs, count_pairs), 'progress')
+                        (scores, termsL, termsR) = self.computePair(idL, idR, constraints)
                         for i in range(len(scores)):
                             if scores[i] >= constraints.minPairsScore():
                                 Data.logger.printL(9, 'Score:%f %s <=> %s' % (scores[i], termsL[i], termsR[i]))
                                 self.methodsP['add'](scores[i], idL, idR)
                                 self.pairs.append((termsL[i], termsR[i]))
-                    cR += 1
-            cL += 1
         self.methodsP['sort']()
-        self.count = 0
         Data.logger.printL(2, 'Found %i pairs, keeping at most %i' % (len(self.pairs), nbRed))
         if nbRed > 0:
             self.nbRed = min(nbRed, len(self.pairs))

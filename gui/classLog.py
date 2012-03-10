@@ -1,40 +1,39 @@
 import sys
 import pdb
-import wx
-
-EVT_LOGGER_ID = wx.NewId()
-class LoggerEvent(wx.PyEvent):
-    """Simple event to carry arbitrary logging data."""
-    def __init__(self, data):
-        """Init Result Event."""
-        wx.PyEvent.__init__(self)
-        self.SetEventType(EVT_LOGGER_ID)
-        self.data = data
         
 class Log:
-
-    def EVT_LOGGER(win, func):
-        """Define Logger Event."""
-        win.Connect(-1, -1, EVT_LOGGER_ID, func)
-    EVT_LOGGER = staticmethod(EVT_LOGGER)
-
-    def __init__(self,  verbosity=1, output = '-'):
-        self.out = None
-        self._notify_window = None
-        if type(output) == tuple:
-            self._notify_window = output[0]
-            self.out = -1
-        elif output == '-':
-            self.out = sys.stdout
-        elif output != None  and len(output) > 0:
-            self.out = open(output, 'w')
-        self.verbosity = verbosity
-
-    def printL(self, level, message):
-        if self.out != None and self.verbosity >= level:
-            if self._notify_window != None:
-                wx.PostEvent(self._notify_window, LoggerEvent("%s\n" % message))
+    def __init__(self,  verbosity=1, output = '-', method_comm = None):
+        self.out = []
+        self.addOut(verbosity, output, method_comm)
+        
+    def addOut(self,  verbosity=1, output = '-', method_comm = None):
+        tmp_dest = None
+        if type(output) == str: 
+            if output == '-':
+                tmp_dest = sys.stdout
             else:
-                self.out.write("%s\n" % message)
+                try:
+                    tmp_dest = open(output, 'w')
+                except IOError:
+                    tmp_dest = None
+        else:
+            tmp_dest = output
+        if tmp_dest != None:
+            self.out.append([verbosity, tmp_dest, method_comm])
+        self.verbosity = max([t[0] for t in self.out])
+        return len(self.out)-1
+
+    def printL(self, level, message, type_message=None):
+        for (verbosity, output, method_comm) in self.out:
+            if type(output) == file:
+                if level >= 0 and level <= verbosity:
+                    if type_message == None:
+                        str_type = ""
+                    else:
+                        str_type = "%s:\t" % type_message
+                    output.write("%s%s\n" % (str_type, message))
+            else:
+                if level <= verbosity:
+                    method_comm(output, message, type_message)
         
         
