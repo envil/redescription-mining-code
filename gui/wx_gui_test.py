@@ -86,9 +86,11 @@ class Message(wx.PyEvent):
            wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], message))
     sendMessage = staticmethod(sendMessage)
 
-class MyGridTable(wx.grid.PyGridTableBase):
-    def __init__(self):
+class CustomGridTable(wx.grid.PyGridTableBase):
+    def __init__(self, parent, tabId, frame):
         wx.grid.PyGridTableBase.__init__(self)
+        self.parent = parent
+        self.tabId = tabId
         self.fields = []
         self.data = []
         self.sortids = []
@@ -96,6 +98,25 @@ class MyGridTable(wx.grid.PyGridTableBase):
         self.sortP = (None, False)
         self.currentRows = len(self.sortids)
         self.currentColumns = len(self.fields)
+
+        #### GRID
+        self.grid = wx.grid.Grid(frame)
+        self.grid.SetTable(self)
+        self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.sortData)
+        self.grid.SetLabelBackgroundColour('#DBD4D4')
+        # self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
+        #                       wx.grid.GridCellAutoWrapStringRenderer(),
+        #                       wx.grid.GridCellAutoWrapStringEditor()) 
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectData)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
+
+        self.grid.EnableEditing(False)
+        self.grid.AutoSizeColumns(True)
+
+    # def showPopupMenu(self, event):
+    #     self.table.highlightRow(event.GetRow())
+    #     parent.currentList = self
 
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
@@ -180,7 +201,6 @@ class MyGridTable(wx.grid.PyGridTableBase):
         self.updateSort()
         self.ResetView()
         self.currentRows = len(self.sortids)
-        
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -207,13 +227,16 @@ class MyGridTable(wx.grid.PyGridTableBase):
         self.GetView().EndBatch()
         self.GetView().AutoSize()
 
-    def HighlightRow(self, row):
+    def setHighlightRow(self, row):
         #pass
         self.GetView().SelectRow(row)
         self.GetView().SetGridCursor(row,0)
         # for j in range(self.GetNumberCols()):
         #     self.GetView().SetCellBackgroundColour(row,j,'#DBD4FF')
         self.GetView().ForceRefresh()
+
+    def getHighlightRow(self):
+        return self.GetRowData(self.GetView().GetGridCursorRow())
         
     def sortData(self, event):
         colS = event.GetCol()
@@ -234,22 +257,36 @@ class MyGridTable(wx.grid.PyGridTableBase):
         if self.sortP[0] != None:
             self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][0])(self.details), reverse=self.sortP[1])
         if selected_id != None:
-            self.HighlightRow(self.sortids.index(selected_id))
+            self.setHighlightRow(self.sortids.index(selected_id))
 
+    def OnSelectData(self, event):
+        if event.GetRow() < len(self.data):
+            self.setHighlightRow(event.GetRow())
 
-class MySheet(wx.grid.Grid):
-    def __init__(self, parent):
-        wx.grid.Grid.__init__(self, parent)
-        self.table = MyGridTable()
-        self.SetTable(self.table)
-        self.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.table.sortData)
-        self.SetLabelBackgroundColour('#DBD4D4')
-        self.RegisterDataType(wx.grid.GRID_VALUE_STRING,
-                              wx.grid.GridCellAutoWrapStringRenderer(),
-                              wx.grid.GridCellAutoWrapStringEditor()) 
+    def OnRightClick(self, event):
+        if event.GetRow() < len(self.data):
+            self.setHighlightRow(event.GetRow())
+            self.parent.selectedList = self
+            self.parent.makePopupMenu(self.parent.toolFrame)
 
-        self.EnableEditing(False)
-        self.AutoSizeColumns(True)
+class RedGridTable(CustomGridTable):
+    def OnViewData(self, event):
+        if event.GetRow() < len(self.data):
+            self.setHighlightRow(event.GetRow())
+            mapV = self.parent.getSelectedMapView()
+            mapV.setCurrentRed(self.GetRowData(event.GetRow()))
+            mapV.updateRed(self.tabId != "Hist")
+
+class VarGridTable(CustomGridTable):
+
+    def OnViewData(self, event):
+        if event.GetRow() < len(self.data):
+            self.setHighlightRow(event.GetRow())
+            mapV = self.parent.getSelectedMapView()
+            mapV.MapredMapQR.ChangeValue(self.GetRowData(event.GetRow()).getItem().dispU(False, self.parent.details['names'][1]))
+            mapV.MapredMapQL.ChangeValue("")
+            mapV.MapredMapInfo.ChangeValue("")
+            mapV.updateRed(False)
 
 
 class MapView:
@@ -260,6 +297,7 @@ class MapView:
         self.coord_proj = None
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
         self.MapredMapQL = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
         self.MapredMapQR = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
         self.MapredMapInfo = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_READONLY)
@@ -299,6 +337,10 @@ class MapView:
         self.draw_map()
         self.mapFrame.Show()
 
+    def OnFocus(self, event):
+        self.mapFrame.Raise()
+        self.parent.selectedMap = self.vid
+        
     def OnQuit(self, event):
         self.parent.deleteView(self.vid)
         
@@ -313,7 +355,7 @@ class MapView:
     def updateRed(self, addHist=True):
         red = self.redraw_map()
         if red != None and addHist:
-            self.parent.histList.table.appendRow(red)
+            self.parent.lists["Hist"].appendRow(red)
         return red
         
     def parseRed(self):
@@ -345,6 +387,7 @@ class MapView:
 #        m.etopo()
         self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
         height = 3; width = 3
+        self.gca = plt.gca()
 #        self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
         self.MapcanvasMap.draw()
 
@@ -353,7 +396,7 @@ class MapView:
         """
         red = self.parseRed()
         if red == None:
-            return self.parent.histList.table.data[-1]
+            return self.parent.lists["Hist"].data[-1]
 
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
@@ -365,7 +408,7 @@ class MapView:
         i = 0
         while len(self.lines):
 #            plt.gca().patches.remove(self.lines.pop())
-            plt.gca().axes.lines.remove(self.lines.pop())
+            self.gca.axes.lines.remove(self.lines.pop())
 
         for part in red.partsNoMiss():
             if len(part) > 0:
@@ -439,7 +482,7 @@ class Siren():
 	
         self.text_setts.LoadFile(self.settings_filename)
 
-        self.mapViews = []
+        self.mapViews = {}
         self.selectedMap = -1
 
         ## Initialize variable lists data
@@ -448,23 +491,24 @@ class Siren():
             fieldsVar.extend(self.fieldsVar)
             for tyid in set([r.type_id for r in self.data.cols[side]]):
                 fieldsVar.extend(self.fieldsVarTypes[tyid])
-            self.varList[side].table.updateData(self.data.cols[side], fieldsVar, self.details)
+            self.lists[side].updateData(self.data.cols[side], fieldsVar, self.details)
 
         ## Initialize red lists data
-        self.histList.table.updateData([], self.fieldsRed, self.details)
-        self.redList.table.updateData(redsTmp, self.fieldsRed, self.details)
-        self.expList.table.updateData([], self.fieldsRed, self.details)
+        self.lists["Reds"].updateData(redsTmp, self.fieldsRed, self.details)
+        self.lists["Exp"].updateData([], self.fieldsRed, self.details)
+        self.lists["Hist"].updateData([], self.fieldsRed, self.details)
         self.getSelectedMapView().setCurrentRed(redsTmp[0])
         self.getSelectedMapView().updateRed()
 
     def deleteView(self, vid):
-        if vid >= 0 and vid < len(self.mapViews):
-            self.mapViews.pop(vid).mapFrame.Destroy()
+        if vid in self.mapViews.keys():
+            self.mapViews[vid].mapFrame.Destroy()
+            del self.mapViews[vid]
 
     def getSelectedMapView(self):
-        if self.selectedMap < 0 or self.selectedMap >= len(self.mapViews):
+        if self.selectedMap not in self.mapViews.keys():
             self.selectedMap = len(self.mapViews)
-            self.mapViews.append(MapView(self, self.selectedMap))    
+            self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)    
         return self.mapViews[self.selectedMap]
 
     def OnStop(self, event):
@@ -476,9 +520,9 @@ class Siren():
         """Show Result status."""
         if event.data != None:
             if event.data[0] == 1:
-                self.expList.table.extendData(event.data[1])
+                self.lists["Exp"].extendData(event.data[1])
             if event.data[0] == 0:
-                self.expList.table.resetData(event.data[1])
+                self.lists["Exp"].resetData(event.data[1])
 
     def OnProgress(self, event):
         """Update progress status."""
@@ -506,25 +550,9 @@ class Siren():
 	self.makeMenu(self.toolFrame)
         self.makeStatus(self.toolFrame)
 	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
+
+        ### FILES PANEL
         self.panel1 = wx.Panel(self.tabbed, -1)
-        self.varList = [MySheet(self.tabbed), MySheet(self.tabbed)]
-        self.redList = MySheet(self.tabbed)
-        self.expList = MySheet(self.tabbed)
-        self.histList = MySheet(self.tabbed)
-        self.histList.Hide()
-        self.panelLog = wx.Panel(self.tabbed, -1)
-        self.panelLog.Hide()
-        self.panelSetts = wx.Panel(self.tabbed, -1)
-        self.panelSetts.Hide()
-        self.tabbed.AddPage(self.panel1, "Files")
-        self.tabbed.AddPage(self.varList[0], "LHS Variables")
-        self.tabbed.AddPage(self.varList[1], "RHS Variables")
-        self.tabbed.AddPage(self.redList, "Redescriptions")
-        self.tabbed.AddPage(self.expList, "Expanding")
-        self.tabbed.AddPage(self.histList, "History")
-        self.tabbed.AddPage(self.panelLog, "Log")
-        self.tabbed.AddPage(self.panelSetts, "Settings")
-        
 	self.button_num_filename = wx.Button(self.panel1, size=(150,-1), label="Change Left File")
 	self.button_num_filename.Bind(wx.EVT_BUTTON, self.doOpenFileN)
 	self.textbox_num_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
@@ -540,18 +568,39 @@ class Siren():
         self.button_settings_filename = wx.Button(self.panel1, size=(150,-1), label="Change Settings File")
 	self.button_settings_filename.Bind(wx.EVT_BUTTON, self.doOpenFileS)
 	self.textbox_settings_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
+        self.tabbed.AddPage(self.panel1, "Files")
 
-        self.varList[0].Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectLHSVar)
-        self.varList[1].Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectRHSVar)
-        self.redList.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectListRed)
-        self.expList.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectExpRed)
-        self.histList.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectHistRed) #EVT_GRID_SELECT_CELL
+        ### LISTS PANELS
+        self.selectedList = None
+        self.lists = {}
+        lists_settings = [(0, "LHS Variables", "Var", False),
+                          (1, "RHS Variables", "Var", False),
+                          ("Reds", "Redescriptions", "Red", False),
+                          ("Exp", "Expanding", "Red", False),
+                          ("Hist", "History", "Red", True)]
+        for (tabId, titleTab, typeList, hide) in lists_settings:
+            if typeList == "Red":
+                self.lists[tabId] = RedGridTable(self, tabId, self.tabbed)
+            elif typeList == "Var":
+                self.lists[tabId] = VarGridTable(self, tabId, self.tabbed)
+            if hide:
+                self.lists[tabId].grid.Hide()
+            self.tabbed.AddPage(self.lists[tabId].grid, titleTab)
 
+        ### LOG PANEL
+        self.panelLog = wx.Panel(self.tabbed, -1)
+        self.panelLog.Hide()
 	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
         self.logger = Log(self.setts.param['verbosity'], self.toolFrame, Message.sendMessage)
+        self.tabbed.AddPage(self.panelLog, "Log")
 
+        ### SETTINGS PANEL
+        self.panelSetts = wx.Panel(self.tabbed, -1)
+        self.panelSetts.Hide()
         self.text_setts = wx.TextCtrl(self.panelSetts, size=(-1,-1), style=wx.TE_MULTILINE)
+        self.tabbed.AddPage(self.panelSetts, "Settings")
 
+        ### SIZER FOR FILES PANEL
 	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
         
         self.hboxL1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -593,11 +642,13 @@ class Siren():
         self.panel1.SetSizer(self.vbox1)
         self.vbox1.Fit(self.toolFrame)
 
+        ### SIZER FOR LOG
         self.vboxL = wx.BoxSizer(wx.VERTICAL)
         self.vboxL.Add(self.text_log, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.panelLog.SetSizer(self.vboxL)
 #        self.vboxL.Fit(self.toolFrame)
 
+        ### SIZER FOR SETTINGS
         self.vboxS = wx.BoxSizer(wx.VERTICAL)
         self.vboxS.Add(self.text_setts, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.panelSetts.SetSizer(self.vboxS)
@@ -616,6 +667,32 @@ class Siren():
         self.progress_bar.SetSize((rect.width-2, rect.height-2))
         self.progress_bar.Hide()
 
+    def makePopupMenu(self, frame):
+        """
+        Create and display a popup menu on right-click event
+        """
+        ID_NEWW = wx.NewId()
+        ID_EXPAND = wx.NewId()
+        
+        menuRed = wx.Menu()
+        m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
+        m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
+        m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
+        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
+        m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+
+        frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+        frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+        frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
+        frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
+        frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+        frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+ 
+        # Popup the menu.  If an item is selected then its handler
+        # will be called before PopupMenu returns.
+        frame.PopupMenu(menuRed)
+        menuRed.Destroy()
 
     def makeMenu(self, frame):
         ### menu bar
@@ -644,10 +721,13 @@ class Siren():
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions", "Export redescriptions.")
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
 
+        ID_NEWW = wx.NewId()
         ID_EXPAND = wx.NewId()
 
+        m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
         m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
         m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
+        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
         m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
         m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
 
@@ -659,7 +739,7 @@ class Siren():
         m_logw = menuWindow.AppendCheckItem(ID_LOGW, "&Log", "Show log.")
         m_settsw = menuWindow.AppendCheckItem(ID_SETTSW, "&Settings", "Show settings.")
 
-        m_help = menuHelp.Append(wx.ID_HELP, "&Help", "Access the instructions.")
+        m_help = menuHelp.Append(wx.ID_HELP, "C&ontent", "Access the instructions.")
         m_about = menuHelp.Append(wx.ID_ABOUT, "&About", "About...")
 
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
@@ -670,8 +750,10 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
         frame.Bind(wx.EVT_MENU, self.OnExport, m_export)
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
+        frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
         frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
         frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
+        frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
         frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
         frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
         frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
@@ -689,7 +771,6 @@ class Siren():
         menuBar.Append(menuHelp, "&Help")
         frame.SetMenuBar(menuBar)
 
-
     def OnOpen(self, event):
         pass
     def OnSave(self, event):
@@ -704,16 +785,29 @@ class Siren():
         pass
     def OnExport(self, event):
         pass
+    def OnNewW(self, event):
+        if self.selectedList != None:
+            self.selectedMap = -1
+            mapV = self.getSelectedMapView()
+            mapV.setCurrentRed(self.selectedList.getHighlightRow())
+            mapV.updateRed(self.selectedList.tabId != "Hist")
+    # def OnExpand(self, event):
+    #     pass
+    # def OnStop(self, event):
+    #     pass
+    def OnCut(self, event):
+        pass
     def OnCopy(self, event):
         pass
     def OnPaste(self, event):
         pass
 
+
     def OnHistW(self, event):
         if self.check_histw.IsChecked():
-            self.histList.Show()
+            self.lists["Hist"].grid.Show()
         else:
-            self.histList.Hide()
+            self.lists["Hist"].grid.Hide()
 
     def OnLogW(self, event):
         if self.check_logw.IsChecked():
@@ -840,45 +934,6 @@ class Siren():
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
         open_dlg.Destroy()
-
-    def OnSelectLHSVar(self, event):
-        if event.GetRow() < len(self.varList[0].table.data):
-            self.varList[0].table.HighlightRow(event.GetRow())
-            mapV = self.getSelectedMapView()
-            mapV.MapredMapQL.ChangeValue(self.varList[0].table.GetRowData(event.GetRow()).getItem().dispU(False, self.details['names'][0]))
-            mapV.MapredMapQR.ChangeValue("")
-            mapV.MapredMapInfo.ChangeValue("")
-            mapV.updateRed(False)
-
-    def OnSelectRHSVar(self, event):
-        if event.GetRow() < len(self.varList[1].table.data):
-            self.varList[1].table.HighlightRow(event.GetRow())
-            mapV = self.getSelectedMapView()
-            mapV.MapredMapQR.ChangeValue(self.varList[1].table.GetRowData(event.GetRow()).getItem().dispU(False, self.details['names'][1]))
-            mapV.MapredMapQL.ChangeValue("")
-            mapV.MapredMapInfo.ChangeValue("")
-            mapV.updateRed(False)
-
-    def OnSelectListRed(self, event):
-        if event.GetRow() < len(self.redList.table.data):
-            self.redList.table.HighlightRow(event.GetRow())
-            mapV = self.getSelectedMapView()
-            mapV.setCurrentRed(self.redList.table.GetRowData(event.GetRow()))
-            mapV.updateRed()
-        
-    def OnSelectExpRed(self, event):
-        if event.GetRow() < len(self.expList.table.data):
-            self.expList.table.HighlightRow(event.GetRow())
-            mapV = self.getSelectedMapView()
-            mapV.setCurrentRed(self.expList.table.GetRowData(event.GetRow()))
-            mapV.updateRed()
-
-    def OnSelectHistRed(self, event):
-        if event.GetRow() < len(self.histList.table.data):
-            self.histList.table.HighlightRow(event.GetRow())
-            mapV = self.getSelectedMapView()
-            mapV.setCurrentRed(self.histList.table.GetRowData(event.GetRow()))
-            mapV.updateRed(False)
 
     def loadData(self):
         self.data = Data([self.bool_filename, self.num_filename])
