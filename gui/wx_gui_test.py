@@ -126,12 +126,13 @@ class MyGridTable(wx.grid.PyGridTableBase):
 
     def GetTypeName(self, row, col):
         """Return the name of the data type of the value in the cell"""
-        if row < len(self.sortids) and col < len(self.fields):
-            x = self.sortids[row]
-            methode = eval(self.fields[col][0])
-            return type(methode(self.details))
-        else:
-            return None
+        return wx.grid.GRID_VALUE_STRING
+        # if row < len(self.sortids) and col < len(self.fields):
+        #     x = self.sortids[row]
+        #     methode = eval(self.fields[col][0])
+        #     return type(methode(self.details))
+        # else:
+        #     return None
 
     def GetValue(self, row, col):
         """Return the value of a cell"""
@@ -243,6 +244,10 @@ class MySheet(wx.grid.Grid):
         self.SetTable(self.table)
         self.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.table.sortData)
         self.SetLabelBackgroundColour('#DBD4D4')
+        self.RegisterDataType(wx.grid.GRID_VALUE_STRING,
+                              wx.grid.GridCellAutoWrapStringRenderer(),
+                              wx.grid.GridCellAutoWrapStringEditor()) 
+
         self.EnableEditing(False)
         self.AutoSizeColumns(True)
 
@@ -906,6 +911,6 @@ class Siren():
         return reds
 
 if __name__ == '__main__':
-    app = wx.PySimpleApp()
+    app = wx.App()
     app.frame = Siren()
     app.MainLoop()
