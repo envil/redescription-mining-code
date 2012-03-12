@@ -6,10 +6,98 @@ import os.path
 import plistlib
 import shutil
 import zipfile
+import cPickle
 
 from classRedescription import Redescription
 from classData import Data
 from classQuery import Query
+
+class Redescriptions(list):
+    """A list-like object to keep track of the changes"""
+    def __init__(self, data=[], isChanged = False):
+        list.__init__(self, data)
+        self._isChanged = isChanged
+
+    @property
+    def isChanged(self):
+        """Has the list changed"""
+        return self._isChanged
+
+    @isChanged.setter
+    def isChanged(self, value):
+        if isinstance(value, bool):
+            self._isChanged = value
+        else:
+            raise TypeError('The value of isChanged must be Boolean, is '+str(type(value)))
+
+    # Container-type methods
+    def __setitem__(self, key, value):
+        list.__setitem__(self, key, value)
+        self._isChanged = True
+
+    def __delitem__(self, key):
+        list.__delitem__(self, key)
+        self._isChanged = True
+        
+    def __setslice__(self, i, j, sequence):
+        list.__setslice__(self, i, j, sequence)
+        self._isChanged = True
+
+    def __delslice__(self, i, j):
+        list.__delslice__(self, i, j)
+        self._isChanged = True
+
+    # "Numeric" operations for concatenation and repetition
+    def __add__(self, other):
+        return Redescriptions(list.__add__(self, other), True)
+
+    def __radd__(self, other):
+        return Redescriptions(list.__radd__(self, other), True)
+    
+    def __iadd__(self, other):
+        list.__iadd__(self, other)
+        self._isChanged = True
+        return self
+
+    def __mul__(self, other):
+        return Redescriptions(list.__mul__(self, other), True)
+
+    def __rmull__(self, other):
+        return Redescriptions(list.__rmul__(self, other), True)
+
+    def __imul__(self, other):
+        list.__imul__(self, other)
+        self._isChanged = True
+        return self
+
+    # Public methods for list
+    def append(self, val):
+        list.append(self, val)
+        self._isChanged = True
+
+    def extend(self, L):
+        list.extend(self, L)
+        self._isChanged = True
+
+    def insert(self, i, x):
+        list.insert(self, i, x)
+        self._isChanged = True
+
+    def remove(self, x):
+        list.remove(self, x)
+        self._isChanged = True
+
+    def pop(self, i = None):
+        list.pop(self, i)
+        self._isChanged = True
+
+    def sort(self):
+        list.sort(self)
+        self._isChanged = True
+
+    def reverse(self):
+        list.reverse(self)
+        self._isChanged = True
 
 class DataWrapper():
     """Contains all the data
@@ -18,6 +106,8 @@ class DataWrapper():
     # CONSTANTS
     # Names of the files in the package
     COO_FILENAME = 'coordinates.txt'
+    DATA_PICKLEFILENAME = "data.pickle"
+    NAMES_PICKLEFILENAME = "names.pickle"
     DATA_FILENAMES_PREFIX = 'data-'
     DATA_FILENAMES_SUFFIX = '.txt'
     NAME_FILENAMES_SUFFIX = '.names'
@@ -194,18 +284,41 @@ class DataWrapper():
             raise
         return data
 
+    def _loadPickledDataFromFile(self, f):
+        """Requires a file pointer to a picle file"""
+        try:
+            data = cPickle.load(f)
+        except cPickle.UnpicklingError as e:
+            raise ValueError(e.args)
+        except:
+            raise
+        return data
+
     def loadNamesFromFiles(self, filenames):
         try:
             names = self.data.getNames(filenames)
         except:
             raise
         return names
+
+    def _loadPickeldNamesFromFile(self, f):
+        """Requires a file pointer to a picle file"""
+        try:
+            names = cPickle.load(f)
+        except cPickle.UnpicklingError as e:
+            raise ValueError(e.args)
+        except:
+            raise
+        return names
     
-    def loadQueriesFromFile(self, filename):
-        if self.data is None:
-            return None
+    def loadQueriesFromFile(self, filename, data=None):
+        if data is None:
+            if self.data is None:
+                return None
+            else:
+                data = self.data
         reds = []
-        if isinstance(filename, file):
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
             try:
@@ -218,7 +331,7 @@ class DataWrapper():
             if len(parts) > 1:
                 queryL = Query.parse(parts[0])
                 queryR = Query.parse(parts[1])
-                red = Redescription.fromQueriesPar([queryL, queryR], self.data)
+                red = Redescription.fromQueriesPair([queryL, queryR], data)
                 if red != None:
                     reds.append(red)
         return reds
@@ -247,20 +360,20 @@ class DataWrapper():
             package_name = plist['package_name']
 
             # Load data
-            if 'data_filenames' in plist:
+            if 'data_picklefilename' in plist:
                 try:
-                    fd = package.open(plist['data_filenames'], 'r')
-                    data = self.loadDataFromFiles(fd)
+                    fd = package.open(plist['data_picklefilename'], 'r')
+                    data = self._loadPickledDataFromFile(fd)
                 except:
                     raise
                 finally:
                     fd.close()
   
             # Load names
-            if 'name_filenames' in plist:
+            if 'name_picklefilename' in plist:
                 try:
-                    fd = package.open(plist['name_filenames'], 'r')
-                    names = self.loadNamesFromFiles(fd)
+                    fd = package.open(plist['name_picklefilename'], 'r')
+                    names = self._loadPickledNamesFromFiles(fd)
                 except:
                     raise
                 finally:
@@ -280,7 +393,7 @@ class DataWrapper():
             if 'queries_filename' in plist:
                 try:
                     fd = package.open(plist['queries_filename'], 'r')
-                    reds = self.loadQueriesFromFile(fd)
+                    reds = self.loadQueriesFromFile(fd, data)
                 except:
                     raise
                 finally:
@@ -290,7 +403,7 @@ class DataWrapper():
         # Closes with ZipFile
         # Move data class variables
         self.package_name = package_name
-        if 'data_filenames' in plist:
+        if 'data_picklefilename' in plist:
             self.data = data
             self.data_filenames = plist['data_filenames']
             self.number_of_datafiles = len(plist['data_filenames'])
@@ -298,7 +411,7 @@ class DataWrapper():
             self.data = None
             self.data_filenames = None
             self.number_of_datafiles = 0
-        if 'name_filenames' in plist:
+        if 'name_picklefilename' in plist:
             self.names = names
         else:
             self.names = None
@@ -320,7 +433,7 @@ class DataWrapper():
 
 
     ## The saving function
-    def savePackageToFile(self, filename, suffix='sirene'):
+    def savePackageToFile(self, filename, suffix='siren'):
         """Saves all information to a new file"""
 
         # Test that we can write to filename
@@ -361,7 +474,7 @@ class DataWrapper():
         # Write data files
         try:
             if self.data is not None:
-                self.saveDatafiles([os.path.join(tmp_dir, file) for file in plist['data_filenames']], toPackage = True)
+                self._pickleDatafiles(os.path.join(tmp_dir, plist['data_picklefilename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -370,7 +483,7 @@ class DataWrapper():
         # Write name files
         try:
             if self.names is not None:
-                self.saveNamefiles([os.path.join(tmp_dir, file) for file in plist['name_filenames']], toPackage = True)
+                self._pickleNamefiles(os.path.join(tmp_dir, plist['name_picklefilename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -397,19 +510,13 @@ class DataWrapper():
                                   arcname = os.path.join('.', plist['coo_filename']),
                         compress_type = zipfile.ZIP_DEFLATED)
                 if self.data is not None:
-                    tmp_data_filenames = plist['data_filenames']
-                else:
-                    tmp_data_filenames = []
-                if self.names is not None:
-                    tmp_name_filenames = plist['name_filenames']
-                for i in range(len(tmp_data_filenames)):
-                    package.write(os.path.join(tmp_dir, tmp_data_filenames[i]),
-                                  arcname = os.path.join('.', tmp_data_filenames[i]),
+                    package.write(os.path.join(tmp_dir, plist['data_picklefilename']),
+                                  arcname = os.path.join('.', plist['data_picklefilename']),
                         compress_type = zipfile.ZIP_DEFLATED)
-                    if self.names is not None:
-                        package.write(os.path.join(tmp_dir, tmp_name_filenames[i]),
-                                      arcname = os.path.join('.', tmp_name_filenames[i]),
-                            compress_type = zipfile.ZIP_DEFLATED)
+                if self.names is not None:
+                    package.write(os.path.join(tmp_dir, plist['name_picklefilename']),
+                                  arcname = os.path.join('.', plist['name_picklefilename']),
+                        compress_type = zipfile.ZIP_DEFLATED)
                 if self.reds is not None:
                     package.write(os.path.join(tmp_dir, plist['queries_filename']),
                                   arcname = os.path.join('.',
@@ -439,11 +546,31 @@ class DataWrapper():
     def saveDatafiles(self, filename, toPackage = False):
         pass
 
+    def _pickleDatafiles(self, filename, toPackage = True):
+        with open(filename, 'w') as f:
+            try:
+                cPickle.dump(self.data, f, 0)
+            except cPickle.PicklingError as e:
+                raise ValueError(e.args)
+            except:
+                raise
+
     def saveNamefiles(self, filename, toPackage = False):
         pass
 
+    def _pickeNamefiles(self, filename, toPackage = True):
+        with open(filename, 'w') as f:
+            try:
+                cPickle.dump(self.names, f, 0)
+            except cPickle.PicklingError as e:
+                raise ValueError(e.args)
+            except:
+                raise
+
     def saveQueries(self, filename, toPackage = False):
-        pass
+        with open(filename, 'w') as f:
+            for i in range(len(self.reds)):
+                self.reds[i].write(f, None)
     
 
     def __makePlistDict(self):
@@ -471,6 +598,7 @@ class DataWrapper():
                 d['data_filenames'] = [os.path.basename(df) for df in self.data_filenames]
             else:
                 d['data_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.DATA_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+            d['data_picklefilename'] = self.DATA_PICKLEFILENAME
                 
         if self.names is not None:
             if self.data_filenames is not None:
@@ -481,6 +609,7 @@ class DataWrapper():
                 d['name_filenames'] = name_filenames
             else:
                 d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+            d['name_picklefilename'] = self.NAMES_PICKLEFILENAME
                 
         if self.reds is not None:
             if self.queries_filename is not None:
