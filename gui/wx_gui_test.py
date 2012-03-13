@@ -465,12 +465,6 @@ class Siren():
         self.settings_filename='./rajapaja/rajapaja.conf'
 
         self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
-        print self.setts.dispParamsDef()
-        self.setts.getParams()
-        print self.setts.dispParamsDef()
-        pdb.set_trace()
-        print "#################"
-        print self.setts.dispParams()
         self.create_tool_panel()
         
         Data.logger = self.logger
