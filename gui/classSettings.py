@@ -154,8 +154,9 @@ class Settings:
         if not Settings.programs_specifics.has_key(program):
             raise Error('Error in getting the parameters, program unknown!')
 
+        self.program = program
         self.specifics=Settings.programs_specifics[program]
-        self.param = Settings.default_setts[program]
+        self.param = dict(Settings.default_setts[program].items())
         self.script_name=arguments[0]
         if len(arguments) > 2:
             self.substitutions_str = arguments[2]
@@ -178,15 +179,28 @@ class Settings:
             return len(self.param)
 
     def dispHelp(self):
-        return self.specifics['help_mess'] % {'script_name': self.script_name, 'default_parameters': self.dispParams()}
+        return self.specifics['help_mess'] % {'script_name': self.script_name, 'default_parameters': self.dispParamsDef()}
         
-    def dispParams(self):
-        ## Display all parameters for the program
+    def dispParamsDef(self):
+        ## Display all parameters for the program with help
         str_par = ''
         for section in self.specifics['sections_read']:
             str_par += ( '\n[%s]\n' % section)
             for (item,help_str) in Settings.setts_help[section].iteritems():
                 str_par += ( '%-35s##%s\n' % (item +'='+ str(self.param[item]), help_str))
+        return str_par
+
+    def dispParams(self):
+        ## Display non-default parameters for the program
+        str_par = ''
+        for section in self.specifics['sections_read']:
+            str_sec = ''
+            for item in Settings.setts_help[section].keys():
+                if self.param[item] != Settings.default_setts[self.program][item]:
+                    str_sec += "%s=%s\n" % (item, self.param[item])
+            if str_sec != '':
+                str_par += ( '\n[%s]\n' % section)
+                str_par += str_sec
         return str_par
 
     def subsPlaceHolders(self):

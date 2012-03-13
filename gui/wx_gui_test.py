@@ -465,8 +465,12 @@ class Siren():
         self.settings_filename='./rajapaja/rajapaja.conf'
 
         self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
+        print self.setts.dispParamsDef()
         self.setts.getParams()
-        
+        print self.setts.dispParamsDef()
+        pdb.set_trace()
+        print "#################"
+        print self.setts.dispParams()
         self.create_tool_panel()
         
         Data.logger = self.logger
@@ -833,9 +837,9 @@ class Siren():
         pass
     
     def OnQuit(self, event):
-        self.toolFrame.Destroy()
-        for mapV in self.mapViews:
+        for mapV in self.mapViews.values():
             mapV.mapFrame.Destroy()
+        self.toolFrame.Destroy()
         exit()
 
     def doOpenFileB(self, event):
