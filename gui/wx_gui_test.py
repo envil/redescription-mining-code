@@ -707,27 +707,27 @@ class Siren():
         ID_IMPORT_QUERIES = wx.NewId()
         ID_EXPORT = wx.NewId()
 
-        m_open = menuFile.Append(wx.ID_OPEN, "&Open", "Open a project.")
-        m_save = menuFile.Append(wx.ID_SAVE, "&Save", "Save the current project.")
-        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...", "Save the current project as...")
+        m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
+        m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
+        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
 
         m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         m_impCoord = submenuFile.Append(ID_IMPORT_COORD, "Import C&oordinates", "Import coordinates into ths project.")
         m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
         
         m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuFile)
-        m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions", "Export redescriptions.")
+        m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
 
         ID_NEWW = wx.NewId()
         ID_EXPAND = wx.NewId()
 
-        m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
-        m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
+        m_neww = menuRed.Append(ID_NEWW, "&View in new window\tAlt+V", "View redescription in new window.")
+        m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
         m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
-        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
-        m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
-        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t\tCtrl+X", "Cut current redescription.")
+        m_copy = menuRed.Append(wx.ID_COPY, "&Copy\tCtrl+C", "Copy current redescription.")
+        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste\tCtrl+V", "Paste current redescription.")
 
         ID_HISTW = wx.NewId()
         ID_LOGW = wx.NewId()
