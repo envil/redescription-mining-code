@@ -1,7 +1,7 @@
 import os
 import pprint
 import random
-import wx, wx.grid, wx.html
+import wx, wx.grid, wx.html, wx.richtext
 from threading import *
 # import warnings
 # warnings.simplefilter("ignore")
@@ -104,9 +104,9 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.grid.SetTable(self)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.sortData)
         self.grid.SetLabelBackgroundColour('#DBD4D4')
-        # self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
-        #                       wx.grid.GridCellAutoWrapStringRenderer(),
-        #                       wx.grid.GridCellAutoWrapStringEditor()) 
+        self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
+                              wx.grid.GridCellAutoWrapStringRenderer(),
+                              wx.grid.GridCellAutoWrapStringEditor()) 
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectData)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
@@ -269,24 +269,31 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.parent.selectedList = self
             self.parent.makePopupMenu(self.parent.toolFrame)
 
+    def OnViewData(self, event):
+        if event.GetRow() < len(self.data):
+            self.setHighlightRow(event.GetRow())
+            self.viewData()
+
 class RedGridTable(CustomGridTable):
-    def OnViewData(self, event):
-        if event.GetRow() < len(self.data):
-            self.setHighlightRow(event.GetRow())
-            mapV = self.parent.getSelectedMapView()
-            mapV.setCurrentRed(self.GetRowData(event.GetRow()))
-            mapV.updateRed(self.tabId != "Hist")
+    def viewData(self):
+        mapV = self.parent.getSelectedMapView()
+        mapV.setCurrentRed(self.getHighlightRow())
+        mapV.updateRed(self.tabId != "Hist")
 
-class VarGridTable(CustomGridTable):
-
-    def OnViewData(self, event):
-        if event.GetRow() < len(self.data):
-            self.setHighlightRow(event.GetRow())
-            mapV = self.parent.getSelectedMapView()
-            mapV.MapredMapQR.ChangeValue(self.GetRowData(event.GetRow()).getItem().dispU(False, self.parent.details['names'][1]))
+class VarGridTable(CustomGridTable):     
+    def viewData(self):
+        mapV = self.parent.getSelectedMapView()
+        datVar = self.getHighlightRow()
+        if datVar.side == 1:
             mapV.MapredMapQL.ChangeValue("")
-            mapV.MapredMapInfo.ChangeValue("")
-            mapV.updateRed(False)
+            mapV.MapredMapQR.ChangeValue(datVar.getItem().dispU(False, self.parent.details['names'][1]))
+        else:
+            mapV.MapredMapQL.ChangeValue(datVar.getItem().dispU(False, self.parent.details['names'][0]))
+            mapV.MapredMapQR.ChangeValue("")
+#            mapV.MapredMapInfo.ChangeValue("")
+        mapV.setMapredInfo(None)
+        mapV.updateRed(False)
+
 
 
 class MapView:
@@ -298,9 +305,26 @@ class MapView:
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
-        self.MapredMapQL = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
-        self.MapredMapQR = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_PROCESS_ENTER)
-        self.MapredMapInfo = wx.TextCtrl(self.mapFrame, size=(550,-1), style=wx.TE_READONLY)
+        self.MapredMapQL = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER) # , size=(550,-1)
+        self.MapredMapQL.SetForegroundColour('blue')
+        self.MapredMapQR = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER)
+        self.MapredMapQR.SetForegroundColour('red')
+        sizetxt = 100
+        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoIL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoUL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoIV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoUV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoRL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoBL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoRV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoBV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
+        self.MapredMapInfoIV.SetForegroundColour('purple')
+        self.MapredMapInfoBV.SetForegroundColour('blue')
+        self.MapredMapInfoRV.SetForegroundColour('red')
         self.button_expand = wx.Button(self.mapFrame, size=(80,-1), label="Expand")
         self.button_stop = wx.Button(self.mapFrame, size=(80,-1), label="Stop")
         self.button_expand.Bind(wx.EVT_BUTTON, self.parent.OnExpand)
@@ -314,24 +338,53 @@ class MapView:
         
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
  
-        self.Mapvbox0 = wx.BoxSizer(wx.VERTICAL)
-        flags = wx.ALIGN_CENTER #| wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.Mapvbox0.Add(self.MapredMapQL, 0, border=3, flag=flags)
-        self.Mapvbox0.Add(self.MapredMapQR, 0, border=3, flag=flags)
+        flags = wx.ALIGN_RIGHT | wx.EXPAND
+        self.MapValbox1 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox1.Add(self.MapredMapInfoJL, 0, border=3, flag=flags)
+        self.MapValbox1.Add(self.MapredMapInfoVL, 0, border=3, flag=flags)
+        
+        self.MapValbox3 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox3.Add(self.MapredMapInfoIL, 0, border=3, flag=flags)
+        self.MapValbox3.Add(self.MapredMapInfoUL, 0, border=3, flag=flags)
 
-        self.Maphbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        self.MapValbox5 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox5.Add(self.MapredMapInfoBL, 0, border=3, flag=flags)
+        self.MapValbox5.Add(self.MapredMapInfoRL, 0, border=3, flag=flags)
+
+        flags = wx.ALIGN_LEFT | wx.EXPAND
+        self.MapValbox2 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox2.Add(self.MapredMapInfoJV, 0, border=3, flag=flags)
+        self.MapValbox2.Add(self.MapredMapInfoVV, 0, border=3, flag=flags)
+
+        self.MapValbox4 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox4.Add(self.MapredMapInfoIV, 0, border=3, flag=flags)
+        self.MapValbox4.Add(self.MapredMapInfoUV, 0, border=3, flag=flags)
+
+        self.MapValbox6 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox6.Add(self.MapredMapInfoBV, 0, border=3, flag=flags)
+        self.MapValbox6.Add(self.MapredMapInfoRV, 0, border=3, flag=flags)
+
+        self.MaphboxVals = wx.BoxSizer(wx.HORIZONTAL)
+        self.MaphboxVals.Add(self.MapValbox1, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox2, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox3, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox4, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox5, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox6, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
+
+        self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
-        self.Maphbox1.Add(self.Mapvbox0, 0, border=3, flag=flags)
-#	self.Maphbox1.AddSpacer(10)
-        self.Maphbox1.Add(self.button_expand, 0, border=3, flag=flags)
-        self.Maphbox1.Add(self.button_stop, 0, border=3, flag=flags)
+        self.Maphbox4.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
+        self.Maphbox4.Add(self.button_expand, 0, border=3, flag=flags)
+        self.Maphbox4.Add(self.button_stop, 0, border=3, flag=flags)
 
         self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.Mapvbox3.Add(self.Maphbox1, 0, border=3, flag=flags)
         self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
-        self.Mapvbox3.Add(self.MapredMapInfo, 0, border=3, flag=flags)
-        self.Mapvbox3.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
+        self.Mapvbox3.Add(self.MapredMapQL, 0, border=3, flag=flags | wx.EXPAND)
+        self.Mapvbox3.Add(self.MapredMapQR, 0, border=3, flag=flags | wx.EXPAND)
+        self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
+        self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
         self.draw_map()
@@ -350,8 +403,9 @@ class MapView:
     def setCurrentRed(self, red):
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
-        self.MapredMapInfo.ChangeValue(red.dispLParts())
-
+#        self.MapredMapInfo.ChangeValue(red.dispLParts())
+        self.setMapredInfo(red)
+        
     def updateRed(self, addHist=True):
         red = self.redraw_map()
         if red != None and addHist:
@@ -400,7 +454,9 @@ class MapView:
 
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
-        self.MapredMapInfo.ChangeValue(red.dispLParts())
+#        self.MapredMapInfo.ChangeValue(red.dispLParts())
+        self.setMapredInfo(red)
+
         m = self.axe
         colors = ['b', 'r', 'purple']
         sizes = [3, 3, 4]
@@ -420,9 +476,37 @@ class MapView:
             else:
                 self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
             i += 1
-        plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
+        #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
         self.MapcanvasMap.draw()
         return red
+
+    def setMapredInfo(self, red):
+        if red == None:
+            self.MapredMapInfoJL.SetLabel("")
+            self.MapredMapInfoJV.SetLabel("")
+            self.MapredMapInfoVL.SetLabel("")
+            self.MapredMapInfoVV.SetLabel("")
+            self.MapredMapInfoIL.SetLabel("")
+            self.MapredMapInfoIV.SetLabel("")
+            self.MapredMapInfoUL.SetLabel("")
+            self.MapredMapInfoUV.SetLabel("")
+            self.MapredMapInfoBL.SetLabel("")
+            self.MapredMapInfoBV.SetLabel("")
+            self.MapredMapInfoRL.SetLabel("")
+            self.MapredMapInfoRV.SetLabel("")
+        else:
+            self.MapredMapInfoJL.SetLabel("J=")
+            self.MapredMapInfoJV.SetLabel("%1.5f" % red.acc())
+            self.MapredMapInfoVL.SetLabel("pVal=")
+            self.MapredMapInfoVV.SetLabel("%1.5f" % red.pVal())
+            self.MapredMapInfoIL.SetLabel(u"|LHS \u2229 RHS|=")
+            self.MapredMapInfoIV.SetLabel("%i" % (red.sParts.lpart(2,0)))
+            self.MapredMapInfoUL.SetLabel(u"|LHS \u222A RHS|=")
+            self.MapredMapInfoUV.SetLabel("%i" % (red.sParts.lpart(0,0)+red.sParts.lpart(1,0)+red.sParts.lpart(2,0)))
+            self.MapredMapInfoBL.SetLabel(u"|LHS \\ RHS|=")
+            self.MapredMapInfoBV.SetLabel("%i" % (red.sParts.lpart(0,0)))
+            self.MapredMapInfoRL.SetLabel(u"|RHS \\ LHS|=")
+            self.MapredMapInfoRV.SetLabel("%i" % (red.sParts.lpart(1,0)))
 
         
 class Siren():
@@ -464,7 +548,14 @@ class Siren():
         self.queries_filename='./rajapaja/rajapaja.queries'
         self.settings_filename='./rajapaja/rajapaja.conf'
 
+        # self.num_filename='./us/socio_eco_cont.densenum'
+        # self.bool_filename='./us/politics_funds_cont.densenum'
+        # self.coo_filename='./us/coordinates_cont.names'
+        # self.queries_filename='./us/us.queries'
+        # self.settings_filename='./us/us.conf'
+
         self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
+        self.setts.getParams()
         self.create_tool_panel()
         
         Data.logger = self.logger
@@ -495,8 +586,8 @@ class Siren():
         self.lists["Reds"].updateData(redsTmp, self.fieldsRed, self.details)
         self.lists["Exp"].updateData([], self.fieldsRed, self.details)
         self.lists["Hist"].updateData([], self.fieldsRed, self.details)
-        self.getSelectedMapView().setCurrentRed(redsTmp[0])
-        self.getSelectedMapView().updateRed()
+#        self.getSelectedMapView().setCurrentRed(redsTmp[0])
+#        self.getSelectedMapView().updateRed()
 
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -786,9 +877,8 @@ class Siren():
     def OnNewW(self, event):
         if self.selectedList != None:
             self.selectedMap = -1
-            mapV = self.getSelectedMapView()
-            mapV.setCurrentRed(self.selectedList.getHighlightRow())
-            mapV.updateRed(self.selectedList.tabId != "Hist")
+            self.selectedList.viewData()
+
     # def OnExpand(self, event):
     #     pass
     # def OnStop(self, event):

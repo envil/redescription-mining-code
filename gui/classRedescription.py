@@ -265,10 +265,10 @@ class Redescription:
             return self.queries[1].dispU(details['names'][1])
         return ""
     def getAcc(self, details):
-        return self.acc()
+        return round(self.acc(), 3)
 
     def getPVal(self, details):
-        return self.pVal()
+        return round(self.pVal(), 3)
 
 
     def dispTexHeader():
