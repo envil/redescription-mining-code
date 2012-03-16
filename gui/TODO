@@ -1,0 +1,21 @@
+* making the map look better (what does that include??)
+
+* processing and trying the other data (US census)
+
+* filtering functionality on the redescriptions, given one good red hide all redundant
+
+* selecting/deselecting variables to use in extensions
+
+* hiding/deleting redescriptions
+
+* getting info for map point
+
+* use case scenario
+
+* contextual menu and File menu functionalities
+	move red to > map view or list
+	Cut/copy/paste?
+	Expand///Stop (several expands)
+	activate/deactivate actions on context
+
+* hunting the bugs
