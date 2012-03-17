@@ -251,7 +251,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
     def updateSort(self):
         selected_rows = self.GetView().GetSelectedRows()
         selected_id = None
-        if len(selected_rows) > 0:
+        if len(selected_rows) > 0 and selected_rows[0] < len(self.sortids) :
             selected_id = self.sortids[selected_rows[0]]
 
         if self.sortP[0] != None:
@@ -421,30 +421,36 @@ class MapView:
     def draw_map(self):
         """ Draws the map
         """
-        
+
         self.MapfigMap.clear()
-        m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
-                llcrnrlat=self.parent.coord_extrema[1][0], \
-                urcrnrlon=self.parent.coord_extrema[0][1], \
-                urcrnrlat=self.parent.coord_extrema[1][1], \
-                resolution = 'c', \
-                projection = 'mill', \
-                lon_0 = self.parent.coord_extrema[0][0] + (self.parent.coord_extrema[0][1]-self.parent.coord_extrema[0][0])/2.0, \
-                lat_0 = self.parent.coord_extrema[1][0] + (self.parent.coord_extrema[1][1]-self.parent.coord_extrema[1][0])/2.04)
-        self.axe = m
-        m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
+        if self.parent.coord_extrema != None and self.parent.coord != None:            
+            self.Mapcurr_mapi = 0
+            self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+            
+            self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
 
-        m.drawcoastlines(color='gray')
-        m.drawcountries(color='gray')
-        m.drawmapboundary(fill_color='#EEFFFF') 
-        m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
-#        m.etopo()
-        self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
-        height = 3; width = 3
-        self.gca = plt.gca()
-#        self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
-        self.MapcanvasMap.draw()
+            m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
+                    llcrnrlat=self.parent.coord_extrema[1][0], \
+                    urcrnrlon=self.parent.coord_extrema[0][1], \
+                    urcrnrlat=self.parent.coord_extrema[1][1], \
+                    resolution = 'c', \
+                    projection = 'mill', \
+                    lon_0 = self.parent.coord_extrema[0][0] + (self.parent.coord_extrema[0][1]-self.parent.coord_extrema[0][0])/2.0, \
+                    lat_0 = self.parent.coord_extrema[1][0] + (self.parent.coord_extrema[1][1]-self.parent.coord_extrema[1][0])/2.04)
+            self.axe = m
+            m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
 
+            m.drawcoastlines(color='gray')
+            m.drawcountries(color='gray')
+            m.drawmapboundary(fill_color='#EEFFFF') 
+            m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
+            #m.etopo()
+            self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
+            height = 3; width = 3
+            self.gca = plt.gca()
+            #self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
+            self.MapcanvasMap.draw()
+            
     def redraw_map(self, event=None):
         """ Redraws the map
         """
@@ -454,31 +460,39 @@ class MapView:
 
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
-#        self.MapredMapInfo.ChangeValue(red.dispLParts())
+        #self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
 
-        m = self.axe
-        colors = ['b', 'r', 'purple']
-        sizes = [3, 3, 4]
-        markers = ['s', 's', 's']
-        i = 0
-        while len(self.lines):
-#            plt.gca().patches.remove(self.lines.pop())
-            self.gca.axes.lines.remove(self.lines.pop())
-
-        for part in red.partsNoMiss():
-            if len(part) > 0:
-                # for id in part:
-                #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
-                    
-                ids = np.array(list(part))
-                self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5))
-            else:
-                self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
-            i += 1
-        #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
-        self.MapcanvasMap.draw()
+        if self.parent.coord_extrema != None and self.parent.coord != None:
+            m = self.axe
+            colors = ['b', 'r', 'purple']
+            sizes = [3, 3, 4]
+            markers = ['s', 's', 's']
+            i = 0
+            while len(self.lines):
+                #plt.gca().patches.remove(self.lines.pop())
+                self.gca.axes.lines.remove(self.lines.pop())
+            self.points_ids = []
+            for part in red.partsNoMiss():
+                if len(part) > 0:
+                    # for id in part:
+                    #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
+                    lip = list(part)
+                    self.points_ids.extend(lip)
+                    ids = np.array(lip)
+                    self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5, picker=3))
+                else:
+                    self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
+                i += 1
+            #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
+            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+            self.MapcanvasMap.draw()
         return red
+
+    def OnPick(self, event):
+        inds = event.ind
+        for ind in inds:
+            print self.points_ids[ind], self.coord_proj[0][self.points_ids[ind]], self.coord_proj[1][self.points_ids[ind]]
 
     def setMapredInfo(self, red):
         if red == None:
@@ -538,67 +552,71 @@ class Siren():
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnProgress)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnStatus)
 
+        self.num_filename=''
+        self.bool_filename=''
+        self.coo_filename=''
+        self.queries_filename=''
+        self.settings_filename=''
+        
+        self.mapViews = {}
+        self.selectedMap = -1
+ 
         self.coord = None
+        self.coord_extrema = None
         self.data = None
+        self.details = None
         self.worker = None
         
-        # self.num_filename='./rajapaja/worldclim_tp.densenum'
-        # self.bool_filename='./rajapaja/mammals.datbool'
-        # self.coo_filename='./rajapaja/coordinates.names'
-        # self.queries_filename='./rajapaja/rajapaja.queries'
-        # self.settings_filename='./rajapaja/rajapaja.conf'
-
-        self.num_filename='./us/us_socio_eco_cont.densenum'
-        self.bool_filename='./us/us_politics_funds_cont.densenum'
-        self.coo_filename='./us/us_coordinates_cont.names'
-        self.queries_filename='./us/us.queries'
-        self.settings_filename='./us/us.conf'
-
-        self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
-        self.setts.getParams()
+        self.reloadSettings()
         self.create_tool_panel()
-        
-        Data.logger = self.logger
-        self.loadData()
-        self.loadCoordinates()
-        redsTmp = self.populateReds()
 
+        self.num_filename='./rajapaja/worldclim_tp.densenum'
+        self.bool_filename='./rajapaja/mammals.datbool'
+        self.coo_filename='./rajapaja/coordinates.names'
+        self.queries_filename='./rajapaja/rajapaja.queries'
+        self.settings_filename='./rajapaja/rajapaja.conf'
+
+        # self.num_filename='./us/us_socio_eco_cont.densenum'
+        # self.bool_filename='./us/us_politics_funds_cont.densenum'
+        # self.coo_filename='./us/us_coordinates_cont.names'
+        # self.queries_filename='./us/us.queries'
+        # self.settings_filename='./us/us.conf'
+
+        self.reloadData()
+        self.reloadCoordinates()
+        self.reloadReds()
+        self.text_setts.LoadFile(self.settings_filename)
 	self.textbox_num_filename.SetValue(str(self.num_filename))
 	self.textbox_bool_filename.SetValue(str(self.bool_filename))
         self.textbox_coo_filename.SetValue(str(self.coo_filename))
         self.textbox_queries_filename.SetValue(str(self.queries_filename))
         self.textbox_settings_filename.SetValue(str(self.settings_filename))
 	
-        self.text_setts.LoadFile(self.settings_filename)
-
-        self.mapViews = {}
-        self.selectedMap = -1
-
-        ## Initialize variable lists data
-        for side in [0,1]:
-            fieldsVar = []
-            fieldsVar.extend(self.fieldsVar)
-            for tyid in set([r.type_id for r in self.data.cols[side]]):
-                fieldsVar.extend(self.fieldsVarTypes[tyid])
-            self.lists[side].updateData(self.data.cols[side], fieldsVar, self.details)
-
-        ## Initialize red lists data
-        self.lists["Reds"].updateData(redsTmp, self.fieldsRed, self.details)
-        self.lists["Exp"].updateData([], self.fieldsRed, self.details)
-        self.lists["Hist"].updateData([], self.fieldsRed, self.details)
-#        self.getSelectedMapView().setCurrentRed(redsTmp[0])
-#        self.getSelectedMapView().updateRed()
-
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
             self.mapViews[vid].mapFrame.Destroy()
             del self.mapViews[vid]
 
+    def deleteAllViews(self):
+        self.selectedMap = -1
+        for mapV in self.mapViews.values():
+            mapV.mapFrame.Destroy()
+        self.mapViews = {}
+        
     def getSelectedMapView(self):
         if self.selectedMap not in self.mapViews.keys():
             self.selectedMap = len(self.mapViews)
             self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)    
         return self.mapViews[self.selectedMap]
+
+
+    def OnExpand(self, event):
+        self.progress_bar.Show()
+        red = self.getSelectedMapView().redraw_map()
+        if red.length(0) + red.length(1) > 0:
+            self.worker = ExpanderThread(self.data, self.setts, red, self.logger)
+        else:
+            self.worker = MinerThread(self.data, self.setts, self.logger)
 
     def OnStop(self, event):
         """Show Result status."""
@@ -616,6 +634,9 @@ class Siren():
     def OnProgress(self, event):
         """Update progress status."""
         brange, bvalue = event.data
+        if brange == -1:
+            self.progress_bar.SetValue(0)
+            self.progress_bar.Hide()
         brange = max(brange, bvalue)
         if self.progress_bar.GetRange() != brange:
             self.progress_bar.SetRange(brange)
@@ -681,7 +702,6 @@ class Siren():
         self.panelLog = wx.Panel(self.tabbed, -1)
         self.panelLog.Hide()
 	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
-        self.logger = Log(self.setts.param['verbosity'], self.toolFrame, Message.sendMessage)
         self.tabbed.AddPage(self.panelLog, "Log")
 
         ### SETTINGS PANEL
@@ -922,16 +942,20 @@ class Siren():
         pass
     
     def OnQuit(self, event):
-        for mapV in self.mapViews.values():
-            mapV.mapFrame.Destroy()
+        self.deleteAllViews()
         self.toolFrame.Destroy()
         exit()
 
     def doOpenFileB(self, event):
-        file_name = os.path.basename(self.bool_filename)
-        wcd = 'All files (*)|*|Editor files (*.ef)|*.ef|'
-        dir = os.getcwd()
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir, defaultFile='', 
+        wcd = 'All files|*|Numerical Data|*.densenum/*.datnum|Boolean Data|*.sparsebool/*.datbool'
+        if self.bool_filename != '':
+            file_name = os.path.basename(self.bool_filename)
+            dir_name = ''
+        else:
+            file_name = ''
+            dir_name = os.getcwd()
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
@@ -940,17 +964,22 @@ class Siren():
                 file = open(path, 'r')
 		self.bool_filename = path
 		self.textbox_bool_filename.SetValue(str(self.bool_filename))
-
+                self.reloadData()
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
         open_dlg.Destroy()
 
     def doOpenFileN(self, event):
-        file_name = os.path.basename(self.num_filename)
-        wcd = 'All files (*)|*|Editor files (*.ef)|*.ef|'
-        dir = os.getcwd()
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir, defaultFile='', 
+        wcd = 'All files|*|Numerical Data|*.densenum/*.datnum|Boolean Data|*.sparsebool/*.datbool'
+        if self.num_filename != '':
+            file_name = os.path.basename(self.num_filename)
+            dir_name = ''
+        else:
+            file_name = ''
+            dir_name = os.getcwd()
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
@@ -959,7 +988,7 @@ class Siren():
                 file = open(path, 'r')
 		self.num_filename = path
 		self.textbox_num_filename.SetValue(str(self.num_filename))
-
+                self.reloadData()
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
@@ -967,10 +996,15 @@ class Siren():
 
 
     def doOpenFileC(self, event):
-        file_name = os.path.basename(self.coo_filename)
-        wcd = 'All files (*)|*|Editor files (*.ef)|*.ef|'
-        dir = os.getcwd()
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir, defaultFile='', 
+        wcd = 'All files|*'
+        if self.coo_filename != '':
+            file_name = os.path.basename(self.coo_filename)
+            dir_name = ''
+        else:
+            file_name = ''
+            dir_name = os.getcwd()
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
@@ -979,18 +1013,26 @@ class Siren():
                 file = open(path, 'r')
 		self.coo_filename = path
 		self.textbox_coo_filename.SetValue(str(self.coo_filename))
-
+                self.reloadCoordinates()
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
+                self.coo_filename = ''
+		self.textbox_coo_filename.SetValue('')
+
         open_dlg.Destroy()
 
 
     def doOpenFileQ(self, event):
-        file_name = os.path.basename(self.queries_filename)
-        wcd = 'All files (*)|*|Editor files (*.ef)|*.ef|'
-        dir = os.getcwd()
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir, defaultFile='', 
+        wcd = 'All files|*|Queries files|*.queries'
+        if self.queries_filename != '':
+            file_name = os.path.basename(self.queries_filename)
+            dir_name = ''
+        else:
+            file_name = ''
+            dir_name = os.getcwd()
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
@@ -1003,56 +1045,98 @@ class Siren():
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
+		self.queries_filename = ''
+		self.textbox_queries_filename.SetValue('')
+
         open_dlg.Destroy()
 
     def doOpenFileS(self, event):
-        file_name = os.path.basename(self.settings_filename)
-        wcd = 'All files (*)|*|Editor files (*.ef)|*.ef|'
-        dir = os.getcwd()
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir, defaultFile='', 
+        wcd = 'All files|*|Settings files|*.conf'
+        if self.settings_filename != '':
+            file_name = os.path.basename(self.settings_filename)
+            dir_name = ''
+        else:
+            file_name = ''
+            dir_name = os.getcwd()
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
-
             try:
                 file = open(path, 'r')
 		self.settings_filename = path
 		self.textbox_settings_filename.SetValue(str(self.settings_filename))
                 self.text_setts.LoadFile(path)
+
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
+                self.settings_filename = ''
+                self.textbox_settings_filename.SetValue('')
+                self.text_setts.Clear(path)
         open_dlg.Destroy()
 
-    def loadData(self):
-        self.data = Data([self.bool_filename, self.num_filename])
-        self.details = {'names': self.data.getNames([self.bool_filename, self.num_filename])}
-        
-    def loadCoordinates(self):
+    def reloadData(self):
+        if self.bool_filename != '' and self.num_filename != '':
+            try:
+                self.data = Data([self.bool_filename, self.num_filename])
+                self.details = {'names': self.data.getNames([self.bool_filename, self.num_filename])}
+                self.reloadVars()
+            except:
+                self.data = None
+                self.details = None
+                self.reloadVars()
+                
+    def reloadCoordinates(self):
         ### WARNING COORDINATES ARE INVERTED!!!
-        self.coord = np.loadtxt(self.coo_filename, unpack=True, usecols=(1,0))
-        self.coord_extrema = [[min(self.coord[0]), max(self.coord[0])],[min(self.coord[1]), max(self.coord[1])]]
+        if self.coo_filename != '':
+            self.deleteAllViews()
+            self.coord = np.loadtxt(self.coo_filename, unpack=True, usecols=(1,0))
+            self.coord_extrema = [[min(self.coord[0]), max(self.coord[0])],[min(self.coord[1]), max(self.coord[1])]]
 
-    def OnExpand(self, event):
-        self.progress_bar.Show()
-        red = self.getSelectedMapView().redraw_map()
-        if red.length(0) + red.length(1) > 0:
-            self.worker = ExpanderThread(self.data, self.setts, red, self.logger)
-        else:
-            self.worker = MinerThread(self.data, self.setts, self.logger)
+
+    def reloadSettings(self):
+        self.setts = Settings('mine', ['gui', self.settings_filename])
+        self.setts.getParams()
+        self.logger = Log(self.setts.param['verbosity'], self.toolFrame, Message.sendMessage)
+        Data.logger = self.logger
+
+    def reloadVars(self):
+        ## Initialize variable lists data
+        for side in [0,1]:
+            if self.data != None and self.details != None:
+                fieldsVar = []
+                fieldsVar.extend(self.fieldsVar)
+                for tyid in set([r.type_id for r in self.data.cols[side]]):
+                    fieldsVar.extend(self.fieldsVarTypes[tyid])
+                self.lists[side].updateData(self.data.cols[side], fieldsVar, self.details)
+            else:
+                fieldsVar = []
+                fieldsVar.extend(self.fieldsVar)
+                self.lists[side].updateData([], fieldsVar, self.details)
+            
+    def reloadReds(self):
+        ## Initialize red lists data
+        self.lists["Reds"].updateData(self.populateReds(), self.fieldsRed, self.details)
+        self.lists["Exp"].updateData([], self.fieldsRed, self.details)
+        self.lists["Hist"].updateData([], self.fieldsRed, self.details)
+#        self.getSelectedMapView().setCurrentRed(redsTmp[0])
+#        self.getSelectedMapView().updateRed()
             
     def populateReds(self):
-        reds_fp = open(self.queries_filename)
         reds = []
-        for line in reds_fp:
-            parts = line.strip().split('\t')
-            if len(parts) > 1:
-                queryL = Query.parse(parts[0])
-                queryR = Query.parse(parts[1])
-                red = Redescription.fromQueriesPair([queryL, queryR], self.data) 
-                if red != None:
-                    reds.append(red)
-        return reds
+        if self.queries_filename != '' and self.data != None:
+            reds_fp = open(self.queries_filename)
+            for line in reds_fp:
+                parts = line.strip().split('\t')
+                if len(parts) > 1:
+                    queryL = Query.parse(parts[0])
+                    queryR = Query.parse(parts[1])
+                    red = Redescription.fromQueriesPair([queryL, queryR], self.data) 
+                    if red != None:
+                        reds.append(red)
+            return reds
 
 if __name__ == '__main__':
     app = wx.App()

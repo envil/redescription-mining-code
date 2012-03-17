@@ -18,4 +18,6 @@
 	Expand///Stop (several expands)
 	activate/deactivate actions on context
 
+* allow for more detailed explanation about the variables, e.g. legend, url, pic??
+
 * hunting the bugs

@@ -85,10 +85,10 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, sou
                 tmpE.append(keepDraft.redescriptions()[k])
             logger.printL(-1, (1, tmpE), 'result')
         nextGen = currentDraft.nextGeneration(constraints.checkFinalConstraints)
-        logger.printL(-1, (100, 100), 'progress')
     currentDraft.cut(draftOut)
     logger.printL(-1, (100, 100), 'progress')
     logger.printL(1, "Done expanding...", 'status')
+    logger.printL(-1, (-1, 0), 'progress')
     if keepDraft != None:
         return keepDraft.redescriptions()
     return currentDraft.redescriptions()

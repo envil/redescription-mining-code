@@ -1333,19 +1333,19 @@ def readMatrix(filename, side = None):
         filename = f.name
     else:
         f = open(filename, 'r')
-    try:
-        filename_parts = filename.split('.')
-        type_all = filename_parts.pop()
-        nbRows = None
-        nbCols = None
-	
-     	if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
-	    row = f.next()
-            a = row.split()
-            nbRows = int(a[0])
-            nbCols = int(a[1])
 
-	if len(type_all) >= 3 and type_all[0:3] == 'dat':
+    filename_parts = filename.split('.')
+    type_all = filename_parts.pop()
+    nbRows = None
+    nbCols = None
+
+    if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
+        row = f.next()
+        a = row.split()
+        nbRows = int(a[0])
+        nbCols = int(a[1])
+    try:
+        if len(type_all) >= 3 and type_all[0:3] == 'dat':
             method_parse =  eval('parseCell%s' % (type_all.capitalize()))
             method_prepare = eval('prepare%s' % (type_all.capitalize()))
             method_finish = eval('finish%s' % (type_all.capitalize()))
@@ -1353,26 +1353,28 @@ def readMatrix(filename, side = None):
             method_parse =  eval('parseVar%s' % (type_all.capitalize()))
             method_prepare = eval('prepareNonDat')
             method_finish = eval('finishNonDat')
+    except NameError:
+        return
+    try:
+        tmpCols = method_prepare(nbRows, nbCols)
+
+        Data.logger.printL(2,"Reading input data %s (%s)"% (filename, type_all))
+        for row in f:
+            if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows == None:
+                nbRows = len(row.split())
+            method_parse(tmpCols, row.split(), nbRows, nbCols)
+
+        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols == None:
+            nbCols = len(tmpCols)
+
+        Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all))
+        (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
+        for (cid, col) in enumerate(cols):
+            col.id = cid
+            col.side = side
     except (AttributeError, ValueError, StopIteration):
         raise Exception('Size and type header is not right')
 
-    tmpCols = method_prepare(nbRows, nbCols)
-
-    Data.logger.printL(2,"Reading input data %s (%s)"% (filename, type_all))
-    for row in f:
-        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows == None:
-            nbRows = len(row.split())
-        method_parse(tmpCols, row.split(), nbRows, nbCols)
-
-    if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols == None:
-        nbCols = len(tmpCols)
-
-
-    Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all))
-    (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
-    for (cid, col) in enumerate(cols):
-        col.id = cid
-        col.side = side
     return (cols, type_ids, nbRows, nbCols)
     
 def prepareNonDat(nbRows, nbCols):
