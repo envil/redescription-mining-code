@@ -19,5 +19,6 @@
 	activate/deactivate actions on context
 
 * allow for more detailed explanation about the variables, e.g. legend, url, pic??
+   and about the data points (e.g. county names in us data, countries in rajapaja)
 
 * hunting the bugs

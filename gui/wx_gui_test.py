@@ -332,7 +332,7 @@ class MapView:
         self.MapredMapQL.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
         self.MapredMapQR.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
 
-        self.MapfigMap = plt.figure(figsize=(6,7))
+        self.MapfigMap = plt.figure()
         self.Mapcurr_mapi = 0
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
         
@@ -424,10 +424,6 @@ class MapView:
 
         self.MapfigMap.clear()
         if self.parent.coord_extrema != None and self.parent.coord != None:            
-            self.Mapcurr_mapi = 0
-            self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-            
-            self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
 
             m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
                     llcrnrlat=self.parent.coord_extrema[1][0], \
@@ -570,27 +566,30 @@ class Siren():
         self.reloadSettings()
         self.create_tool_panel()
 
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
+        # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
+        # self.num_filename='./rajapaja/worldclim_tp.densenum'
+        # self.bool_filename='./rajapaja/mammals.datbool'
+        # self.coo_filename='./rajapaja/coordinates.names'
+        # self.queries_filename='./rajapaja/rajapaja.queries'
+        # self.settings_filename='./rajapaja/rajapaja.conf'
 
-        # self.num_filename='./us/us_socio_eco_cont.densenum'
-        # self.bool_filename='./us/us_politics_funds_cont.densenum'
+        # #### COMMENT OUT TO LOAD US ON STARTUP
+        # self.num_filename='./us/us_politics_funds_cont.densenum'
+        # self.bool_filename='./us/us_socio_eco_cont.densenum'
         # self.coo_filename='./us/us_coordinates_cont.names'
         # self.queries_filename='./us/us.queries'
         # self.settings_filename='./us/us.conf'
 
-        self.reloadData()
-        self.reloadCoordinates()
-        self.reloadReds()
-        self.text_setts.LoadFile(self.settings_filename)
-	self.textbox_num_filename.SetValue(str(self.num_filename))
-	self.textbox_bool_filename.SetValue(str(self.bool_filename))
-        self.textbox_coo_filename.SetValue(str(self.coo_filename))
-        self.textbox_queries_filename.SetValue(str(self.queries_filename))
-        self.textbox_settings_filename.SetValue(str(self.settings_filename))
+        # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
+        # self.reloadData()
+        # self.reloadCoordinates()
+        # self.reloadReds()
+        # self.text_setts.LoadFile(self.settings_filename)
+	# self.textbox_num_filename.SetValue(str(self.num_filename))
+	# self.textbox_bool_filename.SetValue(str(self.bool_filename))
+        # self.textbox_coo_filename.SetValue(str(self.coo_filename))
+        # self.textbox_queries_filename.SetValue(str(self.queries_filename))
+        # self.textbox_settings_filename.SetValue(str(self.settings_filename))
 	
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -1041,7 +1040,7 @@ class Siren():
                 file = open(path, 'r')
 		self.queries_filename = path
 		self.textbox_queries_filename.SetValue(str(self.queries_filename))
-
+                self.reloadReds()
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()
