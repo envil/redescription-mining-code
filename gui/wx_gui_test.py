@@ -542,17 +542,17 @@ class Siren():
         self.data = None
         self.worker = None
         
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
+        # self.num_filename='./rajapaja/worldclim_tp.densenum'
+        # self.bool_filename='./rajapaja/mammals.datbool'
+        # self.coo_filename='./rajapaja/coordinates.names'
+        # self.queries_filename='./rajapaja/rajapaja.queries'
+        # self.settings_filename='./rajapaja/rajapaja.conf'
 
-        # self.num_filename='./us/socio_eco_cont.densenum'
-        # self.bool_filename='./us/politics_funds_cont.densenum'
-        # self.coo_filename='./us/coordinates_cont.names'
-        # self.queries_filename='./us/us.queries'
-        # self.settings_filename='./us/us.conf'
+        self.num_filename='./us/us_socio_eco_cont.densenum'
+        self.bool_filename='./us/us_politics_funds_cont.densenum'
+        self.coo_filename='./us/us_coordinates_cont.names'
+        self.queries_filename='./us/us.queries'
+        self.settings_filename='./us/us.conf'
 
         self.setts = Settings('mine', ['part_run_gui', self.settings_filename])
         self.setts.getParams()
@@ -616,6 +616,7 @@ class Siren():
     def OnProgress(self, event):
         """Update progress status."""
         brange, bvalue = event.data
+        brange = max(brange, bvalue)
         if self.progress_bar.GetRange() != brange:
             self.progress_bar.SetRange(brange)
         self.progress_bar.SetValue(bvalue)

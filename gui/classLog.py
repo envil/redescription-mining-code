@@ -32,6 +32,7 @@ class Log:
                     else:
                         str_type = "%s:\t" % type_message
                     output.write("%s%s\n" % (str_type, message))
+                    output.flush()
             else:
                 if level <= verbosity:
                     method_comm(output, message, type_message)
