@@ -11,95 +11,11 @@ import cPickle
 from classRedescription import Redescription
 from classData import Data
 from classQuery import Query
+from ICList import ICList
+from classSettings import Settings
 
-class Redescriptions(list):
-    """A list-like object to keep track of the changes"""
-    def __init__(self, data=[], isChanged = False):
-        list.__init__(self, data)
-        self._isChanged = isChanged
 
-    @property
-    def isChanged(self):
-        """Has the list changed"""
-        return self._isChanged
-
-    @isChanged.setter
-    def isChanged(self, value):
-        if isinstance(value, bool):
-            self._isChanged = value
-        else:
-            raise TypeError('The value of isChanged must be Boolean, is '+str(type(value)))
-
-    # Container-type methods
-    def __setitem__(self, key, value):
-        list.__setitem__(self, key, value)
-        self._isChanged = True
-
-    def __delitem__(self, key):
-        list.__delitem__(self, key)
-        self._isChanged = True
-        
-    def __setslice__(self, i, j, sequence):
-        list.__setslice__(self, i, j, sequence)
-        self._isChanged = True
-
-    def __delslice__(self, i, j):
-        list.__delslice__(self, i, j)
-        self._isChanged = True
-
-    # "Numeric" operations for concatenation and repetition
-    def __add__(self, other):
-        return Redescriptions(list.__add__(self, other), True)
-
-    def __radd__(self, other):
-        return Redescriptions(list.__radd__(self, other), True)
-    
-    def __iadd__(self, other):
-        list.__iadd__(self, other)
-        self._isChanged = True
-        return self
-
-    def __mul__(self, other):
-        return Redescriptions(list.__mul__(self, other), True)
-
-    def __rmull__(self, other):
-        return Redescriptions(list.__rmul__(self, other), True)
-
-    def __imul__(self, other):
-        list.__imul__(self, other)
-        self._isChanged = True
-        return self
-
-    # Public methods for list
-    def append(self, val):
-        list.append(self, val)
-        self._isChanged = True
-
-    def extend(self, L):
-        list.extend(self, L)
-        self._isChanged = True
-
-    def insert(self, i, x):
-        list.insert(self, i, x)
-        self._isChanged = True
-
-    def remove(self, x):
-        list.remove(self, x)
-        self._isChanged = True
-
-    def pop(self, i = None):
-        list.pop(self, i)
-        self._isChanged = True
-
-    def sort(self):
-        list.sort(self)
-        self._isChanged = True
-
-    def reverse(self):
-        list.reverse(self)
-        self._isChanged = True
-
-class DataWrapper():
+class DataWrapper(object):
     """Contains all the data
     """
 
@@ -112,6 +28,8 @@ class DataWrapper():
     DATA_FILENAMES_SUFFIX = '.txt'
     NAME_FILENAMES_SUFFIX = '.names'
     QUERIES_FILENAME = 'queries.txt'
+    RSHOWIDS_FILENAME = 'rshowids.txt'
+    SETTINGS_FILENAME = 'settings.txt'
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'sirene_package'
 
@@ -119,32 +37,35 @@ class DataWrapper():
     FILETYPE_VERSION = 2
     CREATOR = 'DataWrapper'
 
-    def __init__(self, coo_filename = None, data_filenames = None, queries_filename = None, package_filename = None):
+    def __init__(self, coo_filename = None, data_filenames = None, queries_filename = None, settings_filename = None, package_filename = None):
         """Inits the class. Either package_filename or the others should be given.
         """
         self.coord = None
         self.coo_filename = None
         self.data = None
-        self.lines = None # ??
         self.data_filenames = None
         self.number_of_datafiles = 0
         self.names = None
         self.reds = None
+        self.rshowids = None
+        self.minesettings = None
+        self.uisettings = None
         self.queries_filename = None
         self.package_filename = None
+        self.settings_filename = None
         self.package_name = None
-        self.isChanged = False
-        self.isFromPackage = False
+        self._isChanged = False
+        self._isFromPackage = False
 
         if package_filename is not None:
-            self.__initWithPackage(package_filename)
+            self._initWithPackage(package_filename)
         else:
-            self.__initWithFiles(coo_filename, data_filenames, queries_filename)
+            self._initWithFiles(coo_filename, data_filenames, queries_filename, settings_filename)
 
-    def __initWithPackage(self, package_filename):
+    def _initWithPackage(self, package_filename):
         """Loads everything from a package"""
         try:
-            self.loadPackageFromFile(package_filename)
+            self._readPackageFromFile(package_filename)
         except IOError, ValueError:
             print 'Cannot open'
             self.package_filename = None
@@ -155,18 +76,20 @@ class DataWrapper():
 
 
 
-    def __initWithFiles(self, coo_filename, data_filenames, queries_filename):
+    def _initWithFiles(self, coo_filename, data_filenames, queries_filename, settings_filename):
         """Loads from files"""
 
         try:
             if coo_filename is not None:
-                self.coord = self.loadCoordFromFile(coo_filename)
+                self.coord = self._readCoordFromFile(coo_filename)
             if data_filenames is not None:
-                self.data = self.loadDataFromFiles(data_filenames)
+                self.data = self._readDataFromFiles(data_filenames)
                 self.updateNames()
                 #self.names = self.data.getNames(data_filenames)
             if queries_filename is not None:
-                self.reds = self.loadQueriesFromFile(queries_filename)
+                self.reds = self._readQueriesFromFile(queries_filename)
+            if settings_filename is not None:
+                self.minesettings = self._readSettingsFromFile(settings_filename)
         except IOError, ValueError:
             print "Cannot open"
             self.coo_filename = None
@@ -174,35 +97,84 @@ class DataWrapper():
             self.number_of_datafiles = 0
             self.names = None
             self.queries_filename = None
+            self.settings_filename = None
             raise
-            ## TODO exception handling
+            
 
         self.coo_filename = coo_filename
         self.data_filenames = data_filenames
         self.queries_filename = queries_filename
+        self.settings_filename = settings_filename
         if data_filenames is not None:
             self.number_of_datafiles = len(data_filenames)
         self.isFromPackage = False
-        if coo_filename is not None or data_filenames is not None or queries_filename is not None:
+        if coo_filename is not None or data_filenames is not None or queries_filename is not None or settings_filename is not None:
             self.isChanged = True
              
 
 
+    def __str__(self):
+        return "coord = " + str(self.coord) + "; " \
+            + "coo_filename = " + str(self.coo_filename) + "; " \
+            + "data = " + str(self.data) + "; " \
+            + "data_filenames = " + str(self.data_filenames) + "; " \
+            + "number_of_datafiles = " + str(self.number_of_datafiles) + "; " \
+            + "names = " + str(self.names) + "; " \
+            + "reds = " + str(self.reds) + "; " \
+            + "rshowids = " + str(self.rshowids) + "; " \
+            + "minesettings = " + str(self.minesettings) + "; " \
+            + "uisettings = " + str(self.uisettings) + "; " \
+            + "queries_filename = " + str(self.queries_filename) + "; " \
+            + "package_filename = " + str(self.package_filename) + "; " \
+            + "settings_filename = " + str(self.settings_filename) + "; " \
+            + "package_name = " + str(self.package_name) + "; " \
+            + "isChaged = " + str(self.isChanged) + "; " \
+            + "isFromPackage = " + str(self.isFromPackage)
 
     ## Setters
-    def setChanged(self, value=True):
-        self.isChanged = value
+    @property
+    def isChanged(self):
+        """The property tracking if dw (incl. reds and rshowids) has changed"""
+        if self.reds is not None:
+            self._isChanged |= self.reds.isChanged
+        if self.rshowids is not None:
+            self._isChanged |= self.rshowids.isChanged
+        return self._isChanged
+    
+    @isChanged.setter
+    def isChanged(self, value):
+        if isinstance(value, bool):
+            if value is False:
+                if self.reds is not None:
+                    self.reds.isChanged = value
+                if self.rshowids is not None:
+                    self.rshowids.isChanged = value
+            self._isChanged = value
+        else:
+            raise TypeError("The isChanged property accepts only Boolean attributes")
 
-    def setFromPackage(self, value=True):
-        self.isFromPackage = value
+                #isChanged = property(_get_isChanged, _set_isChanged)
+    
+    @property
+    def isFromPackage(self):
+        """The property tracking if dw was loaded from a package"""
+        return self._isFromPackage
+
+    @isFromPackage.setter
+    def isFromPackage(self, value):
+        if isinstance(value, bool):
+            self._isFromPackage = value
+        else:
+            raise TypeError("The isFromPackage property accepts only Boolean attributes")
         
-    def setCoordFromFile(self, coo_filename):
+        
+    def importCoordFromFile(self, coo_filename):
         """Loads new coordinates from file"""
         old_coord = self.coord
         old_coo_filename = self.coo_filename
             
         try:
-            self.coord = self.loadCoordFromFile(coo_filename)
+            self.coord = self._readCoordFromFile(coo_filename)
         except IOError as details:
             print "Cannot open:", details
             self.coord = old_coord
@@ -213,11 +185,11 @@ class DataWrapper():
             self.coo_filename = coo_filename
             self.isChanged = True
 
-    def setDataFromFile(self, data_filenames):
+    def importDataFromFiles(self, data_filenames):
         """Loads new data from files"""
         old_data = self.data
         try:
-            self.data = self.loadDataFromFiles(data_filenames)
+            self.data = self._readDataFromFiles(data_filenames)
         except IOError as arg:
             print "Cannot open:", arg
             self.data = old_data
@@ -242,25 +214,65 @@ class DataWrapper():
         else:
             self.isChanged = True
 
-    def setQueriesFromFile(self, queries_filename):
+    def importQueriesFromFile(self, queries_filename):
         """Loads new queries from file"""
         old_reds = self.reds
         try:
-            self.reds = self.loadQueriesFromFile(queries_filename)
+            self.reds = self._readQueriesFromFile(queries_filename)
         except IOError as arg:
             print "Cannot open", arg
             self.reds = old_reds
+            raise
         except:
             self.reds = old_reds
             raise
         else:
             self.queries_filename = queries_filename
+            self.rshowids = ICList(range(len(self.reds)), True)
             self.isChanged = True
 
-    def loadNewPackage(self, package_filename):
+    def importSettingsFromFile(self, settings_filename):
+        """Imports mining settings from file"""
+        old_settings = self.minesettings
+        try:
+            self.minesettings = self._readSettingsFromFile(settings_filename)
+        except IOError as arg:
+            print "Cannot open", arg
+            self.minesettings = old_settings
+            raise
+        except:
+            self.minesettings = old_settings
+            raise
+        else:
+            self.settings_filename = settings_filename
+            self.isChanged = True
+            
+
+    def reloadCoord(self):
+        """Re-reads coordinates"""
+        try:
+            self.importCoordFromFile(self.coo_filename)
+        except:
+            raise
+
+    def reloadQueries(self):
+        """Re-reads queries"""
+        try:
+            self.importQueriesFromFile(self.queries_filename)
+        except:
+            raise
+
+    def reloadSettings(self):
+        """Re-read settings"""
+        try:
+            self.importSettingsFromFile(self.settings_filename)
+        except:
+            raise
+
+    def openPackage(self, package_filename):
         """Loads new data from a package"""
         try:
-            self.loadPackageFromFile(package_filename)
+            self._readPackageFromFile(package_filename)
         except IOError as arg:
             print "Cannot open", arg
         except:
@@ -269,22 +281,22 @@ class DataWrapper():
             self.isChanged = False
             self.package_filename = package_filename
 
-    ## The loaders
-    def loadCoordFromFile(self, filename):
+    ## The readers
+    def _readCoordFromFile(self, filename):
         try:
             coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
         except:
             raise
         return coord
 
-    def loadDataFromFiles(self, filenames):
+    def _readDataFromFiles(self, filenames):
         try:
             data = Data(filenames)
         except:
             raise
         return data
 
-    def _loadPickledDataFromFile(self, f):
+    def _readPickledDataFromFile(self, f):
         """Requires a file pointer to a picle file"""
         try:
             data = cPickle.load(f)
@@ -294,14 +306,14 @@ class DataWrapper():
             raise
         return data
 
-    def loadNamesFromFiles(self, filenames):
+    def _readNamesFromFiles(self, filenames):
         try:
             names = self.data.getNames(filenames)
         except:
             raise
         return names
 
-    def _loadPickeldNamesFromFile(self, f):
+    def _readPickledNamesFromFile(self, f):
         """Requires a file pointer to a picle file"""
         try:
             names = cPickle.load(f)
@@ -311,13 +323,13 @@ class DataWrapper():
             raise
         return names
     
-    def loadQueriesFromFile(self, filename, data=None):
+    def _readQueriesFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
-                return None
+                raise Exception("Cannot load queries if data is not loaded")
             else:
                 data = self.data
-        reds = []
+        reds = ICList([])
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
@@ -336,9 +348,37 @@ class DataWrapper():
                     reds.append(red)
         return reds
 
-    def loadPackageFromFile(self, filename):
+    def _readRshowidsFromFile(self, file):
+        if not hasattr(file, 'readline'):
+            try:
+                fp = open(file)
+            except:
+                raise
+        else:
+            fp = file
+
+        rshowids = ICList()
+        for line in fp:
+            rshowids.append(int(line))
+
+        if not hasattr(file, 'readline'):
+            fp.close()
+
+        return rshowids
+
+    def _readSettingsFromFile(self, filename):
+        try:
+            minesettings = Settings('mine', ['part_run_gui', filename])
+            minesettings.getParams()
+        except:
+            raise
+        else:
+            return minesettings
+
+    def _readPackageFromFile(self, filename):
         """Loads a package"""
 
+        # TODO: Check that file exists
         if not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
 
@@ -363,7 +403,7 @@ class DataWrapper():
             if 'data_picklefilename' in plist:
                 try:
                     fd = package.open(plist['data_picklefilename'], 'r')
-                    data = self._loadPickledDataFromFile(fd)
+                    data = self._readPickledDataFromFile(fd)
                 except:
                     raise
                 finally:
@@ -373,7 +413,7 @@ class DataWrapper():
             if 'name_picklefilename' in plist:
                 try:
                     fd = package.open(plist['name_picklefilename'], 'r')
-                    names = self._loadPickledNamesFromFiles(fd)
+                    names = self._readPickledNamesFromFile(fd)
                 except:
                     raise
                 finally:
@@ -383,7 +423,7 @@ class DataWrapper():
             if 'coo_filename' in plist:
                 try:
                     fd = package.open(plist['coo_filename'], 'r')
-                    coord = self.loadCoordFromFile(fd)
+                    coord = self._readCoordFromFile(fd)
                 except:
                     raise
                 finally:
@@ -393,7 +433,20 @@ class DataWrapper():
             if 'queries_filename' in plist:
                 try:
                     fd = package.open(plist['queries_filename'], 'r')
-                    reds = self.loadQueriesFromFile(fd, data)
+                    reds = self._readQueriesFromFile(fd, data)
+                    fd2 = package.open(plist['rshowids_filename'], 'r')
+                    rshowids = self._readRshowidsFromFile(fd2)
+                except:
+                    raise
+                finally:
+                    fd.close()
+                    fd2.close()
+
+            # Load settings
+            if 'settings_filename' in plist:
+                try:
+                    fd = package.open(plist['settings_filename'], 'r')
+                    minesettings = self._readSettingsFromFile(fd)
                 except:
                     raise
                 finally:
@@ -423,10 +476,18 @@ class DataWrapper():
             self.coo_filename = None
         if 'queries_filename' in plist:
             self.reds = reds
+            self.rshowids = rshowids
             self.queries_filename = plist['queries_filename']
         else:
             self.reds = None
+            self.rshowids = None
             self.queries_filename = None
+        if 'settings_filename' in plist:
+            self.minesettings = minesettings
+            self.settings_filename = plist['settings_filename']
+        else:
+            self.minesettings = None
+            self.settings_filename = None
         self.package_filename = os.path.abspath(filename)
         self.isChanged = False
         self.isFromPackage = True
@@ -435,6 +496,9 @@ class DataWrapper():
     ## The saving function
     def savePackageToFile(self, filename, suffix='siren'):
         """Saves all information to a new file"""
+
+        if suffix is None:
+            (filename, suffix) = os.path.splitext(filename)
 
         # Test that we can write to filename
         try:
@@ -454,7 +518,7 @@ class DataWrapper():
         #os.mkdir(package_dir)
 
         # Write plist
-        plist = self.__makePlistDict()
+        plist = self._makePlistDict()
         try:
             plistlib.writePlist(plist, os.path.join(tmp_dir, self.PLIST_FILE))
         except IOError:
@@ -465,7 +529,7 @@ class DataWrapper():
         # Write coordinates
         try:
             if self.coord is not None:
-                self.saveCoordinates(os.path.join(tmp_dir, plist['coo_filename']), toPackage = True)
+                self._writeCoordinates(os.path.join(tmp_dir, plist['coo_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -492,7 +556,17 @@ class DataWrapper():
         # Write queries
         try:
             if self.reds is not None:
-                self.saveQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
+                self.exportQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
+                self._writeRshowids(os.path.join(tmp_dir, plist['rshowids_filename']), toPackage = True)
+        except IOError:
+            shutil.rmtree(tmp_dir)
+            self.package_filename = old_package_filename
+            raise
+
+        # Write settings
+        try:
+            if self.minesettings is not None:
+                self._writeSettings(os.path.join(tmp_dir, plist['settings_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -522,6 +596,14 @@ class DataWrapper():
                                   arcname = os.path.join('.',
                                                          plist['queries_filename']),
                         compress_type = zipfile.ZIP_DEFLATED)
+                    package.write(os.path.join(tmp_dir, plist['rshowids_filename']),
+                                  arcname = os.path.join('.',
+                                                         plist['rshowids_filename']),
+                        compress_type = zipfile.ZIP_DEFLATED)
+                if self.minesettings is not None:
+                    package.write(os.path.join(tmp_dir, plist['settings_filename']),
+                                  arcname = os.path.join('.', plist['settings_filename']),
+                                  compress_type = zipfile.ZIP_DEFLATED)
         except:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -534,7 +616,14 @@ class DataWrapper():
 
         ## END THE SAVING FUNCTION
 
-    def saveCoordinates(self, filename, toPackage = False):
+    def savePackage(self):
+        """Saves to known package"""
+        if self.package_filename is None:
+            raise ValueError('Cannot save if package_filename is None, use savePackageToFile instead')
+        else:
+            self.savePackageToFile(self.package_filename, None)
+
+    def _writeCoordinates(self, filename, toPackage = False):
         c = np.vstack((self.coord[1,:], self.coord[0,:]))
         try:
             np.savetxt(filename, c.transpose())
@@ -543,8 +632,6 @@ class DataWrapper():
         if not toPackage:
             self.coo_filename = filename
 
-    def saveDatafiles(self, filename, toPackage = False):
-        pass
 
     def _pickleDatafiles(self, filename, toPackage = True):
         with open(filename, 'w') as f:
@@ -555,10 +642,8 @@ class DataWrapper():
             except:
                 raise
 
-    def saveNamefiles(self, filename, toPackage = False):
-        pass
 
-    def _pickeNamefiles(self, filename, toPackage = True):
+    def _pickleNamefiles(self, filename, toPackage = True):
         with open(filename, 'w') as f:
             try:
                 cPickle.dump(self.names, f, 0)
@@ -567,13 +652,22 @@ class DataWrapper():
             except:
                 raise
 
-    def saveQueries(self, filename, toPackage = False):
+    def exportQueries(self, filename, toPackage = False):
         with open(filename, 'w') as f:
             for i in range(len(self.reds)):
                 self.reds[i].write(f, None)
+
+    def _writeRshowids(self, filename, toPackage = False):
+        with open(filename, 'w') as f:
+            for i in range(len(self.rshowids)):
+                f.write(str(self.rshowids[i])+'\n')
+
+    def _writeSettings(self, filename, toPackage = False):
+        with open(filename, 'w') as f:
+            f.write(self.minesettings.dispParams())
     
 
-    def __makePlistDict(self):
+    def _makePlistDict(self):
         """Makes a dict to write to plist."""
         d = dict(creator = self.CREATOR,
             filetype_version = self.FILETYPE_VERSION)
@@ -616,6 +710,13 @@ class DataWrapper():
                 d['queries_filename'] = os.path.basename(self.queries_filename)
             else:
                 d['queries_filename'] = self.QUERIES_FILENAME
+            d['rshowids_filename'] = self.RSHOWIDS_FILENAME
+
+        if self.minesettings is not None:
+            if self.settings_filename is not None:
+                d['settings_filename'] = os.path.basename(self.settings_filename)
+            else:
+                d['settings_filename'] = self.SETTINGS_FILENAME
             
         return d
             

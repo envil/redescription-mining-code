@@ -222,8 +222,13 @@ class Settings:
                 if type(self.param[opti])== str :
                     self.param[opti] = self.param[opti].replace(place_holder, token)
         
-        config = ConfigParser.ConfigParser() 
-        config.read(self.conf_filename)
+        config = ConfigParser.ConfigParser()
+        #if isinstance(self.conf_filename, file) or isinstance(self.conf_filename, zipfile.ZipExtFile):
+        if hasattr(self.conf_filename, 'readline'):
+            # A file-like object
+            config.readfp(self.conf_filename)
+        else:
+            config.read(self.conf_filename)
         for sect in self.specifics['sections_read']: 
             if config.has_section(sect):
                 for (opti,val) in config.items(sect):
