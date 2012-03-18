@@ -2,6 +2,7 @@ import os
 import pprint
 import random
 import wx, wx.grid, wx.html, wx.richtext
+#from wx.prop import basetableworker
 from threading import *
 # import warnings
 # warnings.simplefilter("ignore")
@@ -29,6 +30,7 @@ from classLog import Log
 import greedyRedescriptions as greedyRed
 from DataWrapper import DataWrapper
 from ICList import ICList
+
 
 # Thread class that executes processing
 class ExpanderThread(Thread):
@@ -88,7 +90,43 @@ class Message(wx.PyEvent):
            wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], message))
     sendMessage = staticmethod(sendMessage)
 
+class BaseViewer(wx.grid.GridCellAutoWrapStringRenderer):
+
+    BACKGROUND_SELECTED = wx.Colour(100,100,100)
+    TEXT_SELECTED = wx.Colour(100,100,100)
+    BACKGROUND = wx.Colour(100,100,100)
+    TEXT = wx.Colour(100,100,100)
+
+    """Base class for editors"""
+
+    ### Customisation points
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        """Customisation Point: Draw the data from grid in the rectangle with attributes using the dc"""
+
+        dc.SetClippingRegion( rect.x, rect.y, rect.width, rect.height )
+        print grid.GetSelectedRows()
+        if isSelected:
+            print "TTT"
+            dc.SetBrush( wx.Brush( self.BACKGROUND_SELECTED, wx.SOLID) )
+            dc.SetTextForeground( self.TEXT_SELECTED )
+        else:
+            dc.SetBrush( wx.Brush( self.BACKGROUND, wx.SOLID) )
+            dc.SetTextForeground( self.TEXT )
+        try:
+            dc.SetPen(wx.TRANSPARENT_PEN)
+            dc.DrawRectangle( rect.x, rect.y, rect.width, rect.height )
+            value = grid.GetCellValue( row, col )
+            dc.SetFont( wx.NORMAL_FONT )
+            dc.DrawText( value, rect.x+2,rect.y+2 )
+        finally:
+            dc.SetPen( wx.NullPen )
+            dc.SetBrush( wx.NullBrush )
+            dc.DestroyClippingRegion( )
+#        grid.SetGridCursor(row,0)
+         
+
 class CustomGridTable(wx.grid.PyGridTableBase):
+
     def __init__(self, parent, tabId, frame):
         wx.grid.PyGridTableBase.__init__(self)
         self.parent = parent
@@ -97,32 +135,43 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.data = []
         self.sortids = []
         self.details = {}
+        self.bShowHidden = False
         self.sortP = (None, False)
-        self.currentRows = len(self.sortids)
+        self.currentRows = len(self.visibleIds())
         self.currentColumns = len(self.fields)
 
         #### GRID
         self.grid = wx.grid.Grid(frame)
         self.grid.SetTable(self)
-        self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.sortData)
-        self.grid.SetLabelBackgroundColour('#DBD4D4')
-        self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
-                              wx.grid.GridCellAutoWrapStringRenderer(),
-                              wx.grid.GridCellAutoWrapStringEditor()) 
-        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnSelectData)
-        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
-        self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
 
         self.grid.EnableEditing(False)
         self.grid.AutoSizeColumns(True)
 
+        self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
+                                   BaseViewer(),
+                                   wx.grid.GridCellAutoWrapStringEditor())
+
+        self.grid.RegisterDataType(wx.grid.GRID_VALUE_BOOL,
+                              wx.grid.GridCellBoolRenderer(),
+                              wx.grid.GridCellBoolEditor()) 
+
+        # attr = wx.grid.GridCellAttr()
+        # attr.SetEditor(wx.grid.GridCellBoolEditor())
+        # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
+        # self.grid.SetColAttr(0,attr)
+
+        self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.sortData)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnMouse)
+        
     # def showPopupMenu(self, event):
     #     self.table.highlightRow(event.GetRow())
     #     parent.currentList = self
 
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
-        return len(self.sortids)
+        return len(self.visibleIds())
 
     def GetColLabelValue(self, col):
         """Return the number of rows in the grid"""
@@ -140,16 +189,14 @@ class CustomGridTable(wx.grid.PyGridTableBase):
 
     def IsEmptyCell(self, row, col):
         """Return True if the cell is empty"""
-        if row < len(self.sortids) and col < len(self.fields):
-            x = self.sortids[row]
-            methode = eval(self.fields[col][0])
-            return methode(self.details) == None
-        else:
-            return True
+        return self.GetValue(row, col) == None
 
     def GetTypeName(self, row, col):
         """Return the name of the data type of the value in the cell"""
-        return wx.grid.GRID_VALUE_STRING
+        if (col == 0):
+            return wx.grid.GRID_VALUE_BOOL
+        else:
+            return wx.grid.GRID_VALUE_STRING
         # if row < len(self.sortids) and col < len(self.fields):
         #     x = self.sortids[row]
         #     methode = eval(self.fields[col][0])
@@ -159,50 +206,82 @@ class CustomGridTable(wx.grid.PyGridTableBase):
 
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < len(self.sortids) and col < len(self.fields):
-            x = self.sortids[row]
+        if row < len(self.visibleIds()) and col < len(self.fields):
+            x = self.visibleInfo()[row]
             methode = eval(self.fields[col][0])
-            return "%s" % methode(self.details)
+            if callable(methode):
+                return "%s" % methode(self.details)
+            else:
+                return methode
         else:
             return None
 
     def GetRowData(self, row):
         """Return the data of a row"""
-        if row < len(self.sortids):
-            return self.data[self.sortids[row]]
+        if row < len(self.visibleIds()):
+            return self.data[self.visibleIds()[row]]
         else:
             return None
                                   
     def SetValue(self, row, col, value):
         pass
 
-    def updateData(self, data, fieldsRed, details):
-        self.details = details
-        self.fields = fieldsRed
-        self.resetData(data)
+    def resetData(self, data, fieldsRed=[], details=[]):
+        if details != []:
+            self.details = details
+        if fieldsRed != []:
+            self.fields = fieldsRed
+        self.data = data
+        if self.data != None:
+            self.sortids = [[idi, 1] for idi in range(len(self.data))]
+        else:
+            self.sortids = []
+        self.updateSort()
+        self.ResetView()
+        self.currentRows = len(self.visibleIds())
         self.currentColumns = len(self.fields)
 
     def appendRow(self, rowD):
         if len(self.sortids) == 0 or self.data[self.sortids[-1]] != rowD:
-            self.sortids.append(len(self.data))
+            self.sortids.append([len(self.data), 1])
             self.data.append(rowD)
             self.updateSort()
             self.ResetView()
-            self.currentRows = len(self.sortids)
+            self.currentRows = len(self.visibleIds())
 
     def extendData(self, rowsD):
-        self.sortids.extend([len(self.data)+ i for i in range(len(rowsD))])
+        self.sortids.extend([[len(self.data)+ i, 1] for i in range(len(rowsD))])
         self.data.extend(rowsD)
         self.updateSort()
         self.ResetView()
-        self.currentRows = len(self.sortids)
+        self.currentRows = len(self.visibleIds())
 
-    def resetData(self, rowsD):
-        self.data = rowsD
-        self.sortids = range(len(rowsD))
-        self.updateSort()
+    def setHidden(self, row):
+        ssid = self.visibleIds()[row]
+        self.sortids[ssid][1] = 1- self.sortids[ssid][1]
+        # if not self.bShowHidden:
+        #     self.GetView().HideRow(row)
         self.ResetView()
-        self.currentRows = len(self.sortids)
+        self.currentRows = len(self.visibleIds())
+        self.currentColumns = len(self.fields)
+
+    def toggleHide(self):
+        self.bShowHidden = not self.bShowHidden
+        self.ResetView()
+        self.currentRows = len(self.visibleIds())
+        self.currentColumns = len(self.fields)
+        
+    def visibleIds(self):
+        return [idi[0] for idi in self.sortids if (self.bShowHidden or idi[1])]
+
+    def visibleInfo(self):
+        return [idi for idi in self.sortids if (self.bShowHidden or idi[1])]
+
+    def OnMouse(self,event):
+        if event.GetRow() < len(self.visibleIds()):
+            if event.Col == 0:
+                self.setHidden(event.GetRow())
+            self.setHighlightRow(event.GetRow())
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -233,9 +312,13 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         #pass
         self.GetView().SelectRow(row)
         self.GetView().SetGridCursor(row,0)
+        self.GetView().ForceRefresh()
         # for j in range(self.GetNumberCols()):
         #     self.GetView().SetCellBackgroundColour(row,j,'#DBD4FF')
-        self.GetView().ForceRefresh()
+
+    def deleteHidden(self):
+        pass
+
 
     def getHighlightRow(self):
         return self.GetRowData(self.GetView().GetGridCursorRow())
@@ -254,13 +337,13 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         selected_rows = self.GetView().GetSelectedRows()
         selected_id = None
         if len(selected_rows) > 0 and selected_rows[0] < len(self.sortids) :
-            selected_id = self.sortids[selected_rows[0]]
+            selected_id = self.visibleIds()[selected_rows[0]]
 
         if self.sortP[0] != None:
             self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][0])(self.details), reverse=self.sortP[1])
-        if selected_id != None:
-            self.setHighlightRow(self.sortids.index(selected_id))
-
+        if selected_id != None and selected_id in self.visibleIds():
+            self.setHighlightRow(self.visibleIds().index(selected_id))
+            
     def OnSelectData(self, event):
         if event.GetRow() < len(self.data):
             self.setHighlightRow(event.GetRow())
@@ -281,6 +364,11 @@ class RedGridTable(CustomGridTable):
         mapV = self.parent.getSelectedMapView()
         mapV.setCurrentRed(self.getHighlightRow())
         mapV.updateRed(self.tabId != "Hist")
+
+    def deleteHidden(self):
+        new_data = [self.data[i] for i in self.sortids if i[1]]
+        self.resetData(new_data)
+
 
 class VarGridTable(CustomGridTable):     
     def viewData(self):
@@ -530,9 +618,9 @@ class Siren():
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
     helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
-    fieldsRed = [('self.data[x].getQueryLU', 'Query LHS'), ('self.data[x].getQueryRU', 'Query RHS'), ('self.data[x].getAcc', 'Acc'), ('self.data[x].getPVal', 'p-Value')]
-    fieldsVar = [('self.data[x].getId', 'Id'), ('self.data[x].getName', 'Name'), ('self.data[x].getType', 'Type')]
-    fieldsVarTypes = {1: [('self.data[x].getDensity', 'Density')], 2:[('self.data[x].getCategories', 'Categories')], 3:[('self.data[x].getMin', 'Min'), ('self.data[x].getMax', 'Max')]}
+    fieldsRed = [('x[1]', ''), ('self.data[x[0]].getQueryLU', 'Query LHS'), ('self.data[x[0]].getQueryRU', 'Query RHS'), ('self.data[x[0]].getAcc', 'Acc'), ('self.data[x[0]].getPVal', 'p-Value')]
+    fieldsVar = [('x[1]', ''), ('self.data[x[0]].getId', 'Id'), ('self.data[x[0]].getName', 'Name'), ('self.data[x[0]].getType', 'Type')]
+    fieldsVarTypes = {1: [('self.data[x[0]].getDensity', 'Density')], 2:[('self.data[x[0]].getCategories', 'Categories')], 3:[('self.data[x[0]].getMin', 'Min'), ('self.data[x[0]].getMax', 'Max')]}
 
     def getFieldRed(red, fieldId):
         methode = eval(Siren.fieldsRed[fieldId][0])
@@ -572,11 +660,11 @@ class Siren():
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        # self.num_filename='./rajapaja/worldclim_tp.densenum'
-        # self.bool_filename='./rajapaja/mammals.datbool'
-        # self.coo_filename='./rajapaja/coordinates.names'
-        # self.queries_filename='./rajapaja/rajapaja.queries'
-        # self.settings_filename='./rajapaja/rajapaja.conf'
+        self.num_filename='./rajapaja/worldclim_tp.densenum'
+        self.bool_filename='./rajapaja/mammals.datbool'
+        self.coo_filename='./rajapaja/coordinates.names'
+        self.queries_filename='./rajapaja/rajapaja.queries'
+        self.settings_filename='./rajapaja/rajapaja.conf'
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
         # self.num_filename='./us/us_politics_funds_cont.densenum'
@@ -586,15 +674,15 @@ class Siren():
         # self.settings_filename='./us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
-        # self.reloadData()
-        # self.reloadCoordinates()
-        # self.reloadReds()
-        # self.text_setts.LoadFile(self.settings_filename)
-	# self.textbox_num_filename.SetValue(str(self.num_filename))
-	# self.textbox_bool_filename.SetValue(str(self.bool_filename))
-        # self.textbox_coo_filename.SetValue(str(self.coo_filename))
-        # self.textbox_queries_filename.SetValue(str(self.queries_filename))
-        # self.textbox_settings_filename.SetValue(str(self.settings_filename))
+        self.reloadData()
+        self.reloadCoordinates()
+        self.reloadReds()
+        self.text_setts.LoadFile(self.settings_filename)
+	self.textbox_num_filename.SetValue(str(self.num_filename))
+	self.textbox_bool_filename.SetValue(str(self.bool_filename))
+        self.textbox_coo_filename.SetValue(str(self.coo_filename))
+        self.textbox_queries_filename.SetValue(str(self.queries_filename))
+        self.textbox_settings_filename.SetValue(str(self.settings_filename))
 	
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -612,7 +700,6 @@ class Siren():
             self.selectedMap = len(self.mapViews)
             self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)    
         return self.mapViews[self.selectedMap]
-
 
     def OnExpand(self, event):
         self.progress_bar.Show()
@@ -837,6 +924,7 @@ class Siren():
 
         ID_NEWW = wx.NewId()
         ID_EXPAND = wx.NewId()
+        ID_HIDE = wx.NewId()
 
         m_neww = menuRed.Append(ID_NEWW, "&View in new window\tAlt+V", "View redescription in new window.")
         m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
@@ -844,7 +932,9 @@ class Siren():
         m_cut = menuRed.Append(wx.ID_CUT, "Cu&t\tCtrl+X", "Cut current redescription.")
         m_copy = menuRed.Append(wx.ID_COPY, "&Copy\tCtrl+C", "Copy current redescription.")
         m_paste = menuRed.Append(wx.ID_PASTE, "&Paste\tCtrl+V", "Paste current redescription.")
-
+        m_hide = menuRed.AppendCheckItem(ID_HIDE, "&Show hidden", "Show hidden redescriptions.")
+        m_delete = menuRed.Append(wx.ID_DELETE, "&Delete", "Delete hidden redescriptions.")
+        
         ID_HISTW = wx.NewId()
         ID_LOGW = wx.NewId()
         ID_SETTSW = wx.NewId()
@@ -870,11 +960,14 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
         frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
         frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+        # frame.Bind(wx.EVT_MENU, self.OnHide, m_hide)
+        # frame.Bind(wx.EVT_MENU, self.OnDelete, m_delete)
         frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
         frame.Bind(wx.EVT_MENU, self.OnSettsW, m_settsw)
         frame.Bind(wx.EVT_MENU, self.OnHistW, m_histw)
         frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
         frame.Bind(wx.EVT_MENU, self.OnAbout, m_about)
+#        self.check_hide = m_hide
         self.check_logw = m_logw
         self.check_settsw = m_settsw
         self.check_histw = m_histw
@@ -1227,17 +1320,17 @@ class Siren():
                 fieldsVar.extend(self.fieldsVar)
                 for tyid in set([r.type_id for r in self.data.cols[side]]):
                     fieldsVar.extend(self.fieldsVarTypes[tyid])
-                self.lists[side].updateData(self.data.cols[side], fieldsVar, self.details)
+                self.lists[side].resetData(self.data.cols[side], fieldsVar, self.details)
             else:
                 fieldsVar = []
                 fieldsVar.extend(self.fieldsVar)
-                self.lists[side].updateData([], fieldsVar, self.details)
+                self.lists[side].resetData([], fieldsVar, self.details)
             
     def reloadReds(self):
         ## Initialize red lists data
-        self.lists["Reds"].updateData(self.populateReds(), self.fieldsRed, self.details)
-        self.lists["Exp"].updateData([], self.fieldsRed, self.details)
-        self.lists["Hist"].updateData([], self.fieldsRed, self.details)
+        self.lists["Reds"].resetData(self.populateReds(), self.fieldsRed, self.details)
+        self.lists["Exp"].resetData([], self.fieldsRed, self.details)
+        self.lists["Hist"].resetData([], self.fieldsRed, self.details)
 #        self.getSelectedMapView().setCurrentRed(redsTmp[0])
 #        self.getSelectedMapView().updateRed()
             
@@ -1257,5 +1350,11 @@ class Siren():
 
 if __name__ == '__main__':
     app = wx.App()
+
+    # BaseViewer.BACKGROUND_SELECTED = wx.SystemSettings_GetColour( wx.SYS_COLOUR_HIGHLIGHT )
+    # BaseViewer.TEXT_SELECTED = wx.SystemSettings_GetColour( wx.SYS_COLOUR_HIGHLIGHTTEXT )
+    # BaseViewer.BACKGROUND = wx.SystemSettings_GetColour( wx.SYS_COLOUR_WINDOW  )
+    # BaseViewer.TEXT = wx.SystemSettings_GetColour( wx.SYS_COLOUR_WINDOWTEXT  )
+
     app.frame = Siren()
     app.MainLoop()
