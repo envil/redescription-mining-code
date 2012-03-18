@@ -497,7 +497,7 @@ class NumColM(ColM):
             lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
             if  SParts.compRatioVar(side, op, lin_b) > bests_b[-1][0]:
                 lin_b = SParts.addition(lin_b, bests_b[-1][2])
-                bests_b.append((SParts.compAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
+                bests_b.append((constraints.compAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
                 lin_b = SParts.makeLParts()
             best_track_b.append(len(bests_b)-1)
 
