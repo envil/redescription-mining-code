@@ -27,6 +27,8 @@ from classQuery import Query
 from classSettings import Settings
 from classLog import Log
 import greedyRedescriptions as greedyRed
+from DataWrapper import DataWrapper
+from ICList import ICList
 
 # Thread class that executes processing
 class ExpanderThread(Thread):
@@ -562,6 +564,9 @@ class Siren():
         self.data = None
         self.details = None
         self.worker = None
+
+        # (Almost) all of the above should stay in dw
+        self.dw = DataWrapper()
         
         self.reloadSettings()
         self.create_tool_panel()
@@ -881,19 +886,132 @@ class Siren():
         frame.SetMenuBar(menuBar)
 
     def OnOpen(self, event):
-        pass
+        wcd = 'All files|*|Siren packages (*.siren)|*.siren'
+        if self.dw.package_filename is not None:
+            dir_name = os.path.dirname(self.dw.package_filename)
+        else:
+            dir_name = os.path.expanduser('~/')
+            
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name,  
+			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+
+            try:
+                self.dw.openPackage(path)
+            except IOError as error:
+                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n' + str(error))
+                dlg.ShowModal()
+        open_dlg.Destroy()
+        # DEBUGGING
+        wx.MessageDialog(self.toolFrame, 'Opened package from '+path).ShowModal()
+
     def OnSave(self, event):
-        pass
+        if not (self.dw.isFromPackage and self.dw.package_filename is not None):
+            wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead').showModal()
+            return
+        try:
+            self.dw.savePackage()
+        except IOError as error:
+            wx.MessageDialog(self.toolFrame, 'Cannot save package to'+str(self.dw.package_filename)+':\n'+str(error)).ShowModal()
+            
     def OnSaveAs(self, event):
-        pass
+        if self.dw.package_filename is not None:
+            dir_name = os.path.dirname(self.dw.package_filename)
+        else:
+            dir_name = os.path.expanduser('~/')
+
+        save_dlg = wx.FileDialog(self.toolFrame, message="Save as", defaultDir=dir_name,
+                                 style=wx.SAVE|wx.CHANGE_DIR)
+        if save_dlg.ShowModal() == wx.ID_OK:
+            path = save_dlg.GetPath()
+            try:
+                self.dw.savePackageToFile(path)
+            except IOError as error:
+                wx.MessageDialog(self.toolFrame, 'Cannot save to file '+path+':\n'+str(error)).ShowModal()
+        save_dlg.Destroy()
+                
     def OnImportData(self, event):
-        pass
+        if self.dw.reds is not None or self.dw.coord is not None:
+            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions and coordinates.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+            if sure_dlg.ShowModal() != wx.ID_OK:
+                return
+            sure_dlg.Destroy()
+            
+        wcd = 'All files|*|Numerical Data (*.densenum / *.datnum)|*.densenum/*.datnum|Boolean Data (*.sparsebool / *.datbool)|*.sparsebool/*.datbool'
+        dir_name = os.path.expanduser('~/')
+            
+        open_left_dlg = wx.FileDialog(self.toolFrame, message='Choose LHS data file', defaultDir=dir_name,  
+			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
+        if open_left_dlg.ShowModal() == wx.ID_OK:
+            left_path = open_left_dlg.GetPath()
+            open_right_dlg = wx.FileDialog(self.toolFrame, message='Choose RHS data file', defaultDir=os.path.dirname(left_path),  
+			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
+            if open_right_dlg.ShowModal() == wx.ID_OK:
+                right_path = open_right_dlg.GetPath()
+
+                try:
+                    self.dw.importDataFromFiles([left_path, right_path])
+                    self.dw.updateNames()
+                except IOError, error:
+                    dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
+                                           +' and '+str(right_path)+':\n' + str(error))
+                    dlg.ShowModal()
+            open_right_dlg.Destroy()
+        open_left_dlg.Destroy()
+        # Delete reds and coords
+        self.dw.reds = None
+        self.dw.queries_filename = None
+        self.dw.rshowids = None
+        self.dw.coord = None
+        self.dw.coo_filename = None
+ 
     def OnImportCoord(self, event):
-        pass
+        dir_name = os.path.expanduser('~/')
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:
+                self.dw.importCoordFromFile(path)
+            except IOError as error:
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
+        open_dlg.Destroy()
+        
     def OnImportQueries(self, event):
-        pass
+        wcd = 'All files|*|Query files (*.queries)|*.queries|'
+        dir_name = os.path.expanduser('~/')
+
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:
+                self.dw.importQueriesFromFile(path)
+            except IOError as error:
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
+        open_dlg.Destroy()
+        
     def OnExport(self, event):
-        pass
+        if self.dw.reds is None:
+            wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded').ShowModal()
+            return
+        
+        if self.dw.queries_filename is not None:
+            dir_name = os.path.dirname(self.dw.queries_filename)
+        else:
+            dir_name = os.path.expanduser('~/')
+
+        save_dlg = wx.FileDialog(self.toolFrame, message='Export redescriptions to:', defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        if save_dlg.ShowModal() == wx.ID_OK:
+            path = save_dlg.GetPath()
+            try:
+                self.dw.exportQueries(path)
+            except IOError as error:
+                wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
+                                 +str(path)+':\n'+str(error)).ShowModal()
+        save_dlg.Destroy()
+        
     def OnNewW(self, event):
         if self.selectedList != None:
             self.selectedMap = -1

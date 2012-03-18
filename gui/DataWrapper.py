@@ -29,7 +29,7 @@ class DataWrapper(object):
     NAME_FILENAMES_SUFFIX = '.names'
     QUERIES_FILENAME = 'queries.txt'
     RSHOWIDS_FILENAME = 'rshowids.txt'
-    SETTINGS_FILENAME = 'settings.txt'
+    SETTINGS_FILENAME = 'settings.conf'
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'sirene_package'
 
@@ -200,6 +200,7 @@ class DataWrapper(object):
             self.data_filenames = data_filenames
             self.number_of_datafiles = len(data_filenames)
             self.isChanged = True
+            self.isFromPackage = False
 
     def updateNames(self):
         """Update names to match those of data"""
@@ -213,6 +214,7 @@ class DataWrapper(object):
             raise
         else:
             self.isChanged = True
+            self.isFromPackage = False
 
     def importQueriesFromFile(self, queries_filename):
         """Loads new queries from file"""
@@ -275,6 +277,7 @@ class DataWrapper(object):
             self._readPackageFromFile(package_filename)
         except IOError as arg:
             print "Cannot open", arg
+            raise
         except:
             raise
         else:
@@ -494,15 +497,19 @@ class DataWrapper(object):
 
 
     ## The saving function
-    def savePackageToFile(self, filename, suffix='siren'):
+    def savePackageToFile(self, filename, suffix='.siren'):
         """Saves all information to a new file"""
 
         if suffix is None:
             (filename, suffix) = os.path.splitext(filename)
+        else:
+            (fn, sf) = os.path.splitext(filename)
+            if sf == suffix:
+                filename = fn
 
         # Test that we can write to filename
         try:
-            f = open(os.path.abspath(''.join([filename, '.', suffix])), 'w')
+            f = open(os.path.abspath(filename + suffix), 'w')
         except IOError as arg:
             print "Cannot write to file", arg
             return
@@ -511,7 +518,7 @@ class DataWrapper(object):
 
         # Store old package_filename
         old_package_filename = self.package_filename
-        self.package_filename = os.path.abspath(''.join([filename, '.', suffix]))
+        self.package_filename = os.path.abspath(filename + suffix)
         # Get a temp folder
         tmp_dir = tempfile.mkdtemp(prefix='siren')
         #package_dir = os.path.join(tmp_dir, filename)
@@ -576,7 +583,7 @@ class DataWrapper(object):
         try:
             # DEBUG
             #print 'Writing to', ''.join((filename, '.', suffix))
-            with zipfile.ZipFile(''.join((filename, '.', suffix)), 'w') as package:
+            with zipfile.ZipFile(filename + suffix, 'w') as package:
                 package.write(os.path.join(tmp_dir, self.PLIST_FILE),
                               arcname = os.path.join('.', self.PLIST_FILE))
                 if self.coord is not None:
