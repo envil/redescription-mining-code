@@ -24,7 +24,6 @@ def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, sou
     step = 0
     
     while len(nextGen) > 0  and ( worker == None or worker.want_to_live):
-
         total_steps_int = sum([len(red.availableColsSide(0)) + len(red.availableColsSide(1)) for red in nextGen])+len(nextGen)
         count_steps_int = 0.0
         step += 1
@@ -124,7 +123,7 @@ def run(arguments):
     BestsDraft.settings(setts)
 
     readyDraft = RedescriptionsDraft()
-    souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
+    souvenirs = Souvenirs(data.usableCols(), setts.param['amnesic'])
         
     data.setInitialMSelection(setts.param['method_pairs'], setts.param['div_l'], setts.param['div_r'])
 #    pdb.set_trace()
@@ -203,7 +202,7 @@ def full_run(worker):
     BestsDraft.settings(setts)
 
     readyDraft = RedescriptionsDraft()
-    souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
+    souvenirs = Souvenirs(data.usableCols(), setts.param['amnesic'])
         
     data.setInitialMSelection(setts.param['method_pairs'], setts.param['div_l'], setts.param['div_r'])
 #    pdb.set_trace()
@@ -258,7 +257,7 @@ def part_run(worker):
     BestsDraft.settings(setts)
 
     readyDraft = RedescriptionsDraft()
-    souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
+    souvenirs = Souvenirs(data.usableCols(), setts.param['amnesic'])
 
     redesc.initAvailable(souvenirs)
     tmpRed = processDraft(redesc, data, setts.param['draft_capacity'], -1, setts.param['min_improvement'], constraints, souvenirs, logger, True, worker)

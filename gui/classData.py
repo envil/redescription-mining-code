@@ -13,14 +13,17 @@ class ColM:
             return details['names'][self.side][self.id]
         else:
             return "Undefined"
+
+    def getUsable(self, details=None):
+        return self.freeV
         
-    def getSide(self, details):
+    def getSide(self, details=None):
         return self.side
 
-    def getId(self, details):
+    def getId(self, details=None):
         return self.id
 
-    def getType(self, details):
+    def getType(self, details=None):
         return "-"
 
     def miss(self):
@@ -44,6 +47,13 @@ class ColM:
     def nbRows(self):
         return self.N
 
+    def setUnusable(self):
+        self.freeV = 1-self.freeV
+    def flipUsable(self):
+        self.freeV = 1-self.freeV
+
+
+
 class BoolColM(ColM):
     type_id = 1
 
@@ -65,6 +75,7 @@ class BoolColM(ColM):
         self.missing = nmiss
         self.id = None
         self.side = None
+        self.freeV = 1
 
     def supp(self):
         return self.hold
@@ -119,7 +130,7 @@ class CatColM(ColM):
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
         self.id = None
         self.side = None
-
+        self.freeV = 1
     def cats(self):
         return self.sCats.keys()
 
@@ -227,7 +238,8 @@ class NumColM(ColM):
         self.colbuk = None
         self.id = None
         self.side = None
-
+        self.freeV = 1
+        
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
         if len(self.sVals)+len(self.missing) != self.N :
@@ -742,6 +754,11 @@ class Data:
         return [set(self.nf[0]), set(self.nf[1])]
     def nbNonFull(self, side):
         return len(self.nf[side])
+
+    def usableCols(self):
+        return [set([col for col in self.nf[0] if self.cols[0][col].getUsable() == 1]), \
+                set([col for col in self.nf[1] if self.cols[1][col].getUsable() == 1])]
+
 
     def updateBests(self, bests, constraints, supports, side, col):
         bests.upBests(self.cols[side][col].anyAdvance(constraints, supports, side, col))

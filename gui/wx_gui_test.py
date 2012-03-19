@@ -31,6 +31,24 @@ import greedyRedescriptions as greedyRed
 from DataWrapper import DataWrapper
 from ICList import ICList
 
+def filterRedsToOne(reds_list, selected_id, compare_ids, redundant_func, thres):
+    redundant_ids = []
+    for compare_id in compare_ids:
+        if redundant_func(reds_list[selected_id], reds_list[compare_id], thres):
+            redundant_ids.append(compare_id)
+    return redundant_ids
+
+def isRedundantArea(redA, redB, thres= 0.5):
+    redundant = False
+    for side in [0,1]:
+        # areaA = len(redA.supp(side))*len(redA.invColsSide(side))
+        # areaB = len(redB.supp(side))*len(redB.invColsSide(side))
+        areaI = len(redB.supp(side) & redA.supp(side))* len(redB.invColsSide(side) & redA.invColsSide(side))
+        areaU = len(redB.supp(side) | redA.supp(side))* len(redB.invColsSide(side) | redA.invColsSide(side))
+        if areaU > 0 and  areaI / areaU > thres:
+            redundant = True
+    return redundant
+    
 
 # Thread class that executes processing
 class ExpanderThread(th.Thread):
@@ -96,8 +114,8 @@ class CustViewer(wx.grid.PyGridCellRenderer):
     TEXT_SELECTED = wx.Colour(100,100,100)
     BACKGROUND = wx.Colour(100,100,100)
     TEXT = wx.Colour(100,100,100)
-    BACKGROUND_GREY = wx.Colour(0,255,100)
-    TEXT_GREY = wx.Colour(255,0,0, 10)
+    BACKGROUND_GREY = wx.Colour(240,255,240)
+    TEXT_GREY = wx.Colour(131,139,131)
 
     """Base class for editors"""
 
@@ -129,8 +147,17 @@ class CustViewer(wx.grid.PyGridCellRenderer):
             dc.SetPen( wx.NullPen )
             dc.SetBrush( wx.NullBrush )
             dc.DestroyClippingRegion( )
-#        grid.SetGridCursor(row,0)
          
+    def GetBestSize(self, grid, attr, dc, row, col):
+        """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
+        Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+        won't raise an error, but the value won't be respected by wxPython.
+        """
+        x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
+        # note that the two-tuple returned by GetTextExtent won't work,
+        # need to give a wxSize object back!
+        return wx.Size( x,y )
+
 
 class CustomGridTable(wx.grid.PyGridTableBase):
 
@@ -152,7 +179,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.grid.SetTable(self)
 
         self.grid.EnableEditing(False)
-        # self.grid.AutoSizeColumns(True)
+        self.grid.AutoSizeColumns(True)
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
                                    CustViewer(),
@@ -247,7 +274,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.ResetView()
 
     def appendRow(self, rowD):
-        if len(self.sortids) == 0 or self.data[self.sortids[-1]] != rowD:
+        if len(self.sortids) == 0 or self.data[-1] != rowD:
             self.sortids.append([len(self.data), 1])
             self.data.append(rowD)
             self.updateSort()
@@ -260,12 +287,29 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.ResetView()
 
     def setHidden(self, row):
+        self.sortids[self.visibleSortId(row)][1] = 0
+        self.ResetView()
+    def setHiddens(self, rows):
+        sids = [self.visiblesAll()[row][1] for row in rows]
+        for sid in sids:
+            self.sortids[sid][1] = 0
+        self.ResetView()
+
+    def flipHidden(self, row):
         self.sortids[self.visibleSortId(row)][1] = 1- self.sortids[self.visibleSortId(row)][1]
+        self.ResetView()
+    def flipHiddens(self, rows):
+        sids = [self.visiblesAll()[row][1] for row in rows]
+        for sid in sids:
+            self.sortids[sid][1] = 1-self.sortids[sid][1]
         self.ResetView()
 
     def toggleHide(self):
         self.bShowHidden = not self.bShowHidden
         self.ResetView()
+
+    def orgToSortIds(self, org_ids):
+        return [self.visiblesIds().index(org_id) for org_id in org_ids] 
         
     def visibleStatus(self, row):
         return self.visiblesAll()[row][2]
@@ -285,7 +329,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
     def OnMouse(self,event):
         if event.GetRow() < len(self.visiblesAll()):
             if event.Col == 0:
-                self.setHidden(event.GetRow())
+                self.flipHidden(event.GetRow())
             else:
                 self.setSelectedRow(event.GetRow())
        
@@ -320,13 +364,15 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         pass
 
     def getSelectedRowData(self):
-        return self.GetRowData(self.getSelectedRowId())
-
+        if self.getSelectedRowId() != None:
+            return self.GetRowData(self.getSelectedRowId())
+        return
+    
     def getSelectedRowId(self):
         if len(self.GetView().GetSelectedRows()) > 0:
             return self.GetView().GetSelectedRows()[0]
         else:
-            return 0
+            return None
 
     def setSelectedRow(self,row):
         self.GetView().SetGridCursor(row,0)
@@ -364,6 +410,13 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.setSelectedRow(event.GetRow())
             self.viewData()
 
+    def filterToOne(self):
+        if self.getSelectedRowId() < len(self.visiblesIds()): 
+            compare_ids = self.visiblesIds()[self.getSelectedRowId():]
+            selected_id = compare_ids.pop(0)
+            redundant_ids = filterRedsToOne(self.data, selected_id, compare_ids, isRedundantArea, 0.5)
+            self.setHiddens(self.orgToSortIds(redundant_ids))
+
 class RedGridTable(CustomGridTable):
     def viewData(self):
         mapV = self.parent.getSelectedMapView()
@@ -390,8 +443,36 @@ class VarGridTable(CustomGridTable):
         mapV.updateRed(False)
 
 
+    def setHidden(self, row):
+        self.data[self.sortids[self.visibleSortId(row)][0]].setUnusable()
+        self.sortids[self.visibleSortId(row)][1] = 0
+        self.ResetView()
+    def setHiddens(self, rows):
+        sids = [self.visiblesAll()[row] for row in rows]
+        for sid in sids:
+            self.data[sid[0]].setUnusable()
+            self.sortids[sid[1]][1] = 0
+        self.ResetView()
+
+    def flipHidden(self, row):
+        self.data[self.sortids[self.visibleSortId(row)][0]].flipUsable()
+        self.sortids[self.visibleSortId(row)][1] = 1- self.sortids[self.visibleSortId(row)][1]
+        self.ResetView()
+    def flipHiddens(self, rows):
+        sids = [self.visiblesAll()[row] for row in rows]
+        for sid in sids:
+            self.data[sid[0]].flipUsable()
+            self.sortids[sid[1]][1] = 1-self.sortids[sid][1]
+        self.ResetView()
+
+
 
 class MapView:
+
+    COLOR_RIGHT = 'red'
+    COLOR_LEFT = 'blue'
+    COLOR_INTER = 'purple'
+    
     def __init__(self, parent, vid):
         self.parent = parent
         self.vid = vid
@@ -401,25 +482,25 @@ class MapView:
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
         self.MapredMapQL = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER) # , size=(550,-1)
-        self.MapredMapQL.SetForegroundColour('blue')
+        self.MapredMapQL.SetForegroundColour(MapView.COLOR_LEFT)
         self.MapredMapQR = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER)
-        self.MapredMapQR.SetForegroundColour('red')
+        self.MapredMapQR.SetForegroundColour(MapView.COLOR_RIGHT)
         sizetxt = 100
-        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoIL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoUL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoIV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoUV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoRL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoBL = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoRV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoBV = wx.StaticText(self.mapFrame, size=(sizetxt,-1))
-        self.MapredMapInfoIV.SetForegroundColour('purple')
-        self.MapredMapInfoBV.SetForegroundColour('blue')
-        self.MapredMapInfoRV.SetForegroundColour('red')
+        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoIL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoUL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoIV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoUV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoRL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoBL = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoRV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoBV = wx.StaticText(self.mapFrame, size=(sizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoIV.SetForegroundColour(MapView.COLOR_INTER)
+        self.MapredMapInfoBV.SetForegroundColour(MapView.COLOR_LEFT)
+        self.MapredMapInfoRV.SetForegroundColour(MapView.COLOR_RIGHT)
         self.button_expand = wx.Button(self.mapFrame, size=(80,-1), label="Expand")
         self.button_stop = wx.Button(self.mapFrame, size=(80,-1), label="Stop")
         self.button_expand.Bind(wx.EVT_BUTTON, self.parent.OnExpand)
@@ -433,31 +514,31 @@ class MapView:
         
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
  
-        flags = wx.ALIGN_RIGHT | wx.EXPAND
+        flags = wx.ALL
         self.MapValbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox1.Add(self.MapredMapInfoJL, 0, border=3, flag=flags)
-        self.MapValbox1.Add(self.MapredMapInfoVL, 0, border=3, flag=flags)
+        self.MapValbox1.Add(self.MapredMapInfoJL, 0, border=0, flag=flags)
+        self.MapValbox1.Add(self.MapredMapInfoVL, 0, border=0, flag=flags)
         
         self.MapValbox3 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox3.Add(self.MapredMapInfoIL, 0, border=3, flag=flags)
-        self.MapValbox3.Add(self.MapredMapInfoUL, 0, border=3, flag=flags)
+        self.MapValbox3.Add(self.MapredMapInfoIL, 0, border=0, flag=flags)
+        self.MapValbox3.Add(self.MapredMapInfoUL, 0, border=0, flag=flags)
 
         self.MapValbox5 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox5.Add(self.MapredMapInfoBL, 0, border=3, flag=flags)
-        self.MapValbox5.Add(self.MapredMapInfoRL, 0, border=3, flag=flags)
+        self.MapValbox5.Add(self.MapredMapInfoBL, 0, border=0, flag=flags)
+        self.MapValbox5.Add(self.MapredMapInfoRL, 0, border=0, flag=flags)
 
-        flags = wx.ALIGN_LEFT | wx.EXPAND
+        flags = wx.EXPAND | wx.ALL
         self.MapValbox2 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox2.Add(self.MapredMapInfoJV, 0, border=3, flag=flags)
-        self.MapValbox2.Add(self.MapredMapInfoVV, 0, border=3, flag=flags)
+        self.MapValbox2.Add(self.MapredMapInfoJV, 0, border=0, flag=flags)
+        self.MapValbox2.Add(self.MapredMapInfoVV, 0, border=0, flag=flags)
 
         self.MapValbox4 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox4.Add(self.MapredMapInfoIV, 0, border=3, flag=flags)
-        self.MapValbox4.Add(self.MapredMapInfoUV, 0, border=3, flag=flags)
+        self.MapValbox4.Add(self.MapredMapInfoIV, 0, border=0, flag=flags)
+        self.MapValbox4.Add(self.MapredMapInfoUV, 0, border=0, flag=flags)
 
         self.MapValbox6 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox6.Add(self.MapredMapInfoBV, 0, border=3, flag=flags)
-        self.MapValbox6.Add(self.MapredMapInfoRV, 0, border=3, flag=flags)
+        self.MapValbox6.Add(self.MapredMapInfoBV, 0, border=0, flag=flags)
+        self.MapValbox6.Add(self.MapredMapInfoRV, 0, border=0, flag=flags)
 
         self.MaphboxVals = wx.BoxSizer(wx.HORIZONTAL)
         self.MaphboxVals.Add(self.MapValbox1, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
@@ -556,7 +637,7 @@ class MapView:
 
         if self.parent.coord_extrema != None and self.parent.coord != None:
             m = self.axe
-            colors = ['b', 'r', 'purple']
+            colors = [MapView.COLOR_LEFT, MapView.COLOR_RIGHT, MapView.COLOR_INTER]
             sizes = [3, 3, 4]
             markers = ['s', 's', 's']
             i = 0
@@ -612,7 +693,6 @@ class MapView:
             self.MapredMapInfoBV.SetLabel("%i" % (red.sParts.lpart(0,0)))
             self.MapredMapInfoRL.SetLabel(u"|RHS \\ LHS|=")
             self.MapredMapInfoRV.SetLabel("%i" % (red.sParts.lpart(1,0)))
-
         
 class Siren():
     """ The main frame of the application
@@ -624,7 +704,7 @@ class Siren():
     titleHelp = 'SIREN :: help'
     helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
     fieldsRed = [('x[2]', ''), ('self.data[x[0]].getQueryLU', 'Query LHS'), ('self.data[x[0]].getQueryRU', 'Query RHS'), ('self.data[x[0]].getAcc', 'Acc'), ('self.data[x[0]].getPVal', 'p-Value')]
-    fieldsVar = [('x[2]', ''), ('self.data[x[0]].getId', 'Id'), ('self.data[x[0]].getName', 'Name'), ('self.data[x[0]].getType', 'Type')]
+    fieldsVar = [('self.data[x[0]].getUsable', ''), ('self.data[x[0]].getId', 'Id'), ('self.data[x[0]].getName', 'Name'), ('self.data[x[0]].getType', 'Type')]
     fieldsVarTypes = {1: [('self.data[x[0]].getDensity', 'Density')], 2:[('self.data[x[0]].getCategories', 'Categories')], 3:[('self.data[x[0]].getMin', 'Min'), ('self.data[x[0]].getMax', 'Max')]}
 
     def getFieldRed(red, fieldId):
@@ -661,24 +741,24 @@ class Siren():
         # (Almost) all of the above should stay in dw
         self.dw = DataWrapper()
         
-        self.reloadSettings()
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
+        # self.num_filename='./rajapaja/worldclim_tp.densenum'
+        # self.bool_filename='./rajapaja/mammals.datbool'
+        # self.coo_filename='./rajapaja/coordinates.names'
+        # self.queries_filename='./rajapaja/rajapaja.queries'
+        # self.settings_filename='./rajapaja/rajapaja.conf'
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
-        # self.num_filename='./us/us_politics_funds_cont.densenum'
-        # self.bool_filename='./us/us_socio_eco_cont.densenum'
-        # self.coo_filename='./us/us_coordinates_cont.names'
-        # self.queries_filename='./us/us.queries'
-        # self.settings_filename='./us/us.conf'
+        self.num_filename='./us/us_politics_funds_cont.densenum'
+        self.bool_filename='./us/us_socio_eco_cont.densenum'
+        self.coo_filename='./us/us_coordinates_cont.names'
+        self.queries_filename='./us/us.queries'
+        self.settings_filename='./us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
+        self.reloadSettings()
         self.reloadData()
         self.reloadCoordinates()
         self.reloadReds()
@@ -776,7 +856,7 @@ class Siren():
 	self.button_settings_filename.Bind(wx.EVT_BUTTON, self.doOpenFileS)
 	self.textbox_settings_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
         self.tabbed.AddPage(self.panel1, "Files")
-
+        self.panel1.Hide()
         ### LISTS PANELS
         self.selectedList = None
         self.lists = {}
@@ -878,10 +958,14 @@ class Siren():
         Create and display a popup menu on right-click event
         """
         ID_NEWW = wx.NewId()
+        ID_FILTER = wx.NewId()
+        ID_TOGHI = wx.NewId()
         ID_EXPAND = wx.NewId()
         
         menuRed = wx.Menu()
         m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
+        m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
+        m_toghi = menuRed.Append(ID_TOGHI, "&Hide/show", "Hide/show.")
         m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
         m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
         m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
@@ -889,6 +973,8 @@ class Siren():
         m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
 
         frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+        frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
+        frame.Bind(wx.EVT_MENU, self.OnToggleHide, m_toghi)
         frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
         frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
@@ -928,10 +1014,12 @@ class Siren():
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
 
         ID_NEWW = wx.NewId()
+        ID_FILTER = wx.NewId()
         ID_EXPAND = wx.NewId()
         ID_HIDE = wx.NewId()
 
         m_neww = menuRed.Append(ID_NEWW, "&View in new window\tAlt+V", "View redescription in new window.")
+        m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
         m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
         m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
         m_cut = menuRed.Append(wx.ID_CUT, "Cu&t\tCtrl+X", "Cut current redescription.")
@@ -960,6 +1048,7 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnExport, m_export)
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
         frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+        frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
         frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
         frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
@@ -1114,6 +1203,16 @@ class Siren():
         if self.selectedList != None:
             self.selectedMap = -1
             self.selectedList.viewData()
+
+    def OnFilterToOne(self, event):
+        if self.selectedList != None:
+            self.selectedList.filterToOne()
+
+    def OnToggleHide(self, event):
+        if self.selectedList != None:
+            self.selectedList.toggleHide()
+
+
 
     # def OnExpand(self, event):
     #     pass
@@ -1281,9 +1380,10 @@ class Siren():
             try:
                 file = open(path, 'r')
 		self.settings_filename = path
+                self.reloadSettings()
 		self.textbox_settings_filename.SetValue(str(self.settings_filename))
                 self.text_setts.LoadFile(path)
-
+                
             except IOError, error:
                 dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
                 dlg.ShowModal()

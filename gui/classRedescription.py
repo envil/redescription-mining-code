@@ -50,12 +50,12 @@ class Redescription:
         queryR.extend(None, initialPair[1])
         (suppL, missL) = data.termSuppMiss(0, initialPair[0])
         (suppR, missR) = data.termSuppMiss(1, initialPair[1])
-        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), data.nonFull(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])  
+        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), data.usableCols(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])  
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
     def fromQueriesPair(queries, data):
-        r = Redescription(queries[0].copy(), queries[1].copy())
+        r = Redescription(queries[0].copy(), queries[1].copy(), navailableCols = data.usableCols())
         r.recompute(data)
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
@@ -102,6 +102,9 @@ class Redescription:
 
     def suppI(self):
         return self.sParts.suppI()
+
+    def supp(self, side=0):
+        return self.sParts.supp(side)
     
     def lenO(self):
         return self.sParts.lenO()

@@ -22,3 +22,9 @@
    and about the data points (e.g. county names in us data, countries in rajapaja)
 
 * hunting the bugs
+   
+
+KNOWN BUGS:
+
+   - resetView jump and current row might not be visible any more
+   - wrap lines does not work
