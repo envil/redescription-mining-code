@@ -744,18 +744,18 @@ class Siren():
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        # self.num_filename='./rajapaja/worldclim_tp.densenum'
-        # self.bool_filename='./rajapaja/mammals.datbool'
-        # self.coo_filename='./rajapaja/coordinates.names'
-        # self.queries_filename='./rajapaja/rajapaja.queries'
-        # self.settings_filename='./rajapaja/rajapaja.conf'
+        self.num_filename='./rajapaja/worldclim_tp.densenum'
+        self.bool_filename='./rajapaja/mammals.datbool'
+        self.coo_filename='./rajapaja/coordinates.names'
+        self.queries_filename='./rajapaja/rajapaja.queries'
+        self.settings_filename='./rajapaja/rajapaja.conf'
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
-        self.num_filename='./us/us_politics_funds_cont.densenum'
-        self.bool_filename='./us/us_socio_eco_cont.densenum'
-        self.coo_filename='./us/us_coordinates_cont.names'
-        self.queries_filename='./us/us.queries'
-        self.settings_filename='./us/us.conf'
+        # self.num_filename='./us/us_politics_funds_cont.densenum'
+        # self.bool_filename='./us/us_socio_eco_cont.densenum'
+        # self.coo_filename='./us/us_coordinates_cont.names'
+        # self.queries_filename='./us/us.queries'
+        # self.settings_filename='./us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         self.reloadSettings()

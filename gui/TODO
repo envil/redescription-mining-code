@@ -28,3 +28,4 @@ KNOWN BUGS:
 
    - resetView jump and current row might not be visible any more
    - wrap lines does not work
+   - give focus to view on showing redescription
