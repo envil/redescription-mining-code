@@ -639,6 +639,9 @@ class Query:
             return self.op.copy()
         else: 
             return self.op.other()
+        
+    def nbBuk(self): 
+        return len(self.buk)
 
     def copy(self):
         c = Query()
@@ -950,11 +953,11 @@ class Query:
                         opExt = Op()
                         opStr = Op.ops[-1]
                 elif indA != None and indO == None:
-                    if not r.opBuk(len(r)).isAnd():
+                    if not r.opBuk(r.nbBuk()-1).isAnd():
                         opExt = Op(False)
                         opStr = indA.group('op')
                 elif indA == None and indO != None:
-                    if not r.opBuk(len(r)).isOr():
+                    if not r.opBuk(r.nbBuk()-1).isOr():
                         opExt = Op(True)
                         opStr = indO.group('op')
                 # else:
