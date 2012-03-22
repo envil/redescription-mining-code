@@ -410,6 +410,12 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.setSelectedRow(event.GetRow())
             self.viewData()
 
+    def duplicate(self):
+        red = self.getSelectedRowData().copy()
+        self.sortids.insert(self.visibleSortId(self.getSelectedRowId()), [len(self.data), 1])
+        self.data.append(red)
+        self.ResetView()
+
     def filterToOne(self):
         if self.getSelectedRowId() < len(self.visiblesIds()): 
             compare_ids = self.visiblesIds()[self.getSelectedRowId():]
@@ -420,13 +426,17 @@ class CustomGridTable(wx.grid.PyGridTableBase):
 class RedGridTable(CustomGridTable):
     def viewData(self):
         mapV = self.parent.getSelectedMapView()
-        mapV.setCurrentRed(self.getSelectedRowData())
+        mapV.setCurrentRed(self.getSelectedRowData(), self.tabId, self.visibleOrgId(self.getSelectedRowId()))
         mapV.updateRed(self.tabId != "Hist")
 
     def deleteHidden(self):
         new_data = [self.data[i] for i in self.sortids if i[1]]
         self.resetData(new_data)
 
+    def updateRow(self, rowId, red):
+        if rowId < len(self.data):
+            self.data[rowId] = red
+            self.ResetView()
 
 class VarGridTable(CustomGridTable):     
     def viewData(self):
@@ -465,6 +475,8 @@ class VarGridTable(CustomGridTable):
             self.sortids[sid[1]][1] = 1-self.sortids[sid][1]
         self.ResetView()
 
+    def updateRow(self, rowId, red):
+        pass
 
 
 class MapView:
@@ -475,6 +487,8 @@ class MapView:
     
     def __init__(self, parent, vid):
         self.parent = parent
+        self.source_data = None
+        self.source_id = None
         self.vid = vid
         self.lines = []
         self.coord_proj = None
@@ -576,7 +590,9 @@ class MapView:
     def OnEditRed(self, event):
         self.updateRed()
 
-    def setCurrentRed(self, red):
+    def setCurrentRed(self, red, source_data=None, source_id = None):
+        self.source_data=source_data
+        self.source_id =source_id
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
 #        self.MapredMapInfo.ChangeValue(red.dispLParts())
@@ -586,6 +602,8 @@ class MapView:
         red = self.redraw_map()
         if red != None and addHist:
             self.parent.lists["Hist"].appendRow(red)
+            if self.source_data != None and self.parent.lists.has_key(self.source_data) and self.source_id != None:
+                self.parent.lists[self.source_data].updateRow(self.source_id, red)
         return red
         
     def parseRed(self):
@@ -959,12 +977,18 @@ class Siren():
         """
         ID_NEWW = wx.NewId()
         ID_FILTER = wx.NewId()
+        ID_DUPLICATE = wx.NewId()
         ID_TOGHI = wx.NewId()
         ID_EXPAND = wx.NewId()
         
         menuRed = wx.Menu()
         m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
-        m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
+        if not self.selectedList.tabId in [0,1]:
+            m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
+            m_duplicate = menuRed.Append(ID_DUPLICATE, "&Duplicate", "Duplicate redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
+            frame.Bind(wx.EVT_MENU, self.OnDuplicate, m_duplicate)
+
         m_toghi = menuRed.Append(ID_TOGHI, "&Hide/show", "Hide/show.")
         m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
         m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
@@ -973,7 +997,6 @@ class Siren():
         m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
 
         frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
-        frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
         frame.Bind(wx.EVT_MENU, self.OnToggleHide, m_toghi)
         frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
         frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
@@ -1207,6 +1230,10 @@ class Siren():
     def OnFilterToOne(self, event):
         if self.selectedList != None:
             self.selectedList.filterToOne()
+
+    def OnDuplicate(self, event):
+        if self.selectedList != None:
+            self.selectedList.duplicate()
 
     def OnToggleHide(self, event):
         if self.selectedList != None:
