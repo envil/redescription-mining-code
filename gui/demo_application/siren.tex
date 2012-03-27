@@ -1,60 +1,37 @@
 % THIS IS SIGPROC-SP.TEX - VERSION 3.1
 \documentclass{sig-alternate}
 
+% Additional packages
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{amsmath}
+%\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{ifpdf}
+% Custom commands
+\usepackage{custom_commands}
+
+
 \begin{document}
 \special{papersize=8.5in,11in}
 \setlength{\pdfpageheight}{11in}%{\paperheight}
 \setlength{\pdfpagewidth}{8.5in}%{\paperwidth}
 
 
-\title{Siren: A program for visualizing spatial redescription
-mining}
+\title{Siren: An Interactive Tool for Mining Geospatial Redescriptions}
 \subtitle{[Demo]}
-%
-% You need the command \numberofauthors to handle the 'placement
-% and alignment' of the authors beneath the title.
-%
-% For aesthetic reasons, we recommend 'three authors at a time'
-% i.e. three 'name/affiliation blocks' be placed beneath the title.
-%
-% NOTE: You are NOT restricted in how many 'rows' of
-% "name/affiliations" may appear. We just ask that you restrict
-% the number of 'columns' to three.
-%
-% Because of the available 'opening page real-estate'
-% we ask you to refrain from putting more than six authors
-% (two rows with three columns) beneath the article title.
-% More than six makes the first-page appear very cluttered indeed.
-%
-% Use the \alignauthor commands to handle the names
-% and affiliations for an 'aesthetic maximum' of six authors.
-% Add names, affiliations, addresses for
-% the seventh etc. author(s) as the argument for the
-% \additionalauthors command.
-% These 'additional authors' will be output/set for you
-% without further effort on your part as the last section in
-% the body of your article BEFORE References or any Appendices.
 
-\numberofauthors{2} %  in this sample file, there are a *total*
-% of EIGHT authors. SIX appear on the 'first-page' (for formatting
-% reasons) and the remaining two appear in the \additionalauthors section.
-%
+\numberofauthors{2} 
 \author{
-% You can go ahead and credit any number of authors here,
-% e.g. one 'row of three' or two rows (consisting of one row of three
-% and a second row of one, two or three).
-%
-% The command \alignauthor (no curly braces needed) should
-% precede each author name, affiliation/snail-mail address and
-% e-mail address. Additionally, tag each line of
-% affiliation/address with \affaddr, and tag the
-% e-mail address with \email.
-%
 % 1st. author
 \alignauthor
-Esther Galbrun\\%\titlenote{Dr.~Trovato insisted his name be first.}\\
+Esther Galbrun\\
        \affaddr{Department of Computer Science}\\
-       %\affaddr{1932 Wallamaloo Lane}\\
        \affaddr{University of Helsinki, Finland}\\
        \email{galbrun@cs.helsinki.fi}
 % 2nd. author
@@ -65,27 +42,55 @@ Pauli Miettinen\\
        \email{pmiettin@mpi-inf.mpg.de}
 }
 
-%\date{30 July 1999}
-% Just remember to make sure that the TOTAL number of authors
-% is the number that will appear on the first page PLUS the
-% number that will appear in the \additionalauthors section.
-
 \maketitle
 \begin{abstract}
-Redescription mining is COOL!. Redescriptions on spatial data look
-COOL! \textsc{Siren} can show redescriptions on maps. COOL!
+  We present \textsc{Siren}, an interactive tool for mining geospatial
+  redescriptions.  Redescription mining is a powerful data analysis
+  tool that aims at finding alternative descriptions the same
+  entities.  For example, in biology, an important task is to identify
+  the bioclimatic constraints that allow some species to survive, that
+  is, to describe geographical regions in terms of both their
+  bioclimatic conditions and the fauna that inhabits them.  When the
+  entities are geographic locations, we qualify the redescriptions as
+  geospatial.  Using \textsc{Siren}, a user can explore data of his
+  interest by visualizing geospatial redescriptions on a map,
+  interactively edit, expand and filter them.  We will demonstrate our
+  system on two data sets, one about European mammals and climate, the
+  other containing US census and election funding data.
 \end{abstract}
 
-% A category with the (minimum) three required fields
-\category{H.4}{Information Systems Applications}{Miscellaneous}
-%A category including the fourth, optional field follows...
-\category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
+\category{H.2.8}{Information Systems}{Database Applications}[Data Mining]
+\category{H.5.2}{Information Interfaces and Presentation}{User Interfaces}
 
-\terms{Theory}
+\terms{Redescription Mining, Geospatial data, Application}
 
 %\keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
 
 \section{Introduction}
+Finding multiple ways to characterize the same entities is an important way of gaining insight in your data.
+In
+redescription mining the input contains entities with two sets of
+characterizing variables. The task is to find a pair of queries, one
+query for both sets of variables, such that both queries describe
+(almost) the same set of entities.
+
+In biology, the bioclimatic constraints that must be met 
+for a certain species to survive constitute that species' bioclimatic envelope
+(or niche\footnote{The term \emph{niche} is in this paper used in Grinnellian
+sense \cite{grinnell17niche}, considering only environmental variables, not 
+inter-species competition or such.}),
+and finding such envelopes can help, e.g.\ to predict the results of 
+global warming~\cite{pearson03predicting}.
+This problem correspond to f
+It is here where \emph{redescription mining} comes to help.  In niche-finding, the entities
+would be spatial locations, one set of variables would be the fauna
+and the other set would contain the bioclimatic variables. A very
+simple example of a redescription in this setting could say that the
+area where polar bears live is the area where March's mean temperature
+is between $-16$ and $-11$ degrees Celsius and May's mean temperature
+is between $-3$ and $-7$ degrees Celsius.
+
+
 
 
 \section{Redescription mining}
@@ -112,6 +117,7 @@ examples only.
 
 
 \bibliographystyle{abbrv}
+\nocite{*}
 \bibliography{bibsiren}  
 
 \balancecolumns

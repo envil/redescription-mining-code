@@ -273,6 +273,9 @@ class Redescription:
     def getPVal(self, details):
         return round(self.pVal(), 3)
 
+    def getSupp(self, details):
+        return len(self.suppI())
+
 
     def dispTexHeader():
         return ' & $q_\iLHS$ & $q_\iRHS$ & $\\jacc$ & $\\supp$ & \\pValue  \\\\'

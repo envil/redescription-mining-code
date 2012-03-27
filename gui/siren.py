@@ -2,6 +2,7 @@ import os
 import pprint
 import random
 import wx, wx.grid, wx.html, wx.richtext
+from wx.lib import wordwrap
 #from wx.prop import basetableworker
 import threading as th
 # import warnings
@@ -147,16 +148,23 @@ class CustViewer(wx.grid.PyGridCellRenderer):
             dc.SetPen( wx.NullPen )
             dc.SetBrush( wx.NullBrush )
             dc.DestroyClippingRegion( )
+
+
+    # def GetBestSize(self, grid, attr, dc, row, col):
+    #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
+    #     Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+    #     won't raise an error, but the value won't be respected by wxPython.
+    #     """
+    #     text = "%s" % grid.GetCellValue( row, col )
+    #     dc.SetFont(attr.GetFont())
+    #     text = wordwrap.wordwrap(text, grid.GetColSize(col), dc, breakLongWords = False)
+    #     w, h, lineHeight = dc.GetMultiLineTextExtent(text)
+    #     return wx.Size(w, h)
          
-    def GetBestSize(self, grid, attr, dc, row, col):
-        """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
-        Note: You _must_ return a wxSize object.  Returning a two-value-tuple
-        won't raise an error, but the value won't be respected by wxPython.
-        """
-        x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
-        # note that the two-tuple returned by GetTextExtent won't work,
-        # need to give a wxSize object back!
-        return wx.Size( x,y )
+    #     x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
+    #     # note that the two-tuple returned by GetTextExtent won't work,
+    #     # need to give a wxSize object back!
+    #     return wx.Size( x,y )
 
 
 class CustomGridTable(wx.grid.PyGridTableBase):
@@ -179,7 +187,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.grid.SetTable(self)
 
         self.grid.EnableEditing(False)
-        self.grid.AutoSizeColumns(True)
+        self.grid.AutoSizeColumns(False)
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
                                    CustViewer(),
@@ -481,9 +489,23 @@ class VarGridTable(CustomGridTable):
 
 class MapView:
 
-    COLOR_RIGHT = 'red'
-    COLOR_LEFT = 'blue'
-    COLOR_INTER = 'purple'
+    COLOR_RIGHT = (0,0,255)
+    COLOR_LEFT = (255,0,0)
+    COLOR_INTER = (160,32,240)
+    DOT_ALPHA = 0.6
+    
+    # COLOR_RIGHT = (175,175,175)
+    # COLOR_LEFT = (125,125,125)
+    # COLOR_INTER = (25,25,25)
+    # DOT_ALPHA = 0.6
+    
+    WATER_COLOR = "#EEFFFF"
+    GROUND_COLOR = "#FFFFFF"
+    LINES_COLOR = "gray"
+
+    DOT_SHAPE = 's'
+    DOT_SIZE = 3
+
     
     def __init__(self, parent, vid):
         self.parent = parent
@@ -630,10 +652,10 @@ class MapView:
             self.axe = m
             m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
 
-            m.drawcoastlines(color='gray')
-            m.drawcountries(color='gray')
-            m.drawmapboundary(fill_color='#EEFFFF') 
-            m.fillcontinents(color='#FFFFFF', lake_color='#EEFFFF')
+            m.drawcoastlines(color=MapView.LINES_COLOR)
+            m.drawcountries(color=MapView.LINES_COLOR)
+            m.drawmapboundary(fill_color=MapView.WATER_COLOR) 
+            m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
             self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
             height = 3; width = 3
@@ -655,9 +677,9 @@ class MapView:
 
         if self.parent.coord_extrema != None and self.parent.coord != None:
             m = self.axe
-            colors = [MapView.COLOR_LEFT, MapView.COLOR_RIGHT, MapView.COLOR_INTER]
-            sizes = [3, 3, 4]
-            markers = ['s', 's', 's']
+            colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
+            sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
+            markers = [MapView.DOT_SHAPE, MapView.DOT_SHAPE, MapView.DOT_SHAPE]
             i = 0
             while len(self.lines):
                 #plt.gca().patches.remove(self.lines.pop())
@@ -670,7 +692,7 @@ class MapView:
                     lip = list(part)
                     self.points_ids.extend(lip)
                     ids = np.array(lip)
-                    self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=0.5, picker=3))
+                    self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=MapView.DOT_ALPHA, picker=3))
                 else:
                     self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
                 i += 1
@@ -721,7 +743,7 @@ class Siren():
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
     helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
-    fieldsRed = [('x[2]', ''), ('self.data[x[0]].getQueryLU', 'Query LHS'), ('self.data[x[0]].getQueryRU', 'Query RHS'), ('self.data[x[0]].getAcc', 'Acc'), ('self.data[x[0]].getPVal', 'p-Value')]
+    fieldsRed = [('x[2]', ''), ('self.data[x[0]].getQueryLU', 'Query LHS'), ('self.data[x[0]].getQueryRU', 'Query RHS'), ('self.data[x[0]].getAcc', 'Acc'), ('self.data[x[0]].getPVal', 'p-Value'), ('self.data[x[0]].getSupp', 'Support')]
     fieldsVar = [('self.data[x[0]].getUsable', ''), ('self.data[x[0]].getId', 'Id'), ('self.data[x[0]].getName', 'Name'), ('self.data[x[0]].getType', 'Type')]
     fieldsVarTypes = {1: [('self.data[x[0]].getDensity', 'Density')], 2:[('self.data[x[0]].getCategories', 'Categories')], 3:[('self.data[x[0]].getMin', 'Min'), ('self.data[x[0]].getMax', 'Max')]}
 
@@ -762,18 +784,18 @@ class Siren():
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
+        # self.num_filename='./rajapaja/worldclim_tp.densenum'
+        # self.bool_filename='./rajapaja/mammals.datbool'
+        # self.coo_filename='./rajapaja/coordinates.names'
+        # self.queries_filename='./rajapaja/rajapaja.queries'
+        # self.settings_filename='./rajapaja/rajapaja.conf'
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
-        # self.num_filename='./us/us_politics_funds_cont.densenum'
-        # self.bool_filename='./us/us_socio_eco_cont.densenum'
-        # self.coo_filename='./us/us_coordinates_cont.names'
-        # self.queries_filename='./us/us.queries'
-        # self.settings_filename='./us/us.conf'
+        self.num_filename='./us/us_politics_funds_cont.densenum'
+        self.bool_filename='./us/us_socio_eco_cont.densenum'
+        self.coo_filename='./us/us_coordinates_cont.names'
+        self.queries_filename='./us/us.queries'
+        self.settings_filename='./us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         self.reloadSettings()
