@@ -3,6 +3,7 @@
 
 % Additional packages
 \usepackage{graphicx}
+\usepackage{color}
 \usepackage{url}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
@@ -14,8 +15,12 @@
 \usepackage{multirow}
 \usepackage{ifpdf}
 % Custom commands
-\usepackage{custom_commands}
+%\usepackage{custom_commands}
 
+\newcommand{\note}[1]{{\color{red}#1}}
+
+\newcommand{\Siren}{\textsc{Siren}}
+\newcommand{\ReReMi}{\textsc{ReReMi}}
 
 \begin{document}
 \special{papersize=8.5in,11in}
@@ -44,7 +49,7 @@ Pauli Miettinen\\
 
 \maketitle
 \begin{abstract}
-  We present \textsc{Siren}, an interactive tool for mining geospatial
+  We present \Siren, an interactive tool for mining geospatial
   redescriptions.  Redescription mining is a powerful data analysis
   tool that aims at finding alternative descriptions the same
   entities.  For example, in biology, an important task is to identify
@@ -95,13 +100,102 @@ is between $-3$ and $-7$ degrees Celsius.
 
 \section{Redescription mining}
 
+\note{Two views of redescription mining}
+The results of redescription mining, the redescriptions, can be
+approached from two points of view. On one hand, we can study the the
+variables and conditions appearing in the redescriptions, giving us
+valuable information about these variables. On the other hand, we can
+study the support set of the redescriptions, i.e.\ the set of
+observations where both queries of a redescription hold. When the data
+is geospatial, that is, the observations are connected to locations, the
+latter approach becomes even more important. A meaninful spatial
+redescription should define meaninful areas using meaningful
+queries. The goal of \Siren\ is to facilitate the analysis of the
+redescriptions using both of the approaches simultaneously.
+
 \section{Use-case scenarios}
 \label{sec:scenarios}
+
+We demonstrate the use of \Siren\ by going through a common workflow
+when mining geospatial redescriptions.
+
+\paragraph{Initial redescription mining}
+Given the data, a typical first step is to use a redescription mining
+algorithm to find the initial set of redescriptions. \Siren\ uses the
+\ReReMi\ algorithm~\cite{galbrun11black} for this. 
+
+When the initial set of redescriptions is mined, user can study the
+intersting redescriptions plotted on a map (see
+Fig.~\ref{fig:redescription}). \note{a picture of the map window} 
+Uninteresting redescriptions can be manually disactivated.
+
+\paragraph{Editing and extending a redescription}
+The true strengths of \Siren\ come to play after the initial set of
+redescriptions is mined. It is typical that the algorithm returns
+redescriptions that the user wants to edit. For example, some
+redescriptions might look unnecessarily complex, or have unnecessarily
+accurate boundaries for numerical variables. User can easily select
+the redescription she wants to edit, open it in a map window and start
+editing. \Siren\ updates the map and important statistics (similarity,
+$p$-value) about the
+redescription, allowing the user to see the effects of her edits
+immediately. This makes it easy for the user to see, e.g.\ if
+the simplified redescription would still be acceptably accurate.
+
+Sometimes user wants to focus only on one of the queries in the
+redescription. In such cases the resulting redescription might be very
+inaccurate. \Siren\ allows the user to automatically extend given
+redescription, i.e.\ let the algorithm add new items to the queries to
+make the redescription as accurate as possible. 
+
+The extension mechanism of \Siren\ can also be used to explore
+alternative extensions to redescriptions. The \ReReMi\ algorithm uses
+a beam search, and can therefore miss some redescriptions that are not
+the best extensions at some point of the search. 
+
+Finally, many times a set of redescriptions contain the same pair of
+variables. This can happen, e.g.\ when these two variables are highly
+correlated. User, however, might want to see redescriptions that have
+only one of these variables, not both. \Siren\ makes this simple: user
+only has to select a redescription, remove the variable she does not
+want to have, unselect the variable from the list of variables, and
+extend the redescription. \Siren\ will not use the unselected
+variables when extending or mining redescriptions.
+
+\note{Screenshots here}
+
+\paragraph{Filtering redundant redescriptions}
+\label{sec:filt-redund-redescr}
+It is common to see a set of redescriptions that cover approximately
+the same area even if they have (somewhat) different set of
+variables. In such cases it is important to be able to recognise and
+remove redundant redescriptions, i.e.\ redescriptions that do not
+convey significant new information, lest the user be overwhelmed with
+the number of found redescriptions. Again, \Siren\ allows automatic
+filtering of redundant redescriptions. User can either select a
+redescription and ask \Siren\ to filter out all redescriptions that
+are redundant with respect to the selected redescription, or \Siren\
+can go throught the whole list of redescriptions filtering out all
+redescriptions that are redundant with respect to some
+earlier-encountered (i.e.\ better) redescription. Naturally the user
+can revert the decisions made by \Siren\ whenever she wants to.
+
+\note{Screenshots here?}
+
+\paragraph{Outputting the results}
+\label{sec:outputting-results}
+Finally, \Siren\ facilitates the distribution of the results:
+redescriptions can be exported in easy-to-read format \note{ToDo:
+  Export human-readable redescs and LaTeX redescs perhaps too} and the
+maps associated to redescriptions can be easily converted to
+publication-ready files. 
+
+\note{Screenshots here?}
 
 \section{Related work}
 \label{sec:related-work}
 
-
+\note{SHOULD THIS BE PUT IN INTRO?? -Pauli}
 
 
 \section{Conclusions}
