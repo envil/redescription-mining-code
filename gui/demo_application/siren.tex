@@ -79,7 +79,8 @@ Pauli Miettinen\\
 \section{Introduction}
 %\subsubsection{Redescription Mining}
 Finding multiple ways to characterize the same entities is an
-important way of gaining insight in your data.  In \emph{Redescription
+important way of gaining insight in your data.  
+In \emph{Redescription
 Mining}, the input contains entities with two sets of characterizing
 variables. The task is to find a pair of queries, one query for both
 sets of variables, such that both queries describe (almost) the same
@@ -91,19 +92,19 @@ approached from two points of view. On one hand, we can study the
 variables and conditions appearing in the redescriptions, giving us
 valuable information about these variables. On the other hand, we can
 study the support set of the redescriptions, i.e.\ the set of
-observations where both queries of a redescription hold. When the data
-is geospatial, that is, the observations are connected to locations, the
+entities where both queries of a redescription hold. When the data
+is geospatial, that is, the entities are connected to locations, the
 latter approach becomes even more important. A meaningful geospatial
 redescription should define coherent areas using expressive
 queries. The goal of \Siren\ is to facilitate the analysis of the
 redescriptions using both of the approaches simultaneously.
 
-\begin{figure}[hb]
-  \centering
-\includegraphics[width=.5\textwidth]{screenshots/siren_map.png}
-  \caption{Map panel, displaying a redescription on a map.}
-  \label{fig:map_panel}
-\end{figure}
+% \begin{figure}[hb]
+%   \centering
+% \includegraphics[width=.5\textwidth]{screenshots/siren_map.png}
+%   \caption{Map panel, displaying a redescription on a map.}
+%   \label{fig:map_panel}
+% \end{figure}
 
 \begin{figure*}[t]
   \centering
@@ -111,6 +112,25 @@ redescriptions using both of the approaches simultaneously.
   \caption{Siren}
   \label{fig:both_panels}
 \end{figure*}
+
+Redescription mining
+aims at simultaneously finding multiple descriptions of a subset of
+entities which is not previously specified.
+This is in constrast with other methods like Emerging Patterns Mining
+(EPM), Contrast Set Mining (CSM) or Subgroup Discovery (SD) (see
+\cite{kralj09supervised} for a unifying survey) or general classification methods, where target subsets of entities are specified via labels. 
+Currently, redescription mining is a purely descriptive approach, its
+predictive power remains to be explored.
+ Since its introduction
+in~\cite{ramakrishnan04turning} various algorithms have been proposed
+for Boolean redescription mining, based on approaches including
+decision trees~\cite{ramakrishnan04turning,kumar07redescription},
+co-clusters~\cite{parida05redescription}, and frequent
+itemsets~\cite{gallo08finding}.  
+At the core of \Siren\
+is \ReReMi~\cite{galbrun11black}. This greedy algorithm extends redescription
+mining to categorical and numerical variables using an efficient
+on-the-fly discretization technique.
 
 
 \section{Use-case scenario}
@@ -120,17 +140,16 @@ of mining geospatial redescriptions.
 
 \prg{Initial redescription mining}
 Given the data, a natural first step is to use a redescription mining
-algorithm to find the initial set of redescriptions. \Siren\ relies the
-\ReReMi\ algorithm~\cite{galbrun11black} for this. 
+algorithm to find the initial set of redescriptions. 
 
 When the initial set of redescriptions is mined, the user can study the
 interesting redescriptions plotted on a map (see
-Fig.~\ref{fig:map_panel}).
+Fig.~\ref{fig:both_panels}).
 Uninteresting redescriptions can be manually disactivated.
 
  
 \prg{Editing a redescription} 
-The true strength of \Siren\ comes to play after the initial set of
+The interaction with \Siren\ start after the initial set of
 redescriptions is mined, as it allows the user to visualize, edit,
 filter and refine the redescriptions.  It is typical that the
 algorithm returns redescriptions that the user wants to edit. For
@@ -149,22 +168,22 @@ Sometimes the user wants to focus only on one of the queries in the
 redescription, on some particular variable of interest or on part of an existing redescription. 
 \Siren\ allows the user to automatically extend a given
 redescription, i.e.\ let the algorithm add new items to the queries to
-make the redescription as accurate as possible (see
-Fig.~\ref{fig:extending}). 
+make the redescription as accurate as possible.
+% (see Fig.~\ref{fig:extending}). 
 
-The extension mechanism of \Siren\ uses the beam search implemented in
+The extension mechanism of \Siren\ is based on the beam search implemented in
 the \ReReMi\ algorithm.  It can also be used to explore more specific
 alternative extensions to a redescription, that the beam search might
 have discarded at some point of the search because they were not the
 best extensions.
 
 
-\begin{figure*}
-  \centering
-\includegraphics[width=\textwidth]{screenshots/comparison.png}
-  \caption{Map panels, comparing redescriptions.}
-  \label{fig:comparison}
-\end{figure*}
+% \begin{figure*}
+%   \centering
+% \includegraphics[width=\textwidth]{screenshots/comparison.png}
+%   \caption{Map panels, comparing redescriptions.}
+%   \label{fig:comparison}
+% \end{figure*}
 
 
 
@@ -179,19 +198,19 @@ extend the redescription. \Siren\ will not use the unselected
 variables when extending or mining redescriptions.
 
 
-\begin{figure}
-  \centering
-\includegraphics[width=.5\textwidth]{screenshots/variables_05.png}
-  \caption{Tool panel, uselecting variables.}
-  \label{fig:map_panel}
-\end{figure}
+% \begin{figure}
+%   \centering
+% \includegraphics[width=.5\textwidth]{screenshots/variables_05.png}
+%   \caption{Tool panel, uselecting variables.}
+%   \label{fig:map_panel}
+% \end{figure}
 
-\begin{figure}
-  \centering
-\includegraphics[width=0.5\textwidth]{screenshots/extending.png}
-  \caption{Tool panel, extending a redescription.}
-  \label{fig:extending}
-\end{figure}
+% \begin{figure}
+%   \centering
+% \includegraphics[width=0.5\textwidth]{screenshots/extending.png}
+%   \caption{Tool panel, extending a redescription.}
+%   \label{fig:extending}
+% \end{figure}
 
 
 
@@ -254,44 +273,22 @@ Worldclim climate data~\cite{hijmans05very}.
 
 \prg{US counties statistics}
 
-\begin{figure}
-  \centering
-\includegraphics[width=.5\textwidth]{screenshots/siren_map_us_00.jpg}
-  \caption{Map panel, displaying a redescription on a map.}
-  \label{fig:map_panel}
-\end{figure}
+% \begin{figure}
+%   \centering
+% \includegraphics[width=.5\textwidth]{screenshots/siren_map_us_00.jpg}
+%   \caption{Map panel, displaying a redescription on a map.}
+%   \label{fig:map_panel}
+% \end{figure}
 
 
 To demonstrate the flexibility of our tool, we illustrate its usage on a dataset from an entirely different domain, describing the counties of continental United-States. 
 This time, the left hand side data contains socio-economic indicators about the counties, such as population, age distribution or educational attainment. The right hand side consists of data about funding of the electoral campaigns in 2006, 2008 and 2010. The data has been gathered from two public websites: FedStats\footnote{http://www.fedstats.gov/} and Open Secrets\footnote{http://www.opensecrets.org/elections/}.
 
 \section{Implementation details}
-\Siren\ as well as the back-end redescription mining algorithm \ReReMi, on which it relies, are implemented in Python.
+\Siren\ as well as the mining algorithm \ReReMi forming its core are implemented in Python.
 The interface is built with the \texttt{wxPython} Open Source GUI toolkit, ensuring cross-platform compatibility.
 The \texttt{matplotlib} library enables to generate high quality figures seamlessly integrated in the interface.
 \Siren\ can handle any data provided in compatible format. 
-
-\section{Related work}
-\label{sec:related-work}
-As opposed to data mining techniques like Emerging Patterns Mining
-(EPM), Contrast Set Mining (CSM) or Subgroup Discovery (SD) (see
-\cite{kralj09supervised} for a unifying survey), Redescription mining
-aims at simultaneously finding multiple descriptions of a subset of
-entities which is not previously specified, selecting the few relevant
-among a potentially large set of variables. Since its introduction
-in~\cite{ramakrishnan04turning} various algorithms have been proposed
-for Boolean redescription mining, based on approaches including
-decision trees~\cite{ramakrishnan04turning,kumar07redescription},
-co-clusters~\cite{parida05redescription}, and frequent
-itemsets~\cite{gallo08finding}.  
-
-For its mining purposes, \Siren\
-relies on the \ReReMi. This greedy algorithm extends redescription
-mining to categorical and numerical variables using an efficient
-on-the-fly discretization technique.
-
-Currently, redescription mining is a purely descriptive approach, its
-predictive power remains to be explored.
 
 \section{Conclusions}
 We present \Siren, a tool for interactively mining geospatial
