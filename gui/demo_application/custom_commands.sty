@@ -1,0 +1,189 @@
+\newtheorem{probl}{Problem}
+
+%% Algorithms
+
+\newcommand{\algCart}{\textsc{CARTwheels}}
+\newcommand{\algGreedy}{\textsc{Greedy}}
+\newcommand{\algReReMi}{\textsc{ReReMi}}
+\newcommand{\algGreedyP}{\algReReMi}
+\newcommand{\algMiner}{\textsc{Miner}}
+\newcommand{\algExtend}{\textsc{Extend}}
+\newcommand{\algBestExtensions}{\textsc{BestExtensions}}
+\newcommand{\algRank}{\textsc{Rank}}
+\newcommand{\algEclat}{\textsc{Eclat}}
+
+%% Formulae
+\newcommand{\iLHS}{\mathbf{L}} % index for left hand side
+\newcommand{\iRHS}{\mathbf{R}} % index for right hand side
+%% Math
+\makeatletter
+\newcommand{\abs}{\@ifstar%
+  \absstar%
+  \absnoStar%
+}
+\newcommand{\norm}{\@ifstar%
+  \normstar%
+  \normnoStar%
+}
+
+\newcommand{\scalar}{\@ifstar%
+  \scalarstar%
+  \scalarnoStar%
+}
+
+\newcommand{\absstar}[2][]{%
+  \def\tempa{}%
+  \def\tempb{#1}%
+  \ifx\tempa\tempb%
+    \lvert#2\rvert%
+  \else%
+    \csname #1l\endcsname\lvert#2\csname #1r\endcsname\rvert%
+  \fi%
+}
+
+\newcommand{\normstar}[2][]{%
+  \def\tempa{}%
+  \def\tempb{#1}%
+  \ifx\tempa\tempb%
+    \lVert#2\rVert%
+  \else%
+    \csname #1l\endcsname\lVert#2\csname #1r\endcsname\rVert%
+  \fi%
+}
+
+\newcommand{\scalarstar}[2][]{%
+  \def\tempa{}%
+  \def\tempb{#1}%
+  \ifx\tempa\tempb%
+    \langle#2\rangle%
+  \else%
+    \csname #1l\endcsname\langle#2\csname #1r\endcsname\rangle%
+  \fi%
+}
+
+\newcommand{\absnoStar}[1]{\left\lvert#1\right\rvert}
+\newcommand{\normnoStar}[1]{\left\lVert#1\right\rVert}
+\newcommand{\scalarnoStar}[1]{\left\langle#1\right\rangle}
+\makeatother
+\newcommand{\col}[1]{\mathcal{#1}}
+\DeclareMathOperator*{\supp}{supp}
+\DeclareMathOperator*{\argmax}{arg\, max}
+\DeclareMathOperator*{\argmin}{arg\, min}
+\DeclareMathOperator*{\mean}{mean}
+\DeclareMathOperator*{\avg}{avg}
+\DeclareMathOperator*{\jacc}{J}
+\DeclareMathOperator*{\jacco}{J_O}
+\DeclareMathOperator*{\jaccp}{J_P}
+\DeclareMathOperator*{\jaccr}{J_R}
+
+\newcommand{\pValue}{$p$\nobreakdash-\hspace{0pt}value}
+
+%% Classes and fields
+\newcommand{\NP}{\ensuremath{\mathrm{NP}}}
+\newcommand{\Poly}{\ensuremath{\mathrm{P}}}
+\newcommand{\DTIME}{\ensuremath{\mathrm{DTIME}}}
+\newcommand{\W}{\ensuremath{\mathrm{W}}}
+\newcommand{\FPT}{\ensuremath{\mathrm{FPT}}}
+
+\newcommand{\B}{\ensuremath{\{0,1\}}}
+\newcommand{\Z}{\ensuremath{\mathbb{Z}}}
+\newcommand{\nZ}{\ensuremath{\Z_{\geq 0}}}
+\newcommand{\R}{\ensuremath{\mathbb{R}}}
+\newcommand{\nR}{\ensuremath{\R_{\geq 0}}}
+
+\newcommand{\monthJan}{\text{Jan}}
+\newcommand{\monthFeb}{\text{Feb}}
+\newcommand{\monthMar}{\text{Mar}}
+\newcommand{\monthApr}{\text{Apr}}
+\newcommand{\monthMay}{\text{May}}
+\newcommand{\monthJun}{\text{Jun}}
+\newcommand{\monthJul}{\text{Jul}}
+\newcommand{\monthAug}{\text{Aug}}
+\newcommand{\monthSep}{\text{Sep}}
+\newcommand{\monthOct}{\text{Oct}}
+\newcommand{\monthNov}{\text{Nov}}
+\newcommand{\monthDec}{\text{Dec}}
+
+\newcommand{\Exy}{E_{x,y}}
+\newcommand{\Nxy}{e_{x,y}}
+\newcommand{\EVxy}[1]{E_{x,y}(#1)}
+\newcommand{\NVxy}[1]{e_{x,y}(#1)}
+
+
+\newcommand{\Ealpha}{E_{1,0}}
+\newcommand{\Ebeta}{E_{0,1}}
+\newcommand{\Egamma}{E_{1,1}}
+\newcommand{\Edelta}{E_{0,0}}
+
+\newcommand{\Nalpha}{\abs{E_{1,0}}}
+\newcommand{\Nbeta}{\abs{E_{0,1}}}
+\newcommand{\Ngamma}{\abs{E_{1,1}}}
+\newcommand{\Ndelta}{\abs{E_{0,0}}}
+
+\newcommand{\EValpha}[1]{E_{1,0}(#1)}
+\newcommand{\EVbeta}[1]{E_{0,1}(#1)}
+\newcommand{\EVgamma}[1]{E_{1,1}(#1)}
+\newcommand{\EVdelta}[1]{E_{0,0}(#1)}
+
+\newcommand{\NValpha}[1]{\abs{E_{1,0}(#1)}}
+\newcommand{\NVbeta}[1]{\abs{E_{0,1}(#1)}}
+\newcommand{\NVgamma}[1]{\abs{E_{1,1}(#1)}}
+\newcommand{\NVdelta}[1]{\abs{E_{0,0}(#1)}}
+
+%%%%%%%%%%%%%%%%%% MISSING
+\newcommand{\Emua}{E_{1,?}}
+\newcommand{\Emub}{E_{?,1}}
+\newcommand{\EmuaB}{E_{0,?}}
+\newcommand{\EmubB}{E_{?,0}}
+\newcommand{\Emud}{E_{?,?}}
+
+\newcommand{\Nmua}{\abs{\Emua}}
+\newcommand{\Nmub}{\abs{\Emub}}
+\newcommand{\NmuaB}{\abs{\EmuaB}}
+\newcommand{\NmubB}{\abs{\EmubB}}
+\newcommand{\Nmud}{\abs{\Emud}}
+
+\newcommand{\EVmua}[1]{\Emua(#1)}
+\newcommand{\EVmub}[1]{\Emub(#1)}
+\newcommand{\EVmuaB}[1]{\EmuaB(#1)}
+\newcommand{\EVmubB}[1]{\EmubB(#1)}
+\newcommand{\EVmud}[1]{\Emud(#1)}
+
+\newcommand{\NVmua}[1]{\abs{\EVmua{#1}}}
+\newcommand{\NVmub}[1]{\abs{\EVmub{#1}}}
+\newcommand{\NVmuaB}[1]{\abs{\EVmuaB{#1}}}
+\newcommand{\NVmubB}[1]{\abs{\EVmubB{#1}}}
+\newcommand{\NVmud}[1]{\abs{\EVmud{#1}}}
+
+
+%% Data names
+\newcommand{\Bio}{\texttt{Bio}}
+\newcommand{\Biosmall}{\texttt{Bio$_{\text{\texttt{small}}}$}}
+\newcommand{\DBLP}{\texttt{DBLP}}
+\newcommand{\DBLPf}{\texttt{DBLP$_{\text{\texttt{F}}}$}}
+\newcommand{\DBLPp}{\texttt{DBLP\_picked}}
+\newcommand{\DBLPn}{\texttt{DBLP$_{\text{\texttt{N}}}$}}
+\newcommand{\DBLPb}{\texttt{DBLP$_{\text{\texttt{B}}}$}}
+\newcommand{\climate}{\texttt{Climate}}
+
+
+% figure widths
+\newlength{\figwidth}
+\setlength{\figwidth}{0.49\textwidth}
+
+
+% Comments to marginal
+\RequirePackage{color}
+\newcommand{\xcomment}[1]{\marginpar[{\color{red}\raggedleft\footnotesize #1\\}]%
+{{\color{red}\raggedright\footnotesize #1\\}}}
+% Comment out to eliminate comments
+\renewcommand{\xcomment}[1]{\relax}
+
+\newcommand{\xinsert}[1]{{\color{blue} #1}}
+% Comment out to eliminate comments
+ \renewcommand{\xinsert}[1]{\relax}
+
+
+%% Hyphenation
+\hyphenation{re-de-scrip-tion re-de-scrip-tions ran-dom-i-za-tion}
+
