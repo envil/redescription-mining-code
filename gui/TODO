@@ -18,6 +18,12 @@
 
 * own color selection
 
+* Flexible split of variables between the two sides 
+
+* extend parser to handle other than "appended" queries
+
+* export human-readable redescs and LaTeX redescs perhaps too
+
 * filter/search lists on variable name
 
 * contextual menu and File menu functionalities
@@ -28,6 +34,10 @@
 
 * allow for more detailed explanation about the variables, e.g. legend, url, pic??
    and about the data points (e.g. county names in us data, countries in rajapaja)
+
+* parsing fails with authors queries in DBLP
+
+* Find a way to visualize non geospatial redescriptions
 
 * hunting the bugs
    

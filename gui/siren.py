@@ -489,17 +489,17 @@ class VarGridTable(CustomGridTable):
 
 class MapView:
 
-    COLOR_RIGHT = (0,0,255)
-    COLOR_LEFT = (255,0,0)
-    COLOR_INTER = (160,32,240)
-    DOT_ALPHA = 0.6
-    
-    # COLOR_RIGHT = (175,175,175)
-    # COLOR_LEFT = (125,125,125)
-    # COLOR_INTER = (25,25,25)
+    # COLOR_LEFT = (255,0,0)
+    # COLOR_RIGHT = (0,0,255)
+    # COLOR_INTER = (160,32,240)
     # DOT_ALPHA = 0.6
     
-    WATER_COLOR = "#EEFFFF"
+    COLOR_LEFT = (175,175,175)
+    COLOR_RIGHT = (125,125,125)
+    COLOR_INTER = (25,25,25)
+    DOT_ALPHA = 0.6
+    
+    WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"
     LINES_COLOR = "gray"
 
@@ -784,11 +784,20 @@ class Siren():
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
+        #self.num_filename='./dblp/coauthor_picked.datnum'
+        #self.bool_filename='./dblp/conference_picked.datnum'
+        #self.coo_filename='./dblp/coordinates_rand.names'
+        #self.queries_filename='./dblp/dblp_picked_real.queries'
+        #self.settings_filename='./dblp/dblp_picked_real.conf'
+
+
+        # # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
         self.num_filename='./rajapaja/worldclim_tp.densenum'
         self.bool_filename='./rajapaja/mammals.datbool'
         self.coo_filename='./rajapaja/coordinates.names'
         self.queries_filename='./rajapaja/rajapaja.queries'
         self.settings_filename='./rajapaja/rajapaja.conf'
+
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
         # self.num_filename='./us/us_politics_funds_cont.densenum'
