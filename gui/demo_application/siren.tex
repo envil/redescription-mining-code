@@ -122,12 +122,12 @@ redescriptions using both of the approaches simultaneously.
 
 Data mining is an iterative process, the results obtained at one step
 giving rise to hypotheses which will be tested at a further step.
-Redescription mining is no exception. Providing means to the data
-analyst to easily interact with the mining process greatly improves
-the analysis.  When dealing with geospatial data, visualizing the
-results on a map is crucial in order to interpret the results.  To
-answer these needs, we present \Siren, an interactive tool for mining
-and visualizing geospatial redescriptions.
+Redescription mining is no exception. Providing means to the users to
+easily interact with the mining process greatly improves the analysis.
+When dealing with geospatial data, visualizing the results on a map is
+crucial in order to interpret the results.  To answer these needs, we
+present \Siren, an interactive tool for mining and visualizing
+geospatial redescriptions.
 
 
 % \begin{figure}[hb]
@@ -147,7 +147,7 @@ and visualizing geospatial redescriptions.
 \section{Sample applications}
 For illustration purposes we selected two example datasets which
 demonstrate the use of \Siren\ in different application domains.  The
-first application is bioclimatics niche-finding, the second example
+first application is bioclimatic niche-finding while the second example
 pertains the exploration of socio-economic statistics.
 
 \prg{Biological niche-finding} 
@@ -198,7 +198,7 @@ Secrets (\url{http://www.opensecrets.org/elections/}).}.
 We exemplify the usage of \Siren\ by going through a generic workflow of
 mining geospatial redescriptions.  A screenshot of the system,
 displaying a list of redescriptions with one
-selected redescription plotted on a map is shown in
+particular redescription plotted on a map is shown in
 Figure~\ref{fig:both_panels}.
 
 \prg{Initial redescription mining}
@@ -206,8 +206,8 @@ Given the data, a natural first step is to use a redescription mining
 algorithm to find the initial set of redescriptions. 
 
 When the initial set of redescriptions is mined, starts the
-interaction with \Siren.  The user to visualize the initial results,
-edit, filter and refine them.  The user can study the interesting
+interaction with \Siren.  The user is able to visualize the initial results,
+edit, filter and refine them.  He can study the interesting
 redescriptions plotted on a map, and compare several redescriptions by
 visualizing them side by side. Uninteresting redescriptions can be
 manually disactivated.
@@ -224,10 +224,11 @@ The extension mechanism of \Siren\ is based on the beam search
 implemented in the \ReReMi\ algorithm.  It can also be used to study
 more specific alternative extensions to a redescription, that the beam
 search might have discarded at some point of the search because they
-were not the best extensions. In that case intermediate redescriptions
-explored during the beam search are returned at each step.
+were not the best extensions.
 
-In the climatic niche-finding task, for instance, the user might select the Southwestern Water Vole and look for the best extensions (see Figure~\ref{fig:extending}). The intermediate results can be compared as shown in Figure~\ref{fig:comparison}. The best extension returned has accuracy $0.665$:
+In the climatic niche-finding task, for instance, we might select the Southwestern Water Vole and look for best extensions starting from that single variable. The intermediate redescriptions
+explored during the beam search are returned at each step. 
+They can be compared as shown in Figure~\ref{fig:comparison}. Below is the best found extension, of accuracy $0.665$:
 \begin{equation*}
 \begin{array}{l}
 \text{Southwestern Water Vole }\lor\text{ Gray Dwarf Hamster }\\[1mm]
@@ -236,42 +237,43 @@ In the climatic niche-finding task, for instance, the user might select the Sout
 \quad\land  [42.75 \leq p_{Oct}^{avg} \leq 131.81] \land [50.556 \leq p_{Nov}^{avg} \leq 176.75],
 \end{array}
 \end{equation*}
-where the temperatures are expressed in degrees celcius and precipitation in millimeters.
+Temperatures are expressed in degrees celcius and precipitation in millimeters.
+
+% (see Figure~\ref{fig:extending})
+% \begin{figure}
+%   \centering
+% \includegraphics[width=0.5\textwidth]{screenshots/extending.png}
+%   \caption{Tool panel. Intermediates results found during the extension of a redescription.}
+%   \label{fig:extending}
+% \end{figure}
 
 \begin{figure}
   \centering
-\includegraphics[width=0.5\textwidth]{screenshots/extending.png}
-  \caption{Tool panel. Intermediates results found during the extension of a redescription.}
-  \label{fig:extending}
-\end{figure}
-
-\begin{figure}
-  \centering
-\includegraphics[width=0.5\textwidth]{screenshots/comparison.png}
+\includegraphics[width=0.45\textwidth]{screenshots/comparison.png}
   \caption{Several map panels. Comparing intermediate extensions automatically generate for a chosen starting variable. Red, blue and purple represents areas where only the left hand side query holds, only the right hand side query holds and where both queris hold, respectively.}
   \label{fig:comparison}
 \end{figure}
 
 \prg{Editing a redescription} 
-It is typical that the algorithm returns redescriptions that the user
+It is typical that the algorithm returns redescriptions which the user
 wants to edit. For example, some redescriptions might be overly
 complex, or have exceedingly accurate boundaries for numerical
 variables. The user can easily select the redescription he wants to
-modify, open it in a map window and start editing it, modifying
-boundaries, adding or removing literals. \Siren\ updates the map and
+modify, open it in a map window and start editing it. He is able to
+modify boundaries, add or remove literals. \Siren\ updates the map and
 important statistics (accuracy, $p$-value, etc.) of the redescription,
-allowing the user to see the effects of his modifications immediately. This makes it
-easy for the user to check, e.g.\ whether the simplified redescription
-would still be acceptably accurate.
+allowing the user to see the effects of his modifications
+immediately. This makes it easy for the user to check, e.g.\ whether
+the new redescription would still be acceptably accurate.
 
-In our example, the user might want to reduce the precision of the climatic constraints  to integers, editing the query as follows
+Continuing with our example above, we might want to reduce the precision of the climatic constraints to integers. We could edit the query as follows
 \begin{equation*}
 \begin{array}{l}
 [11 \leq t_{Mar}^{max}] \land  [0 \leq t_{Jan}^{avg} \leq 12]\\[1mm]
 \quad\land  [42 \leq p_{Oct}^{avg} \leq 132] \land [50 \leq p_{Nov}^{avg} \leq 177],
 \end{array}
 \end{equation*}
-and obtaining a redescription with the slightly decreased accuracy of $0.659$.
+and obtain a redescription with the slightly decreased accuracy of $0.659$.
 
 \prg{Using subsets of variables}
 Finally, a set of redescriptions might contain the same pair of
@@ -283,11 +285,23 @@ want from the redescription, unselect it from the list of variables, and
 extend the redescription. \Siren\ will not use the unselected
 variables when extending or mining redescriptions.
 
-Alternatively, in our running example, the user might want to force
+Alternatively, in our running example, we might want to force
 the algorithm to search alternative redescriptions that do not involve
-any monthly precipitations. He simply needs to unselect all such
-variables before running the expansion anew and will obtain the best
-extensions containing only temperatures in the bioclimatic query.
+any monthly precipitations. For that purpose, we simply unselect all such
+variables before running the expansion anew. We will obtain the best
+extensions containing only temperatures in the bioclimatic query, such as the following redescription of accuracy $0.653$
+
+\begin{equation*}
+\begin{array}{l}
+\text{Southwestern Water Vole }\lor\text{ Cape Hare }\\[1mm]
+\quad\lor\text{ Savi's Pine Vole }\lor\text{ Mediterranean Monk Seal}\\[3mm]
+( [11.2 \leq t_{Mar}^{max}] \land  [20.1 \leq t_{Jul}^{max} \leq 32.9]\\[1mm] 
+\quad\land  [0.51 \leq t_{Jan}^{avg} \leq 11.333]) \lor  [34.0 \leq t_{Aug}^{max}].
+\end{array}
+\end{equation*}
+
+Note that this redescription was not returned previously since the
+beam search focused on better ones involving precipitation variables.
 
 % \begin{figure}
 %   \centering
@@ -320,10 +334,10 @@ are redundant with respect to some earlier-encountered (i.e.\ better)
 redescription. Naturally, the user can revert the decisions made by
 \Siren\ whenever he wants.
 
-For instance, the results returned during an extension may contain
-many redundant redescriptions found at different steps. It is easy to
-sort them, e.g.\ by accuracy, select the best one and filter all the
-redundant ones down the list.
+For instance, the results returned during the above extension
+mentioned previously may contain many redundant redescriptions found
+at different steps. We can easily sort them, e.g.\ by accuracy, select
+one of interest and filter all the result down the list redundant with respect to it.
 
 % \begin{figure}
 %   \centering
@@ -370,13 +384,13 @@ where $[a, b]$ is an interval and $c$ some category.  These truth
 assignments and their negations constitute \emph{literals} which can
 be combined using the Boolean operators $\land$ (and) and $\lor$ (or)
 to form \emph{queries}.  Then, a redescription is simply a pair of
-queries over variables from the two sets, denoted as
-$R=(q_\iLHS,q_\iRHS)$.  The support of a query, is the subset of
-entities for which the query holds true.  The \emph{accuracy} of a
-redescription is measured by the \emph{Jaccard
-  coefficient} of the supports of its two queries. We compute \pValue{}s,
-indicating how likely it is to observe such an overlap for independent
-queries, which can be used to discard uninteresting redescriptions.
+queries over variables from the two sets.  The support of a query, is
+the subset of entities for which the query holds true.  The
+\emph{accuracy} of a redescription is measured by the \emph{Jaccard
+  coefficient} of the supports of its two queries. We compute
+\pValue{}s, indicating how likely it is to observe such an overlap for
+independent queries, which can be used to discard uninteresting
+redescriptions.
 
 % The search space of all Boolean formulae is too huge to be manageable.
 % Therefore, we need to restrict ourselves to a subset of formulae that
