@@ -73,9 +73,7 @@ Using \Siren, users can explore geospatial data of their
 \end{abstract}
 
 \category{H.2.8}{Information Systems}{Database Applications}[Data Mining]
-\category{H.5.2}{Information Interfaces and Presentation}{User Interfaces}
-
-\terms{Redescription Mining, Geospatial data, Application}
+%\category{H.5.2}{Information Interfaces and Presentation}{User Interfaces}
 
 %\keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
 
@@ -86,7 +84,7 @@ that appears in many areas of science.  In medical sciences, one might
 want to find a subset of patients sharing similar symptoms and similar
 genes. Describing geographical regions in terms of both their
 bioclimatic conditions and the fauna that inhabits them is another
-example. This is a task of great importance for biologists.
+example --- and a task of great importance for biologists.
  A very
 simple example of a redescription in this setting could say that
 areas where polar bears live are areas where March's mean temperature
@@ -120,15 +118,20 @@ redescription should define coherent areas using expressive
 queries. The goal of \Siren\ is to facilitate the analysis of the
 redescriptions using both of the approaches simultaneously.
 
-Data mining is an iterative process, the results obtained at one step
-giving rise to hypotheses which will be tested at a further step.
-Redescription mining is no exception. Providing means to the users to
-easily interact with the mining process greatly improves the analysis.
-When dealing with geospatial data, visualizing the results on a map is
-crucial in order to interpret the results.  To answer these needs, we
-present \Siren, an interactive tool for mining and visualizing
-geospatial redescriptions.
+Mining data is generally an iterative process, the results obtained at
+one step giving rise to hypotheses which will be tested at a further
+step.  Redescription mining is no exception. Providing means to the
+users to easily interact with the mining process greatly improves the
+analysis.  When dealing with geospatial data, visualizing the results
+on a map is crucial in order to interpret the results.  To answer
+these needs, we present \Siren, an interactive tool for mining and
+visualizing geospatial redescriptions.  
 
+Alternatively, experimenting with \Siren\ provides an efficient way
+for unfamiliar users to learn about redescription mining. The
+underlying concepts can be easily understood while visualizing the
+redescriptions and interacting with the system. Hence, it can also be
+used for educational purposes.
 
 % \begin{figure}[hb]
 %   \centering
@@ -167,7 +170,7 @@ species and their envelope.
 
 We give an example of the application of \Siren\ on this task using data
 that describes spatial areas of Europe, squares of side roughly 50
-km$^2$.  The left hand side data contains information about the
+kilometers.  The left hand side data contains information about the
 mammals that live in these areas, while the right hand side consists
 of bioclimatic variables\footnote{The data comes from two publicly available
 datasets: European mammal atlas~\cite{mitchell-jones99atlas} and
@@ -237,7 +240,13 @@ They can be compared as shown in Figure~\ref{fig:comparison}. Below is the best 
 \quad\land  [42.75 \leq p_{Oct}^{avg} \leq 131.81] \land [50.556 \leq p_{Nov}^{avg} \leq 176.75],
 \end{array}
 \end{equation*}
-Temperatures are expressed in degrees celcius and precipitation in millimeters.
+
+This redescription indicates that areas where any of the four
+species lives correspond to areas where the maximum temperature in
+March is above $11.2$ degrees Celsius, the average temperature in January
+between $0.51$ and $11.333$ degrees Celsius and the average precipitations in
+October and November included in the range $42.75$ to $131.81$ millimeters and $50.556$ to $176.75$ millimeters, respectively.
+
 
 % (see Figure~\ref{fig:extending})
 % \begin{figure}
@@ -322,15 +331,19 @@ beam search focused on better ones involving precipitation variables.
 \label{sec:filt-redund-redescr}
 It is common to see a set of redescriptions that cover approximately
 the same area even if they have (somewhat) different sets of
-variables. In such cases it is important to be able to recognise and
-remove redundant redescriptions, i.e.\ redescriptions that do not
-convey significant new information, lest the user be overwhelmed with
-the number of found redescriptions. Again, \Siren\ allows automatic
-filtering of redundant redescriptions. The user can either select a
-redescription and ask \Siren\ either to filter out all redescriptions
-that are redundant with respect to the selected one, or to go throught
-the whole list of redescriptions filtering out all redescriptions that
-are redundant with respect to some earlier-encountered (i.e.\ better)
+variables.  Indeed, redescriptions belong to the family of local
+patterns, with each individual pattern independently describing
+subsets of the data. Mining local patterns typically returns redundant
+results that require filtering.  In such cases it is important to be
+able to recognise and remove redundant redescriptions, i.e.\
+redescriptions that do not convey significant new information, lest
+the user be overwhelmed with the number of found
+redescriptions. Again, \Siren\ allows automatic filtering of redundant
+redescriptions. The user can either select a redescription and ask
+\Siren\ either to filter out all redescriptions that are redundant
+with respect to the selected one, or to go throught the whole list of
+redescriptions filtering out all redescriptions that are redundant
+with respect to some earlier-encountered (i.e.\ better)
 redescription. Naturally, the user can revert the decisions made by
 \Siren\ whenever he wants.
 
@@ -444,9 +457,10 @@ queries of any redescription be disjoint or enable the user to
 interactively determine the split between the variables.
 
 \section{Conclusions}
-We present \Siren, a tool mining geospatial
-redescriptions. It enables users to interactively mine, edit and extend
-redescriptions. It also features visualization of the redescriptions on a map, a key to the interpretaion of the results of geospatial data mining.
+We present \Siren, a tool mining geospatial redescriptions. It enables
+users to interactively mine, edit and extend redescriptions. It also
+features visualization of the redescriptions on a map, a key to the
+interpretation of the results of geospatial data mining.
 
 We will give the chance to the public to experiment with \Siren\ and
 together consider how this tool could be used to explore their own geospatial

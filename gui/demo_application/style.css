@@ -9,7 +9,7 @@ font-size:12pt;
 dt { color:white; font-weight: bold; }
 dd { display:inline; margin:5px;}
 
-img, video{
+img{
   margin:10px;
   text-align:center;
   clear:both;
