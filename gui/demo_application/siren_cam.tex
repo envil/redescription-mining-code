@@ -1,5 +1,5 @@
 % THIS IS SIGPROC-SP.TEX - VERSION 3.1
-\documentclass{llncs}
+\documentclass{sig-alternate}
 
 % Additional packages
 \usepackage{graphicx}
@@ -17,37 +17,44 @@
 % Custom commands
 \usepackage{custom_commands}
 
-%\newcommand{\prg}[1]{\paragraph{#1}}
-\newcommand{\prg}[1]{\textbf{#1}.}
+%\newcommand{\note}[1]{\relax} %{\color{red}#1}}
+\newcommand{\note}[1]{{\color{red}#1}}
 
+\newcommand{\prg}[1]{\paragraph{#1}}
+%\newcommand{\prg}[1]{\textbf{#1}}
 
 \newcommand{\Siren}{\textsc{Siren}}
 \newcommand{\ReReMi}{\textsc{ReReMi}}
 
-\def\verExample{1}
-\def\verE{0}
-
 \begin{document}
+\conferenceinfo{KDD'12,} {August 12--16, 2012, Beijing, China.}
+\CopyrightYear{2012}
+\crdata{978-1-4503-1462-6 /12/08}
+\clubpenalty=10000
+\widowpenalty = 10000
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{11in}%{\paperheight}
+\setlength{\pdfpagewidth}{8.5in}%{\paperwidth}
 
 
 \title{Siren: An Interactive Tool for Mining and Visualizing Geospatial Redescriptions}
+\subtitle{[Demo]}
 
-%\numberofauthors{2} 
+\numberofauthors{2} 
 \author{
-Esther Galbrun\inst{1}
-\and
-Pauli Miettinen\inst{2}
-}
-
-\institute{
-  Helsinki Institute for Information Technology,\\
-  Department of Computer Science, \\
-  University of Helsinki, Finland,\\
-  \email{galbrun@cs.helsinki.fi}
-\and
-  Max Planck Institute for Informatics, \\
-  Saarbr{\"u}cken, Germany,\\
-  \email{pmiettin@mpi-inf.mpg.de}
+% 1st. author
+\alignauthor
+Esther Galbrun\\
+       \affaddr{Helsinki Institute for Information Technology}\\
+       \affaddr{Department of Computer Science}\\
+       \affaddr{University of Helsinki, Finland}\\
+       \email{galbrun@cs.helsinki.fi}
+% 2nd. author
+\alignauthor
+Pauli Miettinen\\
+       \affaddr{Max Planck Institute for Informatics}\\
+       \affaddr{Saarbr{\"u}cken, Germany}\\
+       \email{pmiettin@mpi-inf.mpg.de}
 }
  
 \maketitle
@@ -71,6 +78,12 @@ Pauli Miettinen\inst{2}
   niche-finding over Europe, as an example task. However, \Siren\ is by
   no means limited to one particular dataset or application.
 \end{abstract}
+
+\category{H.2.8}{Information Systems}{Database Applications}[Data Mining]
+%\category{H.5.2}{Information Interfaces and Presentation}{User Interfaces}
+
+\terms{Algorithms, Design}
+%\keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
 
 \section{Introduction}
 %\subsubsection{Redescription Mining}
@@ -204,8 +217,6 @@ Figure~\ref{fig:both_panels}.
 analysis of any given data is to use a redescription mining algorithm
 to find an initial set of redescriptions.
 This can be done withing \Siren{} by running the extension mechanism on an empty redescription.
-Then starts the interaction with \Siren.
-
  
 \prg{Extending a redescription} Sometimes the user wants to focus only
 on one of the queries, on some particular variable of interest or on a
@@ -227,13 +238,14 @@ starting from that single variable.  Returned extensions can be
 visualized side by side and compared as shown in
 Figure~\ref{fig:comparison}. Here, the best found extension has
 accuracy $0.665$ (per Jaccard coefficient):
+
 \begin{equation*}
 %\footnotesize
 \begin{array}{l}
-\text{Southwestern Water Vole }\lor\text{ Gray Dwarf Hamster }\lor\text{ Savi's Pine Vole }\\[1mm]
-\quad\lor\text{ Mediterranean Monk Seal}\\[3mm]
-[11.2 \leq t_{3}^{+}] \land  [0.51 \leq t_{1}^{=} \leq 11.333]\land  [42.75 \leq p_{10}^{=} \leq 131.81] \\[1mm]
-\quad\land [50.556 \leq p_{11}^{=} \leq 176.75],
+\text{Southwestern Water Vole }\lor\text{ Gray Dwarf Hamster }\\[1mm]
+\quad\lor\text{ Savi's Pine Vole }\lor\text{ Mediterranean Monk Seal}\\[3mm]
+[11.2 \leq t_{3}^{+}] \land  [0.51 \leq t_{1}^{=} \leq 11.333]\\[1mm]
+\quad\land  [42.75 \leq p_{10}^{=} \leq 131.81] \land [50.556 \leq p_{11}^{=} \leq 176.75],
 \end{array}
 \end{equation*}
 
@@ -254,7 +266,7 @@ October and November range from $42.75$ to $131.81$ millimeters and from $50.556
 
 \begin{figure}
   \centering
-\includegraphics[width=0.7\textwidth]{screenshots/comparison}
+\includegraphics[width=0.48\textwidth]{screenshots/comparison}
   \caption{Several map panels. Comparing intermediate extensions automatically generated for a chosen starting variable. Red, blue and purple represents areas where only the left hand side query holds, only the right hand side query holds and where both queries hold, respectively.}
   \label{fig:comparison}
 \end{figure}
@@ -273,14 +285,15 @@ accurate.
 Continuing with our example above, we might want to reduce the
 precision of the climatic constraints to integers. We could edit the
 query as follows:
+
 \begin{equation*}
 %\footnotesize
 \begin{array}{l}
-[11 \leq t_{3}^{+}] \land  [0 \leq t_{1}^{=} \leq 12]%\\[1mm]
-%\quad
-\land  [42 \leq p_{10}^{=} \leq 132] \land [50 \leq p_{11}^{=} \leq 177],
+[11 \leq t_{3}^{+}] \land  [0 \leq t_{1}^{=} \leq 12]\\[1mm]
+\quad\land  [42 \leq p_{10}^{=} \leq 132] \land [50 \leq p_{11}^{=} \leq 177],
 \end{array}
 \end{equation*}
+
 and obtain a redescription of slightly decreased accuracy. % of $0.659$.
 
 \prg{Using subsets of variables} 
@@ -302,14 +315,14 @@ algorithm to search alternative redescriptions that do not involve any
 variables before running the extension anew. We will obtain the best
 extensions containing only temperatures in the bioclimatic query, such
 as the following redescription of accuracy $0.653$:
+
 \begin{equation*}
 %\footnotesize
 \begin{array}{l}
-\text{Southwestern Water Vole }\lor\text{ Cape Hare }\lor\text{ Savi's Pine Vole }\\[1mm]
-\quad\lor\text{ Mediterranean Monk Seal}\\[3mm]
-( [11.2 \leq t_{3}^{+}] \land  [20.1 \leq t_{7}^{+} \leq 32.9] %\\[1mm] 
-%\quad 
-\land  [0.51 \leq t_{1}^{=} \leq 11.333]) \lor  [34.0 \leq t_{8}^{+}].
+\text{Southwestern Water Vole }\lor\text{ Cape Hare }\\[1mm]
+\quad\lor\text{ Savi's Pine Vole }\lor\text{ Mediterranean Monk Seal}\\[3mm]
+( [11.2 \leq t_{3}^{+}] \land  [20.1 \leq t_{7}^{+} \leq 32.9] \\[1mm] 
+\quad \land  [0.51 \leq t_{1}^{=} \leq 11.333]) \lor  [34.0 \leq t_{8}^{+}].
 \end{array}
 \end{equation*}
 
@@ -475,6 +488,9 @@ data and help answer their data analysis need.
 \bibliographystyle{abbrv}
 %\nocite{*}
 \bibliography{bibsiren}  
+\balancecolumns
+
+% That's all folks!
 \end{document}
 
 %%% Local Variables: 
