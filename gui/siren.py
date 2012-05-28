@@ -489,15 +489,15 @@ class VarGridTable(CustomGridTable):
 
 class MapView:
 
-    # COLOR_LEFT = (255,0,0)
-    # COLOR_RIGHT = (0,0,255)
-    # COLOR_INTER = (160,32,240)
-    # DOT_ALPHA = 0.6
-    
-    COLOR_LEFT = (175,175,175)
-    COLOR_RIGHT = (125,125,125)
-    COLOR_INTER = (25,25,25)
+    COLOR_LEFT = (255,0,0)
+    COLOR_RIGHT = (0,0,255)
+    COLOR_INTER = (160,32,240)
     DOT_ALPHA = 0.6
+    
+    # COLOR_LEFT = (175,175,175)
+    # COLOR_RIGHT = (125,125,125)
+    # COLOR_INTER = (25,25,25)
+    # DOT_ALPHA = 0.6
     
     WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"
