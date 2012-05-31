@@ -14554,9 +14554,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.16823565"
-     inkscape:cx="1193.4914"
-     inkscape:cy="1636.1392"
+     inkscape:zoom="0.6729426"
+     inkscape:cx="458.80069"
+     inkscape:cy="2085.2122"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -15620,7 +15620,11 @@
              width="2979.9211"
              height="4212.9922" /></flowRegion><flowPara
            style="line-height:125%"
-           id="flowPara5856">The ReReMi algorithm [1] extends this problem to real-valued data sets.</flowPara><flowPara
+           id="flowPara5856">The <flowSpan
+   style="font-weight:bold;-inkscape-font-specification:Arev Sans Bold"
+   id="flowSpan5801">ReReMi</flowSpan> algorithm [1] extends this problem to <flowSpan
+   style="font-weight:bold;-inkscape-font-specification:Arev Sans Bold"
+   id="flowSpan5803">real-valued data</flowSpan>.</flowPara><flowPara
            id="flowPara7197" /></flowRoot>    </g>
     <g
        id="g8221"
