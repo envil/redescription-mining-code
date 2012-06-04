@@ -75,15 +75,22 @@ Pauli Miettinen\\
     \url{http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/}.}.
 
   To demonstrate the use of the tool, we focus on climatic
-  niche-finding over Europe, as an example task. However, \Siren\ is by
-  no means limited to one particular dataset or application.
+  niche-finding over Europe, as an example task. Yet, \Siren\ is by
+  no means limited to a particular dataset or application.
 \end{abstract}
 
 \category{H.2.8}{Information Systems}{Database Applications}[Data Mining]
 %\category{H.5.2}{Information Interfaces and Presentation}{User Interfaces}
 
 \terms{Algorithms, Design}
-%\keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
+\keywords{Redescription Mining, Interactive Data Mining}
+
+\begin{figure*}[t]
+  \centering
+\includegraphics[width=\textwidth]{screenshots/both_panels_02}
+  \caption{The \Siren\ interactive mining and visualization tool. The panel in the background contains a list of redescriptions while the foreground panel displays the map of a selected redescription.  In this example, left hand side queries are over fauna while right hand side queries are over monthly bioclimatic conditions, that is, temperatures and precipitation.}
+  \label{fig:both_panels}
+\end{figure*}
 
 \section{Introduction}
 %\subsubsection{Redescription Mining}
@@ -96,8 +103,8 @@ example --- and a task of great importance for biologists.  A
 simple example of a redescription in this setting could state that areas
 where Moose live are areas where February's maximum temperature is
 between $-10$ and $0$ degrees Celsius and July's maximum temperature
-between $12$ and $25$ degrees Celsius. This is actually the
-redescription shown in the foreground panel of
+between $12$ and $25$ degrees Celsius. This is the
+redescription shown in the front panel of
 Figure~\ref{fig:both_panels}.
 
 However, finding such alternative descriptions of the data
@@ -146,25 +153,11 @@ underlying concepts can be easily understood while visualizing the
 redescriptions and interacting with the system. Hence, it can also be
 used for educational purposes.
 
-% \begin{figure}[hb]
-%   \centering
-% \includegraphics[width=.5\textwidth]{screenshots/siren_map.png}
-%   \caption{Map panel, displaying a redescription on a map.}
-%   \label{fig:map_panel}
-% \end{figure}
-
-\begin{figure*}[t]
-  \centering
-\includegraphics[width=\textwidth]{screenshots/both_panels_02}
-  \caption{The \Siren\ interactive mining and visualization tool. The panel in the background contains a list of redescriptions while the foreground panel displays the map of a selected redescription.  In this example, left hand side queries are over fauna while right hand side queries are over monthly bioclimatic conditions, that is, temperatures and precipitation.}
-  \label{fig:both_panels}
-\end{figure*}
-
 \section{Example applications}
+
 Our main example for demonstrating \Siren\ is an application to
 \emph{bioclimatic niche-finding}.
 
-%\prg{Biological niche-finding} 
 Indeed, an important problem in biology, niche-finding, is a
 particular instance of redescription mining.  The bioclimatic
 constraints that must be met for a certain species to survive
@@ -182,10 +175,10 @@ species and their envelope.
 We give an example of the application of \Siren\ on this task using data
 that describes spatial areas of Europe, squares of side roughly 50
 kilometers.  The left hand side data contains information about the
-mammals that live in these areas, while the right hand side consists
-of bioclimatic variables\footnote{The data comes from two publicly available
+mammals living in these areas, while the right hand side consists
+of bioclimatic variables. The data comes from two publicly available
 datasets: European mammal atlas~\cite{mitchell-jones99atlas} and
-Worldclim climate data~\cite{hijmans05very}.}.
+Worldclim climate data~\cite{hijmans05very}.
 
 % \begin{figure}
 %   \centering

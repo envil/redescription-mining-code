@@ -1,49 +1,33 @@
-* making the map look better (what does that include??)
-
-* processing and trying the other data (US census)
-
-* filtering functionality on the redescriptions, given one good red hide all redundant
-
-* selecting/deselecting variables to use in extensions
-
-* hiding/deleting redescriptions
-
-* getting info for map point
-
-* use case scenario
-
-* print to pdf
-
-* scroll bar to resize the dots in the map.
-
-* own color selection
-
-* Flexible split of variables between the two sides 
-
-* extend parser to handle other than "appended" queries
-
-* export human-readable redescs and LaTeX redescs perhaps too
+* integrate the DataWrapper
+* change data format to arff
 
 * filter/search lists on variable name
-
+* select/unselect all
 * contextual menu and File menu functionalities
 	move red to > map view or list
 	Cut/copy/paste?
 	Expand///Stop (several expands)
 	activate/deactivate actions on context
 
+* export human-readable redescs and LaTeX redescs perhaps too
+* print to pdf
+
+* derivation: possibility to add a new variable aggregate of others
+* extend parser to handle other than "appended" queries
+* Flexible split of variables between the two sides 
+
+* scroll bar to resize the dots in the map.
+* own color selection
+* making the map look better (what does that include??)
+
+* getting info for map point
 * allow for more detailed explanation about the variables, e.g. legend, url, pic??
-   and about the data points (e.g. county names in us data, countries in rajapaja)
+   and about the data points (e.g. county names in us data, countries in rajapaja)   
 
-* parsing fails with authors queries in DBLP
-
-* Find a way to visualize non geospatial redescriptions
-
-* hunting the bugs
-   
+* select areas from the map and force to cover/remove
 
 KNOWN BUGS:
-
    - resetView jump and current row might not be visible any more
    - wrap lines does not work
    - give focus to view on showing redescription
+   - parsing fails with authors queries in DBLP
