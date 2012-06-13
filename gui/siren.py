@@ -149,22 +149,15 @@ class CustViewer(wx.grid.PyGridCellRenderer):
             dc.SetBrush( wx.NullBrush )
             dc.DestroyClippingRegion( )
 
-
-    # def GetBestSize(self, grid, attr, dc, row, col):
-    #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
-    #     Note: You _must_ return a wxSize object.  Returning a two-value-tuple
-    #     won't raise an error, but the value won't be respected by wxPython.
-    #     """
-    #     text = "%s" % grid.GetCellValue( row, col )
-    #     dc.SetFont(attr.GetFont())
-    #     text = wordwrap.wordwrap(text, grid.GetColSize(col), dc, breakLongWords = False)
-    #     w, h, lineHeight = dc.GetMultiLineTextExtent(text)
-    #     return wx.Size(w, h)
-         
-    #     x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
-    #     # note that the two-tuple returned by GetTextExtent won't work,
-    #     # need to give a wxSize object back!
-    #     return wx.Size( x,y )
+    def GetBestSize(self, grid, attr, dc, row, col):
+        """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
+        Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+        won't raise an error, but the value won't be respected by wxPython.
+        """         
+        x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
+        # note that the two-tuple returned by GetTextExtent won't work,
+        # need to give a wxSize object back!
+        return wx.Size( min(x, 10), min(y, 10))
 
 
 class CustomGridTable(wx.grid.PyGridTableBase):
@@ -185,9 +178,8 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         #### GRID
         self.grid = wx.grid.Grid(frame)
         self.grid.SetTable(self)
-
         self.grid.EnableEditing(False)
-        self.grid.AutoSizeColumns(False)
+        self.grid.AutoSizeColumns(True)
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
                                    CustViewer(),
@@ -280,6 +272,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.sortids = []
         self.updateSort()
         self.ResetView()
+        self.GetView().AutoSize()
 
     def appendRow(self, rowD):
         if len(self.sortids) == 0 or self.data[-1] != rowD:
@@ -364,9 +357,11 @@ class CustomGridTable(wx.grid.PyGridTableBase):
                 )
                 self.GetView().ProcessTableMessage(msg)
         self.GetView().EndBatch()
-        self.GetView().AutoSize()
         self.currentRows = len(self.visiblesAll())
         self.currentColumns = len(self.fields)
+
+        if self.getSelectedRowId() != None and not self.grid.IsVisible(self.getSelectedRowId(), 0):
+            self.grid.MakeCellVisible(self.getSelectedRowId(), 0)
 
     def deleteHidden(self):
         pass
@@ -388,13 +383,18 @@ class CustomGridTable(wx.grid.PyGridTableBase):
 
     def sortData(self, event):
         colS = event.GetCol()
-        old = self.sortP[0]
-        if self.sortP[0] == colS:
-            self.sortP = (self.sortP[0], not self.sortP[1])
+        print colS
+        if colS == -1:
+            pass
+#            self.setHiddens(range(10))
         else:
-            self.sortP = (colS, True)
-        self.updateSort()
-        self.ResetView()
+            old = self.sortP[0]
+            if self.sortP[0] == colS:
+                self.sortP = (self.sortP[0], not self.sortP[1])
+            else:
+                self.sortP = (colS, True)
+            self.updateSort()
+            self.ResetView()
         
     def updateSort(self):
         selected_row = self.getSelectedRowId()
