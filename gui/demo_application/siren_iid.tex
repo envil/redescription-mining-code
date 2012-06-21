@@ -20,6 +20,7 @@
 %\newcommand{\prg}[1]{\paragraph{#1}}
 \newcommand{\prg}[1]{\textbf{#1}.}
 
+\renewcommand{\note}[1]{{\color{red}{#1}\par}}
 
 \newcommand{\Siren}{\textsc{Siren}}
 \newcommand{\ReReMi}{\textsc{ReReMi}}
@@ -52,6 +53,7 @@ Pauli Miettinen\inst{2}
  
 \maketitle
 \begin{abstract}
+  \note{re-write}
   We present \Siren, an interactive tool for mining and visualizing
   geospatial redescriptions.  Redescription mining is a powerful data
   analysis tool that aims at finding alternative descriptions of the
@@ -79,13 +81,13 @@ that appears in many areas of science.  In medical sciences, one might
 want to find a subset of patients sharing similar symptoms and similar
 genes. Describing geographical regions in terms of both their
 bioclimatic conditions and the fauna that inhabits them is another
-example --- and a task of great importance for biologists.  A 
+example---and a task of great importance for biologists.  A 
 simple example of a redescription in this setting could state that areas
 where Moose live are areas where February's maximum temperature is
 between $-10$ and $0$ degrees Celsius and July's maximum temperature
-between $12$ and $25$ degrees Celsius. This is actually the
-redescription shown in the foreground panel of
-Figure~\ref{fig:both_panels}.
+between $12$ and $25$ degrees Celsius. 
+%This is actually the redescription shown in the foreground panel of
+%Figure~\ref{fig:both_panels}.
 
 However, finding such alternative descriptions of the data
 generally requires to manually fix the query on one side before
@@ -109,29 +111,113 @@ background information about that problem.
 The results of redescription mining, the redescriptions, can be
 approached from two points of view. On one hand, by considering the
 variables and conditions appearing in the queries, which provide
-valuable information in themselves; On the other hand, by studying the
+valuable information in themselves; on the other hand, by studying the
 support set of the redescriptions, i.e.\ the subset of entities where
 both queries of a redescription hold. When the data is geospatial,
 that is, the entities are connected to geographical locations, the
 latter approach becomes even more important. A meaningful geospatial
 redescription should define coherent areas using expressive
-queries. The goal of \Siren\ is to facilitate the analysis of
-redescriptions using both of the approaches simultaneously.
+queries. 
+%The goal of \Siren\ is to facilitate the analysis of
+%redescriptions using both of the approaches simultaneously.
 
-Mining data is generally an iterative process, the results obtained at
-one step giving rise to hypotheses which will be tested at a further
-step, and redescription mining is no exception. Providing means to the
-user to easily interact with the mining process greatly improves the
-analysis.  When dealing with geospatial data, visualizing the results
-on a map is crucial in order to interpret them.  To answer
-these needs, we present \Siren, an interactive tool for mining and
-visualizing geospatial redescriptions.  
+To analyse the redescriptions, the ability to visualize the support
+sets is very helpful. With geospatial data, the visualization is
+rather simple: plot the support sets in a map. But just plotting the
+results on a map is not enough: the user must also be able to interact
+with the program. This interaction can be conceptually divided in two
+sub-phases: interacting with the data mining algorithm and interacting
+with the result visualization. A third level of interaction happens
+between these two conceptual phases: the user moves back-and-forth
+between issuing commands to find new results and examining the
+already-found results. We argue that a good interactive data mining
+tool should facilitate all three types of interaction. In this paper
+we discuss about ways to facilitate this interaction in the process of
+mining redescriptions. We then present a pair of algorithms, \ReReMi\
+and \Siren, and explain how they implement the interaction and
+visualization for redescription mining. Lastly, we discuss on some
+possible pitfalls associated with interactive, visual redescription
+mining. But first, we formally define the redescription mining problem.
 
-Alternatively, experimenting with \Siren\ provides an efficient way
-for unfamiliar users to learn about redescription mining. The
-underlying concepts can be easily understood while visualizing the
-redescriptions and interacting with the system. Hence, it can also be
-used for educational purposes.
+
+\section{Redescription Mining}
+\label{sec:redescription-mining}
+\note{Esther: restructure so that it only explains the problem: Siren
+  and ReReMi belong to a latter phase.}
+Redescription mining aims at simultaneously finding multiple
+descriptions of a subset of entities which is not previously
+specified.  This is in contrast with other methods like Emerging
+Patterns Mining (EPM), Contrast Set Mining (CSM) and Subgroup Discovery
+(SD) (see \cite{kralj09supervised} for a unifying survey) or general
+classification methods, where target subsets of entities are specified
+via labels.  Currently, redescription mining is a purely descriptive
+approach, its predictive power remains to be explored.  Since its
+introduction in~\cite{ramakrishnan04turning} various algorithms have
+been proposed for Boolean redescription mining, based on approaches
+including decision
+trees~\cite{ramakrishnan04turning,kumar07redescription},
+co-clusters~\cite{parida05redescription}, and frequent
+itemsets~\cite{gallo08finding}.
+
+At the core of \Siren\ is the \ReReMi\ redescription mining
+algorithm. This greedy algorithm uses an efficient on-the-fly
+discretization technique to extend redescription mining to categorical
+and numerical variables.  Below, we give an outline of the concepts and
+algorithms involved. Full details can be found
+in the original publication~\cite{galbrun11black}.
+
+We consider Boolean, categorical, and numerical variables, partitioned
+into two sets. Boolean variables can be interpreted as a truth value
+assignment in a natural way.  For categorical and real-valued
+variables, truth value assignments are induced by relations $[v=c]$
+and $[a \leq v \leq b]$, respectively, where $c$ is some category and
+$[a, b]$ an interval.  These truth assignments and their negations
+constitute \emph{literals} which can be combined using the Boolean
+operators $\land$ (and) and $\lor$ (or) to form \emph{queries}.  Then,
+a redescription is simply a pair of queries over variables from the
+two sets.  The support of a query is the subset of entities for which
+the query holds true.  The \emph{accuracy} of a redescription is
+measured by the \emph{Jaccard coefficient} of the supports of its two
+queries; \pValue{}s indicating how likely it is to observe such an
+overlap for independent queries can be used to reject uninteresting
+redescriptions.
+
+% The search space of all Boolean formulae is too huge to be manageable.
+% Therefore, we need to restrict ourselves to a subset of formulae that
+% provides a good compromise between expressive power, difficulty of the
+% search, and interpretability.
+% For this purpose, we consider queries that can be parsed in linear
+% order, without trees, and allow every variable to appear only once.
+% For example, $(a \lor b) \land \lnot c$ is an acceptable query, but
+% $(a \land b) \lor (c \land d)$ is not. Yet, the search space remains
+% exponential and we still resort to a heuristic pruning during the
+% search.
+We use a strategy similar to beam-search to explore the
+solution space.  The basic idea is to construct queries bottom-up,
+starting from singleton redescriptions (i.e.\ both queries contain
+only one literal) and progressively extending them by appending
+operators and literals. %  For example, we could start with a pair $(a,
+% \lnot b)$, and try to extend it to $(a\land c, \lnot b)$, $(a \lor c,
+% \lnot b)$, $(a \land \lnot c, \lnot b)$, etc.
+After evaluating all
+possible one-step extensions, we select the best candidates and extend
+them in turn. This process stops when no new redescription can
+be generated.
+
+% We exploit some
+% simple observations to make the computation of accuracy more
+% efficient. This allows to evaluate candidates faster, especially
+% extensions with non-Boolean variables.
+% We compute a \pValue{} that represents the probability that two random
+% queries with marginal probabilities (i.e.\ the fraction of entities
+% supporting them) equal to those of $q_\iLHS$ and $q_\iRHS$ have an
+% intersection equal to or larger than $\abs{\supp(q_\iLHS,
+%   q_\iRHS)}$. This probability uses the binomial distribution. The higher the
+% \pValue, the more likely it is to observe such a support for
+% independent queries, and the less significant the query. Redescriptions with too high \pValue{} can be discarded.
+
+
+
 
 % \begin{figure}[hb]
 %   \centering
@@ -149,6 +235,9 @@ used for educational purposes.
 \end{figure*}
 
 \section{Example applications}
+\note{This could be made a subsection of Redescription mining section,
+  and shortened.
+}
 Our main example for demonstrating \Siren\ is an application to
 \emph{bioclimatic niche-finding}.
 
@@ -193,8 +282,88 @@ statistics and electoral campaign funding of U.S. continental counties, as an al
 %   and Open Secrets (\url{http://www.opensecrets.org/elections/}).}.
 
 
-\section{Use-case scenario}
+\section{Goals for Interactive and Visual Redescription Mining}
+\label{sec:goals-inter-visu}
+
+\note{Not this kind of list structure... + goals for interaction, too}
+
+In this section we discuss on our goals for an interactive and visual
+redescription mining tool. Some of these goals are general to any
+interactive and visual data mining tool (and we spend less time on
+discussing why they are desirable), some specific for the
+redescription mining. We divide the discussion between interaction and
+visualization, though we emphasize that these goals are not independent.
+
+\subsection{Goals for Visualization}
+\label{sec:goals-visualization}
+ \note{I started writing this section open. You should get the idea,
+   feel free to continue.}
+As a basis for our discussion, we use the taxonomy of interations for
+visual analytics proposed by Heer and
+Shneiderman~\cite{Heer:2012:IDV:2133806.2133821}. The bold-face terms
+correspond to their taxonomy.
+
+The most fundamental goal for visualization is, of course, to have a
+good \textbf{visualization}. With geospatial redescriptions, a map is the most
+natural option, thus our tool should be able to plot the
+redescriptions on a map. But in addition to a visualization, the user
+needs tools to \textbf{filter} and \textbf{sort} the visualized
+data. In case of redescription mining, the user should be able to sort
+the redescriptions based on different criteria, such as the accuracy
+of the redescription, the size of the support set(s), the $p$-value of
+the redescription, or the length of (number of literals in) the
+queries. 
+
+\begin{description}
+\item[Data and View Specification]~
+\begin{description}
+\item[Visualize] Plotting redescriptions on a map. Maps are the most natural way of visualizing geospatial data. (Possibly visualize several redescriptions on one map simultaneously? Advantages/Drawbacks?)
+ \item[Filter] Filter by variables (literal?) to exclude or require them, by geographical locations, statistics.
+\item[Sort] Sort the redescription based on similar criteria as filtering. Filter vs. Sort: show/hide vs. color code, e.g. shades of grey. Filtering can be similar to a strict thresholded sorting.
+\item[Derive] Introduce new variables as aggregate  (how close does it come to new query operators). Modify the split between variables. Have only one set of variables among which one can specify \emph{incompoatibilities} and \emph{exclusions}, i.e. variables that cannot appear in the same query or in the same redescription respectively (That takes the form of a graph with two types of edges).
+\end{description}
+\item[View Manipulation]~
+\begin{description}
+\item[Select] Select a redescription (possibility to select a several redescriptions at once? What for?) Specifying the bounds for real valued variables. Click or hover on a dot in the map to get more information about the state of the variables and what makes a query hold or not in that particular location.
+\item[Navigate] Shows the redescription over the whole area first, allows to zoom and pan. (Highlight the most relevant redescriptions to the currently zoomed on area, i.e. doing some filtering.) Keep an overview map in a corner of each map, maybe that's somewhat of an overkill, or have one general view with rectangles corresponding to zooms in the currently other opened maps.
+\item[Coordinate] When editing real-valued variable, show a scatter plot of the entities based on the values of the variable (and geographical proximity for y axis?) with colors indicating the current status of the rest of the query for each entity and provide sliders to set the bounds of the variable. Update the map view based accordingly. Update map(s) and list(s) on edits. Indicate in the list redescriptions which are currently displayed. Set a default zoom to which one can tie and untie map windows, zooming and panning in one window tied to that default zoom is reflected in other tied windows. One can choose whether map windows are created tied to the zoom or not, in the first case they would be created with the current default zoom else display the whole area.
+\item[Organize] Open maps (and new redescription lists) in different windows (using the system's tiling if there is one), or in detachable tabs.
+\end{description}
+\item[Process and Provenance]~
+\begin{description}
+\item[Record] Allow to save the current status, i.e. all current redescriptions, opened panels, maps, selected redescription and potentialy full history. Record the interaction history. Support redo and undo (only for edits or also for plotting, zooming, sorting, etc.). Turn the interaction history into editable/parameterizable macros. Find the shortest events sequence to reach the current status from initialization.
+\item[Annotate] Allow to add comments to the interaction history and macros, with annotable screen shots of the current window of interest or link to objects in the current environment (redescriptions, entities, groups of entities, variables, literals, etc.) Allow to structure the history and macros into logical blocks. 
+\item[Share] Easy export/import of macros, redescriptions lists, maps, possibly with comments and annotations and possibly individual events in the interaction history (requires specification of pre-requisites).
+\item[Guide] Give a clear name to and provide feedback for each action. Explain why an action might not be applicable at a certain point. Provide example macros with detailed explanations, to be replayed step-by-step. 
+\end{description}
+\end{description}
+
+\subsection{Goals for Interaction}
+\label{sec:goals-interaction}
+\note{just some buzzwords now}
+
+Any-time
+
+Instat editing of redescriptions
+
+Automated extension
+
+Exclusion of variables/geographical areas
+
+$\ldots$
+
+
+
+\section{The Algorithms}
+\label{sec:algorithms}
+
+\note{All explanations about the workings of ReReMi \& Siren here}
+
+\section{How the Algorithms Meet the Goals}
 \label{sec:scenarios}
+
+\note{The old use-case scenario text is a good basis for this, but
+  needs to be re-worked a lot.}
 We exemplify the usage of \Siren\ by going through a generic work-flow of
 mining geospatial redescriptions, detailing typical steps in the process.  A screenshot of the system,
 displaying a list of redescriptions with one
@@ -372,80 +541,8 @@ redescriptions can be exported in easy-to-read format and the
 maps associated to redescriptions can be readily converted to
 publication-ready graphics. 
 
-\section{Redescription Mining}
-\label{sec:redescription-mining}
-Redescription mining aims at simultaneously finding multiple
-descriptions of a subset of entities which is not previously
-specified.  This is in contrast with other methods like Emerging
-Patterns Mining (EPM), Contrast Set Mining (CSM) and Subgroup Discovery
-(SD) (see \cite{kralj09supervised} for a unifying survey) or general
-classification methods, where target subsets of entities are specified
-via labels.  Currently, redescription mining is a purely descriptive
-approach, its predictive power remains to be explored.  Since its
-introduction in~\cite{ramakrishnan04turning} various algorithms have
-been proposed for Boolean redescription mining, based on approaches
-including decision
-trees~\cite{ramakrishnan04turning,kumar07redescription},
-co-clusters~\cite{parida05redescription}, and frequent
-itemsets~\cite{gallo08finding}.
-
-At the core of \Siren\ is the \ReReMi\ redescription mining
-algorithm. This greedy algorithm uses an efficient on-the-fly
-discretization technique to extend redescription mining to categorical
-and numerical variables.  Below, we give an outline of the concepts and
-algorithms involved. Full details can be found
-in the original publication~\cite{galbrun11black}.
-
-We consider Boolean, categorical, and numerical variables, partitioned
-into two sets. Boolean variables can be interpreted as a truth value
-assignment in a natural way.  For categorical and real-valued
-variables, truth value assignments are induced by relations $[v=c]$
-and $[a \leq v \leq b]$, respectively, where $c$ is some category and
-$[a, b]$ an interval.  These truth assignments and their negations
-constitute \emph{literals} which can be combined using the Boolean
-operators $\land$ (and) and $\lor$ (or) to form \emph{queries}.  Then,
-a redescription is simply a pair of queries over variables from the
-two sets.  The support of a query is the subset of entities for which
-the query holds true.  The \emph{accuracy} of a redescription is
-measured by the \emph{Jaccard coefficient} of the supports of its two
-queries; \pValue{}s indicating how likely it is to observe such an
-overlap for independent queries can be used to reject uninteresting
-redescriptions.
-
-% The search space of all Boolean formulae is too huge to be manageable.
-% Therefore, we need to restrict ourselves to a subset of formulae that
-% provides a good compromise between expressive power, difficulty of the
-% search, and interpretability.
-% For this purpose, we consider queries that can be parsed in linear
-% order, without trees, and allow every variable to appear only once.
-% For example, $(a \lor b) \land \lnot c$ is an acceptable query, but
-% $(a \land b) \lor (c \land d)$ is not. Yet, the search space remains
-% exponential and we still resort to a heuristic pruning during the
-% search.
-We use a strategy similar to beam-search to explore the
-solution space.  The basic idea is to construct queries bottom-up,
-starting from singleton redescriptions (i.e.\ both queries contain
-only one literal) and progressively extending them by appending
-operators and literals. %  For example, we could start with a pair $(a,
-% \lnot b)$, and try to extend it to $(a\land c, \lnot b)$, $(a \lor c,
-% \lnot b)$, $(a \land \lnot c, \lnot b)$, etc.
-After evaluating all
-possible one-step extensions, we select the best candidates and extend
-them in turn. This process stops when no new redescription can
-be generated.
-
-% We exploit some
-% simple observations to make the computation of accuracy more
-% efficient. This allows to evaluate candidates faster, especially
-% extensions with non-Boolean variables.
-% We compute a \pValue{} that represents the probability that two random
-% queries with marginal probabilities (i.e.\ the fraction of entities
-% supporting them) equal to those of $q_\iLHS$ and $q_\iRHS$ have an
-% intersection equal to or larger than $\abs{\supp(q_\iLHS,
-%   q_\iRHS)}$. This probability uses the binomial distribution. The higher the
-% \pValue, the more likely it is to observe such a support for
-% independent queries, and the less significant the query. Redescriptions with too high \pValue{} can be discarded.
-
+%% COMMENT-OUT BEGIN
+\iffalse
 \section{Implementation details}
 \Siren\ and \ReReMi\ are implemented in Python.  The interface is
 built with the \texttt{wxPython} Open Source GUI toolkit, ensuring
@@ -463,34 +560,11 @@ of describing variables.  One might then search for pairs of queries,
 with the constraint that the two subsets of variables appearing in the
 queries of any redescription be disjoint or enable the user to
 interactively determine the split between the variables.
+\fi
+%% COMMENT-OUT ENDS
 
-\section{Analysis of the functionalities}
-In this section, we analyse from a high-level perspective the dynamic interation functionalities of \Siren. We discuss functionalities currently integrated into the tool as well as speculate about useful functionalities that could be included in the future.
-As a basis for our discussion, we use the taxonomy of interations for visual analytics proposed by Heer and Shneiderman~\cite{Heer:2012:IDV:2133806.2133821}.
 
-\begin{description}
-\item[Data and View Specification]~
-\begin{description}
-\item[Visualize] Plotting redescriptions on a map. Maps are the most natural way of visualizing geospatial data. (Possibly visualize several redescriptions on one map simultaneously? Advantages/Drawbacks?)
-\item[Filter] Filter by variables (literal?) to exclude or require them, by geographical locations, statistics.
-\item[Sort] Sort the redescription based on similar criteria as filtering. Filter vs. Sort: show/hide vs. color code, e.g. shades of grey. Filtering can be similar to a strict thresholded sorting.
-\item[Derive] Introduce new variables as aggregate  (how close does it come to new query operators). Modify the split between variables. Have only one set of variables among which one can specify \emph{incompoatibilities} and \emph{exclusions}, i.e. variables that cannot appear in the same query or in the same redescription respectively (That takes the form of a graph with two types of edges).
-\end{description}
-\item[View Manipulation]~
-\begin{description}
-\item[Select] Select a redescription (possibility to select a several redescriptions at once? What for?) Specifying the bounds for real valued variables. Click or hover on a dot in the map to get more information about the state of the variables and what makes a query hold or not in that particular location.
-\item[Navigate] Shows the redescription over the whole area first, allows to zoom and pan. (Highlight the most relevant redescriptions to the currently zoomed on area, i.e. doing some filtering.) Keep an overview map in a corner of each map, maybe that's somewhat of an overkill, or have one general view with rectangles corresponding to zooms in the currently other opened maps.
-\item[Coordinate] When editing real-valued variable, show a scatter plot of the entities based on the values of the variable (and geographical proximity for y axis?) with colors indicating the current status of the rest of the query for each entity and provide sliders to set the bounds of the variable. Update the map view based accordingly. Update map(s) and list(s) on edits. Indicate in the list redescriptions which are currently displayed. Set a default zoom to which one can tie and untie map windows, zooming and panning in one window tied to that default zoom is reflected in other tied windows. One can choose whether map windows are created tied to the zoom or not, in the first case they would be created with the current default zoom else display the whole area.
-\item[Organize] Open maps (and new redescription lists) in different windows (using the system's tiling if there is one), or in detachable tabs.
-\end{description}
-\item[Process and Provenance]~
-\begin{description}
-\item[Record] Allow to save the current status, i.e. all current redescriptions, opened panels, maps, selected redescription and potentialy full history. Record the interaction history. Support redo and undo (only for edits or also for plotting, zooming, sorting, etc.). Turn the interaction history into editable/parameterizable macros. Find the shortest events sequence to reach the current status from initialization.
-\item[Annotate] Allow to add comments to the interaction history and macros, with annotable screen shots of the current window of interest or link to objects in the current environment (redescriptions, entities, groups of entities, variables, literals, etc.) Allow to structure the history and macros into logical blocks. 
-\item[Share] Easy export/import of macros, redescriptions lists, maps, possibly with comments and annotations and possibly individual events in the interaction history (requires specification of pre-requisites).
-\item[Guide] Give a clear name to and provide feedback for each action. Explain why an action might not be applicable at a certain point. Provide example macros with detailed explanations, to be replayed step-by-step. 
-\end{description}
-\end{description}
+
 
 \section{Pitfalls}
 How to avoid that the user finds what he is looking for and only that?
@@ -509,14 +583,7 @@ What is the difference between generating hypotheses from the data versus backin
 In the mining process, one starts with a question, which is often implicit, makes an hypothesis to answer it. Then the tool could help look for evidence supporting the hypothesis. Rather, it should help indentify the hypothesis that best answers the question.  
 
 \section{Conclusions}
-We present \Siren, a tool for mining geospatial redescriptions. It enables
-users to interactively mine, edit and extend redescriptions. It also
-features visualization of the redescriptions on a map, a key toward
-interpreting the results of geospatial data mining.
 
-We will give chance to the public to experiment with \Siren\ and
-together consider how this tool could be used to explore their own geospatial
-data and help answer their data analysis need.
 
 %\bibliographystyle{abbrv}
 \bibliographystyle{splncs03}
