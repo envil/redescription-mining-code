@@ -260,16 +260,16 @@ class CustomGridTable(wx.grid.PyGridTableBase):
     def SetValue(self, row, col, value):
         pass
 
-    def resetData(self, data, fieldsRed=[], details=[]):
+    def resetData(self, data, fieldsRed=[], details=[], srids=None):
         if details != []:
             self.details = details
         if fieldsRed != []:
             self.fields = fieldsRed
         self.data = data
-        if self.data != None:
-            self.sortids = [[idi, 1] for idi in range(len(self.data))]
+        if srids != None:
+            self.sortids = srids
         else:
-            self.sortids = []
+            self.sortids = [[idi, 1] for idi in range(len(self.data))]
         self.updateSort()
         self.ResetView()
         self.GetView().AutoSize()
@@ -632,14 +632,13 @@ class MapView:
         queryL = Query.parseAny(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
         queryR = Query.parseAny(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
         if queryL != None and queryR != None: 
-            return Redescription.fromQueriesPair([queryL, queryR], self.parent.data) 
+            return Redescription.fromQueriesPair([queryL, queryR], self.parent.dw.data) 
         
     def draw_map(self):
         """ Draws the map
         """
-
         self.MapfigMap.clear()
-        if self.parent.coord_extrema != None and self.parent.coord != None:            
+        if self.parent.coord_extrema != None and self.parent.dw.coord != None:            
 
             m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
                     llcrnrlat=self.parent.coord_extrema[1][0], \
@@ -657,7 +656,7 @@ class MapView:
             m.drawmapboundary(fill_color=MapView.WATER_COLOR) 
             m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
-            self.coord_proj = m(self.parent.coord[0], self.parent.coord[1])
+            self.coord_proj = m(self.parent.dw.coord[0], self.parent.dw.coord[1])
             height = 3; width = 3
             self.gca = plt.gca()
             #self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
@@ -675,7 +674,7 @@ class MapView:
         #self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
 
-        if self.parent.coord_extrema != None and self.parent.coord != None:
+        if self.parent.coord_extrema != None and self.parent.dw.coord != None:
             m = self.axe
             colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
             sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
@@ -772,51 +771,46 @@ class Siren():
         self.mapViews = {}
         self.selectedMap = -1
  
-        self.coord = None
         self.coord_extrema = None
-        self.data = None
         self.details = None
         self.worker = None
 
-        # (Almost) all of the above should stay in dw
-        self.dw = DataWrapper()
-        
         self.create_tool_panel()
 
         # #### COMMENT OUT TO LOAD DBLP ON STARTUP
-        # self.num_filename='./dblp/coauthor_picked.datnum'
-        # self.bool_filename='./dblp/conference_picked.datnum'
-        # self.coo_filename='./dblp/coordinates_rand.names'
-        # self.queries_filename='./dblp/dblp_picked_real.queries'
-        # self.settings_filename='./dblp/dblp_picked_real.conf'
+        # tmp_num_filename='./dblp/coauthor_picked.datnum'
+        # tmp_bool_filename='./dblp/conference_picked.datnum'
+        # tmp_coo_filename='./dblp/coordinates_rand.names'
+        # tmp_queries_filename='./dblp/dblp_picked_real.queries'
+        # tmp_settings_filename='./dblp/dblp_picked_real.conf'
 
 
         # # # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        self.num_filename='./rajapaja/worldclim_tp.densenum'
-        self.bool_filename='./rajapaja/mammals.datbool'
-        self.coo_filename='./rajapaja/coordinates.names'
-        self.queries_filename='./rajapaja/rajapaja.queries'
-        self.settings_filename='./rajapaja/rajapaja.conf'
+        tmp_num_filename='./rajapaja/worldclim_tp.densenum'
+        tmp_bool_filename='./rajapaja/mammals.datbool'
+        tmp_coo_filename='./rajapaja/coordinates.names'
+        tmp_queries_filename='./rajapaja/rajapaja.queries'
+        tmp_settings_filename='./rajapaja/rajapaja.conf'
 
 
         # #### COMMENT OUT TO LOAD US ON STARTUP
-        # self.num_filename='./us/us_politics_funds_cont.densenum'
-        # self.bool_filename='./us/us_socio_eco_cont.densenum'
-        # self.coo_filename='./us/us_coordinates_cont.names'
-        # self.queries_filename='./us/us.queries'
-        # self.settings_filename='./us/us.conf'
+        # tmp_num_filename='./us/us_politics_funds_cont.densenum'
+        # tmp_bool_filename='./us/us_socio_eco_cont.densenum'
+        # tmp_coo_filename='./us/us_coordinates_cont.names'
+        # tmp_queries_filename='./us/us.queries'
+        # tmp_settings_filename='./us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
-        self.reloadSettings()
-        self.reloadData()
-        self.reloadCoordinates()
+        # (Almost) all of the above should stay in dw
+        self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
+
+        ### TODO DW
+        self.resetLogger()
+        self.details = {'names': self.dw.names}
+        self.reloadVars()
+        self.resetCoordinates()
         self.reloadReds()
-        self.text_setts.LoadFile(self.settings_filename)
-	self.textbox_num_filename.SetValue(str(self.num_filename))
-	self.textbox_bool_filename.SetValue(str(self.bool_filename))
-        self.textbox_coo_filename.SetValue(str(self.coo_filename))
-        self.textbox_queries_filename.SetValue(str(self.queries_filename))
-        self.textbox_settings_filename.SetValue(str(self.settings_filename))
+        self.text_setts.LoadFile(self.dw.settings_filename)
 	
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -839,9 +833,9 @@ class Siren():
         self.progress_bar.Show()
         red = self.getSelectedMapView().redraw_map()
         if red.length(0) + red.length(1) > 0:
-            self.worker = ExpanderThread(self.data, self.setts, red, self.logger)
+            self.worker = ExpanderThread(self.dw.data, self.dw.minesettings, red, self.logger)
         else:
-            self.worker = MinerThread(self.data, self.setts, self.logger)
+            self.worker = MinerThread(self.dw.data, self.dw.minesettings, self.logger)
 
     def OnStop(self, event):
         """Show Result status."""
@@ -887,25 +881,6 @@ class Siren():
         self.makeStatus(self.toolFrame)
 	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
 
-        ### FILES PANEL
-        self.panel1 = wx.Panel(self.tabbed, -1)
-	self.button_num_filename = wx.Button(self.panel1, size=(150,-1), label="Change Left File")
-	self.button_num_filename.Bind(wx.EVT_BUTTON, self.doOpenFileN)
-	self.textbox_num_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
-	self.button_bool_filename = wx.Button(self.panel1, size=(150,-1), label="Change Right File")
-	self.button_bool_filename.Bind(wx.EVT_BUTTON, self.doOpenFileB)
-	self.textbox_bool_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
-	self.button_coo_filename = wx.Button(self.panel1, size=(150,-1), label="Change Coordinates File")
-	self.button_coo_filename.Bind(wx.EVT_BUTTON, self.doOpenFileC)
-	self.textbox_coo_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
-        self.button_queries_filename = wx.Button(self.panel1, size=(150,-1), label="Change Queries File")
-	self.button_queries_filename.Bind(wx.EVT_BUTTON, self.doOpenFileQ)
-	self.textbox_queries_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
-        self.button_settings_filename = wx.Button(self.panel1, size=(150,-1), label="Change Settings File")
-	self.button_settings_filename.Bind(wx.EVT_BUTTON, self.doOpenFileS)
-	self.textbox_settings_filename = wx.TextCtrl(self.panel1, size=(500,-1), style=wx.TE_READONLY)
-        self.tabbed.AddPage(self.panel1, "Files")
-        self.panel1.Hide()
         ### LISTS PANELS
         self.selectedList = None
         self.lists = {}
@@ -934,48 +909,6 @@ class Siren():
         self.panelSetts.Hide()
         self.text_setts = wx.TextCtrl(self.panelSetts, size=(-1,-1), style=wx.TE_MULTILINE)
         self.tabbed.AddPage(self.panelSetts, "Settings")
-
-        ### SIZER FOR FILES PANEL
-	self.vbox1 = wx.BoxSizer(wx.VERTICAL)
-        
-        self.hboxL1 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.hboxL1.Add(self.button_num_filename, 0, border=3, flag=flags)
-	self.hboxL1.AddSpacer(10)
-        self.hboxL1.Add(self.textbox_num_filename, 0, border=3, flag=flags)
-
-        self.hboxR1 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.hboxR1.Add(self.button_bool_filename, 0, border=3, flag=flags)
-	self.hboxR1.AddSpacer(10)
-        self.hboxR1.Add(self.textbox_bool_filename, 0, border=3, flag=flags)
-
-        self.hboxC1 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.hboxC1.Add(self.button_coo_filename, 0, border=3, flag=flags)
-	self.hboxC1.AddSpacer(10)
-        self.hboxC1.Add(self.textbox_coo_filename, 0, border=3, flag=flags)
-
-        self.hboxQ1 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.hboxQ1.Add(self.button_queries_filename, 0, border=3, flag=flags)
-	self.hboxQ1.AddSpacer(10)
-        self.hboxQ1.Add(self.textbox_queries_filename, 0, border=3, flag=flags)
-
-        self.hboxS1 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.hboxS1.Add(self.button_settings_filename, 0, border=3, flag=flags)
-	self.hboxS1.AddSpacer(10)
-        self.hboxS1.Add(self.textbox_settings_filename, 0, border=3, flag=flags)
-
-        self.vbox1.Add(self.hboxL1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
-        self.vbox1.Add(self.hboxR1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
-        self.vbox1.Add(self.hboxC1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
-        self.vbox1.Add(self.hboxQ1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
-        self.vbox1.Add(self.hboxS1, 0, flag = wx.ALIGN_LEFT | wx.TOP)
-        
-        self.panel1.SetSizer(self.vbox1)
-        self.vbox1.Fit(self.toolFrame)
 
         ### SIZER FOR LOG
         self.vboxL = wx.BoxSizer(wx.VERTICAL)
@@ -1194,6 +1127,9 @@ class Siren():
                 try:
                     self.dw.importDataFromFiles([left_path, right_path])
                     self.dw.updateNames()
+                    self.details = {'names': self.dw.names}
+                    self.reloadVars()
+                    self.reloadReds()
                 except IOError, error:
                     dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
                                            +' and '+str(right_path)+':\n' + str(error))
@@ -1218,6 +1154,7 @@ class Siren():
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
         open_dlg.Destroy()
+        self.resetCoordinates()
         
     def OnImportQueries(self, event):
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
@@ -1270,8 +1207,6 @@ class Siren():
         if self.selectedList != None:
             self.selectedList.toggleHide()
 
-
-
     # def OnExpand(self, event):
     #     pass
     # def OnStop(self, event):
@@ -1317,173 +1252,26 @@ class Siren():
         self.deleteAllViews()
         self.toolFrame.Destroy()
         exit()
-
-    def doOpenFileB(self, event):
-        wcd = 'All files|*|Numerical Data|*.densenum/*.datnum|Boolean Data|*.sparsebool/*.datbool'
-        if self.bool_filename != '':
-            file_name = os.path.basename(self.bool_filename)
-            dir_name = ''
-        else:
-            file_name = ''
-            dir_name = os.getcwd()
-            
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-
-            try:
-                file = open(path, 'r')
-		self.bool_filename = path
-		self.textbox_bool_filename.SetValue(str(self.bool_filename))
-                self.reloadData()
-            except IOError, error:
-                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
-                dlg.ShowModal()
-        open_dlg.Destroy()
-
-    def doOpenFileN(self, event):
-        wcd = 'All files|*|Numerical Data|*.densenum/*.datnum|Boolean Data|*.sparsebool/*.datbool'
-        if self.num_filename != '':
-            file_name = os.path.basename(self.num_filename)
-            dir_name = ''
-        else:
-            file_name = ''
-            dir_name = os.getcwd()
-            
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-
-            try:
-                file = open(path, 'r')
-		self.num_filename = path
-		self.textbox_num_filename.SetValue(str(self.num_filename))
-                self.reloadData()
-            except IOError, error:
-                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
-                dlg.ShowModal()
-        open_dlg.Destroy()
-
-
-    def doOpenFileC(self, event):
-        wcd = 'All files|*'
-        if self.coo_filename != '':
-            file_name = os.path.basename(self.coo_filename)
-            dir_name = ''
-        else:
-            file_name = ''
-            dir_name = os.getcwd()
-            
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-
-            try:
-                file = open(path, 'r')
-		self.coo_filename = path
-		self.textbox_coo_filename.SetValue(str(self.coo_filename))
-                self.reloadCoordinates()
-            except IOError, error:
-                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
-                dlg.ShowModal()
-                self.coo_filename = ''
-		self.textbox_coo_filename.SetValue('')
-
-        open_dlg.Destroy()
-
-
-    def doOpenFileQ(self, event):
-        wcd = 'All files|*|Queries files|*.queries'
-        if self.queries_filename != '':
-            file_name = os.path.basename(self.queries_filename)
-            dir_name = ''
-        else:
-            file_name = ''
-            dir_name = os.getcwd()
-            
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-
-            try:
-                file = open(path, 'r')
-		self.queries_filename = path
-		self.textbox_queries_filename.SetValue(str(self.queries_filename))
-                self.reloadReds()
-            except IOError, error:
-                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
-                dlg.ShowModal()
-		self.queries_filename = ''
-		self.textbox_queries_filename.SetValue('')
-
-        open_dlg.Destroy()
-
-    def doOpenFileS(self, event):
-        wcd = 'All files|*|Settings files|*.conf'
-        if self.settings_filename != '':
-            file_name = os.path.basename(self.settings_filename)
-            dir_name = ''
-        else:
-            file_name = ''
-            dir_name = os.getcwd()
-            
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name, defaultFile=file_name, 
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-            try:
-                file = open(path, 'r')
-		self.settings_filename = path
-                self.reloadSettings()
-		self.textbox_settings_filename.SetValue(str(self.settings_filename))
-                self.text_setts.LoadFile(path)
-                
-            except IOError, error:
-                dlg = wx.MessageDialog(self.toolFrame, 'Error opening file\n' + str(error))
-                dlg.ShowModal()
-                self.settings_filename = ''
-                self.textbox_settings_filename.SetValue('')
-                self.text_setts.Clear(path)
-        open_dlg.Destroy()
-
-    def reloadData(self):
-        if self.bool_filename != '' and self.num_filename != '':
-            try:
-                self.data = Data([self.bool_filename, self.num_filename])
-                self.details = {'names': self.data.getNames([self.bool_filename, self.num_filename])}
-                self.reloadVars()
-            except:
-                self.data = None
-                self.details = None
-                self.reloadVars()
-                
-    def reloadCoordinates(self):
+  
+    def resetCoordinates(self):
         ### WARNING COORDINATES ARE INVERTED!!!
-        if self.coo_filename != '':
-            self.deleteAllViews()
-            self.coord = np.loadtxt(self.coo_filename, unpack=True, usecols=(1,0))
-            self.coord_extrema = [[min(self.coord[0]), max(self.coord[0])],[min(self.coord[1]), max(self.coord[1])]]
+        self.deleteAllViews()
+        self.coord_extrema = [[min(self.dw.coord[0]), max(self.dw.coord[0])],[min(self.dw.coord[1]), max(self.dw.coord[1])]]
 
-
-    def reloadSettings(self):
-        self.setts = Settings('mine', ['gui', self.settings_filename])
-        self.setts.getParams()
-        self.logger = Log(self.setts.param['verbosity'], self.toolFrame, Message.sendMessage)
-        Data.logger = self.logger
+    def resetLogger(self):
+        if self.dw.minesettings != None and self.dw.minesettings.param.has_key('verbosity'):
+            self.logger = Log(self.dw.minesettings.param['verbosity'], self.toolFrame, Message.sendMessage)
+            Data.logger = self.logger
 
     def reloadVars(self):
         ## Initialize variable lists data
         for side in [0,1]:
-            if self.data != None and self.details != None:
+            if self.dw.data != None and self.details != None:
                 fieldsVar = []
                 fieldsVar.extend(self.fieldsVar)
-                for tyid in set([r.type_id for r in self.data.cols[side]]):
+                for tyid in set([r.type_id for r in self.dw.data.cols[side]]):
                     fieldsVar.extend(self.fieldsVarTypes[tyid])
-                self.lists[side].resetData(self.data.cols[side], fieldsVar, self.details)
+                self.lists[side].resetData(self.dw.data.cols[side], fieldsVar, self.details)
             else:
                 fieldsVar = []
                 fieldsVar.extend(self.fieldsVar)
@@ -1491,25 +1279,12 @@ class Siren():
             
     def reloadReds(self):
         ## Initialize red lists data
-        self.lists["Reds"].resetData(self.populateReds(), self.fieldsRed, self.details)
+        self.lists["Reds"].resetData(self.dw.reds, self.fieldsRed, self.details, self.dw.rshowids)
         self.lists["Exp"].resetData([], self.fieldsRed, self.details)
         self.lists["Hist"].resetData([], self.fieldsRed, self.details)
 #        self.getSelectedMapView().setCurrentRed(redsTmp[0])
 #        self.getSelectedMapView().updateRed()
             
-    def populateReds(self):
-        reds = []
-        if self.queries_filename != '' and self.data != None:
-            reds_fp = open(self.queries_filename)
-            for line in reds_fp:
-                parts = line.strip().split('\t')
-                if len(parts) > 1:
-                    queryL = Query.parse(parts[0])
-                    queryR = Query.parse(parts[1])
-                    red = Redescription.fromQueriesPair([queryL, queryR], self.data) 
-                    if red != None:
-                        reds.append(red)
-            return reds
 
 if __name__ == '__main__':
     app = wx.App()
