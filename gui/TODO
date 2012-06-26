@@ -31,9 +31,13 @@
 * go to default directory when opening file 
 * load/save/edit settings
 
+* REFACTOR AND COMMENT ALL CODE...
+
 KNOWN BUGS:
    - resetView jump and current row might not be visible any more
    - wrap lines does not work
    - give focus to view on showing redescription
    - parsing fails with authors queries in DBLP
-   - with ZipFile crashes
+   - with statement does not work for ZipFile
+   - correct double subscript unicode latex
+   - hidden does not work

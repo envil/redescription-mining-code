@@ -276,6 +276,36 @@ class Redescription:
     def getSupp(self, details):
         return len(self.suppI())
 
+    def dispTexPrelude():
+        return "" + \
+        "\\documentclass{article}\n"+ \
+        "\\usepackage{amsmath}\n"+ \
+        "\\usepackage{amsfonts}\n"+ \
+        "\\usepackage{amssymb}\n"+ \
+        "\\usepackage{booktabs}\n"+ \
+        "\\usepackage[mathletters]{ucs}\n"+ \
+        "\\usepackage[utf8x]{inputenc}\n"+ \
+        "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
+        "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
+        "\\newcommand{\\pValue}{$p$\\nobreakdash-\\hspace{0pt}value}\n"+ \
+        "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
+        "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
+        "\\begin{document}\n"+ \
+        "\\begin{table}[h]\n"+ \
+        "\\scriptsize\n" + \
+        "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
+        "\\toprule\n" + \
+        " & $q_\\iLHS$ & $q_\\iRHS$ & $\\jacc(R)$ & $\\supp(R)$ & \\pValue \\\n" + \
+        "\\midrule"
+    dispTexPrelude = staticmethod(dispTexPrelude)
+    
+    def dispTexConc():
+        return ""+ \
+        "\\bottomrule"+ \
+        "\\end{tabular}\n"+ \
+        "\\end{table}\n"+ \
+        "\\end{document}"
+    dispTexConc = staticmethod(dispTexConc)
 
     def dispTexHeader():
         return ' & $q_\iLHS$ & $q_\iRHS$ & $\\jacc$ & $\\supp$ & \\pValue  \\\\'
@@ -312,6 +342,10 @@ class Redescription:
 
     def dispCaracteristiquesSimple(self):
         return self.dispLPartsSimple()
+
+    def dispU(self, names= [None, None], lenIndex=0):
+        str_red = self.dispQueriesU(names, lenIndex) +"\t"+ self.dispLPartsSimple()
+        return str_red
 
     def disp(self, names= [None, None], lenIndex=0):
         str_red = self.dispQueries(names, lenIndex) +"\t"+ self.dispLPartsSimple()

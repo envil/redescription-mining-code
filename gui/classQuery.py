@@ -4,7 +4,7 @@ from classSParts import  SParts
 class Op:
     
     ops = {0: 'X', 1: '|', -1: '&'}
-    opsTex = {0: 'X', 1: '\lor', -1: '\land'}
+    opsTex = {0: 'X', 1: '$\lor$', -1: '$\land$'}
     opsU = {0: 'X', 1: ur'\u2228', -1: ur'\u2227'}
     
     def __init__(self, nval=0):
@@ -360,7 +360,7 @@ class NumItem(Item):
     type_id = 3
 
     patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+)?)\<(?P<upb>-?\d+(\.\d+)?)))\s*$'
-    pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*\\\\leq{}\s*)(?P<col>.+)?(\s*\\\\leq{}\s*(?P<upbs>-?\d+(\.\d+)?))\s*\]\s*$'
+    pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)\$\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*\\\\leq{}\s*)(?P<col>.+)?(\s*\\\\leq{}\s*(?P<upbs>-?\d+(\.\d+)?))\s*\]\$\s*$'
     pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*(' + ur'\u2a7d' +'|<<)\s*)?(?P<col>[^'+ ur'\u2a7d'+'<]+)(\s*[' + ur'\u2a7d' +'<]\s*(?P<upbs>-?\d+(\.\d+)?))?\s*\]\s*$'
     
     def __init__(self, ncol, nlowb, nupb):
@@ -449,13 +449,13 @@ class NumItem(Item):
         if type(neg) == bool:
             neg = Neg(neg)
         if self.lowb > float('-Inf'):
-            lb = '[%s\\leq{}' % self.lowb
+            lb = '$[%s\\leq{}' % self.lowb
         else:
-            lb = '['
+            lb = '$['
         if self.upb < float('Inf'):
-            ub = '\\leq{}%s]' % self.upb
+            ub = '\\leq{}%s]$' % self.upb
         else:
-            ub = ']'
+            ub = ']$'
         negstr = ' %s' % neg.dispTex()
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]

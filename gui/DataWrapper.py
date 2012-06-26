@@ -8,6 +8,7 @@ import shutil
 import zipfile
 import cPickle
 import pdb
+import codecs
 
 from classRedescription import Redescription
 from classData import Data
@@ -568,7 +569,7 @@ class DataWrapper(object):
         # Write queries
         try:
             if self.reds is not None:
-                self.exportQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
+                self._writeQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
                 self._writeRshowids(os.path.join(tmp_dir, plist['rshowids_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
@@ -664,12 +665,33 @@ class DataWrapper(object):
             except:
                 raise
 
-    def exportQueries(self, filename, toPackage = False):
-        with open(filename, 'w') as f:
-            pdb.set_trace()
+    def exportQueries(self, filename, named = False, toPackage = False):
+        if named:
+            names = self.names
+        else:
+            names = [None, None]
+        with codecs.open(filename, encoding='utf-8', mode='w') as f:
             for i, show in self.rshowids:
                 if show:
-                    self.reds[i].write(f, None)
+                    f.write(self.reds[i].dispU(names)+"\n")
+
+    def exportQueriesLatex(self, filename, named = False, toPackage = False):
+        if named:
+            names = self.names
+        else:
+            names = [None, None]
+        with codecs.open(filename, encoding='utf-8', mode='w') as f:
+            f.write(Redescription.dispTexPrelude()+"\n")
+            for i, show in self.rshowids:
+                if show:
+                    f.write(self.reds[i].dispTexLine(i, names)+"\n")
+            f.write(Redescription.dispTexConc()+"\n")
+            f.write("\n")
+
+    def _writeQueries(self, filename, toPackage = False):
+        with open(filename, 'w') as f:
+            for i in range(len(self.reds)):
+                self.reds[i].write(f, None)
 
     def _writeRshowids(self, filename, toPackage = False):
         with open(filename, 'w') as f:

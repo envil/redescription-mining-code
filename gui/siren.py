@@ -1041,7 +1041,7 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
         frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
         frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
-        # frame.Bind(wx.EVT_MENU, self.OnHide, m_hide)
+        # frame.Bind(wx.EVT_MENU, self.OnToggleHide, m_hide) ## Tab by tab, not here...
         # frame.Bind(wx.EVT_MENU, self.OnDelete, m_delete)
         frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
         frame.Bind(wx.EVT_MENU, self.OnSettsW, m_settsw)
@@ -1184,7 +1184,8 @@ class Siren():
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
-                self.dw.exportQueries(path)
+                self.dw.exportQueries(path, named=True)
+                self.dw.exportQueriesLatex(path+".tex", named=True)
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
                                  +str(path)+':\n'+str(error)).ShowModal()
