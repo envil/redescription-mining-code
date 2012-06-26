@@ -383,7 +383,6 @@ class CustomGridTable(wx.grid.PyGridTableBase):
 
     def sortData(self, event):
         colS = event.GetCol()
-        print colS
         if colS == -1:
             pass
 #            self.setHiddens(range(10))
@@ -784,15 +783,15 @@ class Siren():
         
         self.create_tool_panel()
 
-        # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        #self.num_filename='./dblp/coauthor_picked.datnum'
-        #self.bool_filename='./dblp/conference_picked.datnum'
-        #self.coo_filename='./dblp/coordinates_rand.names'
-        #self.queries_filename='./dblp/dblp_picked_real.queries'
-        #self.settings_filename='./dblp/dblp_picked_real.conf'
+        # #### COMMENT OUT TO LOAD DBLP ON STARTUP
+        # self.num_filename='./dblp/coauthor_picked.datnum'
+        # self.bool_filename='./dblp/conference_picked.datnum'
+        # self.coo_filename='./dblp/coordinates_rand.names'
+        # self.queries_filename='./dblp/dblp_picked_real.queries'
+        # self.settings_filename='./dblp/dblp_picked_real.conf'
 
 
-        # # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
+        # # # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
         self.num_filename='./rajapaja/worldclim_tp.densenum'
         self.bool_filename='./rajapaja/mammals.datbool'
         self.coo_filename='./rajapaja/coordinates.names'
@@ -1129,16 +1128,16 @@ class Siren():
 
     def OnOpen(self, event):
         wcd = 'All files|*|Siren packages (*.siren)|*.siren'
+
         if self.dw.package_filename is not None:
             dir_name = os.path.dirname(self.dw.package_filename)
         else:
             dir_name = os.path.expanduser('~/')
-            
+        path = dir_name            
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name,  
 			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
-
             try:
                 self.dw.openPackage(path)
             except IOError as error:

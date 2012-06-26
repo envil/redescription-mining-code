@@ -26,8 +26,14 @@
 
 * select areas from the map and force to cover/remove
 
+* check compatibility coordinates/data on loading, reinitialize when needed
+* allow display when no coordinates with invite to load 
+* go to default directory when opening file 
+* load/save/edit settings
+
 KNOWN BUGS:
    - resetView jump and current row might not be visible any more
    - wrap lines does not work
    - give focus to view on showing redescription
    - parsing fails with authors queries in DBLP
+   - with ZipFile crashes

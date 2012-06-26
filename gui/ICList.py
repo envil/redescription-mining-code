@@ -101,8 +101,8 @@ class ICList(list):
         list.pop(self, i)
         self._isChanged = True
 
-    def sort(self):
-        list.sort(self)
+    def sort(self, key=None, reverse=False):
+        list.sort(self, key=key, reverse=reverse)
         self._isChanged = True
 
     def reverse(self):

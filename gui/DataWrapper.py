@@ -7,6 +7,7 @@ import plistlib
 import shutil
 import zipfile
 import cPickle
+import pdb
 
 from classRedescription import Redescription
 from classData import Data
@@ -40,6 +41,8 @@ class DataWrapper(object):
     def __init__(self, coo_filename = None, data_filenames = None, queries_filename = None, settings_filename = None, package_filename = None):
         """Inits the class. Either package_filename or the others should be given.
         """
+
+        #### [[idi, 1] for idi in range(len(self.data))]
         self.coord = None
         self.coo_filename = None
         self.data = None
@@ -79,6 +82,10 @@ class DataWrapper(object):
     def _initWithFiles(self, coo_filename, data_filenames, queries_filename, settings_filename):
         """Loads from files"""
 
+        self.coo_filename = coo_filename
+        self.data_filenames = data_filenames
+        self.queries_filename = queries_filename
+        self.settings_filename = settings_filename
         try:
             if coo_filename is not None:
                 self.coord = self._readCoordFromFile(coo_filename)
@@ -100,15 +107,11 @@ class DataWrapper(object):
             self.settings_filename = None
             raise
             
-
-        self.coo_filename = coo_filename
-        self.data_filenames = data_filenames
-        self.queries_filename = queries_filename
-        self.settings_filename = settings_filename
         if data_filenames is not None:
             self.number_of_datafiles = len(data_filenames)
         self.isFromPackage = False
         if coo_filename is not None or data_filenames is not None or queries_filename is not None or settings_filename is not None:
+            self.rshowids = ICList([[idi, 1] for idi in range(len(self.reds))], True)
             self.isChanged = True
              
 
@@ -120,7 +123,7 @@ class DataWrapper(object):
             + "data_filenames = " + str(self.data_filenames) + "; " \
             + "number_of_datafiles = " + str(self.number_of_datafiles) + "; " \
             + "names = " + str(self.names) + "; " \
-            + "reds = " + str(self.reds) + "; " \
+            + "#reds = " + str(len(self.reds)) + "; " \
             + "rshowids = " + str(self.rshowids) + "; " \
             + "minesettings = " + str(self.minesettings) + "; " \
             + "uisettings = " + str(self.uisettings) + "; " \
@@ -128,7 +131,7 @@ class DataWrapper(object):
             + "package_filename = " + str(self.package_filename) + "; " \
             + "settings_filename = " + str(self.settings_filename) + "; " \
             + "package_name = " + str(self.package_name) + "; " \
-            + "isChaged = " + str(self.isChanged) + "; " \
+            + "isChanged = " + str(self.isChanged) + "; " \
             + "isFromPackage = " + str(self.isFromPackage)
 
     ## Setters
@@ -199,6 +202,8 @@ class DataWrapper(object):
         else:
             self.data_filenames = data_filenames
             self.number_of_datafiles = len(data_filenames)
+            self.reds = ICList()
+            self.coord = None
             self.isChanged = True
             self.isFromPackage = False
 
@@ -230,7 +235,7 @@ class DataWrapper(object):
             raise
         else:
             self.queries_filename = queries_filename
-            self.rshowids = ICList(range(len(self.reds)), True)
+            self.rshowids = ICList([[idi, 1] for idi in range(len(self.reds))], True)
             self.isChanged = True
 
     def importSettingsFromFile(self, settings_filename):
@@ -661,8 +666,10 @@ class DataWrapper(object):
 
     def exportQueries(self, filename, toPackage = False):
         with open(filename, 'w') as f:
-            for i in range(len(self.reds)):
-                self.reds[i].write(f, None)
+            pdb.set_trace()
+            for i, show in self.rshowids:
+                if show:
+                    self.reds[i].write(f, None)
 
     def _writeRshowids(self, filename, toPackage = False):
         with open(filename, 'w') as f:
