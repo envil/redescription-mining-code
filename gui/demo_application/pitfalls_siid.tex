@@ -1,0 +1,23 @@
+\section{Pitfalls}
+\note{Use this section to open discussion (no conclusion section) ?}
+How to avoid that the user finds what he is looking for and only that?
+That is, a tool not to explore data and formulate new hypotheses, but to find arguments to support pre-existing theories?
+
+Data mining is an iterative process of refining hypotheses. The tool generates hypotheses about the data, here in the form of redescriptions. Then the user is able to select one, edit it, let the tool expand it. When satisfied with it, the user can remove redundant hypotheses and move on to the next one of interest. That is, at some point he is able to state that now, the information provided by the current hypothesis is admitted to be known, i.e. included in the knowledge and further hypotheses that does not add any information to that knowledge should be discarded.
+
+It is possible to evaluate a completely hand-crafted redescription. Is this a problem? Why?
+
+When considering a redescription, one should always keep in mind the assumptions attached it. For example, if some variables where disabled or if the focus was put on some particular area when it was generated.
+
+When considering an edited redescription (and mabye also in any case), the tool should allow to evaluate the interestingness of the redescription (using \pValue{}s or randomization techniques). The tool should also suggest other related results, concerning the same area, the same variables or having similar statistics, to provide context to that redescription and challenge the current hypothesis.
+
+What is the difference between generating hypotheses from the data versus backing hypotheses with the data.
+
+In the mining process, one starts with a question, which is often implicit, makes an hypothesis to answer it. Then the tool could help look for evidence supporting the hypothesis. Rather, it should help indentify the hypothesis that best answers the question.  
+
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "siren_iid"
+%%% End: 

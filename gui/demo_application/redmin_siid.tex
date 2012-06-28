@@ -1,0 +1,64 @@
+\section{Redescription Mining}
+\label{sec:redescription-mining}
+
+Redescription mining aims at simultaneously finding multiple
+descriptions of a subset of entities which is not previously
+specified.  This is in contrast with other methods like Emerging
+Patterns Mining (EPM), Contrast Set Mining (CSM) and Subgroup
+Discovery (SD) (see \cite{kralj09supervised} for a unifying survey) or
+general classification methods, where target subsets of entities are
+specified via labels.  Currently, redescription mining is a purely
+descriptive approach, its predictive power remains to be explored.
+Since its introduction in~\cite{ramakrishnan04turning} various
+algorithms have been proposed for Boolean redescription mining, based
+on approaches including decision
+trees~\cite{ramakrishnan04turning,kumar07redescription},
+co-clusters~\cite{parida05redescription}, and frequent
+itemsets~\cite{gallo08finding}. In~\cite{galbrun11black}, we extended
+redescription mining to categorical and numerical variables.
+
+More formally, we consider data that contains entities with two sets
+of characterizing variables, e.g.\ the fauna and the bioclimatic
+conditions. 
+Boolean variables can be interpreted as a truth value
+assignment in a natural way.  For categorical and real-valued
+variables, truth value assignments are induced by relations denoted using Iverson bracket $[v=c]$
+and $[a \leq v \leq b]$, respectively, where $c$ is some category and
+$[a, b]$ an interval.  These truth assignments and their negations
+constitute \emph{literals} which can be combined using the Boolean
+operators $\land$ (and) and $\lor$ (or) to form \emph{queries}.
+We refer to the two sets of variables informally as left and right
+hand side data, and the queries over them, respectively, as left and
+right hand side queries.
+Then, a redescription is simply a pair of queries over variables from the
+two sets.  The support of a query is the subset of entities for which
+the query holds true.  The \emph{accuracy} of a redescription is
+measured by the \emph{Jaccard coefficient} of the supports of its two
+queries.
+The task consists in finding accurate redescriptions, in other words, pairs of
+queries, one query for both sets of variables, such that both queries
+describe almost the same set of entities.
+
+When the data is geospatial, that is, the entities are connected to
+geographical locations, the task is called \emph{geospatial redescription mining}.
+ A meaningful geospatial redescription should define
+coherent areas using expressive queries.
+
+\emph{Niche-finding} is a particular instance of geospatial redescription
+mining ---and a task of great importance for biologists.  The
+bioclimatic constraints that must be met for a certain species to
+survive constitute that species' bioclimatic envelope, or
+niche~\cite{grinnell17niche}.  Finding such envelopes can help, e.g.\
+to predict the results of global warming~\cite{pearson03predicting}.
+A number of methods, involving regression, neural networks, and
+genetic algorithms (see~\cite{soberon05interpretation}) have been
+developed over the past ten years to model the bioclimatic envelope,
+\textsc{BIOMOD}~\cite{thuiller09biomod} being a good example of a
+modelling tool used in this domain.  But to the best of our knowledge,
+none of these methods allows automatically finding both the set of
+species and their envelope.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "siren_iid"
+%%% End: 

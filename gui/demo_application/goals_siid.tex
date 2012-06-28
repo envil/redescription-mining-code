@@ -1,0 +1,129 @@
+
+\section{Goals for Interactive and Visual Redescription Mining}
+\label{sec:goals-inter-visu}
+
+In this section we discuss our goals for an interactive and visual
+redescription mining tool. Some of these goals are general to any
+interactive and visual data mining tool (and we spend less time on
+discussing why they are desirable), some are specific to
+redescription mining. We divide the discussion between interaction and
+visualization, though we emphasize that these goals are not independent.
+
+\subsection{Goals for Visualization}
+\label{sec:goals-visualization}
+As a basis for our discussion, we use the taxonomy of interations for
+visual analytics proposed by Heer and
+Shneiderman~\cite{Heer:2012:IDV:2133806.2133821}. The bold-face terms
+correspond to their taxonomy.
+
+[Visualize is about selecting the right visual cues for presenting the data, i.e. for us colored dots on a map.
+Is the redescription list a visualization?
+Filter and sort is meant here within a visualization, there is no filtering or sorting on the maps views, especially as we don't show several redescriptions on the same map.
+So it just boils down to sorting and filtering a list, nothing really special.
+This three do not interact with the mining process, they are only about showing static results.
+Deriving new variables, however, is a way to interact with the mining process.]
+The most fundamental goal when designing a tool for visual data
+analysis is, of course, to have a good \textbf{visualization}. With
+geospatial redescriptions, a map is the most natural option. Thus our
+tool should be able to plot the redescriptions on a map. But in order
+to effectively select the content of the visualizations, the user
+needs means to \textbf{filter} and \textbf{sort} the results mined. In
+the case of redescription mining, the user should be able to sort the
+redescriptions based on different criteria, such as the accuracy of
+the redescription, the size of its support, its statistical
+significance, or the length of the queries (i.e.\ their number of
+literals).  To some extent, filtering can be regarded as sorting with
+a cut-off value. Hence, sorting should naturally use the same criteria
+and similar results display as sorting. Additional criteria might
+affect sorting, e.g. the described geographical area and
+redundancy. During the analysis, the user should be allowed to
+\textbf{derive} new data. That is, new variables obtained by
+aggregating existing variables might better capture the studied
+phenomenon. Hence, their introduction during the mining process would
+support the analysis.
+
+[One can select a redescription to visualize, select an area of interest, a particular entity.
+We do not have different levels of details, so, there is not much to navigating...]
+In order to manipulate the views, the user needs to be able to
+\textbf{select} the data he wants to visualize. In the present case,
+he can primarily choose a redescription to plot. Then, he can edit the
+queries, modifying literals and altering the bounds of real valued
+variables. In addition, it can be useful to obtain information about
+the state of the variables and what makes a query hold or not in a
+particular location by clicking or hovering over a dot in the map.
+The user might need to \textbf{navigate} inside the view, typically
+looking first at the redescription over the whole area, before zooming
+and panning to see more details. Several views and the data might need
+to be \textbf{coordinated}.  Modifications made to a redescription
+should be reflected immediately on the map(s). In addition, it could
+be useful to allow the user to bind maps together, so that panning and
+zooming are applied to all maps simultaneouly. In that way, detailed
+comparison of the support of different redescription would be
+facilitated.  Maps can be opened in detachable tabs, to be inspected
+side by side or sequentially and be \textbf{organized} using the
+system's windows tiling, or a dedicated one.
+
+Undo and redo are minimal functionalities to allow reverting actions,
+making interation safe and comfortable.  The user should be able to
+save the current status of the analysis process, i.e. all current
+redescriptions, opened lists and maps to punctuate the
+process. \textbf{Recording} the interaction history and turning it
+into editable and parameterizable macros provides a mean to repeat a
+sequence of actions and automate repetitive tasks.  The tool should
+support \textbf{annotation} in order to keep track of the thought path
+during the analysis.  For example, this could be achieved by
+generating annotable screen shots of the current window of interest,
+and by adding comments to the interaction history and macros.
+Organizing the history and macros into blocks would help clarifying
+the logical structure of the analysis.  Furthermore, with the ability
+to link to objects in the current environment such as redescriptions,
+groups of entities or literals, they could be explicitely related to
+each other.  Data analysis is often a collaborative effort, involving
+several users. Then, \textbf{sharing} information becomes crucial.
+Easy export and import of redescriptions lists, maps and macros,
+possibly with comments and annotations is a very important feature
+towards that aim.  Finally, giving clear names to the actions and
+providing feedback on their application helps \textbf{guiding} users
+along the analysis process. Example macros with detailed explanations,
+to be replayed step-by-step, represent a good mean to introduce new
+users to the tool.
+
+\subsection{Goals for Interaction}
+\label{sec:goals-interaction}
+\note{Should we use interactivity here, as a general succession of interactions?}
+\note{just some buzzwords now}
+
+Any-time
+
+Instant editing of redescriptions.
+
+When editing a real-valued literal, show a scatter plot of the
+entities based on the values of the variable considered, with colors
+indicating the current status of the rest of the query (possibly
+scatter using two variables). This could help the user fix the bounds,
+using sliders for example.  Indicate which are the best bounds and the
+best corresponding upper bound when the user moves the lower slider,
+and vice versa.  This is a type of visualization too, which could be
+useful for non geographical data too.
+
+Pushing filtering into the mining process instead of a
+posteriori. (Three levels: manually filter, automatically filter
+results before reporting, filtering during the search to avoid
+generating the result in the first place.)
+
+Automated extension
+
+The level of automation of the whole mining process could be adaptative: from fully manual (users write down redescriptions and the tools simply evaluates them), partialy automated (the tool suggests best extension at each step and ask for approval from the user), to fully automated (returns the list of best redescriptions using static predefined constraints).
+
+Exclusion of variables/geographical areas
+
+It's important to keep track of the constraints used when finding a
+redescription. (cf. pitfalls) It can get intricate if some constraints
+are modified during the extension process to redirect the search, like, after first literal is appened, try to exclude that area. Interpretation of the results becomes fairly difficult...
+
+$\ldots$
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "siren_iid"
+%%% End: 
