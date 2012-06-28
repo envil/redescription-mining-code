@@ -1,10 +1,23 @@
-\section{The Algorithms}
+\section{Our Proposed Tool}
+\note{How the Algorithms Meet the Goals is partly answered in the first subsection too, so it might not be the best possible title for the second subsection, maybe simply "use case". Merged these two as subsections of a "proposed tool" section, or so...}
+
+In this section, we present our proposed tool, which consitst of a pair of
+algorithms, \ReReMi\ and \Siren. First, we explain how it implement
+interactivity and visualization for redescription mining.  Then, we
+give a concrete illustration of its usage by means of a
+use case. Throughout this section, we outline how the tool achieves
+goals stated in the previous section.
+
+\subsection{The Algorithms}
 \label{sec:algorithms}
 \note{All explanations about the workings of ReReMi \& Siren here}
 
-\Siren\ is an interactive tool for mining and visualizing geospatial
+\Siren\footnote{More details about \Siren's features, additional
+  screenshots and a demonstration video are available online at
+  \url{http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/}.}  is
+an interactive tool for mining and visualizing geospatial
 redescriptions. At its core is the \ReReMi\ redescription mining
-algorithm~\cite{galbrun11black,galbrun12black}. 
+algorithm~\cite{galbrun11black,galbrun12black}.
 
 This greedy algorithm
 uses an efficient on-the-fly discretization technique to extend
@@ -42,7 +55,7 @@ the more likely it is to observe such a support for independent
 queries, and the less significant the query. Redescriptions with too
 high \pValue{} can be filtered out.
 
-Threading is employed to run mining tasks in the background. This preserves the tool's
+In \Siren, threading is employed to delegate mining tasks to \ReReMi\ in the background. This preserves the tool's
 interactivity while the communication is maintained to provide feedback
 about the ongoing mining.
 
@@ -56,7 +69,7 @@ interface.  \Siren\ allows for simple editing of the redescriptions
 thanks to flexible parsing of different representations. It can handle
 any data provided in a compatible format.  
 
-\section{How the Algorithms Meet the Goals}
+\subsection{Use Case}
 \label{sec:scenarios}
 
 \note{The old use-case scenario text is a good basis for this, but
@@ -86,13 +99,26 @@ various application domains.
 analysis of any given data is to use a redescription mining algorithm
 to find an initial set of redescriptions.  This can be done withing
 \Siren{} by running the extension mechanism on an empty redescription.
+Following the principle of first providing an overview of the results
+then focusing on specific items, the redescriptions found are
+presented as a list from which the user can select a redescription of
+his choice and to examine more closely and plot on the map.
+Figure\ref{fig:both_panels} shows two panels containing an overview of
+the current results as a list, in the background, and a single
+redescription plotted on a map, in the foreground.
 
-Following the principle of first providing an overview of the
-results then focusing on specific items.
-The redescriptions found are presented as a list, which extends as the
-mining process progresses and supports sorting on various criteria.
-Then, the user can select a redescription of his choice and visualize
-it on a map.
+\begin{figure*}[t]
+  \centering
+%%FIG%%
+\includegraphics[width=\textwidth]{screenshots/both_panels_02}
+  \caption{The \Siren\ interactive mining and visualization tool. The panel in the background contains a list of redescriptions while the foreground panel displays the map of a selected redescription.  In this example, left hand side queries are over fauna while right hand side queries are over monthly bioclimatic conditions, that is, temperatures and precipitation.}
+  \label{fig:both_panels}
+\end{figure*}
+
+
+The list of results is updated as mining progresses, so the user does
+not need to wait until the process completes to start looking at the
+results. The list supports sorting and filtering on various criteria.
 
 \prg{Extending a redescription} Sometimes the user wants to focus only
 on one of the queries, on some particular variable of interest or on a
@@ -102,17 +128,19 @@ add new literals to the queries to make the redescription as accurate
 as possible.
 % (see Fig.~\ref{fig:extending}). 
 
-The extension mechanism of \Siren\ is based on the beam search
-implemented in the \ReReMi\ algorithm~\cite{galbrun11black}. In this case, the intermediate redescriptions
-explored during the search are returned at each step, allowing to study
-more specific alternative extensions to a redescription that were discarded from the beam
-because they were not among the best extensions at some point of the search.
+The extension mechanism is based on the beam search
+implemented in the \ReReMi\ algorithm. In this
+case, the intermediate redescriptions explored during the search are
+returned at each step, allowing to study more specific alternative
+extensions to a redescription that were discarded from the beam
+because they were not among the best extensions at some point of the
+search.  This way, the user is able to see the candidates present in
+the beam and might stop the extension process at any time if he so
+wishes.
 
 In the climatic niche-finding task, for instance, we might select a
 species, say, the Southwestern Water Vole and look for best extensions
-starting from that single variable.  Returned extensions can be
-visualized side by side and compared as shown in
-Figure~\ref{fig:comparison}. Here, the best found extension has
+starting from that single variable. Here, the best found extension has
 accuracy $0.665$ (per Jaccard coefficient):
 \begin{equation*}
 %\footnotesize
@@ -130,6 +158,19 @@ above $11.2$ degrees Celsius, the average temperature in January
 between $0.51$ and $11.333$ degrees Celsius and the average
 precipitations in October and November range from $42.75$ to $131.81$
 millimeters and from $50.556$ to $176.75$ millimeters, respectively.
+
+Returned extensions can be plotted on map opened inside several
+windows, so as to be visualized side by side and compared as shown in
+Figure~\ref{fig:comparison}.
+
+\begin{figure}
+  \centering
+%%FIG%%
+\includegraphics[width=0.7\textwidth]{screenshots/comparison}
+  \caption{Several map panels. Comparing intermediate extensions automatically generated for a chosen starting variable. Red, blue and purple represents areas where only the left hand side query holds, only the right hand side query holds and where both queries hold, respectively.}
+  \label{fig:comparison}
+\end{figure}
+
 
 \prg{Editing a redescription} It is typical that the user wants to
 edit some of the obtained redescriptions. For example, some results
@@ -154,6 +195,8 @@ query as follows:
 \end{array}
 \end{equation*}
 and obtain a redescription of slightly decreased accuracy. % of $0.659$.
+
+When the user edits a redescription, the map is instantaneously updated to reflect the change and so are the associated statistics.
 
 \prg{Using subsets of variables} 
 \Siren\ allows the user to specify variables to temporarily 
@@ -187,6 +230,7 @@ as the following redescription of accuracy $0.653$:
 
 Note that this redescription was not returned previously since the
 beam search focused on better ones involving precipitation variables.
+This feature allows the user to specify additional constraints, thereby tuning the mining process according to his interest and what appears most promising during the analysis.
 
 \prg{Filtering redundant redescriptions}
 \label{sec:filt-redund-redescr}
@@ -213,9 +257,9 @@ mentioned previously may contain many redundant redescriptions found
 at different steps. We can easily sort them, e.g.\ by accuracy, select
 one of interest and filter all the following results redundant with respect to it.
 
-\prg{Outputting the results}
-\label{sec:outputting-results}
-Finally, \Siren\ facilitates the distribution of the results:
+\prg{Sharing the results}
+\label{sec:sharing-results}
+Finally, \Siren\ facilitates distributing the results:
 redescriptions can be exported in easy-to-read format and the
 maps associated to redescriptions can be readily converted to
 publication-ready graphics. 
