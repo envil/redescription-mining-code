@@ -9,6 +9,13 @@ discussing why they are desirable), some are specific to
 redescription mining. We divide the discussion between interaction and
 visualization, though we emphasize that these goals are not independent.
 
+\note{By no means to do I mean that we should follow some orthodox
+  dichtonomy between visualization and interaction. They are
+  interlinked, and that's fine. My goal is to ease the presentation by
+  giving the user some high-level structure. If something is both
+  visualization and interaction, we can mention it in both, putting
+  emphasizis on where it belongs more.}
+
 \subsection{Goals for Visualization}
 \label{sec:goals-visualization}
 As a basis for our discussion, we use the taxonomy of interations for
@@ -21,7 +28,13 @@ Is the redescription list a visualization?
 Filter and sort is meant here within a visualization, there is no filtering or sorting on the maps views, especially as we don't show several redescriptions on the same map.
 So it just boils down to sorting and filtering a list, nothing really special.
 This three do not interact with the mining process, they are only about showing static results.
-Deriving new variables, however, is a way to interact with the mining process.}
+Deriving new variables, however, is a way to interact with the mining
+process.}
+\note{Filter \& sort refers to filtering and sorting what's
+  visualized, right. So, yes, actions to lists of redescriptions are
+  there, but also (a feature we sort-of have) selecting the geospatial
+  area where we see the dots (zooming in/out) is filtering. These
+  things don't need all to be grand and sexy, but they have to be.}
 The most fundamental goal when designing a tool for visual data
 analysis is, of course, to have a good \textbf{visualization}. With
 geospatial redescriptions, a map is the most natural option. Thus our
@@ -43,7 +56,13 @@ phenomenon. Hence, their introduction during the mining process would
 support the analysis.
 
 \note{One can select a redescription to visualize, select an area of interest, a particular entity.
-We do not have different levels of details, so, there is not much to navigating...}
+We do not have different levels of details, so, there is not much to
+navigating...}
+\note{In addition, the user should be able to select a geographical
+  area and get info on the data on that area. Remember the pop-up
+  window I mentioned? Further levels of detail could come from whether
+  she sees the info for just the variables involved in the queries, or
+  for all variables.}
 In order to manipulate the views, the user needs to be able to
 \textbf{select} the data he wants to visualize. In the present case,
 he can primarily choose a redescription to plot. Then, he can edit the
@@ -63,7 +82,11 @@ facilitated.  Maps can be opened in detachable tabs, to be inspected
 side by side or sequentially and be \textbf{organized} using the
 system's windows tiling, or a dedicated one.
 
-\note{That part comes pretty close to interactivity, it's about automating interactions attaching a meaning to sequences of interactions, allowing segmented interactivity (like, different users interacting with the tool in turn)}
+\note{That part comes pretty close to interactivity, it's about
+  automating interactions attaching a meaning to sequences of
+  interactions, allowing segmented interactivity (like, different
+  users interacting with the tool in turn)}
+\note{I agree, but that's fine.}
 Undo and redo are minimal functionalities to allow reverting actions,
 making interation safe and comfortable.  The user should be able to
 save the current status of the analysis process, i.e. all current
@@ -95,6 +118,13 @@ users to the tool.
 \note{just some buzzwords now}
 \note{two parts: - the instant aspect, i.e. the tool should respond quickly, at least provide instant feedback about what is going on (cf. Guide, above).
 - the interactivity proper, e.g. being able to specify constraints for the search, stop the extension process and restart.}
+
+\note{Any-time refers to the initial mining phase, mostly. That is, if
+I stop the algorithm at any time (after short initialization phase) of
+its mining phase, it can produce meaningful output. ReReMi clearly
+can, thanks to its beam-search-like behaviour (excluding the initial
+pair looking, though even there we always have the current best
+initial pairs)}
 
 Any-time
 
