@@ -19,7 +19,7 @@ co-clusters~\cite{parida05redescription}, and frequent
 itemsets~\cite{gallo08finding}. In~\cite{galbrun11black}, we extended
 redescription mining to categorical and numerical variables.
 
-More formally, we consider data that contains entities with two sets
+More formally, we consider data that contains entities $E$ with two sets
 of characterizing variables, e.g.\ the fauna and the bioclimatic
 conditions. 
 Boolean variables can be interpreted as a truth value
@@ -29,15 +29,31 @@ and $[a \leq v \leq b]$, respectively, where $c$ is some category and
 $[a, b]$ an interval.  These truth assignments and their negations
 constitute \emph{literals} which can be combined using the Boolean
 operators $\land$ (and) and $\lor$ (or) to form \emph{queries}.
+The support of a query $q$ is the subset of entities for which
+the query holds true, that is 
+$\supp(q) = \{e\in E : q\text{ is true for } e\}$.
 We refer to the two sets of variables informally as left and right
 hand side data, and the queries over them, respectively, as left and
-right hand side queries.
+right hand side queries, denoted as  $q_\iLHS$ and  $q_\iRHS$ respectively.
 Then, a redescription is simply a pair of queries over variables from the
-two sets.  The support of a query is the subset of entities for which
-the query holds true.  The \emph{accuracy} of a redescription is
-measured by the \emph{Jaccard coefficient} of the supports of its two
-queries.
-The task consists in finding accurate redescriptions, in other words, pairs of
+two sets, $R=(q_\iLHS,q_\iRHS)$.    
+Its \emph{accuracy} is 
+measured using the \emph{Jaccard coefficient} 
+\[
+\jacc(R)= \jacc(q_\iLHS,q_\iRHS) = \frac{\abs{\supp(q_\iLHS,q_\iRHS)}}%
+{\abs{\supp(q_\iLHS)\cup\supp(q_\iRHS)}}.
+\]
+We compute a \pValue{} that represents the probability that two random
+queries with marginal probabilities (i.e.\ the fraction of entities
+supporting them) equal to those of $q_\iLHS$ and $q_\iRHS$ have an
+intersection equal to or larger than $\abs{\supp(q_\iLHS,
+  q_\iRHS)}$. This probability uses the binomial distribution and is given by \[
+\text{pvalM}(q_\iLHS, q_\iRHS) = \sum_{s=\abs{\supp(q_\iLHS, q_\iRHS)}}^{\abs{E}} {\abs{E} \choose s} (p_R)^s (1- p_R)^{\abs{E} - s},\]
+where $p_R = \abs{\supp(q_\iLHS)}\abs{\supp(q_\iRHS)}/\abs{E}^2.$
+The higher the \pValue, the more likely it is to observe such a
+support for independent queries, and the less significant the query.
+
+The task consists in finding significant accurate redescriptions, in other words, pairs of
 queries, one query for both sets of variables, such that both queries
 describe almost the same set of entities.
 
@@ -55,8 +71,8 @@ to predict the results of global warming~\cite{pearson03predicting}.
 A number of methods, involving regression, neural networks, and
 genetic algorithms (see~\cite{soberon05interpretation}) have been
 developed over the past ten years to model the bioclimatic envelope,
-\textsc{BIOMOD}~\cite{thuiller09biomod} being a good example of a
-modelling tool used in this domain.  But to the best of our knowledge,
+\textsc{Maxent}~\cite{phillips2006maximum} and \textsc{BIOMOD}~\cite{thuiller09biomod}, being good examples of a
+modelling tools used in this domain, the former providing a graphical user interface while the latter is a text-based tool.  But to the best of our knowledge,
 none of these methods allows automatically finding both the set of
 species and their envelope.
 

@@ -112,15 +112,18 @@ tied to the interaction with the mining process, to which we now turn.
 \label{sec:goals-interaction}
 
 A desirable behavior for an interactive program is the production of
-meaningful results at \goal{anytime}.  In other words, if the
-mining process is stopped, it can nevertheless return results which
-are valid, albeit possibly partial.  This is related to the possibility
-to obtain preliminary results while the mining is still underway.  Such a
+meaningful results at \goal{anytime}.  In other words, if the mining
+process is stopped, it can nevertheless return results which are
+valid, albeit possibly partial.  This is related to the possibility to
+obtain preliminary results while the mining is still underway.  Such a
 feature contributes to the ability of the program to respond quickly
-to instructions from the users. Low latency or even \goal{instantaneity} is a core
-quality of an interactive tool and is important catch and keep the
-user's attention. At least, the tool should provide instant feedback
-about what is happening.
+to instructions from the users.  It is also possible to first run the
+algorithm allowing only short queries, say, at most a couple of
+literals on either side and let the user choose the ones that seems
+promising and should be further extended. Low latency or even
+\goal{instantaneity} is a core quality of an interactive tool and is
+important catch and keep the user's attention. At least, the tool
+should provide instant feedback about what is happening.
 
 The automation level of the whole mining process could be adaptative.
 From fully manual, where the users writes down redescriptions and the
@@ -131,15 +134,18 @@ suggesting best extensions at each step and asking for approval from
 the user.
 
 Consider extending an existing redescription with a real-valued
-literal.  A scatter plot of the entities based on the values of the
-variable considered, using a color code to indicate the entities'
-status for the rest of the query, could support the optimal
-interval choice. Then, the user could fix the bounds, for example using
-sliders.  The tool could indicate which are the best bounds but also
-update the best corresponding upper bound when the user moves the lower bound,
- and vice versa. This is a prime example
-of instant interaction with the mining process through apt visualization.
-\note{We might need an illustration for that one...?}
+literal. Instead of a map plot based on their geographical location, a
+figure where the areas are represented as colored dots plotted along
+the x-axis depending on the value taken by the chosen variable would be
+useful for determining the optimal interval for that variable. Indeed,
+the user could observe which values occur in locations that belong to
+different parts of the current redescription. Then, he could fix the
+bounds in consequence, for example using sliders.  The tool could even
+indicate which are the best bounds but also update the best
+corresponding upper bound when the user moves the lower bound, and
+vice versa. This is a prime example of instant interaction with the
+mining process through apt visualization.  \note{We might need an
+  illustration for that one...?}
 
 Proper interactivity with the program also requires allowing the user
 to specify constraints for the search. Possible constraints include
@@ -158,6 +164,12 @@ deep integration and accepting a broad range of constraints,
 e.g. through a flexible specification framework. Indeed, these are two
  typically conflicting goals.
 
+ More generally, the user should be able to specify his interest and
+ lack of it for specific results. Selecting a redescription to be
+ edited and extended is a way of expressing curiosity towards the
+ involved conditions or area. Similarly, he should be able to prevent
+ the algorithm to search further in directions he deems uninteresting.
+ 
 
 %%% Local Variables: 
 %%% mode: latex
