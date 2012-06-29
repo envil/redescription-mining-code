@@ -1,12 +1,10 @@
 \section{Our Proposed Tool}
-\note{How the Algorithms Meet the Goals is partly answered in the first subsection too, so it might not be the best possible title for the second subsection, maybe simply "use case". Merged these two as subsections of a "proposed tool" section, or so...}
-
 In this section, we present our proposed tool, which consitst of a pair of
 algorithms, \ReReMi\ and \Siren. First, we explain how it implement
 interactivity and visualization for redescription mining.  Then, we
 give a concrete illustration of its usage by means of a
 use case. Throughout this section, we outline how the tool achieves
-goals stated in the previous section.
+goals stated in the previous section by highlighting \emph{key features}.
 
 \subsection{The Algorithms}
 \label{sec:algorithms}
@@ -22,14 +20,14 @@ algorithm~\cite{galbrun11black,galbrun12black}.
 This greedy algorithm
 uses an efficient on-the-fly discretization technique to extend
 redescription mining to categorical and numerical variables.
-It considers the queries over such variables that can be parsed in linear
+It considers queries over such variables that can be parsed in linear
 order, without trees, with every variable allowed to appear only once.
 They constitute a subset of Boolean formulae that
 provides a good compromise between expressive power, difficulty of the
 search, and interpretability.
 
-Yet, the search space remains exponential and we still resort to a
-heuristic pruning during the search.  We use a strategy similar to
+Yet, the search space remains exponential and we still resort to
+heuristic pruning.  We use a strategy similar to
 beam-search to explore the solution space.  The basic idea is to
 construct queries bottom-up, starting from singleton redescriptions
 (i.e.\ both queries contain only one literal) and progressively
@@ -42,7 +40,7 @@ candidates and extend them in turn. This process stops when no new
 redescription can be generated.
 
 We exploit some simple observations to make the computation of
-accuracy more efficient. This allows to evaluate candidates faster,
+accuracy more efficient. This allows to \emph{evaluate candidates faster},
 which is particularly important for an interactive tool.  
 
 We compute a
@@ -56,8 +54,8 @@ queries, and the less significant the query. Redescriptions with too
 high \pValue{} can be filtered out.
 
 In \Siren, threading is employed to delegate mining tasks to \ReReMi\ in the background. This preserves the tool's
-interactivity while the communication is maintained to provide feedback
-about the ongoing mining.
+\emph{responsiveness} while the communication is maintained to \emph{provide feedback}
+about the ongoing mining and \emph{return results as they are obtained}.
 
 \note{This had been commented out... We need to say these things don't we?}
 \Siren\ and \ReReMi\ are implemented in Python.  The interface is
@@ -103,33 +101,25 @@ various application domains.
 
 \prg{Initial redescription mining} A natural starting point for the
 analysis of any given data is to use a redescription mining algorithm
-to find an initial set of redescriptions.  This can be done withing
+to find an initial set of redescriptions.  This can be done within 
 \Siren{} by running the extension mechanism on an empty redescription.
-Following the principle of first providing an overview of the results
-then focusing on specific items, the redescriptions found are
+Following the principle of \emph{first providing an overview of the results
+then focusing on specific items}, the redescriptions found are
 presented as a list from which the user can select a redescription of
 his choice and to examine more closely and plot on the map.
-Figure\ref{fig:both_panels} shows two panels containing an overview of
+Figure~\ref{fig:both_panels} shows two panels containing an overview of
 the current results as a list, in the background, and a single
 redescription plotted on a map, in the foreground.
 
-\begin{figure*}[t]
-  \centering
-%%FIG%%
-\includegraphics[width=\textwidth]{screenshots/both_panels_02}
-  \caption{The \Siren\ interactive mining and visualization tool. The panel in the background contains a list of redescriptions while the foreground panel displays the map of a selected redescription.  In this example, left hand side queries are over fauna while right hand side queries are over monthly bioclimatic conditions, that is, temperatures and precipitation.}
-  \label{fig:both_panels}
-\end{figure*}
-
-
-The list of results is updated as mining progresses, so the user does
+Owing to his beam-search-like behaviour, \ReReMi{} is an \emph{any-time} algorithm. 
+The list of results is updated as the mining progresses, so the user does
 not need to wait until the process completes to start looking at the
-results. The list supports sorting and filtering on various criteria.
+results. The list supports \emph{sorting} and \emph{filtering} on various criteria.
 
 \prg{Extending a redescription} Sometimes the user wants to focus only
 on one of the queries, on some particular variable of interest or on a
 part of an existing redescription.  \Siren\ allows the user to
-automatically extend a given redescription, i.e.\ let the algorithm
+\emph{automatically extend a given redescription}, i.e.\ let the algorithm
 add new literals to the queries to make the redescription as accurate
 as possible.
 % (see Fig.~\ref{fig:extending}). 
@@ -165,8 +155,8 @@ between $0.51$ and $11.333$ degrees Celsius and the average
 precipitations in October and November range from $42.75$ to $131.81$
 millimeters and from $50.556$ to $176.75$ millimeters, respectively.
 
-Returned extensions can be plotted on map opened inside several
-windows, so as to be visualized side by side and compared as shown in
+Returned extensions can be plotted on maps opened inside several
+windows, so as to be \emph{visualized side by side and compared} as shown in
 Figure~\ref{fig:comparison}.
 
 \begin{figure}
@@ -179,12 +169,12 @@ Figure~\ref{fig:comparison}.
 
 
 \prg{Editing a redescription} It is typical that the user wants to
-edit some of the obtained redescriptions. For example, some results
+\emph{edit some of the obtained redescriptions}. For example, some results
 might be overly complex, or have exceedingly precise boundaries for
 numerical variables. The user can easily select a redescription to
 modify, open it in a map panel and edit it. Boundaries can be altered,
-literals added or removed. \Siren\ updates the map and important
-statistics (accuracy, $p$-value, etc.) of the redescription, allowing
+literals added or removed. \Siren\ \emph{instantly updates the map and important
+statistics} (accuracy, $p$-value, etc.) of the redescription, allowing
 the user to see the effects of the modifications immediately and
 verify, e.g.\ whether the new redescription would still be acceptably
 accurate.
@@ -201,8 +191,6 @@ query as follows:
 \end{array}
 \end{equation*}
 and obtain a redescription of slightly decreased accuracy. % of $0.659$.
-
-When the user edits a redescription, the map is instantaneously updated to reflect the change and so are the associated statistics.
 
 \prg{Using subsets of variables} 
 \Siren\ allows the user to specify variables to temporarily 
@@ -236,7 +224,9 @@ as the following redescription of accuracy $0.653$:
 
 Note that this redescription was not returned previously since the
 beam search focused on better ones involving precipitation variables.
-This feature allows the user to specify additional constraints, thereby tuning the mining process according to his interest and what appears most promising during the analysis.
+This feature allows the user to \emph{specify additional constraints},
+thereby \emph{tuning the mining process} according to his interest and
+what appears most promising during the analysis.
 
 \prg{Filtering redundant redescriptions}
 \label{sec:filt-redund-redescr}
@@ -249,14 +239,14 @@ results that require filtering.  In such cases, it is important to be
 able to recognize and remove redundant redescriptions, i.e.\
 redescriptions that do not convey significant new information, lest
 the user be overwhelmed with the number of found
-redescriptions. Again, \Siren\ allows automatic filtering of redundant
-redescriptions. The user can select a redescription and ask
-\Siren\ either to filter out all redescriptions that are redundant
+redescriptions. Again, \Siren\ allows \emph{automatic filtering of
+  redundant redescriptions}. The user can select a redescription and
+ask \Siren\ either to filter out all redescriptions that are redundant
 with respect to the selected one, or to go through the whole list of
 redescriptions filtering out all redescriptions that are redundant
 with respect to some earlier-encountered (i.e.\ better)
-redescription. Naturally, the decisions made by
-\Siren\ can be reverted whenever the user wishes to.
+redescription. Naturally, the \emph{decisions made by \Siren\ can be
+reverted whenever the user wishes to}.
 
 For instance, the results returned during the extension
 mentioned previously may contain many redundant redescriptions found
@@ -265,12 +255,10 @@ one of interest and filter all the following results redundant with respect to i
 
 \prg{Sharing the results}
 \label{sec:sharing-results}
-Finally, \Siren\ facilitates distributing the results:
+Finally, \Siren\ facilitates \emph{distributing} the results:
 redescriptions can be exported in easy-to-read format and the
 maps associated to redescriptions can be readily converted to
 publication-ready graphics. 
-
-
 
 %%% Local Variables: 
 %%% mode: latex
