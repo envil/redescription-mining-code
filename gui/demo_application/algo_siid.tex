@@ -39,23 +39,34 @@ After evaluating all possible one-step extensions, we select the best
 candidates and extend them in turn. This process stops when no new
 redescription can be generated.
 
+Redescriptions with too high \pValue{} can be filtered out during the search.
 We exploit some simple observations to make the computation of
-accuracy more efficient. This allows to \emph{evaluate candidates faster},
+accuracy more efficient. This allows to evaluate candidates faster,
 which is particularly important for an interactive tool.  
 
-We compute a
-\pValue{} that represents the probability that two random queries with
-marginal probabilities (i.e.\ the fraction of entities supporting
-them) equal to those of $q_\iLHS$ and $q_\iRHS$ have an intersection
-equal to or larger than $\abs{\supp(q_\iLHS, q_\iRHS)}$. This
-probability uses the binomial distribution. The higher the \pValue,
-the more likely it is to observe such a support for independent
-queries, and the less significant the query. Redescriptions with too
-high \pValue{} can be filtered out.
+Owing to his beam-search-like behaviour, \ReReMi{} is an
+\emph{any-time} algorithm.  The intermediate redescriptions explored
+during the search are returned at each step.  This way, the user is
+able to see the candidates present in the beam and might stop the
+extension process if he so wishes. He could possibly also remove a
+candidate from the beam, cutting off a less promising branch from the
+search.
 
-In \Siren, threading is employed to delegate mining tasks to \ReReMi\ in the background. This preserves the tool's
-\emph{responsiveness} while the communication is maintained to \emph{provide feedback}
-about the ongoing mining and \emph{return results as they are obtained}.
+In \Siren, threading is employed to delegate mining tasks to \ReReMi\
+in the background. This preserves the tool's \emph{responsiveness}
+while the communication is maintained to \emph{provide feedback} about
+the ongoing mining, \emph{return results as they are obtained} and to
+allow the user to directly interact with the process.  
+
+Finally, \Siren\ allows automatic filtering of redundant
+redescriptions. That is, redescriptions that cover approximately the
+same area even if they have (somewhat) different sets of variables.
+The user can select a redescription and ask \Siren\ either to filter
+out all redescriptions that are redundant with respect to the selected
+one, or to go through the whole list of redescriptions filtering out
+all redescriptions that are redundant with respect to some
+earlier-encountered (i.e.\ better) redescription. Naturally, the
+decisions made by \Siren\ can be reverted whenever the user wishes to.
 
 \note{This had been commented out... We need to say these things don't we?}
 \Siren\ and \ReReMi\ are implemented in Python.  The interface is
@@ -103,36 +114,22 @@ various application domains.
 analysis of any given data is to use a redescription mining algorithm
 to find an initial set of redescriptions.  This can be done within 
 \Siren{} by running the extension mechanism on an empty redescription.
-Following the principle of \emph{first providing an overview of the results
-then focusing on specific items}, the redescriptions found are
+Following the principle of first providing an overview of the results
+then focusing on specific items, the redescriptions found are
 presented as a list from which the user can select a redescription of
 his choice and to examine more closely and plot on the map.
 Figure~\ref{fig:both_panels} shows two panels containing an overview of
 the current results as a list, in the background, and a single
 redescription plotted on a map, in the foreground.
-
-Owing to his beam-search-like behaviour, \ReReMi{} is an \emph{any-time} algorithm. 
-The list of results is updated as the mining progresses, so the user does
-not need to wait until the process completes to start looking at the
-results. The list supports \emph{sorting} and \emph{filtering} on various criteria.
+The list supports \emph{sorting} and \emph{filtering} on various criteria.
 
 \prg{Extending a redescription} Sometimes the user wants to focus only
 on one of the queries, on some particular variable of interest or on a
 part of an existing redescription.  \Siren\ allows the user to
-\emph{automatically extend a given redescription}, i.e.\ let the algorithm
+automatically extend a given redescription, i.e.\ let the algorithm
 add new literals to the queries to make the redescription as accurate
 as possible.
 % (see Fig.~\ref{fig:extending}). 
-
-The extension mechanism is based on the beam search
-implemented in the \ReReMi\ algorithm. In this
-case, the intermediate redescriptions explored during the search are
-returned at each step, allowing to study more specific alternative
-extensions to a redescription that were discarded from the beam
-because they were not among the best extensions at some point of the
-search.  This way, the user is able to see the candidates present in
-the beam and might stop the extension process at any time if he so
-wishes.
 
 In the climatic niche-finding task, for instance, we might select a
 species, say, the Southwestern Water Vole and look for best extensions
@@ -156,7 +153,7 @@ precipitations in October and November range from $42.75$ to $131.81$
 millimeters and from $50.556$ to $176.75$ millimeters, respectively.
 
 Returned extensions can be plotted on maps opened inside several
-windows, so as to be \emph{visualized side by side and compared} as shown in
+windows, so as to be \emph{visualized} side by side and compared as shown in
 Figure~\ref{fig:comparison}.
 
 \begin{figure}
@@ -169,12 +166,12 @@ Figure~\ref{fig:comparison}.
 
 
 \prg{Editing a redescription} It is typical that the user wants to
-\emph{edit some of the obtained redescriptions}. For example, some results
+edit some of the obtained redescriptions. For example, some results
 might be overly complex, or have exceedingly precise boundaries for
 numerical variables. The user can easily select a redescription to
 modify, open it in a map panel and edit it. Boundaries can be altered,
-literals added or removed. \Siren\ \emph{instantly updates the map and important
-statistics} (accuracy, $p$-value, etc.) of the redescription, allowing
+literals added or removed. \Siren\ \emph{instantly updates} the map and important
+statistics (accuracy, $p$-value, etc.) of the redescription, allowing
 the user to see the effects of the modifications immediately and
 verify, e.g.\ whether the new redescription would still be acceptably
 accurate.
@@ -195,17 +192,7 @@ and obtain a redescription of slightly decreased accuracy. % of $0.659$.
 \prg{Using subsets of variables} 
 \Siren\ allows the user to specify variables to temporarily 
 avoid when extending or mining redescriptions.
-
-For example, when two variables are highly
-correlated, several redescriptions might contain them
-both. The user, however, might want to consider
-redescriptions with only one of these variables, not
-both. \Siren\ makes that simple: the user only has to select a
-redescription, remove the unwanted variable from the
-redescription and unselect it from the list of variables, then extend the
-redescription again. 
-
-Alternatively, in our running example, we might want to force the
+In our running example, we might want to force the
 algorithm to search alternative redescriptions that do not involve any
  precipitation. For that purpose, we simply unselect all such
 variables before running the extension anew. We will obtain the best
@@ -224,31 +211,13 @@ as the following redescription of accuracy $0.653$:
 
 Note that this redescription was not returned previously since the
 beam search focused on better ones involving precipitation variables.
-This feature allows the user to \emph{specify additional constraints},
+This feature allows the user to specify additional constraints,
 thereby \emph{tuning the mining process} according to his interest and
 what appears most promising during the analysis.
 
 \prg{Filtering redundant redescriptions}
 \label{sec:filt-redund-redescr}
-It is common to see a set of redescriptions that cover approximately
-the same area even if they have (somewhat) different sets of
-variables.  Indeed, redescriptions belong to the family of local
-patterns, with each individual pattern independently describing a
-subset of the data. Mining local patterns typically returns redundant
-results that require filtering.  In such cases, it is important to be
-able to recognize and remove redundant redescriptions, i.e.\
-redescriptions that do not convey significant new information, lest
-the user be overwhelmed with the number of found
-redescriptions. Again, \Siren\ allows \emph{automatic filtering of
-  redundant redescriptions}. The user can select a redescription and
-ask \Siren\ either to filter out all redescriptions that are redundant
-with respect to the selected one, or to go through the whole list of
-redescriptions filtering out all redescriptions that are redundant
-with respect to some earlier-encountered (i.e.\ better)
-redescription. Naturally, the \emph{decisions made by \Siren\ can be
-reverted whenever the user wishes to}.
-
-For instance, the results returned during the extension
+The results returned during the extension
 mentioned previously may contain many redundant redescriptions found
 at different steps. We can easily sort them, e.g.\ by accuracy, select
 one of interest and filter all the following results redundant with respect to it.
