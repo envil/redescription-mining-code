@@ -43,6 +43,7 @@ To some extent, filtering can be regarded as sorting with a cut-off
 value. Hence, sorting should naturally use the same criteria and
 similar results display as sorting. Additional criteria might affect
 sorting, including the described geographical area and redundancy.
+
 During the analysis, the user should be allowed to \textbf{derive} new
 data. That is, new variables obtained by aggregating existing
 variables might better capture the studied phenomenon. Hence, their
@@ -61,8 +62,7 @@ process.
   variables.}  In order to manipulate the views, the user needs to be
 able to \textbf{select} the data he wants to visualize. In the present
 case, he can primarily choose a redescription to plot. Then, he can
-edit the queries, modifying literals and altering the bounds of real
-valued variables.  The user might need to \textbf{navigate} inside the
+edit the queries, modifying literals and altering the bounds of real-valued variables.  The user might need to \textbf{navigate} inside the
 view, typically looking first at the redescription over the whole
 area, before zooming and panning to see more details. On a high level,
 the user might only be able to see whether either query hold on a
@@ -112,7 +112,7 @@ tied to the interaction with the mining process, to which we now turn.
 \label{sec:goals-interaction}
 
 A desirable behavior for an interactive program is the production of
-meaningful results at \goal{anytime}.  In other words, if the mining
+meaningful results at \goal{any time}.  In other words, if the mining
 process is stopped, it can nevertheless return results which are
 valid, albeit possibly partial.  This is related to the possibility to
 obtain preliminary results while the mining is still underway.  Such a
@@ -136,7 +136,7 @@ the user.
 Consider extending an existing redescription with a real-valued
 literal. Instead of a map plot based on their geographical location, a
 figure where the areas are represented as colored dots plotted along
-the x-axis depending on the value taken by the chosen variable would be
+the $x$-axis depending on the value taken by the chosen variable would be
 useful for determining the optimal interval for that variable. Indeed,
 the user could observe which values occur in locations that belong to
 different parts of the current redescription. Then, he could fix the
@@ -171,14 +171,17 @@ e.g. through a flexible specification framework. Indeed, these are two
  further in directions he deems uninteresting.  One way of doing so is
  to merely pick out variables or locations that should be ignored.
  Another way is to select a redescription and specify that results of
- this kind are of no interest. That could happen because the
- information provided by the redescription is known a priori by the
- analyst, on one hand, or in case it is contained in an earlier
- redescription, i.e. the latter one is redundant, on the other hand.
- Indeed, redescriptions belong to the family of local patterns, with
- each individual pattern independently describing a subset of the
- data. Mining local patterns typically returns redundant results that
- require filtering.
+ this kind are of no interest. 
+
+
+% That could happen because the
+%  information provided by the redescription is known a priori by the
+%  analyst, on one hand, or in case it is contained in an earlier
+%  redescription, i.e. the latter one is redundant, on the other hand.
+%  Indeed, redescriptions belong to the family of local patterns, with
+%  each individual pattern independently describing a subset of the
+%  data. Mining local patterns typically returns redundant results that
+%  require filtering.
 
 %%% Local Variables: 
 %%% mode: latex
