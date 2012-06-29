@@ -2,11 +2,9 @@
 \note{TODO: start visual and interactive data mining more generally?}
 
 Finding multiple ways to characterize the same entities is a problem
-that appears in many areas of science.  In medical sciences, one might
-want to find a subset of patients sharing similar symptoms and similar
-genes. Describing geographical regions in terms of both their
-bioclimatic conditions and the fauna that inhabits them is another
-example.  A simple example of a redescription in this setting could
+that appears in many areas of science. Describing geographical regions in terms of both their
+bioclimatic conditions and the fauna that inhabits them is one
+instance in the field of biology.  A simple example of a redescription in this setting could
 state that areas where Moose live are areas where February's maximum
 temperature is between $-10$ and $0$ degrees Celsius and July's
 maximum temperature between $12$ and $25$ degrees Celsius.
@@ -33,25 +31,27 @@ both queries of a redescription hold.
 %   matter? I'm not religious about splitting the two -- I don't think
 %   it works, in fact -- but I think that presenting the goals with
 %   split is easier than in a merry mess of all of them.}  
-To analyse
-the redescriptions, the ability to visualize the support sets is very
-helpful. With geospatial data, plotting the support on a map is a
-natural visualization. But a static display of the results is
-not enough: the user must also be able to interact with the
-program. This interaction can be conceptually divided into two
-sub-phases: interacting with the data mining algorithm and interacting
-with the result visualization. The analysis is an alternation of these
-two phases, with the user moving back-and-forth between issuing
-commands to find new results and examining obtained ones. We argue
-that a good interactive data mining tool should support both types of
-interaction and facilitate the alternation between different
-phases. In this paper we give a systematic outline of contributive
-features to fulfill that aim, considering the example of mining
-geospatial redescriptions. We then present a pair of algorithms,
-\ReReMi\ and \Siren, and explain how they implement interactivity and
-visualization for that task. Lastly, we discuss some possible pitfalls
-associated with interactive, visual mining. But first, we formally
-define the redescription mining problem.
+To analyse the redescriptions, the ability to visualize the support
+sets is very helpful. When building a tool for mining redescriptions
+from geospatial data, plotting the support on a map, as in the foreground panel of
+Figure~\ref{fig:both_panels}, is a natural
+visualization. But a static display of the results is not enough: the
+user must also be able to interact with the program. This interaction
+can be conceptually divided into two sub-phases: interacting with the
+data mining algorithm and interacting with the result
+visualization. The analysis is an alternation of these two phases,
+with the user moving back-and-forth between issuing commands to find
+new results and examining obtained ones. We argue that a good
+interactive data mining tool should support both types of interaction
+and facilitate the alternation between different phases.  
+
+In this paper we give a systematic outline of contributive features to
+fulfill that aim, considering the example of mining geospatial
+redescriptions. We then present a pair of algorithms, \ReReMi\ and
+\Siren, and explain how they implement interactivity and visualization
+for that task. Lastly, we discuss some possible pitfalls associated
+with interactive, visual mining. But first, we formally define the
+redescription mining problem.
 
 %%% Local Variables: 
 %%% mode: latex
