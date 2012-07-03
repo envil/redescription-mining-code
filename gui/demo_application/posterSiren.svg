@@ -15,7 +15,7 @@
    id="svg12904"
    version="1.1"
    inkscape:version="0.48.2 r9819"
-   sodipodi:docname="posterSiren.pdf">
+   sodipodi:docname="posterSiren.svg">
   <defs
      id="defs12906">
     <clipPath
@@ -14539,9 +14539,9 @@
      inkscape:pageshadow="2"
      inkscape:zoom="0.3364713"
      inkscape:cx="1513.1103"
-     inkscape:cy="2096.6128"
+     inkscape:cy="788.92326"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g7145"
      showgrid="true"
      inkscape:window-width="1280"
      inkscape:window-height="727"
@@ -14576,7 +14576,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -15883,7 +15883,7 @@
                id="use7133"
                width="2979.9211"
                height="4212.9922" /></flowRegion><flowPara
-             id="flowPara7135">An intance of <flowSpan
+             id="flowPara7135">An instance of <flowSpan
    style="font-weight:bold;-inkscape-font-specification:Arev Sans Bold"
    id="flowSpan7137">geospatial redescription mining</flowSpan> – and an important task in biology – is to <flowSpan
    style="font-weight:bold;-inkscape-font-specification:Arev Sans Bold"
