@@ -10,7 +10,7 @@ from classRedescriptionsDraft import RedescriptionsDraft
 from classBestsDraft import BestsDraft
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
-import utilsTools as ut
+#import utilsTools as ut
 import pdb
 
 def processDraft(initialRed, data, draftCap, draftOut, minImpr, constraints, souvenirs, logger, keep=False, worker=None):    

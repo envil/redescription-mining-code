@@ -112,7 +112,7 @@ class DataWrapper(object):
             self.number_of_datafiles = len(data_filenames)
         self.isFromPackage = False
         if coo_filename is not None or data_filenames is not None or queries_filename is not None or settings_filename is not None:
-            self.rshowids = ICList([[idi, 1] for idi in range(len(self.reds))], True)
+            self.rshowids = ICList([idi for idi in range(len(self.reds))], True)
             self.isChanged = True
              
 
@@ -236,7 +236,7 @@ class DataWrapper(object):
             raise
         else:
             self.queries_filename = queries_filename
-            self.rshowids = ICList([[idi, 1] for idi in range(len(self.reds))], True)
+            self.rshowids = ICList([idi for idi in range(len(self.reds))], True)
             self.isChanged = True
 
     def importSettingsFromFile(self, settings_filename):
@@ -671,8 +671,8 @@ class DataWrapper(object):
         else:
             names = [None, None]
         with codecs.open(filename, encoding='utf-8', mode='w') as f:
-            for i, show in self.rshowids:
-                if show:
+            for i in self.rshowids:
+                if self.reds[i].getEnabled():
                     f.write(self.reds[i].dispU(names)+"\n")
 
     def exportQueriesLatex(self, filename, named = False, toPackage = False):
@@ -682,8 +682,8 @@ class DataWrapper(object):
             names = [None, None]
         with codecs.open(filename, encoding='utf-8', mode='w') as f:
             f.write(Redescription.dispTexPrelude()+"\n")
-            for i, show in self.rshowids:
-                if show:
+            for i in self.rshowids:
+                if self.reds[i].getEnabled():
                     f.write(self.reds[i].dispTexLine(i, names)+"\n")
             f.write(Redescription.dispTexConc()+"\n")
             f.write("\n")

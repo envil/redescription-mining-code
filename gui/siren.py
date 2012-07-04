@@ -36,7 +36,7 @@ def filterRedsToOne(reds_list, selected_id, compare_ids, redundant_func, thres):
     redundant_ids = []
     for compare_id in compare_ids:
         if redundant_func(reds_list[selected_id], reds_list[compare_id], thres):
-            redundant_ids.append(compare_id)
+            reds_list[compare_id].setDisabled()
     return redundant_ids
 
 def isRedundantArea(redA, redB, thres= 0.5):
@@ -129,7 +129,7 @@ class CustViewer(wx.grid.PyGridCellRenderer):
             dc.SetTextForeground( self.TEXT_SELECTED )
             dc.SetTextBackground( self.BACKGROUND_SELECTED)
             dc.SetBrush( wx.Brush( self.BACKGROUND_SELECTED) )
-        elif grid.GetTable().visibleStatus(row) == 0:
+        elif grid.GetTable().getEnabled(row) == 0:
             dc.SetTextForeground( self.TEXT_GREY )
             dc.SetTextBackground( self.BACKGROUND_GREY)
             dc.SetBrush( wx.Brush( self.BACKGROUND_GREY) )
@@ -170,9 +170,8 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.data = []
         self.sortids = []
         self.details = {}
-        self.bShowHidden = True
         self.sortP = (None, False)
-        self.currentRows = len(self.visiblesAll())
+        self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
 
         #### GRID
@@ -194,7 +193,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
         # self.grid.SetColAttr(0,attr)
 
-        self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.sortData)
+        self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnMouse)
@@ -203,10 +202,12 @@ class CustomGridTable(wx.grid.PyGridTableBase):
     #     self.table.highlightRow(event.GetRow())
     #     parent.currentList = self
 
+    ### GRID METHOD
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
-        return len(self.visiblesAll())
+        return self.nbItems()
 
+    ### GRID METHOD
     def GetColLabelValue(self, col):
         """Return the number of rows in the grid"""
         direct = '  '
@@ -217,14 +218,17 @@ class CustomGridTable(wx.grid.PyGridTableBase):
                 direct = u"\u2193" 
         return "  %s %s" % (self.fields[col][1], direct)
 
+    ### GRID METHOD
     def GetNumberCols(self):
         """Return the number of columns in the grid"""
         return len(self.fields)
 
+    ### GRID METHOD
     def IsEmptyCell(self, row, col):
         """Return True if the cell is empty"""
         return self.GetValue(row, col) == None
 
+    ### GRID METHOD
     def GetTypeName(self, row, col):
         """Return the name of the data type of the value in the cell"""
         if (col == 0):
@@ -238,10 +242,11 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         # else:
         #     return None
 
+    ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < len(self.visiblesAll()) and col < len(self.fields):
-            x = self.visiblesAll()[row]
+        if row < self.nbItems() and col < len(self.fields):
+            x = self.sortids[row]
             methode = eval(self.fields[col][0])
             if callable(methode):
                 return "%s" % methode(self.details)
@@ -250,15 +255,31 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         else:
             return None
 
-    def GetRowData(self, row):
-        """Return the data of a row"""
-        if row < len(self.visiblesAll()):
-            return self.data[self.visibleOrgId(row)]
-        else:
-            return None
-                                  
+    ### GRID METHOD
     def SetValue(self, row, col, value):
         pass
+
+    def nbItems(self):
+        return len(self.sortids)
+
+    def getItemAtRow(self, row):
+        """Return the data of a row"""
+        if row < self.nbItems() and self.sortids[row] < len(self.data):
+            return self.data[self.sortids[row]]
+        else:
+            return None
+
+    def getPositionFromRow(self, row):
+        if row < self.nbItems() and self.sortids[row] < len(self.data):
+            return self.sortids[row]
+        else:
+            return None
+
+    def getRowFromPosition(self, pos):
+        try:
+            return self.sortids.index(pos)
+        except:
+            return None
 
     def resetData(self, data, fieldsRed=[], details=[], srids=None):
         if details != []:
@@ -269,70 +290,34 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         if srids != None:
             self.sortids = srids
         else:
-            self.sortids = [[idi, 1] for idi in range(len(self.data))]
+            self.sortids = [idi for idi in range(len(self.data))]
         self.updateSort()
         self.ResetView()
         self.GetView().AutoSize()
 
-    def appendRow(self, rowD):
-        if len(self.sortids) == 0 or self.data[-1] != rowD:
-            self.sortids.append([len(self.data), 1])
-            self.data.append(rowD)
-            self.updateSort()
-            self.ResetView()
+    def getEnabled(self, row):
+        return self.getItemAtRow(row).getEnabled()
 
-    def extendData(self, rowsD):
-        self.sortids.extend([[len(self.data)+ i, 1] for i in range(len(rowsD))])
-        self.data.extend(rowsD)
-        self.updateSort()
+    def flipEnabled(self, row):
+        self.data[self.sortids[row]].flipEnabled()
         self.ResetView()
 
-    def setHidden(self, row):
-        self.sortids[self.visibleSortId(row)][1] = 0
-        self.ResetView()
-    def setHiddens(self, rows):
-        sids = [self.visiblesAll()[row][1] for row in rows]
-        for sid in sids:
-            self.sortids[sid][1] = 0
+    def setAllDisabled(self):
+        for item in self.data:
+            item.setDisabled()
         self.ResetView()
 
-    def flipHidden(self, row):
-        self.sortids[self.visibleSortId(row)][1] = 1- self.sortids[self.visibleSortId(row)][1]
+    def setAllEnabled(self):
+        for item in self.data:
+            item.setEnabled()
         self.ResetView()
-    def flipHiddens(self, rows):
-        sids = [self.visiblesAll()[row][1] for row in rows]
-        for sid in sids:
-            self.sortids[sid][1] = 1-self.sortids[sid][1]
-        self.ResetView()
-
-    def toggleHide(self):
-        self.bShowHidden = not self.bShowHidden
-        self.ResetView()
-
-    def orgToSortIds(self, org_ids):
-        return [self.visiblesIds().index(org_id) for org_id in org_ids] 
-        
-    def visibleStatus(self, row):
-        return self.visiblesAll()[row][2]
-
-    def visibleOrgId(self, row):
-        return self.visiblesAll()[row][0]
-
-    def visibleSortId(self, row):
-        return self.visiblesAll()[row][1]
-
-    def visiblesAll(self):
-        return [(idi[0], si, idi[1])  for si, idi in enumerate(self.sortids) if (self.bShowHidden or idi[1])]
-
-    def visiblesIds(self):
-        return [idi[0]  for idi in self.sortids if (self.bShowHidden or idi[1])]
 
     def OnMouse(self,event):
-        if event.GetRow() < len(self.visiblesAll()):
+        if event.GetRow() < self.nbItems():
+            self.setSelectedRow(event.GetRow())
             if event.Col == 0:
-                self.flipHidden(event.GetRow())
-            else:
-                self.setSelectedRow(event.GetRow())
+                self.flipEnabled(event.GetRow())
+                
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -357,21 +342,26 @@ class CustomGridTable(wx.grid.PyGridTableBase):
                 )
                 self.GetView().ProcessTableMessage(msg)
         self.GetView().EndBatch()
-        self.currentRows = len(self.visiblesAll())
+        self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
 
-        if self.getSelectedRowId() != None and not self.grid.IsVisible(self.getSelectedRowId(), 0):
-            self.grid.MakeCellVisible(self.getSelectedRowId(), 0)
+        if self.getSelectedRow() != None and not self.grid.IsVisible(self.getSelectedRow(), 0):
+            self.grid.MakeCellVisible(self.getSelectedRow(), 0)
 
-    def deleteHidden(self):
+    def deleteDisabled(self):
         pass
 
-    def getSelectedRowData(self):
-        if self.getSelectedRowId() != None:
-            return self.GetRowData(self.getSelectedRowId())
+    def getSelectedItem(self):
+        if self.getSelectedRow() != None:
+            return self.getItemAtRow(self.getSelectedRow())
+        return
+
+    def getSelectedPos(self):
+        if self.getSelectedRow() != None:
+            return self.getPositionFromRow(self.getSelectedRow())
         return
     
-    def getSelectedRowId(self):
+    def getSelectedRow(self):
         if len(self.GetView().GetSelectedRows()) > 0:
             return self.GetView().GetSelectedRows()[0]
         else:
@@ -381,11 +371,13 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         self.GetView().SetGridCursor(row,0)
         self.GetView().SelectRow(row)
 
-    def sortData(self, event):
+    def neutraliseSort(self):
+        self.sortP = (None, False)
+
+    def setSort(self, event):
         colS = event.GetCol()
         if colS == -1:
-            pass
-#            self.setHiddens(range(10))
+            pass ### TODO select all
         else:
             old = self.sortP[0]
             if self.sortP[0] == colS:
@@ -396,59 +388,120 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.ResetView()
         
     def updateSort(self):
-        selected_row = self.getSelectedRowId()
+        selected_row = self.getSelectedRow()
         selected_id = None
-        if selected_row != None and selected_row < len(self.sortids) :
-            selected_id = self.visibleOrgId(selected_row)
+        if selected_row != None:
+            selected_id = self.getPositionFromRow(selected_row)
 
         if self.sortP[0] != None:
             self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][0])(self.details), reverse=self.sortP[1])
-        if selected_id != None and selected_id in self.visiblesIds():
-            self.setSelectedRow(self.visiblesIds().index(selected_id))
+        if selected_id != None:
+            self.setSelectedRow(self.getRowFromPosition(selected_id))
             
     def OnRightClick(self, event):
-        if event.GetRow() < len(self.data):
+        if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow())
-            self.parent.selectedList = self
             self.parent.makePopupMenu(self.parent.toolFrame)
 
     def OnViewData(self, event):
-        if event.GetRow() < len(self.data):
+        if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow())
             self.viewData()
 
-    def duplicate(self):
-        red = self.getSelectedRowData().copy()
-        self.sortids.insert(self.visibleSortId(self.getSelectedRowId()), [len(self.data), 1])
-        self.data.append(red)
+class RedGridTable(CustomGridTable):
+
+    def __init__(self, parent, tabId, frame):
+        CustomGridTable.__init__(self, parent, tabId, frame)
+        self.buffer_copy = None
+        self.opened_edits = {}
+
+    def insertItem(self, item, row=None, upView=True):
+        if row == None or row >= len(self.sortids):
+            self.sortids.append(len(self.data))
+        else:
+            self.sortids.insert(row+1, len(self.data))
+        self.data.append(item)
+        if upView:
+            self.neutraliseSort()
+            self.ResetView()
+
+    def deleteItem(self, pos, upView=True):
+        row = self.getRowFromPosition(pos)
+        if row != None:
+            self.sortids.pop(row)
+            for i in range(len(self.sortids)):
+                self.sortids[i] -= (self.sortids[i] > pos)
+                i+=1
+            ### TODO destruct the associated mapView if any?? 
+            ### TODO add possibility to undo delete here
+            self.data.pop(pos)
+            for edit_key in self.opened_edits.keys():
+                if self.opened_edits[edit_key] == pos:
+                    self.opened_edits[edit_key] = None
+                elif self.opened_edits[edit_key] > pos:
+                    self.opened_edits[edit_key] -= 1
+            if upView:
+                self.ResetView()
+
+    def viewData(self):
+        if self.getSelectedPos() not in self.opened_edits.values():
+            mapV = self.parent.getSelectedMapView()
+            self.registerView(mapV.vid, self.getSelectedPos())
+            mapV.setCurrentRed(self.getSelectedItem(), self.tabId)
+            mapV.updateRed()
+        else:
+            pass ### TODO give focus to already opened view
+
+    def registerView(self, key, pos):
+        self.opened_edits[key] = pos
+
+    def unregisterView(self, key):
+        if key in self.opened_edits.keys():
+            del self.opened_edits[key]
+
+    def updateEdit(self, edit_key, red):
+        if edit_key in self.opened_edits.keys() and self.opened_edits[edit_key] in range(len(self.data)):
+            self.data[self.opened_edits[edit_key]] = red
+            self.ResetView()
+        ### TODO else insert (e.g. created from variable)
+
+    def deleteDisabled(self):
+        i = 0
+        pdb.set_trace()
+        while i < len(self.data):
+            if not self.data[i].getEnabled():
+                self.deleteItem(i, False)
+            else:
+                i+=1
         self.ResetView()
 
+    def copyItem(self, row):
+        pos = self.getPositionFromRow(row)
+        if pos != None:
+            self.buffer_copy = self.data[pos].copy()
+
+    def cutItem(self, row):
+        pos = self.getPositionFromRow(row)
+        if pos != None:
+            self.buffer_copy = self.data[pos].copy()
+            self.deleteItem(pos)
+
+    def pasteItem(self, row = None):
+        if self.buffer_copy != None:
+            self.insertItem(self.buffer_copy, row)
+            self.buffer_copy = None
+            
     def filterToOne(self):
-        if self.getSelectedRowId() < len(self.visiblesIds()): 
-            compare_ids = self.visiblesIds()[self.getSelectedRowId():]
+        if self.getSelectedRow() < self.nbItems(): 
+            compare_ids = self.sortids[self.getSelectedRow():]
             selected_id = compare_ids.pop(0)
-            redundant_ids = filterRedsToOne(self.data, selected_id, compare_ids, isRedundantArea, 0.5)
-            self.setHiddens(self.orgToSortIds(redundant_ids))
-
-class RedGridTable(CustomGridTable):
-    def viewData(self):
-        mapV = self.parent.getSelectedMapView()
-        mapV.setCurrentRed(self.getSelectedRowData(), self.tabId, self.visibleOrgId(self.getSelectedRowId()))
-        mapV.updateRed(self.tabId != "Hist")
-
-    def deleteHidden(self):
-        new_data = [self.data[i] for i in self.sortids if i[1]]
-        self.resetData(new_data)
-
-    def updateRow(self, rowId, red):
-        if rowId < len(self.data):
-            self.data[rowId] = red
+            filterRedsToOne(self.data, selected_id, compare_ids, isRedundantArea, 0.5)
             self.ResetView()
 
 class VarGridTable(CustomGridTable):     
     def viewData(self):
         mapV = self.parent.getSelectedMapView()
-        datVar = self.getSelectedRowData()
+        datVar = self.getSelectedItem()
         if datVar.side == 1:
             mapV.MapredMapQL.ChangeValue("")
             mapV.MapredMapQR.ChangeValue(datVar.getItem().dispU(False, self.parent.details['names'][1]))
@@ -457,34 +510,10 @@ class VarGridTable(CustomGridTable):
             mapV.MapredMapQR.ChangeValue("")
 #            mapV.MapredMapInfo.ChangeValue("")
         mapV.setMapredInfo(None)
-        mapV.updateRed(False)
+        mapV.updateRed()
 
-
-    def setHidden(self, row):
-        self.data[self.sortids[self.visibleSortId(row)][0]].setUnusable()
-        self.sortids[self.visibleSortId(row)][1] = 0
-        self.ResetView()
-    def setHiddens(self, rows):
-        sids = [self.visiblesAll()[row] for row in rows]
-        for sid in sids:
-            self.data[sid[0]].setUnusable()
-            self.sortids[sid[1]][1] = 0
-        self.ResetView()
-
-    def flipHidden(self, row):
-        self.data[self.sortids[self.visibleSortId(row)][0]].flipUsable()
-        self.sortids[self.visibleSortId(row)][1] = 1- self.sortids[self.visibleSortId(row)][1]
-        self.ResetView()
-    def flipHiddens(self, rows):
-        sids = [self.visiblesAll()[row] for row in rows]
-        for sid in sids:
-            self.data[sid[0]].flipUsable()
-            self.sortids[sid[1]][1] = 1-self.sortids[sid][1]
-        self.ResetView()
-
-    def updateRow(self, rowId, red):
+    def updateEdit(self, edit_key, red):
         pass
-
 
 class MapView:
 
@@ -508,14 +537,20 @@ class MapView:
     
     def __init__(self, parent, vid):
         self.parent = parent
-        self.source_data = None
-        self.source_id = None
+        self.source_list = None
         self.vid = vid
         self.lines = []
         self.coord_proj = None
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
-        self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
+        self.draw_map()
+        self.draw_frame()
+        self.binds()
+        self.mapFrame.Show()
+
+    def getId(self):
+        return self.vid
+
+    def draw_frame(self):
         self.MapredMapQL = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER) # , size=(550,-1)
         self.MapredMapQL.SetForegroundColour(MapView.COLOR_LEFT)
         self.MapredMapQR = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER)
@@ -539,17 +574,7 @@ class MapView:
         self.MapredMapInfoRV.SetForegroundColour(MapView.COLOR_RIGHT)
         self.button_expand = wx.Button(self.mapFrame, size=(80,-1), label="Expand")
         self.button_stop = wx.Button(self.mapFrame, size=(80,-1), label="Stop")
-        self.button_expand.Bind(wx.EVT_BUTTON, self.parent.OnExpand)
-        self.button_stop.Bind(wx.EVT_BUTTON, self.parent.OnStop)
-        self.MapredMapQL.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
-        self.MapredMapQR.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
 
-        self.MapfigMap = plt.figure()
-        self.Mapcurr_mapi = 0
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        
-        self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
- 
         flags = wx.ALL
         self.MapValbox1 = wx.BoxSizer(wx.VERTICAL)
         self.MapValbox1.Add(self.MapredMapInfoJL, 0, border=0, flag=flags)
@@ -599,33 +624,38 @@ class MapView:
         self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
-        self.draw_map()
-        self.mapFrame.Show()
+
+    def binds(self):
+        self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
+        self.button_expand.Bind(wx.EVT_BUTTON, self.parent.OnExpand)
+        self.button_stop.Bind(wx.EVT_BUTTON, self.parent.OnStop)
+        self.MapredMapQL.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
+        self.MapredMapQR.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
 
     def OnFocus(self, event):
         self.mapFrame.Raise()
         self.parent.selectedMap = self.vid
         
     def OnQuit(self, event):
+        if self.source_list != None and self.parent.tabs.has_key(self.source_list):
+            self.parent.tabs[self.source_list]["tab"].unregisterView(self.vid)
         self.parent.deleteView(self.vid)
         
     def OnEditRed(self, event):
         self.updateRed()
 
-    def setCurrentRed(self, red, source_data=None, source_id = None):
-        self.source_data=source_data
-        self.source_id =source_id
+    def setCurrentRed(self, red, source_list=None):
+        self.source_list=source_list
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
 #        self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
         
-    def updateRed(self, addHist=True):
+    def updateRed(self):
         red = self.redraw_map()
-        if red != None and addHist:
-            self.parent.lists["Hist"].appendRow(red)
-            if self.source_data != None and self.parent.lists.has_key(self.source_data) and self.source_id != None:
-                self.parent.lists[self.source_data].updateRow(self.source_id, red)
+        if red != None and self.source_list != None and self.parent.tabs.has_key(self.source_list):
+            self.parent.tabs[self.source_list]["tab"].updateEdit(self.vid, red)
         return red
         
     def parseRed(self):
@@ -637,6 +667,12 @@ class MapView:
     def draw_map(self):
         """ Draws the map
         """
+        self.MapfigMap = plt.figure()
+        self.Mapcurr_mapi = 0
+        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        
+        self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
+
         self.MapfigMap.clear()
         if self.parent.coord_extrema != None and self.parent.dw.coord != None:            
 
@@ -667,7 +703,7 @@ class MapView:
         """
         red = self.parseRed()
         if red == None:
-            return self.parent.lists["Hist"].data[-1]
+            return self.parent.tabs["Hist"].data[-1]
 
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
@@ -696,14 +732,15 @@ class MapView:
                     self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
                 i += 1
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
-            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+#            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()
         return red
 
-    def OnPick(self, event):
-        inds = event.ind
-        for ind in inds:
-            print self.points_ids[ind], self.coord_proj[0][self.points_ids[ind]], self.coord_proj[1][self.points_ids[ind]]
+    # def OnPick(self, event):
+    #     #### TODO drafting for info on click, uncomment binding  (mpl_connect)
+    #     inds = event.ind
+    #     for ind in inds:
+    #         print self.points_ids[ind], self.coord_proj[0][self.points_ids[ind]], self.coord_proj[1][self.points_ids[ind]]
 
     def setMapredInfo(self, red):
         if red == None:
@@ -742,9 +779,9 @@ class Siren():
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
     helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
-    fieldsRed = [('x[2]', ''), ('self.data[x[0]].getQueryLU', 'Query LHS'), ('self.data[x[0]].getQueryRU', 'Query RHS'), ('self.data[x[0]].getAcc', 'Acc'), ('self.data[x[0]].getPVal', 'p-Value'), ('self.data[x[0]].getSupp', 'Support')]
-    fieldsVar = [('self.data[x[0]].getUsable', ''), ('self.data[x[0]].getId', 'Id'), ('self.data[x[0]].getName', 'Name'), ('self.data[x[0]].getType', 'Type')]
-    fieldsVarTypes = {1: [('self.data[x[0]].getDensity', 'Density')], 2:[('self.data[x[0]].getCategories', 'Categories')], 3:[('self.data[x[0]].getMin', 'Min'), ('self.data[x[0]].getMax', 'Max')]}
+    fieldsRed = [('self.data[x].getEnabled', ''), ('self.data[x].getQueryLU', 'Query LHS'), ('self.data[x].getQueryRU', 'Query RHS'), ('self.data[x].getAcc', 'Acc'), ('self.data[x].getPVal', 'p-Value'), ('self.data[x].getSupp', 'Support')]
+    fieldsVar = [('self.data[x].getEnabled', ''), ('self.data[x].getId', 'Id'), ('self.data[x].getName', 'Name'), ('self.data[x].getType', 'Type')]
+    fieldsVarTypes = {1: [('self.data[x].getDensity', 'Density')], 2:[('self.data[x].getCategories', 'Categories')], 3:[('self.data[x].getMin', 'Min'), ('self.data[x].getMax', 'Max')]}
 
     def getFieldRed(red, fieldId):
         methode = eval(Siren.fieldsRed[fieldId][0])
@@ -752,8 +789,18 @@ class Siren():
 
     def getFieldLabel(fieldId):
         return Siren.fieldsRed[fieldId][1]
-
+         
     def __init__(self):
+        self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
+                     1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
+                     "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
+                     "exp": {"title":"Expanding", "type":"Reds", "hide":False, "style":None},
+                     "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE},
+                     "setts": {"title":"Settings", "type":"Text", "hide": True, "style": wx.TE_MULTILINE}
+                     }
+        self.tabs_keys = [0, 1, "reds", "exp", "log", "setts"]
+        self.selectedTab = self.tabs[self.tabs_keys[0]]
+        
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
 
@@ -810,7 +857,7 @@ class Siren():
         self.reloadVars()
         self.resetCoordinates()
         self.reloadReds()
-        self.text_setts.LoadFile(self.dw.settings_filename)
+        self.tabs["setts"]["text"].LoadFile(self.dw.settings_filename)
 	
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -846,9 +893,9 @@ class Siren():
         """Show Result status."""
         if event.data != None:
             if event.data[0] == 1:
-                self.lists["Exp"].extendData(event.data[1])
+                self.tabs["Exp"].extendData(event.data[1])
             if event.data[0] == 0:
-                self.lists["Exp"].resetData(event.data[1])
+                self.tabs["Exp"].resetData(event.data[1])
 
     def OnProgress(self, event):
         """Update progress status."""
@@ -864,7 +911,7 @@ class Siren():
     def OnLogger(self, event):
         """Show Result status."""
         if event.data != None:
-            self.text_log.AppendText("%s\n" % event.data)
+            self.tabs["log"]["text"].AppendText("%s\n" % event.data)
 
     def OnStatus(self, event):
         """Show Result status."""
@@ -881,46 +928,31 @@ class Siren():
         self.makeStatus(self.toolFrame)
 	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
 
-        ### LISTS PANELS
-        self.selectedList = None
-        self.lists = {}
-        lists_settings = [(0, "LHS Variables", "Var", False),
-                          (1, "RHS Variables", "Var", False),
-                          ("Reds", "Redescriptions", "Red", False),
-                          ("Exp", "Expanding", "Red", False),
-                          ("Hist", "History", "Red", True)]
-        for (tabId, titleTab, typeList, hide) in lists_settings:
-            if typeList == "Red":
-                self.lists[tabId] = RedGridTable(self, tabId, self.tabbed)
-            elif typeList == "Var":
-                self.lists[tabId] = VarGridTable(self, tabId, self.tabbed)
-            if hide:
-                self.lists[tabId].grid.Hide()
-            self.tabbed.AddPage(self.lists[tabId].grid, titleTab)
+        #### Draw tabs
+        for tabId in self.tabs_keys:
+            if self.tabs[tabId]["type"] == "Reds":
+                self.tabs[tabId]["tab"] = RedGridTable(self, tabId, self.tabbed)
+                if self.tabs[tabId]["hide"]:
+                    self.tabs[tabId]["tab"].grid.Hide()
+                self.tabbed.AddPage(self.tabs[tabId]["tab"].grid, self.tabs[tabId]["title"])
 
-        ### LOG PANEL
-        self.panelLog = wx.Panel(self.tabbed, -1)
-        self.panelLog.Hide()
-	self.text_log = wx.TextCtrl(self.panelLog, size=(-1,-1), style=wx.TE_READONLY|wx.TE_MULTILINE)
-        self.tabbed.AddPage(self.panelLog, "Log")
+            elif self.tabs[tabId]["type"] == "Var":
+                self.tabs[tabId]["tab"] = VarGridTable(self, tabId, self.tabbed)
+                if self.tabs[tabId]["hide"]:
+                    self.tabs[tabId]["tab"].grid.Hide()
+                self.tabbed.AddPage(self.tabs[tabId]["tab"].grid, self.tabs[tabId]["title"])
 
-        ### SETTINGS PANEL
-        self.panelSetts = wx.Panel(self.tabbed, -1)
-        self.panelSetts.Hide()
-        self.text_setts = wx.TextCtrl(self.panelSetts, size=(-1,-1), style=wx.TE_MULTILINE)
-        self.tabbed.AddPage(self.panelSetts, "Settings")
+            elif self.tabs[tabId]["type"] == "Text":
+                self.tabs[tabId]["tab"] = wx.Panel(self.tabbed, -1)
+                self.tabs[tabId]["text"] = wx.TextCtrl(self.tabs[tabId]["tab"], size=(-1,-1), style=self.tabs[tabId]["style"])
+                if self.tabs[tabId]["hide"]:
+                    self.tabs[tabId]["tab"].Hide()
+                self.tabbed.AddPage(self.tabs[tabId]["tab"], self.tabs[tabId]["title"])
+                boxS = wx.BoxSizer(wx.VERTICAL)
+                boxS.Add(self.tabs[tabId]["text"], 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+                self.tabs[tabId]["tab"].SetSizer(boxS)
 
-        ### SIZER FOR LOG
-        self.vboxL = wx.BoxSizer(wx.VERTICAL)
-        self.vboxL.Add(self.text_log, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
-        self.panelLog.SetSizer(self.vboxL)
-#        self.vboxL.Fit(self.toolFrame)
-
-        ### SIZER FOR SETTINGS
-        self.vboxS = wx.BoxSizer(wx.VERTICAL)
-        self.vboxS.Add(self.text_setts, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
-        self.panelSetts.SetSizer(self.vboxS)
-#        self.vboxS.Fit(self.toolFrame)
+        self.toolFrame.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
         self.toolFrame.Show()
 
     def makeStatus(self, frame):
@@ -939,123 +971,122 @@ class Siren():
         """
         Create and display a popup menu on right-click event
         """
-        ID_NEWW = wx.NewId()
-        ID_FILTER = wx.NewId()
-        ID_DUPLICATE = wx.NewId()
-        ID_TOGHI = wx.NewId()
-        ID_EXPAND = wx.NewId()
-        
-        menuRed = wx.Menu()
-        m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
-        if not self.selectedList.tabId in [0,1]:
-            m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
-            m_duplicate = menuRed.Append(ID_DUPLICATE, "&Duplicate", "Duplicate redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
-            frame.Bind(wx.EVT_MENU, self.OnDuplicate, m_duplicate)
-
-        m_toghi = menuRed.Append(ID_TOGHI, "&Hide/show", "Hide/show.")
-        m_expand = menuRed.Append(ID_EXPAND, "&Expand", "Expand redescription.")
-        m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
-        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
-        m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
-        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
-
-        frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
-        frame.Bind(wx.EVT_MENU, self.OnToggleHide, m_toghi)
-        frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
-        frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
-        frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
-        frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
-        frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
- 
+        if self.selectedTab["type"] == ["Text"]:
+            return
         # Popup the menu.  If an item is selected then its handler
         # will be called before PopupMenu returns.
+        menuRed = self.makeContextMenu(frame)
         frame.PopupMenu(menuRed)
         menuRed.Destroy()
 
+    def makeContextMenu(self, frame):
+        ### Todo checks for cut, paste, etc
+        menuRed = wx.Menu()
+        
+        if self.selectedTab["type"] in ["Var","Reds"]:
+            ID_NEWW = wx.NewId()
+            m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
+            frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+
+            ID_ENABLED = wx.NewId()
+            m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable", "Enable/Disable current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
+
+            ID_ENABLEDALL = wx.NewId()
+            m_enabledall = menuRed.Append(ID_ENABLEDALL, "Ena&ble All", "Enable all redescriptions.")
+            frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
+
+            ID_DISABLEDALL = wx.NewId()
+            m_disabledall = menuRed.Append(ID_DISABLEDALL, "Disa&ble All", "Disable all redescriptions.")
+            frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
+
+
+        if self.selectedTab["type"] == "Reds":
+            ID_FILTER = wx.NewId()
+            m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
+            frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
+
+            ID_DELDISABLED = wx.NewId()
+            m_deldisabled = menuRed.Append(ID_DELDISABLED, "Delete Disa&bled", "Delete all disabled redescriptions.")
+            frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
+            
+            m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
+            
+            m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+            
+            m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+ 
+        return menuRed
+
     def makeMenu(self, frame):
         ### menu bar
-        menuBar = wx.MenuBar()
+        
+        ### MENU FILE
         menuFile = wx.Menu()
-        menuRed = wx.Menu()
-        menuWindow = wx.Menu()
-        menuHelp = wx.Menu()
+        m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
+        frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
+        
+        m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
+        frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
+        
+        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
+        frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
+        
         submenuFile = wx.Menu()
+        ID_IMPORT_DATA = wx.NewId()
+        m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
+
+        ID_IMPORT_COORD = wx.NewId()
+        m_impCoord = submenuFile.Append(ID_IMPORT_COORD, "Import C&oordinates", "Import coordinates into ths project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
+
+        ID_IMPORT_QUERIES = wx.NewId()
+        m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
 
         ID_IMPORT = wx.NewId()
-        ID_IMPORT_DATA = wx.NewId()
-        ID_IMPORT_COORD = wx.NewId()
-        ID_IMPORT_QUERIES = wx.NewId()
-        ID_EXPORT = wx.NewId()
-
-        m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
-        m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
-        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
-
-        m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
-        m_impCoord = submenuFile.Append(ID_IMPORT_COORD, "Import C&oordinates", "Import coordinates into ths project.")
-        m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
-        
         m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuFile)
+
+        ID_EXPORT = wx.NewId()
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
-        m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
-
-        ID_NEWW = wx.NewId()
-        ID_FILTER = wx.NewId()
-        ID_EXPAND = wx.NewId()
-        ID_HIDE = wx.NewId()
-
-        m_neww = menuRed.Append(ID_NEWW, "&View in new window\tAlt+V", "View redescription in new window.")
-        m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
-        m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
-        m_stop = menuRed.Append(wx.ID_STOP, "&Stop", "Stop expansion.")
-        m_cut = menuRed.Append(wx.ID_CUT, "Cu&t\tCtrl+X", "Cut current redescription.")
-        m_copy = menuRed.Append(wx.ID_COPY, "&Copy\tCtrl+C", "Copy current redescription.")
-        m_paste = menuRed.Append(wx.ID_PASTE, "&Paste\tCtrl+V", "Paste current redescription.")
-        m_hide = menuRed.AppendCheckItem(ID_HIDE, "&Show hidden", "Show hidden redescriptions.")
-        m_delete = menuRed.Append(wx.ID_DELETE, "&Delete", "Delete hidden redescriptions.")
-        
-        ID_HISTW = wx.NewId()
-        ID_LOGW = wx.NewId()
-        ID_SETTSW = wx.NewId()
-        
-        m_histw = menuWindow.AppendCheckItem(ID_HISTW, "&History", "Show History.")        
-        m_logw = menuWindow.AppendCheckItem(ID_LOGW, "&Log", "Show log.")
-        m_settsw = menuWindow.AppendCheckItem(ID_SETTSW, "&Settings", "Show settings.")
-
-        m_help = menuHelp.Append(wx.ID_HELP, "C&ontent", "Access the instructions.")
-        m_about = menuHelp.Append(wx.ID_ABOUT, "&About", "About...")
-
-        frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
-        frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
-        frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
-        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
-        frame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
-        frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
         frame.Bind(wx.EVT_MENU, self.OnExport, m_export)
-        frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
-        frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
-        frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
-        frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
-        frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
-        frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
-        frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
-        frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
-        # frame.Bind(wx.EVT_MENU, self.OnToggleHide, m_hide) ## Tab by tab, not here...
-        # frame.Bind(wx.EVT_MENU, self.OnDelete, m_delete)
-        frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
-        frame.Bind(wx.EVT_MENU, self.OnSettsW, m_settsw)
-        frame.Bind(wx.EVT_MENU, self.OnHistW, m_histw)
-        frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
-        frame.Bind(wx.EVT_MENU, self.OnAbout, m_about)
-#        self.check_hide = m_hide
-        self.check_logw = m_logw
-        self.check_settsw = m_settsw
-        self.check_histw = m_histw
 
+        m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
+        frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
+
+        ### MENU RED
+        menuRed = self.makeContextMenu(frame)
+
+        ### MENU VIEW
+        menuView = wx.Menu()
+        ID_LOGW = wx.NewId()
+        m_logw = menuView.AppendCheckItem(ID_LOGW, "&Log", "Show log.")
+        frame.Bind(wx.EVT_MENU, self.OnLogW, m_logw)
+        self.check_logw = m_logw
+
+        ID_SETTSW = wx.NewId()
+        m_settsw = menuView.AppendCheckItem(ID_SETTSW, "&Settings", "Show settings.")
+        frame.Bind(wx.EVT_MENU, self.OnSettsW, m_settsw)
+        self.check_settsw = m_settsw
+
+        ### MENU HELP
+        menuHelp = wx.Menu()
+        m_help = menuHelp.Append(wx.ID_HELP, "C&ontent", "Access the instructions.")
+        frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
+        
+        m_about = menuHelp.Append(wx.ID_ABOUT, "&About", "About...")
+        frame.Bind(wx.EVT_MENU, self.OnAbout, m_about)
+        
+
+        ### PUT TOGETHER
+        menuBar = wx.MenuBar()
         menuBar.Append(menuFile, "&File")
-        menuBar.Append(menuRed, "&Redescriptions")
-        menuBar.Append(menuWindow, "&Window")
+        menuBar.Append(menuRed, "&Edit")
+        menuBar.Append(menuView, "&View")
         menuBar.Append(menuHelp, "&Help")
         frame.SetMenuBar(menuBar)
 
@@ -1190,53 +1221,59 @@ class Siren():
                 wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
                                  +str(path)+':\n'+str(error)).ShowModal()
         save_dlg.Destroy()
-        
+
+    def OnPageChanged(self, event):
+        self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
+        self.makeMenu(self.toolFrame)
+
     def OnNewW(self, event):
-        if self.selectedList != None:
+        if self.selectedTab["type"] in ["Var", "Reds"]:
             self.selectedMap = -1
-            self.selectedList.viewData()
+            self.selectedTab["tab"].viewData()
 
     def OnFilterToOne(self, event):
-        if self.selectedList != None:
-            self.selectedList.filterToOne()
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].filterToOne()
 
-    def OnDuplicate(self, event):
-        if self.selectedList != None:
-            self.selectedList.duplicate()
+    def OnFlipEnabled(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds"]:
+            self.selectedTab["tab"].flipEnabled(self.selectedTab["tab"].getSelectedRow())
 
-    def OnToggleHide(self, event):
-        if self.selectedList != None:
-            self.selectedList.toggleHide()
+    def OnEnabledAll(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds"]:
+            self.selectedTab["tab"].setAllEnabled()
 
-    # def OnExpand(self, event):
-    #     pass
-    # def OnStop(self, event):
-    #     pass
+    def OnDisabledAll(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds"]:
+            self.selectedTab["tab"].setAllDisabled()
+
+    def OnDeleteDisabled(self, event):
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].deleteDisabled()
+
     def OnCut(self, event):
-        pass
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].cutItem(self.selectedTab["tab"].getSelectedRow())
+
     def OnCopy(self, event):
-        pass
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
+
     def OnPaste(self, event):
-        pass
-
-
-    def OnHistW(self, event):
-        if self.check_histw.IsChecked():
-            self.lists["Hist"].grid.Show()
-        else:
-            self.lists["Hist"].grid.Hide()
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
 
     def OnLogW(self, event):
         if self.check_logw.IsChecked():
-            self.panelLog.Show()
+            self.tabs["log"]["tab"].Show()
         else:
-            self.panelLog.Hide()
+            self.tabs["log"]["tab"].Hide()
 
     def OnSettsW(self, event):
         if self.check_settsw.IsChecked():
-            self.panelSetts.Show()
+            self.tabs["setts"]["tab"].Show()
         else:
-            self.panelSetts.Hide()
+            self.tabs["setts"]["tab"].Hide()
 
     def OnHelp(self, event):
         self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
@@ -1272,17 +1309,16 @@ class Siren():
                 fieldsVar.extend(self.fieldsVar)
                 for tyid in set([r.type_id for r in self.dw.data.cols[side]]):
                     fieldsVar.extend(self.fieldsVarTypes[tyid])
-                self.lists[side].resetData(self.dw.data.cols[side], fieldsVar, self.details)
+                self.tabs[side]["tab"].resetData(self.dw.data.cols[side], fieldsVar, self.details)
             else:
                 fieldsVar = []
                 fieldsVar.extend(self.fieldsVar)
-                self.lists[side].resetData([], fieldsVar, self.details)
+                self.tabs[side]["tab"].resetData([], fieldsVar, self.details)
             
     def reloadReds(self):
         ## Initialize red lists data
-        self.lists["Reds"].resetData(self.dw.reds, self.fieldsRed, self.details, self.dw.rshowids)
-        self.lists["Exp"].resetData([], self.fieldsRed, self.details)
-        self.lists["Hist"].resetData([], self.fieldsRed, self.details)
+        self.tabs["reds"]["tab"].resetData(self.dw.reds, self.fieldsRed, self.details, self.dw.rshowids)
+        self.tabs["exp"]["tab"].resetData([], self.fieldsRed, self.details)
 #        self.getSelectedMapView().setCurrentRed(redsTmp[0])
 #        self.getSelectedMapView().updateRed()
             

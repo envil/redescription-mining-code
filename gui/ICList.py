@@ -98,9 +98,11 @@ class ICList(list):
         self._isChanged = True
 
     def pop(self, i = None):
-        list.pop(self, i)
         self._isChanged = True
-
+        if i == None:
+            i = len(self)-1
+        return list.pop(self, i)
+        
     def sort(self, key=None, reverse=False):
         list.sort(self, key=key, reverse=reverse)
         self._isChanged = True

@@ -8,15 +8,22 @@ from classBestsDraft import BestsDraft
 import pdb
 
 class ColM:
+    def __init__(self, N=-1, nmiss= set()):
+        self.N = N
+        self.missing = nmiss
+        self.id = None
+        self.side = None
+        self.enabled = 1
+
+    def setId(self, nid):
+        self.id = nid
+
     def getName(self, details):
         if details.has_key('names') and self.side < len(details['names']) and self.id < len(details['names'][self.side]):
             return details['names'][self.side][self.id]
         else:
             return "Undefined"
 
-    def getUsable(self, details=None):
-        return self.freeV
-        
     def getSide(self, details=None):
         return self.side
 
@@ -47,11 +54,16 @@ class ColM:
     def nbRows(self):
         return self.N
 
-    def setUnusable(self):
-        self.freeV = 1-self.freeV
-    def flipUsable(self):
-        self.freeV = 1-self.freeV
+    def getEnabled(self, details=None):
+        return self.enabled
 
+    def flipEnabled(self):
+        self.enabled = 1-self.enabled
+
+    def setEnabled(self):
+        self.enabled = 1
+    def setDisabled(self):
+        self.enabled = 0
 
 
 class BoolColM(ColM):
@@ -70,12 +82,8 @@ class BoolColM(ColM):
         return self.lTrue()
 
     def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
+        ColM.__init__(self, N, nmiss)
         self.hold = ncolSupp
-        self.N = N
-        self.missing = nmiss
-        self.id = None
-        self.side = None
-        self.freeV = 1
 
     def supp(self):
         return self.hold
@@ -124,13 +132,10 @@ class CatColM(ColM):
 
 
     def __init__(self, ncolSupp=[], N=-1, nmiss= set()):
+        ColM.__init__(self, N, nmiss)
         self.sCats = ncolSupp
-        self.N = N
-        self.missing = nmiss
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
-        self.id = None
-        self.side = None
-        self.freeV = 1
+
     def cats(self):
         return self.sCats.keys()
 
@@ -230,15 +235,11 @@ class NumColM(ColM):
         return self.sVals[-1][0]
 
     def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
+        ColM.__init__(self, N, nmiss)
         self.sVals = ncolSupp
-        self.N = N
-        self.missing = nmiss
         self.mode = {}
         self.buk = None
         self.colbuk = None
-        self.id = None
-        self.side = None
-        self.freeV = 1
         
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
@@ -756,8 +757,8 @@ class Data:
         return len(self.nf[side])
 
     def usableCols(self):
-        return [set([col for col in self.nf[0] if self.cols[0][col].getUsable() == 1]), \
-                set([col for col in self.nf[1] if self.cols[1][col].getUsable() == 1])]
+        return [set([col for col in self.nf[0] if self.cols[0][col].getEnabled() == 1]), \
+                set([col for col in self.nf[1] if self.cols[1][col].getEnabled() == 1])]
 
 
     def updateBests(self, bests, constraints, supports, side, col):
@@ -1387,7 +1388,7 @@ def readMatrix(filename, side = None):
         Data.logger.printL(4,"Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all))
         (cols, type_ids) = method_finish(tmpCols, nbRows, nbCols)
         for (cid, col) in enumerate(cols):
-            col.id = cid
+            col.setId(cid)
             col.side = side
     except (AttributeError, ValueError, StopIteration):
         raise Exception('Size and type header is not right')

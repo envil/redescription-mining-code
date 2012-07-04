@@ -26,10 +26,20 @@
 
 * select areas from the map and force to cover/remove
 
+* autosave / ask before leaving on change
 * check compatibility coordinates/data on loading, reinitialize when needed
 * allow display when no coordinates with invite to load 
 * go to default directory when opening file 
 * load/save/edit settings
+
+* update the list of results mining from scratch so redescriptions
+   keep the number corresponding to the order in which they arrived,
+   the current sorting criterion is preserved, redundant
+   redescriptions are not deleted but hidden... (less disruptive,
+   actually allows looking at the results while mining goes on)
+
+* improve the way candidates from the beam are presented (give them
+   an id that represents the candidate parenty)
 
 * REFACTOR AND COMMENT ALL CODE...
 

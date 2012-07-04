@@ -33,6 +33,7 @@ class Redescription:
                 self.histo = nHisto
             else:
                 self.histo = []
+        self.enabled = 1
 
         self.queries = [nqueryL, nqueryR]
         if nsupps != None:
@@ -190,9 +191,11 @@ class Redescription:
             histo = list(self.histo)
         else:
             histo = None
-        return Redescription(self.queries[0].copy(), self.queries[1].copy(), \
+        r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              self.sParts.copSupp(), self.sParts.N, \
                              [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], self.probas(), histo)
+        r.enabled = self.enabled
+        return r
 
     def recomputeQuery(self, side, data= None):
         return self.queries[side].recompute(side, data)
@@ -269,6 +272,17 @@ class Redescription:
         return ""
     def getAcc(self, details):
         return round(self.acc(), 3)
+
+    def getEnabled(self, details=None):
+        return self.enabled
+
+    def flipEnabled(self):
+        self.enabled = 1-self.enabled
+
+    def setEnabled(self):
+        self.enabled = 1
+    def setDisabled(self):
+        self.enabled = 0
 
     def getPVal(self, details):
         return round(self.pVal(), 3)
