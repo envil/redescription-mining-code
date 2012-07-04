@@ -391,8 +391,10 @@ class DataWrapper(object):
         if not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
 
-        
-        with zipfile.ZipFile(filename, 'r') as package:
+        # Remove the with-statement from reading
+        try:
+            #with zipfile.ZipFile(filename, 'r') as package:
+            package = zipfile.ZipFile(filename, 'r')
             files = package.namelist()
             
 
@@ -460,6 +462,10 @@ class DataWrapper(object):
                     raise
                 finally:
                     fd.close()
+        except:
+            raise
+        finally:
+            package.close()
 
 
         # Closes with ZipFile
@@ -589,38 +595,42 @@ class DataWrapper(object):
         try:
             # DEBUG
             #print 'Writing to', ''.join((filename, '.', suffix))
-            with zipfile.ZipFile(filename + suffix, 'w') as package:
-                package.write(os.path.join(tmp_dir, self.PLIST_FILE),
-                              arcname = os.path.join('.', self.PLIST_FILE))
-                if self.coord is not None:
-                    package.write(os.path.join(tmp_dir, plist['coo_filename']),
-                                  arcname = os.path.join('.', plist['coo_filename']),
-                        compress_type = zipfile.ZIP_DEFLATED)
-                if self.data is not None:
-                    package.write(os.path.join(tmp_dir, plist['data_picklefilename']),
-                                  arcname = os.path.join('.', plist['data_picklefilename']),
-                        compress_type = zipfile.ZIP_DEFLATED)
-                if self.names is not None:
-                    package.write(os.path.join(tmp_dir, plist['name_picklefilename']),
-                                  arcname = os.path.join('.', plist['name_picklefilename']),
-                        compress_type = zipfile.ZIP_DEFLATED)
-                if self.reds is not None:
-                    package.write(os.path.join(tmp_dir, plist['queries_filename']),
-                                  arcname = os.path.join('.',
-                                                         plist['queries_filename']),
-                        compress_type = zipfile.ZIP_DEFLATED)
-                    package.write(os.path.join(tmp_dir, plist['rshowids_filename']),
-                                  arcname = os.path.join('.',
-                                                         plist['rshowids_filename']),
-                        compress_type = zipfile.ZIP_DEFLATED)
-                if self.minesettings is not None:
-                    package.write(os.path.join(tmp_dir, plist['settings_filename']),
-                                  arcname = os.path.join('.', plist['settings_filename']),
-                                  compress_type = zipfile.ZIP_DEFLATED)
+            # Remove with zipfile... for compliance with Python 2.6
+            package = zipfile.ZipFile(filename + suffix, 'w')
+            #with zipfile.ZipFile(filename + suffix, 'w') as package:
+            package.write(os.path.join(tmp_dir, self.PLIST_FILE),
+                          arcname = os.path.join('.', self.PLIST_FILE))
+            if self.coord is not None:
+                package.write(os.path.join(tmp_dir, plist['coo_filename']),
+                              arcname = os.path.join('.', plist['coo_filename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
+            if self.data is not None:
+                package.write(os.path.join(tmp_dir, plist['data_picklefilename']),
+                              arcname = os.path.join('.', plist['data_picklefilename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
+            if self.names is not None:
+                package.write(os.path.join(tmp_dir, plist['name_picklefilename']),
+                              arcname = os.path.join('.', plist['name_picklefilename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
+            if self.reds is not None:
+                package.write(os.path.join(tmp_dir, plist['queries_filename']),
+                              arcname = os.path.join('.',
+                                                     plist['queries_filename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
+                package.write(os.path.join(tmp_dir, plist['rshowids_filename']),
+                              arcname = os.path.join('.',
+                                                     plist['rshowids_filename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
+            if self.minesettings is not None:
+                package.write(os.path.join(tmp_dir, plist['settings_filename']),
+                              arcname = os.path.join('.', plist['settings_filename']),
+                    compress_type = zipfile.ZIP_DEFLATED)
         except:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
             raise
+        finally:
+            package.close()
 
         # All's done, delete temp file
         shutil.rmtree(tmp_dir)
