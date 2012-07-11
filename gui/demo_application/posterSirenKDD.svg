@@ -15,7 +15,7 @@
    id="svg12904"
    version="1.1"
    inkscape:version="0.48.2 r9819"
-   sodipodi:docname="posterSirenKDD.pdf">
+   sodipodi:docname="posterSirenKDD.svg">
   <defs
      id="defs12906">
     <inkscape:path-effect
@@ -14528,17 +14528,17 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.32"
-     inkscape:cx="1733.0041"
-     inkscape:cy="1194.2924"
+     inkscape:zoom="0.25455844"
+     inkscape:cx="1798.9959"
+     inkscape:cy="151.82378"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="1280"
-     inkscape:window-height="727"
-     inkscape:window-x="0"
+     inkscape:window-width="1066"
+     inkscape:window-height="631"
+     inkscape:window-x="85"
      inkscape:window-y="24"
-     inkscape:window-maximized="1"
+     inkscape:window-maximized="0"
      borderlayer="false"
      inkscape:showpageshadow="true"
      units="in"
@@ -14572,7 +14572,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -14715,62 +14715,58 @@
        d="m 58.591068,-2233.6869 2712.201932,0 0,0"
        id="path3999"
        inkscape:connector-curvature="0" />
-    <g
-       id="g5898"
-       transform="translate(-60,-528)">
-      <text
-         sodipodi:linespacing="125%"
-         id="text4160-6"
-         y="-2045.0627"
-         x="139.19685"
-         style="font-size:158px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#fca311;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-         xml:space="preserve"><tspan
-           style="font-size:158px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-           y="-2045.0627"
-           x="139.19685"
-           id="tspan4162-76"
-           sodipodi:role="line">SIREN<tspan
-   id="tspan3120-598"
-   style="font-size:158px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"><tspan
-     id="tspan3122-7"
-     style="font-size:158px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans" /></tspan></tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4160-6-8"
-         y="-1927.8658"
-         x="148.03084"
-         style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-         xml:space="preserve"><tspan
-           style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-           y="-1927.8658"
-           x="148.03084"
-           id="tspan4162-76-4"
-           sodipodi:role="line">AN INTERACTIVE TOOL FOR</tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4160-6-8-3"
-         y="-1836.468"
-         x="138.99762"
-         style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-         xml:space="preserve"><tspan
-           style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#8a8a8a;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-           y="-1836.468"
-           x="138.99762"
-           id="tspan4162-76-4-6"
-           sodipodi:role="line">MINING AND VISUALIZING</tspan></text>
-      <text
-         sodipodi:linespacing="125%"
-         id="text4160-6-8-3-4"
-         y="-1749.0706"
-         x="143.19685"
-         style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-         xml:space="preserve"><tspan
-           style="font-size:100px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#8a8a8a;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
-           y="-1749.0706"
-           x="143.19685"
-           id="tspan4162-76-4-6-8"
-           sodipodi:role="line">GEOSPATIAL REDESCRIPTIONS</tspan></text>
-    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:130px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#fca311;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+       x="79.196854"
+       y="-2553.0627"
+       id="text4160-6"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4162-76"
+         x="79.196854"
+         y="-2553.0627"
+         style="font-size:130px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans">SIREN<tspan
+   style="font-size:130px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+   id="tspan3120-598"><tspan
+     style="font-size:130px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#fca311;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+     id="tspan3122-7" /></tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+       x="88.030838"
+       y="-2443.8657"
+       id="text4160-6-8"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4162-76-4"
+         x="88.030838"
+         y="-2443.8657"
+         style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arev Sans;-inkscape-font-specification:Arev Sans">AN INTERACTIVE TOOL FOR</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+       x="78.99762"
+       y="-2358.468"
+       id="text4160-6-8-3"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4162-76-4-6"
+         x="78.99762"
+         y="-2358.468"
+         style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#8a8a8a;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans">MINING AND VISUALIZING</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#8a8a8a;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
+       x="83.196854"
+       y="-2277.0706"
+       id="text4160-6-8-3-4"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4162-76-4-6-8"
+         x="83.196854"
+         y="-2277.0706"
+         style="font-size:90px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#8a8a8a;fill-opacity:1;font-family:Arev Sans;-inkscape-font-specification:Arev Sans">GEOSPATIAL REDESCRIPTIONS</tspan></text>
     <g
        id="g5860"
        transform="translate(-88,-528)">
@@ -15942,7 +15938,7 @@
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Arev Sans;-inkscape-font-specification:Arev Sans"
        id="flowRoot7129-7"
-       transform="translate(-336.96122,3222.8109)"><flowRegion
+       transform="translate(-306.96122,3234.8109)"><flowRegion
          id="flowRegion7131-7"><use
            x="0"
            y="0"
