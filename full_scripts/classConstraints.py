@@ -49,7 +49,7 @@ class Constraints:
     
     def checkFinalConstraints(self,red):
         if red.length(0) + red.length(1) >= self.minFinLength() \
-                   and red.lenU() >= self.minFinSuppOut() \
+                   and red.lenO() >= self.minFinSuppOut() \
                    and red.lenI() >= self.minFinSuppIn() \
                    and red.acc()  >= self.minFinAcc() \
                    and red.pVal() <= self.maxFinPVal():

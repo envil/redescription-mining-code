@@ -3,7 +3,7 @@ if ( strcmp(ext, '.datbool'))
     [i,j,s] = find(data);
     i = [size(data,1); i];
     j = [size(data,2); j];
-    s = [0; s];
+    s = [0; s~=0];
     A = [i j s];
     dlmwrite([filename ext], A, 'delimiter', '\t');
 elseif ( strcmp(ext, '.datnum'))

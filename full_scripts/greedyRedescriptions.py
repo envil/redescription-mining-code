@@ -78,13 +78,23 @@ def main():
 
     readyDraft = RedescriptionsDraft()
     souvenirs = Souvenirs(data.nonFull(), setts.param['amnesic'])
-        
+
+
+    ticP = datetime.datetime.now()
+    logger.printL(1,"TIC... Start Pairs %s" % ticP)
+
     data.setInitialMSelection(setts.param['method_pairs'], setts.param['div_l'], setts.param['div_r'])
     data.initializeRedescriptions(setts.param['nb_pairs'], setts.param['query_types'], setts.param['min_score'])
     initialRed = data.getNextInitialRed()
+    tacP = datetime.datetime.now()
+    logger.printL(1,"TIC... End Pairs %s, elapsed %s" % (tacP, tacP - ticP))
+
 
     while initialRed != None :
         initialRed.write(queriesOutFp, supportOutFp)
+        ticE = datetime.datetime.now()
+        logger.printL(1,"TUC... Start Expand %s" % ticE)
+
         try:
             reds = processDraft(initialRed, data, setts.param['draft_capacity'], setts.param['draft_output'], setts.param['min_improvement'], constraints, souvenirs, logger)
             if len(reds) > 0:
@@ -103,6 +113,8 @@ def main():
                             currentRedescription.write(queriesOutFp, supportOutFp)
                     
             initialRed = data.getNextInitialRed()
+            tacE = datetime.datetime.now()
+            logger.printL(1,"TUC... End Expand %s, elapsed %s" % (tacE, tacE - ticE))
 
         except KeyboardInterrupt:
             logger.printL(1, 'Stopped...')

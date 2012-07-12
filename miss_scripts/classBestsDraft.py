@@ -37,9 +37,11 @@ class BestsDraft:
             return None
         else:
 
+            #if cand["term"].item.col == 1: pdb.set_trace()
             return BestsDraft.coeffImpacc*BestsDraft.impacc(cand, baseAcc) \
                    + BestsDraft.coeffRelImpacc*BestsDraft.relImpacc(cand, baseAcc) \
-                   + BestsDraft.pValRedScore(cand, N, prs) + BestsDraft.pValQueryScore(cand, N, prs)
+                   + BestsDraft.pValRedScore(cand, N, prs) \
+                   + BestsDraft.pValQueryScore(cand, N, prs)
     score = staticmethod(score)
         
     def relImpacc(cand, baseAcc=0):

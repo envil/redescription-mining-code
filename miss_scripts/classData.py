@@ -1091,11 +1091,12 @@ class Data:
                 for idR in ids[1]:
                     if cR % self.divR == 0:
                         Data.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR))
+
                         (scores, termsL, termsR) = self.computePair(idL, idR, constraints)                        
                         
                         for i in range(len(scores)):
                             if scores[i] >= constraints.minPairsScore():
-                                Data.logger.printL(9, 'Score:%f %s <=> %s' % (scores[i], termsL[i], termsR[i]))
+                                Data.logger.printL(3, 'Score:%f %s <=> %s' % (scores[i], termsL[i], termsR[i]))
                                 self.methodsP['add'](scores[i], idL, idR)
                                 self.pairs.append((termsL[i], termsR[i]))
                     cR += 1

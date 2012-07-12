@@ -22,7 +22,6 @@ class Op:
     def isSet(self):
         return self.val != 0
 
-
     def copy(self):
         return Op(self.val)
     
@@ -54,7 +53,7 @@ class Op:
         if other == None:
             return 1
         else:
-            return cmp(2*self.val*self.val+self.val, 2*other.val*other.val+other.val)
+            return cmp(self.val, other.val)
 
     def __hash__(self):
         return self.val
@@ -129,7 +128,7 @@ class Neg:
     # # parseU = staticmethod(parseU)
 
 
-class Item:
+class Term:
     type_id = 0
     
     def __init__(self, ncol):
@@ -139,7 +138,7 @@ class Item:
 #         return neg
 
     def copy(self):
-        return Item(self.col)
+        return Term(self.col)
 
     def cmpType(self, other):
         if other == None:
@@ -159,14 +158,14 @@ class Item:
     def __str__(self):
         return '%i ' % self.col
     
-class BoolItem(Item):
+class BoolTerm(Term):
     type_id = 1
     patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)\s*$'
     pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)(?P<col>\d+)\s*$'
     pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)(?P<col>.+)\s*$'
 
     def copy(self):
-        return BoolItem(self.col)
+        return BoolTerm(self.col)
     
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -230,16 +229,16 @@ class BoolItem(Item):
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In boolean item %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In boolean term %s, column is not convertible to int (%s)\n'%(string, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
         if ncol != None :
-            return (neg, BoolItem(ncol))
+            return (neg, BoolTerm(ncol))
         return (None, None)
     parse = staticmethod(parse)
     
-class CatItem(Item):
+class CatTerm(Term):
     type_id = 2
     patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)?(?P<col>\d+)\s*\=(?P<cat>\d+?)\s*$'
     pattTex = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)?(?P<col>\d+)\s*\\in(?P<cat>\d+?)\s*$'
@@ -251,7 +250,7 @@ class CatItem(Item):
         self.cat = ncat
 
     def copy(self):
-        return CatItem(self.col, self.cat)
+        return CatTerm(self.col, self.cat)
             
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -323,7 +322,7 @@ class CatItem(Item):
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In categorical item %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(string, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
@@ -331,33 +330,33 @@ class CatItem(Item):
                 cat = int(partsU.group('cat'))
             except ValueError, detail:
                 ncol = None
-                raise Warning('In categorical item %s, category is not convertible to int (%s)\n'%(string, detail))
+                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(string, detail))
         if ncol != None :
-            return (neg, CatItem(ncol, cat))
+            return (neg, CatTerm(ncol, cat))
         return (None, None)
     parse = staticmethod(parse)
 
     
     # def parse(parts, pos):
-    #     partsU = re.match(CatItem.patt, string)
+    #     partsU = re.match(CatTerm.patt, string)
     #     if partsU != None :
     #         ok = True
     #         try:
     #             ncat = int(partsU.group('cat'))
     #         except ValueError, detail:
-    #             raise Warning('In categorical item %s, category is not convertible to int (%s)\n'%(string, detail))
+    #             raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(string, detail))
     #             ok = False
     #         try:
     #             ncol = int(partsU.group('col'))
     #         except ValueError, detail:
-    #             raise Warning('In categorical item %s, column is not convertible to int (%s)\n'%(string, detail))
+    #             raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(string, detail))
     #             ok = False
     #         if ok:
-    #             return (CatItem(ncol, ncat), pos+1)
+    #             return (CatTerm(ncol, ncat), pos+1)
     #     return (None, pos)
     # parse = staticmethod(parse)
 
-class NumItem(Item):
+class NumTerm(Term):
     type_id = 3
 
     patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+)?)\<(?P<upb>-?\d+(\.\d+)?)))\s*$'
@@ -367,7 +366,7 @@ class NumItem(Item):
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf'):
             #pdb.set_trace()
-            raise Warning('Unbounded numerical item !')
+            raise Warning('Unbounded numerical term !')
         else:
             self.col = ncol
             self.lowb = nlowb
@@ -386,7 +385,7 @@ class NumItem(Item):
 #         return neg
             
     def copy(self):
-        return NumItem(self.col, self.lowb, self.upb)
+        return NumTerm(self.col, self.lowb, self.upb)
                         
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -501,7 +500,7 @@ class NumItem(Item):
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In numerical item %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In numerical term %s, column is not convertible to int (%s)\n'%(string, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
@@ -510,109 +509,109 @@ class NumItem(Item):
                     upb = float(tmpupbs)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In numerical item %s, upper bound is not convertible to float (%s)\n'%(string, detail))
+                    raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(string, detail))
             
             if tmplowbs != None:                
                 try:
                     lowb = float(tmplowbs)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In numerical item %s, lower bound is not convertible to float (%s)\n'%(string, detail))
+                    raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(string, detail))
         if ncol != None and (lowb != float('-inf') or upb != float('inf')):
-            return (neg, NumItem(ncol, lowb, upb))
+            return (neg, NumTerm(ncol, lowb, upb))
         return (None, None)
     parse = staticmethod(parse)
 
                
-class Term:
+class Literal:
 
-    itemTypes = [{'class': NumItem }, \
-                 {'class': CatItem }, \
-                 {'class': BoolItem }]
+    termTypes = [{'class': NumTerm }, \
+                 {'class': CatTerm }, \
+                 {'class': BoolTerm }]
 
-#     itemTypes = [{'class': NumItem,  'match':'\d+\>-?\d+(\.\d+)?\<-?\d+(\.\d+)?$'}, \
-#                  {'class': CatItem,  'match':'\d+\=\d+?$'}, \
-#                  {'class': BoolItem, 'match':'\d+$'}]
+#     termTypes = [{'class': NumTerm,  'match':'\d+\>-?\d+(\.\d+)?\<-?\d+(\.\d+)?$'}, \
+#                  {'class': CatTerm,  'match':'\d+\=\d+?$'}, \
+#                  {'class': BoolTerm, 'match':'\d+$'}]
     
-    def __init__(self, nneg, nitem):
-        self.item = nitem ## Already an Item instance
+    def __init__(self, nneg, nterm):
+        self.term = nterm ## Already an Term instance
         self.neg = Neg(nneg)
-#         self.neg = Neg(self.item.simple(nneg))
+#         self.neg = Neg(self.term.simple(nneg))
 
     def copy(self):
-        return Term(self.neg.boolVal(), self.item.copy())
+        return Literal(self.neg.boolVal(), self.term.copy())
 
     def __str__(self):
         return self.disp()
 
     def disp(self, names = None, lenIndex=0):
-        return self.item.disp(self.neg, names, lenIndex)
+        return self.term.disp(self.neg, names, lenIndex)
 
     def dispTex(self, names = None):
-        return self.item.dispTex(self.neg, names)
+        return self.term.dispTex(self.neg, names)
     
     def dispU(self, names = None):
-        return self.item.dispU(self.neg, names)
+        return self.term.dispU(self.neg, names)
 
     def __cmp__(self, other):
         if other == None:
             return 1
-        elif cmp(self.item, other.item) == 0:
+        elif cmp(self.term, other.term) == 0:
             return cmp(self.neg, other.neg)
         else:
-            return cmp(self.item, other.item)
+            return cmp(self.term, other.term)
      
     def __hash__(self):
-        return hash(self.item)+hash(self.neg)
+        return hash(self.term)+hash(self.neg)
     
     def isNeg(self):
         return self.neg.boolVal()
 
     def col(self):
-        return self.item.colId()
+        return self.term.colId()
     
     def parse(string):
         i = 0
-        item = None
-        while i < len(Term.itemTypes) and item == None:
-            if (re.match(Term.itemTypes[i]['class'].patt, string)):
-                (neg, item) = Term.itemTypes[i]['class'].parse(string, Term.itemTypes[i]['class'].patt)
+        term = None
+        while i < len(Literal.termTypes) and term == None:
+            if (re.match(Literal.termTypes[i]['class'].patt, string)):
+                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].patt)
             i+=1
-        if item != None:
-            return Term(neg, item)
+        if term != None:
+            return Literal(neg, term)
         else:
             return None
     parse = staticmethod(parse)
 
     def parseTex(string, names=None):
         i = 0
-        item = None
-        while i < len(Term.itemTypes) and item == None:
-            if (re.match(Term.itemTypes[i]['class'].pattTex, string)):
-                (neg, item) = Term.itemTypes[i]['class'].parse(string, Term.itemTypes[i]['class'].pattTex)
+        term = None
+        while i < len(Literal.termTypes) and term == None:
+            if (re.match(Literal.termTypes[i]['class'].pattTex, string)):
+                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].pattTex)
             i+=1
-        if item != None:
-            return Term(neg, item)
+        if term != None:
+            return Literal(neg, term)
         else:
             return None
     parseTex = staticmethod(parseTex)
 
     def parseU(string, names=None):
         i = 0
-        item = None
-        while i < len(Term.itemTypes) and item == None:
-            if (re.match(Term.itemTypes[i]['class'].pattU, string)):
-                (neg, item) = Term.itemTypes[i]['class'].parse(string, Term.itemTypes[i]['class'].pattU, names)
+        term = None
+        while i < len(Literal.termTypes) and term == None:
+            if (re.match(Literal.termTypes[i]['class'].pattU, string)):
+                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].pattU, names)
             i+=1
-        if item != None:
-            return Term(neg, item)
+        if term != None:
+            return Literal(neg, term)
         else:
             return None
     parseU = staticmethod(parseU)
 
             
 class Query:
-    diff_terms, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
+    diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
     
     def __init__(self):
         self.op = Op()
@@ -648,23 +647,25 @@ class Query:
             c.buk.append(set([t.copy() for t in buk if t != None]))
         return c
             
-    def compare(x, y): ## same as compare pair with empty right
-        if x.op == y.op and x.buk == y.buk:
+    def compare(self, y): 
+        if y == None:
+            return 1
+        if self.op == y.op and self.buk == y.buk:
             return 0
         
-        if len(x) < len(y): ## nb of terms in the query, shorter better
+        if len(x) < len(y): ## nb of literals in the query, shorter better
             return Query.diff_length
         elif len(x) == len(y):
-            if len(x.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
+            if len(self.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
                 return Query.diff_balance
-            elif len(x.buk) == len(y.buk) :
-                if x.op > y.op : ## operator
+            elif len(self.buk) == len(y.buk) :
+                if self.op > y.op : ## operator
                     return Query.diff_op
-                elif x.op == y.op :
-                    if x.invCols() > y.invCols(): ## terms in the query
+                elif self.op == y.op :
+                    if self.invCols() > y.invCols(): ## literals in the query
                         return Query.diff_cols
-                    elif x.invCols() == y.invCols():
-                        return Query.diff_terms
+                    elif self.invCols() == y.invCols():
+                        return Query.diff_literals
                     else:
                         return -Query.diff_cols
                 else:
@@ -673,29 +674,22 @@ class Query:
                 return -Query.diff_balance
         else:
             return -Query.diff_length
-    compare = staticmethod(compare)
     
-    def __cmp__(self, other):
-        if other == None:
-            return 1
-        else:
-            return Query.compare(self, other)
-    
-    def comparePair(x0, x1, y0, y1):
+    def comparePair(x0, x1, y0, y1): ## combined compare for pair
         if ( x0.op == y0.op and x0.buk == y0.buk and x1.op == y1.op and x1.buk == y1.buk ):
             return 0
 
-        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of items in the query, shorter better
+        if len(x0) + len(x1) < len(y0) + len(y1): ## nb of terms in the query, shorter better
             return Query.diff_length
         
         elif len(x0) + len(x1) == len(y0) + len(y1):
-            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of items in the query, shorter better
+            if len(x0.buk) + len(x1.buk) < len(y0.buk) + len(y1.buk): ## nb of sets of terms in the query, shorter better
                 return Query.diff_balance
             elif len(x0.buk) + len(x1.buk) == len(y0.buk) + len(y1.buk):
-                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of items in the query, more balanced is better
+                if max(len(x0), len(x1)) < max(len(y0), len(y1)): ## balance of the nb of terms in the query, more balanced is better
                     return Query.diff_balance
                 elif max(len(x0), len(x1)) == max(len(y0), len(y1)):
-                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of items in the query, more balanced is better
+                    if max(len(x0.buk), len(x1.buk) ) < max(len(y0.buk), len(y1.buk)): ## balance of the nb of sets of terms in the query, more balanced is better
                         return Query.diff_balance
                     
                     elif max(len(x0.buk), len(x1.buk) ) == max(len(y0.buk), len(y1.buk)):
@@ -711,43 +705,43 @@ class Query:
                                     if x1.invCols() > y1.invCols() :
                                         return Query.diff_cols
                                     elif x1.invCols() == y1.invCols() :
-                                        return Query.diff_terms
+                                        return Query.diff_literals
                                 return -Query.diff_cols
                         return -Query.diff_op
             return -Query.diff_balance
         return -Query.diff_length
     comparePair = staticmethod(comparePair)
     
-    def extend(self, op, term):
+    def extend(self, op, literal):
         if len(self) == 0:
-            self.buk.append(set([term]))
+            self.buk.append(set([literal]))
         elif len(self) == 1:
-            self.buk[-1].add(term)
+            self.buk[-1].add(literal)
             self.op = op
         elif op == self.opBuk(len(self.buk)-1):
-            self.buk[-1].add(term)
+            self.buk[-1].add(literal)
         else:
-            self.buk.append(set([term]))
+            self.buk.append(set([literal]))
 
     def invCols(self):
         invCols = set()
         for buk in self.buk :
-            for term in buk:
-                invCols.add(term.col())
+            for literal in buk:
+                invCols.add(literal.col())
         return invCols
     
-    def invTerms(self):
-        invTerms = set()
+    def invLiterals(self):
+        invLiterals = set()
         for buk in self.buk :
-            for term in buk:
-                invTerms.add(term)
-        return invTerms
+            for literal in buk:
+                invLiterals.add(literal)
+        return invLiterals
     
     def makeIndexes(self, format_str):
         indexes = []
         for buk_nb in range(len(self.buk)) :
-            for term in list(self.buk[buk_nb]) :
-                indexes.append(format_str % {'col': term.col(), 'buk': buk_nb}) 
+            for literal in list(self.buk[buk_nb]) :
+                indexes.append(format_str % {'col': literal.col(), 'buk': buk_nb}) 
         return indexes
     
     ## return the support associated to a query
@@ -761,8 +755,8 @@ class Query:
             if len(self) > 0:
                 op = self.op
                 for buk in self.buk:
-                    for term in buk:
-                        sm  = SParts.partsSuppMiss(op.isOr(), sm, data.termSuppMiss(side, term))
+                    for literal in buk:
+                        sm  = SParts.partsSuppMiss(op.isOr(), sm, data.literalSuppMiss(side, literal))
                     op = op.other()
         return sm
           
@@ -776,22 +770,22 @@ class Query:
             if len(self) > 0:
                 op = self.op
                 for buk in self.buk:
-                    for term in buk:
-                        pr = SParts.updateProba(pr, len(data.supp(side, term))/float(data.nbRows()), op.isOr())
-                        ##print '%s : pr=%f (%s %f)' % (term, pr, op, len(data.supp(side, term))/float(data.nbRows()) )
+                    for literal in buk:
+                        pr = SParts.updateProba(pr, len(data.supp(side, literal))/float(data.nbRows()), op.isOr())
+                        ##print '%s : pr=%f (%s %f)' % (literal, pr, op, len(data.supp(side, literal))/float(data.nbRows()) )
                     op = op.other()
         return pr
     
-#     def invTerms(self):
-#         invTerms = []
+#     def invLiterals(self):
+#         invLiterals = []
 #         OR = self.opBukIsOR(1)
 #         for part in self.query[1:] :
 #             spart = list(part)
 #             spart.sort()
-#             for item in spart :
-#                 invItems.append((query_itemId(item), query_itemNot(item), OR))    
+#             for term in spart :
+#                 invTerms.append((query_termId(term), query_termNot(term), OR))    
 #             OR = not OR
-#         return invItems
+#         return invTerms
     
 
     
@@ -808,11 +802,11 @@ class Query:
 #             string = ''
 #             op = self.op
 #             for cbuk in self.buk:
-#                 cterms = list(cbuk)
-#                 cterms.sort()
-#                 for term in cterms:
-#                     spp = len(data.supp(side, term));
-#                     string += '%s%s (%i,%f)' % (op, term.disp(lenIndex, names), spp, spp/float(data.nbRows()) )
+#                 cliterals = list(cbuk)
+#                 cliterals.sort()
+#                 for literal in cliterals:
+#                     spp = len(data.supp(side, literal));
+#                     string += '%s%s (%i,%f)' % (op, literal.disp(lenIndex, names), spp, spp/float(data.nbRows()) )
 #                 op = op.other()
 #         return string[1:]
 
@@ -823,12 +817,12 @@ class Query:
             string = ''
             op = self.op
             for ci, cbuk in enumerate(self.buk):
-                cterms = list(cbuk)
-                cterms.sort()
-                for ti, term in enumerate(cterms):
+                cliterals = list(cbuk)
+                cliterals.sort()
+                for ti, literal in enumerate(cliterals):
                     if ti != 0 or ci != 0:
                         string += '%s ' % op
-                    string += term.disp(names, lenIndex)
+                    string += literal.disp(names, lenIndex)
                 op = op.other()
         return string
 
@@ -842,14 +836,14 @@ class Query:
             for cbuk in self.buk:
                 if first != 0:
                     string = '(' + string + ')'
-                cterms = list(cbuk)
-                cterms.sort()
-                for term in cterms:
+                cliterals = list(cbuk)
+                cliterals.sort()
+                for literal in cliterals:
                     if first == 0:
                         first = 1
-                        string += '%s' % (term.dispTex(names))
+                        string += '%s' % (literal.dispTex(names))
                     else:
-                        string += ' %s %s' % (op.dispTex(), term.dispTex(names))
+                        string += ' %s %s' % (op.dispTex(), literal.dispTex(names))
                 op = op.other()
         return string
 
@@ -863,14 +857,14 @@ class Query:
             for cbuk in self.buk:
                 if first != 0:
                     string = '(' + string + ')'
-                cterms = list(cbuk)
-                cterms.sort()
-                for term in cterms:
+                cliterals = list(cbuk)
+                cliterals.sort()
+                for literal in cliterals:
                     if first == 0:
                         first = 1
-                        string += '%s' % (term.dispU(names))
+                        string += '%s' % (literal.dispU(names))
                     else:
-                        string += ' %s %s' % (op.dispU(), term.dispU(names))
+                        string += ' %s %s' % (op.dispU(), literal.dispU(names))
                 op = op.other()
         return string
 
@@ -881,7 +875,7 @@ class Query:
         if parts != None:
             r = Query()
         while parts != None:
-            t = Term.parse(parts.group('pattIn'))
+            t = Literal.parse(parts.group('pattIn'))
             r.extend(op,t)
             if parts.group('op') != None:
                 op = Op.parse(parts.group('op'))
@@ -916,12 +910,12 @@ class Query:
                         opExt = Op(True) 
                 # else:
                 #     raise Exception('Something is wrong with the operators... %s' % string)
-            ## if all went fine so far, split on operator and parse terms
+            ## if all went fine so far, split on operator and parse literals
             if opExt != None:
                 partsOut = parts.group('pattOut').split(opExt.dispTex())
                 pi = 0
                 while pi < len(partsOut):
-                    t = Term.parseTex(partsOut[pi], names)
+                    t = Literal.parseTex(partsOut[pi], names)
                     if t != None:
                         r.extend(opExt,t)
                     else:
@@ -959,13 +953,13 @@ class Query:
                         opStr = indO.group('op')
                 # else:
                 #     raise Exception('Something is wrong with the operators... %s' % string)
-            ## if all went fine so far, split on operator and parse terms
+            ## if all went fine so far, split on operator and parse literals
             if opExt != None:
                 partsOut = parts.group('pattOut').split(opStr)
                 pi = 0
                 while pi < len(partsOut):
                     if len(partsOut[pi].strip()) > 0:
-                        t = Term.parseU(partsOut[pi], names)
+                        t = Literal.parseU(partsOut[pi], names)
                         if t != None:
                             r.extend(opExt,t)
                         else:

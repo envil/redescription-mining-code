@@ -5,93 +5,85 @@ import pdb
 
 class Redescription:
 
-    diff_terms = Query.diff_terms
-    diff_cols = Query.diff_cols
-    diff_op = Query.diff_op
-    diff_balance = Query.diff_balance
-    diff_length = Query.diff_length
-    diff_score = diff_length + 1
-    trackHisto = False
-        
-    def histoUpdate(self, opk=None, side=None):
-        if Redescription.trackHisto:
-            if type(opk) == int :
-                self.histo = [k]
-            elif type(self.histo) == list and opk!= None and side != None:
-                self.histo.append(int(opk)*(side+1)) 
+    diff_score = Query.diff_length + 1    
 
-
-    def __init__(self, nqueryL, nqueryR, nsupps = None, nN = -1, nPrs = [-1,-1], nHisto=None):
-        if Redescription.trackHisto:
-            if type(nHisto) == list :
-                self.histo = nHisto
-            else:
-                self.histo = []
-        self.status = 1
-
+    def __init__(self, nqueryL, nqueryR, nsupps = None, nN = -1, nPrs = [-1,-1]):
         self.queries = [nqueryL, nqueryR]
         if nsupps != None:
             self.sParts = SParts(nN, nsupps, nPrs)
         else:
             self.sParts = None
             self.readInfo = []
-        self.lAvailableCols = -1
+        self.lAvailableCols = [None, None]
         self.vectorABCD = None
+        self.status = 1
+        self.track = []
         
     def fromInitialPair(initialPair, data):
         queryL = Query()
         queryR = Query()
         queryL.extend(None, initialPair[0])
         queryR.extend(None, initialPair[1])
-        (suppL, missL) = data.termSuppMiss(0, initialPair[0])
-        (suppR, missR) = data.termSuppMiss(1, initialPair[1])
-        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])  
+        (suppL, missL) = data.literalSuppMiss(0, initialPair[0])
+        (suppR, missR) = data.literalSuppMiss(1, initialPair[1])
+        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])
+        r.track = [(0, initialPair[0].term.col), (1, initialPair[1].term.col)]
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
     def fromQueriesPair(queries, data):
         r = Redescription(queries[0].copy(), queries[1].copy())
         r.recompute(data)
+        r.track = [tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))]
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
-    def compare(x, y):
-        if x.score() > y.score():
+    def compare(self, y):
+        if self.score() > y.score():
             return Redescription.diff_score
-        elif x.score() == y.score():
-            return Query.comparePair(x.queries[0], x.queries[1], y.queries[0], y.queries[1])
+        elif self.score() == y.score():
+            return Query.comparePair(self.queries[0], self.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
-    compare = staticmethod(compare)
+#### FROM HERE 
+    def interArea(self, redB, side):
+        if redB != None:
+            return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
+        return 0
+    def unionArea(self, redB, side):
+        if redB != None:
+            return len(redB.supp(side) | self.supp(side))* len(redB.invColsSide(side) | self.invColsSide(side))
+        return 0
+    def overlapAreaSide(self, redB, side):
+        areaU = self.unionArea(redB, side)
+        if areaU != 0:
+            return self.interArea(redB, side) / float(areaU)
+        return 0
+    def overlapAreaTotal(self, redB):
+        areaUL = self.unionArea(redB, 0)
+        areaUR = self.unionArea(redB, 1)
+        if areaUL+areaUR != 0:
+            return (self.interArea(redB, 0) + self.interArea(redB, 1)) / float(areaUL+areaUR)
+        return 0
+    def overlapAreaL(self, redB):
+        return self.overlapAreaSide(redB, 0)
+    def overlapAreaR(self, redB):
+        return self.overlapAreaSide(redB, 1)
+    def overlapAreaMax(self, redB):
+        return max(self.overlapAreaSide(redB, 0), self.overlapAreaSide(redB, 1))
+    
+    def oneSideIdentical(self, redescription):
+        return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
 
     def equivalent(self, y):
-       return abs(Redescription.compare(self, y)) < Redescription.diff_balance
-
-    def __cmp__(self, other):
-        if other == None:
-            return 1
-        else:
-            return Redescription.compare(self,other)
+       return abs(self.compare(y)) < Redescription.diff_balance
         
-    def __hash__(self):
-        return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
+    # def __hash__(self):
+    #      return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
         
     def __len__(self):
         return self.length(0) + self.length(1)
         
-    # def oneSideIdentical(self, redescription, count_ids= [0,0], max_iden = 0):
-    #     found = False
-    #     if self.queries[0] == redescription.queries[0]:
-    #         count_ids[0] += 1
-    #         found |= (count_ids[0] >= max_iden)
-    #     if self.queries[1] == redescription.queries[1]:
-    #         count_ids[1] += 1
-    #         found |= (count_ids[1] >= max_iden)
-    #     return found
-        
-    def oneSideIdentical(self, redescription):
-        return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
-
     def acc(self):
         return self.sParts.acc()
 
@@ -138,62 +130,63 @@ class Redescription:
         return len(self.queries[side])
         
     def availableColsSide(self, side):
-        return self.lAvailableCols[side]
+        if self.lAvailableCols[side] != None and self.length(1-side) != 0:
+            return self.lAvailableCols[side]
+        return set() 
     def nbAvailableCols(self):
-        if type(self.lAvailableCols) == int:
-            return self.lAvailableCols
-        return len(self.lAvailableCols[0]) + len(self.lAvailableCols[1])
+        if self.lAvailableCols[0] != None and self.lAvailableCols[1] != None:
+            return len(self.lAvailableCols[0]) + len(self.lAvailableCols[1])
+        return -1
     def updateAvailable(self, souvenirs):
         nb_extensions = 0
-        for side in [0,1]:
-            if self.nbAvailableColsSide(side) != 0:
+        for side in [0, 1]:
+            if self.lAvailableCols[side] == None or len(self.lAvailableCols[side]) != 0:
                 self.lAvailableCols[side] =  souvenirs.availableMo[side] - souvenirs.extOneStep(self, side)
                 nb_extensions += len(souvenirs.availableMo[side]) - self.length(side) - len(self.lAvailableCols[side])
         return nb_extensions
     def removeAvailables(self):
         self.lAvailableCols = [set(),set()]
 
-    def update(self, data=None, side= -1, opBool = None, term= None, suppX=None, missX=None):
+    def update(self, data=None, side= -1, opBool = None, literal= None, suppX=None, missX=None):
         if side == -1 :
             self.removeAvailables()
         else:
             op = Op(opBool)
-            if Redescription.trackHisto:
-                self.histoUpdate(op, side)
-            self.queries[side].extend(op, term)
+            self.queries[side].extend(op, literal)
             self.sParts.update(side, op.isOr(), suppX, missX)
-            self.lAvailableCols[side].remove(term.col())
+            if self.lAvailableCols[side] != None:
+                self.lAvailableCols[side].remove(literal.col())
+            self.track.append((side, literal.col()))
 
-    def full(self, max_var=None):
-        if max_var > 0:
+    def setFull(self, max_var=None):
+        if max_var != None:
             for side in [0,1]:
-                if self.length(side) >= self.max_var:
+                if self.length(side) >= max_var:
                     self.lAvailableCols[side] = set()
                 
-    def kid(self, data, side= -1, op = None, term= None, suppX= None, missX=None):
+    def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):
         kid = self.copy()
-        kid.update(data, side, op, term, suppX, missX)
+        kid.update(data, side, op, literal, suppX, missX)
         return kid
             
     def copy(self):
-        if Redescription.trackHisto and type(self.histo) == list :
-            histo = list(self.histo)
-        else:
-            histo = None
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.sParts.copSupp(), self.sParts.N, \
-                             [set(self.lAvailableCols[0]),set(self.lAvailableCols[1] )], self.probas(), histo)
+                             self.sParts.copSupp(), self.sParts.N, self.probas())
+        for side in [0,1]:
+            if self.lAvailableCols[side] != None:
+                r.lAvailableCols[side] = set(self.lAvailableCols[side])
         r.status = self.status
+        r.track = list(self.track)
         return r
 
     def recomputeQuery(self, side, data= None):
         return self.queries[side].recompute(side, data)
     
-    def invTermsSide(self, side):
-        return self.queries[side].invTerms()
+    def invLiteralsSide(self, side):
+        return self.queries[side].invLiterals()
 
-    def invTerms(self):
-        return [self.invTermsSide(0), self.invTermsSide(1)]
+    def invLiterals(self):
+        return [self.invLiteralsSide(0), self.invLiteralsSide(1)]
     
     def invColsSide(self, side):
         return self.queries[side].invCols()
@@ -233,9 +226,11 @@ class Redescription:
 
     #### FROM HERE ALL PRINTING AND READING
     def __str__(self):
-        return '%i + %i items:\t (%i): %s' \
-               % (self.nbAvailableColsSide(0), self.nbAvailableColsSide(1), \
-                  len(self), self.disp())
+        str_av = ["?", "?"]
+        for side in [0,1]:
+            if self.availableColsSide(side) != None:
+                str_av[side] = "%d" % len(self.availableColsSide(side))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrackStr()))
 
     def dispQueries(self, names= [None, None], lenIndex=0):
         return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)
@@ -250,17 +245,23 @@ class Redescription:
             return string.ljust(self.queries[0].dispU(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispU(names[1]), lenField)[:lenField]
         return self.queries[0].dispU(names[0]) +"\t"+ self.queries[1].dispU(names[1])
 
-    def getQueryLU(self, details):
+    def getQueryLU(self, details=None):
         if details.has_key('names'):
             return self.queries[0].dispU(details['names'][0])
         return ""
     
-    def getQueryRU(self, details):
+    def getQueryRU(self, details=None):
         if details.has_key('names'):
             return self.queries[1].dispU(details['names'][1])
         return ""
-    def getAcc(self, details):
+    def getAcc(self, details=None):
         return round(self.acc(), 3)
+
+    def getTrackStr(self, details=None):
+        return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
+
+    def getTrack(self, details=None):
+        return self.track
 
     def getEnabled(self, details=None):
         return 1*(self.status>0)
@@ -343,7 +344,7 @@ class Redescription:
             return '$%1.3f$ & $%i$ & $%1.3f$' \
              % (round(self.acc(),3), self.lenI(), round(self.pVal(),3))
         elif hasattr(self, 'readInfo'):
-            dict_info = dict([[item[0], item[2]] for item in self.readInfo])
+            dict_info = dict([[term[0], term[2]] for term in self.readInfo])
             return '$%1.3f$ & $%i$ & $%1.3f$' \
              % (round(dict_info['acc'],3), dict_info['gamma'], round(dict_info['pVal'],3))
         else:
@@ -357,17 +358,8 @@ class Redescription:
         return str_red
 
     def disp(self, names= [None, None], lenIndex=0):
-        str_red = self.dispQueries(names, lenIndex) +"\t"+ self.dispLPartsSimple()
-        if Redescription.trackHisto:
-            str_red += ('\thisto:%s' % self.histo)
-        return str_red
+        return self.dispQueries(names, lenIndex) +"\t"+ self.dispLPartsSimple()
         
-    def dispDebug(self, lenIndex=0, names= [None, None]):
-        str_red = '%s\t<==>\t%s\t%s' % (self.queries[0].disp(names[0], lenIndex), self.queries[1].disp(names[1], lenIndex), self.dispLParts())
-        if Redescription.trackHisto:
-            str_red += ('\tHISTO:%s' % self.histo)
-        return str_red
-
     def dispSupp(self):
         return self.sParts.dispSupp()
     

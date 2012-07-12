@@ -1,6 +1,6 @@
-from classLog import Log
 from classQuery import *
 import pdb
+
 class Souvenirs:
 
     format_index_pref = ':%(lengthL)i:%(lengthR)i:%(side)i:%(op)i:'
@@ -8,7 +8,7 @@ class Souvenirs:
     def __init__(self,  nAvailableMo, nAmnesic = False):
         self.queriesList = []
         self.indexes = {}
-        self.availableMo = nAvailableMo
+        self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
         self.amnesic = nAmnesic
 
     def __str__(self):

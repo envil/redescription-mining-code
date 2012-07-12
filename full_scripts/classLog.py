@@ -13,3 +13,4 @@ class Log:
     def printL(self, level, message):
         if self.out != None and self.verbosity >= level:
             self.out.write("%s\n" % message)
+            self.out.flush()

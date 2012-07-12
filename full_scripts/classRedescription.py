@@ -144,6 +144,8 @@ class Redescription:
         return len(self.sBeta) + len(self.sGamma)
     def lenI(self):
         return len(self.sGamma)
+    def lenO(self):
+        return self.lenDelta()
     def lenU(self):
         return len(self.sAlpha) + len(self.sBeta) + len(self.sGamma)
     def acc(self):

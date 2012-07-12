@@ -10,11 +10,12 @@ import cPickle
 import pdb
 import codecs
 
-from classRedescription import Redescription
-from classData import Data
-from classQuery import Query
-from ICList import ICList
-from classSettings import Settings
+from reremi.classRedescription import Redescription
+from reremi.classData import Data
+from reremi.classQuery import Query
+from reremi.toolICList import ICList
+from reremi.classBatch import Batch
+from reremi.toolSettings import Settings
 
 
 class DataWrapper(object):
@@ -49,7 +50,6 @@ class DataWrapper(object):
         self.data = None
         self.data_filenames = None
         self.number_of_datafiles = 0
-        self.names = None
         self.reds = None
         self.rshowids = None
         self.minesettings = None
@@ -93,7 +93,6 @@ class DataWrapper(object):
             if data_filenames is not None:
                 self.data = self._readDataFromFiles(data_filenames)
                 self.updateNames()
-                #self.names = self.data.getNames(data_filenames)
             if queries_filename is not None:
                 self.reds = self._readQueriesFromFile(queries_filename)
             if settings_filename is not None:
@@ -103,7 +102,6 @@ class DataWrapper(object):
             self.coo_filename = None
             self.data_filenames = None
             self.number_of_datafiles = 0
-            self.names = None
             self.queries_filename = None
             self.settings_filename = None
             raise
@@ -123,7 +121,6 @@ class DataWrapper(object):
             + "data = " + str(self.data) + "; " \
             + "data_filenames = " + str(self.data_filenames) + "; " \
             + "number_of_datafiles = " + str(self.number_of_datafiles) + "; " \
-            + "names = " + str(self.names) + "; " \
             + "#reds = " + str(len(self.reds)) + "; " \
             + "rshowids = " + str(self.rshowids) + "; " \
             + "minesettings = " + str(self.minesettings) + "; " \
@@ -203,7 +200,7 @@ class DataWrapper(object):
         else:
             self.data_filenames = data_filenames
             self.number_of_datafiles = len(data_filenames)
-            self.reds = ICList()
+            self.reds = Batch()
             self.coord = None
             self.isChanged = True
             self.isFromPackage = False
@@ -211,12 +208,10 @@ class DataWrapper(object):
     def updateNames(self):
         """Update names to match those of data"""
         if self.data_filenames is None: return
-        old_names = self.names
         try:
-            self.names = self.data.getNames(self.data_filenames)
+            self.data.setNames(self.data_filenames)
         except:
             print "Cannot update names"
-            self.names = old_names
             raise
         else:
             self.isChanged = True
@@ -317,7 +312,7 @@ class DataWrapper(object):
 
     def _readNamesFromFiles(self, filenames):
         try:
-            names = self.data.getNames(filenames)
+            names = self.data.readNames(self.data_filenames)
         except:
             raise
         return names
@@ -338,7 +333,7 @@ class DataWrapper(object):
                 raise Exception("Cannot load queries if data is not loaded")
             else:
                 data = self.data
-        reds = ICList([])
+        reds = Batch([])
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
@@ -480,9 +475,7 @@ class DataWrapper(object):
             self.data_filenames = None
             self.number_of_datafiles = 0
         if 'name_picklefilename' in plist:
-            self.names = names
-        else:
-            self.names = None
+            self.data.setNames(names)
         if 'coo_filename' in plist:
             self.coord = coord
             self.coo_filename = plist['coo_filename']
@@ -565,8 +558,7 @@ class DataWrapper(object):
 
         # Write name files
         try:
-            if self.names is not None:
-                self._pickleNamefiles(os.path.join(tmp_dir, plist['name_picklefilename']), toPackage = True)
+            self._pickleNamefiles(os.path.join(tmp_dir, plist['name_picklefilename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -608,7 +600,6 @@ class DataWrapper(object):
                 package.write(os.path.join(tmp_dir, plist['data_picklefilename']),
                               arcname = os.path.join('.', plist['data_picklefilename']),
                     compress_type = zipfile.ZIP_DEFLATED)
-            if self.names is not None:
                 package.write(os.path.join(tmp_dir, plist['name_picklefilename']),
                               arcname = os.path.join('.', plist['name_picklefilename']),
                     compress_type = zipfile.ZIP_DEFLATED)
@@ -669,7 +660,7 @@ class DataWrapper(object):
     def _pickleNamefiles(self, filename, toPackage = True):
         with open(filename, 'w') as f:
             try:
-                cPickle.dump(self.names, f, 0)
+                cPickle.dump(self.data.getNames(), f, 0)
             except cPickle.PicklingError as e:
                 raise ValueError(e.args)
             except:
@@ -677,7 +668,7 @@ class DataWrapper(object):
 
     def exportQueries(self, filename, named = False, toPackage = False):
         if named:
-            names = self.names
+            names = self.data.getNames()
         else:
             names = [None, None]
         with codecs.open(filename, encoding='utf-8', mode='w') as f:
@@ -687,7 +678,7 @@ class DataWrapper(object):
 
     def exportQueriesLatex(self, filename, named = False, toPackage = False):
         if named:
-            names = self.names
+            names = self.data.getNames()
         else:
             names = [None, None]
         with codecs.open(filename, encoding='utf-8', mode='w') as f:
@@ -740,16 +731,15 @@ class DataWrapper(object):
                 d['data_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.DATA_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
             d['data_picklefilename'] = self.DATA_PICKLEFILENAME
                 
-        if self.names is not None:
-            if self.data_filenames is not None:
-                name_filenames = []
-                for i in range(len(self.data_filenames)):
-                    (nf, ext) = os.path.splitext(os.path.basename(self.data_filenames[i]))
-                    name_filenames.append(str(nf) + str(self.NAME_FILENAMES_SUFFIX))
-                d['name_filenames'] = name_filenames
-            else:
-                d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
-            d['name_picklefilename'] = self.NAMES_PICKLEFILENAME
+        if self.data_filenames is not None:
+            name_filenames = []
+            for i in range(len(self.data_filenames)):
+                (nf, ext) = os.path.splitext(os.path.basename(self.data_filenames[i]))
+                name_filenames.append(str(nf) + str(self.NAME_FILENAMES_SUFFIX))
+            d['name_filenames'] = name_filenames
+        else:
+            d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
+        d['name_picklefilename'] = self.NAMES_PICKLEFILENAME
                 
         if self.reds is not None:
             if self.queries_filename is not None:

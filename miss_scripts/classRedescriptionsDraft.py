@@ -66,7 +66,7 @@ class RedescriptionsDraft:
                 if self.capacity > self.count() and to_insert < len(redescriptionList):
                     self.draft.extend(redescriptionList[to_insert:])
             self.draft = self.draft[:self.cutIndex(self.capacity)]
-        RedescriptionsDraft.logger.printL(2, self)
+        RedescriptionsDraft.logger.printL(10, self)
 
     def updateCheckOneSideIdentical(self, redescriptionList, max_iden=0):
         insertedIds = {}
@@ -124,7 +124,7 @@ class RedescriptionsDraft:
                     disp += "Redescription (YES):\t"+redescriptionList[i].dispSimple()+"\n"
                 else:
                     disp += "Redescription (NO):\t"+redescriptionList[i].dispSimple()+"\n"
-            RedescriptionsDraft.logger.printL(1,disp)
+            RedescriptionsDraft.logger.printL(5,disp)
         return insertedIds
 
 #     def updateCheckSubsum(self, redescriptionList):          

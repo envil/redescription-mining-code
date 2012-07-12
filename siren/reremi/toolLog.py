@@ -22,7 +22,7 @@ class Log:
 
         ### CHECK VERBOSITY
         if type(verbosity) == int:
-            verbosity = {"*": verbosity} 
+            verbosity = {"*": verbosity, "progress":0, "result":0} 
         
         if type(verbosity) == dict:
             if max(verbosity.values()) > self.verbosity:
@@ -34,19 +34,25 @@ class Log:
         self.out.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
         return len(self.out)-1
 
-    def printL(self, level, message, type_message="*"):
+    def printL(self, level, message, type_message="*", source=None):
         for out in self.out:
             if ( type_message in out["verbosity"].keys() and level <= out["verbosity"][type_message]) \
-                   or  ( "*" in out["verbosity"].keys() and level <= out["verbosity"]["*"]):
+                   or  ( type_message not in out["verbosity"].keys() and "*" in out["verbosity"].keys() and level <= out["verbosity"]["*"]):
 
                 if type(out["destination"]) == file:
                     if type_message == "*":
-                        str_type = ""
+                        header = ""
                     else:
-                        str_type = "[%s]\t" % type_message
-                    out["destination"].write("%s%s\n" % (str_type, message))
+                        header = type_message
+                    if source == None:
+                        header += ""
+                    else:
+                        header += "@%s" % source
+                    if len(header) > 0:
+                        header = "[[%-10s]]\t" % header
+                    out["destination"].write("%s%s\n" % (header, message))
                     out["destination"].flush()
                 else:
-                    out["method"](out["destination"], message, type_message)
+                    out["method"](out["destination"], message, type_message, source)
         
         

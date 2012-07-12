@@ -1,19 +1,17 @@
 #!/usr/bin/python
 
-import ConfigParser
 import sys, re, datetime
-from classLog import Log
-from classSettings import Settings
+from toolLog import Log
+from toolSettings import Settings
 from classData import Data
 from classRedescription import Redescription
-from classItemsDraft import ItemsDraft
-from classBestsDraft import BestsDraft
-from classSouvenirs import Souvenirs
-from classConstraints import Constraints
+from classBatch import Batch
+from classMiner import Miner
 import pdb
-
+ 
 def run(arguments):
-    pdb.set_trace()
+
+    ticO = datetime.datetime.now()
     setts = Settings('mine', arguments)
     if setts.getParams() == 0:
         print setts.dispHelp()
@@ -22,7 +20,7 @@ def run(arguments):
     logger.printL(5,'Settings:\n' + setts.dispParams())
     
     data = Data([setts.param['data_rep']+setts.param['data_l']+setts.param['ext_l'], setts.param['data_rep']+setts.param['data_r']+setts.param['ext_r']])
-    logger.printL(2, data)
+    logger.printL(2, data, "log")
 
     if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_queries']) > 0:
         queriesOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_queries'], 'w')
@@ -37,16 +35,17 @@ def run(arguments):
     try:
         miner.full_run()
     except KeyboardInterrupt:
-        logger.printL(1, 'Stopped...')
+        logger.printL(1, 'Stopped...', "log")
         
     if supportOutFp != None:
-        for currentRedescription in miner.final["results"]:
-            currentRedescription.write(queriesOutFp, supportOutFp)
+        for pos in miner.final["results"]:
+            miner.final["batch"][pos].write(queriesOutFp, supportOutFp)
 
     queriesOutFp.close()
     supportOutFp.close()
 
-    logger.printL(1, 'THE END (at %s)' % datetime.datetime.now())
+    tacO = datetime.datetime.now()
+    logger.printL(1, 'THE END (at %s, elapsed %s)' % (tacO, tacO - ticO), "log")
 ## END of main()
 
 

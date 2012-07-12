@@ -50,52 +50,36 @@ def isRedundantArea(redA, redB, thres= 0.5):
             redundant = True
     return redundant
     
-
 # Thread class that executes processing
-class ExpanderThread(th.Thread):
-    """Expander Thread Class."""
-    def __init__(self, data, setts, red, logger):
+class WorkerThread(th.Thread):
+    def __init__(self, data, setts, logger, params=None):
         """Init Expander Thread Class."""
         th.Thread.__init__(self)
-        self.want_to_live = True
-        self.data = data
-        self.setts = setts
-        self.red = red
-        self.logger = logger
-
-        # This starts the thread running on creation, but you could
-        # also make the GUI thread responsible for calling this
+        self.miner = Miner(data, setts, logger)
+        self.params = params
         self.start()
 
     def run(self):
-        tmpE = greedyRed.part_run(self)
+        pass
 
     def abort(self):
-        self.want_to_live = False
+        self.miner.kill()
 
-class MinerThread(th.Thread):
+class MinerThread(WorkerThread):
     """Miner Thread Class."""
-    def __init__(self, data, setts, logger):
-        """Init Miner Thread Class."""
-        th.Thread.__init__(self)
-        self.want_to_live = True
-        self.data = data
-        self.setts = setts
-        self.logger = logger
-
-        # This starts the thread running on creation, but you could
-        # also make the GUI thread responsible for calling this
-        self.start()
 
     def run(self):
-        tmpE = greedyRed.full_run(self)
-        
-    def abort(self):
-        self.want_to_live = False
+        self.miner.part_run(self.params)
+
+class ExpanderThread(WorkerThread):
+    """Expander Thread Class."""
+
+    def run(self):
+        self.miner.full_run()
 
 
 class Message(wx.PyEvent):
-    TYPES_MESSAGES = {None: wx.NewId(), 'result': wx.NewId(), 'progress': wx.NewId(), 'status': wx.NewId()}
+    TYPES_MESSAGES = {'*': wx.NewId(), 'result': wx.NewId(), 'progress': wx.NewId(), 'status': wx.NewId()}
     
     """Simple event for communication purposes."""
     def __init__(self, type_event, data):
@@ -193,6 +177,7 @@ class CustomGridTable(wx.grid.PyGridTableBase):
         # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
         # self.grid.SetColAttr(0,attr)
 
+        self.grid.Bind(wx.EVT_KEY_UP, self.OnKU)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
@@ -403,6 +388,11 @@ class CustomGridTable(wx.grid.PyGridTableBase):
             self.setSelectedRow(event.GetRow())
             self.parent.makePopupMenu(self.parent.toolFrame)
 
+    def OnKU(self, event):
+        if self.grid.GetGridCursorRow() < self.nbItems():
+            self.setSelectedRow(self.grid.GetGridCursorRow())
+        event.Skip()
+
     def OnViewData(self, event):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow())
@@ -467,7 +457,6 @@ class RedGridTable(CustomGridTable):
 
     def deleteDisabled(self):
         i = 0
-        pdb.set_trace()
         while i < len(self.data):
             if not self.data[i].getEnabled():
                 self.deleteItem(i, False)
@@ -804,7 +793,7 @@ class Siren():
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
 
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES[None], self.OnLogger)
+        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['*'], self.OnLogger)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnResult)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnProgress)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnStatus)
@@ -832,7 +821,7 @@ class Siren():
         # tmp_settings_filename='./dblp/dblp_picked_real.conf'
 
 
-        # # # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
+        #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
         tmp_num_filename='./rajapaja/worldclim_tp.densenum'
         tmp_bool_filename='./rajapaja/mammals.datbool'
         tmp_coo_filename='./rajapaja/coordinates.names'
@@ -840,7 +829,7 @@ class Siren():
         tmp_settings_filename='./rajapaja/rajapaja.conf'
 
 
-        # #### COMMENT OUT TO LOAD US ON STARTUP
+        # ### COMMENT OUT TO LOAD US ON STARTUP
         # tmp_num_filename='./us/us_politics_funds_cont.densenum'
         # tmp_bool_filename='./us/us_socio_eco_cont.densenum'
         # tmp_coo_filename='./us/us_coordinates_cont.names'
@@ -891,11 +880,12 @@ class Siren():
         
     def OnResult(self, event):
         """Show Result status."""
+        ###### TODO, here receive results
         if event.data != None:
             if event.data[0] == 1:
-                self.tabs["Exp"].extendData(event.data[1])
+                self.tabs["exp"]["tab"].extendData(event.data[1])
             if event.data[0] == 0:
-                self.tabs["Exp"].resetData(event.data[1])
+                self.tabs["exp"]["tab"].resetData(event.data[1])
 
     def OnProgress(self, event):
         """Update progress status."""
@@ -985,11 +975,11 @@ class Siren():
         
         if self.selectedTab["type"] in ["Var","Reds"]:
             ID_NEWW = wx.NewId()
-            m_neww = menuRed.Append(ID_NEWW, "&View in new window", "View redescription in new window.")
+            m_neww = menuRed.Append(ID_NEWW, "&View in new window\tCtrl+W", "View redescription in new window.")
             frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
 
             ID_ENABLED = wx.NewId()
-            m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable", "Enable/Disable current redescription.")
+            m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable\tCtrl+E", "Enable/Disable current redescription.")
             frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
 
             ID_ENABLEDALL = wx.NewId()
@@ -1003,7 +993,7 @@ class Siren():
 
         if self.selectedTab["type"] == "Reds":
             ID_FILTER = wx.NewId()
-            m_filter = menuRed.Append(ID_FILTER, "&Filter redundant", "Filter redundant.")
+            m_filter = menuRed.Append(ID_FILTER, "&Filter redundant\tCtrl+F", "Filter redundant.")
             frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter)
 
             ID_DELDISABLED = wx.NewId()
