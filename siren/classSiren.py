@@ -66,6 +66,16 @@ class Siren():
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
     helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
+
+    # For About dialog
+    name = "Siren"
+    about_file = 'ABOUT'
+    licence_file = 'LICENCE'
+    programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
+    version = '0.9b'
+    cpyright = '(C) 2012 Esther Galbrun and Pauli Miettinen'
+    icon_file = 'icons/siren_icon32x32.png'
+    
          
     def __init__(self):
         self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
@@ -133,6 +143,7 @@ class Siren():
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
+        #self.dw = DataWrapper()
         self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
         #self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
         self.constraints = Constraints(self.dw.data.nbRows(), self.dw.minesettings)
@@ -144,6 +155,18 @@ class Siren():
         self.resetCoordinates()
         self.reloadReds()
         self.tabs["setts"]["text"].LoadFile(self.dw.settings_filename)
+
+        ### About dialog
+        self.info =  wx.AboutDialogInfo()
+        self.info.SetName(name)
+        self.info.SetWebSite(programURL)
+        self.info.SetCopyright(cpyright)
+        self.info.SetVersion(version)
+        self.info.SetIcon(wx.Icon('icons/siren_icon32x32.png', wx.BITMAP_TYPE_PNG))
+        with open(about_file) as f:
+            self.info.SetDescription(f.read())
+        with open(licence_file) as f:
+            self.info.SetLicence(f.read())
 	
 ######################################################################
 ###########     TOOL PANEL
@@ -702,7 +725,7 @@ class Siren():
         self.helpFrame.Show()
 
     def OnAbout(self, event):
-        pass
+        wx.AboutBox(self.info)
     
     def OnQuit(self, event):
         self.deleteAllViews()
