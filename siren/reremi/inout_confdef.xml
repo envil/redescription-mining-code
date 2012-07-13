@@ -1,0 +1,110 @@
+<root>
+  <section>
+    <name>Input and Output</name>
+    <section>
+      <name>Log</name>
+      <parameter>
+	<name>verbosity</name>
+	<label>Verbosity</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Verbosity of the algorithm output.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>4</value></default>
+      </parameter>
+      <parameter>
+	<name>logfile</name>
+	<label>Logfile</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>File to log. + means generate filename from queries output file. - means stdout.</legend>
+	<default><value>-</value></default>
+      </parameter>
+    </section>
+    <section>
+      <name>Files</name>
+      <parameter>
+	<name>data_rep</name>
+	<label>Data repertory</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Repertory where the data files are stored.</legend>
+	<length>250</length>
+	<default><value>../data/</value></default>
+      </parameter>
+      <parameter>
+	<name>data_l</name>
+	<label>LHS data filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Name of the file containing the left hand side data.</legend>
+	<length>50</length>
+	<default><value>left</value></default>
+      </parameter>
+      <parameter>
+	<name>data_r</name>
+	<label>RHS data filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Name of the file containing the right hand side data.</legend>
+	<length>50</length>
+	<default><value>right</value></default>
+      </parameter>
+      <parameter>
+	<name>ext_l</name>
+	<label>LHS data extension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Extension of the file containing the left hand side data.</legend>
+	<length>10</length>
+	<default><value>.datbool</value></default>
+      </parameter>
+      <parameter>
+	<name>ext_r</name>
+	<label>RHS data extension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Extension of the file containing the right hand side data.</legend>
+	<length>10</length>
+	<default><value>.datbool</value></default>
+      </parameter>
+      <parameter>
+	<name>result_rep</name>
+	<label>Results repertory</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Repertory where to save the results.</legend>
+	<length>250</length>
+	<default><value>../results/</value></default>
+      </parameter>
+      <parameter>
+	<name>out_base</name>
+	<label>Results data filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Name of the file where to store the results.</legend>
+	<length>50</length>
+	<default><value>results</value></default>
+      </parameter>
+      <parameter>
+	<name>ext_queries</name>
+	<label>Queries extension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Extension of the file where to save the queries.</legend>
+	<length>10</length>
+	<default><value>.queries</value></default>
+      </parameter>
+      <parameter>
+	<name>ext_support</name>
+	<label>Supports extension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Extension of the file where to save the supports.</legend>
+	<length>10</length>
+	<default><value>.supports</value></default>
+      </parameter>
+    </section>
+  </section>
+</root>

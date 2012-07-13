@@ -16,14 +16,14 @@ class Miner:
 
 ### INITIALIZATION
 ##################
-    def __init__(self, data, setts, logger, mid=None, souvenirs=None):
+    def __init__(self, data, params, logger, mid=None, souvenirs=None):
         if mid != None:
             self.id = mid
         else:
             self.id = 1
         self.data = data
         self.logger = logger
-        self.constraints = Constraints(self.data.nbRows(), setts)
+        self.constraints = Constraints(self.data.nbRows(), params)
         if souvenirs == None:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:

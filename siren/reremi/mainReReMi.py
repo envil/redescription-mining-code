@@ -6,32 +6,48 @@ from toolSettings import Settings
 from classData import Data
 from classRedescription import Redescription
 from classBatch import Batch
+from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import Miner
 import pdb
  
 def run(arguments):
 
     ticO = datetime.datetime.now()
-    setts = Settings('mine', arguments)
-    if setts.getParams() == 0:
-        print setts.dispHelp()
+
+    pm = PreferencesManager(["miner_confdef.xml", "inout_confdef.xml"])
+    pr = PreferencesReader(pm)
+    config_filename = None
+    if len(arguments) > 1:
+        if arguments[1] == "--config":
+            print pr.dispParameters(None,True, True, True)
+            sys.exit(2)
+        else:
+            config_filename = arguments[1]
+    params = pr.getParameters(config_filename)
+    if params == None:
+        print 'ReReMi redescription mining\nusage: "%s [config_file]"' % arguments[0]
+        print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
-    logger = Log(setts.param['verbosity'], setts.param['logfile'])
-    logger.printL(5,'Settings:\n' + setts.dispParams())
+
+    params_l = {}
+    for k, v in  params.items():
+        params_l[k] = v["data"]
+
+    logger = Log(params_l['verbosity'], params_l['logfile'])
     
-    data = Data([setts.param['data_rep']+setts.param['data_l']+setts.param['ext_l'], setts.param['data_rep']+setts.param['data_r']+setts.param['ext_r']])
+    data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']])
     logger.printL(2, data, "log")
 
-    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_queries']) > 0:
-        queriesOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_queries'], 'w')
+    if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0  and len(params_l['ext_queries']) > 0:
+        queriesOutFp = open(params_l['result_rep']+params_l['out_base']+params_l['ext_queries'], 'w')
     else: queriesOutFp = sys.stdout
 
-    if setts.param['out_base'] != "-"  and len(setts.param['out_base']) > 0  and len(setts.param['ext_support']) > 0:
-        supportOutFp = open(setts.param['result_rep']+setts.param['out_base']+setts.param['ext_support'], 'w')
+    if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0  and len(params_l['ext_support']) > 0:
+        supportOutFp = open(params_l['result_rep']+params_l['out_base']+params_l['ext_support'], 'w')
     else:
         supportOutFp = None
 
-    miner = Miner(data, setts, logger)
+    miner = Miner(data, params, logger)
     try:
         miner.full_run()
     except KeyboardInterrupt:
