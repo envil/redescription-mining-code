@@ -142,8 +142,8 @@ class Siren():
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
-        self.dw = DataWrapper()
-        # self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
+        # self.dw = DataWrapper()
+        self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
 
         ### TODO DW
         self.resetLogger()

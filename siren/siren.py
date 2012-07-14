@@ -33,7 +33,8 @@ class SirenApp(wx.App):
 
     def BringWindowToFront(self):
         try:
-            self.frame.toolFrame.Raise()
+            pass
+            #self.frame.toolFrame.Raise()
         except:
             pass
 

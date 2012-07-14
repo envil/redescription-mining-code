@@ -161,8 +161,8 @@ class MapView:
         return red
         
     def parseRed(self):
-        queryL = Query.parseAny(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
-        queryR = Query.parseAny(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
+        queryL = Query.parse(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
+        queryR = Query.parse(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
         if queryL != None and queryR != None: 
             return Redescription.fromQueriesPair([queryL, queryR], self.parent.dw.data) 
         

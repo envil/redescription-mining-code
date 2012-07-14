@@ -390,40 +390,6 @@ class Redescription:
         return (queryL, queryR, lpartsList)
     parseQueries = staticmethod(parseQueries)
 
-    def parseQueriesTex(string):
-        parts = string.rsplit('\t')
-        if len(parts) >= 2:
-            queryL = Query.parseTex(parts[0])
-            queryR = Query.parseTex(parts[1])
-        else:
-            queryL = Query()
-            queryR = Query()
-
-        if len(parts) >= 3:
-            lpartsList = SParts.parseLPartsChar(parts[2])
-        else:
-            lpartsList = []
-        return (queryL, queryR, lpartsList)
-    parseQueriesTex = staticmethod(parseQueriesTex)
-
-    def parseQueriesU(string, names=None):
-        parts = string.rsplit('\t')
-        if names == None:
-            names = [None, None]
-        if len(parts) >= 2:
-            queryL = Query.parseU(parts[0], names[0])
-            queryR = Query.parseU(parts[1], names[1])
-        else:
-            queryL = Query()
-            queryR = Query()
-
-        if len(parts) >= 3:
-            lpartsList = SParts.parseLPartsChar(parts[2])
-        else:
-            lpartsList = []
-        return (queryL, queryR, lpartsList)
-    parseQueriesU = staticmethod(parseQueriesU)
-
     def parse(stringQueries, stringSupport = None, data = None):
         (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries)
 

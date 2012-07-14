@@ -7,6 +7,12 @@ class Op:
     ops = {0: 'X', 1: '|', -1: '&'}
     opsTex = {0: 'X', 1: '$\lor$', -1: '$\land$'}
     opsU = {0: 'X', 1: ur'\u2228', -1: ur'\u2227'}
+
+    patt = {-1: '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$))',
+            1: '(?P<op>[|]|'+opsU[1]+'|(\$\\\\lor\$))'}
+    pattAny = '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$)|[|]|'+opsU[1]+'|(\$\\\\lor\$))'
+    bannchar = ops[-1]+opsU[-1]+ops[1]+opsU[1]
+
     
     def __init__(self, nval=0):
         if type(nval) == bool :
@@ -59,24 +65,18 @@ class Op:
         return self.val
     
     def parse(string):
-        for (k, v) in Op.ops.iteritems():
-            if v == string:
-                return Op(k)
+        for i in [-1,1]:
+            if re.match("^\s*"+Op.patt[i]+"\s*$", string):
+                return Op(i)
         return None
     parse = staticmethod(parse)
-
-    # def parseTex(parts, pos):
-    #     return self.parse(parts, pos, Op.opsTex)
-    # parseTex = staticmethod(parseTex)
-
-    # def parseU(parts, pos):
-    #     return self.parse(parts, pos, Op.opsU)
-    # parseU = staticmethod(parseU)
        
 class Neg:
     symb = ['', '! ']
-    symbTex = ['', '\\neg ']
+    symbTex = ['', '$\\neg$ ']
     symbU = ['', u'\u00ac ']
+
+    patt = '(?P<neg>'+symb[1].strip()+'|(\$\\\\neg\$)|'+symbU[1].strip()+')'
 
     def __init__(self, nNeg=False):
         if nNeg == True or nNeg < 0:
@@ -111,25 +111,10 @@ class Neg:
     def dispU(self):
         return Neg.symbU[self.boolVal()]
 
-    # def parse(parts, pos, style= None):
-    #     if style == None: style = Neg.symb 
-    #     if style[1].startswith(parts[pos]):
-    #         return (Neg(True), pos+1)
-    #     else:
-    #         return (Neg(False), pos)
-    # parse = staticmethod(parse)
-
-    # # def parseTex(parts, pos):
-    # #     return self.parse(parts, pos, Neg.symbTex)
-    # # parseTex = staticmethod(parseTex)
-
-    # # def parseU(parts, pos):
-    # #     return self.parse(parts, pos, Neg.symbU)
-    # # parseU = staticmethod(parseU)
-
-
 class Term:
     type_id = 0
+
+    patt = '(?P<col>[^\\=<>'+ ur'\u2a7d'+ur'\u2208'+ur'\u2209'+']+)'
     
     def __init__(self, ncol):
         self.col = ncol
@@ -160,9 +145,8 @@ class Term:
     
 class BoolTerm(Term):
     type_id = 1
-    patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)\s*$'
-    pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)(?P<col>\d+)\s*$'
-    pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)(?P<col>.+)\s*$'
+
+    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
 
     def copy(self):
         return BoolTerm(self.col)
@@ -218,8 +202,7 @@ class BoolTerm(Term):
         else:
             return '%s%i' % ( neg.dispU(), self.col)
                     
-    def parse(string, pattern, names=None):
-        partsU = re.match(pattern, string)
+    def parse(partsU, names=None):
         ncol = None
         if partsU != None:
             neg = (partsU.group('neg') != None)
@@ -229,7 +212,7 @@ class BoolTerm(Term):
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In boolean term %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In boolean term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
@@ -240,11 +223,11 @@ class BoolTerm(Term):
     
 class CatTerm(Term):
     type_id = 2
-    patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)?(?P<col>\d+)\s*\=(?P<cat>\d+?)\s*$'
-    pattTex = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)?(?P<col>\d+)\s*\\in(?P<cat>\d+?)\s*$'
-    pattU = '^\s*(?P<col>.+)\s*(?P<neg>['+ur'\u2208'+'])?(?(neg)|['+ur'\u2209'+'\=])\s*(?P<cat>\d+?)\s*$'
-
     
+    patt = ['^\s*'+Term.patt+'\s*(?P<neg>'+ur'\u2208'+')?(?(neg)|'+ur'\u2209'+')\s*(?P<cat>\d+?)\s*$',
+            '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in(?P<cat>\d+?)\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=(?P<cat>\d+?)\s*$']
+
     def __init__(self, ncol, ncat):
         self.col = ncol
         self.cat = ncat
@@ -287,16 +270,20 @@ class CatTerm(Term):
                 lab = lab[:lenIndex]
             return lab + strcat
         else:
-            return strneg+(('%s%'+slenIndex+'i') % (strneg, self.col)) + strcat
+            return (('%s%'+slenIndex+'i') % (strneg, self.col)) + strcat
 
     def dispTex(self, neg, names = None):
         if type(neg) == bool:
             neg = Neg(neg)
-
-        if type(names) == list  and len(names) > 0:
-            return '%s %s\\in %i' % (names[self.col], neg.dispTex(), self.cat)
+        if neg.boolVal():
+            symbIn = '\\in'
         else:
-            return '%i %s\\in %i' % (self.col, neg.dispTex(), self.cat)
+            symbIn = '\\not\\in'
+        
+        if type(names) == list  and len(names) > 0:
+            return '%s %s %i' % (names[self.col], symbIn, self.cat)
+        else:
+            return '%i %s %i' % (self.col, symbIn, self.cat)
 
     def dispU(self, neg, names = None):
         if type(neg) == bool:
@@ -311,8 +298,7 @@ class CatTerm(Term):
         else:
             return ('%s '+symbIn+' %i') % (self.col, self.cat)
 
-    def parse(string, pattern, names=None):
-        partsU = re.match(pattern, string)
+    def parse(partsU, names=None):
         ncol = None
         if partsU != None:
             neg = (partsU.group('neg') != None)
@@ -322,7 +308,7 @@ class CatTerm(Term):
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
@@ -330,38 +316,25 @@ class CatTerm(Term):
                 cat = int(partsU.group('cat'))
             except ValueError, detail:
                 ncol = None
-                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(string, detail))
+                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
         if ncol != None :
             return (neg, CatTerm(ncol, cat))
         return (None, None)
     parse = staticmethod(parse)
 
     
-    # def parse(parts, pos):
-    #     partsU = re.match(CatTerm.patt, string)
-    #     if partsU != None :
-    #         ok = True
-    #         try:
-    #             ncat = int(partsU.group('cat'))
-    #         except ValueError, detail:
-    #             raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(string, detail))
-    #             ok = False
-    #         try:
-    #             ncol = int(partsU.group('col'))
-    #         except ValueError, detail:
-    #             raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(string, detail))
-    #             ok = False
-    #         if ok:
-    #             return (CatTerm(ncol, ncat), pos+1)
-    #     return (None, pos)
-    # parse = staticmethod(parse)
-
 class NumTerm(Term):
     type_id = 3
 
-    patt = '^\s*((?P<neg>'+Neg.symb[1]+')?\s*)(?P<col>\d+)((\>(?P<lowbs>-?\d+(\.\d+)?))|(\<(?P<upbs>-?\d+(\.\d+)?))|(\>(?P<lowb>-?\d+(\.\d+)?)\<(?P<upb>-?\d+(\.\d+)?)))\s*$'
-    pattTex = '^\s*((?P<neg>'+Neg.symbTex[1]+')?\s*)\$\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*\\\\leq{}\s*)(?P<col>.+)?(\s*\\\\leq{}\s*(?P<upbs>-?\d+(\.\d+)?))\s*\]\$\s*$'
-    pattU = '^\s*((?P<neg>'+Neg.symbU[1]+')?\s*)\[\s*((?P<lowbs>-?\d+(\.\d+)?)\s*(' + ur'\u2a7d' +'|<<)\s*)?(?P<col>[^'+ ur'\u2a7d'+'<]+)(\s*[' + ur'\u2a7d' +'<]\s*(?P<upbs>-?\d+(\.\d+)?))?\s*\]\s*$'
+    patt = ['^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*\\\\leq\{\}\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>-?\d+\.\d+)\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*\\\\leq\{\}\s*'+Term.patt+'\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>-?\d+\.\d+)\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*[' + ur'\u2a7d' +'|<]\s*'+Term.patt+'\s*[' + ur'\u2a7d' +'<]\s*(?P<upb>-?\d+\.\d+)\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*[' + ur'\u2a7d' +'|<]\s*'+Term.patt+'\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*'+Term.patt+'\s*[' + ur'\u2a7d' +'<]\s*(?P<upb>-?\d+\.\d+)\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>-?\d+\.\d+)\s*\<\s*(?P<upb>-?\d+\.\d+)\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>-?\d+\.\d+)\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>-?\d+\.\d+)\s*$']
     
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf'):
@@ -423,12 +396,13 @@ class NumTerm(Term):
             strneg = ''
         else:
             strneg = neg.disp()
+            ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = '>%s' % self.lowb
+            lb = '>%s' % float(self.lowb)
         else:
             lb = ''
         if self.upb < float('Inf'):
-            ub = '<%s' % self.upb
+            ub = '<%s' % float(self.upb)
         else:
             ub = ''
         strbounds = '%s%s ' % (lb, ub)
@@ -448,12 +422,13 @@ class NumTerm(Term):
     def dispTex(self, neg, names = None):
         if type(neg) == bool:
             neg = Neg(neg)
+            ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = '$[%s\\leq{}' % self.lowb
+            lb = '$[%f\\leq{}' % float(self.lowb)
         else:
             lb = '$['
         if self.upb < float('Inf'):
-            ub = '\\leq{}%s]$' % self.upb
+            ub = '\\leq{}%s]$' % float(self.upb)
         else:
             ub = ']$'
         negstr = ' %s' % neg.dispTex()
@@ -466,12 +441,13 @@ class NumTerm(Term):
     def dispU(self, neg, names = None):
         if type(neg) == bool:
             neg = Neg(neg)
+            ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = u'[%s \u2a7d ' % self.lowb
+            lb = u'[%s \u2a7d ' % float(self.lowb)
         else:
             lb = '['
         if self.upb < float('Inf'):
-            ub = u' \u2a7d %s]' % self.upb
+            ub = u' \u2a7d %s]' % float(self.upb)
         else:
             ub = ']'
         negstr = u' %s' % neg.dispU()
@@ -481,42 +457,40 @@ class NumTerm(Term):
             idcol = '%i' % self.col
         return ''+negstr+lb+idcol+ub+''
 
-    def parse(string, pattern, names=None):
-        partsU = re.match(pattern, string)
+    def parse(partsU, names=None):
         ncol=None
         if partsU != None :
             neg = (partsU.group('neg') != None)
             lowb = float('-inf')
             upb = float('inf')
+            
             tmpcol = partsU.group('col').strip()
-            tmpupbs = partsU.group('upbs')
-            if partsU.groupdict().has_key('upb') and partsU.group('upb') != None:
-                tmpupbs = partsU.group('upb')
-            tmplowbs = partsU.group('lowbs')
-            if partsU.groupdict().has_key('lowb') and partsU.group('lowb') != None:
-                tmplowbs = partsU.group('lowb')
             if tmpcol.isdigit():
                 try:
                     ncol = int(tmpcol)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In numerical term %s, column is not convertible to int (%s)\n'%(string, detail))
+                    raise Warning('In numerical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
                 if names != None and tmpcol in names:
                     ncol = names.index(tmpcol)
-            if tmpupbs != None:                
-                try:
-                    upb = float(tmpupbs)
-                except ValueError, detail:
-                    ncol = None
-                    raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(string, detail))
-            
-            if tmplowbs != None:                
+
+            if partsU.groupdict().has_key('lowb') and partsU.group('lowb') != None:
+                tmplowbs = partsU.group('lowb')
                 try:
                     lowb = float(tmplowbs)
                 except ValueError, detail:
                     ncol = None
-                    raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(string, detail))
+                    raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(tmplowbs, detail))
+
+            if partsU.groupdict().has_key('upb') and partsU.group('upb') != None:
+                tmpupbs = partsU.group('upb')
+                try:
+                    upb = float(tmpupbs)
+                except ValueError, detail:
+                    ncol = None
+                    raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(tmpupbs, detail))
+            
         if ncol != None and (lowb != float('-inf') or upb != float('inf')):
             return (neg, NumTerm(ncol, lowb, upb))
         return (None, None)
@@ -525,13 +499,11 @@ class NumTerm(Term):
                
 class Literal:
 
+    ### types ordered for parsing
     termTypes = [{'class': NumTerm }, \
                  {'class': CatTerm }, \
                  {'class': BoolTerm }]
 
-#     termTypes = [{'class': NumTerm,  'match':'\d+\>-?\d+(\.\d+)?\<-?\d+(\.\d+)?$'}, \
-#                  {'class': CatTerm,  'match':'\d+\=\d+?$'}, \
-#                  {'class': BoolTerm, 'match':'\d+$'}]
     
     def __init__(self, nneg, nterm):
         self.term = nterm ## Already an Term instance
@@ -570,45 +542,24 @@ class Literal:
     def col(self):
         return self.term.colId()
     
-    def parse(string):
+    def parse(string, names=None):
         i = 0
         term = None
+        ##pdb.set_trace()
         while i < len(Literal.termTypes) and term == None:
-            if (re.match(Literal.termTypes[i]['class'].patt, string)):
-                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].patt)
+            patts = Literal.termTypes[i]['class'].patt
+            j = 0
+            while j < len(patts) and term == None:
+                parts = re.match(patts[j], string)
+                if parts != None:
+                    (neg, term) = Literal.termTypes[i]['class'].parse(parts, names)
+                j+=1
             i+=1
         if term != None:
             return Literal(neg, term)
         else:
             return None
     parse = staticmethod(parse)
-
-    def parseTex(string, names=None):
-        i = 0
-        term = None
-        while i < len(Literal.termTypes) and term == None:
-            if (re.match(Literal.termTypes[i]['class'].pattTex, string)):
-                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].pattTex)
-            i+=1
-        if term != None:
-            return Literal(neg, term)
-        else:
-            return None
-    parseTex = staticmethod(parseTex)
-
-    def parseU(string, names=None):
-        i = 0
-        term = None
-        while i < len(Literal.termTypes) and term == None:
-            if (re.match(Literal.termTypes[i]['class'].pattU, string)):
-                (neg, term) = Literal.termTypes[i]['class'].parse(string, Literal.termTypes[i]['class'].pattU, names)
-            i+=1
-        if term != None:
-            return Literal(neg, term)
-        else:
-            return None
-    parseU = staticmethod(parseU)
-
             
 class Query:
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
@@ -868,77 +819,40 @@ class Query:
                 op = op.other()
         return string
 
-    def parse(string):
-        pattrn = '^(?P<pattIn>[^'+Op.ops[1]+Op.ops[-1]+']*)(?P<op>['+Op.ops[1]+Op.ops[-1]+'])?(?P<pattOut>(?(op).*))$'
+    def parseApd(string, names=None):
+        pattrn = '^(?P<pattIn>[^\\'+Op.bannchar+']*)'+Op.pattAny+'?(?P<pattOut>(?(op).*))$'
         op = None; r = None
         parts = re.match(pattrn, string)
         if parts != None:
             r = Query()
         while parts != None:
-            t = Literal.parse(parts.group('pattIn'))
+            t = Literal.parse(parts.group('pattIn'), names)
             r.extend(op,t)
             if parts.group('op') != None:
                 op = Op.parse(parts.group('op'))
                 parts = re.match(pattrn, parts.group('pattOut'))
             else:
                 parts = None
+        if r != None and len(r) == 0:
+            r = None
         return r 
-    parse = staticmethod(parse)
-
-    def parseTex(string, names=None):
-        r = None
-        parts = re.match(r'^\s*(\(\s*(?P<pattIn>.*)\s*\))*\s*(?P<pattOut>[^()]*)\s*$', string)
-        if parts != None:
-            opExt = None
-            ## parse inner query
-            if parts.group('pattIn') != None:
-                r = Query.parseTex(parts.group('pattIn'), names)
-            else:
-                r = Query()
-            ## identify operator
-            if r != None:
-                indA = parts.group('pattOut').find(Op.opsTex[-1])
-                indO = parts.group('pattOut').find(Op.opsTex[1])
-                if indA == -1 and indO == -1:
-                    if not r.opBuk(len(r)).isSet():
-                        opExt = Op() 
-                elif indA > -1 and indO == -1:
-                    if not r.opBuk(len(r)).isAnd():
-                        opExt = Op(False) 
-                elif indA == -1 and indO > -1:
-                    if not r.opBuk(len(r)).isOr():
-                        opExt = Op(True) 
-                # else:
-                #     raise Exception('Something is wrong with the operators... %s' % string)
-            ## if all went fine so far, split on operator and parse literals
-            if opExt != None:
-                partsOut = parts.group('pattOut').split(opExt.dispTex())
-                pi = 0
-                while pi < len(partsOut):
-                    t = Literal.parseTex(partsOut[pi], names)
-                    if t != None:
-                        r.extend(opExt,t)
-                    else:
-                        pi = len(partsOut)
-                        r = None
-                    pi+=1
-        return r
-    parseTex = staticmethod(parseTex)
-
-    def parseU(string, names=None):
+    parseApd = staticmethod(parseApd)
+    
+#### TODO
+    def parsePar(string, names=None):
         r = None
         parts = re.match(ur'^\s*(\(\s*(?P<pattIn>.*)\s*\))*\s*(?P<pattOut>[^()]*)\s*$', string)
         if parts != None:
             opExt = None
             ## parse inner query
             if parts.group('pattIn') != None:
-                r = Query.parseU(parts.group('pattIn'), names)
+                r = Query.parsePar(parts.group('pattIn'), names)
             else:
                 r = Query()
             ## identify operator
             if r != None:
-                indA = re.search('(?P<op>[' + Op.ops[-1]+ Op.opsU[-1] + '])', parts.group('pattOut'))
-                indO = re.search('(?P<op>[' + Op.ops[1]+ Op.opsU[1] + '])', parts.group('pattOut'))
+                indA = re.search(Op.patt[-1], parts.group('pattOut'))
+                indO = re.search(Op.patt[1], parts.group('pattOut'))
                 if indA == None and indO == None:
                     if not r.opBuk(len(r)).isSet():
                         opExt = Op()
@@ -959,22 +873,24 @@ class Query:
                 pi = 0
                 while pi < len(partsOut):
                     if len(partsOut[pi].strip()) > 0:
-                        t = Literal.parseU(partsOut[pi], names)
+                        t = Literal.parse(partsOut[pi], names)
                         if t != None:
                             r.extend(opExt,t)
                         else:
                             pi = len(partsOut)
                             r = None
                     pi+=1
+        if r != None and len(r) == 0:
+            r = None
         return r
-    parseU = staticmethod(parseU)
+    parsePar = staticmethod(parsePar)
 
-    def parseAny(string, names=None):
+    def parse(string, names=None):
         #### TODO Check bug
-        r = Query.parseU(string, names)
+        if not re.search("[a-zA-Z0-9]", string):
+            return Query()
+        r = Query.parsePar(string, names)
         if r == None:
-            r = Query.parseTex(string, names)
-            if r == None:
-                r = Query.parse(string)
+            r = Query.parseApd(string, names)
         return r
-    parseAny = staticmethod(parseAny)
+    parse = staticmethod(parse)
