@@ -970,6 +970,7 @@ class Query:
     parseU = staticmethod(parseU)
 
     def parseAny(string, names=None):
+        #### TODO Check bug
         r = Query.parseU(string, names)
         if r == None:
             r = Query.parseTex(string, names)

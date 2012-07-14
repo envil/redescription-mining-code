@@ -1,0 +1,18 @@
+<root>
+  <section>
+    <name>Interface</name>
+    <section>
+      <name>Log</name>
+      <parameter>
+	<name>verbosity</name>
+	<label>Verbosity</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Verbosity of the algorithm output.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>4</value></default>
+      </parameter>
+    </section>
+  </section>
+</root>

@@ -40,8 +40,9 @@ class Constraints:
     def scaleF(self, f):
         if f >= 1:
             return int(f)
-        elif f >= 0 and f < 1 :
+        elif f >= 0 and f < 1 and self.N != 0:
             return  int(round(f*self.N))
+        return 0
     
     def scaleSuppParams(self, min_c, min_in=None, min_out=None):
         sc_min_c = self.scaleF(min_c)
@@ -102,10 +103,10 @@ class Constraints:
         return self._pv["min_pairscore"]
     def max_overlaparea(self):
         return self._pv["max_overlaparea"]
-    def neg_query(self):
+    def neg_query(self, side):
         return self._pv["neg_query"]
-    def ops_query(self, init=False):
-        if init:
+    def ops_query(self, side, init=False):
+        if init != 0:
             return [True]
         else:
             return self._pv["ops_query"]

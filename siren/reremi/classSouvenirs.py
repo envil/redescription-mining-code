@@ -11,6 +11,9 @@ class Souvenirs:
         self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
         self.amnesic = nAmnesic
 
+    def nbCols(self, side):
+        return len(self.availableMo[side])
+    
     def __str__(self):
         if self.amnesic :
             return 'Amnesic, Availables :%i x %i' % (len(self.availableMo[0]), len(self.availableMo[1]))

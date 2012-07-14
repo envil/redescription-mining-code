@@ -176,29 +176,26 @@ class MapView:
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
 
         self.MapfigMap.clear()
-        if self.parent.coord_extrema != None and self.parent.dw.coord != None:            
+        llon, ulon, llat, ulat = self.parent.dw.getCoordExtrema()
+        m = Basemap(llcrnrlon=llon, llcrnrlat=llat, urcrnrlon=ulon, urcrnrlat=ulat, \
+                    resolution = 'c', projection = 'mill', \
+                    lon_0 = llon + (ulon-llon)/2.0, \
+                    lat_0 = llat + (ulat-llat)/2.04)
+        self.axe = m
+        m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
 
-            m = Basemap(llcrnrlon=self.parent.coord_extrema[0][0], \
-                    llcrnrlat=self.parent.coord_extrema[1][0], \
-                    urcrnrlon=self.parent.coord_extrema[0][1], \
-                    urcrnrlat=self.parent.coord_extrema[1][1], \
-                    resolution = 'c', \
-                    projection = 'mill', \
-                    lon_0 = self.parent.coord_extrema[0][0] + (self.parent.coord_extrema[0][1]-self.parent.coord_extrema[0][0])/2.0, \
-                    lat_0 = self.parent.coord_extrema[1][0] + (self.parent.coord_extrema[1][1]-self.parent.coord_extrema[1][0])/2.04)
-            self.axe = m
-            m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
-
-            m.drawcoastlines(color=MapView.LINES_COLOR)
-            m.drawcountries(color=MapView.LINES_COLOR)
-            m.drawmapboundary(fill_color=MapView.WATER_COLOR) 
-            m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
+        m.drawcoastlines(color=MapView.LINES_COLOR)
+        m.drawcountries(color=MapView.LINES_COLOR)
+        m.drawmapboundary(fill_color=MapView.WATER_COLOR) 
+        m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
-            self.coord_proj = m(self.parent.dw.coord[0], self.parent.dw.coord[1])
+
+        if self.parent.dw.getCoord() != None:
+            self.coord_proj = m(self.parent.dw.getCoord()[0], self.parent.dw.getCoord()[1])
             height = 3; width = 3
             self.gca = plt.gca()
-            #self.corners= [ zip(*[ m(self.coord[0][id]+off[0]*width, self.coord[1][id]+off[1]*height) for off in [(-1,-1), (-1,1), (1,1), (1,-1)]]) for id in range(len(self.coord[0]))] 
-            self.MapcanvasMap.draw()
+
+        self.MapcanvasMap.draw()
             
     def redraw_map(self, event=None):
         """ Redraws the map
@@ -212,7 +209,7 @@ class MapView:
         #self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
 
-        if self.parent.coord_extrema != None and self.parent.dw.coord != None:
+        if self.coord_proj != None:
             m = self.axe
             colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
             sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
@@ -224,8 +221,6 @@ class MapView:
             self.points_ids = []
             for part in red.partsNoMiss():
                 if len(part) > 0:
-                    # for id in part:
-                    #     self.lines.extend(plt.fill(self.corners[id][0], self.corners[id][1], fc=colors[i], ec=colors[i], alpha=0.5))
                     lip = list(part)
                     self.points_ids.extend(lip)
                     ids = np.array(lip)

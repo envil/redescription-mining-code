@@ -37,7 +37,7 @@ class Miner:
 
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
-
+        self.progress_ss = {"total":0, "current":0}
 
     def kill(self):
         self.want_to_live = False
@@ -47,6 +47,14 @@ class Miner:
 ### TODO improve progress tracking
     def part_run(self, redesc):
         self.count = "C"
+
+        self.progress_ss["cand_var"] = 1
+        self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
+                                         self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
+        self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (self.constraints.max_var()*2-len(redesc))*self.progress_ss["generation"]
+        self.progress_ss["total"] = self.progress_ss["expansion"]
+        self.progress_ss["current"] = 0
         
         ticE = datetime.datetime.now()
         self.logger.printL(1,"Start part run %s" % ticE, "time", self.id)
@@ -70,13 +78,24 @@ class Miner:
         self.final["results"] = []
         self.final["batch"].reset()
         self.count = 0
+
+        ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+        self.progress_ss["pair_gen"] = 10
+        self.progress_ss["pairs_gen"] = (len(ids[0])/self.constraints.divL())*(len(ids[1])/self.constraints.divR())*self.progress_ss["pair_gen"]
+        self.progress_ss["cand_var"] = 1
+        self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
+                                         self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
+        self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (self.constraints.max_var()-1)*2*self.progress_ss["generation"]
+        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.max_red()*self.progress_ss["expansion"]
+        self.progress_ss["current"] = 0
         
-        self.logger.printL(1, (100, 0), 'progress', self.id)
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
         ticP = datetime.datetime.now()
         self.logger.printL(1,"Start Pairs %s" % ticP, "time", self.id)
 
-        self.initializeRedescriptions()
+        self.initializeRedescriptions(ids)
         
         tacP = datetime.datetime.now()
         self.logger.printL(1,"End Pairs %s, elapsed %s (%s)" % (tacP, tacP-ticP, self.want_to_live), "time", self.id)
@@ -120,13 +139,14 @@ class Miner:
 
 ### HIGH LEVEL CALLING FUNCTIONS
 ################################
-    def initializeRedescriptions(self):
+    def initializeRedescriptions(self, ids=None):
         self.initial_pairs.reset()
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
-        self.logger.printL(1, (0, 100), 'progress', self.id)
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
         ### TODO check disabled
-        ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+        if ids == None:
+            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
         ## ids = [[101, 162, 192], [12, 24, 26]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
@@ -140,8 +160,9 @@ class Miner:
                     return
                 
                 pairs += 1
+                self.progress_ss["current"] += self.progress_ss["pair_gen"]
                 self.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR), 'status', self.id)
-                self.logger.printL(1, (total_pairs, pairs), 'progress', self.id)
+                self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
                 (scores, literalsL, literalsR) = self.computePair(self.data.col(0, idL), self.data.col(1, idR))
                 for i in range(len(scores)):
@@ -161,15 +182,11 @@ class Miner:
     def expandRedescriptions(self, nextge):
         self.partial["results"] = []
         self.partial["batch"].reset()
-        step = 0
-        total_steps = float(self.constraints.max_var()*2*len(nextge)) #### TODO
 
         while len(nextge) > 0  and self.want_to_live:
             kids = set()
 
-            total_steps_int = 1 ## TODO sum([red.nbAvailableCols() for red in nextge])+len(nextge)
-            step_int = 0.0
-            step += 1
+            tmp_gen = self.progress_ss["current"]
             
             for redi, red in enumerate(nextge):
                 ### To know whether some of its extensions were found already
@@ -177,13 +194,15 @@ class Miner:
                 if red.nbAvailableCols() > 0:
                     bests = ExtensionsBatch(self.constraints.score_coeffs(), red)
                     for side in [0,1]:
+                        ### check whether we are extending a redescription with this side empty
+                        if red.length(side) == 0:
+                            init = -1
+                        else:
+                            init = 0 
+                            
                         for v in red.availableColsSide(side):
                             if not self.want_to_live: return
-
-                            step_int += 1
-                            self.logger.printL(4, (100, 100*(step + step_int/total_steps_int)/total_steps), 'progress', self.id)
-
-                            bests.update(self.getCandidates(side, self.data.col(side, v), red.supports()))
+                            bests.update(self.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
                             # tmp = self.getCandidates(side, self.data.col(side, v), red.supports())
                             # for cand in tmp: ### TODO remove, only for debugging
@@ -192,6 +211,8 @@ class Miner:
                             #         pdb.set_trace()
                             #         print 'Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (red, cand, kid)
                             # bests.update(tmp)
+                        self.progress_ss["current"] += self.progress_ss["cand_side"][side]
+                        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
                                                         
                     if self.logger.verbosity >= 4:
                         self.logger.printL(4, bests, "log", self.id)
@@ -202,10 +223,9 @@ class Miner:
 
                     ### parent has been used remove availables
                     red.removeAvailables()
-
-                step_int += 1
-                self.logger.printL(4, (100, 100*(step + step_int/total_steps_int)/total_steps), 'progress', self.id)
-                self.logger.printL(4, "Generation %s.%d expanded" % (self.count, step), 'status', self.id)
+                self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
+                self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
 
             nextge_keys = self.partial["batch"].selected(self.constraints.actions_nextge())
             nextge = [self.partial["batch"][i] for i in nextge_keys]
@@ -222,44 +242,44 @@ class Miner:
 ###############################################################################
 ###############################################################################
 ####################### CANDIDATES METHODS
-    def getCandidates(self, side, col, supports):
+    def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.type_id)
-        return method_compute(side, col, supports)
+        return method_compute(side, col, supports, init)
 
-    def getCandidates1(self, side, col, supports):
+    def getCandidates1(self, side, col, supports, init=0):
         cands = []
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(col.missing)
         lin = supports.lpartsInterX(col.hold)
 
-        for op in self.constraints.ops_query():
-            for neg in self.constraints.neg_query():
+        for op in self.constraints.ops_query(side, init):
+            for neg in self.constraints.neg_query(side):
                 adv = self.getAdv(side, op, neg, lparts, lmiss, lin)
                 if adv != None :
                     cands.append(Extension(side, op, Literal(neg, BoolTerm(col.getId())), adv, col.nbRows()))
         return cands
 
-    def getCandidates2(self, side, col, supports):
-        return self.getCandidatesNonBool(side, col, supports)
+    def getCandidates2(self, side, col, supports, init=0):
+        return self.getCandidatesNonBool(side, col, supports, init)
 
-    def getCandidates3(self, side, col, supports):
-        return self.getCandidatesNonBool(side, col, supports)
+    def getCandidates3(self, side, col, supports, init=0):
+        return self.getCandidatesNonBool(side, col, supports, init)
 
-    def getCandidatesNonBool(self, side, col, supports):
+    def getCandidatesNonBool(self, side, col, supports, init=0):
         cands = []
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(col.miss())
 
-        for cand in self.findCover(side, col, lparts, lmiss, supports):
+        for cand in self.findCover(side, col, lparts, lmiss, supports, init):
             cands.append(cand[1])
         return cands
 
 ####################### COVER METHODS
-    def findCover(self, side, col, lparts, lmiss, supports, init=False):
+    def findCover(self, side, col, lparts, lmiss, supports, init=0):
         method_string = 'self.findCover%i' % col.type_id
         try:
             method_compute =  eval(method_string)
@@ -267,18 +287,18 @@ class Miner:
               raise Exception('Oups No covering method for this type of data (%i)!'  % col.type_id)
         return method_compute(side, col, lparts, lmiss, supports, init)
 
-    def findCover1(self, side, col, lparts, lmiss, supports, init=False):
+    def findCover1(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
 
         lin = supports.lpartsInterX(col.supp())
-        for op in self.constraints.ops_query():            
-            for neg in self.constraints.neg_query():        
+        for op in self.constraints.ops_query(side, init):            
+            for neg in self.constraints.neg_query(side):        
                 best = self.updateExt(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
                 ### to negate the other side when looking for initial pairs
-                if init and True in self.constraints.neg_query():
+                if init == 1 and True in self.constraints.neg_query(side):
                     bestNeg = self.updateExt(bestNeg, Literal(neg, BoolTerm(col.getId())), side, op, neg, \
-                                          SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin), col.nbRows())
+                                          SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin), col.nbRows(), init)
 
                 if best.isValid():
                     cands.append((False, best))
@@ -286,18 +306,18 @@ class Miner:
                     cands.append((True, bestNeg))
         return cands
 
-    def findCover2(self, side, col, lparts, lmiss, supports, init=False):
+    def findCover2(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
 
-        for op in self.constraints.ops_query():            
-            for neg in self.constraints.neg_query():        
+        for op in self.constraints.ops_query(side, init):            
+            for neg in self.constraints.neg_query(side):        
                 best = Extension(); bestNeg = Extension()
                 for (cat, supp) in col.sCats.iteritems():
                     lin = supports.lpartsInterX(supp)
                     best = self.updateExt(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
                     ### to negate the other side when looking for initial pairs
-                    if init and True in self.constraints.neg_query():
+                    if init ==1 and True in self.constraints.neg_query(side):
                         bestNeg = self.updateExt(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
                                               SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin), col.nbRows())
 
@@ -307,28 +327,28 @@ class Miner:
                     cands.append((True, bestNeg))
         return cands
 
-    def findCover3(self, side, col, lparts, lmiss, supports, init=False):
+    def findCover3(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
         
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegments(side, supports, self.constraints.ops_query(init))
+            segments = col.makeSegments(side, supports, self.constraints.ops_query(side, init))
             for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, init):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init and True in self.constraints.neg_query():
+            if init == 1 and True in self.constraints.neg_query(side):
                 nlparts = SParts.negateParts(1-side, lparts)
                 nlmiss = SParts.negateParts(1-side, lmiss)
 
                 if self.inSuppBounds(side, True, nlparts): ### DOABLE
-                    nsegments = self.makeSegments(side, supports.negate(1-side), self.constraints.ops_query(init))
+                    nsegments = self.makeSegments(side, supports.negate(1-side), self.constraints.ops_query(side, init))
                     for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, init):
                         cands.append((True, cand))
         return cands
         
-    def findCoverSegments(self, side, col, segments, lparts, lmiss, init=False):
+    def findCoverSegments(self, side, col, segments, lparts, lmiss, init=0):
         cands = []
-        for op in self.constraints.ops_query(init):
+        for op in self.constraints.ops_query(side, init):
             if len(segments[op]) < self.constraints.max_seg():
                 # print '---Doing the full search---'
                 # pdb.set_trace()
@@ -336,9 +356,9 @@ class Miner:
             else:
                 # print '---Doing the fast search---'
                 # pdb.set_trace()
-                if (False in self.constraints.neg_query()):
+                if (False in self.constraints.neg_query(side)):
                     cands.extend(self.findPositiveCover(side, op, col, segments, lparts, lmiss))
-                if (True in self.constraints.neg_query()):
+                if (True in self.constraints.neg_query(side)):
                     cands.extend(self.findNegativeCover(side, op, col, segments, lparts, lmiss))
         return cands
 
@@ -350,10 +370,10 @@ class Miner:
             lin = SParts.makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
                 lin = SParts.addition(lin, segments[op][seg_e][2])
-                for neg in self.constraints.neg_query():
+                for neg in self.constraints.neg_query(side):
                     bests[neg] = self.updateExt(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
-        for neg in self.constraints.neg_query():
+        for neg in self.constraints.neg_query(side):
             if bests[neg].isValid():
                 bests[neg].literal = col.getLiteralSeg(neg, segments[op], bests[neg].literal)
                 if bests[neg].literal != None:
@@ -501,7 +521,7 @@ class Miner:
         lmiss = supports.lpartsInterX(col.miss())
 
         ### TODO deliteraline the right pair miner
-        for cand in self.findCover(side, col, lparts, lmiss, supports, True):
+        for cand in self.findCover(side, col, lparts, lmiss, supports, init=1):
             scores.append(cand[1].acc)
             literalsFix.append(Literal(cand[0], termX))
             literalsExt.append(cand[1].literal)
@@ -698,7 +718,7 @@ class Miner:
 
     def subdo22Full(self, colL, colR, side):
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query():
+        if neg in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [Extension() for c in configs]
         
@@ -739,7 +759,7 @@ class Miner:
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query():
+        if neg in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [Extension() for c in configs]
 
@@ -832,7 +852,6 @@ class Miner:
         else:
             return best
         ### EX: best = self.updateExt(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
-
 
     def inSuppBounds(self, side, op, lparts):
         return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \

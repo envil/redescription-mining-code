@@ -12,15 +12,16 @@ from reremi.toolICList import ICList
 from classGridTable import VarTable, RedTable
 from classMapView import MapView
 from DataWrapper import DataWrapper
+from classPreferencesDialog import PreferencesDialog
 
 import pdb
 
 # Thread class that executes processing
 class WorkerThread(threading.Thread):
-    def __init__(self, id, data, setts, logger, params=None):
+    def __init__(self, id, data, preferences, logger, params=None):
         """Init Expander Thread Class."""
         threading.Thread.__init__(self)
-        self.miner = Miner(data, setts, logger, id)
+        self.miner = Miner(data, preferences, logger, id)
         self.params = params
         self.start()
 
@@ -82,10 +83,9 @@ class Siren():
                      1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
                      "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
                      "exp": {"title":"Expanding", "type":"Reds", "hide":False, "style":None},
-                     "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE},
-                     "setts": {"title":"Settings", "type":"Text", "hide": True, "style": wx.TE_MULTILINE}
+                     "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
-        self.tabs_keys = [0, 1, "reds", "exp", "log", "setts"]
+        self.tabs_keys = [0, 1, "reds", "exp", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
         self.check_tab = {}
@@ -111,7 +111,6 @@ class Siren():
         self.selectedMap = -1
         self.buffer_copy = None
         
-        self.coord_extrema = None
         self.details = None
         self.workers = {}
         self.next_workerid = 0
@@ -131,7 +130,7 @@ class Siren():
         tmp_bool_filename='../data/rajapaja/mammals.datbool'
         tmp_coo_filename='../data/rajapaja/coordinates.names'
         tmp_queries_filename='../data/rajapaja/rajapaja.queries'
-        tmp_settings_filename='../data/rajapaja/rajapaja.conf'
+        tmp_settings_filename='../data/rajapaja/rajapaja_conf2.xml'
 
 
         # ### COMMENT OUT TO LOAD US ON STARTUP
@@ -143,29 +142,27 @@ class Siren():
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
-        #self.dw = DataWrapper()
-        self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
-        #self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
-        self.constraints = Constraints(self.dw.data.nbRows(), self.dw.minesettings)
+        self.dw = DataWrapper()
+        # self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
 
         ### TODO DW
         self.resetLogger()
-        self.details = {'names': self.dw.data.getNames()}
+        self.resetConstraints()
+        self.details = {'names': self.dw.getColNames()}
         self.reloadVars()
         self.resetCoordinates()
         self.reloadReds()
-        self.tabs["setts"]["text"].LoadFile(self.dw.settings_filename)
 
         ### About dialog
         self.info =  wx.AboutDialogInfo()
-        self.info.SetName(name)
-        self.info.SetWebSite(programURL)
-        self.info.SetCopyright(cpyright)
-        self.info.SetVersion(version)
+        self.info.SetName(self.name)
+        self.info.SetWebSite(self.programURL)
+        self.info.SetCopyright(self.cpyright)
+        self.info.SetVersion(self.version)
         self.info.SetIcon(wx.Icon('icons/siren_icon32x32.png', wx.BITMAP_TYPE_PNG))
-        with open(about_file) as f:
+        with open(self.about_file) as f:
             self.info.SetDescription(f.read())
-        with open(licence_file) as f:
+        with open(self.licence_file) as f:
             self.info.SetLicence(f.read())
 	
 ######################################################################
@@ -362,6 +359,10 @@ class Siren():
         m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
 
+        ID_IMPORT_PREFERENCES = wx.NewId()
+        m_impPreferences = submenuFile.Append(ID_IMPORT_PREFERENCES, "Import Preferences", "Import preferences into the project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
+
         ID_IMPORT = wx.NewId()
         m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuFile)
 
@@ -374,6 +375,11 @@ class Siren():
 
         ### MENU RED
         menuRed = self.makeContextMenu(frame)
+
+        ID_PREFERENCESDIA = wx.NewId()
+        m_preferencesdia = menuRed.Append(ID_PREFERENCESDIA, "Preferences...", "Set preferences.")
+        frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
+
 
         ### MENU STOPPERS
         menuStoppers = self.makeStoppersMenu(frame)
@@ -460,7 +466,7 @@ class Siren():
         self.next_workerid += 1
         if red.length(0) + red.length(1) > 0:
             self.workers[self.next_workerid] = {"worker":ExpanderThread(self.next_workerid, self.dw.data,
-                                                                        self.dw.minesettings, self.logger, red.copy()),
+                                                                        self.dw.getPreferences(), self.logger, red.copy()),
                                                 "results_track":0,
                                                 "batch_type": "partial",
                                                 "results_tab": "exp",
@@ -468,7 +474,7 @@ class Siren():
                                                 "work_estimate":0}
         else:
             self.workers[self.next_workerid] = {"worker":MinerThread(self.next_workerid, self.dw.data,
-                                                                        self.dw.minesettings, self.logger),
+                                                                        self.dw.getPreferences(), self.logger),
                                                 "results_track":0,
                                                 "batch_type": "final",
                                                 "results_tab": "exp",
@@ -587,7 +593,7 @@ class Siren():
                 try:
                     self.dw.importDataFromFiles([left_path, right_path])
                     self.dw.updateNames()
-                    self.details = {'names': self.dw.names}
+                    self.details = {'names': self.dw.getColNames()}
                     self.reloadVars()
                     self.reloadReds()
                 except IOError, error:
@@ -615,6 +621,18 @@ class Siren():
                 wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
         open_dlg.Destroy()
         self.resetCoordinates()
+
+    def OnImportPreferences(self, event):
+        dir_name = os.path.expanduser('~/')
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:
+                self.dw.importPreferencesFromFile(path)
+            except IOError as error:
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
+        open_dlg.Destroy()
         
     def OnImportQueries(self, event):
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
@@ -716,6 +734,11 @@ class Siren():
                 self.tabs[tab_id]["hide"] = True
                 self.tabs[tab_id]["tab"].Hide()
 
+    def OnPreferencesDialog(self, event):
+        d = PreferencesDialog(self.toolFrame, self.dw)
+        d.ShowModal()
+        d.Destroy()
+
     def OnHelp(self, event):
         self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
         html = wx.html.HtmlWindow(self.helpFrame)
@@ -733,26 +756,30 @@ class Siren():
         exit()
   
     def resetCoordinates(self):
-        ### WARNING COORDINATES ARE INVERTED!!!
         self.deleteAllViews()
-        self.coord_extrema = [[min(self.dw.coord[0]), max(self.dw.coord[0])],[min(self.dw.coord[1]), max(self.dw.coord[1])]]
+
+    def resetConstraints(self):
+        self.constraints = Constraints(self.dw.getNbRows(), self.dw.getPreferences())
 
     def resetLogger(self):
-        if self.dw.minesettings != None and self.dw.minesettings.param.has_key('verbosity'):
-            self.logger = Log({"*": self.dw.minesettings.param['verbosity'], "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
-            Data.logger = self.logger
+        #### TODO
+        if self.dw.getPreferences() != None and self.dw.getPreference('verbosity') != None:
+            self.logger = Log({"*": self.dw.getPreference('verbosity'), "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+        else:
+            self.logger = Log({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            
 
     def reloadVars(self):
         ## Initialize variable lists data
         for side in [0,1]:
             if self.dw.data != None and self.details != None:
-                self.tabs[side]["tab"].resetData(self.dw.data.cols[side], self.details)
+                self.tabs[side]["tab"].resetData(self.dw.getDataCols(side), self.details)
             else:
                 self.tabs[side]["tab"].resetData(ICList(), self.details)
             
     def reloadReds(self):
         ## Initialize red lists data
-        self.tabs["reds"]["tab"].resetData(self.dw.reds, self.details, self.dw.rshowids)
+        self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.details, self.dw.getShowIds())
         self.tabs["exp"]["tab"].resetData(Batch(), self.details)
 #        self.getMapView().setCurrentRed(redsTmp[0])
 #        self.getMapView().updateRed()

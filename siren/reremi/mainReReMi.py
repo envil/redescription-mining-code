@@ -9,12 +9,16 @@ from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import Miner
 import pdb
+
  
 def run(arguments):
 
     ticO = datetime.datetime.now()
 
-    pm = PreferencesManager(["miner_confdef.xml", "inout_confdef.xml"])
+    pref_dir = os.path.dirname(__file__)
+    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
+
+    pm = PreferencesManager(conf_defs)
     pr = PreferencesReader(pm)
     config_filename = None
     if len(arguments) > 1:
