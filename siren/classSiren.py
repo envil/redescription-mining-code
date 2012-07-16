@@ -71,7 +71,7 @@ class Siren():
     # For About dialog
     name = "Siren"
     about_file = 'ABOUT'
-    licence_file = 'LICENCE'
+    licence_file = 'LICENCE_short'
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
     version = '0.9b'
     cpyright = '(C) 2012 Esther Galbrun and Pauli Miettinen'
@@ -376,8 +376,8 @@ class Siren():
         ### MENU RED
         menuRed = self.makeContextMenu(frame)
 
-        ID_PREFERENCESDIA = wx.NewId()
-        m_preferencesdia = menuRed.Append(ID_PREFERENCESDIA, "Preferences...", "Set preferences.")
+        #ID_PREFERENCESDIA = wx.NewId()
+        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences...", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
 

@@ -16,12 +16,14 @@ class PreferencesDialog(wx.Dialog):
 		Initialize the config dialog
 		"""
 		wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Preferences') #, size=(550, 300))
-		nb = wx.Notebook(self, wx.ID_ANY)
+		self.nb = wx.Notebook(self, wx.ID_ANY)
 
 		self.pref_handle = pref_handle
 		self.controls_map = {}
 		self.objects_map = {}
 		self.tabs = []
+
+		self.cancel_change = False # Tracks if we should cancel a page change
 		
 		for section in self.pref_handle.getPreferencesManager().subsections:
 			sec_id = wx.NewId()
@@ -29,7 +31,7 @@ class PreferencesDialog(wx.Dialog):
 			self.controls_map[sec_id] = {"button": {}, "range": {},
 						     "open": {}, "single_options": {}, "multiple_options": {}}
 
-			conf = wx.Panel(nb, -1)
+			conf = wx.Panel(self.nb, -1)
 			top_sizer = wx.BoxSizer(wx.VERTICAL)
 			self.dispGUI(section, sec_id, conf, top_sizer)
 			self.makeButtons(sec_id, conf, top_sizer)
@@ -50,8 +52,9 @@ class PreferencesDialog(wx.Dialog):
 				for chkbox in chkset.itervalues():
 					self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
 
-			nb.AddPage(conf, section.get("name"))
-		self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanged) 
+			self.nb.AddPage(conf, section.get("name"))
+		self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.onPageChanging)
+		self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChanged)
 		
 		self.Centre()
 		self.SetSize((500, 700))
@@ -144,7 +147,7 @@ class PreferencesDialog(wx.Dialog):
 
 		top_sizer.Add(btn_sizer, 0, wx.ALIGN_BOTTOM|wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5)
 
-	def OnPageChanged(self, event):
+	def onPageChanging(self, event):
 		sec_id = self.tabs[event.GetOldSelection()]
 		if self.controls_map[sec_id]["button"]["apply"].IsEnabled():
 			### TODO:: FOR NOW SIMPLY APPLY WITHOUT ASKING FOR CONFIRMATION
@@ -152,12 +155,27 @@ class PreferencesDialog(wx.Dialog):
 			# if save_dlg.ShowModal() != wx.ID_NO:
 			# 	return
 			# save_dlg.Destroy()
-			
-			vdict = self.getSecValuesDict(sec_id)
-			self.pref_handle.updatePreferencesDict(vdict)
-			self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-			self.controls_map[sec_id]["button"]["reset"].Disable()
-			self.controls_map[sec_id]["button"]["apply"].Disable()
+
+			dlg = ApplyResetCancelDialog(parent=self, title='Unapplied changes', msg='Do you want to apply all changes or reset the values before proceeding?');
+			res = dlg.ShowModal()
+			dlg.Destroy()
+			if res == 1:
+				self._apply(sec_id)
+			elif res == 2:
+				self._reset(sec_id)
+			else:
+				self.cancel_change = True # This tell onPageChanged to revert
+							
+			#vdict = self.getSecValuesDict(sec_id)
+			#self.pref_handle.updatePreferencesDict(vdict)
+			#self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+			#self.controls_map[sec_id]["button"]["reset"].Disable()
+			#self.controls_map[sec_id]["button"]["apply"].Disable()
+
+	def onPageChanged(self, event):
+		if self.cancel_change:
+			self.nb.ChangeSelection(event.GetOldSelection())
+		self.cancel_change = False
 
 	def onCancel(self, event):
 		self.EndModal(0)
@@ -165,9 +183,15 @@ class PreferencesDialog(wx.Dialog):
 	def onReset(self, event):
 		if event.GetId() in self.objects_map.keys():
 			sec_id = self.objects_map[event.GetId()][0]
-			self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-			self.controls_map[sec_id]["button"]["reset"].Disable()
-			self.controls_map[sec_id]["button"]["apply"].Disable()
+			self._reset(sec_id)
+			#self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+			#self.controls_map[sec_id]["button"]["reset"].Disable()
+			#self.controls_map[sec_id]["button"]["apply"].Disable()
+
+	def _reset(self, sec_id):
+		self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+		self.controls_map[sec_id]["button"]["reset"].Disable()
+		self.controls_map[sec_id]["button"]["apply"].Disable()
 
 	def onResetToDefaults(self, event):
 		if event.GetId() in self.objects_map.keys():
@@ -177,11 +201,19 @@ class PreferencesDialog(wx.Dialog):
 	def onApply(self, event):
 		if event.GetId() in self.objects_map.keys():
 			sec_id = self.objects_map[event.GetId()][0]
-			vdict = self.getSecValuesDict(sec_id)
-			self.pref_handle.updatePreferencesDict(vdict)
-			self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-			self.controls_map[sec_id]["button"]["reset"].Disable()
-			self.controls_map[sec_id]["button"]["apply"].Disable()
+			self._apply(sec_id)
+			#vdict = self.getSecValuesDict(sec_id)
+			#self.pref_handle.updatePreferencesDict(vdict)
+			#self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+			#self.controls_map[sec_id]["button"]["reset"].Disable()
+			#self.controls_map[sec_id]["button"]["apply"].Disable()
+
+	def _apply(self, sec_id):
+		vdict = self.getSecValuesDict(sec_id)
+		self.pref_handle.updatePreferencesDict(vdict)
+		self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+		self.controls_map[sec_id]["button"]["reset"].Disable()
+		self.controls_map[sec_id]["button"]["apply"].Disable()
 	
 	def onOK(self, event):
 		if event.GetId() in self.objects_map.keys():
@@ -254,3 +286,44 @@ class PreferencesDialog(wx.Dialog):
 			else:
 				vdict[item_id] = pit.getDefaultTriplet()
 		return vdict
+
+class ApplyResetCancelDialog(wx.Dialog):
+	"""Shows a dialog with three buttons: Apply, Reset, and Cancel.
+	Returns 1 for apply, 2 for reset, and -1 for cancel"""
+	def __init__(self, parent, title="", msg=""):
+		super(ApplyResetCancelDialog, self).__init__(parent=parent, title=title, size=(300, 150))
+
+		top_sizer = wx.BoxSizer(wx.VERTICAL)
+
+		txt = wx.StaticText(self, label=msg)
+		txt.Wrap(180)
+		#txt = self.CreateTextSizer(msg)
+
+		btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+		applyBtn = wx.Button(self, id=wx.ID_ANY, label="Apply")
+		resetBtn = wx.Button(self, id=wx.ID_ANY, label="Reset")
+		cancelBtn = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
+
+		btn_sizer.Add(cancelBtn, flag=wx.ALIGN_LEFT|wx.RIGHT, border=20)
+		btn_sizer.Add(resetBtn, flag=wx.ALIGN_RIGHT)
+		btn_sizer.Add(applyBtn, flag=wx.ALIGN_RIGHT)
+		
+		top_sizer.Add(txt, flag=wx.ALL|wx.ALIGN_CENTER, border=20)
+		top_sizer.Add(btn_sizer, flag=wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, border=5)
+
+		self.SetSizer(top_sizer)
+
+		applyBtn.Bind(wx.EVT_BUTTON, self.onApply)
+		resetBtn.Bind(wx.EVT_BUTTON, self.onReset)
+		cancelBtn.Bind(wx.EVT_BUTTON, self.onCancel)
+
+	def onApply(self, e):
+		self.EndModal(1)
+
+	def onReset(self, e):
+		self.EndModal(2)
+
+	def onCancel(self, e):
+		self.EndModal(-1)
+		
