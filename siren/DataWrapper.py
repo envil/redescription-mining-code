@@ -1,4 +1,3 @@
-
 import numpy as np
 import tempfile
 import os
@@ -12,12 +11,12 @@ import codecs
 import pdb
 
 from reremi.classRedescription import Redescription
-from reremi.classData import Data
+from reremi.classData import Data, DataError
 from reremi.classQuery import Query
 from reremi.toolICList import ICList
 from reremi.classBatch import Batch
 from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-
+import reremi.toolRead as toolRead
 
 class DataWrapper(object):
     """Contains all the data
@@ -25,17 +24,11 @@ class DataWrapper(object):
 
     # CONSTANTS
     # Names of the files in the package
-    COO_FILENAME = 'coordinates.txt'
-    DATA_PICKLEFILENAME = "data.pickle"
-    NAMES_PICKLEFILENAME = "names.pickle"
-    DATA_FILENAMES_PREFIX = 'data-'
-    DATA_FILENAMES_SUFFIX = '.txt'
-    NAME_FILENAMES_SUFFIX = '.names'
-    QUERIES_FILENAME = 'queries.txt'
-    RSHOWIDS_FILENAME = 'rshowids.txt'
+    DATA_FILENAME = 'data.xml'
+    QUERIES_FILENAME = 'queries.xml'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
-    PACKAGE_NAME = 'sirene_package'
+    PACKAGE_NAME = 'siren_package'
 
     pref_dir = os.path.dirname(__file__)
     conf_defs = [pref_dir + "/reremi/miner_confdef.xml", pref_dir + "/ui_confdef.xml"]
@@ -43,78 +36,30 @@ class DataWrapper(object):
     FILETYPE_VERSION = 2
     CREATOR = 'DataWrapper'
 
-    def __init__(self, coo_filename = None, data_filenames = None, queries_filename = None, preferences_filename = None, package_filename = None):
+    def __init__(self, package_filename = None):
         """Inits the class. Either package_filename or the others should be given.
         """
 
         #### [[idi, 1] for idi in range(len(self.data))]
         self.pm = PreferencesManager(self.conf_defs)
-        self.coord = None
-        self.coo_filename = None
-        self.data = None
-        self.data_filenames = None
-        self.number_of_datafiles = 0
-        self.reds = None
-        self.rshowids = None
-        self.preferences = None
-        self.queries_filename = None
+        self.resetData()
+        self.preferences = self.pm.getDefaultTriplets()
         self.package_filename = None
-        self.preferences_filename = None
-        self.package_name = None
         self._isChanged = False
         self._isFromPackage = False
 
         if package_filename is not None:
-            self._initWithPackage(package_filename)
-        else:
-            self._initWithFiles(coo_filename, data_filenames, queries_filename, preferences_filename)
+            self.openPackage(package_filename)
 
-    def _initWithPackage(self, package_filename):
-        """Loads everything from a package"""
-        try:
-            self._readPackageFromFile(package_filename)
-        except IOError, ValueError:
-            print 'Cannot open'
-            self.package_filename = None
-            raise
-            ## TODO exception handling
-            #self.package_filename = package_filename
-            #self.isFromPackage = True
-
-
-
-    def _initWithFiles(self, coo_filename, data_filenames, queries_filename, preferences_filename):
-        """Loads from files"""
-
-        self.coo_filename = coo_filename
-        self.data_filenames = data_filenames
-        self.queries_filename = queries_filename
-        self.preferences_filename = preferences_filename
-        try:
-            if coo_filename is not None:
-                self.coord = self._readCoordFromFile(coo_filename)
-            if data_filenames is not None:
-                self.data = self._readDataFromFiles(data_filenames)
-                self.updateNames()
-            if queries_filename is not None:
-                self.reds = self._readQueriesFromFile(queries_filename)
-            if preferences_filename is not None:
-                self.preferences = self._readPreferencesFromFile(preferences_filename)
-        except IOError, ValueError:
-            print "Cannot open"
-            self.coo_filename = None
-            self.data_filenames = None
-            self.number_of_datafiles = 0
-            self.queries_filename = None
-            self.preferences_filename = None
-            raise
-            
-        if data_filenames is not None:
-            self.number_of_datafiles = len(data_filenames)
+    def resetData(self):
+        self.data = None
+        self.resetQueries()
+        self.isChanged = True
         self.isFromPackage = False
-        if coo_filename is not None or data_filenames is not None or queries_filename is not None or preferences_filename is not None:
-            self.rshowids = ICList([idi for idi in range(len(self.reds))], True)
-            self.isChanged = True
+        
+    def resetQueries(self):
+        self.reds = Batch([])
+        self.rshowids = ICList([], True)
 
     def getColNames(self):
         if self.data != None:
@@ -134,12 +79,13 @@ class DataWrapper(object):
     def getData(self):
         return self.data
 
-    def getCoord(self):
-        return self.coord
+    def getCoords(self):
+        if self.data != None:
+            return self.data.coords
 
-    def getCoordExtrema(self):
-        if self.coord != None:
-            return [min(self.coord[0]), max(self.coord[0]), min(self.coord[1]), max(self.coord[1])]
+    def getCoordsExtrema(self):
+        if self.data != None and self.data.coords != None:
+            return [min(self.data.coords[0]), max(self.data.coords[0]), min(self.data.coords[1]), max(self.data.coords[1])]
         return [0,1,0,1]
 
     def getReds(self):
@@ -152,13 +98,10 @@ class DataWrapper(object):
             return self.rshowids
         return []
 
-
     def getPreferencesManager(self):
         return self.pm
              
     def getPreferences(self):
-        if self.preferences == None:
-            return self.pm.getDefaultTriplets()
         return self.preferences
 
     def getPreference(self, param_id):
@@ -169,17 +112,11 @@ class DataWrapper(object):
  
 
     def __str__(self):
-        return "coord = " + str(self.coord) + "; " \
-            + "coo_filename = " + str(self.coo_filename) + "; " \
+        return "coords = " + str(self.coords) + "; " \
             + "data = " + str(self.data) + "; " \
-            + "data_filenames = " + str(self.data_filenames) + "; " \
-            + "number_of_datafiles = " + str(self.number_of_datafiles) + "; " \
             + "#reds = " + str(len(self.reds)) + "; " \
             + "rshowids = " + str(self.rshowids) + "; " \
             + "preferences = " + str(self.preferences) + "; " \
-            + "queries_filename = " + str(self.queries_filename) + "; " \
-            + "package_filename = " + str(self.package_filename) + "; " \
-            + "preferences_filename = " + str(self.preferences_filename) + "; " \
             + "package_name = " + str(self.package_name) + "; " \
             + "isChanged = " + str(self.isChanged) + "; " \
             + "isFromPackage = " + str(self.isFromPackage)
@@ -225,110 +162,72 @@ class DataWrapper(object):
             self.preferences.update(params)
             self.isChanged = True
 
-        
-    def importCoordFromFile(self, coo_filename):
-        """Loads new coordinates from file"""
-        old_coord = self.coord
-        old_coo_filename = self.coo_filename
-            
-        try:
-            self.coord = self._readCoordFromFile(coo_filename)
-        except IOError as details:
-            print "Cannot open:", details
-            self.coord = old_coord
-        except:
-            self.coord = old_coord
-            raise
-        else:
-            self.coo_filename = coo_filename
-            self.isChanged = True
 
-    def importDataFromFiles(self, data_filenames):
-        """Loads new data from files"""
-        old_data = self.data
+#################### IMPORTS            
+    def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
         try:
-            self.data = self._readDataFromFiles(data_filenames)
-        except IOError as arg:
-            print "Cannot open:", arg
-            self.data = old_data
-        except:
-            self.data = old_data
-            raise
+            tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
+
+        except DataError as details:
+            print "Problem opening files.", details
+
         else:
-            self.data_filenames = data_filenames
-            self.number_of_datafiles = len(data_filenames)
-            self.reds = Batch()
-            self.coord = None
+            self.data = tmp_data
+            self.resetQueries()
             self.isChanged = True
             self.isFromPackage = False
 
-    def updateNames(self):
-        """Update names to match those of data"""
-        if self.data_filenames is None: return
+    def importDataFromFile(self, data_filename):
         try:
-            self.data.setNames(self.data_filenames)
-        except:
-            print "Cannot update names"
-            raise
+            tmp_data = self._readDataFromFile(data_filename)
+
+        except DataError as details:
+            print "Problem opening files.", details
+
         else:
+            self.data = tmp_data
+            self.resetQueries()
             self.isChanged = True
             self.isFromPackage = False
 
     def importQueriesFromFile(self, queries_filename):
         """Loads new queries from file"""
-        old_reds = self.reds
         try:
-            self.reds = self._readQueriesFromFile(queries_filename)
+            (pn, suffix) = os.path.splitext(os.path.basename(queries_filename))
+            if suffix == ".queries":
+                tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
+            else:
+                tmp_reds, tmp_rshowids = self._readQueriesFromFile(queries_filename)
         except IOError as arg:
             print "Cannot open", arg
-            self.reds = old_reds
-            raise
-        except:
-            self.reds = old_reds
             raise
         else:
-            self.queries_filename = queries_filename
-            self.rshowids = ICList([idi for idi in range(len(self.reds))], True)
+            self.reds = tmp_reds
+            self.rshowids = tmp_rshowids
+            self.isChanged = True
+
+    def importQueriesTXTFromFile(self, queries_filename):
+        """Loads new queries from file"""
+        try:
+            tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
+        except IOError as arg:
+            print "Cannot open", arg
+            raise
+        else:
+            self.reds = tmp_reds
+            self.rshowids = tmp_rshowids
             self.isChanged = True
 
     def importPreferencesFromFile(self, preferences_filename):
         """Imports mining preferences from file"""
-        old_preferences = self.preferences
         try:
-            self.preferences = self._readPreferencesFromFile(preferences_filename)
+            tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
             print "Cannot open", arg
-            self.preferences = old_preferences
-            raise
-        except:
-            self.preferences = old_preferences
-            raise
         else:
-            self.preferences_filename = preferences_filename
+            self.preferences = tmp_preferences
             self.isChanged = True
             
-
-    def reloadCoord(self):
-        """Re-reads coordinates"""
-        try:
-            self.importCoordFromFile(self.coo_filename)
-        except:
-            raise
-
-    def reloadQueries(self):
-        """Re-reads queries"""
-        try:
-            self.importQueriesFromFile(self.queries_filename)
-        except:
-            raise
-
-    def reloadPreferences(self):
-        """Re-read preferences"""
-        try:
-            self.importPreferencesFromFile(self.preferences_filename)
-        except:
-            raise
-
     def openPackage(self, package_filename):
         """Loads new data from a package"""
         try:
@@ -342,49 +241,69 @@ class DataWrapper(object):
             self.isChanged = False
             self.package_filename = package_filename
 
-    ## The readers
-    def _readCoordFromFile(self, filename):
+######################## READS
+    def _readDataFromFiles(self, data_filenames, names_filenames, coo_filename):
+        ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
-            coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
-        except:
-            raise
-        return coord
-
-    def _readDataFromFiles(self, filenames):
-        try:
-            data = Data(filenames)
-        except:
+            data = Data(data_filenames, names_filenames, coo_filename)
+        except DataError as details:
             raise
         return data
 
-    def _readPickledDataFromFile(self, f):
-        """Requires a file pointer to a picle file"""
+    def _readDataFromFile(self, filename):
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+            filep = filename
+        else:
+            try:
+                filep = open(filename, 'r')
+            except:
+                raise
+
         try:
-            data = cPickle.load(f)
-        except cPickle.UnpicklingError as e:
-            raise ValueError(e.args)
-        except:
+            data = Data(filep)
+        except DataError as details:
             raise
         return data
 
-    def _readNamesFromFiles(self, filenames):
-        try:
-            names = self.data.readNames(self.data_filenames)
-        except:
-            raise
-        return names
-
-    def _readPickledNamesFromFile(self, f):
-        """Requires a file pointer to a picle file"""
-        try:
-            names = cPickle.load(f)
-        except cPickle.UnpicklingError as e:
-            raise ValueError(e.args)
-        except:
-            raise
-        return names
-    
     def _readQueriesFromFile(self, filename, data=None):
+        if data is None:
+            if self.data is None:
+                raise Exception("Cannot load queries if data is not loaded")
+            else:
+                data = self.data
+        reds = Batch([])
+        show_ids = None
+
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+            filep = filename
+        else:
+            try:
+                filep = open(filename, 'r')
+            except:
+                raise
+        
+        doc = toolRead.parseXML(filep)
+        if doc != None:
+            tmpreds = doc.getElementsByTagName("redescriptions")
+            if len(tmpreds) == 1:
+                reds_node = tmpreds[0]
+                for redx in reds_node.getElementsByTagName("redescription"):
+                    tmp = Redescription()
+                    tmp.fromXML(redx)
+                    tmp.recompute(data)
+                    reds.append(tmp)
+                tmpsi = reds_node.getElementsByTagName("showing_ids")
+                if len(tmpsi) == 1:
+                    show_ids = toolRead.getValues(tmpsi[0], int)
+                    if min(show_ids) < 0 or max(show_ids) >= len(reds):
+                        show_ids = None
+        if show_ids == None:
+            show_ids = range(len(reds))
+        rshowids = ICList(show_ids, True)
+        return reds, rshowids
+
+
+    def _readQueriesTXTFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
                 raise Exception("Cannot load queries if data is not loaded")
@@ -407,30 +326,21 @@ class DataWrapper(object):
                 red = Redescription.fromQueriesPair([queryL, queryR], data)
                 if red != None:
                     reds.append(red)
-        return reds
-
-    def _readRshowidsFromFile(self, file):
-        if not hasattr(file, 'readline'):
-            try:
-                fp = open(file)
-            except:
-                raise
-        else:
-            fp = file
-
-        rshowids = ICList()
-        for line in fp:
-            rshowids.append(int(line))
-
-        if not hasattr(file, 'readline'):
-            fp.close()
-
-        return rshowids
+        rshowids = ICList(range(len(reds)), True)
+        return reds, rshowids
 
     def _readPreferencesFromFile(self, filename):
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+            filep = filename
+        else:
+            try:
+                filep = open(filename, 'r')
+            except:
+                raise
+
         try:
             ### PREFERENCES CHANGED HERE 
-            preferences = PreferencesReader(self.pm).getParameters(filename)
+            preferences = PreferencesReader(self.pm).getParameters(filep)
         except:
             raise
         else:
@@ -438,7 +348,7 @@ class DataWrapper(object):
 
     def _readPackageFromFile(self, filename):
         """Loads a package"""
-        pdb.set_trace()
+
         # TODO: Check that file exists
         if not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
@@ -449,7 +359,6 @@ class DataWrapper(object):
             package = zipfile.ZipFile(filename, 'r')
             files = package.namelist()
             
-
             # Read info.plist
             plist_fd = package.open(self.PLIST_FILE, 'r')
             try:
@@ -463,30 +372,10 @@ class DataWrapper(object):
             package_name = plist['package_name']
 
             # Load data
-            if 'data_picklefilename' in plist:
+            if 'data_filename' in plist:
                 try:
-                    fd = package.open(plist['data_picklefilename'], 'r')
-                    data = self._readPickledDataFromFile(fd)
-                except:
-                    raise
-                finally:
-                    fd.close()
-  
-            # Load names
-            if 'name_picklefilename' in plist:
-                try:
-                    fd = package.open(plist['name_picklefilename'], 'r')
-                    names = self._readPickledNamesFromFile(fd)
-                except:
-                    raise
-                finally:
-                    fd.close()
-
-            # Load coordinates
-            if 'coo_filename' in plist:
-                try:
-                    fd = package.open(plist['coo_filename'], 'r')
-                    coord = self._readCoordFromFile(fd)
+                    fd = package.open(plist['data_filename'], 'r')
+                    data = self._readDataFromFile(fd)
                 except:
                     raise
                 finally:
@@ -496,14 +385,11 @@ class DataWrapper(object):
             if 'queries_filename' in plist:
                 try:
                     fd = package.open(plist['queries_filename'], 'r')
-                    reds = self._readQueriesFromFile(fd, data)
-                    fd2 = package.open(plist['rshowids_filename'], 'r')
-                    rshowids = self._readRshowidsFromFile(fd2)
+                    reds, rshowids = self._readQueriesFromFile(fd, data)
                 except:
                     raise
                 finally:
                     fd.close()
-                    fd2.close()
 
             # Load preferences
             if 'preferences_filename' in plist:
@@ -523,40 +409,24 @@ class DataWrapper(object):
         # Closes with ZipFile
         # Move data class variables
         self.package_name = package_name
-        if 'data_picklefilename' in plist:
+        if 'data_filename' in plist:
             self.data = data
-            self.data_filenames = plist['data_filenames']
-            self.number_of_datafiles = len(plist['data_filenames'])
         else:
             self.data = None
-            self.data_filenames = None
-            self.number_of_datafiles = 0
-        if 'name_picklefilename' in plist:
-            self.data.setNames(names)
-        if 'coo_filename' in plist:
-            self.coord = coord
-            self.coo_filename = plist['coo_filename']
-        else:
-            self.coord = None
-            self.coo_filename = None
         if 'queries_filename' in plist:
             self.reds = reds
             self.rshowids = rshowids
-            self.queries_filename = plist['queries_filename']
         else:
             self.reds = None
             self.rshowids = None
-            self.queries_filename = None
         if 'preferences_filename' in plist:
             self.preferences = preferences
-            self.preferences_filename = plist['preferences_filename']
         else:
-            self.preferences = None
-            self.preferences_filename = None
+            self.preferences = self.pm.getDefaultTriplets()
         self.package_filename = os.path.abspath(filename)
         self.isChanged = False
         self.isFromPackage = True
-
+##        print "Done Loading"
 
     ## The saving function
     def savePackageToFile(self, filename, suffix='.siren'):
@@ -595,27 +465,11 @@ class DataWrapper(object):
             self.package_filename = old_package_filename
             raise
 
-        # Write coordinates
-        try:
-            if self.coord is not None:
-                self._writeCoordinates(os.path.join(tmp_dir, plist['coo_filename']), toPackage = True)
-        except IOError:
-            shutil.rmtree(tmp_dir)
-            self.package_filename = old_package_filename
-            raise
 
         # Write data files
         try:
             if self.data is not None:
-                self._pickleDatafiles(os.path.join(tmp_dir, plist['data_picklefilename']), toPackage = True)
-        except IOError:
-            shutil.rmtree(tmp_dir)
-            self.package_filename = old_package_filename
-            raise
-
-        # Write name files
-        try:
-            self._pickleNamefiles(os.path.join(tmp_dir, plist['name_picklefilename']), toPackage = True)
+                self._writeData(os.path.join(tmp_dir, plist['data_filename']), toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -624,8 +478,7 @@ class DataWrapper(object):
         # Write queries
         try:
             if self.reds is not None:
-                self._writeQueries(os.path.join(tmp_dir, plist['queries_filename']), toPackage = True)
-                self._writeRshowids(os.path.join(tmp_dir, plist['rshowids_filename']), toPackage = True)
+                self._writeQueries(os.path.join(tmp_dir, plist['queries_filename']), named=False, toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -649,25 +502,14 @@ class DataWrapper(object):
             #with zipfile.ZipFile(filename + suffix, 'w') as package:
             package.write(os.path.join(tmp_dir, self.PLIST_FILE),
                           arcname = os.path.join('.', self.PLIST_FILE))
-            if self.coord is not None:
-                package.write(os.path.join(tmp_dir, plist['coo_filename']),
-                              arcname = os.path.join('.', plist['coo_filename']),
-                    compress_type = zipfile.ZIP_DEFLATED)
             if self.data is not None:
-                package.write(os.path.join(tmp_dir, plist['data_picklefilename']),
-                              arcname = os.path.join('.', plist['data_picklefilename']),
-                    compress_type = zipfile.ZIP_DEFLATED)
-                package.write(os.path.join(tmp_dir, plist['name_picklefilename']),
-                              arcname = os.path.join('.', plist['name_picklefilename']),
+                package.write(os.path.join(tmp_dir, plist['data_filename']),
+                              arcname = os.path.join('.', plist['data_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
             if self.reds is not None:
                 package.write(os.path.join(tmp_dir, plist['queries_filename']),
                               arcname = os.path.join('.',
                                                      plist['queries_filename']),
-                    compress_type = zipfile.ZIP_DEFLATED)
-                package.write(os.path.join(tmp_dir, plist['rshowids_filename']),
-                              arcname = os.path.join('.',
-                                                     plist['rshowids_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
             if self.preferences is not None:
                 package.write(os.path.join(tmp_dir, plist['preferences_filename']),
@@ -694,36 +536,18 @@ class DataWrapper(object):
         else:
             self.savePackageToFile(self.package_filename, None)
 
-    def _writeCoordinates(self, filename, toPackage = False):
-        c = np.vstack((self.coord[1,:], self.coord[0,:]))
-        try:
-            np.savetxt(filename, c.transpose())
-        except:
-            raise
-        if not toPackage:
-            self.coo_filename = filename
 
+    def exportQueries(self, filename, named=True):
+        ### TODO select format
+        (pn, suffix) = os.path.splitext(os.path.basename(filename))
+        if suffix == ".tex":
+            self._writeQueriesTEX(filename, named)
+        elif suffix == ".queries":
+            self._writeQueriesTXT(filename, named)
+        else:
+            self._writeQueries(filename, named)
 
-    def _pickleDatafiles(self, filename, toPackage = True):
-        with open(filename, 'w') as f:
-            try:
-                cPickle.dump(self.data, f, 0)
-            except cPickle.PicklingError as e:
-                raise ValueError(e.args)
-            except:
-                raise
-
-
-    def _pickleNamefiles(self, filename, toPackage = True):
-        with open(filename, 'w') as f:
-            try:
-                cPickle.dump(self.data.getNames(), f, 0)
-            except cPickle.PicklingError as e:
-                raise ValueError(e.args)
-            except:
-                raise
-
-    def exportQueries(self, filename, named = False, toPackage = False):
+    def _writeQueriesTXT(self, filename, named = False, toPackage = False):
         if named:
             names = self.data.getNames()
         else:
@@ -733,7 +557,7 @@ class DataWrapper(object):
                 if self.reds[i].getEnabled():
                     f.write(self.reds[i].dispU(names)+"\n")
 
-    def exportQueriesLatex(self, filename, named = False, toPackage = False):
+    def _writeQueriesTEX(self, filename, named = False, toPackage = False):
         if named:
             names = self.data.getNames()
         else:
@@ -746,22 +570,32 @@ class DataWrapper(object):
             f.write(Redescription.dispTexConc()+"\n")
             f.write("\n")
 
-    def _writeQueries(self, filename, toPackage = False):
+    def _writeQueries(self, filename, named = False, toPackage = False):
+        if named:
+            names = self.data.getNames()
+        else:
+            names = [None, None]
+
         with open(filename, 'w') as f:
+            f.write("<root>\n")
+            f.write("\t<redescriptions>\n")
             for i in range(len(self.reds)):
-                self.reds[i].write(f, None)
-
-    def _writeRshowids(self, filename, toPackage = False):
-        with open(filename, 'w') as f:
-            for i in range(len(self.rshowids)):
-                f.write(str(self.rshowids[i])+'\n')
-
+                f.write(self.reds[i].toXML(False, names).replace("\n", "\n\t\t"))
+            f.write("\t<showing_ids>\n")
+            for i in self.rshowids:
+                f.write("\t\t<value>%i</value>\n" % i)
+            f.write("\t</showing_ids>\n")
+            f.write("\t</redescriptions>\n")
+            f.write("</root>\n")
+            
     def _writePreferences(self, filename, toPackage = False):
         with open(filename, 'w') as f:
-            ### TODO
-            f.write(self.minepreferences.dispParams())
-    
+            f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True))
 
+    def _writeData(self, filename, toPackage = False):
+        with open(filename, 'w') as f:
+            self.data.writeXML(f)
+    
     def _makePlistDict(self):
         """Makes a dict to write to plist."""
         d = dict(creator = self.CREATOR,
@@ -775,45 +609,15 @@ class DataWrapper(object):
                 d['package_name'] = pn
             else:
                 d['package_name'] = self.PACKAGE_NAME
-            
-        if self.coord is not None:
-            if self.coo_filename is not None:
-                d['coo_filename'] = os.path.basename(self.coo_filename)
-            else:
-                d['coo_filename'] = self.COO_FILENAME
-                
+
+                            
         if self.data is not None:
-            if self.data_filenames is not None:
-                d['data_filenames'] = [os.path.basename(df) for df in self.data_filenames]
-            else:
-                d['data_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.DATA_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
-            d['data_picklefilename'] = self.DATA_PICKLEFILENAME
-                
-        if self.data_filenames is not None:
-            name_filenames = []
-            for i in range(len(self.data_filenames)):
-                (nf, ext) = os.path.splitext(os.path.basename(self.data_filenames[i]))
-                name_filenames.append(str(nf) + str(self.NAME_FILENAMES_SUFFIX))
-            d['name_filenames'] = name_filenames
-        else:
-            d['name_filenames'] = [''.join([self.DATA_FILENAMES_PREFIX, str(i), self.NAME_FILENAMES_SUFFIX]) for i in range(self.numberOfDataFiles)]
-        d['name_picklefilename'] = self.NAMES_PICKLEFILENAME
-                
+            d['data_filename'] = self.DATA_FILENAME
+                                
         if self.reds is not None:
-            if self.queries_filename is not None:
-                d['queries_filename'] = os.path.basename(self.queries_filename)
-            else:
-                d['queries_filename'] = self.QUERIES_FILENAME
-            d['rshowids_filename'] = self.RSHOWIDS_FILENAME
+            d['queries_filename'] = self.QUERIES_FILENAME
 
         if self.preferences is not None:
-            if self.preferences_filename is not None:
-                d['preferences_filename'] = os.path.basename(self.preferences_filename)
-            else:
-                d['preferences_filename'] = self.PREFERENCES_FILENAME
+            d['preferences_filename'] = self.PREFERENCES_FILENAME
             
         return d
-            
-
-
-            

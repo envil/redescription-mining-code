@@ -775,7 +775,7 @@ class Query:
                         string += '%s ' % op
                     string += literal.disp(names, lenIndex)
                 op = op.other()
-        return string
+        return string.strip()
 
     def dispTex(self, names = None):
         if len(self) == 0 :
@@ -796,7 +796,7 @@ class Query:
                     else:
                         string += ' %s %s' % (op.dispTex(), literal.dispTex(names))
                 op = op.other()
-        return string
+        return string.strip()
 
     def dispU(self, names = None):
         if len(self) == 0 :
@@ -817,7 +817,7 @@ class Query:
                     else:
                         string += ' %s %s' % (op.dispU(), literal.dispU(names))
                 op = op.other()
-        return string
+        return string.strip()
 
     def parseApd(string, names=None):
         pattrn = '^(?P<pattIn>[^\\'+Op.bannchar+']*)'+Op.pattAny+'?(?P<pattOut>(?(op).*))$'

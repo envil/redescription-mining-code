@@ -1,4 +1,4 @@
-import xml.dom.minidom
+import toolRead
 import pdb
 
 class CParameter:
@@ -54,14 +54,14 @@ class CParameter:
 		return self._label
 
 	def parseNode(self, node):
-		self._name = getTagData(node, "name")
-		self._legend = getTagData(node, "legend")
+		self._name = toolRead.getTagData(node, "name")
+		self._legend = toolRead.getTagData(node, "legend")
 		if self._name == None:
 			raise Exception("Name for param undefined!")
-		self._label = getTagData(node, "label")
+		self._label = toolRead.getTagData(node, "label")
 		if self._label == None:
 			raise Exception("Label for param %s undefined!"% self._name)
-		tmp_vt = getTagData(node, "value_type")
+		tmp_vt = toolRead.getTagData(node, "value_type")
 		if tmp_vt in self.value_types.keys():
 			self._value_type = self.value_types[tmp_vt]
 		if self._value_type == None:
@@ -71,19 +71,19 @@ class CParameter:
 		return "Parameter (%s): %s" % (self.type_id, self._name)
 
 	def getParamValue(self, raw_value):
-		return parseToType(raw_value, self._value_type)
+		return toolRead.parseToType(raw_value, self._value_type)
 
 	def getParamData(self, raw_value):
 		return self.getParamValue(raw_value)
 
 	def getParamText(self, raw_value):
-		tmp = parseToType(raw_value, self._value_type)
+		tmp = toolRead.parseToType(raw_value, self._value_type)
 		if tmp != None:
 			return str(tmp)
 		return None
 		
 	def getParamTriplet(self, raw_value):
-		tmp = parseToType(raw_value, self._value_type)
+		tmp = toolRead.parseToType(raw_value, self._value_type)
 		if tmp != None:
 			return {"value": tmp, "data": tmp, "text": str(tmp)}
 		else:
@@ -98,10 +98,10 @@ class OpenCParameter(CParameter):
 
 	def parseNode(self, node):
 		CParameter.parseNode(self, node)
-		self._length = getTagData(node, "length", int)
+		self._length = toolRead.getTagData(node, "length", int)
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
-			self._default = getValue(et[0], self._value_type)
+			self._default = toolRead.getValue(et[0], self._value_type)
 		if self._default == None:
 			raise Exception("Default value for param %s undefined!"% self._name)
 
@@ -115,11 +115,11 @@ class RangeCParameter(CParameter):
 
 	def parseNode(self, node):
 		CParameter.parseNode(self, node)
-		self._range_min = getTagData(node, "range_min", self._value_type)
-		self._range_max = getTagData(node, "range_max", self._value_type)
+		self._range_min = toolRead.getTagData(node, "range_min", self._value_type)
+		self._range_max = toolRead.getTagData(node, "range_max", self._value_type)
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
-			self._default = getValue(et[0], self._value_type)
+			self._default = toolRead.getValue(et[0], self._value_type)
 		if self._default == None or self._range_min == None or self._range_max == None \
 		       or self._default < self._range_min or self._default > self._range_max:
 			raise Exception("Default value for param %s not in range!"% self._name)
@@ -130,7 +130,7 @@ class RangeCParameter(CParameter):
 		return strd
 
 	def getParamValue(self, raw_value):
- 		tmp =  parseToType(raw_value, self._value_type)
+ 		tmp =  toolRead.parseToType(raw_value, self._value_type)
 		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
 			return tmp
 		return None
@@ -139,13 +139,13 @@ class RangeCParameter(CParameter):
 		return 	self.getParamValue(raw_value)
 
 	def getParamText(self, raw_value):
- 		tmp =  parseToType(raw_value, self._value_type)
+ 		tmp =  toolRead.parseToType(raw_value, self._value_type)
 		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
 			return str(tmp)
 		return None
 		
 	def getParamTriplet(self, raw_value):
-		tmp = parseToType(raw_value, self._value_type)
+		tmp = toolRead.parseToType(raw_value, self._value_type)
 		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
 			return {"value": tmp, "data": tmp, "text": str(tmp)}
 		else:
@@ -162,10 +162,10 @@ class SingleOptionsCParameter(CParameter):
 		CParameter.parseNode(self, node)
 		et = node.getElementsByTagName("options")
 		if len(et) > 0:
-			self._options = getValues(et[0], self._value_type)
+			self._options = toolRead.getValues(et[0], self._value_type)
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
-			self._default = getValue(et[0], int)
+			self._default = toolRead.getValue(et[0], int)
 		if self._default == None or self._default < 0 or self._default >= len(self._options):
 			raise Exception("Default value for param %s not among options!"% self._name)
 
@@ -176,22 +176,22 @@ class SingleOptionsCParameter(CParameter):
 
 	def getParamValue(self, raw_value, index=False):
 		if index:
-			tmp =  parseToType(raw_value, int)
+			tmp =  toolRead.parseToType(raw_value, int)
 			if tmp != None and tmp >= 0 and tmp < len(self._options):
 				return tmp
 		else:
-			tmp =  parseToType(raw_value, self._value_type)
+			tmp =  toolRead.parseToType(raw_value, self._value_type)
 			if tmp != None and tmp in self._options:
 				return self._options.index(tmp)
 		return None
 
 	def getParamData(self, raw_value, index=False):
 		if index:
-			tmp =  parseToType(raw_value, int)
+			tmp =  toolRead.parseToType(raw_value, int)
 			if tmp != None and tmp >= 0 and tmp < len(self._options):
 				return self._options[tmp]
 		else:
-			tmp =  parseToType(raw_value, self._value_type)
+			tmp =  toolRead.parseToType(raw_value, self._value_type)
 			if tmp != None and tmp in self._options:
 				return tmp
 		return None
@@ -226,10 +226,10 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
 		CParameter.parseNode(self, node)
 		et = node.getElementsByTagName("options")
 		if len(et) > 0:
-			self._options = getValues(et[0], self._value_type)
+			self._options = toolRead.getValues(et[0], self._value_type)
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
-			self._default = getValues(et[0], int)
+			self._default = toolRead.getValues(et[0], int)
 		if self._default == None or min(self._default) < 0 or max(self._default) >= len(self._options):
 			raise Exception("Some default value for param %s not among options!"% self._name)		
 	def getDefaultData(self):
@@ -255,11 +255,8 @@ class PreferencesManager:
 			filenames = [filenames]
 		for filename in filenames:
  			if filename != None:
-				try:
-					doc = xml.dom.minidom.parse(filename)
-				except Exception as inst:
-					print "File %s could not be read! (%s)" % (filename, inst)
-				else:
+				doc = toolRead.parseXML(filename)
+				if doc != None:
 					params = self.processDom(doc.documentElement)
 					if type(params) == dict and params.keys() == ["subsections"]:
 					       	self.subsections.extend(params["subsections"])
@@ -296,15 +293,15 @@ class PreferencesManager:
 	def processDom(self, current, sects=[]):
 		parameters = None
 		name = None
-		if current.nodeType == xml.dom.Node.ELEMENT_NODE:
-			if current.tagName in [ "root", "section"]:
+		if toolRead.isElementNode(current):
+			if toolRead.tagName(current) in ["root", "section"]:
 				parameters = {"subsections": []}
-				if current.tagName == "section":
-					parameters["name"] = getTagData(current, "name")
+				if toolRead.tagName(current) == "section":
+					parameters["name"] = toolRead.getTagData(current, "name")
 					for k in self.parameter_types.keys():
 						parameters[k] = []
 					sects = list(sects + [parameters["name"]])
-				for child in current.childNodes:
+				for child in toolRead.children(current):
 					tmp = self.processDom(child, sects)
 					if tmp != None:
 						if type(tmp) == dict:
@@ -316,9 +313,9 @@ class PreferencesManager:
 							else:
 								self.pdict[tmp_id] = tmp  
 								parameters[tmp.type_id].append(tmp_id)
-			if current.tagName == "parameter":
-				name = getTagData(current, "name")
-				parameter_type = getTagData(current, "parameter_type")
+			if toolRead.tagName(current) == "parameter":
+				name = toolRead.getTagData(current, "name")
+				parameter_type = toolRead.getTagData(current, "parameter_type")
 				if parameter_type in self.parameter_types.keys():
 					parameters = self.parameter_types[parameter_type]()
 					parameters.parseNode(current)
@@ -343,7 +340,7 @@ class PreferencesReader:
 	def readParametersFromFile(self, filename):
 		if filename != None:
 			try:
-				doc = xml.dom.minidom.parse(filename)
+				doc = toolRead.parseXML(filename)
 			except Exception as inst:
 				print "%s is not a valid configuration file! (%s)" % (filename, inst)
 			else:
@@ -353,10 +350,10 @@ class PreferencesReader:
 	def readParameters(self, document):
 		pv = {}
 		for current in document.getElementsByTagName("parameter"):
-			name = getTagData(current, "name")
+			name = toolRead.getTagData(current, "name")
 			item = self.pm.getItem(name)
 			if item != None:
-				values = getValues(current)
+				values = toolRead.getValues(current)
 				if len(values) == 1 and item.getCardinality()=="unique":
 					value = item.getParamTriplet(values[0])
 					if value != None:
@@ -419,53 +416,16 @@ class PreferencesReader:
 			strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults)
 		strd += "</root>"
 		return strd
-		
-			
-##################### 
-def getChildrenText(element):
-        return getNodesText(element.childNodes)
 
-def getNodesText(nodelist):
-        rc = ""
-        for node in nodelist:
-            if node.nodeType == node.TEXT_NODE:
-                rc = rc + node.data
-        return str(rc)
 
-def parseToType(raw_value, value_type=None):
-	if value_type != None and type(raw_value) != value_type:
-		try:
-			raw_value = value_type(raw_value)
-		except ValueError:
-			raw_value = None
-	return raw_value
-
-def getTagData(node, tag, value_type=None):
-	et = node.getElementsByTagName(tag)
-	if len(et) == 0:
-		return None
-	return parseToType(getChildrenText(et[0]), value_type)
-
-def getValue(element, value_type=None):
-	return getTagData(element, "value", value_type)
-
-def getValues(node, value_type=None):
-	values = []
-	for valuen in node.getElementsByTagName("value"):
-		tmp = parseToType(getChildrenText(valuen), value_type)
-		if tmp != None:
-			values.append(tmp)
-	return values
-
-def rdictStr(rdict, level=0):
-	strd = ""
-	for k, v in rdict.items():
-		strd += ("\t"*level)+"["+str(k)+"]\n"
-		if type(v) == dict:
-			strd += rdictStr(v, level+1)
-		else:
-			tmp_str = str(v)
-			tmp_str.replace("\n", "\n"+("\t"*(level+1)))
-			strd += ("\t"*(level+1))+tmp_str+"\n"
-	return strd
-##########################################
+# def rdictStr(rdict, level=0):
+# 	strd = ""
+# 	for k, v in rdict.items():
+# 		strd += ("\t"*level)+"["+str(k)+"]\n"
+# 		if type(v) == dict:
+# 			strd += rdictStr(v, level+1)
+# 		else:
+# 			tmp_str = str(v)
+# 			tmp_str.replace("\n", "\n"+("\t"*(level+1)))
+# 			strd += ("\t"*(level+1))+tmp_str+"\n"
+# 	return strd

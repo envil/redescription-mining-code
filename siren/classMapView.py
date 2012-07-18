@@ -14,6 +14,8 @@ from matplotlib.backends.backend_wxagg import \
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 
+import pdb
+
 class MapView:
 
     COLOR_LEFT = (255,0,0)
@@ -39,7 +41,7 @@ class MapView:
         self.source_list = None
         self.vid = vid
         self.lines = []
-        self.coord_proj = None
+        self.coords_proj = None
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.panel = wx.Panel(self.mapFrame, -1)
         self.draw_map()
@@ -176,7 +178,7 @@ class MapView:
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
 
         self.MapfigMap.clear()
-        llon, ulon, llat, ulat = self.parent.dw.getCoordExtrema()
+        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
         m = Basemap(llcrnrlon=llon, llcrnrlat=llat, urcrnrlon=ulon, urcrnrlat=ulat, \
                     resolution = 'c', projection = 'mill', \
                     lon_0 = llon + (ulon-llon)/2.0, \
@@ -190,8 +192,8 @@ class MapView:
         m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
 
-        if self.parent.dw.getCoord() != None:
-            self.coord_proj = m(self.parent.dw.getCoord()[0], self.parent.dw.getCoord()[1])
+        if self.parent.dw.getCoords() != None:
+            self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             height = 3; width = 3
             self.gca = plt.gca()
 
@@ -209,7 +211,7 @@ class MapView:
         #self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
 
-        if self.coord_proj != None:
+        if self.coords_proj != None:
             m = self.axe
             colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
             sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
@@ -224,7 +226,7 @@ class MapView:
                     lip = list(part)
                     self.points_ids.extend(lip)
                     ids = np.array(lip)
-                    self.lines.extend(m.plot(self.coord_proj[0][ids],self.coord_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=MapView.DOT_ALPHA, picker=3))
+                    self.lines.extend(m.plot(self.coords_proj[0][ids],self.coords_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=MapView.DOT_ALPHA, picker=3))
                 else:
                     self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
                 i += 1
@@ -237,7 +239,7 @@ class MapView:
     #     #### TODO drafting for info on click, uncomment binding  (mpl_connect)
     #     inds = event.ind
     #     for ind in inds:
-    #         print self.points_ids[ind], self.coord_proj[0][self.points_ids[ind]], self.coord_proj[1][self.points_ids[ind]]
+    #         print self.points_ids[ind], self.coords_proj[0][self.points_ids[ind]], self.coords_proj[1][self.points_ids[ind]]
 
     def setMapredInfo(self, red):
         if red == None:

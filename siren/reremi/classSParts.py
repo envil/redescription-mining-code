@@ -22,6 +22,8 @@ def tool_pValSupp(nbRows, supp, pr):
 
 class SParts:
 
+    infos = {"acc": "self.acc()", "pval": "self.pVal()"}
+
     ## TRUTH TABLE:
     ## A B    OR    AND
     ## T T    T     T
@@ -336,49 +338,88 @@ class SParts:
             self.pVal = eval('self.pVal%s' % (SParts.methodpVal))
         except AttributeError:
               raise Exception('Oups method to compute the p-value does not exist !')
-        self.N = N 
-        self.prs = prs
-        self.vect = None
-        ### if include all empty missing parts, remove 
-        if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0 :
-            supports = supports[0:2]
-        elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0 :
-            supports = supports[0:3]
-            
-        ### sParts is a partition of the rows (delta is not explicitely stored when there are no missing values)
-        ## two supports: interpreted as (suppL, suppR)
-        if type(supports) == list and len(supports) == 2 :
-            (suppL, suppR) = supports
-            self.missing = False
-            self.sParts = [ set(suppL - suppR), \
-                       set(suppR - suppL), \
-                       set(suppL & suppR)]
-        ## three supports: interpreted as (alpha, beta, gamma)
-        elif type(supports) == list and len(supports) == 3:
-            self.missing = False
-            self.sParts = [ set(supports[0]), set(supports[1]), set(supports[2])]
-        ## four supports: interpreted as (suppL, suppR, missL, missR)
-        elif type(supports) == list and len(supports) == 4:
-            self.missing = True
-            (suppL, suppR, missL, missR) = supports
-            self.sParts = [ set(suppL - suppR - missR), \
-                       set(suppR - suppL - missL), \
-                       set(suppL & suppR), \
-                       set(range(self.N)) - suppL -suppR - missL - missR, \
-                       set(suppL & missR), \
-                       set(suppR & missL), \
-                       set(missR - suppL - missL), \
-                       set(missL - suppR - missR), \
-                       set(missL & missR) ]
-        ## nine supports: interpreted as (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud)
-        elif type(supports) == list and len(supports) == 9:
-            self.missing = True
-            self.sParts = [set(support) for support in supports]
-        ## else: set all empty
-        else:
-            self.missing = False
-            self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
 
+        #### init from dict_info
+        if type(N) == dict:
+            self.missing = False
+            self.sParts = [set() for i in range(len(SParts.labels))]
+            self.prs = [-1, -1]
+            self.N = 0
+            supp_keys = sdict.keys()
+            for i, supp_key in enumerate(SParts.labels):
+                if sdict.has_key(supp_key):
+                    if i > 3 and len(sdict[supp_key]) > 0:
+                        self.missing = True
+                    self.sParts[i] = set(sdict.pop(supp_key))
+
+            if sdict.has_key('pr_0'):
+                self.prs[0] = sdict.pop('pr_0')
+            if sdict.has_key('pr_1'):
+                self.prs[1] = sdict.pop('pr_1')
+            if sdict.has_key('N'):
+                self.N = sdict.pop('N')
+            if not self.missing:
+                del self.sParts[4:]
+                           
+        else:
+            self.N = N 
+            self.prs = prs
+            self.vect = None
+            ### if include all empty missing parts, remove 
+            if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0 :
+                supports = supports[0:2]
+            elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0 :
+                supports = supports[0:3]
+
+            ### sParts is a partition of the rows (delta is not explicitely stored when there are no missing values)
+            ## two supports: interpreted as (suppL, suppR)
+            if type(supports) == list and len(supports) == 2 :
+                (suppL, suppR) = supports
+                self.missing = False
+                self.sParts = [ set(suppL - suppR), \
+                           set(suppR - suppL), \
+                           set(suppL & suppR)]
+            ## three supports: interpreted as (alpha, beta, gamma)
+            elif type(supports) == list and len(supports) == 3:
+                self.missing = False
+                self.sParts = [ set(supports[0]), set(supports[1]), set(supports[2])]
+            ## four supports: interpreted as (suppL, suppR, missL, missR)
+            elif type(supports) == list and len(supports) == 4:
+                self.missing = True
+                (suppL, suppR, missL, missR) = supports
+                self.sParts = [ set(suppL - suppR - missR), \
+                           set(suppR - suppL - missL), \
+                           set(suppL & suppR), \
+                           set(range(self.N)) - suppL -suppR - missL - missR, \
+                           set(suppL & missR), \
+                           set(suppR & missL), \
+                           set(missR - suppL - missL), \
+                           set(missL - suppR - missR), \
+                           set(missL & missR) ]
+            ## nine supports: interpreted as (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud)
+            elif type(supports) == list and len(supports) == 9:
+                self.missing = True
+                self.sParts = [set(support) for support in supports]
+            ## else: set all empty
+            else:
+                self.missing = False
+                self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
+
+    def toDict(self):
+        sdict = {}
+        if self.missing: up_to = SParts.mud
+        else: up_to = SParts.delta
+        for i in range(up_to+1):
+                 sdict[SParts.labels[i]] = self.part(i)
+                 sdict["card_" + SParts.labels[i]] = self.lpart(i)
+        for side in [0, 1]:
+                 if self.prs[side] != -1:
+                     sdict["pr_" + str(side)] = self.prs[side]
+        sdict["N"] = self.N
+        for info_key, info_meth in SParts.infos.items():
+            sdict[info_key] = eval(info_meth)
+        return sdict
+            
     # contains missing values
     def hasMissing(self):
         return self.missing
@@ -388,7 +429,7 @@ class SParts:
         return list(self.prs)
 
     # return support (used to create new instance of SParts)
-    def copSupp(self):
+    def supparts(self):
         return self.sParts
 
     # return new instance of SParts corresponding to negating given side
@@ -684,35 +725,5 @@ class SParts:
         return nsupp
     parseSupportPart = staticmethod(parseSupportPart)
 
-    def parseLPartsChar(parts):
-        cparts = parts.strip().split()
-        partsList = [('acc', '%f',  float(cparts[0])), ('pval', '%f',  float(cparts[1]))]
-        for i in range(2,len(cparts)):
-            partsList.append( (SParts.labels[i-2], '%i',  int(cparts[i])))
-        return partsList
-    parseLPartsChar = staticmethod(parseLPartsChar)
-
-    def listLPartsChar(self):
-        partsList= [('acc', '%f',  self.acc()),('pval', '%f',  self.pVal())]
-        if self.missing: up_to = SParts.mud
-        else: up_to = SParts.delta
-        for i in range(up_to+1):
-            partsList.append( (SParts.labels[i], '%i',  self.lpart(i,0)))
-        return partsList
-
-    def dispCharList(list):
-        p = ''
-        for (label, format_str, value) in list:
-            p += ' ' + label + ':' + (format_str % ( value ) )
-        return p
-    dispCharList = staticmethod(dispCharList)
-    
-    def dispCharListSimple(list):
-        p = ''
-        for (label, format_str, value) in list:
-            p += ' ' + format_str % ( value ) 
-        return p
-    dispCharListSimple = staticmethod(dispCharListSimple)
-
     def __str__(self):
-        return SParts.dispCharList(self.listLPartsChar())
+        return "SUPPORT:" + (" ".join(["card_" + SParts.labels[i]+":" + str(len(self.sParts[i]))         for i in range(len(self.sParts))]))

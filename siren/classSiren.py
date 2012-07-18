@@ -142,8 +142,10 @@ class Siren():
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
-        # self.dw = DataWrapper()
-        self.dw = DataWrapper(tmp_coo_filename, [tmp_bool_filename, tmp_num_filename], tmp_queries_filename, tmp_settings_filename)
+        self.dw = DataWrapper()
+        self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
+        self.dw.importQueriesTXTFromFile(tmp_queries_filename)
+##        self.dw.importPreferencesFromFile(tmp_settings_filename)
 
         ### TODO DW
         self.resetLogger()
@@ -351,10 +353,6 @@ class Siren():
         m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
-        ID_IMPORT_COORD = wx.NewId()
-        m_impCoord = submenuFile.Append(ID_IMPORT_COORD, "Import C&oordinates", "Import coordinates into ths project.")
-        frame.Bind(wx.EVT_MENU, self.OnImportCoord, m_impCoord)
-
         ID_IMPORT_QUERIES = wx.NewId()
         m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
@@ -368,7 +366,7 @@ class Siren():
 
         ID_EXPORT = wx.NewId()
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
-        frame.Bind(wx.EVT_MENU, self.OnExport, m_export)
+        frame.Bind(wx.EVT_MENU, self.OnExportQueries, m_export)
 
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
@@ -410,7 +408,7 @@ class Siren():
 
     def getMapView(self, vid=None):
         if vid not in self.mapViews.keys():
-            self.selectedMap = len(self.mapViews)
+            self.selectedMap = wx.NewId()
             self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)    
         self.mapViews[self.selectedMap].mapFrame.Raise()
         return self.mapViews[self.selectedMap]
@@ -456,6 +454,9 @@ class Siren():
             dlg.ShowModal()
             return False
         else:
+            self.details = {'names': self.dw.getColNames()}
+            self.reloadVars()
+            self.reloadReds()
             return True
 
 ##    def OnExpand(self, event):
@@ -548,7 +549,7 @@ class Siren():
 
     def OnSave(self, event):
         if not (self.dw.isFromPackage and self.dw.package_filename is not None):
-            wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead').showModal()
+            wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead').ShowModal()
             return
         try:
             self.dw.savePackage()
@@ -572,8 +573,8 @@ class Siren():
         save_dlg.Destroy()
                 
     def OnImportData(self, event):
-        if self.dw.reds is not None or self.dw.coord is not None:
-            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions and coordinates.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+        if self.dw.reds is not None:
+            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
                 return
             sure_dlg.Destroy()
@@ -590,37 +591,25 @@ class Siren():
             if open_right_dlg.ShowModal() == wx.ID_OK:
                 right_path = open_right_dlg.GetPath()
 
-                try:
-                    self.dw.importDataFromFiles([left_path, right_path])
-                    self.dw.updateNames()
+                open_coord_dlg = wx.FileDialog(self.toolFrame, message='Choose coordinates file', defaultDir=os.path.dirname(left_path),  
+			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
+                if open_coord_dlg.ShowModal() == wx.ID_OK:
+                    coord_path = open_coord_dlg.GetPath()
+
+                    try:
+                        self.dw.importDataFromFiles([left_path, right_path], None, coord_path)
+                    except IOError, error:
+                        dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
+                                               +', '+str(right_path)+' and '+str(coord_path)+':\n' + str(error))
+                        dlg.ShowModal()
+
                     self.details = {'names': self.dw.getColNames()}
                     self.reloadVars()
                     self.reloadReds()
-                except IOError, error:
-                    dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
-                                           +' and '+str(right_path)+':\n' + str(error))
-                    dlg.ShowModal()
+
+                open_coord_dlg.Destroy()
             open_right_dlg.Destroy()
         open_left_dlg.Destroy()
-        # Delete reds and coords
-        self.dw.reds = None
-        self.dw.queries_filename = None
-        self.dw.rshowids = None
-        self.dw.coord = None
-        self.dw.coo_filename = None
- 
-    def OnImportCoord(self, event):
-        dir_name = os.path.expanduser('~/')
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-            try:
-                self.dw.importCoordFromFile(path)
-            except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
-        open_dlg.Destroy()
-        self.resetCoordinates()
 
     def OnImportPreferences(self, event):
         dir_name = os.path.expanduser('~/')
@@ -647,14 +636,15 @@ class Siren():
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
         open_dlg.Destroy()
+        self.reloadReds()
         
-    def OnExport(self, event):
+    def OnExportQueries(self, event):
         if self.dw.reds is None:
             wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded').ShowModal()
             return
         
-        if self.dw.queries_filename is not None:
-            dir_name = os.path.dirname(self.dw.queries_filename)
+        if self.dw.package_filename is not None:
+            dir_name = os.path.dirname(self.dw.package_filename)
         else:
             dir_name = os.path.expanduser('~/')
 
@@ -662,8 +652,8 @@ class Siren():
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
-                self.dw.exportQueries(path, named=True)
-                self.dw.exportQueriesLatex(path+".tex", named=True)
+                self.dw.exportQueries(path)
+
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
                                  +str(path)+':\n'+str(error)).ShowModal()

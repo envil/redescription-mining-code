@@ -1,19 +1,24 @@
 import re, string
 from classQuery import  *
 from classSParts import  SParts
+import toolRead
 import pdb
 
 class Redescription:
 
-    diff_score = Query.diff_length + 1    
-
-    def __init__(self, nqueryL, nqueryR, nsupps = None, nN = -1, nPrs = [-1,-1]):
+    diff_score = Query.diff_length + 1
+    print_info_full = SParts.infos.keys() + ["card_"+ label for label in SParts.labels] + list(SParts.labels)
+    print_info = SParts.infos.keys() + ["card_"+ label for label in SParts.labels]
+    print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
+    
+    def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1]):
         self.queries = [nqueryL, nqueryR]
         if nsupps != None:
             self.sParts = SParts(nN, nsupps, nPrs)
+            self.dict_supp_info = None
         else:
             self.sParts = None
-            self.readInfo = []
+            self.dict_supp_info = {}
         self.lAvailableCols = [None, None]
         self.vectorABCD = None
         self.status = 1
@@ -38,6 +43,18 @@ class Redescription:
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
+    def getInfoDict(self):
+        if self.dict_supp_info == None and self.sParts != None:
+            self.dict_supp_info = self.sParts.toDict()
+        if self.dict_supp_info != None:
+            return self.dict_supp_info
+        return {}
+
+    def dropSupport(self):
+        if self.sParts != None:
+            self.dict_supp_info.toDict()
+            self.sParts = None
+
     def compare(self, y):
         if self.score() > y.score():
             return Redescription.diff_score
@@ -45,7 +62,7 @@ class Redescription:
             return Query.comparePair(self.queries[0], self.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
-#### FROM HERE 
+
     def interArea(self, redB, side):
         if redB != None:
             return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
@@ -154,6 +171,7 @@ class Redescription:
             op = Op(opBool)
             self.queries[side].extend(op, literal)
             self.sParts.update(side, op.isOr(), suppX, missX)
+            self.dict_supp_info = None
             if self.lAvailableCols[side] != None:
                 self.lAvailableCols[side].remove(literal.col())
             self.track.append((side, literal.col()))
@@ -171,7 +189,7 @@ class Redescription:
             
     def copy(self):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.sParts.copSupp(), self.sParts.N, self.probas())
+                             self.sParts.supparts(), self.sParts.N, self.probas())
         for side in [0,1]:
             if self.lAvailableCols[side] != None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -204,6 +222,7 @@ class Redescription:
         else:
             self.sParts = SParts(data.N, [nsuppL, nsuppR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
+        self.dict_supp_info = None
     
     def check(self, data):
         result = 0
@@ -223,27 +242,6 @@ class Redescription:
 
     def hasMissing(self):
         return self.sParts.hasMissing()
-
-    #### FROM HERE ALL PRINTING AND READING
-    def __str__(self):
-        str_av = ["?", "?"]
-        for side in [0,1]:
-            if self.availableColsSide(side) != None:
-                str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrackStr()))
-
-    def dispQueries(self, names= [None, None], lenIndex=0):
-        return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)
-
-    def dispQueriesTex(self, names= [None, None], lenField=0):
-        if lenField > 0:
-            return string.ljust(self.queries[0].dispTex(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispTex(names[1]), lenField)[:lenField]
-        return self.queries[0].dispTex(names[0]) +"\t"+ self.queries[1].dispTex(names[1])
-
-    def dispQueriesU(self, names= [None, None], lenField=0):
-        if lenField > 0:
-            return string.ljust(self.queries[0].dispU(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispU(names[1]), lenField)[:lenField]
-        return self.queries[0].dispU(names[0]) +"\t"+ self.queries[1].dispU(names[1])
 
     def getQueryLU(self, details=None):
         if details.has_key('names'):
@@ -286,6 +284,29 @@ class Redescription:
     def getSupp(self, details):
         return len(self.suppI())
 
+
+##### PRINTING AND PARSING METHODS
+    #### FROM HERE ALL PRINTING AND READING
+    def __str__(self):
+        str_av = ["?", "?"]
+        for side in [0,1]:
+            if self.availableColsSide(side) != None:
+                str_av[side] = "%d" % len(self.availableColsSide(side))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrackStr()))
+
+    def dispQueries(self, names= [None, None], lenIndex=0):
+        return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)
+
+    def dispQueriesTex(self, names= [None, None], lenField=0):
+        if lenField > 0:
+            return string.ljust(self.queries[0].dispTex(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispTex(names[1]), lenField)[:lenField]
+        return self.queries[0].dispTex(names[0]) +"\t"+ self.queries[1].dispTex(names[1])
+
+    def dispQueriesU(self, names= [None, None], lenField=0):
+        if lenField > 0:
+            return string.ljust(self.queries[0].dispU(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispU(names[1]), lenField)[:lenField]
+        return self.queries[0].dispU(names[0]) +"\t"+ self.queries[1].dispU(names[1])
+
     def dispTexPrelude():
         return "" + \
         "\\documentclass{article}\n"+ \
@@ -305,7 +326,7 @@ class Redescription:
         "\\scriptsize\n" + \
         "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
         "\\toprule\n" + \
-        " & $q_\\iLHS$ & $q_\\iRHS$ & $\\jacc(R)$ & $\\supp(R)$ & \\pValue \\\n" + \
+        " & $q_\\iLHS$ & $q_\\iRHS$ & $\\jacc(R)$ & $\\supp(R)$ & \\pValue \\\\\n" + \
         "\\midrule"
     dispTexPrelude = staticmethod(dispTexPrelude)
     
@@ -326,29 +347,24 @@ class Redescription:
         format_list = []
         return queryidStr + ' & ' + self.queries[0].dispTex(names[0])+' & '+self.queries[1].dispTex(names[1])+ ' & ' +self.dispCaracteristiquesTex()+' \\\\'
 
-         
     def dispLPartsSimple(self):
-        if self.sParts == None:
-            return SParts.dispCharListSimple(self.readInfo)
-        else:
-            return SParts.dispCharListSimple(self.sParts.listLPartsChar())
+        info_tmp = self.getInfoDict()
+        return " ".join([str(info_tmp.get(info_key, "-")) for info_key in Redescription.print_info])
         
     def dispLParts(self): 
-        if self.sParts == None:
-            return SParts.dispCharList(self.readInfo)
-        else:
-            return SParts.dispCharList(self.sParts.listLPartsChar())
+        info_tmp = self.getInfoDict()
+        return " ".join(["%s:%s" % (info_key, info_tmp.get(info_key, "-")) for info_key in Redescription.print_info])
 
     def dispCaracteristiquesTex(self):
-        if self.sParts != None:
-            return '$%1.3f$ & $%i$ & $%1.3f$' \
-             % (round(self.acc(),3), self.lenI(), round(self.pVal(),3))
-        elif hasattr(self, 'readInfo'):
-            dict_info = dict([[term[0], term[2]] for term in self.readInfo])
-            return '$%1.3f$ & $%i$ & $%1.3f$' \
-             % (round(dict_info['acc'],3), dict_info['gamma'], round(dict_info['pVal'],3))
-        else:
-            return 'Non printable redescription'
+        info_tmp = self.getInfoDict()
+        details = []
+        for (info_key, info_round, info_format) in Redescription.print_info_tex:
+            tmp = "-"
+            if info_tmp.has_key(info_key):
+                tmp = info_format % round(info_tmp[info_key], info_round)
+            details.append(tmp)
+            
+        return " & ".join(details)
 
     def dispCaracteristiquesSimple(self):
         return self.dispLPartsSimple()
@@ -370,6 +386,65 @@ class Redescription:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()
 
+    def fromXML(self, node):
+        self.queries = [None, None]
+        dsi = {}
+        for query_data in node.getElementsByTagName("query"):
+            side = toolRead.getTagData(query_data, "side", int)
+            if side not in [0,1]:
+                print "Unknown side (%s)!" % side
+            else:
+                query_tmp = toolRead.getTagData(query_data, "ids_expression")
+                self.queries[side] = Query.parse(query_tmp)
+        supp_tmp = node.getElementsByTagName("support")
+        if len(supp_tmp) == 1:
+            for child in toolRead.children(supp_tmp[0]):
+                if toolRead.isElementNode(child):
+                    supp_key = toolRead.tagName(child)
+                    supp_val = None
+                    if child.hasChildNodes():
+                        supp_val = toolRead.getValues(child, int, "row")
+                    else:
+                        supp_val = toolRead.getValue(child, float)
+                    if supp_val != None:
+                        dsi[supp_key] = supp_val
+            if sum([len(dsi.get(i, [])) for i in SParts.labels]):
+                self.sParts = SParts(dsi)
+            else:
+                self.sParts = None
+            self.dict_supp_info = dsi
+
+    def toXML(self, full=True, names= [None, None]):
+        strd = "<redescription>\n"
+
+        for side in [0,1]:
+            strd += "\t<query>\n"
+            strd += "\t\t<side>%d</side>\n" % side
+            strd += "\t\t<ids_expression><![CDATA[\"%s\"]]></ids_expression>\n" % self.queries[side].disp()
+            if names[side] != None:
+                strd += "\t\t<names_expression><![CDATA[\"%s\"]]></names_expression>\n" % self.queries[side].disp(names[side])
+            strd += "\t</query>\n"
+        
+        strd += "\t<support>\n"
+        tmp_info = self.getInfoDict()
+        if full:
+            keys = Redescription.print_info_full
+        else:
+            keys = Redescription.print_info
+        for supp_key in keys:
+            if tmp_info.has_key(supp_key):
+                supp_val = tmp_info[supp_key]
+                if type(supp_val) in [list, set]:
+                    strd += "\t\t<%s>\n" % supp_key
+                    for row in supp_val:
+                        strd += "\t\t\t<row>%d</row>\n" % row
+                        strd += "\t\t</%s>\n" % supp_key
+                else:
+                    strd += "\t\t<%s><value>%s</value></%s>\n" % (supp_key, supp_val, supp_key)
+        strd += "\t</support>\n"        
+        strd += "</redescription>\n"
+        return strd
+    
     def parseQueries(string):
         parts = string.rsplit('\t')
         if len(parts) >= 2:
@@ -384,9 +459,14 @@ class Redescription:
             queryR = Query()
 
         if len(parts) >= 3:
-            lpartsList = SParts.parseLPartsChar(parts[2])
+            lpartsList = {}
+            info_parts = parts[2].split(" ")
+            for info_part in info_parts:
+                tmp = info_part.split(":")
+                if len(tmp) == 2:
+                    lpartsList[tmp[0]] = float(tmp[1])
         else:
-            lpartsList = []
+            lpartsList = None
         return (queryL, queryR, lpartsList)
     parseQueries = staticmethod(parseQueries)
 
@@ -397,14 +477,16 @@ class Redescription:
         if data != None and stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
             supportsS = SParts.parseSupport(stringSupport, data.N)
             if supportsS != None:
-                r = Redescription(queryL, queryR, supportsS.copSupp(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
+                r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
 
-                if lpartsList[2:] != r.sParts.listLPartsChar()[2:]:
-                    raise Warning("Something wrong in the supports ! (%s ~ %s)\n" \
-                                  % (SParts.dispCharList(lpartsList), SParts.dispCharList(r.sParts.listLPartsChar()) ))
+                tmp = r.getInfoDict()
+                for key in lpartsList.keys():
+                    if tmp.get(key, None) != lpartsList[key]:
+                        raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" \
+                                  % (key, tmp.get(key, None), lpartsList[key]))
         if r == None:
             r = Redescription(queryL, queryR)
-            r.readInfo = lpartsList
+            r.supp_info = lpartsList
         return r
     parse = staticmethod(parse)
             
@@ -427,3 +509,4 @@ class Redescription:
         else: stringSupp= None; commentSupp = ''
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
+
