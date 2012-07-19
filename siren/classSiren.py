@@ -1,6 +1,7 @@
 import os
 import wx, wx.html
 import threading
+import time
 
 from reremi.toolLog import Log
 from reremi.classMiner import Miner
@@ -155,6 +156,7 @@ class Siren():
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
         self.check_tab = {}
+        self.logger = None
         
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -166,12 +168,6 @@ class Siren():
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnMessResult)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnMessProgress)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnMessStatus)
-
-        self.num_filename=''
-        self.bool_filename=''
-        self.coo_filename=''
-        self.queries_filename=''
-        self.settings_filename=''
         
         self.mapViews = {}
         self.selectedMap = -1
@@ -846,18 +842,20 @@ class Siren():
         ## Initialize red lists data
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.details, self.dw.getShowIds())
         self.tabs["exp"]["tab"].resetData(Batch(), self.details)
+        self.deleteAllViews()
 #        self.getMapView().setCurrentRed(redsTmp[0])
 #        self.getMapView().updateRed()
 
     def startReadingFileMsg(self, filenames):
         """Shows a dialog that we're reading a file"""
-        msg = 'Reading file'
+
+        msg = 'Please wait while reading file'
         if len(filenames) <= 1:
-            msg += ' '+filename
+            msg += ' '
         else:
-            msg += 's'
-            for filename in filenames:
-                msg += ' '.join(filename)
+            msg += 's '
+        msg += ' '.join(filenames)
+        self.statusbar.SetStatusText(msg, 0)
         self.toolFrame.Enable(False)
         self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
         
@@ -866,4 +864,5 @@ class Siren():
         """Removes the BusyInfo dialog"""
         self.busyDlg = None
         self.toolFrame.Enable(True)
+        self.statusbar.SetStatusText("Done reading", 0)
         

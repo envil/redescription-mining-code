@@ -252,7 +252,7 @@ class DataWrapper(object):
     def openPackage(self, package_filename):
         """Loads new data from a package"""
         try:
-            self._startMessage(package_filename)
+            self._startMessage([package_filename])
             self._readPackageFromFile(package_filename)
         except IOError as arg:
             print "Cannot open", arg
@@ -646,13 +646,13 @@ class DataWrapper(object):
             
         return d
 
-    def _startMessage(self, filename):
+    def _startMessage(self, filenames):
         "Shows the message if needed"
         if self.startReadingFileCallback is not None:
             (fnc, args, kwargs) = self.startReadingFileCallback
             # filename can be a list of filenames with full paths, hence map()
-            fnc(map(os.path.basename, filename), *args, **kwargs)
-            ### time.sleep(1) ## give time to process the message?
+            fnc(map(os.path.basename, filenames), *args, **kwargs)
+            #time.sleep(1) ## give time to process the message?
 
     def _stopMessage(self):
         "Removes the message if needed"
