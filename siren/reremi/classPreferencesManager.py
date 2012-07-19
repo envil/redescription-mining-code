@@ -365,13 +365,16 @@ class PreferencesReader:
 						tmp = item.getParamTriplet(tmp_s)
 						if tmp != None:
 							tmp_opts.append(tmp)
-					values = {}
-					if len(tmp_opts) > 0:
-						for k in tmp_opts[0].keys():
-							values[k] = []
-							for t in tmp_opts:
-								values[k].append(t[k])
-					pv[name] = values
+						else:
+							tmp_ok = False
+					if tmp_ok:
+						values = {}
+						if len(tmp_opts) > 0:
+							for k in tmp_opts[0].keys():
+								values[k] = []
+								for t in tmp_opts:
+									values[k].append(t[k])
+						pv[name] = values
 		return pv
 
 	def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False):

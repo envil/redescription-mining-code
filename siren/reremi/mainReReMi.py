@@ -37,7 +37,7 @@ def run(arguments):
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
-    pdb.set_trace()
+
     logger = Log(params_l['verbosity'], params_l['logfile'])
     
     data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']])

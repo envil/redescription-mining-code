@@ -488,8 +488,8 @@ class NumColM(ColM):
         return Literal(n, NumTerm(self.getId(), lowb, upb))
 
     def getLiteralSeg(self, neg, segments_op, bound_ids):
-        if bound_ids[0] == 0 and bound_ids[1] == len(segments_op)-1:
-            return (neg, None)
+        if (bound_ids[0] == 0 and bound_ids[1] == len(segments_op)-1) or bound_ids[0] > bound_ids[1]:
+            return None
         elif bound_ids[0] == 0 :
             if neg:
                 lowb = segments_op[bound_ids[1]+1][0]
@@ -513,7 +513,6 @@ class NumColM(ColM):
             upb = segments_op[bound_ids[1]][1]
             n = neg
         return Literal(n, NumTerm(self.getId(), lowb, upb))
-
 
 class Data:
 
