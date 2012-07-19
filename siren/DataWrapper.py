@@ -1,5 +1,6 @@
 import numpy as np
 import tempfile
+import time
 import os
 import os.path
 import plistlib
@@ -86,13 +87,13 @@ class DataWrapper(object):
         return self.data
 
     def getCoords(self):
-        if self.data != None:
+        if self.data != None and self.data.isGeospatial():
             return self.data.coords
 
     def getCoordsExtrema(self):
-        if self.data != None and self.data.coords != None:
+        if self.data != None and self.data.isGeospatial():
             return [min(self.data.coords[0]), max(self.data.coords[0]), min(self.data.coords[1]), max(self.data.coords[1])]
-        return [0,1,0,1]
+        return None
 
     def getReds(self):
         if self.reds != None:
@@ -183,7 +184,7 @@ class DataWrapper(object):
 #################### IMPORTS            
     def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
         try:
-            self._startMessage(data_filenames + list(coo_filename))                
+            self._startMessage(data_filenames + [coo_filename])                
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
 
         except DataError as details:
@@ -318,7 +319,7 @@ class DataWrapper(object):
                 tmpsi = reds_node.getElementsByTagName("showing_ids")
                 if len(tmpsi) == 1:
                     show_ids = toolRead.getValues(tmpsi[0], int)
-                    if min(show_ids) < 0 or max(show_ids) >= len(reds):
+                    if len(show_ids) == 0 or min(show_ids) < 0 or max(show_ids) >= len(reds):
                         show_ids = None
         if show_ids == None:
             show_ids = range(len(reds))
@@ -651,6 +652,7 @@ class DataWrapper(object):
             (fnc, args, kwargs) = self.startReadingFileCallback
             # filename can be a list of filenames with full paths, hence map()
             fnc(map(os.path.basename, filename), *args, **kwargs)
+            ### time.sleep(1) ## give time to process the message?
 
     def _stopMessage(self):
         "Removes the message if needed"

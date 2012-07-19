@@ -2,6 +2,8 @@ import wx, wx.grid
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 
+import pdb
+
 class CustRenderer(wx.grid.PyGridCellRenderer):
 
     BACKGROUND_SELECTED = wx.Colour(100,100,100)

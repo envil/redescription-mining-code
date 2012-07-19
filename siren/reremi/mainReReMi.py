@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-import sys, re, datetime
+import sys, re, datetime, os.path
 from toolLog import Log
-from toolSettings import Settings
 from classData import Data
 from classRedescription import Redescription
 from classBatch import Batch
@@ -15,7 +14,8 @@ def run(arguments):
 
     ticO = datetime.datetime.now()
 
-    pref_dir = os.path.dirname(__file__)
+
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
 
     pm = PreferencesManager(conf_defs)
@@ -27,6 +27,7 @@ def run(arguments):
             sys.exit(2)
         else:
             config_filename = arguments[1]
+
     params = pr.getParameters(config_filename)
     if params == None:
         print 'ReReMi redescription mining\nusage: "%s [config_file]"' % arguments[0]
@@ -36,7 +37,7 @@ def run(arguments):
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
-
+    pdb.set_trace()
     logger = Log(params_l['verbosity'], params_l['logfile'])
     
     data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']])

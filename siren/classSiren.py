@@ -192,11 +192,11 @@ class Siren():
 
 
         #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        tmp_num_filename='../data/rajapaja/worldclim_tp.densenum'
-        tmp_bool_filename='../data/rajapaja/mammals.datbool'
-        tmp_coo_filename='../data/rajapaja/coordinates.names'
-        tmp_queries_filename='../data/rajapaja/rajapaja.queries'
-        tmp_settings_filename='../data/rajapaja/rajapaja_conf2.xml'
+        tmp_num_filename='../rajapaja/worldclim_tp.densenum'
+        tmp_bool_filename='../rajapaja/mammals.datbool'
+        tmp_coo_filename='../rajapaja/coordinates.names'
+        tmp_queries_filename='../rajapaja/rajapaja.queries'
+        tmp_settings_filename='../rajapaja/rajapaja_conf.xml'
 
 
         # ### COMMENT OUT TO LOAD US ON STARTUP
@@ -209,19 +209,6 @@ class Siren():
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
         self.dw = DataWrapper()
-
-        ## Comment (out) to toggle between loading data in input and not
-        self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
-        self.dw.importQueriesTXTFromFile(tmp_queries_filename)
-        #self.dw.importPreferencesFromFile(tmp_settings_filename)
-
-        ### TODO DW
-        self.resetLogger()
-        self.resetConstraints()
-        self.details = {'names': self.dw.getColNames()}
-        self.reloadVars()
-        self.resetCoordinates()
-        self.reloadReds()
 
         ### About dialog
         self.info =  wx.AboutDialogInfo()
@@ -240,7 +227,19 @@ class Siren():
         self.dw.registerStopReadingFileCallback(self.stopReadingFileMsg)
         self.readingFileDlg = None
 
+        ## Comment (out) to toggle between loading data in input and not
+        self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
+        self.dw.importQueriesTXTFromFile(tmp_queries_filename)
+        self.dw.importPreferencesFromFile(tmp_settings_filename)
+
  
+        ### INITIALISATION OF DATA
+        self.resetLogger()
+        self.resetConstraints()
+        self.details = {'names': self.dw.getColNames()}
+        self.reloadVars()
+        self.resetCoordinates()
+        self.reloadReds()
 
         
 ######################################################################
@@ -861,8 +860,10 @@ class Siren():
                 msg += ' '.join(filename)
         self.toolFrame.Enable(False)
         self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+        
 
     def stopReadingFileMsg(self):
         """Removes the BusyInfo dialog"""
         self.busyDlg = None
         self.toolFrame.Enable(True)
+        

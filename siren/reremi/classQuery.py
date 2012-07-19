@@ -827,14 +827,19 @@ class Query:
             r = Query()
         while parts != None:
             t = Literal.parse(parts.group('pattIn'), names)
-            r.extend(op,t)
-            if parts.group('op') != None:
-                op = Op.parse(parts.group('op'))
-                parts = re.match(pattrn, parts.group('pattOut'))
+            if t != None:
+                r.extend(op,t)
+                if parts.group('op') != None:
+                    op = Op.parse(parts.group('op'))
+                    parts = re.match(pattrn, parts.group('pattOut'))
+                else:
+                    parts = None
             else:
+                ## stop
                 parts = None
+                r = None
         if r != None and len(r) == 0:
-            r = None
+            r = Query()
         return r 
     parseApd = staticmethod(parseApd)
     
@@ -877,6 +882,7 @@ class Query:
                         if t != None:
                             r.extend(opExt,t)
                         else:
+                            ### stop here
                             pi = len(partsOut)
                             r = None
                     pi+=1
@@ -892,5 +898,7 @@ class Query:
         r = Query.parsePar(string, names)
         if r == None:
             r = Query.parseApd(string, names)
+        if r == None:
+            r = Query()
         return r
     parse = staticmethod(parse)

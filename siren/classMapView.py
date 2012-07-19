@@ -48,6 +48,7 @@ class MapView:
         self.draw_frame()
         self.binds()
         self.mapFrame.Show()
+#        self.previous = Redescription.fromQueriesPair([Query(), Query()], self.parent.dw.data) 
 
     def getId(self):
         return self.vid
@@ -112,12 +113,14 @@ class MapView:
 
         self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
-        self.Maphbox4.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
+        if self.parent.dw.getCoords() != None:
+            self.Maphbox4.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
         self.Maphbox4.Add(self.button_expand, 0, border=3, flag=flags)
 
         self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        if self.parent.dw.getCoords() != None:
+            self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQL, 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQR, 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
@@ -171,6 +174,9 @@ class MapView:
     def draw_map(self):
         """ Draws the map
         """
+        if self.parent.dw.getCoords() == None:
+            self.coords_proj = None
+            return
         self.MapfigMap = plt.figure()
         self.Mapcurr_mapi = 0
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
@@ -203,8 +209,10 @@ class MapView:
         """ Redraws the map
         """
         red = self.parseRed()
-        if red == None:
-            return self.parent.tabs["Hist"].data[-1]
+        # if red != None:
+        #     self.previous = red
+        # else: 
+        #     red = self.previous
 
         self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
         self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))

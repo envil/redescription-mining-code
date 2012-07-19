@@ -146,7 +146,7 @@ class BoolColM(ColM):
         if len(tmpm) == 1:
             tmp_txt = toolRead.getTagData(tmpm[0], "rows").strip()
             if len(tmp_txt) > 0:
-                self.holds = set(map(int, tmp_txt.split(",")))
+                self.hold = set(map(int, tmp_txt.split(",")))
         self.missing -= self.hold
 
     def toXML(self):

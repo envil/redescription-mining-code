@@ -1,0 +1,38 @@
+<root>
+  <parameter>
+    <name>min_itm_in</name>
+    <value>15</value>
+  </parameter>
+  <parameter>
+    <name>min_itm_out</name>
+    <value>500</value>
+</parameter>
+<parameter>
+  <name>data_rep</name>
+  <value>/home/galbrun/redescriptors/sandbox/rajapaja/</value>
+</parameter>
+<parameter>
+  <name>data_l</name>
+  <value>mammals</value>
+</parameter>
+<parameter>
+  <name>data_r</name>
+  <value>worldclim_tp</value>
+</parameter>
+<parameter>
+  <name>ext_l</name>
+  <value>.datbool</value>
+</parameter>
+<parameter>
+  <name>ext_r</name>
+  <value>.densenum</value>
+</parameter>
+<parameter>
+  <name>result_rep</name>
+  <value>/home/galbrun/redescriptors/sandbox/rajapaja/</value>
+</parameter>
+<parameter>
+  <name>out_base</name>
+  <value>tests</value>
+</parameter>
+</root>

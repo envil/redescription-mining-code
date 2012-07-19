@@ -397,6 +397,7 @@ class Redescription:
                 query_tmp = toolRead.getTagData(query_data, "ids_expression")
                 self.queries[side] = Query.parse(query_tmp)
         supp_tmp = node.getElementsByTagName("support")
+        self.track = [tuple([0] + sorted(self.queries[0].invCols())), tuple([1] + sorted(self.queries[1].invCols()))]
         if len(supp_tmp) == 1:
             for child in toolRead.children(supp_tmp[0]):
                 if toolRead.isElementNode(child):
