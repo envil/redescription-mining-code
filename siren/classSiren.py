@@ -2,6 +2,8 @@ import os
 import wx, wx.html
 import threading
 import time
+import sys
+import wx.lib.agw.pybusyinfo as PBI
 
 from reremi.toolLog import Log
 from reremi.classMiner import Miner
@@ -14,6 +16,7 @@ from classGridTable import VarTable, RedTable
 from classMapView import MapView
 from DataWrapper import DataWrapper
 from classPreferencesDialog import PreferencesDialog
+from miscDialogs import ImportDataDialog
 
 import pdb
 
@@ -60,68 +63,6 @@ class Message(wx.PyEvent):
            wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], (source, message)))
     sendMessage = staticmethod(sendMessage)
 
-class ImportFileDialog(object):
-    """Helper class to show the dialog for importing data file triplets"""
-    def __init__(self, parent):
-        self.parent = parent
-        self.dlg = wx.Dialog(self.parent, title="Import files")
-
-        LHStext = wx.StaticText(self.dlg, label='Left-hand side data file')
-        RHStext = wx.StaticText(self.dlg, label='Right-hand side data file')
-        Cootext = wx.StaticText(self.dlg, label='Coordinates file')
-
-        self.LHSfile = None
-        self.RHSfile = None
-        self.Coofile = None
-
-        self.LHSfileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
-        self.RHSfileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
-        self.CoofileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
-
-        LHSbtn = wx.Button(self.dlg, label='Choose')
-        RHSbtn = wx.Button(self.dlg, label='Choose')
-        Coobtn = wx.Button(self.dlg, label='Choose')
-
-        self.dlg.Bind(wx.EVT_BUTTON, self.onLHS, LHSbtn)
-        self.dlg.Bind(wx.EVT_BUTTON, self.onRHS, RHSbtn)
-        self.dlg.Bind(wx.EVT_BUTTON, self.onCoo, Coobtn)
-
-        gridSizer = wx.GridSizer(rows = 3, cols = 3, hgap = 5, vgap = 5)
-        gridSizer.AddMany([(LHStext, 0, wx.ALIGN_LEFT), (self.LHSfileTxt, 0, wx.EXPAND), (LHSbtn, 0),
-                           (RHStext, 0, wx.ALIGN_LEFT), (self.RHSfileTxt, 0, wx.EXPAND), (RHSbtn, 0),
-            (Cootext, 0, wx.ALIGN_LEFT), (self.CoofileTxt, 0, wx.EXPAND), (Coobtn, 0)])
-
-        btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
-        topSizer = wx.BoxSizer(wx.VERTICAL)
-        topSizer.Add(gridSizer, flag=wx.ALL, border=5)
-        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
-
-        self.dlg.SetSizer(topSizer)
-        self.dlg.Fit()
-
-        if self.dlg.ShowModal() == wx.ID_OK:
-            try:
-                self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
-            except IOError, error:
-                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error opening files '+str(self.LHSfile)
-                                       +', '+str(self.RHSfile)+', and '+str(self.Coofile)+':\n'
-                                       +str(error))
-                mdlg.ShowModal()
-                mdlg.Destroy()
-            self.parent.details = {'names': self.parent.dw.getColNames()}
-            self.parent.reloadVars()
-            self.parent.reloadReds()
-            
-        self.dlg.Destroy()
-
-    def onLHS(self, e):
-        pass
-    def onRHS(self, e):
-        pass
-    def onCoo(self, e):
-        pass
-
-        
 
         
         
@@ -219,14 +160,14 @@ class Siren():
             self.info.SetLicence(f.read())
 
         ## Register file reading message functions to DataWrapper
-        self.dw.registerStartReadingFileCallback(self.startReadingFileMsg)
-        self.dw.registerStopReadingFileCallback(self.stopReadingFileMsg)
+        self.dw.registerStartReadingFileCallback(self.startFileActionMsg)
+        self.dw.registerStopReadingFileCallback(self.stopFileActionMsg)
         self.readingFileDlg = None
 
         ## Comment (out) to toggle between loading data in input and not
-        self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
-        self.dw.importQueriesTXTFromFile(tmp_queries_filename)
-        self.dw.importPreferencesFromFile(tmp_settings_filename)
+        #self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
+        #self.dw.importQueriesTXTFromFile(tmp_queries_filename)
+        #self.dw.importPreferencesFromFile(tmp_settings_filename)
 
  
         ### INITIALISATION OF DATA
@@ -521,7 +462,13 @@ class Siren():
         try:
             self.dw.openPackage(path)
         except IOError as error:
-            dlg = wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n' + str(error))
+            dlg = wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n' + str(error),
+                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
+            dlg.ShowModal()
+            return False
+        except:
+            dlg = wx.MessageDialog(self.toolFrame, 'Unexpected error when opening file '+str(path)+':\n'
+                                   +str(sys.exc_info()[1]), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
             dlg.ShowModal()
             return False
         else:
@@ -620,12 +567,15 @@ class Siren():
 
     def OnSave(self, event):
         if not (self.dw.isFromPackage and self.dw.package_filename is not None):
-            wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead').ShowModal()
+            wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead', style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
         try:
             self.dw.savePackage()
         except IOError as error:
-            wx.MessageDialog(self.toolFrame, 'Cannot save package to'+str(self.dw.package_filename)+':\n'+str(error)).ShowModal()
+            wx.MessageDialog(self.toolFrame, 'Cannot save package to'+str(self.dw.package_filename)+':\n'+str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+        except:
+            wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                             style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             
     def OnSaveAs(self, event):
         if self.dw.package_filename is not None:
@@ -640,10 +590,26 @@ class Siren():
             try:
                 self.dw.savePackageToFile(path)
             except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Cannot save to file '+path+':\n'+str(error)).ShowModal()
+                wx.MessageDialog(self.toolFrame, 'Cannot save to file '+path+':\n'+str(error),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            except:
+                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         save_dlg.Destroy()
-                
+
     def OnImportData(self, event):
+        """Shows a custom dialog to open the three data files"""
+        if len(self.dw.reds) > 0:
+            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+            if sure_dlg.ShowModal() != wx.ID_OK:
+                return
+            sure_dlg.Destroy()
+
+        dlg = ImportDataDialog(self)
+        dlg.showDialog()
+            
+                
+    def OnImportDataOld(self, event):
         if len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
@@ -691,7 +657,11 @@ class Siren():
             try:
                 self.dw.importPreferencesFromFile(path)
             except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            except:
+                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         open_dlg.Destroy()
         
     def OnImportQueries(self, event):
@@ -705,13 +675,18 @@ class Siren():
             try:
                 self.dw.importQueriesFromFile(path)
             except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error)).ShowModal()
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            except:
+                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         open_dlg.Destroy()
         self.reloadReds()
         
     def OnExportQueries(self, event):
         if self.dw.reds is None:
-            wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded').ShowModal()
+            wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded',
+                             style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
         
         if self.dw.package_filename is not None:
@@ -724,10 +699,12 @@ class Siren():
             path = save_dlg.GetPath()
             try:
                 self.dw.exportQueries(path)
-
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
-                                 +str(path)+':\n'+str(error)).ShowModal()
+                                 +str(path)+':\n'+str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            except:
+                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         save_dlg.Destroy()
 
     def OnPageChanged(self, event):
@@ -846,23 +823,21 @@ class Siren():
 #        self.getMapView().setCurrentRed(redsTmp[0])
 #        self.getMapView().updateRed()
 
-    def startReadingFileMsg(self, filenames):
+    def startFileActionMsg(self, msg, short_msg=''):
         """Shows a dialog that we're reading a file"""
-
-        msg = 'Please wait while reading file'
-        if len(filenames) <= 1:
-            msg += ' '
-        else:
-            msg += 's '
-        msg += ' '.join(filenames)
-        self.statusbar.SetStatusText(msg, 0)
+        self.statusbar.SetStatusText(short_msg, 0)
         self.toolFrame.Enable(False)
-        self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+        #self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+        self.busyDlg = PBI.PyBusyInfo(msg, parent=self.toolFrame, title=short_msg)
+        # DEBUG
+        #time.sleep(5)
         
 
-    def stopReadingFileMsg(self):
+    def stopFileActionMsg(self, msg=''):
         """Removes the BusyInfo dialog"""
+        #self.busyDlg = None
+        del self.busyDlg # Removes the dialog
         self.busyDlg = None
         self.toolFrame.Enable(True)
-        self.statusbar.SetStatusText("Done reading", 0)
+        self.statusbar.SetStatusText(msg, 0)
         

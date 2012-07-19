@@ -119,14 +119,15 @@ class DataWrapper(object):
     def registerStartReadingFileCallback(self, fnc, *args, **kwargs):
         """Registers the function DataWrapper calls when it starts to read a file (to tell that it
         starts reading the file). Parameters: fnc, [*args,] [**kwargs],
-        where fnc is a function that takes as its first given argument the name of the file,
-        while the other arguments are given in *args and **kwargs"""
+        where fnc is a function with prototype
+        fnc(msg, [short_msg], [*args], [**kwargs])"""
         self.startReadingFileCallback = (fnc, args, kwargs)
 
     def registerStopReadingFileCallback(self, fnc, *args, **kwargs):
         """Registers the function DataWrapper calls when it stops reading a file.
         Parameters: fnc, [*args,] [**kwargs],
-        where fnc is a function that takes arguments given in *args and **kwargs"""
+        where fnc is a function with prototype
+        fnc([msg], [*args], [**kwargs])"""
         self.stopReadingFileCallback = (fnc, args, kwargs)
 
     def __str__(self):
@@ -183,36 +184,46 @@ class DataWrapper(object):
 
 #################### IMPORTS            
     def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
+        fnames = data_filenames
+        if names_filenames is not None:
+            fnames += names_filenames
+        if coo_filename is not None:
+            fnames += [coo_filename]
+        self._startMessage('importing', fnames)
+        
         try:
-            self._startMessage(data_filenames + [coo_filename])                
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
 
         except DataError as details:
             print "Problem opening files.", details
+            raise
         else:
             self.data = tmp_data
             self.resetQueries()
             self.isChanged = True
             self.isFromPackage = False
         finally:
-            self._stopMessage()
+            self._stopMessage('importing')
         
 
     def importDataFromFile(self, data_filename):
+        self._startMessage('importing', data_filename)
         try:
             tmp_data = self._readDataFromFile(data_filename)
-
         except DataError as details:
             print "Problem opening files.", details
-
+            raise
         else:
             self.data = tmp_data
             self.resetQueries()
             self.isChanged = True
             self.isFromPackage = False
+        finally:
+            self._stopMessage('importing')
 
     def importQueriesFromFile(self, queries_filename):
         """Loads new queries from file"""
+        self._startMessage('importing', queries_filename)
         try:
             (pn, suffix) = os.path.splitext(os.path.basename(queries_filename))
             if suffix == ".queries":
@@ -226,9 +237,12 @@ class DataWrapper(object):
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
             self.isChanged = True
+        finally:
+            self._stopMessage('importing')
 
     def importQueriesTXTFromFile(self, queries_filename):
         """Loads new queries from file"""
+        self._startMessage('importing', queries_filename)
         try:
             tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
         except IOError as arg:
@@ -238,21 +252,28 @@ class DataWrapper(object):
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
             self.isChanged = True
+        finally:
+            self._stopMessage('importing')
 
     def importPreferencesFromFile(self, preferences_filename):
         """Imports mining preferences from file"""
+        self._startMessage('importing', preferences_filename)
         try:
+ 
             tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
             print "Cannot open", arg
+            raise
         else:
             self.preferences = tmp_preferences
             self.isChanged = True
+        finally:
+            self._stopMessage('importing')
             
     def openPackage(self, package_filename):
         """Loads new data from a package"""
+        self._startMessage('loading', [package_filename])
         try:
-            self._startMessage([package_filename])
             self._readPackageFromFile(package_filename)
         except IOError as arg:
             print "Cannot open", arg
@@ -263,7 +284,7 @@ class DataWrapper(object):
             self.isChanged = False
             self.package_filename = package_filename
         finally:
-            self._stopMessage()
+            self._stopMessage('loading')
 
 ######################## READS
     def _readDataFromFiles(self, data_filenames, names_filenames, coo_filename):
@@ -463,6 +484,9 @@ class DataWrapper(object):
             if sf == suffix:
                 filename = fn
 
+        # Tell everybody
+        self._startMessage('saving', filename+suffix)
+        
         # Test that we can write to filename
         try:
             f = open(os.path.abspath(filename + suffix), 'w')
@@ -551,6 +575,9 @@ class DataWrapper(object):
         self.isChanged = False
         self.isFromPackage = True
 
+        # Tell others we're done
+        self._stopMessage('saving')
+
         ## END THE SAVING FUNCTION
 
     def savePackage(self):
@@ -562,6 +589,7 @@ class DataWrapper(object):
 
 
     def exportQueries(self, filename, named=True):
+        self._startMessage('exporting', filename)
         ### TODO select format
         (pn, suffix) = os.path.splitext(os.path.basename(filename))
         if suffix == ".tex":
@@ -570,6 +598,7 @@ class DataWrapper(object):
             self._writeQueriesTXT(filename, named)
         else:
             self._writeQueries(filename, named)
+        self._stopMessage('exporting')
 
     def _writeQueriesTXT(self, filename, named = False, toPackage = False):
         if named:
@@ -646,16 +675,28 @@ class DataWrapper(object):
             
         return d
 
-    def _startMessage(self, filenames):
+    def _startMessage(self, action, filenames):
         "Shows the message if needed"
         if self.startReadingFileCallback is not None:
             (fnc, args, kwargs) = self.startReadingFileCallback
+            msg = 'Please wait. ' + action.capitalize() + ' file'
+            short_msg = action.capitalize() + ' file'
+            if len(filenames) <= 1:
+                msg += ' '
+            else:
+                msg += 's '
+                short_msg += 's'
+
+            if isinstance(filenames, basestring):
+                # In Python 3, test has to be isinstance(filenames, str)
+                filenames = [filenames]
+            msg += ' '.join(map(os.path.basename, filenames))
             # filename can be a list of filenames with full paths, hence map()
-            fnc(map(os.path.basename, filenames), *args, **kwargs)
+            fnc(msg, short_msg, *args, **kwargs)
             #time.sleep(1) ## give time to process the message?
 
-    def _stopMessage(self):
+    def _stopMessage(self, action):
         "Removes the message if needed"
         if self.stopReadingFileCallback is not None:
             (fnc, args, kwargs) = self.stopReadingFileCallback
-            fnc(*args, **kwargs)
+            fnc(action.capitalize()+' done', *args, **kwargs)
