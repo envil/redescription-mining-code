@@ -48,6 +48,12 @@ class DataWrapper(object):
         self._isChanged = False
         self._isFromPackage = False
 
+        # (possible) function pointers to tell we've started and stopped reading
+        # If these are not None, they have to be triples (fnc, *args, **kwargs)
+        # See: self.registerStartReadingFileCallback and self.registerStopReadingFileCallback
+        self.startReadingFileCallback = None
+        self.stopReadingFileCallback = None
+
         if package_filename is not None:
             self.openPackage(package_filename)
 
@@ -109,7 +115,18 @@ class DataWrapper(object):
             return self.preferences[param_id]["data"]
         else:
             return False
- 
+    def registerStartReadingFileCallback(self, fnc, *args, **kwargs):
+        """Registers the function DataWrapper calls when it starts to read a file (to tell that it
+        starts reading the file). Parameters: fnc, [*args,] [**kwargs],
+        where fnc is a function that takes as its first given argument the name of the file,
+        while the other arguments are given in *args and **kwargs"""
+        self.startReadingFileCallback = (fnc, args, kwargs)
+
+    def registerStopReadingFileCallback(self, fnc, *args, **kwargs):
+        """Registers the function DataWrapper calls when it stops reading a file.
+        Parameters: fnc, [*args,] [**kwargs],
+        where fnc is a function that takes arguments given in *args and **kwargs"""
+        self.stopReadingFileCallback = (fnc, args, kwargs)
 
     def __str__(self):
         return "coords = " + str(self.coords) + "; " \
@@ -166,16 +183,19 @@ class DataWrapper(object):
 #################### IMPORTS            
     def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
         try:
+            self._startMessage(data_filenames + list(coo_filename))                
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
 
         except DataError as details:
             print "Problem opening files.", details
-
         else:
             self.data = tmp_data
             self.resetQueries()
             self.isChanged = True
             self.isFromPackage = False
+        finally:
+            self._stopMessage()
+        
 
     def importDataFromFile(self, data_filename):
         try:
@@ -231,6 +251,7 @@ class DataWrapper(object):
     def openPackage(self, package_filename):
         """Loads new data from a package"""
         try:
+            self._startMessage(package_filename)
             self._readPackageFromFile(package_filename)
         except IOError as arg:
             print "Cannot open", arg
@@ -240,6 +261,8 @@ class DataWrapper(object):
         else:
             self.isChanged = False
             self.package_filename = package_filename
+        finally:
+            self._stopMessage()
 
 ######################## READS
     def _readDataFromFiles(self, data_filenames, names_filenames, coo_filename):
@@ -621,3 +644,16 @@ class DataWrapper(object):
             d['preferences_filename'] = self.PREFERENCES_FILENAME
             
         return d
+
+    def _startMessage(self, filename):
+        "Shows the message if needed"
+        if self.startReadingFileCallback is not None:
+            (fnc, args, kwargs) = self.startReadingFileCallback
+            # filename can be a list of filenames with full paths, hence map()
+            fnc(map(os.path.basename, filename), *args, **kwargs)
+
+    def _stopMessage(self):
+        "Removes the message if needed"
+        if self.stopReadingFileCallback is not None:
+            (fnc, args, kwargs) = self.stopReadingFileCallback
+            fnc(*args, **kwargs)

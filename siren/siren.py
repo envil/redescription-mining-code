@@ -23,11 +23,9 @@ class SirenApp(wx.App):
         self.frame = Siren()
 
         import sys
-        print sys.argv
-        print len(sys.argv)
         if len(sys.argv) > 1:
             # DEBUG
-            print "Loading file", sys.argv[-1]
+            #print "Loading file", sys.argv[-1]
             self.frame.LoadFile(sys.argv[-1])
         return True
 

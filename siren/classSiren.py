@@ -59,6 +59,72 @@ class Message(wx.PyEvent):
            wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], (source, message)))
     sendMessage = staticmethod(sendMessage)
 
+class ImportFileDialog(object):
+    """Helper class to show the dialog for importing data file triplets"""
+    def __init__(self, parent):
+        self.parent = parent
+        self.dlg = wx.Dialog(self.parent, title="Import files")
+
+        LHStext = wx.StaticText(self.dlg, label='Left-hand side data file')
+        RHStext = wx.StaticText(self.dlg, label='Right-hand side data file')
+        Cootext = wx.StaticText(self.dlg, label='Coordinates file')
+
+        self.LHSfile = None
+        self.RHSfile = None
+        self.Coofile = None
+
+        self.LHSfileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
+        self.RHSfileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
+        self.CoofileTxt = wx.TextCtrl(self.dlg, label='', style=wx.TE_READONLY)
+
+        LHSbtn = wx.Button(self.dlg, label='Choose')
+        RHSbtn = wx.Button(self.dlg, label='Choose')
+        Coobtn = wx.Button(self.dlg, label='Choose')
+
+        self.dlg.Bind(wx.EVT_BUTTON, self.onLHS, LHSbtn)
+        self.dlg.Bind(wx.EVT_BUTTON, self.onRHS, RHSbtn)
+        self.dlg.Bind(wx.EVT_BUTTON, self.onCoo, Coobtn)
+
+        gridSizer = wx.GridSizer(rows = 3, cols = 3, hgap = 5, vgap = 5)
+        gridSizer.AddMany([(LHStext, 0, wx.ALIGN_LEFT), (self.LHSfileTxt, 0, wx.EXPAND), (LHSbtn, 0),
+                           (RHStext, 0, wx.ALIGN_LEFT), (self.RHSfileTxt, 0, wx.EXPAND), (RHSbtn, 0),
+            (Cootext, 0, wx.ALIGN_LEFT), (self.CoofileTxt, 0, wx.EXPAND), (Coobtn, 0)])
+
+        btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
+        topSizer = wx.BoxSizer(wx.VERTICAL)
+        topSizer.Add(gridSizer, flag=wx.ALL, border=5)
+        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
+
+        self.dlg.SetSizer(topSizer)
+        self.dlg.Fit()
+
+        if self.dlg.ShowModal() == wx.ID_OK:
+            try:
+                self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
+            except IOError, error:
+                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error opening files '+str(self.LHSfile)
+                                       +', '+str(self.RHSfile)+', and '+str(self.Coofile)+':\n'
+                                       +str(error))
+                mdlg.ShowModal()
+                mdlg.Destroy()
+            self.parent.details = {'names': self.parent.dw.getColNames()}
+            self.parent.reloadVars()
+            self.parent.reloadReds()
+            
+        self.dlg.Destroy()
+
+    def onLHS(self, e):
+        pass
+    def onRHS(self, e):
+        pass
+    def onCoo(self, e):
+        pass
+
+        
+
+        
+        
+
 class Siren():
     """ The main frame of the application
     """
@@ -143,9 +209,11 @@ class Siren():
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
         self.dw = DataWrapper()
+
+        ## Comment (out) to toggle between loading data in input and not
         self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
         self.dw.importQueriesTXTFromFile(tmp_queries_filename)
-##        self.dw.importPreferencesFromFile(tmp_settings_filename)
+        #self.dw.importPreferencesFromFile(tmp_settings_filename)
 
         ### TODO DW
         self.resetLogger()
@@ -166,7 +234,15 @@ class Siren():
             self.info.SetDescription(f.read())
         with open(self.licence_file) as f:
             self.info.SetLicence(f.read())
-	
+
+        ## Register file reading message functions to DataWrapper
+        self.dw.registerStartReadingFileCallback(self.startReadingFileMsg)
+        self.dw.registerStopReadingFileCallback(self.stopReadingFileMsg)
+        self.readingFileDlg = None
+
+ 
+
+        
 ######################################################################
 ###########     TOOL PANEL
 ######################################################################
@@ -573,7 +649,7 @@ class Siren():
         save_dlg.Destroy()
                 
     def OnImportData(self, event):
-        if self.dw.reds is not None:
+        if len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
                 return
@@ -773,3 +849,20 @@ class Siren():
         self.tabs["exp"]["tab"].resetData(Batch(), self.details)
 #        self.getMapView().setCurrentRed(redsTmp[0])
 #        self.getMapView().updateRed()
+
+    def startReadingFileMsg(self, filenames):
+        """Shows a dialog that we're reading a file"""
+        msg = 'Reading file'
+        if len(filenames) <= 1:
+            msg += ' '+filename
+        else:
+            msg += 's'
+            for filename in filenames:
+                msg += ' '.join(filename)
+        self.toolFrame.Enable(False)
+        self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+
+    def stopReadingFileMsg(self):
+        """Removes the BusyInfo dialog"""
+        self.busyDlg = None
+        self.toolFrame.Enable(True)
