@@ -56,15 +56,15 @@ class CParameter:
 	def parseNode(self, node):
 		self._name = toolRead.getTagData(node, "name")
 		self._legend = toolRead.getTagData(node, "legend")
-		if self._name == None:
+		if self._name is None:
 			raise Exception("Name for param undefined!")
 		self._label = toolRead.getTagData(node, "label")
-		if self._label == None:
+		if self._label is None:
 			raise Exception("Label for param %s undefined!"% self._name)
 		tmp_vt = toolRead.getTagData(node, "value_type")
 		if tmp_vt in self.value_types.keys():
 			self._value_type = self.value_types[tmp_vt]
-		if self._value_type == None:
+		if self._value_type is None:
 			raise Exception("Value type for param %s undefined!"% self._name)
 
 	def __str__(self):
@@ -78,13 +78,13 @@ class CParameter:
 
 	def getParamText(self, raw_value):
 		tmp = toolRead.parseToType(raw_value, self._value_type)
-		if tmp != None:
+		if tmp is not None:
 			return str(tmp)
 		return None
 		
 	def getParamTriplet(self, raw_value):
 		tmp = toolRead.parseToType(raw_value, self._value_type)
-		if tmp != None:
+		if tmp is not None:
 			return {"value": tmp, "data": tmp, "text": str(tmp)}
 		else:
 			return None
@@ -102,7 +102,7 @@ class OpenCParameter(CParameter):
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
 			self._default = toolRead.getValue(et[0], self._value_type)
-		if self._default == None:
+		if self._default is None:
 			raise Exception("Default value for param %s undefined!"% self._name)
 
 class RangeCParameter(CParameter):
@@ -120,7 +120,7 @@ class RangeCParameter(CParameter):
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
 			self._default = toolRead.getValue(et[0], self._value_type)
-		if self._default == None or self._range_min == None or self._range_max == None \
+		if self._default is None or self._range_min is None or self._range_max is None \
 		       or self._default < self._range_min or self._default > self._range_max:
 			raise Exception("Default value for param %s not in range!"% self._name)
 
@@ -131,7 +131,7 @@ class RangeCParameter(CParameter):
 
 	def getParamValue(self, raw_value):
  		tmp =  toolRead.parseToType(raw_value, self._value_type)
-		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
+		if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
 			return tmp
 		return None
 
@@ -140,13 +140,13 @@ class RangeCParameter(CParameter):
 
 	def getParamText(self, raw_value):
  		tmp =  toolRead.parseToType(raw_value, self._value_type)
-		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
+		if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
 			return str(tmp)
 		return None
 		
 	def getParamTriplet(self, raw_value):
 		tmp = toolRead.parseToType(raw_value, self._value_type)
-		if tmp != None and tmp >= self._range_min and tmp <= self._range_max:
+		if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
 			return {"value": tmp, "data": tmp, "text": str(tmp)}
 		else:
 			return None
@@ -166,7 +166,7 @@ class SingleOptionsCParameter(CParameter):
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
 			self._default = toolRead.getValue(et[0], int)
-		if self._default == None or self._default < 0 or self._default >= len(self._options):
+		if self._default is None or self._default < 0 or self._default >= len(self._options):
 			raise Exception("Default value for param %s not among options!"% self._name)
 
 	def getInfo(self):
@@ -177,34 +177,34 @@ class SingleOptionsCParameter(CParameter):
 	def getParamValue(self, raw_value, index=False):
 		if index:
 			tmp =  toolRead.parseToType(raw_value, int)
-			if tmp != None and tmp >= 0 and tmp < len(self._options):
+			if tmp is not None and tmp >= 0 and tmp < len(self._options):
 				return tmp
 		else:
 			tmp =  toolRead.parseToType(raw_value, self._value_type)
-			if tmp != None and tmp in self._options:
+			if tmp is not None and tmp in self._options:
 				return self._options.index(tmp)
 		return None
 
 	def getParamData(self, raw_value, index=False):
 		if index:
 			tmp =  toolRead.parseToType(raw_value, int)
-			if tmp != None and tmp >= 0 and tmp < len(self._options):
+			if tmp is not None and tmp >= 0 and tmp < len(self._options):
 				return self._options[tmp]
 		else:
 			tmp =  toolRead.parseToType(raw_value, self._value_type)
-			if tmp != None and tmp in self._options:
+			if tmp is not None and tmp in self._options:
 				return tmp
 		return None
 
 	def getParamText(self, raw_value, index=False):
 		tmp = self.getParamData(raw_value, index)
-		if tmp != None:
+		if tmp is not None:
 			return str(tmp)
 		return None
 		
 	def getParamTriplet(self, raw_value, index=False):
 		tmp = self.getParamValue(raw_value, index)
-		if tmp != None:
+		if tmp is not None:
 			return {"value": tmp, "data": self._options[tmp], "text": str(self._options[tmp])}
 		else:
 			return None
@@ -230,7 +230,7 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
 			self._default = toolRead.getValues(et[0], int)
-		if self._default == None or min(self._default) < 0 or max(self._default) >= len(self._options):
+		if self._default is None or min(self._default) < 0 or max(self._default) >= len(self._options):
 			raise Exception("Some default value for param %s not among options!"% self._name)		
 	def getDefaultData(self):
 		return [self._options[i] for i in self._default]
@@ -254,9 +254,9 @@ class PreferencesManager:
  		if type(filenames) == str:
 			filenames = [filenames]
 		for filename in filenames:
- 			if filename != None:
+ 			if filename is not None:
 				doc = toolRead.parseXML(filename)
-				if doc != None:
+				if doc is not None:
 					params = self.processDom(doc.documentElement)
 					if type(params) == dict and params.keys() == ["subsections"]:
 					       	self.subsections.extend(params["subsections"])
@@ -303,7 +303,7 @@ class PreferencesManager:
 					sects = list(sects + [parameters["name"]])
 				for child in toolRead.children(current):
 					tmp = self.processDom(child, sects)
-					if tmp != None:
+					if tmp is not None:
 						if type(tmp) == dict:
 							parameters["subsections"].append(tmp)
 						elif tmp.type_id in parameters.keys():
@@ -320,7 +320,7 @@ class PreferencesManager:
 					parameters = self.parameter_types[parameter_type]()
 					parameters.parseNode(current)
 					parameters.setPathFromRoot(sects)
-		if parameters != None:
+		if parameters is not None:
 			return parameters
 
 
@@ -330,15 +330,15 @@ class PreferencesReader:
 	
 	def getParameters(self, filename=None):
 		pv = self.pm.getDefaultTriplets()
-		if filename != None:
+		if filename is not None:
 			tmp = self.readParametersFromFile(filename)
-			if tmp == None:
+			if tmp is None:
 				return None
 			pv.update(tmp)
 		return pv
 			
 	def readParametersFromFile(self, filename):
-		if filename != None:
+		if filename is not None:
 			try:
 				doc = toolRead.parseXML(filename)
 			except Exception as inst:
@@ -352,18 +352,18 @@ class PreferencesReader:
 		for current in document.getElementsByTagName("parameter"):
 			name = toolRead.getTagData(current, "name")
 			item = self.pm.getItem(name)
-			if item != None:
+			if item is not None:
 				values = toolRead.getValues(current)
 				if len(values) == 1 and item.getCardinality()=="unique":
 					value = item.getParamTriplet(values[0])
-					if value != None:
+					if value is not None:
 						pv[name] = value
 				elif item.getCardinality()=="multiple":
 					tmp_opts = []
 					tmp_ok = True
 					for tmp_s in values:
 						tmp = item.getParamTriplet(tmp_s)
-						if tmp != None:
+						if tmp is not None:
 							tmp_opts.append(tmp)
 						else:
 							tmp_ok = False
@@ -389,7 +389,7 @@ class PreferencesReader:
 				vs = pv[item_id]
 				item = self.pm.getItem(item_id)
 
-				if item != None and (defaults or not item.isDefault(vs)):
+				if item is not None and (defaults or not item.isDefault(vs)):
 					strd += indents+"<parameter>\n"
 					if helps:
 						strd += indents+"\t<label>"+ item.getLabel() +"</label>\n"
@@ -412,7 +412,7 @@ class PreferencesReader:
 
 	def dispParameters(self, pv=None, sections=True, helps=False, defaults=False):
 		strd = "<root>\n"
-		if pv == None:
+		if pv is None:
 			pv = self.pm.getDefaultTriplets()
 
 		for subsection in self.pm.subsections:

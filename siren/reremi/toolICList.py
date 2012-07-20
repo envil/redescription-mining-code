@@ -99,7 +99,7 @@ class ICList(list):
 
     def pop(self, i = None):
         self._isChanged = True
-        if i == None:
+        if i is None:
             i = len(self)-1
         return list.pop(self, i)
         

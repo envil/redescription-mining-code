@@ -508,14 +508,14 @@ class Siren():
         self.makeMenu(self.toolFrame) ## To update the worker stoppers
 
     def getResults(self, worker_id=None):
-        if worker_id != None and worker_id in self.workers.keys():
+        if worker_id is not None and worker_id in self.workers.keys():
             tap = None
             source = self.workers[worker_id]
             if source["batch_type"] == "partial":
                 tap = source["worker"].miner.partial["batch"]
             elif source["batch_type"] == "final":
                 tap = source["worker"].miner.final["batch"]
-            if tap != None:
+            if tap is not None:
                 nb_tap = len(tap)
                 if nb_tap > source["results_track"]:
                     tmp = []
@@ -527,7 +527,7 @@ class Siren():
                     source["results_track"] = nb_tap
 
     def endwork(self, worker_id=None):
-        if worker_id != None and worker_id in self.workers.keys():
+        if worker_id is not None and worker_id in self.workers.keys():
             del self.workers[worker_id]
             self.makeMenu(self.toolFrame) ## To update the worker stoppers
 
@@ -535,14 +535,14 @@ class Siren():
         """Show Result status."""
         ###### TODO, here receive results
         (source, progress) = event.data
-        if source != None and source in self.workers.keys():
+        if source is not None and source in self.workers.keys():
             self.getResults(source)
 
     def OnMessProgress(self, event):
         """Update progress status."""
         (source, progress) = event.data
-        if source != None and source in self.workers.keys():
-            if progress == None:
+        if source is not None and source in self.workers.keys():
+            if progress is None:
                 self.endwork(source)
             else:
                 self.workers[source]["work_progress"] = progress[1]
@@ -551,7 +551,7 @@ class Siren():
 
     def OnMessLogger(self, event):
         """Show Result status."""
-        if event.data != None:
+        if event.data is not None:
             text = "%s" % event.data[1]
             header = "@%s:\t" % event.data[0]
             text = text.replace("\n", "\n"+header)
@@ -559,7 +559,7 @@ class Siren():
 
     def OnMessStatus(self, event):
         """Show Result status."""
-        if event.data != None:
+        if event.data is not None:
             self.statusbar.SetStatusText("@%s:%s" % tuple(event.data), 0)
 
     def OnStop(self, event):
@@ -567,7 +567,7 @@ class Siren():
         ## TODO Implement stop
         if event.GetId() in self.ids_stoppers.keys():
             worker_id = self.ids_stoppers[event.GetId()]
-            if worker_id != None and worker_id in self.workers.keys():
+            if worker_id is not None and worker_id in self.workers.keys():
                 self.workers[worker_id]["worker"].abort()
 
     def OnSave(self, event):
@@ -729,7 +729,7 @@ class Siren():
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             red = self.selectedTab["tab"].getSelectedItem()
-            if red != None:
+            if red is not None:
                 self.expand(red)
 
     def OnFilterToOne(self, event):
@@ -811,7 +811,7 @@ class Siren():
 
     def resetLogger(self):
         #### TODO
-        if self.dw.getPreferences() != None and self.dw.getPreference('verbosity') != None:
+        if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
             self.logger = Log({"*": self.dw.getPreference('verbosity'), "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
         else:
             self.logger = Log({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
@@ -820,7 +820,7 @@ class Siren():
     def reloadVars(self):
         ## Initialize variable lists data
         for side in [0,1]:
-            if self.dw.data != None and self.details != None:
+            if self.dw.data is not None and self.details is not None:
                 self.tabs[side]["tab"].resetData(self.dw.getDataCols(side), self.details)
             else:
                 self.tabs[side]["tab"].resetData(ICList(), self.details)

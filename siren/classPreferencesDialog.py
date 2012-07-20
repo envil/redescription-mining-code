@@ -252,7 +252,7 @@ class PreferencesDialog(wx.Dialog):
 			for item_id, ctrl_txt in self.controls_map[sec_id][ty].items():
 				pit = self.pref_handle.getPreferencesManager().getItem(item_id)
 				tmp = pit.getParamTriplet(ctrl_txt.GetValue())
-				if tmp != None:
+				if tmp is not None:
 					vdict[item_id] = tmp
 				else:
 					vdict[item_id] = pit.getDefaultTriplet()
@@ -260,7 +260,7 @@ class PreferencesDialog(wx.Dialog):
 		for item_id, ctrl_single in self.controls_map[sec_id]["single_options"].items():
 				pit = self.pref_handle.getPreferencesManager().getItem(item_id)
 				tmp = pit.getParamTriplet(ctrl_single.GetSelection(), True)
-				if tmp != None:
+				if tmp is not None:
 					vdict[item_id] = tmp
 				else:
 					vdict[item_id] = pit.getDefaultTriplet()
@@ -272,7 +272,7 @@ class PreferencesDialog(wx.Dialog):
 			for check_id, check_box in ctrl_multiple.items():
 				if check_box.GetValue():
 					tmp = pit.getParamTriplet(check_id, True)
-					if tmp != None:
+					if tmp is not None:
 						tmp_opts.append(tmp)
 					else:
 						tmp_ok = False

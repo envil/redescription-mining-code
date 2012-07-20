@@ -113,13 +113,13 @@ class MapView:
 
         self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
-        if self.parent.dw.getCoords() != None:
+        if self.parent.dw.getCoords() is not None:
             self.Maphbox4.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
         self.Maphbox4.Add(self.button_expand, 0, border=3, flag=flags)
 
         self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        if self.parent.dw.getCoords() != None:
+        if self.parent.dw.getCoords() is not None:
             self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQL, 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQR, 0, border=3, flag=flags | wx.EXPAND)
@@ -145,7 +145,7 @@ class MapView:
         event.Skip()
         
     def OnQuit(self, event):
-        if self.source_list != None and self.parent.tabs.has_key(self.source_list):
+        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].unregisterView(self.vid)
         self.parent.deleteView(self.vid)
         
@@ -161,20 +161,20 @@ class MapView:
         
     def updateRed(self):
         red = self.redraw_map()
-        if red != None and self.source_list != None and self.parent.tabs.has_key(self.source_list):
+        if red is not None and self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].updateEdit(self.vid, red)
         return red
         
     def parseRed(self):
         queryL = Query.parse(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
         queryR = Query.parse(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
-        if queryL != None and queryR != None: 
+        if queryL is not None and queryR is not None: 
             return Redescription.fromQueriesPair([queryL, queryR], self.parent.dw.data) 
         
     def draw_map(self):
         """ Draws the map
         """
-        if self.parent.dw.getCoords() == None:
+        if self.parent.dw.getCoords() is None:
             self.coords_proj = None
             return
         self.MapfigMap = plt.figure()
@@ -198,7 +198,7 @@ class MapView:
         m.fillcontinents(color=MapView.GROUND_COLOR, lake_color=MapView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
 
-        if self.parent.dw.getCoords() != None:
+        if self.parent.dw.getCoords() is not None:
             self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             height = 3; width = 3
             self.gca = plt.gca()
@@ -209,7 +209,7 @@ class MapView:
         """ Redraws the map
         """
         red = self.parseRed()
-        # if red != None:
+        # if red is not None:
         #     self.previous = red
         # else: 
         #     red = self.previous
@@ -219,7 +219,7 @@ class MapView:
         #self.MapredMapInfo.ChangeValue(red.dispLParts())
         self.setMapredInfo(red)
 
-        if self.coords_proj != None:
+        if self.coords_proj is not None:
             m = self.axe
             colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
             sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
@@ -250,7 +250,7 @@ class MapView:
     #         print self.points_ids[ind], self.coords_proj[0][self.points_ids[ind]], self.coords_proj[1][self.points_ids[ind]]
 
     def setMapredInfo(self, red):
-        if red == None:
+        if red is None:
             self.MapredMapInfoJL.SetLabel("")
             self.MapredMapInfoJV.SetLabel("")
             self.MapredMapInfoVL.SetLabel("")

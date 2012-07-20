@@ -185,9 +185,9 @@ class SParts:
 
     # compute the resulting support and missing when combining X and Y with given operator
     def partsSuppMiss(OR, XSuppMiss, YSuppMiss):
-        if XSuppMiss == None:
+        if XSuppMiss is None:
             return YSuppMiss
-        elif YSuppMiss == None:
+        elif YSuppMiss is None:
             return XSuppMiss
         elif OR:
             supp = set(XSuppMiss[0] | YSuppMiss[0])
@@ -236,7 +236,7 @@ class SParts:
     
     # query p-value using support probabilities (binomial), for candidates
     def pValSuppQueryCand(side, op, neg, lParts, N, prs = None):
-        if prs == None:
+        if prs is None:
             return 0
         else:
             lInter = SParts.sumPartsId(side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.into, neg)])
@@ -249,7 +249,7 @@ class SParts:
 
     # query p-value using marginals (binomial), for candidates
     def pValMargQueryCand(side, op, neg, lParts, N, prs = None):
-        if prs == None:
+        if prs is None:
             return 0
         else:
             lInter = SParts.sumPartsId(side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.into, neg)])
@@ -263,7 +263,7 @@ class SParts:
 
     # query p-value using support sizes (hypergeom), for candidates
     def pValOverQueryCand(side, op, neg, lParts, N, prs = None):
-        if prs == None:
+        if prs is None:
             return 0
         else:
             lInter = SParts.sumPartsId(side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.into, neg)])
@@ -279,7 +279,7 @@ class SParts:
     def pValSuppRedCand(side, op, neg, lParts, N, prs = None):
         lInter = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op] + SParts.IDS_varnum[op], lParts)
         lX = float(sum(lParts[SParts.inOutId(SParts.into, neg)]))     
-        if prs == None :
+        if prs is None :
             lO = SParts.sumPartsId(1-side, SParts.IDS_supp, lParts[SParts.inOutId(SParts.tot, neg)])
             return tool_pValSupp(N, lInter, float(lO*lX)/(N*N))
         elif op:
@@ -654,7 +654,7 @@ class SParts:
 
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
     def makeVectorABCD(self):
-        if self.vect == None: 
+        if self.vect is None: 
             self.vect = [SParts.delta for i in range(self.N)]
             for partId in range(len(self.sParts)):
                 for i in self.sParts[partId]:
@@ -668,7 +668,7 @@ class SParts:
     # or the intersection of the mode of X with the different parts if row == -1, vectorABCD need to have been computed 
     def lpartsRow(self, row, X=None):
         lp = None
-        if row == -1 and X != None :
+        if row == -1 and X is not None :
             if self.missing:
                 lp = [len(X.interMode(self.sParts[i])) for i in range(SParts.mud+1)]
             else:
@@ -677,7 +677,7 @@ class SParts:
                 lp[1] = len(X.interMode(self.sParts[1]))
                 lp[2] = len(X.interMode(self.sParts[2]))
                 lp[3] = self.N - lp[0] - lp[1] - lp[2]
-        elif row != None:
+        elif row is not None:
             lp = self.vect[row]
         return lp
 

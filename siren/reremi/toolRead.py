@@ -30,7 +30,7 @@ def getNodesText(nodelist):
         return str(rc)
 
 def parseToType(raw_value, value_type=None):
-	if value_type != None and type(raw_value) != value_type:
+	if value_type is not None and type(raw_value) != value_type:
 		try:
 			raw_value = value_type(raw_value)
 		except ValueError:
@@ -50,6 +50,6 @@ def getValues(node, value_type=None, tag_name="value"):
 	values = []
 	for valuen in node.getElementsByTagName(tag_name):
 		tmp = parseToType(getChildrenText(valuen), value_type)
-		if tmp != None:
+		if tmp is not None:
 			values.append(tmp)
 	return values

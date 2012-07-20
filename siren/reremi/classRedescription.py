@@ -13,7 +13,7 @@ class Redescription:
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1]):
         self.queries = [nqueryL, nqueryR]
-        if nsupps != None:
+        if nsupps is not None:
             self.sParts = SParts(nN, nsupps, nPrs)
             self.dict_supp_info = None
         else:
@@ -44,14 +44,14 @@ class Redescription:
     fromQueriesPair = staticmethod(fromQueriesPair)
 
     def getInfoDict(self):
-        if self.dict_supp_info == None and self.sParts != None:
+        if self.dict_supp_info is None and self.sParts is not None:
             self.dict_supp_info = self.sParts.toDict()
-        if self.dict_supp_info != None:
+        if self.dict_supp_info is not None:
             return self.dict_supp_info
         return {}
 
     def dropSupport(self):
-        if self.sParts != None:
+        if self.sParts is not None:
             self.dict_supp_info.toDict()
             self.sParts = None
 
@@ -64,11 +64,11 @@ class Redescription:
             return -Redescription.diff_score
 
     def interArea(self, redB, side):
-        if redB != None:
+        if redB is not None:
             return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
         return 0
     def unionArea(self, redB, side):
-        if redB != None:
+        if redB is not None:
             return len(redB.supp(side) | self.supp(side))* len(redB.invColsSide(side) | self.invColsSide(side))
         return 0
     def overlapAreaSide(self, redB, side):
@@ -147,17 +147,17 @@ class Redescription:
         return len(self.queries[side])
         
     def availableColsSide(self, side):
-        if self.lAvailableCols[side] != None and self.length(1-side) != 0:
+        if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
             return self.lAvailableCols[side]
         return set() 
     def nbAvailableCols(self):
-        if self.lAvailableCols[0] != None and self.lAvailableCols[1] != None:
+        if self.lAvailableCols[0] is not None and self.lAvailableCols[1] is not None:
             return len(self.lAvailableCols[0]) + len(self.lAvailableCols[1])
         return -1
     def updateAvailable(self, souvenirs):
         nb_extensions = 0
         for side in [0, 1]:
-            if self.lAvailableCols[side] == None or len(self.lAvailableCols[side]) != 0:
+            if self.lAvailableCols[side] is None or len(self.lAvailableCols[side]) != 0:
                 self.lAvailableCols[side] =  souvenirs.availableMo[side] - souvenirs.extOneStep(self, side)
                 nb_extensions += len(souvenirs.availableMo[side]) - self.length(side) - len(self.lAvailableCols[side])
         return nb_extensions
@@ -172,12 +172,12 @@ class Redescription:
             self.queries[side].extend(op, literal)
             self.sParts.update(side, op.isOr(), suppX, missX)
             self.dict_supp_info = None
-            if self.lAvailableCols[side] != None:
+            if self.lAvailableCols[side] is not None:
                 self.lAvailableCols[side].remove(literal.col())
             self.track.append((side, literal.col()))
 
     def setFull(self, max_var=None):
-        if max_var != None:
+        if max_var is not None:
             for side in [0,1]:
                 if self.length(side) >= max_var:
                     self.lAvailableCols[side] = set()
@@ -191,7 +191,7 @@ class Redescription:
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              self.sParts.supparts(), self.sParts.N, self.probas())
         for side in [0,1]:
-            if self.lAvailableCols[side] != None:
+            if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
         r.status = self.status
         r.track = list(self.track)
@@ -227,7 +227,7 @@ class Redescription:
     def check(self, data):
         result = 0
         details = None
-        if self.sParts != None:
+        if self.sParts is not None:
             (nsuppL, missL) = self.recomputeQuery(0, data)
             (nsuppR, missR) = self.recomputeQuery(1, data)
             
@@ -290,7 +290,7 @@ class Redescription:
     def __str__(self):
         str_av = ["?", "?"]
         for side in [0,1]:
-            if self.availableColsSide(side) != None:
+            if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
         return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrackStr()))
 
@@ -382,7 +382,7 @@ class Redescription:
     def write(self, output, suppOutput):
         output.write(self.disp()+'\n')
         output.flush()
-        if suppOutput != None:
+        if suppOutput is not None:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()
 
@@ -407,7 +407,7 @@ class Redescription:
                         supp_val = toolRead.getValues(child, int, "row")
                     else:
                         supp_val = toolRead.getValue(child, float)
-                    if supp_val != None:
+                    if supp_val is not None:
                         dsi[supp_key] = supp_val
             if sum([len(dsi.get(i, [])) for i in SParts.labels]):
                 self.sParts = SParts(dsi)
@@ -422,7 +422,7 @@ class Redescription:
             strd += "\t<query>\n"
             strd += "\t\t<side>%d</side>\n" % side
             strd += "\t\t<ids_expression><![CDATA[\"%s\"]]></ids_expression>\n" % self.queries[side].disp()
-            if names[side] != None:
+            if names[side] is not None:
                 strd += "\t\t<names_expression><![CDATA[\"%s\"]]></names_expression>\n" % self.queries[side].disp(names[side])
             strd += "\t</query>\n"
         
@@ -475,9 +475,9 @@ class Redescription:
         (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries)
 
         r = None
-        if data != None and stringSupport != None and type(stringSupport) == str and re.search('\t', stringSupport) :
+        if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
             supportsS = SParts.parseSupport(stringSupport, data.N)
-            if supportsS != None:
+            if supportsS is not None:
                 r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
 
                 tmp = r.getInfoDict()
@@ -485,7 +485,7 @@ class Redescription:
                     if tmp.get(key, None) != lpartsList[key]:
                         raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" \
                                   % (key, tmp.get(key, None), lpartsList[key]))
-        if r == None:
+        if r is None:
             r = Redescription(queryL, queryR)
             r.supp_info = lpartsList
         return r

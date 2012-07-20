@@ -69,17 +69,17 @@ class DataWrapper(object):
         self.rshowids = ICList([], True)
 
     def getColNames(self):
-        if self.data != None:
+        if self.data is not None:
             return self.data.getNames()
         return [[],[]]
 
     def getNbRows(self):
-        if self.data != None:
+        if self.data is not None:
             return self.data.nbRows()
         return 0
 
     def getDataCols(self, side):
-        if self.data != None:
+        if self.data is not None:
             return self.data.cols[side]
         return []
 
@@ -87,21 +87,21 @@ class DataWrapper(object):
         return self.data
 
     def getCoords(self):
-        if self.data != None and self.data.isGeospatial():
+        if self.data is not None and self.data.isGeospatial():
             return self.data.coords
 
     def getCoordsExtrema(self):
-        if self.data != None and self.data.isGeospatial():
+        if self.data is not None and self.data.isGeospatial():
             return [min(self.data.coords[0]), max(self.data.coords[0]), min(self.data.coords[1]), max(self.data.coords[1])]
         return None
 
     def getReds(self):
-        if self.reds != None:
+        if self.reds is not None:
             return self.reds
         return []
 
     def getShowIds(self):
-        if self.rshowids != None:
+        if self.rshowids is not None:
             return self.rshowids
         return []
 
@@ -112,7 +112,7 @@ class DataWrapper(object):
         return self.preferences
 
     def getPreference(self, param_id):
-        if self.preferences != None and self.preferences.has_key(param_id):
+        if self.preferences is not None and self.preferences.has_key(param_id):
             return self.preferences[param_id]["data"]
         else:
             return False
@@ -325,7 +325,7 @@ class DataWrapper(object):
             filep = open(filename, 'r')
         
         doc = toolRead.parseXML(filep)
-        if doc != None:
+        if doc is not None:
             tmpreds = doc.getElementsByTagName("redescriptions")
             if len(tmpreds) == 1:
                 reds_node = tmpreds[0]
@@ -339,7 +339,7 @@ class DataWrapper(object):
                     show_ids = toolRead.getValues(tmpsi[0], int)
                     if len(show_ids) == 0 or min(show_ids) < 0 or max(show_ids) >= len(reds):
                         show_ids = None
-        if show_ids == None:
+        if show_ids is None:
             show_ids = range(len(reds))
         rshowids = ICList(show_ids, True)
         return reds, rshowids
@@ -363,7 +363,7 @@ class DataWrapper(object):
                 queryL = Query.parse(parts[0])
                 queryR = Query.parse(parts[1])
                 red = Redescription.fromQueriesPair([queryL, queryR], data)
-                if red != None:
+                if red is not None:
                     reds.append(red)
         rshowids = ICList(range(len(reds)), True)
         return reds, rshowids

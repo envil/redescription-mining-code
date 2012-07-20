@@ -130,7 +130,7 @@ class GridTable(wx.grid.PyGridTableBase):
     ### GRID METHOD
     def IsEmptyCell(self, row, col):
         """Return True if the cell is empty"""
-        return self.GetValue(row, col) == None
+        return self.GetValue(row, col) is None
 
     ### GRID METHOD
     def GetTypeName(self, row, col):
@@ -191,7 +191,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if details != []:
             self.details = details
 
-        if srids != None:
+        if srids is not None:
             self.sortids = srids
         else:
             self.sortids = [idi for idi in range(len(self.data))]
@@ -256,19 +256,19 @@ class GridTable(wx.grid.PyGridTableBase):
         self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
 
-        if self.getSelectedRow() != None and not self.grid.IsVisible(self.getSelectedRow(), 0):
+        if self.getSelectedRow() is not None and not self.grid.IsVisible(self.getSelectedRow(), 0):
             self.grid.MakeCellVisible(self.getSelectedRow(), 0)
 
     def deleteDisabled(self):
         pass
 
     def getSelectedItem(self):
-        if self.getSelectedRow() != None:
+        if self.getSelectedRow() is not None:
             return self.getItemAtRow(self.getSelectedRow())
         return
 
     def getSelectedPos(self):
-        if self.getSelectedRow() != None:
+        if self.getSelectedRow() is not None:
             return self.getPositionFromRow(self.getSelectedRow())
         return
     
@@ -301,15 +301,15 @@ class GridTable(wx.grid.PyGridTableBase):
     def updateSort(self):
         selected_row = self.getSelectedRow()
         selected_id = None
-        if selected_row != None:
+        if selected_row is not None:
             selected_id = self.getPositionFromRow(selected_row)
 
-        if self.sortP[0] != None:
+        if self.sortP[0] is not None:
             sort_c = 1
             if len(self.fields[self.sortP[0]]) > 2:
                 sort_c = 2
             self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][sort_c])(self.details), reverse=self.sortP[1])
-        if selected_id != None:
+        if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id))
             
     def OnRightClick(self, event):
@@ -349,7 +349,7 @@ class RedTable(GridTable):
 
 
     def insertItem(self, item, row=None, upView=True):
-        if row == None or row >= len(self.sortids):
+        if row is None or row >= len(self.sortids):
             self.sortids.append(len(self.data))
         else:
             self.sortids.insert(row+1, len(self.data))
@@ -360,7 +360,7 @@ class RedTable(GridTable):
 
     def deleteItem(self, pos, upView=True):
         row = self.getRowFromPosition(pos)
-        if row != None:
+        if row is not None:
             self.sortids.pop(row)
             for i in range(len(self.sortids)):
                 self.sortids[i] -= (self.sortids[i] > pos)
@@ -384,7 +384,7 @@ class RedTable(GridTable):
                 vid = k
                 break
             
-        if vid == None:
+        if vid is None:
             mapV = self.parent.getMapView()
             self.registerView(mapV.vid, pos)
             mapV.setCurrentRed(self.getSelectedItem(), self.tabId)
@@ -416,17 +416,17 @@ class RedTable(GridTable):
 
     def copyItem(self, row):
         pos = self.getPositionFromRow(row)
-        if pos != None:
+        if pos is not None:
             self.parent.buffer_copy = self.data[pos].copy()
 
     def cutItem(self, row):
         pos = self.getPositionFromRow(row)
-        if pos != None:
+        if pos is not None:
             self.parent.buffer_copy = self.data[pos].copy()
             self.deleteItem(pos)
 
     def pasteItem(self, row = None):
-        if self.parent.buffer_copy != None:
+        if self.parent.buffer_copy is not None:
             self.insertItem(self.parent.buffer_copy, row)
             self.parent.buffer_copy = None
             
@@ -446,7 +446,7 @@ class RedTable(GridTable):
     def processAll(self, actions_parameters, init_current=True):
         selected_row = self.getSelectedRow()
         selected_id = None
-        if selected_row != None:
+        if selected_row is not None:
             selected_id = self.getPositionFromRow(selected_row)
 
 
@@ -466,7 +466,7 @@ class RedTable(GridTable):
         self.data.applyFunctTo(".setDisabled()", middle)
         self.sortids.extend(selected_ids+middle+bottom)
 
-        if selected_id != None:
+        if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id))
 
         self.ResetView()

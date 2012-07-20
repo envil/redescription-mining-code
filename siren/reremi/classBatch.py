@@ -11,7 +11,7 @@ class Batch(ICList):
         if complement:
             ids = (set(range(len(self)))-set(ids))
         for i in ids:
-            if check == None or self.applyFunct(check, i):
+            if check is None or self.applyFunct(check, i):
                 self.applyFunct(funct, i)
 
     def applyFunct(self, funct, i):
@@ -133,7 +133,7 @@ class Batch(ICList):
         parameters.update(custom_parameters)
 
         cut = parameters["cutoff_nb"]
-        if cut != None and cut < len(ids):
+        if cut is not None and cut < len(ids):
             if parameters["cutoff_direct"] != 0 and callable(parameters["equal_funct"]):
                 while cut > 0 and cut+1 < len(ids) and \
                           self.applyFunct(parameters["equal_funct"], ids[cut-1]) == \
@@ -147,7 +147,7 @@ class Batch(ICList):
     
     def selected(self, actions_parameters =[], ids=None, complement=False):
         ### applies a sequence of action to select a sequence of elements from the batch
-        if ids == None:
+        if ids is None:
             ids = range(len(self))
         before_ids = list(ids)
         if len(self) > 0:

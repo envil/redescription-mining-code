@@ -25,9 +25,9 @@ class Charbon:
 
         for op in self.constraints.ops_query(side, init):
             for neg in self.constraints.neg_query(side):
-                adv = self.getAdv(side, op, neg, lparts, lmiss, lin)
-                if adv != None :
-                    cands.append(Extension(side, op, Literal(neg, BoolTerm(col.getId())), adv, col.nbRows()))
+                adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
+                if adv is not None :
+                    cands.append(Extension(adv, clp, (side, op, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
     def getCandidates2(self, side, col, supports, init=0):
@@ -56,42 +56,46 @@ class Charbon:
 
     def findCover1(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
+        best = (None, None, None)
+        bestNeg = (None, None, None)
 
         lin = supports.lpartsInterX(col.supp())
         for op in self.constraints.ops_query(side, init):            
             for neg in self.constraints.neg_query(side):        
-                best = self.updateExt(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
+                best = self.updateACT(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin)
 
                 ### to negate the other side when looking for initial pairs
                 if init == 1 and True in self.constraints.neg_query(side):
-                    bestNeg = self.updateExt(bestNeg, Literal(neg, BoolTerm(col.getId())), side, op, neg, \
-                                          SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin), col.nbRows(), init)
+                    bestNeg = self.updateACT(bestNeg, Literal(neg, BoolTerm(col.getId())), side, op, neg, \
+                                          SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
 
-                if best.isValid():
-                    cands.append((False, best))
-                if bestNeg.isValid():
-                    cands.append((True, bestNeg))
+                if best[0] is not None:
+                    cands.append((False, Extension(best)))
+                if bestNeg[0] is not None:
+                    cands.append((True, Extension(bestNeg)))
         return cands
 
     def findCover2(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
+        best = (None, None, None)
+        bestNeg = (None, None, None)
 
         for op in self.constraints.ops_query(side, init):            
             for neg in self.constraints.neg_query(side):        
                 best = Extension(); bestNeg = Extension()
                 for (cat, supp) in col.sCats.iteritems():
                     lin = supports.lpartsInterX(supp)
-                    best = self.updateExt(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin, col.nbRows())
+                    best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
 
                     ### to negate the other side when looking for initial pairs
                     if init ==1 and True in self.constraints.neg_query(side):
-                        bestNeg = self.updateExt(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
-                                              SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin), col.nbRows())
+                        bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
+                                              SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
 
-                if best.isValid():
-                    cands.append((False, best))
-                if bestNeg.isValid():
-                    cands.append((True, bestNeg))
+                if best[0] is not None:
+                    cands.append((False, Extension(best)))
+                if bestNeg[0] is not None:
+                    cands.append((True, Extension(bestNeg)))
         return cands
 
     def findCover3(self, side, col, lparts, lmiss, supports, init=0):
@@ -128,19 +132,19 @@ class Charbon:
 
     def findCoverFullSearch(self, side, op, col, segments, lparts, lmiss):
         cands = []
-        bests = {False: Extension(), True: Extension()}
+        bests = {False: (None, None, None), True: (None, None, None)}
 
         for seg_s in range(len(segments[op])):
             lin = SParts.makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
                 lin = SParts.addition(lin, segments[op][seg_e][2])
                 for neg in self.constraints.neg_query(side):
-                    bests[neg] = self.updateExt(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin, col.nbRows())
+                    bests[neg] = self.updateACT(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
 
         for neg in self.constraints.neg_query(side):
-            if bests[neg].isValid():
-                bests[neg].literal = col.getLiteralSeg(neg, segments[op], bests[neg].literal)
-                if bests[neg].literal != None:
+            if bests[neg][0]:
+                bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
+                if bests[neg][-1][-1] is not None:
                     cands.append(bests[neg])
         return cands
 
@@ -170,16 +174,16 @@ class Charbon:
                 lin_b = SParts.makeLParts()
             best_track_b.append(len(bests_b)-1)
 
-        best_t = Extension()
+        best_t = (None, None, None)
         for b in bests_b:
             if b[1] == len(segments[op]):
                 f = bests_f[0]
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
             if SParts.advRatioVar(side, op, f[2]) > b[0]:
-                best_t = self.updateExt(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]), col.nbRows())
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                best_t = self.updateExt(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, b[2], col.nbRows())
+                best_t = self.updateACT(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, b[2])
 
         for f in bests_f:
             if f[1] == len(segments[op]):
@@ -187,24 +191,24 @@ class Charbon:
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
             if SParts.advRatioVar(side, op, b[2]) > f[0]: 
-                best_t = self.updateExt(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]), col.nbRows())
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                best_t = self.updateExt(best_t, (f[1], len(segments)-1), side, op, False, lparts, lmiss, f[2], col.nbRows())
+                best_t = self.updateACT(best_t, (f[1], len(segments)-1), side, op, False, lparts, lmiss, f[2])
 
-        if best_t.isValid():
-            best_t.literal = col.getLiteralSeg(True, segments[op], best_t.literal)
-            if best_t.literal != None:
-                cands.append(best_t)
+        if best_t[0] is not None:
+            best_t[-1][-1] = col.getLiteralSeg(True, segments[op], best_t[-1][-1])
+            if best_t[-1][-1] is not None:
+                cands.append(Extension(best_t))
         return cands
 
     def findPositiveCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
         lin_f = SParts.makeLParts()
         nb_seg_f = 0
-        best_f = Extension()
+        best_f = (None, None, None)
         lin_b = SParts.makeLParts()
         nb_seg_b = 0
-        best_b = Extension()
+        best_b = (None, None, None)
 
         for  i in range(len(segments[op])-1):
             # FORWARD
@@ -215,7 +219,7 @@ class Charbon:
             else: 
                 lin_f = segments[op][i][2]
                 nb_seg_f = 0
-            best_f = self.updateExt(best_f, (i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f, col.nbRows())
+            best_f = self.updateACT(best_f, (i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f)
 
             # BACKWARD
             if i > 0 and \
@@ -225,33 +229,33 @@ class Charbon:
             else:
                 lin_b = segments[op][-(i+1)][2]
                 nb_seg_b = 0
-                best_f = self.updateExt(best_f, (i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f, col.nbRows())
-            best_b = self.updateExt(best_b, (len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), \
-                                    side, op, False, lparts, lmiss, lin_b, col.nbRows())
+                best_f = self.updateACT(best_f, (i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f)
+            best_b = self.updateACT(best_b, (len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), \
+                                    side, op, False, lparts, lmiss, lin_b)
 
-        if best_b.isValid() and best_f.isValid():
+        if best_b[0] is not None and best_f[0] is not None:
             bests = [best_b, best_f]
 
-            if best_b.literal[0] > best_f.literal[0] and best_b.literal[1] > best_f.literal[1] and best_b.literal[0] <= best_f.literal[1]:
+            if best_b[-1][-1][0] > best_f[-1][-1][0] and best_b[-1][-1][1] > best_f[-1][-1][1] and best_b[-1][-1][0] <= best_f[-1][-1][1]:
                 lin_m = SParts.makeLParts()
-                for seg in segments[op][best_b.literal[0]:best_f.literal[1]+1]:
+                for seg in segments[op][best_b[-1][-1][0]:best_f[-1][-1][1]+1]:
                     lin_m = SParts.addition(lin_m, seg[2])
-                tmp_adv_m = self.getAdv(side, op, False, lparts, lmiss, lin_m)
-                if tmp_adv_m != None:
-                    bests.append(Extension(side, op, (best_b.literal[0], best_f.literal[1]), tmp_adv_m, col.nbRows()))
+                tmp_adv_m, tmp_clp_m  = self.getAC(side, op, False, lparts, lmiss, lin_m)
+                if tmp_adv_m is not None:
+                    bests.append((tmp_adv_m, tmp_clp_m, [side, op, (best_b[-1][-1][0], best_f[-1][-1][1])]))
 
             bests.sort()
             best = bests[-1]
             
-        elif not best_f.isValid():
+        elif not best_f[0] is not None:
             best = best_f
         else:
             best = best_b
 
-        if best.isValid():
-            best.literal = col.getLiteralSeg(False, segments[op], best.literal)
-            if best.literal != None:
-                cands.append(best)
+        if best[0] is not None:
+            best[-1][-1] = col.getLiteralSeg(False, segments[op], best[-1][-1])
+            if best[-1][-1] is not None:
+                cands.append(Extension(best))
         return cands
 
 ################################################################### PAIRS METHODS
@@ -285,9 +289,9 @@ class Charbon:
         lmiss = supports.lpartsInterX(col.miss())
         cands = self.findCover(side, col, lparts, lmiss, supports, init=1)
         for cand in cands:
-            scores.append(cand[1].acc)
+            scores.append(cand[1].getAcc())
             literalsFix.append(Literal(cand[0], termX))
-            literalsExt.append(cand[1].literal)
+            literalsExt.append(cand[1].getLiteral())
         return (scores, literalsFix, literalsExt)
 
     def do11(self, colL, colR, side):
@@ -352,7 +356,7 @@ class Charbon:
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
-        best = Extension()
+        best = (None, None, None)
         flag=0
         interMat = []
         bucketsL = colL.buckets()
@@ -388,17 +392,17 @@ class Charbon:
             for bukF in bucketsF[0]: 
                 interMat.append([len(bukF & bukE) for bukE in bucketsE[0]])
             
-            if bucketsF[2] != None :
+            if bucketsF[2] is not None :
                 margF[bucketsF[2]] += colF.lenMode()
                 for bukEId in range(len(bucketsE[0])):
                     interMat[bucketsF[2]][bukEId] += len(colF.interMode(bucketsE[0][bukEId])) 
 
-            if bucketsE[2] != None :
+            if bucketsE[2] is not None :
                 #margE[bucketsE[2]] += colE.lenMode()
                 for bukFId in range(len(bucketsF[0])):
                     interMat[bukFId][bucketsE[2]] += len(colE.interMode(bucketsF[0][bukFId]))        
 
-            if bucketsF[2] != None and bucketsE[2] != None:
+            if bucketsF[2] is not None and bucketsE[2] is not None:
                 interMat[bucketsF[2]][bucketsE[2]] += len(colE.interMode(colF.modeSupp()))
 
 #             ### check marginals
@@ -454,7 +458,7 @@ class Charbon:
                                                          (SParts.partId(SParts.mubB, 1-side), lmissF ), \
                                                          (SParts.partId(SParts.delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
-                                best = self.updateExt(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin, colE.nbRows())
+                                best = self.updateACT(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
                                 upE-=1
@@ -466,13 +470,13 @@ class Charbon:
                 belowF+=margF[lowF]
                 lowF+=1
 
-        if best.isValid():
-            tF = colF.getLiteralBuk(False, bucketsF[1], best.literal[0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], best.literal[2:],flag)
-            if tF != None and tE != None:
+        if best[0]:
+            tF = colF.getLiteralBuk(False, bucketsF[1], best[-1][-1][0:2])
+            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:],flag)
+            if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
-                scores.append(best.acc)
+                scores.append(best[0][0])
 
         if flip_side:
             return (scores, literalsE, literalsF)
@@ -483,7 +487,7 @@ class Charbon:
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
         if neg in self.constraints.neg_query(side):
             configs = configs[:1]
-        best = [Extension() for c in configs]
+        best = [(None, None, None) for c in configs]
         
         for catL in colL.cats():
             ### TODO DOABLE
@@ -504,14 +508,14 @@ class Charbon:
                         tmp_lmiss = lmiss
                         tmp_lin = lin
 
-                    best[i] = self.updateExt(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin, colL.nbRows())
+                    best[i] = self.updateACT(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
                     
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nL, nR) in configs:
-            if best[i].isValid():
-                scores.append(best[i].acc)
-                literalsFix.append(Literal(nL, CatTerm(colL.getId(), best[i].literal[0])))
-                literalsExt.append(Literal(nR, CatTerm(colR.getId(), best[i].literal[1])))
+            if best[i][0] is not None:
+                scores.append(best[i][0][0])
+                literalsFix.append(Literal(nL, CatTerm(colL.getId(), best[i][-1][-1][0])))
+                literalsExt.append(Literal(nR, CatTerm(colR.getId(), best[i][-1][-1][1])))
         return (scores, literalsFix, literalsExt)
 
 
@@ -524,7 +528,7 @@ class Charbon:
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
         if neg in self.constraints.neg_query(side):
             configs = configs[:1]
-        best = [Extension() for c in configs]
+        best = [(None, None, None) for c in configs]
 
         buckets = colE.buckets()
         ### TODO DOABLE
@@ -536,7 +540,7 @@ class Charbon:
             totMiss = sum(missMat)
 
             marg = [len(buk) for buk in buckets[0]]
-            if buckets[2] != None :
+            if buckets[2] is not None :
                 marg[buckets[2]] += colE.lenMode()
 
             for cat in colF.cats():
@@ -544,7 +548,7 @@ class Charbon:
                 lmiss  = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat) & colE.miss()) ), (SParts.mubB, missMubB ), (SParts.delta, -len(colE.miss()) )], 1-side)
                 
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
-                if buckets[2] != None :
+                if buckets[2] is not None :
                     interMat[buckets[2]] += len(colE.interMode(colF.suppCat(cat)))        
 
                 totIn = sum(interMat) 
@@ -569,7 +573,7 @@ class Charbon:
                                 tmp_lmiss = lmiss
                                 tmp_lin = lin
 
-                            best[i] = self.updateExt(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin, colE.nbRows())
+                            best[i] = self.updateACT(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
 
                         above+=interMat[up]
                         missAbove+=missMat[up]
@@ -582,18 +586,18 @@ class Charbon:
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nF, nE) in configs:
 
-            if best[i].isValid():
-                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i].literal[1:],flag)
-                if tE != None:
+            if best[i][0] is not None:
+                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:],flag)
+                if tE is not None:
                     literalsExt.append(tE)
-                    literalsFix.append(Literal(nF, CatTerm(idF, best[i].literal[0])))
-                    scores.append(best[i].acc)
+                    literalsFix.append(Literal(nF, CatTerm(idF, best[i][-1][-1][0])))
+                    scores.append(best[i][0][0])
         return (scores, literalsFix, literalsExt)
 
 ##### TOOLS METHODS
     # compute the advance resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)            
-    def getAdv(self, side, op, neg, lparts, lmiss, lin):
+    def getAC(self, side, op, neg, lparts, lmiss, lin):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lmiss, lparts)
         contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], clp)
@@ -605,16 +609,23 @@ class Charbon:
                 if sout >= self.constraints.min_itm_out():
                     varRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op], clp)
                     fixRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixden[op], clp)
-                    return (contri, varBlue, fixBlue, varRed, fixRed, clp)
-        return None
+                    if varRed + fixRed == 0:
+                        if varBlue + fixBlue > 0:
+                            acc = float("Inf")
+                        else:
+                            acc = 0
+                    else:
+                        acc = float(varBlue + fixBlue)/ (varRed + fixRed)
+                    return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
+        return None, clp
 
-    def updateExt(self, best, t, side, op, neg, lparts, lmiss, lin, N):
-        tmp_adv = self.getAdv(side, op, neg, lparts, lmiss, lin)
-        if best.compareAdv(tmp_adv) < 0:
-            return Extension(side, op, t, tmp_adv, N)
+    def updateACT(self, best, lit, side, op, neg, lparts, lmiss, lin):
+        tmp_adv = self.getAC(side, op, neg, lparts, lmiss, lin)
+        if best[0] < tmp_adv[0]:
+            return tmp_adv[0], tmp_adv[1], [side, op, lit]
         else:
             return best
-        ### EX: best = self.updateExt(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
+        ### EX: best = self.updateACT(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
     def inSuppBounds(self, side, op, lparts):
         return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \

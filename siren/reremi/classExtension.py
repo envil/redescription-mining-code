@@ -4,101 +4,126 @@ from classSParts import SParts
 import pdb
 
 class Extension:
-    diff_literal, diff_in, diff_toRed, diff_toBlue, diff_acc, diff_none = range(1,7)
 
-    def __init__(self, side=None, op=None, literal=None, adv=None, N=None):
-        self.side = side
-        self.op = op
-        self.literal = literal
-        if adv != None:
-            self.contrib, self.varBlue, self.fixBlue, self.varRed, self.fixRed, self.lparts = adv
-            if self.varRed + self.fixRed == 0:
-                self.acc == 0
-            else:
-                self.acc = float( self.varBlue + self.fixBlue ) / ( self.varRed + self.fixRed )
-            self.N = N
+    def __init__(self, adv=None, clp=None, sol=None):
+        ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
+        
+        if adv is not None and len(adv) == 3 and len(adv[2]) == 3 and clp==None and sol==None:
+            self.adv = adv[0]
+            self.clp = adv[1]
+            self.side, self.op, self.literal = adv[2]
+
         else:
-            self.acc = None
+            self.adv = adv
+            self.clp = clp
+            if sol is not None:
+                self.side, self.op, self.literal = sol
+            else:
+                self.side, self.op, self.literal = None, None, None
 
+    def getLiteral(self):
+        if self.isValid():
+            return self.literal
+
+    def getOp(self):
+        if self.isValid():
+            return self.op
+
+    def getSide(self):
+        if self.isValid():
+            return self.side
+
+    def getAcc(self):
+        if self.isValid():
+            return self.adv[0]
+
+    def getVarBlue(self):
+        if self.isValid():
+            return self.adv[1]
+
+    def getVarRed(self):
+        if self.isValid():
+            return self.adv[2]
+
+    def getCLP(self):
+        if self.isValid():
+            return self.clp
+    
     def kid(self, red, data):
-        supp = data.supp(self.side, self.literal)
-        miss = data.miss(self.side, self.literal)
-        return red.kid(data, self.side, self.op, self.literal, supp, miss)
+        supp = data.supp(self.getSide(), self.getLiteral())
+        miss = data.miss(self.getSide(), self.getLiteral())
+        return red.kid(data, self.getSide(), self.getOp(), self.getLiteral(), supp, miss)
 
     def isValid(self):
-        return self.acc != None
+        return self.adv is not None and len(self.adv) > 2
 
     def isNeg(self):
         if self.isValid():
-            return self.literal.isNeg()
-
-    def adv(self):
-        if self.isValid():
-            return (self.contrib, self.varBlue, self.fixBlue, self.varRed, self.fixRed, self.lparts)
+            return self.getLiteral().isNeg()
 
     def __str__(self):
         if self.isValid():
-            return "Extension:\t (%d, %s, %s) -> %f" % (self.side, Op(self.op), self.literal, self.acc) 
+            return "Extension:\t (%d, %s, %s) -> %f" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc()) 
         else:
             return "Empty extension"
 
-    def disp(self, base_acc=None, prs=None, coeffs=None):
+    def disp(self, base_acc=None, N=0, prs=None, coeffs=None):
         strPieces = ["", "", ""]
         if self.isValid():
-            strPieces[self.side] = str(Op(self.op)) + " " + str(self.literal) 
-            if base_acc == None:
+            strPieces[self.getSide()] = str(Op(self.getOp())) + " " + str(self.getLiteral()) 
+            if base_acc is None:
                 strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
-                                % (self.acc, self.varBlue, self.varRed)
+                                % (self.getAcc(), self.getVarBlue(), self.getVarRed())
             else:
                 strPieces[-1] = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
-                                % (self.score(base_acc, prs, coeffs), self.acc, \
-                                   self.pValQuery(prs), self.pValRed(prs) , self.varBlue, self.varRed)
+                                % (self.score(base_acc, N, prs, coeffs), self.getAcc(), \
+                                   self.pValQuery(N, prs), self.pValRed(N, prs) , self.getVarBlue(), self.getVarRed())
 
         return '* %20s <==> * %20s %s' % tuple(strPieces)
             
-    def score(self, base_acc, prs, coeffs):
+    def score(self, base_acc, N, prs, coeffs):
         if self.isValid():
             return coeffs["impacc"]*self.impacc(base_acc) \
                    + coeffs["rel_impacc"]*self.relImpacc(base_acc) \
-                   + self.pValRedScore(prs, coeffs) \
-                   + self.pValQueryScore(prs, coeffs)
+                   + self.pValRedScore(N, prs, coeffs) \
+                   + self.pValQueryScore(N, prs, coeffs)
 
     def relImpacc(self, base_acc=0):
         if self.isValid():
             if base_acc != 0:
-                return (self.acc - base_acc)/base_acc
+                return (self.adv[0] - base_acc)/base_acc
             else:
-                return self.acc
+                return self.adv[0]
         
     def impacc(self, base_acc=0):
         if self.isValid():
-            return (self.acc - base_acc)
+            return (self.adv[0] - base_acc)
         
-    def pValQueryScore(self, prs, coeffs=None):
+    def pValQueryScore(self, N, prs, coeffs=None):
         if self.isValid():
-            if coeffs == None or coeffs["pVal_query"] < 0:
-                return coeffs["pVal_query"] * SParts.pValQuery(prs)
+            if coeffs is None or coeffs["pVal_query"] < 0:
+                return coeffs["pVal_query"] * SParts.pValQuery(N, prs)
             elif coeffs["pVal_query"] > 0:
-                return -coeffs["pVal_fact"]*(coeffs["pVal_query"] < self.pValQuery(prs))
+                return -coeffs["pVal_fact"]*(coeffs["pVal_query"] < self.pValQuery(N, prs))
             else:
                 return 0
 
-    def pValRedScore(self, prs, coeffs=None):
+    def pValRedScore(self, N, prs, coeffs=None):
         if self.isValid():
-            if coeffs == None or coeffs["pVal_red"] < 0:
-                return coeffs["pVal_red"] * self.pValRed(prs)
+            if coeffs is None or coeffs["pVal_red"] < 0:
+                return coeffs["pVal_red"] * self.pValRed(N, prs)
             elif coeffs["pVal_red"] > 0:
-                return -coeffs["pVal_fact"]*(coeffs["pVal_red"] < self.pValRed(prs))
+                return -coeffs["pVal_fact"]*(coeffs["pVal_red"] < self.pValRed(N, prs))
             else:
                 return 0
 
-    def pValQuery(self, prs=None):
+    def pValQuery(self, N=0, prs=None):
         if self.isValid():
-            return SParts.pValQueryCand(self.side, self.op, self.isNeg(), self.lparts, self.N, prs)
+            return SParts.pValQueryCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
 
-    def pValRed(self, prs=None):
+    def pValRed(self, N=0, prs=None):
         if self.isValid():
-            return SParts.pValRedCand(self.side, self.op, self.isNeg(), self.lparts, self.N, prs)
+            return SParts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
 
     def __cmp__(self, other):
         return self.compare(other)
@@ -106,54 +131,76 @@ class Extension:
     def compare(self, other):
         tmp = self.compareAdv(other)
         if tmp == 0:
-            if self.literal > other.literal:
-                return Extension.diff_literal
-            elif self.literal == other.literal:
-                return 0
-            else:
-                return -Extension.diff_literal
-        else:
-            return tmp
+            return cmp(self.getLiteral(), other.getLiteral())
 
     def compareAdv(self, other):
-        if other == None:
-            return Extension.diff_none
-
-        if self.acc == None:
-            return -Extension.diff_none
+        if other is None:
+            return 1
+        if not self.isValid():
+            return -1
 
         if type(other) in [tuple, list]:
-            other_contrib, other_varBlue, other_fixBlue, other_varRed, other_fixRed, other_clp = other
-            if other_varRed + other_fixRed == 0:
-                other_acc = 0
-            else:
-                other_acc = float(other_varBlue + other_fixBlue)/ (other_varRed + other_fixRed)
+            other_adv = other
         else:
-            if other.acc == None:
-                return Extension.diff_none
-            other_contrib, other_varBlue, other_fixBlue, other_varRed, other_fixRed, other_clp = other.adv()
-            other_acc = other.acc
+            other_adv = other.adv
 
-        if self.acc > other_acc:
-            return Extension.diff_acc
-        elif self.acc == other_acc:
-            if self.acc > other_acc:
-                return Extension.diff_toBlue
-            elif self.varBlue == other_varBlue:
-                if self.varRed > self.varRed:
-                    return Extension.diff_toRed
-                elif self.varRed == other_varRed:
-                    if self.contrib < other_contrib:
-                        return Extension.diff_in
-                    elif self.contrib == other_contrib:
-                        return 0
-                    else:
-                        return -Extension.diff_in
-                else:
-                    return -Extension.diff_toRed
-            else:
-                return -Extension.diff_toBlue
-        else:
-            return -Extension.diff_acc
+        return cmp(self.adv, other_adv)
         
     
+class ExtensionsBatch:
+    def __init__(self, N=0, coeffs=None, current=None):
+        self.current = current
+        self.base_acc = self.current.acc()
+        self.N = N
+        self.prs = self.current.probas()
+        self.coeffs = coeffs
+        self.bests = {}
+
+    def scoreCand(self, cand):
+        if cand is not None:
+            #if cand.literal.term.col == 1: pdb.set_trace()
+            return cand.score(self.base_acc, self.N, self.prs, self.coeffs)
+
+    def pos(self, cand):
+        if cand.isValid():
+            return (cand.getSide(), cand.getOp())
+
+    def get(self, pos):
+        if self.bests.has_key(pos):
+            return self.bests[pos]
+        else:
+            return None
+        
+    def update(self, cands):
+        for cand in cands:
+            pos = self.pos(cand)
+            self.scoreCand(cand)
+            if pos is not None and (not self.bests.has_key(pos) or self.scoreCand(cand) > self.scoreCand(self.bests[pos])):
+                self.bests[pos] = cand
+
+    def improving(self, min_impr=0):
+        return dict([(pos, cand)  for (pos, cand) in self.bests.items() \
+                     if self.scoreCand(cand) >= min_impr])
+
+    def improvingKids(self, data, min_impr=0, max_var=-1):
+        kids = []
+        for (pos, cand) in self.bests.items():
+            if self.scoreCand(cand) >= min_impr:
+                kid = cand.kid(self.current, data)
+                kid.setFull(max_var)
+                if kid.acc() != cand.getAcc(): raise Error('Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (self.current, cand, kid))
+                kids.append(kid)
+        return kids
+        
+    def __str__(self):
+        dsp  = 'Extensions Batch:\n' 
+        dsp += 'Redescription: %s' % self.current
+        dsp += '\n\t  %20s        %20s' \
+                  % ('LHS extension', 'RHS extension')
+            
+        dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
+                      % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')
+            
+        for k,cand in self.bests.items(): ## Do not print the last: current redescription
+            dsp += '\n\t%s' % cand.disp(self.base_acc, self.N, self.prs, self.coeffs)
+        return dsp

@@ -33,7 +33,7 @@ class InitialPairs:
 
     def get(self, data):
         pair = self.pop()
-        if pair != None:
+        if pair is not None:
             return Redescription.fromInitialPair(pair, data)
 
 class IPoverall(InitialPairs):

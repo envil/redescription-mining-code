@@ -56,7 +56,7 @@ class Op:
         return Op.opsU[self.val]
 
     def __cmp__(self, other):
-        if other == None:
+        if other is None:
             return 1
         else:
             return cmp(self.val, other.val)
@@ -91,7 +91,7 @@ class Neg:
         return self.neg
     
     def __cmp__(self, other):
-        if other == None:
+        if other is None:
             return 1
         else:
             return cmp(self.neg, other.neg)
@@ -126,7 +126,7 @@ class Term:
         return Term(self.col)
 
     def cmpType(self, other):
-        if other == None:
+        if other is None:
             return 1
         else:
             return cmp(self.type_id, other.type_id)
@@ -135,7 +135,7 @@ class Term:
         return self.col
     
     def cmpCol(self, other):
-        if other == None:
+        if other is None:
             return 1
         else:
             return cmp(self.col, other.col)
@@ -167,7 +167,7 @@ class BoolTerm(Term):
         if type(neg) == bool:
             neg = Neg(neg)
 
-        if neg == None:
+        if neg is None:
             strneg = ''
         else:
             strneg = neg.disp()
@@ -204,8 +204,8 @@ class BoolTerm(Term):
                     
     def parse(partsU, names=None):
         ncol = None
-        if partsU != None:
-            neg = (partsU.group('neg') != None)
+        if partsU is not None:
+            neg = (partsU.group('neg') is not None)
             tmpcol = partsU.group('col').strip()
             if tmpcol.isdigit():
                 try:
@@ -214,9 +214,9 @@ class BoolTerm(Term):
                     ncol = None
                     raise Warning('In boolean term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
-                if names != None and tmpcol in names:
+                if names is not None and tmpcol in names:
                     ncol = names.index(tmpcol)
-        if ncol != None :
+        if ncol is not None :
             return (neg, BoolTerm(ncol))
         return (None, None)
     parse = staticmethod(parse)
@@ -254,7 +254,7 @@ class CatTerm(Term):
         if type(neg) == bool:
             neg = Neg(neg)
 
-        if neg == None:
+        if neg is None:
             strneg = ''
         else:
             strneg = neg.disp()
@@ -300,8 +300,8 @@ class CatTerm(Term):
 
     def parse(partsU, names=None):
         ncol = None
-        if partsU != None:
-            neg = (partsU.group('neg') != None)
+        if partsU is not None:
+            neg = (partsU.group('neg') is not None)
             tmpcol = partsU.group('col').strip()
             if tmpcol.isdigit():
                 try:
@@ -310,14 +310,14 @@ class CatTerm(Term):
                     ncol = None
                     raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
-                if names != None and tmpcol in names:
+                if names is not None and tmpcol in names:
                     ncol = names.index(tmpcol)
             try:
                 cat = int(partsU.group('cat'))
             except ValueError, detail:
                 ncol = None
                 raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
-        if ncol != None :
+        if ncol is not None :
             return (neg, CatTerm(ncol, cat))
         return (None, None)
     parse = staticmethod(parse)
@@ -372,7 +372,7 @@ class NumTerm(Term):
         else:
             return self.cmpCol(other)
         
-        if other == None:
+        if other is None:
             return 1
         elif cmp(self.col, other.col) == 0:
             if cmp(self.lowb, other.lowb) == 0:
@@ -392,7 +392,7 @@ class NumTerm(Term):
         if type(neg) == bool:
             neg = Neg(neg)
 
-        if neg == None:
+        if neg is None:
             strneg = ''
         else:
             strneg = neg.disp()
@@ -459,8 +459,8 @@ class NumTerm(Term):
 
     def parse(partsU, names=None):
         ncol=None
-        if partsU != None :
-            neg = (partsU.group('neg') != None)
+        if partsU is not None :
+            neg = (partsU.group('neg') is not None)
             lowb = float('-inf')
             upb = float('inf')
             
@@ -472,10 +472,10 @@ class NumTerm(Term):
                     ncol = None
                     raise Warning('In numerical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
             else: 
-                if names != None and tmpcol in names:
+                if names is not None and tmpcol in names:
                     ncol = names.index(tmpcol)
 
-            if partsU.groupdict().has_key('lowb') and partsU.group('lowb') != None:
+            if partsU.groupdict().has_key('lowb') and partsU.group('lowb') is not None:
                 tmplowbs = partsU.group('lowb')
                 try:
                     lowb = float(tmplowbs)
@@ -483,7 +483,7 @@ class NumTerm(Term):
                     ncol = None
                     raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(tmplowbs, detail))
 
-            if partsU.groupdict().has_key('upb') and partsU.group('upb') != None:
+            if partsU.groupdict().has_key('upb') and partsU.group('upb') is not None:
                 tmpupbs = partsU.group('upb')
                 try:
                     upb = float(tmpupbs)
@@ -491,7 +491,7 @@ class NumTerm(Term):
                     ncol = None
                     raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(tmpupbs, detail))
             
-        if ncol != None and (lowb != float('-inf') or upb != float('inf')):
+        if ncol is not None and (lowb != float('-inf') or upb != float('inf')):
             return (neg, NumTerm(ncol, lowb, upb))
         return (None, None)
     parse = staticmethod(parse)
@@ -526,7 +526,7 @@ class Literal:
         return self.term.dispU(self.neg, names)
 
     def __cmp__(self, other):
-        if other == None:
+        if other is None:
             return 1
         elif cmp(self.term, other.term) == 0:
             return cmp(self.neg, other.neg)
@@ -546,16 +546,16 @@ class Literal:
         i = 0
         term = None
         ##pdb.set_trace()
-        while i < len(Literal.termTypes) and term == None:
+        while i < len(Literal.termTypes) and term is None:
             patts = Literal.termTypes[i]['class'].patt
             j = 0
-            while j < len(patts) and term == None:
+            while j < len(patts) and term is None:
                 parts = re.match(patts[j], string)
-                if parts != None:
+                if parts is not None:
                     (neg, term) = Literal.termTypes[i]['class'].parse(parts, names)
                 j+=1
             i+=1
-        if term != None:
+        if term is not None:
             return Literal(neg, term)
         else:
             return None
@@ -595,11 +595,11 @@ class Query:
         c.op = self.op.copy()
         c.buk = []
         for buk in self.buk:
-            c.buk.append(set([t.copy() for t in buk if t != None]))
+            c.buk.append(set([t.copy() for t in buk if t is not None]))
         return c
             
     def compare(self, y): 
-        if y == None:
+        if y is None:
             return 1
         if self.op == y.op and self.buk == y.buk:
             return 0
@@ -823,13 +823,13 @@ class Query:
         pattrn = '^(?P<pattIn>[^\\'+Op.bannchar+']*)'+Op.pattAny+'?(?P<pattOut>(?(op).*))$'
         op = None; r = None
         parts = re.match(pattrn, string)
-        if parts != None:
+        if parts is not None:
             r = Query()
-        while parts != None:
+        while parts is not None:
             t = Literal.parse(parts.group('pattIn'), names)
-            if t != None:
+            if t is not None:
                 r.extend(op,t)
-                if parts.group('op') != None:
+                if parts.group('op') is not None:
                     op = Op.parse(parts.group('op'))
                     parts = re.match(pattrn, parts.group('pattOut'))
                 else:
@@ -838,7 +838,7 @@ class Query:
                 ## stop
                 parts = None
                 r = None
-        if r != None and len(r) == 0:
+        if r is not None and len(r) == 0:
             r = Query()
         return r 
     parseApd = staticmethod(parseApd)
@@ -847,46 +847,46 @@ class Query:
     def parsePar(string, names=None):
         r = None
         parts = re.match(ur'^\s*(\(\s*(?P<pattIn>.*)\s*\))*\s*(?P<pattOut>[^()]*)\s*$', string)
-        if parts != None:
+        if parts is not None:
             opExt = None
             ## parse inner query
-            if parts.group('pattIn') != None:
+            if parts.group('pattIn') is not None:
                 r = Query.parsePar(parts.group('pattIn'), names)
             else:
                 r = Query()
             ## identify operator
-            if r != None:
+            if r is not None:
                 indA = re.search(Op.patt[-1], parts.group('pattOut'))
                 indO = re.search(Op.patt[1], parts.group('pattOut'))
-                if indA == None and indO == None:
+                if indA is None and indO is None:
                     if not r.opBuk(len(r)).isSet():
                         opExt = Op()
                         opStr = Op.ops[-1]
-                elif indA != None and indO == None:
+                elif indA is not None and indO is None:
                     if not r.opBuk(r.nbBuk()-1).isAnd():
                         opExt = Op(False)
                         opStr = indA.group('op')
-                elif indA == None and indO != None:
+                elif indA is None and indO is not None:
                     if not r.opBuk(r.nbBuk()-1).isOr():
                         opExt = Op(True)
                         opStr = indO.group('op')
                 # else:
                 #     raise Exception('Something is wrong with the operators... %s' % string)
             ## if all went fine so far, split on operator and parse literals
-            if opExt != None:
+            if opExt is not None:
                 partsOut = parts.group('pattOut').split(opStr)
                 pi = 0
                 while pi < len(partsOut):
                     if len(partsOut[pi].strip()) > 0:
                         t = Literal.parse(partsOut[pi], names)
-                        if t != None:
+                        if t is not None:
                             r.extend(opExt,t)
                         else:
                             ### stop here
                             pi = len(partsOut)
                             r = None
                     pi+=1
-        if r != None and len(r) == 0:
+        if r is not None and len(r) == 0:
             r = None
         return r
     parsePar = staticmethod(parsePar)
@@ -896,9 +896,9 @@ class Query:
         if not re.search("[a-zA-Z0-9]", string):
             return Query()
         r = Query.parsePar(string, names)
-        if r == None:
+        if r is None:
             r = Query.parseApd(string, names)
-        if r == None:
+        if r is None:
             r = Query()
         return r
     parse = staticmethod(parse)

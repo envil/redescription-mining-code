@@ -2,7 +2,7 @@ import datetime
 from classCharbonStd import Charbon
 from classRedescription import Redescription
 from classBatch import Batch
-from classExtensionsBatch import ExtensionsBatch
+from classExtension import ExtensionsBatch
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
 from classInitialPairs import *
@@ -13,7 +13,7 @@ class Miner:
 ### INITIALIZATION
 ##################
     def __init__(self, data, params, logger, mid=None, souvenirs=None):
-        if mid != None:
+        if mid is not None:
             self.id = mid
         else:
             self.id = 1
@@ -21,7 +21,7 @@ class Miner:
         self.logger = logger
         self.constraints = Constraints(self.data.nbRows(), params)
         self.charbon = Charbon(self.constraints)
-        if souvenirs == None:
+        if souvenirs is None:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:
             self.souvenirs = souvenirs
@@ -101,12 +101,12 @@ class Miner:
         self.logger.printL(1,"Start full run %s" % ticF, "time", self.id)
 
         initial_red = self.initial_pairs.get(self.data)
-        # while initial_red != None and self.want_to_live:
+        # while initial_red is not None and self.want_to_live:
         #     initial_red = self.initial_pairs.get(self.data)
         # exit()
 
 
-        while initial_red != None and self.want_to_live:
+        while initial_red is not None and self.want_to_live:
             self.count += 1
             ticE = datetime.datetime.now()
             self.logger.printL(1,"Start expansion %s" % ticE, "time", self.id)
@@ -142,7 +142,7 @@ class Miner:
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
         ### TODO check disabled
-        if ids == None:
+        if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
         #ids = [[101, 162, 192], [12, 24, 26]]
@@ -191,7 +191,7 @@ class Miner:
                 ### To know whether some of its extensions were found already
                 nb_extensions = red.updateAvailable(self.souvenirs)
                 if red.nbAvailableCols() > 0:
-                    bests = ExtensionsBatch(self.constraints.score_coeffs(), red)
+                    bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
                     for side in [0,1]:
                         ### check whether we are extending a redescription with this side empty
                         if red.length(side) == 0:
@@ -206,7 +206,7 @@ class Miner:
                             tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())
                             for cand in tmp: ### TODO remove, only for debugging
                                 kid = cand.kid(red, self.data)
-                                if kid.acc() != cand.acc:
+                                if kid.acc() != cand.getAcc():
                                     print 'OUILLE! Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (red, cand, kid)
                             bests.update(tmp)
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]

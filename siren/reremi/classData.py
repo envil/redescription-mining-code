@@ -32,7 +32,7 @@ class ColM:
         self.id = nid
 
     def getName(self, details=None):
-        if self.name != None:
+        if self.name is not None:
             return self.name
         else:
             return "%d" % self.getId()
@@ -112,7 +112,7 @@ class ColM:
 
         strd += self.typespec_placeholder + "\n"
 
-        if self.missing != None and len(self.missing) > 0:
+        if self.missing is not None and len(self.missing) > 0:
             strd += "\t<missing>\n"
             strd += "\t\t<rows>" + ",".join(map(str,self.missing)) +"</rows>\n"
             ## strd += "\t\t<row>%d</row>\n" % row
@@ -376,7 +376,7 @@ class NumColM(ColM):
 
 
     def collapsedBuckets(self, max_agg):
-        if self.colbuk == None or (max_agg != None and self.max_agg != max_agg):
+        if self.colbuk is None or (max_agg is not None and self.max_agg != max_agg):
             self.max_agg = max_agg
             self.colbuk = self.collapseBuckets(self.max_agg)
         return self.colbuk
@@ -403,7 +403,7 @@ class NumColM(ColM):
         return (colB_supp, colB_min, 0, colB_max)
 
     def buckets(self):
-        if self.buk == None:
+        if self.buk is None:
             self.buk = self.makeBuckets()
         return self.buk
 
@@ -448,7 +448,7 @@ class NumColM(ColM):
             tmp_lparts = supports.lpartsRow(row, self)
 
             for op in ops:
-                if val != None and val == current_valseg[op][0]: 
+                if val is not None and val == current_valseg[op][0]: 
                     current_valseg[op][2] = SParts.addition(current_valseg[op][2], tmp_lparts)
                 else:
                     tmp_pushadd = SParts.addition(segments[op][-1][2], current_valseg[op][2]) 
@@ -609,7 +609,7 @@ class Data:
             if literal.term.type_id != self.cols[side][colid].type_id:
                 colid = None
                 raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.term.type_id, self.cols[side][colid].type_id))
-        if colid != None:
+        if colid is not None:
             return self.cols[side][colid]
 
     def name(self, side, literal):
@@ -632,7 +632,7 @@ class Data:
                 [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]
 
     def isGeospatial(self):
-        return self.coords != None
+        return self.coords is not None
             
     def getCoords(self):
         return self.coords
@@ -643,7 +643,7 @@ class Data:
     def setNames(self, names):
         if len(names) == 2:
             for side in [0,1]:
-                if names[side] != None:
+                if names[side] is not None:
                     if len(names) == self.nbCols(side):
                         for i, col in enumerate(self.colsSide(side)):
                             col.name = names[i]
@@ -651,7 +651,7 @@ class Data:
                         raise DataError('Number of names does not match number of variables!')
 
     def setCoords(self, coords):
-        if coords == None or (len(coords)==2 and len(coords[0]) == self.nbRows()):
+        if coords is None or (len(coords)==2 and len(coords[0]) == self.nbRows()):
             self.coords = coords
         else:
             self.coords = None
@@ -686,7 +686,7 @@ def readDNCFromXMLFile(filename):
                     else:
                         col = Data.var_types[type_id]()
                         col.fromXML(var_tmp)
-                        if col != None and col.N == N:
+                        if col is not None and col.N == N:
                             col.setId(len(cols[side]))
                             col.side = side
                             cols[side].append(col)
@@ -702,10 +702,10 @@ def readDNCFromXMLFile(filename):
     return (cols, N, coords)
 
 def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None):
-    if names_filenames == 0 or  names_filenames == None:
+    if names_filenames == 0 or  names_filenames is None:
         names_filenames = ".names"
     (cols, N) = readVariables(data_filenames)
-    if coo_filename != None:
+    if coo_filename is not None:
         coords = readCoords(coo_filename)
     else:
         coords = None
@@ -722,7 +722,7 @@ def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None):
                 names_filenames[side] = names_filename
 
     for side in [0,1]:
-        if names_filenames[side] != None:
+        if names_filenames[side] is not None:
             tmp_names = readNamesSide(names_filenames[side])
             if len(tmp_names) == len(cols[side]):
                 for i, col in enumerate(cols[side]):
@@ -752,7 +752,7 @@ def readVariables(filenames):
             raise DataError('Matrix in %s does not have the expected number of variables !' % filename)
 
         else:
-            if nbRowsT == None:
+            if nbRowsT is None:
                 nbRowsT = nbRows
                 data.append(cols)
             elif nbRowsT == nbRows:
@@ -797,11 +797,11 @@ def readMatrix(filename, side = None):
 
         # print "Reading input data %s (%s)"% (filename, type_all)
         for row in f:
-            if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows == None:
+            if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows is None:
                 nbRows = len(row.split())
             method_parse(tmpCols, row.split(), nbRows, nbCols)
 
-        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols == None:
+        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols is None:
             nbCols = len(tmpCols)
 
         ## print "Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all)

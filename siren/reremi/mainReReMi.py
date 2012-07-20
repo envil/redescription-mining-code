@@ -29,7 +29,7 @@ def run(arguments):
             config_filename = arguments[1]
 
     params = pr.getParameters(config_filename)
-    if params == None:
+    if params is None:
         print 'ReReMi redescription mining\nusage: "%s [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
@@ -58,7 +58,7 @@ def run(arguments):
     except KeyboardInterrupt:
         logger.printL(1, 'Stopped...', "log")
         
-    if supportOutFp != None:
+    if supportOutFp is not None:
         for pos in miner.final["results"]:
             miner.final["batch"][pos].write(queriesOutFp, supportOutFp)
 

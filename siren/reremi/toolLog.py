@@ -44,7 +44,7 @@ class Log:
                         header = ""
                     else:
                         header = type_message
-                    if source == None:
+                    if source is None:
                         header += ""
                     else:
                         header += "@%s" % source
