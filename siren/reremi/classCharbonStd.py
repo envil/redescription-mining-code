@@ -145,7 +145,7 @@ class Charbon:
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
-                    cands.append(bests[neg])
+                    cands.append(Extension(bests[neg]))
         return cands
 
     def findNegativeCover(self, side, op, col, segments, lparts, lmiss):
