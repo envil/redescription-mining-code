@@ -184,7 +184,7 @@ class DataWrapper(object):
 
 #################### IMPORTS            
     def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
-        fnames = data_filenames
+        fnames = list(data_filenames)
         if names_filenames is not None:
             fnames += names_filenames
         if coo_filename is not None:
@@ -195,7 +195,10 @@ class DataWrapper(object):
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
 
         except DataError as details:
-            print "Problem opening files.", details
+            print "Problem reading files.", details
+            raise
+        except IOError as arg:
+            print "Cannot open", arg
             raise
         else:
             self.data = tmp_data
@@ -211,7 +214,10 @@ class DataWrapper(object):
         try:
             tmp_data = self._readDataFromFile(data_filename)
         except DataError as details:
-            print "Problem opening files.", details
+            print "Problem reading files.", details
+            raise
+        except IOError as arg:
+            print "Cannot open", arg
             raise
         else:
             self.data = tmp_data
@@ -275,10 +281,11 @@ class DataWrapper(object):
         self._startMessage('loading', [package_filename])
         try:
             self._readPackageFromFile(package_filename)
+        except DataError as details:
+            print "Problem reading files.", details
+            raise
         except IOError as arg:
             print "Cannot open", arg
-            raise
-        except:
             raise
         else:
             self.isChanged = False
@@ -291,7 +298,7 @@ class DataWrapper(object):
         ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
             data = Data(data_filenames, names_filenames, coo_filename)
-        except DataError as details:
+        except:
             raise
         return data
 
@@ -299,16 +306,9 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            try:
-                filep = open(filename, 'r')
-            except:
-                raise
+            filep = open(filename, 'r')
+        return Data(filep)
 
-        try:
-            data = Data(filep)
-        except DataError as details:
-            raise
-        return data
 
     def _readQueriesFromFile(self, filename, data=None):
         if data is None:
@@ -322,10 +322,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            try:
-                filep = open(filename, 'r')
-            except:
-                raise
+            filep = open(filename, 'r')
         
         doc = toolRead.parseXML(filep)
         if doc != None:
@@ -358,10 +355,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
-            try:
-                reds_fp = open(filename, 'r')
-            except:
-                raise
+            reds_fp = open(filename, 'r')
 
         for line in reds_fp:
             parts = line.strip().split('\t')
@@ -378,18 +372,9 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            try:
-                filep = open(filename, 'r')
-            except:
-                raise
+            filep = open(filename, 'r')
 
-        try:
-            ### PREFERENCES CHANGED HERE 
-            preferences = PreferencesReader(self.pm).getParameters(filep)
-        except:
-            raise
-        else:
-            return preferences
+        return PreferencesReader(self.pm).getParameters(filep)
 
     def _readPackageFromFile(self, filename):
         """Loads a package"""

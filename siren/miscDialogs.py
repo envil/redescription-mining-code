@@ -1,6 +1,9 @@
 import sys
 import wx
 import os.path
+from reremi.classData import DataError
+
+import pdb
 
 class ImportDataDialog(object):
     """Helper class to show the dialog for importing data file triplets"""
@@ -59,6 +62,13 @@ class ImportDataDialog(object):
                 mdlg.ShowModal()
                 mdlg.Destroy()
                 return False
+            except DataError as error:
+                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error importing data:\n'
+                                       +str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption="Error")
+                mdlg.ShowModal()
+                mdlg.Destroy()
+                return False
+
             except:
                 mdlg = wx.MessageDialog(self.parent.toolFrame, 'Unexpected Error:\n'+str(sys.exc_info()[1]), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
                 mdlg.ShowModal()

@@ -466,6 +466,11 @@ class Siren():
                                    style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
             dlg.ShowModal()
             return False
+        except DataError as error:
+            dlg = wx.MessageDialog(self.toolFrame, 'Error reading file:\n' + str(error),
+                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
+            dlg.ShowModal()
+            return False
         except:
             dlg = wx.MessageDialog(self.toolFrame, 'Unexpected error when opening file '+str(path)+':\n'
                                    +str(sys.exc_info()[1]), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
@@ -639,6 +644,11 @@ class Siren():
                         dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
                                                +', '+str(right_path)+' and '+str(coord_path)+':\n' + str(error))
                         dlg.ShowModal()
+                    except DataError as error:
+                        dlg = wx.MessageDialog(self.toolFrame, 'Error reading file:\n' + str(error),
+                                               style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
+                        dlg.ShowModal()
+
 
                     self.details = {'names': self.dw.getColNames()}
                     self.reloadVars()

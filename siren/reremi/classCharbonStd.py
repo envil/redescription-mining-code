@@ -4,9 +4,6 @@ from classSParts import SParts
 from classQuery import  *
 import pdb
 
-###############################################################################
-###############################################################################
-####################### CANDIDATES METHODS
 class Charbon:
 
     def __init__(self, constraints):
