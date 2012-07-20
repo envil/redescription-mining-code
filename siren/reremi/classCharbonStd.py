@@ -599,7 +599,7 @@ class Charbon:
     # from intersections of X with parts (clp)            
     def getAC(self, side, op, neg, lparts, lmiss, lin):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
-        clp = (lin, lout, lmiss, lparts)
+        clp = (lin, lout, lparts, lmiss)
         contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], clp)
         if contri >= self.constraints.min_itm_c():
             varBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varnum[op], clp)
