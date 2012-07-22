@@ -178,6 +178,9 @@ class Siren():
         self.resetCoordinates()
         self.reloadReds()
 
+        ### W/O THIS DW THINK IT'S CHANGED!
+        self.dw.isChanged = False
+
         
 ######################################################################
 ###########     TOOL PANEL
@@ -299,11 +302,11 @@ class Siren():
             frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
 
             ID_FILTER_ALL = wx.NewId()
-            m_filter_all = menuRed.Append(ID_FILTER_ALL, "&Filter redundant\tCtrl+F", "Disable redescriptions redundant to previous encountered.")
+            m_filter_all = menuRed.Append(ID_FILTER_ALL, "&Filter redundant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
             frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
 
             ID_PROCESS = wx.NewId()
-            m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+F", "Sort and filter current redescription list.")
+            m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
             frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
 
             ID_DELDISABLED = wx.NewId()
@@ -442,6 +445,9 @@ class Siren():
 ######################################################################
 
     def OnOpen(self, event):
+        if not self.checkAndProceedWithUnsavedChanges():
+                return
+
         wcd = 'All files|*|Siren packages (*.siren)|*.siren'
 
         if self.dw.package_filename is not None:
@@ -604,6 +610,9 @@ class Siren():
 
     def OnImportData(self, event):
         """Shows a custom dialog to open the three data files"""
+        if self.dw.data is not None:
+            if not self.checkAndProceedWithUnsavedChanges():
+                return
         if len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
@@ -614,51 +623,10 @@ class Siren():
         dlg.showDialog()
             
                 
-    def OnImportDataOld(self, event):
-        if len(self.dw.reds) > 0:
-            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
-            if sure_dlg.ShowModal() != wx.ID_OK:
-                return
-            sure_dlg.Destroy()
-            
-        wcd = 'All files|*|Numerical Data (*.densenum / *.datnum)|*.densenum/*.datnum|Boolean Data (*.sparsebool / *.datbool)|*.sparsebool/*.datbool'
-        dir_name = os.path.expanduser('~/')
-            
-        open_left_dlg = wx.FileDialog(self.toolFrame, message='Choose LHS data file', defaultDir=dir_name,  
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-        if open_left_dlg.ShowModal() == wx.ID_OK:
-            left_path = open_left_dlg.GetPath()
-            open_right_dlg = wx.FileDialog(self.toolFrame, message='Choose RHS data file', defaultDir=os.path.dirname(left_path),  
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-            if open_right_dlg.ShowModal() == wx.ID_OK:
-                right_path = open_right_dlg.GetPath()
-
-                open_coord_dlg = wx.FileDialog(self.toolFrame, message='Choose coordinates file', defaultDir=os.path.dirname(left_path),  
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
-                if open_coord_dlg.ShowModal() == wx.ID_OK:
-                    coord_path = open_coord_dlg.GetPath()
-
-                    try:
-                        self.dw.importDataFromFiles([left_path, right_path], None, coord_path)
-                    except IOError, error:
-                        dlg = wx.MessageDialog(self.toolFrame, 'Error opening files '+str(left_path)
-                                               +', '+str(right_path)+' and '+str(coord_path)+':\n' + str(error))
-                        dlg.ShowModal()
-                    except DataError as error:
-                        dlg = wx.MessageDialog(self.toolFrame, 'Error reading file:\n' + str(error),
-                                               style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
-                        dlg.ShowModal()
-
-
-                    self.details = {'names': self.dw.getColNames()}
-                    self.reloadVars()
-                    self.reloadReds()
-
-                open_coord_dlg.Destroy()
-            open_right_dlg.Destroy()
-        open_left_dlg.Destroy()
-
     def OnImportPreferences(self, event):
+        #if self.dw.preferences is not None:
+        #if not self.checkAndProceedWithUnsavedChanges():
+        #      return
         dir_name = os.path.expanduser('~/')
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
                                  style = wx.OPEN|wx.CHANGE_DIR)
@@ -675,6 +643,9 @@ class Siren():
         open_dlg.Destroy()
         
     def OnImportQueries(self, event):
+        if len(self.dw.reds) > 0:
+            if not self.checkAndProceedWithUnsavedChanges():
+                return
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
         dir_name = os.path.expanduser('~/')
 
@@ -799,10 +770,21 @@ class Siren():
         wx.AboutBox(self.info)
     
     def OnQuit(self, event):
+        if not self.checkAndProceedWithUnsavedChanges():
+                return
         self.deleteAllViews()
         self.toolFrame.Destroy()
         exit()
-  
+
+    def checkAndProceedWithUnsavedChanges(self):
+        """Checks for unsaved changes and returns False if they exist and user doesn't want to continue
+        and True if there are no unsaved changes or user wants to proceed in any case"""
+        if self.dw.isChanged:
+            dlg = wx.MessageDialog(self.toolFrame, 'Unsaved changes might be lost.\nAre you sure you want to continue?', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Unsaved changes!')
+            if dlg.ShowModal() == wx.ID_NO:
+                return False
+        return True
+
     def resetCoordinates(self):
         self.deleteAllViews()
 
