@@ -7,6 +7,7 @@ from classRedescription import Redescription
 from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import Miner
+from classQuery import Query
 import pdb
 
  
@@ -53,6 +54,12 @@ def run(arguments):
         supportOutFp = None
 
     miner = Miner(data, params, logger)
+
+    # tmpL = Query.parse("66 & ! 114 | 54")
+    # tmpR = Query.parse("20>15.5<29.6 | 33>5.3357<8.3583")
+    # r = Redescription.fromQueriesPair([tmpL, tmpR], data)
+    # miner.part_run(r)
+
     try:
         miner.full_run()
     except KeyboardInterrupt:

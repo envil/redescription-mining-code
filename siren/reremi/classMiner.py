@@ -1,5 +1,6 @@
 import datetime
-from classCharbonStd import Charbon
+import classCharbonStd
+import classCharbonAlt
 from classRedescription import Redescription
 from classBatch import Batch
 from classExtension import ExtensionsBatch
@@ -20,7 +21,10 @@ class Miner:
         self.data = data
         self.logger = logger
         self.constraints = Constraints(self.data.nbRows(), params)
-        self.charbon = Charbon(self.constraints)
+        if self.data.hasMissing():
+            self.charbon = classCharbonAlt.Charbon(self.constraints)
+        else:
+            self.charbon = classCharbonStd.Charbon(self.constraints)
         if souvenirs is None:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:
@@ -111,7 +115,6 @@ class Miner:
             ticE = datetime.datetime.now()
             self.logger.printL(1,"Start expansion %s" % ticE, "time", self.id)
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
-
             self.expandRedescriptions([initial_red])
             
             self.final["batch"].extend([self.partial["batch"][i] for i in self.partial["results"]])
@@ -145,8 +148,8 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        #ids = [[101, 162, 192], [12, 24, 26]]
-        ##ids = [[6], [3]]
+        ## ids = [[101, 162, 192], [12, 24, 26]]
+        ## ids = [[190], [28]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.divL()):
@@ -167,13 +170,12 @@ class Miner:
                     if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
                         seen.append((literalsL[i], literalsR[i]))
                         self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
-                        tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                        if tmp.acc() != scores[i]:
-                            ##H pdb.set_trace()
-                            print 'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp)
-
+                        # tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
+                        # if tmp.acc() != scores[i]:
+                        #     ##H pdb.set_trace()
+                        #     print 'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp)
+                        
                         self.initial_pairs.add(literalsL[i], literalsR[i], scores[i])
-
         self.logger.printL(2, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
         self.initial_pairs.setCountdown(self.constraints.max_red())
         return self.initial_pairs
@@ -201,14 +203,16 @@ class Miner:
                             
                         for v in red.availableColsSide(side):
                             if not self.want_to_live: return
-                            ##Hbests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                            
+                            bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
-                            tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())
-                            for cand in tmp: ### TODO remove, only for debugging
-                                kid = cand.kid(red, self.data)
-                                if kid.acc() != cand.getAcc():
-                                    print 'OUILLE! Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (red, cand, kid)
-                            bests.update(tmp)
+                            # tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())
+                            # for cand in tmp: ### TODO remove, only for debugging
+                            #     kid = cand.kid(red, self.data)
+                            #     if kid.acc() != cand.getAcc():
+                            #         print 'OUILLE! Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (red, cand, kid)
+                            # bests.update(tmp)
+
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
                                                         

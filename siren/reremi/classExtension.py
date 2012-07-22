@@ -8,18 +8,32 @@ class Extension:
     def __init__(self, adv=None, clp=None, sol=None):
         ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
         
-        if adv is not None and len(adv) == 3 and len(adv[2]) == 3 and clp==None and sol==None:
+        if adv is not None and len(adv) == 3 and len(adv[2]) == 4 and clp==None and sol==None:
             self.adv = adv[0]
             self.clp = adv[1]
-            self.side, self.op, self.literal = adv[2]
+            self.side, self.op, tmp_neg, self.literal = adv[2]
 
         else:
             self.adv = adv
             self.clp = clp
             if sol is not None:
-                self.side, self.op, self.literal = sol
+                self.side, self.op, tmp_neg, self.literal = sol
             else:
                 self.side, self.op, self.literal = None, None, None
+
+    def setClp(self, clp, neg=False):
+        if clp is None:
+            self.clp = clp
+        else:
+            if len(clp) == 2:
+                lin = clp[0]
+                lparts = clp[1]
+                lout = [lparts[i] - lin[i] for i in range(len(lparts))]
+                if neg:
+                    self.clp = [lout, lin, lparts]
+                else:
+                    self.clp = [lin, lout, lparts]
+
 
     def getLiteral(self):
         if self.isValid():
@@ -79,7 +93,7 @@ class Extension:
                                 % (self.score(base_acc, N, prs, coeffs), self.getAcc(), \
                                    self.pValQuery(N, prs), self.pValRed(N, prs) , self.getVarBlue(), self.getVarRed())
 
-        return '* %20s <==> * %20s %s' % tuple(strPieces)
+        return '* %20s <==> * %20s %s' % tuple(strPieces) # + "\n\tCLP:%s" % str(self.clp)
             
     def score(self, base_acc, N, prs, coeffs):
         if self.isValid():
@@ -188,7 +202,10 @@ class ExtensionsBatch:
             if self.scoreCand(cand) >= min_impr:
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
-                if kid.acc() != cand.getAcc(): raise Error('Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (self.current, cand, kid))
+                if kid.acc() != cand.getAcc():
+                    print "OUILLE! something went seriously wrong with candidate!"
+                    #raise Exception('Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (self.current, cand, kid))
+            
                 kids.append(kid)
         return kids
         

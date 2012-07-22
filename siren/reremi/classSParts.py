@@ -81,7 +81,7 @@ class SParts:
         # Parts in numerator (BLUE), dependent of X: toBlue
         IDS_varnum = [[(into, gamma)] ,[(into, beta)]]
         # Parts in denominator (RED), independent of X
-        IDS_fixden = [[(into, gamma), (out, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (into, beta), (out, beta)]]
+        IDS_fixden = [[(tot, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (tot, beta)]]
         # Parts in denominator (RED), dependent of X: toRed
         IDS_varden = [[(into, alpha)], [(into, delta)]]
         # Parts left uncovered (OUT), (always dependent of X)
@@ -376,12 +376,17 @@ class SParts:
     def makeLParts(pairs=[], side=0):
         lp = [0 for i in range(SParts.top+1)]
         for (part_id, val) in pairs:
-            if val < 0:
-                tmp = sum(lp)
-                lp[SParts.partId(part_id, side)] = -val- tmp
+            if SParts.partId(part_id, side) < len(lp):
+                if val < 0:
+                    tmp = sum(lp)
+                    lp[SParts.partId(part_id, side)] = -val- tmp
+                else:
+                    lp[SParts.partId(part_id, side)] = val
             else:
-                lp[SParts.partId(part_id, side)] = val
+                if val > 0:
+                    raise Exception("Some missin data where there should not be any!")
         return lp
+    
     makeLParts = staticmethod(makeLParts)
 
     # adds to parts counts
@@ -743,7 +748,7 @@ class SParts:
                 lp[0] = len(X.interMode(self.sParts[0]))
                 lp[1] = len(X.interMode(self.sParts[1]))
                 lp[2] = len(X.interMode(self.sParts[2]))
-                lp[3] = self.N - lp[0] - lp[1] - lp[2]
+                lp[3] = X.lenMode() - lp[0] - lp[1] - lp[2]
         elif row is not None:
             lp = self.vect[row]
         return lp

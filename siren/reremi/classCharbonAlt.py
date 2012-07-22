@@ -6,42 +6,28 @@ import pdb
 
 class Charbon:
 
-    def __init__(self, constraints, type_parts = 0):
-        ### For use with no missing values
-        SParts.type_parts = 0
+    def __init__(self, constraints):
         self.constraints = constraints
-        
+
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.type_id)
-        cands = method_compute(side, col, supports, init)
-        for cand in cands:
-            supp = col.suppLiteral(cand.getLiteral())
-            lparts = supports.lparts()
-            lin = supports.lpartsInterX(supp)
-            cand.setClp([lin, lparts], cand.isNeg())
-        return cands
-            
+        return method_compute(side, col, supports, init)
+
     def getCandidates1(self, side, col, supports, init=0):
         cands = []
-
         lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(col.missing)
         lin = supports.lpartsInterX(col.hold)
-        if side:
-            fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
-            var_colors = [[lin[2], lin[1]], [lin[0], lin[3]]]
-        else:
-            fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-            var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
         for op in self.constraints.ops_query(side, init):
             for neg in self.constraints.neg_query(side):
-                adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
+                adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if adv is not None :
-                    cands.append(Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
+                    cands.append(Extension(adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
     def getCandidates2(self, side, col, supports, init=0):
@@ -53,66 +39,41 @@ class Charbon:
     def getCandidatesNonBool(self, side, col, supports, init=0):
         cands = []
         lparts = supports.lparts()
+        lmiss = supports.lpartsInterX(col.miss())
 
-        for cand in self.findCover(side, col, lparts, supports, init):
+        for cand in self.findCover(side, col, lparts, lmiss, supports, init):
             cands.append(cand[1])
         return cands
 
 ####################### COVER METHODS
-    def findCover(self, side, col, lparts, supports, init=0):
+    def findCover(self, side, col, lparts, lmiss, supports, init=0):
         method_string = 'self.findCover%i' % col.type_id
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No covering method for this type of data (%i)!'  % col.type_id)
-        return method_compute(side, col, lparts, supports, init)
+        return method_compute(side, col, lparts, lmiss, supports, init)
 
-    def findCover1(self, side, col, lparts, supports, init=0):
+    def findCover1(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
-        lin = supports.lpartsInterX(col.hold)
-        if side:
-            fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
-            var_colors = [[lin[2], lin[1]], [lin[0], lin[3]]]
-        else:
-            fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-            var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
-
-        if init == 1 and True in self.constraints.neg_query(side):
-            if side:
-                nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
-                nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
-            else:
-                nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
-
+        lin = supports.lpartsInterX(col.supp())
         for op in self.constraints.ops_query(side, init):            
             for neg in self.constraints.neg_query(side):        
-                adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
-                if adv is not None :
-                    cands.append((False, Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
+                tmp_adv, tmp_clp  = self.getAC(side, op, neg, lparts, lmiss, lin)
+                if tmp_adv is not None:
+                    cands.append((False, Extension(tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
                 ### to negate the other side when looking for initial pairs
                 if init == 1 and True in self.constraints.neg_query(side):
-                    adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
-                    if adv is not None :
-                        cand = Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
-                        cands.append((True, cand))  
+                    tmp_adv, tmp_clp  = self.getAC(side, op, neg, \
+                                                       SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
+                    if tmp_adv is not None:
+                        cands.append((True, Extension(tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
         return cands
 
-    def findCover2(self, side, col, lparts, supports, init=0):
+    def findCover2(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
-
-        if side:
-            fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
-        else:
-            fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-
-        if init == 1 and True in self.constraints.neg_query(side):
-            if side:
-                nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
-            else:
-                nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
 
         for op in self.constraints.ops_query(side, init):            
             for neg in self.constraints.neg_query(side):        
@@ -120,21 +81,12 @@ class Charbon:
                 bestNeg = (None, None, None)
                 for (cat, supp) in col.sCats.iteritems():
                     lin = supports.lpartsInterX(supp)
-                    if side:
-                        var_colors = [[lin[2], lin[1]], [lin[0], lin[3]]]
-                    else:
-                        var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
-
-                    best = self.updateACTColors(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, fixed_colors, var_colors[op])
+                    best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
 
                     ### to negate the other side when looking for initial pairs
                     if init ==1 and True in self.constraints.neg_query(side):
-                        if side:
-                            nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
-                        else:
-                            nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
-
-                        bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
+                        bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
+                                              SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
 
                 if best[0] is not None:
                     cands.append((False, Extension(best)))
@@ -142,56 +94,47 @@ class Charbon:
                     cands.append((True, Extension(bestNeg)))
         return cands
 
-    def findCover3(self, side, col, lparts, supports, init=0):
+    def findCover3(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
-
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegmentsColors(side, supports, self.constraints.ops_query(side, init))
-            if side:
-                fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
-            else:
-                fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
- 
-            for cand in self.findCoverSegments(side, col, segments, fixed_colors, init):
+            segments = col.makeSegments(side, supports, self.constraints.ops_query(side, init))
+            for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, init):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
             if init == 1 and True in self.constraints.neg_query(side):
-                if side:
-                    nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
-                else:
-                    nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                
-                if self.inSuppBounds(side, True, lparts[-1::-1]): ### DOABLE
-                    nsegments = [[[i, j, [k[1], k[0]]] for (i,j,k) in segments[0]], [[i, j, [k[1], k[0]]] for (i,j,k) in segments[1]]]
-                    ##pdb.set_trace()
-                    for cand in self.findCoverSegments(side, col, nsegments, nfixed_colors, init):
+                nlparts = SParts.negateParts(1-side, lparts)
+                nlmiss = SParts.negateParts(1-side, lmiss)
+
+                if self.inSuppBounds(side, True, nlparts): ### DOABLE
+                    nsegments = col.makeSegments(side, supports.negate(1-side), self.constraints.ops_query(side, init))
+                    ##H pdb.set_trace()
+                    for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, init):
                         cands.append((True, cand))
         return cands
         
-    def findCoverSegments(self, side, col, segments, fixed_colors, init=0):
+    def findCoverSegments(self, side, col, segments, lparts, lmiss, init=0):
         cands = []
         for op in self.constraints.ops_query(side, init):
             if len(segments[op]) < self.constraints.max_seg():
-                cands.extend(self.findCoverFullSearch(side, op, col, segments, fixed_colors))
+                cands.extend(self.findCoverFullSearch(side, op, col, segments, lparts, lmiss))
             else:
                 if (False in self.constraints.neg_query(side)):
-                    cands.extend(self.findPositiveCover(side, op, col, segments, fixed_colors))
+                    cands.extend(self.findPositiveCover(side, op, col, segments, lparts, lmiss))
                 if (True in self.constraints.neg_query(side)):
-                    cands.extend(self.findNegativeCover(side, op, col, segments, fixed_colors))
+                    cands.extend(self.findNegativeCover(side, op, col, segments, lparts, lmiss))
         return cands
 
-    def findCoverFullSearch(self, side, op, col, segments, fixed_colors):
+    def findCoverFullSearch(self, side, op, col, segments, lparts, lmiss):
         cands = []
         bests = {False: (None, None, None), True: (None, None, None)}
 
         for seg_s in range(len(segments[op])):
-            var_colors = [0, 0] 
+            lin = SParts.makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
-                var_colors[0] += segments[op][seg_e][2][0]
-                var_colors[1] += segments[op][seg_e][2][1]
+                lin = SParts.addition(lin, segments[op][seg_e][2])
                 for neg in self.constraints.neg_query(side):
-                    bests[neg] = self.updateACTColors(bests[neg], (seg_s, seg_e), side, op, neg, fixed_colors, var_colors)
+                    bests[neg] = self.updateACT(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
 
         for neg in self.constraints.neg_query(side):
             if bests[neg][0]:
@@ -200,118 +143,102 @@ class Charbon:
                     cands.append(Extension(bests[neg]))
         return cands
 
-    def findNegativeCover(self, side, op, col, segments, fixed_colors):
-
+    def findNegativeCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
-        var_colors_f = [0, 0]
-        bests_f = [(0, 0, [0, 0])] 
+        lin_f = SParts.makeLParts()
+        bests_f = [(SParts.advAcc(side, op, False, lparts, lmiss, lin_f), 0, lin_f)] 
         best_track_f = [0]
-        var_colors_b = [0, 0]
-        bests_b = [(0, 0, [0, 0])]
+        lin_b = SParts.makeLParts()
+        bests_b = [(SParts.advAcc(side, op, False, lparts, lmiss, lin_b), 0, lin_b)]
         best_track_b = [0]
-        ##pdb.set_trace()
+        #pdb.set_trace()
         for  i in range(len(segments[op])):
             # FORWARD
-            var_colors_f[0] += segments[op][i][2][0]
-            var_colors_f[1] += segments[op][i][2][1]
-
-            if self.advRatioVar(var_colors_f) > bests_f[-1][0]:
-                var_colors_f[0] += bests_f[-1][2][0]
-                var_colors_f[1] += bests_f[-1][2][1]
-
-                bests_f.append((self.advAcc(side, op, False, fixed_colors, var_colors_f), i+1, var_colors_f))
-                var_colors_f = [0, 0]
+            lin_f = SParts.addition(lin_f, segments[op][i][2])
+            if  SParts.advRatioVar(side, op, lin_f) > bests_f[-1][0]:
+                lin_f = SParts.addition(lin_f, bests_f[-1][2])
+                bests_f.append((SParts.advAcc(side, op, False, lparts, lmiss, lin_f), i+1, lin_f))
+                lin_f = SParts.makeLParts()
             best_track_f.append(len(bests_f)-1)
 
             # BACKWARD
-            var_colors_b[0] += segments[op][-(i+1)][2][0]
-            var_colors_b[1] += segments[op][-(i+1)][2][1]
-
-            if self.advRatioVar(var_colors_b) > bests_b[-1][0]:
-                var_colors_b[0] += bests_b[-1][2][0]
-                var_colors_b[1] += bests_b[-1][2][1]
-
-                bests_b.append((self.advAcc(side, op, False, fixed_colors, var_colors_b), i+1, var_colors_b))
-                var_colors_b = [0, 0]
+            lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
+            if  SParts.advRatioVar(side, op, lin_b) > bests_b[-1][0]:
+                lin_b = SParts.addition(lin_b, bests_b[-1][2])
+                bests_b.append((SParts.advAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
+                lin_b = SParts.makeLParts()
             best_track_b.append(len(bests_b)-1)
 
-        ##pdb.set_trace()
+        #pdb.set_trace()
         best_t = (None, None, None)
-        #if side == 1 and col.getId() == 44 and op: pdb.set_trace()
         for b in bests_b:
             if b[1] == len(segments[op]):
                 f = bests_f[0]
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
-            if self.advRatioVar(f[2]) > b[0]:
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]])
+            if SParts.advRatioVar(side, op, f[2]) > b[0]:
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                best_t = self.updateACTColors(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, b[2])
+                best_t = self.updateACT(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, b[2])
 
         for f in bests_f:
             if f[1] == len(segments[op]):
                 b = bests_b[0]
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
-            if self.advRatioVar(b[2]) > f[0]: 
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]])
+            if SParts.advRatioVar(side, op, b[2]) > f[0]: 
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
             else:
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op])-1), side, op, False, fixed_colors, f[2])
+                best_t = self.updateACT(best_t, (f[1], len(segments[op])-1), side, op, False, lparts, lmiss, f[2])
 
         if best_t[0] is not None:
-            tmp = best_t[-1][-1] 
+            tmp = best_t[-1][-1]
             best_t[-1][-1] = col.getLiteralSeg(True, segments[op], best_t[-1][-1])
             if best_t[-1][-1] is not None:
                 cands.append(Extension(best_t))
         return cands
 
-    def findPositiveCover(self, side, op, col, segments, fixed_colors):
+    def findPositiveCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
-        var_colors_f = [0.0, 0]
+        lin_f = SParts.makeLParts()
         nb_seg_f = 0
         best_f = (None, None, None)
-        var_colors_b = [0.0, 0]
+        lin_b = SParts.makeLParts()
         nb_seg_b = 0
         best_b = (None, None, None)
 
         for  i in range(len(segments[op])-1):
             # FORWARD
-            if i > 0 and self.advAcc(side, op, False, fixed_colors, segments[op][i][2]) < self.advRatioVar(var_colors_f):
-                var_colors_f[0] += segments[op][i][2][0]
-                var_colors_f[1] += segments[op][i][2][1]
+            if i > 0 and \
+                   SParts.advAcc(side, op, False, lparts, lmiss, segments[op][i][2]) < SParts.advRatioVar(side, op, lin_f):
+                lin_f = SParts.addition(lin_f, segments[op][i][2])
                 nb_seg_f += 1
-            else:
-                var_colors_f[0] = segments[op][i][2][0]
-                var_colors_f[1] = segments[op][i][2][1]
+            else: 
+                lin_f = segments[op][i][2]
                 nb_seg_f = 0
-                
-            best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f)
+            best_f = self.updateACT(best_f, (i - nb_seg_f, i), side, op, False, lparts, lmiss, lin_f)
 
             # BACKWARD
-            if i > 0 and self.advAcc(side, op, False, fixed_colors, segments[op][-(i+1)][2]) < self.advRatioVar(var_colors_b):
-                var_colors_b[0] += segments[op][-(i+1)][2][0]
-                var_colors_b[1] += segments[op][-(i+1)][2][1]
+            if i > 0 and \
+               SParts.advAcc(side, op, False, lparts, lmiss, segments[op][-(i+1)][2]) < SParts.advRatioVar(side, op, lin_b):
+                lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
                 nb_seg_b += 1
             else:
-                var_colors_b[0] = segments[op][-(i+1)][2][0]
-                var_colors_b[1] = segments[op][-(i+1)][2][1]
+                lin_b = segments[op][-(i+1)][2]
                 nb_seg_b = 0
-
-            best_b = self.updateACTColors(best_b, (len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), \
-                                    side, op, False, fixed_colors, var_colors_b)
+            best_b = self.updateACT(best_b, (len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), \
+                                    side, op, False, lparts, lmiss, lin_b)
 
         if best_b[0] is not None and best_f[0] is not None:
             bests = [best_b, best_f]
 
             if best_b[-1][-1][0] > best_f[-1][-1][0] and best_b[-1][-1][1] > best_f[-1][-1][1] and best_b[-1][-1][0] <= best_f[-1][-1][1]:
-                var_colors_m = [0,0]
+                lin_m = SParts.makeLParts()
                 for seg in segments[op][best_b[-1][-1][0]:best_f[-1][-1][1]+1]:
-                    var_colors_m[0] += seg[2][0]
-                    var_colors_m[1] += seg[2][1]
-                tmp_adv_m  = self.getAdv(side, op, False, fixed_colors, var_colors_m)
+                    lin_m = SParts.addition(lin_m, seg[2])
+                tmp_adv_m, tmp_clp_m  = self.getAC(side, op, False, lparts, lmiss, lin_m)
                 if tmp_adv_m is not None:
-                    bests.append((tmp_adv_m, [fixed_colors, tuple(var_colors_m)], \
-                                  [side, op, False, (best_b[-1][-1][0], best_f[-1][-1][1])]))
+                    bests.append((tmp_adv_m, tmp_clp_m, [side, op, False, (best_b[-1][-1][0], best_f[-1][-1][1])]))
 
             bests.sort()
             best = bests[-1]
@@ -346,16 +273,17 @@ class Charbon:
 
     def doBoolStar(self, colL, colR, side):
         if side == 1:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [colL.supp(), set()]), BoolTerm(colL.getId()), colR)
+            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [colL.supp(), set(), colL.miss(), set()]), BoolTerm(colL.getId()), colR)
         else:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [set(), colR.supp()]), BoolTerm(colR.getId()), colL)
+            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [set(), colR.supp(), set(), colR.miss()]), BoolTerm(colR.getId()), colL)
 
         return self.fit(extCol, supports, side, fixTerm)
 
     def fit(self, col, supports, side, termX):
         (scores, literalsFix, literalsExt) = ([], [], [])   
         lparts = supports.lparts()
-        cands = self.findCover(side, col, lparts, supports, init=1)
+        lmiss = supports.lpartsInterX(col.miss())
+        cands = self.findCover(side, col, lparts, lmiss, supports, init=1)
         for cand in cands:
             scores.append(cand[1].getAcc())
             literalsFix.append(Literal(cand[0], termX))
@@ -396,11 +324,11 @@ class Charbon:
         bestScore = None
         if True: ### DOABLE
             ## FIT LHS then RHS
-            supports = SParts(colL.nbRows(), [set(), colR.nonModeSupp()])
+            supports = SParts(colL.nbRows(), [set(), colR.nonModeSupp(), set(), colR.miss()])
             (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, idR)
             for tL in literalsExtL:
                 suppL = colL.suppLiteral(tL)
-                supports = SParts(colL.nbRows(), [suppL, set()])
+                supports = SParts(colL.nbRows(), [suppL, set(), colL.miss(), set()])
                 (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, tL)
                 for i in range(len(scoresR)):
                     if scoresR[i] > bestScore:
@@ -408,11 +336,11 @@ class Charbon:
                         bestScore = scoresR[i]
                         
             ## FIT RHS then LHS
-            supports = SParts(colL.nbRows(), [colL.nonModeSupp(), set()])
+            supports = SParts(colL.nbRows(), [colL.nonModeSupp(), set(), colL.miss(), set()])
             (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, idL)
             for tR in literalsExtR:
                 suppR = colR.suppLiteral(tR)
-                supports = SParts(colL.nbRows(), [set(), suppR])
+                supports = SParts(colL.nbRows(), [set(), suppR, set(), colR.miss()])
                 (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, tR)
                 for i in range(len(scoresL)):
                     if scoresL[i] > bestScore:
@@ -446,11 +374,16 @@ class Charbon:
                 flag=1 ## in case of collapsed bucket the threshold is different
         if ( len(bucketsF[1]) * len(bucketsE[1]) <= self.constraints.max_prodbuckets() ): 
         #if (True): ## Test
-
-            totInt = colE.nbRows()
+            partsMubB = len(colF.miss())
+            missMubB = len(colF.miss() & colE.miss())
+            totInt = colE.nbRows() - len(colF.miss()) - len(colE.miss()) + missMubB
             #margE = [len(intE) for intE in bucketsE[0]]
             
-            margF = [len(bucketsF[0][i]) for i in range(len(bucketsF[0]))]
+            lmissFinE = [len(colF.miss() & bukE) for bukE in bucketsE[0]]
+            lmissEinF = [len(colE.miss() & bukF) for bukF in bucketsF[0]]
+            margF = [len(bucketsF[0][i]) - lmissEinF[i] for i in range(len(bucketsF[0]))]
+            totMissE = len(colE.miss())
+            totMissEinF = sum(lmissEinF)
             
             for bukF in bucketsF[0]: 
                 interMat.append([len(bukF & bukE) for bukE in bucketsE[0]])
@@ -497,9 +430,15 @@ class Charbon:
                     if belowF + aboveF  >= self.constraints.min_itm_out():
                         EinF = [sum([interMat[iF][iE] for iF in range(lowF,upF+1)]) for iE in range(len(interMat[lowF]))]
                         EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
+                        lmissE = sum(lmissEinF[lowF:upF+1])
                         #totEinF = sum(EinF)
                         
-                        fixed_colors = [[0, 0],[totInt - aboveF - belowF, aboveF + belowF]]
+                        lparts = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - aboveF - belowF + lmissE), \
+                                                    (SParts.partId(SParts.mubB, 1-side), partsMubB ), \
+                                                    (SParts.partId(SParts.delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
+                        lmiss  = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), lmissE ), \
+                                                    (SParts.partId(SParts.mubB, 1-side), missMubB ), \
+                                                    (SParts.partId(SParts.delta, 1-side), totMissEinF - lmissE )], 0)
 
                         belowEF = 0
                         outBelowEF = 0
@@ -510,9 +449,12 @@ class Charbon:
                             upE = len(interMat[lowF])-1
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.min_itm_in():
                                 
-                                var_colors = [totInt - belowF - aboveF - belowEF - aboveEF, belowF + aboveF - outAboveEF - outBelowEF]
+                                lmissF = sum(lmissFinE[lowE:upE+1])
+                                lin = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
+                                                         (SParts.partId(SParts.mubB, 1-side), lmissF ), \
+                                                         (SParts.partId(SParts.delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
-                                best = self.updateACTColors(best, (lowF, upF, lowE, upE), side, True, False, fixed_colors, var_colors)
+                                best = self.updateACT(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
                                 upE-=1
@@ -526,7 +468,7 @@ class Charbon:
 
         if best[0]:
             tF = colF.getLiteralBuk(False, bucketsF[1], best[-1][-1][0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:], flag)
+            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:],flag)
             if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
@@ -538,36 +480,31 @@ class Charbon:
             return (scores, literalsF, literalsE)
 
     def subdo22Full(self, colL, colR, side):
-        ##### THIS NEEDS CHANGE PARTS
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
         if neg in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [(None, None, None) for c in configs]
-        tot = colL.nbRows()
+        
         for catL in colL.cats():
-            totL = len(colL.suppCat(catL))
-            lparts = [totL, 0, 0, 0]
+            ### TODO DOABLE
+            supports = SParts(colL.nbRows(), [colL.suppCat(catL), set(), colL.miss(), set()])
+            lparts = supports.lparts()
+            lmiss = supports.lpartsInterX(colR.miss())
             
             for catR in colR.cats():
-                totR = len(colR.suppCat(catR))
-                interLR = len(colL.suppCat(catL) & colR.suppCat(catR))
-                lin = [interLR, 0, 0, totR - interLR]
- 
-                for (i, nL, nR) in configs:
-                    if nL and nR:
-                        fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                        var_colors = [[lin[3], lin[1]], [lin[0], lin[2]]]                            
-                    elif nL:
-                        fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                        var_colors = [[lin[2], lin[3]], [lin[2], lin[0]]]
-                    elif nR:
-                        fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                        var_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]                            
-                    else:
-                        fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-                        var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]                            
+                lin = supports.lpartsInterX(colR.suppCat(catR))
 
-                    best[i] = self.updateACTColors(best[i], (catL, catR), 1, True, nR, fixed_colors, var_colors)
+                for (i, nL, nR) in configs:
+                    if nL:
+                        tmp_lparts = SParts.negateParts(0, lparts)
+                        tmp_lmiss = SParts.negateParts(0, lmiss)
+                        tmp_lin = SParts.negateParts(0, lin)
+                    else:
+                        tmp_lparts = lparts
+                        tmp_lmiss = lmiss
+                        tmp_lin = lin
+
+                    best[i] = self.updateACT(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
                     
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nL, nR) in configs:
@@ -579,7 +516,6 @@ class Charbon:
 
 
     def subdo23Full(self, colL, colR, side):
-        ##### THIS NEEDS CHANGE PARTS
         if side == 0:
             (colF, colE) = (colR, colL)
         else:
@@ -593,50 +529,53 @@ class Charbon:
         buckets = colE.buckets()
         ### TODO DOABLE
         if True : # (colF.lenMode() >= self.constraints.min_itm_out() and colE.lenNonMode() >= self.constraints.min_itm_in()) or ( len(buckets) <= 100 ):
+            partsMubB = len(colF.miss())
+            missMubB = len(colF.miss() & colE.miss())
+            
+            missMat = [len(colF.miss() & buk) for buk in buckets[0]]
+            totMiss = sum(missMat)
 
             marg = [len(buk) for buk in buckets[0]]
             if buckets[2] is not None :
                 marg[buckets[2]] += colE.lenMode()
 
             for cat in colF.cats():
-                totF = len(colF.suppCat(cat))
-                lparts = [totF, 0, 0, colF.nbRows() - totF]
-
+                lparts = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat)) ), (SParts.mubB, partsMubB ), (SParts.delta, - colF.nbRows())], 1-side)
+                lmiss  = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat) & colE.miss()) ), (SParts.mubB, missMubB ), (SParts.delta, -len(colE.miss()) )], 1-side)
+                
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
                 if buckets[2] is not None :
                     interMat[buckets[2]] += len(colE.interMode(colF.suppCat(cat)))        
 
                 totIn = sum(interMat) 
                 below = 0
+                missBelow = 0
                 low = 0
                 while low < len(interMat) and \
                           (totIn - below >= self.constraints.min_itm_in() or totIn - below >= self.constraints.min_itm_out()):
                     above = 0
+                    missAbove = 0
                     up = len(interMat)-1
                     while up >= low and \
                           (totIn - below - above >= self.constraints.min_itm_in() or totIn - below - above >= self.constraints.min_itm_out()):
-                        pin = totIn - below - above
-                        lin = [pin, 0, 0, sum(marg[low:up+1]) - pin]
-                            
+                        lin = SParts.makeLParts([(SParts.alpha, totIn - below - above), (SParts.mubB, totMiss - missBelow - missAbove ), (SParts.delta, -sum(marg[low:up+1]))], 1-side)
                         for (i, nF, nE) in configs:
-                            if nF and nE:
-                                fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                                var_colors = [[lin[3], lin[1]], [lin[0], lin[2]]]                            
-                            elif nF:
-                                fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                                var_colors = [[lin[2], lin[3]], [lin[2], lin[0]]]
-                            elif nE:
-                                fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                                var_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]                            
+                            if nF:
+                                tmp_lparts = SParts.negateParts(1-side, lparts)
+                                tmp_lmiss = SParts.negateParts(1-side, lmiss)
+                                tmp_lin = SParts.negateParts(1-side, lin)
                             else:
-                                fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-                                var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]                            
+                                tmp_lparts = lparts
+                                tmp_lmiss = lmiss
+                                tmp_lin = lin
 
-                            best[i] = self.updateACTColors(best[i], (cat, low, up), 1, True, nE, fixed_colors, var_colors)
+                            best[i] = self.updateACT(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
 
                         above+=interMat[up]
+                        missAbove+=missMat[up]
                         up-=1
                     below+=interMat[low]
+                    missBelow+=missMat[low]
                     low+=1
 
         
@@ -653,102 +592,37 @@ class Charbon:
 
 ##### TOOLS METHODS
     # compute the advance resulting of appending X on given side with given operator and negation
-    # from intersections of X with parts (clp)
+    # from intersections of X with parts (clp)            
+    def getAC(self, side, op, neg, lparts, lmiss, lin):
+        lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
+        clp = (lin, lout, lparts, lmiss)
+        contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], clp)
+        if contri >= self.constraints.min_itm_c():
+            varBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varnum[op], clp)
+            fixBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op], clp)
+            if varBlue+fixBlue >= self.constraints.min_itm_in():
+                sout = SParts.sumPartsIdInOut(side, neg, SParts.IDS_out[op], clp)
+                if sout >= self.constraints.min_itm_out():
+                    varRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op], clp)
+                    fixRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixden[op], clp)
+                    if varRed + fixRed == 0:
+                        if varBlue + fixBlue > 0:
+                            acc = float("Inf")
+                        else:
+                            acc = 0
+                    else:
+                        acc = float(varBlue + fixBlue)/ (varRed + fixRed)
+                    return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
+        return None, clp
 
-    def advRatioVar(self, var_colors):
-        if var_colors[1] != 0:
-            return float(var_colors[0])/var_colors[1]
-        else:
-            return float("Inf") 
-
-    def advAcc(self, side, op, neg, fixed_colors, var_colors):
-        num = None
-        if neg:
-            tmp_var = [fixed_colors[op][i] - var_colors[i] for i in range(len(var_colors))]
-        else:
-            tmp_var = [var_colors[i] for i in range(len(var_colors))]
-        if op:
-            den = fixed_colors[1-op][0] + fixed_colors[1-op][0] + fixed_colors[op][0] + tmp_var[1]
-            num = fixed_colors[1-op][0] + tmp_var[0]
-        else:
-            den = fixed_colors[op][0] + fixed_colors[1-op][0] + tmp_var[1]
-            num = tmp_var[0]
-
-        if num is not None:
-            if den == 0:
-                if num > 0:
-                    return float("Inf")
-                else:
-                    return 0
-            else:
-                return float(num)/den
-        return None
-
-    def getAdv(self, side, op, neg, fixed_colors, var_colors):
-        num = None
-        if neg:
-            tmp_var = [fixed_colors[op][i] - var_colors[i] for i in range(len(var_colors))]
-        else:
-            tmp_var = [var_colors[i] for i in range(len(var_colors))]
-        if op:
-            if tmp_var[0] >= self.constraints.min_itm_c() \
-               and fixed_colors[op][1] - tmp_var[1] >= self.constraints.min_itm_out() \
-               and fixed_colors[1-op][0] + tmp_var[0] >= self.constraints.min_itm_in():
-                contri = tmp_var[0]
-                fix_num = fixed_colors[1-op][0]
-                var_num = tmp_var[0]
-                fix_den = fixed_colors[1-op][0] + fixed_colors[1-op][1] + fixed_colors[op][0]
-                var_den = tmp_var[1]
-                num = fix_num + var_num
-                den = fix_den + var_den
-        else:
-            if fixed_colors[op][1] - tmp_var[1] >= self.constraints.min_itm_c() \
-               and tmp_var[0] >= self.constraints.min_itm_in() \
-               and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.min_itm_out():
-                contri = fixed_colors[op][1] - tmp_var[1]
-                fix_num = 0
-                var_num = tmp_var[0]
-                fix_den = fixed_colors[op][0] + fixed_colors[1-op][0]
-                var_den = tmp_var[1]
-                num = var_num
-                den = fix_den + var_den
-
-        if num is not None:
-            if den == 0:
-                if num > 0:
-                    acc = float("Inf")
-                else:
-                    acc = 0
-            else:
-                acc = float(num)/den
-            return (acc, var_num, var_den, contri, fix_num, fix_den)
-        return None
-                
-    # def getClp(self, side, op, neg, fixed_colors, var_colors):
-    #     lparts = [fixed_colors[0][1], fixed_colors[1][0], fixed_colors[0][0], fixed_colors[1][1]]
-    #     if op:
-    #         lin = [0, var_colors[0], 0, var_colors[1]]
-    #     else:
-    #         lin = [var_colors[1], 0, var_colors[0], 0]
-
-    #     if side == 1:
-    #         lin[0], lin[1] = lin[1], lin[0]
-    #         lparts[0], lparts[1] = lparts[1], lparts[0] 
-
-    #     lout = [lparts[i] - lin[i] for i in range(len(lparts))]
-    #     return [lin, lout, lparts]
-
-    # def getBestClp(self, bestColors):
-    #     return bestColors[0],  self.getClp(bestColors[2][0], bestColors[2][1], bestColors[2][2], bestColors[1][0], bestColors[1][1]), bestColors[2] 
-        
-    def updateACTColors(self, best, lit, side, op, neg, fixed_colors, var_colors):
-        tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors)
-        if best[0] < tmp_adv:
-            return tmp_adv, None, [side, op, neg, lit] ## [fixed_colors, tuple(var_colors)]
+    def updateACT(self, best, lit, side, op, neg, lparts, lmiss, lin):
+        tmp_adv = self.getAC(side, op, neg, lparts, lmiss, lin)
+        if best[0] < tmp_adv[0]:
+            return tmp_adv[0], tmp_adv[1], [side, op, neg, lit]
         else:
             return best
+        ### EX: best = self.updateACT(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
-### Reintegrate as well as linter
     def inSuppBounds(self, side, op, lparts):
         return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
                and SParts.sumPartsId(side, SParts.IDS_cont[op], lparts) >= self.constraints.min_itm_c()

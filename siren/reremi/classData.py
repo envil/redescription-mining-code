@@ -31,6 +31,9 @@ class ColM:
     def setId(self, nid):
         self.id = nid
 
+    def hasMissing(self):
+        return self.missing is not None and len(self.missing) > 0
+
     def getName(self, details=None):
         if self.name is not None:
             return self.name
@@ -460,6 +463,42 @@ class NumColM(ColM):
                     current_valseg[op] = [val, val, SParts.addition(SParts.makeLParts(),tmp_lparts)]
         return segments
 
+
+    def makeSegmentsColors(self, side, supports, ops =[False, True]):
+        supports.makeVectorABCD()
+
+        partids = [[SParts.partId(SParts.gamma, side), SParts.partId(SParts.alpha, side)], \
+                   [SParts.partId(SParts.beta, side), SParts.partId(SParts.delta, side)]]
+        
+        segments = [[[self.sVals[0][0], None, [0, 0]]], [[self.sVals[0][0], None, [0, 0]]]]
+        current_valseg = [[self.sVals[0][0], self.sVals[0][0], [0, 0]], [self.sVals[0][0], self.sVals[0][0], [0, 0]]]
+        for (val, row) in self.sVals+[(None, None)]:
+            tmp_lparts = supports.lpartsRow(row, self)
+            if tmp_lparts is None:
+                procs = [(partids[0][0], 0), (partids[1][0], 0)]
+            elif type(tmp_lparts) == int:
+                procs = [(tmp_lparts, 1)]
+            else:
+                procs = enumerate(tmp_lparts)
+
+            for (partid, incre) in procs:
+                for op in ops:
+                    if partid in partids[op]:
+                        pos = partids[op].index(partid)
+                        if val is not None and val == current_valseg[op][0]: 
+                            current_valseg[op][2][pos] += incre
+                        else:
+                            tmp_pushadd = [segments[op][-1][2][0] + current_valseg[op][2][0], segments[op][-1][2][1] + current_valseg[op][2][1]] 
+                            if segments[op][-1][1] == None or tmp_pushadd[0]*tmp_pushadd[1] == 0:
+                                segments[op][-1][2] = tmp_pushadd
+                                segments[op][-1][1] = current_valseg[op][1]
+                            else:
+                                segments[op].append(current_valseg[op])
+                            tmp_init = [0, 0]
+                            tmp_init[pos] = incre 
+                            current_valseg[op] = [val, val, tmp_init]
+        return segments
+
     def getLiteralBuk(self, neg, buk_op, bound_ids, flag=0):
         if bound_ids[0] == 0 and bound_ids[1] == len(buk_op)-1:
             return (neg, None)
@@ -530,6 +569,13 @@ class Data:
         else:
             self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
         self.redunRows = redunRows
+
+    def hasMissing(self):
+        for side in [0,1]:
+            for c in self.cols[side]:
+                if c.hasMissing():
+                    return True
+        return False
 
     def __str__(self):
         return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
