@@ -15,7 +15,13 @@ class Charbon:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.type_id)
-        return method_compute(side, col, supports, init)
+        cands = method_compute(side, col, supports, init)
+        for cand in cands:
+            supp = col.suppLiteral(cand.getLiteral())
+            lparts = supports.lparts()
+            lin = supports.lpartsInterX(supp)
+            cand.setClp([lin, lparts], cand.isNeg())
+        return cands
 
     def getCandidates1(self, side, col, supports, init=0):
         cands = []

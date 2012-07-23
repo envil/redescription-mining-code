@@ -3,6 +3,12 @@ from classRedescription import Redescription
 from classSParts import SParts
 import pdb
 
+class ExtensionError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class Extension:
 
     def __init__(self, adv=None, clp=None, sol=None):
@@ -77,7 +83,7 @@ class Extension:
 
     def __str__(self):
         if self.isValid():
-            return "Extension:\t (%d, %s, %s) -> %f" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc()) 
+            return ("Extension:\t (%d, %s, %s) -> %f" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc())) + str(self.clp) + str(self.adv)
         else:
             return "Empty extension"
 
@@ -203,8 +209,7 @@ class ExtensionsBatch:
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
                 if kid.acc() != cand.getAcc():
-                    print "OUILLE! something went seriously wrong with candidate!"
-                    #raise Exception('Something went badly wrong during expansion\nof %s\n\t%s ~> %s' % (self.current, cand, kid))
+                    raise ExtensionError('%s\n\t%s\n\t~> %s' % (self.current, cand, kid))
             
                 kids.append(kid)
         return kids

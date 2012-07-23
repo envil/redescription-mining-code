@@ -237,7 +237,6 @@ class Charbon:
 
         ##pdb.set_trace()
         best_t = (None, None, None)
-        #if side == 1 and col.getId() == 44 and op: pdb.set_trace()
         for b in bests_b:
             if b[1] == len(segments[op]):
                 f = bests_f[0]
@@ -540,34 +539,34 @@ class Charbon:
     def subdo22Full(self, colL, colR, side):
         ##### THIS NEEDS CHANGE PARTS
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [(None, None, None) for c in configs]
         tot = colL.nbRows()
         for catL in colL.cats():
             totL = len(colL.suppCat(catL))
-            lparts = [totL, 0, 0, 0]
+            lparts = [0, totL, 0, colL.nbRows()-totL]
             
             for catR in colR.cats():
                 totR = len(colR.suppCat(catR))
                 interLR = len(colL.suppCat(catL) & colR.suppCat(catR))
-                lin = [interLR, 0, 0, totR - interLR]
+                lin = [0, interLR, 0, totR - interLR]
  
                 for (i, nL, nR) in configs:
                     if nL and nR:
                         fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                        var_colors = [[lin[3], lin[1]], [lin[0], lin[2]]]                            
+                        var_colors = [lin[0], lin[2]]                            
                     elif nL:
                         fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                        var_colors = [[lin[2], lin[3]], [lin[2], lin[0]]]
+                        var_colors = [lin[2], lin[0]]
                     elif nR:
                         fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                        var_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]                            
+                        var_colors = [lin[3], lin[1]]                            
                     else:
                         fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-                        var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]                            
+                        var_colors = [lin[1], lin[3]]                            
 
-                    best[i] = self.updateACTColors(best[i], (catL, catR), 1, True, nR, fixed_colors, var_colors)
+                    best[i] = self.updateACTColors(best[i], (catL, catR), 0, True, nR, fixed_colors, var_colors)
                     
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nL, nR) in configs:
@@ -586,13 +585,19 @@ class Charbon:
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [(None, None, None) for c in configs]
 
         buckets = colE.buckets()
+        flag = 0
+        if len(buckets[1]) > self.constraints.max_sidebuckets():
+             buckets = colE.collapsedBuckets(self.constraints.max_agg())
+             #pdb.set_trace()
+             flag=1 ## in case of collapsed bucket the threshold is different
+
         ### TODO DOABLE
-        if True : # (colF.lenMode() >= self.constraints.min_itm_out() and colE.lenNonMode() >= self.constraints.min_itm_in()) or ( len(buckets) <= 100 ):
+        if ( len(buckets[1]) * len(colF.cats()) <= self.constraints.max_prodbuckets() ): 
 
             marg = [len(buk) for buk in buckets[0]]
             if buckets[2] is not None :
@@ -600,54 +605,54 @@ class Charbon:
 
             for cat in colF.cats():
                 totF = len(colF.suppCat(cat))
-                lparts = [totF, 0, 0, colF.nbRows() - totF]
+                lparts = [0, totF, 0, colF.nbRows() - totF]
 
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
                 if buckets[2] is not None :
                     interMat[buckets[2]] += len(colE.interMode(colF.suppCat(cat)))        
 
-                totIn = sum(interMat) 
+                totIn = sum(interMat)
                 below = 0
                 low = 0
                 while low < len(interMat) and \
                           (totIn - below >= self.constraints.min_itm_in() or totIn - below >= self.constraints.min_itm_out()):
                     above = 0
                     up = len(interMat)-1
+
                     while up >= low and \
-                          (totIn - below - above >= self.constraints.min_itm_in() or totIn - below - above >= self.constraints.min_itm_out()):
+                              (totIn - below - above >= self.constraints.min_itm_in() or totIn -below-above >= self.constraints.min_itm_out()):
                         pin = totIn - below - above
-                        lin = [pin, 0, 0, sum(marg[low:up+1]) - pin]
-                            
+
+                        lin = [0, pin, 0, sum(marg[low:up+1]) - pin]
                         for (i, nF, nE) in configs:
                             if nF and nE:
                                 fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                                var_colors = [[lin[3], lin[1]], [lin[0], lin[2]]]                            
-                            elif nF:
-                                fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                                var_colors = [[lin[2], lin[3]], [lin[2], lin[0]]]
+                                var_colors = [lin[0], lin[2]]                            
                             elif nE:
+                                fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
+                                var_colors = [lin[2], lin[0]]
+                            elif nF:
                                 fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                                var_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]                            
+                                var_colors = [lin[3], lin[1]]                            
                             else:
                                 fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-                                var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]                            
+                                var_colors = [lin[1], lin[3]]                            
 
-                            best[i] = self.updateACTColors(best[i], (cat, low, up), 1, True, nE, fixed_colors, var_colors)
+                            best[i] = self.updateACTColors(best[i], (cat, low, up), 0, True, nE, fixed_colors, var_colors)
 
                         above+=interMat[up]
                         up-=1
                     below+=interMat[low]
                     low+=1
-
         
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nF, nE) in configs:
 
             if best[i][0] is not None:
-                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:],flag)
+                tE = colE.getLiteralBuk(nE, buckets[1], best[i][-1][-1][1:], flag)
                 if tE is not None:
                     literalsExt.append(tE)
-                    literalsFix.append(Literal(nF, CatTerm(idF, best[i][-1][-1][0])))
+                    literalsFix.append(Literal(nF, CatTerm(colF.getId(), best[i][-1][-1][0])))
                     scores.append(best[i][0][0])
         return (scores, literalsFix, literalsExt)
 
@@ -668,7 +673,7 @@ class Charbon:
         else:
             tmp_var = [var_colors[i] for i in range(len(var_colors))]
         if op:
-            den = fixed_colors[1-op][0] + fixed_colors[1-op][0] + fixed_colors[op][0] + tmp_var[1]
+            den = fixed_colors[1-op][0] + fixed_colors[1-op][1] + fixed_colors[op][0] + tmp_var[1]
             num = fixed_colors[1-op][0] + tmp_var[0]
         else:
             den = fixed_colors[op][0] + fixed_colors[1-op][0] + tmp_var[1]

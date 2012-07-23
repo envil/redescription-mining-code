@@ -54,7 +54,10 @@ class ImportDataDialog(object):
     def showDialog(self):
         if self.dlg.ShowModal() == wx.ID_OK:
             try:
-                self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
+                if self.RHSfile is None:
+                    self.parent.dw.importDataFromFile(self.LHSfile)
+                else:
+                    self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
             except IOError as error:
                 mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error opening files '+str(self.LHSfile)
                                        +', '+str(self.RHSfile)+', and '+str(self.Coofile)+':\n'

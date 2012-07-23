@@ -455,6 +455,8 @@ class NumColM(ColM):
             tmp_lparts = supports.lpartsRow(row, self)
 
             for op in ops:
+                if val is not None and SParts.sumPartsId(side, SParts.IDS_varnum[op], tmp_lparts) + SParts.sumPartsId(side, SParts.IDS_varden[op], tmp_lparts) == 0:
+                    continue
                 if val is not None and val == current_valseg[op][0]: 
                     current_valseg[op][2] = SParts.addition(current_valseg[op][2], tmp_lparts)
                 else:
