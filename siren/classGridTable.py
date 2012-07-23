@@ -1,4 +1,5 @@
 import wx, wx.grid
+from reremi.toolICList import ICList
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 
@@ -64,8 +65,8 @@ class GridTable(wx.grid.PyGridTableBase):
         self.parent = parent
         self.tabId = tabId
         self.fields = self.fields_def
-        self.data = []
-        self.sortids = []
+        self.data = ICList()
+        self.sortids = ICList()
         self.details = {}
         self.sortP = (None, False)
         self.currentRows = self.nbItems()
@@ -194,7 +195,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if srids is not None:
             self.sortids = srids
         else:
-            self.sortids = [idi for idi in range(len(self.data))]
+            self.sortids = ICList([idi for idi in range(len(self.data))], True)
 
         self.resetFields()
 
@@ -205,22 +206,24 @@ class GridTable(wx.grid.PyGridTableBase):
     def resetFields(self):
         pass
 
-
     def getEnabled(self, row):
         return self.getItemAtRow(row).getEnabled()
 
     def flipEnabled(self, row):
         self.data[self.sortids[row]].flipEnabled()
+        self.data.isChanged = True
         self.ResetView()
 
     def setAllDisabled(self):
         for item in self.data:
             item.setDisabled()
+        self.data.isChanged = True
         self.ResetView()
 
     def setAllEnabled(self):
         for item in self.data:
             item.setEnabled()
+        self.data.isChanged = True
         self.ResetView()
 
     def OnMouse(self,event):
@@ -347,7 +350,6 @@ class RedTable(GridTable):
         self.neutraliseSort()
         self.ResetView()
 
-
     def insertItem(self, item, row=None, upView=True):
         if row is None or row >= len(self.sortids):
             self.sortids.append(len(self.data))
@@ -434,13 +436,13 @@ class RedTable(GridTable):
         if self.getSelectedRow() < self.nbItems(): 
             compare_ids = self.sortids[self.getSelectedRow():]
             disable_ids = self.data.filtertofirstIds(compare_ids, parameters, complement=True)
-            self.data.applyFunctTo(".setDisabled()", disable_ids)
+            self.data.applyFunctTo(".setDisabled()", disable_ids, changes= True)
             self.ResetView()
 
     def filterAll(self, parameters):
         all_ids = list(self.sortids)
         disable_ids = self.data.filterpairsIds(all_ids, parameters, complement=True)
-        self.data.applyFunctTo(".setDisabled()", disable_ids)
+        self.data.applyFunctTo(".setDisabled()", disable_ids, changes= True)
         self.ResetView()
 
     def processAll(self, actions_parameters, init_current=True):

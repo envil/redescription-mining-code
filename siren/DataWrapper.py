@@ -43,7 +43,8 @@ class DataWrapper(object):
 
         #### [[idi, 1] for idi in range(len(self.data))]
         self.pm = PreferencesManager(self.conf_defs)
-        self.resetData()
+        self.data = None
+        self.resetQueries()
         self.preferences = self.pm.getDefaultTriplets()
         self.package_filename = None
         self._isChanged = False
@@ -57,12 +58,6 @@ class DataWrapper(object):
 
         if package_filename is not None:
             self.openPackage(package_filename)
-
-    def resetData(self):
-        self.data = None
-        self.resetQueries()
-        self.isChanged = True
-        self.isFromPackage = False
         
     def resetQueries(self):
         self.reds = Batch([])

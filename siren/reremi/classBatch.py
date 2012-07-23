@@ -7,14 +7,14 @@ class Batch(ICList):
         ### remove all elements while keeping the reference
         del self[:]
     
-    def applyFunctTo(self, funct, ids, complement=False, check=None):
+    def applyFunctTo(self, funct, ids, complement=False, check=None, changes= False):
         if complement:
             ids = (set(range(len(self)))-set(ids))
         for i in ids:
             if check is None or self.applyFunct(check, i):
                 self.applyFunct(funct, i)
 
-    def applyFunct(self, funct, i):
+    def applyFunct(self, funct, i, changes=False):
         result = None
         try:
             if type(funct) == str and len(funct) > 0:
@@ -28,6 +28,9 @@ class Batch(ICList):
                 result = funct(self[i])
         except TypeError:
             result = None
+        else:
+            if changes:
+                self._isChanged = True
         return result
 
     def sortIds(self, ids, custom_parameters):

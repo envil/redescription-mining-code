@@ -5,6 +5,7 @@ import codecs
 from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query 
 from classRedescription import Redescription
 from classSParts import SParts
+from toolICList import ICList
 import toolRead
 import pdb
 
@@ -101,6 +102,9 @@ class ColM:
     def fromXML(self, node):
         self.name = toolRead.getTagData(node, "name")
         self.N = toolRead.getTagData(node, "nb_entities", int)
+        tmp_en = toolRead.getTagData(node, "status_enabled", int)
+        if tmp_en is not None:
+            self.enabled = tmp_en
         tmpm = node.getElementsByTagName("missing")
         if len(tmpm) == 1:
             tmp_txt = toolRead.getTagData(tmpm[0], "rows").strip()
@@ -112,7 +116,7 @@ class ColM:
         strd += "\t<name>%s</name>\n" % self.getName()
         strd += "\t<type_id>%d</type_id>\n" % self.type_id
         strd += "\t<nb_entities>%d</nb_entities>\n" % self.N
-
+        strd += "\t<status_enabled>%d</status_enabled>\n" % self.enabled
         strd += self.typespec_placeholder + "\n"
 
         if self.missing is not None and len(self.missing) > 0:
@@ -569,6 +573,10 @@ class Data:
         else:
             self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
         self.redunRows = redunRows
+        if type(self.cols) == list and len(self.cols) == 2:
+            self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
+        else:
+            self.cols = [ICList(),ICList()]
 
     def hasMissing(self):
         for side in [0,1]:
@@ -742,7 +750,7 @@ def readDNCFromXMLFile(filename):
         if len(ctmp) == 1:
             coords = []
             for cotmp in ctmp[0].getElementsByTagName("coordinate"):
-                coords.append(toolRead.getValues(cotmp, float, "row"))
+                coords.append(np.array(toolRead.getValues(cotmp, float, "row")))
             if len(coords) != 2 or len(coords[0]) != len(coords[1]) or len(coords[0]) != N:
                 coords = None
     return (cols, N, coords)

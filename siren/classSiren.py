@@ -275,6 +275,11 @@ class Siren():
         menuRed = wx.Menu()
         
         if self.selectedTab["type"] in ["Var","Reds"]:
+            if not self.selectedTab.has_key("tab") or self.selectedTab["tab"].GetNumberRows() <= 0:
+            ## Nothing in the tab
+                return menuRed
+
+
             ID_NEWW = wx.NewId()
             m_neww = menuRed.Append(ID_NEWW, "&View in new window\tCtrl+W", "View redescription in new window.")
             frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
@@ -435,8 +440,8 @@ class Siren():
 
     def deleteAllViews(self):
         self.selectedMap = -1
-        for mapV in self.mapViews.values():
-            mapV.mapFrame.Destroy()
+        for mapK in self.mapViews.keys():
+            self.mapViews[mapK].OnQuit(None)
         self.mapViews = {}
         
 
@@ -812,6 +817,7 @@ class Siren():
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.details, self.dw.getShowIds())
         self.tabs["exp"]["tab"].resetData(Batch(), self.details)
         self.deleteAllViews()
+        self.makeMenu(self.toolFrame)
 #        self.getMapView().setCurrentRed(redsTmp[0])
 #        self.getMapView().updateRed()
 

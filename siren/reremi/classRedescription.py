@@ -414,10 +414,15 @@ class Redescription:
             else:
                 self.sParts = None
             self.dict_supp_info = dsi
+        tmp_en = toolRead.getTagData(node, "status_enabled", int)
+        if tmp_en is not None:
+            self.status = tmp_en
+
 
     def toXML(self, full=True, names= [None, None]):
         strd = "<redescription>\n"
-
+        strd += "\t<status_enabled>%d</status_enabled>\n" % self.status
+        
         for side in [0,1]:
             strd += "\t<query>\n"
             strd += "\t\t<side>%d</side>\n" % side
