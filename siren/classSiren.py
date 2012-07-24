@@ -7,7 +7,7 @@ import wx.lib.agw.pybusyinfo as PBI
 
 from reremi.toolLog import Log
 from reremi.classMiner import Miner
-from reremi.classData import Data
+from reremi.classData import Data, DataError
 from reremi.classConstraints import Constraints
 from reremi.classBatch import Batch
 from reremi.toolICList import ICList
@@ -367,11 +367,20 @@ class Siren():
         
         m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
         frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
+
+        submenuImportData = wx.Menu()
+        ID_IMPORT_DATA_XML = wx.NewId()
+        m_impDataXML = submenuImportData.Append(ID_IMPORT_DATA_XML, "Import from XML", "Import data in XML format.")
+        frame.Bind(wx.EVT_MENU, self.OnImportDataXML, m_impDataXML)
+        ID_IMPORT_DATA_TRIPLE = wx.NewId()
+        m_impDataTriple = submenuImportData.Append(ID_IMPORT_DATA_TRIPLE, "Import from separate files", "Import data from separate files")
+        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impDataTriple)
         
         submenuFile = wx.Menu()
         ID_IMPORT_DATA = wx.NewId()
-        m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
-        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
+        m_impData = submenuFile.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
+        #m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
+        #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
         ID_IMPORT_QUERIES = wx.NewId()
         m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
@@ -395,7 +404,7 @@ class Siren():
         menuRed = self.makeContextMenu(frame)
 
         #ID_PREFERENCESDIA = wx.NewId()
-        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences...", "Set preferences.")
+        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
 
@@ -627,11 +636,34 @@ class Siren():
         dlg = ImportDataDialog(self)
         dlg.showDialog()
             
+    def OnImportDataXML(self, event):
+        if self.dw.data is not None:
+            if not self.checkAndProceedWithUnsavedChanges():
+                return
+        if len(self.dw.reds) > 0:
+            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+            if sure_dlg.ShowModal() != wx.ID_OK:
+                return
+            sure_dlg.Destroy()
+
+        dir_name = os.path.expanduser('~/')
+        open_dlg = wx.FileDialog(self.toolFrame, message="Choose file", defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:
+                self.dw.importDataFromFile(path)
+            except (IOError, DataError) as error:
+                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            except:
+                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
+                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+        open_dlg.Destroy()
                 
     def OnImportPreferences(self, event):
-        #if self.dw.preferences is not None:
-        #if not self.checkAndProceedWithUnsavedChanges():
-        #      return
+        if not self.checkAndProceedWithUnsavedChanges(self.dw.preferences.isChanged):
+            return
         dir_name = os.path.expanduser('~/')
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
                                  style = wx.OPEN|wx.CHANGE_DIR)
@@ -648,9 +680,8 @@ class Siren():
         open_dlg.Destroy()
         
     def OnImportQueries(self, event):
-        if len(self.dw.reds) > 0:
-            if not self.checkAndProceedWithUnsavedChanges():
-                return
+        if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
+            return
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
         dir_name = os.path.expanduser('~/')
 
@@ -781,10 +812,12 @@ class Siren():
         self.toolFrame.Destroy()
         exit()
 
-    def checkAndProceedWithUnsavedChanges(self):
+    def checkAndProceedWithUnsavedChanges(self, test=None):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue
-        and True if there are no unsaved changes or user wants to proceed in any case"""
-        if self.dw.isChanged:
+        and True if there are no unsaved changes or user wants to proceed in any case.
+
+        If additional parameter 'test' is given, asks the question if it is true."""
+        if (test is not None and test) or (test is None and self.dw.isChanged):
             dlg = wx.MessageDialog(self.toolFrame, 'Unsaved changes might be lost.\nAre you sure you want to continue?', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Unsaved changes!')
             if dlg.ShowModal() == wx.ID_NO:
                 return False

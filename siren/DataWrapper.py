@@ -8,6 +8,7 @@ import shutil
 import zipfile
 import cPickle
 import codecs
+import collections
 
 import pdb
 
@@ -15,6 +16,7 @@ from reremi.classRedescription import Redescription
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
 from reremi.toolICList import ICList
+from reremi.toolICDict import ICDict
 from reremi.classBatch import Batch
 from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 import reremi.toolRead as toolRead
@@ -45,7 +47,7 @@ class DataWrapper(object):
         self.pm = PreferencesManager(self.conf_defs)
         self.data = None
         self.resetQueries()
-        self.preferences = self.pm.getDefaultTriplets()
+        self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.package_filename = None
         self._isChanged = False
         self._isFromPackage = False
@@ -107,7 +109,7 @@ class DataWrapper(object):
         return self.preferences
 
     def getPreference(self, param_id):
-        if self.preferences is not None and self.preferences.has_key(param_id):
+        if self.preferences is not None and param_id in self.preferences:
             return self.preferences[param_id]["data"]
         else:
             return False
@@ -139,11 +141,14 @@ class DataWrapper(object):
     @property
     def isChanged(self):
         """The property tracking if dw (incl. reds and rshowids) has changed"""
+        isChanged = self._isChanged
         if self.reds is not None:
-            self._isChanged |= self.reds.isChanged
+            isChanged |= self.reds.isChanged
         if self.rshowids is not None:
-            self._isChanged |= self.rshowids.isChanged
-        return self._isChanged
+            isChanged |= self.rshowids.isChanged
+        if self.preferences is not None:
+            isChanged |= self.preferences.isChanged 
+        return isChanged
     
     @isChanged.setter
     def isChanged(self, value):
@@ -153,6 +158,8 @@ class DataWrapper(object):
                     self.reds.isChanged = value
                 if self.rshowids is not None:
                     self.rshowids.isChanged = value
+                if self.preferences is not None:
+                    self.preferences.isChanged = value
             self._isChanged = value
         else:
             raise TypeError("The isChanged property accepts only Boolean attributes")
@@ -172,9 +179,10 @@ class DataWrapper(object):
             raise TypeError("The isFromPackage property accepts only Boolean attributes")
         
     def updatePreferencesDict(self, params):
-        if type(params) == dict:
+        #if type(params) == dict:
+        if isinstance(params, collections.MutableMapping):
             self.preferences.update(params)
-            self.isChanged = True
+            #self.isChanged = True
 
 
 #################### IMPORTS            
@@ -237,7 +245,7 @@ class DataWrapper(object):
         else:
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
-            self.isChanged = True
+            #self.isChanged = True
         finally:
             self._stopMessage('importing')
 
@@ -252,7 +260,7 @@ class DataWrapper(object):
         else:
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
-            self.isChanged = True
+            #self.isChanged = True
         finally:
             self._stopMessage('importing')
 
@@ -267,7 +275,7 @@ class DataWrapper(object):
             raise
         else:
             self.preferences = tmp_preferences
-            self.isChanged = True
+            self.preferences.isChanged = True 
         finally:
             self._stopMessage('importing')
             
@@ -369,7 +377,7 @@ class DataWrapper(object):
         else:
             filep = open(filename, 'r')
 
-        return PreferencesReader(self.pm).getParameters(filep)
+        return ICDict(PreferencesReader(self.pm).getParameters(filep))
 
     def _readPackageFromFile(self, filename):
         """Loads a package"""
