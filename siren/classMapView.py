@@ -72,6 +72,12 @@ class MapView:
         self.MapredMapInfoBL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoRV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
         self.MapredMapInfoBV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+
+        self.MapredMapInfoOL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoTL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoOV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoTV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+
         self.MapredMapInfoIV.SetForegroundColour(MapView.COLOR_INTER)
         self.MapredMapInfoBV.SetForegroundColour(MapView.COLOR_LEFT)
         self.MapredMapInfoRV.SetForegroundColour(MapView.COLOR_RIGHT)
@@ -83,12 +89,16 @@ class MapView:
         self.MapValbox1.Add(self.MapredMapInfoVL, 0, border=0, flag=flags)
         
         self.MapValbox3 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox3.Add(self.MapredMapInfoIL, 0, border=0, flag=flags)
+        self.MapValbox3.Add(self.MapredMapInfoBL, 0, border=0, flag=flags)
         self.MapValbox3.Add(self.MapredMapInfoUL, 0, border=0, flag=flags)
 
         self.MapValbox5 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox5.Add(self.MapredMapInfoBL, 0, border=0, flag=flags)
-        self.MapValbox5.Add(self.MapredMapInfoRL, 0, border=0, flag=flags)
+        self.MapValbox5.Add(self.MapredMapInfoIL, 0, border=0, flag=flags)
+        self.MapValbox5.Add(self.MapredMapInfoOL, 0, border=0, flag=flags)
+
+        self.MapValbox7 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox7.Add(self.MapredMapInfoRL, 0, border=0, flag=flags)
+        self.MapValbox7.Add(self.MapredMapInfoTL, 0, border=0, flag=flags)
 
         flags = wx.EXPAND | wx.ALL
         self.MapValbox2 = wx.BoxSizer(wx.VERTICAL)
@@ -96,12 +106,17 @@ class MapView:
         self.MapValbox2.Add(self.MapredMapInfoVV, 0, border=0, flag=flags)
 
         self.MapValbox4 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox4.Add(self.MapredMapInfoIV, 0, border=0, flag=flags)
+        self.MapValbox4.Add(self.MapredMapInfoBV, 0, border=0, flag=flags)
         self.MapValbox4.Add(self.MapredMapInfoUV, 0, border=0, flag=flags)
 
         self.MapValbox6 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox6.Add(self.MapredMapInfoBV, 0, border=0, flag=flags)
-        self.MapValbox6.Add(self.MapredMapInfoRV, 0, border=0, flag=flags)
+        self.MapValbox6.Add(self.MapredMapInfoIV, 0, border=0, flag=flags)
+        self.MapValbox6.Add(self.MapredMapInfoOV, 0, border=0, flag=flags)
+
+        self.MapValbox8 = wx.BoxSizer(wx.VERTICAL)
+        self.MapValbox8.Add(self.MapredMapInfoRV, 0, border=0, flag=flags)
+        self.MapValbox8.Add(self.MapredMapInfoTV, 0, border=0, flag=flags)
+
 
         self.MaphboxVals = wx.BoxSizer(wx.HORIZONTAL)
         self.MaphboxVals.Add(self.MapValbox1, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
@@ -110,6 +125,9 @@ class MapView:
         self.MaphboxVals.Add(self.MapValbox4, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
         self.MaphboxVals.Add(self.MapValbox5, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
         self.MaphboxVals.Add(self.MapValbox6, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox7, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
+        self.MaphboxVals.Add(self.MapValbox8, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
+
 
         self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
@@ -267,6 +285,11 @@ class MapView:
             self.MapredMapInfoBV.SetLabel("")
             self.MapredMapInfoRL.SetLabel("")
             self.MapredMapInfoRV.SetLabel("")
+            self.MapredMapInfoOL.SetLabel("")
+            self.MapredMapInfoOV.SetLabel("")
+            self.MapredMapInfoTL.SetLabel("")
+            self.MapredMapInfoTV.SetLabel("")
+
         else:
             self.MapredMapInfoJL.SetLabel("J=")
             self.MapredMapInfoJV.SetLabel("%1.5f" % red.acc())
@@ -276,7 +299,12 @@ class MapView:
             self.MapredMapInfoIV.SetLabel("%i" % (red.sParts.lpart(2,0)))
             self.MapredMapInfoUL.SetLabel(u"|LHS \u222A RHS|=")
             self.MapredMapInfoUV.SetLabel("%i" % (red.sParts.lpart(0,0)+red.sParts.lpart(1,0)+red.sParts.lpart(2,0)))
-            self.MapredMapInfoBL.SetLabel(u"|LHS \\ RHS|=")
+            self.MapredMapInfoBL.SetLabel(u"|LHS \\ RHS| =")
             self.MapredMapInfoBV.SetLabel("%i" % (red.sParts.lpart(0,0)))
-            self.MapredMapInfoRL.SetLabel(u"|RHS \\ LHS|=")
+            self.MapredMapInfoRL.SetLabel(u"|RHS \\ LHS| =")
             self.MapredMapInfoRV.SetLabel("%i" % (red.sParts.lpart(1,0)))
+
+            self.MapredMapInfoOL.SetLabel(u"|OUT|     =")
+            self.MapredMapInfoOV.SetLabel("%i" % (red.sParts.lpart(3,0)))
+            self.MapredMapInfoTL.SetLabel(u"|E|       =")
+            self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))

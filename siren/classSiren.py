@@ -1,4 +1,4 @@
-import os
+import os, os.path
 import wx, wx.html
 import threading
 import time
@@ -74,7 +74,8 @@ class Siren():
     titleTool = 'SIREN :: tools'
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
-    helpURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/"
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    helpURL = curr_dir+"/help/index.html"
 
     # For About dialog
     name = "Siren"
@@ -804,8 +805,11 @@ class Siren():
         self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
         html = wx.html.HtmlWindow(self.helpFrame)
         if "gtk2" in wx.PlatformInfo:
-            html.SetStandardFonts()        
-        wx.CallAfter(html.LoadPage, self.helpURL)
+            html.SetStandardFonts()
+        if len(self.helpURL) > 4 and self.helpURL[:4] == "http":
+            wx.CallAfter(html.LoadPage, self.helpURL)
+        else:
+            wx.CallAfter(html.LoadFile, self.helpURL)
         self.helpFrame.Show()
 
     def OnAbout(self, event):
