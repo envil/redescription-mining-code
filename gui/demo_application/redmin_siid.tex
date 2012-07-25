@@ -16,7 +16,7 @@ algorithms have been proposed for Boolean redescription mining, based
 on approaches including decision
 trees~\cite{ramakrishnan04turning,kumar07redescription},
 co-clusters~\cite{parida05redescription}, and frequent
-itemsets~\cite{gallo08finding}. In~\cite{galbrun11black}, we extended
+itemsets~\cite{gallo08finding}. In~\cite{galbrun12black}, we extended
 redescription mining to categorical and numerical variables.
 
 More formally, we consider data that contains entities $E$ with two sets
@@ -26,7 +26,7 @@ Boolean variables can be interpreted as a truth value
 assignment in a natural way.  For categorical and real-valued
 variables, truth value assignments are induced by relations denoted using Iverson bracket $[v=c]$
 and $[a \leq v \leq b]$, respectively, where $c$ is some category and
-$[a, b]$ an interval.  These truth assignments and their negations
+$[a, b]$ an interval. For more details about how the actual optimal categories and intervals are chosen, please refer to~\cite{galbrun12black}.  These truth assignments and their negations
 constitute \emph{literals} which can be combined using the Boolean
 operators $\land$ (and) and $\lor$ (or) to form \emph{queries}.
 The support of a query $q$ is the subset of entities for which
@@ -40,7 +40,7 @@ two sets, $R=(q_\iLHS,q_\iRHS)$.
 Its \emph{accuracy} is 
 measured using the \emph{Jaccard coefficient} 
 \[
-\jacc(R)= \jacc(q_\iLHS,q_\iRHS) = \frac{\abs{\supp(q_\iLHS,q_\iRHS)}}%
+\jacc(R)= \jacc(q_\iLHS,q_\iRHS) = \frac{\abs{\supp(q_\iLHS) \cap \supp(q_\iRHS)}}%
 {\abs{\supp(q_\iLHS)\cup\supp(q_\iRHS)}}.
 \]
 We compute a \pValue{} that represents the probability that two random
@@ -48,7 +48,7 @@ queries with marginal probabilities (i.e.\ the fraction of entities
 supporting them) equal to those of $q_\iLHS$ and $q_\iRHS$ have an
 intersection equal to or larger than $\abs{\supp(q_\iLHS,
   q_\iRHS)}$. This probability uses the binomial distribution and is given by \[
-\text{pvalM}(q_\iLHS, q_\iRHS) = \sum_{s=\abs{\supp(q_\iLHS, q_\iRHS)}}^{\abs{E}} {\abs{E} \choose s} (p_R)^s (1- p_R)^{\abs{E} - s},\]
+\text{pvalM}(q_\iLHS, q_\iRHS) = \sum_{s=\abs{\supp(q_\iLHS) \cap \supp(q_\iRHS)}}^{\abs{E}} {\abs{E} \choose s} (p_R)^s (1- p_R)^{\abs{E} - s},\]
 where $p_R = \abs{\supp(q_\iLHS)}\abs{\supp(q_\iRHS)}/\abs{E}^2.$
 The higher the \pValue, the more likely it is to observe such a
 support for independent queries, and the less significant the query.
@@ -71,8 +71,8 @@ to predict the results of global warming~\cite{pearson03predicting}.
 A number of methods, involving regression, neural networks, and
 genetic algorithms (see~\cite{soberon05interpretation}) have been
 developed over the past ten years to model the bioclimatic envelope,
-\textsc{Maxent}~\cite{phillips2006maximum} and \textsc{BIOMOD}~\cite{thuiller09biomod}, being good examples of a
-modelling tools used in this domain, the former providing a graphical user interface while the latter is a text-based tool.  But to the best of our knowledge,
+\textsc{Maxent}~\cite{phillips2006maximum} and \textsc{BIOMOD}~\cite{thuiller09biomod}, being good examples of 
+modelling tools used in this domain. The former provides a graphical user interface while the latter is a text-based tool.  But to the best of our knowledge,
 none of these methods allows automatically finding both the set of
 species and their envelope.
 

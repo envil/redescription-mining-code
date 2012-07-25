@@ -3,9 +3,10 @@ In this section, we present our proposed tool, which consists of a
 pair of algorithms, \ReReMi\ and \Siren. First, we explain how it
 implement interactivity and visualization for redescription mining.
 Then, we give a concrete illustration of its usage by means of a use
-case. Throughout this section, we outline how the tool achieves goals
-stated in the previous section by highlighting \emph{key
-  features}. However, we are only able to achieve part of the goals---the rest are \emph{ch\^{a}teaux en Espagne}.
+case.  The current version of the tool is only able to achieve part of
+the goals stated in the previous section. In this section we focus on
+presently available features--- the others are \emph{ch\^{a}teaux en
+  Espagne}.
 
 \subsection{The Algorithms}
 \label{sec:algorithms}
@@ -16,7 +17,7 @@ an interactive tool for mining and visualizing geospatial
 redescriptions.\!\footnote{More details about \Siren's features, additional
   screenshots and a demonstration video are available online at
   \url{http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/}.}  At its core is the \ReReMi\ redescription mining
-algorithm~\cite{galbrun11black,galbrun12black}.
+algorithm~\cite{galbrun12black}.
 
 This greedy algorithm
 uses an efficient on-the-fly discretization technique to extend
@@ -46,17 +47,17 @@ accuracy more efficient. This allows to evaluate candidates faster,
 which is particularly important for an interactive tool.  
 
 Owing to his beam-search-like behaviour, \ReReMi{} is an
-\emph{any-time} algorithm.  The intermediate redescriptions explored
+\feat{any-time} algorithm.  The intermediate redescriptions explored
 during the search are returned at each step.  This way, the user is
 able to see the candidates present in the beam and might stop the
-extension process if he so wishes. He could possibly also remove a
+extension process if he so wishes. The possiblilitty to remove a
 candidate from the beam, cutting off a less promising branch from the
-search.
+search, remains to be implemented.
 
 In \Siren, threading is employed to delegate mining tasks to \ReReMi\
-in the background. This preserves the tool's \emph{responsiveness}
-while the communication is maintained to \emph{provide feedback} about
-the ongoing mining, \emph{return results as they are obtained} and to
+in the background. This preserves the tool's \feat{responsiveness}
+while the communication is maintained to \feat{provide feedback} about
+the ongoing mining, to \feat{return results as they are obtained} and to
 allow the user to directly interact with the process.  
 
 Finally, \Siren\ allows automatic filtering of redundant
@@ -98,7 +99,7 @@ of mining geospatial redescriptions, detailing typical steps in the
 process.  This specific example concerns the application of \Siren\ on
 the task of bioclimatic niche finding using data that describes
 spatial areas of Europe, squares of side roughly 50 kilometers.  The
-left hand side data contains information about the mammals that live
+left hand side data contain information about the mammals that live
 in these areas, while the right hand side consists of bioclimatic
 variables\footnote{The data comes from two publicly available
   datasets: European mammal atlas~\cite{mitchell-jones99atlas} and
@@ -118,11 +119,11 @@ to find an initial set of redescriptions.  This can be done within
 Following the principle of first providing an overview of the results
 then focusing on specific items, the redescriptions found are
 presented as a list from which the user can select a redescription of
-his choice and to examine more closely and plot on the map.
+his choice to examine more closely and plot on the map.
 Figure~\ref{fig:both_panels} shows two panels, containing an overview of
 the current results as a list, in the background, and a single
 redescription plotted on a map, in the foreground.
-The list supports \emph{sorting} and \emph{filtering} on various criteria.
+The list supports \feat{sorting} and \feat{filtering} on various criteria.
 
 \prg{Extending a redescription} Sometimes the user wants to focus only
 on one of the queries, on some particular variable of interest or on a
@@ -154,7 +155,7 @@ precipitations in October and November range from $42.75$ to $131.81$
 millimeters and from $50.556$ to $176.75$ millimeters, respectively.
 
 Returned extensions can be plotted on maps opened inside several
-windows, so as to be \emph{visualized} side by side and compared as shown in
+windows, so as to be \feat{visualized} side by side and compared as shown in
 Figure~\ref{fig:comparison}.
 
 \begin{figure}
@@ -171,7 +172,7 @@ edit some of the obtained redescriptions. For example, some results
 might be overly complex, or have exceedingly precise boundaries for
 numerical variables. The user can easily select a redescription to
 modify, open it in a map panel and edit it. Boundaries can be altered,
-literals added or removed. \Siren\ \emph{instantly updates} the map and important
+literals added or removed. \Siren\ \feat{instantly updates} the map and important
 statistics (accuracy, $p$-value, etc.) of the redescription, allowing
 the user to see the effects of the modifications immediately and
 verify, e.g.\ whether the new redescription would still be acceptably
@@ -212,8 +213,8 @@ as the following redescription of accuracy $0.653$:
 
 Note that this redescription was not returned previously since the
 beam search focused on better ones involving precipitation variables.
-This feature allows the user to specify additional constraints,
-thereby \emph{tuning the mining process} according to his interest and
+In addition to basic parameter tuning, this feature allows the user to specify additional constraints,
+thereby interacting with the mining process to \feat{adjust} it according to his interest and
 what appears most promising during the analysis.
 
 \prg{Filtering redundant redescriptions}
@@ -225,7 +226,7 @@ one of interest and filter all the following results redundant with respect to i
 
 \prg{Sharing the results}
 \label{sec:sharing-results}
-Finally, \Siren\ facilitates \emph{distributing} the results:
+Finally, \Siren\ facilitates \feat{distributing} the results:
 redescriptions can be exported in easy-to-read format and the
 maps associated to redescriptions can be readily converted to
 publication-ready graphics. 

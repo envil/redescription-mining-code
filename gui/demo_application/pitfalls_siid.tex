@@ -9,7 +9,7 @@ technical, that need to be solved.
 
 In the heart of interactive data mining is the user's ability to tell
 the algorithm that he wants more or less certain type of results. In
-principle, this is no problem in \Siren: the user simply selects a
+principle, this is not a problem in \Siren: the user simply selects a
 redescription he wants to remove from the beam search or extend
 more. The problem, however, is that there can be (and usually are)
 other, similar redescriptions that the user might also want to remove
@@ -39,8 +39,8 @@ The problem of removing and extending similar redescriptions is
 closely related to that of redundancy reduction. There are often
 multiple redescriptions that represent the same phenomenon (think of
 the Polar Bears living in the cold areas), and ideally, we would like
-to present the user only one of them. In other words, we do not want
-to present the user any redescriptions that do not add any (or add
+to present only one of them to the user. In other words, we do not want
+to present to the user any redescriptions that do not add any (or add
 only marginally) new information over the redescriptions he has
 already seen. But as with deciding which redescription is similar to a
 selected one, also quantifying the redundancy between redescriptions
