@@ -93,7 +93,7 @@ class Redescription:
         return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
 
     def equivalent(self, y):
-       return abs(self.compare(y)) < Redescription.diff_balance
+       return abs(self.compare(y)) < Query.diff_balance
         
     # def __hash__(self):
     #      return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
@@ -490,9 +490,13 @@ class Redescription:
                     if tmp.get(key, None) != lpartsList[key]:
                         raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" \
                                   % (key, tmp.get(key, None), lpartsList[key]))
+
         if r is None:
             r = Redescription(queryL, queryR)
-            r.supp_info = lpartsList
+            if data is not None:
+                r.recompute(data)
+            else:
+                r.supp_info = lpartsList
         return r
     parse = staticmethod(parse)
             

@@ -44,9 +44,16 @@ class Miner:
     def kill(self):
         self.want_to_live = False
 
+
 ### RUN FUNCTIONS
 ################################
 ### TODO improve progress tracking
+
+    def filter_run(self, redescs):
+        batch = Batch(redescs)
+        tmp_ids = batch.selected(self.constraints.actions_final())
+        return [batch[i] for i in tmp_ids]
+
     def part_run(self, redesc):
         self.count = "C"
 

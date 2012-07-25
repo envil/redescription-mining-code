@@ -597,6 +597,9 @@ class Query:
         for buk in self.buk:
             c.buk.append(set([t.copy() for t in buk if t is not None]))
         return c
+
+    def __cmp__(self, y):
+        return self.compare(y)
             
     def compare(self, y): 
         if y is None:
@@ -604,9 +607,9 @@ class Query:
         if self.op == y.op and self.buk == y.buk:
             return 0
         
-        if len(x) < len(y): ## nb of literals in the query, shorter better
+        if len(self) < len(y): ## nb of literals in the query, shorter better
             return Query.diff_length
-        elif len(x) == len(y):
+        elif len(self) == len(y):
             if len(self.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
                 return Query.diff_balance
             elif len(self.buk) == len(y.buk) :

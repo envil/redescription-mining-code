@@ -10,12 +10,37 @@ from classMiner import Miner
 from classQuery import Query
 import pdb
 
- 
-def run(arguments):
+def loadRedescriptions(filename, data):
+    fp = open(filename, "r")
+    tmp = []
+    red = Redescription.load(fp, None, data)
+    while red[0] != None and len(red[0]) > 0:
+        tmp.append(red[0])
+        red = Redescription.load(fp, None, data)
+    return tmp
 
-    ticO = datetime.datetime.now()
+def run_filter(arguments):
+    params = getParams(sys.argv)
+    params_l = {}
+    for k, v in  params.items():
+        params_l[k] = v["data"]
+
+    logger = Log(params_l['verbosity'], params_l['logfile'])
+    
+    data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']])
+    logger.printL(2, data, "log")
 
 
+    fileq = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+    t = loadRedescriptions(fileq, data)
+    miner = Miner(data, params, logger)
+
+    tr = miner.filter_run(t)
+    for t in tr:
+        print t.disp()
+
+        
+def getParams(arguments=[]):
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
 
@@ -34,6 +59,16 @@ def run(arguments):
         print 'ReReMi redescription mining\nusage: "%s [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
+
+    return params
+
+
+ 
+def run(arguments):
+
+    ticO = datetime.datetime.now()
+
+    params = getParams(arguments)
 
     params_l = {}
     for k, v in  params.items():

@@ -152,13 +152,13 @@ class Constraints:
     def actions_partial(self):
         return [("filtersingle", {"filter_funct": self.filter_partial}),
                 ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-                ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 2}),
+                ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0}),
                 ("cut", { "cutoff_nb": self.batch_out(), "cutoff_direct": 1, "equal_funct": self.sort_partial})]
 
     def actions_final(self):
        return [("filtersingle", {"filter_funct": self.filter_partial}),
                ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-               ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 2})]
+               ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})]
 
     def parameters_filterredundant(self):
        return {"filter_funct": self.pair_filter_redundant, "filter_thres": self.max_overlaparea(), "filter_max":0}
