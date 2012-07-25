@@ -17,6 +17,7 @@ from reremi.classData import Data, DataError
 from reremi.classQuery import Query
 from reremi.toolICList import ICList
 from reremi.toolICDict import ICDict
+from reremi.toolLog import Log
 from reremi.classBatch import Batch
 from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 import reremi.toolRead as toolRead
@@ -39,11 +40,15 @@ class DataWrapper(object):
     FILETYPE_VERSION = 2
     CREATOR = 'DataWrapper'
 
-    def __init__(self, package_filename = None):
+    def __init__(self, logger=None, package_filename = None):
         """Inits the class. Either package_filename or the others should be given.
         """
 
         #### [[idi, 1] for idi in range(len(self.data))]
+        if logger is None:
+            self.logger = Log()
+        else:
+            self.logger = logger
         self.pm = PreferencesManager(self.conf_defs)
         self.data = None
         self.resetQueries()
@@ -198,10 +203,10 @@ class DataWrapper(object):
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
 
         except DataError as details:
-            print "Problem reading files.", details
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.data = tmp_data
@@ -217,10 +222,10 @@ class DataWrapper(object):
         try:
             tmp_data = self._readDataFromFile(data_filename)
         except DataError as details:
-            print "Problem reading files.", details
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.data = tmp_data
@@ -240,7 +245,7 @@ class DataWrapper(object):
             else:
                 tmp_reds, tmp_rshowids = self._readQueriesFromFile(queries_filename)
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.reds = tmp_reds
@@ -255,7 +260,7 @@ class DataWrapper(object):
         try:
             tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.reds = tmp_reds
@@ -271,7 +276,7 @@ class DataWrapper(object):
  
             tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.preferences = tmp_preferences
@@ -285,10 +290,10 @@ class DataWrapper(object):
         try:
             self._readPackageFromFile(package_filename)
         except DataError as details:
-            print "Problem reading files.", details
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
         except IOError as arg:
-            print "Cannot open", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         else:
             self.isChanged = False
@@ -479,7 +484,7 @@ class DataWrapper(object):
         try:
             f = open(os.path.abspath(filename + suffix), 'w')
         except IOError as arg:
-            print "Cannot write to file", arg
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             return
         else:
             f.close()

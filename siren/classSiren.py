@@ -97,7 +97,7 @@ class Siren():
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
         self.check_tab = {}
-        self.logger = None
+        self.logger = Log()
         
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -145,7 +145,7 @@ class Siren():
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
         # (Almost) all of the above should stay in dw
-        self.dw = DataWrapper()
+        self.dw = DataWrapper(self.logger)
 
         ### About dialog
         self.info =  wx.AboutDialogInfo()
@@ -659,6 +659,12 @@ class Siren():
             except:
                 wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
                                  style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+
+            else:
+                self.details = {'names': self.dw.getColNames()}
+                self.reloadVars()
+                self.reloadReds()
+
         open_dlg.Destroy()
                 
     def OnImportPreferences(self, event):
@@ -830,12 +836,14 @@ class Siren():
         self.constraints = Constraints(self.dw.getNbRows(), self.dw.getPreferences())
 
     def resetLogger(self):
-        #### TODO
         if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
-            self.logger = Log({"*": self.dw.getPreference('verbosity'), "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            self.logger.resetOut()
+            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            self.logger.addOut({"error":1}, "stderr")
         else:
-            self.logger = Log({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
-            
+            self.logger.resetOut()
+            self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            self.logger.addOut({"error":1}, "stderr")
 
     def reloadVars(self):
         ## Initialize variable lists data

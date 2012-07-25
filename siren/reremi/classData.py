@@ -573,7 +573,11 @@ class Data:
             else:
                 self.cols, self.N, self.coords = readDNCFromFiles(cols, N, coords)
         else:
-            self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
+            try:
+                self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
+            except DataError:
+                self.cols, self.N, self.coords = [[],[]], 0, None
+                raise
         self.redunRows = redunRows
         if type(self.cols) == list and len(self.cols) == 2:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
@@ -721,13 +725,12 @@ def readDNCFromXMLFile(filename):
     (cols, N, coords) = ([[],[]], 0, None)
     try:
         doc = toolRead.parseXML(filename)
-    except Exception as inst:
-        print "%s is not a valid data file! (%s)" % (filename, inst)
-    else:
         dtmp = doc.getElementsByTagName("data")
+    except AttributeError as inst:
+        raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
+    else:
         if len(dtmp) != 1:
-            print "%s is not a valid data file! (%s)" % (filename, inst)
-            return (cols, N, coords)
+            raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
         N = toolRead.getTagData(dtmp[0], "nb_entities", int)
         for side_data in doc.getElementsByTagName("side"):
             side = toolRead.getTagData(side_data, "name", int)

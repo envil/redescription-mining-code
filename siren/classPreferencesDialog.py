@@ -1,4 +1,5 @@
 import wx
+import pdb
 
 class PreferencesDialog(wx.Dialog):
 	"""
@@ -87,10 +88,9 @@ class PreferencesDialog(wx.Dialog):
 			item = self.pref_handle.getPreferencesManager().getItem(item_id)
 			ctrl_id = wx.NewId()
 			label = wx.StaticText(frame, wx.ID_ANY, item.getLabel()+":")
-			self.controls_map[sec_id]["single_options"][item_id] = wx.Choice(frame, wx.ID_ANY)
+			self.controls_map[sec_id]["single_options"][item_id] = wx.Choice(frame, ctrl_id)
 			self.controls_map[sec_id]["single_options"][item_id].AppendItems(strings=item.getOptionsText())
 			self.objects_map[ctrl_id]= (sec_id, "single_options", item_id)
-
 			so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
 			so_sizer.Add(self.controls_map[sec_id]["single_options"][item_id], 0)
 
@@ -120,15 +120,16 @@ class PreferencesDialog(wx.Dialog):
                     top_sizer.Add(mo_sizer, 0, wx.EXPAND|wx.ALL, 5)
 
 
-		for k in parameters["subsections"]:
+		for i,k in enumerate(parameters["subsections"]):
 
 			########## ADD SECTION TITLE
 			title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+			if i > 0:
+				top_sizer.Add(wx.StaticLine(frame), 0, wx.EXPAND|wx.ALL, 5)
 			title = wx.StaticText(frame, wx.ID_ANY, "--- %s ---" % k.get("name", ""))
 			title_sizer.Add(title, 0, wx.ALIGN_CENTER)
 
 			top_sizer.Add(title_sizer, 0, wx.CENTER)
-			top_sizer.Add(wx.StaticLine(frame), 0, wx.EXPAND|wx.ALL, 5)
 
 			sec_sizer= wx.BoxSizer(wx.VERTICAL)
 			self.dispGUI(k, sec_id, frame, sec_sizer)
