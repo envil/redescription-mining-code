@@ -125,7 +125,7 @@ class Siren():
         # tmp_num_filename='../data/dblp/coauthor_picked.datnum'
         # tmp_bool_filename='../data/dblp/conference_picked.datnum'
         # tmp_coo_filename='../data/dblp/coordinates_rand.names'
-        # tmp_queries_filename='../data/dblp/dblp_picked_real.queries'
+        # tmp_redescriptions_filename='../data/dblp/dblp_picked_real.queries'
         # tmp_settings_filename='../data/dblp/dblp_picked_real.conf'
 
 
@@ -133,7 +133,7 @@ class Siren():
         tmp_num_filename='../rajapaja/worldclim_tp.densenum'
         tmp_bool_filename='../rajapaja/mammals.datbool'
         tmp_coo_filename='../rajapaja/coordinates.names'
-        tmp_queries_filename='../rajapaja/rajapaja.queries'
+        tmp_redescriptions_filename='../rajapaja/rajapaja.queries'
         tmp_settings_filename='../rajapaja/rajapaja_conf.xml'
 
 
@@ -141,7 +141,7 @@ class Siren():
         # tmp_num_filename='../data/us/us_politics_funds_cont.densenum'
         # tmp_bool_filename='../data/us/us_socio_eco_cont.densenum'
         # tmp_coo_filename='../data/us/us_coordinates_cont.names'
-        # tmp_queries_filename='../data/us/us.queries'
+        # tmp_redescriptions_filename='../data/us/us.queries'
         # tmp_settings_filename='../data/us/us.conf'
 
         # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
@@ -167,7 +167,7 @@ class Siren():
 
         ## Comment (out) to toggle between loading data in input and not
         #self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
-        #self.dw.importQueriesTXTFromFile(tmp_queries_filename)
+        #self.dw.importRedescriptionsTXTFromFile(tmp_redescriptions_filename)
         #self.dw.importPreferencesFromFile(tmp_settings_filename)
 
  
@@ -383,12 +383,12 @@ class Siren():
         #m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
-        ID_IMPORT_QUERIES = wx.NewId()
-        m_impQueries = submenuFile.Append(ID_IMPORT_QUERIES, "Import Q&ueries", "Import queries into the project.")
-        frame.Bind(wx.EVT_MENU, self.OnImportQueries, m_impQueries)
+        ID_IMPORT_REDESCRIPTIONS = wx.NewId()
+        m_impRedescriptions = submenuFile.Append(ID_IMPORT_REDESCRIPTIONS, "Import &Redescriptions", "Import redescriptions into the project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportRedescriptions, m_impRedescriptions)
 
         ID_IMPORT_PREFERENCES = wx.NewId()
-        m_impPreferences = submenuFile.Append(ID_IMPORT_PREFERENCES, "Import Preferences", "Import preferences into the project.")
+        m_impPreferences = submenuFile.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
 
         ID_IMPORT = wx.NewId()
@@ -396,7 +396,7 @@ class Siren():
 
         ID_EXPORT = wx.NewId()
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
-        frame.Bind(wx.EVT_MENU, self.OnExportQueries, m_export)
+        frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_export)
 
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
@@ -686,7 +686,7 @@ class Siren():
                                  style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         open_dlg.Destroy()
         
-    def OnImportQueries(self, event):
+    def OnImportRedescriptions(self, event):
         if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
             return
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
@@ -697,7 +697,7 @@ class Siren():
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
-                self.dw.importQueriesFromFile(path)
+                self.dw.importRedescriptionsFromFile(path)
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
                                  style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
@@ -707,7 +707,7 @@ class Siren():
         open_dlg.Destroy()
         self.reloadReds()
         
-    def OnExportQueries(self, event):
+    def OnExportRedescriptions(self, event):
         if self.dw.reds is None:
             wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded',
                              style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
@@ -722,7 +722,7 @@ class Siren():
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
-                self.dw.exportQueries(path)
+                self.dw.exportRedescriptions(path)
             except IOError as error:
                 wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
                                  +str(path)+':\n'+str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()

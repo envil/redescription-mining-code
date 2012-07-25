@@ -29,7 +29,7 @@ class DataWrapper(object):
     # CONSTANTS
     # Names of the files in the package
     DATA_FILENAME = 'data.xml'
-    QUERIES_FILENAME = 'queries.xml'
+    REDESCRIPTIONS_FILENAME = 'redescriptions.xml'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
@@ -51,7 +51,7 @@ class DataWrapper(object):
             self.logger = logger
         self.pm = PreferencesManager(self.conf_defs)
         self.data = None
-        self.resetQueries()
+        self.resetRedescriptions()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.package_filename = None
         self._isChanged = False
@@ -66,7 +66,7 @@ class DataWrapper(object):
         if package_filename is not None:
             self.openPackage(package_filename)
         
-    def resetQueries(self):
+    def resetRedescriptions(self):
         self.reds = Batch([])
         self.rshowids = ICList([], True)
 
@@ -210,7 +210,7 @@ class DataWrapper(object):
             raise
         else:
             self.data = tmp_data
-            self.resetQueries()
+            self.resetRedescriptions()
             self.isChanged = True
             self.isFromPackage = False
         finally:
@@ -229,21 +229,21 @@ class DataWrapper(object):
             raise
         else:
             self.data = tmp_data
-            self.resetQueries()
+            self.resetRedescriptions()
             self.isChanged = True
             self.isFromPackage = False
         finally:
             self._stopMessage('importing')
 
-    def importQueriesFromFile(self, queries_filename):
-        """Loads new queries from file"""
-        self._startMessage('importing', queries_filename)
+    def importRedescriptionsFromFile(self, redescriptions_filename):
+        """Loads new redescriptions from file"""
+        self._startMessage('importing', redescriptions_filename)
         try:
-            (pn, suffix) = os.path.splitext(os.path.basename(queries_filename))
+            (pn, suffix) = os.path.splitext(os.path.basename(redescriptions_filename))
             if suffix == ".queries":
-                tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
+                tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
             else:
-                tmp_reds, tmp_rshowids = self._readQueriesFromFile(queries_filename)
+                tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
@@ -254,11 +254,11 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-    def importQueriesTXTFromFile(self, queries_filename):
-        """Loads new queries from file"""
-        self._startMessage('importing', queries_filename)
+    def importRedescriptionsTXTFromFile(self, redescriptions_filename):
+        """Loads new redescriptions from file"""
+        self._startMessage('importing', redescriptions_filename)
         try:
-            tmp_reds, tmp_rshowids = self._readQueriesTXTFromFile(queries_filename)
+            tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
@@ -318,10 +318,10 @@ class DataWrapper(object):
         return Data(filep)
 
 
-    def _readQueriesFromFile(self, filename, data=None):
+    def _readRedescriptionsFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
-                raise Exception("Cannot load queries if data is not loaded")
+                raise Exception("Cannot load redescriptions if data is not loaded")
             else:
                 data = self.data
         reds = Batch([])
@@ -353,10 +353,10 @@ class DataWrapper(object):
         return reds, rshowids
 
 
-    def _readQueriesTXTFromFile(self, filename, data=None):
+    def _readRedescriptionsTXTFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
-                raise Exception("Cannot load queries if data is not loaded")
+                raise Exception("Cannot load redescriptions if data is not loaded")
             else:
                 data = self.data
         reds = Batch([])
@@ -370,7 +370,7 @@ class DataWrapper(object):
             if len(parts) > 1:
                 queryL = Query.parse(parts[0])
                 queryR = Query.parse(parts[1])
-                red = Redescription.fromQueriesPair([queryL, queryR], data)
+                red = Redescription.fromRedescriptionsPair([queryL, queryR], data)
                 if red is not None:
                     reds.append(red)
         rshowids = ICList(range(len(reds)), True)
@@ -419,11 +419,11 @@ class DataWrapper(object):
                 finally:
                     fd.close()
                     
-            # Load queries
-            if 'queries_filename' in plist:
+            # Load redescriptions
+            if 'redescriptions_filename' in plist:
                 try:
-                    fd = package.open(plist['queries_filename'], 'r')
-                    reds, rshowids = self._readQueriesFromFile(fd, data)
+                    fd = package.open(plist['redescriptions_filename'], 'r')
+                    reds, rshowids = self._readRedescriptionsFromFile(fd, data)
                 except:
                     raise
                 finally:
@@ -451,7 +451,7 @@ class DataWrapper(object):
             self.data = data
         else:
             self.data = None
-        if 'queries_filename' in plist:
+        if 'redescriptions_filename' in plist:
             self.reds = reds
             self.rshowids = rshowids
         else:
@@ -516,10 +516,10 @@ class DataWrapper(object):
             self.package_filename = old_package_filename
             raise
 
-        # Write queries
+        # Write redescriptions
         try:
             if self.reds is not None:
-                self._writeQueries(os.path.join(tmp_dir, plist['queries_filename']), named=False, toPackage = True)
+                self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -548,9 +548,9 @@ class DataWrapper(object):
                               arcname = os.path.join('.', plist['data_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
             if self.reds is not None:
-                package.write(os.path.join(tmp_dir, plist['queries_filename']),
+                package.write(os.path.join(tmp_dir, plist['redescriptions_filename']),
                               arcname = os.path.join('.',
-                                                     plist['queries_filename']),
+                                                     plist['redescriptions_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
             if self.preferences is not None:
                 package.write(os.path.join(tmp_dir, plist['preferences_filename']),
@@ -581,19 +581,19 @@ class DataWrapper(object):
             self.savePackageToFile(self.package_filename, None)
 
 
-    def exportQueries(self, filename, named=True):
+    def exportRedescriptions(self, filename, named=True):
         self._startMessage('exporting', filename)
         ### TODO select format
         (pn, suffix) = os.path.splitext(os.path.basename(filename))
         if suffix == ".tex":
-            self._writeQueriesTEX(filename, named)
+            self._writeRedescriptionsTEX(filename, named)
         elif suffix == ".queries":
-            self._writeQueriesTXT(filename, named)
+            self._writeRedescriptionsTXT(filename, named)
         else:
-            self._writeQueries(filename, named)
+            self._writeRedescriptions(filename, named)
         self._stopMessage('exporting')
 
-    def _writeQueriesTXT(self, filename, named = False, toPackage = False):
+    def _writeRedescriptionsTXT(self, filename, named = False, toPackage = False):
         if named:
             names = self.data.getNames()
         else:
@@ -603,7 +603,7 @@ class DataWrapper(object):
                 if self.reds[i].getEnabled():
                     f.write(self.reds[i].dispU(names)+"\n")
 
-    def _writeQueriesTEX(self, filename, named = False, toPackage = False):
+    def _writeRedescriptionsTEX(self, filename, named = False, toPackage = False):
         if named:
             names = self.data.getNames()
         else:
@@ -616,7 +616,7 @@ class DataWrapper(object):
             f.write(Redescription.dispTexConc()+"\n")
             f.write("\n")
 
-    def _writeQueries(self, filename, named = False, toPackage = False):
+    def _writeRedescriptions(self, filename, named = False, toPackage = False):
         if named:
             names = self.data.getNames()
         else:
@@ -661,7 +661,7 @@ class DataWrapper(object):
             d['data_filename'] = self.DATA_FILENAME
                                 
         if self.reds is not None:
-            d['queries_filename'] = self.QUERIES_FILENAME
+            d['redescriptions_filename'] = self.REDESCRIPTIONS_FILENAME
 
         if self.preferences is not None:
             d['preferences_filename'] = self.PREFERENCES_FILENAME
