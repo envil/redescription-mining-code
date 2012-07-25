@@ -1,5 +1,5 @@
 import os, os.path
-import wx, wx.html
+import wx
 import threading
 import time
 import sys
@@ -76,6 +76,8 @@ class Siren():
     titleHelp = 'SIREN :: help'
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     helpURL = curr_dir+"/help/index.html"
+    helpInternetURL = 'http://www.cs.Helsinki.FI/u/galbrun/redescriptors/siren'
+ 
 
     # For About dialog
     name = "Siren"
@@ -160,6 +162,9 @@ class Siren():
         with open(self.licence_file) as f:
             self.info.SetLicence(f.read())
 
+        # init helpFrame
+        self.helpFrame = None
+        
         ## Register file reading message functions to DataWrapper
         self.dw.registerStartReadingFileCallback(self.startFileActionMsg)
         self.dw.registerStopReadingFileCallback(self.stopFileActionMsg)
@@ -802,15 +807,40 @@ class Siren():
         d.Destroy()
 
     def OnHelp(self, event):
-        self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
-        html = wx.html.HtmlWindow(self.helpFrame)
-        if "gtk2" in wx.PlatformInfo:
-            html.SetStandardFonts()
-        if len(self.helpURL) > 4 and self.helpURL[:4] == "http":
-            wx.CallAfter(html.LoadPage, self.helpURL)
+        wxVer = map(int, wx.__version__.split('.'))
+        if wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3):
+            self._onHelpHTML2()
         else:
-            wx.CallAfter(html.LoadFile, self.helpURL)
+            self._onHelpOldSystem()
+
+    def _onHelpHTML2(self):
+        import wx.html2
+        if self.helpFrame is None:
+            self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
+            self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            browser = wx.html2.WebView.New(self.helpFrame)
+            browser.LoadURL('file://'+self.helpURL)
+            sizer.Add(browser, 1, wx.EXPAND, 10)
+            self.helpFrame.SetSizer(sizer)
+            self.helpFrame.SetSize((900, 700))
         self.helpFrame.Show()
+        self.helpFrame.Raise()
+
+    def _helpHTML2Close(self, event):
+        self.helpFrame.Destroy()
+        self.helpFrame = None
+
+    def _onHelpOldSystem(self):
+        import webbrowser
+        try:
+            webbrowser.open(self.helpInternetURL, new=1, autoraise=True)
+        except webbrowser.Error as e:
+            dlg = wx.MessageDialog(self.toolFrame, 'Cannot show help file: '+str(e)
+                                   +'\nYou can find help at '+self.helpInternetURL+'\nor '+self.helpURL,
+                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            dlg.Destroy()
+            
 
     def OnAbout(self, event):
         wx.AboutBox(self.info)
