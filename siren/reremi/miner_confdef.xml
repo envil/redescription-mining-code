@@ -5,7 +5,7 @@
       <name>Types of queries</name>
       <parameter>
 	<name>max_var</name>
-	<label>Max nb. of variables</label>
+	<label>Max number of variables</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum number of variables per query.</legend>
@@ -68,7 +68,7 @@
       <name>Extension candidates</name>
       <parameter>
 	<name>score.impacc</name>
-	<label>Acc. improvement coeff.</label>
+	<label>Accuracy improvement coefficient</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Coefficient of the accuracy improvement for scoring extension candidates.</legend>
@@ -77,7 +77,7 @@
       </parameter>
       <parameter>
 	<name>score.rel_impacc</name>
-	<label>Rel. Acc. improvement coeff.</label>
+	<label>Relative Accurracy improvement coefficient</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Coefficient of the relative accuracy improvement for scoring extension candidates.</legend>
@@ -86,7 +86,7 @@
       </parameter>
       <parameter>
 	<name>score.pVal_red</name>
-	<label>Redesc. PVal. coeff.</label>
+	<label>Redescription p-value coefficient</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Coefficient of the redescription p-value for scoring extension candidates. Negative values are interpreted as a threshold weighted by p-value factor.</legend>
@@ -95,7 +95,7 @@
       </parameter>
       <parameter>
 	<name>score.pVal_query</name>
-	<label>Query PVal. coeff.</label>
+	<label>Query p-value coefficient</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Coefficient of the query p-value for scoring extension candidates. Negative values are interpreted as a threshold weighted by p-value factor.</legend>
@@ -104,7 +104,7 @@
       </parameter>
       <parameter>
 	<name>score.pVal_fact</name>
-	<label>PVal. factor</label>
+	<label>p-value factor</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Weight for p-value in case of using thresholds for scoring extension candidates.</legend>
@@ -122,7 +122,7 @@
       </parameter>
       <parameter>
 	<name>method_pVal</name>
-	<label>PVal. formula</label>
+	<label>p-value formula</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Formula used for computing the p-value</legend>
@@ -161,7 +161,7 @@
       </parameter>
       <parameter>
 	<name>min_fin_var</name>
-	<label>Min nb. of variables</label>
+	<label>Min number of variables</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum number of variables per redescription, applied as post processing.</legend>
@@ -206,7 +206,7 @@
       <name>Beam search</name>
       <parameter>
 	<name>max_red</name>
-	<label>Max nb. of pairs</label>
+	<label>Max number of pairs</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum number of initial pairs extended. Zero leads to expand all.</legend>
@@ -284,7 +284,7 @@
       <name>Real valued mining</name>
       <parameter>
 	<name>max_seg</name>
-	<label>Max nb. segments</label>
+	<label>Max number segments</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum number of segments.</legend>
@@ -302,7 +302,7 @@
       </parameter>
       <parameter>
 	<name>max_sidebuckets</name>
-	<label>Max nb. buckets per side</label>
+	<label>Max number buckets per side</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum number of buckets on one side.</legend>
@@ -311,7 +311,7 @@
       </parameter>
       <parameter>
 	<name>max_prodbuckets</name>
-	<label>Max prod. buckets</label>
+	<label>Max product buckets</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum product of the number of buckets on either side.</legend>

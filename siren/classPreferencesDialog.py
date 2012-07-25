@@ -58,7 +58,7 @@ class PreferencesDialog(wx.Dialog):
 		self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChanged)
 		
 		self.Centre()
-		self.SetSize((500, 700))
+		self.SetSize((700, 700))
 
 	
 	def dispGUI(self, parameters, sec_id, frame, top_sizer):
