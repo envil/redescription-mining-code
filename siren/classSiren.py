@@ -82,7 +82,7 @@ class Siren():
     # For About dialog
     name = "Siren"
     about_file = 'ABOUT'
-    licence_file = 'LICENCE_short'
+    licence_file = 'LICENSE_short'
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
     version = '0.9b'
     cpyright = '(C) 2012 Esther Galbrun and Pauli Miettinen'
@@ -646,7 +646,7 @@ class Siren():
         if self.dw.data is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
-        if len(self.dw.reds) > 0:
+        if self.dw.reds is not None and len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
                 return
@@ -692,8 +692,9 @@ class Siren():
         open_dlg.Destroy()
         
     def OnImportRedescriptions(self, event):
-        if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
-            return
+        if self.dw.reds is not None:
+            if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
+                return
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
         dir_name = os.path.expanduser('~/')
 
@@ -850,7 +851,7 @@ class Siren():
                 return
         self.deleteAllViews()
         self.toolFrame.Destroy()
-        exit()
+        sys.exit()
 
     def checkAndProceedWithUnsavedChanges(self, test=None):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue

@@ -36,6 +36,7 @@ class DataWrapper(object):
 
     pref_dir = os.path.dirname(__file__)
     conf_defs = [pref_dir + "/reremi/miner_confdef.xml", pref_dir + "/ui_confdef.xml"]
+    #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
     # Stuff to write to plist
     FILETYPE_VERSION = 2
     CREATOR = 'DataWrapper'

@@ -13,30 +13,29 @@ from setuptools import setup
 Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                            CFBundleTypeName='Siren data file',
                                            CFBundleTypeRole = 'Viewer',
-                                           CFBundleTypeIconFiles = 'siren_files.icns'),
-                                           ]
+                                           CFBundleTypeIconFiles = 'siren_file_icon.icns'),
+                                           ],
+            CFBundleShortVersionString = '0.9.0',
+            CFBundleVersion = '0.9.0'
     )
 
 APP = ['siren.py']
 DATA_FILES = ['DataWrapper.py',
- 'ICList.py',
- 'classBestsDraft.py',
- 'classConstraints.py',
- 'classData.py',
- 'classLog.py',
- 'classQuery.py',
- 'classRedescription.py',
- 'classRedescriptionsDraft.py',
- 'classSParts.py',
- 'classSettings.py',
- 'classSouvenirs.py',
- 'greedyRedescriptions.py',
- 'utilsStats.py',
- 'utilsTools.py']
+'classGridTable.py',
+'classMapView.py',
+'classPreferencesDialog.py',
+'classSiren.py',
+'ez_setup.py',
+'miscDialogs.py',
+'ui_confdef.xml']
 OPTIONS = {'argv_emulation': True,
- 'iconfile': '/Users/pamietti/Documents/tyo/redescriptors gui/siren.icns',
- 'packages': ['wx', 'mpl_toolkits'],
+ 'iconfile': '/Users/pamietti/Documents/tyo/siren/icons/siren_icon.icns',
+ 'packages': ['wx', 'mpl_toolkits', 'reremi'],
+ #'includes': ['ui_confdef.xml'], 
+ #'includes': ['reremi'],
+ 'resources': ['icons', 'help', 'ABOUT', 'LICENSE', 'LICENSE_short', 'ui_confdef.xml', 'reremi/miner_confdef.xml'],
  'site_packages': True,
+ #'semi-standalone': True, # depends on local Python
  'plist': Plist,
  }
 
