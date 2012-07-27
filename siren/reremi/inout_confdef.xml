@@ -1,4 +1,7 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml-stylesheet type="text/xsl" href="./confdef.xsl"?>
 <root>
+  <info>Input/output preferences for the ReReMi algorithm.</info>
   <section>
     <name>Input and Output</name>
     <section>
@@ -58,7 +61,7 @@
 	<value_type>text</value_type>
 	<legend>Extension of the file containing the left hand side data.</legend>
 	<length>10</length>
-	<default><value>.datbool</value></default>
+	<default><value>.sparsebool</value></default>
       </parameter>
       <parameter>
 	<name>ext_r</name>
@@ -67,7 +70,7 @@
 	<value_type>text</value_type>
 	<legend>Extension of the file containing the right hand side data.</legend>
 	<length>10</length>
-	<default><value>.datbool</value></default>
+	<default><value>.sparsebool</value></default>
       </parameter>
       <parameter>
 	<name>result_rep</name>

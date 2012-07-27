@@ -90,7 +90,7 @@ class Miner:
 
         ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         self.progress_ss["pair_gen"] = 10
-        self.progress_ss["pairs_gen"] = (len(ids[0])/self.constraints.divL())*(len(ids[1])/self.constraints.divR())*self.progress_ss["pair_gen"]
+        self.progress_ss["pairs_gen"] = (len(ids[0])/self.constraints.mod_lhs())*(len(ids[1])/self.constraints.mod_rhs())*self.progress_ss["pair_gen"]
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
@@ -159,10 +159,10 @@ class Miner:
         ## ids = [[101, 162, 192], [12, 24, 26]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
-        for cL in range(0, len(ids[0]), self.constraints.divL()):
+        for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
             idL = ids[0][cL]
             self.logger.printL(3, 'Searching pairs %i <=> *...' %(idL), "status", self.id)
-            for cR in range(0, len(ids[1]), self.constraints.divR()):
+            for cR in range(0, len(ids[1]), self.constraints.mod_rhs()):
                 idR = ids[1][cR]
                 if not self.want_to_live:
                     return

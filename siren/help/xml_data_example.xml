@@ -1,0 +1,59 @@
+<root>
+<data>
+	<nb_entities>10</nb_entities>
+	<side>
+	<name>0</name>
+	<nb_variables>2</nb_variables>
+	<variable>
+		<name>A_red</name>
+		<type_id>1</type_id>
+		<nb_entities>10</nb_entities>
+		<status_enabled>1</status_enabled>
+		<rows>0,4,5,6</rows>
+	</variable>
+	<variable>
+		<name>B_red</name>
+		<type_id>1</type_id>
+		<nb_entities>10</nb_entities>
+		<status_enabled>1</status_enabled>
+		<rows>1,6,7,8</rows>
+	</variable>
+	</side>
+	<side>
+	<name>1</name>
+	<nb_variables>3</nb_variables>
+	<variable>
+		<name>A_blue</name>
+		<type_id>2</type_id>
+		<nb_entities>10</nb_entities>
+		<status_enabled>1</status_enabled>
+		<store_type>dense</store_type>
+		<values>0,0,0,2,3,3,2,0,2,2</values>
+	</variable>
+	<variable>
+		<name>B_blue</name>
+		<type_id>3</type_id>
+		<nb_entities>10</nb_entities>
+		<status_enabled>1</status_enabled>
+		<store_type>dense</store_type>
+		<values>126.0,120.0,117.8,114.4,116.0,94.75,123.0,119.25,115.0,120.78</values>
+	</variable>
+	<variable>
+		<name>C_blue</name>
+		<type_id>3</type_id>
+		<nb_entities>10</nb_entities>
+		<status_enabled>1</status_enabled>
+		<store_type>sparse</store_type>
+		<values>1:120.0,6:78.1,8:92.9</values>
+	</variable>
+</side>
+<coordinates>
+		<coordinate>
+			<values>-29.01,-28.44,-27.86,-27.29,-27.87,-25.04,-25.58,-25.01,-24.45,-24.42</values>
+		</coordinate>
+		<coordinate>
+			<values>62.88,62.43,63.78,63.33,62.9,62.45,63.35,64.68,64.23,70.07</values>
+		</coordinate>
+	</coordinates>
+</data>
+</root>

@@ -1,6 +1,6 @@
 import os.path
 import numpy as np
-import codecs
+import codecs, re
 
 from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query 
 from classRedescription import Redescription
@@ -105,11 +105,9 @@ class ColM:
         tmp_en = toolRead.getTagData(node, "status_enabled", int)
         if tmp_en is not None:
             self.enabled = tmp_en
-        tmpm = node.getElementsByTagName("missing")
-        if len(tmpm) == 1:
-            tmp_txt = toolRead.getTagData(tmpm[0], "rows").strip()
-            if len(tmp_txt) > 0:
-                self.missing = set(map(int, tmp_txt.split(",")))
+        tmpm = toolRead.getTagData(node, "missing")
+        if tmpm is not None:
+            self.missing = set(map(int, re.split(Data.separator_str, tmpm.strip())))
 
     def toXML(self):
         strd = "<variable>\n"
@@ -120,10 +118,7 @@ class ColM:
         strd += self.typespec_placeholder + "\n"
 
         if self.missing is not None and len(self.missing) > 0:
-            strd += "\t<missing>\n"
-            strd += "\t\t<rows>" + ",".join(map(str,self.missing)) +"</rows>\n"
-            ## strd += "\t\t<row>%d</row>\n" % row
-            strd += "\n\t</missing>\n"
+            strd += "\t<missing>" + ",".join(map(str,self.missing)) +"</missing>\n"
         strd += "</variable>\n"
         return strd
 
@@ -149,19 +144,14 @@ class BoolColM(ColM):
 
     def fromXML(self, node):
         ColM.fromXML(self, node)
-        tmpm = node.getElementsByTagName("support")
-        if len(tmpm) == 1:
-            tmp_txt = toolRead.getTagData(tmpm[0], "rows").strip()
-            if len(tmp_txt) > 0:
-                self.hold = set(map(int, tmp_txt.split(",")))
+        tmp_txt = toolRead.getTagData(node, "rows")
+        if tmp_txt is not None and len(tmp_txt.strip()) > 0:
+            self.hold = set(map(int, re.split(Data.separator_str, tmp_txt.strip())))
         self.missing -= self.hold
 
     def toXML(self):
         tmpl = ColM.toXML(self)
-        strd = "\t<support>\n"
-        strd += "\t\t<rows>" + ",".join(map(str, self.hold)) +"</rows>\n"
-        ## strd += "\t\t<row>%d</row>\n" % row
-        strd += "\t</support>"
+        strd = "\t<rows>" + ",".join(map(str, self.hold)) +"</rows>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
 
     def supp(self):
@@ -193,7 +183,7 @@ class CatColM(ColM):
         return ColM.__str__(self)+ ( ", %i categories" % len(self.cats()))
 
     def getCategories(self, details=None):
-        return ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
+        return ', '.join(["%d:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
 
     def getType(self, details=None):
         return "categorical"
@@ -205,28 +195,22 @@ class CatColM(ColM):
 
     def fromXML(self, node):
         ColM.fromXML(self, node)
-        for cat_dat in node.getElementsByTagName("category"):
-            cat_id = toolRead.getTagData(cat_dat, "id", int)
-            tmpm = cat_dat.getElementsByTagName("support")
-            if len(tmpm) == 1:
-                tmp_txt = toolRead.getTagData(tmpm[0], "rows").strip()
-                if len(tmp_txt) > 0:
-                    self.sCats[cat_id] = set(map(int, tmp_txt.split(",")))
-                    self.missing -= self.sCats[cat_id]
+        tmp_txt = toolRead.getTagData(node, "values")
+        if tmp_txt is not None:
+            rows = set()
+            for row_id, cat in enumerate(re.split(Data.separator_str, tmp_txt.strip())):
+                self.sCats.setdefault(int(cat), set()).add(row_id)
+                rows.add(row_id)
+            self.missing -= rows
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
 
     def toXML(self):
         tmpl = ColM.toXML(self)
-        strd = ""
-        for cat, cat_supp in self.sCats:
-            strd += "\t<category>\n"
-            strd += "\t\t<id>%d<id>\n\t"
-            strd += "\t\t<support>\n"
-            strd += "\t\t<rows>" + ",".join(map(str, cat_supp)) +"</rows>\n"
-            # for row in cat_supp:
-            #     strd += "\t\t\t<row>%d</row>\n" % row
-            strd += "\t\t</support>\n"
-            strd += "\t</category>\n"
+        rows = []
+        for cat, cat_supp in self.sCats.items():
+            rows.extend([(row, "%d" % cat) for row in cat_supp])
+        rows.sort(key=lambda x:x[0])
+        strd = "\t\t<values>" + ",".join([row[1] for row in rows]) +"</values>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
 
     def cats(self):
@@ -296,11 +280,11 @@ class NumColM(ColM):
         self.sVals = []
         store_type = toolRead.getTagData(node, "store_type")
         if store_type == 'dense':
-            self.sVals = [(v,i) for (i,v) in enumerate(map(float, toolRead.getTagData(node, "values").split(",")))]
+            self.sVals = [(v,i) for (i,v) in enumerate(map(float,  re.split(Data.separator_str, toolRead.getTagData(node, "values"))))]
         elif store_type == 'sparse':
             tmp_txt = toolRead.getTagData(node, "values").strip()
             if len(tmp_txt) > 0:
-                for strev in tmp_txt.split(","):
+                for strev in  re.split(Data.separator_str, tmp_txt):
                     parts = strev.split(":")
                     self.sVals.append((float(parts[1]), int(parts[0])))
         tmp_hold = set([i for (v,i) in self.sVals])
@@ -561,6 +545,7 @@ class NumColM(ColM):
 
 class Data:
 
+    separator_str = "[;, \t]"
     var_types = {1: BoolColM, 2: CatColM, 3: NumColM}
 
     def __init__(self, cols=[[],[]], N=0, coords=None, redunRows=set()):
@@ -609,8 +594,7 @@ class Data:
             strd += "\t<coordinates>\n"
             for coord in self.coords:
                 strd += "\t\t<coordinate>\n"
-                for row in coord:
-                    strd += "\t\t\t<row>%s</row>\n" % row
+                strd += "\t\t\t<values>" + ",".join(map(str, coord)) +"</values>\n"
                 strd += "\t\t</coordinate>\n"
             strd += "\t</coordinates>\n"
         strd += "</data>"
@@ -631,8 +615,7 @@ class Data:
             output.write("\t<coordinates>\n")
             for coord in self.coords:
                 output.write("\t\t<coordinate>\n")
-                for row in coord:
-                    output.write("\t\t\t<row>%s</row>\n" % row)
+                output.write("\t\t\t<values>" + ",".join(map(str, coord)) +"</values>\n")
                 output.write("\t\t</coordinate>\n")
             output.write("\t</coordinates>\n")
         output.write("</data>\n")
@@ -755,7 +738,9 @@ def readDNCFromXMLFile(filename):
         if len(ctmp) == 1:
             coords = []
             for cotmp in ctmp[0].getElementsByTagName("coordinate"):
-                coords.append(np.array(toolRead.getValues(cotmp, float, "row")))
+                tmp_txt = toolRead.getTagData(cotmp, "values")
+                if tmp_txt is not None:
+                    coords.append(np.array(map(float, re.split(Data.separator_str, tmp_txt.strip()))))
             if len(coords) != 2 or len(coords[0]) != len(coords[1]) or len(coords[0]) != N:
                 coords = None
     return (cols, N, coords)
@@ -837,18 +822,18 @@ def readMatrix(filename, side = None):
 
     if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
         row = f.next()
-        a = row.split()
+        a = re.split(Data.separator_str, row)
         nbRows = int(a[0])
         nbCols = int(a[1])
     try:
-        if len(type_all) >= 3 and type_all[0:3] == 'dat':
+        if len(type_all) >= 3 and type_all[0:3] == 'spa':
             method_parse =  eval('parseCell%s' % (type_all.capitalize()))
             method_prepare = eval('prepare%s' % (type_all.capitalize()))
             method_finish = eval('finish%s' % (type_all.capitalize()))
         else:
             method_parse =  eval('parseVar%s' % (type_all.capitalize()))
-            method_prepare = eval('prepareNonDat')
-            method_finish = eval('finishNonDat')
+            method_prepare = eval('preparePerRow')
+            method_finish = eval('finishPerRow')
     except NameError as detail:
         raise DataError("Could not find correct data reader! (%s)" % detail)
     try:
@@ -857,8 +842,8 @@ def readMatrix(filename, side = None):
         # print "Reading input data %s (%s)"% (filename, type_all)
         for row in f:
             if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows is None:
-                nbRows = len(row.split())
-            method_parse(tmpCols, row.split(), nbRows, nbCols)
+                nbRows = len(re.split(Data.separator_str, row))
+            method_parse(tmpCols, re.split(Data.separator_str, row), nbRows, nbCols)
 
         if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols is None:
             nbCols = len(tmpCols)
@@ -872,7 +857,7 @@ def readMatrix(filename, side = None):
         raise DataError("Problem with the data format while reading (%s)" % detail)
     return (cols, nbRows, nbCols)
     
-def prepareNonDat(nbRows, nbCols):
+def preparePerRow(nbRows, nbCols):
     return []
 
 def parseVarMix(tmpCols, a, nbRows, nbCols):
@@ -886,13 +871,13 @@ def parseVarMix(tmpCols, a, nbRows, nbCols):
         raise DataError('Oups this row format does not exist (%s)!' % (type_row))
     method_parse(tmpCols, a, nbRows, nbCols)
 
-def finishNonDat(tmpCols, nbRows, nbCols):
+def finishPerRow(tmpCols, nbRows, nbCols):
     return tmpCols
 
-def prepareDatnum(nbRows, nbCols):
+def prepareSparsenum(nbRows, nbCols):
     return [[[(0, -1)], set()] for i in range(nbCols)]
 
-def parseCellDatnum(tmpCols, a, nbRows, nbCols):
+def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     id_row = int(a[0])-1
     id_col = int(a[1])-1
     if id_col >= nbCols or id_row >= nbRows:
@@ -905,13 +890,13 @@ def parseCellDatnum(tmpCols, a, nbRows, nbCols):
         except ValueError:
             tmpCols[id_col][1].add(id_row)
             
-def finishDatnum(tmpCols, nbRows, nbCols):
+def finishSparsenum(tmpCols, nbRows, nbCols):
     return [NumColM(sorted(tmpCols[col][0], key=lambda x: x[0]), nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
         
-def prepareDatbool(nbRows, nbCols):
+def prepareSparsebool(nbRows, nbCols):
     return [[set(), set()] for i in range(nbCols)]
 
-def parseCellDatbool(tmpCols, a, nbRows, nbCols):
+def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
     id_row = int(a[0])-1
     id_col = int(a[1])-1
     if id_col >= nbCols or id_row >= nbRows:
@@ -924,7 +909,7 @@ def parseCellDatbool(tmpCols, a, nbRows, nbCols):
         except ValueError:
             tmpCols[id_col][1].add(id_row)
         
-def finishDatbool(tmpCols, nbRows, nbCols):
+def finishSparsebool(tmpCols, nbRows, nbCols):
     return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
 
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
@@ -974,7 +959,7 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
         raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
     
                         
-def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
+def parseVarDatbool(tmpCols, a, nbRows, nbCols):
     tmp = set()
     for i in range(len(a)):
         tmp.add(int(a[i]))

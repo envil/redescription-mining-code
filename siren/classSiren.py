@@ -809,9 +809,13 @@ class Siren():
 
     def OnHelp(self, event):
         wxVer = map(int, wx.__version__.split('.'))
-        if wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3):
-            self._onHelpHTML2()
-        else:
+        new_ver = wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3)
+        if new_ver:
+            try:                                                      
+                self._onHelpHTML2()
+            except NotImplementedError:
+                new_ver = False
+        if not new_ver:
             self._onHelpOldSystem()
 
     def _onHelpHTML2(self):
@@ -835,6 +839,7 @@ class Siren():
     def _onHelpOldSystem(self):
         import webbrowser
         try:
+            ##webbrowser.open("file://"+ self.helpURL, new=1, autoraise=True)
             webbrowser.open(self.helpInternetURL, new=1, autoraise=True)
         except webbrowser.Error as e:
             dlg = wx.MessageDialog(self.toolFrame, 'Cannot show help file: '+str(e)

@@ -121,19 +121,19 @@ class Extension:
         
     def pValQueryScore(self, N, prs, coeffs=None):
         if self.isValid():
-            if coeffs is None or coeffs["pVal_query"] < 0:
-                return coeffs["pVal_query"] * SParts.pValQuery(N, prs)
-            elif coeffs["pVal_query"] > 0:
-                return -coeffs["pVal_fact"]*(coeffs["pVal_query"] < self.pValQuery(N, prs))
+            if coeffs is None or coeffs["pval_query"] < 0:
+                return coeffs["pval_query"] * SParts.pValQuery(N, prs)
+            elif coeffs["pval_query"] > 0:
+                return -coeffs["pval_fact"]*(coeffs["pval_query"] < self.pValQuery(N, prs))
             else:
                 return 0
 
     def pValRedScore(self, N, prs, coeffs=None):
         if self.isValid():
-            if coeffs is None or coeffs["pVal_red"] < 0:
-                return coeffs["pVal_red"] * self.pValRed(N, prs)
-            elif coeffs["pVal_red"] > 0:
-                return -coeffs["pVal_fact"]*(coeffs["pVal_red"] < self.pValRed(N, prs))
+            if coeffs is None or coeffs["pval_red"] < 0:
+                return coeffs["pval_red"] * self.pValRed(N, prs)
+            elif coeffs["pval_red"] > 0:
+                return -coeffs["pval_fact"]*(coeffs["pval_red"] < self.pValRed(N, prs))
             else:
                 return 0
 

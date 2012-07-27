@@ -371,7 +371,7 @@ class DataWrapper(object):
             if len(parts) > 1:
                 queryL = Query.parse(parts[0])
                 queryR = Query.parse(parts[1])
-                red = Redescription.fromRedescriptionsPair([queryL, queryR], data)
+                red = Redescription.fromQueriesPair([queryL, queryR], data)
                 if red is not None:
                     reds.append(red)
         rshowids = ICList(range(len(reds)), True)
@@ -456,8 +456,8 @@ class DataWrapper(object):
             self.reds = reds
             self.rshowids = rshowids
         else:
-            self.reds = None
-            self.rshowids = None
+            self.reds = Batch([])
+            self.rshowids = ICList([], True)
         if 'preferences_filename' in plist:
             self.preferences = preferences
         else:
@@ -519,7 +519,7 @@ class DataWrapper(object):
 
         # Write redescriptions
         try:
-            if self.reds is not None:
+            if self.reds is not None and len(self.reds) > 0:
                 self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
@@ -548,7 +548,7 @@ class DataWrapper(object):
                 package.write(os.path.join(tmp_dir, plist['data_filename']),
                               arcname = os.path.join('.', plist['data_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
-            if self.reds is not None:
+            if self.reds is not None and len(self.reds) > 0:
                 package.write(os.path.join(tmp_dir, plist['redescriptions_filename']),
                               arcname = os.path.join('.',
                                                      plist['redescriptions_filename']),
@@ -661,7 +661,7 @@ class DataWrapper(object):
         if self.data is not None:
             d['data_filename'] = self.DATA_FILENAME
                                 
-        if self.reds is not None:
+        if self.reds is not None and len(self.reds) > 0:
             d['redescriptions_filename'] = self.REDESCRIPTIONS_FILENAME
 
         if self.preferences is not None:

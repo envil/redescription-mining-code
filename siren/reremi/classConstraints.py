@@ -31,11 +31,11 @@ class Constraints:
 
         self._pv["score_coeffs"] = {"impacc": self._pv["score.impacc"],
                                  "rel_impacc": self._pv["score.rel_impacc"],
-                                 "pVal_red": self._pv["score.pVal_red"],
-                                 "pVal_query": self._pv["score.pVal_query"],
-                                 "pVal_fact": self._pv["score.pVal_fact"]}
+                                 "pval_red": self._pv["score.pval_red"],
+                                 "pval_query": self._pv["score.pval_query"],
+                                 "pval_fact": self._pv["score.pval_fact"]}
 
-        SParts.setMethodPVal(self._pv["method_pVal"])
+        SParts.setMethodPVal(self._pv["method_pval"])
 
     def scaleF(self, f):
         if f >= 1:
@@ -63,10 +63,10 @@ class Constraints:
         return self._pv["batch_out"]
     def batch_cap(self): 
         return self._pv["batch_cap"]
-    def divL(self):
-        return self._pv["divL"]
-    def divR(self):
-        return self._pv["divR"]
+    def div_lhs(self):
+        return self._pv["div_lhs"]
+    def div_rhs(self):
+        return self._pv["div_rhs"]
     def max_agg(self):
         return self._pv["max_agg"]
     def max_prodbuckets(self):

@@ -11,8 +11,8 @@ class ImportDataDialog(object):
         self.parent = parent
         self.dlg = wx.Dialog(self.parent.toolFrame, title="Import data")
 
-        LHStext = wx.StaticText(self.dlg, label='Left-hand side data file:')
-        RHStext = wx.StaticText(self.dlg, label='Right-hand side data file:')
+        LHStext = wx.StaticText(self.dlg, label='Left-hand side variables file:')
+        RHStext = wx.StaticText(self.dlg, label='Right-hand side variables file:')
         Cootext = wx.StaticText(self.dlg, label='Coordinates file:')
 
         self.LHSfile = None
@@ -47,7 +47,7 @@ class ImportDataDialog(object):
         self.dlg.Fit()
 
         self.open_dir = os.path.expanduser('~/')
-        self.wcd = 'All files|*|Numerical Data (*.densenum / *.datnum)|*.densenum/*.datnum|Boolean Data (*.sparsebool / *.datbool)|*.sparsebool/*.datbool'
+        self.wcd = 'All files|*|Numerical Variables (*.densenum / *.datnum)|*.densenum/*.datnum|Boolean Variables (*.sparsebool / *.datbool)|*.sparsebool/*.datbool'
         self.coo_wcd = 'All files|*|Information files (*.names)|*.names'
 
 

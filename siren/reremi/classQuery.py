@@ -225,8 +225,8 @@ class CatTerm(Term):
     type_id = 2
     
     patt = ['^\s*'+Term.patt+'\s*(?P<neg>'+ur'\u2208'+')?(?(neg)|'+ur'\u2209'+')\s*(?P<cat>\d+?)\s*$',
-            '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in(?P<cat>\d+?)\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=(?P<cat>\d+?)\s*$']
+            '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in\s*(?P<cat>\d+?)\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\d+?)\s*$']
 
     def __init__(self, ncol, ncat):
         self.col = ncol
@@ -337,7 +337,7 @@ class NumTerm(Term):
             '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>-?\d+\.\d+)\s*$']
     
     def __init__(self, ncol, nlowb, nupb):
-        if nlowb == float('-Inf') and nupb == float('Inf'):
+        if nlowb == float('-Inf') and nupb == float('Inf') or nlowb > nupb:
             #pdb.set_trace()
             raise Warning('Unbounded numerical term !')
         else:
@@ -491,7 +491,7 @@ class NumTerm(Term):
                     ncol = None
                     raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(tmpupbs, detail))
             
-        if ncol is not None and (lowb != float('-inf') or upb != float('inf')):
+        if ncol is not None and (lowb != float('-inf') or upb != float('inf')) and lowb <= upb:
             return (neg, NumTerm(ncol, lowb, upb))
         return (None, None)
     parse = staticmethod(parse)
@@ -545,7 +545,6 @@ class Literal:
     def parse(string, names=None):
         i = 0
         term = None
-        ##pdb.set_trace()
         while i < len(Literal.termTypes) and term is None:
             patts = Literal.termTypes[i]['class'].patt
             j = 0
