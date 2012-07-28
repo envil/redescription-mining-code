@@ -58,24 +58,7 @@ class ImportDataDialog(object):
                     self.parent.dw.importDataFromFile(self.LHSfile)
                 else:
                     self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
-            except IOError as error:
-                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error opening files '+str(self.LHSfile)
-                                       +', '+str(self.RHSfile)+', and '+str(self.Coofile)+':\n'
-                                       +str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption="Error")
-                mdlg.ShowModal()
-                mdlg.Destroy()
-                return False
-            except DataError as error:
-                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Error importing data:\n'
-                                       +str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption="Error")
-                mdlg.ShowModal()
-                mdlg.Destroy()
-                return False
-
             except:
-                mdlg = wx.MessageDialog(self.parent.toolFrame, 'Unexpected Error:\n'+str(sys.exc_info()[1]), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
-                mdlg.ShowModal()
-                mdlg.Destroy()
                 return False
             else:
                 self.parent.details = {'names': self.parent.dw.getColNames()}

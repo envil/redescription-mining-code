@@ -18,6 +18,15 @@ import pdb
 
 class MapView:
 
+    label_jacc="acc     ="
+    label_pval="p-value   ="
+    label_cardAlpha=u"|E_{1,0}|  ="
+    label_cardBeta=u"|E_{0,1}|  ="
+    label_cardU=u"|E\E_{0,0}| ="
+    label_cardI=u"|E_{1,1}|  ="
+    label_cardO=u"|E_{0,0}|  ="
+    label_cardT=u"|E|      ="
+
     COLOR_LEFT = (255,0,0)
     COLOR_RIGHT = (0,0,255)
     COLOR_INTER = (160,32,240)
@@ -58,12 +67,12 @@ class MapView:
         self.MapredMapQL.SetForegroundColour(MapView.COLOR_LEFT)
         self.MapredMapQR = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER)
         self.MapredMapQR.SetForegroundColour(MapView.COLOR_RIGHT)
-        ssizetxt = 40
+        ssizetxt = 90
         lsizetxt = 90
-        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
         self.MapredMapInfoIL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoUL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoIV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
@@ -291,20 +300,21 @@ class MapView:
             self.MapredMapInfoTV.SetLabel("")
 
         else:
-            self.MapredMapInfoJL.SetLabel("J=")
+            self.MapredMapInfoJL.SetLabel(self.label_jacc)
             self.MapredMapInfoJV.SetLabel("%1.5f" % red.acc())
-            self.MapredMapInfoVL.SetLabel("pVal=")
+            self.MapredMapInfoVL.SetLabel(self.label_pval)
             self.MapredMapInfoVV.SetLabel("%1.5f" % red.pVal())
-            self.MapredMapInfoIL.SetLabel(u"|LHS \u2229 RHS|=")
+            self.MapredMapInfoIL.SetLabel(self.label_cardI)
             self.MapredMapInfoIV.SetLabel("%i" % (red.sParts.lpart(2,0)))
-            self.MapredMapInfoUL.SetLabel(u"|LHS \u222A RHS|=")
+            self.MapredMapInfoUL.SetLabel(self.label_cardU)
             self.MapredMapInfoUV.SetLabel("%i" % (red.sParts.lpart(0,0)+red.sParts.lpart(1,0)+red.sParts.lpart(2,0)))
-            self.MapredMapInfoBL.SetLabel(u"|LHS \\ RHS| =")
+            self.MapredMapInfoBL.SetLabel(self.label_cardAlpha)
             self.MapredMapInfoBV.SetLabel("%i" % (red.sParts.lpart(0,0)))
-            self.MapredMapInfoRL.SetLabel(u"|RHS \\ LHS| =")
+            self.MapredMapInfoRL.SetLabel(self.label_cardBeta)
             self.MapredMapInfoRV.SetLabel("%i" % (red.sParts.lpart(1,0)))
 
-            self.MapredMapInfoOL.SetLabel(u"|OUT|     =")
+            self.MapredMapInfoOL.SetLabel(self.label_cardO)
             self.MapredMapInfoOV.SetLabel("%i" % (red.sParts.lpart(3,0)))
-            self.MapredMapInfoTL.SetLabel(u"|E|       =")
+            self.MapredMapInfoTL.SetLabel(self.label_cardT)
             self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))
+

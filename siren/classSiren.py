@@ -64,8 +64,14 @@ class Message(wx.PyEvent):
     sendMessage = staticmethod(sendMessage)
 
 
-        
-        
+class CErrorDialog:
+
+    def showBox(output, message, type_message, source):
+        dlg = wx.MessageDialog(output, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption=type_message)
+        dlg.ShowModal()
+        dlg.Destroy()
+    showBox = staticmethod(showBox)
+
 
 class Siren():
     """ The main frame of the application
@@ -93,7 +99,7 @@ class Siren():
         self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
                      "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
-                     "exp": {"title":"Expanding", "type":"Reds", "hide":False, "style":None},
+                     "exp": {"title":"Expansions", "type":"Reds", "hide":False, "style":None},
                      "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
         self.tabs_keys = [0, 1, "reds", "exp", "log"]
@@ -487,29 +493,13 @@ class Siren():
     def LoadFile(self, path):
         try:
             self.dw.openPackage(path)
-        except IOError as error:
-            dlg = wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n' + str(error),
-                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
-            dlg.ShowModal()
-            return False
-        except DataError as error:
-            dlg = wx.MessageDialog(self.toolFrame, 'Error reading file:\n' + str(error),
-                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
-            dlg.ShowModal()
-            return False
         except:
-            dlg = wx.MessageDialog(self.toolFrame, 'Unexpected error when opening file '+str(path)+':\n'
-                                   +str(sys.exc_info()[1]), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error')
-            dlg.ShowModal()
             return False
         else:
             self.details = {'names': self.dw.getColNames()}
             self.reloadVars()
             self.reloadReds()
             return True
-
-##    def OnExpand(self, event):
-
 
     def expand(self, red):
         self.progress_bar.Show()
@@ -602,11 +592,8 @@ class Siren():
             return
         try:
             self.dw.savePackage()
-        except IOError as error:
-            wx.MessageDialog(self.toolFrame, 'Cannot save package to'+str(self.dw.package_filename)+':\n'+str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
         except:
-            wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                             style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            pass
             
     def OnSaveAs(self, event):
         if self.dw.package_filename is not None:
@@ -620,12 +607,8 @@ class Siren():
             path = save_dlg.GetPath()
             try:
                 self.dw.savePackageToFile(path)
-            except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Cannot save to file '+path+':\n'+str(error),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             except:
-                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+                pass
         save_dlg.Destroy()
 
     def OnImportData(self, event):
@@ -659,13 +642,8 @@ class Siren():
             path = open_dlg.GetPath()
             try:
                 self.dw.importDataFromFile(path)
-            except (IOError, DataError) as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             except:
-                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
-
+                pass
             else:
                 self.details = {'names': self.dw.getColNames()}
                 self.reloadVars()
@@ -683,12 +661,8 @@ class Siren():
             path = open_dlg.GetPath()
             try:
                 self.dw.importPreferencesFromFile(path)
-            except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             except:
-                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+                pass
         open_dlg.Destroy()
         
     def OnImportRedescriptions(self, event):
@@ -704,12 +678,8 @@ class Siren():
             path = open_dlg.GetPath()
             try:
                 self.dw.importRedescriptionsFromFile(path)
-            except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error opening file '+str(path)+':\n'+str(error),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             except:
-                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+                pass
         open_dlg.Destroy()
         self.reloadReds()
         
@@ -729,12 +699,8 @@ class Siren():
             path = save_dlg.GetPath()
             try:
                 self.dw.exportRedescriptions(path)
-            except IOError as error:
-                wx.MessageDialog(self.toolFrame, 'Error while exporting redescriptions to file '
-                                 +str(path)+':\n'+str(error), style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             except:
-                wx.MessageDialog(self.toolFrame, 'Unexpected error:\n'+str(sys.exc_info()[1]),
-                                 style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+                pass
         save_dlg.Destroy()
 
     def OnPageChanged(self, event):
@@ -842,11 +808,8 @@ class Siren():
             ##webbrowser.open("file://"+ self.helpURL, new=1, autoraise=True)
             webbrowser.open(self.helpInternetURL, new=1, autoraise=True)
         except webbrowser.Error as e:
-            dlg = wx.MessageDialog(self.toolFrame, 'Cannot show help file: '+str(e)
-                                   +'\nYou can find help at '+self.helpInternetURL+'\nor '+self.helpURL,
-                                   style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
-            dlg.Destroy()
-            
+            self.logger.printL(1,'Cannot show help file: '+str(e)
+                                   +'\nYou can find help at '+self.helpInternetURL+'\nor '+self.helpURL, "error", "help")        
 
     def OnAbout(self, event):
         wx.AboutBox(self.info)
@@ -880,6 +843,7 @@ class Siren():
             self.logger.resetOut()
             self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
+            self.logger.addOut({"error":1}, self.toolFrame, CErrorDialog.showBox)
         else:
             self.logger.resetOut()
             self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
@@ -907,6 +871,7 @@ class Siren():
         self.statusbar.SetStatusText(short_msg, 0)
         self.toolFrame.Enable(False)
         #self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+        #self.busyDlg = CBusyDialog.showBox(self.toolFrame, msg, short_msg, None)
         self.busyDlg = PBI.PyBusyInfo(msg, parent=self.toolFrame, title=short_msg)
         # DEBUG
         #time.sleep(5)

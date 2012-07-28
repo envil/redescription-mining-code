@@ -333,12 +333,12 @@ class GridTable(wx.grid.PyGridTableBase):
 class RedTable(GridTable):
 
     fields_def = [('', 'self.data[x].getEnabled'),
-                 ('Query LHS', 'self.data[x].getQueryLU'),
-                 ('Query RHS', 'self.data[x].getQueryRU'),
-                 ('Acc', 'self.data[x].getAcc'),
-                 ('p-Value', 'self.data[x].getPVal'),
-                 ('Support', 'self.data[x].getSupp'),
-                  ('Track', 'self.data[x].getTrackStr', 'self.data[x].getTrack')]
+                 ('query LHS', 'self.data[x].getQueryLU'),
+                 ('query RHS', 'self.data[x].getQueryRU'),
+                 ('accuracy', 'self.data[x].getAcc'),
+                 ('p-value', 'self.data[x].getPVal'),
+                 ('|E_{1,1}|', 'self.data[x].getSupp'),
+                  ('track', 'self.data[x].getTrackStr', 'self.data[x].getTrack')]
 
     def __init__(self, parent, tabId, frame):
         GridTable.__init__(self, parent, tabId, frame)
@@ -477,12 +477,12 @@ class RedTable(GridTable):
 class VarTable(GridTable):     
 
     fields_def = [('','self.data[x].getEnabled'),
-                       ('Id', 'self.data[x].getId'),
-                       ('Name', 'self.data[x].getName'),
-                       ('Type', 'self.data[x].getType')]
-    fields_var = {1: [('Density', 'self.data[x].getDensity')],
-                  2:[('Categories', 'self.data[x].getCategories')],
-                  3:[('Min', 'self.data[x].getMin'), ('Max', 'self.data[x].getMax')]}
+                       ('id', 'self.data[x].getId'),
+                       ('name', 'self.data[x].getName'),
+                       ('type', 'self.data[x].getType')]
+    fields_var = {1: [('density', 'self.data[x].getDensity')],
+                  2:[('categories', 'self.data[x].getCategories')],
+                  3:[('min', 'self.data[x].getMin'), ('max', 'self.data[x].getMax')]}
 
     def viewData(self):
         mapV = self.parent.getMapView()

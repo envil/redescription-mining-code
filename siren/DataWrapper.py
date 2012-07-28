@@ -38,7 +38,7 @@ class DataWrapper(object):
     conf_defs = [pref_dir + "/reremi/miner_confdef.xml", pref_dir + "/ui_confdef.xml"]
     #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
     # Stuff to write to plist
-    FILETYPE_VERSION = 2
+    FILETYPE_VERSION = 3
     CREATOR = 'DataWrapper'
 
     def __init__(self, logger=None, package_filename = None):
@@ -202,12 +202,14 @@ class DataWrapper(object):
         
         try:
             tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
-
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
             raise
         else:
             self.data = tmp_data
@@ -227,6 +229,9 @@ class DataWrapper(object):
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
             self.data = tmp_data
@@ -248,6 +253,9 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
+            raise
         else:
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
@@ -262,6 +270,9 @@ class DataWrapper(object):
             tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
             self.reds = tmp_reds
@@ -279,6 +290,9 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing preferences from file %s!\n%s" % (preferences_filename, sys.exc_info()[1]), "error", "DW")
+            raise
         else:
             self.preferences = tmp_preferences
             self.preferences.isChanged = True 
@@ -295,6 +309,9 @@ class DataWrapper(object):
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
             self.isChanged = False
@@ -405,8 +422,11 @@ class DataWrapper(object):
             except:
                 raise
 
-            if plist['filetype_version'] > self.FILETYPE_VERSION:
-                raise Error('Too new filetype')
+            # if plist['filetype_version'] > self.FILETYPE_VERSION:
+            #     self.logger.printL(1,"Too new filetype", "error", "DW")
+            #     raise Error('Too new filetype')
+            if plist['filetype_version'] != self.FILETYPE_VERSION:
+                self.logger.printL(1,"Filetype does not match current, reading might fail!", "error", "DW")
 
             package_name = plist['package_name']
 
@@ -467,8 +487,24 @@ class DataWrapper(object):
         self.isFromPackage = True
 ##        print "Done Loading"
 
-    ## The saving function
+
     def savePackageToFile(self, filename, suffix='.siren'):
+        try:
+            self._writePackageToFile(filename, suffix)
+        except DataError as details:
+            self.logger.printL(1,"Problem writing package.\n%s" % details, "error", "DW")
+            raise
+        except IOError as arg:
+            self.logger.printL(1,"Cannot open file for package %s" % filename, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "error", "DW")
+            raise
+
+
+            
+    ## The saving function
+    def _writePackageToFile(self, filename, suffix='.siren'):
         """Saves all information to a new file"""
 
         if suffix is None:

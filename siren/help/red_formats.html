@@ -15,7 +15,7 @@
 The product of redescription mining is a list of redescriptions. A redescription consist of a pair of queries over the variables describing the entities, one query for each set. The two sets of variables are arbitrarily called left-hand side and right-hand side, and so are the corresponding queries.
 </p>
 
-<p>
+<p><a name="supports" />
 The support of a query is the set of entities for which the query holds. Any given redescription partitions the entities into four sets:
 <ul> 
 	<li>E_{1,0} is the set of rows for which only the left hand side query holds,</li>
@@ -34,7 +34,7 @@ Redescriptions can be imported to <em>Siren</em> via the interface menu File &#8
 <h3><a name="queries">Queries<a></h3>
 
 <p>
-A query is formed by combining literal using Boolean operators &#8743; (AND) and &#8744; (OR).
+A query is formed by combining literal using Boolean operators.
 </p>
 
 <p>
@@ -126,13 +126,14 @@ The preferred syntax for editing queries is marked with bold.
 Naturally, the type of literal and the type of variable should match, i.e., [4.0 &#60; Va &#60; 8.32] is a valid numerical literal only if the corresponding variable Va is a numerical variable. Furthermore, the upper bound of a numerical variable should always be greater or equal to the lower bound and either of them should be specified.
 </p>
 
-<h3><a name="queries">Redescription statistics<a></h3>
+<h3><a name="statistics">Redescription statistics<a></h3>
 <p>
 The statistics of a redescription include:
 <ul>
 <li>accuracy, as measured by Jaccard coefficient |E_{1,1}| / (|E_{1,0}|+|E_{1,1}|+|E_{0,1}|),</li>
 <li>p-value,</li>
-<li>cardinality of the support sets E_{1,0}, E_{0,1}, E_{1,1}, E_{0,0} (sometimes also referred to as alpha, beta, gamma and delta, respectively).</li>
+<li>cardinality of the <a href="#supports">support sets</a> E_{1,0}, E_{0,1}, E_{1,1}, E_{0,0} (sometimes also referred to as alpha, beta, gamma and delta, respectively).</li>
+<li>p-value,</li>
 </ul>
 </p>
 
