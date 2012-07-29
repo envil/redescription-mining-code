@@ -18,6 +18,8 @@ from DataWrapper import DataWrapper
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog
 
+from findFiles import findFile
+
 import pdb
 
 # Thread class that executes processing
@@ -81,7 +83,7 @@ class Siren():
     titleMap = 'SIREN :: maps'
     titleHelp = 'SIREN :: help'
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    helpURL = curr_dir+"/help/index.html"
+    helpURL = findFile('index.html', ['help', curr_dir+'/help'])
     helpInternetURL = 'http://www.cs.Helsinki.FI/u/galbrun/redescriptors/siren'
  
 
@@ -416,7 +418,7 @@ class Siren():
         menuRed = self.makeContextMenu(frame)
 
         #ID_PREFERENCESDIA = wx.NewId()
-        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences\tCtrl+,", "Set preferences.")
+        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
 
@@ -786,12 +788,15 @@ class Siren():
 
     def _onHelpHTML2(self):
         import wx.html2
+        if self.helpURL is None:
+            self._onHelpOldSystem()
+            return
         if self.helpFrame is None:
             self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
             self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
             sizer = wx.BoxSizer(wx.VERTICAL)
             browser = wx.html2.WebView.New(self.helpFrame)
-            browser.LoadURL('file://'+self.helpURL)
+            browser.LoadURL('file://'+os.path.abspath(self.helpURL))
             sizer.Add(browser, 1, wx.EXPAND, 10)
             self.helpFrame.SetSizer(sizer)
             self.helpFrame.SetSize((900, 700))

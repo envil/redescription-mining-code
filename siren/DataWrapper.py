@@ -9,6 +9,7 @@ import zipfile
 import cPickle
 import codecs
 import collections
+import sys
 
 import pdb
 
@@ -21,6 +22,8 @@ from reremi.toolLog import Log
 from reremi.classBatch import Batch
 from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 import reremi.toolRead as toolRead
+
+from findFiles import findFile
 
 class DataWrapper(object):
     """Contains all the data
@@ -35,7 +38,8 @@ class DataWrapper(object):
     PACKAGE_NAME = 'siren_package'
 
     pref_dir = os.path.dirname(__file__)
-    conf_defs = [pref_dir + "/reremi/miner_confdef.xml", pref_dir + "/ui_confdef.xml"]
+    conf_defs = [findFile('miner_confdef.xml', ['reremi', pref_dir+'/reremi']),
+                 findFile('ui_confdef.xml', [pref_dir])]
     #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
     # Stuff to write to plist
     FILETYPE_VERSION = 3
