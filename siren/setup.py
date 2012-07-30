@@ -14,22 +14,46 @@ Edits by Pauli
 import ez_setup
 ez_setup.use_setuptools()
 
-import sys
-import os
 from setuptools import setup
 
+import sys
+import os
 
 # Common info
 APP = 'siren.py'
-version = '0.9.0'
-DATA_FILES = ['DataWrapper.py',
-'classGridTable.py',
-'classMapView.py',
-'classPreferencesDialog.py',
-'classSiren.py',
-'ez_setup.py',
-'miscDialogs.py',
-'ui_confdef.xml']
+NAME="Siren"
+VERSION = '0.9.0'
+DESCRIPTION="Interactive Geospatial Redescription Mining"
+AUTHOR="Esther Galbrun and Pauli Miettinen"
+AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
+URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
+LICENSE="Apache_2.0"
+
+########## SETUPTOOLS FILES
+ST_RESOURCES=['icons', 'help', 'ABOUT', 'LICENSE', 'LICENSE_short',
+              'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
+ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
+            'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
+ST_MORE_FILES=['ez_setup.py']
+ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
+
+########## DISTUTILS FILES
+DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE', 'LICENSE_short',
+              'ui_confdef.xml']
+DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
+DU_FILES = ['DataWrapper', 'classGridTable', 'classMapView',
+            'classPreferencesDialog', 'classSiren','miscDialogs']
+DU_PACKAGES = ['reremi']
+
+extra_options = dict(
+    name=NAME,
+    version=VERSION,
+    description=(DESCRIPTION),
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    url=URL,
+    license=LICENSE,
+    )
 
 # Get SVN revision -- works w/o awk/grep/sed
 svn_revision = '-1'
@@ -42,43 +66,52 @@ for line in p:
 p.close()
 
 if sys.platform == 'darwin':
+    ################ MAC SETUP
     # A custom plist to associate with .siren -files
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
                                                CFBundleTypeIconFiles = 'siren_file_icon.icns'),
                                                ],
-                CFBundleShortVersionString = version,
+                CFBundleShortVersionString = VERSION,
                 CFBundleVersion = svn_revision,
-                CFBundleName = 'Siren'
+                CFBundleName = NAME
         )
     
     OPTIONS = {'argv_emulation': True,
     'iconfile': '/Users/pamietti/Documents/tyo/siren/icons/siren_icon.icns',
-    'packages': ['wx', 'mpl_toolkits', 'reremi'],
+    'packages': ST_PACKAGES,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
-    'resources': ['icons', 'help', 'ABOUT', 'LICENSE', 'LICENSE_short', 'ui_confdef.xml', 'reremi/miner_confdef.xml'],
+    'resources': ST_RESOURCES,
     'site_packages': True,
     #'semi-standalone': True, # depends on local Python
     'plist': Plist,
     }
     # Set extra options
-    extra_options = dict(
-        data_files=DATA_FILES,
+    extra_options.update(dict(
+        app=[APP],
+        data_files=ST_FILES+ST_MORE_FILES,
         options={'py2app': OPTIONS},
         setup_requires=['py2app']
-        )
+        ))
+    
 elif sys.platform == 'win32':
+    ################ WINDOWS SETUP
     ## Should this be 'win64'??
     print "Windows builds are not yet supported"
 
 else:
-    # Linux
-    print "Linux builds are not yet supported"
+    ################ LINUX SETUP
+    #from distutils.core import setup
 
+    extra_options.update(dict(
+        packages=DU_PACKAGES,
+        py_modules=DU_FILES,
+        package_data={'': DU_RESOURCES_SIREN,
+                      'reremi': DU_RESOURCES_REREMI},
+        ))
 
 setup(
-    app=[APP],
     **extra_options
-)
+    )

@@ -175,7 +175,7 @@ class GridTable(wx.grid.PyGridTableBase):
             return None
 
     def getPositionFromRow(self, row):
-        if row < self.nbItems() and self.sortids[row] < len(self.data):
+        if row is not None and row < self.nbItems() and self.sortids[row] < len(self.data):
             return self.sortids[row]
         else:
             return None

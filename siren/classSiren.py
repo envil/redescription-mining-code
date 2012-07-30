@@ -293,57 +293,56 @@ class Siren():
         menuRed = wx.Menu()
         
         if self.selectedTab["type"] in ["Var","Reds"]:
-            if not self.selectedTab.has_key("tab") or self.selectedTab["tab"].GetNumberRows() <= 0:
-            ## Nothing in the tab
-                return menuRed
+            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
 
+                ID_NEWW = wx.NewId()
+                m_neww = menuRed.Append(ID_NEWW, "&View in new window\tCtrl+W", "View redescription in new window.")
+                frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
 
-            ID_NEWW = wx.NewId()
-            m_neww = menuRed.Append(ID_NEWW, "&View in new window\tCtrl+W", "View redescription in new window.")
-            frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+                ID_ENABLED = wx.NewId()
+                m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable\tCtrl+D", "Enable/Disable current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
 
-            ID_ENABLED = wx.NewId()
-            m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable\tCtrl+D", "Enable/Disable current redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
+                ID_ENABLEDALL = wx.NewId()
+                m_enabledall = menuRed.Append(ID_ENABLEDALL, "Ena&ble All", "Enable all redescriptions.")
+                frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
 
-            ID_ENABLEDALL = wx.NewId()
-            m_enabledall = menuRed.Append(ID_ENABLEDALL, "Ena&ble All", "Enable all redescriptions.")
-            frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
-
-            ID_DISABLEDALL = wx.NewId()
-            m_disabledall = menuRed.Append(ID_DISABLEDALL, "Disa&ble All", "Disable all redescriptions.")
-            frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
+                ID_DISABLEDALL = wx.NewId()
+                m_disabledall = menuRed.Append(ID_DISABLEDALL, "Disa&ble All", "Disable all redescriptions.")
+                frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
 
 
         if self.selectedTab["type"] == "Reds":
-            ID_EXPAND = wx.NewId()
-            m_expand = menuRed.Append(ID_NEWW, "&Expand\tCtrl+E", "Expand redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
+                ID_EXPAND = wx.NewId()
+                m_expand = menuRed.Append(ID_NEWW, "&Expand\tCtrl+E", "Expand redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
 
-            ID_FILTER_ONE = wx.NewId()
-            m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+F", "Disable redescriptions redundant to current downwards.")
-            frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
+                ID_FILTER_ONE = wx.NewId()
+                m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+F", "Disable redescriptions redundant to current downwards.")
+                frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
 
-            ID_FILTER_ALL = wx.NewId()
-            m_filter_all = menuRed.Append(ID_FILTER_ALL, "&Filter redundant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
-            frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
+                ID_FILTER_ALL = wx.NewId()
+                m_filter_all = menuRed.Append(ID_FILTER_ALL, "&Filter redundant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
+                frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
 
-            ID_PROCESS = wx.NewId()
-            m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
-            frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
+                ID_PROCESS = wx.NewId()
+                m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
+                frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
 
-            ID_DELDISABLED = wx.NewId()
-            m_deldisabled = menuRed.Append(ID_DELDISABLED, "Delete Disa&bled", "Delete all disabled redescriptions.")
-            frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
-            
-            m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
-            
-            m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
-            
-            m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+                ID_DELDISABLED = wx.NewId()
+                m_deldisabled = menuRed.Append(ID_DELDISABLED, "Delete Disa&bled", "Delete all disabled redescriptions.")
+                frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
+
+                m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
+
+                m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+
+            if self.buffer_copy is not None:
+                m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
  
         return menuRed
 
