@@ -10,18 +10,13 @@ Usage (Windows):
 
 Edits by Pauli
 """
-# Bootstrap
-import ez_setup
-ez_setup.use_setuptools()
-
-from setuptools import setup
 
 import sys
 import os
 
 # Common info
 APP = 'siren.py'
-NAME="Siren"
+NAME="python-siren"
 VERSION = '0.9.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
@@ -67,6 +62,12 @@ p.close()
 
 if sys.platform == 'darwin':
     ################ MAC SETUP
+    # Bootstrap
+    import ez_setup
+    ez_setup.use_setuptools()
+    
+    from setuptools import setup
+
     # A custom plist to associate with .siren -files
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
@@ -103,7 +104,7 @@ elif sys.platform == 'win32':
 
 else:
     ################ LINUX SETUP
-    #from distutils.core import setup
+    from distutils.core import setup
 
     extra_options.update(dict(
         packages=DU_PACKAGES,
