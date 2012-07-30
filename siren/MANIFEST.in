@@ -1,0 +1,8 @@
+include *.py 
+include *.xml
+include reremi/*.py 
+include reremi/*.xml
+recursive-include help * 
+recursive-include icons *
+include LICENSE 
+include LICENSE_short
