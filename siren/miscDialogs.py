@@ -59,7 +59,8 @@ class ImportDataDialog(object):
                 else:
                     self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
             except:
-                raise
+                pass
+                ##raise
             else:
                 self.parent.details = {'names': self.parent.dw.getColNames()}
                 self.parent.reloadVars()

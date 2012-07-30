@@ -62,14 +62,17 @@ class Message(wx.PyEvent):
 
     def sendMessage(output, message, type_message, source):
         if Message.TYPES_MESSAGES.has_key(type_message):
-           wx.PostEvent(output, Message(Message.TYPES_MESSAGES[type_message], (source, message)))
+           wx.PostEvent(output.toolFrame, Message(Message.TYPES_MESSAGES[type_message], (source, message)))
     sendMessage = staticmethod(sendMessage)
 
 
 class CErrorDialog:
 
     def showBox(output, message, type_message, source):
-        dlg = wx.MessageDialog(output, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption=type_message)
+        if output.busyDlg is not None:
+            del output.busyDlg
+            output.busyDlg = None
+        dlg = wx.MessageDialog(output.toolFrame, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption=type_message)
         dlg.ShowModal()
         dlg.Destroy()
     showBox = staticmethod(showBox)
@@ -98,6 +101,7 @@ class Siren():
     
          
     def __init__(self):
+        self.busyDlg = None
         self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
                      "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
@@ -846,12 +850,12 @@ class Siren():
     def resetLogger(self):
         if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
             self.logger.resetOut()
-            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
-            self.logger.addOut({"error":1}, self.toolFrame, CErrorDialog.showBox)
+            self.logger.addOut({"error":1}, self, CErrorDialog.showBox)
         else:
             self.logger.resetOut()
-            self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
+            self.logger.addOut({"*": 1, "progress":2, "result":1}, self, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
 
     def reloadVars(self):

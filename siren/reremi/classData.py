@@ -853,8 +853,12 @@ def readMatrix(filename, side = None):
         for (cid, col) in enumerate(cols):
             col.setId(cid)
             col.side = side
+    except DataError:
+        raise
     except (AttributeError, ValueError, StopIteration) as detail:
         raise DataError("Problem with the data format while reading (%s)" % detail)
+    except:
+        raise
     return (cols, nbRows, nbCols)
     
 def preparePerRow(nbRows, nbCols):
@@ -900,7 +904,7 @@ def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
     id_row = int(a[0])-1
     id_col = int(a[1])-1
     if id_col >= nbCols or id_row >= nbRows:
-        raise Exception('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
+        raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
     else :
         try:
             val = float(a[2])
@@ -925,7 +929,7 @@ def parseVarDensenum(tmpCols, a, nbRows, nbCols):
         tmp.sort(key=lambda x: x[0])
         tmpCols.append(NumColM( tmp, nbRows, miss ))
     else:
-        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
                     
 def parseVarDensecat(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
@@ -942,7 +946,7 @@ def parseVarDensecat(tmpCols, a, nbRows, nbCols):
                 miss.add(i) 
         tmpCols.append(CatColM(tmp, nbRows, miss))
     else:
-        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
 
 def parseVarDensebool(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
@@ -956,7 +960,7 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
                 miss.add(i) 
         tmpCols.append(BoolColM( tmp, nbRows , miss))
     else:
-        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
     
                         
 def parseVarDatbool(tmpCols, a, nbRows, nbCols):
@@ -964,6 +968,6 @@ def parseVarDatbool(tmpCols, a, nbRows, nbCols):
     for i in range(len(a)):
         tmp.add(int(a[i]))
     if max(tmp) >= nbRows:
-        raise Exception('Too many rows (%i ~ %i)' % (nbRows, max(tmp)))
+        raise DataError('Too many rows (%i ~ %i)' % (nbRows, max(tmp)+1))
     else:
         tmpCols.append(BoolColM( tmp, nbRows ))

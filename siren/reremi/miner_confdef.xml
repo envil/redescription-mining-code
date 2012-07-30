@@ -52,7 +52,7 @@
 	<value_type>float</value_type>
 	<legend>Minimum number of supporting entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
 	<length>5</length>
-	<default><value>0.25</value></default>
+	<default><value>0.05</value></default>
       </parameter>
       <parameter>
 	<name>min_itm_out</name>
@@ -61,7 +61,7 @@
 	<value_type>float</value_type>
 	<legend>Minimum number of uncovered entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
 	<length>5</length>
-	<default><value>0.25</value></default>
+	<default><value>0.05</value></default>
       </parameter>
     </section>
   </section>
@@ -178,7 +178,7 @@
 	<value_type>float</value_type>
 	<legend>Minimim accuracy, applied as post processing.</legend>
 	<length>5</length>
-	<default><value>0.2</value></default>
+	<default><value>0.01</value></default>
       </parameter>
       <parameter>
 	<name>max_fin_pval</name>
