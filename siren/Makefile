@@ -28,7 +28,7 @@ builddeb:
 	$(PYTHON) setup.py sdist $(COMPILE) --dist-dir=../
 	rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
 	# build the package
-	dpkg-buildpackage -i.svn -rfakeroot
+	dpkg-buildpackage -i"(.svn|dist)" -rfakeroot
 
 clean:
 	$(PYTHON) setup.py clean

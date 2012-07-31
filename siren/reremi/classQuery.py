@@ -845,7 +845,6 @@ class Query:
         return r 
     parseApd = staticmethod(parseApd)
     
-#### TODO
     def parsePar(string, names=None):
         r = None
         parts = re.match(ur'^\s*(\(\s*(?P<pattIn>.*)\s*\))*\s*(?P<pattOut>[^()]*)\s*$', string)

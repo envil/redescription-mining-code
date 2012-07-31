@@ -39,7 +39,7 @@ ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
 DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE', 'LICENSE_short',
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
-DU_FILES = ['DataWrapper', 'classGridTable', 'classMapView',
+DU_FILES = ['siren', 'findFiles', 'DataWrapper', 'classGridTable', 'classMapView',
             'classPreferencesDialog', 'classSiren','miscDialogs']
 DU_PACKAGES = ['reremi']
 

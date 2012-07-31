@@ -137,9 +137,9 @@ class Redescription:
     def partsNoMiss(self):
         return self.sParts.sParts[:4]
     
-    def query(self, side):
+    def query(self, side=None):
         return self.queries[side]
-    
+
     def probas(self):
         return self.sParts.probas()
     
@@ -246,12 +246,16 @@ class Redescription:
     def getQueryLU(self, details=None):
         if details.has_key('names'):
             return self.queries[0].dispU(details['names'][0])
-        return ""
+        else:
+            return self.queries[0].dispU()
+
     
     def getQueryRU(self, details=None):
         if details.has_key('names'):
             return self.queries[1].dispU(details['names'][1])
-        return ""
+        else:
+            return self.queries[1].dispU()
+
     def getAcc(self, details=None):
         return round(self.acc(), 3)
 

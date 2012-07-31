@@ -2,7 +2,9 @@ include *.py
 include *.xml
 include reremi/*.py 
 include reremi/*.xml
+include reremi/*.xsl
 recursive-include help * 
 recursive-include icons *
 include LICENSE 
 include LICENSE_short
+include MANIFEST.in

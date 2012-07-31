@@ -105,10 +105,11 @@ class Siren():
         self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
                      "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
-                     "exp": {"title":"Expansions", "type":"Reds", "hide":False, "style":None},
+                     "exp": {"title":"Expansions", "type":"Reds", "hide":True, "style":None},
+                     "hist": {"title":"History", "type":"Reds", "hide":True, "style":None},
                      "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
-        self.tabs_keys = [0, 1, "reds", "exp", "log"]
+        self.tabs_keys = [0, 1, "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
         self.check_tab = {}
@@ -719,6 +720,7 @@ class Siren():
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:
+            self.showTab("exp")
             red = self.selectedTab["tab"].getSelectedItem()
             if red is not None:
                 self.expand(red)
@@ -767,11 +769,17 @@ class Siren():
         if event.GetId() in self.check_tab.keys():
             tab_id = self.check_tab[event.GetId()]
             if event.IsChecked():
-                self.tabs[tab_id]["hide"] = False
-                self.tabs[tab_id]["tab"].Show()
+                self.showTab(tab_id)
             else:
-                self.tabs[tab_id]["hide"] = True
-                self.tabs[tab_id]["tab"].Hide()
+                self.showTab(tab_id)
+
+    def showTab(self, tab_id):
+        self.tabs[tab_id]["hide"] = False
+        self.tabs[tab_id]["tab"].Show()
+
+    def hideTab(self, tab_id):
+        self.tabs[tab_id]["hide"] = True
+        self.tabs[tab_id]["tab"].Hide()
 
     def OnPreferencesDialog(self, event):
         d = PreferencesDialog(self.toolFrame, self.dw)
@@ -869,6 +877,7 @@ class Siren():
         ## Initialize red lists data
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.details, self.dw.getShowIds())
         self.tabs["exp"]["tab"].resetData(Batch(), self.details)
+        self.tabs["hist"]["tab"].resetData(Batch(), self.details)
         self.deleteAllViews()
         self.makeMenu(self.toolFrame)
 #        self.getMapView().setCurrentRed(redsTmp[0])

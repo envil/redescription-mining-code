@@ -57,16 +57,17 @@ class MapView:
         self.draw_frame()
         self.binds()
         self.mapFrame.Show()
-#        self.previous = Redescription.fromQueriesPair([Query(), Query()], self.parent.dw.data) 
+        self.queries = [Query(), Query()]
 
     def getId(self):
         return self.vid
 
     def draw_frame(self):
-        self.MapredMapQL = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER) # , size=(550,-1)
-        self.MapredMapQL.SetForegroundColour(MapView.COLOR_LEFT)
-        self.MapredMapQR = wx.TextCtrl(self.mapFrame, style=wx.TE_PROCESS_ENTER)
-        self.MapredMapQR.SetForegroundColour(MapView.COLOR_RIGHT)
+        self.QIds = [wx.NewId(), wx.NewId()]
+        self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0], style=wx.TE_PROCESS_ENTER),
+                           wx.TextCtrl(self.mapFrame, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
+        self.MapredMapQ[0].SetForegroundColour(MapView.COLOR_LEFT)
+        self.MapredMapQ[1].SetForegroundColour(MapView.COLOR_RIGHT)
         ssizetxt = 90
         lsizetxt = 90
         self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
@@ -148,8 +149,8 @@ class MapView:
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         if self.parent.dw.getCoords() is not None:
             self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
-        self.Mapvbox3.Add(self.MapredMapQL, 0, border=3, flag=flags | wx.EXPAND)
-        self.Mapvbox3.Add(self.MapredMapQR, 0, border=3, flag=flags | wx.EXPAND)
+        self.Mapvbox3.Add(self.MapredMapQ[0], 0, border=3, flag=flags | wx.EXPAND)
+        self.Mapvbox3.Add(self.MapredMapQ[1], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
         self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
         self.mapFrame.SetSizer(self.Mapvbox3)
@@ -160,8 +161,8 @@ class MapView:
 #        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
         self.panel.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
         self.button_expand.Bind(wx.EVT_BUTTON, self.OnExpand)
-        self.MapredMapQL.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
-        self.MapredMapQR.Bind(wx.EVT_TEXT_ENTER, self.OnEditRed)
+        self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
 
     def OnExpand(self, event):
         red = self.redraw_map()
@@ -175,32 +176,44 @@ class MapView:
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].unregisterView(self.vid)
         self.parent.deleteView(self.vid)
-        
-    def OnEditRed(self, event):
-        self.updateRed()
 
-    def setCurrentRed(self, red, source_list=None):
-        self.source_list=source_list
-        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
-        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
-#        self.MapredMapInfo.ChangeValue(red.dispLParts())
-        self.setMapredInfo(red)
-        
-    def updateRed(self):
-        red = self.redraw_map()
-        if red is not None and self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].updateEdit(self.vid, red)
-        return red
-        
-    def parseRed(self):
+    def OnEditQuery(self, event):
+        if event.GetId() in self.QIds:
+            side = self.QIds.index(event.GetId())
+            query = self.parseQuery(side)
+            if query != None and query != self.queries[side]:
+                self.queries[side] = query
+                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+                self.updateText(red)
+                self.updateMap(red)
+                self.updateOriginal(red)
+                self.updateHist(red)
+            else:
+                self.updateQueryText(self.queries[side], side)
+            
+    def setCurrent(self, qr=None, source_list=None):
+        if qr is not None:
+            if type(qr) in [list, tuple]:
+                queries = qr
+                red = Redescription.fromQueriesPair(qr, self.parent.dw.data)
+            else:
+                red = qr
+                queries = [red.query(0), red.query(1)]
+            self.queries = queries
+            self.source_list=source_list
+            self.updateText(red)
+            self.updateMap(red)
+
+    def parseQuery(self, side):
+        stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
-            queryL = Query.parse(self.MapredMapQL.GetValue().strip(), self.parent.details['names'][0])
-            queryR = Query.parse(self.MapredMapQR.GetValue().strip(), self.parent.details['names'][1])
+            query = Query.parse(stringQ, self.parent.details['names'][side])
         except:
-            queryL = None
-            queryR = None
-        if queryL is not None and queryR is not None: 
-            return Redescription.fromQueriesPair([queryL, queryR], self.parent.dw.data) 
+            query = None
+        if query is not None and (len(stringQ) > 0 and len(query) == 0):
+            query = None
+        return query                    
+
         
     def draw_map(self):
         """ Draws the map
@@ -236,21 +249,11 @@ class MapView:
 
         self.MapcanvasMap.draw()
             
-    def redraw_map(self, event=None):
+    def updateMap(self, red = None):
         """ Redraws the map
         """
-        red = self.parseRed()
-        # if red is not None:
-        #     self.previous = red
-        # else: 
-        #     red = self.previous
 
-        self.MapredMapQL.ChangeValue(red.queries[0].dispU(self.parent.details['names'][0]))
-        self.MapredMapQR.ChangeValue(red.queries[1].dispU(self.parent.details['names'][1]))
-        #self.MapredMapInfo.ChangeValue(red.dispLParts())
-        self.setMapredInfo(red)
-
-        if self.coords_proj is not None:
+        if red is not None and self.coords_proj is not None:
             m = self.axe
             colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
             sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
@@ -280,7 +283,27 @@ class MapView:
     #     for ind in inds:
     #         print self.points_ids[ind], self.coords_proj[0][self.points_ids[ind]], self.coords_proj[1][self.points_ids[ind]]
 
-    def setMapredInfo(self, red):
+    def updateHist(self, red = None):
+        if red is not None:
+            if self.source_list != "hist":
+                self.parent.tabs["hist"]["tab"].insertItem(red, -1)
+
+    def updateOriginal(self, red = None):
+        if red is not None and self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+            self.parent.tabs[self.source_list]["tab"].updateEdit(self.vid, red)
+
+    def updateQueryText(self, query, side):
+        self.MapredMapQ[side].ChangeValue(query.dispU(self.parent.details['names'][side]))
+
+    def updateText(self, red = None):
+        """ Reset red fields and info
+        """
+        if red is not None:
+            for side in [0, 1]:
+                self.updateQueryText(red.queries[side], side)
+            self.setMapredInfo(red)
+
+    def setMapredInfo(self, red = None):
         if red is None:
             self.MapredMapInfoJL.SetLabel("")
             self.MapredMapInfoJV.SetLabel("")

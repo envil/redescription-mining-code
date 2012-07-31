@@ -58,7 +58,7 @@ class SirenApp(wx.App):
     def MacPrintFile(self, filepath):
         pass
 
-if __name__ == '__main__':
+def run():
     app = SirenApp(False)
 
     CustRenderer.BACKGROUND_SELECTED = wx.SystemSettings_GetColour( wx.SYS_COLOUR_HIGHLIGHT )
@@ -68,3 +68,7 @@ if __name__ == '__main__':
 
     #app.frame = Siren()
     app.MainLoop()
+
+
+if __name__ == '__main__':
+    run()

@@ -1,6 +1,6 @@
 import wx, wx.grid
 from reremi.toolICList import ICList
-from reremi.classQuery import Query
+from reremi.classQuery import Query, Literal
 from reremi.classRedescription import Redescription
 
 import pdb
@@ -389,8 +389,7 @@ class RedTable(GridTable):
         if vid is None:
             mapV = self.parent.getMapView()
             self.registerView(mapV.vid, pos)
-            mapV.setCurrentRed(self.getSelectedItem(), self.tabId)
-            mapV.updateRed()
+            mapV.setCurrent(self.getSelectedItem(), self.tabId)
         else:
             self.parent.getMapView(vid)
 
@@ -400,10 +399,15 @@ class RedTable(GridTable):
     def unregisterView(self, key):
         if key in self.opened_edits.keys():
             del self.opened_edits[key]
-
+            
     def updateEdit(self, edit_key, red):
-        if edit_key in self.opened_edits.keys() and self.opened_edits[edit_key] in range(len(self.data)):
-            self.data[self.opened_edits[edit_key]] = red
+        if edit_key in self.opened_edits.keys() \
+               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
+            if self.tabId != "hist":
+                self.data[self.opened_edits[edit_key]] = red
+            else:
+                self.opened_edits[edit_key] = len(self.data)
+                self.parent.tabs["hist"]["tab"].insertItem(red, -1)
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
@@ -487,16 +491,9 @@ class VarTable(GridTable):
     def viewData(self):
         mapV = self.parent.getMapView()
         datVar = self.getSelectedItem()
-        if datVar.side == 1:
-            mapV.MapredMapQL.ChangeValue("")
-            mapV.MapredMapQR.ChangeValue(datVar.getTerm().dispU(False, self.parent.details['names'][1]))
-        else:
-            mapV.MapredMapQL.ChangeValue(datVar.getTerm().dispU(False, self.parent.details['names'][0]))
-            mapV.MapredMapQR.ChangeValue("")
-#            mapV.MapredMapInfo.ChangeValue("")
-        mapV.setMapredInfo(None)
-        mapV.updateRed()
-
+        queries = [Query(), Query()]
+        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+        mapV.setCurrent(queries)
  
     def updateEdit(self, edit_key, red):
         pass
