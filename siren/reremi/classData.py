@@ -135,7 +135,9 @@ class BoolColM(ColM):
         return "Boolean"
 
     def getDensity(self, details=None):
-        return self.lTrue()
+        if self.N > 0:
+            return "%1.4f" % (float(self.lTrue())/self.N)
+        return 0
 
     def __init__(self, ncolSupp=set(), N=-1, nmiss=set()):
         ColM.__init__(self, N, nmiss)
