@@ -53,8 +53,8 @@ class MapView:
         self.coords_proj = None
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.panel = wx.Panel(self.mapFrame, -1)
-        self.draw_map()
-        self.draw_frame()
+        self.drawMap()
+        self.drawFrame()
         self.binds()
         self.mapFrame.Show()
         self.queries = [Query(), Query()]
@@ -62,7 +62,7 @@ class MapView:
     def getId(self):
         return self.vid
 
-    def draw_frame(self):
+    def drawFrame(self):
         self.QIds = [wx.NewId(), wx.NewId()]
         self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0], style=wx.TE_PROCESS_ENTER),
                            wx.TextCtrl(self.mapFrame, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
@@ -165,7 +165,7 @@ class MapView:
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
 
     def OnExpand(self, event):
-        red = self.redraw_map()
+        red = self.updateQueries()
         self.parent.expand(red)
 
     def OnFocus(self, event):
@@ -180,17 +180,39 @@ class MapView:
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:
             side = self.QIds.index(event.GetId())
-            query = self.parseQuery(side)
-            if query != None and query != self.queries[side]:
-                self.queries[side] = query
-                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-                self.updateText(red)
-                self.updateMap(red)
-                self.updateOriginal(red)
-                self.updateHist(red)
-            else:
+            self.updateQuery(side)
+
+    def updateQuery(self, side):
+        query = self.parseQuery(side)
+        if query != None and query != self.queries[side]:
+            self.queries[side] = query
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            self.updateText(red)
+            self.updateMap(red)
+            self.updateOriginal(red)
+            self.updateHist(red)
+        else:
+            self.updateQueryText(self.queries[side], side)
+        return self.queries[side]
+
+    def updateQueries(self):
+        queries = [self.parseQuery(0),self.parseQuery(1)]
+        for side in [0,1]:
+            if queries[side] is None:
+                queries[side] = self.queries[side]
+        if queries != self.queries:
+            self.queries = queries
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            self.updateText(red)
+            self.updateMap(red)
+            self.updateOriginal(red)
+            self.updateHist(red)
+        else:
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-            
+        return red
+
     def setCurrent(self, qr=None, source_list=None):
         if qr is not None:
             if type(qr) in [list, tuple]:
@@ -215,7 +237,7 @@ class MapView:
         return query                    
 
         
-    def draw_map(self):
+    def drawMap(self):
         """ Draws the map
         """
         if self.parent.dw.getCoords() is None:
