@@ -1,0 +1,13 @@
+include siren/*.py 
+include siren/*.xml
+include siren/reremi/*.py 
+include siren/reremi/*.xml
+include siren/reremi/*.xsl
+recursive-include siren/help *
+include siren/icons/siren_icon32x32.png
+include siren/README
+include siren/README_mac.rtf
+include siren/ABOUT
+include siren/LICENSE 
+include siren/LICENSE_short
+include MANIFEST.in
