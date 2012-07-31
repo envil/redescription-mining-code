@@ -13,10 +13,12 @@ Edits by Pauli
 
 import sys
 import os
+import subprocess
 
 # Common info
 APP = 'siren.py'
 NAME="python-siren"
+SHORT_NAME="Siren"
 VERSION = '0.9.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
@@ -25,8 +27,9 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['icons', 'help', 'ABOUT', 'LICENSE', 'LICENSE_short',
+ST_RESOURCES=['help', 'ABOUT', 'LICENSE', 'LICENSE_short',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
+# N.B. You must include the icon files later
 ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
             'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
 ST_MORE_FILES=['ez_setup.py']
@@ -52,13 +55,17 @@ extra_options = dict(
 
 # Get SVN revision -- works w/o awk/grep/sed
 svn_revision = '-1'
-p = os.popen('svn info')
-for line in p:
-    l = line.split()
-    if l[0] == 'Revision:':
-        svn_revision = l[1]
-        break
-p.close()
+try:
+    p = subprocess.check_output(['svn', 'info'])
+except (CalledProcessError, OSError):
+    print "No SVN found, using default svn revision (-1) instead"
+else:
+    for line in p.splitlines():
+        l = line.split()
+        if l[0] == 'Revision:':
+            svn_revision = l[1]
+            break
+
 
 if sys.platform == 'darwin':
     ################ MAC SETUP
@@ -72,19 +79,21 @@ if sys.platform == 'darwin':
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
-                                               CFBundleTypeIconFiles = 'siren_file_icon.icns'),
+                                               CFBundleTypeIconFile = 'siren_file_icon.icns'),
                                                ],
                 CFBundleShortVersionString = VERSION,
                 CFBundleVersion = svn_revision,
-                CFBundleName = NAME
+                CFBundleName = SHORT_NAME
         )
+
+    ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png']
     
     OPTIONS = {'argv_emulation': True,
-    'iconfile': '/Users/pamietti/Documents/tyo/siren/icons/siren_icon.icns',
+    'iconfile': 'icons/siren_icon.icns',
     'packages': ST_PACKAGES,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
-    'resources': ST_RESOURCES,
+    'resources': ST_RESOURCES+ICONS,
     'site_packages': True,
     #'semi-standalone': True, # depends on local Python
     'plist': Plist,
@@ -92,10 +101,38 @@ if sys.platform == 'darwin':
     # Set extra options
     extra_options.update(dict(
         app=[APP],
-        data_files=ST_FILES+ST_MORE_FILES,
+        data_files=ST_FILES,
         options={'py2app': OPTIONS},
         setup_requires=['py2app']
         ))
+    # Run setup
+    setup(**extra_options)
+
+    # Post setup
+    # Copy files
+    subprocess.call('cp LICENSE dist/', shell=True)
+    subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
+    subprocess.call('ln -s /Applications dist/', shell=True)
+    subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
+    # Set VolumeIcon's creator
+    subprocess.call('SetFile -c icnC dist/.VolumeIcon.icns', shell=True)
+    # Make read/write tmp disk image
+    subprocess.call('hdiutil create -srcfolder dist/ -volname '+SHORT_NAME+' -format UDRW -ov raw-'+SHORT_NAME+'.dmg', shell=True)
+    # Attach the disk image
+    subprocess.call('mkdir tmp', shell=True)
+    subprocess.call('hdiutil attach raw-'+SHORT_NAME+'.dmg -mountpoint tmp', shell=True)
+    # Set custom icon
+    subprocess.call('SetFile -a C tmp', shell=True)
+    # Detach
+    subprocess.call('hdiutil detach tmp', shell=True)
+    subprocess.call('rm -rf tmp', shell=True)
+    subprocess.call('rm -f '+SHORT_NAME+'.dmg', shell=True)
+    # Convert
+    subprocess.call('hdiutil convert raw-'+SHORT_NAME+'.dmg -format UDZO -o '+SHORT_NAME+'.dmg', shell=True)
+    # Clean
+    subprocess.call('rm -rf dist build', shell=True)
+    subprocess.call('rm -f raw-'+SHORT_NAME+'.dmg', shell=True)
+
     
 elif sys.platform == 'win32':
     ################ WINDOWS SETUP
@@ -112,7 +149,6 @@ else:
         package_data={'': DU_RESOURCES_SIREN,
                       'reremi': DU_RESOURCES_REREMI},
         ))
+    # Run setup
+    setup(**extra_options)
 
-setup(
-    **extra_options
-    )
