@@ -1,0 +1,8 @@
+[Desktop Entry]
+Comment=Siren File
+
+Icon=siren
+Type=MimeType
+MimeType=text/x-siren
+Patterns=*.siren;
+X-KDE-IsAlso=text/plain

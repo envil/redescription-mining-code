@@ -19,6 +19,22 @@ source:
 install:
 	$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE)
 
+	mkdir -p $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/
+	cp siren/icons/siren_icon32x32.png $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/siren.png
+
+	mkdir -p $(DESTDIR)/usr/share/applications/
+	cp siren_desktop $(DESTDIR)/usr/share/applications/siren.desktop
+
+	mkdir -p $(DESTDIR)/usr/share/mime/content/
+	cp x-siren.xml $(DESTDIR)/usr/share/mime/content/	
+
+	mkdir -p $(DESTDIR)/usr/share/mimelnk/content/
+	cp x-siren_desktop $(DESTDIR)/usr/share/mimelnk/content/x-siren.desktop	
+
+	mkdir -p $(DESTDIR)/usr/bin
+	cp exec_siren.py $(DESTDIR)/usr/bin
+	chmod a+x $(DESTDIR)/usr/bin/exec_siren.py
+
 buildrpm:
 	$(PYTHON) setup.py bdist_rpm --post-install=rpm/postinstall --pre-uninstall=rpm/preuninstall
 
