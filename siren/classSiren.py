@@ -91,13 +91,15 @@ class Siren():
  
 
     # For About dialog
-    name = "Siren"
-    about_file = 'ABOUT'
-    licence_file = 'LICENSE_short'
+    name = "Siren"    
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
     version = '0.9b'
     cpyright = '(C) 2012 Esther Galbrun and Pauli Miettinen'
-    icon_file = 'icons/siren_icon32x32.png'
+
+    pref_dir = os.path.dirname(__file__)
+    about_file = findFile('ABOUT', [pref_dir])
+    licence_file = findFile('LICENSE_short', [pref_dir])
+    icon_file = findFile('siren_icon32x32.png', ['icons', pref_dir + '/icons'])
     
          
     def __init__(self):
@@ -169,7 +171,7 @@ class Siren():
         self.info.SetWebSite(self.programURL)
         self.info.SetCopyright(self.cpyright)
         self.info.SetVersion(self.version)
-        self.info.SetIcon(wx.Icon('icons/siren_icon32x32.png', wx.BITMAP_TYPE_PNG))
+        self.info.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
         with open(self.about_file) as f:
             self.info.SetDescription(f.read())
         with open(self.licence_file) as f:

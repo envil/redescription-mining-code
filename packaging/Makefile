@@ -25,11 +25,11 @@ install:
 	mkdir -p $(DESTDIR)/usr/share/applications/
 	cp siren_desktop $(DESTDIR)/usr/share/applications/siren.desktop
 
-	mkdir -p $(DESTDIR)/usr/share/mime/content/
-	cp x-siren.xml $(DESTDIR)/usr/share/mime/content/	
+	mkdir -p $(DESTDIR)/usr/share/mime/x-content/
+	cp x-siren.xml $(DESTDIR)/usr/share/mime/x-content/	
 
-	mkdir -p $(DESTDIR)/usr/share/mimelnk/content/
-	cp x-siren_desktop $(DESTDIR)/usr/share/mimelnk/content/x-siren.desktop	
+	mkdir -p $(DESTDIR)/usr/share/mimelnk/x-content/
+	cp x-siren_desktop $(DESTDIR)/usr/share/mimelnk/x-content/x-siren.desktop	
 
 	mkdir -p $(DESTDIR)/usr/bin
 	cp exec_siren.py $(DESTDIR)/usr/bin

@@ -3,6 +3,5 @@ Comment=Siren File
 
 Icon=siren
 Type=MimeType
-MimeType=text/x-siren
+MimeType=x-content/x-siren
 Patterns=*.siren;
-X-KDE-IsAlso=text/plain
