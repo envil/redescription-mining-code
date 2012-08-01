@@ -1,0 +1,128 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<link rel="stylesheet" type="text/css" href="./siren.css"/>
+</head>
+
+<body>
+<h2>Use-cases</h2>
+
+<h3><a name="uc_bio"></a>Biological niche-finding</h3>
+
+<div class="page-header">
+<p>The first use-cases concerns niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
+</p>
+</div>
+
+
+<h4>Data</h4>
+<p>
+The Bio data describes spatial areas of Europe, 2575 squares of side 
+roughly 50 kilometers. The left hand side data contains information 
+about the mammals that live in these areas denoted with the names of the
+ respective species. The minimum, maximum and average monthly 
+temperatures in degrees Celsius as well as average monthly precipitation
+ in millimeters, make up the right hand side data, denoted as t<sup>+</sup><sub>X</sub>, t<sup>-</sup><sub>X</sub>, t<sup>=</sup><sub>X</sub> and p<sup>=</sup><sub>X</sub>, respectively, where X is the number of the month.
+The data comes from two publicly available datasets: European Mammals atlas and Worldclim climate data.
+</p>
+
+<h4>Exploration</h4>
+<ol>
+<li>Double click a variable to show it in a Map window.
+<img src="siren_files/siren_map_rajapaja_01.jpg">
+</li>
+
+<li>If you whish not to use some of the variables in this expansion, 
+disable them by unchecking the corresponding box in the variables list 
+of the Tools window.
+<img src="siren_files/siren_lists_rajapaja_03.jpg">
+</li>
+
+<li>For example, let's use only monthly average temperature and rainfall, disabling monthly minimum and maximum temperatures.
+<img src="siren_files/siren_lists_rajapaja_04.jpg">
+</li>
+
+<li>Start the expansion by clicking the expand button in the Map window. 
+The best extensions mined are appended to the expansion list in the tool
+ panel.
+<img src="siren_files/siren_lists_rajapaja_05.jpg">
+</li>
+
+<li>Expansion is done. Let's have a closer look at some result.
+<img src="siren_files/siren_map_rajapaja_02.jpg">
+</li>
+
+<li>
+The results can be opened in different Map windows to be compared, by 
+choosing "View in new window" in the contextual menu. For example with 
+an extension from "Southwestern water vole".
+<img src="siren_files/comparison.png">
+</li>
+
+<li>
+The list of results can be sorted and filtered. Given a redescription of
+ interest, click filter redundant in the contextual menu to disable all 
+redundant redescriptions, i.e. redescription having too much overlap 
+with it.
+<img src="siren_files/siren_lists_rajapaja_06.jpg">
+</li>
+
+<li>
+A list of edited redescriptions is maintained. It allows to keep an 
+history of modifications and to undo changes, making edition safe.
+<img src="siren_files/history1.png">
+</li>
+</ol>
+
+<h3><a name="uc_us"></a>US census and election funds</h3>
+
+<div class="page-header">
+<p>This use-cases presents an hypothetical exploration of US census data.
+</p>
+</div>
+
+<h4>Data</h4>
+<p>
+The US data describes the counties of continental United-States. The 
+left hand side data contains socio-economic statistical indicators about
+ these areas, see details <a href="http://www.fedstats.gov/qf/download/DataDict.txt">here</a>.
+ The right hand side consists of data about funding of the electoral 
+campaigns in 2006, 2008 and 2010, the total funds, percentage allotted 
+to republican and to democratic party, respectively.
+The data has been gathered from two public websites: <a href="http://www.fedstats.gov/">FedStats</a> and <a href="http://www.opensecrets.org/elections/">Open Secrets</a>.
+</p>
+
+<h4>Exploration</h4>
+<ol>
+<li>Double click a redescription to open it in a Map window.
+<img src="siren_files/siren_lists_us_01.jpg">
+<img src="siren_files/siren_map_us_01.jpg">
+</li>
+
+<li>Edit the redescription.
+<img src="siren_files/siren_map_us_02.jpg">
+</li>
+
+<li>If you wish not to use some of the variables in this expansion, for 
+example variables used in the previous redescription, disable them by 
+unchecking the corresponding box in the variables list in the tool 
+panel.
+<img src="siren_files/siren_lists_us_03.jpg">
+</li>
+
+<li>Start the expansion by clicking the expand button in the Map window. 
+The best extensions mined are appended to the expansion list in the tool
+ panel.
+<img src="siren_files/siren_lists_us_04.jpg">
+</li>
+
+<li>Expansion is done. The list of results can be sorted and filtered. 
+Given a redescription of interest, click filter redundant in the 
+contextual menu to disable all redundant redescriptions, i.e. 
+redescription having too much overlap with it.
+</li>
+</ol>
+
+<hr>
+<!-- hhmts start -->Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi <!-- hhmts end -->
+</body> </html>

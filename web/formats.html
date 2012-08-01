@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<link rel="stylesheet" type="text/css" href="./siren.css"/>
+</head>
+
+<body>
+<h2>Formats</h2>
+
+<h3><a name="data_formats"></a>Data formats</h3>
+
+<div class="page-header">
+
+<p>
+For redescription mining, one considers entities discribed by variables divided into two sets, hereafter arbitrarily called left-hand side and right-hand side.
+This can be seen as a pair of data matrices, where entities are identified with rows and variables with columns. Both sets of variables describe the same entities, hence, the matrices have the same number of rows.
+</p>
+
+<p>
+In <em>Siren</em>, data include:
+<ul>
+<li><h5>Variables:</h5> The variables describing the entities are divided in two sets. They can be of three types: 
+<ol><li>Boolean, </li>
+<li>categorical, </li>
+<li>or real-valued.</li>
+</ol> 
+Obviously, this is required.
+</li>
+<li><h5>Variable names:</h5>Optional additional information, providing names for the variables.</li>
+<li><h5>Coordinates:</h5>Additional location information, geographic coordinates of the entities. This makes the data geospatial.</li>
+</ul>
+</p>
+
+<p>
+Data can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Data, either as a set of separate files (Menu: Import from separate files) or as a single XML file (Menu: Import from XML file). Below, we present the data formats supported by Siren.
+</p>
+</div>
+
+<h4><a name="multiple_files"></a>Multiple data files</h4>
+
+<p>
+In case the data is imported as a set of files, the program expects:
+<ul>
+	<li><h5>Left-hand side variables file:</h5> file containing the left-hand side variables.</li>
+	<li><h5>Right-hand side variables file:</h5> file containing the right-hand side variables.</li>
+	<li><h5>Coordinates file:</h5> file containing the entities coordinates.</li>
+</ul>
+</p>
+
+
+<h5>Variables formats:</h5>
+<p>
+Right-hand side and left-hand side variables are stored in separate files.
+This import mode does not allow for mixed types of variables, contrarily to the <a href="#xml_file">single XML data import mode</a>.
+
+Several formats are available:
+<ul>
+<li><em><a name="dense_format"></a>Dense format</em> means variables are stored one per line, with values separated by commas.
+This corresponds roughly to storing your data matrix transposed, in csv format.
+</li>
+<li><em><a name="sparse_format"></a>Sparse format</em> means each row has the form 
+<pre>
+entity_id [SPC] variable_id [SPC] value
+</pre>
+To make sure no empty entity or variable is omitted, the first row must be 
+<pre>
+nb_of_entities [SPC] nb_of_variables [SPC] 0
+</pre>
+This correspond roughly to Matlab representation of sparse matrices.
+</li>
+<li><em><a name="dat_format"></a>Dat format</em> means variables are stored one per line, only the ids of entities for which the variable holds true are stored, separated by commas.
+</li>
+</ul>
+
+The format is determined from the filename extension, below is the table of extensions, - means the format is not available for the given variable type:
+
+<table border=1 id="data_ext">
+ <thead>
+    <tr>
+      <th></th>
+<th>dense</th>
+<th>sparse</th>
+<th>dat</th>
+    </tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Boolean</td>
+<td>.densebool</td>
+<td>.sparsebool</td>
+<td>.datbool</td>
+</tr>
+<tr>
+<td>2. categorical</td>
+<td>.densecat</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>3. numerical</td>
+<td>.densenum</td>
+<td>.sparsenum</td>
+<td>-</td>
+</tr>
+</tbody>
+</table> 
+
+</p>
+
+<h5>Coordinates format:</h5>
+<p>
+Each entity should be located by a pair of coordinates (i.e. latitude and longitude).
+Coordinates are stored one entity per line, with the two coordinates separated by a comma.
+If the number of coordinates found in the coordinates file does not match the number of entities, coordinates will be ommitted.
+</p>
+
+<h5>Names:</h5> 
+<p>Finally, the files containing the names of variables are obtained from the corresponding data filename by replacing its extension by <em>.names</em>. For example, if the LHS variables data file is <em>some_path/LHS_file.densenum</em> the program expect to find the LHS variables names in a file called <em>some_path/LHS_file.names</em>.
+Names of variables are stored one variable per line. Names may contain spaces and unicode characters but no equality or comparison signs (i.e. =,>,<).
+If the number of names found in the names file does not match the number of variables on the given side, names will be ommitted.
+</p>
+
+
+<h4><a name="xml_file"></a>Single XML file</h4>
+
+<p>
+Here is an example of a simple XML data file. In this example, the data consist of two Boolean variables on the left-hand side, one categorical variable and two numerical variables on the right-hand side, describing a total of ten geolocated entities.
+</p>
+
+<iframe frameborder=0 width=100% height=auto scrolling=auto name="xml_data_example" src="xml_data_example_comm.txt"></iframe>
+
+<p>
+Each variable is stored between <em>variable</em> tags, with it name, type_id, number of entities (numbers of entities should match accross all variables on both sides), etc.
+</p>
+
+<ol>
+<li>
+For <em>Boolean variables</em> (cf. A_red and B_red in example above) the ids of entities for wich the variable holds true are separated by commas and stored between <em>rows</em> tags (cf. <a href="#dat_format">dat format</a>).
+</li>
+
+<li>
+For <em>categorical variables</em> (cf. A_blue in example above) the categories of the entities are separated by commas and stored in order between <em>values</em> tags (cf. <a href="#dense_format">dense format</a>).
+</li>
+
+<li>
+<em>Numerical variables</em> can be stored either in sparse or dense format, depending on convenience. The format used should be indicated using <em>store_type</em> tags. 
+<ul>
+<li>
+Dense format (cf. B_blue in example above) means the values are separated by commas and stored in order between <em>values</em> tags
+(cf. <a href="#dense_format">dense format</a>).</li><li>
+Sparse format (cf. C_blue in example above) means the pairs (entity id:value) are stored only for non-default values, separated by commas between <em>values</em> tags.</li>
+</ul>
+</li>
+</ol>
+
+<p>
+Inside a siren package, the data is stored as a single XML file.
+</p>
+
+<h3><a name="red_formats"></a>Redescriptions formats</h3>
+
+<div class="page-header">
+
+<p>
+The product of redescription mining is a list of redescriptions. A redescription consist of a pair of queries over the variables describing the entities, one query for each set. The two sets of variables are arbitrarily called left-hand side and right-hand side, and so are the corresponding queries.
+</p>
+
+<p><a name="supports"></a>
+The support of a query is the set of entities for which the query holds. Any given redescription partitions the entities into four sets:
+<ul> 
+	<li>E_{1,0} is the set of rows for which only the left hand side query holds,</li>
+	<li>E_{0,1} is the set of rows for which only the right hand side query holds,</li>
+	<li>E_{1,1} is the set of rows for which both queries hold,</li>
+	<li>and E_{0,0} is the set of rows for which neither of the queries hold.</li>
+</ul>
+</p>
+
+
+<p>
+Redescriptions can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Redescriptions. More importantly, they can be exported via the interface menu File &#8594; Export Redescriptions. Below, we present the redescription formats supported by Siren.
+</p>
+</div>
+
+<h4><a name="queries"></a>Queries</h4>
+
+<p>
+A query is formed by combining literal using Boolean operators.
+</p>
+
+<p>
+For several reasons, Siren evaluates the queries from left to right irrelevant of the operator precedence.
+In other words, it supports only queries that can be parsed in linear order, without trees. For example, (a &#8743; b) &#8744; &#172;c is supported, but (a &#8743; b) &#8744; (c &#8743; d) is not.
+Parenthesis delimiting groups of literals combined with the same operator can be added to ease readability.
+</p>
+
+<p>
+We consider three types of literals, defined over a Boolean, categorical or numerical variable respectively.
+</p>
+
+<p>
+Below is an unformal grammar of <em>Siren</em>'s query language, parenthesis denote optional elements.
+The preferred syntax for editing queries is marked with bold.
+</p>
+
+<table border=1 id="query_syntax">
+<tr>
+<td>conjunction&#160;operator</td><td>AND </td>
+<td><b>&#38;</b>,&#160;&#8743;,&#160;\land</td>
+</tr>
+<tr>
+<td>disjunction&#160;operator</td><td>OR</td>
+<td><b>|</b>,&#160;&#8744;,&#160;\lor</td>
+</tr>
+<tr>
+<td>operator</td><td>OP</td>
+<td><b>AND,&#160;OR</b></td>
+</tr>
+<tr>
+<td>negation</td><td>NEG</td>
+<td><b>!</b>,&#160;&#172;,&#160;\neg</td>
+</tr>
+<tr>
+<tr>
+<td>variable</td><td>VAR</td>
+<td><b>integer</b>,&#160;name</td>
+</tr>
+<tr>
+<td>category</td><td>CAT</td>
+<td><b>integer</b></td>
+</tr>
+<tr>
+<td>interval&#160;bound</td><td>IBD</td>
+<td><b>float with at least one decimal precision</b></td>
+</tr>
+<tr>
+<td>less-than&#160;sign</td><td>LEQ</td>
+<td><b>&#60;</b>, &#8804;, \leq{}</td>
+</tr>
+<tr>
+<td>Boolean&#160;literal</td><td>BLIT</td>
+<td><b>(NEG)&#160;VAR</b></td>
+</tr>
+<tr>
+<td rowspan=4>categorical&#160;literal</td><td rowspan=4>CLIT</td>
+<td><b>(NEG)&#160;VAR&#160;=&#160;CAT</b></td>
+</tr>
+<tr>
+<td>VAR&#160;(\not)\in&#160;CAT</td> 
+</tr>
+<tr>
+<td>VAR&#160;&#8712;&#160;CAT</td> 
+</tr>
+<tr>
+<td>VAR&#160;&#8713;&#160;CAT</td>
+</tr>
+<tr>
+</tr>
+<tr>
+<td rowspan=2>numerical&#160;literal</td><td rowspan=2>NLIT</td>
+<td><b>(NEG)&#160;[&#160;(IBD&#160;LEQ)&#160;VAR&#160;(LEQ&#160;IBD)&#160;]</b></td>
+</tr>
+<tr>
+<td>(NEG)&#160;VAR&#160;(&#62;&#160;IBD)&#160;(&#60;&#160;IBD)</td>
+</tr>
+<tr>
+<td>literal</td><td>LIT</td>
+<td><b>BLIT, CLIT, NLIT</b></td>
+</tr>
+<tr>
+<td>query</td><td>QRY</td>
+<td><b>LIT&#160;(OP&#160;LIT)*</b></td>
+</tr>
+</table>
+
+<p>
+Naturally, the type of literal and the type of variable should match, i.e., [4.0 &#60; Va &#60; 8.32] is a valid numerical literal only if the corresponding variable Va is a numerical variable. Furthermore, the upper bound of a numerical variable should always be greater or equal to the lower bound and either of them should be specified.
+</p>
+
+<h4><a name="statistics"></a>Redescription statistics</h4>
+<p>
+The statistics of a redescription include:
+<ul>
+<li>accuracy, as measured by Jaccard coefficient |E_{1,1}| / (|E_{1,0}|+|E_{1,1}|+|E_{0,1}|),</li>
+<li>p-value,</li>
+<li>cardinality of the <a href="#supports">support sets</a> E_{1,0}, E_{0,1}, E_{1,1}, E_{0,0} (sometimes also referred to as alpha, beta, gamma and delta, respectively).</li>
+</ul>
+</p>
+
+<h4><a name="export"></a>Exporting Redescriptions</h4>
+<p>
+Redescriptions can be exported in three formats, determine by the extension of the provided filename:
+<ul>
+<li><h5>.xml (default)</h5> Each redescription is stored between <em>redescription</em> tags, with both queries and basic statistics.</li>
+<li><h5>.queries</h5> One redescription per line, with both queries and basic statistics tab separated.</li>
+<li><h5>.tex</h5> Produces a tex file that can be compiled to obtain a table of the redescriptions</li>
+</ul>
+When exporting redescriptions in the latter two formats, diabled redescriptions will not be printed.
+</p>
+
+<h4><a name="import"></a>Importing Redescriptions</h4>
+<p>
+Both <em>.queries</em> and <em>.xml</em> format can be imported into Siren, <em>.tex</em> cannot.
+</p>
+
+<p>
+Inside a siren package, the redescriptions are stored in a XML file together with display order and disabled status.
+</p>
+
+
+<hr>
+<!-- hhmts start -->Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi <!-- hhmts end -->
+</body> </html>

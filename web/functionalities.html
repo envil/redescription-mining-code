@@ -1,0 +1,62 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<link rel="stylesheet" type="text/css" href="./siren.css"/>
+</head>
+
+<body>
+
+<h2><a name="functionalities"></a>Functionalities</h2> 
+
+<div class="page-header">
+<p>Using <em>Siren</em>, a user can explore data of his
+  interest by visualizing geospatial redescriptions on a map,
+  interactively edit, expand and filter them.
+</p>
+</div>
+
+<p>The main functionalities of <em>Siren</em> include:
+<ul>
+<li><em>Displaying a geospatial redescription on a map.</em>
+Spatial redescriptions can be displayed on a map to show the locations 
+where both queries hold (purple squares), only the left hand side query 
+holds (blue squares) and only the right hand side query holds (red 
+squares). 
+</li>
+
+<li><em>Editing a redescription.</em>
+Existing redescriptions can be edited and the map and statistics will be
+ recomputed and changes reflected in the original redescription in the 
+list. It is also possible to build a new redescription from scratch.
+</li>
+
+<li><em>Expanding a redescription.</em> 
+An existing or an edited redescription can be extended, all best extensions are appended to the expansion list.
+</li>
+
+<li><em>Mining redescriptions.</em>
+Starting from an empty redescription, mines for redescriptions. 
+The expansion list is updated after extending each initial pair
+with the filtered list of redescriptions found so far.
+</li>
+
+<li><em>Selection of a subset of variables.</em> 
+It is possible to select a subset of variables for use in mining/expanding, by disabling some variables.
+</li>
+
+<li><em>Filtering a redescription list.</em>
+For a chosen redescription in a list, filter redundant redescriptions 
+among those 
+found below it, i.e., redescriptions having overlap with the chosen 
+redescription in the left or right query over a chosen threshold. 
+</li>
+
+<li><em>History list.</em>
+A concealable history tab keeps track of edited redescriptions, allowing to undo modifications. 
+</li>
+</ul>
+</p>
+
+<hr>
+<!-- hhmts start -->Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi <!-- hhmts end -->
+</body> </html>
