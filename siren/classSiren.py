@@ -321,7 +321,7 @@ class Siren():
         if self.selectedTab["type"] == "Reds":
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
                 ID_EXPAND = wx.NewId()
-                m_expand = menuRed.Append(ID_NEWW, "&Expand\tCtrl+E", "Expand redescription.")
+                m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
 
                 ID_FILTER_ONE = wx.NewId()
