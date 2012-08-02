@@ -4,6 +4,7 @@ import threading
 import time
 import sys
 import wx.lib.agw.pybusyinfo as PBI
+import wx.lib.dialogs
 
 from reremi.toolLog import Log
 from reremi.classMiner import Miner
@@ -14,7 +15,7 @@ from reremi.toolICList import ICList
 
 from classGridTable import VarTable, RedTable
 from classMapView import MapView
-from DataWrapper import DataWrapper
+from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog
 
@@ -93,13 +94,15 @@ class Siren():
     # For About dialog
     name = "Siren"    
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
-    version = '0.9b'
+    version = '1.0 RC'
     cpyright = '(C) 2012 Esther Galbrun and Pauli Miettinen'
 
     pref_dir = os.path.dirname(__file__)
     about_file = findFile('ABOUT', [pref_dir])
-    licence_file = findFile('LICENSE_short', [pref_dir])
     icon_file = findFile('siren_icon32x32.png', ['icons', pref_dir + '/icons'])
+
+    license_file = findFile('LICENSE', [pref_dir])
+    external_licenses = ['basemap', 'matplotlib', 'python', 'wx']
     
          
     def __init__(self):
@@ -174,8 +177,8 @@ class Siren():
         self.info.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
         with open(self.about_file) as f:
             self.info.SetDescription(f.read())
-        with open(self.licence_file) as f:
-            self.info.SetLicence(f.read())
+        #with open(self.licence_file) as f:
+        #    self.info.SetLicence(f.read())
 
         # init helpFrame
         self.helpFrame = None
@@ -441,6 +444,10 @@ class Siren():
         
         m_about = menuHelp.Append(wx.ID_ABOUT, "&About", "About...")
         frame.Bind(wx.EVT_MENU, self.OnAbout, m_about)
+
+        ID_LICENSE = wx.NewId()
+        m_license = menuHelp.Append(ID_LICENSE, "&License", "View the license(s).")
+        frame.Bind(wx.EVT_MENU, self.OnLicense, m_license)
         
         ### PUT TOGETHER
         menuBar = wx.MenuBar()
@@ -838,6 +845,34 @@ class Siren():
         self.deleteAllViews()
         self.toolFrame.Destroy()
         sys.exit()
+
+    def OnLicense(self, event):
+        license_text = None
+        try:
+            f = open(self.license_file)
+            license_text = f.read()
+        except:
+            wx.MessageDialog(self.toolFrame, 'No license found.', style=wx.OK, caption="No license").ShowModal()
+            return
+
+        external_license_texts = ''
+        for ext in self.external_licenses:
+            lic = 'LICENSE_'+ext
+            try:
+                f = open(findFile(lic, [self.curr_dir]), 'r')
+                external_license_texts += '\n\n***********************************\n\n' + f.read()
+                f.close()
+            except:
+                pass # We don't care about errors here
+
+        if len(external_license_texts) > 0:
+            license_text += "\n\nSiren comes bundled with other software for your convinience.\nThe licenses for this bundled software are below." + external_license_texts
+
+        # Show dialog
+        dlg = wx.lib.dialogs.ScrolledMessageDialog(self.toolFrame, license_text, "LICENSE")
+        dlg.ShowModal()
+        dlg.Destroy()
+         
 
     def checkAndProceedWithUnsavedChanges(self, test=None):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue

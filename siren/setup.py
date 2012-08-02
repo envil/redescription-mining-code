@@ -19,7 +19,7 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '0.9.0'
+VERSION = '1.0.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -27,7 +27,7 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help', 'ABOUT', 'LICENSE', 'LICENSE_short',
+ST_RESOURCES=['help', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
@@ -36,7 +36,7 @@ ST_MORE_FILES=['ez_setup.py']
 ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
 
 ########## DISTUTILS FILES
-DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE', 'LICENSE_short',
+DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE',
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
 DU_FILES = ['siren', 'findFiles', 'DataWrapper', 'classGridTable', 'classMapView',
@@ -87,13 +87,14 @@ if sys.platform == 'darwin':
         )
 
     ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png']
+    LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx']
     
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'icons/siren_icon.icns',
     'packages': ST_PACKAGES,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
-    'resources': ST_RESOURCES+ICONS,
+    'resources': ST_RESOURCES+ICONS+LICENSES,
     'site_packages': True,
     #'semi-standalone': True, # depends on local Python
     'plist': Plist,
@@ -110,13 +111,18 @@ if sys.platform == 'darwin':
 
     # Post setup
     # Copy files
+    print "Copying files..."
     subprocess.call('cp LICENSE dist/', shell=True)
+    subprocess.call('mkdir dist/third-party-licenses/', shell=True)
+    for f in LICENSES:
+        subprocess.call('cp '+f+' dist/third-party-licenses/', shell=True)
     subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
     subprocess.call('ln -s /Applications dist/', shell=True)
     subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
     # Set VolumeIcon's creator
     subprocess.call('SetFile -c icnC dist/.VolumeIcon.icns', shell=True)
     # Make read/write tmp disk image
+    print "Creating initial disk image"
     subprocess.call('hdiutil create -srcfolder dist/ -volname '+SHORT_NAME+' -format UDRW -ov raw-'+SHORT_NAME+'.dmg', shell=True)
     # Attach the disk image
     subprocess.call('mkdir tmp', shell=True)
@@ -128,6 +134,7 @@ if sys.platform == 'darwin':
     subprocess.call('rm -rf tmp', shell=True)
     subprocess.call('rm -f '+SHORT_NAME+'.dmg', shell=True)
     # Convert
+    print "Converting the disk image to the final one"
     subprocess.call('hdiutil convert raw-'+SHORT_NAME+'.dmg -format UDZO -o '+SHORT_NAME+'.dmg', shell=True)
     # Clean
     subprocess.call('rm -rf dist build', shell=True)
