@@ -124,11 +124,11 @@ list-style-type:lower-roman;
 }
 
 div.toc img{
-  margin-top:50px;
+  margin-top:75px;
   text-align:center;
   clear:both;
-  max-width:50px;
-  max-height:50px;
+  max-width:75px;
+  max-height:75px;
   display:block;
 }
 
