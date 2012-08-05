@@ -7,7 +7,7 @@ font-size:small;
 }
 
 dt { color:white; font-weight: bold; }
-dd { display:inline; margin:5px;}
+dd { display:block; margin:5px;}
 
 img{
   margin:25px;
