@@ -27,7 +27,7 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help', 'ABOUT', 'LICENSE',
+ST_RESOURCES=['help', 'commons', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
