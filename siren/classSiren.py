@@ -19,8 +19,6 @@ from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog
 
-from findFiles import findFile
-
 import pdb
 
 # Thread class that executes processing
