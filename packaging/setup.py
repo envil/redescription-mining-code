@@ -19,7 +19,7 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '0.9.0'
+VERSION = '1.0rc'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -27,7 +27,13 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help', 'ABOUT', 'LICENSE', 'LICENSE_short',
+ST_RESOURCES=['help',
+              'commons/siren.css',
+              'commons/siren_icon.png',
+              'commons/top_tools.jpg',
+              'commons/bottom_map.jpg',
+              'commons/both_windows_comm.png',
+              'icons/siren_icon32x32.png', 'ABOUT', 'LICENSE', 'LICENSE_short',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
@@ -36,7 +42,13 @@ ST_MORE_FILES=['ez_setup.py']
 ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
 
 ########## DISTUTILS FILES
-DU_RESOURCES_SIREN=['help/*', 'icons/siren_icon32x32.png',
+DU_RESOURCES_SIREN=['help/*',
+                    'commons/siren.css',
+                    'commons/siren_icon.png',
+                    'commons/top_tools.jpg',
+                    'commons/bottom_map.jpg',
+                    'commons/both_windows_comm.png',
+                    'icons/siren_icon32x32.png',
                     'ABOUT', 'LICENSE', 'LICENSE_short',
                     'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
