@@ -162,6 +162,7 @@ class Miner:
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
             idL = ids[0][cL]
             self.logger.printL(3, 'Searching pairs %i <=> *...' %(idL), "status", self.id)
+            self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
             for cR in range(0, len(ids[1]), self.constraints.mod_rhs()):
                 idR = ids[1][cR]
                 if not self.want_to_live:
@@ -169,8 +170,8 @@ class Miner:
                 
                 pairs += 1
                 self.progress_ss["current"] += self.progress_ss["pair_gen"]
-                self.logger.printL(10, 'Searching pairs %i <=> %i ...' %(idL, idR), 'status', self.id)
-                self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                self.logger.printL(7, 'Searching pairs %i <=> %i ...' %(idL, idR), 'status', self.id)
+                self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
                 seen = []
                 (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
                 for i in range(len(scores)):
@@ -184,8 +185,9 @@ class Miner:
                                 self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
                         
                         self.initial_pairs.add(literalsL[i], literalsR[i], scores[i])
-        self.logger.printL(2, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
-        self.initial_pairs.setCountdown(self.constraints.max_red())
+        self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+        self.initial_pairs.setCountdown(2) #### HHH self.constraints.max_red())
         return self.initial_pairs
 
     def expandRedescriptions(self, nextge):
@@ -200,6 +202,7 @@ class Miner:
             for redi, red in enumerate(nextge):
                 ### To know whether some of its extensions were found already
                 nb_extensions = red.updateAvailable(self.souvenirs)
+                self.partial["batch"].append(red)
                 if red.nbAvailableCols() > 0:
                     bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
                     for side in [0,1]:
@@ -241,7 +244,7 @@ class Miner:
                     ### parent has been used remove availables
                     red.removeAvailables()
                 self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
-                self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
                 self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.id)
 
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)

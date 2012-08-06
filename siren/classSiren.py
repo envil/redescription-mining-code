@@ -295,6 +295,10 @@ class Siren():
     def makeContextMenu(self, frame):
         ### Todo checks for cut, paste, etc
         menuRed = wx.Menu()
+
+        ID_MINE = wx.NewId()
+        m_mine = menuRed.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
+        frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
         
         if self.selectedTab["type"] in ["Var","Reds"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
@@ -337,6 +341,11 @@ class Siren():
                 ID_DELDISABLED = wx.NewId()
                 m_deldisabled = menuRed.Append(ID_DELDISABLED, "Delete Disa&bled", "Delete all disabled redescriptions.")
                 frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
+
+                if self.selectedTab["title"] == "Expansions":
+                    ID_MOVEREDS = wx.NewId()
+                    m_movereds = menuRed.Append(ID_MOVEREDS, "Append Enabled to Redescriptions", "Move all enabled redescriptions to main Redescriptions tab.")
+                    frame.Bind(wx.EVT_MENU, self.OnMoveReds, m_movereds)
 
                 m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
@@ -514,10 +523,10 @@ class Siren():
             self.reloadReds()
             return True
 
-    def expand(self, red):
+    def expand(self, red=None):
         self.progress_bar.Show()
         self.next_workerid += 1
-        if red.length(0) + red.length(1) > 0:
+        if red != None and red.length(0) + red.length(1) > 0:
             self.workers[self.next_workerid] = {"worker":ExpanderThread(self.next_workerid, self.dw.data,
                                                                         self.dw.getPreferences(), self.logger, red.copy()),
                                                 "results_track":0,
@@ -732,6 +741,10 @@ class Siren():
             if red is not None:
                 self.expand(red)
 
+    def OnMineAll(self, event):
+        self.showTab("exp")
+        self.expand()
+
     def OnFilterToOne(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].filterToOne(self.constraints.parameters_filterredundant())
@@ -759,6 +772,9 @@ class Siren():
     def OnDeleteDisabled(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].deleteDisabled()
+
+    def OnMoveReds(self, event):
+        self.tabs["exp"]["tab"].moveEnabled(self.tabs["reds"]["tab"])
 
     def OnCut(self, event):
         if self.selectedTab["type"] in ["Reds"]:

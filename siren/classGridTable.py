@@ -420,6 +420,19 @@ class RedTable(GridTable):
                 i+=1
         self.ResetView()
 
+    def moveEnabled(self, dest):
+        reds = []
+        i = 0
+        while i < len(self.data):
+            if self.data[i].getEnabled():
+                reds.append(self.data[i])
+                self.deleteItem(i, False)
+            else:
+                i+=1
+        if len(reds) > 0:
+            dest.insertItems(reds)
+            self.ResetView()
+
     def copyItem(self, row):
         pos = self.getPositionFromRow(row)
         if pos is not None:
