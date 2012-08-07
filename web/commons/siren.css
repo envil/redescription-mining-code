@@ -145,8 +145,14 @@ td
 padding:3px 20px;
 }
 
-table.video, table.video td 
+div.film
 {
 margin:0cm;
 padding:0cm;
 }
+
+div.film video
+{
+max-width:90%;
+}
+

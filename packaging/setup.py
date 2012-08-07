@@ -19,7 +19,7 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '1.0rc'
+VERSION = '1.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -49,7 +49,7 @@ DU_RESOURCES_SIREN=['help/*',
                     'commons/bottom_map.jpg',
                     'commons/both_windows_comm.png',
                     'icons/siren_icon32x32.png',
-                    'ABOUT', 'LICENSE', 'LICENSE_short',
+                    'ABOUT', 'LICENSE', 'LICENSE_*',
                     'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
 DU_FILES = [] ## ['siren', 'findFiles', 'DataWrapper', 'classGridTable', 'classMapView', 'classPreferencesDialog', 'classSiren','miscDialogs']

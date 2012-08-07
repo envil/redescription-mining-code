@@ -4,7 +4,7 @@ PYTHON=/usr/bin/python
 DESTDIR=/
 BUILDIR=$(CURDIR)/debian/siren
 PROJECT=python-siren
-VERSION=1.0rc
+VERSION=1.0
 
 all:
 	@echo "make source - Create source package"
