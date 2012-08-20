@@ -225,6 +225,7 @@ class MapView:
             self.source_list=source_list
             self.updateText(red)
             self.updateMap(red)
+            self.updateHist(red)
 
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()

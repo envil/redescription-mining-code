@@ -308,22 +308,22 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
 
                 ID_ENABLED = wx.NewId()
-                m_enabled = menuRed.Append(ID_ENABLED, "E&nable/Disable\tCtrl+D", "Enable/Disable current redescription.")
+                m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
 
                 ID_ENABLEDALL = wx.NewId()
-                m_enabledall = menuRed.Append(ID_ENABLEDALL, "Ena&ble All", "Enable all redescriptions.")
+                m_enabledall = menuRed.Append(ID_ENABLEDALL, "&Enable All", "Enable all redescriptions.")
                 frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
 
                 ID_DISABLEDALL = wx.NewId()
-                m_disabledall = menuRed.Append(ID_DISABLEDALL, "Disa&ble All", "Disable all redescriptions.")
+                m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all redescriptions.")
                 frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
 
 
         if self.selectedTab["type"] == "Reds":
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
                 ID_EXPAND = wx.NewId()
-                m_expand = menuRed.Append(ID_EXPAND, "&Expand\tCtrl+E", "Expand redescription.")
+                m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
 
                 ID_FILTER_ONE = wx.NewId()
@@ -331,7 +331,7 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
 
                 ID_FILTER_ALL = wx.NewId()
-                m_filter_all = menuRed.Append(ID_FILTER_ALL, "&Filter redundant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
+                m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
 
                 ID_PROCESS = wx.NewId()
@@ -339,12 +339,12 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
 
                 ID_DELDISABLED = wx.NewId()
-                m_deldisabled = menuRed.Append(ID_DELDISABLED, "Delete Disa&bled", "Delete all disabled redescriptions.")
+                m_deldisabled = menuRed.Append(ID_DELDISABLED, "De&lete Disabled", "Delete all disabled redescriptions.")
                 frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
 
                 if self.selectedTab["title"] == "Expansions":
                     ID_MOVEREDS = wx.NewId()
-                    m_movereds = menuRed.Append(ID_MOVEREDS, "Append Enabled to Redescriptions", "Move all enabled redescriptions to main Redescriptions tab.")
+                    m_movereds = menuRed.Append(ID_MOVEREDS, "A&ppend Enabled to Redescriptions", "Move all enabled redescriptions to main Redescriptions tab.")
                     frame.Bind(wx.EVT_MENU, self.OnMoveReds, m_movereds)
 
                 m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
@@ -356,16 +356,25 @@ class Siren():
             if self.buffer_copy is not None:
                 m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+
+            ID_DUP = wx.NewId()
+            m_dup = menuRed.Append(ID_DUP, "&Duplicate", "Duplicate current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnDuplicate, m_dup)
  
         return menuRed
 
     def makeStoppersMenu(self, frame):
         menuStoppers = wx.Menu()
         self.ids_stoppers = {}
+        if len(self.workers) == 0:
+            ID_NOP = wx.NewId()
+            m_nop = menuStoppers.Append(ID_NOP, "No process running", "There is no process currently running.")
+            menuStoppers.Enable(ID_NOP, False)
+
         for worker_id in self.workers.keys(): 
             ID_STOP = wx.NewId()
             self.ids_stoppers[ID_STOP] = worker_id 
-            m_stop = menuStoppers.Append(ID_STOP, "Stop #%s" % worker_id, "Interrupt mining process #%s." % worker_id)
+            m_stop = menuStoppers.Append(ID_STOP, "Stop #&%s" % worker_id, "Interrupt mining process #%s." % worker_id)
             frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         return menuStoppers
 
@@ -434,7 +443,7 @@ class Siren():
         menuRed = self.makeContextMenu(frame)
 
         #ID_PREFERENCESDIA = wx.NewId()
-        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "Preferences...\tCtrl+,", "Set preferences.")
+        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
 
@@ -460,7 +469,7 @@ class Siren():
         menuBar = wx.MenuBar()
         menuBar.Append(menuFile, "&File")
         menuBar.Append(menuRed, "&Edit")
-        menuBar.Append(menuStoppers, "&Tools")
+        menuBar.Append(menuStoppers, "&Process")
         menuBar.Append(menuView, "&View")
         menuBar.Append(menuHelp, "&Help")
         frame.SetMenuBar(menuBar)
@@ -779,15 +788,24 @@ class Siren():
     def OnCut(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].cutItem(self.selectedTab["tab"].getSelectedRow())
+            self.makeMenu(self.toolFrame) ### update paste entry
 
     def OnCopy(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
+            self.makeMenu(self.toolFrame) ### update paste entry
 
     def OnPaste(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
+            self.makeMenu(self.toolFrame) ### update paste entry
 
+    def OnDuplicate(self, event):
+        if self.selectedTab["type"] in ["Reds"]:
+            self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
+            self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
+            self.makeMenu(self.toolFrame) ### update paste entry
+            
     def OnTabW(self, event):
         if event.GetId() in self.check_tab.keys():
             tab_id = self.check_tab[event.GetId()]
