@@ -1,3 +1,4 @@
+import getopt
 import toolRead
 import pdb
 
@@ -290,6 +291,9 @@ class PreferencesManager:
 		return dict([(item_id, item.getDefaultTriplet())
 			     for (item_id, item) in self.pdict.items()])
 
+	def getListOptions(self):
+		return [item.getName()+"=" for (item_id, item) in self.pdict.items()]
+
 	def processDom(self, current, sects=[]):
 		parameters = None
 		name = None
@@ -328,32 +332,40 @@ class PreferencesReader:
 	def __init__(self, pm):
 		self.pm = pm
 	
-	def getParameters(self, filename=None):
+	def getParameters(self, filename=None, arguments=None):
 		pv = self.pm.getDefaultTriplets()
-		if filename is not None:
-			tmp = self.readParametersFromFile(filename)
-			if tmp is None:
-				return None
-			pv.update(tmp)
+		tmp = self.readParametersDict(self.readParametersFromFile(filename))
+		pv.update(tmp)
+		tmp = self.readParametersDict(self.readParametersFromArguments(arguments))
+		pv.update(tmp)
 		return pv
+
+	def readParametersFromArguments(self, arguments):
+		options, args = getopt.getopt(arguments, "", self.pm.getListOptions())
+		tmp = {}
+		for (option, vals) in options:
+			tmp[option.strip(" -")] = vals.strip().split(",")
+		return tmp
 			
 	def readParametersFromFile(self, filename):
+		tmp = {}
 		if filename is not None:
 			try:
 				doc = toolRead.parseXML(filename)
 			except Exception as inst:
 				print "%s is not a valid configuration file! (%s)" % (filename, inst)
 			else:
-				return self.readParameters(doc.documentElement)
-		return None
-
-	def readParameters(self, document):
+				for current in doc.documentElement.getElementsByTagName("parameter"):
+					name = toolRead.getTagData(current, "name")
+					values = toolRead.getValues(current)
+					tmp[name] = values
+		return tmp
+ 
+	def readParametersDict(self, params_dict):
 		pv = {}
-		for current in document.getElementsByTagName("parameter"):
-			name = toolRead.getTagData(current, "name")
+		for name, values in params_dict.items():
 			item = self.pm.getItem(name)
 			if item is not None:
-				values = toolRead.getValues(current)
 				if len(values) == 1 and item.getCardinality()=="unique":
 					value = item.getParamTriplet(values[0])
 					if value is not None:

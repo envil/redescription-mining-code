@@ -47,7 +47,6 @@ class Miner:
 
 ### RUN FUNCTIONS
 ################################
-### TODO improve progress tracking
 
     def filter_run(self, redescs):
         batch = Batch(redescs)
@@ -156,7 +155,7 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        ## ids = [[101, 162, 192], [12, 24, 26]]
+        ids = [[190, 8], [28, 26, 13]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -187,14 +186,17 @@ class Miner:
                         self.initial_pairs.add(literalsL[i], literalsR[i], scores[i])
         self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-        self.initial_pairs.setCountdown(2) #### HHH self.constraints.max_red())
+        self.initial_pairs.setCountdown(self.constraints.max_red())
         return self.initial_pairs
 
     def expandRedescriptions(self, nextge):
         self.partial["results"] = []
         self.partial["batch"].reset()
+        self.partial["batch"].extend(nextge)
+
 
         while len(nextge) > 0  and self.want_to_live:
+
             kids = set()
 
             tmp_gen = self.progress_ss["current"]
@@ -202,7 +204,8 @@ class Miner:
             for redi, red in enumerate(nextge):
                 ### To know whether some of its extensions were found already
                 nb_extensions = red.updateAvailable(self.souvenirs)
-                self.partial["batch"].append(red)
+                # print "Adding ", len(self.partial["batch"]), red.queries[0], "\t", red.queries[1] 
+                # self.partial["batch"].append(red)
                 if red.nbAvailableCols() > 0:
                     bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
                     for side in [0,1]:
@@ -239,6 +242,7 @@ class Miner:
                         self.logger.printL(1,'OUILLE! Something went badly wrong during expansion of %s.%d.%d\n%s' % (self.count, len(red), redi, details), "log", self.id)
                         kids = []
                         
+                    
                     self.partial["batch"].extend(kids)
                     self.souvenirs.update(kids)
                     ### parent has been used remove availables
@@ -258,5 +262,6 @@ class Miner:
         self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
         self.logger.printL(1, "partial", 'result', self.id)
         self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
+
         return self.partial
 

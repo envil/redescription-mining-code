@@ -138,7 +138,7 @@ class Batch(ICList):
         cut = parameters["cutoff_nb"]
         if cut is not None and cut < len(ids):
             if parameters["cutoff_direct"] != 0 and callable(parameters["equal_funct"]):
-                while cut > 0 and cut+1 < len(ids) and \
+                while cut > 0 and cut < len(ids) and \
                           self.applyFunct(parameters["equal_funct"], ids[cut-1]) == \
                           self.applyFunct(parameters["equal_funct"], ids[cut]):
                     cut += parameters["cutoff_direct"]
