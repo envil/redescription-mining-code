@@ -1,7 +1,7 @@
 <root>
   <parameter>
     <name>logfile</name>
-    <value>/home/galbrun/redescriptors/sandbox/rajapaja/test_std.log</value>
+    <value>+</value>
 </parameter>
   <parameter>
     <name>verbosity</name>
@@ -37,7 +37,7 @@
 </parameter>
 <parameter>
   <name>ext_l</name>
-  <value>.datbool</value>
+  <value>.sparsebool</value>
 </parameter>
 <parameter>
   <name>ext_r</name>
@@ -49,6 +49,6 @@
 </parameter>
 <parameter>
   <name>out_base</name>
-  <value>test_std</value>
+  <value>crosstest_0</value>
 </parameter>
 </root>
