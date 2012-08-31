@@ -89,10 +89,10 @@ def run(arguments):
                                 " ".join(map(str, out_red.supports().lparts()))+"\n")
 
                 for row in in_red.suppI():
-                    coverage[in_ids[row]] += 1
+                    coverage[dataset["in_ids"][row]] += 1
 
                 for row in out_red.suppI():
-                    coverage[out_ids[row]] += 1
+                    coverage[dataset["out_ids"][row]] += 1
 
             resultsFp.close()
             queriesInFp.close()
@@ -103,8 +103,8 @@ def run(arguments):
                 supportOutFp.close()
             
             coverFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+".cover", "w")
-            coverFp.write("\n".join(["0 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(in_ids)]))
-            coverFp.write("\n"+"\n".join(["1 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(out_ids)]))
+            coverFp.write("\n".join(["0 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(dataset["in_ids"])]))
+            coverFp.write("\n"+"\n".join(["1 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(dataset["out_ids"])]))
             coverFp.close()
 
             tacO = datetime.datetime.now()
