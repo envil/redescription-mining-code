@@ -21,6 +21,8 @@ class ColM:
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->" 
 
     def __init__(self, N=-1, nmiss= set()):
+        if nmiss is None:
+            nmiss = set()
         self.N = N
         self.missing = nmiss
         self.id = -1
@@ -28,6 +30,13 @@ class ColM:
         self.name = None
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
+
+                
+    def nbRows(self):
+        return self.N
+
+    def rows(self):
+        return set(range(self.N))
 
     def setId(self, nid):
         self.id = nid
@@ -63,21 +72,18 @@ class ColM:
 
     def suppLiteral(self, literal):
         if literal.isNeg():
-            return set(range(self.N)) - self.suppTerm(literal.term) - self.miss()
+            return self.rows() - self.suppTerm(literal.term) - self.miss()
         else:
             return self.suppTerm(literal.term)
 
     def lMiss(self):
-        return len(self.missing)
+        return len(self.miss())
 
     def lSuppLiteral(self, literal):
         if literal.isNeg():
-            return self.N - len(self.suppTerm(literal.term)) - len(self.miss())
+            return self.nbRows() - len(self.suppTerm(literal.term)) - self.lMiss()
         else:
             return len(self.suppTerm(literal.term))
-
-    def nbRows(self):
-        return self.N
 
     def getEnabled(self, details=None):
         return self.enabled
@@ -144,6 +150,23 @@ class BoolColM(ColM):
         self.hold = ncolSupp
         self.missing -= self.hold
 
+    def subsetCol(self, row_ids=None):
+        if row_ids is None:
+            hold = set(self.hold)
+            miss = set(self.missing)
+            N = self.nbRows()
+        else:
+            N = len(row_ids)
+            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
+            miss = set([trans[i] for i in set(row_ids) & self.missing])
+            hold = set([trans[i] for i in set(row_ids) & self.hold])
+        tmp = BoolColM(hold, N, miss)
+        tmp.name = self.name
+        tmp.enabled = self.enabled
+        tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
+        return tmp
+
+
     def fromXML(self, node):
         ColM.fromXML(self, node)
         tmp_txt = toolRead.getTagData(node, "rows")
@@ -194,6 +217,25 @@ class CatColM(ColM):
         ColM.__init__(self, N, nmiss)
         self.sCats = ncolSupp
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
+
+    def subsetCol(self, row_ids=None):
+        if row_ids is None:
+            scats = dict(self.sCats)
+            miss = set(self.missing)
+            N = self.nbRows()
+        else:
+            N = len(row_ids)
+            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
+            miss = set([trans[i] for i in set(row_ids) & self.missing])
+            scats = {}
+            for cat in self.cats():
+                scats[cat] = set([trans[i] for i in set(row_ids) & self.sCats[cat]])
+        tmp = CatColM(scats, N, miss)
+        tmp.name = self.name
+        tmp.enabled = self.enabled
+        tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
+        return tmp
+
 
     def fromXML(self, node):
         ColM.fromXML(self, node)
@@ -254,11 +296,29 @@ class NumColM(ColM):
     def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
         ColM.__init__(self, N, nmiss)
         self.sVals = ncolSupp
+        self.sVals.sort()
         self.mode = {}
         self.buk = None
         self.colbuk = None
         self.max_agg = None
         self.setMode()
+
+    def subsetCol(self, row_ids=None):
+        if row_ids is None:
+            svals = [(v,i) for (v,i) in self.sVals]
+            miss = set(self.missing)
+            N = self.nbRows()
+        else:
+            N = len(row_ids)
+            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
+            tmp_vals = dict([(i,v) for (v,i) in self.sVals])
+            svals = [(tmp_vals[i],trans[i]) for i in set(row_ids) & set(tmp_vals.keys())]
+            miss = set([trans[i] for i in set(row_ids) & self.missing])
+        tmp = NumColM(svals, N, miss)
+        tmp.name = self.name
+        tmp.enabled = self.enabled
+        tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
+        return tmp
 
     def setMode(self):
         ### The mode is indicated by a special entry in sVals with row id -1,
@@ -296,7 +356,7 @@ class NumColM(ColM):
             raise DataError("Error reading real values, multiple values for a row!")
             
         self.missing -= tmp_hold            
-        self.sVals.sort(key=lambda x: x[0])
+        self.sVals.sort()
         self.setMode()
         
     def toXML(self):
@@ -550,27 +610,75 @@ class Data:
     separator_str = "[;, \t]"
     var_types = {1: BoolColM, 2: CatColM, 3: NumColM}
 
-    def __init__(self, cols=[[],[]], N=0, coords=None, redunRows=set()):
+    def __init__(self, cols=[[],[]], N=0, coords=None):
 
         if type(cols) == list and len(cols) == 2:
+            if type(cols[1]) == str and os.path.isfile(cols[1]):
+                ### parameters are in fact data_filenames, names_filenames, and coordinate filenames
+                try:
+                    (cols, N, coords) = readDNCFromFiles(cols, N, coords)
+                except DataError:
+                    cols, N, coords = [[],[]], 0, None
+                    raise
+
             if type(cols[1]) == list:
-                self.cols = cols
+                if len(cols[1]) > 0 and type(cols[1][0]) == dict:
+                    self.colsFromDicts(cols, N)
+                else:
+                    self.cols = cols
                 self.N = N
                 self.setCoords(coords)
             else:
-                self.cols, self.N, self.coords = readDNCFromFiles(cols, N, coords)
+                print "Input non recognized!"
+                
         else:
             try:
                 self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
             except DataError:
                 self.cols, self.N, self.coords = [[],[]], 0, None
                 raise
-        self.redunRows = redunRows
+            
         if type(self.cols) == list and len(self.cols) == 2:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
         else:
             self.cols = [ICList(),ICList()]
 
+    def subset(self, row_ids=None):
+        coords = None
+        if row_ids is None:
+            N = self.nbRows()
+        else:
+            N = len(row_ids)
+        if self.coords is not None:
+            coords = []
+            for coord in self.coords:
+                if row_ids is None:
+                    coords.append(list(coord))
+                else:
+                    coords.append([coord[i] for i in row_ids])
+        cols = [[],[]]
+        for side in [0,1]:
+            for col in self.cols[side]:
+                tmp = col.subsetCol(row_ids)
+                tmp.side = side
+                tmp.id = len(cols[side])
+                cols[side].append(tmp)
+        return Data(cols, N, coords)
+
+    def colsFromDicts(self, colsDicts, N):
+        self.cols = [[], []]
+        for side in [0,1]:
+            for dc in colsDicts[side]:
+                if dc.get("type") not in Data.var_types.keys():
+                    print "Unknown variable type !"
+                    ### IMPLEMENT AUTO RECOGNITION OF TYPE
+                else:
+                    col = Data.var_types[dc["type"]](dc["values"], N, dc.get("missing"))
+                    col.setId(len(self.cols[side]))
+                    col.side = side
+                    col.name = dc.get("name")
+                    self.cols[side].append(col)
+                    
     def hasMissing(self):
         for side in [0,1]:
             for c in self.cols[side]:
@@ -636,6 +744,9 @@ class Data:
             strd += "\t%s\n" % col
         return strd
 
+    def rows(self):
+        return set(range(self.N))
+
     def nbRows(self):
         return self.N
 
@@ -661,17 +772,14 @@ class Data:
         return self.col(side, literal).getName()
         
     def supp(self, side, literal): 
-        return self.col(side, literal).suppLiteral(literal)- self.redunRows
+        return self.col(side, literal).suppLiteral(literal)
 
     def miss(self, side, literal):
-        return self.col(side, literal).miss()- self.redunRows
+        return self.col(side, literal).miss()
 
     def literalSuppMiss(self, side, literal):
         return (self.supp(side, literal), self.miss(side,literal))
-        
-    def addRedunRows(self, redunRows):
-	self.redunRows.update(redunRows)
-    
+            
     def usableIds(self, min_in=-1, min_out=-1):
         return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \
                 [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]
@@ -771,9 +879,10 @@ def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None):
         if names_filenames[side] is not None:
             tmp_names = readNamesSide(names_filenames[side])
             if len(tmp_names) == len(cols[side]):
-                for i, col in enumerate(cols[side]):
-                    col.name = tmp_names[i]
-
+                for i in range(len(cols[side])):
+                    cols[side][i]["name"] = tmp_names[i]
+            else:
+                print "Number of names does not match number of variables on side %d." % side
     return (cols, N, coords)
         
 def readCoords(filename):
@@ -810,7 +919,6 @@ def readVariables(filenames):
 def readMatrix(filename, side = None):
     ## Read input
     nbRows = None
-    names = []
     if isinstance(filename, file):
         f = filename
         filename = f.name
@@ -852,9 +960,6 @@ def readMatrix(filename, side = None):
 
         ## print "Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all)
         cols = method_finish(tmpCols, nbRows, nbCols)
-        for (cid, col) in enumerate(cols):
-            col.setId(cid)
-            col.side = side
     except DataError:
         raise
     except (AttributeError, ValueError, StopIteration) as detail:
@@ -897,7 +1002,7 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
             
 def finishSparsenum(tmpCols, nbRows, nbCols):
-    return [NumColM(sorted(tmpCols[col][0], key=lambda x: x[0]), nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
+    return [{"values" : tmpCols[col][0], "missing": tmpCols[col][1], "type": 3} for col in range(len(tmpCols))]
         
 def prepareSparsebool(nbRows, nbCols):
     return [[set(), set()] for i in range(nbCols)]
@@ -916,7 +1021,7 @@ def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
         
 def finishSparsebool(tmpCols, nbRows, nbCols):
-    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
+    return [{"values": tmpCols[col][0], "missing": tmpCols[col][1], "type": 1} for col in range(len(tmpCols))]
 
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
@@ -929,7 +1034,7 @@ def parseVarDensenum(tmpCols, a, nbRows, nbCols):
             except ValueError:
                 miss.add(i)
         tmp.sort(key=lambda x: x[0])
-        tmpCols.append(NumColM( tmp, nbRows, miss ))
+        tmpCols.append({ "values": tmp, "missing": miss, "type":3 })
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
                     
@@ -946,7 +1051,7 @@ def parseVarDensecat(tmpCols, a, nbRows, nbCols):
                     tmp[cat] = set([i])
             except ValueError:
                 miss.add(i) 
-        tmpCols.append(CatColM(tmp, nbRows, miss))
+        tmpCols.append({"values": tmp, "missing": miss, "type": 2})
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
 
@@ -960,7 +1065,7 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
                 if val != 0: tmp.add(i)
             except ValueError:
                 miss.add(i) 
-        tmpCols.append(BoolColM( tmp, nbRows , miss))
+        tmpCols.append({"values": tmp, "missing": miss, "type": 1})
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
     
@@ -972,4 +1077,4 @@ def parseVarDatbool(tmpCols, a, nbRows, nbCols):
     if max(tmp) >= nbRows:
         raise DataError('Too many rows (%i ~ %i)' % (nbRows, max(tmp)+1))
     else:
-        tmpCols.append(BoolColM( tmp, nbRows ))
+        tmpCols.append({"values": tmp, "type": 1})

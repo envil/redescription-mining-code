@@ -474,6 +474,9 @@ class SParts:
                 self.missing = False
                 self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
 
+    def nbRows(self):
+        return self.N
+
     def toDict(self):
         sdict = {}
         if self.missing: up_to = SParts.top

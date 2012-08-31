@@ -1,0 +1,54 @@
+<root>
+  <parameter>
+    <name>logfile</name>
+    <value>+</value>
+</parameter>
+  <parameter>
+    <name>verbosity</name>
+    <value>4</value>
+  </parameter>
+  <parameter>
+    <name>neg_query</name>
+    <value>Positive</value>
+  </parameter>
+  <parameter>
+    <name>max_red</name>
+    <value>10</value>
+  </parameter>
+  <parameter>
+    <name>min_itm_in</name>
+    <value>13</value>
+  </parameter>
+  <parameter>
+    <name>min_itm_out</name>
+    <value>450</value>
+</parameter>
+<parameter>
+  <name>data_rep</name>
+  <value>/home/galbrun/redescriptors/data/rajapaja/</value>
+</parameter>
+<parameter>
+  <name>data_l</name>
+  <value>mammals</value>
+</parameter>
+<parameter>
+  <name>data_r</name>
+  <value>worldclim_tp</value>
+</parameter>
+<parameter>
+  <name>ext_l</name>
+  <value>.sparsebool</value>
+</parameter>
+<parameter>
+  <name>ext_r</name>
+  <value>.densenum</value>
+</parameter>
+<parameter>
+  <name>result_rep</name>
+  <value>/home/galbrun/redescriptors/sandbox/predict_tests/</value>
+</parameter>
+<parameter>
+  <name>out_base</name>
+  <value>crosstest_0</value>
+</parameter>
+</root>

@@ -31,7 +31,7 @@ class Redescription:
         queryR.extend(None, initialPair[1])
         (suppL, missL) = data.literalSuppMiss(0, initialPair[0])
         (suppR, missR) = data.literalSuppMiss(1, initialPair[1])
-        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.N),len(suppR)/float(data.N)])
+        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.nbRows()),len(suppR)/float(data.nbRows())])
         r.track = [(0, initialPair[0].term.col), (1, initialPair[1].term.col)]
         return r
     fromInitialPair = staticmethod(fromInitialPair)
@@ -189,7 +189,7 @@ class Redescription:
             
     def copy(self):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.sParts.supparts(), self.sParts.N, self.probas())
+                             self.sParts.supparts(), self.sParts.nbRows(), self.probas())
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -218,9 +218,9 @@ class Redescription:
 #        print self.disp()
 #        print ' '.join(map(str, nsuppL)) + ' \t' + ' '.join(map(str, nsuppR))
         if len(missL) + len(missR) > 0:
-            self.sParts = SParts(data.N, [nsuppL, nsuppR, missL, missR])
+            self.sParts = SParts(data.nbRows(), [nsuppL, nsuppR, missL, missR])
         else:
-            self.sParts = SParts(data.N, [nsuppL, nsuppR])
+            self.sParts = SParts(data.nbRows(), [nsuppL, nsuppR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         self.dict_supp_info = None
     
@@ -485,7 +485,7 @@ class Redescription:
 
         r = None
         if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
-            supportsS = SParts.parseSupport(stringSupport, data.N)
+            supportsS = SParts.parseSupport(stringSupport, data.nbRows())
             if supportsS is not None:
                 r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
 
