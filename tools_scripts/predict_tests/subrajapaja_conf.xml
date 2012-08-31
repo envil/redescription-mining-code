@@ -13,15 +13,15 @@
   </parameter>
   <parameter>
     <name>max_red</name>
-    <value>10</value>
+    <value>100</value>
   </parameter>
   <parameter>
     <name>min_itm_in</name>
-    <value>13</value>
+    <value>15</value>
   </parameter>
   <parameter>
     <name>min_itm_out</name>
-    <value>450</value>
+    <value>500</value>
 </parameter>
 <parameter>
   <name>data_rep</name>
@@ -45,10 +45,10 @@
 </parameter>
 <parameter>
   <name>result_rep</name>
-  <value>/home/galbrun/redescriptors/sandbox/predict_tests/</value>
+  <value>/home/galbrun/redescriptors/sandbox/tools_scripts/predict_tests/</value>
 </parameter>
 <parameter>
   <name>out_base</name>
-  <value>crosstest_0</value>
+  <value>predictest</value>
 </parameter>
 </root>

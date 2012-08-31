@@ -9,6 +9,9 @@ import siren.reremi.mainReReMi as reremi
 import pdb
  
 def run(arguments):
+    multiprocessus = True
+    nb_parts = 10
+
     params = reremi.getParams(arguments)
 
     params_l = {}
@@ -22,7 +25,6 @@ def run(arguments):
     dataAll = Data([fn_l, fn_r])
 
     ### partition data
-    nb_parts = 5
     rows = range(dataAll.nbRows())
     random.shuffle(rows)
     step = len(rows)/nb_parts
@@ -44,12 +46,15 @@ def run(arguments):
                })
 
     for di, dataset in enumerate(datasets):
-        pid = os.fork()
+        pid = False
+        if multiprocessus:
+            pid = os.fork()
+            
         if pid:
             print "Parent ", di
         else:
             print "START child ", di
-            logger = Log(params_l['verbosity'], params_l['result_rep']+params_l['out_base']+("_%dOUT" % di)+".log")
+            logger = Log(params_l['verbosity'], params_l['result_rep']+params_l['out_base']+("_%d" % di)+".log")
             ticO = datetime.datetime.now()
             data = dataset["in"]
             logger.printL(2, data, "log")
@@ -60,35 +65,39 @@ def run(arguments):
             except KeyboardInterrupt:
                 logger.printL(1, 'Stopped...', "log")
 
-            rowidsOutFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+".rows_ids", "w")
-            rowidsOutFp.write(">>"+" ".join(map(str,in_ids))+"\n")
-            rowidsOutFp.write("<<"+" ".join(map(str,out_ids))+"\n")
-            rowidsOutFp.close()
 
-            queriesOutFp = open(params_l['result_rep']+params_l['out_base']+("_%dOUT" % di)+params_l['ext_queries'], "w")
+            queriesOutFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+params_l['ext_queries'], "w")
             supportOutFp = None
             if len(params_l['ext_support']) > 0:
-                supportOutFp = open(params_l['result_rep']+params_l['out_base']+("_%dOUT" % di)+params_l['ext_support'], "w")
+                supportOutFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+params_l['ext_support'], "w")
 
-            queriesInFp = open(params_l['result_rep']+params_l['out_base']+("_%dIN" % di)+params_l['ext_queries'], "w")
-            supportInFp = None
-            if len(params_l['ext_support']) > 0:
-                supportInFp = open(params_l['result_rep']+params_l['out_base']+("_%dIN" % di)+params_l['ext_support'], "w")
+            resultsFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+".statistics", "w")
 
-
+            coverage = [0 for n in range(dataAll.nbRows())]
             for pos in miner.final["results"]:
                 in_red = miner.final["batch"][pos] 
-                in_red.write(queriesInFp, supportInFp)
+                in_red.write(queriesOutFp, supportOutFp)
+                
                 out_red = Redescription.fromQueriesPair(in_red.queries, dataset["out"])
-                out_red.write(queriesOutFp, supportOutFp)
 
+                resultsFp.write(" ".join(map(str, in_red.supports().lparts()))+"\t"+
+                                " ".join(map(str, out_red.supports().lparts()))+"\n")
+
+                for row in in_red.suppI():
+                    coverage[in_ids[row]] += 1
+
+                for row in out_red.suppI():
+                    coverage[out_ids[row]] += 1
+
+            resultsFp.close()
             queriesOutFp.close()
             if supportOutFp is not None:
                 supportOutFp.close()
-
-            queriesInFp.close()
-            if supportInFp is not None:
-                supportInFp.close()
+            
+            coverFp = open(params_l['result_rep']+params_l['out_base']+("_%d" % di)+".cover", "w")
+            coverFp.write("\n".join(["0 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(in_ids)]))
+            coverFp.write("\n".join(["1 %d %d %d" % (sr, ar, coverage[ar]) for (sr, ar) in enumerate(out_ids)]))
+            coverFp.close()
 
             tacO = datetime.datetime.now()
 
