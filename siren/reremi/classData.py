@@ -613,7 +613,7 @@ class Data:
     def __init__(self, cols=[[],[]], N=0, coords=None):
 
         if type(cols) == list and len(cols) == 2:
-            if type(cols[1]) == str and os.path.isfile(cols[1]):
+            if type(cols[1]) in [str, unicode] and os.path.isfile(cols[1]):
                 ### parameters are in fact data_filenames, names_filenames, and coordinate filenames
                 try:
                     (cols, N, coords) = readDNCFromFiles(cols, N, coords)

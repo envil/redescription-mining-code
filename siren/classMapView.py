@@ -14,7 +14,7 @@ from matplotlib.backends.backend_wxagg import \
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 
-import pdb
+
 
 class MapView:
 

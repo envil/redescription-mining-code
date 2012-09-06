@@ -473,6 +473,7 @@ class Siren():
         menuBar.Append(menuView, "&View")
         menuBar.Append(menuHelp, "&Help")
         frame.SetMenuBar(menuBar)
+        frame.SendSizeEvent()
 
 ######################################################################
 ###########     MAP VIEWS
