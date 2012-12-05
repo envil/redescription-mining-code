@@ -27,7 +27,7 @@ def run_filter(arguments):
 
     logger = Log(params_l['verbosity'], params_l['logfile'])
     
-    data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']])
+    data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']], "multiple")
     logger.printL(2, data, "log")
 
 
@@ -100,7 +100,7 @@ def run(arguments):
             fn_support = params_l['result_rep']+params_l['out_base']+params_l['ext_support']
 
     logger = Log(params_l['verbosity'], fn_log)
-    data = Data([fn_l, fn_r])
+    data = Data([fn_l, fn_r], "multiple")
     logger.printL(2, data, "log")
 
     miner = Miner(data, params, logger)

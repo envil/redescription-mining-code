@@ -3,7 +3,7 @@ import wx
 import threading
 import time
 import sys
-import wx.lib.agw.pybusyinfo as PBI
+# import wx.lib.agw.pybusyinfo as PBI
 import wx.lib.dialogs
 
 from reremi.toolLog import Log
@@ -17,7 +17,7 @@ from classGridTable import VarTable, RedTable
 from classMapView import MapView
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
-from miscDialogs import ImportDataDialog
+from miscDialogs import ImportDataDialog, ImportDataCSVDialog
 
 import pdb
 
@@ -187,7 +187,7 @@ class Siren():
         self.readingFileDlg = None
 
         ## Comment (out) to toggle between loading data in input and not
-        #self.dw.importDataFromFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
+        #self.dw.importDataFromMulFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
         #self.dw.importRedescriptionsTXTFromFile(tmp_redescriptions_filename)
         #self.dw.importPreferencesFromFile(tmp_settings_filename)
 
@@ -408,6 +408,9 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
 
         submenuImportData = wx.Menu()
+        ID_IMPORT_DATA_CSV = wx.NewId()
+        m_impDataCSV = submenuImportData.Append(ID_IMPORT_DATA_CSV, "Import from CSV files", "Import data in CSV format.")
+        frame.Bind(wx.EVT_MENU, self.OnImportDataCSV, m_impDataCSV)
         ID_IMPORT_DATA_XML = wx.NewId()
         m_impDataXML = submenuImportData.Append(ID_IMPORT_DATA_XML, "Import from XML", "Import data in XML format.")
         frame.Bind(wx.EVT_MENU, self.OnImportDataXML, m_impDataXML)
@@ -473,6 +476,7 @@ class Siren():
         menuBar.Append(menuView, "&View")
         menuBar.Append(menuHelp, "&Help")
         frame.SetMenuBar(menuBar)
+        frame.Layout()
         frame.SendSizeEvent()
 
 ######################################################################
@@ -656,6 +660,20 @@ class Siren():
 
         dlg = ImportDataDialog(self)
         dlg.showDialog()
+
+    def OnImportDataCSV(self, event):
+        """Shows a custom dialog to open the two data files"""
+        if self.dw.data is not None:
+            if not self.checkAndProceedWithUnsavedChanges():
+                return
+        if len(self.dw.reds) > 0:
+            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+            if sure_dlg.ShowModal() != wx.ID_OK:
+                return
+            sure_dlg.Destroy()
+
+        dlg = ImportDataCSVDialog(self)
+        dlg.showDialog()
             
     def OnImportDataXML(self, event):
         if self.dw.data is not None:
@@ -673,7 +691,7 @@ class Siren():
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
-                self.dw.importDataFromFile(path)
+                self.dw.importDataFromXMLFile(path)
             except:
                 pass
             else:
@@ -957,17 +975,17 @@ class Siren():
         """Shows a dialog that we're reading a file"""
         self.statusbar.SetStatusText(short_msg, 0)
         self.toolFrame.Enable(False)
-        #self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
+        self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
         #self.busyDlg = CBusyDialog.showBox(self.toolFrame, msg, short_msg, None)
-        self.busyDlg = PBI.PyBusyInfo(msg, parent=self.toolFrame, title=short_msg)
+        #self.busyDlg = PBI.PyBusyInfo(msg, parent=self.toolFrame, title=short_msg)
         # DEBUG
-        #time.sleep(5)
+        # time.sleep(5)
         
 
     def stopFileActionMsg(self, msg=''):
         """Removes the BusyInfo dialog"""
-        #self.busyDlg = None
-        del self.busyDlg # Removes the dialog
+        self.busyDlg.Destroy()
+        #del self.busyDlg # Removes the dialog
         self.busyDlg = None
         self.toolFrame.Enable(True)
         self.statusbar.SetStatusText(msg, 0)

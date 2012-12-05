@@ -1,3 +1,4 @@
+
 import os.path
 import numpy as np
 import codecs, re
@@ -18,8 +19,12 @@ class DataError(Exception):
 
 class ColM:
 
-    typespec_placeholder = "<!-- TYPE_SPECIFIC -->" 
+    typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
 
+    def parseList(list):
+        return None
+    parseList = staticmethod(parseList)
+    
     def __init__(self, N=-1, nmiss= set()):
         if nmiss is None:
             nmiss = set()
@@ -30,7 +35,6 @@ class ColM:
         self.name = None
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
-
                 
     def nbRows(self):
         return self.N
@@ -131,6 +135,20 @@ class ColM:
 class BoolColM(ColM):
     type_id = 1
 
+    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
+    def parseList(listV, indices=None):
+        if indices is None:
+            indices = range(len(listV))
+        trues = set()
+        for i, vt in enumerate(listV):
+            v = vt.lower()
+            if v not in values or i >= len(indices):
+                return None
+            elif values[v]:
+                trues.add(indices[i])
+        return BoolColM(trues, len(listV))
+    parseList = staticmethod(parseList)
+
     def getTerm(self, details=None):
         return BoolTerm(self.id)
 
@@ -200,6 +218,22 @@ class BoolColM(ColM):
     
 class CatColM(ColM):
     type_id = 2
+
+    num_patt = "^-?\d+(\.\d+)?$"
+    def parseList(listV, indices=None):
+        if indices is None:
+            indices = range(len(listV))
+        cats = {}
+        for i, v in enumerate(listV):
+            if re.match(num_patt, v) or i >= len(indices):
+                return None
+            else:
+                if cats.has_key(cat):
+                    cats[cat].add(indices[i])
+                else:
+                    cats[cat] = set([indices[i]])
+        return CatColM(cats, len(listV))
+    parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
         return CatTerm(self.id, self.cats()[0])
@@ -278,6 +312,20 @@ class CatColM(ColM):
     
 class NumColM(ColM):
     type_id = 3
+
+    num_patt = "^-?\d+(\.\d+)?$"
+    def parseList(listV, indices=None):
+        if indices is None:
+            indices = range(len(listV))
+        vals = []
+        for i, v in enumerate(listV):
+            if not re.match(num_patt, v) or i >= len(indices):
+                return None
+            else:
+                val = float(v)
+                vals.append((v, indices[i]))
+        return NumColM(vals, len(listV))
+    parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
         return NumTerm(self.id, self.sVals[0][0], self.sVals[-1][0])
@@ -608,35 +656,32 @@ class NumColM(ColM):
 class Data:
 
     separator_str = "[;, \t]"
-    var_types = {1: BoolColM, 2: CatColM, 3: NumColM}
+    var_types = [None, BoolColM, CatColM, NumColM]
 
     def __init__(self, cols=[[],[]], N=0, coords=None):
 
-        if type(cols) == list and len(cols) == 2:
-            if type(cols[1]) in [str, unicode] and os.path.isfile(cols[1]):
-                ### parameters are in fact data_filenames, names_filenames, and coordinate filenames
-                try:
-                    (cols, N, coords) = readDNCFromFiles(cols, N, coords)
-                except DataError:
-                    cols, N, coords = [[],[]], 0, None
-                    raise
+        if type(N) == int:
+            self.cols = cols
+            self.N = N
+            self.setCoords(coords)
 
-            if type(cols[1]) == list:
-                if len(cols[1]) > 0 and type(cols[1][0]) == dict:
-                    self.colsFromDicts(cols, N)
-                else:
-                    self.cols = cols
-                self.N = N
-                self.setCoords(coords)
-            else:
-                print "Input non recognized!"
-                
-        else:
+        elif type(N) == str:
             try:
-                self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
+                if N == "multiple":
+                    self.cols, self.N, self.coords = readDNCFromMulFiles(cols)
+                elif N == "csv":
+                    self.cols, self.N, self.coords = readDNCFromCSVFiles(cols)
+                elif N == "xml":
+                    self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
+
             except DataError:
                 self.cols, self.N, self.coords = [[],[]], 0, None
                 raise
+
+        else:
+            print "Input non recognized!"
+            self.cols, self.N, self.coords = [[],[]], 0, None
+            raise
             
         if type(self.cols) == list and len(self.cols) == 2:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
@@ -664,20 +709,6 @@ class Data:
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
         return Data(cols, N, coords)
-
-    def colsFromDicts(self, colsDicts, N):
-        self.cols = [[], []]
-        for side in [0,1]:
-            for dc in colsDicts[side]:
-                if dc.get("type") not in Data.var_types.keys():
-                    print "Unknown variable type !"
-                    ### IMPLEMENT AUTO RECOGNITION OF TYPE
-                else:
-                    col = Data.var_types[dc["type"]](dc["values"], N, dc.get("missing"))
-                    col.setId(len(self.cols[side]))
-                    col.side = side
-                    col.name = dc.get("name")
-                    self.cols[side].append(col)
                     
     def hasMissing(self):
         for side in [0,1]:
@@ -814,6 +845,32 @@ class Data:
 ############################################################################
 ############## READING METHODS
 ############################################################################
+def readDNCFromCSVFiles(filenames):
+    print "Not yet implemented"
+
+def parseDNCFromCSVData(csv_data):
+
+    cols = [[],[]]
+    coords = csv_data[side].get("coords", None) 
+    
+    for side in [0,1]:
+        indices = csv_data[side]["indices"]
+        N = len(indices)
+        for name, values in csv_data[side]["columns"]:
+            col = None
+            type_ids = [BoolColM.type_id, NumColM.type_id, CatColM.type_id]
+            while col is None and len(type_ids) > 1:
+                col = Data.var_types[type_ids.pop()].parseList(values, indices)
+                type_id += 1
+
+            if col is not None and col.N == N:
+                col.setId(len(cols[side]))
+                col.side = side
+                col.name = name
+                cols[side].append(col)
+            
+    return (cols, N, coords)
+
 def readDNCFromXMLFile(filename):
     (cols, N, coords) = ([[],[]], 0, None)
     try:
@@ -833,7 +890,7 @@ def readDNCFromXMLFile(filename):
                 nb_vars = toolRead.getTagData(side_data, "nb_variables", int)
                 for var_tmp in side_data.getElementsByTagName("variable"):
                     type_id = toolRead.getTagData(var_tmp, "type_id", int)
-                    if type_id not in Data.var_types.keys():
+                    if type_id >= len(Data.var_types):
                         print "Unknown variable type (%d)!" % type_id
                     else:
                         col = Data.var_types[type_id]()
@@ -855,34 +912,43 @@ def readDNCFromXMLFile(filename):
                 coords = None
     return (cols, N, coords)
 
-def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None):
-    if names_filenames == 0 or  names_filenames is None:
-        names_filenames = ".names"
-    (cols, N) = readVariables(data_filenames)
-    if coo_filename is not None:
-        coords = readCoords(coo_filename)
-    else:
-        coords = None
+def readDNCFromMulFiles(filenames):
+    cols, N, coords = [[],[]], 0, None
+    if len(filenames) >= 2:
+        (cols, N) = readVariables(filenames[:2])
+        
+        if len(filenames) >=5 :
+            coords = readCoords(filenames[4])
 
-    if type(names_filenames) == str:
-        extension = names_filenames
         names_filenames = [None, None]
-        for side in [0,1]:
-            filename = data_filenames[side]
-            filename_parts = filename.split('.')
-            filename_parts.pop()
-            names_filename = '.'.join(filename_parts) + extension
-            if os.path.exists(names_filename):
-                names_filenames[side] = names_filename
+        extension = ".names"
+        if len(filenames) == 3:
+            extension = filenames[2]
+        elif len(filenames) >= 4:
+            if filenames[3] is None and filenames[2] is not None:
+                extension = filenames[2]
 
-    for side in [0,1]:
-        if names_filenames[side] is not None:
-            tmp_names = readNamesSide(names_filenames[side])
-            if len(tmp_names) == len(cols[side]):
-                for i in range(len(cols[side])):
-                    cols[side][i]["name"] = tmp_names[i]
             else:
-                print "Number of names does not match number of variables on side %d." % side
+                for side in [0,1]:
+                    if filenames[2+side] is not None and os.path.exists(filenames[2+side]):
+                        names_filenames[side] = filenames[2+side]
+
+        for side in [0,1]:
+            if names_filenames[side] is None:
+                filename = filenames[side]
+                filename_parts = filename.split('.')
+                filename_parts.pop()
+                names_filename = '.'.join(filename_parts) + extension
+                if os.path.exists(names_filename):
+                    names_filenames[side] = names_filename
+
+            if names_filenames[side] is not None:
+                tmp_names = readNamesSide(names_filenames[side])
+                if len(tmp_names) == len(cols[side]):
+                    for i in range(len(cols[side])):
+                        cols[side][i].name = tmp_names[i]
+                else:
+                    print "Number of names does not match number of variables on side %d." % side
     return (cols, N, coords)
         
 def readCoords(filename):
@@ -909,8 +975,10 @@ def readVariables(filenames):
         else:
             if nbRowsT is None:
                 nbRowsT = nbRows
-                data.append(cols)
-            elif nbRowsT == nbRows:
+            if nbRowsT == nbRows:
+                for cid, col in enumerate(cols):
+                    col.id = cid
+                    col.side = side
                 data.append(cols)
             else:
                 raise DataError('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))
@@ -1002,8 +1070,8 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
             
 def finishSparsenum(tmpCols, nbRows, nbCols):
-    return [{"values" : tmpCols[col][0], "missing": tmpCols[col][1], "type": 3} for col in range(len(tmpCols))]
-        
+    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]        
+
 def prepareSparsebool(nbRows, nbCols):
     return [[set(), set()] for i in range(nbCols)]
 
@@ -1021,7 +1089,7 @@ def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
         
 def finishSparsebool(tmpCols, nbRows, nbCols):
-    return [{"values": tmpCols[col][0], "missing": tmpCols[col][1], "type": 1} for col in range(len(tmpCols))]
+    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
 
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
@@ -1034,7 +1102,7 @@ def parseVarDensenum(tmpCols, a, nbRows, nbCols):
             except ValueError:
                 miss.add(i)
         tmp.sort(key=lambda x: x[0])
-        tmpCols.append({ "values": tmp, "missing": miss, "type":3 })
+        tmpCols.append(NumColM(tmp, nbRows, miss))
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
                     
@@ -1051,7 +1119,7 @@ def parseVarDensecat(tmpCols, a, nbRows, nbCols):
                     tmp[cat] = set([i])
             except ValueError:
                 miss.add(i) 
-        tmpCols.append({"values": tmp, "missing": miss, "type": 2})
+        tmpCols.append(CatColM(tmp, nbRows, miss))
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
 
@@ -1065,7 +1133,7 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
                 if val != 0: tmp.add(i)
             except ValueError:
                 miss.add(i) 
-        tmpCols.append({"values": tmp, "missing": miss, "type": 1})
+        tmpCols.append(BoolColM(tmp, nbRows, miss))
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
     
@@ -1077,4 +1145,4 @@ def parseVarDatbool(tmpCols, a, nbRows, nbCols):
     if max(tmp) >= nbRows:
         raise DataError('Too many rows (%i ~ %i)' % (nbRows, max(tmp)+1))
     else:
-        tmpCols.append({"values": tmp, "type": 1})
+        tmpCols.append(BoolColM(tmp, nbRows))

@@ -114,7 +114,7 @@ class Neg:
 class Term:
     type_id = 0
 
-    patt = '(?P<col>[^\\=<>'+ ur'\u2a7d'+ur'\u2208'+ur'\u2209'+']+)'
+    patt = '(?P<col>[^\\=<>'+ ur'\u2264'+ur'\u2208'+ur'\u2209'+']+)'
     
     def __init__(self, ncol):
         self.col = ncol
@@ -326,15 +326,17 @@ class CatTerm(Term):
 class NumTerm(Term):
     type_id = 3
 
-    patt = ['^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*\\\\leq\{\}\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>-?\d+\.\d+)\s*\]\s*\$\s*$',
-            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*\\\\leq\{\}\s*'+Term.patt+'\s*\]\s*\$\s*$',
-            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>-?\d+\.\d+)\s*\]\s*\$\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*[' + ur'\u2a7d' +'|<]\s*'+Term.patt+'\s*[' + ur'\u2a7d' +'<]\s*(?P<upb>-?\d+\.\d+)\s*\]\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>-?\d+\.\d+)\s*[' + ur'\u2a7d' +'|<]\s*'+Term.patt+'\s*\]\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*'+Term.patt+'\s*[' + ur'\u2a7d' +'<]\s*(?P<upb>-?\d+\.\d+)\s*\]\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>-?\d+\.\d+)\s*\<\s*(?P<upb>-?\d+\.\d+)\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>-?\d+\.\d+)\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>-?\d+\.\d+)\s*$']
+    num_patt = '-?\d+\.\d+'
+    
+    patt = ['^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>'+num_patt+')\s*\\\\leq\{\}\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>'+num_patt+')\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>'+num_patt+')\s*\\\\leq\{\}\s*'+Term.patt+'\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\$\s*\[\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>'+num_patt+')\s*\]\s*\$\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + ur'\u2264' +'|<]\s*'+Term.patt+'\s*[' + ur'\u2264' +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + ur'\u2264' +'|<]\s*'+Term.patt+'\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*'+Term.patt+'\s*[' + ur'\u2264' +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*\<\s*(?P<upb>'+num_patt+')\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>'+num_patt+')\s*$']
     
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf') or nlowb > nupb:
@@ -443,11 +445,11 @@ class NumTerm(Term):
             neg = Neg(neg)
             ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = u'[%s \u2a7d ' % float(self.lowb)
+            lb = u'[%s \u2264 ' % float(self.lowb)
         else:
             lb = '['
         if self.upb < float('Inf'):
-            ub = u' \u2a7d %s]' % float(self.upb)
+            ub = u' \u2264 %s]' % float(self.upb)
         else:
             ub = ']'
         negstr = u' %s' % neg.dispU()

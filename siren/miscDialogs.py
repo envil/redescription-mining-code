@@ -55,9 +55,9 @@ class ImportDataDialog(object):
         if self.dlg.ShowModal() == wx.ID_OK:
             try:
                 if self.RHSfile is None:
-                    self.parent.dw.importDataFromFile(self.LHSfile)
+                    self.parent.dw.importDataFromMulFile(self.LHSfile)
                 else:
-                    self.parent.dw.importDataFromFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
+                    self.parent.dw.importDataFromMulFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
             except:
                 pass
                 ##raise
@@ -90,7 +90,7 @@ class ImportDataDialog(object):
                 self.LHSfileTxt.ChangeValue(path)
                 self.LHSfile = path
                 # Both TextCtrl and variable hold the same info, but if the latter is empty is None,
-                # making it compatible with dw.importDataFromFiles
+                # making it compatible with dw.importDataFromMulFiles
             elif btnName == 'RHS':
                 self.RHSfileTxt.ChangeValue(path)
                 self.RHSfile = path
@@ -99,4 +99,77 @@ class ImportDataDialog(object):
                 self.Coofile = path
 
 
-        
+class ImportDataCSVDialog(object):
+    """Helper class to show the dialog for importing data file csv pairs"""
+    def __init__(self, parent):
+        self.parent = parent
+        self.dlg = wx.Dialog(self.parent.toolFrame, title="Import data")
+
+        LHStext = wx.StaticText(self.dlg, label='Left-hand side variables file:')
+        RHStext = wx.StaticText(self.dlg, label='Right-hand side variables file:')
+
+        self.LHSfile = None
+        self.RHSfile = None
+
+        self.LHSfileTxt = wx.TextCtrl(self.dlg, value='', size=(500,10), style=wx.TE_READONLY)
+        self.RHSfileTxt = wx.TextCtrl(self.dlg, value='', style=wx.TE_READONLY)
+
+        LHSbtn = wx.Button(self.dlg, label='Choose', name='LHS')
+        RHSbtn = wx.Button(self.dlg, label='Choose', name='RHS')
+
+        LHSbtn.Bind(wx.EVT_BUTTON, self.onButton)
+        RHSbtn.Bind(wx.EVT_BUTTON, self.onButton)
+
+        gridSizer = wx.FlexGridSizer(rows = 2, cols = 3, hgap = 5, vgap = 5)
+        gridSizer.AddGrowableCol(1, proportion=1)
+        gridSizer.SetFlexibleDirection(wx.HORIZONTAL)
+        gridSizer.AddMany([(LHStext, 0, wx.ALIGN_RIGHT), (self.LHSfileTxt, 1, wx.EXPAND), (LHSbtn, 0),
+                           (RHStext, 0, wx.ALIGN_RIGHT), (self.RHSfileTxt, 1, wx.EXPAND), (RHSbtn, 0)])
+
+        btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
+        topSizer = wx.BoxSizer(wx.VERTICAL)
+        topSizer.Add(gridSizer, flag=wx.ALL, border=5)
+        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
+
+        self.dlg.SetSizer(topSizer)
+        self.dlg.Fit()
+
+        self.open_dir = os.path.expanduser('~/')
+        self.wcd = 'All files|*|CSV files|*.csv'
+
+
+    def showDialog(self):
+        if self.dlg.ShowModal() == wx.ID_OK:
+            try:
+                self.parent.dw.importDataCSVFromFiles([self.LHSfile, self.RHSfile])
+            except:
+                pass
+                ##raise
+            else:
+                self.parent.details = {'names': self.parent.dw.getColNames()}
+                self.parent.reloadVars()
+                self.parent.reloadReds()
+            finally:
+                self.dlg.Destroy()
+            return True
+        else:
+            return False
+                
+            
+
+    def onButton(self, e):
+        button = e.GetEventObject()
+        btnName = button.GetName()
+        wcd = self.wcd
+        open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
+                                 defaultDir=self.open_dir, wildcard=wcd,
+                                 style=wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            self.open_dir = os.path.dirname(path)
+            if btnName == 'LHS':
+                self.LHSfileTxt.ChangeValue(path)
+                self.LHSfile = path
+            elif btnName == 'RHS':
+                self.RHSfileTxt.ChangeValue(path)
+                self.RHSfile = path

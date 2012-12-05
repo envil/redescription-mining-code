@@ -214,7 +214,29 @@ class DataWrapper(object):
 
 
 #################### IMPORTS            
-    def importDataFromFiles(self, data_filenames, names_filenames, coo_filename):
+    def importDataFromCSVFiles(self, data_filenames):
+        fnames = list(data_filenames)
+        self._startMessage('importing', fnames)        
+        try:
+            tmp_data = self._readDataFromCSVFiles(data_filenames)
+        except DataError as details:
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            raise
+        except IOError as arg:
+            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            raise
+        except:
+            self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
+            raise
+        else:
+            self.data = tmp_data
+            self.resetRedescriptions()
+            self.isChanged = True
+            self.isFromPackage = False
+        finally:
+            self._stopMessage('importing')
+
+    def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename):
         fnames = list(data_filenames)
         if names_filenames is not None:
             fnames += names_filenames
@@ -223,7 +245,7 @@ class DataWrapper(object):
         self._startMessage('importing', fnames)
         
         try:
-            tmp_data = self._readDataFromFiles(data_filenames, names_filenames, coo_filename)
+            tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
@@ -242,10 +264,10 @@ class DataWrapper(object):
             self._stopMessage('importing')
         
 
-    def importDataFromFile(self, data_filename):
+    def importDataFromXMLFile(self, data_filename):
         self._startMessage('importing', data_filename)
         try:
-            tmp_data = self._readDataFromFile(data_filename)
+            tmp_data = self._readDataFromXMLFile(data_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             raise
@@ -342,20 +364,36 @@ class DataWrapper(object):
             self._stopMessage('loading')
 
 ######################## READS
-    def _readDataFromFiles(self, data_filenames, names_filenames, coo_filename):
+    def _readDataFromCSVFiles(self, data_filenames):
         ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
-            data = Data(data_filenames, names_filenames, coo_filename)
+            data = Data(data_filenames, "csv")
         except:
             raise
         return data
 
-    def _readDataFromFile(self, filename):
+    def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename):
+        ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
+        try:
+            
+            filenames = list(data_filenames)
+            if names_filenames is None:
+                filenames.extend([None, None])
+            else:
+                filenames.extend(names_filenames)
+            if coo_filename is not None:
+                filenames.append(coo_filename)
+            data = Data(filenames, "multiple")
+        except:
+            raise
+        return data
+
+    def _readDataFromXMLFile(self, filename):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
             filep = open(filename, 'r')
-        return Data(filep)
+        return Data(filep, "xml")
 
 
     def _readRedescriptionsFromFile(self, filename, data=None):
@@ -456,7 +494,7 @@ class DataWrapper(object):
             if 'data_filename' in plist:
                 try:
                     fd = package.open(plist['data_filename'], 'r')
-                    data = self._readDataFromFile(fd)
+                    data = self._readDataFromXMLFile(fd)
                 except:
                     raise
                 finally:
