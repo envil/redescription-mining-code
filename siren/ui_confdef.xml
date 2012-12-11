@@ -17,5 +17,63 @@
 	<default><value>4</value></default>
       </parameter>
     </section>
+    <section>
+      <name>Maps</name>
+      <parameter>
+	<name>color_l</name>
+	<label>Color LHS</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Color for plotting the LHS support.</legend>
+	<length>7</length>
+	<default><value>#FF0000</value></default>
+      </parameter>
+      <parameter>
+	<name>color_r</name>
+	<label>Color RHS</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Color for plotting the RHS support.</legend>
+	<length>7</length>
+	<default><value>#0000FF</value></default>
+      </parameter>
+      <parameter>
+	<name>color_i</name>
+	<label>Color Intersection</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Color for plotting the intersection support.</legend>
+	<length>7</length>
+	<default><value>#A020f0</value></default>
+      </parameter>
+      <parameter>
+	<name>dot_size</name>
+	<label>Dot size</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Dot size on the map.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>3</value></default>
+      </parameter>
+      <parameter>
+	<name>dot_shape</name>
+	<label>Dot shape</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Shape of the map dots</legend>
+	<default><value>0</value></default>
+	<options><value>s</value><value>p</value><value>,</value><value>o</value></options>
+      </parameter>
+      <parameter>
+	<name>miss_details</name>
+	<label>Detailed missing</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Show details of different missing values.</legend>
+	<default><value>1</value></default>
+	<options><value>Yes</value><value>No</value></options>
+      </parameter>
+    </section>
   </section>
 </root>

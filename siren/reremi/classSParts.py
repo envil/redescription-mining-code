@@ -23,7 +23,7 @@ def tool_pValSupp(nbRows, supp, pr):
 class SParts:
 
     infos = {"acc": "self.acc()", "pval": "self.pVal()"}
-    type_parts = 0
+    type_parts = None
 
     ## TRUTH TABLE:
     ## A B    OR    AND
@@ -59,52 +59,59 @@ class SParts:
 
     # indexes for the intersections with parts
     #(into: part inter X_True, out: part inter X_False, miss: part inter X_Missing, tot: total part = into + out + miss)
-    (into, out, tot, miss) = range(4)
+    (into, out, tot, imiss) = range(4)
     # indexed for the intersections with parts when considering positive or negative X
     neg_index = [[0, 1, 2, 3], [1, 0, 2, 3]]
-
 
 ############################################################################################################################
 ############################                             WITHOUT MISSING VALUES                        #####################
 ############################################################################################################################
 
-    if type_parts == 0:
+    def resetPartsIds(type_parts):
+        if SParts.type_parts == type_parts:
+            return
+        SParts.type_parts = type_parts
+        (into, out, tot, imiss) = (SParts.into, SParts.out, SParts.tot, SParts.imiss)
+        (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = (SParts.alpha, SParts.beta, SParts.gamma, SParts.delta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud)
+        if type_parts == "none":
 
-        top = delta
-        ##############################################################
-        #### BASIC
-        ##############################################################
+            SParts.top = delta
+            ##############################################################
+            #### BASIC
+            ##############################################################
 
-        ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
-        # Parts in numerator (BLUE), independent of X 
-        IDS_fixnum = [[], [(tot, gamma)]]
-        # Parts in numerator (BLUE), dependent of X: toBlue
-        IDS_varnum = [[(into, gamma)] ,[(into, beta)]]
-        # Parts in denominator (RED), independent of X
-        IDS_fixden = [[(tot, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (tot, beta)]]
-        # Parts in denominator (RED), dependent of X: toRed
-        IDS_varden = [[(into, alpha)], [(into, delta)]]
-        # Parts left uncovered (OUT), (always dependent of X)
-        IDS_out = [[(out, alpha), (tot, delta)], [(out, delta)]]
-        # Parts in contribution (CONT), (always dependent of X)
-        # Contribution: AND entities removed from alpha, OR: entities added to gamma
-        IDS_cont = [[(out, alpha)], [(into, beta)]]
-        # Parts in the new support of the extended query
-        IDS_nsupp = [[(into, alpha), (into, gamma)], [(tot, alpha), (tot, gamma), (into, beta), (into, delta)]]
+            ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+            # Parts in numerator (BLUE), independent of X 
+            SParts.IDS_fixnum = [[], [(tot, gamma)]]
+            # Parts in numerator (BLUE), dependent of X: toBlue
+            SParts.IDS_varnum = [[(into, gamma)] ,[(into, beta)]]
+            # Parts in denominator (RED), independent of X
+            SParts.IDS_fixden = [[(tot, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (tot, beta)]]
+            # Parts in denominator (RED), dependent of X: toRed
+            SParts.IDS_varden = [[(into, alpha)], [(into, delta)]]
+            # Parts left uncovered (OUT), (always dependent of X)
+            SParts.IDS_out = [[(out, alpha), (tot, delta)], [(out, delta)]]
+            # Parts in contribution (CONT), (always dependent of X)
+            # Contribution: AND entities removed from alpha, OR: entities added to gamma
+            SParts.IDS_cont = [[(out, alpha)], [(into, beta)]]
+            # Parts in the new support of the extended query
+            SParts.IDS_nsupp = [[(into, alpha), (into, gamma)], [(tot, alpha), (tot, gamma), (into, beta), (into, delta)]]
 
-        #### TO COMPUTE ACCURACY after building
-        IDS_diff = [alpha, beta]
-        IDS_inter = [gamma]
-        IDS_uncovered = [delta]
+            #### TO COMPUTE ACCURACY after building
+            SParts.IDS_diff = [alpha, beta]
+            SParts.IDS_dL = [alpha]
+            SParts.IDS_dR = [beta]
+            SParts.IDS_inter = [gamma]
+            SParts.IDS_uncovered = [delta]
 
-        ##############################################################
+            ##############################################################
 
-        #### TO COMPUTE SUPPORTS, no index
-        IDS_supp = (gamma, alpha)
-        IDS_miss = ()
-        # indexes swaping when negating one side (0: negating A, 1: negating B)
-        IDS_negated = [(delta, gamma, beta, alpha), \
-                       (gamma, delta, alpha, beta)]
+            #### TO COMPUTE SUPPORTS, no index
+            SParts.IDS_supp = (gamma, alpha)
+            SParts.IDS_miss = ()
+            # indexes swaping when negating one side (0: negating A, 1: negating B)
+            SParts.IDS_negated = [(delta, gamma, beta, alpha), \
+                           (gamma, delta, alpha, beta)]
 
 #### END NO MISSING VALUES
 ############################################################################################################################
@@ -113,90 +120,118 @@ class SParts:
 ############################################################################################################################
 ############################                         WITH MISSING VALUES                               #####################
 ############################################################################################################################
-    else:
+        else:
 
-        top = mud
-        ##############################################################
-        #### GROUNDED
-        ##############################################################
+            SParts.top = mud
+            ##############################################################
+            #### GROUNDED
+            ##############################################################
 
-        if type_parts == 1:
+            if type_parts == "grounded":
 
-            ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
-            # Parts in numerator (BLUE), independent of X 
-            IDS_fixnum = [[], [(tot, gamma)]]
-            # Parts in numerator (BLUE), dependent of X: toBlue
-            IDS_varnum = [[(into, gamma)] ,[(into, beta), (into, mub)]]
-            # Parts in denominator (RED), independent of X
-            IDS_fixden = [[(into, gamma), (out, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (into, beta), (out, beta)]]
-            # Parts in denominator (RED), dependent of X: toRed
-            IDS_varden = [[(into, alpha), (out, mub)], [(into, mub), (into, mubB), (into, delta)]]
-            # Parts left uncovered (OUT), (always dependent of X)
-            IDS_out = [[(out, alpha), (out, mubB), (tot, delta)], [(out, delta)]]
-            # Parts in contribution (CONT), (always dependent of X)
-            # Contribution: AND entities removed from alpha, OR: entities added to gamma
-            IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
-            # Parts in the new support of the extended query
-            IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)], [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
+                ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+                # Parts in numerator (BLUE), independent of X 
+                SParts.IDS_fixnum = [[],
+                              [(tot, gamma)]]
+                # Parts in numerator (BLUE), dependent of X: toBlue
+                SParts.IDS_varnum = [[(into, gamma)] ,
+                              [(into, beta), (into, mub)]]
+                # Parts in denominator (RED), independent of X
+                SParts.IDS_fixden = [[(tot, beta)],
+                              [(tot, gamma), (tot, alpha)]]
+                # Parts in denominator (RED), dependent of X: toRed
+                SParts.IDS_varden = [[(into, alpha), (into, gamma), (out, gamma), (out, mub)],
+                              [(into, mub), (into, mubB), (into, delta), (into, beta), (out, beta)]]
 
-            #### TO COMPUTE ACCURACY after building
-            IDS_diff = [alpha, beta]
-            IDS_inter = [gamma]
-            IDS_uncovered = [delta]
+                # Parts left uncovered (OUT), (always dependent of X)
+                SParts.IDS_out = [[(out, alpha), (out, mubB), (tot, delta)],
+                           [(out, delta)]]
+                # Parts in contribution (CONT), (always dependent of X)
+                # Contribution: AND entities removed from alpha, OR: entities added to gamma
+                SParts.IDS_cont = [[(out, alpha)],
+                            [(into, beta), (into, mub)]]
+                # Parts in the new support of the extended query
+                SParts.IDS_nsupp = [[(into, alpha), (into, gamma)],
+                             [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, muaB), (into, mud)]]
 
-
-        ##############################################################
-        #### OPTIMISTIC
-        ##############################################################
-
-        elif type_parts == 2:
-            
-            ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
-            IDS_fixnum = [[(miss,mua), (miss, mub), (miss, mud), (miss, gamma)],[(tot, mua), (tot, gamma), (tot, mud), (tot, mub), (miss, muaB), (miss, beta)]]
-            IDS_varnum = [[(into, mua), (into, gamma), (into, mub), (into, mud)],[(into, muaB), (into, beta)]]
-            IDS_fixden = [[(tot, gamma), (tot, mub), (miss, mua), (miss, mud), (tot, beta)],[(tot, mua), (tot, gamma), (tot, mub), (tot,  mud), (miss, muaB), (tot, beta), (tot, alpha)]]
-            IDS_varden = [[(into, alpha), (into, mua), (into, mud)],[(into, delta), (into, mubB), (into, muaB)]]
-
-            IDS_out = [[(out, alpha), (miss, alpha), (out, mua), (tot, delta), (tot, mubB), (out, mud), (tot, muaB)],[(out, delta), (miss, delta), (out, mubB), (miss,mubB), (out,muaB)]]
-            IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
-            IDS_nsupp = [[(into, alpha), (into, mua), (into, gamma), (into, mub), (into, mud)],[(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud), (into, muaB)]]
-
-            #### TO COMPUTE ACCURACY after building
-            IDS_diff = [alpha, beta]
-            IDS_inter = [gamma, mub, mua, mud]
-            IDS_uncovered = [delta, mubB, muaB]
+                #### TO COMPUTE ACCURACY after building
+                SParts.IDS_diff = [alpha, beta]
+                SParts.IDS_dL = [alpha]
+                SParts.IDS_dR = [beta]
+                SParts.IDS_inter = [gamma]
+                SParts.IDS_uncovered = [delta]
 
 
-        ##############################################################
-        #### PESSIMISTIC
-        ##############################################################
+            ##############################################################
+            #### OPTIMISTIC
+            ##############################################################
 
-        elif type_parts == 3:
+            elif type_parts == "optimistic":
 
-            ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
-            IDS_fixnum = [[], [(tot, gamma)]]
-            IDS_varnum = [[(into, gamma)] ,[(into, beta), (into, mub)]]
-            IDS_fixden = [[(miss, alpha), (tot, mua), (tot, gamma), (tot, mub), (tot, beta), (miss, mubB), (tot, mud), (tot, muaB)], [(tot, gamma), (tot, alpha), (tot, beta), (tot, mua), (tot, muaB), (tot, mub), (tot, mubB), (tot, mud)]]
-            IDS_varden = [[(into, alpha), (into, mubB)], [(into, delta), (miss, delta)]]
+                ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+                SParts.IDS_fixnum = [[(imiss, mua), (imiss, mub), (imiss, mud), (imiss, gamma)],
+                                     [(tot, mua), (tot, gamma), (tot, mud), (tot, mub), (imiss, muaB), (imiss, beta)]]
+                SParts.IDS_varnum = [[(into, mua), (into, gamma), (into, mub), (into, mud)],
+                                     [(into, muaB), (into, beta), (imiss, muaB), (imiss, beta)]]
+                SParts.IDS_fixden = [[(tot, gamma), (tot, mub), (tot, beta)],
+                                     [(tot, mua), (tot, gamma), (tot, mub), (tot,  mud), (imiss, muaB), (tot, beta), (tot, alpha)]]
+                SParts.IDS_varden = [[(into, alpha), (into, mua), (into, mud), (imiss, mua), (imiss, mud)],
+                                     [(into, delta), (into, mubB), (into, muaB)]]
 
-            IDS_out = [[(out, alpha), (out, mubB), (tot, delta)], [(out, delta)]]
-            IDS_cont = [[(out, alpha)], [(into, beta), (into, mub)]]
-            IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)], [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
+                SParts.IDS_out = [[(out, alpha), (imiss, alpha), (out, mua), (tot, delta), (tot, mubB), (out, mud), (tot, muaB)],
+                                  [(out, delta), (imiss, delta), (out, mubB), (imiss,mubB), (out,muaB)]]
+                SParts.IDS_cont = [[(out, alpha)],
+                                   [(into, beta), (into, mub)]]
+                SParts.IDS_nsupp = [[(into, alpha), (into, mua), (into, gamma), (into, mub), (into, mud)],
+                                    [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud), (into, muaB)]]
 
-            #### TO COMPUTE ACCURACY after building
-            IDS_diff = [alpha, beta, mub, mua, mubB, muaB, mud]
-            IDS_inter =  [gamma]
-            IDS_uncovered = [delta]
-            
-        ##############################################################
+                #### TO COMPUTE ACCURACY after building
+                SParts.IDS_diff = [alpha, beta]
+                SParts.IDS_dL = [alpha]
+                SParts.IDS_dR = [beta]
+                SParts.IDS_inter = [gamma, mub, mua, mud]
+                SParts.IDS_uncovered = [delta, mubB, muaB]
 
-        ### TO COMPUTE SUPPORTS, no index
-        IDS_supp = (gamma, alpha, mua)
-        IDS_miss = (mub, mubB, mud)
-        ### indexes swaping when negating one side (0: negating A, 1: negating B)
-        IDS_negated = [(delta, gamma, beta, alpha, muaB, mub, mua, mubB, mud), \
-                       (gamma, delta, alpha, beta, mua, mubB, muaB, mub, mud)]
 
+            ##############################################################
+            #### PESSIMISTIC
+            ##############################################################
+
+            elif type_parts == "pessimistic":
+
+                ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+                SParts.IDS_fixnum = [[],
+                                     [(tot, gamma)]]
+                SParts.IDS_varnum = [[(into, gamma)] ,
+                                     [(into, beta), (into, mub)]]
+                SParts.IDS_fixden = [[(imiss, alpha), (tot, mua), (tot, gamma), (tot, mub), (tot, beta), (imiss, mubB), (tot, mud), (tot, muaB)],
+                                     [(tot, gamma), (tot, alpha), (tot, beta), (tot, mua), (tot, muaB), (tot, mub), (tot, mubB), (tot, mud)]]
+                SParts.IDS_varden = [[(into, alpha), (into, mubB)],
+                                     [(into, delta), (imiss, delta)]]
+
+                SParts.IDS_out = [[(out, alpha), (out, mubB), (tot, delta)],
+                                  [(out, delta)]]
+                SParts.IDS_cont = [[(out, alpha)],
+                                   [(into, beta), (into, mub)]]
+                SParts.IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)],
+                                    [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
+
+                #### TO COMPUTE ACCURACY after building
+                SParts.IDS_diff = [alpha, beta, mub, mua, mubB, muaB, mud]
+                SParts.IDS_dL = [alpha, mua, mubB]
+                SParts.IDS_dR = [beta, mub, muaB, mud]
+                SParts.IDS_inter =  [gamma]
+                SParts.IDS_uncovered = [delta]
+
+            ##############################################################
+
+            ### TO COMPUTE SUPPORTS, no index
+            SParts.IDS_supp = (gamma, alpha, mua)
+            SParts.IDS_miss = (mub, mubB, mud)
+            ### indexes swaping when negating one side (0: negating A, 1: negating B)
+            SParts.IDS_negated = [(delta, gamma, beta, alpha, muaB, mub, mua, mubB, mud), \
+                           (gamma, delta, alpha, beta, mua, mubB, muaB, mub, mud)]
+    resetPartsIds = staticmethod(resetPartsIds)
 #### END WITH MISSING VALUES
 ############################################################################################################################
 
@@ -610,6 +645,10 @@ class SParts:
     # return support of union (suppA union suppB)
     def suppU(self, side=0):
         return self.suppI(side) | self.suppD(side)
+    def suppL(self, side=0):
+        return self.part_union(SParts.IDS_dL, side)
+    def suppR(self, side=0):
+        return self.part_union(SParts.IDS_dR, side)
 
     ## corresponding lengths
     def lenD(self, side=0):
@@ -620,10 +659,14 @@ class SParts:
         return self.lparts_union(SParts.IDS_uncovered, side)
     def lenU(self, side=0):
         return self.lenD(side)+self.lenI(side)
+    def lenL(self, side=0):
+        return self.lparts_union(SParts.IDS_dL, side)
+    def lenR(self, side=0):
+        return self.lparts_union(SParts.IDS_dR, side)
 
     # accuracy
     def acc(self, side=0):
-        lenI = self.lenI( side)
+        lenI = self.lenI(side)
         if lenI == 0:
             return 0
         else:
@@ -734,7 +777,7 @@ class SParts:
             for partId in range(len(self.sParts)):
                 for i in self.sParts[partId]:
                     self.vect[i] = partId
-        
+
     # returns the index of the part the given row belongs to, vectorABCD need to have been computed 
     def partRow(self, row):
         return self.vect[row]

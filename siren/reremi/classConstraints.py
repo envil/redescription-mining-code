@@ -57,6 +57,8 @@ class Constraints:
         return (sc_min_c, sc_min_in, sc_min_out)
 
 
+    def partsType(self):
+        return self._pv["parts_type"]
     def amnesic(self):
         return self._pv["amnesic"]
     def batch_out(self):

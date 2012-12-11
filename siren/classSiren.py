@@ -146,14 +146,12 @@ class Siren():
         # tmp_redescriptions_filename='../data/dblp/dblp_picked_real.queries'
         # tmp_settings_filename='../data/dblp/dblp_picked_real.conf'
 
-
-        #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        tmp_num_filename='../rajapaja/worldclim_tp.densenum'
-        tmp_bool_filename='../rajapaja/mammals.datbool'
-        tmp_coo_filename='../rajapaja/coordinates.names'
-        tmp_redescriptions_filename='../rajapaja/rajapaja.queries'
-        tmp_settings_filename='../rajapaja/rajapaja_conf.xml'
-
+        # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
+        # tmp_num_filename='../rajapaja/worldclim_tp.densenum'
+        # tmp_bool_filename='../rajapaja/mammals.datbool'
+        # tmp_coo_filename='../rajapaja/coordinates.names'
+        # tmp_redescriptions_filename='../rajapaja/rajapaja.queries'
+        # tmp_settings_filename='../rajapaja/rajapaja_conf.xml'
 
         # ### COMMENT OUT TO LOAD US ON STARTUP
         # tmp_num_filename='../data/us/us_politics_funds_cont.densenum'
@@ -984,9 +982,10 @@ class Siren():
 
     def stopFileActionMsg(self, msg=''):
         """Removes the BusyInfo dialog"""
-        self.busyDlg.Destroy()
-        #del self.busyDlg # Removes the dialog
-        self.busyDlg = None
-        self.toolFrame.Enable(True)
-        self.statusbar.SetStatusText(msg, 0)
+        if self.busyDlg is not None:
+            self.busyDlg.Destroy()
+            # del self.busyDlg # Removes the dialog
+            self.busyDlg = None
+            self.toolFrame.Enable(True)
+            self.statusbar.SetStatusText(msg, 0)
         

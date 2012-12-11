@@ -77,6 +77,13 @@ def run(arguments):
         params_l[k] = v["data"]
 
     ### construct filenames
+    if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
+        style_data = "csv"
+        add_info = [{}, "NA"]
+    else:
+        style_data = "multiple"
+        add_info = []
+        
     fn_l = params_l['data_rep']+params_l['data_l']+params_l['ext_l']
     fn_r = params_l['data_rep']+params_l['data_r']+params_l['ext_r']
 
@@ -100,7 +107,7 @@ def run(arguments):
             fn_support = params_l['result_rep']+params_l['out_base']+params_l['ext_support']
 
     logger = Log(params_l['verbosity'], fn_log)
-    data = Data([fn_l, fn_r], "multiple")
+    data = Data([fn_l, fn_r]+add_info, style_data)
     logger.printL(2, data, "log")
 
     miner = Miner(data, params, logger)

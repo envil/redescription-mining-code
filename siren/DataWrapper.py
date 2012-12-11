@@ -215,7 +215,7 @@ class DataWrapper(object):
 
 #################### IMPORTS            
     def importDataFromCSVFiles(self, data_filenames):
-        fnames = list(data_filenames)
+        fnames = list(data_filenames[:2])
         self._startMessage('importing', fnames)        
         try:
             tmp_data = self._readDataFromCSVFiles(data_filenames)
@@ -226,7 +226,7 @@ class DataWrapper(object):
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
         except:
-            self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
+            self.logger.printL(1,"Unexpected error while importing data from CSV files!\n%s" %  sys.exc_info()[1], "error", "DW")
             raise
         else:
             self.data = tmp_data

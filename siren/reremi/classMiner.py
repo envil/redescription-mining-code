@@ -155,7 +155,7 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        ## ids = [[190, 8], [28, 26, 13]]
+        # ids = [[78], [28, 26, 13]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -180,7 +180,6 @@ class Miner:
                         if self.double_check:
                             tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
                             if tmp.acc() != scores[i]:
-                                ### H pdb.set_trace()
                                 self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
                         
                         self.initial_pairs.add(literalsL[i], literalsR[i], scores[i])

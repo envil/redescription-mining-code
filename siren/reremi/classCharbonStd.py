@@ -8,7 +8,6 @@ class Charbon:
 
     def __init__(self, constraints, type_parts = 0):
         ### For use with no missing values
-        SParts.type_parts = 0
         self.constraints = constraints
         
     def getCandidates(self, side, col, supports, init=0):

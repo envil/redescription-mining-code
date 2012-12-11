@@ -340,7 +340,6 @@ class NumTerm(Term):
     
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf') or nlowb > nupb:
-            #pdb.set_trace()
             raise Warning('Unbounded numerical term !')
         else:
             self.col = ncol

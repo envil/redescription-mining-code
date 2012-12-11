@@ -14,7 +14,7 @@ from matplotlib.backends.backend_wxagg import \
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 
-
+import pdb
 
 class MapView:
 
@@ -27,16 +27,9 @@ class MapView:
     label_cardO=u"|E_{0,0}|  ="
     label_cardT=u"|E|      ="
 
-    COLOR_LEFT = (255,0,0)
-    COLOR_RIGHT = (0,0,255)
-    COLOR_INTER = (160,32,240)
+    colors_def = [("color_l", (0,0,255)), ("color_r", (255,0,0)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
-    
-    # COLOR_LEFT = (175,175,175)
-    # COLOR_RIGHT = (125,125,125)
-    # COLOR_INTER = (25,25,25)
-    # DOT_ALPHA = 0.6
-    
+        
     WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"
     LINES_COLOR = "gray"
@@ -66,8 +59,9 @@ class MapView:
         self.QIds = [wx.NewId(), wx.NewId()]
         self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0], style=wx.TE_PROCESS_ENTER),
                            wx.TextCtrl(self.mapFrame, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
-        self.MapredMapQ[0].SetForegroundColour(MapView.COLOR_LEFT)
-        self.MapredMapQ[1].SetForegroundColour(MapView.COLOR_RIGHT)
+        colors = self.getColors()
+        self.MapredMapQ[0].SetForegroundColour(colors[0])
+        self.MapredMapQ[1].SetForegroundColour(colors[1])
         ssizetxt = 90
         lsizetxt = 90
         self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
@@ -88,9 +82,10 @@ class MapView:
         self.MapredMapInfoOV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
         self.MapredMapInfoTV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
 
-        self.MapredMapInfoIV.SetForegroundColour(MapView.COLOR_INTER)
-        self.MapredMapInfoBV.SetForegroundColour(MapView.COLOR_LEFT)
-        self.MapredMapInfoRV.SetForegroundColour(MapView.COLOR_RIGHT)
+        colors = self.getColors()
+        self.MapredMapInfoBV.SetForegroundColour(colors[0])
+        self.MapredMapInfoRV.SetForegroundColour(colors[1])
+        self.MapredMapInfoIV.SetForegroundColour(colors[2])
         self.button_expand = wx.Button(self.mapFrame, size=(80,-1), label="Expand")
 
         flags = wx.ALL
@@ -278,23 +273,48 @@ class MapView:
 
         if red is not None and self.coords_proj is not None:
             m = self.axe
-            colors = [[i/255.0 for i in MapView.COLOR_LEFT], [i/255.0 for i in MapView.COLOR_RIGHT], [i/255.0 for i in MapView.COLOR_INTER]]
-            sizes = [MapView.DOT_SIZE, MapView.DOT_SIZE, MapView.DOT_SIZE]
-            markers = [MapView.DOT_SHAPE, MapView.DOT_SHAPE, MapView.DOT_SHAPE]
-            i = 0
+
+            colors = self.getColors()
+            dot_shape, dot_size = self.getDot()
+            (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = range(9)
+            draw_settings = {alpha: {"color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
+                                     "size": dot_size, "shape": dot_shape, "alpha": MapView.DOT_ALPHA},
+                             beta: {"color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],
+                                     "size": dot_size, "shape": dot_shape, "alpha": MapView.DOT_ALPHA},
+                             gamma: {"color_e": [i/255.0 for i in colors[2]], "color_f": [i/255.0 for i in colors[2]],
+                                     "size": dot_size, "shape": dot_shape, "alpha": MapView.DOT_ALPHA},
+                             mua: {"color_e": [i/255.0 for i in colors[0]], "color_f": [0.5,0.5,0.5],
+                                     "size": dot_size-1, "shape": dot_shape, "alpha": MapView.DOT_ALPHA-0.3},
+                             mub: {"color_e": [i/255.0 for i in colors[1]], "color_f": [0.5,0.5,0.5],
+                                     "size": dot_size-1, "shape": dot_shape, "alpha": MapView.DOT_ALPHA-0.3},
+                             muaB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[1]],
+                                     "size": dot_size-1, "shape": dot_shape, "alpha": MapView.DOT_ALPHA-0.3},
+                             mubB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[0]],
+                                     "size": dot_size-1, "shape": dot_shape, "alpha": MapView.DOT_ALPHA-0.3},
+                             mud: {"color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
+                                     "size": dot_size-1, "shape": dot_shape, "alpha": MapView.DOT_ALPHA-0.3}
+                             }
+            
             while len(self.lines):
                 #plt.gca().patches.remove(self.lines.pop())
                 self.gca.axes.lines.remove(self.lines.pop())
             self.points_ids = []
-            for part in red.partsNoMiss():
-                if len(part) > 0:
+            if self.getMissDetails():
+                parts = red.partsAll()
+            else:
+                parts = red.partsThree()
+            for pi, part in enumerate(parts):
+                if len(part) > 0 and draw_settings.has_key(pi):
                     lip = list(part)
                     self.points_ids.extend(lip)
                     ids = np.array(lip)
-                    self.lines.extend(m.plot(self.coords_proj[0][ids],self.coords_proj[1][ids], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None', alpha=MapView.DOT_ALPHA, picker=3))
+                    self.lines.extend(m.plot(self.coords_proj[0][ids], self.coords_proj[1][ids],
+                                             mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
+                                             marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
+                                             linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3))
                 else:
-                    self.lines.extend(m.plot([],[], mfc=colors[i], mec=colors[i], marker=markers[i], markersize=sizes[i], linestyle='None'))
-                i += 1
+                    self.lines.extend(m.plot([],[]))
+
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
 #            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()
@@ -364,3 +384,41 @@ class MapView:
             self.MapredMapInfoTL.SetLabel(self.label_cardT)
             self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))
 
+
+    def getColors(self):
+        t = self.parent.dw.getPreferences()
+        colors = []
+        for color_k, color in MapView.colors_def:
+            try:
+                tmp = t[color_k]["data"]
+                color_t = HTMLColorToRGB(tmp)
+            except:
+                color_t = color
+            colors.append(color_t)
+        return colors
+
+    def getDot(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            dot_shape = t["dot_shape"]["data"]
+            dot_size = t["dot_size"]["data"]
+        except:
+            dot_shape = MapView.DOT_SHAPE
+            dot_size = MapView.DOT_SIZE
+        return (dot_shape, dot_size)
+
+    def getMissDetails(self):
+        t = self.parent.dw.getPreferences()
+        if t["miss_details"]["data"] == "Yes":
+            return True
+        return False
+        
+def HTMLColorToRGB(colorstring):
+    """ convert #RRGGBB to an (R, G, B) tuple """
+    colorstring = colorstring.strip()
+    if colorstring[0] == '#': colorstring = colorstring[1:]
+    if len(colorstring) != 6:
+        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
+    r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
+    r, g, b = [int(n, 16) for n in (r, g, b)]
+    return (r, g, b)

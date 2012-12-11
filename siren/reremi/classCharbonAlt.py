@@ -8,6 +8,7 @@ class Charbon:
 
     def __init__(self, constraints):
         self.constraints = constraints
+        SParts.resetPartsIds(self.constraints.partsType())
 
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
@@ -16,11 +17,12 @@ class Charbon:
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.type_id)
         cands = method_compute(side, col, supports, init)
-        for cand in cands:
-            supp = col.suppLiteral(cand.getLiteral())
-            lparts = supports.lparts()
-            lin = supports.lpartsInterX(supp)
-            cand.setClp([lin, lparts], cand.isNeg())
+        # for cand in cands:
+        #     supp = col.suppLiteral(cand.getLiteral())
+        #     lparts = supports.lparts()
+        #     lin = supports.lpartsInterX(supp)
+        #     print "CLP \tB: %s\tA:%s" % (cand.clp, [lin, lparts])
+        #     cand.setClp([lin, lparts], cand.isNeg())
         return cands
 
     def getCandidates1(self, side, col, supports, init=0):
@@ -599,6 +601,9 @@ class Charbon:
 ##### TOOLS METHODS
     # compute the advance resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)            
+    def getExtAC(self, ext):
+        return self.getAC(ext.side, ext.op, ext.literal.isNeg(), ext.clp[2], ext.clp[3], ext.clp[0])
+
     def getAC(self, side, op, neg, lparts, lmiss, lin):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)

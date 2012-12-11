@@ -133,6 +133,12 @@ class Redescription:
 
     def supports(self):
         return self.sParts
+
+    def partsAll(self):
+        return self.sParts.sParts
+
+    def partsThree(self):
+        return [self.sParts.suppL(), self.sParts.suppR(), self.sParts.suppI()]
     
     def partsNoMiss(self):
         return self.sParts.sParts[:4]

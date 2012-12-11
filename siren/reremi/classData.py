@@ -7,7 +7,7 @@ from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query
 from classRedescription import Redescription
 from classSParts import SParts
 from toolICList import ICList
-import toolRead
+import toolRead, csv_reader
 import pdb
 
 
@@ -140,13 +140,18 @@ class BoolColM(ColM):
         if indices is None:
             indices = range(len(listV))
         trues = set()
-        for i, vt in enumerate(listV):
-            v = vt.lower()
-            if v not in values or i >= len(indices):
-                return None
-            elif values[v]:
-                trues.add(indices[i])
-        return BoolColM(trues, len(listV))
+        miss = set()
+        for j, i in enumerate(indices):
+            vt = listV[i]
+            if vt is None:
+                miss.add(j)
+            else:
+                v = vt.lower()
+                if v not in BoolColM.values:
+                    return None
+                elif BoolColM.values[v]:
+                    trues.add(j)
+        return BoolColM(trues, len(indices), miss)
     parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
@@ -219,20 +224,24 @@ class BoolColM(ColM):
 class CatColM(ColM):
     type_id = 2
 
-    num_patt = "^-?\d+(\.\d+)?$"
+    n_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None):
         if indices is None:
             indices = range(len(listV))
         cats = {}
-        for i, v in enumerate(listV):
-            if re.match(num_patt, v) or i >= len(indices):
+        miss = set()
+        for j, i in enumerate(indices):
+            v = listV[i]
+            if v is None:
+                miss.add(j)
+            elif re.match(CatColM.n_patt, v):
                 return None
             else:
-                if cats.has_key(cat):
-                    cats[cat].add(indices[i])
+                if cats.has_key(v):
+                    cats[v].add(j)
                 else:
-                    cats[cat] = set([indices[i]])
-        return CatColM(cats, len(listV))
+                    cats[v] = set([j])
+        return CatColM(cats, len(indices), miss)
     parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
@@ -242,7 +251,10 @@ class CatColM(ColM):
         return ColM.__str__(self)+ ( ", %i categories" % len(self.cats()))
 
     def getCategories(self, details=None):
-        return ', '.join(["%d:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
+        if len(self.sCats) < 5:
+            return ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
+        else:
+            return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()[:3]]) + "...]"
 
     def getType(self, details=None):
         return "categorical"
@@ -277,7 +289,7 @@ class CatColM(ColM):
         if tmp_txt is not None:
             rows = set()
             for row_id, cat in enumerate(re.split(Data.separator_str, tmp_txt.strip())):
-                self.sCats.setdefault(int(cat), set()).add(row_id)
+                self.sCats.setdefault(cat, set()).add(row_id)
                 rows.add(row_id)
             self.missing -= rows
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
@@ -286,7 +298,7 @@ class CatColM(ColM):
         tmpl = ColM.toXML(self)
         rows = []
         for cat, cat_supp in self.sCats.items():
-            rows.extend([(row, "%d" % cat) for row in cat_supp])
+            rows.extend([(row, "%s" % cat) for row in cat_supp])
         rows.sort(key=lambda x:x[0])
         strd = "\t\t<values>" + ",".join([row[1] for row in rows]) +"</values>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
@@ -313,18 +325,22 @@ class CatColM(ColM):
 class NumColM(ColM):
     type_id = 3
 
-    num_patt = "^-?\d+(\.\d+)?$"
+    p_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None):
         if indices is None:
             indices = range(len(listV))
+        miss = set()
         vals = []
-        for i, v in enumerate(listV):
-            if not re.match(num_patt, v) or i >= len(indices):
+        for j, i in enumerate(indices):
+            v = listV[i]
+            if v is None:
+                miss.add(j)
+            elif not re.match(NumColM.p_patt, v):
                 return None
             else:
                 val = float(v)
-                vals.append((v, indices[i]))
-        return NumColM(vals, len(listV))
+                vals.append((val, j))
+        return NumColM(vals, len(indices), miss)
     parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
@@ -687,6 +703,10 @@ class Data:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
         else:
             self.cols = [ICList(),ICList()]
+        if self.hasMissing():
+            SParts.resetPartsIds("grounded")
+        else:
+            SParts.resetPartsIds("none")
 
     def subset(self, row_ids=None):
         coords = None
@@ -846,29 +866,45 @@ class Data:
 ############## READING METHODS
 ############################################################################
 def readDNCFromCSVFiles(filenames):
-    print "Not yet implemented"
+    cols, N, coords = [[],[]], 0, None
+    csv_params={}; unknown_string=None
+    if len(filenames) >= 2:
+        left_filename = filenames[0]
+        right_filename = filenames[1]
+
+        if len(filenames) >= 3:
+            csv_params = filenames[2]
+            if len(filenames) >= 4:
+                unknown_string = filenames[3]
+        try:
+            tmp_data = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
+        except ValueError as arg:
+            raise DataError('Data error reading csv %s' % arg)
+        cols, N, coords = parseDNCFromCSVData(tmp_data)
+    return cols, N, coords
 
 def parseDNCFromCSVData(csv_data):
-
     cols = [[],[]]
-    coords = csv_data[side].get("coords", None) 
+    tmp = zip(*csv_data.get("coord", None))
+    coords = [np.array(map(float, tmp[1])), np.array(map(float, tmp[0]))]
     
     for side in [0,1]:
-        indices = csv_data[side]["indices"]
+        indices = csv_data['data'][side]["order"]
         N = len(indices)
-        for name, values in csv_data[side]["columns"]:
+        for name in csv_data['data'][side]["headers"]:
+            values = csv_data['data'][side]["data"][name]
             col = None
-            type_ids = [BoolColM.type_id, NumColM.type_id, CatColM.type_id]
-            while col is None and len(type_ids) > 1:
-                col = Data.var_types[type_ids.pop()].parseList(values, indices)
-                type_id += 1
+            type_ids = [CatColM, NumColM, BoolColM]
+            while col is None and len(type_ids) >= 1:
+                col = type_ids.pop().parseList(values, indices)
 
             if col is not None and col.N == N:
                 col.setId(len(cols[side]))
                 col.side = side
                 col.name = name
                 cols[side].append(col)
-            
+            else:
+                raise DataError('Unrecognized variable type!')
     return (cols, N, coords)
 
 def readDNCFromXMLFile(filename):

@@ -132,6 +132,15 @@
 	<default><value>0</value></default>
 	<options><value>marg</value><value>supp</value><value>over</value></options>
       </parameter>
+      <parameter>
+	<name>parts_type</name>
+	<label>Missing values belief</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>What to expect from missing values</legend>
+	<default><value>0</value></default>
+	<options><value>grounded</value><value>optimistic</value><value>pessimistic</value></options>
+      </parameter>
     </section>
     <section>
       <name>Final filtering</name>

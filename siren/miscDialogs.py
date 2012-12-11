@@ -108,11 +108,31 @@ class ImportDataCSVDialog(object):
         LHStext = wx.StaticText(self.dlg, label='Left-hand side variables file:')
         RHStext = wx.StaticText(self.dlg, label='Right-hand side variables file:')
 
+        self.dialect_options = {'delimiter': {"label": "Delimiter", "opts": [(None, "(auto)"), ('\t', 'TAB'), (';', ';'), (',', ','), (' ', 'SPC')]}}
         self.LHSfile = None
         self.RHSfile = None
 
         self.LHSfileTxt = wx.TextCtrl(self.dlg, value='', size=(500,10), style=wx.TE_READONLY)
         self.RHSfileTxt = wx.TextCtrl(self.dlg, value='', style=wx.TE_READONLY)
+
+        so_sizer = wx.GridSizer(rows=1, cols=2*(1+len(self.dialect_options)), hgap=5, vgap=5)
+
+        ctrl_id = wx.NewId()
+        label = wx.StaticText(self.dlg, wx.ID_ANY, "Missing:")
+        self.missing_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "")
+        so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+        so_sizer.Add(self.missing_ctrl, 0)
+
+        self.dialect_ctrl = {}
+        for item, details in self.dialect_options.items():
+            ctrl_id = wx.NewId()
+            label = wx.StaticText(self.dlg, wx.ID_ANY, details['label']+":")
+            self.dialect_ctrl[item] = wx.Choice(self.dlg, ctrl_id)
+            self.dialect_ctrl[item].AppendItems(strings=[v[1] for v in details['opts']])
+            self.dialect_ctrl[item].SetSelection(0)
+            so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+            so_sizer.Add(self.dialect_ctrl[item], 0)
+                        
 
         LHSbtn = wx.Button(self.dlg, label='Choose', name='LHS')
         RHSbtn = wx.Button(self.dlg, label='Choose', name='RHS')
@@ -129,6 +149,7 @@ class ImportDataCSVDialog(object):
         btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
         topSizer = wx.BoxSizer(wx.VERTICAL)
         topSizer.Add(gridSizer, flag=wx.ALL, border=5)
+        topSizer.Add(so_sizer, flag=wx.EXPAND|wx.ALL, border=5)
         topSizer.Add(btnSizer, flag=wx.ALL, border=5)
 
         self.dlg.SetSizer(topSizer)
@@ -139,12 +160,22 @@ class ImportDataCSVDialog(object):
 
 
     def showDialog(self):
+        na = None
+        dialect_dict = {}
         if self.dlg.ShowModal() == wx.ID_OK:
+            tmp = self.missing_ctrl.GetValue()
+            if len(tmp) > 0:
+                na = tmp
+                
+            for item, ctrl_single in self.dialect_ctrl.items():
+                tmp = self.dialect_options[item]['opts'][ctrl_single.GetCurrentSelection()][0]
+                if tmp is not None:
+                    dialect_dict[item] = tmp
             try:
-                self.parent.dw.importDataCSVFromFiles([self.LHSfile, self.RHSfile])
+                self.parent.dw.importDataFromCSVFiles([self.LHSfile, self.RHSfile, dialect_dict, na])
             except:
                 pass
-                ##raise
+                raise
             else:
                 self.parent.details = {'names': self.parent.dw.getColNames()}
                 self.parent.reloadVars()
@@ -173,3 +204,6 @@ class ImportDataCSVDialog(object):
             elif btnName == 'RHS':
                 self.RHSfileTxt.ChangeValue(path)
                 self.RHSfile = path
+
+
+
