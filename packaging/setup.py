@@ -19,7 +19,7 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '1.0'
+VERSION = '1.0.1'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -79,77 +79,8 @@ svn_revision = '-1'
 #             break
 
 
-if sys.platform == 'darwin':
-    ################ MAC SETUP
-    # Bootstrap
-    import ez_setup
-    ez_setup.use_setuptools()
-    
-    from setuptools import setup
-
-    # A custom plist to associate with .siren -files
-    Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
-                                               CFBundleTypeName='Siren data file',
-                                               CFBundleTypeRole = 'Viewer',
-                                               CFBundleTypeIconFile = 'siren_file_icon.icns'),
-                                               ],
-                CFBundleShortVersionString = VERSION,
-                CFBundleVersion = svn_revision,
-                CFBundleName = SHORT_NAME
-        )
-
-    ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png']
-    
-    OPTIONS = {'argv_emulation': True,
-    'iconfile': 'icons/siren_icon.icns',
-    'packages': ST_PACKAGES,
-    #'includes': ['ui_confdef.xml'], 
-    #'includes': ['reremi'],
-    'resources': ST_RESOURCES+ICONS,
-    'site_packages': True,
-    #'semi-standalone': True, # depends on local Python
-    'plist': Plist,
-    }
-    # Set extra options
-    extra_options.update(dict(
-        app=[APP],
-        data_files=ST_FILES,
-        options={'py2app': OPTIONS},
-        setup_requires=['py2app']
-        ))
-    # Run setup
-    setup(**extra_options)
-
-    # Post setup
-    # Copy files
-    subprocess.call('cp LICENSE dist/', shell=True)
-    subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
-    subprocess.call('ln -s /Applications dist/', shell=True)
-    subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
-    # Set VolumeIcon's creator
-    subprocess.call('SetFile -c icnC dist/.VolumeIcon.icns', shell=True)
-    # Make read/write tmp disk image
-    subprocess.call('hdiutil create -srcfolder dist/ -volname '+SHORT_NAME+' -format UDRW -ov raw-'+SHORT_NAME+'.dmg', shell=True)
-    # Attach the disk image
-    subprocess.call('mkdir tmp', shell=True)
-    subprocess.call('hdiutil attach raw-'+SHORT_NAME+'.dmg -mountpoint tmp', shell=True)
-    # Set custom icon
-    subprocess.call('SetFile -a C tmp', shell=True)
-    # Detach
-    subprocess.call('hdiutil detach tmp', shell=True)
-    subprocess.call('rm -rf tmp', shell=True)
-    subprocess.call('rm -f '+SHORT_NAME+'.dmg', shell=True)
-    # Convert
-    subprocess.call('hdiutil convert raw-'+SHORT_NAME+'.dmg -format UDZO -o '+SHORT_NAME+'.dmg', shell=True)
-    # Clean
-    subprocess.call('rm -rf dist build', shell=True)
-    subprocess.call('rm -f raw-'+SHORT_NAME+'.dmg', shell=True)
-
-    
-elif sys.platform == 'win32':
-    ################ WINDOWS SETUP
-    ## Should this be 'win64'??
-    print "Windows builds are not yet supported"
+if sys.platform == 'darwin' or sys.platform == 'win32':
+    print "Use the other setup, inside siren folder"
 
 else:
     ################ LINUX SETUP

@@ -1,5 +1,6 @@
-python-siren (1.0) UNSTABLE; urgency=low
+python-siren (1.0.1) UNSTABLE; urgency=low
 
   * Initial release.
+  * CSV input
 
  -- Esther Galbrun <galbrun@cs.helsinki.fi>  Tue, 7 Aug 2012 8:29:53 +0200
