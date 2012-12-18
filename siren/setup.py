@@ -20,7 +20,7 @@ import pdb
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '1.0.1'
+VERSION = '1.1.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -34,7 +34,9 @@ ST_RESOURCES=['help', 'commons', 'ABOUT', 'LICENSE',
 ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
             'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
+#ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
+ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
+MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
 DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE',
@@ -93,6 +95,7 @@ if sys.platform == 'darwin':
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'icons/siren_icon.icns',
     'packages': ST_PACKAGES,
+    'matplotlib_backends': MATPLOTLIB_BACKENDS,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
     'resources': ST_RESOURCES+ICONS+LICENSES,
