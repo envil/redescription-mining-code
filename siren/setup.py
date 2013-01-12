@@ -121,6 +121,7 @@ if sys.platform == 'darwin':
     for f in LICENSES:
         subprocess.call('cp '+f+' dist/third-party-licenses/', shell=True)
     subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
+    subprocess.call('cp CHANGELOG dist/CHANGELOG', shell=True)
     subprocess.call('ln -s /Applications dist/', shell=True)
     subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
     # Set VolumeIcon's creator

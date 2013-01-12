@@ -8,7 +8,7 @@ source code from geographiclib
 'lib/mpl_toolkits/basemap' directory under the terms given in
 LICENSE_geographiclib.
 
-source code for the GEOS library is included in the 'geos-3.3.3'
+source code for the GEOS library is included in the 'geos-3.3.6'
 directory under the terms given in LICENSE_geos.
 
 shapefile.py from pyshp.googlecode.com is included under the terms
