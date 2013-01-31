@@ -389,9 +389,12 @@ class Redescription:
     def dispSupp(self):
         return self.sParts.dispSupp()
     
-    def write(self, output, suppOutput):
+def write(self, output, suppOutput, namesOutput=None, names=None):
         output.write(self.disp()+'\n')
         output.flush()
+        if namesOutput is not None and names is not None:
+            namesOutput.write(self.disp(names)+'\n')
+            namesOutput.flush()
         if suppOutput is not None:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()

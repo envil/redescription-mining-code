@@ -14,13 +14,14 @@ def loadRedescriptions(filename, data):
     fp = open(filename, "r")
     tmp = []
     red = Redescription.load(fp, None, data)
-    while red[0] != None and len(red[0]) > 0:
-        tmp.append(red[0])
+    while red[0] != None and red[1] != -1:
+        if len(red[0]) > 0:
+            tmp.append(red[0])
         red = Redescription.load(fp, None, data)
     return tmp
 
 def run_filter(arguments):
-    params = getParams(sys.argv)
+    params = getParams(arguments)
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
@@ -93,12 +94,14 @@ def run(arguments):
     if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0:
         if len(params_l['ext_queries']) > 0:
             fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+            fn_names = fn_queries+"_names" 
             try:
                 tfs = open(fn_queries, "a")
                 tfs.close()
             except IOError:
                 print "Queries output file not writable, use stdout instead..."
                 fn_queries = "-"
+                fn_names = None
                 
             if fn_queries != "-" and params_l['logfile'] == "+":
                 fn_log = params_l['result_rep']+params_l['out_base']+".log"
@@ -131,10 +134,15 @@ def run(arguments):
         supportOutFp = None
     else:
         supportOutFp = open(fn_support, "w")
+    namesOutFp = None
 
     if queriesOutFp is not None:
+        names = None
+        if data.hasNames() and fn_names is not None:
+            names = data.getNames()
+            namesOutFp = open(fn_names, "w")
         for pos in miner.final["results"]:
-            miner.final["batch"][pos].write(queriesOutFp, supportOutFp)
+            miner.final["batch"][pos].write(queriesOutFp, supportOutFp, namesOutFp, names)
 
     queriesOutFp.close()
     if supportOutFp is not None:
