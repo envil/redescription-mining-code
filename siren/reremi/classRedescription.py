@@ -389,7 +389,7 @@ class Redescription:
     def dispSupp(self):
         return self.sParts.dispSupp()
     
-def write(self, output, suppOutput, namesOutput=None, names=None):
+    def write(self, output, suppOutput, namesOutput=None, names=None):
         output.write(self.disp()+'\n')
         output.flush()
         if namesOutput is not None and names is not None:
@@ -512,9 +512,11 @@ def write(self, output, suppOutput, namesOutput=None, names=None):
                 r.supp_info = lpartsList
         return r
     parse = staticmethod(parse)
-            
+  
     def load(queriesFp, supportsFp = None, data= None):
         stringQueries = queriesFp.readline()
+        if len(stringQueries) == 0:
+            return (None, -1, -1)
         indComm = stringQueries.find('#')
         comment = ''
         if indComm != -1 :
@@ -532,4 +534,3 @@ def write(self, output, suppOutput, namesOutput=None, names=None):
         else: stringSupp= None; commentSupp = ''
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
-
