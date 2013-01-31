@@ -48,6 +48,9 @@ class ColM:
     def hasMissing(self):
         return self.missing is not None and len(self.missing) > 0
 
+    def hasName(self, details=None):
+        return self.name is not None
+
     def getName(self, details=None):
         if self.name is not None:
             return self.name
@@ -840,6 +843,13 @@ class Data:
             
     def getCoords(self):
         return self.coords
+
+    def hasNames(self):
+        for side in [0,1]:
+            for col in self.cols[side]:
+                if col.hasName():
+                    return True
+        return False
 
     def getNames(self):
         return [[col.getName() for col in self.cols[side]] for side in [0,1]]
