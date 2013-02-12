@@ -162,6 +162,9 @@ class Constraints:
                ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
                ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})]
 
+    def actions_redundant(self):
+       return [("filterpairs", self.parameters_filterredundant())]
+
     def parameters_filterredundant(self):
        return {"filter_funct": self.pair_filter_redundant, "filter_thres": self.max_overlaparea(), "filter_max":0}
 

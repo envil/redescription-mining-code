@@ -72,6 +72,8 @@ class Redescription:
             return len(redB.supp(side) | self.supp(side))* len(redB.invColsSide(side) | self.invColsSide(side))
         return 0
     def overlapAreaSide(self, redB, side):
+        if len(redB.invColsSide(side) & self.invColsSide(side)) == 0:
+            return 0
         areaU = self.unionArea(redB, side)
         if areaU != 0:
             return self.interArea(redB, side) / float(areaU)
@@ -353,8 +355,14 @@ class Redescription:
     dispTexHeader = staticmethod(dispTexHeader)
 
     def dispTexLine(self, queryId, names = [None, None]):
+        Query.side = 1
+        tmp0 = self.queries[0].dispTex(names[0])
+        Query.side = 1
+        tmp1 = self.queries[1].dispTex(names[1])
+
         queryidStr = '(%i)' % queryId
         format_list = []
+        return queryidStr + ' & ' + tmp0 + ' & '+ tmp1 + ' & ' +self.dispCaracteristiquesTex()+' \\\\'
         return queryidStr + ' & ' + self.queries[0].dispTex(names[0])+' & '+self.queries[1].dispTex(names[1])+ ' & ' +self.dispCaracteristiquesTex()+' \\\\'
 
     def dispLPartsSimple(self):

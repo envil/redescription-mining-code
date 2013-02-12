@@ -33,12 +33,15 @@ def run_filter(arguments):
 
 
     fileq = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
-    t = loadRedescriptions(fileq, data)
-    miner = Miner(data, params, logger)
+    ta = loadRedescriptions(fileq, data)
+    #miner = Miner(data, params, logger)
 
-    tr = miner.filter_run(t)
-    for t in tr:
-        print t.disp()
+    #tf = miner.filter_run(ta)
+    names = None
+    if data.hasNames():
+        names = data.getNames()
+    for ti, t in enumerate(ta):
+        print t.dispTexLine(ti, names)
 
         
 def getParams(arguments=[]):
@@ -154,4 +157,7 @@ def run(arguments):
 
 
 if __name__ == "__main__":
-    run(sys.argv)
+    if len(sys.argv) > 2 and sys.argv[2] == "filter":
+        run_filter(sys.argv)
+    else:
+        run(sys.argv)

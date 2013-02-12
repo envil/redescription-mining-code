@@ -50,7 +50,8 @@ class Miner:
 
     def filter_run(self, redescs):
         batch = Batch(redescs)
-        tmp_ids = batch.selected(self.constraints.actions_final())
+        tmp_ids = batch.selected(self.constraints.actions_redundant())
+        #tmp_ids = batch.selected(self.constraints.actions_final())
         return [batch[i] for i in tmp_ids]
 
     def part_run(self, redesc):

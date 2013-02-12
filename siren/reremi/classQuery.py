@@ -189,6 +189,11 @@ class BoolTerm(Term):
             neg = Neg(neg)
 
         if type(names) == list  and len(names) > 0:
+            if Query.side == 1:
+                return '%s%s' % ( neg.dispTex(), names[self.col])
+            else:
+                return '\\textsc{%s%s}' % ( neg.dispTex(), names[self.col])
+
             return '%s%s' % ( neg.dispTex(), names[self.col])
         else:
             return '%s%i' % ( neg.dispTex(), self.col)
@@ -420,21 +425,25 @@ class NumTerm(Term):
         else:
             return strneg+(('%'+slenIndex+'i') % self.col) + strbounds
 
-    def dispTex(self, neg, names = None):
+    def dispTex(self, neg, names = None):            
+        prec = "0.4"
         if type(neg) == bool:
             neg = Neg(neg)
             ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = '$[%f\\leq{}' % float(self.lowb)
+            lb = ('$[%'+prec+'f\\leq{}') % float(self.lowb)
         else:
             lb = '$['
         if self.upb < float('Inf'):
-            ub = '\\leq{}%s]$' % float(self.upb)
+            ub = ('\\leq{}%'+prec+'f]$') % float(self.upb)
         else:
             ub = ']$'
         negstr = ' %s' % neg.dispTex()
         if type(names) == list  and len(names) > 0:
-            idcol = '%s' % names[self.col]
+            if Query.side == 1:
+                idcol = '$ %s $' % names[self.col]
+            else:
+                idcol = '$ \\textsc{%s} $' % names[self.col]
         else:
             idcol = '%i' % self.col
         return ''+negstr+lb+idcol+ub+''
@@ -563,7 +572,7 @@ class Literal:
             
 class Query:
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
-    
+    side = 0
     def __init__(self):
         self.op = Op()
         self.buk = []
