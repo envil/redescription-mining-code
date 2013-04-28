@@ -1,12 +1,12 @@
 from scipy.special import gammaln
 from scipy.stats import binom
-from numpy import exp
+import numpy, random
 import pdb
 
 def tool_hypergeomPMF(k, M, n, N):
     tot, good = M, n
     bad = tot - good
-    return exp(gammaln(good+1) - gammaln(good-k+1) - gammaln(k+1) + gammaln(bad+1) \
+    return numpy.exp(gammaln(good+1) - gammaln(good-k+1) - gammaln(k+1) + gammaln(bad+1) \
                               - gammaln(bad-N+k+1) - gammaln(N-k+1) - gammaln(tot+1) \
                               + gammaln(tot-N+1) + gammaln(N+1))
 #same as the following but numerically more precise
@@ -437,6 +437,29 @@ class SParts:
         return lp
     addition = staticmethod(addition)
 
+    # Make binary out of supp set
+    def suppVect(N, supp, val=1):
+        vect = None
+        if 2*len(supp) < N:
+            st = supp
+            v = val
+            if val == 1:
+                vect = numpy.zeros(N)
+            else:
+                vect = numpy.ones(N)
+        else:
+            st = set(range(N)) - supp
+            v = 1-val
+            if val == 0:
+                vect = numpy.zeros(N)
+            else:
+                vect = numpy.ones(N)
+        for i in st:
+            vect[i] = v
+        return vect
+    suppVect = staticmethod(suppVect)
+
+
     def __init__(self, N, supports, prs = [1,1]):
         try:
             self.pVal = eval('self.pVal%s' % (SParts.methodpVal))
@@ -564,9 +587,18 @@ class SParts:
         elif part_id == SParts.delta:
             return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
 
+    def topPart(self):
+        return SParts.top
+
     def parts(self, side=0):
         return [self.part(i, side) for i in range(SParts.top+1)]
     
+    def opids(self, side=0):
+        if self.hasMissing():
+            return (SParts.gamma, SParts.alpha, SParts.beta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud, SParts.delta)
+        else:
+            return (SParts.gamma, SParts.alpha, SParts.beta, SParts.delta)
+            
     def lparts(self, side=0):
         return [self.lpart(i, side) for i in range(SParts.top+1)]
     
@@ -649,6 +681,11 @@ class SParts:
         return self.part_union(SParts.IDS_dL, side)
     def suppR(self, side=0):
         return self.part_union(SParts.IDS_dR, side)
+    def suppSide(self, side):
+        if side == 0:
+            return self.part_union(SParts.IDS_dL+SParts.IDS_inter, 0)
+        else:
+            return self.part_union(SParts.IDS_dR+SParts.IDS_inter, 0)
 
     ## corresponding lengths
     def lenD(self, side=0):
@@ -706,7 +743,7 @@ class SParts:
 
     # update support probabilities
     def updateProba(prA, prB, OR):
-        if prA == -1:
+        if type(prA) == int and prA == -1:
             return prB
         elif OR :
             return prA + prB - prA*prB
@@ -778,6 +815,38 @@ class SParts:
                 for i in self.sParts[partId]:
                     self.vect[i] = partId
 
+    def getVectorABCD(self):
+        self.makeVectorABCD()
+        return list(self.vect)
+
+    def sampleRows(self, rate=None, minP=10, maxP=500):
+        if rate is None or rate == 1:
+            rows = None
+            tmp = None
+        else:
+            rows = []
+            opids = []
+            for sid in reversed(self.opids()):
+                sS = self.part(sid)
+                if len(sS) > 0:
+                    opids.append(sid)
+                    if rate < 1:
+                        nb = int(rate*len(sS))
+                    else:
+                        nb = rate
+                    if nb > maxP:
+                        nb = maxP
+                    if nb < minP:
+                        nb = minP
+                    if len(sS) <= nb:
+                        rows.extend(sS)
+                    else:
+                        rows.extend(random.sample(sS, nb))
+            # tmp = [False for i in range(self.N)]
+            # for i in rows:
+            #     tmp[i] = True
+        return rows, opids #, tmp
+            
     # returns the index of the part the given row belongs to, vectorABCD need to have been computed 
     def partRow(self, row):
         return self.vect[row]

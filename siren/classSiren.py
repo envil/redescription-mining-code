@@ -15,6 +15,7 @@ from reremi.toolICList import ICList
 
 from classGridTable import VarTable, RedTable
 from classMapView import MapView
+from classParaView import ParaView
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog
@@ -484,7 +485,8 @@ class Siren():
     def getMapView(self, vid=None):
         if vid not in self.mapViews.keys():
             self.selectedMap = wx.NewId()
-            self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)    
+            self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)
+# TOOGLE VIEW            self.mapViews[self.selectedMap] = ParaView(self, self.selectedMap)    
         self.mapViews[self.selectedMap].mapFrame.Raise()
         return self.mapViews[self.selectedMap]
 

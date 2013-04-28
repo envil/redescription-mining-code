@@ -1,4 +1,4 @@
-import re
+import re, random
 from classSParts import  SParts
 import pdb
 
@@ -27,6 +27,9 @@ class Op:
                 
     def isSet(self):
         return self.val != 0
+
+    def flip(self):
+        self.val *= -1
 
     def copy(self):
         return Op(self.val)
@@ -86,6 +89,9 @@ class Neg:
 
     def boolVal(self):
         return self.neg < 0
+
+    def flip(self):
+        self.neg *= -1
     
     def __int__(self):
         return self.neg
@@ -163,6 +169,9 @@ class BoolTerm(Term):
     def __str__(self):
         return self.disp()
 
+    def truthEval(self, variableV):
+        return variableV
+
     def disp(self, neg=None, names = None, lenIndex=0):
         if type(neg) == bool:
             neg = Neg(neg)
@@ -206,6 +215,15 @@ class BoolTerm(Term):
             return '%s%s' % ( neg.dispU(), names[self.col])
         else:
             return '%s%i' % ( neg.dispU(), self.col)
+
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+        tmp = dataSide[self.col].getVector()
+        if selectids is None:
+            data = [a/2.0 + 0.25 + (0.2*j)/len(tmp) for j,a in enumerate(tmp)]
+        else:
+            data = [tmp[i]/2.0  + 0.25 + (0.2*j)/len(selectids) for j,i in enumerate(selectids)]
+        bounds = [0.5, 1]
+        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
                     
     def parse(partsU, names=None):
         ncol = None
@@ -248,6 +266,9 @@ class CatTerm(Term):
                 return self.cmpType(other)
         else:
             return self.cmpCol(other)
+
+    def truthEval(self, variableV):
+        return variableV == self.cat
     
     def __hash__(self):
         return self.col*hash(self.cat)+(self.col-1)*(hash(self.cat)+1)
@@ -302,6 +323,17 @@ class CatTerm(Term):
             return ('%s '+symbIn+' %i') % (names[self.col], self.cat)
         else:
             return ('%s '+symbIn+' %i') % (self.col, self.cat)
+
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+        tmp = dataSide[self.col].getVector()
+        st_size = 1.0/len(vs)
+        dm = dict([(p, n*st_size) for n, p in enumerate(sorted(set(tmp)))])
+        if selectids is None:
+            data = [dm[a] for a in tmp]
+        else:
+            data = [dm[tmp[i]] for i in selectids]
+        bounds = [dm[self.cat], dm[self.cat]+st_size]
+        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
 
     def parse(partsU, names=None):
         ncol = None
@@ -365,6 +397,9 @@ class NumTerm(Term):
             
     def copy(self):
         return NumTerm(self.col, self.lowb, self.upb)
+
+    def truthEval(self, variableV):
+        return self.lowb <= variableV and variableV <= self.upb
                         
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
@@ -467,6 +502,21 @@ class NumTerm(Term):
             idcol = '%i' % self.col
         return ''+negstr+lb+idcol+ub+''
 
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+        tmp = dataSide[self.col].getVector()
+        mint = float(min(tmp))
+        maxt = max(tmp)
+        if selectids is None:
+            data = [(a-mint)/(maxt-mint) for a in tmp]
+        else:
+            data = [(tmp[i]-mint)/(maxt-mint) for i in selectids]
+        bounds = [0,1]
+        if self.lowb > float('-Inf'):
+            bounds[0] = (self.lowb-mint)/(maxt-mint)
+        if self.upb < float('Inf'):
+            bounds[1] = (self.upb-mint)/(maxt-mint)
+        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
+
     def parse(partsU, names=None):
         ncol=None
         if partsU is not None :
@@ -520,6 +570,9 @@ class Literal:
         self.neg = Neg(nneg)
 #         self.neg = Neg(self.term.simple(nneg))
 
+    def sampleBounds(self, dataSide, names, selectids=None):
+        return self.term.sampleBounds(self.neg, dataSide, names, selectids)
+
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())
 
@@ -535,6 +588,9 @@ class Literal:
     def dispU(self, names = None):
         return self.term.dispU(self.neg, names)
 
+    def tInfo(self, names = None):
+        return self.term.tInfo(names)
+
     def __cmp__(self, other):
         if other is None:
             return 1
@@ -549,6 +605,15 @@ class Literal:
     def isNeg(self):
         return self.neg.boolVal()
 
+    def flip(self):
+        self.neg.flip()
+
+    def truthEval(self, variableV):
+        if self.isNeg():
+            return not self.term.truthEval(variableV)
+        else:
+            return self.term.truthEval(variableV)
+            
     def col(self):
         return self.term.colId()
     
@@ -607,6 +672,38 @@ class Query:
             c.buk.append(set([t.copy() for t in buk if t is not None]))
         return c
 
+    def negate(self):
+        self.op.flip()
+        for buk in self.buk:
+            for t in buk:
+                t.flip()
+
+    def dependencies(self, pos=True):
+        dQs = []
+        ### IF ONLY ONE ELEMENT OR DISJUNCTION, JUST COPY
+        if len(self) == 1 \
+           or (pos and self.opBuk(len(self.buk)-1).isOr()) \
+           or (not pos and not self.opBuk(len(self.buk)-1).isOr()):
+            dQs.append(self.copy())
+        ### ELSE IF THE OUT MOST IS CONJUNCTION, SPLIT
+        else:
+            if len(self.buk) > 1:
+                c = Query()
+                c.op = self.op.copy()
+                c.buk = []
+                for buk in self.buk[:-1]:
+                    c.buk.append(set([t.copy() for t in buk if t is not None]))
+                dQs.append(c)
+            for t in self.buk[-1]:
+                if t is not None:
+                    c = Query()
+                    c.buk.append(set([t.copy()]))
+                    dQs.append(c)
+        if not pos:
+            for q in dQs:
+                q.negate()
+        return dQs
+            
     def __cmp__(self, y):
         return self.compare(y)
             
@@ -706,6 +803,21 @@ class Query:
             for literal in list(self.buk[buk_nb]) :
                 indexes.append(format_str % {'col': literal.col(), 'buk': buk_nb}) 
         return indexes
+
+    ## return the truth value associated to a configuration
+    def truthEval(self, config = {}):
+        tv = True
+        if len(self) > 0:
+            op = self.op
+            for buk in self.buk:
+                for literal in buk:
+                    tmp = config.has_key(literal.col()) and literal.truthEval(config[literal.col()])
+                    if op.isOr():
+                        tv = tv or tmp
+                    else:
+                        tv = tv and tmp
+                op = op.other()
+        return tv
     
     ## return the support associated to a query
     def recompute(self, side, data= None):
@@ -736,6 +848,21 @@ class Query:
                     for literal in buk:
                         pr = SParts.updateProba(pr, len(data.supp(side, literal))/float(data.nbRows()), op.isOr())
                         ##print '%s : pr=%f (%s %f)' % (literal, pr, op, len(data.supp(side, literal))/float(data.nbRows()) )
+                    op = op.other()
+        return pr
+
+    def probaME(self, dbPr=None, side=None, epsilon=0):
+        if dbPr==None:
+            pr = -1
+        elif len(self) == 0 :
+            pr = 1
+        else:
+            pr = -1
+            if len(self) > 0:
+                op = self.op
+                for buk in self.buk:
+                    for literal in buk:
+                        pr = SParts.updateProba(pr, dbPr.pointPrLiteral(side, literal, epsilon), op.isOr())
                     op = op.other()
         return pr
     
@@ -830,6 +957,16 @@ class Query:
                         string += ' %s %s' % (op.dispU(), literal.dispU(names))
                 op = op.other()
         return string.strip()
+
+    def listLiterals(self):
+        lti = []
+        if len(self) > 0 :
+            for cbuk in self.buk:
+                cliterals = list(cbuk)
+                cliterals.sort()
+                for literal in cliterals:
+                    lti.append(literal)
+        return lti
 
     def parseApd(string, names=None):
         pattrn = '^(?P<pattIn>[^\\'+Op.bannchar+']*)'+Op.pattAny+'?(?P<pattOut>(?(op).*))$'

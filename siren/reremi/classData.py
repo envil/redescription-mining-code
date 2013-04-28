@@ -17,9 +17,13 @@ class DataError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class ColM:
+class ColM(object):
 
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
+
+    def initSums(N):
+        return [0 for i in range(N)]
+    initSums = staticmethod(initSums)
 
     def parseList(list):
         return None
@@ -48,20 +52,28 @@ class ColM:
     def hasMissing(self):
         return self.missing is not None and len(self.missing) > 0
 
-    def hasName(self, details=None):
-        return self.name is not None
-
     def getName(self, details=None):
         if self.name is not None:
             return self.name
         else:
             return "%d" % self.getId()
+
+    def hasName(self, details=None):
+        return self.name is not None
         
     def getSide(self, details=None):
         return self.side
 
     def getId(self, details=None):
         return self.id
+
+    def upSumsRows(self, sums_rows):
+        pass
+    def sumCol(self):
+        return 0
+
+    def getVector(self):
+        return [0 for i in range(self.N)]
 
     def getType(self, details=None):
         return "-"
@@ -136,7 +148,7 @@ class ColM:
         return strd
 
 class BoolColM(ColM):
-    type_id = 1
+    type_id = BoolTerm.type_id
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
     def parseList(listV, indices=None):
@@ -162,6 +174,18 @@ class BoolColM(ColM):
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i Trues" %( self.lTrue() ))
+
+    def upSumsRows(self, sums_rows):
+        for i in self.hold:
+            sums_rows[i] +=1
+    def sumCol(self):
+        return len(self.hold)
+
+    def getVector(self):
+        tmp = super(BoolColM, self).getVector()
+        for i in self.hold:
+            tmp[i] = 1
+        return tmp
 
     def getType(self, details=None):
         return "Boolean"
@@ -225,7 +249,11 @@ class BoolColM(ColM):
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
     
 class CatColM(ColM):
-    type_id = 2
+    type_id = CatTerm.type_id
+
+    def initSums(N):
+        return [{} for i in range(N)]
+    initSums = staticmethod(initSums)
 
     n_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None):
@@ -258,6 +286,24 @@ class CatColM(ColM):
             return ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
         else:
             return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()[:3]]) + "...]"
+
+    def upSumsRows(self, sums_rows):
+        for cat, rows in self.sCats.items():
+            for i in rows:
+                if not sums_rows[i].has_key(cat):
+                    sums_rows[i][cat]= 0
+                sums_rows[i][cat]+=1
+    def sumCol(self):
+        return dict([(cat, len(rows)) for cat, rows in self.sCats.items()])
+    
+    def getVector(self):
+        tmp = super(CatColM, self).getVector()
+        cats = self.sCats.items()
+        cats.sort()
+        for v, (cat, rows) in enumerate(cats):
+            for i in rows:
+                tmp[i] = v
+        return tmp
 
     def getType(self, details=None):
         return "categorical"
@@ -326,7 +372,7 @@ class CatColM(ColM):
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
     
 class NumColM(ColM):
-    type_id = 3
+    type_id = NumTerm.type_id
 
     p_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None):
@@ -351,6 +397,15 @@ class NumColM(ColM):
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i values not in mode" % self.lenNonMode())
+
+    def upSumsRows(self, sums_rows):
+        for (v,i) in self.sVals:
+            sums_rows[i] +=v
+    def sumCol(self):
+        return sum([v for (v,i) in self.sVals])
+
+    def getVector(self):
+        return [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
 
     def getType(self, details=None):
         return "numerical"
@@ -711,6 +766,45 @@ class Data:
         else:
             SParts.resetPartsIds("none")
 
+    def getStats(self, group=None):
+        if group is None:
+            ### Group all columns from both side together
+            group = []
+            for side in [0,1]:
+                group.extend([(side, i) for i in range(data.nbCols(side))])
+        elif type(group) == int and group in [0,1]:
+            ### Group all columns from that side together
+            side = group
+            group = [(side, i) for i in range(data.nbCols(side))]
+
+        sums_rows = [None for t in Data.var_types]
+        sums_cols = []
+        details = []
+        for side, col in group:
+            tid = self.cols[side][col].type_id
+            if sums_rows[tid] is None:
+                sums_rows[tid] = self.cols[side][col].initSums(self.N)
+            self.cols[side][col].upSumsRows(sums_rows[tid])
+            sums_cols.append(self.cols[side][col].sumCol())
+            details.append((side, col, tid))
+        return sums_rows, sums_cols, details
+        
+    def getMatrix(self, sides=None, cols=None):
+        if sides is None:
+            sides = [0, 1]
+
+        mat = np.empty([0, self.N])
+        details = []
+        for side in sides:
+            if cols is None:
+                tcols = range(len(self.cols[side]))
+            else:
+                tcols = cols
+            tmp = np.array([self.cols[side][col].getVector() for col in tcols])
+            mat = np.concatenate((mat, tmp))
+            details.extend([(side, col, self.cols[side][col].type_id) for col in tcols])
+        return mat, details
+
     def subset(self, row_ids=None):
         coords = None
         if row_ids is None:
@@ -962,7 +1056,6 @@ def readDNCFromMulFiles(filenames):
     cols, N, coords = [[],[]], 0, None
     if len(filenames) >= 2:
         (cols, N) = readVariables(filenames[:2])
-        
         if len(filenames) >=5 :
             coords = readCoords(filenames[4])
 
@@ -1043,8 +1136,8 @@ def readMatrix(filename, side = None):
     type_all = filename_parts.pop()
     nbRows = None
     nbCols = None
-
-    if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
+    
+    if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'spa'):  
         row = f.next()
         a = re.split(Data.separator_str, row)
         nbRows = int(a[0])
@@ -1054,26 +1147,28 @@ def readMatrix(filename, side = None):
             method_parse =  eval('parseCell%s' % (type_all.capitalize()))
             method_prepare = eval('prepare%s' % (type_all.capitalize()))
             method_finish = eval('finish%s' % (type_all.capitalize()))
+        elif len(type_all) >= 3 and type_all[0:3] == 'dat':
+            method_parse =  eval('parseVarDatAll')
+            method_prepare = eval('preparePerRow')
+            method_finish = eval('finishVar%s' % (type_all.capitalize()))
         else:
             method_parse =  eval('parseVar%s' % (type_all.capitalize()))
             method_prepare = eval('preparePerRow')
             method_finish = eval('finishPerRow')
+
     except NameError as detail:
         raise DataError("Could not find correct data reader! (%s)" % detail)
     try:
         tmpCols = method_prepare(nbRows, nbCols)
-
+        
         # print "Reading input data %s (%s)"% (filename, type_all)
         for row in f:
             if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows is None:
                 nbRows = len(re.split(Data.separator_str, row))
-            method_parse(tmpCols, re.split(Data.separator_str, row), nbRows, nbCols)
-
-        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols is None:
-            nbCols = len(tmpCols)
+            method_parse(tmpCols, re.split(Data.separator_str, row.strip()), nbRows, nbCols)
 
         ## print "Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all)
-        cols = method_finish(tmpCols, nbRows, nbCols)
+        cols, nbRows, nbCols = method_finish(tmpCols, nbRows, nbCols)
     except DataError:
         raise
     except (AttributeError, ValueError, StopIteration) as detail:
@@ -1097,7 +1192,8 @@ def parseVarMix(tmpCols, a, nbRows, nbCols):
     method_parse(tmpCols, a, nbRows, nbCols)
 
 def finishPerRow(tmpCols, nbRows, nbCols):
-    return tmpCols
+    ## Todo: check number of rows and cols?
+    return tmpCols, nbRows, len(tmpCols)
 
 def prepareSparsenum(nbRows, nbCols):
     return [[[(0, -1)], set()] for i in range(nbCols)]
@@ -1116,7 +1212,7 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
             
 def finishSparsenum(tmpCols, nbRows, nbCols):
-    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]        
+    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], nbRows, nbCols
 
 def prepareSparsebool(nbRows, nbCols):
     return [[set(), set()] for i in range(nbCols)]
@@ -1135,7 +1231,7 @@ def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
             tmpCols[id_col][1].add(id_row)
         
 def finishSparsebool(tmpCols, nbRows, nbCols):
-    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
+    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], nbRows, nbCols
 
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
     if len(a) == nbRows:
@@ -1182,13 +1278,22 @@ def parseVarDensebool(tmpCols, a, nbRows, nbCols):
         tmpCols.append(BoolColM(tmp, nbRows, miss))
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
-    
-                        
-def parseVarDatbool(tmpCols, a, nbRows, nbCols):
-    tmp = set()
-    for i in range(len(a)):
-        tmp.add(int(a[i]))
-    if max(tmp) >= nbRows:
-        raise DataError('Too many rows (%i ~ %i)' % (nbRows, max(tmp)+1))
-    else:
-        tmpCols.append(BoolColM(tmp, nbRows))
+             
+def parseVarDatAll(tmpCols, a, nbRows, nbCols):
+    tmpCols.append(set(map(int, a)))
+
+def finishVarDatbool(tmpCols, nbRows, nbCols):
+    nbRows = max([max(tmp) for tmp in tmpCols])+1    
+    return [BoolColM(col, nbRows+1) for col in tmpCols], nbRows, len(tmpCols)  
+
+def finishVarDat(tmpOCols, nbORows, nbOCols):
+    ### Each line contains one transaction
+    ## transpose
+    nbRows = len(tmpOCols)
+    nbCols = max([max(tmp) for tmp in tmpOCols])+1
+
+    tmpCols = [set() for i in range(nbCols)]
+    for ri, row in enumerate(tmpOCols):
+        for i in row:
+            tmpCols[i].add(ri)
+    return [BoolColM(col, nbRows) for col in tmpCols], nbRows, len(tmpCols)  

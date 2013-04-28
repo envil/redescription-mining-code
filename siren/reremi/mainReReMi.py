@@ -20,8 +20,21 @@ def loadRedescriptions(filename, data):
         red = Redescription.load(fp, None, data)
     return tmp
 
-def run_filter(arguments):
-    params = getParams(arguments)
+def run_filter(params):
+    ta = do_filter(params)
+    #miner = Miner(data, params, logger)
+
+    #tf = miner.filter_run(ta)
+    for ti, t in enumerate(ta):
+        print t.disp()
+    # names = [None, None]
+    # if data.hasNames():
+    #     names = data.getNames()
+
+    #     print t.dispTexLine(ti, names)
+
+def do_filter(params):
+
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
@@ -34,15 +47,7 @@ def run_filter(arguments):
 
     fileq = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
     ta = loadRedescriptions(fileq, data)
-    #miner = Miner(data, params, logger)
-
-    #tf = miner.filter_run(ta)
-    names = None
-    if data.hasNames():
-        names = data.getNames()
-    for ti, t in enumerate(ta):
-        print t.dispTexLine(ti, names)
-
+    return ta
         
 def getParams(arguments=[]):
     pref_dir = os.path.dirname(os.path.abspath(__file__))
@@ -66,15 +71,13 @@ def getParams(arguments=[]):
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
 
-    return params
+    return params, pm, pr
 
 
  
-def run(arguments):
+def run(params):
 
     ticO = datetime.datetime.now()
-
-    params = getParams(arguments)
 
     params_l = {}
     for k, v in  params.items():
@@ -157,7 +160,8 @@ def run(arguments):
 
 
 if __name__ == "__main__":
+    params, pr, pm = getParams(sys.argv)
     if len(sys.argv) > 2 and sys.argv[2] == "filter":
-        run_filter(sys.argv)
+        run_filter(params)
     else:
-        run(sys.argv)
+        run(params)

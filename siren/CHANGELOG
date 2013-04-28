@@ -9,7 +9,7 @@ v1.1.0
 * Updated GEOS to 3.3.6 (OS X bundle only)
 * Updated Python to 2.7.3 (OS X bundle only)
 * Updated wxPython to 2.9.4.0 (OS X bundle only)
-* Updaged Basemap to 1.0.5 (OS X bundle only)
+* Updated Basemap to 1.0.5 (OS X bundle only)
 * Various bug fixes
 
 v1.0.1

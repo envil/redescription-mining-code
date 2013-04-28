@@ -1,6 +1,6 @@
-import re, string
+import re, string, numpy
 from classQuery import  *
-from classSParts import  SParts
+from classSParts import  SParts, tool_pValSupp, tool_pValOver
 import toolRead
 import pdb
 
@@ -150,6 +150,27 @@ class Redescription:
 
     def probas(self):
         return self.sParts.probas()
+
+    def probasME(self, dbPrs, epsilon=0):
+        return [self.queries[side].probaME(dbPrs, side, epsilon) for side in [0,1]]
+
+    def surpriseME(self, dbPrs, epsilon=0):
+        #return [-numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.sParts.nbRows(), self.sParts.suppSide(side), 0) - self.queries[side].probaME(dbPrs, side)))) for side in [0,1]]
+        return -numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.sParts.nbRows(), self.sParts.suppI(), 0) - self.queries[0].probaME(dbPrs, 0)*self.queries[1].probaME(dbPrs, 1))))
+
+    def exME(self, dbPrs, epsilon=0):
+        prs = [self.queries[side].probaME(dbPrs, side, epsilon) for side in [0,1]]
+        surprises = []
+        tmp = [i for i in self.sParts.suppI() if prs[0][i]*prs[1][i] == 0]
+        surprises.append(-numpy.sum(numpy.log([prs[0][i]*prs[1][i] for i in self.sParts.suppI()])))
+        surprises.extend([-numpy.sum(numpy.log([prs[side][i] for i in self.sParts.suppSide(side)])) for side in [0,1]])
+
+        return surprises + [len(tmp) > 0]
+
+        N = self.sParts.nbRows()
+        margsPr = [numpy.sum([prs[side][i] for i in self.sParts.suppSide(side)]) for side in [0,1]]
+        pvals = [tool_pValOver(self.sParts.lenI(), N, int(margsPr[0]), int(margsPr[1])), tool_pValSupp(N, self.sParts.lenI(), margsPr[0]*margsPr[1]/N**2)]
+        return surprises, pvals
     
     def length(self, side):
         return len(self.queries[side])
