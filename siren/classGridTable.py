@@ -378,20 +378,20 @@ class RedTable(GridTable):
             if upView:
                 self.ResetView()
 
-    def viewData(self):
+    def viewData(self, viewT=None):
         pos = self.getSelectedPos()
         vid = None
         for (k,v) in self.opened_edits.items():
-            if v == pos:
-                vid = k
+            if v == pos and viewT == k[0]:
+                vid = k[1]
                 break
             
         if vid is None:
-            mapV = self.parent.getMapView()
-            self.registerView(mapV.vid, pos)
+            mapV = self.parent.getMapView(None, viewT)
+            self.registerView(mapV.getId(), pos)
             mapV.setCurrent(self.getSelectedItem(), self.tabId)
         else:
-            self.parent.getMapView(vid)
+            self.parent.getMapView(vid, viewT)
 
     def registerView(self, key, pos):
         self.opened_edits[key] = pos
@@ -501,8 +501,8 @@ class VarTable(GridTable):
                   2:[('categories', 'self.data[x].getCategories')],
                   3:[('min', 'self.data[x].getMin'), ('max', 'self.data[x].getMax')]}
 
-    def viewData(self):
-        mapV = self.parent.getMapView()
+    def viewData(self, viewT=None):
+        mapV = self.parent.getMapView(None, viewT)
         datVar = self.getSelectedItem()
         queries = [Query(), Query()]
         queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))

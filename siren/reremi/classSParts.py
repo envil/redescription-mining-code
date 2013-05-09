@@ -820,31 +820,29 @@ class SParts:
         return list(self.vect)
 
     def sampleRows(self, rate=None, minP=10, maxP=500):
-        if rate is None or rate == 1:
-            rows = None
-            tmp = None
-        else:
-            rows = []
-            opids = []
-            for sid in reversed(self.opids()):
-                sS = self.part(sid)
-                if len(sS) > 0:
-                    opids.append(sid)
-                    if rate < 1:
-                        nb = int(rate*len(sS))
-                    else:
-                        nb = rate
-                    if nb > maxP:
-                        nb = maxP
-                    if nb < minP:
-                        nb = minP
-                    if len(sS) <= nb:
-                        rows.extend(sS)
-                    else:
-                        rows.extend(random.sample(sS, nb))
-            # tmp = [False for i in range(self.N)]
-            # for i in rows:
-            #     tmp[i] = True
+        rows = []
+        opids = []
+        for sid in reversed(self.opids()):
+            sS = self.part(sid)
+            if len(sS) > 0:
+                opids.append(sid)
+                if rate is None or rate == 1:
+                    nb = len(sS)
+                if rate < 1:
+                    nb = int(rate*len(sS))
+                else:
+                    nb = rate
+                if nb > maxP:
+                    nb = maxP
+                if nb < minP:
+                    nb = minP
+                if len(sS) <= nb:
+                    rows.extend(sS)
+                else:
+                    rows.extend(random.sample(sS, nb))
+        # tmp = [False for i in range(self.N)]
+        # for i in rows:
+        #     tmp[i] = True
         return rows, opids #, tmp
             
     # returns the index of the part the given row belongs to, vectorABCD need to have been computed 

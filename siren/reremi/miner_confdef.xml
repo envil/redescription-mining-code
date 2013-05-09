@@ -16,20 +16,38 @@
 	<default><value>4</value></default>
       </parameter>
       <parameter>
-	<name>neg_query</name>
-	<label>Literals</label>
+	<name>lhs_neg_query</name>
+	<label>LHS Literals</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Types of literals allowed in the queries.</legend>
+	<legend>Types of literals allowed in the left-hand side queries.</legend>
 	<default><value>0</value></default>
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>ops_query</name>
-	<label>Operators</label>
+	<name>lhs_ops_query</name>
+	<label>LHS Operators</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Type of operators allowed in the queries.</legend>
+	<legend>Type of operators allowed in the left-hand side queries.</legend>
+	<default><value>0</value><value>1</value></default>
+	<options><value>Conjunction</value><value>Disjunction</value></options>
+      </parameter>
+      <parameter>
+	<name>rhs_neg_query</name>
+	<label>RHS Literals</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Types of literals allowed in the right-hand side queries.</legend>
+	<default><value>0</value></default>
+	<options><value>Positive</value><value>Negative</value></options>
+      </parameter>
+      <parameter>
+	<name>rhs_ops_query</name>
+	<label>RHS Operators</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Type of operators allowed in the right-hand side queries.</legend>
 	<default><value>0</value><value>1</value></default>
 	<options><value>Conjunction</value><value>Disjunction</value></options>
       </parameter>

@@ -21,13 +21,21 @@ class Constraints:
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"])
         self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"])
 
-        self._pv["neg_query"] = []
-        for v in params["neg_query"]["value"]:
-            self._pv["neg_query"].append(bool(v))
+        self._pv["lhs_neg_query"] = []
+        for v in params["lhs_neg_query"]["value"]:
+            self._pv["lhs_neg_query"].append(bool(v))
 
-        self._pv["ops_query"] = []
-        for v in params["ops_query"]["value"]:
-            self._pv["ops_query"].append(bool(v))
+        self._pv["rhs_neg_query"] = []
+        for v in params["rhs_neg_query"]["value"]:
+            self._pv["rhs_neg_query"].append(bool(v))
+
+        self._pv["lhs_ops_query"] = []
+        for v in params["lhs_ops_query"]["value"]:
+            self._pv["lhs_ops_query"].append(bool(v))
+
+        self._pv["rhs_ops_query"] = []
+        for v in params["rhs_ops_query"]["value"]:
+            self._pv["rhs_ops_query"].append(bool(v))
 
         self._pv["score_coeffs"] = {"impacc": self._pv["score.impacc"],
                                  "rel_impacc": self._pv["score.rel_impacc"],
@@ -106,12 +114,18 @@ class Constraints:
     def max_overlaparea(self):
         return self._pv["max_overlaparea"]
     def neg_query(self, side):
-        return self._pv["neg_query"]
+        if side == 1:
+            return self._pv["rhs_neg_query"]
+        else:
+            return self._pv["lhs_neg_query"]
     def ops_query(self, side, init=False):
         if init != 0:
             return [True]
         else:
-            return self._pv["ops_query"]
+            if side == 1:
+                return self._pv["rhs_ops_query"]
+            else:
+                return self._pv["lhs_ops_query"]
     def pair_sel(self):
         return self._pv["pair_sel"]
     def score_coeffs(self):

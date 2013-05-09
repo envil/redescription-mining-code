@@ -302,9 +302,14 @@ class Siren():
         if self.selectedTab["type"] in ["Var","Reds"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
 
-                ID_NEWW = wx.NewId()
-                m_neww = menuRed.Append(ID_NEWW, "&View in new window\tCtrl+W", "View redescription in new window.")
-                frame.Bind(wx.EVT_MENU, self.OnNewW, m_neww)
+                ID_NEWWPC = wx.NewId()
+                m_newwpc = menuRed.Append(ID_NEWWPC, "&View para. co. in new window\tCtrl+P", "Plot redescription on parallel coordinates in new window.")
+                frame.Bind(wx.EVT_MENU, self.OnNewWPC, m_newwpc)
+                
+                if self.dw.isGeospatial():
+                    ID_NEWWM = wx.NewId()
+                    m_newwm = menuRed.Append(ID_NEWWM, "&View map in new window\tCtrl+W", "Plot redescription on a map in new window.")
+                    frame.Bind(wx.EVT_MENU, self.OnNewWM, m_newwm)
 
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current redescription.")
@@ -482,13 +487,25 @@ class Siren():
 ###########     MAP VIEWS
 ######################################################################
 
-    def getMapView(self, vid=None):
-        if vid not in self.mapViews.keys():
-            self.selectedMap = wx.NewId()
-            self.mapViews[self.selectedMap] = MapView(self, self.selectedMap)
-# TOOGLE VIEW            self.mapViews[self.selectedMap] = ParaView(self, self.selectedMap)    
+    def getMapView(self, vid=None, viewT=None):
+        if viewT is None:
+            if self.dw.isGeospatial():
+                viewT = MapView.TID
+            else:
+                viewT = ParaView.TID
+
+        if (viewT, vid) not in self.mapViews.keys():
+            vid = wx.NewId()
+            self.selectedMap = (viewT, vid)
+            if viewT == MapView.TID:
+                self.mapViews[self.selectedMap] = MapView(self, vid)
+            else:
+                self.mapViews[self.selectedMap] = ParaView(self, vid)
+        else:
+            self.selectedMap = (viewT, vid)
         self.mapViews[self.selectedMap].mapFrame.Raise()
         return self.mapViews[self.selectedMap]
+
 
     def deleteView(self, vid):
         if vid in self.mapViews.keys():
@@ -757,10 +774,15 @@ class Siren():
         self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
         self.makeMenu(self.toolFrame)
 
-    def OnNewW(self, event):
+    def OnNewWM(self, event):
         if self.selectedTab["type"] in ["Var", "Reds"]:
             self.selectedMap = -1
-            self.selectedTab["tab"].viewData()
+            self.selectedTab["tab"].viewData(MapView.TID)
+
+    def OnNewWPC(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds"]:
+            self.selectedMap = -1
+            self.selectedTab["tab"].viewData(ParaView.TID)
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:

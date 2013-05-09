@@ -374,8 +374,9 @@ class CatColM(ColM):
 class NumColM(ColM):
     type_id = NumTerm.type_id
 
-    p_patt = "^-?\d+(\.\d+)?$"
+    p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
     def parseList(listV, indices=None):
+        prec = None
         if indices is None:
             indices = range(len(listV))
         miss = set()
@@ -384,12 +385,16 @@ class NumColM(ColM):
             v = listV[i]
             if v is None:
                 miss.add(j)
-            elif not re.match(NumColM.p_patt, v):
-                return None
             else:
-                val = float(v)
-                vals.append((val, j))
-        return NumColM(vals, len(indices), miss)
+                tmatch = re.match(NumColM.p_patt, v)
+                if not tmatch: 
+                    return None
+                else:
+                    if len(tmatch.group("dec")) > prec:
+                        prec = len(tmatch.group("dec"))
+                    val = float(v)
+                    vals.append((val, j))
+        return NumColM(vals, len(indices), miss, prec)
     parseList = staticmethod(parseList)
 
     def getTerm(self, details=None):
@@ -415,8 +420,12 @@ class NumColM(ColM):
     def getMax(self, details=None):
         return self.sVals[-1][0]
 
-    def __init__(self, ncolSupp=[], N=-1, nmiss=set()):
+    def getPrec(self, details=None):
+        return self.prec
+
+    def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None):
         ColM.__init__(self, N, nmiss)
+        self.prec = prec
         self.sVals = ncolSupp
         self.sVals.sort()
         self.mode = {}
@@ -436,7 +445,7 @@ class NumColM(ColM):
             tmp_vals = dict([(i,v) for (v,i) in self.sVals])
             svals = [(tmp_vals[i],trans[i]) for i in set(row_ids) & set(tmp_vals.keys())]
             miss = set([trans[i] for i in set(row_ids) & self.missing])
-        tmp = NumColM(svals, N, miss)
+        tmp = NumColM(svals, N, miss, self.prec)
         tmp.name = self.name
         tmp.enabled = self.enabled
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
@@ -1196,7 +1205,7 @@ def finishPerRow(tmpCols, nbRows, nbCols):
     return tmpCols, nbRows, len(tmpCols)
 
 def prepareSparsenum(nbRows, nbCols):
-    return [[[(0, -1)], set()] for i in range(nbCols)]
+    return [[[(0, -1)], set(), None] for i in range(nbCols)]
 
 def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     id_row = int(a[0])-1
@@ -1204,15 +1213,19 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     if id_col >= nbCols or id_row >= nbRows:
         raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
     else :
-        try:
-            val = float(a[2])
+        tmatch = re.match(NumColM.p_patt, v)
+        if not tmatch: 
+            tmpCols[id_col][1].add(id_row)
+        else:
+            if len(tmatch.group("dec")) > tmpCols[id_col][2]:
+                tmpCols[id_col][2] = len(tmatch.group("dec"))
+            val = float(v)
             if val != 0:
                 tmpCols[id_col][0].append((val, id_row))
-        except ValueError:
-            tmpCols[id_col][1].add(id_row)
+
             
 def finishSparsenum(tmpCols, nbRows, nbCols):
-    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], nbRows, nbCols
+    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1], tmpCols[col][2]) for col in range(len(tmpCols))], nbRows, nbCols
 
 def prepareSparsebool(nbRows, nbCols):
     return [[set(), set()] for i in range(nbCols)]
@@ -1234,17 +1247,22 @@ def finishSparsebool(tmpCols, nbRows, nbCols):
     return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], nbRows, nbCols
 
 def parseVarDensenum(tmpCols, a, nbRows, nbCols):
+    prec = None
     if len(a) == nbRows:
         tmp = []
         miss = set()
         for i in range(len(a)):
-            try:
+            tmatch = re.match(NumColM.p_patt, a[i])
+            if not tmatch: 
+                miss.add(i)
+            else:
+                if len(tmatch.group("dec")) > prec:
+                    prec = len(tmatch.group("dec"))
                 val = float(a[i])
                 tmp.append((val,i))
-            except ValueError:
-                miss.add(i)
+                
         tmp.sort(key=lambda x: x[0])
-        tmpCols.append(NumColM(tmp, nbRows, miss))
+        tmpCols.append(NumColM(tmp, nbRows, miss, prec))
     else:
         raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
                     

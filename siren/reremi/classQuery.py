@@ -216,12 +216,11 @@ class BoolTerm(Term):
         else:
             return '%s%i' % ( neg.dispU(), self.col)
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.2):    
         tmp = dataSide[self.col].getVector()
         if selectids is None:
-            data = [a/2.0 + 0.25 + (0.2*j)/len(tmp) for j,a in enumerate(tmp)]
-        else:
-            data = [tmp[i]/2.0  + 0.25 + (0.2*j)/len(selectids) for j,i in enumerate(selectids)]
+            selectids = range(len(tmp))
+        data = [tmp[i]/2.0  + 0.25 + slack*(j/float(len(selectids))-0.5) for j,i in enumerate(selectids)]
         bounds = [0.5, 1]
         return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
                     
@@ -329,9 +328,8 @@ class CatTerm(Term):
         st_size = 1.0/len(vs)
         dm = dict([(p, n*st_size) for n, p in enumerate(sorted(set(tmp)))])
         if selectids is None:
-            data = [dm[a] for a in tmp]
-        else:
-            data = [dm[tmp[i]] for i in selectids]
+            selectids = range(len(tmp))
+        data = [dm[tmp[i]]+slack*st_size*i/float(len(selectids)) for i in selectids]
         bounds = [dm[self.cat], dm[self.cat]+st_size]
         return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
 
@@ -507,9 +505,8 @@ class NumTerm(Term):
         mint = float(min(tmp))
         maxt = max(tmp)
         if selectids is None:
-            data = [(a-mint)/(maxt-mint) for a in tmp]
-        else:
-            data = [(tmp[i]-mint)/(maxt-mint) for i in selectids]
+            selectids = range(len(tmp))
+        data = [(tmp[i]-mint)/(maxt-mint) for i in selectids]
         bounds = [0,1]
         if self.lowb > float('-Inf'):
             bounds[0] = (self.lowb-mint)/(maxt-mint)

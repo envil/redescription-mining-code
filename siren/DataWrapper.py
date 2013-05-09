@@ -111,6 +111,12 @@ class DataWrapper(object):
     def getData(self):
         return self.data
 
+    def isGeospatial(self):
+        if self.data is not None and self.data.isGeospatial():
+            return True
+        else:
+            return False
+
     def getCoords(self):
         if self.data is not None and self.data.isGeospatial():
             return self.data.coords
