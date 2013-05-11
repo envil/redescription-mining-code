@@ -5,6 +5,7 @@ import voronoi_poly
 import pdb
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 
 
 def binSegments(V, max_k):
@@ -51,21 +52,46 @@ def binSegments(V, max_k):
   assign = [int(buckets[j][0]) for j in J]
   return assign, bounds, cost, opt_k
 
+WATER_COLOR = "#FFFFFF"
+GROUND_COLOR = "#FFFFFF"
+LINES_COLOR = "gray"
+
+def setM(datapoints):
+  plt.figure()
+  t, x, y = zip(*datapoints)
+  llon, ulon, llat, ulat = min(x)-2, max(x)+2, min(y)-2, max(y)+2
+  m = Basemap(llcrnrlon=llon, llcrnrlat=llat, urcrnrlon=ulon, urcrnrlat=ulat, \
+              resolution = 'c', projection = 'mill', \
+              lon_0 = llon + (ulon-llon)/2.0, \
+              lat_0 = llat + (ulat-llat)/2.04)
+
+  m.drawcoastlines(color=LINES_COLOR)
+  m.drawcountries(color=LINES_COLOR)
+  m.drawmapboundary(fill_color=WATER_COLOR) 
+  m.fillcontinents(color=GROUND_COLOR, lake_color=WATER_COLOR) #'#EEFFFF')
+  px, py = m(x,y)
+  coords_proj = zip(t, px, py)
+  return m, coords_proj
 
 #Run this using the pipe: "cat sample_city_data.cat | python main_example.py"
 if __name__=="__main__":
 
 
   #Creating the PointsMap from the input data
-  PointsMap={}
   fp=open("coords.csv", "r")
+  datapoints = []
   for line in fp:
     data=line.strip().split(",")
     try:
-      PointsMap[len(PointsMap)]=(float(data[2]),float(data[1]))
+#      datapoints.append((data[0], float(data[1]),float(data[2])))
+      datapoints.append((len(datapoints), float(data[2]),float(data[1])))
     except:
       sys.stderr.write( "(warning) Invalid Input Line: "+line)
   fp.close()
+
+  m, pdp = setM(datapoints)
+
+  PointsMap=dict([(p, (c1,c2)) for (p, c1, c2) in pdp])
   
   statson = []
   fp=open("supp.csv", "r")
@@ -79,51 +105,96 @@ if __name__=="__main__":
 
   sx, sy = zip(*PointsMap.values())
   #1. Stations, Lines and edges
-  vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+1, min(sx)-1, min(sy)-1, max(sx)+1], PlotMap=True)
+  vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+1, min(sx)-1, min(sy)-1, max(sx)+1])
 
   dc = dict([(v["info"], k) for k,v in vl.items()])
 #  vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox="W", PlotMap=True)
 
+
+  neighdc = {}
   lens = []
-  lensi = []
   for so, details in vl.items():
     d = details["coordinate"]
     for ei, edge in enumerate(details['obj_polygon']):
+      if neighdc.has_key(edge):
+        neighdc[edge].append(so)
+      else:
+        neighdc[edge] = [so]
       for end in [0,1]:
         lens.append((so, ei, end, (edge[end][0]-d[0])**2+(edge[end][1]-d[1])**2))
-        #lens.append((edge[end][0]-d[0])**2+(edge[end][1]-d[1])**2)
   lens.sort(key=lambda x:x[3], reverse=True)
-  del lens[int(0.1*len(lens)):]
+  tmpc = int(0.1*len(lens))
+  while lens[tmpc-1][-1] == lens[tmpc][-1] or lens[tmpc-1][0] == lens[tmpc][0]:
+    tmpc+=1
+  del lens[tmpc+1:]
   tmp = lens.pop()
-  lens.sort()
   ml = tmp[3]
 
+  lend = dict([(tuple(l[:3]), l[3]) for l in lens])
+  lens = sorted(lend.keys())
+              
   # alle = set()
   # for so, details in vl.items():
   #   alle |= set(vl[so]['obj_polygon'])
 
   # for edge in alle:
   #   ex,ey = zip(*edge)
-  #   plt.plot(ex, ey, "k")
+  #   m.plot(ex, ey, "k")
 
+
+  mods = {}
 
   while len(lens) > 0: # and lens[-1][0] == 2667:
-    so, ei, end, li = lens.pop()
-    if len(lens) > 0 and lens[-1][0:3] == (so, ei, 1-end):
-      so, ei, endo, lio = lens.pop()
-      ttl = {end: li, endo: lio}
+    so, ei, end = lens.pop()
+    li = lend[(so,ei,end)]
+    if len(lens) > 0 and lens[-1] == (so, ei, 1-end):
+      lens.pop()
+      ttl = {end: li, 1-end: lend[(so,ei,1-end)]}
       tmp = vl[so]['obj_polygon'][ei]
       vl[so]['obj_polygon'][ei] = tuple([tuple([vl[so]["coordinate"][c]-(vl[so]["coordinate"][c]-tmp[en][c])*np.sqrt(ml/ttl[en])
                                                 for c in [0,1]]) for en in [0,1]])
 
     else:
-      tmp = list(vl[so]['obj_polygon'][ei])
+      tmp = vl[so]['obj_polygon'][ei]
 
       tll = (tmp[1-end][0]-tmp[end][0])**2+(tmp[1-end][1]-tmp[end][1])**2
-
       tmpadd = tuple([vl[so]["coordinate"][c]-(vl[so]["coordinate"][c]-tmp[end][c])*np.sqrt(ml/li) for c in [0,1]])
-      tmpsti = tuple([tmp[1-end][c]-(tmp[1-end][c]-tmp[end][c])*np.sqrt(ml/(2*tll)) for c in [0,1]])
 
+      neighs = neighdc[tmp]
+
+      neigh = min(neighs)
+      if neigh == so:
+        neigh = max(neighs)
+        tmpn = mods.get((neigh,tmp))
+      else:
+        tmpn = vl[neigh]['obj_polygon'].index(tmp)        
+        mods[(so,tmp)] = ei
+
+      lin = lend.get((neigh, tmpn, end))
+      if lin is not None:
+        tmpaddn = tuple([vl[neigh]["coordinate"][c]-(vl[neigh]["coordinate"][c]-tmp[end][c])*np.sqrt(ml/lin) for c in [0,1]])
+        
+        AB = (tmpadd, tmpaddn)
+        CD = tmp
+        if AB[0][0] == AB[1][0]:
+          x = AB[0][0]
+          y = (CD[0][1]-CD[1][1])/(CD[0][0]-CD[1][0]) *x \
+              + (CD[1][1] - CD[1][0]*(CD[0][1]-CD[1][1])/(CD[0][0]-CD[1][0]))
+        elif CD[0][0] == CD[1][0]:
+          x = CD[0][0]
+          y = (AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]) *x \
+              + (AB[1][1] - AB[1][0]*(AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]))
+        else:
+          x = ((CD[1][1] - CD[1][0]*(CD[0][1]-CD[1][1])/(CD[0][0]-CD[1][0])) \
+               - (AB[1][1] - AB[1][0]*(AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]))) / \
+               ( (AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]) \
+                 - (CD[0][1]-CD[1][1])/(CD[0][0]-CD[1][0]))
+          y = (AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]) *x \
+              + (AB[1][1] - AB[1][0]*(AB[0][1]-AB[1][1])/(AB[0][0]-AB[1][0]))
+          
+        tmpsti = (x,y)
+      else:
+        tmpsti = tmp[end]
       if end == 1:
         vl[so]['obj_polygon'][ei] = (tmpsti, tmpadd)
         vl[so]['obj_polygon'].insert(ei,(tmp[0], tmpsti))
@@ -136,19 +207,18 @@ if __name__=="__main__":
   alle = set()
   for so, details in vl.items():
     alle |= set(details['obj_polygon'])
-
   
   for edge in alle:
     ex,ey = zip(*edge)
-    plt.plot(ex, ey, "b")
+    m.plot(ex, ey, "b")
 
 
-  plt.plot(sx, sy, "go")
+#  m.plot(sx, sy, "go")
   pedges = {}
   for so in statson:
     s = dc[so] 
     if vl.has_key(s):
-      plt.plot(vl[s]['coordinate'][0], vl[s]['coordinate'][1], "bo")
+      #m.plot(vl[s]['coordinate'][0], vl[s]['coordinate'][1], "bo")
       
       for edge in vl[s]['obj_polygon']:
         if pedges.has_key(edge):
@@ -161,7 +231,7 @@ if __name__=="__main__":
   ledges = [k for k,v in pedges.items() if v==1]
   for edge in ledges:
     sx,sy = zip(*edge)
-    plt.plot(sx, sy, "r")
+    m.plot(sx, sy, "r")
 
   plt.show()
 
