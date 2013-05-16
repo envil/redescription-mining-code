@@ -16,6 +16,7 @@ from reremi.toolICList import ICList
 from classGridTable import VarTable, RedTable
 from classMapView import MapView
 from classParaView import ParaView
+from classProjView import ProjView
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog
@@ -311,6 +312,11 @@ class Siren():
                     m_newwm = menuRed.Append(ID_NEWWM, "&View map in new window\tCtrl+W", "Plot redescription on a map in new window.")
                     frame.Bind(wx.EVT_MENU, self.OnNewWM, m_newwm)
 
+                ID_NEWWPJ = wx.NewId()
+                m_newwpj = menuRed.Append(ID_NEWWPJ, "&View projection in new window\tCtrl+P", "Plot redescription on two-dimension projection in new window.")
+                frame.Bind(wx.EVT_MENU, self.OnNewWPJ, m_newwpj)
+
+
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
@@ -487,6 +493,10 @@ class Siren():
 ###########     MAP VIEWS
 ######################################################################
 
+    def accessMapView(self, mid):
+        if self.mapViews.has_key(mid):
+            return self.mapViews[mid]
+
     def getMapView(self, vid=None, viewT=None):
         if viewT is None:
             if self.dw.isGeospatial():
@@ -499,6 +509,8 @@ class Siren():
             self.selectedMap = (viewT, vid)
             if viewT == MapView.TID:
                 self.mapViews[self.selectedMap] = MapView(self, vid)
+            elif viewT == ProjView.TID:
+                self.mapViews[self.selectedMap] = ProjView(self, vid)
             else:
                 self.mapViews[self.selectedMap] = ParaView(self, vid)
         else:
@@ -783,6 +795,11 @@ class Siren():
         if self.selectedTab["type"] in ["Var", "Reds"]:
             self.selectedMap = -1
             self.selectedTab["tab"].viewData(ParaView.TID)
+
+    def OnNewWPJ(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds"]:
+            self.selectedMap = -1
+            self.selectedTab["tab"].viewData(ProjView.TID)
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:

@@ -32,9 +32,6 @@ class ParaView(GView):
     def drawMap(self):
         """ Draws the map
         """
-        if self.parent.dw.getCoords() is None:
-            self.coords_proj = None
-            return
         self.MapfigMap = plt.figure()
 
         self.Mapcurr_mapi = 0
@@ -44,7 +41,7 @@ class ParaView(GView):
 
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
-
+        self.gca = plt.gca()
         self.MapcanvasMap.draw()
             
     def updateMap(self, red = None):
@@ -89,9 +86,3 @@ class ParaView(GView):
             self.MapcanvasMap.draw()
 
         return red
-
-    # def OnPick(self, event):
-    #     #### TODO drafting for info on click, uncomment binding  (mpl_connect)
-    #     inds = event.ind
-    #     for ind in inds:
-    #         print self.points_ids[ind], self.coords_proj[0][self.points_ids[ind]], self.coords_proj[1][self.points_ids[ind]]

@@ -742,7 +742,7 @@ class Data:
     var_types = [None, BoolColM, CatColM, NumColM]
 
     def __init__(self, cols=[[],[]], N=0, coords=None):
-
+        self.as_array = [None, None, None]
         if type(N) == int:
             self.cols = cols
             self.N = N
@@ -798,10 +798,16 @@ class Data:
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
         
-    def getMatrix(self, sides=None, cols=None):
+    def getMatrix(self, sides=None, cols=None, store=True):
         if sides is None:
             sides = [0, 1]
 
+        if store and self.as_array[0] == sides and self.as_array[1] == cols:
+            return self.as_array[2]
+
+        if store:
+            self.as_array[0] = sides
+            self.as_array[1] = cols
         mat = np.empty([0, self.N])
         details = []
         for side in sides:
@@ -812,6 +818,8 @@ class Data:
             tmp = np.array([self.cols[side][col].getVector() for col in tcols])
             mat = np.concatenate((mat, tmp))
             details.extend([(side, col, self.cols[side][col].type_id) for col in tcols])
+        if store:
+            self.as_array[2] = (mat, details)
         return mat, details
 
     def subset(self, row_ids=None):

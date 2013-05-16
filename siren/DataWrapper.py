@@ -108,6 +108,11 @@ class DataWrapper(object):
             return self.data.cols[side]
         return []
 
+    def getDataMatrix(self, sides=None, cols=None):
+        if self.data is not None:
+            return self.data.getMatrix(sides, cols)
+        return []
+
     def getData(self):
         return self.data
 

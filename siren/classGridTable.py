@@ -1,4 +1,5 @@
 import wx, wx.grid
+from classProjView import ProjView
 from reremi.toolICList import ICList
 from reremi.classQuery import Query, Literal
 from reremi.classRedescription import Redescription
@@ -382,7 +383,7 @@ class RedTable(GridTable):
         pos = self.getSelectedPos()
         vid = None
         for (k,v) in self.opened_edits.items():
-            if v == pos and viewT == k[0]:
+            if viewT != ProjView.TID and v == pos and viewT == k[0]:
                 vid = k[1]
                 break
             
@@ -404,7 +405,15 @@ class RedTable(GridTable):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
             if self.tabId != "hist":
-                self.data[self.opened_edits[edit_key]] = red
+                toed = self.opened_edits[edit_key]
+                self.data[toed] = red
+
+                for k,v in self.opened_edits.items():
+                    if k != edit_key and v == toed:
+                        mc = self.parent.accessMapView(k)
+                        if mc is not None:
+                            mc.setCurrent(red, self.tabId)
+
             else:
                 self.opened_edits[edit_key] = len(self.data)
                 self.parent.tabs["hist"]["tab"].insertItem(red, -1)
