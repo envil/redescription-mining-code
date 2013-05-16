@@ -4,7 +4,7 @@ import numpy as np
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-matplotlib.use('WXAgg')
+#matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
@@ -139,7 +139,6 @@ class GView:
         self.MaphboxVals.Add(self.MapValbox7, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
         self.MaphboxVals.Add(self.MapValbox8, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
 
-
         self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
         if self.MaptoolbarMap is not None:
@@ -153,12 +152,28 @@ class GView:
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         ## if self.parent.dw.getCoords() is not None:
         self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        
+        tmp = self.additionalElements()
+        if len(tmp) > 0:
+            maphboxAdd = wx.BoxSizer(wx.HORIZONTAL)
+            for elem in tmp:
+                maphboxAdd.Add(elem, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL | wx.EXPAND)
+            self.Mapvbox3.Add(maphboxAdd, 0, border=3, flag=flags)
+
         self.Mapvbox3.Add(self.MapredMapQ[0], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQ[1], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
         self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
+
+
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
+
+    def additionalElements(self):
+        return []
+
+    def additionalBinds(self):
+        pass
 
     def binds(self):
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -171,7 +186,8 @@ class GView:
                 
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-
+        self.additionalBinds()
+        
     def OnExpand(self, event):
         red = self.updateQueries()
         self.parent.expand(red)

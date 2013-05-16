@@ -4,7 +4,7 @@ import numpy as np
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-matplotlib.use('WXAgg')
+#matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \

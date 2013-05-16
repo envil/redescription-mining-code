@@ -1,10 +1,11 @@
 ### TODO check which imports are needed 
+import re
 import wx
 import numpy as np
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-matplotlib.use('WXAgg')
+#matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
@@ -20,7 +21,8 @@ import pdb
 class ProjView(GView):
 
     TID = "PRJ"
-
+    label_projkey=""
+    
     def __init__(self, parent, vid):
         self.parent = parent
         self.source_list = None
@@ -28,10 +30,12 @@ class ProjView(GView):
         self.lines = []
         self.coords_proj = None
         self.MaptoolbarMap = None
+        self.projkeyf = None
         self.buttons_details = [{"function": self.OnExpand, "label": "Expand"}]
-        self.buttons_details.append({"function": self.OnReproject, "label": "Reproject"})
+        #self.buttons_details.append({"function": self.OnReproject, "label": "Reproject"})
         self.axis_ids = [0,0]
         self.ax_labels = ["", ""]
+        self.proj_id = ""
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
@@ -43,17 +47,60 @@ class ProjView(GView):
     def getId(self):
         return (ProjView.TID, self.vid)
 
+    def additionalElements(self):
+        addbox = wx.BoxSizer(wx.HORIZONTAL)
+        lsizetxt = 90
+        txt = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.projkeyk = wx.NewId()
+        self.projkeyf = wx.TextCtrl(self.mapFrame, self.projkeyk, style=wx.TE_PROCESS_ENTER)
+        self.rep_button = wx.Button(self.mapFrame, size=(80,-1), label="Reproject")
+        flags = wx.ALL        
+        addbox.Add(txt, 0, border=0, flag=flags)
+        addbox.Add(self.projkeyf, 0, border=0, flag=flags)
+        addbox.Add(self.rep_button, 0, border=0, flag=flags)
+
+        txt.SetLabel(self.label_projkey)
+        self.projkeyf.ChangeValue(self.proj_id)
+        return [addbox]
+
+    def additionalBinds(self):
+        self.rep_button.Bind(wx.EVT_BUTTON, self.OnReproject)
+
     def OnReproject(self, rid=None):
-        self.project()
+        tmp_id = self.projkeyf.GetValue().strip()
+        if tmp_id != self.proj_id:
+            self.project(tmp_id)
+        else:
+            self.project()
         red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
         self.updateMap(red)
 
     def project(self, rid=None):
+        totcols = self.parent.dw.getData().nbCols(0)+self.parent.dw.getData().nbCols(1)
+
+        for axi in [0,1]:
+            self.axis_ids[axi] = np.random.randint(self.parent.dw.getData().nbCols(0)+1, totcols)
+
+        if rid is not None:
+            tmp = re.match("^(?P<alg>[A-Z]*):(?P<par>.*)$", rid)
+            if tmp is not None:
+                if tmp.group("alg") == "R":
+                    tmpr = re.match("^(?P<axis0>[0-9]*)-(?P<axis1>[0-9]*)$", tmp.group("par"))
+                    if tmpr is not None:
+                        axis0 = int(tmpr.group("axis0"))
+                        axis1 = int(tmpr.group("axis1"))
+                        if axis0 < totcols:
+                            self.axis_ids[0] = axis0
+                        if axis1 < totcols:
+                            self.axis_ids[1] = axis1
+
         mat, details = self.parent.dw.getDataMatrix()
         for axi in [0,1]:
-            self.axis_ids[axi] = np.random.randint(self.parent.dw.getData().nbCols(0)+1, self.parent.dw.getData().nbCols(0)+self.parent.dw.getData().nbCols(1))
             self.ax_labels[axi] = "axis %d" % self.axis_ids[axi]
+        self.proj_id = "R:%d-%d" % (self.axis_ids[0], self.axis_ids[1])
         self.coords_proj = (mat[self.axis_ids[0]], mat[self.axis_ids[1]])
+        if self.projkeyf is not None:
+            self.projkeyf.ChangeValue(self.proj_id)
 #        self.coords_proj = (np.random.rand(self.parent.dw.getNbRows(),1), np.random.rand(self.parent.dw.getNbRows(),1))
 
         
@@ -97,6 +144,7 @@ class ProjView(GView):
                            linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3)
             m.set_xlabel(self.ax_labels[0],fontsize=12)
             m.set_ylabel(self.ax_labels[1],fontsize=12)
+            #self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()
         return red
 
