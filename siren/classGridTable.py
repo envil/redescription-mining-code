@@ -1,5 +1,6 @@
 import wx, wx.grid
 from classProjView import ProjView
+from classParaView import ParaView
 from reremi.toolICList import ICList
 from reremi.classQuery import Query, Literal
 from reremi.classRedescription import Redescription
@@ -419,6 +420,25 @@ class RedTable(GridTable):
                 self.parent.tabs["hist"]["tab"].insertItem(red, -1)
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
+
+    def sendHighlight(self, edit_key, lid, turn_on=True):
+        if edit_key in self.opened_edits.keys() \
+               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
+
+            toed = self.opened_edits[edit_key]
+            mc = None
+            for k,v in self.opened_edits.items():
+                if k[0] == ParaView.TID and v == toed:
+                    mc = self.parent.accessMapView(k)
+
+            if mc is None:
+                mc = self.parent.getMapView(None, ParaView.TID)
+                self.registerView(mc.getId(), toed)
+                mc.setCurrent(self.data[toed], self.tabId)
+            if turn_on:
+                mc.emphasizeLine(lid)
+            else:
+                mc.clearEmphasize([lid])
 
     def deleteDisabled(self):
         i = 0

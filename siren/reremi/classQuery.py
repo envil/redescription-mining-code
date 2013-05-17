@@ -216,11 +216,17 @@ class BoolTerm(Term):
         else:
             return '%s%i' % ( neg.dispU(), self.col)
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.2):    
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
+        if pos is not None:
+            slackp = slack
+            slack = 0
+        else:
+            slackp = 0
+            pos = 0
         tmp = dataSide[self.col].getVector()
         if selectids is None:
             selectids = range(len(tmp))
-        data = [tmp[i]/2.0  + 0.25 + slack*(j/float(len(selectids))-0.5) for j,i in enumerate(selectids)]
+        data = [tmp[i]/2.0  + 0.25 + slackp*(pos-0.5) + slack*(j/float(len(selectids))-0.5) for j,i in enumerate(selectids)]
         bounds = [0.5, 1]
         return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
                     
@@ -323,13 +329,19 @@ class CatTerm(Term):
         else:
             return ('%s '+symbIn+' %i') % (self.col, self.cat)
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
+        if pos is not None:
+            slackp = slack
+            slack = 0
+        else:
+            slackp = 0
+            pos = 0
         tmp = dataSide[self.col].getVector()
         st_size = 1.0/len(vs)
         dm = dict([(p, n*st_size) for n, p in enumerate(sorted(set(tmp)))])
         if selectids is None:
             selectids = range(len(tmp))
-        data = [dm[tmp[i]]+slack*st_size*i/float(len(selectids)) for i in selectids]
+        data = [dm[tmp[i]] + slackp*st_size+slack*st_size*i/float(len(selectids)) for i in selectids]
         bounds = [dm[self.cat], dm[self.cat]+st_size]
         return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
 
@@ -500,7 +512,7 @@ class NumTerm(Term):
             idcol = '%i' % self.col
         return ''+negstr+lb+idcol+ub+''
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.05):    
+    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
         tmp = dataSide[self.col].getVector()
         mint = float(min(tmp))
         maxt = max(tmp)
@@ -567,8 +579,8 @@ class Literal:
         self.neg = Neg(nneg)
 #         self.neg = Neg(self.term.simple(nneg))
 
-    def sampleBounds(self, dataSide, names, selectids=None):
-        return self.term.sampleBounds(self.neg, dataSide, names, selectids)
+    def sampleBounds(self, dataSide, names, selectids=None, slack=0.1, pos=None):
+        return self.term.sampleBounds(self.neg, dataSide, names, selectids, slack, pos)
 
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())

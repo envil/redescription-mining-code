@@ -821,11 +821,10 @@ class SParts:
 
     def sampleRows(self, rate=None, minP=10, maxP=500):
         rows = []
-        opids = []
+        opids = {}
         for sid in reversed(self.opids()):
             sS = self.part(sid)
             if len(sS) > 0:
-                opids.append(sid)
                 if rate is None or rate == 1:
                     nb = len(sS)
                 if rate < 1:
@@ -837,9 +836,11 @@ class SParts:
                 if nb < minP:
                     nb = minP
                 if len(sS) <= nb:
-                    rows.extend(sS)
+                    tt = sS
                 else:
-                    rows.extend(random.sample(sS, nb))
+                    tt = random.sample(sS, nb)
+                opids[sid] =(len(rows), len(rows)+len(tt))
+                rows.extend(tt)
         # tmp = [False for i in range(self.N)]
         # for i in rows:
         #     tmp[i] = True

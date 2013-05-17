@@ -32,6 +32,7 @@ class ParaView(GView):
     def drawMap(self):
         """ Draws the map
         """
+        self.highl = {}
         self.MapfigMap = plt.figure()
 
         self.Mapcurr_mapi = 0
@@ -54,26 +55,26 @@ class ParaView(GView):
 
             m = self.axe
             m.cla()
-            selectids, opids = red.supports().sampleRows(0.1, 100)
-#            selectids, opids = red.supports().sampleRows(2, 2)
-#            selectids, opids = red.supports().sampleRows(1, 100)
+            self.selectids, self.opids = red.supports().sampleRows(0.1, 100)
+#            self.selectids, opids = red.supports().sampleRows(2, 2)
+#            self.selectids, opids = red.supports().sampleRows(1, 100)
             d = {}
             topP = red.supports().topPart()+1
             osupp = red.supports().getVectorABCD()
-            d['class'] = [osupp[i] for i in selectids]
-            colorsl =  [draw_settings[i]["color_e"] for i in sorted(opids)]
+            d['class'] = [osupp[i] for i in self.selectids]
+            colorsl =  [draw_settings[i]["color_e"] for i in sorted(self.opids.keys())]
             bounds = []
             colsU = []
             # for side,pref in [(0,"RHS:"), (1,"LHS:")]:
             for side,pref in [(0,""), (1,"")]:
                 for lit in red.queries[side].listLiterals():
-                    ti = lit.sampleBounds(self.parent.dw.getDataCols(side), self.parent.details['names'][side], selectids)
+                    ti = lit.sampleBounds(self.parent.dw.getDataCols(side), self.parent.details['names'][side], self.selectids, scale_p)
                     colsU.append(pref+ti["text"])
                     d[colsU[-1]] = ti["data"]
                     bounds.append(ti["bounds"])
                 if side == 0:
                     colsU.append('--')
-                    data = [draw_settings[osupp[i]]["pos"] + scale_p*(float(j)/len(selectids)-0.5) for j,i in enumerate(selectids)]
+                    data = [draw_settings[osupp[i]]["pos"] + scale_p*(float(j)/len(self.selectids)-0.5) for j,i in enumerate(self.selectids)]
 
                     d[colsU[-1]] = data
                     bounds.append([0, 0])
@@ -84,5 +85,50 @@ class ParaView(GView):
             m.set_yticklabels([], visible =False)
             m.legend().set_visible(False)
             self.MapcanvasMap.draw()
-
         return red
+
+    def clearEmphasize(self, lids = None):
+        if lids is None:
+            lids = self.highl.keys()
+        for lid in lids:
+            if self.highl.has_key(lid):
+                while len(self.highl[lid]) > 0:
+                    self.gca.axes.lines.remove(self.highl[lid].pop())
+                del self.highl[lid]
+        self.MapcanvasMap.draw()
+
+    def emphasizeLine(self, lid, colhigh='#FFFF00'):
+        if self.highl.has_key(lid):
+        #     self.clearEmphasize([lid])
+            return
+
+        draw_settings = self.getDrawSettings()
+        scale_p = 0.1
+        m = self.axe
+        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+        osupp = red.supports().getVectorABCD()
+
+        pp = (self.opids[osupp[lid]][0] + (self.opids[osupp[lid]][1] - self.opids[osupp[lid]][0])/2.0)/len(self.selectids) 
+        xs, ys = [], []
+        for side,pref in [(0,""), (1,"")]:
+            for lit in red.queries[side].listLiterals():
+                ti = lit.sampleBounds(self.parent.dw.getDataCols(side), self.parent.details['names'][side], [lid],  scale_p, pos=pp)
+                xs.append(len(ys))
+                ys.append(ti["data"][0])
+            if side == 0:
+                xs.append(len(ys))
+                ys.append(draw_settings[osupp[lid]]["pos"]  + scale_p*(pp-0.5) )
+
+        self.highl[lid] = []
+        self.highl[lid].extend(plt.plot(xs, ys, colhigh, linewidth=2))
+        self.highl[lid].extend(plt.plot(xs, ys, color=draw_settings[osupp[lid]]["color_e"], linewidth=1))
+        self.MapcanvasMap.draw()
+
+    def additionalElements(self):
+        tmp = []
+        tmp.append(self.MaptoolbarMap)
+        self.buttons = []
+        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+                             "function": self.OnExpand})
+        tmp.append(self.buttons[-1]["element"])
+        return tmp

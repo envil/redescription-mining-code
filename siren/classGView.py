@@ -44,10 +44,7 @@ class GView:
         self.parent = parent
         self.source_list = None
         self.vid = vid
-        self.lines = []
-        self.coords_proj = None
-        self.MaptoolbarMap = None
-        self.buttons_details = [{"function": self.OnExpand, "label": "Expand"}]
+        self.buttons = []
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
@@ -139,32 +136,22 @@ class GView:
         self.MaphboxVals.Add(self.MapValbox7, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
         self.MaphboxVals.Add(self.MapValbox8, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
 
-        self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL
-        if self.MaptoolbarMap is not None:
-            self.Maphbox4.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
-
-        for button in self.buttons_details:
-            button["element"] = wx.Button(self.mapFrame, size=(80,-1), label=button["label"])
-            self.Maphbox4.Add(button["element"], 0, border=3, flag=flags)
-
         self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         ## if self.parent.dw.getCoords() is not None:
         self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         
-        tmp = self.additionalElements()
-        if len(tmp) > 0:
-            maphboxAdd = wx.BoxSizer(wx.HORIZONTAL)
-            for elem in tmp:
-                maphboxAdd.Add(elem, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL | wx.EXPAND)
-            self.Mapvbox3.Add(maphboxAdd, 0, border=3, flag=flags)
-
         self.Mapvbox3.Add(self.MapredMapQ[0], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MapredMapQ[1], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
-        self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
 
+        tmp = self.additionalElements()
+        if len(tmp) > 0:
+            self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
+            flags = wx.ALIGN_CENTER | wx.ALL
+            for elem in tmp:
+                self.Maphbox4.Add(elem, 0, border=3, flag=flags | wx.EXPAND)
+            self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
 
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
@@ -173,17 +160,13 @@ class GView:
         return []
 
     def additionalBinds(self):
-        pass
+        for button in self.buttons:
+            button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
     def binds(self):
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
 #        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
-        self.panel.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
-
-        for button in self.buttons_details:
-            if button.has_key("element"):
-                button["element"].Bind(wx.EVT_BUTTON, button["function"])
-                
+        self.panel.Bind(wx.EVT_SET_FOCUS, self.OnFocus)                
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
