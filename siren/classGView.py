@@ -317,8 +317,9 @@ class GView:
             self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))
 
     def updateEmphasize(self, colhigh='#FFFF00'):
-        lids = self.parent.tabs[self.source_list]["tab"].getHighlights(self.getId())
-        self.renewEmphasize(lids, colhigh)
+        if self.source_list is not None:
+            lids = self.parent.tabs[self.source_list]["tab"].getHighlights(self.getId())
+            self.renewEmphasize(lids, colhigh)
 
     def renewEmphasize(self, lids,  colhigh='#FFFF00'):
         self.clearEmphasize()

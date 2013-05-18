@@ -132,6 +132,7 @@ class ProjView(GView):
 
             m.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
             m.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
+            m.axis(self.proj.getAxisLims())
             self.updateEmphasize(ProjView.COLHIGH)
             self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()

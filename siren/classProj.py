@@ -58,6 +58,9 @@ class AxesProj(Proj):
     def getCode(self):
         return "%s:%d-%d" % (self.PID, self.axis_ids[0], self.axis_ids[1])
 
+    def getAxisLims(self):
+        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+
     def getCoords(self, axi=None, ids=None):
         if axi is None:
             return self.coords_proj

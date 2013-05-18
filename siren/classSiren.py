@@ -14,7 +14,7 @@ from reremi.classBatch import Batch
 from reremi.toolICList import ICList
 
 from classGridTable import VarTable, RedTable
-from classMapView import MapView
+from classMapolyView import MapView
 from classParaView import ParaView
 from classProjView import ProjView
 from DataWrapper import DataWrapper, findFile

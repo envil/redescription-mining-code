@@ -48,6 +48,11 @@ class ParaView(GView):
         self.axe.add_patch(self.el)
 
         self.MapcanvasMap.draw()
+
+    def sample(self, red):
+        self.selectids, self.opids = red.supports().sampleRows(0.1, 100)
+#            self.selectids, opids = red.supports().sampleRows(2, 2)
+#            self.selectids, opids = red.supports().sampleRows(1, 100)
             
     def updateMap(self, red = None):
         """ Redraws the map
@@ -60,9 +65,7 @@ class ParaView(GView):
             self.map_lines = {}
             m = self.axe
             m.cla()
-            self.selectids, self.opids = red.supports().sampleRows(0.1, 100)
-#            self.selectids, opids = red.supports().sampleRows(2, 2)
-#            self.selectids, opids = red.supports().sampleRows(1, 100)
+            self.sample(red)
             d = {}
             topP = red.supports().topPart()+1
             osupp = red.supports().getVectorABCD()

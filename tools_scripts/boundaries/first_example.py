@@ -6,6 +6,16 @@ import pdb
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
+from matplotlib.patches import Polygon
+from matplotlib.lines import Line2D
+
+
+def OnPick(event):
+  print type(event.artist)
+  if isinstance(event.artist, Polygon):
+    
+    for ind in event.ind:
+      print ind
 
 
 def binSegments(V, max_k):
@@ -57,7 +67,8 @@ GROUND_COLOR = "#FFFFFF"
 LINES_COLOR = "gray"
 
 def setM(datapoints):
-  plt.figure()
+  pl = plt.figure()
+  ax = pl.add_axes([0, 0, 1, 1])
   t, x, y = zip(*datapoints)
   llon, ulon, llat, ulat = min(x)-2, max(x)+2, min(y)-2, max(y)+2
   m = Basemap(llcrnrlon=llon, llcrnrlat=llat, urcrnrlon=ulon, urcrnrlat=ulat, \
@@ -71,7 +82,7 @@ def setM(datapoints):
   m.fillcontinents(color=GROUND_COLOR, lake_color=WATER_COLOR) #'#EEFFFF')
   px, py = m(x,y)
   coords_proj = zip(t, px, py)
-  return m, coords_proj
+  return m, coords_proj, ax, pl
 
 #Run this using the pipe: "cat sample_city_data.cat | python main_example.py"
 if __name__=="__main__":
@@ -89,7 +100,7 @@ if __name__=="__main__":
       sys.stderr.write( "(warning) Invalid Input Line: "+line)
   fp.close()
 
-  m, pdp = setM(datapoints)
+  m, pdp, ax, pl = setM(datapoints)
 
   PointsMap=dict([(p, (c1,c2)) for (p, c1, c2) in pdp])
   
@@ -144,7 +155,7 @@ if __name__=="__main__":
 
   mods = {}
 
-  while len(lens) > 0: # and lens[-1][0] == 2667:
+  while len(lens) > 0:
     so, ei, end = lens.pop()
     li = lend[(so,ei,end)]
     if len(lens) > 0 and lens[-1] == (so, ei, 1-end):
@@ -204,35 +215,73 @@ if __name__=="__main__":
         vl[so]['obj_polygon'].insert(ei+1,(tmpsti, tmp[1]))
 
 
-  alle = set()
-  for so, details in vl.items():
-    alle |= set(details['obj_polygon'])
-  
-  for edge in alle:
-    ex,ey = zip(*edge)
-    m.plot(ex, ey, "b")
+  # for edge in vl[1466]['obj_polygon']:
+  #   ex,ey = zip(*edge)
+  #   m.plot(ex, ey, "k")
 
+  # for edge in vl[1843]['obj_polygon']:
+  #   ex,ey = zip(*edge)
+  #   m.plot(ex, ey, "k")
 
-#  m.plot(sx, sy, "go")
-  pedges = {}
-  for so in statson:
-    s = dc[so] 
-    if vl.has_key(s):
-      #m.plot(vl[s]['coordinate'][0], vl[s]['coordinate'][1], "bo")
-      
-      for edge in vl[s]['obj_polygon']:
-        if pedges.has_key(edge):
-          pedges[edge] += 1
+  # plt.show()
+
+  i = 0
+  ready = {} 
+  #for s, obj in [(1466, vl[1466])]:
+  for s, obj in vl.items():
+    ready[obj["info"]] = []
+
+    tmpd = {}
+    for a in obj['obj_polygon']:
+      for end in [0,1]:
+        tmpd.setdefault(a[end], []).append(a[1-end])
+
+    tmp = [k for (k,p) in tmpd.items() if len(p) != 2]
+    if len(tmp) > 0:
+      ti = 0
+      while ti < len(tmpd[tmp[0]]) and len(tmpd[tmpd[tmp[0]][ti]]) != 2:
+        ti += 1
+      if ti == len(tmpd[tmp[0]]):
+        print "TROP DUR"
+        break
+      else:
+        m1 = tmpd[tmp[0]].pop(ti)
+        m0, m2 = tmpd.pop(m1)
+        if m0 == tmp[0]:
+          tmp1 = [m0, m1, m2]
         else:
-          pedges[edge] = 1
+          tmp1 = [m2, m1, m0]
     else:
-      print "MISSING", s 
+      m1, (m0, m2) = tmpd.popitem()
+      tmp1 = [m0, m1, m2]
 
-  ledges = [k for k,v in pedges.items() if v==1]
-  for edge in ledges:
-    sx,sy = zip(*edge)
-    m.plot(sx, sy, "r")
+    while len(tmpd) > 0:
+      ms = tmpd.pop(tmp1[-1])
+      if len(ms) != 2:
+        if tmp1[0] in ms:
+          tmp1.append(ms.pop(ms.index(tmp1[0])))
+          if len(tmpd) > 0:
+            ready[obj["info"]].append(tmp1)
+            tmp1 = [ms.pop(0), tmp1[-2], ms.pop(1)]
+      else:
+        if ms[0] == tmp1[-2]:
+          tmp1.append(ms[1])
+        else:
+          tmp1.append(ms[0])
+    ready[obj["info"]].append(tmp1)
 
+  #pdb.set_trace()
+  for s, ps in ready.items():
+    if s in statson:
+      clr = "#EE0000"
+      clre = "#FF0000"
+    else:
+      clr = "#00EE00"
+      clre = "#00FF00"
+    for p in ps:
+      ax.add_patch(Polygon(p, closed=True, fill=True, fc=clr, ec=clre, picker=True))
+      
+  pl.canvas.mpl_connect('pick_event', OnPick)
   plt.show()
 
 

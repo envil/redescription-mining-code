@@ -13,6 +13,7 @@ import sys
 
 import pdb
 
+import make_polys
 from reremi.classRedescription import Redescription
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
@@ -74,6 +75,8 @@ class DataWrapper(object):
             self.logger = logger
         self.pm = PreferencesManager(self.conf_defs)
         self.data = None
+        self.polys = None
+        self.pdp = None
         self.resetRedescriptions()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.package_filename = None
@@ -796,3 +799,9 @@ class DataWrapper(object):
         if self.stopReadingFileCallback is not None:
             (fnc, args, kwargs) = self.stopReadingFileCallback
             fnc(action.capitalize()+' done', *args, **kwargs)
+
+    def getPolys(self, pdp):
+        if pdp is not None and self.pdp != pdp:
+            self.pdp = pdp
+            self.polys = make_polys.makePolys(self.pdp)
+        return self.polys

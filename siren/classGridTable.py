@@ -411,7 +411,8 @@ class RedTable(GridTable):
             pos = self.opened_edits[key]
             del self.opened_edits[key]
             if pos not in self.opened_edits.values():
-                del self.highlights[pos]
+                if self.highlights.has_key(pos):
+                    del self.highlights[pos]
             
     def updateEdit(self, edit_key, red):
         if edit_key in self.opened_edits.keys() \
