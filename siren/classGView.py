@@ -34,6 +34,7 @@ class GView:
     WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"
     LINES_COLOR = "gray"
+    COLHIGH='#FFFF00'
 
     DOT_SHAPE = 's'
     DOT_SIZE = 3
@@ -45,6 +46,8 @@ class GView:
         self.source_list = None
         self.vid = vid
         self.buttons = []
+        self.highl = {}
+        self.hight = {}
         self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
@@ -313,6 +316,40 @@ class GView:
             self.MapredMapInfoTL.SetLabel(self.label_cardT)
             self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))
 
+    def updateEmphasize(self, colhigh='#FFFF00'):
+        lids = self.parent.tabs[self.source_list]["tab"].getHighlights(self.getId())
+        self.renewEmphasize(lids, colhigh)
+
+    def renewEmphasize(self, lids,  colhigh='#FFFF00'):
+        self.clearEmphasize()
+        self.putEmphasize(lids, colhigh)
+
+    def putEmphasize(self, lids,  colhigh='#FFFF00'):
+        for lid in lids:
+            self.emphasizeLine(lid, colhigh)
+            
+    def clearEmphasize(self, lids = None):
+        if lids is None:
+            lids = self.highl.keys()
+        for lid in lids:
+            if self.hight.has_key(lid):
+                while len(self.hight[lid]) > 0:
+                    t = self.hight[lid].pop()
+                    if t in self.gca.axes.texts:
+                        self.gca.axes.texts.remove(t)
+                del self.hight[lid]
+
+            if self.highl.has_key(lid):
+                while len(self.highl[lid]) > 0:
+                    t = self.highl[lid].pop()
+                    if t in self.gca.axes.lines:
+                        self.gca.axes.lines.remove(t)
+                del self.highl[lid]
+        self.MapcanvasMap.draw()
+
+    def sendHighlight(self, lid):
+        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+            self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid)
 
     def getColors(self):
         t = self.parent.dw.getPreferences()

@@ -345,6 +345,7 @@ class RedTable(GridTable):
     def __init__(self, parent, tabId, frame):
         GridTable.__init__(self, parent, tabId, frame)
         self.opened_edits = {}
+        self.highlights = {}
 
     def insertItems(self, items):
         for item in items:
@@ -377,6 +378,13 @@ class RedTable(GridTable):
                     self.opened_edits[edit_key] = None
                 elif self.opened_edits[edit_key] > pos:
                     self.opened_edits[edit_key] -= 1
+            ks = sorted(self.highlights.keys())
+            for k in ks:
+                if k == pos:
+                    del self.highlights[k]
+                elif k > pos:
+                    self.highlights[k-1] = self.highlights[k]
+                    del self.highlights[k]
             if upView:
                 self.ResetView()
 
@@ -393,14 +401,17 @@ class RedTable(GridTable):
             self.registerView(mapV.getId(), pos)
             mapV.setCurrent(self.getSelectedItem(), self.tabId)
         else:
-            self.parent.getMapView(vid, viewT)
+            mapV = self.parent.getMapView(vid, viewT)
 
     def registerView(self, key, pos):
         self.opened_edits[key] = pos
 
     def unregisterView(self, key):
         if key in self.opened_edits.keys():
+            pos = self.opened_edits[key]
             del self.opened_edits[key]
+            if pos not in self.opened_edits.values():
+                del self.highlights[pos]
             
     def updateEdit(self, edit_key, red):
         if edit_key in self.opened_edits.keys() \
@@ -410,9 +421,9 @@ class RedTable(GridTable):
                 self.data[toed] = red
 
                 for k,v in self.opened_edits.items():
-                    if k != edit_key and v == toed:
+                    if v == toed:
                         mc = self.parent.accessMapView(k)
-                        if mc is not None:
+                        if k != edit_key and mc is not None:
                             mc.setCurrent(red, self.tabId)
 
             else:
@@ -421,24 +432,47 @@ class RedTable(GridTable):
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
-    def sendHighlight(self, edit_key, lid, turn_on=True):
+    def getHighlights(self, edit_key):
+        if edit_key in self.opened_edits.keys() \
+               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data) \
+               and self.highlights.has_key(self.opened_edits[edit_key]):
+            return self.highlights[self.opened_edits[edit_key]]
+        return set()
+
+    def sendHighlight(self, edit_key, lid):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
 
             toed = self.opened_edits[edit_key]
+            if not self.highlights.has_key(toed):
+                self.highlights[toed] = set()
+            if lid in self.highlights[toed]:
+                self.highlights[toed].remove(lid)
+                turn_on = False
+            else:
+                self.highlights[toed].add(lid)
+                turn_on = True
+
             mc = None
             for k,v in self.opened_edits.items():
-                if k[0] == ParaView.TID and v == toed:
-                    mc = self.parent.accessMapView(k)
+                # if k[0] == ParaView.TID and v == toed:
+                #     mc = self.parent.accessMapView(k)
+                # elif v == toed:
+                if v == toed:
+                    mm = self.parent.accessMapView(k)
+                    if turn_on:
+                        mm.emphasizeLine(lid)
+                    else:
+                        mm.clearEmphasize([lid])
 
-            if mc is None:
-                mc = self.parent.getMapView(None, ParaView.TID)
-                self.registerView(mc.getId(), toed)
-                mc.setCurrent(self.data[toed], self.tabId)
-            if turn_on:
-                mc.emphasizeLine(lid)
-            else:
-                mc.clearEmphasize([lid])
+            # if mc is None:
+            #     mc = self.parent.getMapView(None, ParaView.TID)
+            #     self.registerView(mc.getId(), toed)
+            #     mc.setCurrent(self.data[toed], self.tabId)
+            # if turn_on:
+            #     mc.emphasizeLine(lid)
+            # else:
+            #     mc.clearEmphasize([lid])
 
     def deleteDisabled(self):
         i = 0

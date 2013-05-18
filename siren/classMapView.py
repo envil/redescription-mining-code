@@ -10,7 +10,7 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
-
+from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
 from reremi.classQuery import Query
@@ -30,7 +30,6 @@ class MapView(GView):
         """ Draws the map
         """
         
-        self.highl = {}
         self.points_ids = []
         self.lines = []
         self.high = []
@@ -52,16 +51,15 @@ class MapView(GView):
         self.axe = m
         m.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
 
-        m.drawcoastlines(color=GView.LINES_COLOR)
-        m.drawcountries(color=GView.LINES_COLOR)
-        m.drawmapboundary(fill_color=GView.WATER_COLOR) 
-        m.fillcontinents(color=GView.GROUND_COLOR, lake_color=GView.WATER_COLOR) #'#EEFFFF')
             #m.etopo()
 
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             height = 3; width = 3
             self.gca = plt.gca()
+
+        self.el = Ellipse((2, -1), 0.5, 0.5)
+        m.ax.add_patch(self.el)
 
         self.MapcanvasMap.draw()
             
@@ -70,12 +68,20 @@ class MapView(GView):
         """
 
         if red is not None and self.coords_proj is not None:
-            m = self.axe
-            draw_settings = self.getDrawSettings()
+            self.highl = {}
+            self.hight = {}
             self.points_ids = []
-            while len(self.lines):
-                #plt.gca().patches.remove(self.lines.pop())
-                self.gca.axes.lines.remove(self.lines.pop())
+            self.lines = []
+            
+            m = self.axe
+            m.ax.cla()
+            m.drawcoastlines(color=GView.LINES_COLOR)
+            m.drawcountries(color=GView.LINES_COLOR)
+            m.drawmapboundary(fill_color=GView.WATER_COLOR) 
+            m.fillcontinents(color=GView.GROUND_COLOR, lake_color=GView.WATER_COLOR) #'#EEFFFF')
+
+            draw_settings = self.getDrawSettings()
+
             if self.getMissDetails():
                 parts = red.partsAll()
             else:
@@ -93,6 +99,7 @@ class MapView(GView):
                     self.lines.extend(m.plot([],[]))
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
+            self.updateEmphasize(MapView.COLHIGH)
             self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()
         return red
@@ -106,16 +113,6 @@ class MapView(GView):
         tmp.append(self.buttons[-1]["element"])
         return tmp
 
-    def clearEmphasize(self, lids = None):
-        if lids is None:
-            lids = self.highl.keys()
-        for lid in lids:
-            if self.highl.has_key(lid):
-                while len(self.highl[lid]) > 0:
-                    self.gca.axes.lines.remove(self.highl[lid].pop())
-                del self.highl[lid]
-        self.MapcanvasMap.draw()
-
     def emphasizeLine(self, lid, colhigh='#FFFF00'):
         if self.highl.has_key(lid):
         #     self.clearEmphasize([lid])
@@ -124,42 +121,27 @@ class MapView(GView):
         draw_settings = self.getDrawSettings()
         scale_p = 0.1
         m = self.axe
-
+        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+        pid = red.supports().getVectorABCD()[lid]
         ids = np.array([lid])
         self.highl[lid] = []
         self.highl[lid].extend(m.plot(self.coords_proj[0][lid], self.coords_proj[1][ids],
                                       mfc=colhigh,marker=".", markersize=10,
                                       linestyle='None'))
+
+
+        self.hight[lid] = []
+        self.hight[lid].append(m.ax.annotate('%d' % lid, xy=(self.coords_proj[0][lid], self.coords_proj[1][lid]),  xycoords='data',
+                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[pid]["color_e"],
+                          size=10, va="center", backgroundcolor="#FFFFFF",
+                          bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
+                          arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
+                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                            ))
         self.MapcanvasMap.draw()
-
-
 
     def OnPick(self, event):
         if isinstance(event.artist, Line2D):
             for ind in event.ind:
                 si = self.points_ids[self.lines.index(event.artist)][ind]
-                if si in self.high:
-                    self.high.remove(si)
-                    self.clearEmphasize([si])
-                    self.sendHighlight(si, False)
-                else:
-                    self.high.append(si)
-                    self.emphasizeLine(si)
-                    self.sendHighlight(si, True)
-
-                
-        #     xdata = thisline.get_xdata()
-        #     ydata = thisline.get_ydata()
-        #     print len(xdata), len(ydata)
-        #     ind = event.ind
-        #     print('onpick1 line:', zip(np.take(xdata, ind), np.take(ydata, ind)))
-        # return
-        
-        # #### TODO drafting for info on click, uncomment binding  (mpl_connect)
-        # # , self.coords_proj[0][self.points_ids[ind]], self.coords_proj[1][self.points_ids[ind]]
-        # inds = event.ind
-        # for ind in inds:
-
-    def sendHighlight(self, lid, turn_on=True):
-        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid, turn_on)
+                self.sendHighlight(si)
