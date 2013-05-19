@@ -56,7 +56,7 @@ class MapView(GView):
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             pdp = zip(range(len(self.coords_proj[0])), self.coords_proj[0], self.coords_proj[1])
-            self.polys = self.makePolys(pdp)
+            self.polys = self.makePolys(pdp, self.parent.dw.getCoords())
             height = 3; width = 3
             self.gca = plt.gca()
 
@@ -143,5 +143,5 @@ class MapView(GView):
         if isinstance(event.artist, Polygon):
             self.sendHighlight(int(event.artist.get_gid().split(".")[0]))
 
-    def makePolys(self, pdp):
-        return self.parent.dw.getPolys(pdp)
+    def makePolys(self, pdp, upd):
+        return self.parent.dw.getPolys(pdp, upd)
