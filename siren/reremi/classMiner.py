@@ -7,6 +7,8 @@ from classExtension import ExtensionError, ExtensionsBatch
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
 from classInitialPairs import *
+from codeRRM import RedModel
+
 import pdb
 
 class Miner:
@@ -18,7 +20,7 @@ class Miner:
             self.id = mid
         else:
             self.id = 1
-        self.double_check = True
+        self.double_check = False #True
         self.data = data
         self.logger = logger
         self.constraints = Constraints(self.data.nbRows(), params)
@@ -40,6 +42,11 @@ class Miner:
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
         self.progress_ss = {"total":0, "current":0}
+        self.rm = None
+        if self.constraints.dl_score():
+            self.logger.printL(1,"Using DL for scoring...")
+            self.rm = RedModel(data)
+
 
     def kill(self):
         self.want_to_live = False
@@ -112,7 +119,7 @@ class Miner:
         ticF = datetime.datetime.now()
         self.logger.printL(1,"Start full run %s" % ticF, "time", self.id)
 
-        initial_red = self.initial_pairs.get(self.data)
+        initial_red = self.initial_pairs.get(self.data, self.testIni)
         # while initial_red is not None and self.want_to_live:
         #     initial_red = self.initial_pairs.get(self.data)
         # exit()
@@ -127,12 +134,15 @@ class Miner:
             
             self.final["batch"].extend([self.partial["batch"][i] for i in self.partial["results"]])
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
+            if self.rm is not None:
+                treds = [self.final["batch"][pos] for pos in self.final["results"]]
+                self.rm = self.rm.fillCopy(self.data, treds)
 
             tacE = datetime.datetime.now()
             self.logger.printL(1,"End expansion %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.want_to_live), "time", self.id)
             self.logger.printL(1, "final", 'result', self.id)
 
-            initial_red = self.initial_pairs.get(self.data)
+            initial_red = self.initial_pairs.get(self.data, self.testIni)
 
         tacF = datetime.datetime.now()
         self.logger.printL(1,"End full run %s, elapsed %s (%s)" % (tacF, tacF-ticF, self.want_to_live), "time", self.id)
@@ -147,6 +157,15 @@ class Miner:
 
 ### HIGH LEVEL CALLING FUNCTIONS
 ################################
+    def testIni(self, pair):
+        if pair is None:
+            return False
+        if self.rm is not None:
+            tmp = Redescription.fromInitialPair(pair, self.data)
+            top = self.rm.getTopDeltaRed(tmp, self.data)
+            return top[0] < 0
+        return True
+    
     def initializeRedescriptions(self, ids=None):
         self.initial_pairs.reset()
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
@@ -156,7 +175,7 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        # ids = [[78], [28, 26, 13]]
+        ## ids = [[89, 180, 184, 190], ids[1]]
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -175,15 +194,25 @@ class Miner:
                 seen = []
                 (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
                 for i in range(len(scores)):
+                    nsc = None
                     if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
+                        if self.rm is not None:
+                        #### HERE DL
+                            tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
+                            top = self.rm.getTopDeltaRed(tmp, self.data)
+                            if top[0] < 0:
+                                nsc = -top[0]
+                        else:
+                            nsc = scores[i]
+                    if nsc is not None:
                         seen.append((literalsL[i], literalsR[i]))
-                        self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
+                        self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
                         if self.double_check:
                             tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
                             if tmp.acc() != scores[i]:
                                 self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
-                        
-                        self.initial_pairs.add(literalsL[i], literalsR[i], scores[i])
+
+                        self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
         self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
         self.initial_pairs.setCountdown(self.constraints.max_red())
@@ -225,10 +254,18 @@ class Miner:
                                     kid = cand.kid(red, self.data)
                                     if kid.acc() != cand.getAcc():
                                         self.logger.printL(1,'OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s' % (self.count, len(red), redi, red, cand, kid), "log", self.id)
-                                bests.update(tmp)
 
+                                if self.rm is not None:
+                                    bests.updateDL(tmp, self.rm, self.data)
+                                else:
+                                    bests.update(tmp)
                             else:
-                                bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                                #### HERE DL
+                                if self.rm is not None:
+                                    bests.updateDL(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init), self.rm, self.data)
+                                else:
+                                    bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+
 
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
@@ -237,7 +274,12 @@ class Miner:
                         self.logger.printL(4, bests, "log", self.id)
 
                     try:
-                        kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
+                        ### DL HERE
+                        if self.rm is not None:
+                            kids = bests.improvingKidsDL(self.data, self.constraints.min_impr(), self.constraints.max_var(), self.rm)
+                        else:
+                            kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
+
                     except ExtensionError as details:
                         self.logger.printL(1,'OUILLE! Something went badly wrong during expansion of %s.%d.%d\n%s' % (self.count, len(red), redi, details), "log", self.id)
                         kids = []

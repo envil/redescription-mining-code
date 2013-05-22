@@ -175,7 +175,7 @@ class ExtensionsBatch:
         self.prs = self.current.probas()
         self.coeffs = coeffs
         self.bests = {}
-
+        self.tmpsco = {}
     def scoreCand(self, cand):
         if cand is not None:
             #if cand.literal.term.col == 1: pdb.set_trace()
@@ -198,6 +198,17 @@ class ExtensionsBatch:
             if pos is not None and (not self.bests.has_key(pos) or self.scoreCand(cand) > self.scoreCand(self.bests[pos])):
                 self.bests[pos] = cand
 
+    
+    def updateDL(self, cands, rm, data):
+        for cand in cands:
+            kid = cand.kid(self.current, data)
+            top = rm.getTopDeltaRed(kid, data)
+            pos = self.pos(cand)
+            self.scoreCand(cand)
+            if pos is not None and (not self.bests.has_key(pos) or -top[0] > self.tmpsco[pos]):
+                self.bests[pos] = cand
+                self.tmpsco[pos] = -top[0]
+
     def improving(self, min_impr=0):
         return dict([(pos, cand)  for (pos, cand) in self.bests.items() \
                      if self.scoreCand(cand) >= min_impr])
@@ -213,6 +224,22 @@ class ExtensionsBatch:
             
                 kids.append(kid)
         return kids
+
+    def improvingKidsDL(self, data, min_impr=0, max_var=-1, rm=None):
+        tc = rm.getTopDeltaRed(self.current, data)
+        min_impr = -tc[0]
+        # print "DL impr---", min_impr, self.tmpsco
+        kids = []
+        for (pos, cand) in self.bests.items():
+            if self.tmpsco[pos] >= min_impr:
+                kid = cand.kid(self.current, data)
+                kid.setFull(max_var)
+                if kid.acc() != cand.getAcc():
+                    raise ExtensionError('%s\n\t%s\n\t~> %s' % (self.current, cand, kid))
+            
+                kids.append(kid)
+        return kids
+
         
     def __str__(self):
         dsp  = 'Extensions Batch:\n' 

@@ -8,6 +8,7 @@ from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import Miner
 from classQuery import Query
+from codeRRM import RedModel
 import pdb
 
 def loadRedescriptions(filename, data):
@@ -21,11 +22,11 @@ def loadRedescriptions(filename, data):
     return tmp
 
 def run_filter(params):
-    ta = do_filter(params)
-    #miner = Miner(data, params, logger)
+    # ta = do_filter(params)
+    miner = Miner(data, params, logger)
 
-    #tf = miner.filter_run(ta)
-    for ti, t in enumerate(ta):
+    tf = miner.filter_run(ta)
+    for ti, t in enumerate(tf):
         print t.disp()
     # names = [None, None]
     # if data.hasNames():
@@ -39,14 +40,17 @@ def do_filter(params):
     for k, v in  params.items():
         params_l[k] = v["data"]
 
-    logger = Log(params_l['verbosity'], params_l['logfile'])
+    fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+    if fn_queries != "-" and params_l['logfile'] == "+":
+        fn_log = params_l['result_rep']+params_l['out_base']+".fillog"
+    else:
+        fn_log = params_l['logfile']
+    logger = Log(params_l['verbosity'], fn_log)
     
     data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']], "multiple")
     logger.printL(2, data, "log")
 
-
-    fileq = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
-    ta = loadRedescriptions(fileq, data)
+    ta = loadRedescriptions(fn_queries, data)
     return ta
         
 def getParams(arguments=[]):
@@ -57,6 +61,7 @@ def getParams(arguments=[]):
     pr = PreferencesReader(pm)
     config_filename = None
     options_args = arguments[1:]
+
     if len(arguments) > 1:
         if arguments[1] == "--config":
             print pr.dispParameters(None,True, True, True)
@@ -64,7 +69,7 @@ def getParams(arguments=[]):
         if os.path.isfile(arguments[1]):
             config_filename = arguments[1]
             options_args = arguments[2:]
-        
+
     params = pr.getParameters(config_filename, options_args)
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [config_file]"' % arguments[0]
@@ -74,7 +79,66 @@ def getParams(arguments=[]):
     return params, pm, pr
 
 
- 
+def run_dl(params):
+
+    ticO = datetime.datetime.now()
+
+    params_l = {}
+    for k, v in  params.items():
+        params_l[k] = v["data"]
+
+    ### construct filenames
+    if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
+        style_data = "csv"
+        add_info = [{}, "NA"]
+    else:
+        style_data = "multiple"
+        add_info = []
+        
+    fn_l = params_l['data_rep']+params_l['data_l']+params_l['ext_l']
+    fn_r = params_l['data_rep']+params_l['data_r']+params_l['ext_r']
+
+    fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+    if fn_queries != "-" and params_l['logfile'] == "+":
+        fn_log = params_l['result_rep']+params_l['out_base']+".dllog"
+    else:
+        fn_log = params_l['logfile']
+
+    logger = Log(params_l['verbosity'], fn_log)
+    data = Data([fn_l, fn_r]+add_info, style_data)
+    logger.printL(2, data, "log")
+    names = data.getNames()
+
+    logger.printL(2, "DL Model...", "log")
+    rm = RedModel(data)
+
+    logger.printL(2, "Loading reds...", "log")
+    reds = loadRedescriptions(fn_queries, data)
+
+    logger.printL(2, "Computing initial DL...", "log")
+    ocs = rm.getEncodedLength(data)
+    oc = sum(ocs)
+    logger.printL(2, "Initial DL >> LHS=%f RHS=%f Qs=%f..." % tuple(ocs), "log")
+
+    dirs = {None:"<>", 0:">>", 1:"<<"}
+    try:
+        rm.filterReds(reds, data, True, logger)
+        logger.printL(2, "Done...", "log")
+    except KeyboardInterrupt:
+        logger.printL(1, 'Stopped...', "log")
+
+    logger.printL(2, "Computing final DL...", "log")
+    ncs = rm.getEncodedLength(data)
+    nc = sum(ncs)
+    logger.printL(2, "Final DL >> LHS=%f RHS=%f Qs=%f Gain=%f..." % (ncs[0], ncs[1], ncs[2], (oc-nc)/oc), "log")
+
+    for ri, (sideAdd, red) in enumerate(rm.getReds()):
+        logger.printL(1, "* (%d) %s\t%s" % (ri, dirs[sideAdd], red.dispQueries(names)), "log")
+        logger.printL(1, "RED\t%s" % red.disp(), "log")
+    tacO = datetime.datetime.now()
+    logger.printL(1, 'THE END (at %s, elapsed %s)' % (tacO, tacO - ticO), "log")
+
+
 def run(params):
 
     ticO = datetime.datetime.now()
@@ -163,5 +227,7 @@ if __name__ == "__main__":
     params, pr, pm = getParams(sys.argv)
     if len(sys.argv) > 2 and sys.argv[2] == "filter":
         run_filter(params)
+    if len(sys.argv) > 2 and sys.argv[2] == "dl":
+        run_dl(params)
     else:
         run(params)

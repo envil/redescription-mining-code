@@ -130,6 +130,9 @@ class Constraints:
         return self._pv["pair_sel"]
     def score_coeffs(self):
         return self._pv["score_coeffs"]
+    def dl_score(self):
+        return self._pv["dl_score"] == "yes"
+
 
     def filter_nextge(self, red):
         ### could add check disabled

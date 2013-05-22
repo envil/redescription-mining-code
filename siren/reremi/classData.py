@@ -406,11 +406,32 @@ class NumColM(ColM):
     def upSumsRows(self, sums_rows):
         for (v,i) in self.sVals:
             sums_rows[i] +=v
+        if self.mode[0] == 1:
+            for i in set(range(self.N)) - self.mode[1]:
+                sums_rows[i] +=self.sVals[-1]
+        if self.mode[0] == -1:
+            for i in self.mode[1]:
+                sums_rows[i] +=self.sVals[-1]
+
     def sumCol(self):
-        return sum([v for (v,i) in self.sVals])
+        tt = sum([v for (v,i) in self.sVals])
+        ### Add mode values, one has already been counted
+        if self.mode[0] == 1:
+            tt += (self.N - len(self.mode[1]) - 1)*self.sVals[-1]
+        if self.mode[0] == -1:
+            tt += (len(self.mode[1]) -1)*self.sVals[-1]
+        return tt
 
     def getVector(self):
-        return [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
+        if self.mode[0] == 0:
+            return [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
+        else:
+            tt = dict([(i,v) for (v,i) in self.sVals])
+            ### Make sure can recover the length
+            if not tt.has_key(self.nbRows()-1):
+                tt[self.nbRows()-1] = tt[-1]
+            return tt
+        
 
     def getType(self, details=None):
         return "numerical"
@@ -1213,7 +1234,7 @@ def finishPerRow(tmpCols, nbRows, nbCols):
     return tmpCols, nbRows, len(tmpCols)
 
 def prepareSparsenum(nbRows, nbCols):
-    return [[[(0, -1)], set(), None] for i in range(nbCols)]
+    return [[[(0, -1)], set(), 0] for i in range(nbCols)]
 
 def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     id_row = int(a[0])-1
@@ -1221,13 +1242,13 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     if id_col >= nbCols or id_row >= nbRows:
         raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
     else :
-        tmatch = re.match(NumColM.p_patt, v)
+        tmatch = re.match(NumColM.p_patt, a[2])
         if not tmatch: 
             tmpCols[id_col][1].add(id_row)
         else:
             if len(tmatch.group("dec")) > tmpCols[id_col][2]:
                 tmpCols[id_col][2] = len(tmatch.group("dec"))
-            val = float(v)
+            val = float(a[2])
             if val != 0:
                 tmpCols[id_col][0].append((val, id_row))
 

@@ -24,15 +24,21 @@ class InitialPairs:
         return "Initial Pairs %d" % len(self.pairs)
 
     def add(self, literalL, literalR, scoP): 
-        self.pairs((literalL, literalR, scoP))
+        self.pairs.append((literalL, literalR, scoP))
                 
-    def pop(self):
+    def pop(self, cond=None):
         if len(self.pairs) > 0 and self.countdown != 0:
+            tt = self.pairs.pop(0)
+            if cond is not None:
+                while not cond(tt) and len(self.pairs) > 0:
+                    tt = self.pairs.pop(0)
+                if len(self.pairs) == 0:
+                    return
             self.countdown -= 1
-            return self.pairs.pop(0)
+            return tt
 
-    def get(self, data):
-        pair = self.pop()
+    def get(self, data, cond=None):
+        pair = self.pop(cond)
         if pair is not None:
             return Redescription.fromInitialPair(pair, data)
 
@@ -45,15 +51,21 @@ class IPoverall(InitialPairs):
         return "Initial Pairs overall %d" % len(self.pairs)
 
     def add(self, literalL, literalR, scoP): 
-        self.pairs((literalL, literalR, scoP))
+        self.pairs.append((literalL, literalR, scoP))
         self.sorted = False
                 
-    def pop(self):
+    def pop(self, cond=None):
         if len(self.pairs) > 0 and self.countdown != 0:
-            self.countdown -= 1
             if not self.sorted:
                 self._sort()
-            return self.pairs.pop()
+            tt = self.pairs.pop()
+            if cond is not None:
+                while not cond(tt) and len(self.pairs) > 0:
+                    tt = self.pairs.pop(0)
+                if len(self.pairs) == 0:
+                    return
+            self.countdown -= 1
+            return tt
 
     def _sort(self):
         self.pairs.sort(key=lambda x: x[2])
@@ -86,9 +98,20 @@ class IPalternate(InitialPairs):
         self.pairs.append((literalL, literalR, scoP))
         self.sorted = False
         self.nb_pairs += 1
+
+    def pop(self, cond=None):
+        if self.countdown != 0:
+            tt = self.popD()
+            if cond is not None:
+                while tt is not None and not cond(tt):
+                    tt = self.pairs.popD()
+                if tt is None:
+                    return
+            self.countdown -= 1
+            return tt
         
-    def pop(self):
-        if self.nb_pairs > 0 and self.countdown != 0:
+    def popD(self):
+        if self.nb_pairs > 0:
             if not self.sorted:
                 self._sort()
             potential_cols = set(self.pairs_side[self.side].keys()) - self.seen_sides[self.side]
@@ -108,7 +131,6 @@ class IPalternate(InitialPairs):
             self.seen_sides[self.side].add(col)
             self.seen_sides[1-self.side].add(pair[1-self.side].col())
             self.side = 1-self.side
-            self.countdown -= 1
             self.nb_pairs -= 1
             return pair
 
