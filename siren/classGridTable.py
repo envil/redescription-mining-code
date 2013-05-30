@@ -465,7 +465,8 @@ class RedTable(GridTable):
                         mm.emphasizeLine(lid)
                     else:
                         mm.clearEmphasize([lid])
-
+            if turn_on:
+                self.parent.showDetailsBox(lid, self.data[toed])
             # if mc is None:
             #     mc = self.parent.getMapView(None, ParaView.TID)
             #     self.registerView(mc.getId(), toed)

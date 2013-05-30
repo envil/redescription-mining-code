@@ -352,6 +352,7 @@ class GView:
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid)
 
+
     def getColors(self):
         t = self.parent.dw.getPreferences()
         colors = []

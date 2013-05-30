@@ -175,9 +175,16 @@ class Redescription:
     def length(self, side):
         return len(self.queries[side])
         
-    def availableColsSide(self, side):
+    def availableColsSide(self, side, deps = None):
         if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
-            return self.lAvailableCols[side]
+            tt = set(self.lAvailableCols[side]) & set(self.lAvailableCols[1-side])
+            if deps is not None and len(deps) > 0:
+                tn = tt
+                excl = set()
+                for c in self.queries[1-side].invCols():
+                    excl |= deps[c]
+                tt = [t for t in tn if len(deps[t] & excl) == 0]                
+            return tt
         return set() 
     def nbAvailableCols(self):
         if self.lAvailableCols[0] is not None and self.lAvailableCols[1] is not None:

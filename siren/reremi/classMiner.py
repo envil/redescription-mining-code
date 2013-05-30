@@ -1,4 +1,4 @@
-import datetime
+import datetime, random
 import classCharbonStd
 import classCharbonAlt
 from classRedescription import Redescription
@@ -47,6 +47,14 @@ class Miner:
             self.logger.printL(1,"Using DL for scoring...")
             self.rm = RedModel(data)
 
+
+        ### Just for relational test, get exclusions
+        self.deps = []
+        if self.data.hasNames():
+            names = self.data.getNames()
+            if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
+                for name in names[0]:
+                    self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
 
     def kill(self):
         self.want_to_live = False
@@ -175,15 +183,22 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        ## ids = [[89, 180, 184, 190], ids[1]]
+        if len(ids[0]) > 1000:
+            ids[0] = sorted(random.sample(ids[0], 1000))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
             idL = ids[0][cL]
             self.logger.printL(3, 'Searching pairs %i <=> *...' %(idL), "status", self.id)
             self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-            for cR in range(0, len(ids[1]), self.constraints.mod_rhs()):
-                idR = ids[1][cR]
+            if len(self.deps) > 0:
+                idsR = [ids[1][cR] for cR in range(cL+1, len(ids[1]), self.constraints.mod_rhs()) if len(self.deps[ids[1][cR]] & self.deps[idL]) == 0]                
+            else:
+                idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
+            if len(idsR) > 1000:
+                idsR = sorted(random.sample(idsR, 1000))
+
+            for idR in idsR:
                 if not self.want_to_live:
                     return
                 
@@ -244,8 +259,8 @@ class Miner:
                             init = -1
                         else:
                             init = 0 
-                            
-                        for v in red.availableColsSide(side):
+
+                        for v in red.availableColsSide(side, self.deps):
                             if not self.want_to_live: return
 
                             if self.double_check:

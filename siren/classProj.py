@@ -21,7 +21,8 @@ class ProjFactory:
                     if cls.PID == k:
                         return cls(data, subcode)
 
-        m = random.choice(Proj.__subclasses__())
+        m = SVDProj
+        #m = random.choice(Proj.__subclasses__())
         return m(data)
 
 class Proj(object):
@@ -57,6 +58,47 @@ class AxesProj(Proj):
     
     def getCode(self):
         return "%s:%d-%d" % (self.PID, self.axis_ids[0], self.axis_ids[1])
+
+    def getAxisLims(self):
+        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+
+    def getCoords(self, axi=None, ids=None):
+        if axi is None:
+            return self.coords_proj
+        elif ids is None:
+            return self.coords_proj[axi]
+        return self.coords_proj[axi][ids]
+
+
+class SVDProj(Proj):
+
+    PID = "S"
+
+    def __init__(self, data, code=None):
+        # totcols = data.nbCols(0)+data.nbCols(1)
+        # self.axis_ids = [[],[]]
+        # for axi in [0,1]:
+        #     self.axis_ids[axi] = np.random.randint(data.nbCols(0)+1, totcols)
+
+        # if code is not None:
+        #     tmpr = re.match("^(?P<axis0>[0-9]*)-(?P<axis1>[0-9]*)$", code)
+        #     if tmpr is not None:
+        #         axis0 = int(tmpr.group("axis0"))
+        #         axis1 = int(tmpr.group("axis1"))
+        #         if axis0 < totcols:
+        #             self.axis_ids[0] = axis0
+        #         if axis1 < totcols:
+        #             self.axis_ids[1] = axis1
+
+        mat, details = data.getMatrix()
+        U, s, V = np.linalg.svd(mat)
+        self.coords_proj = (s[0]*V[0], s[1]*V[1])
+
+    def getAxisLabel(self, axi):
+        return "dimension %d" % (axi+1)
+    
+    def getCode(self):
+        return "%s:0" % (self.PID)
 
     def getAxisLims(self):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))

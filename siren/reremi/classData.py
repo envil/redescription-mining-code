@@ -229,6 +229,11 @@ class BoolColM(ColM):
         strd = "\t<rows>" + ",".join(map(str, self.hold)) +"</rows>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
 
+    def getValue(self, rid):
+        if rid in self.missing:
+            return "-"
+        return rid in self.hold
+
     def supp(self):
         return self.hold
     
@@ -296,6 +301,12 @@ class CatColM(ColM):
     def sumCol(self):
         return dict([(cat, len(rows)) for cat, rows in self.sCats.items()])
     
+    def getValue(self, rid):
+        for cat, sp in self.sCats.items():
+            if rid in sp:
+                return cat
+        return "-"
+
     def getVector(self):
         tmp = super(CatColM, self).getVector()
         cats = self.sCats.items()
@@ -421,6 +432,17 @@ class NumColM(ColM):
         if self.mode[0] == -1:
             tt += (len(self.mode[1]) -1)*self.sVals[-1]
         return tt
+
+    def getValue(self, rid):
+        if rid in self.missing:
+            return "-"
+        tt = dict([(i,v) for (v,i) in self.sVals])
+        if not tt.has_key(rid):
+            if self.mode[0] is None:
+                return "-"
+            else:
+                tt[-1]
+        return tt[rid]
 
     def getVector(self):
         if self.mode[0] == 0:
@@ -796,6 +818,9 @@ class Data:
         else:
             SParts.resetPartsIds("none")
 
+    def getValue(self, side, col, rid):
+        return self.cols[side][col].getValue(rid)
+
     def getStats(self, group=None):
         if group is None:
             ### Group all columns from both side together
@@ -1158,7 +1183,7 @@ def readVariables(filenames):
                     col.side = side
                 data.append(cols)
             else:
-                raise DataError('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))
+                raise DataError('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))            
     return (data, nbRows)
 
 def readMatrix(filename, side = None):

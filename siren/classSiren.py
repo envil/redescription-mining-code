@@ -928,7 +928,22 @@ class Siren():
 
     def OnAbout(self, event):
         wx.AboutBox(self.info)
-    
+
+            
+    def showDetailsBox(self, rid, red):
+        dlg = wx.MessageDialog(self.toolFrame,
+                               self.prepareDetails(rid, red),"Point Details", wx.OK|wx.ICON_INFORMATION)
+        result = dlg.ShowModal()
+        dlg.Destroy()
+
+    def prepareDetails(self, rid, red):
+        dets = "%d:\n" % rid 
+        for side,pref in [(0,""), (1,"")]:
+            dets += "\n"
+            for lit in red.queries[side].listLiterals():
+                dets += ("\t%s=\t%s\n" % (self.details['names'][side][lit.col()], self.dw.getData().getValue(side, lit.col(), rid)))
+        return dets
+
     def OnQuit(self, event):
         if not self.checkAndProceedWithUnsavedChanges():
                 return
