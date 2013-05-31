@@ -844,29 +844,36 @@ class Data:
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
         
-    def getMatrix(self, sides=None, cols=None, store=True):
-        if sides is None:
-            sides = [0, 1]
-
-        if store and self.as_array[0] == sides and self.as_array[1] == cols:
-            return self.as_array[2]
+    def getMatrix(self, sides=None, cols=None, store=True, types=None):
+        if store and self.as_array[0] == (sides, cols, types):
+            return self.as_array[1]
 
         if store:
-            self.as_array[0] = sides
-            self.as_array[1] = cols
+            self.as_array[0] = (sides, cols, types)
+
+        if sides is None:
+            sides = [0, 1]
+        
+        if types is None:
+            types = [BoolColM.type_id, CatColM.type_id, NumColM.type_id]
+
         mat = np.empty([0, self.N])
+        mcols = {}
         details = []
         for side in sides:
             if cols is None:
-                tcols = range(len(self.cols[side]))
+                tcols = [c for c in range(len(self.cols[side])) if self.cols[side][c].type_id in types]
             else:
-                tcols = cols
-            tmp = np.array([self.cols[side][col].getVector() for col in tcols])
-            mat = np.concatenate((mat, tmp))
-            details.extend([(side, col, self.cols[side][col].type_id) for col in tcols])
+                tcols = [c for c in cols[side] if self.cols[side][c].type_id in types]
+            if len(tcols) > 0:
+                for col in tcols:
+                    mcols[(side, col)] = len(details)
+                    details.append((side, col, self.cols[side][col].type_id))
+                tmp = np.array([self.cols[side][col].getVector() for col in tcols])
+                mat = np.concatenate((mat, tmp))
         if store:
-            self.as_array[2] = (mat, details)
-        return mat, details
+            self.as_array[1] = (mat, details, mcols)
+        return mat, details, mcols
 
     def subset(self, row_ids=None):
         coords = None

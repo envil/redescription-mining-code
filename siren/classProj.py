@@ -3,6 +3,7 @@ import re, random
 import numpy as np
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
+from reremi.classData import BoolColM, CatColM, NumColM
 
 import pdb
 
@@ -21,8 +22,8 @@ class ProjFactory:
                     if cls.PID == k:
                         return cls(data, subcode)
 
-        m = SVDProj
-        #m = random.choice(Proj.__subclasses__())
+        #m = SVDProj
+        m = random.choice(Proj.__subclasses__())
         return m(data)
 
 class Proj(object):
@@ -35,29 +36,40 @@ class AxesProj(Proj):
     PID = "A"
 
     def __init__(self, data, code=None):
-        totcols = data.nbCols(0)+data.nbCols(1)
-        self.axis_ids = [[],[]]
-        for axi in [0,1]:
-            self.axis_ids[axi] = np.random.randint(data.nbCols(0)+1, totcols)
+        mat, details, mcols = data.getMatrix()
+        self.axis_ids = random.sample(range(len(mat)), 2)
 
         if code is not None:
-            tmpr = re.match("^(?P<axis0>[0-9]*)-(?P<axis1>[0-9]*)$", code)
+            sidestr = {"0":0, "1":1, "L":0, "R":1, "l":0, "r":1}
+            tmpr = re.match("^(?P<side0>[01LRlr])(?P<axis0>[0-9]*)-(?P<side1>[01LRlr])(?P<axis1>[0-9]*)$", code)
             if tmpr is not None:
-                axis0 = int(tmpr.group("axis0"))
-                axis1 = int(tmpr.group("axis1"))
-                if axis0 < totcols:
-                    self.axis_ids[0] = axis0
-                if axis1 < totcols:
-                    self.axis_ids[1] = axis1
+                axis0 = (sidestr[tmpr.group("side0")], int(tmpr.group("axis0")))
+                axis1 = (sidestr[tmpr.group("side1")], int(tmpr.group("axis1")))
+                if mcols.has_key(axis0):
+                    self.axis_ids[0] = mcols[axis0]
+                if mcols.has_key(axis1):
+                    self.axis_ids[1] = mcols[axis1]
+        sidestr = {0: "L", 1:"R"}
+        self.codes = ["%s%d" % (sidestr[details[self.axis_ids[0]][0]], details[self.axis_ids[0]][1]),
+                       "%s%d" % (sidestr[details[self.axis_ids[1]][0]], details[self.axis_ids[1]][1])]
+        if data.hasNames():
+            sidestr = {0: "LHS", 1:"RHS"}
+            names = data.getNames()
+            self.labels = ["%s %s" % (sidestr[details[self.axis_ids[0]][0]], names[details[self.axis_ids[0]][0]][details[self.axis_ids[0]][1]]),
+                           "%s %s" % (sidestr[details[self.axis_ids[1]][0]], names[details[self.axis_ids[1]][0]][details[self.axis_ids[1]][1]])]
+        else:
+            self.labels = self.codes
 
-        mat, details = data.getMatrix()
-        self.coords_proj = (mat[self.axis_ids[0]], mat[self.axis_ids[1]])
+        self.coords_proj = [mat[self.axis_ids[0]], mat[self.axis_ids[1]]]
+        for side in [0,1]:
+            if details[self.axis_ids[side]][2] != NumColM.type_id:
+                self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
 
     def getAxisLabel(self, axi):
-        return "axis %d" % self.axis_ids[axi]
+        return "%s" % self.labels[axi]
     
     def getCode(self):
-        return "%s:%d-%d" % (self.PID, self.axis_ids[0], self.axis_ids[1])
+        return "%s:%s-%s" % (self.PID, self.codes[0], self.codes[1])
 
     def getAxisLims(self):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
@@ -75,30 +87,24 @@ class SVDProj(Proj):
     PID = "S"
 
     def __init__(self, data, code=None):
-        # totcols = data.nbCols(0)+data.nbCols(1)
-        # self.axis_ids = [[],[]]
-        # for axi in [0,1]:
-        #     self.axis_ids[axi] = np.random.randint(data.nbCols(0)+1, totcols)
+        self.stypes=[NumColM.type_id]
+        if code is not None and "a" in code:
+            self.stypes = None
 
-        # if code is not None:
-        #     tmpr = re.match("^(?P<axis0>[0-9]*)-(?P<axis1>[0-9]*)$", code)
-        #     if tmpr is not None:
-        #         axis0 = int(tmpr.group("axis0"))
-        #         axis1 = int(tmpr.group("axis1"))
-        #         if axis0 < totcols:
-        #             self.axis_ids[0] = axis0
-        #         if axis1 < totcols:
-        #             self.axis_ids[1] = axis1
-
-        mat, details = data.getMatrix()
-        U, s, V = np.linalg.svd(mat)
-        self.coords_proj = (s[0]*V[0], s[1]*V[1])
+        mat, details, mcol = data.getMatrix(types=self.stypes)
+        tt = np.std(mat, 1)
+        tt[np.where(tt == 0)] = 1
+        matn = (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
+        U, s, V = np.linalg.svd(matn, full_matrices=False)
+        tmp = np.dot(U[:2],matn)
+        self.coords_proj = (tmp[0], tmp[1])
 
     def getAxisLabel(self, axi):
         return "dimension %d" % (axi+1)
     
     def getCode(self):
-        return "%s:0" % (self.PID)
+        l = {True: "a", False: "n"}
+        return "%s:%s" % (self.PID, l[self.stypes is None])
 
     def getAxisLims(self):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
