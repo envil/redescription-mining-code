@@ -139,6 +139,9 @@ class Redescription:
     def partsAll(self):
         return self.sParts.sParts
 
+    def partsFour(self):
+        return [self.sParts.suppL(), self.sParts.suppR(), self.sParts.suppI(), self.sParts.suppO()]
+
     def partsThree(self):
         return [self.sParts.suppL(), self.sParts.suppR(), self.sParts.suppI()]
     

@@ -677,6 +677,8 @@ class SParts:
     # return support of union (suppA union suppB)
     def suppU(self, side=0):
         return self.suppI(side) | self.suppD(side)
+    def suppO(self, side=0):
+        return self.part_union(SParts.IDS_uncovered, side)
     def suppL(self, side=0):
         return self.part_union(SParts.IDS_dL, side)
     def suppR(self, side=0):

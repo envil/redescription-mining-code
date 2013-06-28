@@ -384,7 +384,9 @@ class GView:
     def getDrawSettings(self):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
-        return {SParts.alpha: {"pos": 0.6, "color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
+        return {"draw_pord": [SParts.delta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud,
+                              SParts.alpha, SParts.beta, SParts.gamma],
+                SParts.alpha: {"pos": 0.6, "color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
                                "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
                 SParts.beta: {"pos": 0.4, "color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],
                               "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},

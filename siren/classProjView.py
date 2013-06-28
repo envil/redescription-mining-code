@@ -57,9 +57,9 @@ class ProjView(GView):
                              "function": self.OnReproject})
         tmp.append(self.buttons[-1]["element"])
 
-        lsizetxt = 90
-        txt = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.projkeyf = wx.TextCtrl(self.mapFrame, wx.NewId(), style=wx.TE_PROCESS_ENTER)
+        lsizetxt = 180
+        txt = wx.StaticText(self.mapFrame, size=(-1,-1), style=wx.ALIGN_RIGHT|wx.ALL)
+        self.projkeyf = wx.TextCtrl(self.mapFrame, wx.NewId(), size=(lsizetxt,-1), style=wx.TE_PROCESS_ENTER)
         tmp.append(txt)
         tmp.append(self.projkeyf)
 
@@ -69,8 +69,8 @@ class ProjView(GView):
         return tmp
 
     def OnReproject(self, rid=None):
-        tmp_id = self.projkeyf.GetValue().strip()
-        if tmp_id != self.proj.getCode() or (self.proj is None and len(tmp_id) > 0):
+        tmp_id = self.projkeyf.GetValue().strip(":, ")
+        if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
             self.project(tmp_id)
         else:
             self.project()
@@ -99,6 +99,7 @@ class ProjView(GView):
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
+        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapcanvasMap.draw()
             
     def updateMap(self, red = None):
@@ -114,11 +115,10 @@ class ProjView(GView):
             m = self.axe
             m.cla()
             draw_settings = self.getDrawSettings()
-            if self.getMissDetails():
-                parts = red.partsAll()
-            else:
-                parts = red.partsThree()
-            for pi, part in enumerate(parts):
+            parts = []
+            for pid in draw_settings["draw_pord"]:
+                parts.append((pid, red.sParts.part(pid)))
+            for pi, part in parts:
                 if len(part) > 0 and draw_settings.has_key(pi):
                     lip = list(part)
                     self.points_ids.append(lip)
@@ -128,13 +128,17 @@ class ProjView(GView):
                            marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
                            linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3))
                 else:
+                    self.points_ids.append([])
                     self.lines.extend(m.plot([],[]))
 
-            m.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
-            m.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
+            if self.proj.getTitle() is not None:
+                m.set_title(self.proj.getTitle(),fontsize=12)
+            if self.proj.getAxisLabel(0) is not None:
+                m.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
+            if self.proj.getAxisLabel(1) is not None:
+                m.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
             m.axis(self.proj.getAxisLims())
             self.updateEmphasize(ProjView.COLHIGH)
-            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
             self.MapcanvasMap.draw()
         return red
 
@@ -168,5 +172,8 @@ class ProjView(GView):
     def OnPick(self, event):
         if isinstance(event.artist, Line2D):
             for ind in event.ind:
-                si = self.points_ids[self.lines.index(event.artist)][ind]
-                self.sendHighlight(si)
+                l = self.lines.index(event.artist)
+                if len(self.points_ids) > l and len(self.points_ids[l]) > ind: # \
+                   # and self.points_ids[l][ind] not in done:
+                    si = self.points_ids[l][ind]
+                    self.sendHighlight(si)

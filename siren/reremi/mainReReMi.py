@@ -21,7 +21,7 @@ def loadRedescriptions(filename, data):
         red = Redescription.load(fp, None, data)
     return tmp
 
-def run_filter(params):
+def run_filter(params, data, logger):
     # ta = do_filter(params)
     miner = Miner(data, params, logger)
 
@@ -51,6 +51,9 @@ def do_filter(params):
     logger.printL(2, data, "log")
 
     ta = loadRedescriptions(fn_queries, data)
+    for ti, t in enumerate(ta):
+        print t.disp()
+
     return ta
         
 def getParams(arguments=[]):
@@ -226,8 +229,8 @@ def run(params):
 if __name__ == "__main__":
     params, pr, pm = getParams(sys.argv)
     if len(sys.argv) > 2 and sys.argv[2] == "filter":
-        run_filter(params)
-    if len(sys.argv) > 2 and sys.argv[2] == "dl":
+        do_filter(params)
+    elif len(sys.argv) > 2 and sys.argv[2] == "dl":
         run_dl(params)
     else:
         run(params)

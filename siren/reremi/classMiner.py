@@ -183,8 +183,8 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        if len(ids[0]) > 1000:
-            ids[0] = sorted(random.sample(ids[0], 1000))
+        #if len(ids[0]) > 1000:
+        #    ids[0] = sorted(random.sample(ids[0], 1000))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):

@@ -844,12 +844,12 @@ class Data:
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
         
-    def getMatrix(self, sides=None, cols=None, store=True, types=None):
-        if store and self.as_array[0] == (sides, cols, types):
+    def getMatrix(self, sides=None, cols=None, store=True, types=None, only_able=False):
+        if store and self.as_array[0] == (sides, cols, types, only_able):
             return self.as_array[1]
 
         if store:
-            self.as_array[0] = (sides, cols, types)
+            self.as_array[0] = (sides, cols, types, only_able)
 
         if sides is None:
             sides = [0, 1]
@@ -862,13 +862,13 @@ class Data:
         details = []
         for side in sides:
             if cols is None:
-                tcols = [c for c in range(len(self.cols[side])) if self.cols[side][c].type_id in types]
+                tcols = [c for c in range(len(self.cols[side])) if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
             else:
-                tcols = [c for c in cols[side] if self.cols[side][c].type_id in types]
+                tcols = [c for c in cols[side] if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
             if len(tcols) > 0:
                 for col in tcols:
                     mcols[(side, col)] = len(details)
-                    details.append((side, col, self.cols[side][col].type_id))
+                    details.append((side, col, self.cols[side][col].type_id, self.cols[side][c].getEnabled()))
                 tmp = np.array([self.cols[side][col].getVector() for col in tcols])
                 mat = np.concatenate((mat, tmp))
         if store:
