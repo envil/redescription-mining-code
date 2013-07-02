@@ -1,13 +1,11 @@
 import os, os.path
 import wx
-import threading
 import time
 import sys
 # import wx.lib.agw.pybusyinfo as PBI
 import wx.lib.dialogs
 
 from reremi.toolLog import Log
-from reremi.classMiner import Miner
 from reremi.classData import Data, DataError
 from reremi.classConstraints import Constraints
 from reremi.classBatch import Batch
@@ -20,65 +18,10 @@ from classProjView import ProjView
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog
+from toolsComm import MinerThread, ExpanderThread, Message, CErrorDialog
 
 import pdb
-
-# Thread class that executes processing
-class WorkerThread(threading.Thread):
-    def __init__(self, id, data, preferences, logger, params=None):
-        """Init Expander Thread Class."""
-        threading.Thread.__init__(self)
-        self.miner = Miner(data, preferences, logger, id)
-        self.params = params
-        self.start()
-
-    def run(self):
-        pass
-
-    def abort(self):
-        self.miner.kill()
-
-class MinerThread(WorkerThread):
-    """Miner Thread Class."""
-
-    def run(self):
-        self.miner.full_run()
-
-class ExpanderThread(WorkerThread):
-    """Expander Thread Class."""
-
-    def run(self):
-        self.miner.part_run(self.params)
-
-
-class Message(wx.PyEvent):
-    TYPES_MESSAGES = {'*': wx.NewId(), 'log': wx.NewId(), 'time': wx.NewId(), 'result': wx.NewId(), 'progress': wx.NewId(), 'status': wx.NewId()}
-    
-    """Simple event for communication purposes."""
-    def __init__(self, type_event, data):
-        """Init Result Event."""
-        wx.PyEvent.__init__(self)
-        self.SetEventType(type_event)
-        self.data = data
-
-    def sendMessage(output, message, type_message, source):
-        if Message.TYPES_MESSAGES.has_key(type_message):
-           wx.PostEvent(output.toolFrame, Message(Message.TYPES_MESSAGES[type_message], (source, message)))
-    sendMessage = staticmethod(sendMessage)
-
-
-class CErrorDialog:
-
-    def showBox(output, message, type_message, source):
-        if output.busyDlg is not None:
-            del output.busyDlg
-            output.busyDlg = None
-        dlg = wx.MessageDialog(output.toolFrame, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption=type_message)
-        dlg.ShowModal()
-        dlg.Destroy()
-    showBox = staticmethod(showBox)
-
-
+ 
 class Siren():
     """ The main frame of the application
     """
@@ -1004,7 +947,7 @@ class Siren():
             self.logger.addOut({"error":1}, self, CErrorDialog.showBox)
         else:
             self.logger.resetOut()
-            self.logger.addOut({"*": 1, "progress":2, "result":1}, self, Message.sendMessage)
+            self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
 
     def reloadVars(self):

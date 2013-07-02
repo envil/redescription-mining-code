@@ -14,8 +14,10 @@ from matplotlib.backends.backend_wxagg import \
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
+from reremi.toolLog import Log
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
+from toolsComm import ProjThread, Message
 from classGView import GView
 from classProj import ProjFactory, Proj
 
@@ -31,6 +33,7 @@ class ProjView(GView):
         self.source_list = None
         self.vid = vid
         self.proj = None
+        self.repbut = None
         self.buttons = []
         self.highl = {}
         self.hight = {}
@@ -50,12 +53,13 @@ class ProjView(GView):
         tmp = []
         tmp.append(self.MaptoolbarMap)
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Expand"),
                              "function": self.OnExpand})
         tmp.append(self.buttons[-1]["element"])
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Reproject"),
+        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Reproject"),
                              "function": self.OnReproject})
         tmp.append(self.buttons[-1]["element"])
+        self.repbut = self.buttons[-1]["element"]
 
         lsizetxt = 180
         txt = wx.StaticText(self.mapFrame, size=(-1,-1), style=wx.ALIGN_RIGHT|wx.ALL)
@@ -74,14 +78,33 @@ class ProjView(GView):
             self.project(tmp_id)
         else:
             self.project()
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
-        self.updateMap(red)
-
 
     def project(self, rid=None):
-        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
-        if self.projkeyf is not None:
-            self.projkeyf.ChangeValue(self.proj.getCode())
+        self.logger = Log()
+        self.logger.resetOut()
+        self.logger.addOut({"*": 1, "progress":2, "result":1}, self.mapFrame, Message.sendMessage)
+        self.logger.addOut({"error":1}, "stderr")
+
+        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid, self.logger)
+        self.worker = ProjThread(wx.NewId(), self.proj)
+        if self.repbut is not None:
+            self.repbut.Disable()
+            self.repbut.SetLabel("Plz Wait...")
+                      
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['*'], self.parent.OnMessLogger)
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['log'], self.parent.OnMessLogger)
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['time'], self.parent.OnMessLogger)
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.parent.OnMessLogger)
+        self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnMessResult)
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.parent.OnMessProgress)
+        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.parent.OnMessStatus)
+
+    def OnMessResult(self, event):
+        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+        self.updateMap(red)
+        if self.repbut is not None:
+            self.repbut.Enable()
+            self.repbut.SetLabel("Reproject")
         
     def drawMap(self):
         """ Draws the map
@@ -106,7 +129,7 @@ class ProjView(GView):
         """ Redraws the map
         """
 
-        if red is not None and self.proj is not None:
+        if red is not None and self.proj is not None and self.proj.getCoords() is not None:
             self.highl = {}
             self.hight = {}
             self.lines = []
@@ -140,6 +163,10 @@ class ProjView(GView):
             m.axis(self.proj.getAxisLims())
             self.updateEmphasize(ProjView.COLHIGH)
             self.MapcanvasMap.draw()
+
+            if self.projkeyf is not None:
+                self.projkeyf.ChangeValue(self.proj.getCode())
+
         return red
 
     def emphasizeLine(self, lid, colhigh='#FFFF00'):

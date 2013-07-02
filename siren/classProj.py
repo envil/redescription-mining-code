@@ -3,16 +3,21 @@ import re, random
 import numpy as np
 import inspect
 from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
+import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 
 import pdb
 
+def all_subclasses(cls):
+    return cls.__subclasses__() + [g for s in cls.__subclasses__()
+                                   for g in all_subclasses(s)]
+
 class ProjFactory:
 
     @classmethod
-    def getProj(self, data, code = None):
+    def getProj(self, data, code = None, logger=None):
 
         if code is not None:
             tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
@@ -35,38 +40,90 @@ class ProjFactory:
                                     except ValueError:
                                         params[sp[0]] = sp[1]
                         
-                for cls in Proj.__subclasses__():
-                    if re.match("^"+cls.PID+"$",k):
-                        return cls(data, params)
+                for cls in all_subclasses(Proj):
+                    if re.match("^"+cls.PID+"$", k):
+                        return cls(data, params, logger)
 
         #m = SVDProj
-        m = random.choice([p for p in Proj.__subclasses__()
+        cls = random.choice([p for p in all_subclasses(Proj)
                            if re.match("^(?P<alg>[A-Za-z*.]*)$", p.PID) is not None])
-        return m(data, {})
+        return cls(data, {}, logger)
 
 class Proj(object):
 
     PID = "---"
-    def __init__(self, data, params={}):
+    title_str = "Projection"
+    
+    def __init__(self, data, params={}, logger=None):
+        self.want_to_live = True
         self.data = data
         self.params = params
+        self.logger = logger
+        self.coords_proj = None
+        self.stypes=[NumColM.type_id]
+        self.ables=True
+        if self.params.has_key("A"):
+            self.stypes = None
+        if self.params.has_key("a"):
+            self.ables = False
 
     def getAxisLabel(self, axis=0):
         return None
     def getTitle(self):
-        return None
+        return self.title_str
 
+    def getCoords(self, axi=None, ids=None):
+        if self.coords_proj is None:
+            return self.coords_proj
+        if axi is None:
+            return self.coords_proj
+        elif ids is None:
+            return self.coords_proj[axi]
+        return self.coords_proj[axi][ids]
+
+    def getAxisLims(self):
+        if self.coords_proj is None:
+            return (0,1,0,1)
+        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+
+    def do(self):
+        pass
+
+    def notifyDone(self):
+        if self.logger is not None:
+            self.logger.printL(1,"Projection ready...", "result")
+
+    def kill(self):
+        self.want_to_live = False
+
+    def getCode(self):
+        tt = "%s:" % self.PID
+        if self.stypes is None:
+            tt += "A,"
+        if not self.ables:
+            tt += "a,"
+        for k,v in self.params.items():
+            if k not in ["A", "a", "code"]:
+                if type(v) != bool:
+                    tt += "%s=%s," % (k,v)
+                else:
+                    tt += "%s," % k
+        return tt.strip(":, ")
 
 class AxesProj(Proj):
 
     PID = "-A"
-    def __init__(self, data, params={}):
-        mat, details, mcols = data.getMatrix()
+    title_str = "Projection"
+        
+    def do(self):
+        if not self.want_to_live:
+            return
+        mat, details, mcols = self.data.getMatrix()
         self.axis_ids = random.sample(range(len(mat)), 2)
 
-        if params.has_key("code"):
+        if self.params.has_key("code"):
             sidestr = {"0":0, "1":1, "L":0, "R":1, "l":0, "r":1}
-            tmpr = re.match("^(?P<side0>[01LRlr])(?P<axis0>[0-9]*)-(?P<side1>[01LRlr])(?P<axis1>[0-9]*)$", params["code"])
+            tmpr = re.match("^(?P<side0>[01LRlr])(?P<axis0>[0-9]*)-(?P<side1>[01LRlr])(?P<axis1>[0-9]*)$", self.params["code"])
             if tmpr is not None:
                 axis0 = (sidestr[tmpr.group("side0")], int(tmpr.group("axis0")))
                 axis1 = (sidestr[tmpr.group("side1")], int(tmpr.group("axis1")))
@@ -89,6 +146,7 @@ class AxesProj(Proj):
         for side in [0,1]:
             if details[self.axis_ids[side]][2] != NumColM.type_id:
                 self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
+        self.notifyDone()
 
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
@@ -96,182 +154,142 @@ class AxesProj(Proj):
     def getCode(self):
         return "%s:%s-%s" % (self.PID, self.codes[0], self.codes[1])
 
-    def getAxisLims(self):
-        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
-
-    def getCoords(self, axi=None, ids=None):
-        if axi is None:
-            return self.coords_proj
-        elif ids is None:
-            return self.coords_proj[axi]
-        return self.coords_proj[axi][ids]
-
 
 class SVDProj(Proj):
 
-    PID = "-S"
+    PID = "SVD"
+    title_str = "Projection"
+    
+    def do(self):
+        if not self.want_to_live:
+            return
 
-    def __init__(self, data, params={}):
-        self.params = params
-        self.params["alg"] = "S"
-        self.stypes=[NumColM.type_id]
-        self.ables=True
-        if params.has_key("A"):
-            self.stypes = None
-        if params.has_key("a"):
-            self.ables = False
-
-        mat, details, mcol = data.getMatrix(types=self.stypes, only_able=self.ables)
+        mat, details, mcol = self.data.getMatrix(types=self.stypes, only_able=self.ables)
         tt = np.std(mat, 1)
         tt[np.where(tt == 0)] = 1
         matn = (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
         U, s, V = np.linalg.svd(matn, full_matrices=False)
         tmp = np.dot(U[:2],matn)
         self.coords_proj = (tmp[0], tmp[1])
+        self.notifyDone()
 
     def getAxisLabel(self, axi):
         return "dimension %d" % (axi+1)
-    
-    def getCode(self):
-        tt = "%s:" % self.params["alg"]
-        if self.stypes is None:
-            tt += "A,"
-        if not self.ables:
-            tt += "a,"
-        return tt.strip(":, ")
 
-    def getAxisLims(self):
-        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+### The various projections with sklearn
+#----------------------------------------------------------------------
+class SKrandProj(Proj):
 
-    def getCoords(self, axi=None, ids=None):
-        if axi is None:
-            return self.coords_proj
-        elif ids is None:
-            return self.coords_proj[axi]
-        return self.coords_proj[axi][ids]
+    PID =  "SKrand"
+    title_str = "Random projection"
 
+    def do(self):
+        if not self.want_to_live:
+            return
 
-class SKProj(Proj):
-
-    PID = "SK.*"
-
-    def __init__(self, data, params={}):
-        self.title_str = None
-        self.params = params
-        self.stypes=[NumColM.type_id]
-        self.ables=True
-        if params.has_key("A"):
-            self.stypes = None
-        if params.has_key("a"):
-            self.ables = False
-
-        mat, details, mcol = data.getMatrix(types=self.stypes, only_able=self.ables)
+        mat, details, mcol = self.data.getMatrix(types=self.stypes, only_able=self.ables)
         tt = np.std(mat, 1)
         tt[np.where(tt == 0)] = 1
         matn = (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
 
-        alg = None
-        if params.has_key("alg"):
-            for name, val in inspect.getmembers(self):
-                if re.match("get"+params["alg"]+"Proj", name) is not None and alg is None:
-                    alg = val
-        if alg is None:
-            name, val = random.choice([(n, v) for n, v in inspect.getmembers(self)
-                               if re.match("get(?P<alg>.*)Proj", n) is not None])
-            self.params["alg"] = re.match("get(?P<alg>.*)Proj", name).group("alg")
-            alg = val
-
-        X_pro, err = alg(matn.T, params)
+        X_pro, err = self.getX(matn.T)
         self.coords_proj = (X_pro[:,0], X_pro[:,1])
-
-    def getTitle(self):
-        return self.title_str
+        self.notifyDone()
     
-    def getCode(self):
-        tt = "%s:" % self.params["alg"]
-        if self.stypes is None:
-            tt += "A,"
-        if not self.ables:
-            tt += "a,"
-        for k,v in self.params.items():
-            if k not in ["A", "a", "code", "alg"]:
-                if type(v) != bool:
-                    tt += "%s=%s," % (k,v)
-                else:
-                    tt += "%s," % k
-        return tt.strip(":, ")
-
-    def getAxisLims(self):
-        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
-
-    def getCoords(self, axi=None, ids=None):
-        if axi is None:
-            return self.coords_proj
-        elif ids is None:
-            return self.coords_proj[axi]
-        return self.coords_proj[axi][ids]
-
-    ### The various projections with sklearn
-    #----------------------------------------------------------------------
     # Random 2D projection using a random unitary matrix
-    def getSKrandProj(self, X, params={}):
-        self.title_str = "Random projection"
-        rp = random_projection.SparseRandomProjection(n_components=2, random_state=params.get("rand", random.randint(1, 100)))
+    def getX(self, X, params={}):
+        rp = random_projection.SparseRandomProjection(n_components=2, random_state=self.params.get("rand", random.randint(1, 100)))
         X_projected = rp.fit_transform(X)
         return X_projected, 0
 
+class SKpcaProj(SKrandProj):
     #----------------------------------------------------------------------
     # Projection on to the first 2 principal components
-    def getSKpcaProj(self, X, params={}):
+
+    PID =  "SKpca"
+    title_str = "PCA projection"
+
+    def getX(self, X):
         self.title_str = "PCA projection"
-        X_pca = decomposition.RandomizedPCA(n_components=2, random_state=params.get("rand", random.randint(1, 100))).fit_transform(X)
+        X_pca = decomposition.RandomizedPCA(n_components=2, random_state=self.params.get("rand", random.randint(1, 100))).fit_transform(X)
         return X_pca, 0
 
+class SKisoProj(SKrandProj):
     #----------------------------------------------------------------------
-    # Isomap projection of the digits dataset
-    def getSKisomapProj(self, X, params={}):
-        self.title_str = "Isomap projection"
-        X_iso = manifold.Isomap(n_neighbors=params.get("#k",4), n_components=2).fit_transform(X)
+    # Isomap projection
+
+    PID =  "SKiso"
+    title_str = "Isomap projection"
+
+    def getX(self, X):
+        X_iso = manifold.Isomap(n_neighbors=self.params.get("#k",4), n_components=2).fit_transform(X)
         return X_iso, 0
 
+class SKlleProj(SKrandProj):
     #----------------------------------------------------------------------
-    # Locally linear embedding of the digits dataset
-    def getSKlleProj(self, X, params={}):
+    # Locally linear embedding
+
+    PID =  "SKlle"
+    title_str = "LLE projection"
+
+    def getTitle(self):
+        return "%s %s" % (self.params.get("method", 'standard'), self.title_str)
+
+    def getX(self, X):
         ### methods: standard, modified, hessian, ltsa
-        self.title_str = "%s LLE embedding" % params.get("method", 'standard')
-        clf = manifold.LocallyLinearEmbedding(n_components=2, n_neighbors=params.get("#k",4),
-                                              method=params.get("method", 'standard'), random_state=params.get("rand", random.randint(1, 100)))
+        clf = manifold.LocallyLinearEmbedding(n_components=2, n_neighbors=self.params.get("#k",4),
+                                              method=self.params.get("method", 'standard'), random_state=self.params.get("rand", random.randint(1, 100)))
         X_lle = clf.fit_transform(X)
         return X_lle, clf.reconstruction_error_
 
+class SKmdsProj(SKrandProj):
     #----------------------------------------------------------------------
-    # MDS  embedding of the digits dataset
-    #### SLOW!!!
-    # def getSKmdsProj(self, X, params={}):
-    #     self.title_str = "MDS embedding"
-    #     print("Computing MDS embedding")
-    #     clf = manifold.MDS(n_components=2, n_init=params.get("#R",1), max_iter=params.get("#I",100))
-    #     X_mds = clf.fit_transform(X)
-    #     return X_mds, clf.stress_
+    # MDS  embedding
 
+    PID =  "-SKmds"
+    title_str = "MDS embedding"
+
+    def getX(self, X):
+        clf = manifold.MDS(n_components=2, n_init=self.params.get("#R",1), max_iter=self.params.get("#I",100))
+        X_mds = clf.fit_transform(X)
+        return X_mds, clf.stress_
+
+class SKtreeProj(SKrandProj):
     #----------------------------------------------------------------------
-    # Random Trees embedding of the digits dataset
-    def getSKrtreeProj(self, X, params={}):
-        self.title_str = "Totally Random Trees embedding"
-        hasher = ensemble.RandomTreesEmbedding(n_estimators=params.get("#E",200),
-                                               random_state=params.get("rand", random.randint(1, 100)),
-                                               max_depth=params.get("dep",5))
+    # Random Trees embedding
+
+    PID =  "SKtree"
+    title_str = "Totally Random Trees embedding"
+
+    def getX(self, X):
+        hasher = ensemble.RandomTreesEmbedding(n_estimators=self.params.get("#E",200),
+                                               random_state=self.params.get("rand", random.randint(1, 100)),
+                                               max_depth=self.params.get("dep",5))
         X_transformed = hasher.fit_transform(X)
         pca = decomposition.RandomizedPCA(n_components=2)
         X_reduced = pca.fit_transform(X_transformed)
         return X_reduced, 0
 
+class SKspecProj(SKrandProj):
     #----------------------------------------------------------------------
-    # Spectral embedding of the digits dataset
-    def getSKspectralProj(self, X, params={}):
+    # Spectral embedding
+
+    PID =  "SKspec"
+    title_str = "Spectral embedding"
+
+    def getX(self, X):
         ### eigen solvers: arpack, lobpcg
-        self.title_str = "Spectral embedding"
-        embedder = manifold.SpectralEmbedding(n_components=2, random_state=params.get("rand", random.randint(1, 100)))
+        embedder = manifold.SpectralEmbedding(n_components=2, random_state=self.params.get("rand", random.randint(1, 100)))
         X_se = embedder.fit_transform(X)
         return X_se, 0
 
+class SKtsneProj(SKrandProj):
+    #----------------------------------------------------------------------
+    # Stochastic Neighbors embedding
+
+    PID =  "-SKtsne"
+    title_str = "t-SNE embedding"
+
+    def getX(self, X):
+        X_sne, c = tsne.tsne(X, no_dims=2, initial_dims=self.params.get("dim",50), perplexity=self.params.get("perp",20.0))
+        return X_sne, c
