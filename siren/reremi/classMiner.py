@@ -48,6 +48,7 @@ class Miner:
             self.rm = RedModel(data)
 
 
+        ### TODO remove
         ### Just for relational test, get exclusions
         self.deps = []
         if self.data.hasNames():

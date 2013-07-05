@@ -22,8 +22,8 @@
       <parameter>
 	<name>color_l</name>
 	<label>Color LHS</label>
-	<parameter_type>open</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
 	<legend>Color for plotting the LHS support.</legend>
 	<length>7</length>
 	<default><value>#FF0000</value></default>
@@ -31,8 +31,8 @@
       <parameter>
 	<name>color_r</name>
 	<label>Color RHS</label>
-	<parameter_type>open</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
 	<legend>Color for plotting the RHS support.</legend>
 	<length>7</length>
 	<default><value>#0000FF</value></default>
@@ -40,8 +40,8 @@
       <parameter>
 	<name>color_i</name>
 	<label>Color Intersection</label>
-	<parameter_type>open</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
 	<legend>Color for plotting the intersection support.</legend>
 	<length>7</length>
 	<default><value>#A020f0</value></default>

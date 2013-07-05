@@ -1,10 +1,10 @@
-import getopt
+import getopt, re
 import toolRead
 import pdb
 
 class CParameter:
 	type_id = "X"
-	value_types = {"text": str, "boolean": bool, "integer": int, "float": float}
+	value_types = {"text": str, "boolean": bool, "integer": int, "float": float, "color": str}
 	reversed_types = dict([(v,k) for (k,v) in value_types.items()])
 
 	def __init__(self,  name=None, label=None, default=None, value_type=None, legend=None):
@@ -242,11 +242,72 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
 	def getCardinality(self):
 		return "multiple"
 
+class ColorCParameter(CParameter):
+	type_id = "color_pick"
+	match_p = "^#(?P<rr>[0-9A-Fa-f][0-9A-Fa-f])(?P<gg>[0-9A-Fa-f][0-9A-Fa-f])(?P<bb>[0-9A-Fa-f][0-9A-Fa-f])$"
+	
+	def parseNode(self, node):
+		CParameter.parseNode(self, node)
+		et = node.getElementsByTagName("default")
+		if len(et) > 0:
+			tmp = toolRead.getValue(et[0], self._value_type)
+			self._default = self.txtToCol(tmp)
+
+		if self._default is None:
+			raise Exception("Default value for param %s not correct!"% self._name)
+
+	def getInfo(self):
+		strd = CParameter.getInfo(self)
+		strd += " format #RRGGBB" 
+		return strd
+
+	def getParamValue(self, raw_value):
+ 		tmp =  toolRead.parseToType(raw_value, self._value_type)
+		return self.txtToCol(tmp)
+
+	def getParamData(self, raw_value):
+		return 	self.getParamValue(raw_value)
+
+	def getParamText(self, raw_value):
+		if type(raw_value) is tuple:
+			return self.colToTxt(raw_value)
+		else:
+			tmp =  toolRead.parseToType(raw_value, self._value_type)
+			if tmp is not None and re.match(self.match_p, tmp):
+				return tmp
+		return None
+		
+	def getParamTriplet(self, raw_value):
+		if type(raw_value) is tuple:
+			v = raw_value
+			tmp = self.colToTxt(raw_value)
+		else:
+			tmp = toolRead.parseToType(raw_value, self._value_type)
+			v = self.txtToCol(tmp)
+		if tmp is not None and v is not None:
+			return {"value": v, "data": v, "text": tmp}
+		return None
+
+	def colToTxt(self, tuple_value):
+		return "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, tuple_value)])
+
+	def txtToCol(self, txt_value):
+		if txt_value is not None:
+			g = re.match(self.match_p, txt_value)
+			if g is not None:
+				try:
+					return (int(g.group("rr"), 16), int(g.group("gg"), 16), int(g.group("bb"), 16))
+				except:
+					raise Warning("Could not parse color %s!" % txt_value)
+		return None
+		
+
 class PreferencesManager:
       	parameter_types = {"open": OpenCParameter,
 			   "range": RangeCParameter,
 			   "single_options": SingleOptionsCParameter,
-			   "multiple_options": MultipleOptionsCParameter}
+			   "multiple_options": MultipleOptionsCParameter,
+			   "color_pick": ColorCParameter}
 
 	def __init__(self, filenames):
 		self.subsections = []

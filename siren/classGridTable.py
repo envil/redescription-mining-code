@@ -1,4 +1,4 @@
-import wx, wx.grid
+import wx, wx.grid, re, colorsys, random
 from classProjView import ProjView
 from classParaView import ParaView
 from reremi.toolICList import ICList
@@ -7,15 +7,28 @@ from reremi.classRedescription import Redescription
 
 import pdb
 
+def getRGB(h,l, s):
+    Brgb = map(int, [255*v for v in colorsys.hls_to_rgb(h, l, s)])
+    if l > 0.5:
+        Frgb = map(int, [255*v for v in colorsys.hls_to_rgb(h, 0, s)])
+    else:
+        Frgb = map(int, [255*v for v in colorsys.hls_to_rgb(h, 1, s)])
+    return Brgb, Frgb
+
 class CustRenderer(wx.grid.PyGridCellRenderer):
 
-    BACKGROUND_SELECTED = wx.Colour(100,100,100)
-    TEXT_SELECTED = wx.Colour(100,100,100)
     BACKGROUND = wx.Colour(100,100,100)
     TEXT = wx.Colour(100,100,100)
+    SBRUSH = wx.SOLID
+    
+    BACKGROUND_SELECTED = wx.Colour(100,100,100)
+    TEXT_SELECTED = wx.Colour(100,100,100)
+    SBRUSH_SELECTED = wx.SOLID
+
     BACKGROUND_GREY = wx.Colour(240,255,240)
     TEXT_GREY = wx.Colour(131,139,131)
-
+    SBRUSH_GREY = wx.SOLID
+    
     """Base class for editors"""
 
     ### Customisation points
@@ -23,21 +36,27 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
         """Customisation Point: Draw the data from grid in the rectangle with attributes using the dc"""
 
         dc.SetClippingRegion( rect.x, rect.y, rect.width, rect.height )
-        if row in grid.GetSelectedRows():
-            dc.SetTextForeground( self.TEXT_SELECTED )
-            dc.SetTextBackground( self.BACKGROUND_SELECTED)
-            dc.SetBrush( wx.Brush( self.BACKGROUND_SELECTED) )
+        back, fore, bstyle = self.BACKGROUND, self.TEXT, self.SBRUSH
+        value = grid.GetCellValue( row, col )
+        
+        tmp = re.match("^#h(?P<h>[0-9]*)l(?P<l>[0-9]*)#(?P<val>.*)$", value)
+        if tmp is not None:
+            s = 1
+            if row in grid.GetSelectedRows(): s=0.5
+            elif grid.GetTable().getEnabled(row) == 0: s= 0.2 
+            rgb_back, rgb_fore = getRGB(int(tmp.group("h"))/255.0, int(tmp.group("l"))/255.0, s)
+            back, fore, bstyle = wx.Colour(*rgb_back), wx.Colour(*rgb_fore), self.SBRUSH
+            value = tmp.group("val")
+        elif row in grid.GetSelectedRows():
+            back, fore, bstyle = self.BACKGROUND_SELECTED, self.TEXT_SELECTED, self.SBRUSH_SELECTED
         elif grid.GetTable().getEnabled(row) == 0:
-            dc.SetTextForeground( self.TEXT_GREY )
-            dc.SetTextBackground( self.BACKGROUND_GREY)
-            dc.SetBrush( wx.Brush( self.BACKGROUND_GREY) )
-        else:
-            dc.SetBrush( wx.Brush( self.BACKGROUND, wx.SOLID) )
-            dc.SetTextForeground( self.TEXT )
+            back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
         try:
+            dc.SetTextForeground( fore )
+            dc.SetTextBackground( back)
+            dc.SetBrush( wx.Brush( back, bstyle) )
             dc.SetPen(wx.TRANSPARENT_PEN)
             dc.DrawRectangle( rect.x, rect.y, rect.width, rect.height )
-            value = grid.GetCellValue( row, col )
             dc.SetFont( wx.NORMAL_FONT )
             dc.DrawText( value, rect.x+2,rect.y+2 )
         finally:
@@ -64,12 +83,14 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def __init__(self, parent, tabId, frame):
         wx.grid.PyGridTableBase.__init__(self)
+        self.details = {}
+        self.sc = set()
+        self.fvc = 0
         self.parent = parent
         self.tabId = tabId
         self.fields = self.fields_def
         self.data = ICList()
         self.sortids = ICList()
-        self.details = {}
         self.sortP = (None, False)
         self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
@@ -95,6 +116,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
         self.grid.Bind(wx.EVT_KEY_UP, self.OnKU)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
+        self.grid.Bind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.setFocus)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_DCLICK, self.OnViewData)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnMouse)
@@ -102,6 +124,11 @@ class GridTable(wx.grid.PyGridTableBase):
     # def showPopupMenu(self, event):
     #     self.table.highlightRow(event.GetRow())
     #     parent.currentList = self
+
+    def GetCellBackgroundColor(self, row, col):
+        """Return the value of a cell"""
+        return wx.Colour(100,100,100)
+
 
     def Hide(self):
         self.grid.Hide()
@@ -143,22 +170,27 @@ class GridTable(wx.grid.PyGridTableBase):
         else:
             return wx.grid.GRID_VALUE_STRING
         # if row < len(self.sortids) and col < len(self.fields):
-        #     x = self.sortids[row]
-        #     methode = eval(self.fields[col][0])
-        #     return type(methode(self.details))
+        #     return self.getFieldV(self.sortids[row], self.fields[col], dict(self.details))
         # else:
         #     return None
+
+    def getFieldV(self, x, field, details):
+        self.fvc += 1
+        methode = eval(field[1])
+        if callable(methode):
+            if len(field) > 2:
+                details.update(field[2])
+            return methode(details)
+        else:
+            return methode
 
     ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
         if row < self.nbItems() and col < len(self.fields):
-            x = self.sortids[row]
-            methode = eval(self.fields[col][1])
-            if callable(methode):
-                return "%s" % methode(self.details)
-            else:
-                return methode
+            details = {"aim": "list"}
+            details.update(self.details)
+            return "%s" % self.getFieldV(self.sortids[row], self.fields[col], details)
         else:
             return None
 
@@ -188,12 +220,15 @@ class GridTable(wx.grid.PyGridTableBase):
         except:
             return None
 
-    def resetData(self, data, details=[], srids=None):
+    def resetDetails(self, details={}, review=True):
+        self.details = details
+        if review:
+            self.ResetView()
+            self.GetView().AutoSize()
+
+    def resetData(self, data, srids=None):
         self.data = data
         
-        if details != []:
-            self.details = details
-
         if srids is not None:
             self.sortids = srids
         else:
@@ -213,19 +248,22 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def flipEnabled(self, row):
         self.data[self.sortids[row]].flipEnabled()
-        self.data.isChanged = True
+        if type(self.data) == ICList:
+            self.data.isChanged = True
         self.ResetView()
 
     def setAllDisabled(self):
         for item in self.data:
             item.setDisabled()
-        self.data.isChanged = True
+        if type(self.data) == ICList:
+            self.data.isChanged = True
         self.ResetView()
 
     def setAllEnabled(self):
         for item in self.data:
             item.setEnabled()
-        self.data.isChanged = True
+        if type(self.data) == ICList:
+            self.data.isChanged = True
         self.ResetView()
 
     def OnMouse(self,event):
@@ -302,6 +340,9 @@ class GridTable(wx.grid.PyGridTableBase):
                 self.sortP = (colS, True)
             self.updateSort()
             self.ResetView()
+
+    def setFocus(self, event):
+        pass
         
     def updateSort(self):
         selected_row = self.getSelectedRow()
@@ -310,10 +351,9 @@ class GridTable(wx.grid.PyGridTableBase):
             selected_id = self.getPositionFromRow(selected_row)
 
         if self.sortP[0] is not None:
-            sort_c = 1
-            if len(self.fields[self.sortP[0]]) > 2:
-                sort_c = 2
-            self.sortids.sort(key= lambda x: eval(self.fields[self.sortP[0]][sort_c])(self.details), reverse=self.sortP[1])
+            details = {"aim": "sort"}
+            details.update(self.details)
+            self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id))
             
@@ -340,7 +380,7 @@ class RedTable(GridTable):
                  ('accuracy', 'self.data[x].getAcc'),
                  ('p-value', 'self.data[x].getPVal'),
                  ('|E_{1,1}|', 'self.data[x].getSupp'),
-                  ('track', 'self.data[x].getTrackStr', 'self.data[x].getTrack')]
+                  ('track', 'self.data[x].getTrack')]
 
     def __init__(self, parent, tabId, frame):
         GridTable.__init__(self, parent, tabId, frame)
@@ -581,3 +621,114 @@ class VarTable(GridTable):
         self.fields.extend(self.fields_def)
         for tyid in set([r.type_id for r in self.data]):
             self.fields.extend(self.fields_var[tyid])
+
+
+class RowTable(GridTable):     
+
+    fields_def = [('','self.data[x].getEnabled'),
+                  ('id', 'self.data[x].getId')]
+
+    def viewData(self, viewT=None):
+        pass
+ 
+    def updateEdit(self, edit_key, red):
+        pass
+
+    def resetFields(self, dw=None, review=True):
+        if dw is not None:
+            self.fields = []
+            self.fields.extend(self.fields_def)
+            for side, sideS in [(0, "LHS"),(1, "RHS")]:
+                nb = max(1,len(dw.getDataCols(side))-1.0)
+                for ci, col in enumerate(dw.getDataCols(side)):
+                    self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "r":ci/nb}))
+            if review:
+                self.ResetView()
+
+
+    ### GRID METHOD
+    def GetValue(self, row, col):
+        """Return the value of a cell"""
+        if row < self.nbItems() and col < len(self.fields):
+            details = {"aim": "list"}
+            details.update(self.details)
+            tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
+            if col < 2:
+                return tmp
+            else:
+                h = 125*self.fields[col][2]["side"] + int(100*self.fields[col][2]["r"])
+                if tmp == "-":
+                    l = 255
+                else:
+                    rangeV = self.fields[col][2]["range"]
+                    lr = row/(1.0*self.nbItems())
+                    if type(rangeV) is dict:
+                        lr = rangeV.get(tmp, 0)/(len(rangeV)-1.0)
+                    elif type(rangeV) is tuple and rangeV[0] != rangeV[1]:
+                        lr = (tmp - rangeV[0])/(rangeV[1]-rangeV[0])
+                    l = 125*lr+100
+
+                # sc = 1.0*self.fields[col][2]["max"] - self.fields[col][2]["min"]
+                # if sc == 0:
+                #     lr = 0.5
+                # else:
+                #     lr = (tmp - self.fields[col][2]["min"])/sc
+                if col in self.sc:
+                    return "#h%dl%d#%s" % (h,l,tmp)
+                else:
+                    return "#h%dl%d#%s" % (h,l,"")
+        else:
+            return None
+
+    ### GRID METHOD
+    def GetColLabelValue(self, col):
+        if col not in self.sc:
+            return ""
+        """Return the number of rows in the grid"""
+        direct = '  '
+        if col == self.sortP[0]:
+            if self.sortP[1]:
+                direct = u"\u2191"
+            else:
+                direct = u"\u2193" 
+        return "  %s %s" % (self.fields[col][0], direct)
+
+
+    def resetData(self, data, srids=None):
+        self.data = data
+        
+        if srids is not None:
+            self.sortids = srids
+        else:
+            self.sortids = ICList([idi for idi in range(len(self.data))], True)
+
+        self.resetFields()
+
+        self.updateSort()
+        self.redraw()
+
+
+    def resetDetails(self, details={}, review=True):
+        self.details = details
+        if review:
+            self.redraw()
+
+    def redraw(self, details={}, review=True):
+        self.ResetView()
+        self.GetView().SetDefaultColSize(1, True)
+        self.GetView().SetColSize(0, 25)
+        self.GetView().SetColSize(1, 25)
+        for cid in self.sc:
+            self.GetView().SetColSize(cid, 10*len(self.fields[cid][0]))
+#            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
+
+    def setFocus(self, event):
+        cid = event.GetCol()
+        if cid < 2:
+            pass ### TODO select all
+        else:
+            if cid in self.sc:
+                self.sc.remove(cid)
+            else:
+                self.sc.add(cid)
+            self.redraw()

@@ -23,6 +23,10 @@ class Redescription:
         self.vectorABCD = None
         self.status = 1
         self.track = []
+
+    def suppPartRange(self):
+        return range(SParts.bottom, SParts.top+1)
+
         
     def fromInitialPair(initialPair, data):
         queryL = Query()
@@ -283,31 +287,30 @@ class Redescription:
         return self.sParts.hasMissing()
 
     def getQueryLU(self, details=None):
-        if details.has_key('names'):
-            return self.queries[0].dispU(details['names'][0])
+        if details is not None and details.has_key("names"):
+            return self.queries[0].dispU(details["names"][0])
         else:
             return self.queries[0].dispU()
 
-    
     def getQueryRU(self, details=None):
-        if details.has_key('names'):
-            return self.queries[1].dispU(details['names'][1])
+        if details is not None and details.has_key("names"):
+            return self.queries[1].dispU(details["names"][1])
         else:
             return self.queries[1].dispU()
 
     def getAcc(self, details=None):
         return round(self.acc(), 3)
 
-    def getTrackStr(self, details=None):
-        return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
-
     def getTrack(self, details=None):
-        return self.track
+        if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
+            return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
+        else:
+            return self.track
 
     def getEnabled(self, details=None):
         return 1*(self.status>0)
 
-    def getStatus(self, details=None):
+    def getStatus(self):
         return self.status
 
     def flipEnabled(self):
@@ -321,10 +324,10 @@ class Redescription:
     def setDiscarded(self):
         self.status = -2
 
-    def getPVal(self, details):
+    def getPVal(self, details=None):
         return round(self.pVal(), 3)
 
-    def getSupp(self, details):
+    def getSupp(self, details=None):
         return len(self.suppI())
 
 
@@ -335,7 +338,7 @@ class Redescription:
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrackStr()))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrack({"format":"str"})))
 
     def dispQueries(self, names= [None, None], lenIndex=0):
         return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)

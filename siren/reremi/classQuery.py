@@ -125,6 +125,12 @@ class Term:
     def __init__(self, ncol):
         self.col = ncol
 
+    def valRange(self):
+        return [None, None]
+
+    def setRange(self, newR):
+        pass
+
 #     def simple(self, neg):
 #         return neg
 
@@ -154,6 +160,9 @@ class BoolTerm(Term):
 
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
 
+    def valRange(self):
+        return [True, True]
+        
     def copy(self):
         return BoolTerm(self.col)
     
@@ -216,19 +225,6 @@ class BoolTerm(Term):
         else:
             return '%s%i' % ( neg.dispU(), self.col)
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
-        if pos is not None:
-            slackp = slack
-            slack = 0
-        else:
-            slackp = 0
-            pos = 0
-        tmp = dataSide[self.col].getVector()
-        if selectids is None:
-            selectids = range(len(tmp))
-        data = [tmp[i]/2.0  + 0.25 + slackp*(pos-0.5) + slack*(j/float(len(selectids))-0.5) for j,i in enumerate(selectids)]
-        bounds = [0.5, 1]
-        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
                     
     def parse(partsU, names=None):
         ncol = None
@@ -259,6 +255,12 @@ class CatTerm(Term):
     def __init__(self, ncol, ncat):
         self.col = ncol
         self.cat = ncat
+
+    def valRange(self):
+        return [self.cat, self.cat]
+
+    def setRange(self, cat):
+        self.cat = cat
 
     def copy(self):
         return CatTerm(self.col, self.cat)
@@ -329,22 +331,6 @@ class CatTerm(Term):
         else:
             return ('%s '+symbIn+' %i') % (self.col, self.cat)
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
-        if pos is not None:
-            slackp = slack
-            slack = 0
-        else:
-            slackp = 0
-            pos = 0
-        tmp = dataSide[self.col].getVector()
-        st_size = 1.0/len(vs)
-        dm = dict([(p, n*st_size) for n, p in enumerate(sorted(set(tmp)))])
-        if selectids is None:
-            selectids = range(len(tmp))
-        data = [dm[tmp[i]] + slackp*st_size+slack*st_size*i/float(len(selectids)) for i in selectids]
-        bounds = [dm[self.cat], dm[self.cat]+st_size]
-        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
-
     def parse(partsU, names=None):
         ncol = None
         if partsU is not None:
@@ -404,6 +390,15 @@ class NumTerm(Term):
 #                 self.lowb = float('-Inf')
 #                 neg = False
 #         return neg
+
+    def valRange(self):
+        return [self.lowb, self.upb]
+
+    def setRange(self, bounds):
+        if bounds[0] == float('-Inf') and bounds[1] == float('Inf') or bounds[0] > bounds[1]:
+            raise Warning('Unbounded numerical term !')
+        self.lowb = bounds[0]
+        self.upb = bounds[1]
             
     def copy(self):
         return NumTerm(self.col, self.lowb, self.upb)
@@ -512,20 +507,6 @@ class NumTerm(Term):
             idcol = '%i' % self.col
         return ''+negstr+lb+idcol+ub+''
 
-    def sampleBounds(self, neg, dataSide, names=None, selectids=None, slack=0.1, pos=None):    
-        tmp = dataSide[self.col].getVector()
-        mint = float(min(tmp))
-        maxt = max(tmp)
-        if selectids is None:
-            selectids = range(len(tmp))
-        data = [(tmp[i]-mint)/(maxt-mint) for i in selectids]
-        bounds = [0,1]
-        if self.lowb > float('-Inf'):
-            bounds[0] = (self.lowb-mint)/(maxt-mint)
-        if self.upb < float('Inf'):
-            bounds[1] = (self.upb-mint)/(maxt-mint)
-        return {"text": self.dispU(False, names), "data": data, "bounds": bounds}
-
     def parse(partsU, names=None):
         ncol=None
         if partsU is not None :
@@ -578,9 +559,6 @@ class Literal:
         self.term = nterm ## Already an Term instance
         self.neg = Neg(nneg)
 #         self.neg = Neg(self.term.simple(nneg))
-
-    def sampleBounds(self, dataSide, names, selectids=None, slack=0.1, pos=None):
-        return self.term.sampleBounds(self.neg, dataSide, names, selectids, slack, pos)
 
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())

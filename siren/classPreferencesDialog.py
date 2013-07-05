@@ -30,7 +30,7 @@ class PreferencesDialog(wx.Dialog):
 			sec_id = wx.NewId()
 			self.tabs.append(sec_id)
 			self.controls_map[sec_id] = {"button": {}, "range": {},
-						     "open": {}, "single_options": {}, "multiple_options": {}}
+						     "open": {}, "single_options": {}, "multiple_options": {}, "color_pick": {}}
 
 			conf = wx.Panel(self.nb, -1)
 			top_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -117,6 +117,21 @@ class PreferencesDialog(wx.Dialog):
 			# top_sizer.Add(mo_sizer_t, 0, wx.EXPAND|wx.ALL, 5)
 			# top_sizer.Add(mo_sizer_v, 0, wx.EXPAND|wx.ALL, 5)
 			mo_sizer.Add(mo_sizer_v, 0, wx.EXPAND)
+                    top_sizer.Add(mo_sizer, 0, wx.EXPAND|wx.ALL, 5)
+
+		########## ADD COLOR PICK PARAMETERS
+                if len(parameters["color_pick"]) > 0: 
+                    mo_sizer = wx.GridSizer(rows=len(parameters["color_pick"]), cols=2, hgap=5, vgap=5)
+                    for item_id in parameters["color_pick"]:
+			item = self.pref_handle.getPreferencesManager().getItem(item_id)
+
+			ctrl_id = wx.NewId()
+			label = wx.StaticText(frame, wx.ID_ANY, item.getLabel()+":")
+			mo_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+			self.controls_map[sec_id]["color_pick"][item_id] = wx.ColourPickerCtrl(frame, ctrl_id, style=wx.ALIGN_RIGHT)
+			self.objects_map[ctrl_id]= (sec_id, "color_pick", item_id)
+			mo_sizer.Add(self.controls_map[sec_id]["color_pick"][item_id], 0)
+
                     top_sizer.Add(mo_sizer, 0, wx.EXPAND|wx.ALL, 5)
 
 
@@ -247,6 +262,10 @@ class PreferencesDialog(wx.Dialog):
 			for check_id, check_box in ctrl_multiple.items():
 				check_box.SetValue(check_id in vdict[item_id]["value"])
 
+		for item_id, colour_txt in self.controls_map[sec_id]["color_pick"].items():
+			colour_txt.SetColour(wx.Colour(*vdict[item_id]["value"]))
+
+
 	def getSecValuesDict(self, sec_id):
 		vdict = {}
 		for ty in ["open", "range"]:
@@ -286,6 +305,15 @@ class PreferencesDialog(wx.Dialog):
 							vdict[item_id][k].append(t[k])
 			else:
 				vdict[item_id] = pit.getDefaultTriplet()
+
+		for item_id, ctrl_txt in self.controls_map[sec_id]["color_pick"].items():
+			pit = self.pref_handle.getPreferencesManager().getItem(item_id)
+			tmp = pit.getParamTriplet(ctrl_txt.GetColour().GetAsString(wx.C2S_HTML_SYNTAX))
+			if tmp is not None:
+				vdict[item_id] = tmp
+			else:
+				vdict[item_id] = pit.getDefaultTriplet()
+
 		return vdict
 
 class ApplyResetCancelDialog(wx.Dialog):

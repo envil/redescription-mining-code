@@ -11,7 +11,7 @@ from reremi.classConstraints import Constraints
 from reremi.classBatch import Batch
 from reremi.toolICList import ICList
 
-from classGridTable import VarTable, RedTable
+from classGridTable import VarTable, RedTable, RowTable
 from classMapolyView import MapView
 from classParaView import ParaView
 from classProjView import ProjView
@@ -52,12 +52,13 @@ class Siren():
         self.busyDlg = None
         self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
+                     "rows": {"title":"Entities", "type":"Row", "hide":False, "style":None},
                      "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
                      "exp": {"title":"Expansions", "type":"Reds", "hide":True, "style":None},
                      "hist": {"title":"History", "type":"Reds", "hide":True, "style":None},
                      "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
-        self.tabs_keys = [0, 1, "reds", "exp", "hist", "log"]
+        self.tabs_keys = [0, 1, "rows", "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
         self.check_tab = {}
@@ -78,7 +79,6 @@ class Siren():
         self.selectedMap = -1
         self.buffer_copy = None
         
-        self.details = None
         self.workers = {}
         self.next_workerid = 0
 
@@ -138,10 +138,8 @@ class Siren():
         ### INITIALISATION OF DATA
         self.resetLogger()
         self.resetConstraints()
-        self.details = {'names': self.dw.getColNames()}
-        self.reloadVars()
         self.resetCoordinates()
-        self.reloadReds()
+        self.reloadAll()
 
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
@@ -172,6 +170,12 @@ class Siren():
 
             elif self.tabs[tab_id]["type"] == "Var":
                 self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed)
+                if self.tabs[tab_id]["hide"]:
+                    self.tabs[tab_id]["tab"].grid.Hide()
+                self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
+
+            elif self.tabs[tab_id]["type"] == "Row":
+                self.tabs[tab_id]["tab"] = RowTable(self, tab_id, self.tabbed)
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
@@ -504,9 +508,7 @@ class Siren():
         except:
             return False
         else:
-            self.details = {'names': self.dw.getColNames()}
-            self.reloadVars()
-            self.reloadReds()
+            self.reloadAll()
             return True
 
     def expand(self, red=None):
@@ -667,9 +669,7 @@ class Siren():
             except:
                 pass
             else:
-                self.details = {'names': self.dw.getColNames()}
-                self.reloadVars()
-                self.reloadReds()
+                self.reloadAll()
 
         open_dlg.Destroy()
                 
@@ -884,7 +884,7 @@ class Siren():
         for side,pref in [(0,""), (1,"")]:
             dets += "\n"
             for lit in red.queries[side].listLiterals():
-                dets += ("\t%s=\t%s\n" % (self.details['names'][side][lit.col()], self.dw.getData().getValue(side, lit.col(), rid)))
+                dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.col()).getName(), self.dw.getData().getValue(side, lit.col(), rid)))
         return dets
 
     def OnQuit(self, event):
@@ -950,19 +950,39 @@ class Siren():
             self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
 
-    def reloadVars(self):
+    def reloadAll(self):
+        self.reloadVars(review=False)
+        self.reloadRows()
+        self.reloadReds()
+
+    def reloadVars(self, review=True):
         ## Initialize variable lists data
         for side in [0,1]:
-            if self.dw.data is not None and self.details is not None:
-                self.tabs[side]["tab"].resetData(self.dw.getDataCols(side), self.details)
+            if self.dw.data is not None:
+                self.tabs[side]["tab"].resetData(self.dw.getDataCols(side))
             else:
-                self.tabs[side]["tab"].resetData(ICList(), self.details)
+                self.tabs[side]["tab"].resetData(ICList())
+        if self.dw.data is not None:
+            details = {"names": self.dw.data.getNames()}
+            for tk, tv in self.tabs.items():
+                if tv["type"] == "Reds":
+                    tv["tab"].resetDetails(details, review)
+                elif tv["type"] == "Row":
+                    tv["tab"].resetFields(self.dw, review)
+
+    def reloadRows(self):
+        ## Initialize variable lists data
+        if self.dw.data is not None:
+            self.tabs["rows"]["tab"].resetData(self.dw.getDataRows())
+        else:
+            self.tabs["rows"]["tab"].resetData(ICList())
+
             
     def reloadReds(self):
         ## Initialize red lists data
-        self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.details, self.dw.getShowIds())
-        self.tabs["exp"]["tab"].resetData(Batch(), self.details)
-        self.tabs["hist"]["tab"].resetData(Batch(), self.details)
+        self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
+        self.tabs["exp"]["tab"].resetData(Batch())
+        self.tabs["hist"]["tab"].resetData(Batch())
         self.deleteAllViews()
         self.makeMenu(self.toolFrame)
 #        self.getMapView().setCurrentRed(redsTmp[0])

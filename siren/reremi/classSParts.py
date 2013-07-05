@@ -54,6 +54,7 @@ class SParts:
     # indexes from the parts when looking from the right (A=L, B=R) or the left (A=R,B=L) 
     side_index = [[0,1,2,3,4,5,6,7,8], [1,0,2,3,5,4,7,6,8]]
     labels = ['alpha', 'beta', 'gamma', 'delta', 'mua', 'mub', 'muaB', 'mubB', 'mud' ]
+
     #labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     #labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
 
@@ -75,6 +76,7 @@ class SParts:
         (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = (SParts.alpha, SParts.beta, SParts.gamma, SParts.delta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud)
         if type_parts == "none":
 
+            SParts.bottom = alpha
             SParts.top = delta
             ##############################################################
             #### BASIC
@@ -122,6 +124,7 @@ class SParts:
 ############################################################################################################################
         else:
 
+            SParts.bottom = alpha
             SParts.top = mud
             ##############################################################
             #### GROUNDED
@@ -587,9 +590,6 @@ class SParts:
         elif part_id == SParts.delta:
             return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
 
-    def topPart(self):
-        return SParts.top
-
     def parts(self, side=0):
         return [self.part(i, side) for i in range(SParts.top+1)]
     
@@ -821,33 +821,6 @@ class SParts:
         self.makeVectorABCD()
         return list(self.vect)
 
-    def sampleRows(self, rate=None, minP=10, maxP=500):
-        rows = []
-        opids = {}
-        for sid in reversed(self.opids()):
-            sS = self.part(sid)
-            if len(sS) > 0:
-                if rate is None or rate == 1:
-                    nb = len(sS)
-                if rate < 1:
-                    nb = int(rate*len(sS))
-                else:
-                    nb = rate
-                if nb > maxP:
-                    nb = maxP
-                if nb < minP:
-                    nb = minP
-                if len(sS) <= nb:
-                    tt = sS
-                else:
-                    tt = random.sample(sS, nb)
-                opids[sid] =(len(rows), len(rows)+len(tt))
-                rows.extend(tt)
-        # tmp = [False for i in range(self.N)]
-        # for i in rows:
-        #     tmp[i] = True
-        return rows, opids #, tmp
-            
     # returns the index of the part the given row belongs to, vectorABCD need to have been computed 
     def partRow(self, row):
         return self.vect[row]

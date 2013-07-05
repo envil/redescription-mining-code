@@ -17,8 +17,43 @@ class DataError(Exception):
     def __str__(self):
         return repr(self.value)
 
+class RowE(object):
+
+    def __init__(self, rid, data):
+        self.rid = rid
+        self.data = data
+
+    def getValue(self, side, col=None):
+        if col is None:
+            return self.data.getValue(side["side"], side["col"], self.rid)
+        else:
+            return self.data.getValue(side, col, self.rid)
+
+
+    def getEnabled(self, details=None):
+        if self.rid not in self.data.selectedRows():
+            return 1
+        else:
+            return 0
+        
+    def flipEnabled(self):
+        if self.rid in self.data.selectedRows():
+            self.data.removeSelectedRow(self.rid)
+        else:
+            self.data.addSelectedRow(self.rid)
+
+    def setEnabled(self):
+        self.data.addSelectedRow(self.rid)
+    def setDisabled(self):
+        self.data.removeSelectedRow(self.rid)
+
+    def getId(self, details=None):
+        return self.rid
+
+
 class ColM(object):
 
+    width = 0
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
 
     def initSums(N):
@@ -39,6 +74,7 @@ class ColM(object):
         self.name = None
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
+        self.vect = None
                 
     def nbRows(self):
         return self.N
@@ -58,7 +94,7 @@ class ColM(object):
         else:
             return "%d" % self.getId()
 
-    def hasName(self, details=None):
+    def hasName(self):
         return self.name is not None
         
     def getSide(self, details=None):
@@ -72,9 +108,21 @@ class ColM(object):
     def sumCol(self):
         return 0
 
-    def getVector(self):
-        return [0 for i in range(self.N)]
+    def numEquiv(self, v):
+        try:
+            return float(v)
+        except:
+            pass
+        return np.nan 
 
+    def getVector(self):
+        if self.vect is None:
+            v = self.numEquiv(False)
+            self.vect = [v for i in range(self.N)]
+            for n in self.missing:
+                self.vect[n] = self.numEquiv("-")
+        return self.vect
+    
     def getType(self, details=None):
         return "-"
     def getDensity(self, details=None):
@@ -85,6 +133,9 @@ class ColM(object):
         return "-"
     def getMax(self, details=None):
         return "-"
+    def getRange(self):
+        return []
+
 
     def miss(self):
         return self.missing
@@ -149,6 +200,7 @@ class ColM(object):
 
 class BoolColM(ColM):
     type_id = BoolTerm.type_id
+    width = -1
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
     def parseList(listV, indices=None):
@@ -169,7 +221,7 @@ class BoolColM(ColM):
         return BoolColM(trues, len(indices), miss)
     parseList = staticmethod(parseList)
 
-    def getTerm(self, details=None):
+    def getTerm(self):
         return BoolTerm(self.id)
 
     def __str__(self):
@@ -181,11 +233,21 @@ class BoolColM(ColM):
     def sumCol(self):
         return len(self.hold)
 
+    def getRange(self):
+        return dict([(k,v) for (v,k) in enumerate([True, False])])
+
+    def numEquiv(self, v):
+        try:
+            return int(v)
+        except:
+            return np.nan
+
     def getVector(self):
-        tmp = super(BoolColM, self).getVector()
-        for i in self.hold:
-            tmp[i] = 1
-        return tmp
+        if self.vect is None:
+            self.vect = super(BoolColM, self).getVector()
+            for i in self.hold:
+                self.vect[i] = self.numEquiv(True)
+        return self.vect
 
     def getType(self, details=None):
         return "Boolean"
@@ -230,9 +292,13 @@ class BoolColM(ColM):
         return tmpl.replace(self.typespec_placeholder, strd)
 
     def getValue(self, rid):
-        if rid in self.missing:
-            return "-"
-        return rid in self.hold
+        # self.getVector()
+        if self.vect is None:
+            if rid in self.missing:
+                return "-"
+            return rid in self.hold
+        else:
+            return self.vect[rid]
 
     def supp(self):
         return self.hold
@@ -255,6 +321,7 @@ class BoolColM(ColM):
     
 class CatColM(ColM):
     type_id = CatTerm.type_id
+    width = 1
 
     def initSums(N):
         return [{} for i in range(N)]
@@ -280,17 +347,20 @@ class CatColM(ColM):
         return CatColM(cats, len(indices), miss)
     parseList = staticmethod(parseList)
 
-    def getTerm(self, details=None):
+    def getTerm(self):
         return CatTerm(self.id, self.cats()[0])
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i categories" % len(self.cats()))
 
+    def getRange(self):
+        return dict([(k,v) for (v,k) in enumerate(self.cats())])
+
     def getCategories(self, details=None):
         if len(self.sCats) < 5:
-            return ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()])
+            return ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in sorted(self.sCats.keys())])
         else:
-            return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(catR)) for catL,catR in self.sCats.items()[:3]]) + "...]"
+            return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in self.cats()[:3]]) + "...]"
 
     def upSumsRows(self, sums_rows):
         for cat, rows in self.sCats.items():
@@ -302,19 +372,27 @@ class CatColM(ColM):
         return dict([(cat, len(rows)) for cat, rows in self.sCats.items()])
     
     def getValue(self, rid):
-        for cat, sp in self.sCats.items():
-            if rid in sp:
-                return cat
-        return "-"
+        if self.vect is None:
+            for cat, sp in self.sCats.items():
+                if rid in sp:
+                    return cat
+            return "-"
+        else:
+            return self.vect[rid]
+
+    def numEquiv(self, v):
+        try:
+            return sorted(slef.sCats.keys()).index(v)
+        except:
+            return np.nan
 
     def getVector(self):
-        tmp = super(CatColM, self).getVector()
-        cats = self.sCats.items()
-        cats.sort()
-        for v, (cat, rows) in enumerate(cats):
-            for i in rows:
-                tmp[i] = v
-        return tmp
+        if self.vect is None:
+            self.vect = super(CatColM, self).getVector()
+            for v, cat in enumerate(self.cats()):
+                for i in self.sCats[cat]:
+                    self.vect[i] = v
+        return self.vect
 
     def getType(self, details=None):
         return "categorical"
@@ -364,13 +442,10 @@ class CatColM(ColM):
         return tmpl.replace(self.typespec_placeholder, strd)
 
     def cats(self):
-        return self.sCats.keys()
+        return sorted(self.sCats.keys())
 
     def suppCat(self, cat):
-        if cat in self.sCats.keys():
-            return self.sCats[cat]
-        else:
-            return set()
+        return self.sCats.get(cat, set())
             
     def suppTerm(self, term):
         return self.suppCat(term.cat)
@@ -384,6 +459,7 @@ class CatColM(ColM):
     
 class NumColM(ColM):
     type_id = NumTerm.type_id
+    width = 0
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
     def parseList(listV, indices=None):
@@ -408,7 +484,7 @@ class NumColM(ColM):
         return NumColM(vals, len(indices), miss, prec)
     parseList = staticmethod(parseList)
 
-    def getTerm(self, details=None):
+    def getTerm(self):
         return NumTerm(self.id, self.sVals[0][0], self.sVals[-1][0])
 
     def __str__(self):
@@ -434,29 +510,43 @@ class NumColM(ColM):
         return tt
 
     def getValue(self, rid):
-        if rid in self.missing:
-            return "-"
-        tt = dict([(i,v) for (v,i) in self.sVals])
-        if not tt.has_key(rid):
-            if self.mode[0] is None:
-                return "-"
-            else:
-                tt[-1]
-        return tt[rid]
+        if self.vect is None:
+            self.getVector()
+        if type(self.vect) is dict:
+            return self.vect.get(rid, self.vect[-1])
+        else:
+            return self.vect[rid]
+
+    def numEquiv(self, v):
+        try:
+            tmp = float(v)
+            if tmp < self.getMin():
+                tmp = self.getMin()
+            elif tmp > self.getMax():
+                tmp = self.getMax()
+            return tmp
+        except:
+            pass
+        return np.nan 
 
     def getVector(self):
-        if self.mode[0] == 0:
-            return [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
-        else:
-            tt = dict([(i,v) for (v,i) in self.sVals])
-            ### Make sure can recover the length
-            if not tt.has_key(self.nbRows()-1):
-                tt[self.nbRows()-1] = tt[-1]
-            return tt
+        if self.vect is None:
+            if self.mode[0] == 0:
+                self.vect = [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
+            else:
+                self.vect = dict([(i,v) for (v,i) in self.sVals])
+                ### Make sure can recover the length
+                for n in self.missing:
+                    self.vect[n] = self.numEquiv("-")
+                if not self.vect.has_key(self.nbRows()-1):
+                    self.vect[self.nbRows()-1] = self.vect[-1]
+        return self.vect
         
-
     def getType(self, details=None):
         return "numerical"
+
+    def getRange(self):
+        return (self.sVals[0][0], self.sVals[-1][0])
 
     def getMin(self, details=None):
         return self.sVals[0][0]
@@ -786,6 +876,7 @@ class Data:
 
     def __init__(self, cols=[[],[]], N=0, coords=None):
         self.as_array = [None, None, None]
+        self.selected_rows = set()
         if type(N) == int:
             self.cols = cols
             self.N = N
@@ -844,31 +935,32 @@ class Data:
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
         
-    def getMatrix(self, sides=None, cols=None, store=True, types=None, only_able=False):
-        if store and self.as_array[0] == (sides, cols, types, only_able):
+    def getMatrix(self, side_cols=None, store=True, types=None, only_able=False):
+        if store and self.as_array[0] == (side_cols, types, only_able):
             return self.as_array[1]
 
         if store:
-            self.as_array[0] = (sides, cols, types, only_able)
-
-        if sides is None:
-            sides = [0, 1]
+            self.as_array[0] = (side_cols, types, only_able)
         
         if types is None:
             types = [BoolColM.type_id, CatColM.type_id, NumColM.type_id]
 
+        if side_cols is None:
+            side_cols = [(side, None) for side in [0,1]]
+                    
         mat = np.empty([0, self.N])
         mcols = {}
         details = []
-        for side in sides:
-            if cols is None:
-                tcols = [c for c in range(len(self.cols[side])) if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
+        for side, col in side_cols:
+            if col is None:
+                tcols = [c for c in range(len(self.cols[side]))]
             else:
-                tcols = [c for c in cols[side] if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
+                tcols = [col] 
+            tcols = [c for c in tcols if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
             if len(tcols) > 0:
                 for col in tcols:
                     mcols[(side, col)] = len(details)
-                    details.append((side, col, self.cols[side][col].type_id, self.cols[side][c].getEnabled()))
+                    details.append({"side": side, "col": col, "type": self.cols[side][col].type_id, "enabled":self.cols[side][c].getEnabled()})
                 tmp = np.array([self.cols[side][col].getVector() for col in tcols])
                 mat = np.concatenate((mat, tmp))
         if store:
@@ -896,6 +988,15 @@ class Data:
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
         return Data(cols, N, coords)
+
+    def selectedRows(self):
+        return self.selected_rows
+
+    def addSelectedRow(self, rid):
+        self.selected_rows.add(rid)
+
+    def removeSelectedRow(self, rid):
+        self.selected_rows.discard(rid)
                     
     def hasMissing(self):
         for side in [0,1]:
@@ -903,6 +1004,9 @@ class Data:
                 if c.hasMissing():
                     return True
         return False
+
+    def getRows(self):
+        return [RowE(i, self) for i in range(self.nbRows())]
 
     def __str__(self):
         return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
@@ -1015,8 +1119,11 @@ class Data:
                     return True
         return False
 
-    def getNames(self):
-        return [[col.getName() for col in self.cols[side]] for side in [0,1]]
+    def getNames(self, side=None):
+        if side is None:
+            return [[col.getName() for col in self.cols[side]] for side in [0,1]]
+        else:
+            return [col.getName() for col in self.cols[side]]
 
     def setNames(self, names):
         if len(names) == 2:

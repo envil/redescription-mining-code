@@ -111,6 +111,11 @@ class DataWrapper(object):
             return self.data.cols[side]
         return []
 
+    def getDataRows(self):
+        if self.data is not None:
+            return self.data.getRows()
+        return []
+
     def getData(self):
         return self.data
 

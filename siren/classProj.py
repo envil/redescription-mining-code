@@ -7,6 +7,7 @@ import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
+import toolsMath
 
 import pdb
 
@@ -165,9 +166,7 @@ class SVDProj(Proj):
             return
 
         mat, details, mcol = self.data.getMatrix(types=self.stypes, only_able=self.ables)
-        tt = np.std(mat, 1)
-        tt[np.where(tt == 0)] = 1
-        matn = (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
+        matn = toolsMath.withen(mat)
         U, s, V = np.linalg.svd(matn, full_matrices=False)
         tmp = np.dot(U[:2],matn)
         self.coords_proj = (tmp[0], tmp[1])
@@ -188,9 +187,7 @@ class SKrandProj(Proj):
             return
 
         mat, details, mcol = self.data.getMatrix(types=self.stypes, only_able=self.ables)
-        tt = np.std(mat, 1)
-        tt[np.where(tt == 0)] = 1
-        matn = (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
+        matn = toolsMath.withen(mat)
 
         X_pro, err = self.getX(matn.T)
         self.coords_proj = (X_pro[:,0], X_pro[:,1])

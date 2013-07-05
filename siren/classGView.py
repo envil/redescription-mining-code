@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
@@ -28,7 +27,7 @@ class GView:
     label_cardO=u"|E_{0,0}|  ="
     label_cardT=u"|E|      ="
 
-    colors_def = [("color_l", (0,0,255)), ("color_r", (255,0,0)), ("color_i", (160,32,240))]
+    colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
         
     WATER_COLOR = "#FFFFFF"
@@ -192,8 +191,9 @@ class GView:
             side = self.QIds.index(event.GetId())
             self.updateQuery(side)
 
-    def updateQuery(self, side):
-        query = self.parseQuery(side)
+    def updateQuery(self, side, query=None):
+        if query is None:
+            query = self.parseQuery(side)
         if query != None and query != self.queries[side]:
             self.queries[side] = query
             red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
@@ -240,7 +240,7 @@ class GView:
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
-            query = Query.parse(stringQ, self.parent.details['names'][side])
+            query = Query.parse(stringQ, self.parent.dw.data.getNames(side))
         except:
             query = None
         if query is not None and (len(stringQ) > 0 and len(query) == 0):
@@ -268,7 +268,7 @@ class GView:
             self.parent.tabs[self.source_list]["tab"].updateEdit(self.getId(), red)
 
     def updateQueryText(self, query, side):
-        self.MapredMapQ[side].ChangeValue(query.dispU(self.parent.details['names'][side]))
+        self.MapredMapQ[side].ChangeValue(query.dispU(self.parent.dw.data.getNames(side)))
 
     def updateText(self, red = None):
         """ Reset red fields and info
@@ -358,8 +358,7 @@ class GView:
         colors = []
         for color_k, color in GView.colors_def:
             try:
-                tmp = t[color_k]["data"]
-                color_t = HTMLColorToRGB(tmp)
+                color_t = t[color_k]["data"]
             except:
                 color_t = color
             colors.append(color_t)
@@ -384,25 +383,25 @@ class GView:
     def getDrawSettings(self):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
-        return {"draw_pord": [SParts.delta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud,
-                              SParts.alpha, SParts.beta, SParts.gamma],
-                SParts.alpha: {"pos": 0.6, "color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
+        return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SParts.mud, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB,
+                              SParts.delta, SParts.alpha, SParts.beta, SParts.gamma])]),
+                SParts.alpha: {"color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
                                "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.beta: {"pos": 0.4, "color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],
+                SParts.beta: {"color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],
                               "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.gamma: {"pos": 0.9, "color_e": [i/255.0 for i in colors[2]], "color_f": [i/255.0 for i in colors[2]],
+                SParts.gamma: {"color_e": [i/255.0 for i in colors[2]], "color_f": [i/255.0 for i in colors[2]],
                                "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.mua: {"pos": 0, "color_e": [i/255.0 for i in colors[0]], "color_f": [0.5,0.5,0.5],
+                SParts.mua: {"color_e": [i/255.0 for i in colors[0]], "color_f": [0.5,0.5,0.5],
                              "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mub: {"pos": 0, "color_e": [i/255.0 for i in colors[1]], "color_f": [0.5,0.5,0.5],
+                SParts.mub: {"color_e": [i/255.0 for i in colors[1]], "color_f": [0.5,0.5,0.5],
                              "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.muaB: {"pos": 0, "color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[1]],
+                SParts.muaB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[1]],
                               "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mubB: {"pos": 0, "color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[0]],
+                SParts.mubB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[0]],
                               "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mud: {"pos": 0, "color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
+                SParts.mud: {"color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
                              "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.delta: {"pos": 0.2, "color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
+                SParts.delta: {"color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
                                "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA}
                 }
 
