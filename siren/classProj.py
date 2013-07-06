@@ -47,7 +47,7 @@ class ProjFactory:
 
         #m = SVDProj
         cls = random.choice([p for p in all_subclasses(Proj)
-                           if re.match("^(?P<alg>[A-Za-z*.]*)$", p.PID) is not None])
+                           if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
         return cls(data, {}, logger)
 
 class Proj(object):
@@ -113,7 +113,7 @@ class Proj(object):
 
 class AxesProj(Proj):
 
-    PID = "-A"
+    PID = "A"
     title_str = "Projection"
         
     def do(self):
@@ -133,19 +133,19 @@ class AxesProj(Proj):
                 if mcols.has_key(axis1):
                     self.axis_ids[1] = mcols[axis1]
         sidestr = {0: "L", 1:"R"}
-        self.codes = ["%s%d" % (sidestr[details[self.axis_ids[0]][0]], details[self.axis_ids[0]][1]),
-                       "%s%d" % (sidestr[details[self.axis_ids[1]][0]], details[self.axis_ids[1]][1])]
-        if data.hasNames():
+        self.codes = ["%s%d" % (sidestr[details[self.axis_ids[0]]["side"]], details[self.axis_ids[0]]["col"]),
+                      "%s%d" % (sidestr[details[self.axis_ids[1]]["side"]], details[self.axis_ids[1]]["col"])]
+        if self.data.hasNames():
             sidestr = {0: "LHS", 1:"RHS"}
-            names = data.getNames()
-            self.labels = ["%s %s" % (sidestr[details[self.axis_ids[0]][0]], names[details[self.axis_ids[0]][0]][details[self.axis_ids[0]][1]]),
-                           "%s %s" % (sidestr[details[self.axis_ids[1]][0]], names[details[self.axis_ids[1]][0]][details[self.axis_ids[1]][1]])]
+            names = self.data.getNames()
+            self.labels = ["%s %s" % (sidestr[details[self.axis_ids[0]]["side"]], names[details[self.axis_ids[0]]["side"]][details[self.axis_ids[0]]["col"]]),
+                           "%s %s" % (sidestr[details[self.axis_ids[1]]["side"]], names[details[self.axis_ids[1]]["side"]][details[self.axis_ids[1]]["col"]])]
         else:
             self.labels = self.codes
 
         self.coords_proj = [mat[self.axis_ids[0]], mat[self.axis_ids[1]]]
         for side in [0,1]:
-            if details[self.axis_ids[side]][2] != NumColM.type_id:
+            if details[self.axis_ids[side]]["type"] != NumColM.type_id:
                 self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
         self.notifyDone()
 
@@ -158,7 +158,7 @@ class AxesProj(Proj):
 
 class SVDProj(Proj):
 
-    PID = "SVD"
+    PID = "-SVD"
     title_str = "Projection"
     
     def do(self):
@@ -243,7 +243,7 @@ class SKmdsProj(SKrandProj):
     #----------------------------------------------------------------------
     # MDS  embedding
 
-    PID =  "-SKmds"
+    PID =  "SKmds"
     title_str = "MDS embedding"
 
     def getX(self, X):

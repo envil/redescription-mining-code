@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+from matplotlib.lines import Line2D
+from matplotlib.patches import Polygon
 
 from reremi.classQuery import Query
 from reremi.classSParts import SParts
@@ -54,6 +56,7 @@ class GView:
         self.binds()
         self.mapFrame.Show()
         self.queries = [Query(), Query()]
+        self.suppABCD = None
         
     def getId(self):
         return (GView.TID, self.vid)
@@ -174,7 +177,7 @@ class GView:
         self.additionalBinds()
         
     def OnExpand(self, event):
-        red = self.updateQueries()
+        red = self.updateQuery()
         self.parent.expand(red)
 
     def OnFocus(self, event):
@@ -191,37 +194,33 @@ class GView:
             side = self.QIds.index(event.GetId())
             self.updateQuery(side)
 
-    def updateQuery(self, side, query=None):
-        if query is None:
-            query = self.parseQuery(side)
-        if query != None and query != self.queries[side]:
-            self.queries[side] = query
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-            self.updateText(red)
-            self.updateMap(red)
-            self.updateOriginal(red)
-            self.updateHist(red)
+    def updateQuery(self, sd=None, query=None):
+        if sd is None:
+            queries = [self.parseQuery(0),self.parseQuery(1)]
         else:
-            self.updateQueryText(self.queries[side], side)
-        return self.queries[side]
+            queries = [None, None]
+            if query is None:
+                queries[sd] = self.parseQuery(sd)
+            else:
+                queries[sd] = query
 
-    def updateQueries(self):
-        queries = [self.parseQuery(0),self.parseQuery(1)]
+        changed = False
         for side in [0,1]:
-            if queries[side] is None:
-                queries[side] = self.queries[side]
-        if queries != self.queries:
-            self.queries = queries
+            if queries[side] != None and queries[side] != self.queries[side]:
+                self.queries[side] = queries[side]
+                changed = True
+
+        if changed:
             red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
             self.updateMap(red)
             self.updateOriginal(red)
             self.updateHist(red)
-        else:
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+        else: ### wrongly formatted query, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-        return red
+        return self.queries[side]
 
     def setCurrent(self, qr=None, source_list=None):
         if qr is not None:
@@ -232,6 +231,7 @@ class GView:
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
+            self.suppABCD = red.supports().getVectorABCD()
             self.source_list=source_list
             self.updateText(red)
             self.updateMap(red)
@@ -351,6 +351,10 @@ class GView:
     def sendHighlight(self, lid):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid)
+
+    def OnPick(self, event):
+        if event.mouseevent.button == 3 and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)):
+            self.sendHighlight(int(event.artist.get_gid().split(".")[0]))
 
 
     def getColors(self):

@@ -10,8 +10,8 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+from matplotlib import nxutils
 from matplotlib.patches import Ellipse, Polygon
-from matplotlib.lines import Line2D
 
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
@@ -23,7 +23,7 @@ import pdb
 class MapView(GView):
 
     TID = "MAP"
-    mapoly = True #False
+    mapoly = False
     
     def getId(self):
         return (MapView.TID, self.vid)
@@ -53,7 +53,7 @@ class MapView(GView):
 
             #m.etopo()
 
-        self.mc = MaskCreator(self.axe.ax)
+        self.mc = MaskCreator(self.axe.ax, None, self.receive_mask)
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             if self.mapoly:
@@ -99,7 +99,7 @@ class MapView(GView):
                                                        alpha=draw_settings[pi]["alpha"]))
                                 
                         else:
-                            m.plot(self.coords_proj[0][idp], self.coords_proj[1][idp],  gid="%d.%d" % (idp, 0),
+                            m.plot(self.coords_proj[0][idp], self.coords_proj[1][idp], gid="%d.%d" % (idp, 0),
                                    mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                                    marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
                                    linestyle='None', alpha=draw_settings[pi]["alpha"], picker=2)
@@ -125,11 +125,7 @@ class MapView(GView):
             return
 
         draw_settings = self.getDrawSettings()
-        scale_p = 0.1
         m = self.axe
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-        pid = red.supports().getVectorABCD()[lid]
-        ids = np.array([lid])
         self.highl[lid] = []
         self.highl[lid].extend(m.plot(self.coords_proj[0][lid], self.coords_proj[1][ids],
                                       mfc=colhigh,marker=".", markersize=10,
@@ -138,7 +134,7 @@ class MapView(GView):
 
         self.hight[lid] = []
         self.hight[lid].append(m.ax.annotate('%d' % lid, xy=(self.coords_proj[0][lid], self.coords_proj[1][lid]),  xycoords='data',
-                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[pid]["color_e"],
+                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[self.suppABCD[lid]]["color_e"],
                           size=10, va="center", backgroundcolor="#FFFFFF",
                           bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
                           arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
@@ -146,10 +142,14 @@ class MapView(GView):
                                             ))
         self.MapcanvasMap.draw()
 
-    def OnPick(self, event):
-        if isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon):
-            self.sendHighlight(int(event.artist.get_gid().split(".")[0]))
-
+    def receive_mask(self, vertices, event=None):
+        if vertices is not None and vertices.shape[0] > 3 and self.coords_proj is not None:
+            print vertices
+            pdb.set_trace()
+            points = np.transpose((self.coords_proj[0], self.coords_proj[1]))
+            mask = np.where(nxutils.points_inside_poly(points, vertices))[0]
+            print mask
+            # return mask.reshape(h, w)
 
     def makePolys(self, pdp, upd):
         return self.parent.dw.getPolys(pdp, upd)

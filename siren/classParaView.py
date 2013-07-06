@@ -11,7 +11,6 @@ import scipy.cluster
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
-from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
 import itertools
 
@@ -44,7 +43,6 @@ class ParaView(GView):
         """
         self.highl = {}
         self.hight = {}
-        self.map_lines = {}
         self.MapfigMap = plt.figure()
 
         self.Mapcurr_mapi = 0
@@ -57,13 +55,13 @@ class ParaView(GView):
         self.gca = plt.gca()
 
         connections = []
-        # connections.append(self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick))
+        connections.append(self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick))
         connections.append(self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press))
         connections.append(self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release))
         connections.append(self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion))
 
-        # self.el = Ellipse((2, -1), 0.5, 0.5)
-        # self.axe.add_patch(self.el)
+        self.el = Ellipse((2, -1), 0.5, 0.5)
+        self.axe.add_patch(self.el)
 
         self.MapcanvasMap.draw()
 
@@ -129,7 +127,6 @@ class ParaView(GView):
                 
             ## TEST whether t is different?
             m = self.axe
-            self.map_lines = {}
             m.cla()
 
             ### GATHERING DATA
@@ -156,8 +153,7 @@ class ParaView(GView):
             ### PLOTTING
             ### Lines
             for i, r in enumerate(reps):
-                tt = plt.plot(final[:,i], color=colorsl[r], picker=1)
-                self.map_lines[tt[0]] = r
+                plt.plot(final[:,i], color=colorsl[r], picker=True, gid="%d.%d" % (r, 0))
 
             ### Labels
             m.set_xticks(range(len(self.lit_str)+2))
@@ -174,14 +170,15 @@ class ParaView(GView):
                     if rg[2] == 0:
                         rects_map[i] = rects[0]
                         
+            self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             self.drs = []
             self.ri = None
             for rid, rect in rects_map.items():
-                dr = DraggableResizeableRectangle(rect, rid=rid, parent=self)
+                dr = DraggableResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
+                                                  pinf=self.getPinvalue, annotation=self.annotation)
                 self.drs.append(dr)
 
 
-            self.this_annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             m.axis((0,len(self.lit_str)+1, 0, 1))
             #self.updateEmphasize(ParaView.COLHIGH)
             self.MapcanvasMap.draw()
@@ -237,47 +234,33 @@ class ParaView(GView):
         self.updateQuery(side, copied)
                 
     def emphasizeLine(self, lid, colhigh='#FFFF00'):
-        pass
-        ### TODO rewrite...
         if self.highl.has_key(lid):
         #     self.clearEmphasize([lid])
             return
 
         draw_settings = self.getDrawSettings()
-        scale_p = 0.1
+        N = float(self.parent.dw.data.nbRows())
         m = self.axe
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-        osupp = red.supports().getVectorABCD()
 
-        pp = (self.opids[osupp[lid]][0] + (self.opids[osupp[lid]][1] - self.opids[osupp[lid]][0])/2.0)/len(self.selectids) 
-        xs, ys = [], []
-        for side,pref in [(0,""), (1,"")]:
-            for lit in red.queries[side].listLiterals():
-                #### this method does not exist any longer
-                ### ti = lit.sampleBounds(self.parent.dw.getDataCols(side), self.parent.dw.data.getNames(side), [lid],  scale_p, pos=pp)
-                xs.append(len(ys))
-                ys.append(ti["data"][0])
-            if side == 0:
-                xs.append(len(ys))
-                ys.append(draw_settings[osupp[lid]]["pos"]  + scale_p*(pp-0.5) )
+        ### ADDING NOISE AND RESCALING
+        mask_noise = - self.limits[:,0] \
+                     + np.array([abs(r[2])*(N-lid)/(2.0*N)+abs(r[2])/4.0 for r in self.ranges])
+                         
+        mask_div = self.limits[:,1]+np.array([abs(r[2]) for r in self.ranges]) - self.limits[:,0]
+        tt = (N-lid)/(2.0*N)+0.25
+        final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
 
         self.highl[lid] = []
-        self.highl[lid].extend(plt.plot(xs, ys, colhigh, linewidth=1))
-        #self.highl[lid].extend(plt.plot(xs, ys, color=draw_settings[osupp[lid]]["color_e"], linewidth=1))
-
+        self.highl[lid].extend(plt.plot(final, color=colhigh, linewidth=1))
 
         self.hight[lid] = []
-        self.hight[lid].append(plt.annotate('%d' % lid, xy=(xs[-1], ys[-1]),  xycoords='data',
-                          xytext=(10, 0), textcoords='offset points', color= draw_settings[osupp[lid]]["color_e"],
+        self.hight[lid].append(m.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
+                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[self.suppABCD[lid]]["color_e"],
                           size=10, va="center", backgroundcolor="#FFFFFF",
-                          bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="none"),
-                          arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                          fc="#FFFFFF", ec="none",
-                                          patchA=None,
-                                          patchB=self.el,
-                                          relpos=(0.2, 0.5),
-                                          )
-                                      ))
+                          bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
+                          arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
+                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                            ))
         self.MapcanvasMap.draw()
 
     def additionalElements(self):
@@ -304,24 +287,6 @@ class ParaView(GView):
             ##print "SLIDER", self.sld.GetValue()
             self.updateMap(self.current_r)
 
-    def OnPick(self, event):
-        if isinstance(event.artist, Line2D):
-            if event.artist in self.map_lines: 
-                si = self.map_lines[event.artist]
-                self.sendHighlight(si)
-                
-                # if si in self.high:
-                #     self.high.remove(si)
-                #     self.clearEmphasize([si])
-
-                # else:
-                #     self.high.append(si)
-                #     self.emphasizeLine(si)
-                #     self.sendHighlight(si, True)
-
-    def sendHighlight(self, lid):
-        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid)
 
 def pickVars(mat, details, side_cols=None, only_enabled=False):
     types_ids = {BoolColM.type_id: [], CatColM.type_id:[], NumColM.type_id:[]}

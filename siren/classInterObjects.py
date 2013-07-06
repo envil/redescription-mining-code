@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.mlab import dist_point_to_segment
-from matplotlib import nxutils
 
 class DraggableResizeableRectangle:
     # draggable rectangle with the animation blit techniques; see
@@ -20,8 +19,11 @@ http://matplotlib.sourceforge.net/users/event_handling.html
     the recatngle keeps its aspect ratio during resize operations.
     """
     lock = None  # only one can be animated at a time
-    def __init__(self, rect, border_tol=.15, rid=None, parent=None):
-        self.parent = parent
+    def __init__(self, rect, border_tol=.15, rid=None, callback=None, pinf=None, annotation=None, buttons_t=[1]):
+        self.buttons_t = buttons_t
+        self.callback = callback
+        self.pinf = pinf
+        self.annotation = annotation
         self.rid = rid
         self.rect = rect
         self.border_tol = border_tol
@@ -31,6 +33,8 @@ http://matplotlib.sourceforge.net/users/event_handling.html
     def do_press(self, event):
         """on button press we will see if the mouse is over us and store some 
 data"""
+        if event.button not in self.buttons_t:
+            return
         #print 'event contains', self.rect.xy
         x0, y0 = self.rect.xy
         w0, h0 = self.rect.get_width(), self.rect.get_height()
@@ -52,13 +56,15 @@ data"""
 
     def do_motion(self, event):
         """on motion we will move the rect if the mouse is over us"""
+        if event.button not in self.buttons_t:
+            return
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
         self.dx = event.xdata - xpress
         self.dy = event.ydata - ypress
         #self.rect.set_x(x0+dx)
         #self.rect.set_y(y0+dy)
 
-        self.update_rect(self.parent.this_annotation)
+        self.update_rect()
 
         canvas = self.rect.figure.canvas
         axes = self.rect.axes
@@ -67,20 +73,24 @@ data"""
 
         # redraw just the current rectangle
         axes.draw_artist(self.rect)
-        axes.draw_artist(self.parent.this_annotation)
+        if self.annotation is not None:
+            axes.draw_artist(self.annotation)
 
         # blit just the redrawn area
         canvas.blit(axes.bbox)
-        canvas.blit(self.parent.this_annotation.get_bbox_patch())
+        if self.annotation is not None:
+            canvas.blit(self.annotation.get_bbox_patch())
 
     def contains(self, event):
         return self.rect.contains(event)
     
     def do_release(self, event):
         """on release we reset the press data"""
+        if event.button not in self.buttons_t:
+            return
         self.press = None
-        if self.parent is not None:
-            self.parent.receive_release(self.rid, self.rect)
+        if self.callback is not None:
+            self.callback(self.rid, self.rect)
 
         # turn off the rect animation property and reset the background
         self.rect.set_animated(False)
@@ -89,7 +99,7 @@ data"""
         # redraw the full figure
         self.rect.figure.canvas.draw()
 
-    def update_rect(self, annote=None):
+    def update_rect(self):
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
         dx, dy = self.dx, self.dy
         bt = self.border_tol
@@ -98,19 +108,25 @@ data"""
                 self.rect.set_y(y0+dy)
                 self.rect.set_height(h0-dy)
 
-                if annote is not None:
+                if self.annotation is not None:
                     b = y0+dy
-                    annote.set_text("%s" % self.parent.getPinvalue(self.rid, b))
-                    annote.xytext = (x0+0.25, b)
+                    if self.pinf is not None:
+                        self.annotation.set_text("%s" % self.pinf(self.rid, b))
+                    else:
+                        self.annotation.set_text("%s" % b)
+                    self.annotation.xytext = (x0+0.25, b)
 
         elif abs(y0+h0-ypress)<bt*h0:
             if h0+dy > 0:
                 self.rect.set_height(h0+dy)
 
-                if annote is not None:
+                if self.annotation is not None:
                     b = y0+h0+dy
-                    annote.set_text("%s" % self.parent.getPinvalue(self.rid, b))
-                    annote.xytext = (x0+0.25, b)
+                    if self.pinf is not None:
+                        self.annotation.set_text("%s" % self.pinf(self.rid, b))
+                    else:
+                        self.annotation.set_text("%s" % b)
+                    self.annotation.xytext = (x0+0.25, b)
 
 
 class MaskCreator(object):
@@ -132,11 +148,15 @@ class MaskCreator(object):
     'i' : insert a vertex at point.  You must be within max_ds of the
           line connecting two existing vertices
     """
-    def __init__(self, ax, poly_xy=None, max_ds=10):
+    pcolor = "#FFD700" 
+    
+    def __init__(self, ax, poly_xy=None, callback=None, max_ds=10, buttons_t=[1]):
+        self.buttons_t = buttons_t
+        self.callback = callback
         self.max_ds = max_ds
         ax.set_clip_on(False)
         self.ax = ax
-
+        self.verts  = None
         if poly_xy is None:
             self.poly = None
         else:
@@ -154,23 +174,20 @@ class MaskCreator(object):
 
     def createPoly(self, poly_xy=None):
         self.poly = Polygon(poly_xy, animated=True,
-                            fc='y', ec='none', alpha=0.4)
+                            fc=self.pcolor, ec=self.pcolor, alpha=0.3)
         self.ax.add_patch(self.poly)
         x, y = zip(*self.poly.xy)
-        self.line = plt.Line2D(x, y, color='none', marker='o', mfc='r',
-                               alpha=0.2, animated=True)
+        self.line = plt.Line2D(x, y, color=self.pcolor, lw=1, marker='o', mec=self.pcolor, ms=3, mew=2, mfc='k',
+                               alpha=0.7, animated=True)
         self._update_line()
         self.ax.add_line(self.line)
 
         self.poly.add_callback(self.poly_changed)
 
-    def get_mask(self, shape):
+    def get_mask(self, event):
         """Return image mask given by mask creator"""
-        h, w = shape
-        y, x = np.mgrid[:h, :w]
-        points = np.transpose((x.ravel(), y.ravel()))
-        mask = nxutils.points_inside_poly(points, self.verts)
-        return mask.reshape(h, w)
+        if self.callback is not None:
+            self.callback(self.verts, event)
 
     def poly_changed(self, poly):
         'this method is called whenever the polygon object is called'
@@ -189,14 +206,14 @@ class MaskCreator(object):
 
     def button_press_callback(self, event):
         'whenever a mouse button is pressed'
-        ignore = event.inaxes is None or event.button != 1
+        ignore = event.inaxes is None or (event.button not in self.buttons_t)
         if ignore:
             return
         self._ind = self.get_ind_under_cursor(event)
 
     def button_release_callback(self, event):
         'whenever a mouse button is released'
-        ignore = event.button != 1
+        ignore = event.button not in self.buttons_t
         if ignore:
             return
         self._ind = None
@@ -248,6 +265,9 @@ class MaskCreator(object):
         'whenever a key is pressed'
         if not event.inaxes:
             return
+        elif event.key=='s':
+            self.get_mask(event)
+            return
         elif event.key=='d':
             self.do_delete(event)
         elif event.key=='i':
@@ -257,7 +277,7 @@ class MaskCreator(object):
     def motion_notify_callback(self, event):
         'on mouse movement'
         ignore = (self.poly is None or event.inaxes is None or
-                  event.button != 1 or self._ind is None)
+                  (event.button not in self.buttons_t) or self._ind is None)
         if ignore:
             return
         x,y = event.xdata, event.ydata

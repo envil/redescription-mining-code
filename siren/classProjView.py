@@ -29,22 +29,10 @@ class ProjView(GView):
     label_projkey=""
     
     def __init__(self, parent, vid):
-        self.parent = parent
-        self.source_list = None
-        self.vid = vid
         self.proj = None
         self.repbut = None
-        self.buttons = []
-        self.highl = {}
-        self.hight = {}
-        self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
-        self.panel = wx.Panel(self.mapFrame, -1)
-        self.drawMap()
-        self.drawFrame()
-        self.binds()
+        GView.__init__(self, parent, vid)
         self.project()
-        self.mapFrame.Show()
-        self.queries = [Query(), Query()]
 
     def getId(self):
         return (ProjView.TID, self.vid)
@@ -100,8 +88,7 @@ class ProjView(GView):
         # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.parent.OnMessStatus)
 
     def OnMessResult(self, event):
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
-        self.updateMap(red)
+        self.updateMap()
         if self.repbut is not None:
             self.repbut.Enable()
             self.repbut.SetLabel("Reproject")
@@ -109,7 +96,7 @@ class ProjView(GView):
     def drawMap(self):
         """ Draws the map
         """
-        self.lines = []
+        
         self.MapfigMap = plt.figure()
         self.Mapcurr_mapi = 0
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
@@ -129,30 +116,24 @@ class ProjView(GView):
         """ Redraws the map
         """
 
-        if red is not None and self.proj is not None and self.proj.getCoords() is not None:
+        if ( red is not None or self.suppABCD is not None) and self.proj is not None and self.proj.getCoords() is not None:
             self.highl = {}
             self.hight = {}
-            self.lines = []
-            self.points_ids = []
             
             m = self.axe
             m.cla()
             draw_settings = self.getDrawSettings()
-            parts = []
-            for pid in draw_settings["draw_pord"]:
-                parts.append((pid, red.sParts.part(pid)))
-            for pi, part in parts:
-                if len(part) > 0 and draw_settings.has_key(pi):
-                    lip = list(part)
-                    self.points_ids.append(lip)
-                    ids = np.array(lip)
-                    self.lines.extend(m.plot(self.proj.getCoords(0,ids), self.proj.getCoords(1, ids),
-                           mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                           marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
-                           linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3))
+            for pi in draw_settings["draw_pord"]:
+                if red is not None:
+                    part = red.sParts.part(pi)
                 else:
-                    self.points_ids.append([])
-                    self.lines.extend(m.plot([],[]))
+                    part = [i for i,e in enumerate(self.suppABCD) if e == pi]
+                if len(part) > 0 and draw_settings.has_key(pi):
+                    for idp in part:
+                        m.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 0),
+                               mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
+                               marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
+                               linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3)
 
             if self.proj.getTitle() is not None:
                 m.set_title(self.proj.getTitle(),fontsize=12)
@@ -175,32 +156,18 @@ class ProjView(GView):
             return
 
         draw_settings = self.getDrawSettings()
-        scale_p = 0.1
         m = self.axe
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-        pid = red.supports().getVectorABCD()[lid]
-        ids = np.array([lid])
         self.highl[lid] = []
-        self.highl[lid].extend(m.plot(self.proj.getCoords(0,ids), self.proj.getCoords(1,ids),
+        self.highl[lid].extend(m.plot(self.proj.getCoords(0,lid), self.proj.getCoords(1,lid),
                                       mfc=colhigh,marker=".", markersize=10,
                                       linestyle='None'))
 
         self.hight[lid] = []
         self.hight[lid].append(m.annotate('%d' % lid, xy=(self.proj.getCoords(0,lid), self.proj.getCoords(1,lid)),  xycoords='data',
-                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[pid]["color_e"],
+                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[self.suppABCD[lid]]["color_e"],
                           size=10, va="center", backgroundcolor="#FFFFFF",
                           bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
                           arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
                                           patchA=None, patchB=self.el, relpos=(0.2, 0.5))
                                             ))
         self.MapcanvasMap.draw()
-
-
-    def OnPick(self, event):
-        if isinstance(event.artist, Line2D):
-            for ind in event.ind:
-                l = self.lines.index(event.artist)
-                if len(self.points_ids) > l and len(self.points_ids[l]) > ind: # \
-                   # and self.points_ids[l][ind] not in done:
-                    si = self.points_ids[l][ind]
-                    self.sendHighlight(si)
