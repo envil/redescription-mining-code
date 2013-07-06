@@ -20,7 +20,7 @@ def pickVars(mat, details, side_cols=None, only_enabled=False, only_nzstd=True):
     return types_ids
 
 
-def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=False, parts=None):
+def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=False, parts=None, pivots=None):
     if parameters is None:
         parameters = [{"type": "all", "metric": "seuclidean", "weight": 1}]
 
@@ -30,17 +30,28 @@ def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=Fal
         
     types_ids = pickVars(mat, details, side_cols, only_enabled)
 
-    d = np.zeros((mat.shape[1]*(mat.shape[1]-1)/2.0))
+    if pivots is None: 
+        d = np.zeros((mat.shape[1]*(mat.shape[1]-1)/2.0))
+    else:
+        d = np.zeros((mat.shape[1], len(pivots)))
     for typ in parameters:
         if len(types_ids.get(typ["type"], [])) > 0:
             if typ["weight"] == "p":
                 weight = 1/len(types_ids[typ["type"]])
             else:
                 weight = typ["weight"]
-            d += weight*scipy.spatial.distance.pdist(mat[types_ids[typ["type"]],:].T, metric=typ["metric"])
+            if pivots is None: 
+                d += weight*scipy.spatial.distance.pdist(mat[types_ids[typ["type"]],:].T, metric=typ["metric"])
+            else:
+                tmp = mat[types_ids[typ["type"]],:]
+                d += weight*scipy.spatial.distance.cdist(tmp.T, tmp[:,pivots].T, metric=typ["metric"])
     if parts is not None:
-        d += 10*max(d)*scipy.spatial.distance.pdist(np.array([parts]).T, "hamming")
+        if pivots is None: 
+            d += 10*np.max(d)*scipy.spatial.distance.pdist(np.array([parts]).T, "hamming")
+        else:
+            d += 10*np.max(d)*scipy.spatial.distance.cdist(np.array([parts]).T, np.array([[parts[p] for p in pivots]]).T, "hamming")
     return d
+
 
 def withen(mat):
     tt = np.std(mat, 1)
@@ -48,10 +59,33 @@ def withen(mat):
     return (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T
 
 
-def linkage(mat, details, side_cols=None, osupp=None):
-    mat = mat[:,:300]
-    osupp = osupp[:300]
+def linkageZds(mat, details, side_cols=None, osupp=None, step=500):    
+    spids = set()
+    if osupp is not None:
+        spids = set(np.unique(osupp, return_index=True)[1])
+    pivots = list(spids.union(range(0,mat.shape[1], step)))     
+    d = getDistances(mat, details, side_cols, parts=osupp, pivots=pivots)
+    aff = np.argmin(d, 1)
     
+    counts = {}
+    used = []
+    for i in range(aff.shape[0]):
+        if counts.get(aff[i], {"count": 2*step})["count"] > 1.25*step:
+            counts[aff[i]] = {"to": len(used), "count": 0}
+            used.append(aff[i])
+        aff[i] = counts[aff[i]]["to"]
+        
+    ids_cls = [[i for i in range(aff.shape[0]) if aff[i]== cl] for cl in np.unique(aff)]
+
+    zds = []
+    for ids in ids_cls:
+        d = getDistances(mat[:,ids], details, side_cols, parts=[osupp[i] for i in ids])
+        Z = scipy.cluster.hierarchy.linkage(d)
+        zds.append({"Z":Z, "d":d, "ids": ids})
+    return zds
+
+
+def linkage(mat, details, side_cols=None, osupp=None):    
     d = getDistances(mat, details, side_cols, parts=osupp)
     Z = scipy.cluster.hierarchy.linkage(d)
     return Z, d
@@ -61,6 +95,18 @@ def linkage(mat, details, side_cols=None, osupp=None):
     # types_ids = toolsMath.pickVars(mat, details, side_cols)
     # Z = scipy.cluster.hierarchy.centroid(mat[types_ids["all"],:].T)
 
+
+def sampleZds(zds, t):
+    all_reps = []
+    all_clusts = []
+    for zd in zds:
+        if t == 1:
+            all_reps.extend(zd["ids"])
+        elif round(t*len(zd["ids"])) > 0:
+            treps, tclusts = sample(zd["Z"], round(t*len(zd["ids"])), zd["d"])
+            all_reps.extend([zd["ids"][r] for r in treps])
+            all_clusts.extend(tclusts)
+    return all_reps, all_clusts
 
 def sample(Z, t, d):
     T = scipy.cluster.hierarchy.fcluster(Z, t, criterion="maxclust")
@@ -75,3 +121,21 @@ def sample(Z, t, d):
         else:
             reps.extend(cluster)
     return reps, clusters
+
+
+
+####
+#### SHARE AMONG GROUPS
+    # tfrom = len(ids_cls)-1
+    # tto = 0
+    # max_c = 
+    # while tfrom > 0 and len(ids_cls[tfrom]) > max_c:
+    #     tmp = ids_cls[tfrom][max_c:]
+    #     ids_cls[tfrom] = ids_cls[tfrom][:max_c]
+    #     while len(tmp) > 0 and tto < len(ids_cls):
+    #         sto = max_c-len(ids_cls[tto])
+    #         if sto > 0:
+    #             ids_cls[tto].extend(tmp[:sto])
+    #             tmp = tmp[sto:]
+    #         else:
+    #             tto +=1

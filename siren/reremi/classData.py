@@ -88,6 +88,9 @@ class ColM(object):
     def hasMissing(self):
         return self.missing is not None and len(self.missing) > 0
 
+    def getPrec(self, details=None):
+        return 0
+
     def getName(self, details=None):
         if self.name is not None:
             return self.name
@@ -553,7 +556,14 @@ class NumColM(ColM):
     def getMax(self, details=None):
         return self.sVals[-1][0]
 
+    def compPrec(self, details=None):
+        for (v,i) in self.sVals:
+            if len(str(v % 1))-2 > self.prec:
+                self.prec = len(str(v % 1))-2
+        
     def getPrec(self, details=None):
+        if self.prec is None:
+            self.compPrec()
         return self.prec
 
     def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None):

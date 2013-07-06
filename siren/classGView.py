@@ -384,7 +384,7 @@ class GView:
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
         return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SParts.mud, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB,
-                              SParts.delta, SParts.alpha, SParts.beta, SParts.gamma])]),
+                              SParts.delta, SParts.beta, SParts.alpha, SParts.gamma])]),
                 SParts.alpha: {"color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
                                "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
                 SParts.beta: {"color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],

@@ -19,112 +19,22 @@ from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
+from classInterObjects import DraggableResizeableRectangle
 import toolsMath
 
 import pdb
 
-class DraggableResizeableRectangle:
-    # draggable rectangle with the animation blit techniques; see
-    # http://www.scipy.org/Cookbook/Matplotlib/Animations
-
-    """
-    Draggable and resizeable rectangle with the animation blit techniques.
-    Based on example code at
-http://matplotlib.sourceforge.net/users/event_handling.html
-    If *allow_resize* is *True* the recatngle can be resized by dragging its
-    lines. *border_tol* specifies how close the pointer has to be to a line for
-    the drag to be considered a resize operation. Dragging is still possible by
-    clicking the interior of the rectangle. *fixed_aspect_ratio* determines if
-    the recatngle keeps its aspect ratio during resize operations.
-    """
-    lock = None  # only one can be animated at a time
-    def __init__(self, rect, border_tol=.15, rid=None, callback=None):
-        self.callback = callback
-        self.rid = rid
-        self.rect = rect
-        self.border_tol = border_tol
-        self.press = None
-        self.background = None
-
-    def do_press(self, event):
-        """on button press we will see if the mouse is over us and store some 
-data"""
-        #print 'event contains', self.rect.xy
-        x0, y0 = self.rect.xy
-        w0, h0 = self.rect.get_width(), self.rect.get_height()
-        aspect_ratio = np.true_divide(w0, h0)
-        self.press = x0, y0, w0, h0, aspect_ratio, event.xdata, event.ydata
-
-        # draw everything but the selected rectangle and store the pixel buffer
-        canvas = self.rect.figure.canvas
-        axes = self.rect.axes
-        self.rect.set_animated(True)
-        canvas.draw()
-        self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
-
-        # now redraw just the rectangle
-        axes.draw_artist(self.rect)
-
-        # and blit just the redrawn area
-        canvas.blit(axes.bbox)
-
-    def do_motion(self, event):
-        """on motion we will move the rect if the mouse is over us"""
-        x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        self.dx = event.xdata - xpress
-        self.dy = event.ydata - ypress
-        #self.rect.set_x(x0+dx)
-        #self.rect.set_y(y0+dy)
-
-        self.update_rect()
-
-        canvas = self.rect.figure.canvas
-        axes = self.rect.axes
-        # restore the background region
-        canvas.restore_region(self.background)
-
-        # redraw just the current rectangle
-        axes.draw_artist(self.rect)
-
-        # blit just the redrawn area
-        canvas.blit(axes.bbox)
-
-    def contains(self, event):
-        return self.rect.contains(event)
-    
-    def do_release(self, event):
-        """on release we reset the press data"""
-        self.press = None
-        if self.callback is not None:
-            self.callback(self.rid, self.rect)
-
-        # turn off the rect animation property and reset the background
-        self.rect.set_animated(False)
-        self.background = None
-
-        # redraw the full figure
-        self.rect.figure.canvas.draw()
-
-    def update_rect(self):
-        x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        dx, dy = self.dx, self.dy
-        bt = self.border_tol
-        if abs(y0-ypress)<bt*h0:
-            if h0-dy > 0:
-                self.rect.set_y(y0+dy)
-                self.rect.set_height(h0-dy)
-        elif abs(y0+h0-ypress)<bt*h0:
-            if h0+dy > 0:
-                self.rect.set_height(h0+dy)
 
 class ParaView(GView):
 
     TID = "PC"
 
     def __init__(self, parent, vid):
-        GView.__init__(self, parent, vid)
-        self.Z = None
+        self.current_r = None
+        self.zds = None
         self.sc = None
+        self.sld = None
+        GView.__init__(self, parent, vid)
     
     def getId(self):
         return (ParaView.TID, self.vid)
@@ -176,14 +86,20 @@ class ParaView(GView):
         lit_str.insert(pos_axis, "---")
 
         mat, details, mcols = self.parent.dw.data.getMatrix()
-        Z, d = toolsMath.linkage(mat, details, side_cols, osupp)
+        if len(osupp) > 500:
+            zds = toolsMath.linkageZds(mat, details, side_cols, osupp)
+        else:
+            Z, d = toolsMath.linkage(mat[:,:500], details, side_cols, osupp)
+            zds = [{"Z":Z, "d":d, "ids": range(mat.shape[1])}]
 
         mcols[None] = 0
+        precisions = [self.parent.dw.data.col(side, col).getPrec() for side,col in side_cols]
         side_cols.insert(pos_axis, None)
+        precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
-        limits = np.vstack([np.array([min(mat[mcols[sc],:]), max(mat[mcols[sc],:])]) for sc in side_cols])
+        limits = np.vstack([np.array([min(mat[mcols[sc],:]), max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
 
-        return data_m, lit_str, limits, ranges, Z, d
+        return data_m, lit_str, limits, ranges, zds
 
 
     def updateMap(self, red = None):
@@ -191,9 +107,8 @@ class ParaView(GView):
         """
 
         if red is not None:
-
+            
             self.current_r = red
-            t = 20 # TODO get t
 
             osupp = red.supports().getVectorABCD()
             pos_axis = len(red.queries[0])
@@ -202,9 +117,15 @@ class ParaView(GView):
             current = None
             if self.sc is not None:
                 current = [[l.col() for l in self.sc[side]] for side in [0,1]]
-            if self.Z is None or current != new:
+            if self.zds is None or current != new:
                 self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
-                self.data_m, self.lit_str, self.limits, self.ranges, self.Z, self.d = self.prepareData(osupp)
+                self.data_m, self.lit_str, self.limits, self.ranges, self.zds = self.prepareData(osupp)
+                
+            N = float(self.parent.dw.data.nbRows())
+            td = 10
+            if self.sld is not None:
+                td = self.sld.GetValue()
+            t = (5*(td/100.0)**10+1*(td/100.0)**2)/6
                 
             ## TEST whether t is different?
             m = self.axe
@@ -214,21 +135,22 @@ class ParaView(GView):
             ### GATHERING DATA
             draw_settings = self.getDrawSettings()
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
-            tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
-            self.limits[pos_axis, :] = [min(tt), max(tt)]
+            tt = [draw_settings["draw_pord"][o] for o in self.current_r.suppPartRange()]
+            self.limits[pos_axis, :] = [min(tt), max(tt), 0]
             colorsl =  [draw_settings[i]["color_e"] for i in osupp]
 
+
             ### SAMPLING ENTITIES
-            reps, clusters = toolsMath.sample(self.Z, t, self.d)
+            reps, clusters = toolsMath.sampleZds(self.zds, t)
+            reps.sort(key=lambda x: draw_settings["draw_pord"][osupp[x]])
 
             ### ADDING NOISE AND RESCALING
-            N = float(self.parent.dw.data.nbRows())
             tt = np.array([abs(r[2]) for r in self.ranges])
             mask_noise = - np.tile(self.limits[:,0], (len(reps),1)) \
                          + np.outer([(N-i)/N for i in reps], tt/2.0)+ tt/4.0
                          
             mask_div = np.tile((self.limits[:,1]+tt) - self.limits[:,0], (len(reps),1))  
-            tt = [i/(2*N)+0.25 for i in reps]
+            tt = [(N-i)/(2.0*N)+0.25 for i in reps]
             final = np.vstack((tt, (self.data_m[:,reps] + mask_noise.T)/mask_div.T, tt))
 
             ### PLOTTING
@@ -255,13 +177,15 @@ class ParaView(GView):
             self.drs = []
             self.ri = None
             for rid, rect in rects_map.items():
-                dr = DraggableResizeableRectangle(rect, rid=rid, callback=self.receive_release)
+                dr = DraggableResizeableRectangle(rect, rid=rid, parent=self)
                 self.drs.append(dr)
 
 
+            self.this_annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
+            m.axis((0,len(self.lit_str)+1, 0, 1))
             #self.updateEmphasize(ParaView.COLHIGH)
             self.MapcanvasMap.draw()
-            return red
+            return self.current_r
 
 
     def on_press(self, event):
@@ -286,6 +210,15 @@ class ParaView(GView):
         if self.ri is not None:
             self.drs[self.ri].do_motion(event)
 
+    def getPinvalue(self, rid, b):
+        if b == 1:
+            tmp = float("Inf")
+        elif b == 0:
+            tmp = float("-Inf")
+        else:
+            tmp = np.around(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0], int(self.limits[rid, 2]))
+        return tmp
+
     def receive_release(self, rid, rect):
         pos_axis = len(self.current_r.queries[0])
         side = 0
@@ -294,15 +227,7 @@ class ParaView(GView):
             side = 1
             pos -= (pos_axis+1)
         ys = [rect.get_y(), rect.get_y() + rect.get_height()]
-        bounds = []
-        for b in ys:
-            if b == 1:
-                tmp = float("Inf")
-            elif b == 0:
-                tmp = float("-Inf")
-            else:
-                tmp = b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]
-            bounds.append(tmp)
+        bounds = [self.getPinvalue(rid, b) for b in ys]
         copied = self.current_r.queries[side].copy()
         l = copied.listLiterals()[pos]
         l.term.setRange(bounds)
@@ -310,7 +235,6 @@ class ParaView(GView):
                               + [self.parent.dw.data.col(side, l.col()).width]
 
         self.updateQuery(side, copied)
-
                 
     def emphasizeLine(self, lid, colhigh='#FFFF00'):
         pass
@@ -362,8 +286,23 @@ class ParaView(GView):
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpand})
+        self.sld = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1),
+                            wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
         tmp.append(self.buttons[-1]["element"])
+        tmp.append(self.sld)
         return tmp
+
+    def additionalBinds(self):
+        for button in self.buttons:
+            button["element"].Bind(wx.EVT_BUTTON, button["function"])
+        ##self.sld.Bind(wx.EVT_SLIDER, self.OnSlide)
+        ##self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        self.sld.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+
+    def OnSlide(self, event):
+        if self.current_r is not None:
+            ##print "SLIDER", self.sld.GetValue()
+            self.updateMap(self.current_r)
 
     def OnPick(self, event):
         if isinstance(event.artist, Line2D):

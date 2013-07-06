@@ -10,18 +10,20 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
-from matplotlib.patches import Ellipse
+from matplotlib.patches import Ellipse, Polygon
 from matplotlib.lines import Line2D
 
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from classGView import GView
+from classInterObjects import MaskCreator
 
 import pdb
 
 class MapView(GView):
 
     TID = "MAP"
+    mapoly = True #False
     
     def getId(self):
         return (MapView.TID, self.vid)
@@ -30,8 +32,6 @@ class MapView(GView):
         """ Draws the map
         """
         
-        self.points_ids = []
-        self.lines = []
         self.high = []
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
@@ -44,7 +44,7 @@ class MapView(GView):
 
         self.MapfigMap.clear()
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-        m = Basemap(llcrnrlon=llon, llcrnrlat=llat, urcrnrlon=ulon, urcrnrlat=ulat, \
+        m = Basemap(llcrnrlon=llon-2, llcrnrlat=llat+2, urcrnrlon=ulon-2, urcrnrlat=ulat+2, \
                     resolution = 'c', projection = 'mill', \
                     lon_0 = llon + (ulon-llon)/2.0, \
                     lat_0 = llat + (ulat-llat)/2.04)
@@ -53,8 +53,13 @@ class MapView(GView):
 
             #m.etopo()
 
+        self.mc = MaskCreator(self.axe.ax)
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = m(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
+            if self.mapoly:
+                pdp = zip(range(len(self.coords_proj[0])), self.coords_proj[0], self.coords_proj[1])
+                self.polys = self.makePolys(pdp, self.parent.dw.getCoords())
+
             height = 3; width = 3
             self.gca = plt.gca()
 
@@ -70,8 +75,6 @@ class MapView(GView):
         if red is not None and self.coords_proj is not None:
             self.highl = {}
             self.hight = {}
-            self.points_ids = []
-            self.lines = []
             
             m = self.axe
             m.ax.cla()
@@ -88,15 +91,18 @@ class MapView(GView):
                 parts = red.partsThree()
             for pi, part in enumerate(parts):
                 if len(part) > 0 and draw_settings.has_key(pi):
-                    lip = list(part)
-                    self.points_ids.append(lip)
-                    ids = np.array(lip)
-                    self.lines.extend(m.plot(self.coords_proj[0][ids], self.coords_proj[1][ids],
-                                             mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                                             marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
-                                             linestyle='None', alpha=draw_settings[pi]["alpha"], picker=2))
-                else:
-                    self.lines.extend(m.plot([],[]))
+                    for idp in part:
+                        if self.mapoly:
+                            for ppi, p in enumerate(self.polys[idp]):
+                                m.ax.add_patch(Polygon(p, closed=True, fill=True, gid="%d.%d" % (idp, ppi), picker=True,
+                                                       fc=draw_settings[pi]["color_f"], ec=draw_settings[pi]["color_e"],
+                                                       alpha=draw_settings[pi]["alpha"]))
+                                
+                        else:
+                            m.plot(self.coords_proj[0][idp], self.coords_proj[1][idp],  gid="%d.%d" % (idp, 0),
+                                   mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
+                                   marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
+                                   linestyle='None', alpha=draw_settings[pi]["alpha"], picker=2)
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(MapView.COLHIGH)
@@ -141,7 +147,10 @@ class MapView(GView):
         self.MapcanvasMap.draw()
 
     def OnPick(self, event):
-        if isinstance(event.artist, Line2D):
-            for ind in event.ind:
-                si = self.points_ids[self.lines.index(event.artist)][ind]
-                self.sendHighlight(si)
+        if isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon):
+            self.sendHighlight(int(event.artist.get_gid().split(".")[0]))
+
+
+    def makePolys(self, pdp, upd):
+        return self.parent.dw.getPolys(pdp, upd)
+

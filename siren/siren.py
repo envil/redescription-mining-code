@@ -35,7 +35,7 @@ class SirenApp(wx.App):
             # DEBUG
             #print "Loading file", sys.argv[-1]
             self.frame.tabs["reds"]["tab"].setSelectedRow(12)
-            mapV = self.frame.getMapView(None, "PC")
+            mapV = self.frame.getMapView(None, "MAP")
             pos = self.frame.tabs["reds"]["tab"].getSelectedPos()
             self.frame.tabs["reds"]["tab"].registerView(mapV.getId(), pos)
             mapV.setCurrent(self.frame.tabs["reds"]["tab"].getSelectedItem(), self.frame.tabs["reds"]["tab"].tabId)
