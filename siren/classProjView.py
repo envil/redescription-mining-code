@@ -73,6 +73,7 @@ class ProjView(GView):
         self.logger.addOut({"*": 1, "progress":2, "result":1}, self.mapFrame, Message.sendMessage)
         self.logger.addOut({"error":1}, "stderr")
 
+        # print ProjFactory.dispProjsInfo()
         self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid, self.logger)
         self.worker = ProjThread(wx.NewId(), self.proj)
         if self.repbut is not None:

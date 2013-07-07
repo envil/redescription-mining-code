@@ -970,7 +970,7 @@ class Data:
             if len(tcols) > 0:
                 for col in tcols:
                     mcols[(side, col)] = len(details)
-                    details.append({"side": side, "col": col, "type": self.cols[side][col].type_id, "enabled":self.cols[side][c].getEnabled()})
+                    details.append({"side": side, "col": col, "type": self.cols[side][col].type_id, "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled()})
                 tmp = np.array([self.cols[side][col].getVector() for col in tcols])
                 mat = np.concatenate((mat, tmp))
         if store:
