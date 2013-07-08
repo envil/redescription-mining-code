@@ -12,13 +12,10 @@ from reremi.classBatch import Batch
 from reremi.toolICList import ICList
 
 from classGridTable import VarTable, RedTable, RowTable
-#from classMapolyView import MapView
-from classMapView import MapView
-from classParaView import ParaView
-from classProjView import ProjView
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog
+from factView import ViewFactory
 from toolsComm import MinerThread, ExpanderThread, Message, CErrorDialog
 
 import pdb
@@ -28,7 +25,7 @@ class Siren():
     """
 
     titleTool = 'SIREN :: tools'
-    titleMap = 'SIREN :: maps'
+    titlePref = 'SIREN :: '
     titleHelp = 'SIREN :: help'
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     helpURL = findFile('index.html', ['help', curr_dir+'/help'])
@@ -47,7 +44,6 @@ class Siren():
 
     license_file = findFile('LICENSE', [pref_dir])
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx']
-    
          
     def __init__(self):
         self.busyDlg = None
@@ -62,6 +58,7 @@ class Siren():
         self.tabs_keys = [0, 1, "rows", "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         self.ids_stoppers = {}
+        self.ids_viewT = {}
         self.check_tab = {}
         self.logger = Log()
         
@@ -76,8 +73,8 @@ class Siren():
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnMessProgress)
         self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnMessStatus)
         
-        self.mapViews = {}
-        self.selectedMap = -1
+        self.view_ids = {}
+        self.selectedViewX = -1
         self.buffer_copy = None
         
         self.workers = {}
@@ -211,6 +208,7 @@ class Siren():
 ###########     MENUS
 ######################################################################
 
+
     def makeProgressBar(self):
         work_estimate = 0
         work_progress = 0
@@ -236,47 +234,30 @@ class Siren():
             return
         # Popup the menu.  If an item is selected then its handler
         # will be called before PopupMenu returns.
-        menuRed = self.makeContextMenu(frame)
+        menuRed = self.makeRedMenu(frame)
+        menuRed.AppendMenu(wx.NewId(), "&View", self.makeViewMenu(frame))
+
         frame.PopupMenu(menuRed)
         menuRed.Destroy()
 
-    def makeContextMenu(self, frame):
+    def makeRedMenu(self, frame):
         ### Todo checks for cut, paste, etc
         menuRed = wx.Menu()
-
-        ID_MINE = wx.NewId()
-        m_mine = menuRed.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
-        frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
         
-        if self.selectedTab["type"] in ["Var","Reds"]:
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
 
-                ID_NEWWPC = wx.NewId()
-                m_newwpc = menuRed.Append(ID_NEWWPC, "&View para. co. in new window\tCtrl+P", "Plot redescription on parallel coordinates in new window.")
-                frame.Bind(wx.EVT_MENU, self.OnNewWPC, m_newwpc)
-                
-                if self.dw.isGeospatial():
-                    ID_NEWWM = wx.NewId()
-                    m_newwm = menuRed.Append(ID_NEWWM, "&View map in new window\tCtrl+W", "Plot redescription on a map in new window.")
-                    frame.Bind(wx.EVT_MENU, self.OnNewWM, m_newwm)
-
-                ID_NEWWPJ = wx.NewId()
-                m_newwpj = menuRed.Append(ID_NEWWPJ, "&View projection in new window\tCtrl+P", "Plot redescription on two-dimension projection in new window.")
-                frame.Bind(wx.EVT_MENU, self.OnNewWPJ, m_newwpj)
-
-
                 ID_ENABLED = wx.NewId()
-                m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current redescription.")
+                m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
                 frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
 
                 ID_ENABLEDALL = wx.NewId()
-                m_enabledall = menuRed.Append(ID_ENABLEDALL, "&Enable All", "Enable all redescriptions.")
+                m_enabledall = menuRed.Append(ID_ENABLEDALL, "&Enable All", "Enable all items.")
                 frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
 
                 ID_DISABLEDALL = wx.NewId()
-                m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all redescriptions.")
+                m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all items.")
                 frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
-
 
         if self.selectedTab["type"] == "Reds":
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
@@ -321,40 +302,53 @@ class Siren():
  
         return menuRed
 
-    def makeStoppersMenu(self, frame):
-        menuStoppers = wx.Menu()
+    def makeViewMenu(self, frame):
+        menuView = wx.Menu()
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
+            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
+                for item in ViewFactory.getViewsInfo(self.dw.isGeospatial(), self.selectedTab["type"]):
+                    ID_NEWV = wx.NewId()
+                    m_newv = menuView.Append(ID_NEWV, "%s" % item["title"],
+                                              "Plot %s in new window." % item["title"])
+                    frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
+                    self.ids_viewT[ID_NEWV] = item["viewT"]
+        return menuView
+
+    def makeProcessMenu(self, frame):
+        menuProcess = wx.Menu()
+        ID_MINE = wx.NewId()
+        m_mine = menuProcess.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
+        frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
+
         self.ids_stoppers = {}
         if len(self.workers) == 0:
             ID_NOP = wx.NewId()
-            m_nop = menuStoppers.Append(ID_NOP, "No process running", "There is no process currently running.")
-            menuStoppers.Enable(ID_NOP, False)
+            m_nop = menuProcess.Append(ID_NOP, "No process running", "There is no process currently running.")
+            menuProcess.Enable(ID_NOP, False)
 
         for worker_id in self.workers.keys(): 
             ID_STOP = wx.NewId()
             self.ids_stoppers[ID_STOP] = worker_id 
-            m_stop = menuStoppers.Append(ID_STOP, "Stop #&%s" % worker_id, "Interrupt mining process #%s." % worker_id)
+            m_stop = menuProcess.Append(ID_STOP, "Stop #&%s" % worker_id, "Interrupt mining process #%s." % worker_id)
             frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
-        return menuStoppers
+        return menuProcess
 
-    def makeTabsViewMenu(self, frame):
-        menuView = wx.Menu()
+    def makeTabsMenu(self, frame):
+        menuTabs = wx.Menu()
 
         self.check_tab = {}
         for tab_id in self.tabs_keys:
             tab_prop = self.tabs[tab_id]
             ID_CHECK = wx.NewId()
             self.check_tab[ID_CHECK] = tab_id 
-            m_check = menuView.AppendCheckItem(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
+            m_check = menuTabs.AppendCheckItem(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
             frame.Bind(wx.EVT_MENU, self.OnTabW, m_check)
             if tab_prop["hide"] == False:
                 m_check.Check()
-        return menuView
+        return menuTabs
 
 
-    def makeMenu(self, frame):
-        ### menu bar
-        
-        ### MENU FILE
+    def makeFileMenu(self, frame):
         menuFile = wx.Menu()
         m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
@@ -397,24 +391,14 @@ class Siren():
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
         frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_export)
 
-        m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
-        frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
-
-        ### MENU RED
-        menuRed = self.makeContextMenu(frame)
-
-        #ID_PREFERENCESDIA = wx.NewId()
-        m_preferencesdia = menuRed.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
+        m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
+        m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
+        frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
+        return menuFile
 
-        ### MENU STOPPERS
-        menuStoppers = self.makeStoppersMenu(frame)
-
-        ### MENU VIEW
-        menuView =  self.makeTabsViewMenu(frame)
-
-        ### MENU HELP
+    def makeHelpMenu(self, frame):
         menuHelp = wx.Menu()
         m_help = menuHelp.Append(wx.ID_HELP, "C&ontent", "Access the instructions.")
         frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
@@ -425,14 +409,17 @@ class Siren():
         ID_LICENSE = wx.NewId()
         m_license = menuHelp.Append(ID_LICENSE, "&License", "View the license(s).")
         frame.Bind(wx.EVT_MENU, self.OnLicense, m_license)
-        
-        ### PUT TOGETHER
+        return menuHelp
+
+    def makeMenu(self, frame):
+        self.ids_viewT = {}
         menuBar = wx.MenuBar()
-        menuBar.Append(menuFile, "&File")
-        menuBar.Append(menuRed, "&Edit")
-        menuBar.Append(menuStoppers, "&Process")
-        menuBar.Append(menuView, "&View")
-        menuBar.Append(menuHelp, "&Help")
+        menuBar.Append(self.makeFileMenu(frame), "&File")
+        menuBar.Append(self.makeRedMenu(frame), "&Edit")
+        menuBar.Append(self.makeViewMenu(frame), "&View")
+        menuBar.Append(self.makeProcessMenu(frame), "&Process")
+        menuBar.Append(self.makeTabsMenu(frame), "&Tabs")
+        menuBar.Append(self.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
         frame.SendSizeEvent()
@@ -441,42 +428,41 @@ class Siren():
 ###########     MAP VIEWS
 ######################################################################
 
-    def accessMapView(self, mid):
-        if self.mapViews.has_key(mid):
-            return self.mapViews[mid]
-
-    def getMapView(self, vid=None, viewT=None):
-        if viewT is None:
-            if self.dw.isGeospatial():
-                viewT = MapView.TID
-            else:
-                viewT = ParaView.TID
-
-        if (viewT, vid) not in self.mapViews.keys():
-            vid = wx.NewId()
-            self.selectedMap = (viewT, vid)
-            if viewT == MapView.TID:
-                self.mapViews[self.selectedMap] = MapView(self, vid)
-            elif viewT == ProjView.TID:
-                self.mapViews[self.selectedMap] = ProjView(self, vid)
-            else:
-                self.mapViews[self.selectedMap] = ParaView(self, vid)
+    def getDefaultViewT(self, tabId=None):
+        if tabId is not None and self.tabs.has_key(tabId):
+            return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial(), type_tab=self.tabs[tabId]["type"])
         else:
-            self.selectedMap = (viewT, vid)
-        self.mapViews[self.selectedMap].mapFrame.Raise()
-        return self.mapViews[self.selectedMap]
+            return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial())
 
+    def accessViewX(self, mid):
+        if self.view_ids.has_key(mid):
+            return self.view_ids[mid]
 
-    def deleteView(self, vid):
-        if vid in self.mapViews.keys():
-            self.mapViews[vid].mapFrame.Destroy()
-            del self.mapViews[vid]
+    def getViewX(self, vid=None, viewT=None):
+        if viewT is None:
+            viewT = self.getDefaultViewT()
+            
+        if (viewT, vid) not in self.view_ids.keys():
+            view = ViewFactory.getView(viewT, self, wx.NewId())
+            if view is None:
+                return
+            self.selectedViewX = view.getId()
+            self.view_ids[self.selectedViewX] = view
+        else:
+            self.selectedViewX = (viewT, vid)
+        self.view_ids[self.selectedViewX].mapFrame.Raise()
+        return self.view_ids[self.selectedViewX]
+
+    def deleteView(self, vK):
+        if vK in self.view_ids.keys():
+            self.view_ids[vK].mapFrame.Destroy()
+            del self.view_ids[vK]
 
     def deleteAllViews(self):
-        self.selectedMap = -1
-        for mapK in self.mapViews.keys():
-            self.mapViews[mapK].OnQuit(None)
-        self.mapViews = {}
+        self.selectedViewX = -1
+        for vK in self.view_ids.keys():
+            self.view_ids[vK].OnQuit(None)
+        self.view_ids = {}
         
 
 ######################################################################
@@ -730,20 +716,11 @@ class Siren():
         self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
         self.makeMenu(self.toolFrame)
 
-    def OnNewWM(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
-            self.selectedMap = -1
-            self.selectedTab["tab"].viewData(MapView.TID)
 
-    def OnNewWPC(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
-            self.selectedMap = -1
-            self.selectedTab["tab"].viewData(ParaView.TID)
-
-    def OnNewWPJ(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
-            self.selectedMap = -1
-            self.selectedTab["tab"].viewData(ProjView.TID)
+    def OnNewV(self, event):
+        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
+            self.selectedViewX = -1
+            self.selectedTab["tab"].viewData(self.ids_viewT[event.GetId()])
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:
@@ -769,15 +746,15 @@ class Siren():
             self.selectedTab["tab"].processAll(self.constraints.actions_final(), True)
 
     def OnFlipEnabled(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
             self.selectedTab["tab"].flipEnabled(self.selectedTab["tab"].getSelectedRow())
 
     def OnEnabledAll(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
             self.selectedTab["tab"].setAllEnabled()
 
     def OnDisabledAll(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
             self.selectedTab["tab"].setAllDisabled()
 
     def OnDeleteDisabled(self, event):
@@ -986,8 +963,6 @@ class Siren():
         self.tabs["hist"]["tab"].resetData(Batch())
         self.deleteAllViews()
         self.makeMenu(self.toolFrame)
-#        self.getMapView().setCurrentRed(redsTmp[0])
-#        self.getMapView().updateRed()
 
     def startFileActionMsg(self, msg, short_msg=''):
         """Shows a dialog that we're reading a file"""

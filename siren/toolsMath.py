@@ -1,6 +1,7 @@
 import numpy as np
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
+import random
 import matplotlib
 import scipy.spatial.distance
 import scipy.cluster
@@ -73,20 +74,26 @@ def linkageZds(mat, details, side_cols=None, osupp=None, step=500):
         if counts.get(aff[i], {"count": 2*step})["count"] > 1.25*step:
             counts[aff[i]] = {"to": len(used), "count": 0}
             used.append(aff[i])
+        counts[aff[i]]["count"]+=1
         aff[i] = counts[aff[i]]["to"]
-        
+
     ids_cls = [[i for i in range(aff.shape[0]) if aff[i]== cl] for cl in np.unique(aff)]
 
     zds = []
     for ids in ids_cls:
         d = getDistances(mat[:,ids], details, side_cols, parts=[osupp[i] for i in ids])
-        Z = scipy.cluster.hierarchy.linkage(d)
-        zds.append({"Z":Z, "d":d, "ids": ids})
+        if sum(d**2) == 0:
+            zds.append({"Z":None, "d":None, "ids": ids})
+        else:
+            Z = scipy.cluster.hierarchy.linkage(d)
+            zds.append({"Z":Z, "d":d, "ids": ids})
     return zds
 
 
 def linkage(mat, details, side_cols=None, osupp=None):    
     d = getDistances(mat, details, side_cols, parts=osupp)
+    if sum(d**2) == 0:
+        return None, None
     Z = scipy.cluster.hierarchy.linkage(d)
     return Z, d
 
@@ -103,12 +110,17 @@ def sampleZds(zds, t):
         if t == 1:
             all_reps.extend(zd["ids"])
         elif round(t*len(zd["ids"])) > 0:
-            treps, tclusts = sample(zd["Z"], round(t*len(zd["ids"])), zd["d"])
-            all_reps.extend([zd["ids"][r] for r in treps])
-            all_clusts.extend(tclusts)
+            nb = round(t*len(zd["ids"]))
+            if zd["Z"] is None:
+                all_reps.extend(random.sample(zd["ids"], int(nb)))
+                all_clusts.extend([None for r in range(int(nb)+1)])                
+            else:
+                treps, tclusts = sample(zd["Z"], nb, zd["d"])
+                all_reps.extend([zd["ids"][r] for r in treps])
+                all_clusts.extend(tclusts)
     return all_reps, all_clusts
 
-def sample(Z, t, d):
+def sample(Z, t, d):        
     T = scipy.cluster.hierarchy.fcluster(Z, t, criterion="maxclust")
     clusters = [[] for i in range(max(T))]
     for i,c in enumerate(T):

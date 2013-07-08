@@ -23,12 +23,12 @@ import toolsMath
 
 import pdb
 
-
 class ParaView(GView):
 
     TID = "PC"
+    title_str = "Parallel Coordinates"
 
-    def __init__(self, parent, vid):
+    def __init__(self, parent, vid, more=None):
         self.current_r = None
         self.zds = None
         self.sc = None
@@ -87,7 +87,7 @@ class ParaView(GView):
         if len(osupp) > 500:
             zds = toolsMath.linkageZds(mat, details, side_cols, osupp)
         else:
-            Z, d = toolsMath.linkage(mat[:,:500], details, side_cols, osupp)
+            Z, d = toolsMath.linkage(mat, details, side_cols, osupp)
             zds = [{"Z":Z, "d":d, "ids": range(mat.shape[1])}]
 
         mcols[None] = 0
@@ -264,16 +264,17 @@ class ParaView(GView):
         self.MapcanvasMap.draw()
 
     def additionalElements(self):
-        tmp = []
-        tmp.append(self.MaptoolbarMap)
+        add_box = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_CENTER | wx.ALL
+
+        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpand})
-        self.sld = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1),
-                            wx.SL_AUTOTICKS | wx.SL_HORIZONTAL | wx.SL_LABELS)
-        tmp.append(self.buttons[-1]["element"])
-        tmp.append(self.sld)
-        return tmp
+        self.sld = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
+        add_box.Add(self.sld, 0, border=3, flag=flags | wx.EXPAND)
+        return [add_box]
 
     def additionalBinds(self):
         for button in self.buttons:

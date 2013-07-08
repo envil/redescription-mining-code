@@ -1,5 +1,6 @@
 import wx
 import threading
+import inspect
 import time
 import sys
 # import wx.lib.agw.pybusyinfo as PBI
@@ -81,4 +82,3 @@ class CErrorDialog:
         dlg.ShowModal()
         dlg.Destroy()
     showBox = staticmethod(showBox)
- 

@@ -18,7 +18,7 @@ from reremi.classRedescription import Redescription
 
 import pdb
 
-class GView:
+class GView(object):
 
     label_jacc="acc     ="
     label_pval="p-value   ="
@@ -41,15 +41,23 @@ class GView:
     DOT_SIZE = 3
 
     TID = "G"
+    title_str = "View"
+    geo = False
+    typesI = ["Var", "Reds"]
 
-    def __init__(self, parent, vid):
+    @classmethod
+    def getViewsDetails(tcl):
+        return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None}}
+
+
+    def __init__(self, parent, vid, more=None):
         self.parent = parent
         self.source_list = None
         self.vid = vid
         self.buttons = []
         self.highl = {}
         self.hight = {}
-        self.mapFrame = wx.Frame(None, -1, self.parent.titleMap)
+        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
         self.drawFrame()
@@ -150,14 +158,9 @@ class GView:
         self.Mapvbox3.Add(self.MapredMapQ[1], 0, border=3, flag=flags | wx.EXPAND)
         self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
 
-        tmp = self.additionalElements()
-        if len(tmp) > 0:
-            self.Maphbox4 = wx.BoxSizer(wx.HORIZONTAL)
-            flags = wx.ALIGN_CENTER | wx.ALL
-            for elem in tmp:
-                self.Maphbox4.Add(elem, 0, border=3, flag=flags | wx.EXPAND)
-            self.Mapvbox3.Add(self.Maphbox4, 0, border=3, flag=flags)
-
+        for add_box in self.additionalElements():
+            self.Mapvbox3.Add(add_box, 0, border=3, flag=flags)
+            
         self.mapFrame.SetSizer(self.Mapvbox3)
         self.Mapvbox3.Fit(self.mapFrame)
 

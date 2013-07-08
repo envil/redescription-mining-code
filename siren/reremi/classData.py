@@ -43,9 +43,9 @@ class RowE(object):
             self.data.addSelectedRow(self.rid)
 
     def setEnabled(self):
-        self.data.addSelectedRow(self.rid)
-    def setDisabled(self):
         self.data.removeSelectedRow(self.rid)
+    def setDisabled(self):
+        self.data.addSelectedRow(self.rid)
 
     def getId(self, details=None):
         return self.rid

@@ -7,10 +7,10 @@ import numpy as np
 import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+from matplotlib import nxutils
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
@@ -19,76 +19,108 @@ from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from toolsComm import ProjThread, Message
 from classGView import GView
-from classProj import ProjFactory, Proj
+from classProj import ProjFactory
+from classInterObjects import MaskCreator
 
 import pdb
 
 class ProjView(GView):
 
     TID = "PRJ"
-    label_projkey=""
+    title_str = "Projection"
+    typesI = ["Var", "Reds", "Row"]
+    defaultViewT = ProjFactory.defaultViewT
+
+    @classmethod
+    def getViewsDetails(tcl):
+        return ProjFactory.getViewsDetails(tcl)
     
-    def __init__(self, parent, vid):
-        self.proj = None
+    def __init__(self, parent, vid, more=None):
+        self.worker = None
         self.repbut = None
-        GView.__init__(self, parent, vid)
-        self.project()
-
-    def getId(self):
-        return (ProjView.TID, self.vid)
-
-    def additionalElements(self):
-        tmp = []
-        tmp.append(self.MaptoolbarMap)
+        self.parent = parent
+        self.source_list = None
+        self.vid = vid
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Expand"),
-                             "function": self.OnExpand})
-        tmp.append(self.buttons[-1]["element"])
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Reproject"),
-                             "function": self.OnReproject})
-        tmp.append(self.buttons[-1]["element"])
-        self.repbut = self.buttons[-1]["element"]
+        self.highl = {}
+        self.hight = {}
+        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
+        self.panel = wx.Panel(self.mapFrame, -1)
+        self.initLogger()
+        self.initProject(more)
+        self.drawMap()
+        self.drawFrame()
+        self.binds()
+        self.mapFrame.Show()
+        self.queries = [Query(), Query()]
+        self.suppABCD = None
+        self.runProject()
 
-        lsizetxt = 180
-        txt = wx.StaticText(self.mapFrame, size=(-1,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.projkeyf = wx.TextCtrl(self.mapFrame, wx.NewId(), size=(lsizetxt,-1), style=wx.TE_PROCESS_ENTER)
-        tmp.append(txt)
-        tmp.append(self.projkeyf)
-
-        txt.SetLabel(self.label_projkey)
-        if self.proj is not None:
-            self.projkeyf.ChangeValue(self.proj.getCode())
-        return tmp
-
-    def OnReproject(self, rid=None):
-        tmp_id = self.projkeyf.GetValue().strip(":, ")
-        if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
-            self.project(tmp_id)
-        else:
-            self.project()
-
-    def project(self, rid=None):
+    def initLogger(self):
         self.logger = Log()
         self.logger.resetOut()
         self.logger.addOut({"*": 1, "progress":2, "result":1}, self.mapFrame, Message.sendMessage)
         self.logger.addOut({"error":1}, "stderr")
-
-        # print ProjFactory.dispProjsInfo()
-        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid, self.logger)
-        self.worker = ProjThread(wx.NewId(), self.proj)
-        if self.repbut is not None:
-            self.repbut.Disable()
-            self.repbut.SetLabel("Plz Wait...")
-                      
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['*'], self.parent.OnMessLogger)
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['log'], self.parent.OnMessLogger)
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['time'], self.parent.OnMessLogger)
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.parent.OnMessLogger)
         self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnMessResult)
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.parent.OnMessProgress)
-        # self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.parent.OnMessStatus)
 
+    def getId(self):
+        return (self.proj.PID, self.vid)
+
+    def OnQuit(self, event):
+        if self.proj is not None:
+            self.proj.kill()
+            if self.worker is not None and self.worker.isAlive():
+                self.worker._Thread__stop()
+        GView.OnQuit(self, event)
+
+    def additionalElements(self):
+        setts_box = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_BOTTOM | wx.ALL
+
+        self.boxes = self.proj.makeBoxes(self.mapFrame)
+        for box in self.boxes:
+            setts_box.Add(box["label"], 0, border=3, flag=flags | wx.EXPAND)
+            for c in box["ctrls"]:
+                setts_box.Add(c, 0, border=3, flag=flags | wx.EXPAND)
+
+        add_box = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_CENTER | wx.ALL
+        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
+        self.buttons = []
+        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+                             "function": self.OnExpand})
+        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
+        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Reproject"),
+                             "function": self.OnReproject})
+        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
+        self.repbut = self.buttons[-1]["element"]
+
+        return [setts_box, add_box]
+
+    def OnReproject(self, rid=None):
+        if self.worker is not None:
+            return
+        self.proj.initParameters(self.boxes)
+        # tmp_id = self.projkeyf.GetValue().strip(":, ")
+        # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
+        #     self.initProject(tmp_id)
+        # else:
+        #     self.initProject()
+        self.runProject()
+
+    def initProject(self, rid=None):
+        ### print ProjFactory.dispProjsInfo()
+        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid, logger=self.logger)
+
+    def runProject(self):
+        if self.worker is None:
+            self.worker = ProjThread(wx.NewId(), self.proj)
+            if self.repbut is not None:
+                self.repbut.Disable()
+                self.repbut.SetLabel("Plz Wait...")
+                      
     def OnMessResult(self, event):
+        self.worker = None
         self.updateMap()
         if self.repbut is not None:
             self.repbut.Enable()
@@ -107,7 +139,7 @@ class ProjView(GView):
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
         self.gca = plt.gca()
-
+        self.mc = MaskCreator(self.axe, None, self.receive_mask)
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
@@ -146,9 +178,6 @@ class ProjView(GView):
             self.updateEmphasize(ProjView.COLHIGH)
             self.MapcanvasMap.draw()
 
-            if self.projkeyf is not None:
-                self.projkeyf.ChangeValue(self.proj.getCode())
-
         return red
 
     def emphasizeLine(self, lid, colhigh='#FFFF00'):
@@ -172,3 +201,10 @@ class ProjView(GView):
                                           patchA=None, patchB=self.el, relpos=(0.2, 0.5))
                                             ))
         self.MapcanvasMap.draw()
+
+    def receive_mask(self, vertices, event=None):
+        if vertices is not None and vertices.shape[0] > 3 and self.proj is not None:
+            points = np.transpose((self.proj.getCoords(0), self.proj.getCoords(1)))
+            mask = np.where(nxutils.points_inside_poly(points, vertices))[0]
+            print mask
+            # return mask.reshape(h, w)

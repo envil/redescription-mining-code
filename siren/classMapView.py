@@ -23,6 +23,8 @@ import pdb
 class MapView(GView):
 
     TID = "MAP"
+    title_str = "Map"
+    geo = True
     mapoly = False
     
     def getId(self):
@@ -111,13 +113,15 @@ class MapView(GView):
         return red
 
     def additionalElements(self):
-        tmp = []
-        tmp.append(self.MaptoolbarMap)
+        add_box = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_CENTER | wx.ALL
+
+        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpand})
-        tmp.append(self.buttons[-1]["element"])
-        return tmp
+        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
+        return [add_box]
 
     def emphasizeLine(self, lid, colhigh='#FFFF00'):
         if self.highl.has_key(lid):
@@ -127,7 +131,7 @@ class MapView(GView):
         draw_settings = self.getDrawSettings()
         m = self.axe
         self.highl[lid] = []
-        self.highl[lid].extend(m.plot(self.coords_proj[0][lid], self.coords_proj[1][ids],
+        self.highl[lid].extend(m.plot(self.coords_proj[0][lid], self.coords_proj[1][lid],
                                       mfc=colhigh,marker=".", markersize=10,
                                       linestyle='None'))
 
@@ -144,8 +148,6 @@ class MapView(GView):
 
     def receive_mask(self, vertices, event=None):
         if vertices is not None and vertices.shape[0] > 3 and self.coords_proj is not None:
-            print vertices
-            pdb.set_trace()
             points = np.transpose((self.coords_proj[0], self.coords_proj[1]))
             mask = np.where(nxutils.points_inside_poly(points, vertices))[0]
             print mask

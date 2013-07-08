@@ -1,6 +1,5 @@
 import wx, wx.grid, re, colorsys, random
-from classProjView import ProjView
-from classParaView import ParaView
+from factView import ViewFactory
 from reremi.toolICList import ICList
 from reremi.classQuery import Query, Literal
 from reremi.classRedescription import Redescription
@@ -98,6 +97,7 @@ class GridTable(wx.grid.PyGridTableBase):
         #### GRID
         self.grid = wx.grid.Grid(frame)
         self.grid.SetTable(self)
+        self.setSelectedRow(0)
         self.grid.EnableEditing(False)
         self.grid.AutoSizeColumns(True)
 
@@ -370,7 +370,7 @@ class GridTable(wx.grid.PyGridTableBase):
     def OnViewData(self, event):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow())
-            self.viewData()
+            self.viewData(self.parent.getDefaultViewT(self.tabId))
 
 class RedTable(GridTable):
 
@@ -428,20 +428,18 @@ class RedTable(GridTable):
             if upView:
                 self.ResetView()
 
-    def viewData(self, viewT=None):
+    def viewData(self, viewT):
         pos = self.getSelectedPos()
         vid = None
         for (k,v) in self.opened_edits.items():
-            if viewT != ProjView.TID and v == pos and viewT == k[0]:
+            if v == pos and viewT == k[0]:
                 vid = k[1]
                 break
             
-        if vid is None:
-            mapV = self.parent.getMapView(None, viewT)
+        mapV = self.parent.getViewX(vid, viewT)
+        if vid is None and mapV is not None:
             self.registerView(mapV.getId(), pos)
             mapV.setCurrent(self.getSelectedItem(), self.tabId)
-        else:
-            mapV = self.parent.getMapView(vid, viewT)
 
     def registerView(self, key, pos):
         self.opened_edits[key] = pos
@@ -463,7 +461,7 @@ class RedTable(GridTable):
 
                 for k,v in self.opened_edits.items():
                     if v == toed:
-                        mc = self.parent.accessMapView(k)
+                        mc = self.parent.accessViewX(k)
                         if k != edit_key and mc is not None:
                             mc.setCurrent(red, self.tabId)
 
@@ -496,25 +494,14 @@ class RedTable(GridTable):
 
             mc = None
             for k,v in self.opened_edits.items():
-                # if k[0] == ParaView.TID and v == toed:
-                #     mc = self.parent.accessMapView(k)
-                # elif v == toed:
                 if v == toed:
-                    mm = self.parent.accessMapView(k)
+                    mm = self.parent.accessViewX(k)
                     if turn_on:
                         mm.emphasizeLine(lid)
                     else:
                         mm.clearEmphasize([lid])
             if turn_on:
                 self.parent.showDetailsBox(lid, self.data[toed])
-            # if mc is None:
-            #     mc = self.parent.getMapView(None, ParaView.TID)
-            #     self.registerView(mc.getId(), toed)
-            #     mc.setCurrent(self.data[toed], self.tabId)
-            # if turn_on:
-            #     mc.emphasizeLine(lid)
-            # else:
-            #     mc.clearEmphasize([lid])
 
     def deleteDisabled(self):
         i = 0
@@ -606,12 +593,13 @@ class VarTable(GridTable):
                   2:[('categories', 'self.data[x].getCategories')],
                   3:[('min', 'self.data[x].getMin'), ('max', 'self.data[x].getMax')]}
 
-    def viewData(self, viewT=None):
-        mapV = self.parent.getMapView(None, viewT)
-        datVar = self.getSelectedItem()
-        queries = [Query(), Query()]
-        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
-        mapV.setCurrent(queries)
+    def viewData(self, viewT):
+        mapV = self.parent.getViewX(None, viewT)
+        if mapV is not None:
+            datVar = self.getSelectedItem()
+            queries = [Query(), Query()]
+            queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+            mapV.setCurrent(queries)
  
     def updateEdit(self, edit_key, red):
         pass
@@ -628,8 +616,8 @@ class RowTable(GridTable):
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
 
-    def viewData(self, viewT=None):
-        pass
+    def viewData(self, viewT):
+        mapV = self.parent.getViewX(None, viewT)
  
     def updateEdit(self, edit_key, red):
         pass
@@ -732,3 +720,4 @@ class RowTable(GridTable):
             else:
                 self.sc.add(cid)
             self.redraw()
+

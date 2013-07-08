@@ -1,13 +1,14 @@
 ### TODO check which imports are needed 
 import re, random
+import wx
 import numpy as np
-import inspect
 from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
+import inspect
 import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-import toolsMath
+import toolsMath, toolsComm
 
 import pdb
 
@@ -30,37 +31,6 @@ def applyF(f, parameters):
     args = dict([(a, parameters.get(a, v)) for a,v in mtd_def.items()])
     return f(**args)
 
-class ProjFactory:
-
-    @classmethod
-    def dispProjsInfo(self):
-
-        str_info = ""
-        for cls in all_subclasses(Proj):
-            str_info += "--- %s [%s] ---" % (cls.title_str, cls.PID)
-            str_info += "".join(["\n\t+%s:\t%s" %c for c in cls.gen_parameters.items()])
-            # str_info +=  "".join(["\n\t-%s:\t%s" %c for c in cls.fix_parameters.items()])
-            str_info +=  "\nCalls:"
-            for f in cls.dyn_f:
-                 str_info +=  "\n\t*%s" % f
-            #     str_info +=  "".join(["\n\t\t-%s:\t%s" %c for c in argsF(f).items()])
-            str_info +=  "\n\n"
-        return str_info
-
-    @classmethod
-    def getProj(self, data, code = None, logger=None):
-            
-        if code is not None:
-            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
-            if tmp is not None:
-                for cls in all_subclasses(Proj):
-                    if re.match("^"+cls.PID+"$", tmp.group("alg")):
-                        return cls(data, code, logger)
-
-        cls = AxesProj
-        # cls = random.choice([p for p in all_subclasses(Proj)
-        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
-        return cls(data, {}, logger)
 
 class Proj(object):
 
@@ -68,9 +38,10 @@ class Proj(object):
     title_str = "Projection"
     gen_parameters = {"types":[NumColM.type_id], "only_able":True}
     fix_parameters = {}
+    options_parameters = {"types": [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]}
     dyn_f = []
     
-    def __init__(self, data, params={}, logger=None):
+    def __init__(self, data, params=None, logger=None):
         self.want_to_live = True
         self.data = data
         self.logger = logger
@@ -98,7 +69,14 @@ class Proj(object):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
 
     def do(self):
-        pass
+        if not self.want_to_live:
+             return
+        try:
+            self.comp()
+        except:
+            raise Warning("Projection failed!")
+        finally:
+            self.notifyDone()
 
     def notifyDone(self):
         if self.logger is not None:
@@ -145,10 +123,62 @@ class Proj(object):
             params["only_able"] = False
         return params
 
+    def makeBoxes(self, frame):
+        boxes = []
+        for kp in self.getTunableParamsK():
+            label = wx.StaticText(frame, wx.ID_ANY, kp+":")
+            ctrls = []
+            value = self.getParameter(kp)
+            if type(value) in [int, float]:
+                type_ctrl = "text"
+                ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
+            elif type(value) is bool:
+                type_ctrl = "checkbox" 
+                ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
+                ctrls[-1].SetValue(value)
+            elif type(value) is list and self.options_parameters.has_key(kp):
+                type_ctrl = "checkbox"
+                for k,v in self.options_parameters[kp]:
+                    ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
+                    ctrls[-1].SetValue(v in value)
+            elif self.options_parameters.has_key(kp):
+                type_ctrl = "choice" 
+                ctrls.append(wx.Choice(frame, wx.NewId()))
+                strs = [k for k,v in self.options_parameters[kp]]
+                ctrls[-1].AppendItems(strings=strs)
+                try:
+                    ind = strs.index(value)
+                    ctrls[-1].SetSelection(ind)
+                except ValueError:
+                    pass
+            boxes.append({"key": kp, "label": label, "type_ctrl": type_ctrl, "ctrls":ctrls, "value":value})
+        return boxes
+
+    def readBoxes(self, boxes):
+        params = {}
+        for box in boxes:
+            if box["type_ctrl"] == "text":
+                try:
+                    params[box["key"]] = type(box["value"])(box["ctrls"][0].GetValue())
+                except ValueError:
+                    params[box["key"]] = box["value"]
+            elif box["type_ctrl"] == "checkbox":
+                if type(box["value"]) is bool:
+                    params[box["key"]] = box["ctrls"][0].GetValue()
+                else:
+                    dd = dict(self.options_parameters[box["key"]])
+                    params[box["key"]] = [dd[t.GetLabelText()] for t in box["ctrls"] if t.GetValue()]
+            elif box["type_ctrl"] == "choice":
+                params[box["key"]] = self.options_parameters[box["key"]][box["ctrls"][0].GetSelection()][1]
+        return params
+
     def initParameters(self, params={}):
         if not type(params) is dict:
-            self.code = params
-            params = self.parseCode(params)
+            if type(params) is list:
+                params = self.readBoxes(params)
+            else:
+                self.code = params
+                params = self.parseCode(params)
         self.params = {}
         self.params.update(self.gen_parameters)
         self.params.update(self.fix_parameters)
@@ -175,33 +205,28 @@ class Proj(object):
 class AxesProj(Proj):
 
     PID = "AXE"
-    title_str = "Projection"
+    title_str = "Variables Projection"
     gen_parameters = dict(Proj.gen_parameters)
-    gen_parameters.update({"Xaxis": None, "Yaxis": None})
+    gen_parameters.update({"Xaxis": -1.0, "Yaxis": -1.0})
     dyn_f = []
-        
-    def do(self):
-        if not self.want_to_live:
-            return
+
+    def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
         scs = random.sample(mcols.keys(), 2)
         side_lstr = {0:"LHS", 1:"RHS"}
         self.labels = ["", ""]
         for ai, axis in enumerate(["Xaxis", "Yaxis"]):
             tmp = self.getParameter(axis)
-            if tmp is not None:
-                sc = tuple(map(int, tmp.split("#")[:2]))
+            if tmp > 0:
+                sc = tuple(map(int, str(tmp).split(".")[:2]))
                 if mcols.has_key(sc):
                     scs[ai] = sc
-            self.setParameter(axis, "%s#%s" % scs[ai])
+            self.setParameter(axis, float("%d.%d" % scs[ai]))
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
-
-
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
         for side in [0,1]:
             if details[mcols[scs[side]]]["type"] != NumColM.type_id:
                 self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
-        self.notifyDone()
 
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
@@ -210,21 +235,18 @@ class AxesProj(Proj):
 class SVDProj(Proj):
 
     PID = "SVD"
-    title_str = "Projection"
+    title_str = "SVD Projection"
     fix_parameters = dict(Proj.fix_parameters)
     fix_parameters.update({"compute_uv": True, "full_matrices":False })
     dyn_f = [np.linalg.svd]
 
-    def do(self):
-        if not self.want_to_live:
-            return
-
+    def comp(self):
         mat, details, mcol = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
         matn = toolsMath.withen(mat)
         U, s, V = self.applyF(np.linalg.svd, {"a": matn})
         tmp = np.dot(U[:2],matn)
         self.coords_proj = (tmp[0], tmp[1])
-        self.notifyDone()
+
 
     def getAxisLabel(self, axi):
         return "dimension %d" % (axi+1)
@@ -240,15 +262,12 @@ class SKrandProj(Proj):
     fix_parameters.update({"n_components": 2 })
     dyn_f = [random_projection.SparseRandomProjection]
 
-    def do(self):
-        if not self.want_to_live:
-            return
-
+    def comp(self):
         mat, details, mcol = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
         matn = toolsMath.withen(mat)
         X_pro, err = self.getX(matn.T)
         self.coords_proj = (X_pro[:,0], X_pro[:,1])
-        self.notifyDone()
+
     
     # Random 2D projection using a random unitary matrix
     def getX(self, X):
@@ -293,10 +312,9 @@ class SKlleProj(SKrandProj):
     title_str = "LLE projection"
     gen_parameters = dict(SKrandProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
+    options_parameters = dict(SKrandProj.options_parameters)
+    options_parameters["method"] = [("standard", "standard"), ("hessian", "hessian"), ("modified", "modified"), ("ltsa", "ltsa")]
     dyn_f = [manifold.LocallyLinearEmbedding]
-
-    def getTitle(self):
-        return "%s %s" % (self.params.get("method", 'standard'), self.title_str)
 
     def getX(self, X):
         ### methods: standard, modified, hessian, ltsa
@@ -366,3 +384,48 @@ class SKtsneProj(SKrandProj):
     def getX(self, X):
         X_sne, c = self.applyF(tsne.tsne, {"X":X})
         return X_sne, c
+
+
+
+class ProjFactory:
+    defaultViewT = AxesProj
+
+    @classmethod
+    def getViewsDetails(tcl, bc):
+        details = {}
+        for cls in all_subclasses(Proj):
+            if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", cls.PID) is not None:
+                details[cls.PID]= {"title": cls.title_str, "class": bc, "more": cls.PID}
+        return details
+
+
+    @classmethod
+    def dispProjsInfo(tcl):
+
+        str_info = ""
+        for cls in all_subclasses(Proj):
+            str_info += "--- %s [%s] ---" % (cls.title_str, cls.PID)
+            str_info += "".join(["\n\t+%s:\t%s" %c for c in cls.gen_parameters.items()])
+            # str_info +=  "".join(["\n\t-%s:\t%s" %c for c in cls.fix_parameters.items()])
+            str_info +=  "\nCalls:"
+            for f in cls.dyn_f:
+                 str_info +=  "\n\t*%s" % f
+            #     str_info +=  "".join(["\n\t\t-%s:\t%s" %c for c in argsF(f).items()])
+            str_info +=  "\n\n"
+        return str_info
+
+
+    @classmethod
+    def getProj(tcl, data, code = None, logger=None, boxes=[]):
+            
+        if code is not None:
+            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
+            if tmp is not None:
+                for cls in all_subclasses(Proj):
+                    if re.match("^"+cls.PID+"$", tmp.group("alg")):
+                        return cls(data, code, logger)
+
+        cls = AxesProj
+        # cls = random.choice([p for p in all_subclasses(Proj)
+        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
+        return cls(data, {}, logger)
