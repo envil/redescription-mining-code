@@ -55,8 +55,10 @@ class Siren():
                      "hist": {"title":"History", "type":"Reds", "hide":True, "style":None},
                      "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
-        self.tabs_keys = [0, 1, "rows", "reds", "exp", "hist", "log"]
+        self.tabs_keys = ["rows", 0, 1, "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
+        stn = "reds"
+        
         self.ids_stoppers = {}
         self.ids_viewT = {}
         self.check_tab = {}
@@ -79,8 +81,9 @@ class Siren():
         
         self.workers = {}
         self.next_workerid = 0
-
+        
         self.create_tool_panel()
+        self.changePage(stn)
 
         # #### COMMENT OUT TO LOAD DBLP ON STARTUP
         # tmp_num_filename='../data/dblp/coauthor_picked.datnum'
@@ -501,7 +504,7 @@ class Siren():
     def expand(self, red=None):
         self.progress_bar.Show()
         self.next_workerid += 1
-        if red != None and red.length(0) + red.length(1) > 0:
+        if red is not None and red.length(0) + red.length(1) > 0:
             self.workers[self.next_workerid] = {"worker":ExpanderThread(self.next_workerid, self.dw.data,
                                                                         self.dw.getPreferences(), self.logger, red.copy()),
                                                 "results_track":0,
@@ -712,15 +715,23 @@ class Siren():
                 pass
         save_dlg.Destroy()
 
+    def changePage(self, tabn):
+        if self.tabs.has_key(tabn) and not self.tabs[tabn]["hide"]:
+            self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))
+            self.OnPageChanged(-1)
+
     def OnPageChanged(self, event):
         self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
         self.makeMenu(self.toolFrame)
-
 
     def OnNewV(self, event):
         if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
             self.selectedViewX = -1
             self.selectedTab["tab"].viewData(self.ids_viewT[event.GetId()])
+
+    def newRedVHist(self, queries, viewT):
+        self.tabs["hist"]["tab"].addAndViewTop(queries, viewT)
+        self.showTab("hist")
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:
@@ -784,6 +795,16 @@ class Siren():
             self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
             self.makeMenu(self.toolFrame) ### update paste entry
+
+    def flipRowsEnabled(self, rids):
+        if self.tabs.has_key("rows") and len(rids)> 0:
+            self.tabs["rows"]["tab"].flipAllEnabled(rids)
+
+    def recomputeAll(self):
+        restrict = self.dw.data.nonselectedRows()
+        for tab in self.tabs.values():
+            if tab["type"] == "Reds":
+                tab["tab"].recomputeAll(restrict)
             
     def OnTabW(self, event):
         if event.GetId() in self.check_tab.keys():
@@ -796,6 +817,7 @@ class Siren():
     def showTab(self, tab_id):
         self.tabs[tab_id]["hide"] = False
         self.tabs[tab_id]["tab"].Show()
+        self.changePage(tab_id)
 
     def hideTab(self, tab_id):
         self.tabs[tab_id]["hide"] = True

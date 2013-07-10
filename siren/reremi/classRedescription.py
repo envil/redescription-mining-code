@@ -12,6 +12,7 @@ class Redescription:
     print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1]):
+        self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
             self.sParts = SParts(nN, nsupps, nPrs)
@@ -49,7 +50,7 @@ class Redescription:
 
     def getInfoDict(self):
         if self.dict_supp_info is None and self.sParts is not None:
-            self.dict_supp_info = self.sParts.toDict()
+            self.dict_supp_info = (self.restricted_sParts or self.sParts).toDict()
         if self.dict_supp_info is not None:
             return self.dict_supp_info
         return {}
@@ -106,36 +107,15 @@ class Redescription:
         
     def __len__(self):
         return self.length(0) + self.length(1)
-        
-    def acc(self):
-        return self.sParts.acc()
 
-    def lenI(self):
-        return self.sParts.lenI()
-
-    def suppI(self):
-        return self.sParts.suppI()
-
-    def supp(self, side=0):
+    def supp(self, side):
         return self.sParts.supp(side)
-    
-    def lenO(self):
-        return self.sParts.lenO()
 
-    def suppO(self):
-        return self.sParts.suppO()
-    
-    def lenU(self):
-        return self.sParts.lenU()
-
-    def suppU(self):
-        return self.sParts.suppU()
-
-    def pVal(self):
-        return self.sParts.pVal()
-    
+    def miss(self, side):
+        return self.sParts.miss(side)
+            
     def score(self):
-        return self.acc()
+        return self.getAcc()
 
     def supports(self):
         return self.sParts
@@ -144,10 +124,10 @@ class Redescription:
         return self.sParts.sParts
 
     def partsFour(self):
-        return [self.sParts.suppL(), self.sParts.suppR(), self.sParts.suppI(), self.sParts.suppO()]
+        return [self.sParts.suppA(), self.sParts.suppB(), self.sParts.suppI(), self.sParts.suppO()]
 
     def partsThree(self):
-        return [self.sParts.suppL(), self.sParts.suppR(), self.sParts.suppI()]
+        return [self.sParts.suppA(), self.sParts.suppB(), self.sParts.suppI()]
     
     def partsNoMiss(self):
         return self.sParts.sParts[:4]
@@ -240,8 +220,8 @@ class Redescription:
         r.track = list(self.track)
         return r
 
-    def recomputeQuery(self, side, data= None):
-        return self.queries[side].recompute(side, data)
+    def recomputeQuery(self, side, data= None, restrict=None):
+        return self.queries[side].recompute(side, data, restrict)
     
     def invLiteralsSide(self, side):
         return self.queries[side].invLiterals()
@@ -254,7 +234,24 @@ class Redescription:
 
     def invCols(self):
         return [self.invColsSide(0), self.invColsSide(1)]
-
+        
+    def setRestrictedSupp(self, data):
+        self.dict_supp_info = None
+        restrict = data.nonselectedRows()
+        if len(restrict) == 0:
+            self.restrict_sub = None 
+            self.restricted_sParts = None
+            self.restricted_prs = None
+        elif self.restrict_sub != restrict:
+            (nsuppL, missL) = self.recomputeQuery(0, data, restrict)
+            (nsuppR, missR) = self.recomputeQuery(1, data, restrict)
+            if len(missL) + len(missR) > 0:
+                self.restricted_sParts = SParts(restrict, [nsuppL, nsuppR, missL, missR])
+            else:
+                self.restricted_sParts = SParts(restrict, [nsuppL, nsuppR])
+            self.restricted_prs = [self.queries[0].proba(0, data, restrict), self.queries[1].proba(1, data, restrict)]
+            self.restrict_sub = set(restrict)
+        
     def recompute(self, data):
         (nsuppL, missL) = self.recomputeQuery(0, data)
         (nsuppR, missR) = self.recomputeQuery(1, data)
@@ -266,7 +263,7 @@ class Redescription:
             self.sParts = SParts(data.nbRows(), [nsuppL, nsuppR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         self.dict_supp_info = None
-    
+
     def check(self, data):
         result = 0
         details = None
@@ -286,30 +283,6 @@ class Redescription:
     def hasMissing(self):
         return self.sParts.hasMissing()
 
-    def getQueryLU(self, details=None):
-        if details is not None and details.has_key("names"):
-            return self.queries[0].dispU(details["names"][0])
-        else:
-            return self.queries[0].dispU()
-
-    def getQueryRU(self, details=None):
-        if details is not None and details.has_key("names"):
-            return self.queries[1].dispU(details["names"][1])
-        else:
-            return self.queries[1].dispU()
-
-    def getAcc(self, details=None):
-        return round(self.acc(), 3)
-
-    def getTrack(self, details=None):
-        if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
-            return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
-        else:
-            return self.track
-
-    def getEnabled(self, details=None):
-        return 1*(self.status>0)
-
     def getStatus(self):
         return self.status
 
@@ -324,11 +297,74 @@ class Redescription:
     def setDiscarded(self):
         self.status = -2
 
-    def getPVal(self, details=None):
-        return round(self.pVal(), 3)
+##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
+    def getQueryLU(self, details=None):
+        if details is not None and details.has_key("names"):
+            return self.queries[0].dispU(details["names"][0])
+        else:
+            return self.queries[0].dispU()
 
-    def getSupp(self, details=None):
-        return len(self.suppI())
+    def getQueryRU(self, details=None):
+        if details is not None and details.has_key("names"):
+            return self.queries[1].dispU(details["names"][1])
+        else:
+            return self.queries[1].dispU()
+
+    def getTrack(self, details=None):
+        if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
+            return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
+        else:
+            return self.track
+
+    def getEnabled(self, details=None):
+        return 1*(self.status>0)
+
+    def getAcc(self, details=None):
+        return (self.restricted_sParts or self.sParts).acc()
+
+    def getPVal(self, details=None):
+        return (self.restricted_sParts or self.sParts).pVal()
+
+    def getRoundAcc(self, details=None):
+        return round(self.getAcc(details), 3)
+
+    def getRoundPVal(self, details=None):
+        return round(self.getPVal(details), 3)
+
+
+    def getLenI(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenI()
+    def getLenU(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenU()
+    def getLenL(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenL()
+    def getLenR(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenR()
+    def getLenO(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenO()
+    def getLenT(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenT()
+    def getLenA(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenA()
+    def getLenB(self, details=None):
+        return (self.restricted_sParts or self.sParts).lenB()
+    
+    def getSuppI(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppI()
+    def getSuppU(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppU()
+    def getSuppL(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppL()
+    def getSuppR(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppR()
+    def getSuppO(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppO()
+    def getSuppT(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppT()
+    def getSuppA(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppA()
+    def getSuppB(self, details=None):
+        return (self.restricted_sParts or self.sParts).suppB()
 
 
 ##### PRINTING AND PARSING METHODS

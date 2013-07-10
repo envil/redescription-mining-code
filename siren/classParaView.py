@@ -33,10 +33,58 @@ class ParaView(GView):
         self.zds = None
         self.sc = None
         self.sld = None
+        self.ri = None
         GView.__init__(self, parent, vid)
     
     def getId(self):
         return (ParaView.TID, self.vid)
+
+    def setCurrent(self, qr=None, source_list=None):
+        if qr is not None:
+            if type(qr) in [list, tuple]:
+                queries = qr
+                red = Redescription.fromQueriesPair(qr, self.parent.dw.data)
+            else:
+                red = qr
+                queries = [red.query(0), red.query(1)]
+            self.queries = queries
+            self.suppABCD = red.supports().getVectorABCD()
+            self.current_r = red
+            self.source_list=source_list
+            self.updateText(red)
+            self.updateMap()
+            self.updateHist(red)
+            return red
+
+    def updateQuery(self, sd=None, query=None):
+        if sd is None:
+            queries = [self.parseQuery(0),self.parseQuery(1)]
+        else:
+            queries = [None, None]
+            if query is None:
+                queries[sd] = self.parseQuery(sd)
+            else:
+                queries[sd] = query
+
+        changed = False
+        for side in [0,1]:
+            if queries[side] != None and queries[side] != self.queries[side]:
+                self.queries[side] = queries[side]
+                changed = True
+
+        if changed:
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            self.suppABCD = red.supports().getVectorABCD()
+            self.current_r = red
+            self.updateText(red)
+            self.updateMap()
+            self.updateOriginal(red)
+            self.updateHist(red)
+            return red
+        else: ### wrongly formatted query, revert
+            for side in [0,1]:
+                self.updateQueryText(self.queries[side], side)
+        return None
         
     def drawMap(self):
         """ Draws the map
@@ -44,24 +92,18 @@ class ParaView(GView):
         self.highl = {}
         self.hight = {}
         self.MapfigMap = plt.figure()
-
-        self.Mapcurr_mapi = 0
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
-
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
-        self.gca = plt.gca()
-
-        connections = []
-        connections.append(self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick))
-        connections.append(self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press))
-        connections.append(self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release))
-        connections.append(self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion))
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
+
+        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+        self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
+        self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
+        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
 
         self.MapcanvasMap.draw()
 
@@ -100,13 +142,27 @@ class ParaView(GView):
         return data_m, lit_str, limits, ranges, zds
 
 
-    def updateMap(self, red = None):
+    def updateRanges(self):
+            
+        ranges = []
+        for side in [0,1]:
+            for l in self.sc[side]:
+                ranges.append([self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                              + [self.parent.dw.data.col(side, l.col()).width])
+
+        pos_axis = len(self.sc[0])
+        ranges.insert(pos_axis, [None, None, 1])
+        return ranges
+
+    def updateMap(self):
         """ Redraws the map
         """
 
-        if red is not None:
-            
-            self.current_r = red
+        if self.current_r is not None:
+
+            red = self.current_r
+            draw_settings = self.getDrawSettings()
+            self.axe.cla()
 
             osupp = red.supports().getVectorABCD()
             pos_axis = len(red.queries[0])
@@ -118,21 +174,20 @@ class ParaView(GView):
             if self.zds is None or current != new:
                 self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
                 self.data_m, self.lit_str, self.limits, self.ranges, self.zds = self.prepareData(osupp)
+            else:
+                self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
+                self.ranges = self.updateRanges()
                 
             N = float(self.parent.dw.data.nbRows())
-            td = 10
+            t = 0.1
             if self.sld is not None:
                 td = self.sld.GetValue()
-            t = (5*(td/100.0)**10+1*(td/100.0)**2)/6
+                t = (5*(td/100.0)**8+1*(td/100.0)**2)/6
                 
-            ## TEST whether t is different?
-            m = self.axe
-            m.cla()
 
             ### GATHERING DATA
-            draw_settings = self.getDrawSettings()
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
-            tt = [draw_settings["draw_pord"][o] for o in self.current_r.suppPartRange()]
+            tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
             self.limits[pos_axis, :] = [min(tt), max(tt), 0]
             colorsl =  [draw_settings[i]["color_e"] for i in osupp]
 
@@ -150,16 +205,26 @@ class ParaView(GView):
             tt = [(N-i)/(2.0*N)+0.25 for i in reps]
             final = np.vstack((tt, (self.data_m[:,reps] + mask_noise.T)/mask_div.T, tt))
 
+            ### SELECTED DATA
+            selected = self.parent.dw.data.selectedRows()
+            selp = 0.1
+            if self.sld_sel is not None:
+                selp = self.sld_sel.GetValue()/100.0
+            selv = np.ones((self.parent.dw.data.nbRows(), 1))
+            if len(selected) > 0:
+                selv[np.array(list(selected))] = selp
+            
             ### PLOTTING
             ### Lines
             for i, r in enumerate(reps):
-                plt.plot(final[:,i], color=colorsl[r], picker=True, gid="%d.%d" % (r, 0))
+                if selv[i] > 0:
+                    plt.plot(final[:,i], color=colorsl[r], alpha=draw_settings["alpha"]*selv[i], picker=2, gid="%d.%d" % (r, 1))
 
             ### Labels
-            m.set_xticks(range(len(self.lit_str)+2))
+            self.axe.set_xticks(range(len(self.lit_str)+2))
             # tmp = [""]+["\n\n"*(i%2)+s for (i,s) in enumerate(self.lit_str)]+[""]
             tmp = [""]+self.lit_str+[""]
-            m.set_xticklabels(tmp) #, rotation=20)
+            self.axe.set_xticklabels(tmp) #, rotation=20)
 
             ### Bars
             rects_map = {}
@@ -179,10 +244,9 @@ class ParaView(GView):
                 self.drs.append(dr)
 
 
-            m.axis((0,len(self.lit_str)+1, 0, 1))
-            #self.updateEmphasize(ParaView.COLHIGH)
+            self.axe.axis((0,len(self.lit_str)+1, 0, 1))
+            self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
-            return self.current_r
 
 
     def on_press(self, event):
@@ -231,49 +295,60 @@ class ParaView(GView):
         self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
                               + [self.parent.dw.data.col(side, l.col()).width]
 
-        self.updateQuery(side, copied)
+        self.current_r = self.updateQuery(side, copied)
                 
-    def emphasizeLine(self, lid, colhigh='#FFFF00'):
-        if self.highl.has_key(lid):
-        #     self.clearEmphasize([lid])
-            return
-
+    def emphasizeOn(self, lids, colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
         N = float(self.parent.dw.data.nbRows())
-        m = self.axe
+        for lid in lids:
+            if self.highl.has_key(lid):
+                continue
 
-        ### ADDING NOISE AND RESCALING
-        mask_noise = - self.limits[:,0] \
-                     + np.array([abs(r[2])*(N-lid)/(2.0*N)+abs(r[2])/4.0 for r in self.ranges])
+            ### ADDING NOISE AND RESCALING
+            mask_noise = - self.limits[:,0] \
+                         + np.array([abs(r[2])*(N-lid)/(2.0*N)+abs(r[2])/4.0 for r in self.ranges])
                          
-        mask_div = self.limits[:,1]+np.array([abs(r[2]) for r in self.ranges]) - self.limits[:,0]
-        tt = (N-lid)/(2.0*N)+0.25
-        final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
+            mask_div = self.limits[:,1]+np.array([abs(r[2]) for r in self.ranges]) - self.limits[:,0]
+            tt = (N-lid)/(2.0*N)+0.25
+            final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
 
-        self.highl[lid] = []
-        self.highl[lid].extend(plt.plot(final, color=colhigh, linewidth=1))
+            self.highl[lid] = []
+            self.highl[lid].extend(plt.plot(final, color=colhigh, linewidth=1))
 
-        self.hight[lid] = []
-        self.hight[lid].append(m.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
-                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[self.suppABCD[lid]]["color_e"],
-                          size=10, va="center", backgroundcolor="#FFFFFF",
-                          bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
-                          arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
-                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                            ))
-        self.MapcanvasMap.draw()
+            if len(lids) == 1:
+                pi = self.suppABCD[lid]
+                self.hight[lid] = []
+                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
+                                                  xytext=(10, 0), textcoords='offset points', color= draw_settings[pi]["color_e"],
+                                                  size=10, va="center", backgroundcolor="#FFFFFF",
+                                                  bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
+                                                  arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                  patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                                  ))
+
 
     def additionalElements(self):
         add_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL
+        flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
 
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
+        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpand})
-        self.sld = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
-        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
-        add_box.Add(self.sld, 0, border=3, flag=flags | wx.EXPAND)
+        self.sld = wx.Slider(self.mapFrame, -1, 30, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        self.sld_sel = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags)
+
+        v_box = wx.BoxSizer(wx.VERTICAL)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"disabled")
+        v_box.Add(label, 0, border=3, flag=flags)
+        v_box.Add(self.sld_sel, 0, border=3, flag=flags)
+        add_box.Add(v_box, 0, border=3, flag=flags)
+        v_box = wx.BoxSizer(wx.VERTICAL)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "sample")
+        v_box.Add(label, 0, border=3, flag=flags)
+        v_box.Add(self.sld, 0, border=3, flag=flags)
+        add_box.Add(v_box, 0, border=3, flag=flags)
         return [add_box]
 
     def additionalBinds(self):
@@ -282,11 +357,10 @@ class ParaView(GView):
         ##self.sld.Bind(wx.EVT_SLIDER, self.OnSlide)
         ##self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         self.sld.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
 
     def OnSlide(self, event):
-        if self.current_r is not None:
-            ##print "SLIDER", self.sld.GetValue()
-            self.updateMap(self.current_r)
+        self.updateMap()
 
 
 def pickVars(mat, details, side_cols=None, only_enabled=False):

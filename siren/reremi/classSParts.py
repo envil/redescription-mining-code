@@ -490,9 +490,13 @@ class SParts:
                 self.N = sdict.pop('N')
             if not self.missing:
                 del self.sParts[4:]
-                           
         else:
-            self.N = N 
+            if type(N) is set:
+                self.N = len(N)
+                bk = N
+            else:
+                self.N = N
+                bk = None
             self.prs = prs
             self.vect = None
             ### if include all empty missing parts, remove 
@@ -534,15 +538,22 @@ class SParts:
             else:
                 self.missing = False
                 self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
+                bk = None
+            if bk is not None:
+                if len(self.sParts) == 3:
+                    self.sParts.append(set(bk))
+                else:
+                    self.sParts[SParts.delta] = set(bk)
+                for si, sp in enumerate(self.sParts):
+                    if si != SParts.delta:
+                        self.sParts[SParts.delta] -= sp
 
     def nbRows(self):
         return self.N
 
     def toDict(self):
         sdict = {}
-        if self.missing: up_to = SParts.top
-        else: up_to = SParts.delta
-        for i in range(up_to+1):
+        for i in range(len(self.sParts)):
                  sdict[SParts.labels[i]] = self.part(i)
                  sdict["card_" + SParts.labels[i]] = self.lpart(i)
         for side in [0, 1]:
@@ -575,48 +586,46 @@ class SParts:
             return SParts(self.N, n[0:-1])
 
     def part(self, part_id, side=0):
-        if self.missing or part_id < SParts.delta:
-            return self.sParts[SParts.partId(part_id, side)]
-        elif part_id > SParts.delta:
-            return set()
+        pid = SParts.partId(part_id, side)
+        if pid < len(self.sParts):
+            return self.sParts[pid]
         elif part_id == SParts.delta:
             return set(range(self.N)) - self.sParts[0] - self.sParts[1] - self.sParts[2]
+        else:
+            return set()
         
     def lpart(self, part_id, side=0):
-        if self.missing  or part_id < SParts.delta:
-            return len(self.sParts[SParts.partId(part_id, side)])
-        elif part_id > SParts.delta:
-            return 0
+        pid = SParts.partId(part_id, side)
+        if pid < len(self.sParts):
+            return len(self.sParts[pid])
         elif part_id == SParts.delta:
             return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
+        else:
+            return 0
 
     def parts(self, side=0):
         return [self.part(i, side) for i in range(SParts.top+1)]
-    
-    def opids(self, side=0):
-        if self.hasMissing():
-            return (SParts.gamma, SParts.alpha, SParts.beta, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB, SParts.mud, SParts.delta)
-        else:
-            return (SParts.gamma, SParts.alpha, SParts.beta, SParts.delta)
             
     def lparts(self, side=0):
         return [self.lpart(i, side) for i in range(SParts.top+1)]
     
     def partInterX(self, suppX, part_id, side=0):
-        if self.missing or part_id < SParts.delta:
-            return set(suppX & self.sParts[SParts.partId(part_id, side)])
-        elif part_id > SParts.delta:
-            return set()
+        pid = SParts.partId(part_id, side)
+        if pid < len(self.sParts):
+            return set(suppX & self.sParts[pid])
         elif part_id == SParts.delta:
             return set(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
+        else:
+            return set()
         
     def lpartInterX(self, suppX, part_id, side=0):
-        if self.missing  or part_id < SParts.delta:
-            return len(suppX & self.sParts[SParts.partId(part_id, side)])
-        elif part_id > SParts.delta:
-            return 0
+        pid = SParts.partId(part_id, side)
+        if pid < len(self.sParts):
+            return len(suppX & self.sParts[pid])
         elif part_id == SParts.delta:
             return len(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
+        else:
+            return 0
 
     def partsInterX(self, suppX, side=0):
         return [self.partInterX(suppX, i, side) for i in range(SParts.top+1)]
@@ -668,26 +677,65 @@ class SParts:
         else:
             return self.lparts_union(SParts.miss_ids, side)
 
-    # return support of symmetrical difference (suppA + suppB - (suppA inter suppB))
-    def suppD(self, side=0):
-        return self.part_union(SParts.IDS_diff, side)
-    # return support of intersection (suppA inter suppB)
-    def suppI(self, side=0):
-        return self.part_union(SParts.IDS_inter, side)
-    # return support of union (suppA union suppB)
-    def suppU(self, side=0):
-        return self.suppI(side) | self.suppD(side)
-    def suppO(self, side=0):
-        return self.part_union(SParts.IDS_uncovered, side)
-    def suppL(self, side=0):
-        return self.part_union(SParts.IDS_dL, side)
-    def suppR(self, side=0):
-        return self.part_union(SParts.IDS_dR, side)
+    ### SUPPORTS
     def suppSide(self, side):
         if side == 0:
             return self.part_union(SParts.IDS_dL+SParts.IDS_inter, 0)
         else:
             return self.part_union(SParts.IDS_dR+SParts.IDS_inter, 0)
+    def suppD(self, side=0):
+        return self.part_union(SParts.IDS_diff, side)
+    
+    def suppI(self, side=0):
+        return self.part_union(SParts.IDS_inter, side)
+    def suppU(self, side=0):
+        return self.part_union(SParts.IDS_inter+SParts.IDS_diff, side)
+    def suppL(self, side=0):
+        return self.suppSide(0)
+    def suppR(self, side=0):
+        return self.suppSide(1)
+    def suppO(self, side=0):
+        return self.part_union(SParts.IDS_uncovered, side)
+    def suppT(self, side=0):
+        if len(self.sParts) == 4:
+            return self.part_union(range(4), side)
+        else:
+            return set(range(self.N))
+    def suppA(self, side=0):
+        return self.part_union(SParts.IDS_dL, side)
+    def suppB(self, side=0):
+        return self.part_union(SParts.IDS_dR, side)
+
+    ### LENGHTS
+    def lenSide(self, side):
+        if side == 0:
+            return self.lparts_union(SParts.IDS_dL+SParts.IDS_inter, 0)
+        else:
+            return self.lparts_union(SParts.IDS_dR+SParts.IDS_inter, 0)
+    def lenD(self, side=0):
+        return self.lparts_union(SParts.IDS_diff, side)
+    
+    def lenI(self, side=0):
+        return self.lparts_union(SParts.IDS_inter, side)
+    def lenU(self, side=0):
+        return self.lparts_union(SParts.IDS_inter+SParts.IDS_diff, side)
+        return self.suppI(side) | self.suppD(side)
+    def lenL(self, side=0):
+        return self.lenSide(0)
+    def lenR(self, side=0):
+        return self.lenSide(1)
+    def lenO(self, side=0):
+        return self.lparts_union(SParts.IDS_uncovered, side)
+    def lenT(self, side=0):
+        if len(self.sParts) == 4:
+            return self.lparts_union(range(4), side)
+        else:
+            return self.N
+    def lenA(self, side=0):
+        return self.lparts_union(SParts.IDS_dL, side)
+    def lenB(self, side=0):
+        return self.lparts_union(SParts.IDS_dR, side)
+
 
     ## corresponding lengths
     def lenD(self, side=0):
@@ -756,12 +804,16 @@ class SParts:
     # update supports and probabilities resulting from appending X to given side with given operator
     def update(self, side, OR, suppX, missX):
         self.vect = None
+        union = None
         self.prs[side] = SParts.updateProba(self.prs[side], len(suppX)/float(self.N), OR)
             
         if not self.missing and (type(missX) == set and len(missX) > 0):
             self.missing = True
-            self.sParts.extend( [ set(range(self.N)) - self.sParts[0] - self.sParts[1] -self.sParts[2],
-                       set(), set(), set(), set(), set() ])
+            if len(self.sParts) == 3:
+                self.sParts.append(set(range(self.N)) - self.sParts[0] - self.sParts[1] -self.sParts[2])
+            else:
+                union = set(self.sParts[0] | self.sParts[1] | self.sParts[2] | self.sParts[3])
+            self.sParts.extend( [set(), set(), set(), set(), set() ])
             
         if self.missing and SParts.top > SParts.delta:
             if OR : ## OR
@@ -808,17 +860,28 @@ class SParts:
                                                                        - suppX )
                 self.sParts[SParts.partId(SParts.gamma,side)] &= suppX
                 self.sParts[SParts.partId(SParts.alpha,side)] &= suppX
-
+        if union is not None:
+            self.sParts[SParts.delta] = union - self.sParts[SParts.gamma] - self.sParts[SParts.beta] - self.sParts[SParts.alpha]
+        
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
     def makeVectorABCD(self):
-        if self.vect is None: 
-            self.vect = [SParts.delta for i in range(self.N)]
-            for partId in range(len(self.sParts)):
-                for i in self.sParts[partId]:
-                    self.vect[i] = partId
-
+        if self.vect is None:
+            if len(self.sParts) == 4:
+                svect = {}
+                for partId in range(len(self.sParts)):
+                    for i in self.sParts[partId]:
+                        self.vect[i] = partId
+            else:
+                self.vect = [SParts.delta for i in range(self.N)]
+                for partId in range(len(self.sParts)):
+                    for i in self.sParts[partId]:
+                        self.vect[i] = partId
+                        
+                        
     def getVectorABCD(self):
         self.makeVectorABCD()
+        if type(self.vect) is dict:
+            return None
         return list(self.vect)
 
     # returns the index of the part the given row belongs to, vectorABCD need to have been computed 

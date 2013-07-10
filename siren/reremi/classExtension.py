@@ -170,7 +170,7 @@ class Extension:
 class ExtensionsBatch:
     def __init__(self, N=0, coeffs=None, current=None):
         self.current = current
-        self.base_acc = self.current.acc()
+        self.base_acc = self.current.getAcc()
         self.N = N
         self.prs = self.current.probas()
         self.coeffs = coeffs
@@ -219,8 +219,8 @@ class ExtensionsBatch:
             if self.scoreCand(cand) >= min_impr:
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
-                if kid.acc() != cand.getAcc():
-                    raise ExtensionError('%s\n\t%s\n\t~> %s' % (self.current, cand, kid))
+                if kid.getAcc() != cand.getAcc():
+                    raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
             
                 kids.append(kid)
         return kids
@@ -234,8 +234,8 @@ class ExtensionsBatch:
             if self.tmpsco[pos] >= min_impr:
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
-                if kid.acc() != cand.getAcc():
-                    raise ExtensionError('%s\n\t%s\n\t~> %s' % (self.current, cand, kid))
+                if kid.getAcc() != cand.getAcc():
+                    raise ExtensionError("[in Extension.improvingKidsDL]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
             
                 kids.append(kid)
         return kids

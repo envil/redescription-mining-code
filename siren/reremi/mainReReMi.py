@@ -50,10 +50,10 @@ def do_filter(params):
     data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']], "multiple")
     logger.printL(2, data, "log")
 
+    restrict = set(range(500))
     ta = loadRedescriptions(fn_queries, data)
     for ti, t in enumerate(ta):
         print t.disp()
-
     return ta
         
 def getParams(arguments=[]):

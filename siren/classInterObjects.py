@@ -150,9 +150,8 @@ class MaskCreator(object):
     """
     pcolor = "#FFD700" 
     
-    def __init__(self, ax, poly_xy=None, callback=None, max_ds=10, buttons_t=[1]):
+    def __init__(self, ax, poly_xy=None, max_ds=10, buttons_t=[1]):
         self.buttons_t = buttons_t
-        self.callback = callback
         self.max_ds = max_ds
         ax.set_clip_on(False)
         self.ax = ax
@@ -172,6 +171,12 @@ class MaskCreator(object):
         canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas = canvas
 
+    def clear(self, review=True):
+        self.verts  = None
+        self.poly = None
+        self._ind = None
+        self.canvas.draw()
+
     def createPoly(self, poly_xy=None):
         self.poly = Polygon(poly_xy, animated=True,
                             fc=self.pcolor, ec=self.pcolor, alpha=0.3)
@@ -184,10 +189,9 @@ class MaskCreator(object):
 
         self.poly.add_callback(self.poly_changed)
 
-    def get_mask(self, event):
-        """Return image mask given by mask creator"""
-        if self.callback is not None:
-            self.callback(self.verts, event)
+    def get_path(self):
+        if self.poly is not None:
+            return self.poly.get_path()
 
     def poly_changed(self, poly):
         'this method is called whenever the polygon object is called'
@@ -264,9 +268,6 @@ class MaskCreator(object):
     def key_press_callback(self, event):
         'whenever a key is pressed'
         if not event.inaxes:
-            return
-        elif event.key=='s':
-            self.get_mask(event)
             return
         elif event.key=='d':
             self.do_delete(event)

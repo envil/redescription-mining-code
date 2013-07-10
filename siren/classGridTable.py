@@ -246,24 +246,37 @@ class GridTable(wx.grid.PyGridTableBase):
     def getEnabled(self, row):
         return self.getItemAtRow(row).getEnabled()
 
+    def notify_change(self):
+        if type(self.data) == ICList:
+            self.data.isChanged = True
+
     def flipEnabled(self, row):
         self.data[self.sortids[row]].flipEnabled()
-        if type(self.data) == ICList:
-            self.data.isChanged = True
+        self.notify_change()
         self.ResetView()
 
-    def setAllDisabled(self):
-        for item in self.data:
-            item.setDisabled()
-        if type(self.data) == ICList:
-            self.data.isChanged = True
+    def flipAllEnabled(self, dids=None):
+        if dids is None:
+            dids = range(len(self.data))
+        for did in dids:
+            self.data[did].flipEnabled()
+        self.notify_change()
         self.ResetView()
 
-    def setAllEnabled(self):
-        for item in self.data:
-            item.setEnabled()
-        if type(self.data) == ICList:
-            self.data.isChanged = True
+    def setAllDisabled(self, dids=None):
+        if dids is None:
+            dids = range(len(self.data))
+        for did in dids:
+            self.data[did].setDisabled()
+        self.notify_change()
+        self.ResetView()
+
+    def setAllEnabled(self, dids=None):
+        if dids is None:
+            dids = range(len(self.data))
+        for did in dids:
+            self.data[did].setEnabled()
+        self.notify_change()
         self.ResetView()
 
     def OnMouse(self,event):
@@ -377,15 +390,35 @@ class RedTable(GridTable):
     fields_def = [('', 'self.data[x].getEnabled'),
                  ('query LHS', 'self.data[x].getQueryLU'),
                  ('query RHS', 'self.data[x].getQueryRU'),
-                 ('accuracy', 'self.data[x].getAcc'),
-                 ('p-value', 'self.data[x].getPVal'),
-                 ('|E_{1,1}|', 'self.data[x].getSupp'),
+                 ('accuracy', 'self.data[x].getRoundAcc'),
+                 ('p-value', 'self.data[x].getRoundPVal'),
+                 ('|E_{1,1}|', 'self.data[x].getLenI'),
                   ('track', 'self.data[x].getTrack')]
 
     def __init__(self, parent, tabId, frame):
         GridTable.__init__(self, parent, tabId, frame)
         self.opened_edits = {}
-        self.highlights = {}
+        self.emphasized = {}
+        self.uptodate = True
+
+    def ResetView(self):
+        self.refreshRestrict()
+        GridTable.ResetView(self)
+
+    def refreshRestrict(self):
+        if self.uptodate:
+            return
+        for red in self.data:
+            red.setRestrictedSupp(self.parent.dw.data)
+        self.uptodate = True
+
+    def recomputeAll(self, restrict):
+        self.uptodate = False
+        self.refreshRestrict()
+        for k,v in self.opened_edits.items():
+            mc = self.parent.accessViewX(k)
+            if mc is not None:
+                mc.refresh()
 
     def insertItems(self, items):
         for item in items:
@@ -418,18 +451,19 @@ class RedTable(GridTable):
                     self.opened_edits[edit_key] = None
                 elif self.opened_edits[edit_key] > pos:
                     self.opened_edits[edit_key] -= 1
-            ks = sorted(self.highlights.keys())
+            ks = sorted(self.emphasized.keys())
             for k in ks:
                 if k == pos:
-                    del self.highlights[k]
+                    del self.emphasized[k]
                 elif k > pos:
-                    self.highlights[k-1] = self.highlights[k]
-                    del self.highlights[k]
+                    self.emphasized[k-1] = self.emphasized[k]
+                    del self.emphasized[k]
             if upView:
                 self.ResetView()
 
-    def viewData(self, viewT):
-        pos = self.getSelectedPos()
+    def viewData(self, viewT, pos=None):
+        if pos is None:
+            pos = self.getSelectedPos()
         vid = None
         for (k,v) in self.opened_edits.items():
             if v == pos and viewT == k[0]:
@@ -449,8 +483,8 @@ class RedTable(GridTable):
             pos = self.opened_edits[key]
             del self.opened_edits[key]
             if pos not in self.opened_edits.values():
-                if self.highlights.has_key(pos):
-                    del self.highlights[pos]
+                if self.emphasized.has_key(pos):
+                    del self.emphasized[pos]
             
     def updateEdit(self, edit_key, red):
         if edit_key in self.opened_edits.keys() \
@@ -460,48 +494,58 @@ class RedTable(GridTable):
                 self.data[toed] = red
 
                 for k,v in self.opened_edits.items():
-                    if v == toed:
+                    if v == toed and k != edit_key:
                         mc = self.parent.accessViewX(k)
-                        if k != edit_key and mc is not None:
+                        if mc is not None:
                             mc.setCurrent(red, self.tabId)
 
             else:
+                old_toed = self.opened_edits[edit_key]
                 self.opened_edits[edit_key] = len(self.data)
-                self.parent.tabs["hist"]["tab"].insertItem(red, -1)
+                if self.emphasized.has_key(old_toed):
+                    self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
+                    del self.emphasized[old_toed]
+                self.insertItem(red, -1)
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
-    def getHighlights(self, edit_key):
+    def addAndViewTop(self, queries, viewT):
+        mapV = self.parent.getViewX(None, viewT)
+        red = mapV.setCurrent(queries)
+        self.registerView(mapV.getId(), len(self.data)-1)
+        mapV.setSource(self.tabId)
+
+    def doFlipEmphasizedR(self, edit_key):
+        if edit_key in self.opened_edits.keys() and self.emphasized.has_key(self.opened_edits[edit_key]):
+            self.parent.flipRowsEnabled(self.emphasized[self.opened_edits[edit_key]])
+            self.setEmphasizedR(edit_key, self.emphasized[self.opened_edits[edit_key]])
+
+    def getEmphasizedR(self, edit_key):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data) \
-               and self.highlights.has_key(self.opened_edits[edit_key]):
-            return self.highlights[self.opened_edits[edit_key]]
+               and self.emphasized.has_key(self.opened_edits[edit_key]):
+            return self.emphasized[self.opened_edits[edit_key]]
         return set()
 
-    def sendHighlight(self, edit_key, lid):
+    def setEmphasizedR(self, edit_key, lids, show_info=False):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
 
             toed = self.opened_edits[edit_key]
-            if not self.highlights.has_key(toed):
-                self.highlights[toed] = set()
-            if lid in self.highlights[toed]:
-                self.highlights[toed].remove(lid)
-                turn_on = False
-            else:
-                self.highlights[toed].add(lid)
-                turn_on = True
+            if not self.emphasized.has_key(toed):
+                self.emphasized[toed] = set()
+            turn_off = set(lids) & self.emphasized[toed]
+            turn_on =  set(lids) - self.emphasized[toed]
+            self.emphasized[toed].symmetric_difference_update(lids)
 
-            mc = None
             for k,v in self.opened_edits.items():
                 if v == toed:
                     mm = self.parent.accessViewX(k)
-                    if turn_on:
-                        mm.emphasizeLine(lid)
-                    else:
-                        mm.clearEmphasize([lid])
-            if turn_on:
-                self.parent.showDetailsBox(lid, self.data[toed])
+                    mm.emphasizeOnOff(turn_on=turn_on, turn_off=turn_off)
+            
+            if len(turn_on) == 1 and show_info:
+                for lid in turn_on:
+                    self.parent.showDetailsBox(lid, self.data[toed])
 
     def deleteDisabled(self):
         i = 0
@@ -593,13 +637,14 @@ class VarTable(GridTable):
                   2:[('categories', 'self.data[x].getCategories')],
                   3:[('min', 'self.data[x].getMin'), ('max', 'self.data[x].getMax')]}
 
-    def viewData(self, viewT):
-        mapV = self.parent.getViewX(None, viewT)
-        if mapV is not None:
+    def viewData(self, viewT, pos=None):
+        if pos is None:
             datVar = self.getSelectedItem()
-            queries = [Query(), Query()]
-            queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
-            mapV.setCurrent(queries)
+        else:
+            dataVar = self.getItemAtRow(pos)
+        queries = [Query(), Query()]
+        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+        self.parent.newRedVHist(queries, viewT)
  
     def updateEdit(self, edit_key, red):
         pass
@@ -616,8 +661,8 @@ class RowTable(GridTable):
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
 
-    def viewData(self, viewT):
-        mapV = self.parent.getViewX(None, viewT)
+    def viewData(self, viewT, pos=None):
+        pass
  
     def updateEdit(self, edit_key, red):
         pass
@@ -670,18 +715,22 @@ class RowTable(GridTable):
 
     ### GRID METHOD
     def GetColLabelValue(self, col):
+        """Return the column label"""
         if col not in self.sc:
-            return ""
-        """Return the number of rows in the grid"""
+            name = ""
+        else:
+            name = " %s " % self.fields[col][0]
         direct = '  '
         if col == self.sortP[0]:
             if self.sortP[1]:
                 direct = u"\u2191"
             else:
                 direct = u"\u2193" 
-        return "  %s %s" % (self.fields[col][0], direct)
+        return name + direct
 
-
+    def notify_change(self):
+        self.parent.recomputeAll()
+        
     def resetData(self, data, srids=None):
         self.data = data
         
@@ -703,12 +752,16 @@ class RowTable(GridTable):
 
     def redraw(self, details={}, review=True):
         self.ResetView()
+        self.GetView().SetColMinimalAcceptableWidth(5)
+        #self.GetView().SetRowMinimalAcceptableHeight(5)
         self.GetView().SetDefaultColSize(1, True)
-        self.GetView().SetColSize(0, 25)
-        self.GetView().SetColSize(1, 25)
+        #self.GetView().SetDefaultRowSize(1, True)
+        self.GetView().SetColSize(0, 30)
+        self.GetView().SetColSize(1, 30)
         for cid in self.sc:
             self.GetView().SetColSize(cid, 10*len(self.fields[cid][0]))
-#            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
+#         self.GetView().SetRowSize(self.getSelectedRow(), 10)
+# #            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
 
     def setFocus(self, event):
         cid = event.GetCol()

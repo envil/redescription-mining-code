@@ -64,6 +64,7 @@ def linkageZds(mat, details, side_cols=None, osupp=None, step=500):
     spids = set()
     if osupp is not None:
         spids = set(np.unique(osupp, return_index=True)[1])
+        vsupp = np.array(osupp)
     pivots = list(spids.union(range(0,mat.shape[1], step)))     
     d = getDistances(mat, details, side_cols, parts=osupp, pivots=pivots)
     aff = np.argmin(d, 1)
@@ -76,17 +77,20 @@ def linkageZds(mat, details, side_cols=None, osupp=None, step=500):
             used.append(aff[i])
         counts[aff[i]]["count"]+=1
         aff[i] = counts[aff[i]]["to"]
-
-    ids_cls = [[i for i in range(aff.shape[0]) if aff[i]== cl] for cl in np.unique(aff)]
+    
+    ids_cls = [np.where(aff == cl)[0] for cl in np.unique(aff)]
 
     zds = []
     for ids in ids_cls:
-        d = getDistances(mat[:,ids], details, side_cols, parts=[osupp[i] for i in ids])
+        if len(ids) == 1:
+            d = np.array([0])
+        else:
+            d = getDistances(mat[:,ids], details, side_cols, parts=vsupp[ids])
         if sum(d**2) == 0:
-            zds.append({"Z":None, "d":None, "ids": ids})
+            zds.append({"Z":None, "d":None, "ids": ids.tolist()})
         else:
             Z = scipy.cluster.hierarchy.linkage(d)
-            zds.append({"Z":Z, "d":d, "ids": ids})
+            zds.append({"Z":Z, "d":d, "ids": ids.tolist()})
     return zds
 
 

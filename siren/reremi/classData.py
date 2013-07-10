@@ -1002,6 +1002,9 @@ class Data:
     def selectedRows(self):
         return self.selected_rows
 
+    def nonselectedRows(self):
+        return set(range(self.nbRows())) - self.selected_rows
+
     def addSelectedRow(self, rid):
         self.selected_rows.add(rid)
 

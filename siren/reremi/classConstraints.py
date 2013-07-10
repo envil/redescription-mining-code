@@ -139,18 +139,18 @@ class Constraints:
         return red.nbAvailableCols() == 0
 
     def sort_nextge(self, red):
-        return red.acc()
+        return red.getAcc()
 
     def sort_partial(self, red):
-        return (red.acc(), -(red.length(0) + red.length(1)), -abs(red.length(0) - red.length(1)))  
+        return (red.getAcc(), -(red.length(0) + red.length(1)), -abs(red.length(0) - red.length(1)))  
 
                  
     def filter_partial(self,red):
         if red.length(0) + red.length(1) >= self.min_fin_var() \
-                   and red.lenO() >= self.min_fin_out()\
-                   and red.lenI() >= self.min_fin_in() \
-                   and red.acc()  >= self.min_fin_acc() \
-                   and red.pVal() <= self.max_fin_pval():
+                   and red.getLenO() >= self.min_fin_out()\
+                   and red.getLenI() >= self.min_fin_in() \
+                   and red.getAcc()  >= self.min_fin_acc() \
+                   and red.getPVal() <= self.max_fin_pval():
             # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
             return False
         else:

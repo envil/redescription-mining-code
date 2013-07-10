@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
-from matplotlib import nxutils
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
@@ -95,7 +94,23 @@ class ProjView(GView):
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
         self.repbut = self.buttons[-1]["element"]
 
+        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        v_box = wx.BoxSizer(wx.VERTICAL)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"disabled")
+        v_box.Add(label, 0, border=3, flag=flags)
+        v_box.Add(self.sld_sel, 0, border=3, flag=flags)
+        add_box.Add(v_box, 0, border=3, flag=flags)
+
         return [setts_box, add_box]
+
+    def additionalBinds(self):
+        for button in self.buttons:
+            button["element"].Bind(wx.EVT_BUTTON, button["function"])
+        self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+
+    def OnSlide(self, event):
+        self.updateMap()
+
 
     def OnReproject(self, rid=None):
         if self.worker is not None:
@@ -131,80 +146,67 @@ class ProjView(GView):
         """
         
         self.MapfigMap = plt.figure()
-        self.Mapcurr_mapi = 0
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
-
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
-        self.gca = plt.gca()
-        self.mc = MaskCreator(self.axe, None, self.receive_mask)
+
+        self.mc = MaskCreator(self.axe, None)
+
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
+
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+        self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+
         self.MapcanvasMap.draw()
             
-    def updateMap(self, red = None):
+    def updateMap(self):
         """ Redraws the map
         """
 
-        if ( red is not None or self.suppABCD is not None) and self.proj is not None and self.proj.getCoords() is not None:
+        if self.suppABCD is not None and self.getCoords() is not None:
             self.highl = {}
             self.hight = {}
             
-            m = self.axe
-            m.cla()
+            self.axe.cla()
             draw_settings = self.getDrawSettings()
-            for pi in draw_settings["draw_pord"]:
-                if red is not None:
-                    part = red.sParts.part(pi)
-                else:
-                    part = [i for i,e in enumerate(self.suppABCD) if e == pi]
-                if len(part) > 0 and draw_settings.has_key(pi):
-                    for idp in part:
-                        m.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 0),
-                               mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                               marker=draw_settings[pi]["shape"], markersize=draw_settings[pi]["size"],
-                               linestyle='None', alpha=draw_settings[pi]["alpha"], picker=3)
+
+            ### SELECTED DATA
+            selected = self.parent.dw.data.selectedRows()
+            selp = 0.5
+            if self.sld_sel is not None:
+                selp = self.sld_sel.GetValue()/100.0
+            selv = np.ones((self.parent.dw.data.nbRows(), 1))
+            if len(selected) > 0:
+                selv[np.array(list(selected))] = selp
+
+            # for pi in draw_settings["draw_pord"]:
+            #     part = [i for i,e in enumerate(self.suppABCD) if e == pi]
+            #     if len(part) > 0 and draw_settings.has_key(pi):
+            #         for idp in part:
+
+            for idp, pi in enumerate(self.suppABCD):
+                if draw_settings.has_key(pi) and selv[idp] > 0:
+
+                    self.axe.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 1),
+                           mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
+                           marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
+                           linestyle='None', alpha=draw_settings["alpha"]*selv[idp], picker=3)
 
             if self.proj.getTitle() is not None:
-                m.set_title(self.proj.getTitle(),fontsize=12)
+                self.axe.set_title(self.proj.getTitle(),fontsize=12)
             if self.proj.getAxisLabel(0) is not None:
-                m.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
+                self.axe.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
             if self.proj.getAxisLabel(1) is not None:
-                m.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
-            m.axis(self.proj.getAxisLims())
-            self.updateEmphasize(ProjView.COLHIGH)
+                self.axe.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
+            self.axe.axis(self.proj.getAxisLims())
+            self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
 
-        return red
 
-    def emphasizeLine(self, lid, colhigh='#FFFF00'):
-        if self.highl.has_key(lid):
-        #     self.clearEmphasize([lid])
-            return
-
-        draw_settings = self.getDrawSettings()
-        m = self.axe
-        self.highl[lid] = []
-        self.highl[lid].extend(m.plot(self.proj.getCoords(0,lid), self.proj.getCoords(1,lid),
-                                      mfc=colhigh,marker=".", markersize=10,
-                                      linestyle='None'))
-
-        self.hight[lid] = []
-        self.hight[lid].append(m.annotate('%d' % lid, xy=(self.proj.getCoords(0,lid), self.proj.getCoords(1,lid)),  xycoords='data',
-                          xytext=(-10, 15), textcoords='offset points', color= draw_settings[self.suppABCD[lid]]["color_e"],
-                          size=10, va="center", backgroundcolor="#FFFFFF",
-                          bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec="gray"),
-                          arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec="gray",
-                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                            ))
-        self.MapcanvasMap.draw()
-
-    def receive_mask(self, vertices, event=None):
-        if vertices is not None and vertices.shape[0] > 3 and self.proj is not None:
-            points = np.transpose((self.proj.getCoords(0), self.proj.getCoords(1)))
-            mask = np.where(nxutils.points_inside_poly(points, vertices))[0]
-            print mask
-            # return mask.reshape(h, w)
+    def getCoords(self, axi=None, ids=None):
+        if self.proj is None:
+            return None
+        else:
+            return self.proj.getCoords(axi, ids)

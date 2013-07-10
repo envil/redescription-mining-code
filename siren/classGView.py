@@ -11,6 +11,7 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
+from matplotlib.path import Path
 
 from reremi.classQuery import Query
 from reremi.classSParts import SParts
@@ -32,13 +33,12 @@ class GView(object):
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
         
-    WATER_COLOR = "#FFFFFF"
-    GROUND_COLOR = "#FFFFFF"
-    LINES_COLOR = "gray"
     COLHIGH='#FFFF00'
 
     DOT_SHAPE = 's'
     DOT_SIZE = 3
+
+    map_select_supp = {"l": [SParts.alpha], "r": [SParts.beta], "i": [SParts.gamma], "o": [SParts.delta]}
 
     TID = "G"
     title_str = "View"
@@ -53,7 +53,10 @@ class GView(object):
     def __init__(self, parent, vid, more=None):
         self.parent = parent
         self.source_list = None
+        self.mc = None
+        self.sld_sel = None
         self.vid = vid
+        self.circle = None
         self.buttons = []
         self.highl = {}
         self.hight = {}
@@ -67,7 +70,7 @@ class GView(object):
         self.suppABCD = None
         
     def getId(self):
-        return (GView.TID, self.vid)
+        return (self.TID, self.vid)
 
     def getVId(self):
         return self.vid
@@ -172,6 +175,7 @@ class GView(object):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
     def binds(self):
+        # self.mapFrame.Bind(wx.EVT_KEY_UP, self.mkey_press_callback)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
 #        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
         self.panel.Bind(wx.EVT_SET_FOCUS, self.OnFocus)                
@@ -197,6 +201,13 @@ class GView(object):
             side = self.QIds.index(event.GetId())
             self.updateQuery(side)
 
+    def refresh(self):
+        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+        red.setRestrictedSupp(self.parent.dw.data)
+        self.suppABCD = red.supports().getVectorABCD()
+        self.updateText(red)
+        self.updateMap()
+
     def updateQuery(self, sd=None, query=None):
         if sd is None:
             queries = [self.parseQuery(0),self.parseQuery(1)]
@@ -215,15 +226,20 @@ class GView(object):
 
         if changed:
             red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            red.setRestrictedSupp(self.parent.dw.data)
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
-            self.updateMap(red)
+            self.updateMap()
             self.updateOriginal(red)
             self.updateHist(red)
+            return red
         else: ### wrongly formatted query, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-        return self.queries[side]
+        return None
+
+    def setSource(self, source_list=None):
+        self.source_list=source_list
 
     def setCurrent(self, qr=None, source_list=None):
         if qr is not None:
@@ -234,11 +250,13 @@ class GView(object):
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
+            red.setRestrictedSupp(self.parent.dw.data)
             self.suppABCD = red.supports().getVectorABCD()
-            self.source_list=source_list
+            self.setSource(source_list)
             self.updateText(red)
-            self.updateMap(red)
+            self.updateMap()
             self.updateHist(red)
+            return red
 
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
@@ -255,11 +273,11 @@ class GView(object):
         """
         pass
             
-    def updateMap(self, red = None):
+    def updateMap(self):
         """ Redraws the map
         """
         pass
-        return red
+
 
     def updateHist(self, red = None):
         if red is not None:
@@ -281,7 +299,7 @@ class GView(object):
                 self.updateQueryText(red.queries[side], side)
             self.setMapredInfo(red)
 
-    def setMapredInfo(self, red = None):
+    def setMapredInfo(self, red = None, details=None):
         if red is None:
             self.MapredMapInfoJL.SetLabel("")
             self.MapredMapInfoJV.SetLabel("")
@@ -302,63 +320,115 @@ class GView(object):
 
         else:
             self.MapredMapInfoJL.SetLabel(self.label_jacc)
-            self.MapredMapInfoJV.SetLabel("%1.5f" % red.acc())
+            self.MapredMapInfoJV.SetLabel("%1.5f" % red.getRoundAcc())
             self.MapredMapInfoVL.SetLabel(self.label_pval)
-            self.MapredMapInfoVV.SetLabel("%1.5f" % red.pVal())
+            self.MapredMapInfoVV.SetLabel("%1.5f" % red.getRoundPVal())
             self.MapredMapInfoIL.SetLabel(self.label_cardI)
-            self.MapredMapInfoIV.SetLabel("%i" % (red.sParts.lpart(2,0)))
+            self.MapredMapInfoIV.SetLabel("%i" % red.getLenI())
             self.MapredMapInfoUL.SetLabel(self.label_cardU)
-            self.MapredMapInfoUV.SetLabel("%i" % (red.sParts.lpart(0,0)+red.sParts.lpart(1,0)+red.sParts.lpart(2,0)))
+            self.MapredMapInfoUV.SetLabel("%i" % red.getLenU())
             self.MapredMapInfoBL.SetLabel(self.label_cardAlpha)
-            self.MapredMapInfoBV.SetLabel("%i" % (red.sParts.lpart(0,0)))
+            self.MapredMapInfoBV.SetLabel("%i" % red.getLenA())
             self.MapredMapInfoRL.SetLabel(self.label_cardBeta)
-            self.MapredMapInfoRV.SetLabel("%i" % (red.sParts.lpart(1,0)))
+            self.MapredMapInfoRV.SetLabel("%i" % red.getLenB())
 
             self.MapredMapInfoOL.SetLabel(self.label_cardO)
-            self.MapredMapInfoOV.SetLabel("%i" % (red.sParts.lpart(3,0)))
+            self.MapredMapInfoOV.SetLabel("%i" % red.getLenO())
             self.MapredMapInfoTL.SetLabel(self.label_cardT)
-            self.MapredMapInfoTV.SetLabel("%i" % (red.sParts.N))
+            self.MapredMapInfoTV.SetLabel("%i" % red.getLenT())
 
-    def updateEmphasize(self, colhigh='#FFFF00'):
+    def updateEmphasize(self, colhigh='#FFFF00', review=True):
         if self.source_list is not None:
-            lids = self.parent.tabs[self.source_list]["tab"].getHighlights(self.getId())
-            self.renewEmphasize(lids, colhigh)
+            lids = self.parent.tabs[self.source_list]["tab"].getEmphasizedR(self.getId())
+            self.emphasizeOnOff(turn_on=lids, turn_off=None, colhigh=colhigh, review=review)
 
-    def renewEmphasize(self, lids,  colhigh='#FFFF00'):
-        self.clearEmphasize()
-        self.putEmphasize(lids, colhigh)
+    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), colhigh='#FFFF00', review=True):
+        self.emphasizeOff(turn_off)
+        self.emphasizeOn(turn_on, colhigh)
+        if review:
+            self.MapcanvasMap.draw()
 
-    def putEmphasize(self, lids,  colhigh='#FFFF00'):
+    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+        draw_settings = self.getDrawSettings()
         for lid in lids:
-            self.emphasizeLine(lid, colhigh)
+            if self.highl.has_key(lid):
+                continue
+            pi = self.suppABCD[lid]
+            self.highl[lid] = []
+            self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
+                                          mfc=colhigh, mec=draw_settings[pi]["color_e"],
+                                          marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
+                                          markeredgewidth=1, linestyle='None'))
+
+            if len(lids) == 1:
+                self.hight[lid] = []
+                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
+                                                     xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
+                                                     size=10, va="center", backgroundcolor="#FFFFFF",
+                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
+                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                                     ))
             
-    def clearEmphasize(self, lids = None):
+    def emphasizeOff(self, lids = None):
         if lids is None:
             lids = self.highl.keys()
         for lid in lids:
             if self.hight.has_key(lid):
                 while len(self.hight[lid]) > 0:
                     t = self.hight[lid].pop()
-                    if t in self.gca.axes.texts:
-                        self.gca.axes.texts.remove(t)
+                    if t in self.axe.texts:
+                        self.axe.texts.remove(t)
                 del self.hight[lid]
 
             if self.highl.has_key(lid):
                 while len(self.highl[lid]) > 0:
                     t = self.highl[lid].pop()
-                    if t in self.gca.axes.lines:
-                        self.gca.axes.lines.remove(t)
+                    if t in self.axe.lines:
+                        self.axe.lines.remove(t)
                 del self.highl[lid]
-        self.MapcanvasMap.draw()
 
-    def sendHighlight(self, lid):
+    def sendEmphasize(self, lids):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].sendHighlight(self.getId(), lid)
+            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, True)
+
+    def sendFlipEmphasizedR(self):
+        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+            self.parent.tabs[self.source_list]["tab"].doFlipEmphasizedR(self.getId())
 
     def OnPick(self, event):
         if event.mouseevent.button == 3 and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)):
-            self.sendHighlight(int(event.artist.get_gid().split(".")[0]))
+            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
 
+    def key_press_callback(self, event):
+        if event.inaxes:
+            self.do_key(event.key)
+
+    def mkey_press_callback(self, event):
+        self.do_key(chr(event.GetKeyCode()).lower())
+        
+    def do_key(self, key):
+        'whenever a key is pressed'
+        points = set()
+        if key=='s' and self.mc is not None:
+            points = self.apply_mask(self.mc.get_path())
+            self.mc.clear()
+        elif key in self.map_select_supp.keys():
+            points = [i for (i,p) in enumerate(self.suppABCD) if p in self.map_select_supp[key]]
+        elif key == " ":
+            self.sendFlipEmphasizedR()
+        if len(points) > 0:
+            self.sendEmphasize(points)
+        return points
+
+    def apply_mask(self, path, radius=0.0):
+        if path is not None and self.getCoords() is not None:
+            points = np.transpose((self.getCoords(0), self.getCoords(1)))
+            return [i for i,point in enumerate(points) if path.contains_point(point, radius=radius)]
+        return []
+
+    def getCoords(axi=None, ids=None):
+        return None
 
     def getColors(self):
         t = self.parent.dw.getPreferences()
@@ -392,24 +462,34 @@ class GView(object):
         dot_shape, dot_size = self.getDot()
         return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SParts.mud, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB,
                               SParts.delta, SParts.beta, SParts.alpha, SParts.gamma])]),
-                SParts.alpha: {"color_e": [i/255.0 for i in colors[0]], "color_f": [i/255.0 for i in colors[0]],
-                               "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.beta: {"color_e": [i/255.0 for i in colors[1]], "color_f": [i/255.0 for i in colors[1]],
-                              "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.gamma: {"color_e": [i/255.0 for i in colors[2]], "color_f": [i/255.0 for i in colors[2]],
-                               "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA},
-                SParts.mua: {"color_e": [i/255.0 for i in colors[0]], "color_f": [0.5,0.5,0.5],
-                             "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mub: {"color_e": [i/255.0 for i in colors[1]], "color_f": [0.5,0.5,0.5],
-                             "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.muaB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[1]],
-                              "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mubB: {"color_e": [0.5,0.5,0.5], "color_f": [i/255.0 for i in colors[0]],
-                              "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.mud: {"color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
-                             "size": dot_size-1, "shape": dot_shape, "alpha": GView.DOT_ALPHA-0.3},
-                SParts.delta: {"color_e": [0.5,0.5,0.5], "color_f": [0.5, 0.5, 0.5],
-                               "size": dot_size, "shape": dot_shape, "alpha": GView.DOT_ALPHA}
+                "alpha": GView.DOT_ALPHA, "size": dot_size, "shape": dot_shape,
+                SParts.alpha: {"color_e": [i/255.0 for i in colors[0]],
+                               "color_f": [i/255.0 for i in colors[0]],
+                               "size": dot_size},
+                SParts.beta: {"color_e": [i/255.0 for i in colors[1]],
+                              "color_f": [i/255.0 for i in colors[1]],
+                               "size": dot_size},
+                SParts.gamma: {"color_e": [i/255.0 for i in colors[2]],
+                               "color_f": [i/255.0 for i in colors[2]],
+                               "size": dot_size},
+                SParts.mua: {"color_e": [i/255.0 for i in colors[0]],
+                             "color_f": [0.5,0.5,0.5],
+                             "size": dot_size-1},
+                SParts.mub: {"color_e": [i/255.0 for i in colors[1]],
+                             "color_f": [0.5,0.5,0.5],
+                             "size": dot_size-1},
+                SParts.muaB: {"color_e": [0.5,0.5,0.5],
+                              "color_f": [i/255.0 for i in colors[1]],
+                              "size": dot_size-1},
+                SParts.mubB: {"color_e": [0.5,0.5,0.5],
+                              "color_f": [i/255.0 for i in colors[0]],
+                              "size": dot_size-1},
+                SParts.mud: {"color_e": [0.5,0.5,0.5],
+                             "color_f": [0.5, 0.5, 0.5],
+                             "size": dot_size-1},
+                SParts.delta: {"color_e": [0.5,0.5,0.5],
+                               "color_f": [0.5, 0.5, 0.5],
+                               "size": dot_size}
                 }
 
         

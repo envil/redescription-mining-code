@@ -807,7 +807,7 @@ class Query:
         return tv
     
     ## return the support associated to a query
-    def recompute(self, side, data= None):
+    def recompute(self, side, data= None, restrict=None):
 
         if len(self) == 0 or data==None:
             sm = (set(), set())
@@ -820,9 +820,12 @@ class Query:
                     for literal in buk:
                         sm  = SParts.partsSuppMiss(op.isOr(), sm, data.literalSuppMiss(side, literal))
                     op = op.other()
-        return sm
+        if restrict is None:
+            return sm
+        else:
+            return sm[0] & restrict, sm[1] & restrict
           
-    def proba(self, side, data= None):
+    def proba(self, side, data= None, restrict=None):
         if data==None:
             pr = -1
         elif len(self) == 0 :
@@ -833,7 +836,10 @@ class Query:
                 op = self.op
                 for buk in self.buk:
                     for literal in buk:
-                        pr = SParts.updateProba(pr, len(data.supp(side, literal))/float(data.nbRows()), op.isOr())
+                        if restrict is None:
+                            pr = SParts.updateProba(pr, len(data.supp(side, literal))/float(data.nbRows()), op.isOr())
+                        else:
+                            pr = SParts.updateProba(pr, len(data.supp(side, literal) & restrict)/float(len(restrict)), op.isOr())
                         ##print '%s : pr=%f (%s %f)' % (literal, pr, op, len(data.supp(side, literal))/float(data.nbRows()) )
                     op = op.other()
         return pr

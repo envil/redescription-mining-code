@@ -180,12 +180,11 @@ class Miner:
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
-        ### TODO check disabled
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
         ## IDSPAIRS
-        #if len(ids[0]) > 1000:
-        #    ids[0] = sorted(random.sample(ids[0], 1000))
+        if True: # len(ids[0]) > 1000:
+           ids[0] = sorted(random.sample(ids[0], 10))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -225,7 +224,7 @@ class Miner:
                         self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
                         if self.double_check:
                             tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                            if tmp.acc() != scores[i]:
+                            if tmp.getAcc() != scores[i]:
                                 self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
 
                         self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
@@ -268,8 +267,9 @@ class Miner:
                                 tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())                         
                                 for cand in tmp: ### TODO remove, only for debugging
                                     kid = cand.kid(red, self.data)
-                                    if kid.acc() != cand.getAcc():
-                                        self.logger.printL(1,'OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s' % (self.count, len(red), redi, red, cand, kid), "log", self.id)
+                                    if kid.getAcc() != cand.getAcc():
+                                        pdb.set_trace()
+                                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s" % (self.count, len(red), redi, red, cand, kid), "log", self.id)
 
                                 if self.rm is not None:
                                     bests.updateDL(tmp, self.rm, self.data)
@@ -297,7 +297,7 @@ class Miner:
                             kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
 
                     except ExtensionError as details:
-                        self.logger.printL(1,'OUILLE! Something went badly wrong during expansion of %s.%d.%d\n%s' % (self.count, len(red), redi, details), "log", self.id)
+                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.id)
                         kids = []
                         
                     

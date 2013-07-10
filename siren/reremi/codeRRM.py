@@ -798,7 +798,7 @@ class RedModel:
             return nlits
         
     def addRed(self, red, data, sideAdd=None):
-        suppn = red.suppI()
+        suppn = red.getSuppI()
         tmp_subs = {}
         rid = self.crid
         self.crid += 1
@@ -820,7 +820,7 @@ class RedModel:
         del self.reds[rid]
 
     def deltaDLRed(self, red, data):
-        suppn = red.suppI()
+        suppn = red.getSuppI()
         cFallB = [0,0]
         totS = [0,0]
         for sbi, sb in self.subs.items():
