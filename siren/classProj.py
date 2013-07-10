@@ -394,7 +394,7 @@ class ProjFactory:
     def getViewsDetails(tcl, bc):
         details = {}
         for cls in all_subclasses(Proj):
-            if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", cls.PID) is not None:
+            if re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None:
                 details[cls.PID]= {"title": cls.title_str, "class": bc, "more": cls.PID}
         return details
 

@@ -13,6 +13,7 @@ from matplotlib.backends.backend_wxagg import \
 from matplotlib.patches import Ellipse, Polygon
 
 from reremi.classQuery import Query
+from reremi.classSParts import SParts
 from reremi.classRedescription import Redescription
 from classGView import GView
 from classInterObjects import MaskCreator
@@ -81,6 +82,7 @@ class MapView(GView):
             self.bm.fillcontinents(color=self.GROUND_COLOR, lake_color=self.WATER_COLOR) #'#EEFFFF')
 
             draw_settings = self.getDrawSettings()
+            draw_settings[SParts.delta]["alpha"] = 0
 
             ### SELECTED DATA
             selected = self.parent.dw.data.selectedRows()
@@ -89,6 +91,7 @@ class MapView(GView):
                 selp = self.sld_sel.GetValue()/100.0
             selv = np.ones((self.parent.dw.data.nbRows(), 1))
             if len(selected) > 0:
+                selv[np.array(list(selected))] = selp
                 selv[np.array(list(selected))] = selp
 
             for idp, pi in enumerate(self.suppABCD):
@@ -103,7 +106,7 @@ class MapView(GView):
                         self.bm.plot(self.getCoords(0,idp), self.getCoords(1,idp), gid="%d.%d" % (idp, 1),
                                mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                                marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                               linestyle='None', alpha=draw_settings["alpha"]*selv[idp], picker=2)
+                               linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=2)
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)

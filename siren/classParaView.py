@@ -164,7 +164,7 @@ class ParaView(GView):
             draw_settings = self.getDrawSettings()
             self.axe.cla()
 
-            osupp = red.supports().getVectorABCD()
+            osupp = self.suppABCD
             pos_axis = len(red.queries[0])
 
             new = [[l.col() for l in red.queries[side].listLiterals()] for side in [0,1]]
@@ -189,8 +189,6 @@ class ParaView(GView):
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
             tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
             self.limits[pos_axis, :] = [min(tt), max(tt), 0]
-            colorsl =  [draw_settings[i]["color_e"] for i in osupp]
-
 
             ### SAMPLING ENTITIES
             reps, clusters = toolsMath.sampleZds(self.zds, t)
@@ -218,7 +216,7 @@ class ParaView(GView):
             ### Lines
             for i, r in enumerate(reps):
                 if selv[i] > 0:
-                    plt.plot(final[:,i], color=colorsl[r], alpha=draw_settings["alpha"]*selv[i], picker=2, gid="%d.%d" % (r, 1))
+                    plt.plot(final[:,i], color=draw_settings[i]["color_e"], alpha=draw_settings[osupp[i]]["alpha"]*selv[i], picker=2, gid="%d.%d" % (r, 1))
 
             ### Labels
             self.axe.set_xticks(range(len(self.lit_str)+2))

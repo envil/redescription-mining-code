@@ -192,7 +192,7 @@ class ProjView(GView):
                     self.axe.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 1),
                            mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                           linestyle='None', alpha=draw_settings["alpha"]*selv[idp], picker=3)
+                           linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=3)
 
             if self.proj.getTitle() is not None:
                 self.axe.set_title(self.proj.getTitle(),fontsize=12)
