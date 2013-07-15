@@ -34,10 +34,11 @@ class SirenApp(wx.App):
         if len(sys.argv) > 2 and sys.argv[2] == "debug":
             # DEBUG
             #print "Loading file", sys.argv[-1]
+            # self.frame.expand()
             tab = "reds"
-            self.frame.dw.data.selected_rows = set(range(400))
-            self.frame.tabs[tab]["tab"].viewData("PC", 12)
-            #  mapV = self.frame.getViewX(None, "PC")
+            # self.frame.dw.data.selected_rows = set(range(400))
+            # self.frame.tabs[tab]["tab"].viewData("MAP", 12)
+            # mapV = self.frame.getViewX(None, "PC")
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
             # mapV.setCurrent(self.frame.tabs[tab]["tab"].getSelectedItem(), self.frame.tabs["reds"]["tab"].tabId)

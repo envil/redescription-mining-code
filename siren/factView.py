@@ -1,7 +1,8 @@
 from classGView import GView
 from classMapView import MapView
 from classParaView import ParaView
-from classProjView import ProjView
+from classEProjView import EProjView
+#from classVProjView import VProjView
 
 import pdb
 
@@ -15,15 +16,12 @@ class ViewFactory:
     for cls in all_subclasses(GView):
         avs_views.update(cls.getViewsDetails())
 
-    # avs_views = {MapView.TID: {"title": MapView.title_str, "class":MapView, "more": None},
-    #              ParaView.TID: {"title": ParaView.title_str, "class":ParaView, "more": None}}
-
     @classmethod
     def getViewsInfo(tcl, geo=False, typesI=None):
-        infos = [{"viewT": viewT, "title": details["title"]} \
+        infos = [{"viewT": viewT, "title": details["title"], "ord": details["ord"]} \
                  for viewT, details in tcl.avs_views.items() \
                  if (geo or not details["class"].geo) and (typesI is None or typesI in details["class"].typesI)]
-        infos.sort(key=lambda x: x["title"])
+        infos.sort(key=lambda x: (x["ord"], x["title"]))
         return infos
 
     @classmethod

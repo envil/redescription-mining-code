@@ -208,6 +208,13 @@ class GridTable(wx.grid.PyGridTableBase):
         else:
             return None
 
+    def getRowForItem(self, rid):
+        """Return the row of an entry"""
+        try:
+            return self.sortids.index(rid)
+        except:
+            return None
+
     def getPositionFromRow(self, row):
         if row is not None and row < self.nbItems() and self.sortids[row] < len(self.data):
             return self.sortids[row]
@@ -388,11 +395,11 @@ class GridTable(wx.grid.PyGridTableBase):
 class RedTable(GridTable):
 
     fields_def = [('', 'self.data[x].getEnabled'),
-                 ('query LHS', 'self.data[x].getQueryLU'),
-                 ('query RHS', 'self.data[x].getQueryRU'),
-                 ('accuracy', 'self.data[x].getRoundAcc'),
-                 ('p-value', 'self.data[x].getRoundPVal'),
-                 ('|E_{1,1}|', 'self.data[x].getLenI'),
+                  ('query LHS', 'self.data[x].getQueryLU'),
+                  ('query RHS', 'self.data[x].getQueryRU'),
+                  ('accuracy', 'self.data[x].getRoundAcc'),
+                  ('p-value', 'self.data[x].getRoundPVal'),
+                  ('|E_{1,1}|', 'self.data[x].getLenI'),
                   ('track', 'self.data[x].getTrack')]
 
     def __init__(self, parent, tabId, frame):
@@ -662,18 +669,21 @@ class RowTable(GridTable):
                   ('id', 'self.data[x].getId')]
 
     def viewData(self, viewT, pos=None):
-        pass
+        queries = [Query(), Query()]
+        self.parent.newRedVHist(queries, viewT)
  
     def updateEdit(self, edit_key, red):
         pass
 
     def resetFields(self, dw=None, review=True):
         if dw is not None:
+            self.cols_map = {}
             self.fields = []
             self.fields.extend(self.fields_def)
             for side, sideS in [(0, "LHS"),(1, "RHS")]:
                 nb = max(1,len(dw.getDataCols(side))-1.0)
                 for ci, col in enumerate(dw.getDataCols(side)):
+                    self.cols_map[(side, col.getId())] = len(self.fields)
                     self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "r":ci/nb}))
             if review:
                 self.ResetView()
@@ -744,7 +754,6 @@ class RowTable(GridTable):
         self.updateSort()
         self.redraw()
 
-
     def resetDetails(self, details={}, review=True):
         self.details = details
         if review:
@@ -774,3 +783,13 @@ class RowTable(GridTable):
                 self.sc.add(cid)
             self.redraw()
 
+    def showRidRed(self, rid, red=None):
+        row = self.getRowForItem(rid)
+        if row is not None:
+            self.setSelectedRow(row)
+            if red is not None:
+                for side in [0,1]:
+                    for l in red.queries[side].listLiterals():
+                        self.sc.add(self.cols_map[(side, l.col())])
+            self.redraw()
+        return row

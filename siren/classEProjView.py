@@ -23,16 +23,18 @@ from classInterObjects import MaskCreator
 
 import pdb
 
-class ProjView(GView):
+class EProjView(GView):
 
-    TID = "PRJ"
-    title_str = "Projection"
+    TID = "EPJ"
+    ordN = 3
+    what = "entities"
+    title_str = "Entities Projection"
     typesI = ["Var", "Reds", "Row"]
     defaultViewT = ProjFactory.defaultViewT
 
     @classmethod
     def getViewsDetails(tcl):
-        return ProjFactory.getViewsDetails(tcl)
+        return ProjFactory.getViewsDetails(tcl, what=tcl.what)
     
     def __init__(self, parent, vid, more=None):
         self.worker = None

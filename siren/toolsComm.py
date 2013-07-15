@@ -1,5 +1,4 @@
 import wx
-import threading
 import inspect
 import time
 import sys
@@ -10,12 +9,15 @@ from reremi.classMiner import Miner
 
 import pdb
 
+##### WITH THREADING
+###############################################
+import threading
+
 # Thread class that executes processing
 class WorkerThread(threading.Thread):
     def __init__(self, id, data, preferences, logger, params=None):
         """Init Expander Thread Class."""
         threading.Thread.__init__(self)
-        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
         self.miner = Miner(data, preferences, logger, id)
         self.params = params
         self.start()
@@ -54,8 +56,54 @@ class ProjThread(threading.Thread):
     def abort(self):
         self.proj.kill()
 
+# ##### WITH MULTIPROCESSING
+# ###############################################
+# import multiprocessing
+
+# # Thread class that executes processing
+# class WorkerThread(multiprocessing.Process):
+#     def __init__(self, id, data, preferences, logger, params=None):
+#         """Init Expander Thread Class."""
+#         multiprocessing.Process.__init__(self)
+#         self.miner = Miner(data, preferences, logger, id)
+#         self.params = params
+#         self.start()
+
+#     def run(self):
+#         pass
+
+#     def abort(self):
+#         self.miner.kill()
+
+# class MinerThread(WorkerThread):
+#     """Miner Thread Class."""
+
+#     def run(self):
+#         self.miner.full_run()
+
+# class ExpanderThread(WorkerThread):
+#     """Expander Thread Class."""
+
+#     def run(self):
+#         self.miner.part_run(self.params)
 
 
+# # Thread class that executes processing
+# class ProjThread(multiprocessing.Process):
+#     def __init__(self, id, proj):
+#         """Init Proj Thread Class."""
+#         multiprocessing.Process.__init__(self)
+#         self.proj = proj
+#         self.start()
+
+#     def run(self):
+#         self.proj.do()
+#         pass
+
+#     def abort(self):
+#         self.proj.kill()
+
+###############################################
 class Message(wx.PyEvent):
     TYPES_MESSAGES = {'*': wx.NewId(), 'log': wx.NewId(), 'time': wx.NewId(), 'result': wx.NewId(), 'progress': wx.NewId(), 'status': wx.NewId()}
     

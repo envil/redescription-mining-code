@@ -26,9 +26,11 @@ import pdb
 class ParaView(GView):
 
     TID = "PC"
+    ordN = 1
     title_str = "Parallel Coordinates"
 
     def __init__(self, parent, vid, more=None):
+        self.reps = set()
         self.current_r = None
         self.zds = None
         self.sc = None
@@ -154,11 +156,15 @@ class ParaView(GView):
         ranges.insert(pos_axis, [None, None, 1])
         return ranges
 
+
     def updateMap(self):
         """ Redraws the map
         """
 
         if self.current_r is not None:
+
+            self.highl = {}
+            self.hight = {}
 
             red = self.current_r
             draw_settings = self.getDrawSettings()
@@ -171,20 +177,21 @@ class ParaView(GView):
             current = None
             if self.sc is not None:
                 current = [[l.col() for l in self.sc[side]] for side in [0,1]]
+            self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
             if self.zds is None or current != new:
                 self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
                 self.data_m, self.lit_str, self.limits, self.ranges, self.zds = self.prepareData(osupp)
             else:
-                self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
                 self.ranges = self.updateRanges()
-                
+
             N = float(self.parent.dw.data.nbRows())
+
             t = 0.1
             if self.sld is not None:
                 td = self.sld.GetValue()
                 t = (5*(td/100.0)**8+1*(td/100.0)**2)/6
                 
-
+                
             ### GATHERING DATA
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
             tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
@@ -193,7 +200,8 @@ class ParaView(GView):
             ### SAMPLING ENTITIES
             reps, clusters = toolsMath.sampleZds(self.zds, t)
             reps.sort(key=lambda x: draw_settings["draw_pord"][osupp[x]])
-
+            self.reps = set(reps)
+            
             ### ADDING NOISE AND RESCALING
             tt = np.array([abs(r[2]) for r in self.ranges])
             mask_noise = - np.tile(self.limits[:,0], (len(reps),1)) \
@@ -206,8 +214,8 @@ class ParaView(GView):
             ### SELECTED DATA
             selected = self.parent.dw.data.selectedRows()
             selp = 0.1
-            if self.sld_sel is not None:
-                selp = self.sld_sel.GetValue()/100.0
+            # if self.sld_sel is not None:
+            #     selp = self.sld_sel.GetValue()/100.0
             selv = np.ones((self.parent.dw.data.nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
@@ -216,7 +224,7 @@ class ParaView(GView):
             ### Lines
             for i, r in enumerate(reps):
                 if selv[i] > 0:
-                    plt.plot(final[:,i], color=draw_settings[i]["color_e"], alpha=draw_settings[osupp[i]]["alpha"]*selv[i], picker=2, gid="%d.%d" % (r, 1))
+                    self.axe.plot(final[:,i], color=draw_settings[osupp[r]]["color_e"], alpha=draw_settings[osupp[r]]["alpha"]*selv[r], picker=2, gid="%d.%d" % (r, 1))
 
             ### Labels
             self.axe.set_xticks(range(len(self.lit_str)+2))
@@ -229,7 +237,7 @@ class ParaView(GView):
             for i, rg in enumerate(self.ranges):
                 if rg[0] is not None:
                     bds = [(rg[k]-self.limits[i,0]+k*abs(rg[2]))/(self.limits[i,1]+abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
-                    rects = plt.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
+                    rects = self.axe.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
                     if rg[2] == 0:
                         rects_map[i] = rects[0]
                         
@@ -241,9 +249,8 @@ class ParaView(GView):
                                                   pinf=self.getPinvalue, annotation=self.annotation)
                 self.drs.append(dr)
 
-
             self.axe.axis((0,len(self.lit_str)+1, 0, 1))
-            self.updateEmphasize(self.COLHIGH, review=False)
+            #self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
 
 
@@ -294,6 +301,7 @@ class ParaView(GView):
                               + [self.parent.dw.data.col(side, l.col()).width]
 
         self.current_r = self.updateQuery(side, copied)
+
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
@@ -311,18 +319,21 @@ class ParaView(GView):
             final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
 
             self.highl[lid] = []
-            self.highl[lid].extend(plt.plot(final, color=colhigh, linewidth=1))
+            if lid in self.reps:
+                self.highl[lid].extend(self.axe.plot(final, color=colhigh, linewidth=1))
+            else:
+                self.highl[lid].extend(self.axe.plot(final, color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
 
-            if len(lids) == 1:
-                pi = self.suppABCD[lid]
-                self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
-                                                  xytext=(10, 0), textcoords='offset points', color= draw_settings[pi]["color_e"],
-                                                  size=10, va="center", backgroundcolor="#FFFFFF",
-                                                  bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
-                                                  arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                  patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                  ))
+        if len(lids) == 1 and not self.hight.has_key(lid):
+            pi = self.suppABCD[lid]
+            self.hight[lid] = []
+            self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
+                                                     xytext=(10, 0), textcoords='offset points', color= draw_settings[pi]["color_e"],
+                                                     size=10, va="center", backgroundcolor="#FFFFFF",
+                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
+                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                            ))
 
 
     def additionalElements(self):

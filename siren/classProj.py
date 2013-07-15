@@ -35,24 +35,31 @@ def applyF(f, parameters):
 class Proj(object):
 
     PID = "---"
+    whats = ["variables", "entities"]
     title_str = "Projection"
     gen_parameters = {"types":[NumColM.type_id], "only_able":True}
     fix_parameters = {}
     options_parameters = {"types": [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]}
     dyn_f = []
     
-    def __init__(self, data, params=None, logger=None):
+    def __init__(self, data, params=None, logger=None, what="entities", transpose=True):
+        self.transpose = transpose
         self.want_to_live = True
+        self.what = what
         self.data = data
         self.logger = logger
         self.coords_proj = None
         self.code = ""
+        self.mcols = None
         self.initParameters(params)
 
     def getAxisLabel(self, axis=0):
         return None
     def getTitle(self):
-        return self.title_str
+        return "%s %s" % (self.what.title(), self.title_str)
+
+    def getMCols(self):
+        return self.mcols
 
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:
@@ -73,7 +80,7 @@ class Proj(object):
              return
         try:
             self.comp()
-        except:
+        except IndexError as e:
             raise Warning("Projection failed!")
         finally:
             self.notifyDone()
@@ -205,9 +212,10 @@ class Proj(object):
 class AxesProj(Proj):
 
     PID = "AXE"
-    title_str = "Variables Projection"
-    gen_parameters = dict(Proj.gen_parameters)
-    gen_parameters.update({"Xaxis": -1.0, "Yaxis": -1.0})
+    whats = ["entities"]
+    title_str = "Axis Projection"
+    gen_parameters = {"Xaxis": -1.0, "Yaxis": -1.0}
+    fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
 
     def comp(self):
@@ -224,50 +232,102 @@ class AxesProj(Proj):
             self.setParameter(axis, float("%d.%d" % scs[ai]))
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
+        self.mcols = mcols
         for side in [0,1]:
             if details[mcols[scs[side]]]["type"] != NumColM.type_id:
                 self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
 
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
+
+class VrsProj(Proj):
+
+    PID = "VRS"
+    whats = ["variables"]
+    title_str = "Axis Projection"
+    gen_parameters = dict(Proj.gen_parameters)
+    gen_parameters.update({"Xaxis": -1, "Yaxis": -1})
+    dyn_f = []
+
+    def comp(self):
+        mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+        rids = range(self.data.nbRows())
+        if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
+            rids = list(self.data.nonselectedRows())
+            selected = np.array(rids)
+            mat = mat[:,selected]
+            
+        scs = random.sample(rids, 2)
+        self.labels = ["", ""]
+        for ai, axis in enumerate(["Xaxis", "Yaxis"]):
+            tmp = self.getParameter(axis)
+            if tmp > 0 and tmp in rids:
+                scs[ai] = tmp
+            self.setParameter(axis, scs[ai])
+            self.labels[ai] = "%s" % scs[ai]
+        self.coords_proj = [mat[:,rids.index(scs[0])], mat[:,rids.index(scs[1])]]
+        self.mcols = mcols
+
+    def getAxisLabel(self, axi):
+        return "%s" % self.labels[axi]
+
     
+### The various projections with sklearn
+#----------------------------------------------------------------------
+class DynProj(Proj):
+
+    PID =  "---"
+    title_str = "Projection"
+
+    def getData(self):
+        if self.data is np.array:
+            if self.transpose:
+                mat = self.data.T
+            else:
+                mat = self.data
+        else:
+            if self.transpose:
+                mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+                matn = toolsMath.withen(mat.T)
+            else:
+                mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+                if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
+                    selected = np.array(list(self.data.nonselectedRows()))
+                    matn = toolsMath.withen(mat[:,selected])
+                else:
+                    matn = toolsMath.withen(mat)
+        return matn
+
+    def comp(self):
+        X_pro, err = self.getX(self.getData())
+        self.coords_proj = (X_pro[:,0], X_pro[:,1])
+
+    def getX(self, X):
+        pass
 
 class SVDProj(Proj):
 
     PID = "SVD"
     title_str = "SVD Projection"
-    fix_parameters = dict(Proj.fix_parameters)
+    fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"compute_uv": True, "full_matrices":False })
     dyn_f = [np.linalg.svd]
-
+    
     def comp(self):
-        mat, details, mcol = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-        matn = toolsMath.withen(mat)
-        U, s, V = self.applyF(np.linalg.svd, {"a": matn})
+        U, s, V = self.applyF(np.linalg.svd, {"a": self.getData()})
         tmp = np.dot(U[:2],matn)
         self.coords_proj = (tmp[0], tmp[1])
-
 
     def getAxisLabel(self, axi):
         return "dimension %d" % (axi+1)
 
-
-### The various projections with sklearn
-#----------------------------------------------------------------------
-class SKrandProj(Proj):
+class SKrandProj(DynProj):
 
     PID =  "SKrand"
     title_str = "Random projection"
-    fix_parameters = dict(Proj.fix_parameters)
+    fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"n_components": 2 })
     dyn_f = [random_projection.SparseRandomProjection]
-
-    def comp(self):
-        mat, details, mcol = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-        matn = toolsMath.withen(mat)
-        X_pro, err = self.getX(matn.T)
-        self.coords_proj = (X_pro[:,0], X_pro[:,1])
-
     
     # Random 2D projection using a random unitary matrix
     def getX(self, X):
@@ -275,7 +335,7 @@ class SKrandProj(Proj):
         X_projected = rp.fit_transform(X)
         return X_projected, 0
 
-class SKpcaProj(SKrandProj):
+class SKpcaProj(DynProj):
     #----------------------------------------------------------------------
     # Projection on to the first 2 principal components
 
@@ -290,13 +350,13 @@ class SKpcaProj(SKrandProj):
         X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
         return X_pca, 0
 
-class SKisoProj(SKrandProj):
+class SKisoProj(DynProj):
     #----------------------------------------------------------------------
     # Isomap projection
 
     PID =  "SKiso"
     title_str = "Isomap projection"
-    gen_parameters = dict(SKrandProj.gen_parameters)
+    gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100})
     dyn_f = [manifold.Isomap]
 
@@ -304,15 +364,15 @@ class SKisoProj(SKrandProj):
         X_iso = self.applyF(manifold.Isomap).fit_transform(X)
         return X_iso, 0
 
-class SKlleProj(SKrandProj):
+class SKlleProj(DynProj):
     #----------------------------------------------------------------------
     # Locally linear embedding
 
     PID =  "SKlle"
     title_str = "LLE projection"
-    gen_parameters = dict(SKrandProj.gen_parameters)
+    gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
-    options_parameters = dict(SKrandProj.options_parameters)
+    options_parameters = dict(DynProj.options_parameters)
     options_parameters["method"] = [("standard", "standard"), ("hessian", "hessian"), ("modified", "modified"), ("ltsa", "ltsa")]
     dyn_f = [manifold.LocallyLinearEmbedding]
 
@@ -322,15 +382,15 @@ class SKlleProj(SKrandProj):
         X_lle = clf.fit_transform(X)
         return X_lle, clf.reconstruction_error_
 
-class SKmdsProj(SKrandProj):
+class SKmdsProj(DynProj):
     #----------------------------------------------------------------------
     # MDS  embedding
 
     PID =  "SKmds"
     title_str = "MDS embedding"
-    gen_parameters = dict(SKrandProj.gen_parameters)
+    gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_init": 4, "max_iter":100})
-    fix_parameters = dict(SKrandProj.fix_parameters)
+    fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"n_jobs": 4})
     dyn_f = [manifold.MDS]
 
@@ -339,15 +399,15 @@ class SKmdsProj(SKrandProj):
         X_mds = clf.fit_transform(X)
         return X_mds, clf.stress_
 
-class SKtreeProj(SKrandProj):
+class SKtreeProj(DynProj):
     #----------------------------------------------------------------------
     # Random Trees embedding
 
     PID =  "SKtree"
     title_str = "Totally Random Trees embedding"
-    gen_parameters = dict(SKrandProj.gen_parameters)
+    gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"max_depth":5, "n_estimators":10})
-    fix_parameters = dict(SKrandProj.fix_parameters)
+    fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"n_jobs": 4})
     dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
 
@@ -356,7 +416,7 @@ class SKtreeProj(SKrandProj):
         X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
         return X_reduced, 0
 
-class SKspecProj(SKrandProj):
+class SKspecProj(DynProj):
     #----------------------------------------------------------------------
     # Spectral embedding
 
@@ -369,15 +429,15 @@ class SKspecProj(SKrandProj):
         X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)
         return X_se, 0
 
-class SKtsneProj(SKrandProj):
+class SKtsneProj(DynProj):
     #----------------------------------------------------------------------
     # Stochastic Neighbors embedding
 
     PID =  "-SKtsne"
     title_str = "t-SNE embedding"
-    gen_parameters = dict(SKrandProj.gen_parameters)
+    gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
-    fix_parameters = dict(SKrandProj.fix_parameters)
+    fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"no_dims":2})
     dyn_f = [tsne.tsne]
 
@@ -386,17 +446,32 @@ class SKtsneProj(SKrandProj):
         return X_sne, c
 
 
-
 class ProjFactory:
     defaultViewT = AxesProj
 
     @classmethod
-    def getViewsDetails(tcl, bc):
+    def getViewsDetails(tcl, bc, what="entities"):
+        preff_title = "%s " % what.title()
         details = {}
         for cls in all_subclasses(Proj):
-            if re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None:
-                details[cls.PID]= {"title": cls.title_str, "class": bc, "more": cls.PID}
+            if (re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None) and (what in cls.whats):
+                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
         return details
+
+    @classmethod
+    def getProj(tcl, data, code = None, logger=None, boxes=[], what="entities", transpose=True):
+            
+        if code is not None:
+            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
+            if tmp is not None:
+                for cls in all_subclasses(Proj):
+                    if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
+                        return cls(data, code, logger, what, transpose)
+
+        cls = tcl.defaultViewT
+        # cls = random.choice([p for p in all_subclasses(Proj)
+        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
+        return cls(data, {}, logger, what, transpose)
 
 
     @classmethod
@@ -415,17 +490,3 @@ class ProjFactory:
         return str_info
 
 
-    @classmethod
-    def getProj(tcl, data, code = None, logger=None, boxes=[]):
-            
-        if code is not None:
-            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
-            if tmp is not None:
-                for cls in all_subclasses(Proj):
-                    if re.match("^"+cls.PID+"$", tmp.group("alg")):
-                        return cls(data, code, logger)
-
-        cls = AxesProj
-        # cls = random.choice([p for p in all_subclasses(Proj)
-        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
-        return cls(data, {}, logger)

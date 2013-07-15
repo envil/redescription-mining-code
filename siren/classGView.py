@@ -41,13 +41,14 @@ class GView(object):
     map_select_supp = {"l": [SParts.alpha], "r": [SParts.beta], "i": [SParts.gamma], "o": [SParts.delta]}
 
     TID = "G"
+    ordN = 0
     title_str = "View"
     geo = False
     typesI = ["Var", "Reds"]
 
     @classmethod
     def getViewsDetails(tcl):
-        return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None}}
+        return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
 
 
     def __init__(self, parent, vid, more=None):
@@ -185,7 +186,7 @@ class GView(object):
         
     def OnExpand(self, event):
         red = self.updateQuery()
-        self.parent.expand(red)
+        self.parent.expandFV(red)
 
     def OnFocus(self, event):
         self.parent.selectedMap = self.getId()
@@ -232,11 +233,11 @@ class GView(object):
             self.updateMap()
             self.updateOriginal(red)
             self.updateHist(red)
-            return red
-        else: ### wrongly formatted query, revert
+        else: ### wrongly formatted query or not edits, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-        return None
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+        return red
 
     def setSource(self, source_list=None):
         self.source_list=source_list

@@ -11,6 +11,8 @@ from classQuery import Query
 from codeRRM import RedModel
 import pdb
 
+import pickle
+
 def loadRedescriptions(filename, data):
     fp = open(filename, "r")
     tmp = []
@@ -22,7 +24,7 @@ def loadRedescriptions(filename, data):
     return tmp
 
 def run_filter(params, data, logger):
-    # ta = do_filter(params)
+    # ta = do_filter(params)    
     miner = Miner(data, params, logger)
 
     tf = miner.filter_run(ta)

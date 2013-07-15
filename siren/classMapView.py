@@ -24,6 +24,7 @@ class MapView(GView):
 
     TID = "MAP"
     title_str = "Map"
+    ordN = 1
     geo = True
     mapoly = False
 
@@ -82,7 +83,6 @@ class MapView(GView):
             self.bm.fillcontinents(color=self.GROUND_COLOR, lake_color=self.WATER_COLOR) #'#EEFFFF')
 
             draw_settings = self.getDrawSettings()
-            draw_settings[SParts.delta]["alpha"] = 0
 
             ### SELECTED DATA
             selected = self.parent.dw.data.selectedRows()
@@ -92,10 +92,9 @@ class MapView(GView):
             selv = np.ones((self.parent.dw.data.nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
-                selv[np.array(list(selected))] = selp
 
             for idp, pi in enumerate(self.suppABCD):
-                if draw_settings.has_key(pi) and selv[idp] > 0:
+                if pi != SParts.delta and draw_settings.has_key(pi) and selv[idp] > 0:
                     if self.mapoly:
                         for ppi, p in enumerate(self.polys[idp]):
                             self.axe.add_patch(Polygon(p, closed=True, fill=True, gid="%d.%d" % (idp, ppi+1), picker=True,
@@ -111,6 +110,35 @@ class MapView(GView):
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
+
+    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+        draw_settings = self.getDrawSettings()
+        for lid in lids:
+            if self.highl.has_key(lid):
+                continue
+            pi = self.suppABCD[lid]
+            self.highl[lid] = []
+            if self.suppABCD[lid] == SParts.delta:
+                self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
+                                                     mfc=colhigh, mec=draw_settings[pi]["color_e"],
+                                                     marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
+                                                     markeredgewidth=1, linestyle='None', picker=2, gid="%d.%d" % (lid, 1)))
+
+            else:
+                self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
+                                                     mfc=colhigh, mec=draw_settings[pi]["color_e"],
+                                                     marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
+                                                     markeredgewidth=1, linestyle='None'))
+
+            if len(lids) == 1:
+                self.hight[lid] = []
+                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
+                                                     xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
+                                                     size=10, va="center", backgroundcolor="#FFFFFF",
+                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
+                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                                     ))
 
     def additionalElements(self):
         add_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -151,3 +179,8 @@ class MapView(GView):
             return self.coords_proj[axi]
         return self.coords_proj[axi][ids]
 
+    def apply_mask(self, path, radius=0.0):
+        if path is not None and self.getCoords() is not None:
+            points = np.transpose((self.getCoords(0), self.getCoords(1)))
+            return [i for i,point in enumerate(points) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SParts.delta)]
+        return []

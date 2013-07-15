@@ -740,6 +740,10 @@ class Siren():
             if red is not None:
                 self.expand(red)
 
+    def expandFV(self, red):
+        self.showTab("exp")
+        self.expand(red)
+
     def OnMineAll(self, event):
         self.showTab("exp")
         self.expand()
@@ -874,10 +878,14 @@ class Siren():
 
             
     def showDetailsBox(self, rid, red):
-        dlg = wx.MessageDialog(self.toolFrame,
-                               self.prepareDetails(rid, red),"Point Details", wx.OK|wx.ICON_INFORMATION)
-        result = dlg.ShowModal()
-        dlg.Destroy()
+        row = self.tabs["rows"]["tab"].showRidRed(rid, red)
+        if row is not None:
+            self.showTab("rows")
+        else:
+            dlg = wx.MessageDialog(self.toolFrame,
+                                   self.prepareDetails(rid, red),"Point Details", wx.OK|wx.ICON_INFORMATION)
+            result = dlg.ShowModal()
+            dlg.Destroy()
 
     def prepareDetails(self, rid, red):
         dets = "%d:\n" % rid 
@@ -942,9 +950,9 @@ class Siren():
     def resetLogger(self):
         if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
             self.logger.resetOut()
-            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self, Message.sendMessage)
+            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
             self.logger.addOut({"error":1}, "stderr")
-            self.logger.addOut({"error":1}, self, CErrorDialog.showBox)
+            self.logger.addOut({"error":1}, self.toolFrame, CErrorDialog.showBox)
         else:
             self.logger.resetOut()
             self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
