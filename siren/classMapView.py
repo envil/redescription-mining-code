@@ -162,7 +162,7 @@ class MapView(GView):
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
 
     def OnSlide(self, event):

@@ -8,7 +8,7 @@ import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-import toolsMath, toolsComm
+import toolMath, toolsComm
 
 import pdb
 
@@ -42,12 +42,10 @@ class Proj(object):
     options_parameters = {"types": [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]}
     dyn_f = []
     
-    def __init__(self, data, params=None, logger=None, what="entities", transpose=True):
+    def __init__(self, data, params=None, what="entities", transpose=True):
         self.transpose = transpose
-        self.want_to_live = True
         self.what = what
         self.data = data
-        self.logger = logger
         self.coords_proj = None
         self.code = ""
         self.mcols = None
@@ -76,21 +74,8 @@ class Proj(object):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
 
     def do(self):
-        if not self.want_to_live:
-             return
-        try:
-            self.comp()
-        except IndexError as e:
-            raise Warning("Projection failed!")
-        finally:
-            self.notifyDone()
+        self.comp()
 
-    def notifyDone(self):
-        if self.logger is not None:
-            self.logger.printL(1,"Projection ready...", "result")
-
-    def kill(self):
-        self.want_to_live = False
 
     def getCode(self):
         tt = "%s:" % self.PID
@@ -288,14 +273,14 @@ class DynProj(Proj):
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-                matn = toolsMath.withen(mat.T)
+                matn = toolMath.withen(mat.T)
             else:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
                 if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
                     selected = np.array(list(self.data.nonselectedRows()))
-                    matn = toolsMath.withen(mat[:,selected])
+                    matn = toolMath.withen(mat[:,selected])
                 else:
-                    matn = toolsMath.withen(mat)
+                    matn = toolMath.withen(mat)
         return matn
 
     def comp(self):
@@ -459,19 +444,19 @@ class ProjFactory:
         return details
 
     @classmethod
-    def getProj(tcl, data, code = None, logger=None, boxes=[], what="entities", transpose=True):
+    def getProj(tcl, data, code = None, boxes=[], what="entities", transpose=True):
             
         if code is not None:
             tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
             if tmp is not None:
                 for cls in all_subclasses(Proj):
                     if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
-                        return cls(data, code, logger, what, transpose)
+                        return cls(data, code, what, transpose)
 
         cls = tcl.defaultViewT
         # cls = random.choice([p for p in all_subclasses(Proj)
         #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
-        return cls(data, {}, logger, what, transpose)
+        return cls(data, {}, what, transpose)
 
 
     @classmethod

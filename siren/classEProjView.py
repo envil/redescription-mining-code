@@ -16,7 +16,6 @@ from matplotlib.lines import Line2D
 from reremi.toolLog import Log
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
-from toolsComm import ProjThread, Message
 from classGView import GView
 from classProj import ProjFactory
 from classInterObjects import MaskCreator
@@ -37,7 +36,6 @@ class EProjView(GView):
         return ProjFactory.getViewsDetails(tcl, what=tcl.what)
     
     def __init__(self, parent, vid, more=None):
-        self.worker = None
         self.repbut = None
         self.parent = parent
         self.source_list = None
@@ -47,7 +45,6 @@ class EProjView(GView):
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
         self.panel = wx.Panel(self.mapFrame, -1)
-        self.initLogger()
         self.initProject(more)
         self.drawMap()
         self.drawFrame()
@@ -57,22 +54,8 @@ class EProjView(GView):
         self.suppABCD = None
         self.runProject()
 
-    def initLogger(self):
-        self.logger = Log()
-        self.logger.resetOut()
-        self.logger.addOut({"*": 1, "progress":2, "result":1}, self.mapFrame, Message.sendMessage)
-        self.logger.addOut({"error":1}, "stderr")
-        self.mapFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnMessResult)
-
     def getId(self):
         return (self.proj.PID, self.vid)
-
-    def OnQuit(self, event):
-        if self.proj is not None:
-            self.proj.kill()
-            if self.worker is not None and self.worker.isAlive():
-                self.worker._Thread__stop()
-        GView.OnQuit(self, event)
 
     def additionalElements(self):
         setts_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -114,10 +97,7 @@ class EProjView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-
     def OnReproject(self, rid=None):
-        if self.worker is not None:
-            return
         self.proj.initParameters(self.boxes)
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
@@ -128,17 +108,16 @@ class EProjView(GView):
 
     def initProject(self, rid=None):
         ### print ProjFactory.dispProjsInfo()
-        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid, logger=self.logger)
+        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
 
     def runProject(self):
-        if self.worker is None:
-            self.worker = ProjThread(wx.NewId(), self.proj)
-            if self.repbut is not None:
-                self.repbut.Disable()
-                self.repbut.SetLabel("Plz Wait...")
+        self.parent.project(self.proj, self.getId())
+        if self.repbut is not None:
+            self.repbut.Disable()
+            self.repbut.SetLabel("Wait...")
                       
-    def OnMessResult(self, event):
-        self.worker = None
+    def readyProj(self, proj):
+        self.proj = proj
         self.updateMap()
         if self.repbut is not None:
             self.repbut.Enable()

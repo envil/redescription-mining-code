@@ -16,7 +16,7 @@ from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog
 from factView import ViewFactory
-from toolsComm import MinerThread, ExpanderThread, Message, CErrorDialog
+from toolCommMultip import WorkPlant
 
 import pdb
  
@@ -44,6 +44,8 @@ class Siren():
 
     license_file = findFile('LICENSE', [pref_dir])
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx']
+
+    results_delay = 1000
          
     def __init__(self):
         self.busyDlg = None
@@ -66,21 +68,13 @@ class Siren():
         
         self.toolFrame = wx.Frame(None, -1, self.titleTool)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['*'], self.OnMessLogger)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['log'], self.OnMessLogger)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['time'], self.OnMessLogger)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnMessLogger)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['result'], self.OnMessResult)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['progress'], self.OnMessProgress)
-        self.toolFrame.Connect(-1, -1, Message.TYPES_MESSAGES['status'], self.OnMessStatus)
         
         self.view_ids = {}
         self.selectedViewX = -1
         self.buffer_copy = None
         
-        self.workers = {}
-        self.next_workerid = 0
+        self.plant = WorkPlant()
+        self.call_check = None
         
         self.create_tool_panel()
         self.changePage(stn)
@@ -145,6 +139,13 @@ class Siren():
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
 
+    def getData(self):
+        return self.dw.getData()
+    def getPreferences(self):
+        return self.dw.getPreferences()
+    def getLogger(self):
+        return self.logger
+
         
 ######################################################################
 ###########     TOOL PANEL
@@ -157,8 +158,8 @@ class Siren():
              * mpl navigation toolbar
              * Control panel for interaction
         """
-	self.makeMenu(self.toolFrame)
         self.makeStatus(self.toolFrame)
+        self.doUpdates()
 	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
 
         #### Draw tabs
@@ -212,14 +213,8 @@ class Siren():
 ######################################################################
 
 
-    def makeProgressBar(self):
-        work_estimate = 0
-        work_progress = 0
-        for worker in self.workers.values():
-            work_estimate += worker["work_estimate"]
-            work_progress += worker["work_progress"]
-        ### progress should not go over estimate, but well...
-        work_progress = min(work_progress, work_estimate)
+    def updateProgressBar(self):
+        work_estimate, work_progress = self.plant.getWorkEstimate()
         if work_estimate > 0:
             self.progress_bar.SetRange(work_estimate)
             self.progress_bar.SetValue(work_progress)
@@ -324,15 +319,16 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
 
         self.ids_stoppers = {}
-        if len(self.workers) == 0:
+
+        if self.plant.nbWorkers() == 0:
             ID_NOP = wx.NewId()
             m_nop = menuProcess.Append(ID_NOP, "No process running", "There is no process currently running.")
             menuProcess.Enable(ID_NOP, False)
 
-        for worker_id in self.workers.keys(): 
+        for wdt in self.plant.getWorkersDetails(): 
             ID_STOP = wx.NewId()
-            self.ids_stoppers[ID_STOP] = worker_id 
-            m_stop = menuProcess.Append(ID_STOP, "Stop #&%s" % worker_id, "Interrupt mining process #%s." % worker_id)
+            self.ids_stoppers[ID_STOP] = wdt["wid"] 
+            m_stop = menuProcess.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
             frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         return menuProcess
 
@@ -458,6 +454,7 @@ class Siren():
 
     def deleteView(self, vK):
         if vK in self.view_ids.keys():
+            self.plant.layOff(self.plant.findWid([("wtyp", "project"), ("vid", vK)]))
             self.view_ids[vK].mapFrame.Destroy()
             del self.view_ids[vK]
 
@@ -503,89 +500,60 @@ class Siren():
 
     def expand(self, red=None):
         self.progress_bar.Show()
-        self.next_workerid += 1
         if red is not None and red.length(0) + red.length(1) > 0:
-            self.workers[self.next_workerid] = {"worker":ExpanderThread(self.next_workerid, self.dw.data,
-                                                                        self.dw.getPreferences(), self.logger, red.copy()),
-                                                "results_track":0,
-                                                "batch_type": "partial",
-                                                "results_tab": "exp",
-                                                "work_progress":0,
-                                                "work_estimate":0}
+            self.plant.addWorker("expander", self, red.copy(),
+                                 {"results_track":0,
+                                  "batch_type": "partial",
+                                  "results_tab": "exp"})
         else:
-            self.workers[self.next_workerid] = {"worker":MinerThread(self.next_workerid, self.dw.data,
-                                                                        self.dw.getPreferences(), self.logger),
-                                                "results_track":0,
-                                                "batch_type": "final",
-                                                "results_tab": "exp",
-                                                "work_progress":0,
-                                                "work_estimate":0}
+            self.plant.addWorker("miner", self, None,
+                                 {"results_track":0,
+                                  "batch_type": "final",
+                                  "results_tab": "exp"})
+        self.checkResults(menu=True)
 
-        self.makeMenu(self.toolFrame) ## To update the worker stoppers
+    def project(self, proj=None, vid=None):
+        self.progress_bar.Show()
+        if proj is not None and vid is not None:
+            wid = self.plant.findWid([("wtyp", "project"), ("vid", vid)])
+            if wid is None:
+                self.plant.addWorker("project", self, proj,
+                                     {"vid": vid})
+                self.checkResults(menu=True)
 
-    def getResults(self, worker_id=None):
-        if worker_id is not None and worker_id in self.workers.keys():
-            tap = None
-            source = self.workers[worker_id]
-            if source["batch_type"] == "partial":
-                tap = source["worker"].miner.partial["batch"]
-            elif source["batch_type"] == "final":
-                tap = source["worker"].miner.final["batch"]
-            if tap is not None:
-                nb_tap = len(tap)
-                if nb_tap > source["results_track"]:
-                    tmp = []
-                    for red in tap[source["results_track"]:nb_tap]:
-                           redc = red.copy()
-                           redc.track.insert(0, (worker_id, "W"))
-                           tmp.append(redc)
-                    self.tabs[source["results_tab"]]["tab"].insertItems(tmp)
-                    source["results_track"] = nb_tap
-
-    def endwork(self, worker_id=None):
-        if worker_id is not None and worker_id in self.workers.keys():
-            del self.workers[worker_id]
-            self.makeMenu(self.toolFrame) ## To update the worker stoppers
-
-    def OnMessResult(self, event):
-        """Show Result status."""
-        ###### TODO, here receive results
-        (source, progress) = event.data
-        if source is not None and source in self.workers.keys():
-            self.getResults(source)
-
-    def OnMessProgress(self, event):
-        """Update progress status."""
-        (source, progress) = event.data
-        if source is not None and source in self.workers.keys():
-            if progress is None:
-                self.endwork(source)
+    def checkResults(self, menu=False):
+        updates = self.plant.checkResults(self)
+        if menu:
+            updates["menu"] = True
+        if self.plant.nbWorking() > 0:
+            if self.call_check is None:
+                self.call_check = wx.CallLater(Siren.results_delay, self.checkResults)
             else:
-                self.workers[source]["work_progress"] = progress[1]
-                self.workers[source]["work_estimate"] = progress[0]
-            self.makeProgressBar()
+                self.call_check.Restart(Siren.results_delay)
+        else:
+            self.call_check = None
+        self.doUpdates(updates) ## To update the worker stoppers
 
-    def OnMessLogger(self, event):
-        """Show Result status."""
-        if event.data is not None:
-            text = "%s" % event.data[1]
-            header = "@%s:\t" % event.data[0]
-            text = text.replace("\n", "\n"+header)
-            self.tabs["log"]["text"].AppendText(header+text+"\n")
-
-    def OnMessStatus(self, event):
-        """Show Result status."""
-        if event.data is not None:
-            self.statusbar.SetStatusText("@%s:%s" % tuple(event.data), 0)
+    def doUpdates(self, updates=None):
+        if updates is None:
+            updates={"menu":True }
+        if updates.has_key("error"):
+            self.errorBox(updates["error"])
+        if updates.has_key("menu"):
+            self.makeMenu(self.toolFrame)
+        if updates.has_key("progress"):
+            self.updateProgressBar()
+        if updates.has_key("status"):
+            self.statusbar.SetStatusText(updates["status"], 0)
+        if updates.has_key("log"):
+            self.tabs["log"]["text"].AppendText(updates["log"])
 
     def OnStop(self, event):
         """Show Result status."""
-        ## TODO Implement stop
         if event.GetId() in self.ids_stoppers.keys():
-            worker_id = self.ids_stoppers[event.GetId()]
-            if worker_id is not None and worker_id in self.workers.keys():
-                self.workers[worker_id]["worker"].abort()
-
+            self.plant.layOff(self.ids_stoppers[event.GetId()])
+            self.checkResults(menu=True)
+            
     def OnSave(self, event):
         if not (self.dw.isFromPackage and self.dw.package_filename is not None):
             wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead', style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
@@ -722,7 +690,7 @@ class Siren():
 
     def OnPageChanged(self, event):
         self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
-        self.makeMenu(self.toolFrame)
+        self.doUpdates()
 
     def OnNewV(self, event):
         if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
@@ -782,23 +750,23 @@ class Siren():
     def OnCut(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].cutItem(self.selectedTab["tab"].getSelectedRow())
-            self.makeMenu(self.toolFrame) ### update paste entry
+            self.doUpdates({"menu":True}) ### update paste entry
 
     def OnCopy(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
-            self.makeMenu(self.toolFrame) ### update paste entry
+            self.doUpdates({"menu":True}) ### update paste entry
 
     def OnPaste(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
-            self.makeMenu(self.toolFrame) ### update paste entry
+            self.doUpdates({"menu":True}) ### update paste entry
 
     def OnDuplicate(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
-            self.makeMenu(self.toolFrame) ### update paste entry
+            self.doUpdates({"menu":True}) ### update paste entry
 
     def flipRowsEnabled(self, rids):
         if self.tabs.has_key("rows") and len(rids)> 0:
@@ -896,6 +864,7 @@ class Siren():
         return dets
 
     def OnQuit(self, event):
+        self.plant.closeDown(self)
         if not self.checkAndProceedWithUnsavedChanges():
                 return
         self.deleteAllViews()
@@ -948,17 +917,16 @@ class Siren():
         self.constraints = Constraints(self.dw.getNbRows(), self.dw.getPreferences())
 
     def resetLogger(self):
+        verb = 1
         if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
-            self.logger.resetOut()
-            self.logger.addOut({"*": self.dw.getPreference('verbosity'), "error":1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
-            self.logger.addOut({"error":1}, "stderr")
-            self.logger.addOut({"error":1}, self.toolFrame, CErrorDialog.showBox)
-        else:
-            self.logger.resetOut()
-            self.logger.addOut({"*": 1, "progress":2, "result":1}, self.toolFrame, Message.sendMessage)
-            self.logger.addOut({"error":1}, "stderr")
+            verb = self.dw.getPreference('verbosity')
+
+        self.logger.resetOut()
+        self.logger.addOut({"*": verb, "error":1, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
+        self.logger.addOut({"error":1}, "stderr")
 
     def reloadAll(self):
+        self.plant.closeDown(self)
         self.reloadVars(review=False)
         self.reloadRows()
         self.reloadReds()
@@ -992,7 +960,7 @@ class Siren():
         self.tabs["exp"]["tab"].resetData(Batch())
         self.tabs["hist"]["tab"].resetData(Batch())
         self.deleteAllViews()
-        self.makeMenu(self.toolFrame)
+        self.doUpdates({"menu":True})
 
     def startFileActionMsg(self, msg, short_msg=''):
         """Shows a dialog that we're reading a file"""
@@ -1014,3 +982,18 @@ class Siren():
             self.toolFrame.Enable(True)
             self.statusbar.SetStatusText(msg, 0)
         
+    def errorBox(self, message):
+        if self.busyDlg is not None:
+            del self.busyDlg
+            self.busyDlg = None
+        dlg = wx.MessageDialog(self.toolFrame, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption="Error")
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    def readyReds(self, reds, tab):
+        if len(reds) > 0 and self.tabs.has_key(tab):
+            self.tabs[tab]["tab"].insertItems(reds)
+
+    def readyProj(self, vid, proj):
+        if self.view_ids.has_key(vid):
+            self.view_ids[vid].readyProj(proj)

@@ -102,8 +102,8 @@ def linkage(mat, details, side_cols=None, osupp=None):
     return Z, d
 
     ### OTHER PACK
-    # d = toolsMath.getDistances(mat, details, side_cols, parts=osupp)
-    # types_ids = toolsMath.pickVars(mat, details, side_cols)
+    # d = toolMath.getDistances(mat, details, side_cols, parts=osupp)
+    # types_ids = toolMath.pickVars(mat, details, side_cols)
     # Z = scipy.cluster.hierarchy.centroid(mat[types_ids["all"],:].T)
 
 

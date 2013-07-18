@@ -19,7 +19,7 @@ from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
 from classInterObjects import DraggableResizeableRectangle
-import toolsMath
+import toolMath
 
 import pdb
 
@@ -58,7 +58,7 @@ class ParaView(GView):
             self.updateHist(red)
             return red
 
-    def updateQuery(self, sd=None, query=None):
+    def updateQuery(self, sd=None, query=None, force=False):
         if sd is None:
             queries = [self.parseQuery(0),self.parseQuery(1)]
         else:
@@ -74,7 +74,7 @@ class ParaView(GView):
                 self.queries[side] = queries[side]
                 changed = True
 
-        if changed:
+        if changed or force:
             red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
@@ -129,9 +129,9 @@ class ParaView(GView):
 
         mat, details, mcols = self.parent.dw.data.getMatrix()
         if len(osupp) > 500:
-            zds = toolsMath.linkageZds(mat, details, side_cols, osupp)
+            zds = toolMath.linkageZds(mat, details, side_cols, osupp)
         else:
-            Z, d = toolsMath.linkage(mat, details, side_cols, osupp)
+            Z, d = toolMath.linkage(mat, details, side_cols, osupp)
             zds = [{"Z":Z, "d":d, "ids": range(mat.shape[1])}]
 
         mcols[None] = 0
@@ -198,7 +198,7 @@ class ParaView(GView):
             self.limits[pos_axis, :] = [min(tt), max(tt), 0]
 
             ### SAMPLING ENTITIES
-            reps, clusters = toolsMath.sampleZds(self.zds, t)
+            reps, clusters = toolMath.sampleZds(self.zds, t)
             reps.sort(key=lambda x: draw_settings["draw_pord"][osupp[x]])
             self.reps = set(reps)
             
@@ -301,7 +301,7 @@ class ParaView(GView):
             self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
                                   + [self.parent.dw.data.col(side, l.col()).width]
 
-            self.current_r = self.updateQuery(side, copied)
+            self.current_r = self.updateQuery(side, copied, force=True)
 
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):

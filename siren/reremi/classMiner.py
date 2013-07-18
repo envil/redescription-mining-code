@@ -15,7 +15,9 @@ class Miner:
 
 ### INITIALIZATION
 ##################
-    def __init__(self, data, params, logger, mid=None, souvenirs=None):
+    def __init__(self, data, params, logger, mid=None, souvenirs=None, qin=None):
+        self.qin = qin
+        self.want_to_live = True
         if mid is not None:
             self.id = mid
         else:
@@ -32,7 +34,6 @@ class Miner:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:
             self.souvenirs = souvenirs
-        self.want_to_live = True
 
         try:
             self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
@@ -56,10 +57,19 @@ class Miner:
             if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
                 for name in names[0]:
                     self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
-
+                            
     def kill(self):
         self.want_to_live = False
 
+    def questionLive(self):
+        if self.want_to_live and self.qin is not None:
+            try:
+                piece_result = self.qin.get_nowait()
+                if piece_result["type_message"] == "progress" and piece_result["message"] == "stop":
+                    self.want_to_live = False
+            except:
+                pass
+        return self.want_to_live
 
 ### RUN FUNCTIONS
 ################################
@@ -89,8 +99,8 @@ class Miner:
         self.expandRedescriptions([redesc])
 
         tacE = datetime.datetime.now()
-        self.logger.printL(1,"End part run %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.want_to_live), "time", self.id)
-        if not self.want_to_live:
+        self.logger.printL(1,"End part run %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.questionLive()), "time", self.id)
+        if not self.questionLive():
             self.logger.printL(1, 'Interrupted...', 'status', self.id)
         else:
             self.logger.printL(1, 'Done...', 'status', self.id)
@@ -123,18 +133,18 @@ class Miner:
         self.initializeRedescriptions(ids)
         
         tacP = datetime.datetime.now()
-        self.logger.printL(1,"End Pairs %s, elapsed %s (%s)" % (tacP, tacP-ticP, self.want_to_live), "time", self.id)
+        self.logger.printL(1,"End Pairs %s, elapsed %s (%s)" % (tacP, tacP-ticP, self.questionLive()), "time", self.id)
 
         ticF = datetime.datetime.now()
         self.logger.printL(1,"Start full run %s" % ticF, "time", self.id)
 
         initial_red = self.initial_pairs.get(self.data, self.testIni)
-        # while initial_red is not None and self.want_to_live:
+        # while initial_red is not None and self.questionLive():
         #     initial_red = self.initial_pairs.get(self.data)
         # exit()
 
 
-        while initial_red is not None and self.want_to_live:
+        while initial_red is not None and self.questionLive():
             self.count += 1
             ticE = datetime.datetime.now()
             self.logger.printL(1,"Start expansion %s" % ticE, "time", self.id)
@@ -148,14 +158,14 @@ class Miner:
                 self.rm = self.rm.fillCopy(self.data, treds)
 
             tacE = datetime.datetime.now()
-            self.logger.printL(1,"End expansion %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.want_to_live), "time", self.id)
-            self.logger.printL(1, "final", 'result', self.id)
+            self.logger.printL(1,"End expansion %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.questionLive()), "time", self.id)
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
 
             initial_red = self.initial_pairs.get(self.data, self.testIni)
 
         tacF = datetime.datetime.now()
-        self.logger.printL(1,"End full run %s, elapsed %s (%s)" % (tacF, tacF-ticF, self.want_to_live), "time", self.id)
-        if not self.want_to_live:
+        self.logger.printL(1,"End full run %s, elapsed %s (%s)" % (tacF, tacF-ticF, self.questionLive()), "time", self.id)
+        if not self.questionLive():
             self.logger.printL(1, 'Interrupted...', 'status', self.id)
         else:
             self.logger.printL(1, 'Done...', 'status', self.id)
@@ -199,7 +209,7 @@ class Miner:
                 idsR = sorted(random.sample(idsR, 1000))
 
             for idR in idsR:
-                if not self.want_to_live:
+                if not self.questionLive():
                     return
                 
                 pairs += 1
@@ -239,7 +249,7 @@ class Miner:
         self.partial["batch"].extend(nextge)
 
 
-        while len(nextge) > 0  and self.want_to_live:
+        while len(nextge) > 0  and self.questionLive():
 
             kids = set()
 
@@ -261,7 +271,7 @@ class Miner:
                             init = 0 
 
                         for v in red.availableColsSide(side, self.deps):
-                            if not self.want_to_live: return
+                            if not self.questionLive(): return
 
                             if self.double_check:
                                 tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())                         
@@ -313,12 +323,12 @@ class Miner:
             nextge_keys = self.partial["batch"].selected(self.constraints.actions_nextge())
             nextge = [self.partial["batch"][i] for i in nextge_keys]
             self.partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
-            self.logger.printL(1, "partial", 'result', self.id)
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
         self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
-        self.logger.printL(1, "partial", 'result', self.id)
+        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
         self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
 
         return self.partial

@@ -464,11 +464,6 @@ class SParts:
 
 
     def __init__(self, N, supports, prs = [1,1]):
-        try:
-            self.pVal = eval('self.pVal%s' % (SParts.methodpVal))
-        except AttributeError:
-              raise Exception('Oups method to compute the p-value does not exist !')
-
         #### init from dict_info
         if type(N) == dict:
             self.missing = False
@@ -547,6 +542,12 @@ class SParts:
                 for si, sp in enumerate(self.sParts):
                     if si != SParts.delta:
                         self.sParts[SParts.delta] -= sp
+
+    def pVal(self):
+        try:
+            return eval('self.pVal%s()' % (SParts.methodpVal))
+        except AttributeError:
+              raise Exception('Oups method to compute the p-value does not exist !')
 
     def nbRows(self):
         return self.N
