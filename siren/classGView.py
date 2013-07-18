@@ -411,14 +411,16 @@ class GView(object):
     def do_key(self, key):
         'whenever a key is pressed'
         points = set()
-        if key=='s' and self.mc is not None:
+        if key== "s" and self.mc is not None:
             points = self.apply_mask(self.mc.get_path())
             self.mc.clear()
+        if key== "q":
+            points = None
         elif key in self.map_select_supp.keys():
             points = [i for (i,p) in enumerate(self.suppABCD) if p in self.map_select_supp[key]]
-        elif key == " ":
+        elif key == "e":
             self.sendFlipEmphasizedR()
-        if len(points) > 0:
+        if points != set():
             self.sendEmphasize(points)
         return points
 

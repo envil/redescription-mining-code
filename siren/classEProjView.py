@@ -98,8 +98,8 @@ class EProjView(GView):
 
         self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"disabled")
-        v_box.Add(label, 0, border=3, flag=flags)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  disabled  +")
+        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
         v_box.Add(self.sld_sel, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
 
@@ -108,7 +108,8 @@ class EProjView(GView):
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
 
     def OnSlide(self, event):
         self.updateMap()

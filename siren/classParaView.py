@@ -286,21 +286,22 @@ class ParaView(GView):
         return tmp
 
     def receive_release(self, rid, rect):
-        pos_axis = len(self.current_r.queries[0])
-        side = 0
-        pos = rid
-        if rid > pos_axis:
-            side = 1
-            pos -= (pos_axis+1)
-        ys = [rect.get_y(), rect.get_y() + rect.get_height()]
-        bounds = [self.getPinvalue(rid, b) for b in ys]
-        copied = self.current_r.queries[side].copy()
-        l = copied.listLiterals()[pos]
-        l.term.setRange(bounds)
-        self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
-                              + [self.parent.dw.data.col(side, l.col()).width]
+        if self.current_r is not None:
+            pos_axis = len(self.current_r.queries[0])
+            side = 0
+            pos = rid
+            if rid > pos_axis:
+                side = 1
+                pos -= (pos_axis+1)
+            ys = [rect.get_y(), rect.get_y() + rect.get_height()]
+            bounds = [self.getPinvalue(rid, b) for b in ys]
+            copied = self.current_r.queries[side].copy()
+            l = copied.listLiterals()[pos]
+            l.term.setRange(bounds)
+            self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                                  + [self.parent.dw.data.col(side, l.col()).width]
 
-        self.current_r = self.updateQuery(side, copied)
+            self.current_r = self.updateQuery(side, copied)
 
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):
@@ -349,13 +350,13 @@ class ParaView(GView):
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"disabled")
-        v_box.Add(label, 0, border=3, flag=flags)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  disabled  +")
+        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL)
         v_box.Add(self.sld_sel, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "sample")
-        v_box.Add(label, 0, border=3, flag=flags)
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "-  sample  +")
+        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
         v_box.Add(self.sld, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
         return [add_box]
@@ -364,9 +365,10 @@ class ParaView(GView):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         ##self.sld.Bind(wx.EVT_SLIDER, self.OnSlide)
-        ##self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        self.sld.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
-        self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        ##self.sld.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
 
     def OnSlide(self, event):
         self.updateMap()
