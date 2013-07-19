@@ -290,17 +290,18 @@ class DynProj(Proj):
     def getX(self, X):
         pass
 
-class SVDProj(Proj):
+class SVDProj(DynProj):
 
-    PID = "SVD"
+    PID = "-SVD"
     title_str = "SVD Projection"
     fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"compute_uv": True, "full_matrices":False })
     dyn_f = [np.linalg.svd]
     
     def comp(self):
-        U, s, V = self.applyF(np.linalg.svd, {"a": self.getData()})
-        tmp = np.dot(U[:2],matn)
+        matn = self.getData()
+        U, s, V = self.applyF(np.linalg.svd, {"a": matn.T})
+        tmp = np.dot(U[:2], matn.T)
         self.coords_proj = (tmp[0], tmp[1])
 
     def getAxisLabel(self, axi):
@@ -432,7 +433,7 @@ class SKtsneProj(DynProj):
 
 
 class ProjFactory:
-    defaultViewT = AxesProj
+    defaultView = AxesProj
 
     @classmethod
     def getViewsDetails(tcl, bc, what="entities"):
@@ -453,7 +454,7 @@ class ProjFactory:
                     if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
                         return cls(data, code, what, transpose)
 
-        cls = tcl.defaultViewT
+        cls = tcl.defaultView
         # cls = random.choice([p for p in all_subclasses(Proj)
         #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
         return cls(data, {}, what, transpose)

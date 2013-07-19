@@ -12,6 +12,7 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
+import matplotlib.animation as animation
 
 from reremi.toolLog import Log
 from reremi.classQuery import Query
@@ -29,7 +30,8 @@ class EProjView(GView):
     what = "entities"
     title_str = "Entities Projection"
     typesI = ["Var", "Reds", "Row"]
-    defaultViewT = ProjFactory.defaultViewT
+    defaultViewT = ProjFactory.defaultView.PID + "_" + what
+    wait_delay = 300
 
     @classmethod
     def getViewsDetails(tcl):
@@ -111,6 +113,7 @@ class EProjView(GView):
         self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
 
     def runProject(self):
+        self.init_wait()
         self.parent.project(self.proj, self.getId())
         if self.repbut is not None:
             self.repbut.Disable()
@@ -118,10 +121,12 @@ class EProjView(GView):
                       
     def readyProj(self, proj):
         self.proj = proj
+        self.kill_wait()
         self.updateMap()
         if self.repbut is not None:
             self.repbut.Enable()
             self.repbut.SetLabel("Reproject")
+            
         
     def drawMap(self):
         """ Draws the map
@@ -142,6 +147,25 @@ class EProjView(GView):
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
 
         self.MapcanvasMap.draw()
+
+    def init_wait(self):
+        self.call_wait = wx.CallLater(1, self.plot_wait)
+        self.cp = 0
+
+    def kill_wait(self):
+        self.call_wait.Stop()
+        self.axe.cla()
+        self.axe.plot([r/10.0+0.3 for r in [1,2,3]], [0.5, 0.5, 0.5], 'ks', markersize=10)
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+
+    def plot_wait(self):
+        self.axe.cla()
+        self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+        self.cp += 1
+        self.call_wait.Restart(self.wait_delay)
             
     def updateMap(self):
         """ Redraws the map

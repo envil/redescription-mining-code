@@ -32,7 +32,7 @@ class ViewFactory:
     @classmethod
     def getDefaultViewT(tcl, geo=False, type_tab="Reds"):
         if type_tab == "Row":
-            return ProjView.defaultViewT
+            return EProjView.defaultViewT
         elif geo:
             return MapView.TID
         else:

@@ -26,7 +26,7 @@ class MapView(GView):
     title_str = "Map"
     ordN = 1
     geo = True
-    mapoly = False
+    mapoly = True #False
 
     WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"

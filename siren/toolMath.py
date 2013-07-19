@@ -55,6 +55,11 @@ def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=Fal
 
 
 def withen(mat):
+    tt = np.std(mat, 0)
+    tt[np.where(tt == 0)] = 1
+    return (mat - np.tile(np.mean(mat, 0), (mat.shape[0], 1)))/np.tile(tt, (mat.shape[0], 1))
+
+def withenR(mat):
     tt = np.std(mat, 1)
     tt[np.where(tt == 0)] = 1
     return (mat - np.tile(np.mean(mat, 1), (mat.shape[1], 1)).T)/np.tile(tt, (mat.shape[1], 1)).T

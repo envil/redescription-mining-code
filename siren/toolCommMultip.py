@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing, sys
 from reremi.classMiner import Miner
 
 import pdb
@@ -28,7 +28,7 @@ class ExpanderProcess(WorkerProcess):
     def run(self):
         self.miner.part_run(self.params)
 
-class ProjProcess(multiprocessing.Process):
+class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, boss, queue_in, proj=None):
         multiprocessing.Process.__init__(self)
         self.id = pid
@@ -41,8 +41,8 @@ class ProjProcess(multiprocessing.Process):
         try:
             self.proj.do()
             self.logger.printL(1, self.proj, "result", self.id)
-        except:
-            self.logger.printL(1, "Projection Failed!", "error", self.id)
+        except Exception as e:
+            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
         finally:
             self.logger.printL(1, None, "progress", self.id)
 
@@ -50,7 +50,7 @@ class ProjProcess(multiprocessing.Process):
 class WorkPlant:
 
     cqueue = multiprocessing.Queue
-    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "project": ProjProcess}
+    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
 
@@ -108,11 +108,14 @@ class WorkPlant:
         self.checkResults(parent)
         self.cleanUp("out")
 
-    def layOff(self, wid, mess=True):
+    def layOff(self, wid):
         if wid is not None and self.workers.has_key(wid):
-            if mess and self.comm_queues.has_key(wid):
+            if self.workers[wid]["wtyp"] == "projector" and self.comm_queues.has_key(wid):
+                self.workers[wid]["worker"].terminate()
+                self.retire(wid)
+            else:
                 self.sendMessage(self.comm_queues[wid], "stop", "progress", "plant")
-            self.off[wid] = self.workers.pop(wid)
+                self.off[wid] = self.workers.pop(wid)
             return wid
         return None
 
@@ -186,7 +189,7 @@ class WorkPlant:
             return
         
         worker_info = self.workers[source]
-        if worker_info["wtyp"] in ["expand", "miner"]:
+        if worker_info["wtyp"] in ["expander", "miner"]:
             tap = message[worker_info["batch_type"]]
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:
@@ -197,5 +200,5 @@ class WorkPlant:
                     tmp.append(redc)
                 worker_info["results_track"] = nb_tap
                 parent.readyReds(tmp, worker_info["results_tab"])
-        elif worker_info["wtyp"] in ["project"]:
+        elif worker_info["wtyp"] in ["projector"]:
             parent.readyProj(worker_info["vid"], message)

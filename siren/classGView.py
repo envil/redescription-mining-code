@@ -44,12 +44,11 @@ class GView(object):
     ordN = 0
     title_str = "View"
     geo = False
-    typesI = ["Var", "Reds"]
+    typesI = ["Var", "Reds", "Row"]
 
     @classmethod
     def getViewsDetails(tcl):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
-
 
     def __init__(self, parent, vid, more=None):
         self.parent = parent
@@ -63,6 +62,7 @@ class GView(object):
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
         self.panel = wx.Panel(self.mapFrame, -1)
+        #self.makeMenu(self.mapFrame)
         self.drawMap()
         self.drawFrame()
         self.binds()
@@ -76,6 +76,24 @@ class GView(object):
     def getVId(self):
         return self.vid
 
+    # def makeMenu(self, frame):
+    #     menuBar = wx.MenuBar()
+    #     menuBar.Append(self.makeConSMenu(frame), "&Edit")
+    #     frame.SetMenuBar(menuBar)
+    #     frame.Layout()
+    #     frame.SendSizeEvent()
+
+    # def makeConSMenu(self, frame, menuCon=None):
+    #     if menuCon is None:
+    #         menuCon = wx.Menu()
+    #     ID_FOC = wx.NewId()
+    #     m_foc = menuCon.Append(ID_FOC, "Test", "Test.")
+    #     frame.Bind(wx.EVT_MENU, self.OnTest, m_foc)
+    #     return menuCon
+
+    # def OnTest(self, event):
+    #     print event
+        
     def drawFrame(self):
         self.QIds = [wx.NewId(), wx.NewId()]
         self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0], style=wx.TE_PROCESS_ENTER),
@@ -179,7 +197,6 @@ class GView(object):
         # self.mapFrame.Bind(wx.EVT_KEY_UP, self.mkey_press_callback)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
 #        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
-        self.panel.Bind(wx.EVT_SET_FOCUS, self.OnFocus)                
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()

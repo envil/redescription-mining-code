@@ -13,6 +13,7 @@ import pdb
 
 from classSiren import Siren
 from classGridTable import CustRenderer
+import toolMath
              
 ## MAIN APP CLASS ###
 class SirenApp(wx.App):
@@ -37,7 +38,7 @@ class SirenApp(wx.App):
             # self.frame.expand()
             tab = "reds"
             # self.frame.dw.data.selected_rows = set(range(400))
-            # self.frame.tabs[tab]["tab"].viewData("MAP", 12)
+            self.frame.tabs[tab]["tab"].viewData("MAP", 12)
             # mapV = self.frame.getViewX(None, "PC")
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)

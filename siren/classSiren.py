@@ -232,15 +232,36 @@ class Siren():
             return
         # Popup the menu.  If an item is selected then its handler
         # will be called before PopupMenu returns.
-        menuRed = self.makeRedMenu(frame)
-        menuRed.AppendMenu(wx.NewId(), "&View", self.makeViewMenu(frame))
+        ct = 0
+        menuCon = self.makeConSMenu(frame)
+        if menuCon.GetMenuItemCount() > ct:
+            ct = menuCon.GetMenuItemCount()
+            menuCon.AppendSeparator()
+        self.makeRedMenu(frame, menuCon)
+        if menuCon.GetMenuItemCount() > ct:
+            ct = menuCon.GetMenuItemCount()
+            menuCon.AppendSeparator()
+        # menuCon.AppendMenu(wx.NewId(), "&View", self.makeViewMenu(frame))
+        self.makeViewMenu(frame, menuCon)
 
-        frame.PopupMenu(menuRed)
-        menuRed.Destroy()
+        frame.PopupMenu(menuCon)
+        menuCon.Destroy()
 
-    def makeRedMenu(self, frame):
+    def makeConSMenu(self, frame, menuCon=None):
+        if menuCon is None:
+            menuCon = wx.Menu()
+        if self.selectedTab["type"] in ["Row"]:
+            
+            ID_FOC = wx.NewId()
+            m_foc = menuCon.Append(ID_FOC, "Expand/Shrink column", "Expand/Shrink current column.")
+            frame.Bind(wx.EVT_MENU, self.OnFlipExCol, m_foc)
+
+        return menuCon
+
+    def makeRedMenu(self, frame, menuRed=None):
         ### Todo checks for cut, paste, etc
-        menuRed = wx.Menu()
+        if menuRed is None:
+            menuRed = wx.Menu()
         
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
@@ -300,8 +321,9 @@ class Siren():
  
         return menuRed
 
-    def makeViewMenu(self, frame):
-        menuView = wx.Menu()
+    def makeViewMenu(self, frame, menuView=None):
+        if menuView is None:
+            menuView = wx.Menu()
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
                 for item in ViewFactory.getViewsInfo(self.dw.isGeospatial(), self.selectedTab["type"]):
@@ -312,8 +334,9 @@ class Siren():
                     self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuView
 
-    def makeProcessMenu(self, frame):
-        menuProcess = wx.Menu()
+    def makeProcessMenu(self, frame, menuProcess=None):
+        if menuProcess is None:
+            menuProcess = wx.Menu()
         ID_MINE = wx.NewId()
         m_mine = menuProcess.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
         frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
@@ -332,8 +355,9 @@ class Siren():
             frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         return menuProcess
 
-    def makeTabsMenu(self, frame):
-        menuTabs = wx.Menu()
+    def makeTabsMenu(self, frame, menuTabs=None):
+        if menuTabs is None:
+            menuTabs = wx.Menu()
 
         self.check_tab = {}
         for tab_id in self.tabs_keys:
@@ -346,9 +370,9 @@ class Siren():
                 m_check.Check()
         return menuTabs
 
-
-    def makeFileMenu(self, frame):
-        menuFile = wx.Menu()
+    def makeFileMenu(self, frame, menuFile=None):
+        if menuFile is None:
+            menuFile = wx.Menu()
         m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
         
@@ -397,8 +421,9 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
         return menuFile
 
-    def makeHelpMenu(self, frame):
-        menuHelp = wx.Menu()
+    def makeHelpMenu(self, frame, menuHelp=None):
+        if menuHelp is None:
+            menuHelp = wx.Menu()
         m_help = menuHelp.Append(wx.ID_HELP, "C&ontent", "Access the instructions.")
         frame.Bind(wx.EVT_MENU, self.OnHelp, m_help)
         
@@ -515,9 +540,9 @@ class Siren():
     def project(self, proj=None, vid=None):
         self.progress_bar.Show()
         if proj is not None and vid is not None:
-            wid = self.plant.findWid([("wtyp", "project"), ("vid", vid)])
+            wid = self.plant.findWid([("wtyp", "projector"), ("vid", vid)])
             if wid is None:
-                self.plant.addWorker("project", self, proj,
+                self.plant.addWorker("projector", self, proj,
                                      {"vid": vid})
                 self.checkResults(menu=True)
 
@@ -727,6 +752,10 @@ class Siren():
     def OnProcessAll(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].processAll(self.constraints.actions_final(), True)
+
+    def OnFlipExCol(self, event):
+        if self.selectedTab["type"] in ["Row"]:
+            self.selectedTab["tab"].flipFocusCol(self.selectedTab["tab"].getSelectedCol())
 
     def OnFlipEnabled(self, event):
         if self.selectedTab["type"] in ["Var", "Reds", "Row"]:

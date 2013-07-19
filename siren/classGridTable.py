@@ -1,4 +1,4 @@
-import wx, wx.grid, re, colorsys, random
+import wx, wx.grid, re, colorsys, random, datetime
 from factView import ViewFactory
 from reremi.toolICList import ICList
 from reremi.classQuery import Query, Literal
@@ -288,7 +288,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def OnMouse(self,event):
         if event.GetRow() < self.nbItems():
-            self.setSelectedRow(event.GetRow())
+            self.setSelectedRow(event.GetRow(), event.GetCol())
             if event.Col == 0:
                 self.flipEnabled(event.GetRow())
                 
@@ -341,7 +341,10 @@ class GridTable(wx.grid.PyGridTableBase):
         else:
             return None
 
-    def setSelectedRow(self,row):
+    def getSelectedCol(self):
+        return max(0,self.GetView().GetGridCursorCol())
+
+    def setSelectedRow(self,row, col=0):
         self.GetView().SetGridCursor(row,0)
         self.GetView().SelectRow(row)
 
@@ -366,6 +369,7 @@ class GridTable(wx.grid.PyGridTableBase):
         
     def updateSort(self):
         selected_row = self.getSelectedRow()
+        selected_col = self.getSelectedCol()
         selected_id = None
         if selected_row is not None:
             selected_id = self.getPositionFromRow(selected_row)
@@ -375,21 +379,21 @@ class GridTable(wx.grid.PyGridTableBase):
             details.update(self.details)
             self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
         if selected_id is not None:
-            self.setSelectedRow(self.getRowFromPosition(selected_id))
+            self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
             
     def OnRightClick(self, event):
         if event.GetRow() < self.nbItems():
-            self.setSelectedRow(event.GetRow())
+            self.setSelectedRow(event.GetRow(), event.GetCol())
             self.parent.makePopupMenu(self.parent.toolFrame)
 
     def OnKU(self, event):
         if self.grid.GetGridCursorRow() < self.nbItems():
-            self.setSelectedRow(self.grid.GetGridCursorRow())
+            self.setSelectedRow(self.grid.GetGridCursorRow(), self.grid.GetGridCursorCol())
         event.Skip()
 
     def OnViewData(self, event):
         if event.GetRow() < self.nbItems():
-            self.setSelectedRow(event.GetRow())
+            self.setSelectedRow(event.GetRow(), event.GetCol())
             self.viewData(self.parent.getDefaultViewT(self.tabId))
 
 class RedTable(GridTable):
@@ -415,8 +419,10 @@ class RedTable(GridTable):
     def refreshRestrict(self):
         if self.uptodate:
             return
+        tic = datetime.datetime.now()
         for red in self.data:
             red.setRestrictedSupp(self.parent.dw.data)
+        #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
         self.uptodate = True
 
     def recomputeAll(self, restrict):
@@ -438,6 +444,7 @@ class RedTable(GridTable):
             self.sortids.append(len(self.data))
         else:
             self.sortids.insert(row+1, len(self.data))
+        item.setRestrictedSupp(self.parent.dw.data)
         self.data.append(item)
         if upView:
             self.neutraliseSort()
@@ -673,6 +680,12 @@ class RowTable(GridTable):
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
 
+    def setSelectedRow(self,row, col=0):
+        if row is None: row = 0
+        if col is None: col = 0
+        self.GetView().SetGridCursor(row,col)
+        self.GetView().SelectRow(row)
+
     def viewData(self, viewT, pos=None):
         queries = [Query(), Query()]
         self.parent.newRedVHist(queries, viewT)
@@ -765,6 +778,7 @@ class RowTable(GridTable):
             self.redraw()
 
     def redraw(self, details={}, review=True):
+        crow, ccol = self.GetView().GetGridCursorRow(), self.GetView().GetGridCursorCol()
         self.ResetView()
         self.GetView().SetColMinimalAcceptableWidth(5)
         #self.GetView().SetRowMinimalAcceptableHeight(5)
@@ -776,17 +790,33 @@ class RowTable(GridTable):
             self.GetView().SetColSize(cid, 10*len(self.fields[cid][0]))
 #         self.GetView().SetRowSize(self.getSelectedRow(), 10)
 # #            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
+        self.GetView().DisableDragColSize()
+        self.GetView().DisableDragRowSize()
+        self.GetView().SetGridCursor(crow,ccol)
 
     def setFocus(self, event):
-        cid = event.GetCol()
-        if cid < 2:
-            pass ### TODO select all
-        else:
+        self.flipFocusCol(event.GetCol())
+
+    def flipFocusCol(self, cid):
+        if cid > 1:
             if cid in self.sc:
                 self.sc.remove(cid)
             else:
                 self.sc.add(cid)
             self.redraw()
+
+    def setFocusCol(self, cid):
+        if cid > 1:
+            if cid not in self.sc:
+                self.sc.add(cid)
+            self.redraw()
+
+    def delFocusCol(self, cid):
+        if cid > 1:
+            if cid in self.sc:
+                self.sc.remove(cid)
+            self.redraw()
+
 
     def showRidRed(self, rid, red=None):
         row = self.getRowForItem(rid)
@@ -798,3 +828,8 @@ class RowTable(GridTable):
                         self.sc.add(self.cols_map[(side, l.col())])
             self.redraw()
         return row
+
+    def setSort(self, event):
+        self.setFocusCol(event.GetCol())
+        GridTable.setSort(self, event)
+        
