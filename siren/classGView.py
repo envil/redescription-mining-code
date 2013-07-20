@@ -38,7 +38,9 @@ class GView(object):
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
-    map_select_supp = {"l": [SParts.alpha], "r": [SParts.beta], "i": [SParts.gamma], "o": [SParts.delta]}
+    map_select_supp = [("l", "E_1,0", [SParts.alpha]), ("r", "E_0,1", [SParts.beta]),
+                       ("i", "E_1,1", [SParts.gamma]), ("o", "E_0,0", [SParts.delta])]
+
 
     TID = "G"
     ordN = 0
@@ -58,17 +60,66 @@ class GView(object):
         self.vid = vid
         self.circle = None
         self.buttons = []
+        self.act_butt = [1]
         self.highl = {}
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
         self.panel = wx.Panel(self.mapFrame, -1)
-        #self.makeMenu(self.mapFrame)
         self.drawMap()
         self.drawFrame()
         self.binds()
+        self.prepareActions()
+        self.setKeys()
+        self.makeMenu()
         self.mapFrame.Show()
         self.queries = [Query(), Query()]
         self.suppABCD = None
+
+    def getActionsDetails(self):
+        details = []
+        for action, dtl in self.actions_map.items():
+            details.append({"label": "%s [%s]" % (dtl["label"], dtl["key"]),
+                            "legend": dtl["legend"], "active": dtl["active_q"](),
+                            "key": dtl["key"], "order": dtl["order"]})
+        return details
+            
+    def q_has_poly(self):
+        return self.mc is not None and self.mc.q_has_poly()
+
+    def q_has_selected(self):
+        return len(self.highl) > 0
+
+    def q_true(self):
+        return True
+
+    def prepareActions(self):
+        self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "deselect all",
+                                             "legend": "deselect all dots", "more": None,
+                                             "order":0, "active_q":self.q_has_selected}
+                            }
+        if self.mc is not None:
+            self.actions_map["select_poly"] = {"method": self.do_select_poly, "label": "select polygon content",
+                                               "legend": "select dots inside the polygon", "more": None,
+                                               "order":2, "active_q":self.q_has_poly}
+
+        for setk, setl, setp in self.map_select_supp:
+            self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "select "+setl,
+                                             "legend": "deselect dots in "+setl, "more": setp,
+                                             "order":1, "active_q":self.q_true}
+
+    def setKeys(self, keys=None):
+        self.keys_map = {}
+        if keys is None:
+            for action, details in self.actions_map.items():
+                details["key"] = action[0]
+                self.keys_map[details["key"]] = action
+        else:
+            for action, details in self.actions_map.items():
+                details["key"] = None
+            for key, action in keys.items():
+                if self.actions_map.has_key(action):
+                    self.actions_map[action]["key"] = key
+                    self.keys_map[key] = action
         
     def getId(self):
         return (self.TID, self.vid)
@@ -76,12 +127,14 @@ class GView(object):
     def getVId(self):
         return self.vid
 
-    # def makeMenu(self, frame):
-    #     menuBar = wx.MenuBar()
-    #     menuBar.Append(self.makeConSMenu(frame), "&Edit")
-    #     frame.SetMenuBar(menuBar)
-    #     frame.Layout()
-    #     frame.SendSizeEvent()
+    def makeMenu(self, frame=None):
+        if frame is None:
+            frame = self.mapFrame
+        self.menu_map_act = {}
+        menuBar = wx.MenuBar()
+        menuBar.Append(self.makeActionsMenu(frame), "&Actions")
+        frame.SetMenuBar(menuBar)
+        frame.Layout()
 
     # def makeConSMenu(self, frame, menuCon=None):
     #     if menuCon is None:
@@ -91,8 +144,52 @@ class GView(object):
     #     frame.Bind(wx.EVT_MENU, self.OnTest, m_foc)
     #     return menuCon
 
-    # def OnTest(self, event):
-    #     print event
+    def makeActionsMenu(self, frame, menuAct=None):
+        if menuAct is None:
+            menuAct = wx.Menu()
+        for action in sorted(self.getActionsDetails(), key=lambda x:(x["order"],x["key"])):
+            ID_ACT = wx.NewId()
+            m_act = menuAct.Append(ID_ACT, action["label"], action["legend"])
+            if action["active"]:
+                frame.Bind(wx.EVT_MENU, self.OnMenuAction, m_act)
+                self.menu_map_act[ID_ACT] = action["key"]
+            else:
+                menuAct.Enable(ID_ACT, False)
+
+        if self.mc is not None:
+            for action in sorted(self.mc.getActionsDetails(), key=lambda x:(x["order"],x["key"])):
+                ID_ACT = wx.NewId()
+                m_act = menuAct.Append(ID_ACT, action["label"], action["legend"])
+                if action["active"]:
+                    frame.Bind(wx.EVT_MENU, self.OnMenuMCAction, m_act)
+                    self.menu_map_act[ID_ACT] = action["key"]
+                else:
+                    menuAct.Enable(ID_ACT, False)
+
+            ID_ACT = wx.NewId()
+            m_act = menuAct.AppendCheckItem(ID_ACT, "Polygon drawing", "Activate polygon drawing.")
+            if self.mc.isActive():
+                m_act.Check()
+            frame.Bind(wx.EVT_MENU, self.OnToggleMC, m_act)
+        return menuAct
+
+    def OnToggleMC(self, event):
+        if self.mc is not None:
+             if self.mc.isActive():
+                 self.mc.setButtons([])
+                 self.act_butt = [1]
+             else:
+                 self.mc.setButtons([1])
+                 self.act_butt = []
+             self.makeMenu()
+        
+    def OnMenuAction(self, event):
+        if self.menu_map_act.has_key(event.GetId()):
+            self.doActionForKey(self.menu_map_act[event.GetId()])
+
+    def OnMenuMCAction(self, event):
+        if self.mc is not None and self.menu_map_act.has_key(event.GetId()):
+            self.mc.doActionForKey(self.menu_map_act[event.GetId()])
         
     def drawFrame(self):
         self.QIds = [wx.NewId(), wx.NewId()]
@@ -363,6 +460,7 @@ class GView(object):
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), colhigh='#FFFF00', review=True):
         self.emphasizeOff(turn_off)
         self.emphasizeOn(turn_on, colhigh)
+        self.makeMenu()
         if review:
             self.MapcanvasMap.draw()
 
@@ -415,32 +513,36 @@ class GView(object):
             self.parent.tabs[self.source_list]["tab"].doFlipEmphasizedR(self.getId())
 
     def OnPick(self, event):
-        if event.mouseevent.button == 3 and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)):
+        if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)):
             self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
 
+    def doActionForKey(self, key):
+        if self.actions_map.has_key(self.keys_map.get(key, None)):
+            if self.actions_map[self.keys_map[key]]["active_q"]():
+                self.actions_map[self.keys_map[key]]["method"](self.actions_map[self.keys_map[key]]["more"])
+                return True
+        return False
+
     def key_press_callback(self, event):
-        if event.inaxes:
-            self.do_key(event.key)
+        self.doActionForKey(event.key)
 
     def mkey_press_callback(self, event):
-        self.do_key(chr(event.GetKeyCode()).lower())
-        
-    def do_key(self, key):
-        'whenever a key is pressed'
-        points = set()
-        if key== "s" and self.mc is not None:
-            points = self.apply_mask(self.mc.get_path())
-            self.mc.clear()
-        if key== "q":
-            points = None
-        elif key in self.map_select_supp.keys():
-            points = [i for (i,p) in enumerate(self.suppABCD) if p in self.map_select_supp[key]]
-        elif key == "e":
-            self.sendFlipEmphasizedR()
+        self.doActionForKey(chr(event.GetKeyCode()).lower())
+
+    def do_select_poly(self, more=None):
+        points = self.apply_mask(self.mc.get_path())
+        self.mc.clear()
         if points != set():
             self.sendEmphasize(points)
-        return points
 
+    def do_deselect_all(self, more=None):
+        points = None
+        self.sendEmphasize(points)
+
+    def do_set_select(self, setp):
+        points = [i for (i,p) in enumerate(self.suppABCD) if p in setp]
+        self.sendEmphasize(points)
+            
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:
             points = np.transpose((self.getCoords(0), self.getCoords(1)))

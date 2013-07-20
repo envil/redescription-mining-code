@@ -53,7 +53,7 @@ class MapView(GView):
         self.bm.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
         self.axe = self.bm.ax
 
-        self.mc = MaskCreator(self.axe, None)
+        self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = self.bm(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             if self.mapoly:

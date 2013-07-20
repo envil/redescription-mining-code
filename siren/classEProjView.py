@@ -138,7 +138,7 @@ class EProjView(GView):
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
 
-        self.mc = MaskCreator(self.axe, None)
+        self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -155,12 +155,14 @@ class EProjView(GView):
     def kill_wait(self):
         self.call_wait.Stop()
         self.axe.cla()
-        self.axe.plot([r/10.0+0.3 for r in [1,2,3]], [0.5, 0.5, 0.5], 'ks', markersize=10)
+        self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
+        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
         self.axe.axis([0,1,0,1])
         self.MapcanvasMap.draw()
 
     def plot_wait(self):
         self.axe.cla()
+        self.axe.plot([r/10.0+0.3 for r in range(5)], [0.5 for r in range(5)], 'ks', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
         self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
         self.axe.axis([0,1,0,1])
         self.MapcanvasMap.draw()

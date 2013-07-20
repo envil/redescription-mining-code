@@ -1,5 +1,7 @@
 import numpy as np
 
+import pdb
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.mlab import dist_point_to_segment
@@ -148,9 +150,11 @@ class MaskCreator(object):
     'i' : insert a vertex at point.  You must be within max_ds of the
           line connecting two existing vertices
     """
-    pcolor = "#FFD700" 
+    pcolor = "#FFD700"
     
-    def __init__(self, ax, poly_xy=None, max_ds=10, buttons_t=[1]):
+    def __init__(self, ax, poly_xy=None, max_ds=10, buttons_t=[1], callback_change=None):
+        self.callback_change = callback_change
+        self.last_pos = None
         self.buttons_t = buttons_t
         self.max_ds = max_ds
         ax.set_clip_on(False)
@@ -163,6 +167,15 @@ class MaskCreator(object):
 
         self._ind = None # the active vert
 
+        self.actions_map = {"kill": {"method": self.do_kill, "label": "kill polygon vertex",
+                                       "legend": "delete the polygon vertex under pointer",
+                                       "order":0, "active_q": self.q_false},
+                            "add": {"method": self.do_add, "label": "add polygon vertex",
+                                       "legend": "insert a polygon vertex at pointer", "order":0, "active_q": self.q_false},
+                            "erase": {"method": self.do_erease, "label": "erease polygon",
+                                      "legend": "erease the polygon", "order":0, "active_q": self.q_has_poly}
+                            }
+        self.setKeys()
         canvas = self.ax.figure.canvas
         canvas.mpl_connect('draw_event', self.draw_callback)
         canvas.mpl_connect('button_press_event', self.button_press_callback)
@@ -171,6 +184,53 @@ class MaskCreator(object):
         canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas = canvas
 
+    def q_false(self):
+        return False
+
+    def q_has_poly(self):
+        return self.poly is not None
+
+    def setButtons(self, buttons):
+        self.buttons_t = buttons
+
+    def getActionsDetails(self):
+        details = []
+        for action, dtl in self.actions_map.items():
+            details.append({"label": "%s [%s]" % (dtl["label"], dtl["key"]),
+                            "legend": dtl["legend"], "active": dtl["active_q"](),
+                            "key": dtl["key"], "order": dtl["order"]})
+        return details
+    
+    def setKeys(self, keys=None):
+        self.keys_map = {}
+
+        if keys is None:
+            for action, details in self.actions_map.items():
+                details["key"] = action[0]
+                self.keys_map[details["key"]] = action
+        else:
+            for action, details in self.actions_map.items():
+                details["key"] = None
+            for key, action in keys.items():
+                if self.actions_map.has_key(action):
+                    self.actions_map[action]["key"] = key
+                    self.keys_map[key] = action
+
+    def isActive(self):
+        return len(self.buttons_t) > 0
+
+    def doActionForKeyEvent(self, event):
+        return self.doActionForKey(event.key, event)
+
+    def doActionForKey(self, key, event=None):
+        if self.actions_map.has_key(self.keys_map.get(key, None)):
+            self.actions_map[self.keys_map[key]]["method"](event)
+            self.draw_callback(event)                
+            if self.callback_change is not None:
+                self.callback_change()
+            return True
+        return False
+            
     def clear(self, review=True):
         self.verts  = None
         self.poly = None
@@ -221,8 +281,10 @@ class MaskCreator(object):
         if ignore:
             return
         self._ind = None
+        if self.callback_change is not None:
+            self.callback_change()
 
-    def do_delete(self, event):
+    def do_kill(self, event=None):
         ind = self.get_ind_under_cursor(event)
         if ind is None:
             return
@@ -237,48 +299,67 @@ class MaskCreator(object):
                         if i not in inds]
         self._update_line()
 
-    def do_insert(self,event):
+    def do_erease(self, event=None):
+        self.clear()
+
+    def do_add(self,event=None):
+        if event is None:
+            if self.last_pos is None:
+                return
+            else:
+                xpos, ypos, xdpos, ydpos = self.last_pos
+        else:
+            xdpos, ydpos = (event.xdata, event.ydata)
+            xpos, ypos = (event.x, event.y)
         if self.poly is None:
-            self.createPoly(np.array([(event.xdata, event.ydata)]))
+            self.createPoly(np.array([(xdpos, ydpos)]))
             return 0
             
         if self.poly.xy.shape[0] < 4:
             i = 0
             self.poly.xy = np.array(
                     list(self.poly.xy[:i+1]) +
-                    [(event.xdata, event.ydata)] +
+                    [(xdpos, ydpos)] +
                     list(self.poly.xy[i+1:]))
             self._update_line()
             return i+1
             
         xys = self.poly.get_transform().transform(self.poly.xy)
-        p = event.x, event.y # cursor coords
         for i in range(len(xys)-1):
             s0 = xys[i]
             s1 = xys[i+1]
-            d = dist_point_to_segment(p, s0, s1)
+            d = dist_point_to_segment((xpos, ypos), s0, s1)
             if d <= self.max_ds:
                 self.poly.xy = np.array(
                     list(self.poly.xy[:i+1]) +
-                    [(event.xdata, event.ydata)] +
+                    [(xdpos, ydpos)] +
                     list(self.poly.xy[i+1:]))
                 self._update_line()
                 return i+1
+
+        i= 0
+        self.poly.xy = np.array(
+            list(self.poly.xy[:i+1]) +
+            [(xdpos, ydpos)] +
+            list(self.poly.xy[i+1:]))
+        self._update_line()
+        return i+1
 
     def key_press_callback(self, event):
         'whenever a key is pressed'
         if not event.inaxes:
             return
-        elif event.key=='d':
-            self.do_delete(event)
-        elif event.key=='i':
-            self.do_insert(event)
-        self.canvas.draw()
+        else:
+            self.doActionForKeyEvent(event)
 
     def motion_notify_callback(self, event):
         'on mouse movement'
-        ignore = (self.poly is None or event.inaxes is None or
-                  (event.button not in self.buttons_t) or self._ind is None)
+        if event.inaxes is None:
+            self.last_pos = None
+            return
+        self.last_pos = (event.x, event.y, event.xdata, event.ydata)
+        ignore = (event.button not in self.buttons_t) or \
+                 self.poly is None or self._ind is None
         if ignore:
             return
         x,y = event.xdata, event.ydata
@@ -306,8 +387,17 @@ class MaskCreator(object):
     def get_ind_under_cursor(self, event):
         'get the index of the vertex under cursor if within max_ds tolerance'
         # display coords
+        if event is None:
+            if self.last_pos is None:
+                return
+            else:
+                xpos, ypos, xdpos, ydpos = self.last_pos
+        else:
+            xdpos, ydpos = (event.xdata, event.ydata)
+            xpos, ypos = (event.x, event.y)
+
         if self.poly is None:
-            ind = self.do_insert(event)
+            ind = self.do_add(event)
             if ind is not None:
                 self.canvas.draw()
                 return
@@ -315,11 +405,11 @@ class MaskCreator(object):
         xy = np.asarray(self.poly.xy)
         xyt = self.poly.get_transform().transform(xy)
         xt, yt = xyt[:, 0], xyt[:, 1]
-        d = np.sqrt((xt - event.x)**2 + (yt - event.y)**2)
+        d = np.sqrt((xt - xpos)**2 + (yt - ypos)**2)
         indseq = np.nonzero(np.equal(d, np.amin(d)))[0]
         ind = indseq[0]
         if d[ind] >= self.max_ds:
-            ind = self.do_insert(event)
+            ind = self.do_add(event)
             if ind is not None:
                 self.canvas.draw()
         return ind
