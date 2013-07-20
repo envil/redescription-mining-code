@@ -895,7 +895,7 @@ class RedModel:
                 tot -= self.dm.getColD(side, lit.col(), "Full").getLL(lit)
         for side in sides:
             ### LENGTH OF SUPPORT DESCRIPTION, OPPOSITE SIDE
-            tot -= pr2cl(1.0/len(red.supp(1-side)))*(len(red.supp(1-side))-red.lenI())
+            tot -= pr2cl(1.0/len(red.supp(1-side)))*(len(red.supp(1-side))-red.getLenI())
             ### LENGTH OF DATA
             tot -= totS[side] + self.stdcl["FBp"]*cFallB[side]
         return tot
@@ -923,7 +923,7 @@ class RedModel:
         return ql
 
     def getSLRed(self, red):
-        lL = [len(red.supp(0)), len(red.supp(1)), red.lenI()]
+        lL = [len(red.supp(0)), len(red.supp(1)), red.getLenI()]
         return [pr2cl(1.0/lL[0])*(lL[0]-lL[2]), pr2cl(1.0/lL[1])*(lL[1]-lL[2])]
 
 

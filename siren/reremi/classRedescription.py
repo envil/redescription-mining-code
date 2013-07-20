@@ -164,8 +164,8 @@ class Redescription:
         
     def availableColsSide(self, side, deps = None):
         if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
-            # tt = set(self.lAvailableCols[side]) & set(self.lAvailableCols[1-side])
             tt = set(self.lAvailableCols[side]) # & set(self.lAvailableCols[1-side])
+            # tt = set(self.lAvailableCols[side]) # & set(self.lAvailableCols[1-side])
             if deps is not None and len(deps) > 0:
                 tn = tt
                 excl = set()

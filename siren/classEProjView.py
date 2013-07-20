@@ -40,6 +40,7 @@ class EProjView(GView):
     def __init__(self, parent, vid, more=None):
         self.repbut = None
         self.parent = parent
+        self.queries = [Query(), Query()]
         self.source_list = None
         self.vid = vid
         self.buttons = []
@@ -51,8 +52,11 @@ class EProjView(GView):
         self.drawMap()
         self.drawFrame()
         self.binds()
+        self.prepareActions()
+        self.setKeys()
+        self.prepareProcesses()
+        self.makeMenu()
         self.mapFrame.Show()
-        self.queries = [Query(), Query()]
         self.suppABCD = None
         self.runProject()
 
