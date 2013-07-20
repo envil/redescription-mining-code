@@ -65,6 +65,7 @@ class MapView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
 
         self.MapcanvasMap.draw()
             

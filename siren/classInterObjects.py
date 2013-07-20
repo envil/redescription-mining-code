@@ -21,7 +21,7 @@ http://matplotlib.sourceforge.net/users/event_handling.html
     the recatngle keeps its aspect ratio during resize operations.
     """
     lock = None  # only one can be animated at a time
-    def __init__(self, rect, border_tol=.15, rid=None, callback=None, pinf=None, annotation=None, buttons_t=[1]):
+    def __init__(self, rect, border_tol=.15, rid=None, callback=None, pinf=None, annotation=None, buttons_t=[3]):
         self.buttons_t = buttons_t
         self.callback = callback
         self.pinf = pinf

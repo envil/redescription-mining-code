@@ -53,6 +53,7 @@ class GView(object):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
 
     def __init__(self, parent, vid, more=None):
+        self.ctrl_on = False
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
@@ -556,17 +557,17 @@ class GView(object):
                         self.axe.lines.remove(t)
                 del self.highl[lid]
 
-    def sendEmphasize(self, lids):
+    def sendEmphasize(self, lids, show_info=False):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, True)
+            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, show_info)
 
     def sendFlipEmphasizedR(self):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].doFlipEmphasizedR(self.getId())
 
     def OnPick(self, event):
-        if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)):
-            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
+        if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
+            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])], self.ctrl_on)
 
     def doActionForKey(self, key):
         if self.actions_map.has_key(self.keys_map.get(key, None)):
@@ -575,7 +576,13 @@ class GView(object):
                 return True
         return False
 
+    def key_release_callback(self, event):
+        if event.key == "control":
+            self.ctrl_on = False
+
     def key_press_callback(self, event):
+        if event.key == "control":
+            self.ctrl_on = True
         self.doActionForKey(event.key)
 
     def mkey_press_callback(self, event):

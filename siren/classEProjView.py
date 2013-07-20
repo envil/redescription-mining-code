@@ -39,11 +39,13 @@ class EProjView(GView):
     
     def __init__(self, parent, vid, more=None):
         self.repbut = None
+        self.ctrl_on = False
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
         self.vid = vid
         self.buttons = []
+        self.act_butt = [1]
         self.highl = {}
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
@@ -149,6 +151,7 @@ class EProjView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
 
         self.MapcanvasMap.draw()
 
