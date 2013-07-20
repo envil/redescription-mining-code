@@ -1,7 +1,7 @@
-from classGView import GView
-from classMapView import MapView
-from classParaView import ParaView
-from classEProjView import EProjView
+import classGView
+import classMapView
+import classParaView
+import classEProjView
 #from classVProjView import VProjView
 
 import pdb
@@ -13,7 +13,7 @@ def all_subclasses(cls):
 class ViewFactory:
 
     avs_views = {}
-    for cls in all_subclasses(GView):
+    for cls in all_subclasses(classGView.GView):
         avs_views.update(cls.getViewsDetails())
 
     @classmethod
@@ -32,8 +32,8 @@ class ViewFactory:
     @classmethod
     def getDefaultViewT(tcl, geo=False, type_tab="Reds"):
         if type_tab == "Row":
-            return EProjView.defaultViewT
+            return classEProjView.EProjView.defaultViewT
         elif geo:
-            return MapView.TID
+            return classMapView.MapView.TID
         else:
-            return ParaView.TID
+            return classParaView.ParaView.TID

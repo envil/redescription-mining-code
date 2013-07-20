@@ -475,7 +475,10 @@ class RedTable(GridTable):
             if upView:
                 self.ResetView()
 
-    def viewData(self, viewT, pos=None):
+    def viewData(self, viewT, pos=None, oid=None):
+        if oid is not None:
+            if self.opened_edits.has_key(oid):
+                pos = self.opened_edits[oid]
         if pos is None:
             pos = self.getSelectedPos()
         vid = None
@@ -487,7 +490,7 @@ class RedTable(GridTable):
         mapV = self.parent.getViewX(vid, viewT)
         if vid is None and mapV is not None:
             self.registerView(mapV.getId(), pos)
-            mapV.setCurrent(self.getSelectedItem(), self.tabId)
+            mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
 
     def registerView(self, key, pos):
         self.opened_edits[key] = pos

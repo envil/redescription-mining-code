@@ -80,14 +80,24 @@ class Miner:
         #tmp_ids = batch.selected(self.constraints.actions_final())
         return [batch[i] for i in tmp_ids]
 
-    def part_run(self, redesc):
+    def part_run(self, params):
+        if params.has_key("reds"):
+            reds = params["reds"]
+        elif params.has_key("red"):
+            reds = [params["red"]]
+        else:
+            reds = []
+
+        if params.has_key("side"):
+            self.souvenirs.cutOffSide(1-params["side"])
+
         self.count = "C"
 
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (self.constraints.max_var()*2-len(redesc))*self.progress_ss["generation"]
+        self.progress_ss["expansion"] = (self.constraints.max_var()*2-min([self.constraints.max_var()*2]+[len(r) for r in reds]))*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         
@@ -96,7 +106,7 @@ class Miner:
         self.logger.printL(1, (100, 0), 'progress', self.id)
         self.logger.printL(1, "Expanding...", 'status', self.id) ### todo ID
 
-        self.expandRedescriptions([redesc])
+        self.expandRedescriptions(reds)
 
         tacE = datetime.datetime.now()
         self.logger.printL(1,"End part run %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.questionLive()), "time", self.id)
@@ -269,7 +279,6 @@ class Miner:
                             init = -1
                         else:
                             init = 0 
-
                         for v in red.availableColsSide(side, self.deps):
                             if not self.questionLive(): return
 

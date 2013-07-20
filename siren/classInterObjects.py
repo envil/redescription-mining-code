@@ -196,7 +196,7 @@ class MaskCreator(object):
     def getActionsDetails(self):
         details = []
         for action, dtl in self.actions_map.items():
-            details.append({"label": "%s [%s]" % (dtl["label"], dtl["key"]),
+            details.append({"label": "%s     [%s]" % (dtl["label"], dtl["key"]),
                             "legend": dtl["legend"], "active": dtl["active_q"](),
                             "key": dtl["key"], "order": dtl["order"]})
         return details

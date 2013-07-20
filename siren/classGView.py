@@ -16,6 +16,7 @@ from matplotlib.path import Path
 from reremi.classQuery import Query
 from reremi.classSParts import SParts
 from reremi.classRedescription import Redescription
+import factView
 
 import pdb
 
@@ -41,7 +42,6 @@ class GView(object):
     map_select_supp = [("l", "E_1,0", [SParts.alpha]), ("r", "E_0,1", [SParts.beta]),
                        ("i", "E_1,1", [SParts.gamma]), ("o", "E_0,0", [SParts.delta])]
 
-
     TID = "G"
     ordN = 0
     title_str = "View"
@@ -54,6 +54,7 @@ class GView(object):
 
     def __init__(self, parent, vid, more=None):
         self.parent = parent
+        self.queries = [Query(), Query()]
         self.source_list = None
         self.mc = None
         self.sld_sel = None
@@ -70,18 +71,24 @@ class GView(object):
         self.binds()
         self.prepareActions()
         self.setKeys()
+        self.prepareProcesses()
         self.makeMenu()
         self.mapFrame.Show()
-        self.queries = [Query(), Query()]
         self.suppABCD = None
 
     def getActionsDetails(self):
         details = []
         for action, dtl in self.actions_map.items():
-            details.append({"label": "%s [%s]" % (dtl["label"], dtl["key"]),
+            details.append({"label": "%s    [%s]" % (dtl["label"], dtl["key"]),
                             "legend": dtl["legend"], "active": dtl["active_q"](),
                             "key": dtl["key"], "order": dtl["order"]})
         return details
+
+    def q_expand(self, more):
+        if more is None:
+            return True
+        elif more.has_key("side"):
+            return len(self.queries[1-more["side"]]) > 0
             
     def q_has_poly(self):
         return self.mc is not None and self.mc.q_has_poly()
@@ -92,6 +99,14 @@ class GView(object):
     def q_true(self):
         return True
 
+    def prepareProcesses(self):
+        self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
+                                     "more": None, "order": 0},
+                              "EL": {"label": "Expand LHS", "legend": "Expand the LHS query of the current redescription.",
+                                     "more": {"side":0}, "order":1},
+                              "ER": {"label": "Expand RHS", "legend": "Expand the RHS query of the current redescription.",
+                                     "more": {"side":1}, "order":2} }
+        
     def prepareActions(self):
         self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "deselect all",
                                              "legend": "deselect all dots", "more": None,
@@ -131,18 +146,26 @@ class GView(object):
         if frame is None:
             frame = self.mapFrame
         self.menu_map_act = {}
+        self.ids_viewT = {}
+        self.menu_map_pro = {}
         menuBar = wx.MenuBar()
-        menuBar.Append(self.makeActionsMenu(frame), "&Actions")
+        menuBar.Append(self.makeViewMenu(frame), "&View")
+        menuBar.Append(self.makeActionsMenu(frame), "&Selection")
+        menuBar.Append(self.makeProcessMenu(frame), "&Process")
         frame.SetMenuBar(menuBar)
         frame.Layout()
 
-    # def makeConSMenu(self, frame, menuCon=None):
-    #     if menuCon is None:
-    #         menuCon = wx.Menu()
-    #     ID_FOC = wx.NewId()
-    #     m_foc = menuCon.Append(ID_FOC, "Test", "Test.")
-    #     frame.Bind(wx.EVT_MENU, self.OnTest, m_foc)
-    #     return menuCon
+    def makeViewMenu(self, frame, menuView=None):
+        if menuView is None:
+            menuView = wx.Menu()
+        for item in factView.ViewFactory.getViewsInfo(self.parent.dw.isGeospatial()):
+            if item["viewT"] != self.getId()[0]:
+                ID_NEWV = wx.NewId()
+                m_newv = menuView.Append(ID_NEWV, "%s" % item["title"],
+                                         "Plot %s in new window." % item["title"])
+                frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
+                self.ids_viewT[ID_NEWV] = item["viewT"]
+        return menuView
 
     def makeActionsMenu(self, frame, menuAct=None):
         if menuAct is None:
@@ -173,6 +196,19 @@ class GView(object):
             frame.Bind(wx.EVT_MENU, self.OnToggleMC, m_act)
         return menuAct
 
+    def makeProcessMenu(self, frame, menuPro=None):
+        if menuPro is None:
+            menuPro = wx.Menu()
+        for process, details in sorted(self.processes_map.items(), key=lambda x: (x[1]["order"], x[1]["label"])):
+            ID_PRO = wx.NewId()
+            m_pro = menuPro.Append(ID_PRO, details["label"], details["legend"])
+            if self.q_expand(details["more"]):
+                frame.Bind(wx.EVT_MENU, self.OnExpandAdv, m_pro)
+                self.menu_map_pro[ID_PRO] = process
+            else:
+                menuPro.Enable(ID_PRO, False)
+        return menuPro
+
     def OnToggleMC(self, event):
         if self.mc is not None:
              if self.mc.isActive():
@@ -190,6 +226,9 @@ class GView(object):
     def OnMenuMCAction(self, event):
         if self.mc is not None and self.menu_map_act.has_key(event.GetId()):
             self.mc.doActionForKey(self.menu_map_act[event.GetId()])
+
+    def OnOtherV(self, event):
+        self.parent.tabs[self.source_list]["tab"].viewData(self.ids_viewT[event.GetId()], oid=self.getId())
         
     def drawFrame(self):
         self.QIds = [wx.NewId(), wx.NewId()]
@@ -297,10 +336,21 @@ class GView(object):
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
+
+    def getCopyRed(self):
+        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.data)
         
-    def OnExpand(self, event):
-        red = self.updateQuery()
-        self.parent.expandFV(red)
+    def OnExpandAdv(self, event):
+        params = {"red": self.getCopyRed()}
+        if self.menu_map_pro.has_key(event.GetId()):
+            more = self.processes_map[self.menu_map_pro[event.GetId()]]["more"]
+            if more is not None:
+                params.update(more)
+        self.parent.expandFV(params)
+
+    def OnExpandSimp(self, event):
+        params = {"red": self.getCopyRed()}
+        self.parent.expandFV(params)
 
     def OnFocus(self, event):
         self.parent.selectedMap = self.getId()
@@ -325,7 +375,7 @@ class GView(object):
 
     def updateQuery(self, sd=None, query=None):
         if sd is None:
-            queries = [self.parseQuery(0),self.parseQuery(1)]
+            queries = [self.parseQuery(0), self.parseQuery(1)]
         else:
             queries = [None, None]
             if query is None:
@@ -345,6 +395,7 @@ class GView(object):
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
             self.updateMap()
+            self.makeMenu()
             self.updateOriginal(red)
             self.updateHist(red)
         else: ### wrongly formatted query or not edits, revert
@@ -370,6 +421,7 @@ class GView(object):
             self.setSource(source_list)
             self.updateText(red)
             self.updateMap()
+            self.makeMenu()
             self.updateHist(red)
             return red
 

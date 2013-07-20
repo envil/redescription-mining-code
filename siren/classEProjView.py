@@ -74,7 +74,7 @@ class EProjView(GView):
         add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
-                             "function": self.OnExpand})
+                             "function": self.OnExpandSimp})
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Reproject"),
                              "function": self.OnReproject})

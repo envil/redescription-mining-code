@@ -523,15 +523,15 @@ class Siren():
             self.reloadAll()
             return True
 
-    def expand(self, red=None):
+    def expand(self, params=None):
         self.progress_bar.Show()
-        if red is not None and red.length(0) + red.length(1) > 0:
-            self.plant.addWorker("expander", self, red.copy(),
+        if params.has_key("red") and params["red"].length(0) + params["red"].length(1) > 0:
+            self.plant.addWorker("expander", self, params,
                                  {"results_track":0,
                                   "batch_type": "partial",
                                   "results_tab": "exp"})
         else:
-            self.plant.addWorker("miner", self, None,
+            self.plant.addWorker("miner", self, params,
                                  {"results_track":0,
                                   "batch_type": "final",
                                   "results_tab": "exp"})
@@ -733,9 +733,9 @@ class Siren():
             if red is not None:
                 self.expand(red)
 
-    def expandFV(self, red):
+    def expandFV(self, params=None):
         self.showTab("exp")
-        self.expand(red)
+        self.expand(params)
 
     def OnMineAll(self, event):
         self.showTab("exp")

@@ -11,6 +11,9 @@ class Souvenirs:
         self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
         self.amnesic = nAmnesic
 
+    def cutOffSide(self, side):
+        self.availableMo[side] = set()
+
     def nbCols(self, side):
         return len(self.availableMo[side])
     
