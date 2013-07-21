@@ -48,11 +48,11 @@ class MapView(GView):
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
         self.MapfigMap.clear()
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-        blon, blat = (ulon-llon)/1000.0, (ulat-llat)/1000.0
+        blon, blat = (ulon-llon)/100.0, (ulat-llat)/100.0
         self.bm = Basemap(llcrnrlon=llon-blon, llcrnrlat=llat-blat, urcrnrlon=ulon+blon, urcrnrlat=ulat+blat, \
                     resolution = 'c', projection = 'mill', \
                     lon_0 = llon + (ulon-llon)/2.0, \
-                    lat_0 = llat + (ulat-llat)/2.04)
+                    lat_0 = llat + (ulat-llat)/2.0)
         self.bm.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
         self.axe = self.bm.ax
 
@@ -61,7 +61,8 @@ class MapView(GView):
             self.coords_proj = self.bm(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
             if self.mapoly:
                 pdp = zip(range(len(self.coords_proj[0])), self.coords_proj[0], self.coords_proj[1])
-                self.polys = self.makePolys(pdp, self.parent.dw.getCoords())
+                bx, by = self.bm([llon-blon+0.001, ulon+blon-0.001], [llat-blat+0.001, ulat+blat-0.001])
+                self.polys = self.makePolys(pdp, [by[1], bx[0], by[0], bx[1]])
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -174,8 +175,8 @@ class MapView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-    def makePolys(self, pdp, upd):
-        return self.parent.dw.getPolys(pdp, upd)
+    def makePolys(self, pdp, boundaries):
+        return self.parent.dw.getPolys(pdp, boundaries)
 
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:

@@ -7,7 +7,7 @@ from shapely import geometry
 from shapely.ops import polygonize
 from shapely.geos import TopologicalError
 
-def makePolys(pdp, upd):
+def makePolys(pdp, boundaries):
     PointsMap=dict([(p, (c1,c2)) for (p, c1, c2) in pdp])
     sx, sy = zip(*PointsMap.values())
     D=scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(np.array([sx,sy]).T, metric="euclidean"))
@@ -18,19 +18,22 @@ def makePolys(pdp, upd):
     for i in range(D.shape[0]):
         nds.append(min([D[i,j] for j in nnvs[i]]+[D[nnvs[j][0],j] for j in nnvs[i]]+[D[nnvs[j][1],j] for j in nnvs[i]]))
 
-    vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+1, min(sx)-1, min(sy)-1, max(sx)+1])
+
+    vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=boundaries)
+    # margin = 1
+    # vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+margin, min(sx)-margin, min(sy)-margin, max(sx)+margin])
 
     ready = {}
     for s, obj in vl.items():
         pos = obj["info"]
         dst = nds[pos]
-        fact = 0.8
+        fact = 1.41
         ready[pos] = []
 
         tmc = getContours(obj['obj_polygon'])
         for data_ct in tmc:
             data_poly = geometry.Polygon(data_ct)
-            rst = [(obj["coordinate"][0]+x*dst*fact, obj["coordinate"][1]+y*dst*fact)
+            rst = [(obj["coordinate"][0]+x*dst*fact/2, obj["coordinate"][1]+y*dst*fact/2)
                    for (x,y) in [(-1,-1), (-1,1), (1,1), (1,-1), (-1,-1)]]
             restrict_poly = geometry.Polygon(rst)
             try:
@@ -38,7 +41,7 @@ def makePolys(pdp, upd):
                 ready[pos].append(list(inter_p.exterior.coords))
             except TopologicalError:
                 mdi = np.max(scipy.spatial.distance.cdist(np.array([obj["coordinate"]]), data_ct, metric="euclidean"))
-                if mdi > 1.41*dst:
+                if mdi > fact*dst:
                     ready[pos].append(rst)
                 else:
                     ready[pos].append(data_ct)
@@ -64,9 +67,6 @@ def getContours(obj_polygon):
             ends_map[ends_map[v].pop()].remove(v)
             del ends_map[v]
 
-    # ### check for crosses, i.e. loops
-    # crosses =  [v for (v,n) in ends_map.items() if len(n) > 2]
-    # if len(crosses) > 1:
     contours = []
     loop = False
     contour = []

@@ -805,8 +805,8 @@ class DataWrapper(object):
             (fnc, args, kwargs) = self.stopReadingFileCallback
             fnc(action.capitalize()+' done', *args, **kwargs)
 
-    def getPolys(self, pdp, udp):
+    def getPolys(self, pdp, boundaries):
         if pdp is not None and self.pdp != pdp:
             self.pdp = pdp
-            self.polys = make_polys.makePolys(self.pdp, udp)
+            self.polys = make_polys.makePolys(self.pdp, boundaries)
         return self.polys
