@@ -50,6 +50,7 @@ class EProjView(GView):
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
         self.panel = wx.Panel(self.mapFrame, -1)
+        self.mapFrame.SetMinSize((600,-1))
         self.initProject(more)
         self.drawMap()
         self.drawFrame()
@@ -66,18 +67,30 @@ class EProjView(GView):
         return (self.proj.PID, self.vid)
 
     def additionalElements(self):
-        setts_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_BOTTOM | wx.ALL
+        setts_boxes = []
+        max_w = self.fwidth-50
+        current_w = 1000
+        flags = wx.ALIGN_CENTER | wx.ALL
 
         self.boxes = self.proj.makeBoxes(self.mapFrame)
+        self.boxes.sort(key=lambda x : x["type_ctrl"])
         for box in self.boxes:
-            setts_box.Add(box["label"], 0, border=3, flag=flags | wx.EXPAND)
+            block_w = box["label"].GetBestSize()[0] + sum([c.GetBestSize()[0] for c in box["ctrls"]])
+            if current_w + block_w + 10 > max_w:
+                setts_boxes.append(wx.BoxSizer(wx.HORIZONTAL))
+                setts_boxes[-1].AddSpacer((10,-1))
+                current_w = 10
+            current_w += block_w + 10
+            setts_boxes[-1].Add(box["label"], 0, border=0, flag=flags | wx.ALIGN_RIGHT)
             for c in box["ctrls"]:
-                setts_box.Add(c, 0, border=3, flag=flags | wx.EXPAND)
+                setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
+            setts_boxes[-1].AddSpacer((10,-1))
 
         add_box = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
+        add_box.Add(self.MaptoolbarMap, 0, border=3, flag= flags | wx.EXPAND)
+        add_box.AddSpacer((20,-1))
+        
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpandSimp})
@@ -86,15 +99,18 @@ class EProjView(GView):
                              "function": self.OnReproject})
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
         self.repbut = self.buttons[-1]["element"]
+        add_box.AddSpacer((20,-1))
 
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  disabled  +")
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  opac. disabled  +")
         v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
         v_box.Add(self.sld_sel, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
+        add_box.AddSpacer((20,-1))
+        setts_boxes.append(add_box)
 
-        return [setts_box, add_box]
+        return setts_boxes
 
     def additionalBinds(self):
         for button in self.buttons:
@@ -152,7 +168,6 @@ class EProjView(GView):
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
-
         self.MapcanvasMap.draw()
 
     def init_wait(self):
@@ -201,13 +216,17 @@ class EProjView(GView):
             #     if len(part) > 0 and draw_settings.has_key(pi):
             #         for idp in part:
 
+            x0, x1, y0, y1 = self.proj.getAxisLims()
+            #siz = round(max(1, min((x1-x0)/20, (y1-y0)/20)))
+            siz = 0
             for idp, pi in enumerate(self.suppABCD):
                 if draw_settings.has_key(pi) and selv[idp] > 0:
-
+                    if draw_settings[pi]["size"] > siz:
+                        siz = draw_settings[pi]["size"]
                     self.axe.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 1),
                            mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                           linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=3)
+                           linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
 
             if self.proj.getTitle() is not None:
                 self.axe.set_title(self.proj.getTitle(),fontsize=12)
@@ -215,10 +234,11 @@ class EProjView(GView):
                 self.axe.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
             if self.proj.getAxisLabel(1) is not None:
                 self.axe.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
-            self.axe.axis(self.proj.getAxisLims())
+            bx, by = (x1-x0)/100.0, (y1-y0)/100.0
+            self.axe.axis([x0-bx, x1+bx, y0-by, y1+by])
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
-
+            self.MapfigMap.canvas.SetFocus()
 
     def getCoords(self, axi=None, ids=None):
         if self.proj is None:

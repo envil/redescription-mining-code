@@ -65,15 +65,15 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
             dc.SetBrush( wx.NullBrush )
             dc.DestroyClippingRegion( )
 
-    def GetBestSize(self, grid, attr, dc, row, col):
-        """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
-        Note: You _must_ return a wxSize object.  Returning a two-value-tuple
-        won't raise an error, but the value won't be respected by wxPython.
-        """         
-        x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
-        # note that the two-tuple returned by GetTextExtent won't work,
-        # need to give a wxSize object back!
-        return wx.Size( min(x, 10), min(y, 10))
+    # def GetBestSize(self, grid, attr, dc, row, col):
+    #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
+    #     Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+    #     won't raise an error, but the value won't be respected by wxPython.
+    #     """         
+    #     x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
+    #     # note that the two-tuple returned by GetTextExtent won't work,
+    #     # need to give a wxSize object back!
+    #     return wx.Size( min(x, 10), min(y, 10))
 
 
 class GridTable(wx.grid.PyGridTableBase):
@@ -99,7 +99,7 @@ class GridTable(wx.grid.PyGridTableBase):
         self.grid.SetTable(self)
         self.setSelectedRow(0)
         self.grid.EnableEditing(False)
-        self.grid.AutoSizeColumns(True)
+        #self.grid.AutoSizeColumns(True)
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
                                    CustRenderer(),
@@ -178,7 +178,7 @@ class GridTable(wx.grid.PyGridTableBase):
         self.fvc += 1
         methode = eval(field[1])
         if callable(methode):
-            if len(field) > 2:
+            if len(field) > 2 and field[2] is not None:
                 details.update(field[2])
             return methode(details)
         else:
@@ -227,12 +227,18 @@ class GridTable(wx.grid.PyGridTableBase):
         except:
             return None
 
+    def resetSizes(self):
+        self.GetView().AutoSize()
+        for coli, f in enumerate(self.fields):
+            if len(f) > 3:
+                self.GetView().SetColSize(coli, f[3])
+
     def resetDetails(self, details={}, review=True):
         self.details = details
         if review:
             self.ResetView()
-            self.GetView().AutoSize()
-
+            self.resetSizes()
+            
     def resetData(self, data, srids=None):
         self.data = data
         
@@ -242,10 +248,9 @@ class GridTable(wx.grid.PyGridTableBase):
             self.sortids = ICList([idi for idi in range(len(self.data))], True)
 
         self.resetFields()
-
         self.updateSort()
         self.ResetView()
-        self.GetView().AutoSize()
+        self.resetSizes()
 
     def resetFields(self):
         pass
@@ -398,13 +403,14 @@ class GridTable(wx.grid.PyGridTableBase):
 
 class RedTable(GridTable):
 
+    fields_sizes = []
     fields_def = [('', 'self.data[x].getEnabled'),
-                  ('query LHS', 'self.data[x].getQueryLU'),
-                  ('query RHS', 'self.data[x].getQueryRU'),
-                  ('accuracy', 'self.data[x].getRoundAcc'),
-                  ('p-value', 'self.data[x].getRoundPVal'),
-                  ('|E_{1,1}|', 'self.data[x].getLenI'),
-                  ('track', 'self.data[x].getTrack')]
+                  ('query LHS', 'self.data[x].getQueryLU', None, 300),
+                  ('query RHS', 'self.data[x].getQueryRU', None, 300),
+                  ('J', 'self.data[x].getRoundAcc', None, 60),
+                  ('p-value', 'self.data[x].getRoundPVal', None, 60),
+                  (u'|E\u2081\u2081|', 'self.data[x].getLenI', None, 60),
+                  ('track', 'self.data[x].getTrack', None, 80)]
 
     def __init__(self, parent, tabId, frame):
         GridTable.__init__(self, parent, tabId, frame)
@@ -653,11 +659,11 @@ class VarTable(GridTable):
 
     fields_def = [('','self.data[x].getEnabled'),
                        ('id', 'self.data[x].getId'),
-                       ('name', 'self.data[x].getName'),
-                       ('type', 'self.data[x].getType')]
-    fields_var = {1: [('density', 'self.data[x].getDensity')],
-                  2:[('categories', 'self.data[x].getCategories')],
-                  3:[('min', 'self.data[x].getMin'), ('max', 'self.data[x].getMax')]}
+                       ('name', 'self.data[x].getName', None, 300),
+                       ('type', 'self.data[x].getType', None, 100)]
+    fields_var = {1: [('density', 'self.data[x].getDensity', None, 80)],
+                  2:[('categories', 'self.data[x].getCategories', None, 80)],
+                  3:[('min', 'self.data[x].getMin', None, 80), ('max', 'self.data[x].getMax', None, 80)]}
 
     def viewData(self, viewT, pos=None):
         if pos is None:
@@ -764,14 +770,11 @@ class RowTable(GridTable):
         
     def resetData(self, data, srids=None):
         self.data = data
-        
         if srids is not None:
             self.sortids = srids
         else:
             self.sortids = ICList([idi for idi in range(len(self.data))], True)
-
         self.resetFields()
-
         self.updateSort()
         self.redraw()
 
@@ -836,3 +839,5 @@ class RowTable(GridTable):
         self.setFocusCol(event.GetCol())
         GridTable.setSort(self, event)
         
+    def resetSizes(self):
+        pass

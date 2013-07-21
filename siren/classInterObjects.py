@@ -167,13 +167,13 @@ class MaskCreator(object):
 
         self._ind = None # the active vert
 
-        self.actions_map = {"kill": {"method": self.do_kill, "label": "kill polygon vertex",
-                                       "legend": "delete the polygon vertex under pointer",
-                                       "order":0, "active_q": self.q_false},
-                            "add": {"method": self.do_add, "label": "add polygon vertex",
-                                       "legend": "insert a polygon vertex at pointer", "order":0, "active_q": self.q_false},
-                            "erase": {"method": self.do_erease, "label": "erease polygon",
-                                      "legend": "erease the polygon", "order":0, "active_q": self.q_has_poly}
+        self.actions_map = {"kill": {"method": self.do_kill, "label": "Kill polygon vertex",
+                                       "legend": "Delete the polygon vertex under pointer",
+                                       "order":2, "active_q": self.q_false},
+                            "add": {"method": self.do_add, "label": "Add polygon vertex",
+                                       "legend": "Insert a polygon vertex at pointer", "order":1, "active_q": self.q_false},
+                            "erase": {"method": self.do_erease, "label": "Erease polygon",
+                                      "legend": "Erease the polygon", "order":3, "active_q": self.q_has_poly}
                             }
         self.setKeys()
         canvas = self.ax.figure.canvas
@@ -193,12 +193,12 @@ class MaskCreator(object):
     def setButtons(self, buttons):
         self.buttons_t = buttons
 
-    def getActionsDetails(self):
+    def getActionsDetails(self, off=0):
         details = []
         for action, dtl in self.actions_map.items():
-            details.append({"label": "%s     [%s]" % (dtl["label"], dtl["key"]),
+            details.append({"label": "%s[%s]" % (dtl["label"].ljust(30), dtl["key"]),
                             "legend": dtl["legend"], "active": dtl["active_q"](),
-                            "key": dtl["key"], "order": dtl["order"]})
+                            "key": dtl["key"], "order": dtl["order"]+off, "type": "mc"})
         return details
     
     def setKeys(self, keys=None):

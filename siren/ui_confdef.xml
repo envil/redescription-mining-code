@@ -57,6 +57,15 @@
 	<default><value>3</value></default>
       </parameter>
       <parameter>
+	<name>map_poly</name>
+	<label>Polygons</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Use polygons to represent entities on the map</legend>
+	<default><value>0</value></default>
+	<options><value>No</value><value>Yes</value></options>
+      </parameter>
+      <parameter>
 	<name>dot_shape</name>
 	<label>Dot shape</label>
 	<parameter_type>single_options</parameter_type>

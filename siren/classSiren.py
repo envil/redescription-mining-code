@@ -65,8 +65,9 @@ class Siren():
         self.ids_viewT = {}
         self.check_tab = {}
         self.logger = Log()
-        
-        self.toolFrame = wx.Frame(None, -1, self.titleTool)
+
+        tmp = wx.DisplaySize()
+        self.toolFrame = wx.Frame(None, -1, self.titleTool, size=(tmp[0]*0.66,tmp[1]*0.9))
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
         
         self.view_ids = {}

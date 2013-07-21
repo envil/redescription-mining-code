@@ -26,7 +26,7 @@ class MapView(GView):
     title_str = "Map"
     ordN = 1
     geo = True
-    mapoly = True #False
+    MAP_POLY = True #False
 
     WATER_COLOR = "#FFFFFF"
     GROUND_COLOR = "#FFFFFF"
@@ -40,13 +40,16 @@ class MapView(GView):
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
             return
+
+        self.mapoly = self.getMapPoly()
         
         self.MapfigMap = plt.figure()
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
         self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
         self.MapfigMap.clear()
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-        self.bm = Basemap(llcrnrlon=llon-2, llcrnrlat=llat+2, urcrnrlon=ulon-2, urcrnrlat=ulat+2, \
+        blon, blat = (ulon-llon)/1000.0, (ulat-llat)/1000.0
+        self.bm = Basemap(llcrnrlon=llon-blon, llcrnrlat=llat-blat, urcrnrlon=ulon+blon, urcrnrlat=ulat+blat, \
                     resolution = 'c', projection = 'mill', \
                     lon_0 = llon + (ulon-llon)/2.0, \
                     lat_0 = llat + (ulat-llat)/2.04)
@@ -66,7 +69,6 @@ class MapView(GView):
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
-
         self.MapcanvasMap.draw()
             
     def updateMap(self):
@@ -111,6 +113,7 @@ class MapView(GView):
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
+            self.MapfigMap.canvas.SetFocus()
 
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
@@ -146,14 +149,16 @@ class MapView(GView):
         flags = wx.ALIGN_CENTER | wx.ALL
 
         add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
+        add_box.AddSpacer((20,-1))
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpandSimp})
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
+        add_box.AddSpacer((20,-1))
 
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  disabled  +")
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  opac. disabled  +")
         v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL)
         v_box.Add(self.sld_sel, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
@@ -186,3 +191,11 @@ class MapView(GView):
             points = np.transpose((self.getCoords(0), self.getCoords(1)))
             return [i for i,point in enumerate(points) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SParts.delta)]
         return []
+
+    def getMapPoly(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            mapoly = t["map_poly"]["data"] == "Yes"
+        except:
+            mapoly = MapView.MAP_POLY
+        return mapoly

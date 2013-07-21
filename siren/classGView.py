@@ -22,14 +22,14 @@ import pdb
 
 class GView(object):
 
-    label_jacc="acc     ="
-    label_pval="p-value   ="
-    label_cardAlpha=u"|E_{1,0}|  ="
-    label_cardBeta=u"|E_{0,1}|  ="
-    label_cardU=u"|E\E_{0,0}| ="
-    label_cardI=u"|E_{1,1}|  ="
-    label_cardO=u"|E_{0,0}|  ="
-    label_cardT=u"|E|      ="
+    label_jacc="J ="
+    label_pval="p-value ="
+    label_cardAlpha=u"|E\u2081\u2080| ="
+    label_cardBeta=u"|E\u2080\u2081| ="
+    label_cardU=u"|E\u2216E\u2080\u2080| ="
+    label_cardI=u"|E\u2081\u2081| ="
+    label_cardO=u"|E\u2080\u2080| ="
+    label_cardT=u"|E| ="
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
@@ -47,6 +47,7 @@ class GView(object):
     title_str = "View"
     geo = False
     typesI = ["Var", "Reds", "Row"]
+    fwidth = 600
 
     @classmethod
     def getViewsDetails(tcl):
@@ -65,7 +66,7 @@ class GView(object):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
-        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
+        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str)) #, style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
         self.drawFrame()
@@ -238,90 +239,70 @@ class GView(object):
         colors = self.getColors()
         self.MapredMapQ[0].SetForegroundColour(colors[0])
         self.MapredMapQ[1].SetForegroundColour(colors[1])
-        ssizetxt = 90
-        lsizetxt = 90
-        self.MapredMapInfoJL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoVL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoJV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoVV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoIL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoUL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoIV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoUV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoRL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoBL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoRV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoBV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoJL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoVL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoJV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoVV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoIL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoUL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoIV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoUV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoRL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoBL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoRV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoBV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
 
-        self.MapredMapInfoOL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoTL = wx.StaticText(self.mapFrame, size=(lsizetxt,-1), style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoOV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoTV = wx.StaticText(self.mapFrame, size=(ssizetxt,-1), style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoOL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoTL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
+        self.MapredMapInfoOV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        self.MapredMapInfoTV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
 
         colors = self.getColors()
         self.MapredMapInfoBV.SetForegroundColour(colors[0])
         self.MapredMapInfoRV.SetForegroundColour(colors[1])
         self.MapredMapInfoIV.SetForegroundColour(colors[2])
         
-        flags = wx.ALL
-        self.MapValbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox1.Add(self.MapredMapInfoJL, 0, border=0, flag=flags)
-        self.MapValbox1.Add(self.MapredMapInfoVL, 0, border=0, flag=flags)
-        
-        self.MapValbox3 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox3.Add(self.MapredMapInfoBL, 0, border=0, flag=flags)
-        self.MapValbox3.Add(self.MapredMapInfoUL, 0, border=0, flag=flags)
+        flagsL = wx.ALL|wx.ALIGN_RIGHT
+        flagsV = wx.ALL|wx.ALIGN_LEFT
+        # statsBox = wx.GridSizer(rows=3, cols=8, hgap=5, vgap=5)
 
-        self.MapValbox5 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox5.Add(self.MapredMapInfoIL, 0, border=0, flag=flags)
-        self.MapValbox5.Add(self.MapredMapInfoOL, 0, border=0, flag=flags)
+        suppBox = wx.GridSizer(rows=2, cols=8, hgap=5, vgap=5)
+        suppBox.Add(self.MapredMapInfoJL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoJV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoBL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoBV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoIL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoIV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoRL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoRV, 0, border=0, flag=flagsV) 
 
-        self.MapValbox7 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox7.Add(self.MapredMapInfoRL, 0, border=0, flag=flags)
-        self.MapValbox7.Add(self.MapredMapInfoTL, 0, border=0, flag=flags)
-
-        flags = wx.EXPAND | wx.ALL
-        self.MapValbox2 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox2.Add(self.MapredMapInfoJV, 0, border=0, flag=flags)
-        self.MapValbox2.Add(self.MapredMapInfoVV, 0, border=0, flag=flags)
-
-        self.MapValbox4 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox4.Add(self.MapredMapInfoBV, 0, border=0, flag=flags)
-        self.MapValbox4.Add(self.MapredMapInfoUV, 0, border=0, flag=flags)
-
-        self.MapValbox6 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox6.Add(self.MapredMapInfoIV, 0, border=0, flag=flags)
-        self.MapValbox6.Add(self.MapredMapInfoOV, 0, border=0, flag=flags)
-
-        self.MapValbox8 = wx.BoxSizer(wx.VERTICAL)
-        self.MapValbox8.Add(self.MapredMapInfoRV, 0, border=0, flag=flags)
-        self.MapValbox8.Add(self.MapredMapInfoTV, 0, border=0, flag=flags)
+        suppBox.Add(self.MapredMapInfoVL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoVV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoUL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoUV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoOL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoOV, 0, border=0, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoTL, 0, border=0, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoTV, 0, border=0, flag=flagsV)
 
 
-        self.MaphboxVals = wx.BoxSizer(wx.HORIZONTAL)
-        self.MaphboxVals.Add(self.MapValbox1, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox2, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox3, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox4, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox5, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox6, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox7, 0, border=3, flag=wx.ALIGN_RIGHT | wx.ALL | wx.EXPAND)
-        self.MaphboxVals.Add(self.MapValbox8, 0, border=3, flag=wx.ALIGN_LEFT | wx.ALL | wx.EXPAND)
-
-        self.Mapvbox3 = wx.BoxSizer(wx.VERTICAL)
+        allinfosBox = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         ## if self.parent.dw.getCoords() is not None:
-        self.Mapvbox3.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        allinfosBox.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         
-        self.Mapvbox3.Add(self.MapredMapQ[0], 0, border=3, flag=flags | wx.EXPAND)
-        self.Mapvbox3.Add(self.MapredMapQ[1], 0, border=3, flag=flags | wx.EXPAND)
-        self.Mapvbox3.Add(self.MaphboxVals, 0, border=3, flag=flags)
+        allinfosBox.Add(self.MapredMapQ[0], 0, border=0, flag=flags | wx.EXPAND)
+        allinfosBox.Add(self.MapredMapQ[1], 0, border=0, flag=flags | wx.EXPAND)
+        # allinfosBox.Add(statsBox, 0, border=1, flag=flags)
+        allinfosBox.AddSpacer((-1,10))
+        allinfosBox.Add(suppBox, 0, border=1, flag=flags)
+        allinfosBox.AddSpacer((-1,15))
 
         for add_box in self.additionalElements():
-            self.Mapvbox3.Add(add_box, 0, border=3, flag=flags)
+            allinfosBox.Add(add_box, 0, border=1, flag=flags)
             
-        self.mapFrame.SetSizer(self.Mapvbox3)
-        self.Mapvbox3.Fit(self.mapFrame)
+        self.mapFrame.SetSizer(allinfosBox)
+        allinfosBox.Fit(self.mapFrame)
 
     def additionalElements(self):
         return []
@@ -488,9 +469,9 @@ class GView(object):
 
         else:
             self.MapredMapInfoJL.SetLabel(self.label_jacc)
-            self.MapredMapInfoJV.SetLabel("%1.5f" % red.getRoundAcc())
+            self.MapredMapInfoJV.SetLabel("%1.3f" % red.getRoundAcc())
             self.MapredMapInfoVL.SetLabel(self.label_pval)
-            self.MapredMapInfoVV.SetLabel("%1.5f" % red.getRoundPVal())
+            self.MapredMapInfoVV.SetLabel("%1.3f" % red.getRoundPVal())
             self.MapredMapInfoIL.SetLabel(self.label_cardI)
             self.MapredMapInfoIV.SetLabel("%i" % red.getLenI())
             self.MapredMapInfoUL.SetLabel(self.label_cardU)

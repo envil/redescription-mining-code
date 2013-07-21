@@ -108,7 +108,6 @@ class ParaView(GView):
         self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
         self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
         self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
-
         self.MapcanvasMap.draw()
 
             
@@ -252,9 +251,9 @@ class ParaView(GView):
                 self.drs.append(dr)
 
             self.axe.axis((0,len(self.lit_str)+1, 0, 1))
-            #self.updateEmphasize(self.COLHIGH, review=False)
+            self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
-
+            self.MapfigMap.canvas.SetFocus()
 
     def on_press(self, event):
         if event.inaxes != self.axe: return
@@ -344,20 +343,24 @@ class ParaView(GView):
         flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
 
         add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
+        add_box.AddSpacer((20,-1))
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpandSimp})
-        self.sld = wx.Slider(self.mapFrame, -1, 30, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (100, -1), wx.SL_HORIZONTAL)
+        self.sld = wx.Slider(self.mapFrame, -1, 30, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
+        self.sld_sel = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags)
-
+        add_box.AddSpacer((20,-1))
+        
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  disabled  +")
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY,u"- opac. disabled  +")
         v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL)
         v_box.Add(self.sld_sel, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
+        add_box.AddSpacer((20,-1))
+        
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "-  sample  +")
+        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "-      details      +")
         v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
         v_box.Add(self.sld, 0, border=3, flag=flags)
         add_box.Add(v_box, 0, border=3, flag=flags)
