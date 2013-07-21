@@ -8,7 +8,7 @@ import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-import toolMath, toolsComm
+import toolMath
 
 import pdb
 
