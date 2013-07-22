@@ -127,7 +127,6 @@ class ParaView(GView):
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
         lit_str.insert(pos_axis, "---")
-
         mat, details, mcols = self.parent.dw.data.getMatrix()
         if len(osupp) > 500:
             zds = toolMath.linkageZds(mat, details, side_cols, osupp)
@@ -140,8 +139,8 @@ class ParaView(GView):
         side_cols.insert(pos_axis, None)
         precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
-        limits = np.vstack([np.array([min(mat[mcols[sc],:]), max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
-
+        limits = np.vstack([np.array([np.min(mat[mcols[sc],:]), np.max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
+        
         return data_m, lit_str, limits, ranges, zds
 
 
@@ -313,11 +312,15 @@ class ParaView(GView):
                 continue
 
             ### ADDING NOISE AND RESCALING
+            #print self.limits.shape
             mask_noise = - self.limits[:,0] \
                          + np.array([abs(r[2])*(N-lid)/(2.0*N)+abs(r[2])/4.0 for r in self.ranges])
                          
             mask_div = self.limits[:,1]+np.array([abs(r[2]) for r in self.ranges]) - self.limits[:,0]
             tt = (N-lid)/(2.0*N)+0.25
+
+            #tmm = (self.data_m[:,lid] + mask_noise)/mask_div
+            #print tmm.shape
             final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
 
             self.highl[lid] = []

@@ -47,7 +47,7 @@ class GView(object):
     title_str = "View"
     geo = False
     typesI = ["Var", "Reds", "Row"]
-    fwidth = 600
+    fwidth = 650
 
     @classmethod
     def getViewsDetails(tcl):
@@ -67,6 +67,7 @@ class GView(object):
         self.highl = {}
         self.hight = {}
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str)) #, style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
+        self.mapFrame.SetMinSize((self.fwidth,-1))
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
         self.drawFrame()
@@ -81,9 +82,11 @@ class GView(object):
     def getActionsDetails(self):
         details = []
         for action, dtl in self.actions_map.items():
-            details.append({"label": "%s    [%s]" % (dtl["label"], dtl["key"]),
+            details.append({"label": "%s[%s]" % (dtl["label"].ljust(30), dtl["key"]),
                             "legend": dtl["legend"], "active": dtl["active_q"](),
-                            "key": dtl["key"], "order": dtl["order"]})
+                            "key": dtl["key"], "order": dtl["order"], "type": dtl["type"]})
+        if self.mc is not None:
+            details.extend(self.mc.getActionsDetails(6))
         return details
 
     def q_expand(self, more):
@@ -94,6 +97,9 @@ class GView(object):
             
     def q_has_poly(self):
         return self.mc is not None and self.mc.q_has_poly()
+
+    def q_active_poly(self):
+        return self.mc is not None and self.mc.isActive()
 
     def q_has_selected(self):
         return len(self.highl) > 0
@@ -110,19 +116,27 @@ class GView(object):
                                      "more": {"side":1}, "order":2} }
         
     def prepareActions(self):
-        self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "deselect all",
-                                             "legend": "deselect all dots", "more": None,
+        self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "Deselect all",
+                                             "legend": "Deselect all dots", "more": None, "type": "main",
+                                             "order":1, "active_q":self.q_has_selected},
+                            "flip_able": {"method": self.do_flip_emphasized, "label": "(Dis)able selected",
+                                             "legend": "(Dis)able selected dots", "more": None, "type": "main",
                                              "order":0, "active_q":self.q_has_selected}
                             }
-        if self.mc is not None:
-            self.actions_map["select_poly"] = {"method": self.do_select_poly, "label": "select polygon content",
-                                               "legend": "select dots inside the polygon", "more": None,
-                                               "order":2, "active_q":self.q_has_poly}
 
         for setk, setl, setp in self.map_select_supp:
-            self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "select "+setl,
-                                             "legend": "deselect dots in "+setl, "more": setp,
-                                             "order":1, "active_q":self.q_true}
+            self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "(De)select "+setl,
+                                             "legend": "(De)select dots in "+setl, "more": setp, "type": "main",
+                                             "order":2, "active_q":self.q_true}
+
+        if self.mc is not None:
+            self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select polygon content",
+                                               "legend": "Select dots inside the polygon", "more": None,  "type": "main",
+                                               "order":3, "active_q":self.q_has_poly}
+            self.actions_map["toggle_draw"] = {"method": self.do_toggle_poly, "label": "Toggle polygon",
+                                               "legend": "Toggle polygon drawing", "more": None,  "type": "check",
+                                               "order":100, "active_q":self.q_active_poly}
+
 
     def setKeys(self, keys=None):
         self.keys_map = {}
@@ -174,28 +188,22 @@ class GView(object):
             menuAct = wx.Menu()
         for action in sorted(self.getActionsDetails(), key=lambda x:(x["order"],x["key"])):
             ID_ACT = wx.NewId()
-            m_act = menuAct.Append(ID_ACT, action["label"], action["legend"])
-            if action["active"]:
+            if action["type"] == "check":
+                m_act = menuAct.AppendCheckItem(ID_ACT, action["label"], action["legend"])
                 frame.Bind(wx.EVT_MENU, self.OnMenuAction, m_act)
                 self.menu_map_act[ID_ACT] = action["key"]
+                if action["active"]:
+                    m_act.Check()
             else:
-                menuAct.Enable(ID_ACT, False)
-
-        if self.mc is not None:
-            for action in sorted(self.mc.getActionsDetails(), key=lambda x:(x["order"],x["key"])):
-                ID_ACT = wx.NewId()
                 m_act = menuAct.Append(ID_ACT, action["label"], action["legend"])
                 if action["active"]:
-                    frame.Bind(wx.EVT_MENU, self.OnMenuMCAction, m_act)
+                    if action["type"] == "mc":
+                        frame.Bind(wx.EVT_MENU, self.OnMenuMCAction, m_act)
+                    else:
+                        frame.Bind(wx.EVT_MENU, self.OnMenuAction, m_act)
                     self.menu_map_act[ID_ACT] = action["key"]
                 else:
                     menuAct.Enable(ID_ACT, False)
-
-            ID_ACT = wx.NewId()
-            m_act = menuAct.AppendCheckItem(ID_ACT, "Polygon drawing", "Activate polygon drawing.")
-            if self.mc.isActive():
-                m_act.Check()
-            frame.Bind(wx.EVT_MENU, self.OnToggleMC, m_act)
         return menuAct
 
     def makeProcessMenu(self, frame, menuPro=None):
@@ -211,7 +219,7 @@ class GView(object):
                 menuPro.Enable(ID_PRO, False)
         return menuPro
 
-    def OnToggleMC(self, event):
+    def do_toggle_poly(self, event):
         if self.mc is not None:
              if self.mc.isActive():
                  self.mc.setButtons([])
@@ -251,7 +259,6 @@ class GView(object):
         self.MapredMapInfoBL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoRV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
         self.MapredMapInfoBV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-
         self.MapredMapInfoOL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoTL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
         self.MapredMapInfoOV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
@@ -262,45 +269,50 @@ class GView(object):
         self.MapredMapInfoRV.SetForegroundColour(colors[1])
         self.MapredMapInfoIV.SetForegroundColour(colors[2])
         
-        flagsL = wx.ALL|wx.ALIGN_RIGHT
-        flagsV = wx.ALL|wx.ALIGN_LEFT
+        flagsL = wx.LEFT | wx.ALIGN_RIGHT | wx.EXPAND
+        flagsV = wx.RIGHT |wx.ALIGN_LEFT | wx.EXPAND
         # statsBox = wx.GridSizer(rows=3, cols=8, hgap=5, vgap=5)
 
-        suppBox = wx.GridSizer(rows=2, cols=8, hgap=5, vgap=5)
-        suppBox.Add(self.MapredMapInfoJL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoJV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoBL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoBV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoIL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoIV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoRL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoRV, 0, border=0, flag=flagsV) 
-
-        suppBox.Add(self.MapredMapInfoVL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoVV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoUL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoUV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoOL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoOV, 0, border=0, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoTL, 0, border=0, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoTV, 0, border=0, flag=flagsV)
-
+        suppBox = wx.GridSizer(rows=2, cols=10, hgap=5, vgap=5)
+                
+        suppBox.AddStretchSpacer()
+        suppBox.Add(self.MapredMapInfoJL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoJV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoBL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoBV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoIL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoIV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoRL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoRV, 0, border=5, flag=flagsV) 
+        suppBox.AddStretchSpacer()
+        
+        suppBox.AddStretchSpacer()
+        suppBox.Add(self.MapredMapInfoVL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoVV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoUL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoUV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoOL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoOV, 0, border=5, flag=flagsV)
+        suppBox.Add(self.MapredMapInfoTL, 0, border=5, flag=flagsL)
+        suppBox.Add(self.MapredMapInfoTV, 0, border=5, flag=flagsV)
+        suppBox.AddStretchSpacer()
 
         allinfosBox = wx.BoxSizer(wx.VERTICAL)
-        flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
+        flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL  | wx.EXPAND
         ## if self.parent.dw.getCoords() is not None:
-        allinfosBox.Add(self.MapcanvasMap, 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        allinfosBox.Add(self.MapcanvasMap, 1, wx.ALL| wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         
-        allinfosBox.Add(self.MapredMapQ[0], 0, border=0, flag=flags | wx.EXPAND)
-        allinfosBox.Add(self.MapredMapQ[1], 0, border=0, flag=flags | wx.EXPAND)
+        allinfosBox.Add(self.MapredMapQ[0], 0, border=0, flag=flags)
+        allinfosBox.Add(self.MapredMapQ[1], 0, border=0, flag=flags)
         # allinfosBox.Add(statsBox, 0, border=1, flag=flags)
         allinfosBox.AddSpacer((-1,10))
         allinfosBox.Add(suppBox, 0, border=1, flag=flags)
         allinfosBox.AddSpacer((-1,15))
 
+        flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         for add_box in self.additionalElements():
             allinfosBox.Add(add_box, 0, border=1, flag=flags)
-            
+
         self.mapFrame.SetSizer(allinfosBox)
         allinfosBox.Fit(self.mapFrame)
 
@@ -552,7 +564,8 @@ class GView(object):
 
     def doActionForKey(self, key):
         if self.actions_map.has_key(self.keys_map.get(key, None)):
-            if self.actions_map[self.keys_map[key]]["active_q"]():
+            act = self.actions_map[self.keys_map[key]]
+            if act["type"] == "check" or act["active_q"]():
                 self.actions_map[self.keys_map[key]]["method"](self.actions_map[self.keys_map[key]]["more"])
                 return True
         return False
@@ -574,6 +587,9 @@ class GView(object):
         self.mc.clear()
         if points != set():
             self.sendEmphasize(points)
+
+    def do_flip_emphasized(self, more=None):
+        self.sendFlipEmphasizedR()
 
     def do_deselect_all(self, more=None):
         points = None

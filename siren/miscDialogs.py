@@ -62,9 +62,7 @@ class ImportDataDialog(object):
                 pass
                 ##raise
             else:
-                self.parent.details = {'names': self.parent.dw.getColNames()}
-                self.parent.reloadVars()
-                self.parent.reloadReds()
+                self.parent.reloadAll()
             finally:
                 self.dlg.Destroy()
             return True
@@ -177,9 +175,7 @@ class ImportDataCSVDialog(object):
                 pass
                 raise
             else:
-                self.parent.details = {'names': self.parent.dw.getColNames()}
-                self.parent.reloadVars()
-                self.parent.reloadReds()
+                self.parent.reloadAll()
             finally:
                 self.dlg.Destroy()
             return True

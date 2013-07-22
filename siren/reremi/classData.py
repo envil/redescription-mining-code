@@ -1,6 +1,7 @@
 
 import os.path
 import numpy as np
+import scipy.sparse
 import codecs, re
 
 from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query 
@@ -190,7 +191,7 @@ class ColM(object):
 
     def toXML(self):
         strd = "<variable>\n"
-        strd += "\t<name>%s</name>\n" % self.getName()
+        strd += "\t<name><![CDATA[\"%s\"]]></name>\n" % self.getName()
         strd += "\t<type_id>%d</type_id>\n" % self.type_id
         strd += "\t<nb_entities>%d</nb_entities>\n" % self.N
         strd += "\t<status_enabled>%d</status_enabled>\n" % self.enabled
@@ -541,7 +542,8 @@ class NumColM(ColM):
                 ### Make sure can recover the length
                 for n in self.missing:
                     self.vect[n] = self.numEquiv("-")
-                if not self.vect.has_key(self.nbRows()-1):
+                ## make sure we recover full length
+                if not self.vect.has_key(self.nbRows()-1): 
                     self.vect[self.nbRows()-1] = self.vect[-1]
         return self.vect
         
@@ -958,7 +960,6 @@ class Data:
         if side_cols is None:
             side_cols = [(side, None) for side in [0,1]]
                     
-        mat = np.empty([0, self.N])
         mcols = {}
         details = []
         for side, col in side_cols:
@@ -971,8 +972,8 @@ class Data:
                 for col in tcols:
                     mcols[(side, col)] = len(details)
                     details.append({"side": side, "col": col, "type": self.cols[side][col].type_id, "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled()})
-                tmp = np.array([self.cols[side][col].getVector() for col in tcols])
-                mat = np.concatenate((mat, tmp))
+
+        mat = np.vstack([getDenseArray(self.cols[d["side"]][d["col"]].getVector()) for d in details])
         if store:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
@@ -1496,3 +1497,10 @@ def finishVarDat(tmpOCols, nbORows, nbOCols):
         for i in row:
             tmpCols[i].add(ri)
     return [BoolColM(col, nbRows) for col in tmpCols], nbRows, len(tmpCols)  
+
+def getDenseArray(vect):
+    if type(vect) is dict:
+        vs, ijs = zip(*[(v, (i,0)) for (i,v) in vect.items() if i != -1])
+        return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
+    else:
+        return np.array([vect])

@@ -180,7 +180,12 @@ class GridTable(wx.grid.PyGridTableBase):
         if callable(methode):
             if len(field) > 2 and field[2] is not None:
                 details.update(field[2])
-            return methode(details)
+            try:
+                return methode(details)
+            except IndexError:
+                pdb.set_trace()
+                methode(details)
+                print details
         else:
             return methode
 

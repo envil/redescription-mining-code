@@ -524,9 +524,11 @@ class Siren():
             self.reloadAll()
             return True
 
-    def expand(self, params=None):
+    def expand(self, params={}):
+        if params is None:
+            params = {}
         self.progress_bar.Show()
-        if params.has_key("red") and params["red"].length(0) + params["red"].length(1) > 0:
+        if params.has_key("red") and params["red"] is not None and params["red"].length(0) + params["red"].length(1) > 0:
             self.plant.addWorker("expander", self, params,
                                  {"results_track":0,
                                   "batch_type": "partial",
