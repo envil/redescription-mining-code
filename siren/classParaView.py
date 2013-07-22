@@ -69,13 +69,22 @@ class ParaView(GView):
                 queries[sd] = query
 
         changed = False
+        old = [None, None]
         for side in [0,1]:
+            old[side] = self.queries[side]
             if queries[side] != None and queries[side] != self.queries[side]:
                 self.queries[side] = queries[side]
                 changed = True
 
+        red = None
         if changed or force:
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            try:
+                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            except Exception:
+                ### Query could be parse but not recomputed
+                red = None
+                self.queries = old
+        if red is not None:
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
             self.updateText(red)
@@ -104,7 +113,6 @@ class ParaView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
         self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
         self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
         self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
@@ -139,7 +147,7 @@ class ParaView(GView):
         side_cols.insert(pos_axis, None)
         precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
-        limits = np.vstack([np.array([np.min(mat[mcols[sc],:]), np.max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
+        limits = np.vstack([np.array([float(np.min(mat[mcols[sc],:])), np.max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
         
         return data_m, lit_str, limits, ranges, zds
 
@@ -195,7 +203,7 @@ class ParaView(GView):
             ### GATHERING DATA
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
             tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
-            self.limits[pos_axis, :] = [min(tt), max(tt), 0]
+            self.limits[pos_axis, :] = [np.min(tt), np.max(tt), 0]
 
             ### SAMPLING ENTITIES
             reps, clusters = toolMath.sampleZds(self.zds, t)
@@ -236,7 +244,7 @@ class ParaView(GView):
             rects_map = {}
             for i, rg in enumerate(self.ranges):
                 if rg[0] is not None:
-                    bds = [(rg[k]-self.limits[i,0]+k*abs(rg[2]))/(self.limits[i,1]+abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
+                    bds = [(rg[k]-self.limits[i,0]+k*np.abs(rg[2]))/(self.limits[i,1]+np.abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
                     rects = self.axe.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
                     if rg[2] == 0:
                         rects_map[i] = rects[0]
@@ -312,15 +320,15 @@ class ParaView(GView):
                 continue
 
             ### ADDING NOISE AND RESCALING
-            #print self.limits.shape
             mask_noise = - self.limits[:,0] \
-                         + np.array([abs(r[2])*(N-lid)/(2.0*N)+abs(r[2])/4.0 for r in self.ranges])
-                         
-            mask_div = self.limits[:,1]+np.array([abs(r[2]) for r in self.ranges]) - self.limits[:,0]
+                         + np.array([np.abs(r[2])*(N-lid)/(2.0*N)+np.abs(r[2])/4.0 for r in self.ranges])
+
+            mask_div = self.limits[:,1]+np.array([np.abs(r[2]) for r in self.ranges]) - self.limits[:,0]
             tt = (N-lid)/(2.0*N)+0.25
 
-            #tmm = (self.data_m[:,lid] + mask_noise)/mask_div
-            #print tmm.shape
+            #pdb.set_trace()
+            tmm= (self.data_m[:,lid] + mask_noise)/mask_div
+            
             final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
 
             self.highl[lid] = []

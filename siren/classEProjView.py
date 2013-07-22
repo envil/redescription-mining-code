@@ -12,7 +12,6 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
-import matplotlib.animation as animation
 
 from reremi.toolLog import Log
 from reremi.classQuery import Query
@@ -167,7 +166,6 @@ class EProjView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
         self.MapcanvasMap.draw()
 
     def init_wait(self):
@@ -179,6 +177,12 @@ class EProjView(GView):
         self.axe.cla()
         self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
         self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+
+    def plot_void(self):
+        self.axe.cla()
+        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5 for r in [0,2,4]], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
         self.axe.axis([0,1,0,1])
         self.MapcanvasMap.draw()
 
@@ -239,6 +243,8 @@ class EProjView(GView):
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
+        else:
+            self.plot_void()
 
     def getCoords(self, axi=None, ids=None):
         if self.proj is None:

@@ -76,8 +76,10 @@ class GView(object):
         self.setKeys()
         self.prepareProcesses()
         self.makeMenu()
+        self.panel.SetCursor(wx.StockCursor(wx.CURSOR_BULLSEYE))
         self.mapFrame.Show()
         self.suppABCD = None
+
 
     def getActionsDetails(self):
         details = []
@@ -220,6 +222,9 @@ class GView(object):
         return menuPro
 
     def do_toggle_poly(self, event):
+        self.togglePoly()
+
+    def togglePoly(self):
         if self.mc is not None:
              if self.mc.isActive():
                  self.mc.setButtons([])
@@ -560,7 +565,7 @@ class GView(object):
 
     def OnPick(self, event):
         if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
-            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])], self.ctrl_on)
+            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])], False)
 
     def doActionForKey(self, key):
         if self.actions_map.has_key(self.keys_map.get(key, None)):
@@ -570,13 +575,7 @@ class GView(object):
                 return True
         return False
 
-    def key_release_callback(self, event):
-        if event.key == "control":
-            self.ctrl_on = False
-
     def key_press_callback(self, event):
-        if event.key == "control":
-            self.ctrl_on = True
         self.doActionForKey(event.key)
 
     def mkey_press_callback(self, event):

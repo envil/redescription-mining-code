@@ -14,6 +14,7 @@ def getRGB(h,l, s):
         Frgb = map(int, [255*v for v in colorsys.hls_to_rgb(h, 1, s)])
     return Brgb, Frgb
 
+
 class CustRenderer(wx.grid.PyGridCellRenderer):
 
     BACKGROUND = wx.Colour(100,100,100)
@@ -29,6 +30,46 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
     SBRUSH_GREY = wx.SOLID
     
     """Base class for editors"""
+
+    ### Customisation points
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        """Customisation Point: Draw the data from grid in the rectangle with attributes using the dc"""
+
+        dc.SetClippingRegion( rect.x, rect.y, rect.width, rect.height )
+        back, fore, bstyle = self.BACKGROUND, self.TEXT, self.SBRUSH
+        value = grid.GetCellValue( row, col )
+        
+        if row in grid.GetSelectedRows():
+            back, fore, bstyle = self.BACKGROUND_SELECTED, self.TEXT_SELECTED, self.SBRUSH_SELECTED
+        elif grid.GetTable().getEnabled(row) == 0:
+            back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
+        try:
+            dc.SetTextForeground( fore )
+            dc.SetTextBackground( back)
+            dc.SetBrush( wx.Brush( back, bstyle) )
+            dc.SetPen(wx.TRANSPARENT_PEN)
+            dc.DrawRectangle( rect.x, rect.y, rect.width, rect.height )
+            dc.SetFont( wx.NORMAL_FONT )
+            dc.DrawText( value, rect.x+2,rect.y+2 )
+        finally:
+            dc.SetTextForeground( self.TEXT)
+            dc.SetTextBackground( self.BACKGROUND)
+            dc.SetPen( wx.NullPen )
+            dc.SetBrush( wx.NullBrush )
+            dc.DestroyClippingRegion( )
+
+    # def GetBestSize(self, grid, attr, dc, row, col):
+    #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
+    #     Note: You _must_ return a wxSize object.  Returning a two-value-tuple
+    #     won't raise an error, but the value won't be respected by wxPython.
+    #     """         
+    #     x,y = dc.GetTextExtent( "%s" % grid.GetCellValue( row, col ) )
+    #     # note that the two-tuple returned by GetTextExtent won't work,
+    #     # need to give a wxSize object back!
+    #     return wx.Size( min(x, 10), min(y, 10))
+
+
+class ColorRenderer(CustRenderer):
 
     ### Customisation points
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
@@ -79,6 +120,7 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
 class GridTable(wx.grid.PyGridTableBase):
 
     fields_def = []
+    renderer = CustRenderer
 
     def __init__(self, parent, tabId, frame):
         wx.grid.PyGridTableBase.__init__(self)
@@ -102,7 +144,7 @@ class GridTable(wx.grid.PyGridTableBase):
         #self.grid.AutoSizeColumns(True)
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_STRING,
-                                   CustRenderer(),
+                                   self.renderer(),
                                    wx.grid.GridCellAutoWrapStringEditor())
 
         self.grid.RegisterDataType(wx.grid.GRID_VALUE_BOOL,
@@ -239,6 +281,7 @@ class GridTable(wx.grid.PyGridTableBase):
                 self.GetView().SetColSize(coli, f[3])
 
     def resetDetails(self, details={}, review=True):
+        self.sortP = (None, False)
         self.details = details
         if review:
             self.ResetView()
@@ -257,8 +300,8 @@ class GridTable(wx.grid.PyGridTableBase):
         self.ResetView()
         self.resetSizes()
 
-    def resetFields(self):
-        pass
+    def resetFields(self, dw=None, review=True):
+        self.sortP = (None, False)
 
     def getEnabled(self, row):
         return self.getItemAtRow(row).getEnabled()
@@ -387,7 +430,10 @@ class GridTable(wx.grid.PyGridTableBase):
         if self.sortP[0] is not None:
             details = {"aim": "sort"}
             details.update(self.details)
-            self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
+            try:
+                self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
+            except IndexError:
+                pdb.set_trace()
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
             
@@ -682,7 +728,8 @@ class VarTable(GridTable):
     def updateEdit(self, edit_key, red):
         pass
 
-    def resetFields(self):
+    def resetFields(self, dw=None, review=True):
+        self.sortP = (None, False)
         self.fields = []
         self.fields.extend(self.fields_def)
         for tyid in set([r.type_id for r in self.data]):
@@ -693,6 +740,7 @@ class RowTable(GridTable):
 
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
+    renderer = ColorRenderer
 
     def setSelectedRow(self,row, col=0):
         if row is None: row = 0
@@ -708,6 +756,7 @@ class RowTable(GridTable):
         pass
 
     def resetFields(self, dw=None, review=True):
+        self.sortP = (None, False)
         if dw is not None:
             self.cols_map = {}
             self.fields = []
@@ -739,8 +788,11 @@ class RowTable(GridTable):
                     lr = row/(1.0*self.nbItems())
                     if type(rangeV) is dict:
                         lr = rangeV.get(tmp, 0)/(len(rangeV)-1.0)
-                    elif type(rangeV) is tuple and rangeV[0] != rangeV[1]:
-                        lr = (tmp - rangeV[0])/(rangeV[1]-rangeV[0])
+                    elif type(rangeV) is tuple:
+                        if rangeV[0] != rangeV[1]:
+                            lr = (rangeV[1]-tmp)/(rangeV[1]-rangeV[0])
+                        else:
+                            lr = 1
                     l = 125*lr+100
 
                 # sc = 1.0*self.fields[col][2]["max"] - self.fields[col][2]["min"]
@@ -784,6 +836,7 @@ class RowTable(GridTable):
         self.redraw()
 
     def resetDetails(self, details={}, review=True):
+        self.sortP = (None, False)
         self.details = details
         if review:
             self.redraw()
@@ -815,6 +868,12 @@ class RowTable(GridTable):
             else:
                 self.sc.add(cid)
             self.redraw()
+        if self.getSelectedRow() is not None:
+            row = self.getSelectedRow()
+        else:
+            row = 0
+        if not self.grid.IsVisible(row, cid):
+            self.grid.MakeCellVisible(row, cid)
 
     def setFocusCol(self, cid):
         if cid > 1:

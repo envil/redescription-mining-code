@@ -205,6 +205,8 @@ class AxesProj(Proj):
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+        if len(mcols) == 0:
+            return
         scs = random.sample(mcols.keys(), 2)
         side_lstr = {0:"LHS", 1:"RHS"}
         self.labels = ["", ""]
@@ -236,6 +238,9 @@ class VrsProj(Proj):
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+        if len(mcols) == 0:
+            return
+
         rids = range(self.data.nbRows())
         if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
             rids = list(self.data.nonselectedRows())
@@ -273,9 +278,15 @@ class DynProj(Proj):
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+                if len(mcols) == 0:
+                    return
+
                 matn = toolMath.withen(mat.T)
             else:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+                if len(mcols) == 0:
+                    return
+
                 if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
                     selected = np.array(list(self.data.nonselectedRows()))
                     matn = toolMath.withen(mat[:,selected])
@@ -284,8 +295,10 @@ class DynProj(Proj):
         return matn
 
     def comp(self):
-        X_pro, err = self.getX(self.getData())
-        self.coords_proj = (X_pro[:,0], X_pro[:,1])
+        matn = self.getData()
+        if matn is not None:
+            X_pro, err = self.getX(matn)
+            self.coords_proj = (X_pro[:,0], X_pro[:,1])
 
     def getX(self, X):
         pass

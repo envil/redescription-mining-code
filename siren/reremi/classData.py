@@ -92,6 +92,9 @@ class ColM(object):
     def getPrec(self, details=None):
         return 0
 
+    def isDense(self):
+        return True
+
     def getName(self, details=None):
         if self.name is not None:
             return self.name
@@ -466,7 +469,7 @@ class NumColM(ColM):
     width = 0
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
-    def parseList(listV, indices=None):
+    def parseListToE(listV, indices=None):
         prec = None
         if indices is None:
             indices = range(len(listV))
@@ -485,7 +488,12 @@ class NumColM(ColM):
                         prec = len(tmatch.group("dec"))
                     val = float(v)
                     vals.append((val, j))
-        return NumColM(vals, len(indices), miss, prec)
+        return vals, len(indices), miss, prec
+    parseListToE = staticmethod(parseListToE)
+    
+    def parseList(listV, indices=None):
+        vals, li, miss, prec = NumColM.parseListToE(listV, indices)
+        return NumColM(vals, li, miss, prec)
     parseList = staticmethod(parseList)
 
     def getTerm(self):
@@ -535,7 +543,7 @@ class NumColM(ColM):
 
     def getVector(self):
         if self.vect is None:
-            if self.mode[0] == 0:
+            if self.isDense():
                 self.vect = [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
             else:
                 self.vect = dict([(i,v) for (v,i) in self.sVals])
@@ -634,16 +642,21 @@ class NumColM(ColM):
         self.missing -= tmp_hold            
         self.sVals.sort()
         self.setMode()
-        
+
+    def isDense(self):
+        return self.mode[0] == 0
+
     def toXML(self):
         tmpl = ColM.toXML(self)
         strd = ""
-        if self.mode[0] == 0:
+        if self.isDense():
+            val_f = "%."+ ("%d" % self.getPrec()) +"f"
             strd += "\t<store_type>dense</store_type>\n"
-            strd += "\t\t<values>" + ",".join(map(str, [val for val, row_id in sorted(self.sVals, key = lambda x: x[1])])) +"</values>\n"
+            strd += "\t\t<values>" + ",".join([val_f % val for val, row_id in sorted(self.sVals, key = lambda x: x[1])]) +"</values>\n"
         else:
+            val_f = "%d:%."+ ("%d" % self.getPrec()) +"f"
             strd += "\t<store_type>sparse</store_type>\n"
-            strd += "\t\t<values>" + ",".join(["%d:%f" % (row_id, val) for val, row_id in sorted(self.sVals, key = lambda x: x[1])]) +"</values>\n"
+            strd += "\t\t<values>" + ",".join([val_f % (row_id, val) for val, row_id in sorted(self.sVals, key = lambda x: x[1])]) +"</values>\n"
             # for val, row_id in self.sVals:
             #     strd += "\t\t<entity><row>%d</row><value>%s</value></entity>\n" % (row_id, val)
         return tmpl.replace(self.typespec_placeholder, strd)
@@ -1500,7 +1513,12 @@ def finishVarDat(tmpOCols, nbORows, nbOCols):
 
 def getDenseArray(vect):
     if type(vect) is dict:
-        vs, ijs = zip(*[(v, (i,0)) for (i,v) in vect.items() if i != -1])
-        return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
+        tmp = [0 for i in range(max(vect.keys())+1)]
+        for i, v in vect.items():
+            if i != -1:
+                tmp[i] = v
+        return np.array([tmp])
+        # vs, ijs = zip(*[(v, (i,0)) for (i,v) in vect.items() if i != -1])
+        # return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
     else:
         return np.array([vect])

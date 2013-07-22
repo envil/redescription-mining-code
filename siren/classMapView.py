@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Cursor
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
@@ -69,7 +70,6 @@ class MapView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        self.MapfigMap.canvas.mpl_connect('key_release_event', self.key_release_callback)
         self.MapcanvasMap.draw()
             
     def updateMap(self):
