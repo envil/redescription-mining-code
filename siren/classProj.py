@@ -122,7 +122,7 @@ class Proj(object):
     def makeBoxes(self, frame):
         boxes = []
         for kp in self.getTunableParamsK():
-            label = wx.StaticText(frame, wx.ID_ANY, kp+":")
+            label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
             ctrls = []
             value = self.getParameter(kp)
             if type(value) in [int, float]:

@@ -9,15 +9,14 @@ import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
 from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+    FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse
 import itertools
 
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-from classGView import GView
+from classGView import GView, CustToolbar
 from classInterObjects import DraggableResizeableRectangle
 import toolMath
 
@@ -105,7 +104,7 @@ class ParaView(GView):
         self.hight = {}
         self.MapfigMap = plt.figure()
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
+        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
 

@@ -9,14 +9,13 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+    FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse, Polygon
 
 from reremi.classQuery import Query
 from reremi.classSParts import SParts
 from reremi.classRedescription import Redescription
-from classGView import GView
+from classGView import GView, CustToolbar
 from classInterObjects import MaskCreator
 
 import pdb
@@ -47,7 +46,7 @@ class MapView(GView):
         
         self.MapfigMap = plt.figure()
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
+        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
         blon, blat = (ulon-llon)/100.0, (ulat-llat)/100.0

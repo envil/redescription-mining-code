@@ -8,15 +8,14 @@ import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+    FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
 from reremi.toolLog import Log
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
-from classGView import GView
+from classGView import GView, CustToolbar
 from classProj import ProjFactory
 from classInterObjects import MaskCreator
 
@@ -39,6 +38,7 @@ class EProjView(GView):
     
     def __init__(self, parent, vid, more=None):
         self.repbut = None
+        self.active_info = False
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
@@ -161,7 +161,7 @@ class EProjView(GView):
         
         self.MapfigMap = plt.figure()
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = NavigationToolbar(self.MapcanvasMap)
+        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
         self.axe = self.MapfigMap.add_subplot(111)
 

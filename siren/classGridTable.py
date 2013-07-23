@@ -509,6 +509,7 @@ class RedTable(GridTable):
             self.ResetView()
 
     def deleteItem(self, pos, upView=True):
+        upMenu = False
         row = self.getRowFromPosition(pos)
         if row is not None:
             self.sortids.pop(row)
@@ -523,6 +524,8 @@ class RedTable(GridTable):
                     self.opened_edits[edit_key] = None
                 elif self.opened_edits[edit_key] > pos:
                     self.opened_edits[edit_key] -= 1
+                    upMenu = True
+                    self.parent.accessViewX(edit_key).updateTitle()
             ks = sorted(self.emphasized.keys())
             for k in ks:
                 if k == pos:
@@ -532,6 +535,8 @@ class RedTable(GridTable):
                     del self.emphasized[k]
             if upView:
                 self.ResetView()
+            if upMenu:
+                self.parent.updateMenus()
 
     def getRedId(self, oid):
         return self.getPosStr(self.opened_edits.get(oid, None))

@@ -355,7 +355,7 @@ class CatColM(ColM):
     parseList = staticmethod(parseList)
 
     def getTerm(self):
-        return CatTerm(self.id, self.cats()[0])
+        return CatTerm(self.id, self.modeCat())
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i categories" % len(self.cats()))
@@ -448,6 +448,9 @@ class CatColM(ColM):
         strd = "\t\t<values>" + ",".join([row[1] for row in rows]) +"</values>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
 
+    def modeCat(self):
+        return sorted(self.sCats.keys(),key=lambda x: len(self.sCats[x]))[-1]
+
     def cats(self):
         return sorted(self.sCats.keys())
 
@@ -497,7 +500,7 @@ class NumColM(ColM):
     parseList = staticmethod(parseList)
 
     def getTerm(self):
-        return NumTerm(self.id, self.sVals[0][0], self.sVals[-1][0])
+        return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i values not in mode" % self.lenNonMode())

@@ -20,6 +20,21 @@ import factView
 
 import pdb
 
+class CustToolbar(NavigationToolbar):
+    def __init__(self, plotCanvas, parent):
+        NavigationToolbar.__init__(self, plotCanvas)
+        self.parent = parent
+
+    def mouse_move(self, event=None):
+        if event is not None:
+            NavigationToolbar.mouse_move(self, event)
+        if self.parent.q_active_poly():
+            self.set_cursor(2)
+        elif self.parent.q_active_info():
+            self.set_cursor(0)
+        else:
+            self.set_cursor(1)
+
 class GView(object):
 
     label_jacc="J ="
@@ -48,14 +63,14 @@ class GView(object):
     title_str = "View"
     geo = False
     typesI = ["Var", "Reds", "Row"]
-    fwidth = 650
+    fwidth = 600
 
     @classmethod
     def getViewsDetails(tcl):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
 
     def __init__(self, parent, vid, more=None):
-        self.ctrl_on = False
+        self.active_info = False
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
@@ -77,10 +92,8 @@ class GView(object):
         self.setKeys()
         self.prepareProcesses()
         self.makeMenu()
-        self.panel.SetCursor(wx.StockCursor(wx.CURSOR_BULLSEYE))
         self.mapFrame.Show()
         self.suppABCD = None
-
 
     def getActionsDetails(self):
         details = []
@@ -104,6 +117,9 @@ class GView(object):
     def q_active_poly(self):
         return self.mc is not None and self.mc.isActive()
 
+    def q_active_info(self):
+        return self.active_info
+
     def q_has_selected(self):
         return len(self.highl) > 0
 
@@ -124,7 +140,10 @@ class GView(object):
                                              "order":1, "active_q":self.q_has_selected},
                             "flip_able": {"method": self.do_flip_emphasized, "label": "(Dis)able selected",
                                              "legend": "(Dis)able selected dots", "more": None, "type": "main",
-                                             "order":0, "active_q":self.q_has_selected}
+                                             "order":0, "active_q":self.q_has_selected},
+                            "noggle_info": {"method": self.do_toggle_info, "label": "Toggle info",
+                                               "legend": "Toggle info", "more": None,  "type": "check",
+                                               "order":101, "active_q":self.q_active_info}
                             }
 
         for setk, setl, setp in self.map_select_supp:
@@ -251,6 +270,9 @@ class GView(object):
             menuPro.InsertSeparator(ct)
         return menuPro
 
+    def do_toggle_info(self, event):
+        self.active_info = not self.active_info
+
     def do_toggle_poly(self, event):
         self.togglePoly()
 
@@ -263,6 +285,7 @@ class GView(object):
                  self.mc.setButtons([1])
                  self.act_butt = []
              self.makeMenu()
+             self.MaptoolbarMap.mouse_move()
         
     def OnMenuAction(self, event):
         if self.menu_map_act.has_key(event.GetId()):
@@ -282,22 +305,24 @@ class GView(object):
         colors = self.getColors()
         self.MapredMapQ[0].SetForegroundColour(colors[0])
         self.MapredMapQ[1].SetForegroundColour(colors[1])
-        self.MapredMapInfoJL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoVL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoJV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoVV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoIL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoUL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoIV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoUV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoRL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoBL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoRV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoBV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoOL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoTL = wx.StaticText(self.mapFrame,  style=wx.ALIGN_RIGHT|wx.ALL)
-        self.MapredMapInfoOV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
-        self.MapredMapInfoTV = wx.StaticText(self.mapFrame,  style=wx.ALIGN_LEFT|wx.ALL)
+        styRL = wx.ALIGN_RIGHT|wx.ALL|wx.SIMPLE_BORDER
+        styFL = wx.ALIGN_LEFT|wx.ALL|wx.SIMPLE_BORDER
+        self.MapredMapInfoJL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoVL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoJV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoVV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoIL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoUL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoIV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoUV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoRL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoBL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoRV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoBV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoOL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoTL = wx.StaticText(self.mapFrame,  style=styRL)
+        self.MapredMapInfoOV = wx.StaticText(self.mapFrame,  style=styFL)
+        self.MapredMapInfoTV = wx.StaticText(self.mapFrame,  style=styFL)
 
         colors = self.getColors()
         self.MapredMapInfoBV.SetForegroundColour(colors[0])
@@ -308,9 +333,8 @@ class GView(object):
         flagsV = wx.RIGHT |wx.ALIGN_LEFT | wx.EXPAND
         # statsBox = wx.GridSizer(rows=3, cols=8, hgap=5, vgap=5)
 
-        suppBox = wx.GridSizer(rows=2, cols=10, hgap=5, vgap=5)
-                
-        suppBox.AddStretchSpacer()
+        suppBox = wx.GridSizer(rows=2, cols=8, hgap=1, vgap=1)
+
         suppBox.Add(self.MapredMapInfoJL, 0, border=5, flag=flagsL)
         suppBox.Add(self.MapredMapInfoJV, 0, border=5, flag=flagsV)
         suppBox.Add(self.MapredMapInfoBL, 0, border=5, flag=flagsL)
@@ -319,9 +343,7 @@ class GView(object):
         suppBox.Add(self.MapredMapInfoIV, 0, border=5, flag=flagsV)
         suppBox.Add(self.MapredMapInfoRL, 0, border=5, flag=flagsL)
         suppBox.Add(self.MapredMapInfoRV, 0, border=5, flag=flagsV) 
-        suppBox.AddStretchSpacer()
-        
-        suppBox.AddStretchSpacer()
+
         suppBox.Add(self.MapredMapInfoVL, 0, border=5, flag=flagsL)
         suppBox.Add(self.MapredMapInfoVV, 0, border=5, flag=flagsV)
         suppBox.Add(self.MapredMapInfoUL, 0, border=5, flag=flagsL)
@@ -330,19 +352,17 @@ class GView(object):
         suppBox.Add(self.MapredMapInfoOV, 0, border=5, flag=flagsV)
         suppBox.Add(self.MapredMapInfoTL, 0, border=5, flag=flagsL)
         suppBox.Add(self.MapredMapInfoTV, 0, border=5, flag=flagsV)
-        suppBox.AddStretchSpacer()
+
 
         allinfosBox = wx.BoxSizer(wx.VERTICAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL  | wx.EXPAND
         ## if self.parent.dw.getCoords() is not None:
-        allinfosBox.Add(self.MapcanvasMap, 1, wx.ALL| wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+        allinfosBox.Add(self.MapcanvasMap, 0, wx.ALL| wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
         
         allinfosBox.Add(self.MapredMapQ[0], 0, border=0, flag=flags)
         allinfosBox.Add(self.MapredMapQ[1], 0, border=0, flag=flags)
         # allinfosBox.Add(statsBox, 0, border=1, flag=flags)
-        allinfosBox.AddSpacer((-1,10))
-        allinfosBox.Add(suppBox, 0, border=1, flag=flags)
-        allinfosBox.AddSpacer((-1,15))
+        allinfosBox.Add(suppBox, 0, border=15, flag=flags)
 
         flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
         for add_box in self.additionalElements():
@@ -580,9 +600,9 @@ class GView(object):
                         self.axe.lines.remove(t)
                 del self.highl[lid]
 
-    def sendEmphasize(self, lids, show_info=False):
+    def sendEmphasize(self, lids):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, show_info)
+            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, show_info=self.q_active_info())
 
     def sendFlipEmphasizedR(self):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
@@ -590,7 +610,7 @@ class GView(object):
 
     def OnPick(self, event):
         if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
-            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])], False)
+            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
 
     def doActionForKey(self, key):
         if self.actions_map.has_key(self.keys_map.get(key, None)):
