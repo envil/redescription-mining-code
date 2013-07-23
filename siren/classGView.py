@@ -135,13 +135,13 @@ class GView(object):
                                      "more": {"side":1}, "order":2} }
         
     def prepareActions(self):
-        self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "Deselect all",
+        self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "&Deselect all",
                                              "legend": "Deselect all dots", "more": None, "type": "main",
                                              "order":1, "active_q":self.q_has_selected},
                             "flip_able": {"method": self.do_flip_emphasized, "label": "(Dis)able selected",
                                              "legend": "(Dis)able selected dots", "more": None, "type": "main",
                                              "order":0, "active_q":self.q_has_selected},
-                            "noggle_info": {"method": self.do_toggle_info, "label": "Toggle info",
+                            "noggle_info": {"method": self.do_toggle_info, "label": "Toggle i&nfo",
                                                "legend": "Toggle info", "more": None,  "type": "check",
                                                "order":101, "active_q":self.q_active_info}
                             }
@@ -152,10 +152,10 @@ class GView(object):
                                              "order":2, "active_q":self.q_true}
 
         if self.mc is not None:
-            self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select polygon",
+            self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select &polygon",
                                                "legend": "Select dots inside the polygon", "more": None,  "type": "main",
                                                "order":3, "active_q":self.q_has_poly}
-            self.actions_map["toggle_draw"] = {"method": self.do_toggle_poly, "label": "Toggle polygon",
+            self.actions_map["toggle_draw"] = {"method": self.do_toggle_poly, "label": "&Toggle polygon",
                                                "legend": "Toggle polygon drawing", "more": None,  "type": "check",
                                                "order":100, "active_q":self.q_active_poly}
 
