@@ -34,7 +34,7 @@ class SirenApp(wx.App):
 
         if len(sys.argv) > 2 and sys.argv[2] == "debug":
             # DEBUG
-            #print "Loading file", sys.argv[-1]
+            # print "Loading file", sys.argv[-1]
             # self.frame.expand()
             tab = 1
             # self.frame.dw.data.getMatrix()

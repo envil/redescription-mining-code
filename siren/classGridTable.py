@@ -122,9 +122,10 @@ class GridTable(wx.grid.PyGridTableBase):
     fields_def = []
     renderer = CustRenderer
 
-    def __init__(self, parent, tabId, frame):
+    def __init__(self, parent, tabId, frame, short=None):
         wx.grid.PyGridTableBase.__init__(self)
         self.details = {}
+        self.short = short
         self.sc = set()
         self.fvc = 0
         self.parent = parent
@@ -343,8 +344,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
             if event.Col == 0:
-                self.flipEnabled(event.GetRow())
-                
+                self.flipEnabled(event.GetRow())                
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -456,6 +456,7 @@ class RedTable(GridTable):
 
     fields_sizes = []
     fields_def = [('', 'self.data[x].getEnabled'),
+                  ('id', 'self.getPosStr(x)', None, 60),
                   ('query LHS', 'self.data[x].getQueryLU', None, 300),
                   ('query RHS', 'self.data[x].getQueryRU', None, 300),
                   ('J', 'self.data[x].getRoundAcc', None, 60),
@@ -463,8 +464,8 @@ class RedTable(GridTable):
                   (u'|E\u2081\u2081|', 'self.data[x].getLenI', None, 60),
                   ('track', 'self.data[x].getTrack', None, 80)]
 
-    def __init__(self, parent, tabId, frame):
-        GridTable.__init__(self, parent, tabId, frame)
+    def __init__(self, parent, tabId, frame, short=None):
+        GridTable.__init__(self, parent, tabId, frame, short)
         self.opened_edits = {}
         self.emphasized = {}
         self.uptodate = True
@@ -532,6 +533,18 @@ class RedTable(GridTable):
             if upView:
                 self.ResetView()
 
+    def getRedId(self, oid):
+        return self.getPosStr(self.opened_edits.get(oid, None))
+
+    def getPosId(self, pos):
+        return (self.short, pos)
+
+    def getPosStr(self, pos):
+        tsh, rid = self.getPosId(pos)
+        if rid is None: rid = "?"
+        if tsh is None: tsh = "?"
+        return "%s%s" % (tsh, rid)
+                
     def viewData(self, viewT, pos=None, oid=None):
         if oid is not None:
             if self.opened_edits.has_key(oid):
@@ -548,17 +561,24 @@ class RedTable(GridTable):
         if vid is None and mapV is not None:
             self.registerView(mapV.getId(), pos)
             mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
+            mapV.updateTitle()
 
-    def registerView(self, key, pos):
+    def registerView(self, key, pos, upMenu=True):
         self.opened_edits[key] = pos
+        if upMenu:
+            self.parent.updateMenus()
 
-    def unregisterView(self, key):
+    def unregisterView(self, key, upMenu=True):
         if key in self.opened_edits.keys():
             pos = self.opened_edits[key]
             del self.opened_edits[key]
+            ### if there are no other view referring to same red, clear emphasize lines
             if pos not in self.opened_edits.values():
                 if self.emphasized.has_key(pos):
                     del self.emphasized[pos]
+            if upMenu:
+                self.parent.updateMenus()
+
             
     def updateEdit(self, edit_key, red):
         if edit_key in self.opened_edits.keys() \
@@ -580,14 +600,18 @@ class RedTable(GridTable):
                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
                     del self.emphasized[old_toed]
                 self.insertItem(red, -1)
+                self.parent.accessViewX(edit_key).updateTitle()
+                self.parent.updateMenus()
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
     def addAndViewTop(self, queries, viewT):
         mapV = self.parent.getViewX(None, viewT)
         red = mapV.setCurrent(queries)
-        self.registerView(mapV.getId(), len(self.data)-1)
+        self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
         mapV.setSource(self.tabId)
+        self.parent.updateMenus()
+        mapV.updateTitle()
 
     def doFlipEmphasizedR(self, edit_key):
         if edit_key in self.opened_edits.keys() and self.emphasized.has_key(self.opened_edits[edit_key]):
@@ -810,7 +834,7 @@ class RowTable(GridTable):
     ### GRID METHOD
     def GetColLabelValue(self, col):
         """Return the column label"""
-        if col not in self.sc:
+        if col > 1 and col not in self.sc:
             name = ""
         else:
             name = " %s " % self.fields[col][0]

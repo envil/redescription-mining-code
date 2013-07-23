@@ -24,6 +24,7 @@ import pdb
 class MapView(GView):
 
     TID = "MAP"
+    SDESC = "Map"
     title_str = "Map"
     ordN = 1
     geo = True

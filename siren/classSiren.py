@@ -49,21 +49,18 @@ class Siren():
          
     def __init__(self):
         self.busyDlg = None
-        self.tabs = {0: {"title":"LHS Variables", "type":"Var", "hide":False, "style":None},
-                     1: {"title":"RHS Variables", "type":"Var", "hide":False, "style":None},
-                     "rows": {"title":"Entities", "type":"Row", "hide":False, "style":None},
-                     "reds": {"title":"Redescriptions", "type":"Reds", "hide":False, "style":None},
-                     "exp": {"title":"Expansions", "type":"Reds", "hide":True, "style":None},
-                     "hist": {"title":"History", "type":"Reds", "hide":True, "style":None},
-                     "log": {"title":"Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
+        self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
+                     1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
+                     "rows": {"title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
+                     "reds": {"title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
+                     "exp": {"title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
+                     "hist": {"title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
+                     "log": {"title":"Log", "short": "Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
                      }
         self.tabs_keys = ["rows", 0, 1, "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         stn = "reds"
-        
-        self.ids_stoppers = {}
-        self.ids_viewT = {}
-        self.check_tab = {}
+
         self.logger = Log()
 
         tmp = wx.DisplaySize()
@@ -166,19 +163,19 @@ class Siren():
         #### Draw tabs
         for tab_id in self.tabs_keys:
             if self.tabs[tab_id]["type"] == "Reds":
-                self.tabs[tab_id]["tab"] = RedTable(self, tab_id, self.tabbed)
+                self.tabs[tab_id]["tab"] = RedTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "Var":
-                self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed)
+                self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "Row":
-                self.tabs[tab_id]["tab"] = RowTable(self, tab_id, self.tabbed)
+                self.tabs[tab_id]["tab"] = RowTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
@@ -242,8 +239,8 @@ class Siren():
         if menuCon.GetMenuItemCount() > ct:
             ct = menuCon.GetMenuItemCount()
             menuCon.AppendSeparator()
-        # menuCon.AppendMenu(wx.NewId(), "&View", self.makeViewMenu(frame))
-        self.makeViewMenu(frame, menuCon)
+        # menuCon.AppendMenu(wx.NewId(), "&View", self.makeVizMenu(frame))
+        self.makeVizMenu(frame, menuCon)
 
         frame.PopupMenu(menuCon)
         menuCon.Destroy()
@@ -322,45 +319,71 @@ class Siren():
  
         return menuRed
 
-    def makeViewMenu(self, frame, menuView=None):
-        if menuView is None:
-            menuView = wx.Menu()
+    def makeVizMenu(self, frame, menuViz=None):
+        if menuViz is None:
+            menuViz = wx.Menu()
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
                 for item in ViewFactory.getViewsInfo(self.dw.isGeospatial(), self.selectedTab["type"]):
                     ID_NEWV = wx.NewId()
-                    m_newv = menuView.Append(ID_NEWV, "%s" % item["title"],
+                    m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                               "Plot %s in new window." % item["title"])
                     frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
                     self.ids_viewT[ID_NEWV] = item["viewT"]
-        return menuView
+        return menuViz
 
-    def makeProcessMenu(self, frame, menuProcess=None):
-        if menuProcess is None:
-            menuProcess = wx.Menu()
+    def makeProcessMenu(self, frame, menuPro=None):
+        if menuPro is None:
+            menuPro = wx.Menu()
         ID_MINE = wx.NewId()
-        m_mine = menuProcess.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
+        m_mine = menuPro.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
         frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
+        ct = menuPro.GetMenuItemCount()
+        menuPro = self.makeStoppersMenu(frame, menuPro)
+        if ct < menuPro.GetMenuItemCount():
+            menuPro.InsertSeparator(ct)
+        return menuPro
 
-        self.ids_stoppers = {}
-
+    def makeStoppersMenu(self, frame, menuStop=None):
+        if menuStop is None:
+            menuStop = wx.Menu()
         if self.plant.nbWorkers() == 0:
             ID_NOP = wx.NewId()
-            m_nop = menuProcess.Append(ID_NOP, "No process running", "There is no process currently running.")
-            menuProcess.Enable(ID_NOP, False)
+            m_nop = menuStop.Append(ID_NOP, "No process running", "There is no process currently running.")
+            menuStop.Enable(ID_NOP, False)
 
         for wdt in self.plant.getWorkersDetails(): 
             ID_STOP = wx.NewId()
             self.ids_stoppers[ID_STOP] = wdt["wid"] 
-            m_stop = menuProcess.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
+            m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
             frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
-        return menuProcess
+        return menuStop
+
+    def makeViewsMenu(self, frame, menuViews=None):
+        if menuViews is None:
+            menuViews = wx.Menu()
+
+        for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items()], key=lambda x: x[1]):
+            ID_VIEW = wx.NewId()
+            self.opened_views[ID_VIEW] = vid 
+            m_view = menuViews.Append(ID_VIEW, "%s" % desc, "Bring view %s on top." % desc)
+            frame.Bind(wx.EVT_MENU, self.OnViewTop, m_view)
+
+        if len(self.view_ids) == 0:
+            ID_NOP = wx.NewId()
+            m_nop = menuViews.Append(ID_NOP, "No view opened", "There is no view currently opened.")
+            menuViews.Enable(ID_NOP, False)
+        else:
+            menuViews.AppendSeparator()
+            ID_VIEW = wx.NewId()
+            m_view = menuViews.Append(ID_VIEW, "Close all views", "Close all views.")
+            frame.Bind(wx.EVT_MENU, self.OnCloseViews, m_view)
+        return menuViews
 
     def makeTabsMenu(self, frame, menuTabs=None):
         if menuTabs is None:
             menuTabs = wx.Menu()
 
-        self.check_tab = {}
         for tab_id in self.tabs_keys:
             tab_prop = self.tabs[tab_id]
             ID_CHECK = wx.NewId()
@@ -437,17 +460,26 @@ class Siren():
         return menuHelp
 
     def makeMenu(self, frame):
-        self.ids_viewT = {}
         menuBar = wx.MenuBar()
         menuBar.Append(self.makeFileMenu(frame), "&File")
         menuBar.Append(self.makeRedMenu(frame), "&Edit")
-        menuBar.Append(self.makeViewMenu(frame), "&View")
+        menuBar.Append(self.makeVizMenu(frame), "&Visualize")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
+        menuBar.Append(self.makeViewsMenu(frame), "&Views")
         menuBar.Append(self.makeTabsMenu(frame), "&Tabs")
         menuBar.Append(self.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
         frame.SendSizeEvent()
+
+    def updateMenus(self):
+        self.opened_views = {}
+        self.ids_viewT = {}
+        self.ids_stoppers = {}
+        self.check_tab = {}
+        self.makeMenu(self.toolFrame)
+        for vid, view in self.view_ids.items():
+            view.makeMenu()
 
 ######################################################################
 ###########     MAP VIEWS
@@ -467,7 +499,7 @@ class Siren():
         if viewT is None:
             viewT = self.getDefaultViewT()
             
-        if (viewT, vid) not in self.view_ids.keys():
+        if not self.view_ids.has_key((viewT, vid)):
             view = ViewFactory.getView(viewT, self, wx.NewId())
             if view is None:
                 return
@@ -475,11 +507,11 @@ class Siren():
             self.view_ids[self.selectedViewX] = view
         else:
             self.selectedViewX = (viewT, vid)
-        self.view_ids[self.selectedViewX].mapFrame.Raise()
+        self.view_ids[self.selectedViewX].toTop()
         return self.view_ids[self.selectedViewX]
 
     def deleteView(self, vK):
-        if vK in self.view_ids.keys():
+        if self.view_ids.has_key(vK):
             self.plant.layOff(self.plant.findWid([("wtyp", "project"), ("vid", vK)]))
             self.view_ids[vK].mapFrame.Destroy()
             del self.view_ids[vK]
@@ -487,8 +519,9 @@ class Siren():
     def deleteAllViews(self):
         self.selectedViewX = -1
         for vK in self.view_ids.keys():
-            self.view_ids[vK].OnQuit(None)
+            self.view_ids[vK].OnQuit(None, upMenu=False)
         self.view_ids = {}
+        self.updateMenus()
         
 
 ######################################################################
@@ -568,7 +601,7 @@ class Siren():
         if updates.has_key("error"):
             self.errorBox(updates["error"])
         if updates.has_key("menu"):
-            self.makeMenu(self.toolFrame)
+            self.updateMenus()
         if updates.has_key("progress"):
             self.updateProgressBar()
         if updates.has_key("status"):
@@ -577,10 +610,20 @@ class Siren():
             self.tabs["log"]["text"].AppendText(updates["log"])
 
     def OnStop(self, event):
-        """Show Result status."""
-        if event.GetId() in self.ids_stoppers.keys():
+        if self.ids_stoppers.has_key(event.GetId()):
             self.plant.layOff(self.ids_stoppers[event.GetId()])
             self.checkResults(menu=True)
+
+    def OnViewTop(self, event):
+        if self.opened_views.has_key(event.GetId()) and \
+               self.view_ids.has_key(self.opened_views[event.GetId()]):
+            self.view_ids[self.opened_views[event.GetId()]].toTop()
+
+    def OnCloseViews(self, event):
+        view_keys = self.view_ids.keys()
+        for key in view_keys:
+            self.view_ids[key].OnQuit()
+        self.toTop()
             
     def OnSave(self, event):
         if not (self.dw.isFromPackage and self.dw.package_filename is not None):
@@ -811,12 +854,15 @@ class Siren():
                 tab["tab"].recomputeAll(restrict)
             
     def OnTabW(self, event):
-        if event.GetId() in self.check_tab.keys():
+        if self.check_tab.has_key(event.GetId()):
             tab_id = self.check_tab[event.GetId()]
-            if event.IsChecked():
-                self.showTab(tab_id)
-            else:
-                self.showTab(tab_id)
+            if self.toolFrame.FindFocus() is not None and self.toolFrame.FindFocus().GetGrandParent() is not None \
+                   and self.toolFrame.FindFocus().GetGrandParent().GetParent() == self.toolFrame:
+                if not event.IsChecked():
+                    self.hideTab(tab_id)
+                    return
+            else: self.toTop()
+            self.showTab(tab_id)
 
     def showTab(self, tab_id):
         self.tabs[tab_id]["hide"] = False
@@ -826,6 +872,10 @@ class Siren():
     def hideTab(self, tab_id):
         self.tabs[tab_id]["hide"] = True
         self.tabs[tab_id]["tab"].Hide()
+
+    def toTop(self):
+        self.toolFrame.Raise()
+        self.toolFrame.SetFocus()
 
     def OnPreferencesDialog(self, event):
         d = PreferencesDialog(self.toolFrame, self.dw)

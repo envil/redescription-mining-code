@@ -26,6 +26,7 @@ import pdb
 class ParaView(GView):
 
     TID = "PC"
+    SDESC = "Pa.Co."
     ordN = 1
     title_str = "Parallel Coordinates"
 

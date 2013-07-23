@@ -25,6 +25,7 @@ import pdb
 class EProjView(GView):
 
     TID = "EPJ"
+    SDESC = "E.Proj."
     ordN = 3
     what = "entities"
     title_str = "Entities Projection"
@@ -38,7 +39,6 @@ class EProjView(GView):
     
     def __init__(self, parent, vid, more=None):
         self.repbut = None
-        self.ctrl_on = False
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
@@ -47,10 +47,10 @@ class EProjView(GView):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
-        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str))
+        self.initProject(more)
+        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.panel = wx.Panel(self.mapFrame, -1)
         self.mapFrame.SetMinSize((600,-1))
-        self.initProject(more)
         self.drawMap()
         self.drawFrame()
         self.binds()
@@ -61,6 +61,12 @@ class EProjView(GView):
         self.mapFrame.Show()
         self.suppABCD = None
         self.runProject()
+
+    def getShortDesc(self):
+        return "%s %s" % (self.getRedId(), self.proj.SDESC)
+
+    def getTitleDesc(self):
+        return "%s %s" % (self.getRedId(), self.proj.getTitle())
 
     def getId(self):
         return (self.proj.PID, self.vid)
@@ -232,8 +238,8 @@ class EProjView(GView):
                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
                            linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
 
-            if self.proj.getTitle() is not None:
-                self.axe.set_title(self.proj.getTitle(),fontsize=12)
+            # if self.proj.getTitle() is not None:
+            #     self.axe.set_title(self.proj.getTitle(),fontsize=12)
             if self.proj.getAxisLabel(0) is not None:
                 self.axe.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
             if self.proj.getAxisLabel(1) is not None:

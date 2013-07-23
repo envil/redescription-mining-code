@@ -39,10 +39,11 @@ class GView(object):
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
-    map_select_supp = [("l", "E_1,0", [SParts.alpha]), ("r", "E_0,1", [SParts.beta]),
-                       ("i", "E_1,1", [SParts.gamma]), ("o", "E_0,0", [SParts.delta])]
+    map_select_supp = [("l", u"E\u2081\u2080", [SParts.alpha]), ("r", u"E\u2080\u2081", [SParts.beta]),
+                       ("i", u"E\u2081\u2081", [SParts.gamma]), ("o", u"E\u2080\u2080", [SParts.delta])]
 
     TID = "G"
+    SDESC = "Viz"
     ordN = 0
     title_str = "View"
     geo = False
@@ -66,7 +67,7 @@ class GView(object):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
-        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.title_str)) #, style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
+        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.mapFrame.SetMinSize((self.fwidth,-1))
         self.panel = wx.Panel(self.mapFrame, -1)
         self.drawMap()
@@ -132,7 +133,7 @@ class GView(object):
                                              "order":2, "active_q":self.q_true}
 
         if self.mc is not None:
-            self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select polygon content",
+            self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select polygon",
                                                "legend": "Select dots inside the polygon", "more": None,  "type": "main",
                                                "order":3, "active_q":self.q_has_poly}
             self.actions_map["toggle_draw"] = {"method": self.do_toggle_poly, "label": "Toggle polygon",
@@ -153,12 +154,33 @@ class GView(object):
                 if self.actions_map.has_key(action):
                     self.actions_map[action]["key"] = key
                     self.keys_map[key] = action
-        
+
+    def getRedId(self):
+        if self.source_list is not None:
+            return self.parent.tabs[self.source_list]["tab"].getRedId(self.getId())
+        return "?"
+
+    def getShortDesc(self):
+        return "%s %s" % (self.getRedId(), self.SDESC)
+
+    def getTitleDesc(self):
+        return "%s %s" % (self.getRedId(), self.title_str)
+
+    def updateTitle(self):
+        self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+
     def getId(self):
         return (self.TID, self.vid)
 
     def getVId(self):
         return self.vid
+
+    def toTop(self):
+        self.mapFrame.Raise()
+        try:
+            self.MapfigMap.canvas.SetFocus()
+        except AttributeError:
+            self.mapFrame.SetFocus()
 
     def makeMenu(self, frame=None):
         if frame is None:
@@ -167,23 +189,27 @@ class GView(object):
         self.ids_viewT = {}
         self.menu_map_pro = {}
         menuBar = wx.MenuBar()
-        menuBar.Append(self.makeViewMenu(frame), "&View")
-        menuBar.Append(self.makeActionsMenu(frame), "&Selection")
+        menuBar.Append(self.parent.makeFileMenu(frame), "&File")
+        menuBar.Append(self.makeActionsMenu(frame), "&Edit")
+        menuBar.Append(self.makeVizMenu(frame), "&Visualize")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
+        menuBar.Append(self.parent.makeViewsMenu(frame), "&Views")
+        menuBar.Append(self.parent.makeTabsMenu(frame), "&Tabs")
+        menuBar.Append(self.parent.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
 
-    def makeViewMenu(self, frame, menuView=None):
-        if menuView is None:
-            menuView = wx.Menu()
+    def makeVizMenu(self, frame, menuViz=None):
+        if menuViz is None:
+            menuViz = wx.Menu()
         for item in factView.ViewFactory.getViewsInfo(self.parent.dw.isGeospatial()):
             if item["viewT"] != self.getId()[0]:
                 ID_NEWV = wx.NewId()
-                m_newv = menuView.Append(ID_NEWV, "%s" % item["title"],
+                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                          "Plot %s in new window." % item["title"])
                 frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
                 self.ids_viewT[ID_NEWV] = item["viewT"]
-        return menuView
+        return menuViz
 
     def makeActionsMenu(self, frame, menuAct=None):
         if menuAct is None:
@@ -219,6 +245,10 @@ class GView(object):
                 self.menu_map_pro[ID_PRO] = process
             else:
                 menuPro.Enable(ID_PRO, False)
+        ct = menuPro.GetMenuItemCount()
+        menuPro = self.parent.makeStoppersMenu(frame, menuPro)
+        if ct < menuPro.GetMenuItemCount():
+            menuPro.InsertSeparator(ct)
         return menuPro
 
     def do_toggle_poly(self, event):
@@ -331,7 +361,6 @@ class GView(object):
     def binds(self):
         # self.mapFrame.Bind(wx.EVT_KEY_UP, self.mkey_press_callback)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-#        self.mapFrame.Bind(wx.EVT_ENTER_WINDOW, self.OnFocus)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
@@ -350,14 +379,10 @@ class GView(object):
     def OnExpandSimp(self, event):
         params = {"red": self.getCopyRed()}
         self.parent.expandFV(params)
-
-    def OnFocus(self, event):
-        self.parent.selectedMap = self.getId()
-        event.Skip()
         
-    def OnQuit(self, event):
+    def OnQuit(self, event=None, upMenu=True):
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
-            self.parent.tabs[self.source_list]["tab"].unregisterView(self.getId())
+            self.parent.tabs[self.source_list]["tab"].unregisterView(self.getId(), upMenu)
         self.parent.deleteView(self.getId())
 
     def OnEditQuery(self, event):

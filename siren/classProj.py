@@ -35,6 +35,7 @@ def applyF(f, parameters):
 class Proj(object):
 
     PID = "---"
+    SDESC = "---"
     whats = ["variables", "entities"]
     title_str = "Projection"
     gen_parameters = {"types":[NumColM.type_id], "only_able":True}
@@ -50,6 +51,9 @@ class Proj(object):
         self.code = ""
         self.mcols = None
         self.initParameters(params)
+
+    def clearCoords(self):
+        self.coords_proj = None
 
     def getAxisLabel(self, axis=0):
         return None
@@ -197,6 +201,7 @@ class Proj(object):
 class AxesProj(Proj):
 
     PID = "AXE"
+    SDESC = "Axis"
     whats = ["entities"]
     title_str = "Axis Projection"
     gen_parameters = {"Xaxis": -1.0, "Yaxis": -1.0}
@@ -230,6 +235,7 @@ class AxesProj(Proj):
 class VrsProj(Proj):
 
     PID = "VRS"
+    SDESC = "Axis"
     whats = ["variables"]
     title_str = "Axis Projection"
     gen_parameters = dict(Proj.gen_parameters)
@@ -267,6 +273,7 @@ class VrsProj(Proj):
 class DynProj(Proj):
 
     PID =  "---"
+    SDESC = "---"
     title_str = "Projection"
 
     def getData(self):
@@ -278,13 +285,13 @@ class DynProj(Proj):
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-                if len(mcols) == 0:
+                if len(self.mcols) == 0:
                     return
 
                 matn = toolMath.withen(mat.T)
             else:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
-                if len(mcols) == 0:
+                if len(self.mcols) == 0:
                     return
 
                 if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
@@ -306,6 +313,7 @@ class DynProj(Proj):
 class SVDProj(DynProj):
 
     PID = "-SVD"
+    SDESC = "SVD"
     title_str = "SVD Projection"
     fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"compute_uv": True, "full_matrices":False })
@@ -323,6 +331,7 @@ class SVDProj(DynProj):
 class SKrandProj(DynProj):
 
     PID =  "SKrand"
+    SDESC = "Random"
     title_str = "Random projection"
     fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"n_components": 2 })
@@ -339,6 +348,7 @@ class SKpcaProj(DynProj):
     # Projection on to the first 2 principal components
 
     PID =  "SKpca"
+    SDESC = "PCA"
     title_str = "PCA projection"
     gen_parameters = dict(Proj.gen_parameters)
     gen_parameters.update({"iterated_power": 3 })
@@ -354,6 +364,7 @@ class SKisoProj(DynProj):
     # Isomap projection
 
     PID =  "SKiso"
+    SDESC = "Isomap"
     title_str = "Isomap projection"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100})
@@ -368,6 +379,7 @@ class SKlleProj(DynProj):
     # Locally linear embedding
 
     PID =  "SKlle"
+    SDESC = "LLE"
     title_str = "LLE projection"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
@@ -386,6 +398,7 @@ class SKmdsProj(DynProj):
     # MDS  embedding
 
     PID =  "SKmds"
+    SDESC = "MDS"
     title_str = "MDS embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_init": 4, "max_iter":100})
@@ -403,6 +416,7 @@ class SKtreeProj(DynProj):
     # Random Trees embedding
 
     PID =  "SKtree"
+    SDESC = "Rand.Trees"
     title_str = "Totally Random Trees embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"max_depth":5, "n_estimators":10})
@@ -420,6 +434,7 @@ class SKspecProj(DynProj):
     # Spectral embedding
 
     PID =  "SKspec"
+    SDESC = "Spectral"
     title_str = "Spectral embedding"
     dyn_f = [manifold.SpectralEmbedding]
 
@@ -433,6 +448,7 @@ class SKtsneProj(DynProj):
     # Stochastic Neighbors embedding
 
     PID =  "-SKtsne"
+    SDESC = "t-SNE"
     title_str = "t-SNE embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
