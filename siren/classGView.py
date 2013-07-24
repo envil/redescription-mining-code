@@ -192,7 +192,7 @@ class GView(object):
 
     def getRedId(self):
         if self.source_list is not None:
-            return self.parent.tabs[self.source_list]["tab"].getRedId(self.getId())
+            return self.parent.tabs[self.source_list]["tab"].getRedIdOID(self.getId())
         return "?"
 
     def getShortDesc(self):
@@ -419,9 +419,9 @@ class GView(object):
         self.parent.expandFV(params)
         
     def OnQuit(self, event=None, upMenu=True):
+        self.parent.deleteView(self.getId())
         if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
             self.parent.tabs[self.source_list]["tab"].unregisterView(self.getId(), upMenu)
-        self.parent.deleteView(self.getId())
 
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:

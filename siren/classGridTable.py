@@ -430,10 +430,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if self.sortP[0] is not None:
             details = {"aim": "sort"}
             details.update(self.details)
-            try:
-                self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
-            except IndexError:
-                pdb.set_trace()
+            self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
             
@@ -456,7 +453,7 @@ class RedTable(GridTable):
 
     fields_sizes = []
     fields_def = [('', 'self.data[x].getEnabled'),
-                  ('id', 'self.getPosStr(x)', None, 60),
+                  ('id', 'self.getRedIdStr(x)', None, 60),
                   ('query LHS', 'self.data[x].getQueryLU', None, 300),
                   ('query RHS', 'self.data[x].getQueryRU', None, 300),
                   ('J', 'self.data[x].getRoundAcc', None, 60),
@@ -466,10 +463,17 @@ class RedTable(GridTable):
 
     def __init__(self, parent, tabId, frame, short=None):
         GridTable.__init__(self, parent, tabId, frame, short)
+        self.rids = []
+        self.last_rid = 0
         self.opened_edits = {}
         self.emphasized = {}
         self.uptodate = True
 
+    def resetData(self, data, srids=None):
+        GridTable.resetData(self, data, srids)
+        self.rids = [i+1 for i in range(len(self.data))]
+        self.last_rid = len(self.data)
+        
     def ResetView(self):
         self.refreshRestrict()
         GridTable.ResetView(self)
@@ -502,6 +506,8 @@ class RedTable(GridTable):
             self.sortids.append(len(self.data))
         else:
             self.sortids.insert(row+1, len(self.data))
+        self.last_rid += 1
+        self.rids.append(self.last_rid)
         self.data.append(item)
         if upView:
             self.neutraliseSort()
@@ -517,6 +523,7 @@ class RedTable(GridTable):
                 i+=1
             ### TODO destruct the associated mapView if any?? 
             ### TODO add possibility to undo delete here
+            self.rids.pop(pos)
             self.data.pop(pos)
             for edit_key in self.opened_edits.keys():
                 if self.opened_edits[edit_key] == pos:
@@ -537,18 +544,20 @@ class RedTable(GridTable):
             if upMenu:
                 self.parent.updateMenus()
 
-    def getRedId(self, oid):
-        return self.getPosStr(self.opened_edits.get(oid, None))
+    def getRedId(self, pos):
+        if pos < len(self.rids):
+            return (self.short, self.rids[pos])
+        return (self.short, None)
 
-    def getPosId(self, pos):
-        return (self.short, pos)
-
-    def getPosStr(self, pos):
-        tsh, rid = self.getPosId(pos)
+    def getRedIdStr(self, pos):
+        tsh, rid = self.getRedId(pos)
         if rid is None: rid = "?"
         if tsh is None: tsh = "?"
         return "%s%s" % (tsh, rid)
                 
+    def getRedIdOID(self, oid):
+        return self.getRedIdStr(self.opened_edits.get(oid, None))
+
     def viewData(self, viewT, pos=None, oid=None):
         if oid is not None:
             if self.opened_edits.has_key(oid):
@@ -599,12 +608,22 @@ class RedTable(GridTable):
 
             else:
                 old_toed = self.opened_edits[edit_key]
-                self.opened_edits[edit_key] = len(self.data)
+                new_toed = len(self.data)
+                self.insertItem(red, -1)
+                
+                for k,v in self.opened_edits.items():
+                    if v == old_toed:
+                        self.opened_edits[k] = new_toed 
+                        mc = self.parent.accessViewX(k)
+                        if mc is not None:
+                            mc.updateTitle()
+                            if k != edit_key:
+                                mc.setCurrent(red, self.tabId)
+
                 if self.emphasized.has_key(old_toed):
                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
                     del self.emphasized[old_toed]
-                self.insertItem(red, -1)
-                self.parent.accessViewX(edit_key).updateTitle()
+
                 self.parent.updateMenus()
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
