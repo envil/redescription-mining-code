@@ -239,7 +239,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing data from CSV files!\n%s" %  sys.exc_info()[1], "error", "DW")
             raise
         else:
@@ -266,7 +266,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
             raise
         else:
@@ -288,7 +288,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
@@ -311,7 +311,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
@@ -329,7 +329,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
@@ -348,7 +348,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing preferences from file %s!\n%s" % (preferences_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
@@ -368,7 +368,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "error", "DW")
             raise
         else:
@@ -382,7 +382,7 @@ class DataWrapper(object):
         ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
             data = Data(data_filenames, "csv")
-        except:
+        except Exception:
             raise
         return data
 
@@ -398,7 +398,7 @@ class DataWrapper(object):
             if coo_filename is not None:
                 filenames.append(coo_filename)
             data = Data(filenames, "multiple")
-        except:
+        except Exception:
             raise
         return data
 
@@ -493,7 +493,7 @@ class DataWrapper(object):
             plist_fd = package.open(self.PLIST_FILE, 'r')
             try:
                 plist = plistlib.readPlist(plist_fd)
-            except:
+            except Exception:
                 raise
 
             # if plist['filetype_version'] > self.FILETYPE_VERSION:
@@ -509,7 +509,7 @@ class DataWrapper(object):
                 try:
                     fd = package.open(plist['data_filename'], 'r')
                     data = self._readDataFromXMLFile(fd)
-                except:
+                except Exception:
                     raise
                 finally:
                     fd.close()
@@ -519,7 +519,7 @@ class DataWrapper(object):
                 try:
                     fd = package.open(plist['redescriptions_filename'], 'r')
                     reds, rshowids = self._readRedescriptionsFromFile(fd, data)
-                except:
+                except Exception:
                     raise
                 finally:
                     fd.close()
@@ -529,11 +529,11 @@ class DataWrapper(object):
                 try:
                     fd = package.open(plist['preferences_filename'], 'r')
                     preferences = self._readPreferencesFromFile(fd)
-                except:
+                except Exception:
                     raise
                 finally:
                     fd.close()
-        except:
+        except Exception:
             raise
         finally:
             package.close()
@@ -571,7 +571,7 @@ class DataWrapper(object):
         except IOError as arg:
             self.logger.printL(1,"Cannot open file for package %s" % filename, "error", "DW")
             raise
-        except:
+        except Exception:
             self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "error", "DW")
             raise
 
@@ -667,7 +667,7 @@ class DataWrapper(object):
                 package.write(os.path.join(tmp_dir, plist['preferences_filename']),
                               arcname = os.path.join('.', plist['preferences_filename']),
                     compress_type = zipfile.ZIP_DEFLATED)
-        except:
+        except Exception:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
             raise

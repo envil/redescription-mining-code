@@ -58,7 +58,7 @@ class ParaView(GView):
             self.updateHist(red)
             return red
 
-    def updateQuery(self, sd=None, query=None, force=False):
+    def updateQuery(self, sd=None, query=None, force=False, upAll=True):
         if sd is None:
             queries = [self.parseQuery(0),self.parseQuery(1)]
         else:
@@ -87,10 +87,12 @@ class ParaView(GView):
         if red is not None:
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
-            self.updateText(red)
+            if upAll:
+                self.updateText(red)
+                self.makeMenu()
+                self.updateOriginal(red)
+                self.updateHist(red)
             self.updateMap()
-            self.updateOriginal(red)
-            self.updateHist(red)
             return red
         else: ### wrongly formatted query, revert
             for side in [0,1]:
@@ -284,13 +286,20 @@ class ParaView(GView):
         if self.ri is not None:
             self.drs[self.ri].do_motion(event)
 
-    def getPinvalue(self, rid, b):
-        if b == 1:
-            tmp = float("Inf")
-        elif b == 0:
-            tmp = float("-Inf")
+    def getPinvalue(self, rid, b, direc=0):
+        v = b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]
+        prec = int(self.limits[rid, 2])
+        if direc < 0:
+            tmp = 10**-prec*np.ceil(v*10**prec)
+        elif direc > 0:
+            tmp = 10**-prec*np.floor(v*10**prec)
         else:
-            tmp = np.around(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0], int(self.limits[rid, 2]))
+            tmp = np.around(v, prec)            
+
+        if tmp == self.limits[rid, 1]:
+            tmp = float("Inf")
+        elif tmp == self.limits[rid, 0]:
+            tmp = float("-Inf")
         return tmp
 
     def receive_release(self, rid, rect):
@@ -301,15 +310,16 @@ class ParaView(GView):
             if rid > pos_axis:
                 side = 1
                 pos -= (pos_axis+1)
-            ys = [rect.get_y(), rect.get_y() + rect.get_height()]
-            bounds = [self.getPinvalue(rid, b) for b in ys]
+            ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+            bounds = [self.getPinvalue(rid, b, direc) for (b,direc) in ys]
             copied = self.current_r.queries[side].copy()
             l = copied.listLiterals()[pos]
             l.term.setRange(bounds)
             self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
                                   + [self.parent.dw.data.col(side, l.col()).width]
 
-            self.current_r = self.updateQuery(side, copied, force=True)
+            upAll = self.current_r.queries[side].listLiterals()[pos] != l
+            self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
 
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):

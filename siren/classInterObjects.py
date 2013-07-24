@@ -102,6 +102,8 @@ data"""
         self.rect.figure.canvas.draw()
 
     def update_rect(self):
+        if self.press is None:
+            return
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
         dx, dy = self.dx, self.dy
         bt = self.border_tol
@@ -113,7 +115,7 @@ data"""
                 if self.annotation is not None:
                     b = y0+dy
                     if self.pinf is not None:
-                        self.annotation.set_text("%s" % self.pinf(self.rid, b))
+                        self.annotation.set_text("%s" % self.pinf(self.rid, b, -1))
                     else:
                         self.annotation.set_text("%s" % b)
                     self.annotation.xytext = (x0+0.25, b)
@@ -125,7 +127,7 @@ data"""
                 if self.annotation is not None:
                     b = y0+h0+dy
                     if self.pinf is not None:
-                        self.annotation.set_text("%s" % self.pinf(self.rid, b))
+                        self.annotation.set_text("%s" % self.pinf(self.rid, b, 1))
                     else:
                         self.annotation.set_text("%s" % b)
                     self.annotation.xytext = (x0+0.25, b)

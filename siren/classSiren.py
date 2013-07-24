@@ -1074,6 +1074,9 @@ class Siren():
 
     def readyReds(self, reds, tab):
         if len(reds) > 0 and self.tabs.has_key(tab):
+            for red in reds:
+                red.recompute(self.getData())
+                red.setRestrictedSupp(self.getData())
             self.tabs[tab]["tab"].insertItems(reds)
 
     def readyProj(self, vid, proj):

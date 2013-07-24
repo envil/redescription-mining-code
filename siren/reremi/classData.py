@@ -275,10 +275,13 @@ class BoolColM(ColM):
             miss = set(self.missing)
             N = self.nbRows()
         else:
-            N = len(row_ids)
-            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
-            miss = set([trans[i] for i in set(row_ids) & self.missing])
-            hold = set([trans[i] for i in set(row_ids) & self.hold])
+            miss = set()
+            hold = set()
+            N = sum([len(news) for news in row_ids.values()])
+            for old in self.missing.intersection(row_ids.keys()):
+                miss.update(row_ids[old])
+            for old in self.hold.intersection(row_ids.keys()):
+                hold.update(row_ids[old])
         tmp = BoolColM(hold, N, miss)
         tmp.name = self.name
         tmp.enabled = self.enabled
@@ -415,12 +418,15 @@ class CatColM(ColM):
             miss = set(self.missing)
             N = self.nbRows()
         else:
-            N = len(row_ids)
-            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
-            miss = set([trans[i] for i in set(row_ids) & self.missing])
-            scats = {}
+            miss = set()
+            scats[cat] = {}
+            N = sum([len(news) for news in row_ids.values()])
+            for old in self.missing.intersection(row_ids.keys()):
+                miss.update(row_ids[old])
             for cat in self.cats():
-                scats[cat] = set([trans[i] for i in set(row_ids) & self.sCats[cat]])
+                scats[cat] = set()
+                for old in self.hold.intersection(row_ids.keys()):
+                    scats[cat].update(row_ids[old])
         tmp = CatColM(scats, N, miss)
         tmp.name = self.name
         tmp.enabled = self.enabled
@@ -472,33 +478,36 @@ class NumColM(ColM):
     width = 0
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
-    def parseListToE(listV, indices=None):
+    def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
+        if matchMiss is not False and v == matchMiss:
+            miss.add(j)
+            return v, prec
+        else:
+            tmatch = re.match(NumColM.p_patt, v)
+            if not tmatch:
+                if matchMiss is False:
+                    miss.add(j)
+                return v, prec
+            else:
+                if len(tmatch.group("dec")) > prec:
+                    prec = len(tmatch.group("dec"))
+                val = float(v)
+                if exclude is False or val != exclude:
+                    vals.append((val, j))
+        return val, prec
+    parseVal = staticmethod(parseVal)
+                
+    def parseList(listV, indices=None):
         prec = None
         if indices is None:
             indices = range(len(listV))
         miss = set()
         vals = []
         for j, i in enumerate(indices):
-            v = listV[i]
-            if v is None:
-                miss.add(j)
-            else:
-                tmatch = re.match(NumColM.p_patt, v)
-                if not tmatch: 
-                    return None
-                else:
-                    if len(tmatch.group("dec")) > prec:
-                        prec = len(tmatch.group("dec"))
-                    val = float(v)
-                    vals.append((val, j))
-        return vals, len(indices), miss, prec
-    parseListToE = staticmethod(parseListToE)
-    
-    def parseList(listV, indices=None):
-        vals, li, miss, prec = NumColM.parseListToE(listV, indices)
-        return NumColM(vals, li, miss, prec)
+            val, prec = NumColM.parseVal(listV[i], j, vals, miss, prec, matchMiss=None)
+        return NumColM(vals, len(indices), miss, prec)
     parseList = staticmethod(parseList)
-
+    
     def getTerm(self):
         return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
 
@@ -516,7 +525,9 @@ class NumColM(ColM):
                 sums_rows[i] +=self.sVals[-1]
 
     def sumCol(self):
-        tt = sum([v for (v,i) in self.sVals])
+        tt = 0
+        if len(self.sVals) > 0:
+            tt = sum(zip(*self.sVals)[0])
         ### Add mode values, one has already been counted
         if self.mode[0] == 1:
             tt += (self.N - len(self.mode[1]) - 1)*self.sVals[-1]
@@ -547,7 +558,10 @@ class NumColM(ColM):
     def getVector(self):
         if self.vect is None:
             if self.isDense():
-                self.vect = [v for (v,i) in sorted(self.sVals,key=lambda x:x[1])]
+                if len(self.sVals) > 0:
+                    self.vect = zip(*sorted(self.sVals,key=lambda x:x[1]))[0]
+                else:
+                    self.vect = []
             else:
                 self.vect = dict([(i,v) for (v,i) in self.sVals])
                 ### Make sure can recover the length
@@ -561,9 +575,8 @@ class NumColM(ColM):
     def getType(self, details=None):
         return "numerical"
 
-    def getRange(self):
-        return (self.sVals[0][0], self.sVals[-1][0])
-
+    def getRange(self, details=None):
+        return (self.getMin(details), self.getMax(details))
     def getMin(self, details=None):
         return self.sVals[0][0]
     def getMax(self, details=None):
@@ -596,11 +609,14 @@ class NumColM(ColM):
             miss = set(self.missing)
             N = self.nbRows()
         else:
-            N = len(row_ids)
-            trans = dict([(j,i) for (i,j) in enumerate(row_ids)])
-            tmp_vals = dict([(i,v) for (v,i) in self.sVals])
-            svals = [(tmp_vals[i],trans[i]) for i in set(row_ids) & set(tmp_vals.keys())]
-            miss = set([trans[i] for i in set(row_ids) & self.missing])
+            miss = set()
+            svals = []
+            N = sum([len(news) for news in row_ids.values()])
+            for old in self.missing.intersection(row_ids.keys()):
+                miss.update(row_ids[old])
+            for v, old in self.sVals:
+                svals.extend([(v,new) for new in row_ids.get(old, [])])
+
         tmp = NumColM(svals, N, miss, self.prec)
         tmp.name = self.name
         tmp.enabled = self.enabled
@@ -610,14 +626,19 @@ class NumColM(ColM):
     def setMode(self):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
-        if len(self.sVals)+len(self.missing) != self.N :
-            tmp = set([r[1] for r in self.sVals])
-            if -1 in tmp:
-                tmp.remove(-1)
-            if 2*len(tmp) > self.N:
-                self.mode = (-1, set(range(self.N)) - tmp - self.missing)
+        if len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N :
+            ## gather row ids for which
+            if len(self.sVals) > 0:
+                rids = set(zip(*self.sVals)[1])
             else:
-                self.mode = (1, tmp)
+                rids = set()
+            if len(rids) != len(self.sVals):
+                raise DataError("Error reading real values, multiple values for a row!")
+            rids.discard(-1)
+            if 2*len(rids) > self.N:
+                self.mode = (-1, set(range(self.N)) - rids - self.missing)
+            else:
+                self.mode = (1, rids)
         else:
             self.mode = (0, None)
 
@@ -626,17 +647,23 @@ class NumColM(ColM):
         self.buk = None
         self.colbuk = None
         self.max_agg = None
+        self.prec = None
+        miss = set()
         self.sVals = []
         store_type = toolRead.getTagData(node, "store_type")
         if store_type == 'dense':
-            self.sVals = [(v,i) for (i,v) in enumerate(map(float,  re.split(Data.separator_str, toolRead.getTagData(node, "values"))))]
+            for (i,v) in enumerate(re.split(Data.separator_str, toolRead.getTagData(node, "values"))):
+                val, self.prec = NumColM.parseVal(v, i, self.sVals, miss, self.prec)
         elif store_type == 'sparse':
             tmp_txt = toolRead.getTagData(node, "values").strip()
             if len(tmp_txt) > 0:
                 for strev in  re.split(Data.separator_str, tmp_txt):
                     parts = strev.split(":")
-                    self.sVals.append((float(parts[1]), int(parts[0])))
-        tmp_hold = set([i for (v,i) in self.sVals])
+                    val, self.prec = NumColM.parseVal(parts[1], int(parts[0]), self.sVals, miss, self.prec)
+        if len(self.sVals) > 0:
+            tmp_hold = set(zip(*self.sVals)[1])
+        else:
+            tmp_hold = set()
         if len(tmp_hold) != len(self.sVals):
             self.sVals = []
             tmp_hold = set()
@@ -999,14 +1026,17 @@ class Data:
         if row_ids is None:
             N = self.nbRows()
         else:
-            N = len(row_ids)
+            N = sum([len(news) for news in row_ids.values()])
         if self.coords is not None:
             coords = []
             for coord in self.coords:
                 if row_ids is None:
                     coords.append(list(coord))
                 else:
-                    coords.append([coord[i] for i in row_ids])
+                    coords.append([0 for i in range(N)])
+                    for old, news in row_ids.items():
+                        for new in news:
+                            coords[-1][new]=coord[old]
         cols = [[],[]]
         for side in [0,1]:
             for col in self.cols[side]:
@@ -1411,15 +1441,7 @@ def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
     if id_col >= nbCols or id_row >= nbRows:
         raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
     else :
-        tmatch = re.match(NumColM.p_patt, a[2])
-        if not tmatch: 
-            tmpCols[id_col][1].add(id_row)
-        else:
-            if len(tmatch.group("dec")) > tmpCols[id_col][2]:
-                tmpCols[id_col][2] = len(tmatch.group("dec"))
-            val = float(a[2])
-            if val != 0:
-                tmpCols[id_col][0].append((val, id_row))
+        val, tmpCols[id_col][2] = NumColM.parseVal(a[2], id_row, tmpCols[id_col][0], tmpCols[id_col][1], tmpCols[id_col][2], exclude=0)
 
             
 def finishSparsenum(tmpCols, nbRows, nbCols):
@@ -1450,14 +1472,7 @@ def parseVarDensenum(tmpCols, a, nbRows, nbCols):
         tmp = []
         miss = set()
         for i in range(len(a)):
-            tmatch = re.match(NumColM.p_patt, a[i])
-            if not tmatch: 
-                miss.add(i)
-            else:
-                if len(tmatch.group("dec")) > prec:
-                    prec = len(tmatch.group("dec"))
-                val = float(a[i])
-                tmp.append((val,i))
+            val, prec = NumColM.parseVal(a[i], i, tmp, miss, prec)
                 
         tmp.sort(key=lambda x: x[0])
         tmpCols.append(NumColM(tmp, nbRows, miss, prec))

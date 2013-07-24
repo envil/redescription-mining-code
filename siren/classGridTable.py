@@ -502,7 +502,6 @@ class RedTable(GridTable):
             self.sortids.append(len(self.data))
         else:
             self.sortids.insert(row+1, len(self.data))
-        item.setRestrictedSupp(self.parent.dw.data)
         self.data.append(item)
         if upView:
             self.neutraliseSort()

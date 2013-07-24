@@ -15,8 +15,10 @@ class Miner:
 
 ### INITIALIZATION
 ##################
-    def __init__(self, data, params, logger, mid=None, souvenirs=None, qin=None):
+    def __init__(self, data, params, logger, mid=None, souvenirs=None, qin=None, cust_params={}):
         self.qin = qin
+        self.deps = None
+        self.org_data = None
         self.want_to_live = True
         if mid is not None:
             self.id = mid
@@ -24,6 +26,27 @@ class Miner:
             self.id = 1
         self.double_check = False #True
         self.data = data
+
+        row_ids = None
+        if cust_params.has_key("area"):
+            inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
+            weights = dict([(r,outw) for r in range(self.data.nbRows())])
+            for old in cust_params["area"]:
+                weights[old] = inw
+            cust_params["weights"] = weights
+
+        if cust_params.has_key("weights"):
+            row_ids = {}
+            off = 0
+            for (old, mul) in cust_params["weights"].items():
+                row_ids[old] = [off+r for r in range(mul)]
+                off += mul
+                
+        if row_ids is not None:
+            self.org_data = self.data
+            self.data = self.data.subset(row_ids)
+
+
         self.logger = logger
         self.constraints = Constraints(self.data.nbRows(), params)
         if self.data.hasMissing():
@@ -42,6 +65,7 @@ class Miner:
 
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
+
         self.progress_ss = {"total":0, "current":0}
         self.rm = None
         if self.constraints.dl_score():
@@ -51,12 +75,12 @@ class Miner:
 
         ### TODO remove
         ### Just for relational test, get exclusions
-        self.deps = []
-        if self.data.hasNames():
-            names = self.data.getNames()
-            if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
-                for name in names[0]:
-                    self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
+        # self.deps = []
+        # if self.data.hasNames():
+        #     names = self.data.getNames()
+        #     if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
+        #         for name in names[0]:
+        #             self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
                             
     def kill(self):
         self.want_to_live = False
@@ -80,16 +104,19 @@ class Miner:
         #tmp_ids = batch.selected(self.constraints.actions_final())
         return [batch[i] for i in tmp_ids]
 
-    def part_run(self, params):
-        if params.has_key("reds"):
-            reds = params["reds"]
-        elif params.has_key("red"):
-            reds = [params["red"]]
+    def part_run(self, cust_params):
+        if cust_params.has_key("reds"):
+            reds = cust_params["reds"]
+        elif cust_params.has_key("red"):
+            reds = [cust_params["red"]]
         else:
             reds = []
+        if self.org_data is not None:
+            for red in reds:
+                red.recompute(self.data)
 
-        if params.has_key("side"):
-            self.souvenirs.cutOffSide(1-params["side"])
+        if cust_params.has_key("side"):
+            self.souvenirs.cutOffSide(1-cust_params["side"])
 
         self.count = "C"
 
@@ -119,7 +146,7 @@ class Miner:
         self.logger.printL(1, None, 'progress', self.id)
         return self.partial
 
-    def full_run(self):
+    def full_run(self, cust_params={}):
         self.final["results"] = []
         self.final["batch"].reset()
         self.count = 0

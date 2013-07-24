@@ -11,10 +11,10 @@ import pdb
 ### 2) replace multiprocessing.Process by threading.Thread 
 
 class WorkerProcess(multiprocessing.Process):
-    def __init__(self, id, boss, queue_in, params=None):
+    def __init__(self, id, boss, queue_in, cust_params={}):
         multiprocessing.Process.__init__(self)
-        self.miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in)
-        self.params = params
+        self.miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
+        self.cust_params = cust_params
         self.start()
 
     def run(self):
@@ -22,11 +22,11 @@ class WorkerProcess(multiprocessing.Process):
 
 class MinerProcess(WorkerProcess):
     def run(self):
-        self.miner.full_run()
+        self.miner.full_run(self.cust_params)
 
 class ExpanderProcess(WorkerProcess):
     def run(self):
-        self.miner.part_run(self.params)
+        self.miner.part_run(self.cust_params)
 
 class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, boss, queue_in, proj=None):

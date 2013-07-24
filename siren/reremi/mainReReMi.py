@@ -52,16 +52,25 @@ def do_filter(params):
     data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']], "multiple")
     logger.printL(2, data, "log")
 
-    # red = Redescription.fromQueriesPair([Query(), Query.parse("28>-7.0727<-3.375")], data)
-    # miner = Miner(data, params, logger)
-    # tf = miner.part_run({"red": red, "side":0})
-    # print tf
+    red = Redescription.fromQueriesPair([Query.parse("1"), Query.parse("13>-9.8<0.4 & 18>12.2<24.6 & 43>56.852<136.46 | 44>183.27<238.78")], data)
+    print "-- #org ------------------------" 
+    print red
+    area = [1408, 1442, 1411, 1444, 1413, 1437, 1406]
+    cust_params = {"red": red, "side":0, "area": area, "in_weight": 10, "out_weight":1}
+    miner = Miner(data, params, logger, cust_params=cust_params)
+    tf = miner.part_run(cust_params)
+    print data, miner.data
+    for ni, red in enumerate(tf["batch"]):
+        print "-- #%d ------------------------" % ni
+        print red
+        red.recompute(data)
+        print red
 
-    restrict = set(range(500))
-    ta = loadRedescriptions(fn_queries, data)
-    for ti, t in enumerate(ta):
-        print t.disp()
-    return ta
+    # restrict = set(range(500))
+    # ta = loadRedescriptions(fn_queries, data)
+    # for ti, t in enumerate(ta):
+    #     print t.disp()
+    return tf
         
 def getParams(arguments=[]):
     pref_dir = os.path.dirname(os.path.abspath(__file__))

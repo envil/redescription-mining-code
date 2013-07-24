@@ -92,7 +92,9 @@ def linkageZds(mat, details, side_cols=None, osupp=None, step=500):
         else:
             d = getDistances(mat[:,ids], details, side_cols, parts=vsupp[ids])
         if sum(d**2) == 0:
-            zds.append({"Z":None, "d":None, "ids": ids.tolist()})
+            ids = ids.tolist()
+            random.shuffle(ids)
+            zds.append({"Z":None, "d":None, "ids": ids})
         else:
             Z = scipy.cluster.hierarchy.linkage(d)
             zds.append({"Z":Z, "d":d, "ids": ids.tolist()})
@@ -121,7 +123,7 @@ def sampleZds(zds, t):
         elif round(t*len(zd["ids"])) > 0:
             nb = round(t*len(zd["ids"]))
             if zd["Z"] is None:
-                all_reps.extend(random.sample(zd["ids"], int(nb)))
+                all_reps.extend(zd["ids"][:int(nb)+1])
                 all_clusts.extend([None for r in range(int(nb)+1)])                
             else:
                 treps, tclusts = sample(zd["Z"], nb, zd["d"])

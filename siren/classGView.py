@@ -108,8 +108,12 @@ class GView(object):
     def q_expand(self, more):
         if more is None:
             return True
-        elif more.has_key("side"):
-            return len(self.queries[1-more["side"]]) > 0
+        res = True
+        if more.has_key("side"):
+            res &= len(self.queries[1-more["side"]]) > 0
+        if more.has_key("in_weight") or more.has_key("out_weight"):
+            res &= self.q_has_selected()
+        return res
             
     def q_has_poly(self):
         return self.mc is not None and self.mc.q_has_poly()
@@ -121,18 +125,30 @@ class GView(object):
         return self.active_info
 
     def q_has_selected(self):
-        return len(self.highl) > 0
+        return len(self.getSelected()) > 0
+
+    def getSelected(self):
+        return self.highl.keys()
+
 
     def q_true(self):
         return True
 
+    def getWeightCover(self, params):
+        params["area"] = self.getSelected()
+        return params
+
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
-                                     "more": None, "order": 0},
+                                     "more": None, "more_dyn":[], "order": 0},
                               "EL": {"label": "Expand LHS", "legend": "Expand the LHS query of the current redescription.",
-                                     "more": {"side":0}, "order":1},
+                                     "more": {"side":0}, "more_dyn":[], "order":1},
                               "ER": {"label": "Expand RHS", "legend": "Expand the RHS query of the current redescription.",
-                                     "more": {"side":1}, "order":2} }
+                                     "more": {"side":1}, "more_dyn":[], "order":2},
+                              "OL": {"label": "Overfit LHS", "legend": "Overfit LHS wrt the selected area.",
+                                     "more": {"side":0, "in_weight":10}, "more_dyn":[self.getWeightCover], "order":3},
+                              "OR": {"label": "Overfit RHS", "legend": "Overfit RHS wrt the selected area.",
+                                     "more": {"side":1, "in_weight":10}, "more_dyn":[self.getWeightCover], "order":4} }
         
     def prepareActions(self):
         self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "&Deselect all",
@@ -394,6 +410,8 @@ class GView(object):
             more = self.processes_map[self.menu_map_pro[event.GetId()]]["more"]
             if more is not None:
                 params.update(more)
+            for k in self.processes_map[self.menu_map_pro[event.GetId()]]["more_dyn"]:
+                params = k(params)
         self.parent.expandFV(params)
 
     def OnExpandSimp(self, event):
@@ -438,10 +456,10 @@ class GView(object):
             red.setRestrictedSupp(self.parent.dw.data)
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
-            self.updateMap()
             self.makeMenu()
             self.updateOriginal(red)
             self.updateHist(red)
+            self.updateMap()
         else: ### wrongly formatted query or not edits, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
