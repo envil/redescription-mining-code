@@ -249,6 +249,7 @@ def VoronoiPolygonsMod(PointsMap, BoundingBox):
         polygon.append( (v1,v2) )
 
     if len(polygon)==0:
+      raise IndexError("Station does not have meaningful polygon")
       sys.stderr.write ("\nThis station does not have meaningful polygon:")
       sys.stderr.write (str(pts[ site_points[station] ])+" at "+str(site_points[station])+"\n")
       for l in ls:

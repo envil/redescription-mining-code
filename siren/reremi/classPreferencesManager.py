@@ -231,8 +231,11 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
 		et = node.getElementsByTagName("default")
 		if len(et) > 0:
 			self._default = toolRead.getValues(et[0], int)
-		if self._default is None or min(self._default) < 0 or max(self._default) >= len(self._options):
+		if self._default is None or ( len(self._default) > 0 and (min(self._default) < 0 or max(self._default) >= len(self._options) ) ):
 			raise Exception("Some default value for param %s not among options!"% self._name)		
+	def getEmptyTriplet(self):
+		return {"value": [], "data": [], "text": []}
+
 	def getDefaultData(self):
 		return [self._options[i] for i in self._default]
 	

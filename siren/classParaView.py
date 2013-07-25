@@ -218,7 +218,8 @@ class ParaView(GView):
                          + np.outer([(N-i)/N for i in reps], tt/2.0)+ tt/4.0
                          
             mask_div = np.tile((self.limits[:,1]+tt) - self.limits[:,0], (len(reps),1))  
-            tt = [(N-i)/(2.0*N)+0.25 for i in reps]
+            tt = [(N-i)/(500.0*N)+0.5002 for i in reps]
+            #tt = [0.5 for i in reps]
             final = np.vstack((tt, (self.data_m[:,reps] + mask_noise.T)/mask_div.T, tt))
 
             ### SELECTED DATA

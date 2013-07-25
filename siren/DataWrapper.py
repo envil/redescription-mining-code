@@ -808,5 +808,9 @@ class DataWrapper(object):
     def getPolys(self, pdp, boundaries):
         if pdp is not None and self.pdp != pdp:
             self.pdp = pdp
-            self.polys = make_polys.makePolys(self.pdp, boundaries)
+            try:
+                self.polys = make_polys.makePolys(self.pdp, boundaries)
+            except Exception as e:
+                self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "error", "DW")
+                self.polys = None
         return self.polys

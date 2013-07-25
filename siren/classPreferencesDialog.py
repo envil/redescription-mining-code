@@ -303,6 +303,8 @@ class PreferencesDialog(wx.Dialog):
 						vdict[item_id][k] = []
 						for t in tmp_opts:
 							vdict[item_id][k].append(t[k])
+				else:
+					vdict[item_id] = pit.getEmptyTriplet()
 			else:
 				vdict[item_id] = pit.getDefaultTriplet()
 

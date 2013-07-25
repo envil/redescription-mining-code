@@ -7,7 +7,8 @@ import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
+import mpl_toolkits.basemap
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse, Polygon
@@ -29,40 +30,89 @@ class MapView(GView):
     geo = True
     MAP_POLY = True #False
 
-    WATER_COLOR = "#FFFFFF"
-    GROUND_COLOR = "#FFFFFF"
-    LINES_COLOR = "gray"
-
+    marg_f = 100.0
+    proj_def = "mill"
+    proj_names = {"Azimuthal Equidistant": "aeqd",
+                  "Polyconic": "poly",
+                  "Gnomonic": "gnom",
+                  "Mollweide": "moll",
+                  "Transverse Mercator": "tmerc",
+                  "North-Polar Lambert Azimuthal": "nplaea",
+                  "Gall Stereographic Cylindrical": "gall",
+                  "Miller Cylindrical": "mill",
+                  "Mercator": "merc",
+                  "Stereographic": "stere",
+                  "North-Polar Stereographic": "npstere",
+                  "Hammer": "hammer",
+                  "Geostationary": "geos",
+                  "Near-Sided Perspective": "nsper",
+                  "van der Grinten": "vandg",
+                  "Lambert Azimuthal Equal Area": "laea",
+                  "McBryde-Thomas Flat-Polar Quartic": "mbtfpq",
+                  "Sinusoidal": "sinu",
+                  "South-Polar Stereographic": "spstere",
+                  "Lambert Conformal": "lcc",
+                  "North-Polar Azimuthal Equidistant": "npaeqd",
+                  "Equidistant Conic": "eqdc",
+                  "Cylindrical Equidistant": "cyl",
+                  "Oblique Mercator": "omerc",
+                  "Albers Equal Area": "aea",
+                  "South-Polar Azimuthal Equidistant": "spaeqd",
+                  "Orthographic": "ortho",
+                  "Cassini-Soldner": "cass",
+                  "South-Polar Lambert Azimuthal": "splaea",
+                  "Robinson": "robin"}
+    proj_pk = {"aeqd": ["lat_0", "lon_0", "width", "height"],
+               "gnom": ["lat_0", "lon_0", "width", "height"],
+               "cass": ["lat_0", "lon_0", "width", "height"],
+               "laea": ["lat_0", "lon_0","width", "height"],
+               "stere": ["lat_0", "lon_0","width", "height"],
+               "ortho": ["lat_0", "lon_0"],
+               "geos": ["lon_0"],
+               "vandg": ["lon_0"],
+               "moll": ["lon_0"],
+               "hammer": ["lon_0"],
+               "robin": ["lon_0"],
+               "mbtfpq": ["lon_0"],
+               "sinu": ["lon_0"],
+               "nsper": ["lat_0", "lon_0", "satellite_height"],
+               "npstere": ["lon_0", "boundinglat"],
+               "nplaea": ["lon_0", "boundinglat"],
+               "cyl": ["llcrnrlat", "llcrnrlon", "urcrnrlat", "urcrnrlon"],
+               "merc": ["llcrnrlat", "llcrnrlon", "urcrnrlat", "urcrnrlon"],
+               "mill": ["llcrnrlat", "llcrnrlon", "urcrnrlat", "urcrnrlon"],
+               "gall": ["llcrnrlat", "llcrnrlon", "urcrnrlat", "urcrnrlon"],
+               "omerc": ["lat_0", "lon_0","lat_1", "lon_1", "lat_2", "lon_2","width", "height"],
+               "lcc": ["lat_0", "lon_0","lat_1", "lon_1", "lat_2", "lon_2","width", "height"],
+               "eqdc": ["lat_0", "lon_0", "lat_1", "lat_2","width", "height"],
+               "aea": ["lat_0", "lon_0", "lat_1", "lat_2","width", "height"]}
             
     def drawMap(self):
         """ Draws the map
         """
-        
+
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
             return
-
-        self.mapoly = self.getMapPoly()
         
         self.MapfigMap = plt.figure()
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
         self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
-        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-        blon, blat = (ulon-llon)/100.0, (ulat-llat)/100.0
-        self.bm = Basemap(llcrnrlon=llon-blon, llcrnrlat=llat-blat, urcrnrlon=ulon+blon, urcrnrlat=ulat+blat, \
-                    resolution = 'c', projection = 'mill', \
-                    lon_0 = llon + (ulon-llon)/2.0, \
-                    lat_0 = llat + (ulat-llat)/2.0)
+        self.bm, args_all = self.makeBasemapProj()
+        self.mapoly = self.getMapPoly() # & (self.bm.projection == self.proj_def)
+        
         self.bm.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
         self.axe = self.bm.ax
 
         self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
         if self.parent.dw.getCoords() is not None:
             self.coords_proj = self.bm(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
+            self.polys = None
             if self.mapoly:
                 pdp = zip(range(len(self.coords_proj[0])), self.coords_proj[0], self.coords_proj[1])
-                bx, by = self.bm([llon-blon+0.001, ulon+blon-0.001], [llat-blat+0.001, ulat+blat-0.001])
+                bx, by = self.bm([args_all["llcrnrlon"]+0.001, args_all["urcrnrlon"]-0.001],
+                                 [args_all["llcrnrlat"]+0.001, args_all["urcrnrlat"]-0.001])
                 self.polys = self.makePolys(pdp, [by[1], bx[0], by[0], bx[1]])
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
@@ -81,11 +131,7 @@ class MapView(GView):
             self.hight = {}
             
             self.axe.cla()
-            self.bm.drawcoastlines(color=self.LINES_COLOR)
-            self.bm.drawcountries(color=self.LINES_COLOR)
-            self.bm.drawmapboundary(fill_color=self.WATER_COLOR) 
-            self.bm.fillcontinents(color=self.GROUND_COLOR, lake_color=self.WATER_COLOR) #'#EEFFFF')
-
+            self.makeBasemapBack(self.bm)
             draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
@@ -99,7 +145,7 @@ class MapView(GView):
 
             for idp, pi in enumerate(self.suppABCD):
                 if pi != SParts.delta and draw_settings.has_key(pi) and selv[idp] > 0:
-                    if self.mapoly:
+                    if self.polys is not None:
                         for ppi, p in enumerate(self.polys[idp]):
                             self.axe.add_patch(Polygon(p, closed=True, fill=True, gid="%d.%d" % (idp, ppi+1), picker=True,
                                                    fc=draw_settings[pi]["color_f"], ec=draw_settings[pi]["color_e"],
@@ -200,3 +246,103 @@ class MapView(GView):
         except:
             mapoly = MapView.MAP_POLY
         return mapoly
+
+    def getBasemapProjSetts(self):
+        proj = self.proj_def 
+        t = self.parent.dw.getPreferences()
+        if "map_proj" in t and self.proj_names.has_key( t["map_proj"]["data"]):
+            proj = self.proj_names[t["map_proj"]["data"]]
+        return "hammer" #proj
+            
+    def getBasemapBackSetts(self):
+        t = self.parent.dw.getPreferences()
+#                 "states": False, "parallels": False, "meridians": False,
+        draws = {"rivers": False, "coasts": False, "countries": False,
+                 "states": False, "parallels": False, "meridians": False,
+                 "continents":False, "lakes": False, "seas": False, "bluemarble":False}
+        colors = {"line_color": "gray", "sea_color": "#F0F8FF", "land_color": "white", "none":"white"}
+
+        for typ_elem in ["map_elem_area", "map_elem_natural", "map_elem_geop", "map_elem_circ"]:
+            if typ_elem in t:
+                for elem in t[typ_elem]["data"]:
+                    draws[elem] = True
+                
+        for color_k in colors.keys():
+            if color_k in t:
+                colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, t[color_k]["data"])]) 
+        return draws, colors
+
+    def getParallelsMeridiansRange(self, parallels=True, meridians=True):
+        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
+        if not meridians:
+            wmin = ulat-llat
+        elif not parallels:
+            wmin = ulon-llon
+        else:
+            wmin = min(ulat - llat, ulon - llon)
+        step = 100
+        while step > 0 and wmin / step < 2: 
+            step -= 10
+        if step == 0:
+            step = 1
+        return np.arange(int(llat/step)*step,(int(ulat/step)+1)*step,step), np.arange(int(llon/step)*step,(int(ulon/step)+1)*step,step)
+
+    def makeBasemapProj(self):
+        proj = self.getBasemapProjSetts()
+        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
+        blon, blat = (ulon-llon)/self.marg_f, (ulat-llat)/self.marg_f
+        rsphere=6370997.0
+        pi=3.1415926 
+        
+        width = 2*pi*rsphere*np.cos((min(abs(llon), abs(ulon))-blon)/180)*(ulat-llat+2*blat)/360
+        height = 2*pi*rsphere*(ulon-llon+2*blat)/360
+        lon_0 = llon + (ulon-llon)/2.0
+        lat_0 = llat + (ulat-llat)/2.0
+        args_all = {"width": width, "height":height,
+                    "lon_0": lon_0, "lat_0": lat_0,
+                    "lon_1": lon_0-20, "lat_1": lat_0-5,
+                    "lon_2": lon_0+5, "lat_2": lat_0+5, 
+                    "llcrnrlon": llon-blon, "llcrnrlat": llat-blat,
+                    "urcrnrlon": ulon+blon, "urcrnrlat": ulat+blat,
+                    "boundinglat":llat-blat, 'satellite_height': 30*10**6}
+        args_p = {"projection": proj, "resolution":"c"}
+        for param_k in self.proj_pk[proj]:
+            args_p[param_k] = args_all[param_k]
+        return mpl_toolkits.basemap.Basemap(**args_p), args_all
+        
+    def makeBasemapBack(self, bm):
+        draws, colors = self.getBasemapBackSetts()
+        bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
+        if draws["rivers"]:
+            bm.drawrivers(color=colors["sea_color"])
+        if draws["coasts"]:
+            bounds_color = colors["line_color"]
+            bm.drawcoastlines(color=colors["line_color"])
+        if draws["countries"]:
+            bounds_color = colors["line_color"]
+            bm.drawcountries(color=colors["line_color"])
+        if draws["states"]:
+            bounds_color = colors["line_color"]
+            bm.drawstates(color=colors["line_color"])
+        if draws["continents"]:
+            contin_color = colors["land_color"]
+        if draws["seas"]:
+            sea_color = colors["sea_color"]
+        if draws["lakes"]:
+            lake_color = colors["sea_color"]
+
+        parallels, meridians = self.getParallelsMeridiansRange(draws["parallels"], draws["meridians"]) 
+        if draws["parallels"]:
+            bm.drawparallels(parallels, linewidth=0.5, labels=[1,0,0,1])
+        if draws["meridians"]:
+            bm.drawmeridians(meridians, linewidth=0.5, labels=[1,0,0,1])
+
+        if draws["bluemarble"]:
+            bm.bluemarble(alpha=0.5)
+        else:
+            if bounds_color != colors["none"] or sea_color != colors["none"]:
+                bm.drawmapboundary(color=bounds_color, fill_color=sea_color)
+            if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
+                bm.fillcontinents(color=contin_color, lake_color=lake_color)
+
+

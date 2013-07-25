@@ -363,6 +363,8 @@ class Siren():
         if menuViews is None:
             menuViews = wx.Menu()
 
+        menuViews.AppendMenu(wx.NewId(), "&Tabs",self.makeTabsMenu(frame))
+
         for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items()], key=lambda x: x[1]):
             ID_VIEW = wx.NewId()
             self.opened_views[ID_VIEW] = vid 
@@ -463,10 +465,9 @@ class Siren():
         menuBar = wx.MenuBar()
         menuBar.Append(self.makeFileMenu(frame), "&File")
         menuBar.Append(self.makeRedMenu(frame), "&Edit")
-        menuBar.Append(self.makeVizMenu(frame), "&Visualize")
+        menuBar.Append(self.makeVizMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
-        menuBar.Append(self.makeViewsMenu(frame), "&Views")
-        menuBar.Append(self.makeTabsMenu(frame), "&Tabs")
+        menuBar.Append(self.makeViewsMenu(frame), "&Windows")
         menuBar.Append(self.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
@@ -947,7 +948,7 @@ class Siren():
 
     def OnQuit(self, event):
         self.plant.closeDown(self)
-        if not self.checkAndProceedWithUnsavedChanges():
+        if not self.checkAndProceedWithUnsavedChanges(what="quit"):
                 return
         self.deleteAllViews()
         self.toolFrame.Destroy()
@@ -981,13 +982,13 @@ class Siren():
         dlg.Destroy()
          
 
-    def checkAndProceedWithUnsavedChanges(self, test=None):
+    def checkAndProceedWithUnsavedChanges(self, test=None, what="continue"):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue
         and True if there are no unsaved changes or user wants to proceed in any case.
 
         If additional parameter 'test' is given, asks the question if it is true."""
         if (test is not None and test) or (test is None and self.dw.isChanged):
-            dlg = wx.MessageDialog(self.toolFrame, 'Unsaved changes might be lost.\nAre you sure you want to continue?', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Unsaved changes!')
+            dlg = wx.MessageDialog(self.toolFrame, 'Unsaved changes might be lost.\nAre you sure you want to %s?' % what, style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Unsaved changes!')
             if dlg.ShowModal() == wx.ID_NO:
                 return False
         return True

@@ -47,6 +47,108 @@
 	<default><value>#A020f0</value></default>
       </parameter>
       <parameter>
+	<name>line_color</name>
+	<label>Line color</label>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
+	<legend>Color for drawing map lines.</legend>
+	<length>7</length>
+	<default><value>#808080</value></default>
+      </parameter>
+      <parameter>
+	<name>sea_color</name>
+	<label>Sea color</label>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
+	<legend>Color for filling water bodies in maps.</legend>
+	<length>7</length>
+	<default><value>#F0F8FF</value></default>
+      </parameter>
+      <parameter>
+	<name>land_color</name>
+	<label>Land color</label>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
+	<legend>Color for filling land areas in maps.</legend>
+	<length>7</length>
+	<default><value>#FFFFFF</value></default>
+      </parameter>
+      <parameter>
+	<name>map_elem_area</name>
+	<label>Map natural areas</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Map natural areas to paint.</legend>
+	<default><value>0</value></default>
+	<options><value>seas</value><value>continents</value><value>lakes</value></options>
+      </parameter>
+      <parameter>
+ 	<name>map_elem_natural</name>
+	<label>Map natural elements</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Map natural elements to draw.</legend>
+	<default><value>0</value></default>
+	<options><value>coasts</value><value>rivers</value></options>
+      </parameter>
+      <parameter>
+	<name>map_elem_geop</name>
+	<label>Map geopolitic elements</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Map geopolitic borders to paint.</legend>
+	<default><value>0</value></default>
+	<options><value>countries</value><value>states</value></options>
+      </parameter>
+      <parameter>
+	<name>map_elem_circ</name>
+	<label>Map imaginary circles</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Map imaginary circles to draw.</legend>
+	<default></default>
+	<options><value>parallels</value><value>meridians</value></options>
+      </parameter>
+      <parameter>
+	<name>map_proj</name>
+	<label>Projection</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Projection to use for the map.</legend>
+	<default><value>0</value></default>
+	<options><value>Miller Cylindrical</value>
+	         <value>Azimuthal Equidistant</value>
+		 <value>Polyconic</value>
+		 <value>Gnomonic</value>
+		 <value>Mollweide</value>
+		 <value>Transverse Mercator</value>
+		 <value>North-Polar Lambert Azimuthal</value>
+		 <value>Gall Stereographic Cylindrical</value>
+		 <value>Mercator</value>
+		 <value>Stereographic</value>
+		 <value>North-Polar Stereographic</value>
+		 <value>Hammer</value>
+		 <value>Geostationary</value>
+		 <value>Near-Sided Perspective</value>
+		 <value>van der Grinten</value>
+		 <value>Lambert Azimuthal Equal Area</value>
+		 <value>McBryde-Thomas Flat-Polar Quartic</value>
+		 <value>Sinusoidal</value>
+		 <value>South-Polar Stereographic</value>
+		 <value>Lambert Conformal</value>
+		 <value>North-Polar Azimuthal Equidistant</value>
+		 <value>Equidistant Conic</value>
+		 <value>Cylindrical Equidistant</value>
+		 <value>Oblique Mercator</value>
+		 <value>Albers Equal Area</value>
+		 <value>South-Polar Azimuthal Equidistant</value>
+		 <value>Orthographic</value>
+		 <value>Cassini-Soldner</value>
+		 <value>South-Polar Lambert Azimuthal</value>
+		 <value>Robinson</value>
+	</options>
+      </parameter>
+      <parameter>
 	<name>dot_size</name>
 	<label>Dot size</label>
 	<parameter_type>range</parameter_type>

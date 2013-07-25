@@ -226,10 +226,9 @@ class GView(object):
         menuBar = wx.MenuBar()
         menuBar.Append(self.parent.makeFileMenu(frame), "&File")
         menuBar.Append(self.makeActionsMenu(frame), "&Edit")
-        menuBar.Append(self.makeVizMenu(frame), "&Visualize")
+        menuBar.Append(self.makeVizMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
-        menuBar.Append(self.parent.makeViewsMenu(frame), "&Views")
-        menuBar.Append(self.parent.makeTabsMenu(frame), "&Tabs")
+        menuBar.Append(self.parent.makeViewsMenu(frame), "&Windows")
         menuBar.Append(self.parent.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
@@ -321,8 +320,8 @@ class GView(object):
         colors = self.getColors()
         self.MapredMapQ[0].SetForegroundColour(colors[0])
         self.MapredMapQ[1].SetForegroundColour(colors[1])
-        styRL = wx.ALIGN_RIGHT|wx.ALL|wx.SIMPLE_BORDER
-        styFL = wx.ALIGN_LEFT|wx.ALL|wx.SIMPLE_BORDER
+        styRL = wx.ALIGN_RIGHT|wx.ALL
+        styFL = wx.ALIGN_LEFT|wx.ALL
         self.MapredMapInfoJL = wx.StaticText(self.mapFrame,  style=styRL)
         self.MapredMapInfoVL = wx.StaticText(self.mapFrame,  style=styRL)
         self.MapredMapInfoJV = wx.StaticText(self.mapFrame,  style=styFL)
@@ -731,7 +730,6 @@ class GView(object):
                                "color_f": [0.5, 0.5, 0.5],
                                "alpha": GView.DOT_ALPHA, "size": dot_size}
                 }
-
         
 def HTMLColorToRGB(colorstring):
     """ convert #RRGGBB to an (R, G, B) tuple """
