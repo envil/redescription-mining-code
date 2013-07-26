@@ -361,7 +361,7 @@ class Charbon:
 
     def subdo33Full(self, colL, colR, side):
         best = (None, None, None)
-        flag=0
+        bUp=1
         interMat = []
         bucketsL = colL.buckets()
         bucketsR = colR.buckets()
@@ -377,9 +377,9 @@ class Charbon:
         # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
         if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.max_prodbuckets() ): 
             if len(bucketsE[1])> self.constraints.max_sidebuckets():
+                bUp=3 ## in case of collapsed bucket the threshold is different
                 bucketsE = colE.collapsedBuckets(self.constraints.max_agg())
                 #pdb.set_trace()
-                flag=1 ## in case of collapsed bucket the threshold is different
         if ( len(bucketsF[1]) * len(bucketsE[1]) <= self.constraints.max_prodbuckets() ): 
         #if (True): ## Test
             partsMubB = len(colF.miss())
@@ -476,7 +476,7 @@ class Charbon:
 
         if best[0]:
             tF = colF.getLiteralBuk(False, bucketsF[1], best[-1][-1][0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:],flag)
+            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:], bucketsE[bUp])
             if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
@@ -591,7 +591,7 @@ class Charbon:
         for (i, nF, nE) in configs:
 
             if best[i][0] is not None:
-                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:],flag)
+                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:])
                 if tE is not None:
                     literalsExt.append(tE)
                     literalsFix.append(Literal(nF, CatTerm(idF, best[i][-1][-1][0])))

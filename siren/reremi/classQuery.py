@@ -374,10 +374,9 @@ class NumTerm(Term):
     def __init__(self, ncol, nlowb, nupb):
         if nlowb == float('-Inf') and nupb == float('Inf') or nlowb > nupb:
             raise Warning('Unbounded numerical term !')
-        else:
-            self.col = ncol
-            self.lowb = nlowb
-            self.upb = nupb
+        self.col = ncol
+        self.lowb = nlowb
+        self.upb = nupb
 
 #     def simple(self, neg):
 #         if neg:

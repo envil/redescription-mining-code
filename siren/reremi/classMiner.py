@@ -17,7 +17,7 @@ class Miner:
 ##################
     def __init__(self, data, params, logger, mid=None, souvenirs=None, qin=None, cust_params={}):
         self.qin = qin
-        self.deps = None
+        self.deps = []
         self.org_data = None
         self.want_to_live = True
         if mid is not None:

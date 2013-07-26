@@ -423,7 +423,7 @@ class Charbon:
 
     def subdo33Full(self, colL, colR, side):
         best = (None, None, None)
-        flag=0
+        bUp=1
         interMat = []
         bucketsL = colL.buckets()
         bucketsR = colR.buckets()
@@ -440,8 +440,7 @@ class Charbon:
         if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.max_prodbuckets() ): 
             if len(bucketsE[1])> self.constraints.max_sidebuckets():
                 bucketsE = colE.collapsedBuckets(self.constraints.max_agg())
-                #pdb.set_trace()
-                flag=1 ## in case of collapsed bucket the threshold is different
+                bUp=3 ## in case of collapsed bucket the threshold is different
         if ( len(bucketsF[1]) * len(bucketsE[1]) <= self.constraints.max_prodbuckets() ): 
         #if (True): ## Test
 
@@ -524,7 +523,7 @@ class Charbon:
 
         if best[0]:
             tF = colF.getLiteralBuk(False, bucketsF[1], best[-1][-1][0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:], flag)
+            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:], bucketsE[bUp])
             if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
@@ -589,11 +588,12 @@ class Charbon:
         best = [(None, None, None) for c in configs]
 
         buckets = colE.buckets()
-        flag = 0
+        bUp = 1
         if len(buckets[1]) > self.constraints.max_sidebuckets():
+             bUp=3 ## in case of collapsed bucket the threshold is different
              buckets = colE.collapsedBuckets(self.constraints.max_agg())
              #pdb.set_trace()
-             flag=1 ## in case of collapsed bucket the threshold is different
+
 
         ### TODO DOABLE
         if ( len(buckets[1]) * len(colF.cats()) <= self.constraints.max_prodbuckets() ): 
@@ -648,7 +648,7 @@ class Charbon:
         for (i, nF, nE) in configs:
 
             if best[i][0] is not None:
-                tE = colE.getLiteralBuk(nE, buckets[1], best[i][-1][-1][1:], flag)
+                tE = colE.getLiteralBuk(nE, buckets[1], best[i][-1][-1][1:], buckets[bUp])
                 if tE is not None:
                     literalsExt.append(tE)
                     literalsFix.append(Literal(nF, CatTerm(colF.getId(), best[i][-1][-1][0])))

@@ -235,12 +235,15 @@ class DataWrapper(object):
             tmp_data = self._readDataFromCSVFiles(data_filenames)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self._stopMessage()
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing data from CSV files!\n%s" %  sys.exc_info()[1], "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.data = tmp_data
@@ -262,12 +265,15 @@ class DataWrapper(object):
             tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self._stopMessage()
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.data = tmp_data
@@ -284,12 +290,15 @@ class DataWrapper(object):
             tmp_data = self._readDataFromXMLFile(data_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self._stopMessage()
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.data = tmp_data
@@ -310,9 +319,11 @@ class DataWrapper(object):
                 tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.reds = tmp_reds
@@ -328,9 +339,11 @@ class DataWrapper(object):
             tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.reds = tmp_reds
@@ -347,9 +360,11 @@ class DataWrapper(object):
             tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing preferences from file %s!\n%s" % (preferences_filename, sys.exc_info()[1]), "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.preferences = tmp_preferences
@@ -364,12 +379,15 @@ class DataWrapper(object):
             self._readPackageFromFile(package_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self._stopMessage()
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "error", "DW")
+            self._stopMessage()
             raise
         else:
             self.isChanged = False
@@ -596,6 +614,7 @@ class DataWrapper(object):
             f = open(os.path.abspath(filename + suffix), 'w')
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self._stopMessage()
             return
         else:
             f.close()
@@ -696,12 +715,16 @@ class DataWrapper(object):
         self._startMessage('exporting', filename)
         ### TODO select format
         (pn, suffix) = os.path.splitext(os.path.basename(filename))
-        if suffix == ".tex":
-            self._writeRedescriptionsTEX(filename, named)
-        elif suffix == ".queries":
-            self._writeRedescriptionsTXT(filename, named)
-        else:
-            self._writeRedescriptions(filename, named)
+        try:
+            if suffix == ".tex":
+                self._writeRedescriptionsTEX(filename, named)
+            elif suffix == ".queries":
+                self._writeRedescriptionsTXT(filename, named)
+            else:
+                self._writeRedescriptions(filename, named)
+        except Exception:
+            self._stopMessage()
+            raise
         self._stopMessage('exporting')
 
     def _writeRedescriptionsTXT(self, filename, named = False, toPackage = False):
@@ -799,10 +822,14 @@ class DataWrapper(object):
             fnc(msg, short_msg, *args, **kwargs)
             #time.sleep(1) ## give time to process the message?
 
-    def _stopMessage(self, action):
+    def _stopMessage(self, action=None):
         "Removes the message if needed"
         if self.stopReadingFileCallback is not None:
             (fnc, args, kwargs) = self.stopReadingFileCallback
+            if action is None:
+                mess = "An error occurred"
+            else:
+                mess = action.capitalize()+' done'
             fnc(action.capitalize()+' done', *args, **kwargs)
 
     def getPolys(self, pdp, boundaries):

@@ -1,6 +1,7 @@
 ### TODO check which imports are needed 
 import wx
 import numpy as np
+import re
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
@@ -250,27 +251,37 @@ class MapView(GView):
     def getBasemapProjSetts(self):
         proj = self.proj_def 
         t = self.parent.dw.getPreferences()
-        if "map_proj" in t and self.proj_names.has_key( t["map_proj"]["data"]):
-            proj = self.proj_names[t["map_proj"]["data"]]
-        return "hammer" #proj
+        if "map_proj" in t:
+            tpro = re.sub(" *\(.*\)$", "", t["map_proj"]["data"])
+            if self.proj_names.has_key( tpro):
+                proj = self.proj_names[tpro]
+        resolution = 1
+        if "map_resolution" in t:
+            resolution = t["map_resolution"]["data"][0]
+
+        return proj, resolution
             
     def getBasemapBackSetts(self):
         t = self.parent.dw.getPreferences()
 #                 "states": False, "parallels": False, "meridians": False,
         draws = {"rivers": False, "coasts": False, "countries": False,
                  "states": False, "parallels": False, "meridians": False,
-                 "continents":False, "lakes": False, "seas": False, "bluemarble":False}
+                 "continents":False, "lakes": False, "seas": False}
+        more = {"bluemarble": 0}
         colors = {"line_color": "gray", "sea_color": "#F0F8FF", "land_color": "white", "none":"white"}
 
         for typ_elem in ["map_elem_area", "map_elem_natural", "map_elem_geop", "map_elem_circ"]:
             if typ_elem in t:
                 for elem in t[typ_elem]["data"]:
                     draws[elem] = True
+
+        if "bluemarble" in t:
+            more["bluemarble"] = 1 - t["bluemarble"]["data"]/100.0
                 
         for color_k in colors.keys():
             if color_k in t:
                 colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, t[color_k]["data"])]) 
-        return draws, colors
+        return draws, colors, more
 
     def getParallelsMeridiansRange(self, parallels=True, meridians=True):
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
@@ -288,7 +299,7 @@ class MapView(GView):
         return np.arange(int(llat/step)*step,(int(ulat/step)+1)*step,step), np.arange(int(llon/step)*step,(int(ulon/step)+1)*step,step)
 
     def makeBasemapProj(self):
-        proj = self.getBasemapProjSetts()
+        proj, resolution = self.getBasemapProjSetts()
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
         blon, blat = (ulon-llon)/self.marg_f, (ulat-llat)/self.marg_f
         rsphere=6370997.0
@@ -305,13 +316,13 @@ class MapView(GView):
                     "llcrnrlon": llon-blon, "llcrnrlat": llat-blat,
                     "urcrnrlon": ulon+blon, "urcrnrlat": ulat+blat,
                     "boundinglat":llat-blat, 'satellite_height': 30*10**6}
-        args_p = {"projection": proj, "resolution":"c"}
+        args_p = {"projection": proj, "resolution":resolution}
         for param_k in self.proj_pk[proj]:
             args_p[param_k] = args_all[param_k]
         return mpl_toolkits.basemap.Basemap(**args_p), args_all
         
     def makeBasemapBack(self, bm):
-        draws, colors = self.getBasemapBackSetts()
+        draws, colors, more = self.getBasemapBackSetts()
         bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
         if draws["rivers"]:
             bm.drawrivers(color=colors["sea_color"])
@@ -337,8 +348,8 @@ class MapView(GView):
         if draws["meridians"]:
             bm.drawmeridians(meridians, linewidth=0.5, labels=[1,0,0,1])
 
-        if draws["bluemarble"]:
-            bm.bluemarble(alpha=0.5)
+        if more["bluemarble"] > 0:
+            bm.bluemarble(alpha=more["bluemarble"])
         else:
             if bounds_color != colors["none"] or sea_color != colors["none"]:
                 bm.drawmapboundary(color=bounds_color, fill_color=sea_color)

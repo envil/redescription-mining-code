@@ -49,6 +49,7 @@ class Siren():
          
     def __init__(self):
         self.busyDlg = None
+        self.dw = None
         self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                      "rows": {"title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
@@ -137,10 +138,16 @@ class Siren():
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
 
+    def getReds(self):
+        if self.dw is not None:
+            return self.dw.getReds()
+        return []
     def getData(self):
-        return self.dw.getData()
+        if self.dw is not None:
+            return self.dw.getData()
     def getPreferences(self):
-        return self.dw.getPreferences()
+        if self.dw is not None:
+            return self.dw.getPreferences()
     def getLogger(self):
         return self.logger
 
@@ -303,6 +310,10 @@ class Siren():
                     m_movereds = menuRed.Append(ID_MOVEREDS, "A&ppend Enabled to Redescriptions", "Move all enabled redescriptions to main Redescriptions tab.")
                     frame.Bind(wx.EVT_MENU, self.OnMoveReds, m_movereds)
 
+                ID_DUP = wx.NewId()
+                m_dup = menuRed.Append(ID_DUP, "&Duplicate", "Duplicate current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnDuplicate, m_dup)
+
                 m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
 
@@ -313,10 +324,11 @@ class Siren():
                 m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
 
-            ID_DUP = wx.NewId()
-            m_dup = menuRed.Append(ID_DUP, "&Duplicate", "Duplicate current redescription.")
-            frame.Bind(wx.EVT_MENU, self.OnDuplicate, m_dup)
- 
+        if menuRed.GetMenuItemCount() == 0:
+            ID_NOR = wx.NewId()
+            m_nor = menuRed.Append(ID_NOR, "No items", "There are no items to edit.")
+            menuRed.Enable(ID_NOR, False)
+
         return menuRed
 
     def makeVizMenu(self, frame, menuViz=None):
@@ -337,7 +349,11 @@ class Siren():
             menuPro = wx.Menu()
         ID_MINE = wx.NewId()
         m_mine = menuPro.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
-        frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
+        if self.getData() is None:
+            menuPro.Enable(ID_MINE, False)
+        else:
+            frame.Bind(wx.EVT_MENU, self.OnMineAll, m_mine)
+
         ct = menuPro.GetMenuItemCount()
         menuPro = self.makeStoppersMenu(frame, menuPro)
         if ct < menuPro.GetMenuItemCount():
@@ -403,42 +419,55 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
         
         m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
-        frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
+        if self.getData() is not None and self.dw.isFromPackage and self.dw.package_filename is not None:
+            frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
+        else:
+            menuFile.Enable(wx.ID_SAVE, False)
         
         m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
-        frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
+        if self.getData() is None:
+            menuFile.Enable(wx.ID_SAVEAS, False)
+        else:
+            frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
 
-        submenuImportData = wx.Menu()
+        submenuImport = wx.Menu()
+        #submenuImportData = wx.Menu()
         ID_IMPORT_DATA_CSV = wx.NewId()
-        m_impDataCSV = submenuImportData.Append(ID_IMPORT_DATA_CSV, "Import from CSV files", "Import data in CSV format.")
+        m_impDataCSV = submenuImport.Append(ID_IMPORT_DATA_CSV, "Import Data from CSV files", "Import data in CSV format.")
         frame.Bind(wx.EVT_MENU, self.OnImportDataCSV, m_impDataCSV)
         ID_IMPORT_DATA_XML = wx.NewId()
-        m_impDataXML = submenuImportData.Append(ID_IMPORT_DATA_XML, "Import from XML", "Import data in XML format.")
+        m_impDataXML = submenuImport.Append(ID_IMPORT_DATA_XML, "Import Data from XML", "Import data in XML format.")
         frame.Bind(wx.EVT_MENU, self.OnImportDataXML, m_impDataXML)
         ID_IMPORT_DATA_TRIPLE = wx.NewId()
-        m_impDataTriple = submenuImportData.Append(ID_IMPORT_DATA_TRIPLE, "Import from separate files", "Import data from separate files")
+        m_impDataTriple = submenuImport.Append(ID_IMPORT_DATA_TRIPLE, "Import Data from separate files", "Import data from separate files")
         frame.Bind(wx.EVT_MENU, self.OnImportData, m_impDataTriple)
         
-        submenuFile = wx.Menu()
-        ID_IMPORT_DATA = wx.NewId()
-        m_impData = submenuFile.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
-        #m_impData = submenuFile.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
+        # ID_IMPORT_DATA = wx.NewId()
+        # m_impData = submenuImport.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
+        #m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
         ID_IMPORT_REDESCRIPTIONS = wx.NewId()
-        m_impRedescriptions = submenuFile.Append(ID_IMPORT_REDESCRIPTIONS, "Import &Redescriptions", "Import redescriptions into the project.")
-        frame.Bind(wx.EVT_MENU, self.OnImportRedescriptions, m_impRedescriptions)
+        m_impRedescriptions = submenuImport.Append(ID_IMPORT_REDESCRIPTIONS, "Import &Redescriptions", "Import redescriptions into the project.")
+        if self.getData() is not None:
+            frame.Bind(wx.EVT_MENU, self.OnImportRedescriptions, m_impRedescriptions)
+        else:
+            submenuImport.Enable(ID_IMPORT_REDESCRIPTIONS, False)
+
 
         ID_IMPORT_PREFERENCES = wx.NewId()
-        m_impPreferences = submenuFile.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
+        m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
 
         ID_IMPORT = wx.NewId()
-        m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuFile)
+        m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuImport)
 
         ID_EXPORT = wx.NewId()
         m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
-        frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_export)
+        if len(self.getReds()) == 0:
+            menuFile.Enable(ID_EXPORT, False)
+        else:
+            frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_export)
 
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
@@ -670,7 +699,7 @@ class Siren():
         if self.dw.data is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
-        if len(self.dw.reds) > 0:
+        if self.dw.reds is not None and len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
                 return
@@ -733,10 +762,10 @@ class Siren():
             except:
                 pass
         open_dlg.Destroy()
-        self.reloadReds()
+        self.reloadReds(all=False)
         
     def OnExportRedescriptions(self, event):
-        if self.dw.reds is None:
+        if len(self.getReds()) == 0:
             wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded',
                              style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
@@ -1037,11 +1066,12 @@ class Siren():
             self.tabs["rows"]["tab"].resetData(ICList())
 
             
-    def reloadReds(self):
+    def reloadReds(self, all=True):
         ## Initialize red lists data
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
-        self.tabs["exp"]["tab"].resetData(Batch())
-        self.tabs["hist"]["tab"].resetData(Batch())
+        if all:
+            self.tabs["exp"]["tab"].resetData(Batch())
+            self.tabs["hist"]["tab"].resetData(Batch())
         self.deleteAllViews()
         self.doUpdates({"menu":True})
 

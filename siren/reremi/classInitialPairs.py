@@ -104,7 +104,7 @@ class IPalternate(InitialPairs):
             tt = self.popD()
             if cond is not None:
                 while tt is not None and not cond(tt):
-                    tt = self.pairs.popD()
+                    tt = self.popD()
                 if tt is None:
                     return
             self.countdown -= 1

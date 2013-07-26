@@ -18,7 +18,7 @@
       </parameter>
     </section>
     <section>
-      <name>Maps</name>
+      <name>Vizualizations</name>
       <parameter>
 	<name>color_l</name>
 	<label>Color LHS</label>
@@ -46,6 +46,40 @@
 	<length>7</length>
 	<default><value>#A020f0</value></default>
       </parameter>
+      <parameter>
+	<name>dot_size</name>
+	<label>Dot size</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Dot size on the map.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>3</value></default>
+      </parameter>
+      <parameter>
+	<name>dot_shape</name>
+	<label>Dot shape</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Shape of the map dots</legend>
+	<default><value>0</value></default>
+	<options><value>s</value><value>p</value><value>,</value><value>o</value></options>
+      </parameter>
+      <parameter>
+	<name>miss_details</name>
+	<label>Detailed missing</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Show details of different missing values.</legend>
+	<default><value>1</value></default>
+	<options><value>Yes</value><value>No</value></options>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>Maps</name>
+    <section>
+      <name>Elements</name>
       <parameter>
 	<name>line_color</name>
 	<label>Line color</label>
@@ -110,53 +144,67 @@
 	<options><value>parallels</value><value>meridians</value></options>
       </parameter>
       <parameter>
+	<name>map_resolution</name>
+	<label>Resolution</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Resolution of the map elements.</legend>
+	<default><value>0</value></default>
+	<options><value>crude</value>
+	         <value>low</value>
+		 <value>intermediate</value>
+		 <value>high</value>
+		 <value>full</value>
+	</options>
+      </parameter>
+      <parameter>
 	<name>map_proj</name>
 	<label>Projection</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Projection to use for the map.</legend>
-	<default><value>0</value></default>
-	<options><value>Miller Cylindrical</value>
+	<default><value>13</value></default>
+	<options><value>Albers Equal Area</value>
 	         <value>Azimuthal Equidistant</value>
-		 <value>Polyconic</value>
-		 <value>Gnomonic</value>
-		 <value>Mollweide</value>
-		 <value>Transverse Mercator</value>
-		 <value>North-Polar Lambert Azimuthal</value>
-		 <value>Gall Stereographic Cylindrical</value>
-		 <value>Mercator</value>
-		 <value>Stereographic</value>
-		 <value>North-Polar Stereographic</value>
-		 <value>Hammer</value>
-		 <value>Geostationary</value>
-		 <value>Near-Sided Perspective</value>
-		 <value>van der Grinten</value>
-		 <value>Lambert Azimuthal Equal Area</value>
-		 <value>McBryde-Thomas Flat-Polar Quartic</value>
-		 <value>Sinusoidal</value>
-		 <value>South-Polar Stereographic</value>
-		 <value>Lambert Conformal</value>
-		 <value>North-Polar Azimuthal Equidistant</value>
-		 <value>Equidistant Conic</value>
-		 <value>Cylindrical Equidistant</value>
-		 <value>Oblique Mercator</value>
-		 <value>Albers Equal Area</value>
-		 <value>South-Polar Azimuthal Equidistant</value>
-		 <value>Orthographic</value>
 		 <value>Cassini-Soldner</value>
+		 <value>Cylindrical Equidistant</value>
+		 <value>Equidistant Conic</value>
+		 <value>Gall Stereographic Cylindrical</value>
+		 <value>Geostationary (G)</value>
+		 <value>Gnomonic</value>
+		 <value>Hammer (G)</value>
+		 <value>Lambert Azimuthal Equal Area</value>
+		 <value>Lambert Conformal</value>
+		 <value>McBryde-Thomas Flat-Polar Quartic (G)</value>
+		 <value>Mercator</value>
+		 <value>Miller Cylindrical</value>
+		 <value>Mollweide (G)</value>
+		 <value>Near-Sided Perspective</value>
+		 <value>North-Polar Azimuthal Equidistant (P)</value>
+		 <value>North-Polar Lambert Azimuthal (P)</value>
+		 <value>North-Polar Stereographic (P)</value>
+		 <value>Oblique Mercator</value>
+		 <value>Orthographic (G)</value>
+		 <value>Polyconic</value>
+		 <value>Robinson (G)</value>
+		 <value>Sinusoidal (G)</value>
+		 <value>South-Polar Azimuthal Equidistant</value>
 		 <value>South-Polar Lambert Azimuthal</value>
-		 <value>Robinson</value>
+		 <value>South-Polar Stereographic</value>
+		 <value>Stereographic</value>
+		 <value>Transverse Mercator</value>
+		 <value>van der Grinten (G)</value>
 	</options>
       </parameter>
       <parameter>
-	<name>dot_size</name>
-	<label>Dot size</label>
+	<name>bluemarble</name>
+	<label>Map background transparency</label>
 	<parameter_type>range</parameter_type>
 	<value_type>integer</value_type>
-	<legend>Dot size on the map.</legend>
+	<legend>Transparency of the NASA Blue Marble background image.</legend>
 	<range_min>0</range_min>
-	<range_max>10</range_max>
-	<default><value>3</value></default>
+	<range_max>100</range_max>
+	<default><value>100</value></default>
       </parameter>
       <parameter>
 	<name>map_poly</name>
@@ -166,24 +214,6 @@
 	<legend>Use polygons to represent entities on the map</legend>
 	<default><value>1</value></default>
 	<options><value>No</value><value>Yes</value></options>
-      </parameter>
-      <parameter>
-	<name>dot_shape</name>
-	<label>Dot shape</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Shape of the map dots</legend>
-	<default><value>0</value></default>
-	<options><value>s</value><value>p</value><value>,</value><value>o</value></options>
-      </parameter>
-      <parameter>
-	<name>miss_details</name>
-	<label>Detailed missing</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Show details of different missing values.</legend>
-	<default><value>1</value></default>
-	<options><value>Yes</value><value>No</value></options>
       </parameter>
     </section>
   </section>

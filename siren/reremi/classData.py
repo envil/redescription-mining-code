@@ -759,8 +759,8 @@ class NumColM(ColM):
         tmp_supp=set([])
         bucket_min=tmp[1][0]
         colB_supp = []
-        colB_max= []
         colB_min= []
+        colB_max= [None]
         for i in range(len(tmp[1])):
             if len(tmp_supp) > max_agg:
                 colB_supp.append(tmp_supp)
@@ -870,17 +870,19 @@ class NumColM(ColM):
                             current_valseg[op] = [val, val, tmp_init]
         return segments
 
-    def getLiteralBuk(self, neg, buk_op, bound_ids, flag=0):
+    def getLiteralBuk(self, neg, buk_op, bound_ids, buk_op_top=None):
+        if buk_op_top is None:
+            buk_op_top = buk_op
         if bound_ids[0] == 0 and bound_ids[1] == len(buk_op)-1:
             return (neg, None)
         elif bound_ids[0] == 0 :
             if neg:
-                lowb = buk_op[bound_ids[1]+1]
+                lowb = buk_op_top[bound_ids[1]+1]
                 upb = float('Inf')
                 n = False
             else:
                 lowb = float('-Inf')
-                upb = buk_op[bound_ids[1]+flag]-flag
+                upb = buk_op_top[bound_ids[1]]
                 n = False
         elif bound_ids[1] == len(buk_op)-1 :
             if neg:
@@ -893,7 +895,7 @@ class NumColM(ColM):
                 n = False
         else:
             lowb = buk_op[bound_ids[0]]
-            upb = buk_op[bound_ids[1]+flag]-flag
+            upb = buk_op_top[bound_ids[1]]
             n = neg
         return Literal(n, NumTerm(self.getId(), lowb, upb))
 
