@@ -3,83 +3,126 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<title>SIREN &mdash; Interactive and visual redescription mining</title>
 <link rel="stylesheet" type="text/css" href="../commons/siren.css">
 </head>
 
 <body>
 
-<h2><a name="functionalities"></a>Functionalities</h2> 
+<h2 id="functionalities">Functionalities</h2> 
 
 <div class="page-header">
-<p>Using <em>Siren</em>, a user can explore data of his
-  interest by visualizing geospatial redescriptions on a map,
-  interactively edit, expand and filter them.
+<p>Using <em>Siren</em>, a user can explore data of his interest by
+  interactively mining, visualizing and editing redescriptions.
 </p>
 </div>
 
-<p>The main functionalities of <em>Siren</em> include:
+<p>The main functionalities of <em>Siren</em> can be categorized into mining, visualizing and editing.
+
+<h4 id="func_mine">Mining</h4>
+<p>At the core of <em>Siren</em> is the <em>ReReMi</em> redescription
+mining algorithm. Various modes of interaction with the mining
+algorithm are possible through the interface.
 <ul>
-<li><em>Displaying a geospatial redescription on a map.</em>
-Spatial redescriptions can be displayed on a map to show the locations 
-where both queries hold (purple squares), only the left hand side query 
-holds (blue squares) and only the right hand side query holds (red 
-squares). 
+<li>
+Mine redescriptions from the data automatically.  
+</li>
+<li>
+Mine extensions of an existing redescription, on both sides or selectively on one side.
+</li>
+<li>
+It is possible to select a subset of variables for use in mining/expanding, by disabling some variables and to specify a subset of entities of interest to emphasize.
+</li>
+</ul>
+</p>
+
+<img class="web" src="../screenshots/mine/mine.gif">
+
+<h4 id="func_viz">Visualizing</h4>
+<p><em>Siren</em> offers a number of different visualizations.</p> 
+
+
+<h5 id="viz_paco">Parallel Coordinates</h5>
+<p>A <i>parallel coordinates</i> plot represents the values taken by the entites for the variable appearing in the queries. It allows to easily visualize the impact of the queries conditions on the support of the redescription. </p>
+
+<img class="web" src="../screenshots/interface/PacoView.png">
+
+<h5 id="viz_proj">Projections</h5>
+
+<p>The <i>axis projection</i> and a number of data projections from the <a href="http://scikit-learn.org/">scikit package</a> allow to highlight different aspects of the data.</p>
+
+<ul>
+<li>The <em>Axis Projection</em> plots the values of two selected variables.
+</li>
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.manifold.Isomap.html#sklearn.manifold.Isomap">
+<em>Isomap Embedding</em>
+</a>
 </li>
 
-<li><em>Editing a redescription.</em>
-Existing redescriptions can be edited and the map and statistics will be
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.manifold.LocallyLinearEmbedding.html#sklearn.manifold.LocallyLinearEmbedding">
+<em>Locally Linear Embedding</em>
+</a>
+</li>
+
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.manifold.MDS.html#sklearn.manifold.MDS">
+<em>Multidimensional Scaling Embedding</em>
+</a>
+</li>
+
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.decomposition.RandomizedPCA.html#sklearn.decomposition.RandomizedPCA">
+<em>Randomized PCA Decomposition</em>
+</a> (discrete Karhunen–Loève transform, KLT)
+</li>
+
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.random_projection.SparseRandomProjection.html">
+<em>Sparse Random Projection</em>
+</a>
+</li>
+
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.manifold.SpectralEmbedding.html#sklearn.manifold.SpectralEmbedding">
+<em>Spectral Embedding</em>
+</a> (Johnson-Lindenstrauss transform)
+</li>
+
+<li>
+<a href="http://scikit-learn.org/0.13/modules/generated/sklearn.ensemble.RandomTreesEmbedding.html#sklearn.ensemble.RandomTreesEmbedding">
+<em>Totally Random Trees Representation</em>
+</a>
+</li>
+</ul>
+<img class="web" src="../screenshots/interface/MDSView.png">
+
+<h5 id="viz_map">Maps (for geospatial data)</h5>
+<p>When the entities are geographic locations, we qualify the redescriptions as geospatial.
+Such redescriptions can be displayed on a map to show the locations 
+where both queries hold, only the left hand side query 
+holds and only the right hand side query holds. </p>
+<img class="web" src="../screenshots/interface/MapView.png">
+
+<h4 id="func_edit">Editing and Selecting</h4>
+
+<p>
+Existing redescriptions can be edited and the visualization and statistics will be
  recomputed and changes reflected in the original redescription in the 
-list. It is also possible to build a new redescription from scratch.
-</li>
+list and other visualizations of that same redescription.</p>
+<img class="web" src="../screenshots/interface/ViewsSide.png">
 
-<li><em>Expanding a redescription.</em> 
-An existing or an edited redescription can be extended, all best extensions are appended to the expansion list.
-</li>
+<p>It is also possible to build a new redescription from scratch.</p>
 
-<li><em>Mining redescriptions.</em>
-Starting from an empty redescription, mines for redescriptions. 
-The expansion list is updated after extending each initial pair
-with the filtered list of redescriptions found so far.
-</li>
+<p>Dragging the interval boxes in the parallel coordinates plot allows to edit the redescription interactively.</p>
+<img class="web" src="../screenshots/interface/PacoEdit.png">
 
-<li><em>Selection of a subset of variables.</em> 
-It is possible to select a subset of variables for use in mining/expanding, by disabling some variables.
-</li>
+<p>The user can select single entites from a view by clicking the corresponding dot/line in a view.</p>
+<img class="web" src="../screenshots/interface/SelectDot.png">
 
-<li><em>Filtering a redescription list.</em>
-For a chosen redescription in a list, filter redundant redescriptions 
-among those 
-found below it, i.e., redescriptions having overlap with the chosen 
-redescription in the left or right query over a chosen threshold. 
-</li>
-
-<li><em>History list.</em>
-A concealable history tab keeps track of edited redescriptions, allowing to undo modifications. 
-</li>
-</ul>
-</p>
-
-<h4><a name="tools_window"></a>Interface</h4>
-<p>The interface has two panels. 
-<ul>
-<li>
-A <em>Tools window</em> with tabs containing the lists of variables and of redescriptions. 
-</li>
-<li>
-None to several <em>Map windows</em> each displaying a redescription on a map with its statistics.
-</li>
-</ul>
-</p>
-
-<h5>Tools window, variables list</h5>
-<img src="../commons/web_siren_variables_leg.png">
-
-<h5>Tools window, redescription list</h5>
-<img src="../commons/web_siren_redescriptions_leg.png">
-
-<h5>Map window</h5>
-<img src="../commons/web_siren_map_leg.png">
+<p>Furthermore, he can select a subset of entities by drawing a enclosing polygon directly on the view.</p>
+<img class="web" src="../screenshots/interface/SelectPoly.png">
 
 <hr>
 <!-- hhmts start --> <p>Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->

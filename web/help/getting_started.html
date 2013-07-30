@@ -3,7 +3,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<title>SIREN &mdash; Interactive and visual redescription mining</title>
 <link rel="stylesheet" type="text/css" href="../commons/siren.css">
 </head>
 
@@ -13,9 +13,9 @@
 <div class="page-header">
 
 <p>
-<em>Siren</em> allows you to interactively mine and visualize redescriptions from your geospatial data.
+<em>Siren</em> allows you to interactively mine and visualize redescriptions from your data.
 <br />
-We outline here some high-level interactions with the tool.
+We outline here some high-level interactions offered by <em>Siren</em>.
 </p>
 </div>
 
@@ -30,19 +30,18 @@ If you already have some siren package (i.e. with a .siren extension) you can op
 </p>
 
 <p>
-Otherwise, or if you want to work on a new data set, you can <a href="formats.html#data_formats">import data</a> to <em>Siren</em>, this will populate the variables tabs.
+Otherwise, or if you want to work on a new data set, you can <a href="formats.html#data_formats">import data</a> to <em>Siren</em>, this will populate the <i>Entities</i> and <i>Variables</i> tabs.
 </p>
 
 <h4><a name="mining_scratch"></a>Mining redescriptions from scratch</h4>
 <p>
-Once the two sets of variables are loaded and can be seen in the variables tabs you may want to let the tool mine redescriptions in an fully automated way.
+Once the two sets of variables are loaded and can be seen in the tabs you may want to let the tool mine redescriptions in an fully automated way, using currently enabled variables. The menu entry Process &#8594; Mine redescriptions let you do just that.
 </p>
 <p>
-In order to do so, simply double click on a variable, to visualize it in a <a href="interface.html#map_window">Map window</a>, empty the two queries (i.e. erase the variable) and click on expand.
-When given an empty redescription to expand, <em>Siren</em> simply mines redescriptions on your data, using currently enabled variables.
+Alternatively, if both queries in a visualization are empty <em>Siren</em> simply mines redescriptions on your data when clicking on the <i>Expand</i> button.
 </p>
 <p>
-Results will be appended to the redescriptions list in the Expansions tab.
+Results will be appended to the redescriptions list in the <i>Expansions</i> tab.
 </p>
 <p>
 Before running a mining task make sure you have adjusted the <a href="miner_confdef.xml">mining preferences</a>...
@@ -50,13 +49,11 @@ Before running a mining task make sure you have adjusted the <a href="miner_conf
 
 <h4><a name="expanding_red"></a>Expanding a redescription</h4>
 <p>
-You can also press the expansion button to automatically find expansions of any redescription your are visualizing and editing in a <a href="interface.html#map_window">Map window</a>.
-</p>
-<p>
+You can also press the expansion button to automatically find expansions of any redescription your are currently visualizing and editing</a>.
 <em>Siren</em> will try to append literals to the current redescription, using the enabled variables. 
 </p>
 <p>
-Again, results will be appended to the redescriptions list in the Expansions tab.
+Again, results will be appended to the redescriptions list in the <i>Expansions</i> tab.
 </p>
 <p>
 Before running an expansion task make sure you have adjusted the <a href="miner_confdef.xml">mining preferences</a>...
@@ -74,7 +71,7 @@ It is also possible to select a redescription and filter following redescription
 <h4><a name="importing_data"></a>Exporting redescriptions</h4>
 
 <p>
-The redescriptions from the redescription tab can be exported under <a href="formats.html#export">different formats</a>.
+The redescriptions from the <i>Redescriptions</i> tab can be exported under <a href="formats.html#export">different formats</a>.
 </p>
 
 
@@ -93,5 +90,5 @@ Existing siren packages can be opened via the interface menu File &#8594; Open.
 </p>
 
 <hr>
-<!-- hhmts start --> <p>Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
+<!-- hhmts start --> <p>Siren --- Last modified: Wed 31 Jul 2013, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
 </body> </html>

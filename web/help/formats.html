@@ -3,7 +3,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<title>SIREN &mdash; Interactive and visual redescription mining</title>
 <link rel="stylesheet" type="text/css" href="../commons/siren.css">
 </head>
 
@@ -30,14 +30,22 @@ In <em>Siren</em>, data include:
 Obviously, this is required.
 </li>
 <li><h5>Variable names:</h5>Optional additional information, providing names for the variables.</li>
-<li><h5>Coordinates:</h5>Additional location information, geographic coordinates of the entities. This makes the data geospatial.</li>
+<li><h5>Coordinates:</h5>Optional location information, i.e. geographic coordinates of the entities. This makes the data geospatial.</li>
 </ul>
 </p>
 
 <p>
-Data can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Data, either as a set of separate files (Menu: Import from separate files) or as a single XML file (Menu: Import from XML file). Below, we present the data formats supported by Siren.
+Data can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Data, either as CSV files (Menu: Import Data from CSV files), as a set of separate files (Menu: Import Data from separate files) or as a single XML file (Menu: Import Data from XML file). Below, we present the data formats supported by Siren.
 </p>
 </div>
+
+<h4><a name="csv_files"></a>CSV data files</h4>
+<p>
+In case the data is imported as CSV files, the program expects a pair of files one for either side in <a href="http://tools.ietf.org/html/rfc4180">character-separated values</a>, as can be imported and exported to and from spreadsheet programms, for instance.
+The first row might contain the names of variables.
+In case of geospatial data, the first two columns of one or both files should contain the coordinates. If the order of the entities in the two files differs, they will be matched based on the coordinates.
+</p>
+
 
 <h4><a name="multiple_files"></a>Multiple data files</h4>
 
@@ -171,10 +179,10 @@ The product of redescription mining is a list of redescriptions. A redescription
 <p><a name="supports"></a>
 The support of a query is the set of entities for which the query holds. Any given redescription partitions the entities into four sets:
 <ul> 
-	<li>E_{1,0} is the set of rows for which only the left hand side query holds,</li>
-	<li>E_{0,1} is the set of rows for which only the right hand side query holds,</li>
-	<li>E_{1,1} is the set of rows for which both queries hold,</li>
-	<li>and E_{0,0} is the set of rows for which neither of the queries hold.</li>
+	<li>E<sub>10</sub> is the set of rows for which only the left hand side query holds,</li>
+	<li>E<sub>01</sub> is the set of rows for which only the right hand side query holds,</li>
+	<li>E<sub>11</sub> is the set of rows for which both queries hold,</li>
+	<li>and E<sub>00</sub> is the set of rows for which neither of the queries hold.</li>
 </ul>
 </p>
 
@@ -283,21 +291,22 @@ Naturally, the type of literal and the type of variable should match, i.e., [4.0
 <p>
 The statistics of a redescription include:
 <ul>
-<li>accuracy, as measured by Jaccard coefficient |E_{1,1}| / (|E_{1,0}|+|E_{1,1}|+|E_{0,1}|),</li>
+<li>accuracy, as measured by Jaccard coefficient |E<sub>11</sub>| / (|E<sub>10</sub>|+|E<sub>11</sub>|+|E<sub>0,1</sub>|),</li>
 <li>p-value,</li>
-<li>cardinality of the <a href="#supports">support sets</a> E_{1,0}, E_{0,1}, E_{1,1}, E_{0,0} (sometimes also referred to as alpha, beta, gamma and delta, respectively).</li>
+<li>cardinality of the <a href="#supports">support sets</a> E<sub>10</sub>, E<sub>01</sub>, E<sub>11</sub>, E<sub>00</sub> (sometimes also referred to as alpha, beta, gamma and delta, respectively).</li>
 </ul>
 </p>
 
 <h4><a name="export"></a>Exporting Redescriptions</h4>
 <p>
-Redescriptions can be exported in three formats, determine by the extension of the provided filename:
+Redescriptions from the <i>Redescriptions</i> tab can be exported in different formats, determined by the extension of the provided filename:
 <ul>
 <li><h5>.xml (default)</h5> Each redescription is stored between <em>redescription</em> tags, with both queries and basic statistics.</li>
 <li><h5>.queries</h5> One redescription per line, with both queries and basic statistics tab separated.</li>
+<li><h5>.queries_names</h5> Same, with variable names.</li>
 <li><h5>.tex</h5> Produces a tex file that can be compiled to obtain a table of the redescriptions</li>
 </ul>
-When exporting redescriptions in the latter two formats, diabled redescriptions will not be printed.
+Except for the xml format, disabled redescriptions will not be printed when exporting redescriptions.
 </p>
 
 <h4><a name="import"></a>Importing Redescriptions</h4>
@@ -311,5 +320,5 @@ Inside a siren package, the redescriptions are stored in a XML file together wit
 
 
 <hr>
-<!-- hhmts start --> <p>Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
+<!-- hhmts start --> <p>Siren --- Last modified: Wed 31 Jul 2013, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
 </body> </html>
