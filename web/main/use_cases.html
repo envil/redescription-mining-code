@@ -3,20 +3,20 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<title>SIREN &mdash; Interactive and visual geospatial redescription mining</title>
+<title>SIREN &mdash; Interactive and visual redescription mining</title>
 <link rel="stylesheet" type="text/css" href="../commons/siren.css">
 </head>
 
 <body>
-<h2>Use-cases</h2>
+<h2>Sample use-cases</h2>
 
 <h3><a name="uc_bio"></a>Biological niche-finding</h3>
 
 <div class="page-header">
-<p>The first use-cases concerns niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
+<p>The first use-case concern niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
 </p>
+<p>The <a href="video.html#tutorial">video tutorial</a> provides a step by step use-case with this data.</p>
 </div>
-
 
 <h4>Data</h4>
 <p>
@@ -29,60 +29,67 @@ temperatures in degrees Celsius as well as average monthly precipitation
 The data comes from two publicly available datasets: European Mammals atlas and Worldclim climate data.
 </p>
 
-<img src="../screenshots/BIO/windows/Bio_EntitiesOpen.png">
-
 <h4>Exploration</h4>
+
 <ol>
-<li>Double click a variable to show it in a Map window.
-<img src="../commons/web_siren_map_rajapaja_01.jpg">
+<li>The first tab contains a list of entities. Expanding columns of interest reveals the actual values of the variables.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_EntitiesClosed.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_EntitiesOpen.png"></td>
+</tr></table>
 </li>
 
-<li>If you whish not to use some of the variables in this expansion, 
-disable them by unchecking the corresponding box in the variables list 
-of the Tools window.
-<img src="../commons/web_siren_lists_rajapaja_03.jpg">
+<li>Next comes the list of left-hand side variables and right-hand side variables.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_VariablesRHS.png"></td>
+</tr></table>
 </li>
 
-<li>For example, let's use only monthly average temperature and rainfall, disabling monthly minimum and maximum temperatures.
-<img src="../commons/web_siren_lists_rajapaja_04.jpg">
+<li>Let's consider the Moose, plot this variable in a map to create a new redescription.
+<img class="web" src="../screenshots/BIO/interact/Bio_VOpenRMoose.png">
 </li>
 
-<li>Start the expansion by clicking the expand button in the Map window. 
-The best extensions mined are appended to the expansion list in the tool
- panel.
-<img src="../commons/web_siren_lists_rajapaja_05.jpg">
+<li>Then, we can let the algorithm find best expansions.
+<img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsInitRMoose.png">
 </li>
 
-<li>Expansion is done. Let's have a closer look at some result.
-<img src="../commons/web_siren_map_rajapaja_02.jpg">
+<li>After a few seconds, we get a number of expansions and can sort them by accuracy or let the algorithm process them to select the top non-redundant ones, here we obtain one.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsSortedRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsFilteredRMoose.png"></td>
+</tr></table>
 </li>
 
-<li>
-The results can be opened in different Map windows to be compared, by 
-choosing "View in new window" in the contextual menu. For example with 
-an extension from "Southwestern water vole".
-<img src="../commons/web_comparison.png">
+<li>Let's have a look at this redescription about the Moose, simultaneously plotting it in a Multidimensional Scaling projection and on a map.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_MDSViewRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_MapViewRMoose.png"></td>
+</tr></table>
 </li>
 
-<li>
-The list of results can be sorted and filtered. Given a redescription of
- interest, click filter redundant in the contextual menu to disable all 
-redundant redescriptions, i.e. redescription having too much overlap 
-with it.
-<img src="../commons/web_siren_lists_rajapaja_06.jpg">
+<li>We can select a dot to highlight the entities. The views are linked together so the entity will be highlighted across all views for that specific redescription.
+<img class="large" src="../screenshots/BIO/interact/Bio_SelectDotSideRMoose.png"> 
 </li>
 
-<li>
-A list of edited redescriptions is maintained. It allows to keep an 
-history of modifications and to undo changes, making edition safe.
-<img src="../commons/web_history1.png">
+<li>To select a set of points lying in some area, we can draw an enclosing polygon. Similarly, when we click Edit &#8594; (De)select polygon (or press the corresponding key) to select the dots inside the polygon, they will be highlighted across the different views.
+<img class="large" src="../screenshots/BIO/interact/Bio_DrawPolySideRMoose.png"> 
+<img class="large" src="../screenshots/BIO/interact/Bio_SelectPolySideRMoose.png"> 
+</li>
+
+<li>With this selected entities we can recompute the left-hand side query while adding weight on this area, to try removing it from E<sub>10</sub>. To do this, we clear the left-hand side query, press ENTER to update the redescription then choose Process &#8594; Overfit LHS.
+<img src="../screenshots/BIO/interact/Bio_OverfitInitRMoose.png"> 
+</li>
+
+<li>And we automatically obtain a new left-hand side query involving Mountain Hare, removing this region from the support.
+<img src="../screenshots/BIO/interact/Bio_OverfitResultOrgRMoose.png"> 
 </li>
 </ol>
 
 <h3><a name="uc_us"></a>US census and election funds</h3>
 
 <div class="page-header">
-<p>This use-cases presents an hypothetical exploration of US census data.
+<p>We now present a short sample use-case with US census and election data.
 </p>
 </div>
 
@@ -95,44 +102,97 @@ left hand side data contains socio-economic statistical indicators about
 campaigns in 2006, 2008 and 2010, the total funds, percentage allotted 
 to republican and to democratic party, respectively.
 The data has been gathered from two public websites: <a href="http://www.fedstats.gov/">FedStats</a> and <a href="http://www.opensecrets.org/elections/">Open Secrets</a>.
+Logarithmic transformation was applied to variables having a log-normal distribution to obtain a better dispersion.
 </p>
-
-<img src="../screenshots/US/windows/US_Entities.png">
 
 <h4>Exploration</h4>
 <ol>
-<li>Double click a redescription to open it in a Map window.
-<img src="../commons/web_siren_lists_us_01.jpg">
-<img src="../commons/web_siren_map_us_01.jpg">
+<li>Again, the first tab contains a list of entities...
+<img class="web" src="../screenshots/US/windows/US_Entities.png">
 </li>
 
-<li>Edit the redescription.
-<img src="../commons/web_siren_map_us_02.jpg">
+<li>... and the following two the list of left-hand side variables and right-hand side variables, respectively.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/US/windows/US_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/US/windows/US_VariablesRHS.png"></td>
+</tr></table>
 </li>
 
-<li>If you wish not to use some of the variables in this expansion, for 
-example variables used in the previous redescription, disable them by 
-unchecking the corresponding box in the variables list in the tool 
-panel.
-<img src="../commons/web_siren_lists_us_03.jpg">
+<li>Here, the <i>Redescriptions</i> tab contains redescriptions mined previously and loaded from a file.
+<img class="web" src="../screenshots/US/windows/US_Reds.png">
 </li>
 
-<li>Start the expansion by clicking the expand button in the Map window. 
-The best extensions mined are appended to the expansion list in the tool
- panel.
-<img src="../commons/web_siren_lists_us_04.jpg">
+<li>Now, we will recompute these redescription over a subset of the entities, say, excluding the east side of the US.
+To do so we plot a redescription with a variable set to its full range to see all entities on the map and draw a polygon enclosing the area we wish to exclude.
+<img class="web" src="../screenshots/US/interact/US_PolyDisable0.png">
 </li>
 
-<li>Expansion is done. The list of results can be sorted and filtered. 
-Given a redescription of interest, click filter redundant in the 
-contextual menu to disable all redundant redescriptions, i.e. 
-redescription having too much overlap with it.
+<li>Next we click Edit &#8594; (De)select polygon (or press the corresponding key) to select the entities inside the polygon.
+<img class="web" src="../screenshots/US/interact/US_PolyDisable1.png">
+</li>
+<li>Then clicking Edit &#8594; (Dis)able selected (or press the corresponding key) to disable the entities. This automatically recomputes all redescriptions restricted to the remaining entities (observe the updated statistics in the list and the map). 
+<img class="web" src="../screenshots/US/interact/US_PolyDisable2.png">
 </li>
 </ol>
 
-<h3><a name="uc_dblp"></a>DBLP Computer Science Bibliography</h3>
-<img src="../screenshots/DBLP/windows/DBLPPick_Entities.png">
+<h3><a name="uc_dblp">DBLP Computer Science Bibliography</a></h3>
+<div class="page-header">
+<p>In this last example we consider non-geospatial data, namely from the DBLP Computer Science Bibliography.
+</p>
+</div>
 
+<h4>Data</h4>
+<p>
+This dataset comes from the <a href="">DBLP data base</a> of computer science bibliography.
+Here the entities are researchers, the left-hand side data indicates major CS conferences in which they have published while the right-hand side data contains co-authorship information.
+</p>
+<p>
+Unlike in the previous examples, the entities in this data are not associated to goegraphic coordinates, hence this data is not geospatial and the redescriptions cannot be plotted on maps. However, the other visualizations can be used for exploration.
+</p>
+
+<h4>Exploration</h4>
+<ol>
+<li>Once more, we can consult the list of entities in the first tab.
+<img src="../screenshots/DBLP/windows/DBLPPick_Entities.png">
+</li>
+
+<li>Similarly, left-hand side variables and right-hand side variables are listed in the next two tabs.
+<table class="sides"><tr>
+<td><img class="web" src="../screenshots/DBLP/windows/DBLPPick_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/DBLP/windows/DBLPPick_VariablesRHS.png"></td>
+</tr></table>
+</li>
+
+<li>Redescriptions are listed in the fourth tab.
+<img class="web" src="../screenshots/DBLP/windows/DBLPPick_Reds.png">
+</li>
+
+<li>We can visualize the second redescription as a parallel coordinates plot. Using a slider, we can adjust the level of details, i.e. the amount of entities drawn.
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewRICDMdetails.gif">
+</li>
+
+
+<li>We can also visualize it under a couple of projections.
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_ViewsSideRICDM.png">
+</li>
+
+<li>These various views are linked so that when we select a dot or a subset of dots the will be highlighted across the views.
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_SelectDotSideRICDM.png">
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_SelectPolySideRICDM.png">
+</li>
+
+<li>We can edit the redescription directly in the parallel coordinate, modifying the bounds of the literal by dragging the bottom and top sides of the gray interval boxes.
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoEditRICDM.png">
+</li>
+
+<li>Let's now build another redescription by selecting a pair of conferences and setting their intervals to generate a new left-hand side query.
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewExpansionInitRFOCS.png">
+</li>
+
+<li>Now we let the algorithm find matching queries for the right-hand side and obtain, for instance, the following redescription.
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewExpansionRFOCS.png">
+</li>
+</ol>
 
 <hr>
 <!-- hhmts start --> <p>Siren --- Last modified: Wed Aug 1 2012, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
