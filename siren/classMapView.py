@@ -34,10 +34,8 @@ class MapView(GView):
     marg_f = 100.0
     proj_def = "mill"
     proj_names = {"Azimuthal Equidistant": "aeqd",
-                  "Polyconic": "poly",
                   "Gnomonic": "gnom",
                   "Mollweide": "moll",
-                  "Transverse Mercator": "tmerc",
                   "North-Polar Lambert Azimuthal": "nplaea",
                   "Gall Stereographic Cylindrical": "gall",
                   "Miller Cylindrical": "mill",
@@ -53,7 +51,6 @@ class MapView(GView):
                   "Sinusoidal": "sinu",
                   "South-Polar Stereographic": "spstere",
                   "Lambert Conformal": "lcc",
-                  "North-Polar Azimuthal Equidistant": "npaeqd",
                   "Equidistant Conic": "eqdc",
                   "Cylindrical Equidistant": "cyl",
                   "Oblique Mercator": "omerc",
@@ -61,8 +58,8 @@ class MapView(GView):
                   "South-Polar Azimuthal Equidistant": "spaeqd",
                   "Orthographic": "ortho",
                   "Cassini-Soldner": "cass",
-                  "South-Polar Lambert Azimuthal": "splaea",
                   "Robinson": "robin"}
+    
     proj_pk = {"aeqd": ["lat_0", "lon_0", "width", "height"],
                "gnom": ["lat_0", "lon_0", "width", "height"],
                "cass": ["lat_0", "lon_0", "width", "height"],

@@ -571,10 +571,11 @@ class RedTable(GridTable):
             
         mapV = self.parent.getViewX(vid, viewT)
         if vid is None and mapV is not None:
-            self.registerView(mapV.getId(), pos)
+            self.registerView(mapV.getId(), pos, upMenu=False)
             mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
             mapV.updateTitle()
-
+            self.parent.updateMenus()
+            
     def registerView(self, key, pos, upMenu=True):
         self.opened_edits[key] = pos
         if upMenu:
