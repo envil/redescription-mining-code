@@ -28,22 +28,57 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help', 'commons', 'ABOUT', 'LICENSE',
+ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
-ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
-            'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
+ST_FILES = ['classEProjView.py',
+            'classGridTable.py',
+            'classGView.py',
+            'classInterObjects.py',
+            'classMapView.py',
+            'classParaView.py',
+            'classPreferencesDialog.py',
+            'classProj.py',
+            'classSiren.py',
+            'DataWrapper.py',
+            'factView.py',
+            'make_polys.py',
+            'miscDialogs.py',
+            'toolCommMultip.py',
+            'toolMath.py',
+            'tsne.py',
+            'voronoi_poly.py',
+            'voronoi.py']
+
 ST_MORE_FILES=['ez_setup.py']
 #ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
-ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
+ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn', 'shapely']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
-DU_RESOURCES_SIREN=['icons/*', 'help/*', 'ABOUT', 'LICENSE',
+DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 'LICENSE',
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
-DU_FILES = ['siren', 'DataWrapper', 'classGridTable', 'classMapView',
-            'classPreferencesDialog', 'classSiren','miscDialogs']
+DU_FILES = ['siren',
+            'classEProjView',
+            'classGridTable',
+            'classGView',
+            'classInterObjects',
+            'classMapView',
+            'classParaView',
+            'classPreferencesDialog',
+            'classProj',
+            'classSiren',
+            'DataWrapper',
+            'factView',
+            'make_polys',
+            'miscDialogs',
+            'toolCommMultip',
+            'toolMath',
+            'tsne',
+            'voronoi_poly',
+            'voronoi']
+
 DU_PACKAGES = ['reremi']
 
 extra_options = dict(

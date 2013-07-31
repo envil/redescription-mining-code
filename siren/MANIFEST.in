@@ -4,7 +4,10 @@ include reremi/*.py
 include reremi/*.xml
 include reremi/*.xsl
 recursive-include help * 
+recursive-include screenshots *
+recursive-include commons *
 recursive-include icons *
+include ABOUT
 include LICENSE 
 include LICENSE_short
 include MANIFEST.in
