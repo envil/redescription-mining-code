@@ -20,7 +20,7 @@ import pdb
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '1.1.0'
+VERSION = '2.0.0'
 DESCRIPTION="Interactive Geospatial Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"

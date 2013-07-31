@@ -332,7 +332,7 @@ class SKrandProj(DynProj):
 
     PID =  "SKrand"
     SDESC = "Random"
-    title_str = "Random projection"
+    title_str = "Sparse Random Projection"
     fix_parameters = dict(DynProj.fix_parameters)
     fix_parameters.update({"n_components": 2 })
     dyn_f = [random_projection.SparseRandomProjection]
@@ -349,13 +349,12 @@ class SKpcaProj(DynProj):
 
     PID =  "SKpca"
     SDESC = "PCA"
-    title_str = "PCA projection"
+    title_str = "Randomized PCA Projection"
     gen_parameters = dict(Proj.gen_parameters)
     gen_parameters.update({"iterated_power": 3 })
     dyn_f = [decomposition.RandomizedPCA]
 
     def getX(self, X):
-        self.title_str = "PCA projection"
         X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
         return X_pca, 0
 
@@ -365,7 +364,7 @@ class SKisoProj(DynProj):
 
     PID =  "SKiso"
     SDESC = "Isomap"
-    title_str = "Isomap projection"
+    title_str = "Isomap Embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100})
     dyn_f = [manifold.Isomap]
@@ -380,7 +379,7 @@ class SKlleProj(DynProj):
 
     PID =  "SKlle"
     SDESC = "LLE"
-    title_str = "LLE projection"
+    title_str = "Locally Linear Embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
     options_parameters = dict(DynProj.options_parameters)
@@ -399,7 +398,7 @@ class SKmdsProj(DynProj):
 
     PID =  "SKmds"
     SDESC = "MDS"
-    title_str = "MDS embedding"
+    title_str = "Multidimensional Scaling"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_init": 4, "max_iter":100})
     fix_parameters = dict(DynProj.fix_parameters)
@@ -417,7 +416,7 @@ class SKtreeProj(DynProj):
 
     PID =  "SKtree"
     SDESC = "Rand.Trees"
-    title_str = "Totally Random Trees embedding"
+    title_str = "Totally Random Trees Representation"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"max_depth":5, "n_estimators":10})
     fix_parameters = dict(DynProj.fix_parameters)
@@ -435,7 +434,7 @@ class SKspecProj(DynProj):
 
     PID =  "SKspec"
     SDESC = "Spectral"
-    title_str = "Spectral embedding"
+    title_str = "Spectral Embedding"
     dyn_f = [manifold.SpectralEmbedding]
 
     def getX(self, X):
@@ -449,7 +448,7 @@ class SKtsneProj(DynProj):
 
     PID =  "-SKtsne"
     SDESC = "t-SNE"
-    title_str = "t-SNE embedding"
+    title_str = "t-SNE Embedding"
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
     fix_parameters = dict(DynProj.fix_parameters)

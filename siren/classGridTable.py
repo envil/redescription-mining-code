@@ -226,7 +226,6 @@ class GridTable(wx.grid.PyGridTableBase):
             try:
                 return methode(details)
             except IndexError:
-                pdb.set_trace()
                 methode(details)
                 print details
         else:
@@ -878,8 +877,7 @@ class RowTable(GridTable):
             self.sortids = srids
         else:
             self.sortids = ICList([idi for idi in range(len(self.data))], True)
-        self.resetFields()
-        self.updateSort()
+        self.sortP = (None, False)
         self.redraw()
 
     def resetDetails(self, details={}, review=True):
@@ -896,9 +894,12 @@ class RowTable(GridTable):
         self.GetView().SetDefaultColSize(1, True)
         #self.GetView().SetDefaultRowSize(1, True)
         self.GetView().SetColSize(0, 30)
-        self.GetView().SetColSize(1, 30)
+        self.GetView().SetColSize(1, 50)
         for cid in self.sc:
-            self.GetView().SetColSize(cid, 10*len(self.fields[cid][0]))
+            pls = 2
+            if cid == self.sortP[0]:
+                pls = 4
+            self.GetView().SetColSize(cid, 10*(len(self.fields[cid][0])+pls))
 #         self.GetView().SetRowSize(self.getSelectedRow(), 10)
 # #            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
         self.GetView().DisableDragColSize()

@@ -401,6 +401,7 @@ class DataWrapper(object):
         try:
             data = Data(data_filenames, "csv")
         except Exception:
+            self._stopMessage()
             raise
         return data
 
@@ -417,6 +418,7 @@ class DataWrapper(object):
                 filenames.append(coo_filename)
             data = Data(filenames, "multiple")
         except Exception:
+            self._stopMessage()
             raise
         return data
 
@@ -424,13 +426,14 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = open(filename, 'r')
+            filep = codecs.open(filename, encoding='utf-8', mode='r')
         return Data(filep, "xml")
 
 
     def _readRedescriptionsFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
+                self._stopMessage()
                 raise Exception("Cannot load redescriptions if data is not loaded")
             else:
                 data = self.data
@@ -440,7 +443,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = open(filename, 'r')
+            filep = codecs.open(filename, encoding='utf-8', mode='r')
         
         doc = toolRead.parseXML(filep)
         if doc is not None:
@@ -466,6 +469,7 @@ class DataWrapper(object):
     def _readRedescriptionsTXTFromFile(self, filename, data=None):
         if data is None:
             if self.data is None:
+                self._stopMessage()
                 raise Exception("Cannot load redescriptions if data is not loaded")
             else:
                 data = self.data
@@ -473,7 +477,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
-            reds_fp = open(filename, 'r')
+            reds_fp = codecs.open(filename, encoding='utf-8', mode='r')
 
         for line in reds_fp:
             parts = line.strip().split('\t')
@@ -490,13 +494,12 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = open(filename, 'r')
+            filep = codecs.open(filename, encoding='utf-8', mode='r')
 
         return ICDict(PreferencesReader(self.pm).getParameters(filep))
 
     def _readPackageFromFile(self, filename):
         """Loads a package"""
-
         # TODO: Check that file exists
         if not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
@@ -512,6 +515,7 @@ class DataWrapper(object):
             try:
                 plist = plistlib.readPlist(plist_fd)
             except Exception:
+                self._stopMessage()
                 raise
 
             # if plist['filetype_version'] > self.FILETYPE_VERSION:
@@ -527,7 +531,9 @@ class DataWrapper(object):
                 try:
                     fd = package.open(plist['data_filename'], 'r')
                     data = self._readDataFromXMLFile(fd)
-                except Exception:
+                except Exception as e:
+                    print e
+                    self._stopMessage()
                     raise
                 finally:
                     fd.close()
@@ -538,6 +544,7 @@ class DataWrapper(object):
                     fd = package.open(plist['redescriptions_filename'], 'r')
                     reds, rshowids = self._readRedescriptionsFromFile(fd, data)
                 except Exception:
+                    self._stopMessage()
                     raise
                 finally:
                     fd.close()
@@ -548,10 +555,12 @@ class DataWrapper(object):
                     fd = package.open(plist['preferences_filename'], 'r')
                     preferences = self._readPreferencesFromFile(fd)
                 except Exception:
+                    self._stopMessage()
                     raise
                 finally:
                     fd.close()
         except Exception:
+            self._stopMessage()
             raise
         finally:
             package.close()
@@ -585,12 +594,15 @@ class DataWrapper(object):
             self._writePackageToFile(filename, suffix)
         except DataError as details:
             self.logger.printL(1,"Problem writing package.\n%s" % details, "error", "DW")
+            self._stopMessage()
             raise
         except IOError as arg:
             self.logger.printL(1,"Cannot open file for package %s" % filename, "error", "DW")
+            self._stopMessage()
             raise
         except Exception:
             self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "error", "DW")
+            self._stopMessage()
             raise
 
 
@@ -598,7 +610,6 @@ class DataWrapper(object):
     ## The saving function
     def _writePackageToFile(self, filename, suffix='.siren'):
         """Saves all information to a new file"""
-
         if suffix is None:
             (filename, suffix) = os.path.splitext(filename)
         else:
@@ -608,7 +619,6 @@ class DataWrapper(object):
 
         # Tell everybody
         self._startMessage('saving', filename+suffix)
-        
         # Test that we can write to filename
         try:
             f = open(os.path.abspath(filename + suffix), 'w')
@@ -634,6 +644,7 @@ class DataWrapper(object):
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
+            self._stopMessage()
             raise
 
 
@@ -644,6 +655,7 @@ class DataWrapper(object):
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
+            self._stopMessage()
             raise
 
         # Write redescriptions
@@ -653,6 +665,7 @@ class DataWrapper(object):
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
+            self._stopMessage()
             raise
 
         # Write preferences
@@ -662,6 +675,7 @@ class DataWrapper(object):
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
+            self._stopMessage()
             raise
 
         # All's there, so pack
@@ -689,6 +703,7 @@ class DataWrapper(object):
         except Exception:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
+            self._stopMessage()
             raise
         finally:
             package.close()
@@ -718,8 +733,10 @@ class DataWrapper(object):
         try:
             if suffix == ".tex":
                 self._writeRedescriptionsTEX(filename, named)
+            elif suffix == ".queries_names":
+                self._writeRedescriptionsTXT(filename, True)
             elif suffix == ".queries":
-                self._writeRedescriptionsTXT(filename, named)
+                self._writeRedescriptionsTXT(filename, False)
             else:
                 self._writeRedescriptions(filename, named)
         except Exception:
@@ -756,7 +773,7 @@ class DataWrapper(object):
         else:
             names = [None, None]
 
-        with open(filename, 'w') as f:
+        with codecs.open(filename, encoding='utf-8', mode='w') as f:
             f.write("<root>\n")
             f.write("\t<redescriptions>\n")
             for i in range(len(self.reds)):
@@ -773,7 +790,7 @@ class DataWrapper(object):
             f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True))
 
     def _writeData(self, filename, toPackage = False):
-        with open(filename, 'w') as f:
+        with codecs.open(filename, encoding='utf-8', mode='w') as f:
             self.data.writeXML(f)
     
     def _makePlistDict(self):
@@ -830,7 +847,7 @@ class DataWrapper(object):
                 mess = "An error occurred"
             else:
                 mess = action.capitalize()+' done'
-            fnc(action.capitalize()+' done', *args, **kwargs)
+            fnc(mess, *args, **kwargs)
 
     def getPolys(self, pdp, boundaries):
         if pdp is not None and self.pdp != pdp:

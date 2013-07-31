@@ -1,9 +1,18 @@
 CHANGELOG for Siren
 ===================
 
+v2.0.0
+------
+* Added parallel coordinates visualization
+* Added various projections visualization (scikit)
+* Entity selection by picking dot or drawing polygon
+* Disabling entities to recompute support on restricted area
+* Side selective automatic expansion
+* Automatic expansion with subset of entities emphasized
+* Interactive modification of literals'bounds in para.co. view
+
 v1.1.0
 ------
-* Added support for importing CSV files
 * Added option to change colours in plots
 * Changed the icon for Siren data files (OS X bundle only)
 * Updated GEOS to 3.3.6 (OS X bundle only)
@@ -14,6 +23,7 @@ v1.1.0
 
 v1.0.1
 ------
+* Added support for importing CSV files
 * Various bug fixes
 
 v1.0.0
