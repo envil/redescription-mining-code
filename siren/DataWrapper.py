@@ -13,7 +13,6 @@ import sys
 
 import pdb
 
-import make_polys
 from reremi.classRedescription import Redescription
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
@@ -128,10 +127,10 @@ class DataWrapper(object):
     def getCoords(self):
         if self.data is not None and self.data.isGeospatial():
             return self.data.coords
-
+        
     def getCoordsExtrema(self):
         if self.data is not None and self.data.isGeospatial():
-            return [min(self.data.coords[0]), max(self.data.coords[0]), min(self.data.coords[1]), max(self.data.coords[1])]
+            return self.data.getCoordsExtrema()
         return None
 
     def getReds(self):
@@ -849,12 +848,12 @@ class DataWrapper(object):
                 mess = action.capitalize()+' done'
             fnc(mess, *args, **kwargs)
 
-    def getPolys(self, pdp, boundaries):
-        if pdp is not None and self.pdp != pdp:
-            self.pdp = pdp
-            try:
-                self.polys = make_polys.makePolys(self.pdp, boundaries)
-            except Exception as e:
-                self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "error", "DW")
-                self.polys = None
-        return self.polys
+    # def getPolys(self, pdp, boundaries):
+    #     if pdp is not None and self.pdp != pdp:
+    #         self.pdp = pdp
+    #         try:
+    #             self.polys = make_polys.makePolys(self.pdp, boundaries)
+    #         except Exception as e:
+    #             self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "error", "DW")
+    #             self.polys = None
+    #     return self.polys

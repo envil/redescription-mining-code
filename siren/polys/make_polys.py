@@ -1,4 +1,5 @@
 import pdb
+import sys
 import numpy as np
 import voronoi_poly
 import matplotlib.pyplot as plt
@@ -93,3 +94,26 @@ def getContours(obj_polygon):
         loop = False
     return contours
 
+
+def main(argv=[]):
+    style = "plain"
+    marg_f = 100
+    if len(argv) > 2:
+        marg_f = float(argv[2])
+    if len(argv) > 3 and argv[3] == "xml":
+        style = "xml"
+    coords = np.loadtxt(argv[1], unpack=True, usecols=(1,0))
+    llon, ulon, llat, ulat = [min(coords[0]), max(coords[0]), min(coords[1]), max(coords[1])]
+    blon, blat = (ulon-llon)/marg_f, (ulat-llat)/marg_f
+    polys = makePolys(zip(range(len(coords[0])), coords[0], coords[1]), [ulat+blat, llon-blon, ulon+blon, llat-blat])
+    for i in range(10): # len(coords[0])):
+        if len(polys.get(i, [])) > 0:
+            if style == "xml":
+                print " ".join([":".join(map(str,co)) for co in zip(*polys[i][0])])
+            else:
+                print " ".join([",".join(map(str,co)) for co in polys[i][0]])
+        else:
+            print ""
+
+if __name__ == '__main__':
+    main(sys.argv)

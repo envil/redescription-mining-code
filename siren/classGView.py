@@ -613,8 +613,10 @@ class GView(object):
             if self.highl.has_key(lid):
                 while len(self.highl[lid]) > 0:
                     t = self.highl[lid].pop()
-                    if t in self.axe.lines:
+                    if isinstance(t, Line2D) and t in self.axe.lines:
                         self.axe.lines.remove(t)
+                    elif isinstance(t, Polygon) and t in self.axe.patches:
+                        self.axe.patches.remove(t)
                 del self.highl[lid]
 
     def sendEmphasize(self, lids):
@@ -704,30 +706,39 @@ class GView(object):
                 "shape": dot_shape,
                 SParts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],
+                               "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
                 SParts.beta: {"color_e": [i/255.0 for i in colors[1]],
                               "color_f": [i/255.0 for i in colors[1]],
+                              "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
                 SParts.gamma: {"color_e": [i/255.0 for i in colors[2]],
                                "color_f": [i/255.0 for i in colors[2]],
+                               "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
                 SParts.mua: {"color_e": [i/255.0 for i in colors[0]],
                              "color_f": [0.5,0.5,0.5],
+                             "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
                 SParts.mub: {"color_e": [i/255.0 for i in colors[1]],
                              "color_f": [0.5,0.5,0.5],
+                             "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
                 SParts.muaB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[1]],
+                             "shape": dot_shape,
                               "alpha": GView.DOT_ALPHA, "size": dot_size-1},
                 SParts.mubB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[0]],
+                             "shape": dot_shape,
                               "alpha": GView.DOT_ALPHA, "size": dot_size-1},
                 SParts.mud: {"color_e": [0.5,0.5,0.5],
                              "color_f": [0.5, 0.5, 0.5],
+                             "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
                 SParts.delta: {"color_e": [0.5,0.5,0.5],
                                "color_f": [0.5, 0.5, 0.5],
+                               "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size}
                 }
         

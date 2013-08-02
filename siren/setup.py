@@ -42,17 +42,14 @@ ST_FILES = ['classEProjView.py',
             'classSiren.py',
             'DataWrapper.py',
             'factView.py',
-            'make_polys.py',
             'miscDialogs.py',
             'toolCommMultip.py',
             'toolMath.py',
-            'tsne.py',
-            'voronoi_poly.py',
-            'voronoi.py']
+            'tsne.py']
 
 ST_MORE_FILES=['ez_setup.py']
 #ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
-ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn', 'shapely']
+ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
@@ -71,13 +68,10 @@ DU_FILES = ['siren',
             'classSiren',
             'DataWrapper',
             'factView',
-            'make_polys',
             'miscDialogs',
             'toolCommMultip',
             'toolMath',
-            'tsne',
-            'voronoi_poly',
-            'voronoi']
+            'tsne']
 
 DU_PACKAGES = ['reremi']
 

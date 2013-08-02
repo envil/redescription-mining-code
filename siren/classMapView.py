@@ -33,7 +33,8 @@ class MapView(GView):
 
     marg_f = 100.0
     proj_def = "mill"
-    proj_names = {"Azimuthal Equidistant": "aeqd",
+    proj_names = {"None": None,
+                  "Azimuthal Equidistant": "aeqd",
                   "Gnomonic": "gnom",
                   "Mollweide": "moll",
                   "North-Polar Lambert Azimuthal": "nplaea",
@@ -98,20 +99,14 @@ class MapView(GView):
         self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
         self.bm, args_all = self.makeBasemapProj()
-        self.mapoly = self.getMapPoly() # & (self.bm.projection == self.proj_def)
+
+        self.coords_proj = self.mapCoords(self.parent.dw.getCoords(), self.bm)
         
-        self.bm.ax = self.MapfigMap.add_axes([0, 0, 1, 1])
-        self.axe = self.bm.ax
+        self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
+        if self.bm is not None:
+            self.bm.ax = self.axe
 
         self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
-        if self.parent.dw.getCoords() is not None:
-            self.coords_proj = self.bm(self.parent.dw.getCoords()[0], self.parent.dw.getCoords()[1])
-            self.polys = None
-            if self.mapoly:
-                pdp = zip(range(len(self.coords_proj[0])), self.coords_proj[0], self.coords_proj[1])
-                bx, by = self.bm([args_all["llcrnrlon"]+0.001, args_all["urcrnrlon"]-0.001],
-                                 [args_all["llcrnrlat"]+0.001, args_all["urcrnrlat"]-0.001])
-                self.polys = self.makePolys(pdp, [by[1], bx[0], by[0], bx[1]])
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -143,17 +138,7 @@ class MapView(GView):
 
             for idp, pi in enumerate(self.suppABCD):
                 if pi != SParts.delta and draw_settings.has_key(pi) and selv[idp] > 0:
-                    if self.polys is not None:
-                        for ppi, p in enumerate(self.polys[idp]):
-                            self.axe.add_patch(Polygon(p, closed=True, fill=True, gid="%d.%d" % (idp, ppi+1), picker=True,
-                                                   fc=draw_settings[pi]["color_f"], ec=draw_settings[pi]["color_e"],
-                                                   alpha=draw_settings[pi]["alpha"]*selv[idp]))
-                                
-                    else:
-                        self.bm.plot(self.getCoords(0,idp), self.getCoords(1,idp), gid="%d.%d" % (idp, 1),
-                               mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                               marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                               linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=2)
+                    self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)
@@ -167,21 +152,16 @@ class MapView(GView):
                 continue
             pi = self.suppABCD[lid]
             self.highl[lid] = []
-            if self.suppABCD[lid] == SParts.delta:
-                self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
-                                                     mfc=colhigh, mec=draw_settings[pi]["color_e"],
-                                                     marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                                                     markeredgewidth=1, linestyle='None', picker=2, gid="%d.%d" % (lid, 1)))
-
-            else:
-                self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
-                                                     mfc=colhigh, mec=draw_settings[pi]["color_e"],
-                                                     marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                                                     markeredgewidth=1, linestyle='None'))
+            dsetts = {"shape": draw_settings[pi]["shape"],
+                      "color_f": colhigh,
+                      "color_e": draw_settings[pi]["color_e"],
+                      "size": draw_settings[pi]["size"],
+                      "alpha": draw_settings[pi]["alpha"]}
+            self.highl[lid].extend(self.drawEntity(lid, dsetts, picker=self.suppABCD[lid] == SParts.delta))
 
             if len(lids) == 1:
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
+                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(self.getCoords(0,lid)[0], self.getCoords(1,lid)[0]),  xycoords='data',
                                                      xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
                                                      size=10, va="center", backgroundcolor="#FFFFFF",
                                                      bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
@@ -219,8 +199,10 @@ class MapView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-    def makePolys(self, pdp, boundaries):
-        return self.parent.dw.getPolys(pdp, boundaries)
+    def getPCoords(self):
+        if self.coords_proj is None:
+            return []
+        return [(self.coords_proj[0][i][0], self.coords_proj[1][i][0]) for i in range(len(self.coords_proj[0]))]
 
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:
@@ -233,9 +215,22 @@ class MapView(GView):
 
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:
-            points = np.transpose((self.getCoords(0), self.getCoords(1)))
-            return [i for i,point in enumerate(points) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SParts.delta)]
+            return [i for i,point in enumerate(self.getPCoords()) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SParts.delta)]
         return []
+
+    def mapCoords(self, coords, bm=None):
+        self.mapoly = self.getMapPoly() & (min([len(cs) for cs in coords[0]]) > 2)
+        if bm is None:
+            return coords
+        proj_coords = [[],[]]
+        for i in range(len(coords[0])):
+            p0, p1 = bm(coords[0][i], coords[1][i])
+            proj_coords[0].append([np.mean(p0)] + list(p0))
+            proj_coords[1].append([np.mean(p1)] + list(p1))
+        return proj_coords
+
+    def drawPoly(self):
+        return self.mapoly 
 
     def getMapPoly(self):
         t = self.parent.dw.getPreferences()
@@ -244,6 +239,22 @@ class MapView(GView):
         except:
             mapoly = MapView.MAP_POLY
         return mapoly
+
+    def drawEntity(self, idp, dsetts, picker=False, selv=1):
+        if picker:
+            args = {"picker": dsetts["size"], "gid": "%d.%d" % (idp, 1)}
+        else:
+            args = {}
+        if self.drawPoly():
+            return [self.axe.add_patch(Polygon(zip(self.getCoords(0,idp)[1:], self.getCoords(1,idp)[1:]), closed=True, fill=True,
+                                              fc=dsetts["color_f"], ec=dsetts["color_e"], alpha=dsetts["alpha"]*selv, **args))]
+                    
+        else:
+            return self.axe.plot(self.getCoords(0,idp)[:1], self.getCoords(1,idp)[:1],
+                                 mfc=dsetts["color_f"], mec=dsetts["color_e"],
+                                 marker=dsetts["shape"], markersize=dsetts["size"],
+                                 linestyle='None', alpha=dsetts["alpha"]*selv, **args)
+        
 
     def getBasemapProjSetts(self):
         proj = self.proj_def 
@@ -297,6 +308,8 @@ class MapView(GView):
 
     def makeBasemapProj(self):
         proj, resolution = self.getBasemapProjSetts()
+        if proj is None:
+            return None, None
         llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
         blon, blat = (ulon-llon)/self.marg_f, (ulat-llat)/self.marg_f
         rsphere=6370997.0
@@ -318,7 +331,9 @@ class MapView(GView):
             args_p[param_k] = args_all[param_k]
         return mpl_toolkits.basemap.Basemap(**args_p), args_all
         
-    def makeBasemapBack(self, bm):
+    def makeBasemapBack(self, bm=None):
+        if bm is None:
+            return
         draws, colors, more = self.getBasemapBackSetts()
         bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
         if draws["rivers"]:

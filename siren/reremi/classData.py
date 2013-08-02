@@ -3,6 +3,7 @@ import os.path
 import numpy as np
 import scipy.sparse
 import codecs, re
+from itertools import chain
 
 from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query 
 from classRedescription import Redescription
@@ -1109,7 +1110,7 @@ class Data:
             output.write("\t<coordinates>\n")
             for coord in self.coords:
                 output.write("\t\t<coordinate>\n")
-                output.write("\t\t\t<values>" + ",".join(map(str, coord)) +"</values>\n")
+                output.write("\t\t\t<values>" + ",".join([":".join(map(str, cs)) for cs in coord]) +"</values>\n")
                 output.write("\t\t</coordinate>\n")
             output.write("\t</coordinates>\n")
         output.write("</data>\n")
@@ -1174,6 +1175,13 @@ class Data:
     def getCoords(self):
         return self.coords
 
+    def getCoordsExtrema(self):
+        if self.isGeospatial():
+            return [min(chain.from_iterable(self.coords[0])), max(chain.from_iterable(self.coords[0])), min(chain.from_iterable(self.coords[1])), max(chain.from_iterable(self.coords[1]))]
+        return None
+
+        return self.coords
+
     def hasNames(self):
         for side in [0,1]:
             for col in self.cols[side]:
@@ -1228,9 +1236,17 @@ def readDNCFromCSVFiles(filenames):
 
 def parseDNCFromCSVData(csv_data):
     cols = [[],[]]
-    tmp = zip(*csv_data.get("coord", None))
-    coords = [np.array(map(float, tmp[1])), np.array(map(float, tmp[0]))]
-    
+    coords = None
+    if csv_data.get("coord", None) is not None:
+        try:
+            tmp = zip(*csv_data["coord"])
+
+            coords = np.array([[map(float, p.strip(" :").split(":")) for p in tmp[1]],
+                               [map(float, p.strip(" :").split(":")) for p in tmp[0]]])
+
+        except Exception:
+            coords = None
+        
     for side in [0,1]:
         indices = csv_data['data'][side]["order"]
         N = len(indices)
@@ -1282,14 +1298,16 @@ def readDNCFromXMLFile(filename):
                 print "Number of variables found don't match expectations (%d ~ %d)!" % (nb_vars, len(cols[side]))
         ctmp = doc.getElementsByTagName("coordinates")
         if len(ctmp) == 1:
-            coords = []
+            coord = []
             for cotmp in ctmp[0].getElementsByTagName("coordinate"):
                 tmp_txt = toolRead.getTagData(cotmp, "values")
                 if tmp_txt is not None:
-                    coords.append(np.array(map(float, re.split(Data.separator_str, tmp_txt.strip()))))
-            if len(coords) != 2 or len(coords[0]) != len(coords[1]) or len(coords[0]) != N:
-                coords = None
-    return (cols, N, coords)
+                    coord.append([map(float, p.strip(":").split(":")) for p in re.split(Data.separator_str, tmp_txt.strip())])
+            if len(coord) != 2 or len(coord[0]) != len(coord[1]) or len(coord[0]) != N:
+                coord = None
+            else:
+                coord = np.array(coord)
+    return (cols, N, coord)
 
 def readDNCFromMulFiles(filenames):
     cols, N, coords = [[],[]], 0, None
@@ -1330,8 +1348,20 @@ def readDNCFromMulFiles(filenames):
     return (cols, N, coords)
         
 def readCoords(filename):
-    coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
-    return coord
+    coord = [[], []]
+    with open(filename) as f:
+        for line in f:
+            parts = line.strip().split(" ")
+            if len(parts)==2:
+                for c in [0,1]:
+                    coord[c].append(map(float, parts[c].strip(" :").split(":")))
+            else:
+                tmp = zip(*[map(float, p.split(",")) for p in parts])
+                for c in [0,1]:
+                    coord[c].append(tmp[c])
+            if len(coord[0][-1]) != len(coord[1][-1]):
+                return None
+    return np.array(coord) 
 
 def readNamesSide(filename):
     a = []
@@ -1542,3 +1572,19 @@ def getDenseArray(vect):
         # return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
     else:
         return np.array([vect])
+
+
+def main():
+    #data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
+    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
+    #print data.getCoordsExtrema()
+    # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")
+    # print data.getCoordsExtrema()
+    data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
+    "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
+    "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names"], "multiple")
+    # data.writeXML(open("tmp.xml", "w"))
+
+if __name__ == '__main__':
+    main()
+

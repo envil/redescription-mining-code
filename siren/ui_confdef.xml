@@ -163,8 +163,9 @@
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Projection to use for the map.</legend>
-	<default><value>13</value></default>
-	<options><value>Albers Equal Area</value>
+	<default><value>14</value></default>
+	<options><value>None</value>
+	         <value>Albers Equal Area</value>
 	         <value>Azimuthal Equidistant</value>
 		 <value>Cassini-Soldner</value>
 		 <value>Cylindrical Equidistant</value>

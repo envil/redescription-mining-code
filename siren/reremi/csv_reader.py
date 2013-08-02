@@ -1,5 +1,6 @@
 import csv
 import sys
+import pdb
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     with open(filename, 'rb') as f:
@@ -35,6 +36,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
 def has_coord(D):
     latitude = ('lat', 'latitude', 'Lat', 'Latitude')
     longitude = ('long', 'longitude', 'Long', 'Longitude')
+    identifiers = ('ids', 'identifiers', 'Ids', 'Identifiers')
 
     hasCoord = False
     coord = (None, None)
@@ -51,29 +53,23 @@ def has_coord(D):
                     break
         if hasCoord:
             break
+
+    for s in identifiers:
+        if s in D['headers']:
+            if not hasCoord:
+                hasCoord = True
+                coord = (D['data'][s], D['data'][s])
+            del D['data'][s]
+            D['headers'].remove(s)
+            break
+
     return (hasCoord, coord)
     
 
 def row_order(L, R):
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
-    if not (LhasCoord or RhasCoord):
-        # Neither has coordinates
-        raise ValueError('At least one data file must have coordinates')
-    elif not (LhasCoord and RhasCoord):
-        # Only one has coordinates, do not re-order rows
-        data = L['data']
-        head = L['headers']
-        # extract the coordinates
-        if LhasCoord:
-            coord = Lcoord
-        else:
-            coord = Rcoord
-        # Sanity check
-        if len(data[0]) != len(R['data'][0]):
-            raise ValueError('The two data sets are not of same size')
-        return (range(len(data[head[0]])), range(len(data[head[0]])), coord)
-    else:
+    if (LhasCoord and RhasCoord):
         # Both have coordinates
         Llat = Lcoord[0]
         Llong = Lcoord[1]
@@ -103,6 +99,26 @@ def row_order(L, R):
         # Order Lcoord according to Lorder
         coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
         return (Lorder, Rorder, coord)
+    else:
+    # if not (LhasCoord or RhasCoord):
+    #     # Neither has coordinates
+    #     raise ValueError('At least one data file must have coordinates')
+    # elif not (LhasCoord and RhasCoord):
+        # Only one has coordinates, do not re-order rows
+        data = L['data']
+        head = L['headers']
+        # extract the coordinates
+        if LhasCoord:
+            coord = Lcoord
+        elif RhasCoord:
+            coord = Rcoord
+        else:
+            coord = None
+        # Sanity check
+        if len(data[0]) != len(R['data'][0]):
+            raise ValueError('The two data sets are not of same size')
+        return (range(len(data[head[0]])), range(len(data[head[0]])), coord)
+
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
@@ -121,7 +137,7 @@ def main(argv=[]):
     print "Left data has", len(res['data'][0]['data'][res['data'][0]['headers'][0]]), "rows"
     print "Left data has", len(res['data'][1]['data'][res['data'][1]['headers'][0]]), "rows"
     print "Coord has", len(res['coord']), "rows"
-        
+
 
 if __name__ == '__main__':
     main(sys.argv)
