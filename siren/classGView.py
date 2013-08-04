@@ -590,8 +590,9 @@ class GView(object):
                                           markeredgewidth=1, linestyle='None'))
 
             if len(lids) == 1:
+                tag = self.parent.dw.data.getRName(lid)
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
+                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
                                                      xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
                                                      size=10, va="center", backgroundcolor="#FFFFFF",
                                                      bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),

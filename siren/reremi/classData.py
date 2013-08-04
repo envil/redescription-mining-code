@@ -52,6 +52,10 @@ class RowE(object):
     def getId(self, details=None):
         return self.rid
 
+    def getRName(self, details=None):
+        return self.data.getRName(self.rid)
+
+
 
 class ColM(object):
 
@@ -932,30 +936,31 @@ class Data:
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
 
-    def __init__(self, cols=[[],[]], N=0, coords=None):
+    def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None):
         self.as_array = [None, None, None]
         self.selected_rows = set()
         if type(N) == int:
             self.cols = cols
             self.N = N
             self.setCoords(coords)
+            self.rnames = rnames
 
         elif type(N) == str:
             try:
                 if N == "multiple":
-                    self.cols, self.N, self.coords = readDNCFromMulFiles(cols)
+                    self.cols, self.N, self.coords, self.rnames = readDNCFromMulFiles(cols)
                 elif N == "csv":
-                    self.cols, self.N, self.coords = readDNCFromCSVFiles(cols)
+                    self.cols, self.N, self.coords, self.rnames = readDNCFromCSVFiles(cols)
                 elif N == "xml":
-                    self.cols, self.N, self.coords = readDNCFromXMLFile(cols)
+                    self.cols, self.N, self.coords, self.rnames = readDNCFromXMLFile(cols)
 
             except DataError:
-                self.cols, self.N, self.coords = [[],[]], 0, None
+                self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
                 raise
 
         else:
             print "Input non recognized!"
-            self.cols, self.N, self.coords = [[],[]], 0, None
+            self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
             raise
             
         if type(self.cols) == list and len(self.cols) == 2:
@@ -969,6 +974,11 @@ class Data:
 
     def getValue(self, side, col, rid):
         return self.cols[side][col].getValue(rid)
+
+    def getRName(self, rid):
+        if self.rnames is not None and rid < len(self.rnames):
+            return self.rnames[rid]
+        return "#%d" % rid
 
     def getStats(self, group=None):
         if group is None:
@@ -1026,10 +1036,19 @@ class Data:
 
     def subset(self, row_ids=None):
         coords = None
+        rnames = None
         if row_ids is None:
             N = self.nbRows()
         else:
             N = sum([len(news) for news in row_ids.values()])
+        if self.rnames is not None:
+            if row_ids is None:
+                rnames = list(self.rnames)
+            else:
+                rnames = ["-" for i in range(N)]
+                for old, news in row_ids.items():
+                    for new in news:
+                        rnames[new]=self.rnames[old]
         if self.coords is not None:
             coords = []
             for coord in self.coords:
@@ -1047,7 +1066,7 @@ class Data:
                 tmp.side = side
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
-        return Data(cols, N, coords)
+        return Data(cols, N, coords, rnames)
 
     def selectedRows(self):
         return self.selected_rows
@@ -1113,6 +1132,11 @@ class Data:
                 output.write("\t\t\t<values>" + ",".join([":".join(map(str, cs)) for cs in coord]) +"</values>\n")
                 output.write("\t\t</coordinate>\n")
             output.write("\t</coordinates>\n")
+        if self.rnames is not None:
+            output.write("\t<rnames>\n")
+            for rname in self.rnames:
+                output.write("\t\t\t<rname>%s</rname>\n" % rname)
+            output.write("\t</rnames>\n")
         output.write("</data>\n")
         output.write("</root>")
         
@@ -1182,6 +1206,9 @@ class Data:
 
         return self.coords
 
+    def hasRNames(self):
+        return self.rnames is not None
+
     def hasNames(self):
         for side in [0,1]:
             for col in self.cols[side]:
@@ -1217,7 +1244,7 @@ class Data:
 ############## READING METHODS
 ############################################################################
 def readDNCFromCSVFiles(filenames):
-    cols, N, coords = [[],[]], 0, None
+    cols, N, coords, rnames = [[],[]], 0, None, None
     csv_params={}; unknown_string=None
     if len(filenames) >= 2:
         left_filename = filenames[0]
@@ -1231,8 +1258,8 @@ def readDNCFromCSVFiles(filenames):
             tmp_data = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
         except ValueError as arg:
             raise DataError('Data error reading csv %s' % arg)
-        cols, N, coords = parseDNCFromCSVData(tmp_data)
-    return cols, N, coords
+        cols, N, coords, rnames = parseDNCFromCSVData(tmp_data)
+    return cols, N, coords, rnames
 
 def parseDNCFromCSVData(csv_data):
     cols = [[],[]]
@@ -1243,7 +1270,6 @@ def parseDNCFromCSVData(csv_data):
 
             coords = np.array([[map(float, p.strip(" :").split(":")) for p in tmp[1]],
                                [map(float, p.strip(" :").split(":")) for p in tmp[0]]])
-
         except Exception:
             coords = None
         
@@ -1264,10 +1290,12 @@ def parseDNCFromCSVData(csv_data):
                 cols[side].append(col)
             else:
                 raise DataError('Unrecognized variable type!')
-    return (cols, N, coords)
+    if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
+        rnames = csv_data["ids"]
+    return (cols, N, coords, rnames)
 
 def readDNCFromXMLFile(filename):
-    (cols, N, coords) = ([[],[]], 0, None)
+    (cols, N, coords, rnames) = ([[],[]], 0, None, None)
     try:
         doc = toolRead.parseXML(filename)
         dtmp = doc.getElementsByTagName("data")
@@ -1307,14 +1335,25 @@ def readDNCFromXMLFile(filename):
                 coord = None
             else:
                 coord = np.array(coord)
-    return (cols, N, coord)
+        ctmp = doc.getElementsByTagName("rnames")
+        if len(ctmp) == 1:
+            rnames = [v.strip() for v in toolRead.getValues(ctmp[0], str, "rname")]
+            if len(rnames) != N:
+                rnames = None
+    return (cols, N, coord, rnames)
 
 def readDNCFromMulFiles(filenames):
-    cols, N, coords = [[],[]], 0, None
+    cols, N, coords, rnames = [[],[]], 0, None, None
     if len(filenames) >= 2:
         (cols, N) = readVariables(filenames[:2])
         if len(filenames) >=5 :
             coords = readCoords(filenames[4])
+            if coords is not None and coords.shape[1] != N:
+                coords = None
+        if len(filenames) >=6 :
+            rnames = readRNames(filenames[5])
+            if rnames is not None and len(rnames) != N:
+                rnames = None
 
         names_filenames = [None, None]
         extension = ".names"
@@ -1345,7 +1384,7 @@ def readDNCFromMulFiles(filenames):
                         cols[side][i].name = tmp_names[i]
                 else:
                     print "Number of names does not match number of variables on side %d." % side
-    return (cols, N, coords)
+    return (cols, N, coords, rnames)
         
 def readCoords(filename):
     coord = [[], []]
@@ -1362,6 +1401,12 @@ def readCoords(filename):
             if len(coord[0][-1]) != len(coord[1][-1]):
                 return None
     return np.array(coord) 
+
+def readRNames(filename):
+    rnames = None
+    with open(filename) as f:
+        rnames = [line.strip() for line in f]
+    return rnames
 
 def readNamesSide(filename):
     a = []
@@ -1575,14 +1620,15 @@ def getDenseArray(vect):
 
 
 def main():
-    #data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
-    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
+    data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
+                 "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
     #print data.getCoordsExtrema()
     # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")
     # print data.getCoordsExtrema()
-    data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
-    "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
-    "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names"], "multiple")
+    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
+    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
+    #              "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names",
+    #              "/home/galbrun/redescriptors/data/rajapaja/entities.names"], "multiple")
     # data.writeXML(open("tmp.xml", "w"))
 
 if __name__ == '__main__':

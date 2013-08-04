@@ -350,8 +350,9 @@ class ParaView(GView):
 
         if len(lids) == 1 and not self.hight.has_key(lid):
             pi = self.suppABCD[lid]
+            tag = self.parent.dw.data.getRName(lid)
             self.hight[lid] = []
-            self.hight[lid].append(self.axe.annotate('%d' % lid, xy=(len(self.ranges)+1, tt),  xycoords='data',
+            self.hight[lid].append(self.axe.annotate(tag, xy=(len(self.ranges)+1, tt),  xycoords='data',
                                                      xytext=(10, 0), textcoords='offset points', color= draw_settings[pi]["color_e"],
                                                      size=10, va="center", backgroundcolor="#FFFFFF",
                                                      bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),

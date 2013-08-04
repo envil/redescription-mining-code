@@ -789,6 +789,10 @@ class RowTable(GridTable):
                   ('id', 'self.data[x].getId')]
     renderer = ColorRenderer
 
+    def __init__(self, parent, tabId, frame, short=None):
+        GridTable.__init__(self, parent, tabId, frame, short)
+        self.fix_col = 0
+
     def setSelectedRow(self,row, col=0):
         if row is None: row = 0
         if col is None: col = 0
@@ -804,10 +808,14 @@ class RowTable(GridTable):
 
     def resetFields(self, dw=None, review=True):
         self.sortP = (None, False)
+        self.fix_col = 2
         if dw is not None:
             self.cols_map = {}
             self.fields = []
             self.fields.extend(self.fields_def)
+            if dw.data.hasRNames():
+                self.fields.append(('name', 'self.data[x].getRName'))
+                self.fix_col += 1
             for side, sideS in [(0, "LHS"),(1, "RHS")]:
                 nb = max(1,len(dw.getDataCols(side))-1.0)
                 for ci, col in enumerate(dw.getDataCols(side)):
@@ -824,9 +832,7 @@ class RowTable(GridTable):
             details = {"aim": "list"}
             details.update(self.details)
             tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
-            if col < 2:
-                return tmp
-            else:
+            if col >= self.fix_col:
                 h = 125*self.fields[col][2]["side"] + int(100*self.fields[col][2]["r"])
                 if tmp == "-":
                     l = 255
@@ -851,13 +857,15 @@ class RowTable(GridTable):
                     return "#h%dl%d#%s" % (h,l,tmp)
                 else:
                     return "#h%dl%d#%s" % (h,l,"")
+            else:
+                return tmp
         else:
             return None
 
     ### GRID METHOD
     def GetColLabelValue(self, col):
         """Return the column label"""
-        if col > 1 and col not in self.sc:
+        if col >= self.fix_col and col not in self.sc:
             name = ""
         else:
             name = " %s " % self.fields[col][0]
@@ -896,6 +904,8 @@ class RowTable(GridTable):
         #self.GetView().SetDefaultRowSize(1, True)
         self.GetView().SetColSize(0, 30)
         self.GetView().SetColSize(1, 50)
+        for i in range(2, self.fix_col):
+            self.GetView().SetColSize(i, 80)
         for cid in self.sc:
             pls = 2
             if cid == self.sortP[0]:
@@ -911,7 +921,7 @@ class RowTable(GridTable):
         self.flipFocusCol(event.GetCol())
 
     def flipFocusCol(self, cid):
-        if cid > 1:
+        if cid >= self.fix_col:
             if cid in self.sc:
                 self.sc.remove(cid)
             else:
@@ -925,13 +935,13 @@ class RowTable(GridTable):
             self.grid.MakeCellVisible(row, cid)
 
     def setFocusCol(self, cid):
-        if cid > 1:
+        if cid >= self.fix_col:
             if cid not in self.sc:
                 self.sc.add(cid)
             self.redraw()
 
     def delFocusCol(self, cid):
-        if cid > 1:
+        if cid >= self.fix_col:
             if cid in self.sc:
                 self.sc.remove(cid)
             self.redraw()

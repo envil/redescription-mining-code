@@ -36,7 +36,6 @@ def read_csv(filename, csv_params={}, unknown_string=None):
 def has_coord(D):
     latitude = ('lat', 'latitude', 'Lat', 'Latitude')
     longitude = ('long', 'longitude', 'Long', 'Longitude')
-    identifiers = ('ids', 'identifiers', 'Ids', 'Identifiers')
 
     hasCoord = False
     coord = (None, None)
@@ -54,32 +53,50 @@ def has_coord(D):
         if hasCoord:
             break
 
+    return (hasCoord, coord)
+
+def has_ids(D):
+    identifiers = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers')
+
+    hasIds = False
+    ids = None
     for s in identifiers:
         if s in D['headers']:
-            if not hasCoord:
-                hasCoord = True
-                coord = (D['data'][s], D['data'][s])
+            if not hasIds:
+                hasIds = True
+                ids = D['data'][s]
             del D['data'][s]
             D['headers'].remove(s)
             break
 
-    return (hasCoord, coord)
-    
+    return (hasIds, ids)    
 
 def row_order(L, R):
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
+    (LhasIds, Lids) = has_ids(L)
+    (RhasIds, Rids) = has_ids(R)
+
+    order_keys = [[],[]]
     if (LhasCoord and RhasCoord):
+        order_keys = [Lcoord, Rcoord]
+    if (LhasIds and RhasIds):
+        order_keys[0].append(Lids)
+        order_keys[1].append(Rids)
+
+    if len(order_keys[0]) > 0:
         # Both have coordinates
-        Llat = Lcoord[0]
-        Llong = Lcoord[1]
-        Rlat = Rcoord[0]
-        Rlong = Rcoord[1]
+        # Llat = Lcoord[0]
+        # Llong = Lcoord[1]
+        # Rlat = Rcoord[0]
+        # Rlong = Rcoord[1]
         # sort per concatenated lat & long
-        Lll = map(lambda x,y: str(x)+str(y), Llat, Llong)
-        Rll = map(lambda x,y: str(x)+str(y), Rlat, Rlong)
-        Lorder= sorted(range(len(Llat)), key=Lll.__getitem__)
-        Rorder= sorted(range(len(Rlat)), key=Rll.__getitem__)
+        Lll = ["::".join(map(str, p)) for p in zip(*order_keys[0])]
+        Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
+        # Lll = map(lambda x,y: str(x)+str(y), Llat, Llong)
+        # Rll = map(lambda x,y: str(x)+str(y), Rlat, Rlong)
+        Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
+        Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
         both = set(Lll).intersection(Rll)
         
         # Remove from Lorder and Rorder the parts that aren't in both
@@ -98,7 +115,12 @@ def row_order(L, R):
 
         # Order Lcoord according to Lorder
         coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
-        return (Lorder, Rorder, coord)
+        ids = None
+        if LhasIds:
+            ids = [Lids[Lorder[i]] for i in range(len(Lorder))]
+        elif RhasIds:
+            ids = [Rids[Rorder[i]] for i in range(len(Rorder))]
+        return (Lorder, Rorder, coord, ids)
     else:
     # if not (LhasCoord or RhasCoord):
     #     # Neither has coordinates
@@ -114,20 +136,30 @@ def row_order(L, R):
             coord = Rcoord
         else:
             coord = None
+
+        ids = None
+        if LhasIds:
+            if len(L["data"]) == len(Lids):
+                ids = Lids
+        elif RhasIds:
+            if len(R["data"]) == len(Rids):
+                ids = Rids
+
+
         # Sanity check
         if len(data[0]) != len(R['data'][0]):
             raise ValueError('The two data sets are not of same size')
-        return (range(len(data[head[0]])), range(len(data[head[0]])), coord)
+        return (range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
 
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
     (Rh, Rd) = read_csv(right_filename, csv_params, unknown_string)
     data = ({'data': Ld, 'headers': Lh}, {'data': Rd, 'headers': Rh})
-    (Lorder, Rorder, coord) = row_order(data[0], data[1])
+    (Lorder, Rorder, coord, ids) = row_order(data[0], data[1])
     data[0]['order'] = Lorder
     data[1]['order'] = Rorder
-    return {'data': data, 'coord': coord}
+    return {'data': data, 'coord': coord, "ids": ids}
 
 
 def main(argv=[]):
