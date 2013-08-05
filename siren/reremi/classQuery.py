@@ -248,9 +248,9 @@ class BoolTerm(Term):
 class CatTerm(Term):
     type_id = 2
     
-    patt = ['^\s*'+Term.patt+'\s*(?P<neg>'+ur'\u2208'+')?(?(neg)|'+ur'\u2209'+')\s*(?P<cat>\d+?)\s*$',
-            '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in\s*(?P<cat>\d+?)\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\d+?)\s*$']
+    patt = ['^\s*\[\s*'+Term.patt+'\s*(?P<neg>'+ur'\u2260'+')?(?(neg)|\=)\s*(?P<cat>\S*)\s*\]\s*$',
+            '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in\s*(?P<cat>\S*)\s*$',
+            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
 
     def __init__(self, ncol, ncat):
         self.col = ncol
@@ -291,7 +291,7 @@ class CatTerm(Term):
             strneg = ''
         else:
             strneg = neg.disp()
-        strcat = '=%i ' % self.cat
+        strcat = '=%s ' % self.cat
         if lenIndex > 0 :
             lenIndex = max(lenIndex-len(strcat),3)
             slenIndex = str(lenIndex)
@@ -314,22 +314,22 @@ class CatTerm(Term):
             symbIn = '\\not\\in'
         
         if type(names) == list  and len(names) > 0:
-            return '%s %s %i' % (names[self.col], symbIn, self.cat)
+            return '%s %s %s' % (names[self.col], symbIn, self.cat)
         else:
-            return '%i %s %i' % (self.col, symbIn, self.cat)
+            return '%i %s %s' % (self.col, symbIn, self.cat)
 
     def dispU(self, neg, names = None):
         if type(neg) == bool:
             neg = Neg(neg)
 
         if neg.boolVal():
-            symbIn = u'\u2209'
+            symbIn = u'\u2260'
         else:
-            symbIn = u'\u2208'
+            symbIn = '='
         if type(names) == list  and len(names) > 0:
-            return ('%s '+symbIn+' %i') % (names[self.col], self.cat)
+            return ('[%s '+symbIn+' %s]') % (names[self.col], self.cat)
         else:
-            return ('%s '+symbIn+' %i') % (self.col, self.cat)
+            return ('[%s '+symbIn+' %s]') % (self.col, self.cat)
 
     def parse(partsU, names=None):
         ncol = None
@@ -346,7 +346,7 @@ class CatTerm(Term):
                 if names is not None and tmpcol in names:
                     ncol = names.index(tmpcol)
             try:
-                cat = int(partsU.group('cat'))
+                cat = partsU.group('cat')
             except ValueError, detail:
                 ncol = None
                 raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
@@ -499,7 +499,7 @@ class NumTerm(Term):
             ub = u' \u2264 %s]' % float(self.upb)
         else:
             ub = ']'
-        negstr = u' %s' % neg.dispU()
+        negstr = u'%s' % neg.dispU()
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]
         else:

@@ -905,7 +905,10 @@ class RowTable(GridTable):
         self.GetView().SetColSize(0, 30)
         self.GetView().SetColSize(1, 50)
         for i in range(2, self.fix_col):
-            self.GetView().SetColSize(i, 80)
+            # details = {"aim": "list"}
+            # details.update(self.details)
+            # sz = max([len("%s" % self.getFieldV(sid, self.fields[i], details)) for sid in self.sortids])
+            self.GetView().SetColSize(i, 80) #10*(sz+2))
         for cid in self.sc:
             pls = 2
             if cid == self.sortP[0]:
@@ -913,7 +916,7 @@ class RowTable(GridTable):
             self.GetView().SetColSize(cid, 10*(len(self.fields[cid][0])+pls))
 #         self.GetView().SetRowSize(self.getSelectedRow(), 10)
 # #            self.GetView().SetColSize(cid, wx.DC().GetTextExtent(self.fields[cid][0]))
-        self.GetView().DisableDragColSize()
+#        self.GetView().DisableDragColSize()
         self.GetView().DisableDragRowSize()
         self.GetView().SetGridCursor(crow,ccol)
 

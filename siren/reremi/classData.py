@@ -305,7 +305,7 @@ class BoolColM(ColM):
         tmpl = ColM.toXML(self)
         strd = "\t<rows>" + ",".join(map(str, self.hold)) +"</rows>\n"
         return tmpl.replace(self.typespec_placeholder, strd)
-
+    
     def getValue(self, rid):
         # self.getVector()
         if self.vect is None:
@@ -314,6 +314,9 @@ class BoolColM(ColM):
             return rid in self.hold
         else:
             return self.vect[rid]
+
+    def getNumValue(self, rid):
+        return self.getValue(rid)
 
     def supp(self):
         return self.hold
@@ -352,8 +355,8 @@ class CatColM(ColM):
             v = listV[i]
             if v is None:
                 miss.add(j)
-            elif re.match(CatColM.n_patt, v):
-                return None
+            # elif re.match(CatColM.n_patt, v):
+            #     return None
             else:
                 if cats.has_key(v):
                     cats[v].add(j)
@@ -373,7 +376,7 @@ class CatColM(ColM):
 
     def getCategories(self, details=None):
         if len(self.sCats) < 5:
-            return ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in sorted(self.sCats.keys())])
+            return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in self.cats()]) + "]"
         else:
             return ("%d [" % len(self.sCats)) + ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in self.cats()[:3]]) + "...]"
 
@@ -387,26 +390,36 @@ class CatColM(ColM):
         return dict([(cat, len(rows)) for cat, rows in self.sCats.items()])
     
     def getValue(self, rid):
-        if self.vect is None:
-            for cat, sp in self.sCats.items():
-                if rid in sp:
-                    return cat
-            return "-"
+        if self.vvals is None:
+            self.getVector()
+        if rid < len(self.vvals):
+            return self.vvals[rid]
         else:
+            return "-"
+
+    def getNumValue(self, rid):
+        if self.vect is None:
+            self.getVector()
+        if rid < len(self.vect):
             return self.vect[rid]
+        else:
+            return "-"
+
 
     def numEquiv(self, v):
         try:
-            return sorted(slef.sCats.keys()).index(v)
+            return sorted(self.sCats.keys()).index(v)
         except:
             return np.nan
 
     def getVector(self):
         if self.vect is None:
             self.vect = super(CatColM, self).getVector()
+            self.vvals = ["-" for i in range(self.N)]
             for v, cat in enumerate(self.cats()):
                 for i in self.sCats[cat]:
                     self.vect[i] = v
+                    self.vvals[i] = cat
         return self.vect
 
     def getType(self, details=None):
@@ -414,6 +427,7 @@ class CatColM(ColM):
 
     def __init__(self, ncolSupp={}, N=-1, nmiss= set()):
         ColM.__init__(self, N, nmiss)
+        self.vvals = None
         self.sCats = ncolSupp
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
 
@@ -438,9 +452,9 @@ class CatColM(ColM):
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
 
-
     def fromXML(self, node):
         ColM.fromXML(self, node)
+        self.sCats = {}
         tmp_txt = toolRead.getTagData(node, "values")
         if tmp_txt is not None:
             rows = set()
@@ -510,7 +524,10 @@ class NumColM(ColM):
         vals = []
         for j, i in enumerate(indices):
             val, prec = NumColM.parseVal(listV[i], j, vals, miss, prec, matchMiss=None)
-        return NumColM(vals, len(indices), miss, prec)
+        if len(vals) > 0 and len(vals) + len(miss) == len(indices):
+            return NumColM(vals, len(indices), miss, prec)
+        else:
+            return None
     parseList = staticmethod(parseList)
     
     def getTerm(self):
@@ -777,6 +794,7 @@ class NumColM(ColM):
         colB_supp.append(tmp_supp)
         colB_min.append(bucket_min)
         colB_max.append(tmp[1][-1])
+        colB_max[0] = colB_max[1]
         return (colB_supp, colB_min, 0, colB_max)
 
     def buckets(self):
@@ -1284,6 +1302,7 @@ def parseDNCFromCSVData(csv_data):
                 col = type_ids.pop().parseList(values, indices)
 
             if col is not None and col.N == N:
+                #print name, col.type_id 
                 col.setId(len(cols[side]))
                 col.side = side
                 col.name = name
@@ -1295,7 +1314,7 @@ def parseDNCFromCSVData(csv_data):
     return (cols, N, coords, rnames)
 
 def readDNCFromXMLFile(filename):
-    (cols, N, coords, rnames) = ([[],[]], 0, None, None)
+    (cols, N, coord, rnames) = ([[],[]], 0, None, None)
     try:
         doc = toolRead.parseXML(filename)
         dtmp = doc.getElementsByTagName("data")
@@ -1322,6 +1341,7 @@ def readDNCFromXMLFile(filename):
                             col.setId(len(cols[side]))
                             col.side = side
                             cols[side].append(col)
+
             if nb_vars != len(cols[side]):
                 print "Number of variables found don't match expectations (%d ~ %d)!" % (nb_vars, len(cols[side]))
         ctmp = doc.getElementsByTagName("coordinates")
@@ -1620,8 +1640,15 @@ def getDenseArray(vect):
 
 
 def main():
-    data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
-                 "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
+    print "UNCOMMENT"
+    # rep = "/home/galbrun/redescriptors/data/vaalikone/"
+    # data = Data([rep+"vaalikone_profiles_re.csv", rep+"vaalikone_questions_re.csv"], "csv")
+    # print data
+    # data.writeXML(open("tmp.xml", "w"))
+    # data2 = Data("tmp.xml", "xml")
+    # print data2
+    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
+    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
     #print data.getCoordsExtrema()
     # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")
     # print data.getCoordsExtrema()

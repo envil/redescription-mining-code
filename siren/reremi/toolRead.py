@@ -1,4 +1,5 @@
 import xml.dom.minidom
+import pdb
 
 def isElementNode(node):
     return node.nodeType == xml.dom.Node.ELEMENT_NODE
@@ -27,7 +28,10 @@ def getNodesText(nodelist):
                 rc = rc + node.data
             if node.nodeType == node.CDATA_SECTION_NODE:
                 rc = rc + node.data.strip("\"")
-        return str(rc)
+        try:
+            return str(rc)
+        except UnicodeEncodeError as e:
+            return  unicode(rc)
 
 def parseToType(raw_value, value_type=None):
 	if value_type is not None and type(raw_value) != value_type:

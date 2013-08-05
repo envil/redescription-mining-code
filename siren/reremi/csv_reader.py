@@ -139,15 +139,15 @@ def row_order(L, R):
 
         ids = None
         if LhasIds:
-            if len(L["data"]) == len(Lids):
+            if len(L["data"].values()[0]) == len(Lids):
                 ids = Lids
         elif RhasIds:
-            if len(R["data"]) == len(Rids):
+            if len(R["data"].values()[0]) == len(Rids):
                 ids = Rids
 
 
         # Sanity check
-        if len(data[0]) != len(R['data'][0]):
+        if len(data.values()[0]) != len(R['data'].values()[0]):
             raise ValueError('The two data sets are not of same size')
         return (range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
 
@@ -163,12 +163,17 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
 
 
 def main(argv=[]):
-    res = importCSV('mammals.csv', 'worldclim.csv', unknown_string='NA')
+    rep = "/home/galbrun/redescriptors/data/vaalikone/"
+    res = importCSV(rep+"vaalikone_profiles_re.csv", rep+"vaalikone_questions_re.csv", unknown_string='NA')
+    #res = importCSV('mammals.csv', 'worldclim.csv', unknown_string='NA')
     print res.keys()
     print res['data'][0].keys()
     print "Left data has", len(res['data'][0]['data'][res['data'][0]['headers'][0]]), "rows"
     print "Left data has", len(res['data'][1]['data'][res['data'][1]['headers'][0]]), "rows"
-    print "Coord has", len(res['coord']), "rows"
+    if res['coord'] is not None:
+        print "Coord has", len(res['coord']), "rows"
+    if res['ids'] is not None:
+        print "Ids has", len(res['ids']), "rows"
 
 
 if __name__ == '__main__':

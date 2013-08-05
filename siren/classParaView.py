@@ -122,7 +122,6 @@ class ParaView(GView):
 
             
     def prepareData(self, osupp=None, top_part=None):
-            
         side_cols = []
         ranges = []
         lit_str = []
@@ -150,7 +149,7 @@ class ParaView(GView):
         precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
         limits = np.vstack([np.array([float(np.min(mat[mcols[sc],:])), np.max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
-        
+
         return data_m, lit_str, limits, ranges, zds
 
 

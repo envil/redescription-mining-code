@@ -48,29 +48,40 @@ def do_filter(params):
     else:
         fn_log = params_l['logfile']
     logger = Log(params_l['verbosity'], fn_log)
-    
-    data = Data([params_l['data_rep']+params_l['data_l']+params_l['ext_l'], params_l['data_rep']+params_l['data_r']+params_l['ext_r']], "multiple")
+
+    fn_l = params_l['data_rep']+params_l['data_l']+params_l['ext_l']
+    fn_r = params_l['data_rep']+params_l['data_r']+params_l['ext_r']
+
+    ### construct filenames
+    if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
+        style_data = "csv"
+        add_info = [{}, "NA"]
+    else:
+        style_data = "multiple"
+        add_info = []
+    data = Data([fn_l, fn_r]+add_info, style_data)
     logger.printL(2, data, "log")
 
-    red = Redescription.fromQueriesPair([Query.parse("1"), Query.parse("13>-9.8<0.4 & 18>12.2<24.6 & 43>56.852<136.46 | 44>183.27<238.78")], data)
-    print "-- #org ------------------------" 
-    print red
-    area = [1408, 1442, 1411, 1444, 1413, 1437, 1406]
-    cust_params = {"red": red, "side":0, "area": area, "in_weight": 10, "out_weight":1}
-    miner = Miner(data, params, logger, cust_params=cust_params)
-    tf = miner.part_run(cust_params)
-    print data, miner.data
-    for ni, red in enumerate(tf["batch"]):
-        print "-- #%d ------------------------" % ni
-        print red
-        red.recompute(data)
-        print red
+    # red = Redescription.fromQueriesPair([Query.parse("1"), Query.parse("13>-9.8<0.4 & 18>12.2<24.6 & 43>56.852<136.46 | 44>183.27<238.78")], data)
+    # print "-- #org ------------------------" 
+    # print red
+    # area = [1408, 1442, 1411, 1444, 1413, 1437, 1406]
+    # cust_params = {"red": red, "side":0, "area": area, "in_weight": 10, "out_weight":1}
+    # miner = Miner(data, params, logger, cust_params=cust_params)
+    # tf = miner.part_run(cust_params)
+    # print data, miner.data
+    # for ni, red in enumerate(tf["batch"]):
+    #     print "-- #%d ------------------------" % ni
+    #     print red
+    #     red.recompute(data)
+    #     print red
 
     # restrict = set(range(500))
-    # ta = loadRedescriptions(fn_queries, data)
-    # for ti, t in enumerate(ta):
-    #     print t.disp()
-    return tf
+    ta = loadRedescriptions(fn_queries, data)
+    for ti, t in enumerate(ta):
+        print t.disp()
+
+    # return tf
         
 def getParams(arguments=[]):
     pref_dir = os.path.dirname(os.path.abspath(__file__))

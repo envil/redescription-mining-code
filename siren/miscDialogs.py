@@ -14,29 +14,35 @@ class ImportDataDialog(object):
         LHStext = wx.StaticText(self.dlg, label='Left-hand side variables file:')
         RHStext = wx.StaticText(self.dlg, label='Right-hand side variables file:')
         Cootext = wx.StaticText(self.dlg, label='Coordinates file:')
+        RNamestext = wx.StaticText(self.dlg, label='Entities file:')
 
         self.LHSfile = None
         self.RHSfile = None
         self.Coofile = None
+        self.RNamesfile = None
 
         self.LHSfileTxt = wx.TextCtrl(self.dlg, value='', size=(500,10), style=wx.TE_READONLY)
         self.RHSfileTxt = wx.TextCtrl(self.dlg, value='', style=wx.TE_READONLY)
         self.CoofileTxt = wx.TextCtrl(self.dlg, value='', style=wx.TE_READONLY)
+        self.RNamesfileTxt = wx.TextCtrl(self.dlg, value='', style=wx.TE_READONLY)
 
         LHSbtn = wx.Button(self.dlg, label='Choose', name='LHS')
         RHSbtn = wx.Button(self.dlg, label='Choose', name='RHS')
         Coobtn = wx.Button(self.dlg, label='Choose', name='Coordinates')
+        RNamesbtn = wx.Button(self.dlg, label='Choose', name='Entities')
 
         LHSbtn.Bind(wx.EVT_BUTTON, self.onButton)
         RHSbtn.Bind(wx.EVT_BUTTON, self.onButton)
         Coobtn.Bind(wx.EVT_BUTTON, self.onButton)
+        RNamesbtn.Bind(wx.EVT_BUTTON, self.onButton)
 
-        gridSizer = wx.FlexGridSizer(rows = 3, cols = 3, hgap = 5, vgap = 5)
+        gridSizer = wx.FlexGridSizer(rows = 4, cols = 3, hgap = 5, vgap = 5)
         gridSizer.AddGrowableCol(1, proportion=1)
         gridSizer.SetFlexibleDirection(wx.HORIZONTAL)
         gridSizer.AddMany([(LHStext, 0, wx.ALIGN_RIGHT), (self.LHSfileTxt, 1, wx.EXPAND), (LHSbtn, 0),
                            (RHStext, 0, wx.ALIGN_RIGHT), (self.RHSfileTxt, 1, wx.EXPAND), (RHSbtn, 0),
-            (Cootext, 0, wx.ALIGN_RIGHT), (self.CoofileTxt, 1, wx.EXPAND), (Coobtn, 0)])
+                           (Cootext, 0, wx.ALIGN_RIGHT), (self.CoofileTxt, 1, wx.EXPAND), (Coobtn, 0),
+                           (RNamestext, 0, wx.ALIGN_RIGHT), (self.RNamesfileTxt, 1, wx.EXPAND), (RNamesbtn, 0)])
 
         btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
         topSizer = wx.BoxSizer(wx.VERTICAL)
@@ -48,7 +54,7 @@ class ImportDataDialog(object):
 
         self.open_dir = os.path.expanduser('~/')
         self.wcd = 'All files|*|Numerical Variables (*.densenum / *.datnum)|*.densenum/*.datnum|Boolean Variables (*.sparsebool / *.datbool)|*.sparsebool/*.datbool'
-        self.coo_wcd = 'All files|*|Information files (*.names)|*.names'
+        self.names_wcd = 'All files|*|Information files (*.names)|*.names'
 
 
     def showDialog(self):
@@ -57,7 +63,7 @@ class ImportDataDialog(object):
                 if self.RHSfile is None:
                     self.parent.dw.importDataFromMulFile(self.LHSfile)
                 else:
-                    self.parent.dw.importDataFromMulFiles([self.LHSfile, self.RHSfile], None, self.Coofile)
+                    self.parent.dw.importDataFromMulFiles([self.LHSfile, self.RHSfile], None, self.Coofile, self.RNamesfile)
             except:
                 pass
                 ##raise
@@ -74,8 +80,8 @@ class ImportDataDialog(object):
     def onButton(self, e):
         button = e.GetEventObject()
         btnName = button.GetName()
-        if btnName == 'Coordinates':
-            wcd = self.coo_wcd
+        if btnName == 'Coordinates' or  btnName == 'Entities':
+            wcd = self.names_wcd
         else:
             wcd = self.wcd
         open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
@@ -95,6 +101,10 @@ class ImportDataDialog(object):
             elif btnName == 'Coordinates':
                 self.CoofileTxt.ChangeValue(path)
                 self.Coofile = path
+            elif btnName == 'Entities':
+                self.RNamesfileTxt.ChangeValue(path)
+                self.RNamesfile = path
+
 
 
 class ImportDataCSVDialog(object):

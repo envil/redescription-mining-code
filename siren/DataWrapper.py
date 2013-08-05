@@ -252,16 +252,18 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-    def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename):
+    def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
         fnames = list(data_filenames)
         if names_filenames is not None:
             fnames += names_filenames
         if coo_filename is not None:
             fnames += [coo_filename]
+        if entities_filename is not None:
+            fnames += [entities_filename]
         self._startMessage('importing', fnames)
         
         try:
-            tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename)
+            tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename, entities_filename)
         except DataError as details:
             self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
             self._stopMessage()
@@ -404,7 +406,7 @@ class DataWrapper(object):
             raise
         return data
 
-    def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename):
+    def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
         ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
             
@@ -415,6 +417,8 @@ class DataWrapper(object):
                 filenames.extend(names_filenames)
             if coo_filename is not None:
                 filenames.append(coo_filename)
+            if entities_filename is not None:
+                filenames.append(entities_filename)
             data = Data(filenames, "multiple")
         except Exception:
             self._stopMessage()
@@ -661,6 +665,7 @@ class DataWrapper(object):
         try:
             if self.reds is not None and len(self.reds) > 0:
                 self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, toPackage = True)
+                
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
