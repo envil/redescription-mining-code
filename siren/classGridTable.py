@@ -1,4 +1,4 @@
-import wx, wx.grid, re, colorsys, random, datetime
+import wx, wx.grid, re, colorsys, random, datetime, math
 from factView import ViewFactory
 from reremi.toolICList import ICList
 from reremi.classQuery import Query, Literal
@@ -834,7 +834,7 @@ class RowTable(GridTable):
             tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
             if col >= self.fix_col:
                 h = 125*self.fields[col][2]["side"] + int(100*self.fields[col][2]["r"])
-                if tmp == "-":
+                if tmp == "-" or (type(tmp) is float and math.isnan(tmp)):
                     l = 255
                 else:
                     rangeV = self.fields[col][2]["range"]
@@ -856,7 +856,10 @@ class RowTable(GridTable):
                 if col in self.sc:
                     return "#h%dl%d#%s" % (h,l,tmp)
                 else:
-                    return "#h%dl%d#%s" % (h,l,"")
+                    try:
+                        return "#h%dl%d#%s" % (h,l,"")
+                    except TypeError:
+                        print h,l, tmp, self.fields[col][2]["range"]
             else:
                 return tmp
         else:

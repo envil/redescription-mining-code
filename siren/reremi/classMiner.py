@@ -124,7 +124,8 @@ class Miner:
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (self.constraints.max_var()*2-min([self.constraints.max_var()*2]+[len(r) for r in reds]))*self.progress_ss["generation"]
+        self.progress_ss["expansion"] = (self.constraints.max_var()[0]-min([self.constraints.max_var()[0]]+[len(r.queries[0]) for r in reds])+
+                                         self.constraints.max_var()[1]-min([self.constraints.max_var()[1]]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         
@@ -158,7 +159,7 @@ class Miner:
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (self.constraints.max_var()-1)*2*self.progress_ss["generation"]
+        self.progress_ss["expansion"] = (self.constraints.max_var()[0]+self.constraints.max_var()[0]-2)*2*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.max_red()*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         

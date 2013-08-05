@@ -455,13 +455,19 @@ class CatColM(ColM):
     def fromXML(self, node):
         ColM.fromXML(self, node)
         self.sCats = {}
+        count_miss = self.N
         tmp_txt = toolRead.getTagData(node, "values")
         if tmp_txt is not None:
             rows = set()
-            for row_id, cat in enumerate(re.split(Data.separator_str, tmp_txt.strip())):
+            row_id = 0
+            for cat in re.split(Data.separator_str, tmp_txt.strip()):
+                while row_id in self.missing:
+                    row_id+=1
                 self.sCats.setdefault(cat, set()).add(row_id)
-                rows.add(row_id)
-            self.missing -= rows
+                count_miss -= 1
+                row_id += 1
+            if count_miss != len(self.missing):
+                raise DataError("Error reading real values, not the expected number of values!")
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
 
     def toXML(self):
@@ -579,13 +585,15 @@ class NumColM(ColM):
 
     def getVector(self):
         if self.vect is None:
-            if self.isDense():
+            if self.isDense() and not self.hasMissing():
                 if len(self.sVals) > 0:
                     self.vect = zip(*sorted(self.sVals,key=lambda x:x[1]))[0]
                 else:
                     self.vect = []
             else:
                 self.vect = dict([(i,v) for (v,i) in self.sVals])
+                if self.isDense():
+                    self.vect[-1] = self.numEquiv("-")
                 ### Make sure can recover the length
                 for n in self.missing:
                     self.vect[n] = self.numEquiv("-")
@@ -674,8 +682,12 @@ class NumColM(ColM):
         self.sVals = []
         store_type = toolRead.getTagData(node, "store_type")
         if store_type == 'dense':
-            for (i,v) in enumerate(re.split(Data.separator_str, toolRead.getTagData(node, "values"))):
+            i = 0
+            for v in re.split(Data.separator_str, toolRead.getTagData(node, "values")):
+                while i in self.missing:
+                    i+=1
                 val, self.prec = NumColM.parseVal(v, i, self.sVals, miss, self.prec)
+                i+=1
         elif store_type == 'sparse':
             tmp_txt = toolRead.getTagData(node, "values").strip()
             if len(tmp_txt) > 0:
@@ -690,8 +702,10 @@ class NumColM(ColM):
             self.sVals = []
             tmp_hold = set()
             raise DataError("Error reading real values, multiple values for a row!")
-            
-        self.missing -= tmp_hold            
+
+        if len(miss) > 0:
+            raise DataError("Error reading real values, some values could not be parsed!")
+
         self.sVals.sort()
         self.setMode()
 
@@ -1642,11 +1656,16 @@ def getDenseArray(vect):
 def main():
     print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/vaalikone/"
-    # data = Data([rep+"vaalikone_profiles_re.csv", rep+"vaalikone_questions_re.csv"], "csv")
+    # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
     # print data
+    # print data.hasMissing()
+    # print len(data.cols[1][0].missing)
     # data.writeXML(open("tmp.xml", "w"))
     # data2 = Data("tmp.xml", "xml")
     # print data2
+    # print data2.hasMissing()
+    # print data2.cols[1][0].missing == data.cols[1][0].missing
+
     # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
     #print data.getCoordsExtrema()

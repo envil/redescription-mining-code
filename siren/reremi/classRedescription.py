@@ -203,7 +203,7 @@ class Redescription:
     def setFull(self, max_var=None):
         if max_var is not None:
             for side in [0,1]:
-                if self.length(side) >= max_var:
+                if self.length(side) >= max_var[side]:
                     self.lAvailableCols[side] = set()
                 
     def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):

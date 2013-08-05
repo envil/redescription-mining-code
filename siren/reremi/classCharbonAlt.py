@@ -489,7 +489,7 @@ class Charbon:
 
     def subdo22Full(self, colL, colR, side):
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [(None, None, None) for c in configs]
         
@@ -530,11 +530,18 @@ class Charbon:
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if neg in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side):
             configs = configs[:1]
         best = [(None, None, None) for c in configs]
 
         buckets = colE.buckets()
+        bUp = 1
+        if len(buckets[1]) > self.constraints.max_sidebuckets():
+             bUp=3 ## in case of collapsed bucket the threshold is different
+             buckets = colE.collapsedBuckets(self.constraints.max_agg())
+             #pdb.set_trace()
+
+
         ### TODO DOABLE
         if True : # (colF.lenMode() >= self.constraints.min_itm_out() and colE.lenNonMode() >= self.constraints.min_itm_in()) or ( len(buckets) <= 100 ):
             partsMubB = len(colF.miss())
@@ -591,10 +598,11 @@ class Charbon:
         for (i, nF, nE) in configs:
 
             if best[i][0] is not None:
-                tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:])
+                tE = colE.getLiteralBuk(nE, buckets[1], best[i][-1][-1][1:], buckets[bUp])
+                #tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:])
                 if tE is not None:
                     literalsExt.append(tE)
-                    literalsFix.append(Literal(nF, CatTerm(idF, best[i][-1][-1][0])))
+                    literalsFix.append(Literal(nF, CatTerm(colF.getId(), best[i][-1][-1][0])))
                     scores.append(best[i][0][0])
         return (scores, literalsFix, literalsExt)
 

@@ -87,8 +87,12 @@ class Constraints:
         return self._pv["max_seg"]
     def max_sidebuckets(self):
         return self._pv["max_sidebuckets"]
-    def max_var(self):
-        return self._pv["max_var"]
+    def max_var(self, side=None):
+        if self._pv.has_key("lhs_max_var") and self._pv.has_key("rhs_max_var"):
+            return [self._pv["lhs_max_var"], self._pv["rhs_max_var"]]
+        elif self._pv.has_key("max_var"):
+            return [self._pv["max_var"], self._pv["max_var"]]
+        return -1
     def min_impr(self):
         return self._pv["min_impr"]
     def min_itm_c(self):
