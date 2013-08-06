@@ -224,6 +224,8 @@ class AxesProj(Proj):
             self.setParameter(axis, float("%d.%d" % scs[ai]))
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
+        for side in [0,1]:
+            self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
         for side in [0,1]:
             if details[mcols[scs[side]]]["type"] != NumColM.type_id:
@@ -262,6 +264,8 @@ class VrsProj(Proj):
             self.setParameter(axis, scs[ai])
             self.labels[ai] = "%s" % scs[ai]
         self.coords_proj = [mat[:,rids.index(scs[0])], mat[:,rids.index(scs[1])]]
+        for side in [0,1]:
+            self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
 
     def getAxisLabel(self, axi):
@@ -282,17 +286,23 @@ class DynProj(Proj):
                 mat = self.data.T
             else:
                 mat = self.data
+            idsNAN = np.where(~np.isfinite(mat))
+            mat[idsNAN] = np.nanmin(mat) -1
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
                 if len(self.mcols) == 0:
                     return
-
+                idsNAN = np.where(~np.isfinite(mat))
+                mat[idsNAN] = np.nanmin(mat) -1
                 matn = toolMath.withen(mat.T)
             else:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
                 if len(self.mcols) == 0:
                     return
+                
+                idsNAN = np.where(~np.isfinite(mat))
+                mat[idsNAN] = np.nanmin(mat) -1
 
                 if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
                     selected = np.array(list(self.data.nonselectedRows()))

@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.mlab import dist_point_to_segment
 
-class DraggableResizeableRectangle:
+class ResizeableRectangle:
     # draggable rectangle with the animation blit techniques; see
     # http://www.scipy.org/Cookbook/Matplotlib/Animations
 
     """
-    Draggable and resizeable rectangle with the animation blit techniques.
+    Resizeable rectangle with the animation blit techniques.
     Based on example code at
 http://matplotlib.sourceforge.net/users/event_handling.html
     If *allow_resize* is *True* the recatngle can be resized by dragging its
@@ -131,6 +131,36 @@ data"""
                     else:
                         self.annotation.set_text("%s" % b)
                     self.annotation.xytext = (x0+0.25, b)
+
+class DraggableRectangle(ResizeableRectangle):
+
+    def update_rect(self):
+        if self.press is None:
+            return
+        x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
+        dx, dy = self.dx, self.dy
+        bt = 1
+        if abs(y0-ypress)<bt*h0:
+            self.rect.set_y(y0+dy)
+                
+            if self.annotation is not None:
+                b = y0+dy+h0/2.0
+                if self.pinf is not None:
+                    self.annotation.set_text("%s" % self.pinf(self.rid, b, -1))
+                else:
+                    self.annotation.set_text("%s" % b)
+                self.annotation.xytext = (x0+0.25, b)
+
+        elif abs(y0+h0-ypress)<bt*h0:
+            self.rect.set_y(y0+dy)
+            
+            if self.annotation is not None:
+                b = y0+dy+h0/2.0
+                if self.pinf is not None:
+                    self.annotation.set_text("%s" % self.pinf(self.rid, b, 1))
+                else:
+                    self.annotation.set_text("%s" % b)
+                self.annotation.xytext = (x0+0.25, b)
 
 
 class MaskCreator(object):

@@ -27,7 +27,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                                  str(len(row))+', should be '+
                                  str(no_of_columns)+')')
             for i in range(len(row)):
-                if row[i] != unknown_string:
+                if row[i] != type(row[i])(unknown_string):
                     data[head[i]].append(row[i])
                 else:
                     data[head[i]].append(None)

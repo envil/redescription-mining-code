@@ -429,7 +429,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = codecs.open(filename, encoding='utf-8', mode='r')
+            filep = open(filename, mode='r')
         return Data(filep, "xml")
 
 
@@ -446,7 +446,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = codecs.open(filename, encoding='utf-8', mode='r')
+            filep = open(filename, mode='r')
         
         doc = toolRead.parseXML(filep)
         if doc is not None:
@@ -480,7 +480,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             reds_fp = filename
         else:
-            reds_fp = codecs.open(filename, encoding='utf-8', mode='r')
+            reds_fp = open(filename, mode='r')
 
         for line in reds_fp:
             parts = line.strip().split('\t')
@@ -497,7 +497,7 @@ class DataWrapper(object):
         if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
             filep = filename
         else:
-            filep = codecs.open(filename, encoding='utf-8', mode='r')
+            filep = open(filename, mode='r')
 
         return ICDict(PreferencesReader(self.pm).getParameters(filep))
 
@@ -665,7 +665,6 @@ class DataWrapper(object):
         try:
             if self.reds is not None and len(self.reds) > 0:
                 self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, toPackage = True)
-                
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -753,7 +752,7 @@ class DataWrapper(object):
             names = self.data.getNames()
         else:
             names = [None, None]
-        with codecs.open(filename, encoding='utf-8', mode='w') as f:
+        with open(filename, mode='w') as f:
             for i in self.rshowids:
                 if self.reds[i].getEnabled():
                     f.write(self.reds[i].dispU(names)+"\n")
@@ -777,7 +776,7 @@ class DataWrapper(object):
         else:
             names = [None, None]
 
-        with codecs.open(filename, encoding='utf-8', mode='w') as f:
+        with open(filename, mode='w') as f:
             f.write("<root>\n")
             f.write("\t<redescriptions>\n")
             for i in range(len(self.reds)):
@@ -794,7 +793,7 @@ class DataWrapper(object):
             f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True))
 
     def _writeData(self, filename, toPackage = False):
-        with codecs.open(filename, encoding='utf-8', mode='w') as f:
+        with open(filename, mode='w') as f:
             self.data.writeXML(f)
     
     def _makePlistDict(self):

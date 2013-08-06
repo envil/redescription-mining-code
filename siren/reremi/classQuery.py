@@ -599,6 +599,9 @@ class Literal:
             return not self.term.truthEval(variableV)
         else:
             return self.term.truthEval(variableV)
+
+    def typeId(self):
+        return self.term.type_id
             
     def col(self):
         return self.term.colId()

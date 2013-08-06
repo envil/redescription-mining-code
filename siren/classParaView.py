@@ -17,7 +17,7 @@ from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView, CustToolbar
-from classInterObjects import DraggableResizeableRectangle
+from classInterObjects import ResizeableRectangle, DraggableRectangle
 import toolMath
 
 import pdb
@@ -36,6 +36,7 @@ class ParaView(GView):
         self.sc = None
         self.sld = None
         self.ri = None
+        self.qcols = None
         GView.__init__(self, parent, vid)
     
     def getId(self):
@@ -137,19 +138,20 @@ class ParaView(GView):
         ranges.insert(pos_axis, [None, None, 1])
         lit_str.insert(pos_axis, "---")
         mat, details, mcols = self.parent.dw.data.getMatrix()
+        idsNAN = np.where(~np.isfinite(mat))
+        mat[idsNAN] = np.random.random(idsNAN[0].shape[0])
         if len(osupp) > 500:
             zds = toolMath.linkageZds(mat, details, side_cols, osupp)
         else:
             Z, d = toolMath.linkage(mat, details, side_cols, osupp)
             zds = [{"Z":Z, "d":d, "ids": range(mat.shape[1])}]
-
+        mat[idsNAN] = np.nan
         mcols[None] = 0
         precisions = [self.parent.dw.data.col(side, col).getPrec() for side,col in side_cols]
         side_cols.insert(pos_axis, None)
         precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
-        limits = np.vstack([np.array([float(np.min(mat[mcols[sc],:])), np.max(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
-
+        limits = np.vstack([np.array([float(np.nanmin(mat[mcols[sc],:])), np.nanmax(mat[mcols[sc],:]), precisions[si]]) for si, sc in enumerate(side_cols)])
         return data_m, lit_str, limits, ranges, zds
 
 
@@ -205,6 +207,7 @@ class ParaView(GView):
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
             tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
             self.limits[pos_axis, :] = [np.min(tt), np.max(tt), 0]
+            self.qcols = [l for l in red.queries[0].listLiterals()]+[None]+[l for l in red.queries[1].listLiterals()]
 
             ### SAMPLING ENTITIES
             reps, clusters = toolMath.sampleZds(self.zds, t)
@@ -220,6 +223,8 @@ class ParaView(GView):
             tt = [(N-i)/(500.0*N)+0.5002 for i in reps]
             #tt = [0.5 for i in reps]
             final = np.vstack((tt, (self.data_m[:,reps] + mask_noise.T)/mask_div.T, tt))
+            idsNAN = np.where(~np.isfinite(final))
+            final[idsNAN] = -1
 
             ### SELECTED DATA
             selected = self.parent.dw.data.selectedRows()
@@ -243,21 +248,31 @@ class ParaView(GView):
             self.axe.set_xticklabels(tmp) #, rotation=20)
 
             ### Bars
-            rects_map = {}
+            rects_drag = {}
+            rects_rez = {}
             for i, rg in enumerate(self.ranges):
                 if rg[0] is not None:
                     bds = [(rg[k]-self.limits[i,0]+k*np.abs(rg[2]))/(self.limits[i,1]+np.abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
                     rects = self.axe.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
-                    if rg[2] == 0:
-                        rects_map[i] = rects[0]
+                    if self.qcols[i] is not None and self.qcols[i].typeId() == 3:
+                        rects_rez[i] = rects[0]
+                    elif self.qcols[i] is not None and self.qcols[i].typeId() == 2:
+                        rects_drag[i] = rects[0]
+
                         
             self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             self.drs = []
             self.ri = None
-            for rid, rect in rects_map.items():
-                dr = DraggableResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
+            for rid, rect in rects_rez.items():
+                dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
                                                   pinf=self.getPinvalue, annotation=self.annotation)
                 self.drs.append(dr)
+
+            for rid, rect in rects_drag.items():
+                dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
+                                                  pinf=self.getPinvalue, annotation=self.annotation)
+                self.drs.append(dr)
+
 
             self.axe.axis((0,len(self.lit_str)+1, 0, 1))
             self.updateEmphasize(self.COLHIGH, review=False)
@@ -287,21 +302,38 @@ class ParaView(GView):
             self.drs[self.ri].do_motion(event)
 
     def getPinvalue(self, rid, b, direc=0):
-        v = b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]
-        prec = int(self.limits[rid, 2])
-        if direc < 0:
-            tmp = 10**-prec*np.ceil(v*10**prec)
-        elif direc > 0:
-            tmp = 10**-prec*np.floor(v*10**prec)
-        else:
-            tmp = np.around(v, prec)            
+        if self.qcols is None or self.qcols[rid] is None:
+            return 0
+        elif self.qcols[rid].typeId() == 3:
+            v = b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]
+            prec = int(self.limits[rid, 2])
+            if direc < 0:
+                tmp = 10**-prec*np.ceil(v*10**prec)
+            elif direc > 0:
+                tmp = 10**-prec*np.floor(v*10**prec)
+            else:
+                tmp = np.around(v, prec)            
 
-        if tmp == self.limits[rid, 1]:
-            tmp = float("Inf")
-        elif tmp == self.limits[rid, 0]:
-            tmp = float("-Inf")
-        return tmp
-
+            if tmp == self.limits[rid, 1]:
+                tmp = float("Inf")
+            elif tmp == self.limits[rid, 0]:
+                tmp = float("-Inf")
+            return tmp
+        elif self.qcols[rid].typeId() == 2:
+            v = int(round(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]))
+            if v > self.limits[rid, 1]:
+                v = self.limits[rid, 1]
+            elif v < self.limits[rid, 0]:
+                v = self.limits[rid, 0]
+            side = 0
+            pos_axis = len(self.current_r.queries[0])
+            if pos_axis < rid:
+                side = 1
+            c = self.parent.dw.getData().col(side, self.qcols[rid].col())
+            if c is not None:
+                return c.getCatFromNum(v)
+            
+            
     def receive_release(self, rid, rect):
         if self.current_r is not None:
             pos_axis = len(self.current_r.queries[0])
@@ -310,16 +342,25 @@ class ParaView(GView):
             if rid > pos_axis:
                 side = 1
                 pos -= (pos_axis+1)
-            ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
-            bounds = [self.getPinvalue(rid, b, direc) for (b,direc) in ys]
             copied = self.current_r.queries[side].copy()
             l = copied.listLiterals()[pos]
-            l.term.setRange(bounds)
-            self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
-                                  + [self.parent.dw.data.col(side, l.col()).width]
-
-            upAll = self.current_r.queries[side].listLiterals()[pos] != l
-            self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
+            alright = False
+            if l.typeId() == 3:
+                ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                bounds = [self.getPinvalue(rid, b, direc) for (b,direc) in ys]
+                l.term.setRange(bounds)
+                alright = True
+            elif l.typeId() == 2:
+                cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                if cat is not None:
+                    l.term.setRange(cat)
+                    alright = True
+            if alright:
+                self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                                   + [self.parent.dw.data.col(side, l.col()).width]
+                
+                upAll = self.current_r.queries[side].listLiterals()[pos] != l
+                self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
 
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):
@@ -340,6 +381,8 @@ class ParaView(GView):
             tmm= (self.data_m[:,lid] + mask_noise)/mask_div
             
             final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
+            idsNAN = np.where(~np.isfinite(final))
+            final[idsNAN] = -1
 
             self.highl[lid] = []
             if lid in self.reps:
@@ -399,36 +442,3 @@ class ParaView(GView):
 
     def OnSlide(self, event):
         self.updateMap()
-
-
-def pickVars(mat, details, side_cols=None, only_enabled=False):
-    types_ids = {BoolColM.type_id: [], CatColM.type_id:[], NumColM.type_id:[]}
-    for i, dt in enumerate(details):
-        if ( dt["enabled"] or not only_enabled ) and ( (side_cols is None) or ((dt["side"], None) in side_cols) or ( (dt["side"], dt["col"]) in side_cols)):
-            if np.std(mat[i,:]) != 0:
-                types_ids[dt["type"]].append(i)
-    types_ids["all"] = list(itertools.chain(*types_ids.values()))
-    return types_ids
-
-
-def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=False, parts=None):
-    if parameters is None:
-        parameters = [{"type": "all", "metric": "seuclidean", "weight": 1}]
-
-        # parameters = [{"type": BoolColM.type_id, "metric": "hamming", "weight": 1},
-        #               {"type": CatColM.type_id, "metric": "hamming", "weight": 1},
-        #               {"type": NumColM.type_id, "metric": "seuclidean", "weight": 1}]
-        
-    types_ids = pickVars(mat, details, side_cols, only_enabled)
-
-    d = np.zeros((mat.shape[1]*(mat.shape[1]-1)/2.0))
-    for typ in parameters:
-        if len(types_ids.get(typ["type"], [])) > 0:
-            if typ["weight"] == "p":
-                weight = 1/len(types_ids[typ["type"]])
-            else:
-                weight = typ["weight"]
-            d += weight*scipy.spatial.distance.pdist(mat[types_ids[typ["type"]],:].T, metric=typ["metric"])
-    if parts is not None:
-        d += 10*max(d)*scipy.spatial.distance.pdist(np.array([parts]).T, "hamming")
-    return d

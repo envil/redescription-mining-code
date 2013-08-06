@@ -362,7 +362,10 @@ class CatColM(ColM):
                     cats[v].add(j)
                 else:
                     cats[v] = set([j])
-        return CatColM(cats, len(indices), miss)
+        if len(cats) > 1:
+            return CatColM(cats, len(indices), miss)
+        else:
+            return None
     parseList = staticmethod(parseList)
 
     def getTerm(self):
@@ -481,6 +484,11 @@ class CatColM(ColM):
 
     def modeCat(self):
         return sorted(self.sCats.keys(),key=lambda x: len(self.sCats[x]))[-1]
+
+    def getCatFromNum(self, n):
+        if n < len(self.sCats):
+            return self.cats()[n]
+        return 0
 
     def cats(self):
         return sorted(self.sCats.keys())
@@ -1309,6 +1317,8 @@ def parseDNCFromCSVData(csv_data):
         indices = csv_data['data'][side]["order"]
         N = len(indices)
         for name in csv_data['data'][side]["headers"]:
+            if len(name) == 0:
+                continue
             values = csv_data['data'][side]["data"][name]
             col = None
             type_ids = [CatColM, NumColM, BoolColM]
@@ -1656,12 +1666,13 @@ def getDenseArray(vect):
 def main():
     print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/vaalikone/"
-    # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
-    # print data
-    # print data.hasMissing()
-    # print len(data.cols[1][0].missing)
-    # data.writeXML(open("tmp.xml", "w"))
-    # data2 = Data("tmp.xml", "xml")
+    # #data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
+    # #print data
+    # # print data.hasMissing()
+    # # print len(data.cols[1][0].missing)
+    # #data.writeXML(open("tmp.xml", "w"))
+    # data2 = Data("data.xml", "xml")
+    # print data2.hasRNames()
     # print data2
     # print data2.hasMissing()
     # print data2.cols[1][0].missing == data.cols[1][0].missing
