@@ -1390,11 +1390,11 @@ def readDNCFromMulFiles(filenames):
     cols, N, coords, rnames = [[],[]], 0, None, None
     if len(filenames) >= 2:
         (cols, N) = readVariables(filenames[:2])
-        if len(filenames) >=5 :
+        if len(filenames) >=5  and filenames[4] is not None:
             coords = readCoords(filenames[4])
             if coords is not None and coords.shape[1] != N:
                 coords = None
-        if len(filenames) >=6 :
+        if len(filenames) >=6  and filenames[5] is not None:
             rnames = readRNames(filenames[5])
             if rnames is not None and len(rnames) != N:
                 rnames = None
@@ -1686,6 +1686,11 @@ def main():
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
     #              "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names",
     #              "/home/galbrun/redescriptors/data/rajapaja/entities.names"], "multiple")
+    data = Data(["/home/galbrun/redescriptors/data/dblp/conference_picked.sparsenum",
+                 "/home/galbrun/redescriptors/data/dblp/coauthor_picked.sparsenum", None, None,
+                 None,
+                 "/home/galbrun/redescriptors/data/dblp/coauthor_picked.names"], "multiple")
+    print data.hasRNames()
     # data.writeXML(open("tmp.xml", "w"))
 
 if __name__ == '__main__':

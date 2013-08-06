@@ -271,6 +271,11 @@ class Siren():
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
 
+                if self.selectedTab["type"] in ["Reds", "Var"]:
+                    ID_DETAILS = wx.NewId()
+                    m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
+                    frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
+                    
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
                 frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
@@ -813,6 +818,21 @@ class Siren():
         self.showTab("exp")
         self.expand(params)
 
+    def OnShowCol(self, event):
+        shw = False
+        if self.selectedTab["type"] in ["Var"]:
+            if self.selectedTab["short"] == "LHS":
+                self.showCol(0, self.selectedTab["tab"].getSelectedPos())
+                shw = True
+            elif self.selectedTab["short"] == "RHS":
+                self.showCol(1, self.selectedTab["tab"].getSelectedPos())
+                shw = True
+        elif self.selectedTab["type"] in ["Reds"]:
+            row = self.tabs["rows"]["tab"].showRidRed(self.tabs["rows"]["tab"].getSelectedRow(), self.selectedTab["tab"].getSelectedItem())
+            shw = True
+        if shw:
+            self.showTab("rows")
+
     def OnMineAll(self, event):
         self.showTab("exp")
         self.expand()
@@ -954,8 +974,10 @@ class Siren():
                                    +'\nYou can find help at '+self.helpInternetURL+'\nor '+self.helpURL, "error", "help")        
 
     def OnAbout(self, event):
-        wx.AboutBox(self.info)
+        wx.AboutBox(self.info)        
 
+    def showCol(self, side, col):
+        self.tabs["rows"]["tab"].showCol(side, col)
             
     def showDetailsBox(self, rid, red):
         row = self.tabs["rows"]["tab"].showRidRed(rid, red)

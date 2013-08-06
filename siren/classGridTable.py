@@ -952,6 +952,11 @@ class RowTable(GridTable):
                 self.sc.remove(cid)
             self.redraw()
 
+    def showCol(self, side, col):
+        if self.cols_map.has_key((side, col)) and self.cols_map[(side, col)] not in self.sc:
+            self.sc.add(self.cols_map[(side, col)])
+            self.redraw()
+            self.grid.MakeCellVisible(self.getSelectedRow(), self.cols_map[(side, col)])
 
     def showRidRed(self, rid, red=None):
         row = self.getRowForItem(rid)

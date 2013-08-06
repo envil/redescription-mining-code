@@ -415,10 +415,8 @@ class DataWrapper(object):
                 filenames.extend([None, None])
             else:
                 filenames.extend(names_filenames)
-            if coo_filename is not None:
-                filenames.append(coo_filename)
-            if entities_filename is not None:
-                filenames.append(entities_filename)
+            if coo_filename is not None or entities_filename is not None:
+                filenames.extend([coo_filename, entities_filename])
             data = Data(filenames, "multiple")
         except Exception:
             self._stopMessage()
