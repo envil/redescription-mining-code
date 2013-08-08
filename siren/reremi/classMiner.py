@@ -30,6 +30,10 @@ class Miner:
         row_ids = None
         if cust_params.has_key("area"):
             inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
+            if params.has_key("in_weight"):
+                inw = params["in_weight"]["data"]
+            if params.has_key("out_weight"):
+                outw = params["out_weight"]["data"]
             weights = dict([(r,outw) for r in range(self.data.nbRows())])
             for old in cust_params["area"]:
                 weights[old] = inw

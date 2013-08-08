@@ -275,6 +275,11 @@ class Siren():
                     ID_DETAILS = wx.NewId()
                     m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
                     frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
+
+                if self.selectedTab["type"] in ["Row"]:
+                    ID_HIGH = wx.NewId()
+                    m_high = menuRed.Append(ID_HIGH, "Highlight in views", "Highlight the entity in all opened views.")
+                    frame.Bind(wx.EVT_MENU, self.OnHigh, m_high)
                     
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
@@ -817,6 +822,11 @@ class Siren():
     def expandFV(self, params=None):
         self.showTab("exp")
         self.expand(params)
+
+    def OnHigh(self, event):
+        if self.selectedTab["type"] in ["Row"]:
+            for tab in ["reds", "exp", "hist"]:
+                self.tabs[tab]["tab"].setAllEmphasizedR([self.selectedTab["tab"].getSelectedPos()], show_info=False, no_off=True)
 
     def OnShowCol(self, event):
         shw = False

@@ -151,6 +151,22 @@
 	<default><value>0</value></default>
       </parameter>
 	<parameter>
+	<name>in_weight</name>
+	<label>Weight Inside</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Weight for entities inside selected area (only when such an area is specified).</legend>
+	<default><value>10</value></default>
+      </parameter>
+	<parameter>
+	<name>out_weight</name>
+	<label>Weight Outside</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Weight for entities outside selected area (only when such an area is specified).</legend>
+	<default><value>1</value></default>
+      </parameter>
+	<parameter>
 	<name>dl_score</name>
 	<label>DL score</label>
 	<parameter_type>single_options</parameter_type>
@@ -178,6 +194,9 @@
 	<options><value>grounded</value><value>optimistic</value><value>pessimistic</value></options>
       </parameter>
     </section>
+  </section>
+  <section>
+    <name>Filtering</name>
     <section>
       <name>Final filtering</name>
       <parameter>

@@ -648,7 +648,11 @@ class RedTable(GridTable):
             return self.emphasized[self.opened_edits[edit_key]]
         return set()
 
-    def setEmphasizedR(self, edit_key, lids=None, show_info=False):
+    def setAllEmphasizedR(self, lids=None, show_info=False, no_off=False):
+        for edit_key in self.opened_edits.keys():
+            self.setEmphasizedR(edit_key, lids, show_info, no_off)
+
+    def setEmphasizedR(self, edit_key, lids=None, show_info=False, no_off=False):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
 
@@ -660,9 +664,13 @@ class RedTable(GridTable):
                 turn_on =  set()
                 self.emphasized[toed] = set()
             else:
-                turn_off = set(lids) & self.emphasized[toed]
                 turn_on =  set(lids) - self.emphasized[toed]
-                self.emphasized[toed].symmetric_difference_update(lids)
+                if no_off:
+                    turn_off = set()
+                    self.emphasized[toed].update(turn_on)
+                else:
+                    turn_off = set(lids) & self.emphasized[toed]
+                    self.emphasized[toed].symmetric_difference_update(lids)
 
             for k,v in self.opened_edits.items():
                 if v == toed:

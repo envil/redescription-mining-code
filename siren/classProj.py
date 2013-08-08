@@ -201,9 +201,9 @@ class Proj(object):
 class AxesProj(Proj):
 
     PID = "AXE"
-    SDESC = "Axis"
+    SDESC = "Scatter"
     whats = ["entities"]
-    title_str = "Axis Projection"
+    title_str = "Scatter Plot"
     gen_parameters = {"Xaxis": -1.0, "Yaxis": -1.0}
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
@@ -237,9 +237,9 @@ class AxesProj(Proj):
 class VrsProj(Proj):
 
     PID = "VRS"
-    SDESC = "Axis"
+    SDESC = "Scatter"
     whats = ["variables"]
-    title_str = "Axis Projection"
+    title_str = "Scatter Plot"
     gen_parameters = dict(Proj.gen_parameters)
     gen_parameters.update({"Xaxis": -1, "Yaxis": -1})
     dyn_f = []
