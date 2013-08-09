@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<?xml-stylesheet type="text/xsl" href="./confdef.xsl"?>
+<?xml-stylesheet type="text/xsl" href="../reremi/confdef.xsl"?>
 <root>
   <info>Interface preferences for the Siren algorithm. A default preferences file can be obtained by copying this file and removing the &#60;default&#62; tags around default values.</info>
   <section>
@@ -163,8 +163,9 @@
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Projection to use for the map.</legend>
-	<default><value>13</value></default>
-	<options><value>Albers Equal Area</value>
+	<default><value>14</value></default>
+	<options><value>None</value>
+	         <value>Albers Equal Area</value>
 	         <value>Azimuthal Equidistant</value>
 		 <value>Cassini-Soldner</value>
 		 <value>Cylindrical Equidistant</value>
@@ -180,19 +181,15 @@
 		 <value>Miller Cylindrical</value>
 		 <value>Mollweide (G)</value>
 		 <value>Near-Sided Perspective</value>
-		 <value>North-Polar Azimuthal Equidistant (P)</value>
 		 <value>North-Polar Lambert Azimuthal (P)</value>
 		 <value>North-Polar Stereographic (P)</value>
 		 <value>Oblique Mercator</value>
 		 <value>Orthographic (G)</value>
-		 <value>Polyconic</value>
 		 <value>Robinson (G)</value>
 		 <value>Sinusoidal (G)</value>
-		 <value>South-Polar Azimuthal Equidistant</value>
-		 <value>South-Polar Lambert Azimuthal</value>
-		 <value>South-Polar Stereographic</value>
+		 <value>South-Polar Lambert Azimuthal (P)</value>
+		 <value>South-Polar Stereographic (P)</value>
 		 <value>Stereographic</value>
-		 <value>Transverse Mercator</value>
 		 <value>van der Grinten (G)</value>
 	</options>
       </parameter>
