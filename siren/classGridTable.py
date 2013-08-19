@@ -121,6 +121,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
     fields_def = []
     renderer = CustRenderer
+    name_m = None
 
     def __init__(self, parent, tabId, frame, short=None):
         wx.grid.PyGridTableBase.__init__(self)
@@ -171,7 +172,6 @@ class GridTable(wx.grid.PyGridTableBase):
     def GetCellBackgroundColor(self, row, col):
         """Return the value of a cell"""
         return wx.Colour(100,100,100)
-
 
     def Hide(self):
         self.grid.Hide()
@@ -244,6 +244,17 @@ class GridTable(wx.grid.PyGridTableBase):
     ### GRID METHOD
     def SetValue(self, row, col, value):
         pass
+
+    def getNamesList(self):
+        """Return the value of a cell"""
+        names_list = []
+        details = {"aim": "list"}
+        details.update(self.details)
+        if self.name_m is not None:
+            for x in self.sortids:
+                v = "%s" % self.getFieldV(x, (0, self.name_m), details)
+                names_list.append((x,v))
+        return names_list
 
     def nbItems(self):
         return len(self.sortids)
@@ -396,8 +407,10 @@ class GridTable(wx.grid.PyGridTableBase):
     def getSelectedCol(self):
         return max(0,self.GetView().GetGridCursorCol())
 
-    def setSelectedRow(self,row, col=0):
-        self.GetView().SetGridCursor(row,0)
+    def setSelectedRow(self, row, col=0):
+        if row is None: row = 0
+        if col is None: col = 0
+        self.GetView().SetGridCursor(row,col)
         self.GetView().SelectRow(row)
 
     def neutraliseSort(self):
@@ -432,6 +445,14 @@ class GridTable(wx.grid.PyGridTableBase):
             self.sortids.sort(key= lambda x: self.getFieldV(x, self.fields[self.sortP[0]], details), reverse=self.sortP[1])
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
+
+    def updateFind(self, matching, non_matching):
+        if len(matching) > 0:
+            self.sortP = (None, False)
+            selected_col = self.getSelectedCol()
+            self.sortids = matching+non_matching
+            self.setSelectedRow(len(matching)-1, selected_col)
+            self.ResetView()
             
     def OnRightClick(self, event):
         if event.GetRow() < self.nbItems():
@@ -459,6 +480,7 @@ class RedTable(GridTable):
                   ('p-value', 'self.data[x].getRoundPVal', None, 60),
                   (u'|E\u2081\u2081|', 'self.data[x].getLenI', None, 60),
                   ('track', 'self.data[x].getTrack', None, 80)]
+    name_m = 'self.data[x].getQueriesU'
 
     def __init__(self, parent, tabId, frame, short=None):
         GridTable.__init__(self, parent, tabId, frame, short)
@@ -467,6 +489,11 @@ class RedTable(GridTable):
         self.opened_edits = {}
         self.emphasized = {}
         self.uptodate = True
+
+
+    def setSelectedRow(self,row, col=0):
+        self.GetView().SetGridCursor(row,0)
+        self.GetView().SelectRow(row)
 
     def resetData(self, data, srids=None):
         GridTable.resetData(self, data, srids)
@@ -764,12 +791,13 @@ class RedTable(GridTable):
 class VarTable(GridTable):     
 
     fields_def = [('','self.data[x].getEnabled'),
-                       ('id', 'self.data[x].getId'),
-                       ('name', 'self.data[x].getName', None, 300),
-                       ('type', 'self.data[x].getType', None, 100)]
+                  ('id', 'self.data[x].getId'),
+                  ('name', 'self.data[x].getName', None, 300),
+                  ('type', 'self.data[x].getType', None, 100)]
     fields_var = {1: [('density', 'self.data[x].getDensity', None, 80)],
                   2:[('categories', 'self.data[x].getCategories', None, 80)],
                   3:[('min', 'self.data[x].getMin', None, 80), ('max', 'self.data[x].getMax', None, 80)]}
+    name_m = 'self.data[x].getName'
 
     def viewData(self, viewT, pos=None):
         if pos is None:
@@ -795,17 +823,12 @@ class RowTable(GridTable):
 
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
+    name_m = None
     renderer = ColorRenderer
 
     def __init__(self, parent, tabId, frame, short=None):
         GridTable.__init__(self, parent, tabId, frame, short)
         self.fix_col = 0
-
-    def setSelectedRow(self,row, col=0):
-        if row is None: row = 0
-        if col is None: col = 0
-        self.GetView().SetGridCursor(row,col)
-        self.GetView().SelectRow(row)
 
     def viewData(self, viewT, pos=None):
         queries = [Query(), Query()]
@@ -823,6 +846,7 @@ class RowTable(GridTable):
             self.fields.extend(self.fields_def)
             if dw.data.hasRNames():
                 self.fields.append(('name', 'self.data[x].getRName'))
+                name_m = 'self.data[x].getRName'
                 self.fix_col += 1
             for side, sideS in [(0, "LHS"),(1, "RHS")]:
                 nb = max(1,len(dw.getDataCols(side))-1.0)

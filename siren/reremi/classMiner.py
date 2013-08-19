@@ -77,14 +77,13 @@ class Miner:
             self.rm = RedModel(data)
 
 
-        ### TODO remove
-        ### Just for relational test, get exclusions
-        # self.deps = []
-        # if self.data.hasNames():
-        #     names = self.data.getNames()
-        #     if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
-        #         for name in names[0]:
-        #             self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
+        ### Dependencies between variables 
+        self.deps = []
+        if self.data.hasNames():
+            names = self.data.getNames()
+            if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
+                for name in names[0]:
+                    self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
                             
     def kill(self):
         self.want_to_live = False
@@ -311,7 +310,7 @@ class Miner:
                             init = -1
                         else:
                             init = 0 
-                        for v in red.availableColsSide(side, self.deps):
+                        for v in red.availableColsSide(side, self.deps, data.single_dataset):
                             if not self.questionLive(): return
 
                             if self.double_check:

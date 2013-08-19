@@ -1,6 +1,6 @@
 import sys
 import wx
-import os.path
+import os.path, re
 from reremi.classData import DataError
 
 import pdb
@@ -213,3 +213,48 @@ class ImportDataCSVDialog(object):
 
 
 
+class FindDialog(object):
+    """Helper class to show the dialog for finding items"""
+    def __init__(self, parent, list_values={}, callback=None):
+        self.parent = parent
+        self.dlg = wx.Dialog(self.parent.toolFrame, title="Find")
+        self.list_values = list_values
+        self.callback = callback
+        
+        self.findTxt = wx.TextCtrl(self.dlg, value='', size=(500,10))
+        self.findTxt.Bind(wx.EVT_KEY_UP, self.OnKey)
+        self.findTxt.SetFocus()
+        btnSizer = self.dlg.CreateButtonSizer(wx.OK)
+
+        topSizer = wx.BoxSizer(wx.HORIZONTAL)
+        topSizer.Add(self.findTxt, flag=wx.EXPAND|wx.ALL, border=5)
+        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
+
+        self.dlg.SetSizer(topSizer)
+        self.dlg.Fit()
+
+    def showDialog(self):
+        if self.dlg.ShowModal() == wx.ID_OK:
+            self.doFind(self.findTxt.GetValue())
+            self.dlg.Destroy()
+
+    def OnKey(self, event):
+        if len(self.findTxt.GetValue()) > 0:
+            self.doFind(self.findTxt.GetValue())
+
+    def doFind(self, patt):
+        matching = []
+        non_matching = []
+
+        try:
+            re.search(patt, "", re.IGNORECASE)
+        except re.error:
+            return
+        
+        for (x, value) in self.list_values:
+            if re.search(patt, value, re.IGNORECASE) is not None:
+                matching.append(x)
+            else:
+                non_matching.append(x)
+        if self.callback is not None:
+            self.callback(matching, non_matching)

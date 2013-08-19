@@ -976,7 +976,8 @@ class Data:
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
 
-    def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None):
+    def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
+        self.single_dataset = single_dataset
         self.as_array = [None, None, None]
         self.selected_rows = set()
         if type(N) == int:
@@ -988,11 +989,11 @@ class Data:
         elif type(N) == str:
             try:
                 if N == "multiple":
-                    self.cols, self.N, self.coords, self.rnames = readDNCFromMulFiles(cols)
+                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromMulFiles(cols)
                 elif N == "csv":
-                    self.cols, self.N, self.coords, self.rnames = readDNCFromCSVFiles(cols)
+                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromCSVFiles(cols)
                 elif N == "xml":
-                    self.cols, self.N, self.coords, self.rnames = readDNCFromXMLFile(cols)
+                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromXMLFile(cols)
 
             except DataError:
                 self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
@@ -1106,7 +1107,7 @@ class Data:
                 tmp.side = side
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
-        return Data(cols, N, coords, rnames)
+        return Data(cols, N, coords, rnames, self.single_dataset)
 
     def selectedRows(self):
         return self.selected_rows
@@ -1137,7 +1138,11 @@ class Data:
         ########## XML DATA
         strd = "<data>\n"
         strd += "\t<nb_entities>%d</nb_entities>\n" % self.N
-        for side in [0,1]:
+        sides = [0,1]
+        if self.single_dataset:
+            strd += "\t<single_dataset>1</single_dataset>\n"
+            sides = [0]
+        for side in sides:
             strd += "\t<side>\n"
             strd += "\t<name>%d</name>\n" % side
             strd += "\t<nb_variables>%d</nb_variables>\n" % len(self.cols[side])
@@ -1158,7 +1163,11 @@ class Data:
         output.write("<root>\n")
         output.write("<data>\n")
         output.write("\t<nb_entities>%d</nb_entities>\n" % self.N)
-        for side in [0,1]:
+        sides = [0,1]
+        if self.single_dataset:
+            output.write("\t<single_dataset>1</single_dataset>\n")
+            sides = [0]
+        for side in sides:
             output.write("\t<side>\n")
             output.write("\t<name>%d</name>\n" % side)
             output.write("\t<nb_variables>%d</nb_variables>\n"% len(self.cols[side]) ) 
@@ -1286,10 +1295,11 @@ class Data:
 def readDNCFromCSVFiles(filenames):
     cols, N, coords, rnames = [[],[]], 0, None, None
     csv_params={}; unknown_string=None
+    single_dataset = False
     if len(filenames) >= 2:
         left_filename = filenames[0]
         right_filename = filenames[1]
-
+        single_dataset = (filenames[0] == filenames[0])
         if len(filenames) >= 3:
             csv_params = filenames[2]
             if len(filenames) >= 4:
@@ -1299,11 +1309,12 @@ def readDNCFromCSVFiles(filenames):
         except ValueError as arg:
             raise DataError('Data error reading csv %s' % arg)
         cols, N, coords, rnames = parseDNCFromCSVData(tmp_data)
-    return cols, N, coords, rnames
+    return cols, N, coords, rnames, single_dataset
 
 def parseDNCFromCSVData(csv_data):
     cols = [[],[]]
     coords = None
+    single_dataset = False
     if csv_data.get("coord", None) is not None:
         try:
             tmp = zip(*csv_data["coord"])
@@ -1339,6 +1350,7 @@ def parseDNCFromCSVData(csv_data):
 
 def readDNCFromXMLFile(filename):
     (cols, N, coord, rnames) = ([[],[]], 0, None, None)
+    single_dataset = False
     try:
         doc = toolRead.parseXML(filename)
         dtmp = doc.getElementsByTagName("data")
@@ -1348,6 +1360,9 @@ def readDNCFromXMLFile(filename):
         if len(dtmp) != 1:
             raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
         N = toolRead.getTagData(dtmp[0], "nb_entities", int)
+        tsd = toolRead.getTagData(dtmp[0], "single_dataset", int)
+        if tsd == 1:
+            single_dataset = True
         for side_data in doc.getElementsByTagName("side"):
             side = toolRead.getTagData(side_data, "name", int)
             if side not in [0,1]:
@@ -1365,6 +1380,12 @@ def readDNCFromXMLFile(filename):
                             col.setId(len(cols[side]))
                             col.side = side
                             cols[side].append(col)
+                            if single_dataset:
+                                ocol = col.subsetCol()
+                                ocol.setId(len(cols[1-side]))
+                                ocol.side = 1-side
+                                cols[1-side].append(ocol)
+                                
 
             if nb_vars != len(cols[side]):
                 print "Number of variables found don't match expectations (%d ~ %d)!" % (nb_vars, len(cols[side]))
@@ -1384,12 +1405,14 @@ def readDNCFromXMLFile(filename):
             rnames = [v.strip() for v in toolRead.getValues(ctmp[0], str, "rname")]
             if len(rnames) != N:
                 rnames = None
-    return (cols, N, coord, rnames)
+    return (cols, N, coord, rnames, single_dataset)
 
 def readDNCFromMulFiles(filenames):
     cols, N, coords, rnames = [[],[]], 0, None, None
+    single_dataset = False
     if len(filenames) >= 2:
         (cols, N) = readVariables(filenames[:2])
+        single_dataset = (filenames[0] == filenames[0])
         if len(filenames) >=5  and filenames[4] is not None:
             coords = readCoords(filenames[4])
             if coords is not None and coords.shape[1] != N:
@@ -1428,7 +1451,7 @@ def readDNCFromMulFiles(filenames):
                         cols[side][i].name = tmp_names[i]
                 else:
                     print "Number of names does not match number of variables on side %d." % side
-    return (cols, N, coords, rnames)
+    return (cols, N, coords, rnames, single_dataset)
         
 def readCoords(filename):
     coord = [[], []]
@@ -1679,18 +1702,19 @@ def main():
 
     # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
-    #print data.getCoordsExtrema()
+    # print data.getCoordsExtrema()
+    # data = Data("/home/galbrun/re.siren_FILES/data.xml", "xml")
     # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")
     # print data.getCoordsExtrema()
     # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
     #              "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names",
     #              "/home/galbrun/redescriptors/data/rajapaja/entities.names"], "multiple")
-    data = Data(["/home/galbrun/redescriptors/data/dblp/conference_picked.sparsenum",
-                 "/home/galbrun/redescriptors/data/dblp/coauthor_picked.sparsenum", None, None,
-                 None,
-                 "/home/galbrun/redescriptors/data/dblp/coauthor_picked.names"], "multiple")
-    print data.hasRNames()
+    # data = Data(["/home/galbrun/redescriptors/data/dblp/conference_picked.sparsenum",
+    #              "/home/galbrun/redescriptors/data/dblp/coauthor_picked.sparsenum", None, None,
+    #              None,
+    #              "/home/galbrun/redescriptors/data/dblp/coauthor_picked.names"], "multiple")
+    # print data.hasRNames()
     # data.writeXML(open("tmp.xml", "w"))
 
 if __name__ == '__main__':

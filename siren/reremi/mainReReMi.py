@@ -79,7 +79,7 @@ def do_filter(params):
     # restrict = set(range(500))
     ta = loadRedescriptions(fn_queries, data)
     for ti, t in enumerate(ta):
-        print t.disp()
+        print t.disp(names)
 
     # return tf
         

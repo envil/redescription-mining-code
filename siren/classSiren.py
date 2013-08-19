@@ -14,7 +14,7 @@ from reremi.toolICList import ICList
 from classGridTable import VarTable, RedTable, RowTable
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
-from miscDialogs import ImportDataDialog, ImportDataCSVDialog
+from miscDialogs import ImportDataDialog, ImportDataCSVDialog, FindDialog
 from factView import ViewFactory
 from toolCommMultip import WorkPlant
 
@@ -280,6 +280,11 @@ class Siren():
                     ID_HIGH = wx.NewId()
                     m_high = menuRed.Append(ID_HIGH, "Highlight in views", "Highlight the entity in all opened views.")
                     frame.Bind(wx.EVT_MENU, self.OnHigh, m_high)
+
+                if self.selectedTab["type"] in ["Row", "Var", "Reds"]:
+                    ID_FIND = wx.NewId()
+                    m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
+                    frame.Bind(wx.EVT_MENU, self.OnFind, m_find)
                     
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
@@ -300,11 +305,11 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
 
                 ID_FILTER_ONE = wx.NewId()
-                m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+F", "Disable redescriptions redundant to current downwards.")
+                m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+R", "Disable redescriptions redundant to current downwards.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
 
                 ID_FILTER_ALL = wx.NewId()
-                m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant\tShift+Ctrl+F", "Disable redescriptions redundant to previous encountered.")
+                m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant\tShift+Ctrl+R", "Disable redescriptions redundant to previous encountered.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
 
                 ID_PROCESS = wx.NewId()
@@ -689,6 +694,11 @@ class Siren():
             except:
                 pass
         save_dlg.Destroy()
+
+    def OnFind(self, event):
+        """Shows a custom dialog to open the three data files"""
+        dlg = FindDialog(self, self.selectedTab["tab"].getNamesList(), self.selectedTab["tab"].updateFind)
+        dlg.showDialog()
 
     def OnImportData(self, event):
         """Shows a custom dialog to open the three data files"""

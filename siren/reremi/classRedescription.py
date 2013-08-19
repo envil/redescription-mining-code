@@ -5,7 +5,6 @@ import toolRead
 import pdb
 
 class Redescription:
-
     diff_score = Query.diff_length + 1
     print_info_full = SParts.infos.keys() + ["card_"+ label for label in SParts.labels] + list(SParts.labels)
     print_info = SParts.infos.keys() + ["card_"+ label for label in SParts.labels]
@@ -162,10 +161,11 @@ class Redescription:
     def length(self, side):
         return len(self.queries[side])
         
-    def availableColsSide(self, side, deps = None):
+    def availableColsSide(self, side, deps = None, single_dataset=False):
         if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
-            tt = set(self.lAvailableCols[side]) # & set(self.lAvailableCols[1-side])
-            # tt = set(self.lAvailableCols[side]) # & set(self.lAvailableCols[1-side])
+            tt = set(self.lAvailableCols[side])
+	    if single_dataset:
+		tt &= set(self.lAvailableCols[1-side])
             if deps is not None and len(deps) > 0:
                 tn = tt
                 excl = set()
@@ -299,6 +299,12 @@ class Redescription:
         self.status = -2
 
 ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
+    def getQueriesU(self, details=None):
+        if details is not None and details.has_key("names"):
+            return self.queries[0].dispU(details["names"][0]) + "---" + self.queries[1].dispU(details["names"][1])
+        else:
+            return self.queries[0].dispU() + "---" + self.queries[1].dispU()
+
     def getQueryLU(self, details=None):
         if details is not None and details.has_key("names"):
             return self.queries[0].dispU(details["names"][0])
