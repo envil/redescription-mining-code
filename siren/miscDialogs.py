@@ -192,8 +192,6 @@ class ImportDataCSVDialog(object):
         else:
             return False
                 
-            
-
     def onButton(self, e):
         button = e.GetEventObject()
         btnName = button.GetName()
@@ -215,28 +213,44 @@ class ImportDataCSVDialog(object):
 
 class FindDialog(object):
     """Helper class to show the dialog for finding items"""
-    def __init__(self, parent, list_values={}, callback=None):
+    def __init__(self, parent, list_values={}, callback=None):        
         self.parent = parent
         self.dlg = wx.Dialog(self.parent.toolFrame, title="Find")
         self.list_values = list_values
         self.callback = callback
         
-        self.findTxt = wx.TextCtrl(self.dlg, value='', size=(500,10))
+        self.findTxt = wx.TextCtrl(self.dlg, value='', size=(500,30))
         self.findTxt.Bind(wx.EVT_KEY_UP, self.OnKey)
         self.findTxt.SetFocus()
-        btnSizer = self.dlg.CreateButtonSizer(wx.OK)
+
+        nextBtn = wx.Button(self.dlg, id=wx.ID_FIND, name='next')
+        nextBtn.Bind(wx.EVT_BUTTON, self.onButton)
+        self.dlg.Bind(wx.EVT_CLOSE, self.OnQuit)
+        # btnSizer = self.dlg.CreateButtonSizer(wx.OK)
+        # btnSizer = self.dlg.CreateStdDialogButtonSizer(WX.OK)
+        # btnSizer.AddButton(wx.Button(self.dlg, id=wx.ID_APPLY, label="Next"))
+        # #btnSizer.AddButton(wx.Button(self.dlg, id=wx.ID_OK, label="OK"))
+        # btnSizer.Realize()
 
         topSizer = wx.BoxSizer(wx.HORIZONTAL)
-        topSizer.Add(self.findTxt, flag=wx.EXPAND|wx.ALL, border=5)
-        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
+        topSizer.Add(self.findTxt, flag=wx.EXPAND|wx.ALL)
+        topSizer.Add(nextBtn, 0)
+        #topSizer.Add(btnSizer, flag=wx.ALL, border=5)
 
         self.dlg.SetSizer(topSizer)
         self.dlg.Fit()
 
     def showDialog(self):
-        if self.dlg.ShowModal() == wx.ID_OK:
-            self.doFind(self.findTxt.GetValue())
-            self.dlg.Destroy()
+        self.dlg.Show()
+        # if self.dlg.ShowModal() == wx.ID_OK:
+        #     #self.doFind(self.findTxt.GetValue())
+        #     
+
+    def onButton(self, e):
+        button = e.GetEventObject()
+        if button.GetId() == wx.ID_FIND:
+            self.doNext()
+            #self.parent.toolFrame.SetFocus()
 
     def OnKey(self, event):
         if len(self.findTxt.GetValue()) > 0:
@@ -245,7 +259,7 @@ class FindDialog(object):
     def doFind(self, patt):
         matching = []
         non_matching = []
-
+        
         try:
             re.search(patt, "", re.IGNORECASE)
         except re.error:
@@ -257,4 +271,11 @@ class FindDialog(object):
             else:
                 non_matching.append(x)
         if self.callback is not None:
-            self.callback(matching, non_matching)
+            self.callback(matching, non_matching, -1)
+
+    def doNext(self):
+        if self.callback is not None:
+            self.callback(cid=None)
+
+    def OnQuit(self, event):
+        self.parent.quitFind()

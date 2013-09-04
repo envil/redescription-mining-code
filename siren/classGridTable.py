@@ -137,7 +137,8 @@ class GridTable(wx.grid.PyGridTableBase):
         self.sortP = (None, False)
         self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
-
+        self.matching = []
+        
         #### GRID
         self.grid = wx.grid.Grid(frame)
         self.grid.SetTable(self)
@@ -446,13 +447,38 @@ class GridTable(wx.grid.PyGridTableBase):
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
 
-    def updateFind(self, matching, non_matching):
+    def updateFindO(self, matching, non_matching, cid=None):
         if len(matching) > 0:
             self.sortP = (None, False)
             selected_col = self.getSelectedCol()
             self.sortids = matching+non_matching
+            self.matching = matching
             self.setSelectedRow(len(matching)-1, selected_col)
             self.ResetView()
+
+    def updateFind(self, matching=None, non_matching=None, cid=None):
+        if matching is not None:
+            self.matching = matching
+        if matching is None or len(matching) > 0:
+            self.setSelectedRow(self.getNextMatch(cid), self.getSelectedCol())
+            self.ResetView()
+
+    def getNextMatch(self, n=None):
+        if n is None:
+            n = self.getSelectedRow()
+        
+        if len(self.matching) > 0:
+            if n >= self.getRowForItem(self.matching[-1]):
+                return self.getRowForItem(self.matching[0])
+            else:
+                for si in range(len(self.matching)):
+                    if self.getRowForItem(self.matching[si]) > n:
+                        return self.getRowForItem(self.matching[si])
+        else:
+            n += 1
+            if n == self.nbItems():
+                n = 0
+            return n
             
     def OnRightClick(self, event):
         if event.GetRow() < self.nbItems():

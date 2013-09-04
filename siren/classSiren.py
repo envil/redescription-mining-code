@@ -49,6 +49,7 @@ class Siren():
          
     def __init__(self):
         self.busyDlg = None
+        self.findDlg = None
         self.dw = None
         self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
@@ -285,6 +286,7 @@ class Siren():
                     ID_FIND = wx.NewId()
                     m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
                     frame.Bind(wx.EVT_MENU, self.OnFind, m_find)
+
                     
                 ID_ENABLED = wx.NewId()
                 m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
@@ -695,10 +697,22 @@ class Siren():
                 pass
         save_dlg.Destroy()
 
+    def quitFind(self):
+        if self.findDlg is not None:
+            self.findDlg.Destroy()
+            self.findDlg = None
+
     def OnFind(self, event):
         """Shows a custom dialog to open the three data files"""
-        dlg = FindDialog(self, self.selectedTab["tab"].getNamesList(), self.selectedTab["tab"].updateFind)
-        dlg.showDialog()
+        if self.findDlg is None: 
+            self.findDlg = FindDialog(self, self.selectedTab["tab"].getNamesList(), self.selectedTab["tab"].updateFind)
+            self.findDlg.showDialog()
+        else:
+            self.findDlg.doNext()
+
+    # def OnFindNext(self, event):
+    #     """Shows a custom dialog to open the three data files"""
+    #     self.selectedTab["tab"].updateFind()
 
     def OnImportData(self, event):
         """Shows a custom dialog to open the three data files"""
@@ -810,6 +824,7 @@ class Siren():
             self.OnPageChanged(-1)
 
     def OnPageChanged(self, event):
+        self.quitFind()
         self.selectedTab = self.tabs[self.tabs_keys[self.tabbed.GetSelection()]]
         self.doUpdates()
 
