@@ -73,6 +73,15 @@
 	<default><value>.sparsebool</value></default>
       </parameter>
       <parameter>
+	<name>str_NA</name>
+	<label>NA representation</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>String representation for missing values (CSV format).</legend>
+	<length>10</length>
+	<default><value>NA</value></default>
+      </parameter>
+      <parameter>
 	<name>result_rep</name>
 	<label>Results repertory</label>
 	<parameter_type>open</parameter_type>
@@ -89,6 +98,15 @@
 	<legend>Name of the file where to store the results.</legend>
 	<length>50</length>
 	<default><value>results</value></default>
+      </parameter>
+      <parameter>
+	<name>pairs_store</name>
+	<label>Pairs store filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Name of the file where to store initial pairs.</legend>
+	<length>250</length>
+	<default><value></value></default>
       </parameter>
       <parameter>
 	<name>ext_queries</name>

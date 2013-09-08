@@ -699,12 +699,11 @@ class Siren():
 
     def quitFind(self):
         if self.findDlg is not None:
-            self.findDlg.Destroy()
             self.findDlg = None
 
     def OnFind(self, event):
         """Shows a custom dialog to open the three data files"""
-        if self.findDlg is None: 
+        if self.findDlg is None:
             self.findDlg = FindDialog(self, self.selectedTab["tab"].getNamesList(), self.selectedTab["tab"].updateFind)
             self.findDlg.showDialog()
         else:

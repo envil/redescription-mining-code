@@ -114,7 +114,10 @@ def row_order(L, R):
                 i += 1
 
         # Order Lcoord according to Lorder
-        coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
+        if LhasCoord:
+            coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
+        else:
+            coord = None
         ids = None
         if LhasIds:
             ids = [Lids[Lorder[i]] for i in range(len(Lorder))]

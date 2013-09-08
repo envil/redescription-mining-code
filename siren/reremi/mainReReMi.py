@@ -55,7 +55,7 @@ def do_filter(params):
     ### construct filenames
     if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
         style_data = "csv"
-        add_info = [{}, "NA"]
+        add_info = [{}, params_l['str_NA']]
     else:
         style_data = "multiple"
         add_info = []
@@ -120,7 +120,7 @@ def run_dl(params):
     ### construct filenames
     if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
         style_data = "csv"
-        add_info = [{}, "NA"]
+        add_info = [{}, params_l['str_NA']]
     else:
         style_data = "multiple"
         add_info = []
@@ -180,7 +180,7 @@ def run(params):
     ### construct filenames
     if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
         style_data = "csv"
-        add_info = [{}, "NA"]
+        add_info = [{}, params_l['str_NA']]
     else:
         style_data = "multiple"
         add_info = []

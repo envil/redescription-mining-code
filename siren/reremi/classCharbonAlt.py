@@ -360,7 +360,7 @@ class Charbon:
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
-        best = (None, None, None)
+        best = []
         bUp=1
         interMat = []
         bucketsL = colL.buckets()
@@ -462,7 +462,7 @@ class Charbon:
                                                          (SParts.partId(SParts.mubB, 1-side), lmissF ), \
                                                          (SParts.partId(SParts.delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
-                                best = self.updateACT(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
+                                best = self.updateACTP33(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
                                 upE-=1
@@ -474,13 +474,13 @@ class Charbon:
                 belowF+=margF[lowF]
                 lowF+=1
 
-        if best[0]:
-            tF = colF.getLiteralBuk(False, bucketsF[1], best[-1][-1][0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], best[-1][-1][2:], bucketsE[bUp])
+        for b in best:
+            tF = colF.getLiteralBuk(False, bucketsF[1], b[-1][-1][0:2])
+            tE = colE.getLiteralBuk(False, bucketsE[1], b[-1][-1][2:], bucketsE[bUp])
             if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
-                scores.append(best[0][0])
+                scores.append(b[0][0])
 
         if flip_side:
             return (scores, literalsE, literalsF)
@@ -491,7 +491,7 @@ class Charbon:
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
         if True not in self.constraints.neg_query(side):
             configs = configs[:1]
-        best = [(None, None, None) for c in configs]
+        best = [[] for c in configs]
         
         for catL in colL.cats():
             ### TODO DOABLE
@@ -512,14 +512,14 @@ class Charbon:
                         tmp_lmiss = lmiss
                         tmp_lin = lin
 
-                    best[i] = self.updateACT(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
+                    best[i] = self.updateACTP22(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
                     
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nL, nR) in configs:
-            if best[i][0] is not None:
-                scores.append(best[i][0][0])
-                literalsFix.append(Literal(nL, CatTerm(colL.getId(), best[i][-1][-1][0])))
-                literalsExt.append(Literal(nR, CatTerm(colR.getId(), best[i][-1][-1][1])))
+            for b in best[i]:
+                scores.append(b[0][0])
+                literalsFix.append(Literal(nL, CatTerm(colL.getId(), b[-1][-1][0])))
+                literalsExt.append(Literal(nR, CatTerm(colR.getId(), b[-1][-1][1])))
         return (scores, literalsFix, literalsExt)
 
 
@@ -532,7 +532,7 @@ class Charbon:
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
         if True not in self.constraints.neg_query(side):
             configs = configs[:1]
-        best = [(None, None, None) for c in configs]
+        best = [[] for c in configs]
 
         buckets = colE.buckets()
         bUp = 1
@@ -584,7 +584,7 @@ class Charbon:
                                 tmp_lmiss = lmiss
                                 tmp_lin = lin
 
-                            best[i] = self.updateACT(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
+                            best[i] = self.updateACTP23(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
 
                         above+=interMat[up]
                         missAbove+=missMat[up]
@@ -597,13 +597,13 @@ class Charbon:
         (scores, literalsFix, literalsExt) = ([], [], [])
         for (i, nF, nE) in configs:
 
-            if best[i][0] is not None:
-                tE = colE.getLiteralBuk(nE, buckets[1], best[i][-1][-1][1:], buckets[bUp])
-                #tE = colE.getLiteralBuk(nE, buckets[1], idE, best[i][-1][-1][1:])
+            for b in best[i]:
+                tE = colE.getLiteralBuk(nE, buckets[1], b[-1][-1][1:], buckets[bUp])
+                #tE = colE.getLiteralBuk(nE, buckets[1], idE, b[-1][-1][1:])
                 if tE is not None:
                     literalsExt.append(tE)
-                    literalsFix.append(Literal(nF, CatTerm(colF.getId(), best[i][-1][-1][0])))
-                    scores.append(best[i][0][0])
+                    literalsFix.append(Literal(nF, CatTerm(colF.getId(), b[-1][-1][0])))
+                    scores.append(b[0][0])
         return (scores, literalsFix, literalsExt)
 
 ##### TOOLS METHODS
@@ -641,6 +641,47 @@ class Charbon:
         else:
             return best
         ### EX: best = self.updateACT(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
+
+    def updateACTP(self, best, lit, side, op, neg, lparts, lmiss, lin, conflictF):
+        tmp_adv = self.getAC(side, op, neg, lparts, lmiss, lin)
+        if tmp_adv[0] is None:
+            return best
+        inserted = False
+        i = 0
+        while i < len(best):
+            if best[i][0] < tmp_adv[0]:
+                if conflictF(best[i][-1][-1], lit):  ## found conflicting of better quality 
+                    return best
+            else:
+                if not inserted: 
+                    best.insert(i,(tmp_adv[0], tmp_adv[1], [side, op, neg, lit]))
+                    inserted = True
+                elif conflictF(best[i][-1][-1], lit): ## found conflicting of lesser quality, remove
+                    best.pop(i)
+                    i -=1
+            i+=1
+        if not inserted:
+            best.append((tmp_adv[0], tmp_adv[1], [side, op, neg, lit]))
+        return best
+
+
+    def conflictP22(self, litA, litB):
+        # return True
+        return (litA[0] == litB[0]) or (litA[1] == litB[2])
+    def conflictP23(self, litA, litB):
+        # return True
+        return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
+    def conflictP33(self, litA, litB):
+        # return True
+        return not ((litA[0] > litB[1] or litB[0] > litA[1]) and (litA[2] > litB[3] or litB[2] > litA[3]))
+
+    def updateACTP22(self, best, lit, side, op, neg, lparts, lmiss, lin):
+        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP22)
+    def updateACTP23(self, best, lit, side, op, neg, lparts, lmiss, lin):
+        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP23)
+    def updateACTP33(self, best, lit, side, op, neg, lparts, lmiss, lin):
+        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP33)
+
 
     def inSuppBounds(self, side, op, lparts):
         return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \

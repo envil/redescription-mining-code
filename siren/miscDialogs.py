@@ -279,3 +279,4 @@ class FindDialog(object):
 
     def OnQuit(self, event):
         self.parent.quitFind()
+        self.dlg.Destroy()

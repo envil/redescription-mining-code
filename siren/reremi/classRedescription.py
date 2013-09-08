@@ -107,6 +107,11 @@ class Redescription:
     def __len__(self):
         return self.length(0) + self.length(1)
 
+    def usesOr(self, side=None):
+        if side is not None:
+            return self.queries[side].usesOr()
+        return self.queries[0].usesOr() or self.queries[1].usesOr()
+
     def supp(self, side):
         return self.sParts.supp(side)
 

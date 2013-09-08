@@ -643,6 +643,17 @@ class Query:
             for t in self.buk[i]:
                 h += hash(t)+i
         return h
+
+    def usesOr(self): # Does the query involve some disjunction?
+        if len(self.buk) == 0:
+            return False
+        elif len(self.buk) == 1:
+            if len(self.buk[0]) == 1:
+                return False
+            else:
+                return self.op.isOr()
+        else:
+            return True
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
         if nb % 2 == 0: # even bucket: query operator, else other

@@ -123,13 +123,16 @@ class Constraints:
         else:
             return self._pv["lhs_neg_query"]
     def ops_query(self, side, init=False):
-        if init != 0:
+        if init > 0:
             return [True]
         else:
             if side == 1:
-                return self._pv["rhs_ops_query"]
+                tmp = self._pv["rhs_ops_query"]
             else:
-                return self._pv["lhs_ops_query"]
+                tmp = self._pv["lhs_ops_query"]
+            if init < 0 and self._pv["single_side_or"]=="yes":
+                tmp = [o for o in tmp if not o]
+            return tmp
     def pair_sel(self):
         return self._pv["pair_sel"]
     def score_coeffs(self):

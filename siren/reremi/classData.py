@@ -804,7 +804,8 @@ class NumColM(ColM):
         bucket_min=tmp[1][0]
         colB_supp = []
         colB_min= []
-        colB_max= [None]
+        colB_max= []
+        # colB_max= [None]
         for i in range(len(tmp[1])):
             if len(tmp_supp) > max_agg:
                 colB_supp.append(tmp_supp)
@@ -816,7 +817,7 @@ class NumColM(ColM):
         colB_supp.append(tmp_supp)
         colB_min.append(bucket_min)
         colB_max.append(tmp[1][-1])
-        colB_max[0] = colB_max[1]
+        # colB_max[0] = colB_max[1]
         return (colB_supp, colB_min, 0, colB_max)
 
     def buckets(self):
@@ -922,7 +923,7 @@ class NumColM(ColM):
             return (neg, None)
         elif bound_ids[0] == 0 :
             if neg:
-                lowb = buk_op_top[bound_ids[1]+1]
+                lowb = buk_op[bound_ids[1]+1]
                 upb = float('Inf')
                 n = False
             else:
@@ -932,7 +933,7 @@ class NumColM(ColM):
         elif bound_ids[1] == len(buk_op)-1 :
             if neg:
                 lowb = float('-Inf') 
-                upb = buk_op[bound_ids[0]-1]
+                upb = buk_op_top[bound_ids[0]-1]
                 n = False
             else:
                 lowb = buk_op[bound_ids[0]]
@@ -1346,6 +1347,8 @@ def parseDNCFromCSVData(csv_data):
                 raise DataError('Unrecognized variable type!')
     if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
         rnames = csv_data["ids"]
+    else:
+        rnames = range(N)
     return (cols, N, coords, rnames)
 
 def readDNCFromXMLFile(filename):

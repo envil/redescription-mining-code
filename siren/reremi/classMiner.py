@@ -1,4 +1,4 @@
-import datetime, random
+import datetime, random, os.path
 import classCharbonStd
 import classCharbonAlt
 from classRedescription import Redescription
@@ -64,6 +64,8 @@ class Miner:
 
         try:
             self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
+            if params.has_key("pairs_store"):
+                self.initial_pairs.setStore(params["pairs_store"]["data"])
         except AttributeError:
             raise Exception('Oups this selection method does not exist !')
 
@@ -170,7 +172,7 @@ class Miner:
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
         ticP = datetime.datetime.now()
         self.logger.printL(1,"Start Pairs %s" % ticP, "time", self.id)
-
+ 
         self.initializeRedescriptions(ids)
         
         tacP = datetime.datetime.now()
@@ -228,6 +230,12 @@ class Miner:
     
     def initializeRedescriptions(self, ids=None):
         self.initial_pairs.reset()
+
+        if self.initial_pairs.getStore() is not None and os.path.isfile(self.initial_pairs.getStore()):
+            self.initial_pairs.load(self.initial_pairs.getStore())
+            self.initial_pairs.setCountdown(self.constraints.max_red())
+            return self.initial_pairs 
+
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
@@ -246,7 +254,7 @@ class Miner:
                 idsR = [ids[1][cR] for cR in range(cL+1, len(ids[1]), self.constraints.mod_rhs()) if len(self.deps[ids[1][cR]] & self.deps[idL]) == 0]                
             else:
                 idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
-            if len(idsR) > 1000:
+            if len(idsR) > 5000:
                 idsR = sorted(random.sample(idsR, 1000))
 
             for idR in idsR:
@@ -281,6 +289,8 @@ class Miner:
                         self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
         self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+        if self.initial_pairs.getStore() is not None:
+            self.initial_pairs.store(self.initial_pairs.getStore())
         self.initial_pairs.setCountdown(self.constraints.max_red())
         return self.initial_pairs
 
@@ -307,14 +317,14 @@ class Miner:
                     ##for side in [1]:
                         ### check whether we are extending a redescription with this side empty
                         if red.length(side) == 0:
-                            init = -1
+                            init = 1
                         else:
-                            init = 0 
-                        for v in red.availableColsSide(side, self.deps, data.single_dataset):
+                            init = red.usesOr(1-side)*-1 
+                        for v in red.availableColsSide(side, self.deps, self.data.single_dataset):
                             if not self.questionLive(): return
 
                             if self.double_check:
-                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports())                         
+                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init)                  
                                 for cand in tmp: ### TODO remove, only for debugging
                                     kid = cand.kid(red, self.data)
                                     if kid.getAcc() != cand.getAcc():

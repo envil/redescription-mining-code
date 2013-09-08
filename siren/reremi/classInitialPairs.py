@@ -1,11 +1,35 @@
 import re, string, pdb
 from classRedescription import  Redescription
+from classQuery import  Literal
 
 class InitialPairs:
 
     def __init__(self):
         self.countdown = -1 
         self.pairs = []
+        self.pstore = None
+
+    def setStore(self, pstore):
+        if len(pstore) > 0:
+            self.pstore = pstore 
+
+    def getStore(self):
+        return self.pstore
+
+    def store(self, filename):
+        with open(filename, "w") as f:
+            for p in self.pairs:
+                f.write("%s\t%s\t%f\n" % (p[0], p[1], p[2]))
+
+    def load(self, filename):
+        with open(filename) as f:
+            for line in f:
+                parts = line.strip().split("\t")
+                if len(parts) == 3:
+                    try:
+                        self.add(Literal.parse(parts[0]), Literal.parse(parts[1]), float(parts[2]))
+                    except:
+                        pass
 
     def reset(self):
         self.countdown = -1 

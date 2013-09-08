@@ -849,7 +849,7 @@ class RowTable(GridTable):
 
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
-    name_m = None
+    name_m = 'self.data[x].getRName'
     renderer = ColorRenderer
 
     def __init__(self, parent, tabId, frame, short=None):
