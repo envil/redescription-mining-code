@@ -859,3 +859,12 @@ class DataWrapper(object):
     #             self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "error", "DW")
     #             self.polys = None
     #     return self.polys
+
+
+# def main():
+#     # print "UNCOMMENT"
+#     # pdb.set_trace()
+#     DataWrapper(None,"/home/galbrun/redescriptors/sandbox/runs/de_basic/de2.siren")
+
+# if __name__ == '__main__':
+#     main()

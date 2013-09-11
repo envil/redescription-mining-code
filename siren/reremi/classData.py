@@ -470,6 +470,7 @@ class CatColM(ColM):
                 count_miss -= 1
                 row_id += 1
             if count_miss != len(self.missing):
+                pdb.set_trace()
                 raise DataError("Error reading real values, not the expected number of values!")
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
 
@@ -1222,8 +1223,9 @@ class Data:
         elif literal.term.colId() < len(self.cols[side]):
             colid = literal.term.colId()
             if literal.term.type_id != self.cols[side][colid].type_id:
-                colid = None
+                pdb.set_trace()
                 raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.term.type_id, self.cols[side][colid].type_id))
+                colid = None
         if colid is not None:
             return self.cols[side][colid]
 
@@ -1300,7 +1302,7 @@ def readDNCFromCSVFiles(filenames):
     if len(filenames) >= 2:
         left_filename = filenames[0]
         right_filename = filenames[1]
-        single_dataset = (filenames[0] == filenames[0])
+        single_dataset = (filenames[0] == filenames[1])
         if len(filenames) >= 3:
             csv_params = filenames[2]
             if len(filenames) >= 4:
@@ -1692,8 +1694,9 @@ def getDenseArray(vect):
 def main():
     print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/vaalikone/"
-    # #data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
-    # #print data
+    # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
+    # rep = "/home/galbrun/redescriptors/data/de/"
+    # rep = "/home/galbrun/redescriptors/data/de/de.siren_FILES/"
     # # print data.hasMissing()
     # # print len(data.cols[1][0].missing)
     # #data.writeXML(open("tmp.xml", "w"))
