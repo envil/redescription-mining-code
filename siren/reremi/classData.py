@@ -216,11 +216,22 @@ class BoolColM(ColM):
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
     def parseList(listV, indices=None):
+        if type(listV) is set:
+            if type(indices) is int:
+                trues = set(indices)
+                N = indices
+            elif type(indices) is dict:
+                trues = set([indices.get(i,None) for i in listV])
+                trues.discard(None)
+                N = max(indices.values())+1
+            else:
+                raise ValueError('Sparse requires indices')
+            return BoolColM(trues, N, set())
         if indices is None:
-            indices = range(len(listV))
+            indices = dict([(v,v) for v in range(len(listV))])
         trues = set()
         miss = set()
-        for j, i in enumerate(indices):
+        for i,j in indices.items():
             vt = listV[i]
             if vt is None:
                 miss.add(j)
@@ -230,7 +241,7 @@ class BoolColM(ColM):
                     return None
                 elif BoolColM.values[v]:
                     trues.add(j)
-        return BoolColM(trues, len(indices), miss)
+        return BoolColM(trues, max(indices.values())+1, miss)
     parseList = staticmethod(parseList)
 
     def getTerm(self):
@@ -348,10 +359,10 @@ class CatColM(ColM):
     n_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None):
         if indices is None:
-            indices = range(len(listV))
+            indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
         miss = set()
-        for j, i in enumerate(indices):
+        for i,j in indices.items():
             v = listV[i]
             if v is None:
                 miss.add(j)
@@ -363,7 +374,7 @@ class CatColM(ColM):
                 else:
                     cats[v] = set([j])
         if len(cats) > 1:
-            return CatColM(cats, len(indices), miss)
+            return CatColM(cats, max(indices.values())+1, miss)
         else:
             return None
     parseList = staticmethod(parseList)
@@ -470,7 +481,6 @@ class CatColM(ColM):
                 count_miss -= 1
                 row_id += 1
             if count_miss != len(self.missing):
-                pdb.set_trace()
                 raise DataError("Error reading real values, not the expected number of values!")
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
 
@@ -534,13 +544,14 @@ class NumColM(ColM):
     def parseList(listV, indices=None):
         prec = None
         if indices is None:
-            indices = range(len(listV))
+            indices = dict([(v,v) for v in range(len(listV))])
         miss = set()
         vals = []
-        for j, i in enumerate(indices):
+        N = max(indices.values())+1
+        for i,j in indices.items():
             val, prec = NumColM.parseVal(listV[i], j, vals, miss, prec, matchMiss=None)
-        if len(vals) > 0 and len(vals) + len(miss) == len(indices):
-            return NumColM(vals, len(indices), miss, prec)
+        if len(vals) > 0 and len(vals) + len(miss) == N:
+            return NumColM(vals, N, miss, prec)
         else:
             return None
     parseList = staticmethod(parseList)
@@ -1321,14 +1332,12 @@ def parseDNCFromCSVData(csv_data):
     if csv_data.get("coord", None) is not None:
         try:
             tmp = zip(*csv_data["coord"])
-
-            coords = np.array([[map(float, p.strip(" :").split(":")) for p in tmp[1]],
-                               [map(float, p.strip(" :").split(":")) for p in tmp[0]]])
+            coords = np.array([tmp[1], tmp[0]])
         except Exception:
             coords = None
         
     for side in [0,1]:
-        indices = csv_data['data'][side]["order"]
+        indices = dict([(v,k) for (k,v) in enumerate(csv_data['data'][side]["order"])])
         N = len(indices)
         for name in csv_data['data'][side]["headers"]:
             if len(name) == 0:
@@ -1340,7 +1349,6 @@ def parseDNCFromCSVData(csv_data):
                 col = type_ids.pop().parseList(values, indices)
 
             if col is not None and col.N == N:
-                #print name, col.type_id 
                 col.setId(len(cols[side]))
                 col.side = side
                 col.name = name
@@ -1705,9 +1713,12 @@ def main():
     # print data2
     # print data2.hasMissing()
     # print data2.cols[1][0].missing == data.cols[1][0].missing
-
-    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals_poly.csv",
-    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_poly.csv"], "csv")
+    
+    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.csv",
+    #               "/home/galbrun/redescriptors/data/rajapaja/worldclim_nomiss.csv"], "csv")
+    # data = Data(["/home/galbrun/redescriptors/data/world/mammals.csv",
+    #               "/home/galbrun/redescriptors/data/world/worldclim.csv"], "csv")
+    # print data
     # print data.getCoordsExtrema()
     # data = Data("/home/galbrun/re.siren_FILES/data.xml", "xml")
     # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")

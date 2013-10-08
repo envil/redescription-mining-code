@@ -4,7 +4,10 @@ import pdb
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     with open(filename, 'rb') as f:
-        dialect = csv.Sniffer().sniff(f.read(2048))
+        try:
+            dialect = csv.Sniffer().sniff(f.read(2048))
+        except Exception:
+            dialect = "excel"
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
         #f.seek(0)
@@ -31,7 +34,44 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                     data[head[i]].append(row[i])
                 else:
                     data[head[i]].append(None)
-    return (head, data)
+    return head, data
+
+def parse_sparse(D, ll, coord, ids, varcol, valcol):
+    if varcol is None:
+        return D, ll, coord, ids
+    else:
+        nll = sorted(set(ll))
+        dictLL = dict([(v,k) for (k,v) in enumerate(nll)])
+
+    nids = None
+    if ids is not None:
+        nids = [None for i in range(len(dictLL))]
+        for ii, i in enumerate(ids):
+            nids[dictLL[ll[ii]]] = i
+
+    ncoord = None
+    if coord is not None:
+        ncoord = [[None for i in range(len(dictLL))], [None for i in range(len(dictLL))]]
+        for ii in range(len(coord[0])):
+            ncoord[0][dictLL[ll[ii]]] = coord[0][ii]
+            ncoord[1][dictLL[ll[ii]]] = coord[1][ii]
+
+    nD = {'data' : {}, 'headers': []}
+    if valcol is None:
+        for rid, row in enumerate(D['data'][varcol]):
+            if row in nD['headers']:
+                nD['data'][row].add(dictLL[ll[rid]])
+            else:
+                nD['headers'].append(row)
+                nD['data'][row] = set([dictLL[ll[rid]]])
+    else:
+        for rid, row in enumerate(D['data'][varcol]):
+            if row in nD['headers']:
+                nD['data'][row][dictLL[ll[rid]]] = D['data'][valcol][rid]
+            else:
+                nD['headers'].append(row)
+                nD['data'][row] = {[dictLL[ll[rid]]]: D['data'][valcol][rid]}
+    return nD, nll, ncoord, nids
 
 def has_coord(D):
     latitude = ('lat', 'latitude', 'Lat', 'Latitude')
@@ -44,7 +84,8 @@ def has_coord(D):
             for t in longitude:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = (D['data'][s], D['data'][t])
+                    coord = ( [map(float, p.strip(" :").split(":")) for p in D['data'][s]],
+                              [map(float, p.strip(" :").split(":")) for p in D['data'][t]])
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -56,7 +97,7 @@ def has_coord(D):
     return (hasCoord, coord)
 
 def has_ids(D):
-    identifiers = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers')
+    identifiers = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
 
     hasIds = False
     ids = None
@@ -71,6 +112,24 @@ def has_ids(D):
 
     return (hasIds, ids)    
 
+def is_sparse(D):
+    colid = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
+    colv = ['value', 'Value', 'values', 'Values']
+
+    varcol = None
+    valcol = None
+    while len(colid) > 0:
+        s = colid.pop(0)
+        if s in D['headers']:
+            varcol = s
+            colid = []
+    while len(colv) > 0:
+        s = colv.pop(0)
+        if s in D['headers']:
+            valcol = s
+            colv = []
+    return varcol, valcol
+
 def row_order(L, R):
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
@@ -79,7 +138,7 @@ def row_order(L, R):
 
     order_keys = [[],[]]
     if (LhasCoord and RhasCoord):
-        order_keys = [Lcoord, Rcoord]
+        order_keys = [list(Lcoord), list(Rcoord)]
     if (LhasIds and RhasIds):
         order_keys[0].append(Lids)
         order_keys[1].append(Rids)
@@ -91,14 +150,21 @@ def row_order(L, R):
         # Rlat = Rcoord[0]
         # Rlong = Rcoord[1]
         # sort per concatenated lat & long
-        Lll = ["::".join(map(str, p)) for p in zip(*order_keys[0])]
-        Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
         # Lll = map(lambda x,y: str(x)+str(y), Llat, Llong)
         # Rll = map(lambda x,y: str(x)+str(y), Rlat, Rlong)
+        Lll = ["::".join(map(str, p)) for p in zip(*order_keys[0])]
+        Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
+        (Lvarcol, Lvalcol) = is_sparse(L)
+        if Lvarcol is not None: 
+            L, Lll, Lcoord, Lids = parse_sparse(L, Lll, Lcoord, Lids, Lvarcol, Lvalcol)
+        (Rvarcol, Rvalcol) = is_sparse(R)
+        if Rvarcol is not None: 
+            R, Rll, Rcoord, Rids = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
+
         Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
         both = set(Lll).intersection(Rll)
-        
+
         # Remove from Lorder and Rorder the parts that aren't in both
         i = 0
         while i < len(Lorder):
@@ -106,7 +172,7 @@ def row_order(L, R):
                 del Lorder[i]
             else:
                 i += 1
-
+        i = 0
         while i < len(Rorder):
             if Rll[Rorder[i]] not in both:
                 del Rorder[i]
@@ -123,8 +189,9 @@ def row_order(L, R):
             ids = [Lids[Lorder[i]] for i in range(len(Lorder))]
         elif RhasIds:
             ids = [Rids[Rorder[i]] for i in range(len(Rorder))]
-        return (Lorder, Rorder, coord, ids)
+        return (L, R, Lorder, Rorder, coord, ids)
     else:
+    
     # if not (LhasCoord or RhasCoord):
     #     # Neither has coordinates
     #     raise ValueError('At least one data file must have coordinates')
@@ -152,17 +219,18 @@ def row_order(L, R):
         # Sanity check
         if len(data.values()[0]) != len(R['data'].values()[0]):
             raise ValueError('The two data sets are not of same size')
-        return (range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
+        return (L, R, range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
 
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
     (Rh, Rd) = read_csv(right_filename, csv_params, unknown_string)
-    data = ({'data': Ld, 'headers': Lh}, {'data': Rd, 'headers': Rh})
-    (Lorder, Rorder, coord, ids) = row_order(data[0], data[1])
-    data[0]['order'] = Lorder
-    data[1]['order'] = Rorder
-    return {'data': data, 'coord': coord, "ids": ids}
+    L = {'data': Ld, 'headers': Lh}
+    R = {'data': Rd, 'headers': Rh}
+    (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+    L['order'] = Lorder
+    R['order'] = Rorder
+    return {'data': (L,R), 'coord': coord, "ids": ids}
 
 
 def main(argv=[]):
