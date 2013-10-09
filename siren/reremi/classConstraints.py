@@ -13,7 +13,7 @@ class Constraints:
         for k, v in params.items():
             self._pv[k] = v["data"]
 
-        if self._pv["amnesic"] == "Yes":
+        if self._pv["amnesic"] == "yes":
             self._pv["amnesic"] = True
         else:
             self._pv["amnesic"] = False

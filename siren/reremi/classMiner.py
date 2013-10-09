@@ -244,6 +244,8 @@ class Miner:
         ## IDSPAIRS
         if len(ids[0]) > 5000:
            ids[0] = sorted(random.sample(ids[0], 100))
+        ids[0] = sorted(random.sample(ids[0], 10))
+        ids[1] = sorted(random.sample(ids[1], 10))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -380,6 +382,8 @@ class Miner:
         self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
         self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
         self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
+        for red in self.partial["results"]:
+            self.logger.printL(2, "--- %s" % self.partial["batch"][red])
 
         return self.partial
 
