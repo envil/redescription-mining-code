@@ -244,8 +244,9 @@ class Miner:
         ## IDSPAIRS
         if len(ids[0]) > 5000:
            ids[0] = sorted(random.sample(ids[0], 100))
-        ids[0] = sorted(random.sample(ids[0], 10))
-        ids[1] = sorted(random.sample(ids[1], 10))
+        ### FOR DEBUGING (DANGER!!!)
+        # ids[0] = sorted(random.sample(ids[0], 10))
+        # ids[1] = sorted(random.sample(ids[1], 10))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
