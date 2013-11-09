@@ -46,6 +46,10 @@ class WorkClient:
         self.off = {}
         self.retired = {}
 
+
+    def infoStr(self):
+        return "Server %s:%d"
+    
     def __del__(self):
         if self.hid is not None:
             self.shared_job_q.put({"hid": self.hid, "task": "shutdown"})

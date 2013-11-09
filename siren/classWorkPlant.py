@@ -68,6 +68,9 @@ class WorkPlant:
         self.retired = {}
         self.comm_queues = {"out": self.cqueue()}
 
+    def infoStr(self):
+        return "Local"
+
     def getOutQueue(self):
         return self.comm_queues["out"]
 

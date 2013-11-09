@@ -394,6 +394,12 @@ class Siren():
                 self.ids_stoppers[ID_STOP] = wdt["wid"] 
                 m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
                 frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
+        if self.plant is not None:
+            menuStop.AppendSeparator()
+            ID_PLT = wx.NewId()
+            m_plt = menuStop.Append(ID_PLT, self.plant.infoStr(), "Where processes are handled.")
+            menuStop.Enable(ID_PLT, False)
+
         return menuStop
 
     def makeViewsMenu(self, frame, menuViews=None):
