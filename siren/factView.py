@@ -26,7 +26,7 @@ class ViewFactory:
 
     @classmethod
     def getView(tcl, viewT, parent, vid):
-        if tcl.avs_views.has_key(viewT):
+        if viewT in tcl.avs_views:
             return tcl.avs_views[viewT]["class"](parent, vid, tcl.avs_views[viewT]["more"])
 
     @classmethod

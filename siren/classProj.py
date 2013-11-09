@@ -113,9 +113,9 @@ class Proj(object):
                                 params[sp[0]] = float(sp[1])
                             except ValueError:
                                 params[sp[0]] = sp[1]
-        if params.has_key("A"):
+        if "A" in params:
             params["types"] = None
-        if params.has_key("a"):
+        if "a" in params:
             params["only_able"] = False
         return params
 
@@ -132,12 +132,12 @@ class Proj(object):
                 type_ctrl = "checkbox" 
                 ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
                 ctrls[-1].SetValue(value)
-            elif type(value) is list and self.options_parameters.has_key(kp):
+            elif type(value) is list and kp in self.options_parameters:
                 type_ctrl = "checkbox"
                 for k,v in self.options_parameters[kp]:
                     ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
                     ctrls[-1].SetValue(v in value)
-            elif self.options_parameters.has_key(kp):
+            elif kp in self.options_parameters:
                 type_ctrl = "choice" 
                 ctrls.append(wx.Choice(frame, wx.NewId()))
                 strs = [k for k,v in self.options_parameters[kp]]
@@ -219,7 +219,7 @@ class AxesProj(Proj):
             tmp = self.getParameter(axis)
             if tmp > 0:
                 sc = tuple(map(int, str(tmp).split(".")[:2]))
-                if mcols.has_key(sc):
+                if sc in mcols:
                     scs[ai] = sc
             self.setParameter(axis, float("%d.%d" % scs[ai]))
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])

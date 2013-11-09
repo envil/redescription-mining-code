@@ -16,7 +16,8 @@ from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog, FindDialog
 from factView import ViewFactory
-from toolCommMultip import WorkPlant
+import toolCommMultip
+
 
 import pdb
  
@@ -51,6 +52,7 @@ class Siren():
         self.busyDlg = None
         self.findDlg = None
         self.dw = None
+        self.plant = None
         self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                      "rows": {"title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
@@ -73,7 +75,6 @@ class Siren():
         self.selectedViewX = -1
         self.buffer_copy = None
         
-        self.plant = WorkPlant()
         self.call_check = None
         
         self.create_tool_panel()
@@ -151,7 +152,6 @@ class Siren():
             return self.dw.getPreferences()
     def getLogger(self):
         return self.logger
-
         
 ######################################################################
 ###########     TOOL PANEL
@@ -220,7 +220,10 @@ class Siren():
 
 
     def updateProgressBar(self):
-        work_estimate, work_progress = self.plant.getWorkEstimate()
+        if self.plant is None:
+            work_estimate, work_progress = (0, 0)
+        else:
+            work_estimate, work_progress = self.plant.getWorkEstimate()
         if work_estimate > 0:
             self.progress_bar.SetRange(work_estimate)
             self.progress_bar.SetValue(work_progress)
@@ -270,7 +273,7 @@ class Siren():
             menuRed = wx.Menu()
         
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
-            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
+            if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
 
                 if self.selectedTab["type"] in ["Reds", "Var"]:
                     ID_DETAILS = wx.NewId()
@@ -301,7 +304,7 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
 
         if self.selectedTab["type"] == "Reds":
-            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
+            if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
                 ID_EXPAND = wx.NewId()
                 m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
@@ -352,7 +355,7 @@ class Siren():
         if menuViz is None:
             menuViz = wx.Menu()
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
-            if self.selectedTab.has_key("tab") and self.selectedTab["tab"].GetNumberRows() > 0:
+            if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
                 for item in ViewFactory.getViewsInfo(self.dw.isGeospatial(), self.selectedTab["type"]):
                     ID_NEWV = wx.NewId()
                     m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
@@ -380,16 +383,17 @@ class Siren():
     def makeStoppersMenu(self, frame, menuStop=None):
         if menuStop is None:
             menuStop = wx.Menu()
-        if self.plant.nbWorkers() == 0:
+        if self.plant is None or self.plant.nbWorkers() == 0:
             ID_NOP = wx.NewId()
             m_nop = menuStop.Append(ID_NOP, "No process running", "There is no process currently running.")
             menuStop.Enable(ID_NOP, False)
 
-        for wdt in self.plant.getWorkersDetails(): 
-            ID_STOP = wx.NewId()
-            self.ids_stoppers[ID_STOP] = wdt["wid"] 
-            m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
-            frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
+        else:
+            for wdt in self.plant.getWorkersDetails(): 
+                ID_STOP = wx.NewId()
+                self.ids_stoppers[ID_STOP] = wdt["wid"] 
+                m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
+                frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         return menuStop
 
     def makeViewsMenu(self, frame, menuViews=None):
@@ -533,20 +537,20 @@ class Siren():
 ######################################################################
 
     def getDefaultViewT(self, tabId=None):
-        if tabId is not None and self.tabs.has_key(tabId):
+        if tabId is not None and tabId in self.tabs:
             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial(), type_tab=self.tabs[tabId]["type"])
         else:
             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial())
 
     def accessViewX(self, mid):
-        if self.view_ids.has_key(mid):
+        if mid in self.view_ids:
             return self.view_ids[mid]
 
     def getViewX(self, vid=None, viewT=None):
         if viewT is None:
             viewT = self.getDefaultViewT()
             
-        if not self.view_ids.has_key((viewT, vid)):
+        if (viewT, vid) not in self.view_ids:
             view = ViewFactory.getView(viewT, self, wx.NewId())
             if view is None:
                 return
@@ -558,7 +562,7 @@ class Siren():
         return self.view_ids[self.selectedViewX]
 
     def deleteView(self, vK):
-        if self.view_ids.has_key(vK):
+        if vK in self.view_ids:
             self.plant.layOff(self.plant.findWid([("wtyp", "project"), ("vid", vK)]))
             self.view_ids[vK].mapFrame.Destroy()
             del self.view_ids[vK]
@@ -608,7 +612,7 @@ class Siren():
         if params is None:
             params = {}
         self.progress_bar.Show()
-        if params.has_key("red") and params["red"] is not None and params["red"].length(0) + params["red"].length(1) > 0:
+        if "red" in params and params["red"] is not None and params["red"].length(0) + params["red"].length(1) > 0:
             self.plant.addWorker("expander", self, params,
                                  {"results_track":0,
                                   "batch_type": "partial",
@@ -645,25 +649,25 @@ class Siren():
     def doUpdates(self, updates=None):
         if updates is None:
             updates={"menu":True }
-        if updates.has_key("error"):
+        if "error" in updates:
             self.errorBox(updates["error"])
-        if updates.has_key("menu"):
+        if "menu" in updates:
             self.updateMenus()
-        if updates.has_key("progress"):
+        if "progress" in updates:
             self.updateProgressBar()
-        if updates.has_key("status"):
+        if "status" in updates:
             self.statusbar.SetStatusText(updates["status"], 0)
-        if updates.has_key("log"):
+        if "log" in updates:
             self.tabs["log"]["text"].AppendText(updates["log"])
 
     def OnStop(self, event):
-        if self.ids_stoppers.has_key(event.GetId()):
+        if event.GetId() in self.ids_stoppers:
             self.plant.layOff(self.ids_stoppers[event.GetId()])
             self.checkResults(menu=True)
 
     def OnViewTop(self, event):
-        if self.opened_views.has_key(event.GetId()) and \
-               self.view_ids.has_key(self.opened_views[event.GetId()]):
+        if event.GetId() in self.opened_views and \
+               self.opened_views[event.GetId()] in self.view_ids:
             self.view_ids[self.opened_views[event.GetId()]].toTop()
 
     def OnCloseViews(self, event):
@@ -818,7 +822,7 @@ class Siren():
         save_dlg.Destroy()
 
     def changePage(self, tabn):
-        if self.tabs.has_key(tabn) and not self.tabs[tabn]["hide"]:
+        if tabn in self.tabs and not self.tabs[tabn]["hide"]:
             self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))
             self.OnPageChanged(-1)
 
@@ -928,7 +932,7 @@ class Siren():
             self.doUpdates({"menu":True}) ### update paste entry
 
     def flipRowsEnabled(self, rids):
-        if self.tabs.has_key("rows") and len(rids)> 0:
+        if "rows" in self.tabs and len(rids)> 0:
             self.tabs["rows"]["tab"].flipAllEnabled(rids)
 
     def recomputeAll(self):
@@ -938,7 +942,7 @@ class Siren():
                 tab["tab"].recomputeAll(restrict)
             
     def OnTabW(self, event):
-        if self.check_tab.has_key(event.GetId()):
+        if event.GetId() in self.check_tab:
             tab_id = self.check_tab[event.GetId()]
             if self.toolFrame.FindFocus() is not None and self.toolFrame.FindFocus().GetGrandParent() is not None \
                    and self.toolFrame.FindFocus().GetGrandParent().GetParent() == self.toolFrame:
@@ -1032,7 +1036,8 @@ class Siren():
         return dets
 
     def OnQuit(self, event):
-        self.plant.closeDown(self)
+        if self.plant is not None:
+            self.plant.closeDown(self)
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
                 return
         self.deleteAllViews()
@@ -1090,14 +1095,22 @@ class Siren():
             verb = self.dw.getPreference('verbosity')
 
         self.logger.resetOut()
-        self.logger.addOut({"*": verb, "error":1, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
+        if self.plant is not None and self.plant.getOutQueue() is not None:
+            self.logger.addOut({"*": verb, "error":1, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
         self.logger.addOut({"error":1}, "stderr")
 
     def reloadAll(self):
-        self.plant.closeDown(self)
+        if self.plant is not None:
+            self.plant.closeDown(self)
         self.reloadVars(review=False)
         self.reloadRows()
         self.reloadReds()
+
+        self.plant, msg, err = toolCommMultip.getWP(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
+        self.logger.printL(1, msg, "status", "WP")
+        if len(err) > 0:
+            self.logger.printL(1, err, "error", "WP")
+
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data
@@ -1160,12 +1173,12 @@ class Siren():
         dlg.Destroy()
 
     def readyReds(self, reds, tab):
-        if len(reds) > 0 and self.tabs.has_key(tab):
+        if len(reds) > 0 and tab in self.tabs:
             for red in reds:
                 red.recompute(self.getData())
                 red.setRestrictedSupp(self.getData())
             self.tabs[tab]["tab"].insertItems(reds)
 
     def readyProj(self, vid, proj):
-        if self.view_ids.has_key(vid):
+        if vid in self.view_ids:
             self.view_ids[vid].readyProj(proj)

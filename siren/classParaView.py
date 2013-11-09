@@ -367,7 +367,7 @@ class ParaView(GView):
         draw_settings = self.getDrawSettings()
         N = float(self.parent.dw.data.nbRows())
         for lid in lids:
-            if self.highl.has_key(lid):
+            if lid in self.highl:
                 continue
 
             ### ADDING NOISE AND RESCALING
@@ -390,7 +390,7 @@ class ParaView(GView):
             else:
                 self.highl[lid].extend(self.axe.plot(final, color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
 
-        if len(lids) == 1 and not self.hight.has_key(lid):
+        if len(lids) == 1 and not lid in self.hight:
             pi = self.suppABCD[lid]
             tag = self.parent.dw.data.getRName(lid)
             self.hight[lid] = []

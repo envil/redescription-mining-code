@@ -223,14 +223,14 @@ class EProjView(GView):
 
             # for pi in draw_settings["draw_pord"]:
             #     part = [i for i,e in enumerate(self.suppABCD) if e == pi]
-            #     if len(part) > 0 and draw_settings.has_key(pi):
+            #     if len(part) > 0 and pi in draw_settings:
             #         for idp in part:
 
             x0, x1, y0, y1 = self.proj.getAxisLims()
             #siz = round(max(1, min((x1-x0)/20, (y1-y0)/20)))
             siz = 0
             for idp, pi in enumerate(self.suppABCD):
-                if draw_settings.has_key(pi) and selv[idp] > 0:
+                if pi in draw_settings and selv[idp] > 0:
                     if draw_settings[pi]["size"] > siz:
                         siz = draw_settings[pi]["size"]
                     self.axe.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 1),

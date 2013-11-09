@@ -16,6 +16,7 @@ import pdb
 from reremi.classRedescription import Redescription
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
+from reremi.classSParts import SParts
 from reremi.toolICList import ICList
 from reremi.toolICDict import ICDict
 from reremi.toolLog import Log
@@ -78,6 +79,7 @@ class DataWrapper(object):
         self.pdp = None
         self.resetRedescriptions()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
+        SParts.setMethodPVal(self.preferences["method_pval"]["data"])
         self.package_filename = None
         self._isChanged = False
         self._isFromPackage = False
@@ -169,7 +171,7 @@ class DataWrapper(object):
         self.stopReadingFileCallback = (fnc, args, kwargs)
 
     def __str__(self):
-        return "coords = " + str(self.coords) + "; " \
+        return "coords = " + str(self.getCoords()) + "; " \
             + "data = " + str(self.data) + "; " \
             + "#reds = " + str(len(self.reds)) + "; " \
             + "rshowids = " + str(self.rshowids) + "; " \
@@ -223,6 +225,7 @@ class DataWrapper(object):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
             self.preferences.update(params)
+            SParts.setMethodPVal(self.preferences["method_pval"]["data"])
             #self.isChanged = True
 
 

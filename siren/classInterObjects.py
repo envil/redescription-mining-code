@@ -244,7 +244,7 @@ class MaskCreator(object):
             for action, details in self.actions_map.items():
                 details["key"] = None
             for key, action in keys.items():
-                if self.actions_map.has_key(action):
+                if action in self.actions_map:
                     self.actions_map[action]["key"] = key
                     self.keys_map[key] = action
 
@@ -255,7 +255,7 @@ class MaskCreator(object):
         return self.doActionForKey(event.key, event)
 
     def doActionForKey(self, key, event=None):
-        if self.actions_map.has_key(self.keys_map.get(key, None)):
+        if self.keys_map.get(key, None) in self.actions_map.has_key:
             self.actions_map[self.keys_map[key]]["method"](event)
             self.draw_callback(event)                
             if self.callback_change is not None:

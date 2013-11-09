@@ -2,6 +2,14 @@ import getopt, re
 import toolRead
 import pdb
 
+### EACH parameter is a triplet (text, data, value)
+### text is the raw text
+### data is the text casted into the type of the parameter
+### in case of option parameters value is the index of the option among available ones
+### otherwise it is equal to data
+
+### for color parameter, both data and value are the integer triplets representation
+
 class CParameter:
 	type_id = "X"
 	value_types = {"text": str, "boolean": bool, "integer": int, "float": float, "color": str}
@@ -395,6 +403,15 @@ class PreferencesManager:
 class PreferencesReader:
 	def __init__(self, pm):
 		self.pm = pm
+
+	def getParametersDict(self, filename=None, arguments=None):
+		params_l = {}
+		tmp_params = self.getParameters(filename, arguments)
+		for k, v in tmp_params.items():
+			if v["data"] != v["value"]:
+				params_l[k+":NUM"] = v["value"]
+			params_l[k] = v["data"]
+		return params_l
 	
 	def getParameters(self, filename=None, arguments=None):
 		pv = self.pm.getDefaultTriplets()
@@ -508,3 +525,33 @@ class PreferencesReader:
 # 			tmp_str.replace("\n", "\n"+("\t"*(level+1)))
 # 			strd += ("\t"*(level+1))+tmp_str+"\n"
 # 	return strd
+
+
+def getParams(arguments, conf_defs):
+    pm = PreferencesManager(conf_defs)
+    pr = PreferencesReader(pm)
+    config_filename = None
+    options_args = arguments[1:]
+
+    if len(arguments) > 1:
+        if arguments[1] == "--config":
+            print pr.dispParameters(None,True, True, True)
+            sys.exit(2)
+        if os.path.isfile(arguments[1]):
+            config_filename = arguments[1]
+            options_args = arguments[2:]
+
+    params = pr.getParametersDict(config_filename, options_args)
+    if params is None:
+        print 'usage: "%s [config_file] [additional_parameters]"' % arguments[0]
+        print '(Type "%s --config" to generate a default configuration file' % arguments[0]
+        sys.exit(2)
+
+    return params
+
+if __name__ == "__main__":
+	import glob, os.path, sys
+	pref_dir = os.path.dirname(os.path.abspath(__file__))
+	conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
+	params = getParams(sys.argv, conf_defs)
+	print params

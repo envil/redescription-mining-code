@@ -1,6 +1,19 @@
 import wx
 import pdb
 
+### USAGE this class provides a wx Modal dialog to modify a dictionary of preferences managed with the PreferenceManager
+## It is launched with the following command:
+##    # def OnPreferencesDialog(self, event):
+##    #     d = PreferencesDialog(main_frame, pref_handle)
+##    #     d.ShowModal()
+##    #     d.Destroy()
+## where pref_handle provide access to the preference manager and a way to update the preference dictionary
+## via the following three methods:
+## pref_handle.updatePreferencesDict(vdict)
+## pref_handle.getPreferences()
+## pref_handle.getPreferencesManager()
+
+
 class PreferencesDialog(wx.Dialog):
 	"""
 	Creates a preferences dialog to change the settings

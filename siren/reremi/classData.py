@@ -1234,7 +1234,6 @@ class Data:
         elif literal.term.colId() < len(self.cols[side]):
             colid = literal.term.colId()
             if literal.term.type_id != self.cols[side][colid].type_id:
-                pdb.set_trace()
                 raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.term.type_id, self.cols[side][colid].type_id))
                 colid = None
         if colid is not None:

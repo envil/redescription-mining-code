@@ -109,9 +109,9 @@ class GView(object):
         if more is None:
             return True
         res = True
-        if more.has_key("side"):
+        if "side" in more:
             res &= len(self.queries[1-more["side"]]) > 0
-        if more.has_key("in_weight") or more.has_key("out_weight"):
+        if "in_weight" in more or "out_weight" in more:
             res &= self.q_has_selected()
         return res
             
@@ -186,7 +186,7 @@ class GView(object):
             for action, details in self.actions_map.items():
                 details["key"] = None
             for key, action in keys.items():
-                if self.actions_map.has_key(action):
+                if action in self.actions_map:
                     self.actions_map[action]["key"] = key
                     self.keys_map[key] = action
 
@@ -303,11 +303,11 @@ class GView(object):
              self.MaptoolbarMap.mouse_move()
         
     def OnMenuAction(self, event):
-        if self.menu_map_act.has_key(event.GetId()):
+        if event.GetId() in self.menu_map_act:
             self.doActionForKey(self.menu_map_act[event.GetId()])
 
     def OnMenuMCAction(self, event):
-        if self.mc is not None and self.menu_map_act.has_key(event.GetId()):
+        if self.mc is not None and event.GetId() in self.menu_map_act:
             self.mc.doActionForKey(self.menu_map_act[event.GetId()])
 
     def OnOtherV(self, event):
@@ -405,7 +405,7 @@ class GView(object):
         
     def OnExpandAdv(self, event):
         params = {"red": self.getCopyRed()}
-        if self.menu_map_pro.has_key(event.GetId()):
+        if event.GetId() in self.menu_map_pro:
             more = self.processes_map[self.menu_map_pro[event.GetId()]]["more"]
             if more is not None:
                 params.update(more)
@@ -419,7 +419,7 @@ class GView(object):
         
     def OnQuit(self, event=None, upMenu=True):
         self.parent.deleteView(self.getId())
-        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+        if self.source_list is not None and self.source_list in self.parent.tabs:
             self.parent.tabs[self.source_list]["tab"].unregisterView(self.getId(), upMenu)
 
     def OnEditQuery(self, event):
@@ -513,7 +513,7 @@ class GView(object):
                 self.parent.tabs["hist"]["tab"].insertItem(red, -1)
 
     def updateOriginal(self, red = None):
-        if red is not None and self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+        if red is not None and self.source_list is not None and self.source_list in self.parent.tabs:
             self.parent.tabs[self.source_list]["tab"].updateEdit(self.getId(), red)
 
     def updateQueryText(self, query, side):
@@ -580,7 +580,7 @@ class GView(object):
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
         for lid in lids:
-            if self.highl.has_key(lid):
+            if lid in self.highl:
                 continue
             pi = self.suppABCD[lid]
             self.highl[lid] = []
@@ -604,14 +604,14 @@ class GView(object):
         if lids is None:
             lids = self.highl.keys()
         for lid in lids:
-            if self.hight.has_key(lid):
+            if lid in self.hight:
                 while len(self.hight[lid]) > 0:
                     t = self.hight[lid].pop()
                     if t in self.axe.texts:
                         self.axe.texts.remove(t)
                 del self.hight[lid]
 
-            if self.highl.has_key(lid):
+            if lid in self.highl:
                 while len(self.highl[lid]) > 0:
                     t = self.highl[lid].pop()
                     if isinstance(t, Line2D) and t in self.axe.lines:
@@ -621,11 +621,11 @@ class GView(object):
                 del self.highl[lid]
 
     def sendEmphasize(self, lids):
-        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+        if self.source_list is not None and self.source_list in self.parent.tabs:
             self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, show_info=self.q_active_info())
 
     def sendFlipEmphasizedR(self):
-        if self.source_list is not None and self.parent.tabs.has_key(self.source_list):
+        if self.source_list is not None and self.source_list in self.parent.tabs:
             self.parent.tabs[self.source_list]["tab"].doFlipEmphasizedR(self.getId())
 
     def OnPick(self, event):
@@ -633,7 +633,7 @@ class GView(object):
             self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
 
     def doActionForKey(self, key):
-        if self.actions_map.has_key(self.keys_map.get(key, None)):
+        if self.keys_map.get(key, None in self.actions_map):
             act = self.actions_map[self.keys_map[key]]
             if act["type"] == "check" or act["active_q"]():
                 self.actions_map[self.keys_map[key]]["method"](self.actions_map[self.keys_map[key]]["more"])

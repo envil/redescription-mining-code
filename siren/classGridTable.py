@@ -612,7 +612,7 @@ class RedTable(GridTable):
 
     def viewData(self, viewT, pos=None, oid=None):
         if oid is not None:
-            if self.opened_edits.has_key(oid):
+            if oid in self.opened_edits:
                 pos = self.opened_edits[oid]
         if pos is None:
             pos = self.getSelectedPos()
@@ -640,7 +640,7 @@ class RedTable(GridTable):
             del self.opened_edits[key]
             ### if there are no other view referring to same red, clear emphasize lines
             if pos not in self.opened_edits.values():
-                if self.emphasized.has_key(pos):
+                if pos in self.emphasized:
                     del self.emphasized[pos]
             if upMenu:
                 self.parent.updateMenus()
@@ -673,7 +673,7 @@ class RedTable(GridTable):
                             if k != edit_key:
                                 mc.setCurrent(red, self.tabId)
 
-                if self.emphasized.has_key(old_toed):
+                if old_toed in self.emphasized:
                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
                     del self.emphasized[old_toed]
 
@@ -690,14 +690,14 @@ class RedTable(GridTable):
         mapV.updateTitle()
 
     def doFlipEmphasizedR(self, edit_key):
-        if edit_key in self.opened_edits.keys() and self.emphasized.has_key(self.opened_edits[edit_key]):
+        if edit_key in self.opened_edits.keys() and self.opened_edits[edit_key] in self.emphasized:
             self.parent.flipRowsEnabled(self.emphasized[self.opened_edits[edit_key]])
             self.setEmphasizedR(edit_key, self.emphasized[self.opened_edits[edit_key]])
 
     def getEmphasizedR(self, edit_key):
         if edit_key in self.opened_edits.keys() \
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data) \
-               and self.emphasized.has_key(self.opened_edits[edit_key]):
+               and self.opened_edits[edit_key] in self.emphasized:
             return self.emphasized[self.opened_edits[edit_key]]
         return set()
 
@@ -710,7 +710,7 @@ class RedTable(GridTable):
                and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
 
             toed = self.opened_edits[edit_key]
-            if not self.emphasized.has_key(toed):
+            if toed not in self.emphasized:
                 self.emphasized[toed] = set()
             if lids is None:
                 turn_off = self.emphasized[toed]
@@ -1011,7 +1011,7 @@ class RowTable(GridTable):
             self.redraw()
 
     def showCol(self, side, col):
-        if self.cols_map.has_key((side, col)) and self.cols_map[(side, col)] not in self.sc:
+        if (side, col) in self.cols_map and self.cols_map[(side, col)] not in self.sc:
             self.sc.add(self.cols_map[(side, col)])
             self.redraw()
             self.grid.MakeCellVisible(self.getSelectedRow(), self.cols_map[(side, col)])

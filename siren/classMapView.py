@@ -137,7 +137,7 @@ class MapView(GView):
                 selv[np.array(list(selected))] = selp
 
             for idp, pi in enumerate(self.suppABCD):
-                if pi != SParts.delta and draw_settings.has_key(pi) and selv[idp] > 0:
+                if pi != SParts.delta and pi in draw_settings and selv[idp] > 0:
                     self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
@@ -148,7 +148,7 @@ class MapView(GView):
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
         for lid in lids:
-            if self.highl.has_key(lid):
+            if lid in self.highl:
                 continue
             pi = self.suppABCD[lid]
             self.highl[lid] = []
@@ -262,7 +262,7 @@ class MapView(GView):
         t = self.parent.dw.getPreferences()
         if "map_proj" in t:
             tpro = re.sub(" *\(.*\)$", "", t["map_proj"]["data"])
-            if self.proj_names.has_key( tpro):
+            if tpro in self.proj_names:
                 proj = self.proj_names[tpro]
         resolution = 1
         if "map_resolution" in t:
