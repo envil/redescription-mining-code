@@ -223,7 +223,7 @@
 	<label>Workserver IP</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>IP adress of the server executing computational the tasks.</legend>
+	<legend>IP adress of the server executing computational the tasks or local for local computations.</legend>
 	<length>15</length>
 	<default><value>local</value></default>
       </parameter>

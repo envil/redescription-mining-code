@@ -1,4 +1,4 @@
-import multiprocessing, time, socket
+import multiprocessing, time, socket, uuid
 from multiprocessing.managers import SyncManager
 import Queue
 
@@ -6,7 +6,7 @@ import pdb
 
 IP = '127.0.0.1'
 PORTNUM = 55444
-AUTHKEY = 'shufflin'
+AUTHKEY = 'sesame'
 
 def make_client_manager(ip, port, authkey):
     class ServerQueueManager(SyncManager):
@@ -72,7 +72,7 @@ class WorkClient:
             self.shared_job_q = manager.get_job_q()
             ids_d = manager.get_ids_d()
             ### TODO generate uid
-            uid = 1
+            uid = uuid.uuid4()
             self.shared_job_q.put({"task": "startup", "cid": uid})
             counter = 10
             while not ids_d.has_key(uid) and counter > 0:
