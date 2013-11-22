@@ -13,8 +13,12 @@ Edits by Pauli
 
 import sys
 import os
+import os.path
+import re
 import subprocess
 import pdb
+import matplotlib
+import mpl_toolkits.basemap as basemap
 
 # Common info
 APP = 'siren.py'
@@ -46,10 +50,13 @@ ST_FILES = ['classEProjView.py',
             'toolCommMultip.py',
             'toolMath.py',
             'tsne.py']
+#ST_FILES += matplotlib.get_py2exe_datafiles()
+#ST_FILES.append((''.join('mpl_toolkits', 'basemap', 'data'), re.findall(''.join(os.path.dirname(basemap.__file__), 'data')) ))
 
 ST_MORE_FILES=['ez_setup.py']
 #ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
-ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn']
+#ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn']
+ST_PACKAGES = ['wx', 'reremi', 'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
@@ -124,7 +131,7 @@ if sys.platform == 'darwin':
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'icons/siren_icon.icns',
     'packages': ST_PACKAGES,
-    'matplotlib_backends': MATPLOTLIB_BACKENDS,
+    #'matplotlib_backends': MATPLOTLIB_BACKENDS,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
     'resources': ST_RESOURCES+ICONS+LICENSES,
