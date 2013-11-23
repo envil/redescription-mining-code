@@ -90,6 +90,7 @@ class WorkServer:
                         hid = portnum + self.nextHandlerId
                         self.handlers[hid] = WorkHandler(self, hid, self.authkey)
                         self.shared_ids_d.update({job.get("cid"): hid})
+                        print "new HID %s -> %s" % (job.get("cid"), hid) 
 
                     ## if retire: move from working to retired 
                     elif job.get("hid") in self.handlers:
