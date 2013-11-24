@@ -439,7 +439,7 @@ class ColDDiffNum(ColDDiff):
     def getPr(self, v, i):
         if self.d is not None:
             if type(self.diffto) == dict:
-                if self.diffto.has_key(i):
+                if i in self.diffto:
                     dv = self.diffto[i]
                 else:
                     dv = self.diffto[-1]
@@ -516,7 +516,7 @@ class LitD:
         return "%s %d %d range=%s, supp=%d/%d, d=%s" % (self.__class__.__name__, self.side, self.ci, str(self.rnge), len(self.suppI), len(self.suppF), self.d)
 
     def hasRid(self, rid):
-        return self.lits.has_key(rid)
+        return rid in self.lits
 
     def copy(self):
         return LitD(self)
@@ -595,7 +595,7 @@ class LitD:
         return bkp.copy()
 
     def shiftedLits(self, lit, rid=-1):
-        if rid == -1 and self.lits.has_key(-1):
+        if rid == -1 and -1 in self.lits:
             tmp = {}
             for k,v in self.lits.items(): 
                 if k < 0:
@@ -608,7 +608,7 @@ class LitD:
 
     def delLits(self, rid):
         tmp = dict(self.lits)
-        if tmp.has_key(rid):
+        if rid in tmp:
             del tmp[rid]
         return tmp
 
@@ -766,13 +766,13 @@ class RedModel:
         for side in [0,1]:
             if sideAdd is None or sideAdd == side:            
                 for lit in red.invLiteralsSide(side):
-                    if lits[side].has_key(lit.col()):
+                    if lit.col() in lits[side]:
                         nlits[side][lit.col()] = lits[side][lit.col()].addCopy(lit, supp, data, rid)
                     else:
                         nlits[side][lit.col()] = LitFactory.getLit(side, lit.col(), data, supp, self.dm.getD(side, lit.col(), "Full"), lit, rid)
                     
             for li, l in lits[side].items():
-                if not nlits[side].has_key(li):
+                if li not in nlits[side]:
                     nlits[side][li] = l.shrinkCopy(supp)
         return nlits
 
@@ -830,7 +830,7 @@ class RedModel:
                     for lit in red.invLiteralsSide(side):
                                             
                         vals = data.cols[side][lit.col()].getVector()
-                        if sb["lits"][side].has_key(lit.col()):
+                        if lit.col() in sb["lits"][side]:
                             lt = sb["lits"][side][lit.col()].addCopy(lit, suppt, data, -1)
                             lC = sb["lits"][side][lit.col()]
                             sI = lt.getSupp()
@@ -868,7 +868,7 @@ class RedModel:
             suppt = set(sb["supp"])
             for side in sides:
                 for lit in red.invLiteralsSide(side):                 
-                    if sb["lits"][side].has_key(lit.col()) and sb["lits"][side][lit.col()].hasRid(rid):
+                    if lit.col() in sb["lits"][side] and sb["lits"][side][lit.col()].hasRid(rid):
                         vals = data.cols[side][lit.col()].getVector()
 
                         lt = sb["lits"][side][lit.col()].removeCopy(rid, suppt, self.dm.getD(side, lit.col(), "Full"), data)
@@ -973,7 +973,7 @@ class RedModel:
                 uncovered = set(range(data.nbRows()))
 
                 for sbi, sb in sbs.items():
-                    if sb["lits"][side].has_key(ci):
+                    if ci in sb["lits"][side]:
                         sS = sb["lits"][side][ci].getSupp()
                         cFallB[side] += len(sb["lits"][side][ci].getFallback())
                         totS[side] += sb["lits"][side][ci].getClsSum(vals, sS)

@@ -37,7 +37,7 @@ class Souvenirs:
     
             ix = self.nextId()
             for indx in self.makeOwnIndexes(red):
-                if self.indexes.has_key(indx):
+                if indx in self.indexes:
                     self.indexes[indx].add(ix)
                 else:
                     self.indexes[indx] = set([ix])
@@ -132,7 +132,7 @@ class Souvenirs:
         if len(indexes_p) > 0 and not self.amnesic:
             query_ids = set([-1])
             id_inds = 0
-            while id_inds < len(indexes_p) and self.indexes.has_key(indexes_p[id_inds]) and len(query_ids) > 0:
+            while id_inds < len(indexes_p) and indexes_p[id_inds] in self.indexes and len(query_ids) > 0:
                 if id_inds ==0 :
                     query_ids = set(self.indexes[indexes_p[id_inds]])
                 else:

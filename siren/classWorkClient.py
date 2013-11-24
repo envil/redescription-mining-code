@@ -47,7 +47,7 @@ class WorkClient:
         self.retired = {}
 
     def infoStr(self):
-        return "Server %s:%d"
+        return "Server %s:%d" % (self.work_server[0], self.work_server[1])
     
     def __del__(self):
         if self.hid is not None:

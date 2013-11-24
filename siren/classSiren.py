@@ -1109,14 +1109,13 @@ class Siren():
             self.plant.closeDown(self)
         self.reloadVars(review=False)
         self.reloadRows()
-        self.reloadReds()
 
         self.plant, msg, err = toolCommMultip.getWP(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
         self.resetLogger()
         self.logger.printL(1, msg, "status", "WP")
         if len(err) > 0:
             self.logger.printL(1, err, "error", "WP")
-
+        self.reloadReds()
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data

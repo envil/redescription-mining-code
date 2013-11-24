@@ -305,19 +305,19 @@ class Redescription:
 
 ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
     def getQueriesU(self, details=None):
-        if details is not None and details.has_key("names"):
+        if details is not None and "names" in details:
             return self.queries[0].dispU(details["names"][0]) + "---" + self.queries[1].dispU(details["names"][1])
         else:
             return self.queries[0].dispU() + "---" + self.queries[1].dispU()
 
     def getQueryLU(self, details=None):
-        if details is not None and details.has_key("names"):
+        if details is not None and "names" in details:
             return self.queries[0].dispU(details["names"][0])
         else:
             return self.queries[0].dispU()
 
     def getQueryRU(self, details=None):
-        if details is not None and details.has_key("names"):
+        if details is not None and "names" in details:
             return self.queries[1].dispU(details["names"][1])
         else:
             return self.queries[1].dispU()
@@ -460,7 +460,7 @@ class Redescription:
         details = []
         for (info_key, info_round, info_format) in Redescription.print_info_tex:
             tmp = "-"
-            if info_tmp.has_key(info_key):
+            if info_key in info_tmp:
                 tmp = info_format % round(info_tmp[info_key], info_round)
             details.append(tmp)
             
@@ -541,7 +541,7 @@ class Redescription:
         else:
             keys = Redescription.print_info
         for supp_key in keys:
-            if tmp_info.has_key(supp_key):
+            if supp_key in tmp_info:
                 supp_val = tmp_info[supp_key]
                 if type(supp_val) in [list, set]:
                     strd += "\t\t<%s>\n" % supp_key

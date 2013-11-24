@@ -384,7 +384,7 @@ class PreferencesManager:
 							parameters["subsections"].append(tmp)
 						elif tmp.type_id in parameters.keys():
 							tmp_id = tmp.getId()
-							if self.pdict.has_key(tmp_id):
+							if tmp_id in self.pdict:
 								raise Exception("Encountered two parameters with same id %s!" % tmp_id)
 							else:
 								self.pdict[tmp_id] = tmp  

@@ -369,7 +369,7 @@ class CatColM(ColM):
             # elif re.match(CatColM.n_patt, v):
             #     return None
             else:
-                if cats.has_key(v):
+                if v in cats:
                     cats[v].add(j)
                 else:
                     cats[v] = set([j])
@@ -397,7 +397,7 @@ class CatColM(ColM):
     def upSumsRows(self, sums_rows):
         for cat, rows in self.sCats.items():
             for i in rows:
-                if not sums_rows[i].has_key(cat):
+                if not cat in sums_rows[i]:
                     sums_rows[i][cat]= 0
                 sums_rows[i][cat]+=1
     def sumCol(self):
@@ -618,7 +618,7 @@ class NumColM(ColM):
                 for n in self.missing:
                     self.vect[n] = self.numEquiv("-")
                 ## make sure we recover full length
-                if not self.vect.has_key(self.nbRows()-1): 
+                if self.nbRows()-1 not in self.vect: 
                     self.vect[self.nbRows()-1] = self.vect[-1]
         return self.vect
         
@@ -1642,7 +1642,7 @@ def parseVarDensecat(tmpCols, a, nbRows, nbCols):
         for i in range(len(a)):
             try:
                 cat = float(a[i])
-                if tmp.has_key(cat):
+                if cat in tmp:
                     tmp[cat].add(i)
                 else:
                     tmp[cat] = set([i])

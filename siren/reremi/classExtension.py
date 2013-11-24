@@ -186,7 +186,7 @@ class ExtensionsBatch:
             return (cand.getSide(), cand.getOp())
 
     def get(self, pos):
-        if self.bests.has_key(pos):
+        if pos in self.bests:
             return self.bests[pos]
         else:
             return None
@@ -195,7 +195,7 @@ class ExtensionsBatch:
         for cand in cands:
             pos = self.pos(cand)
             self.scoreCand(cand)
-            if pos is not None and (not self.bests.has_key(pos) or self.scoreCand(cand) > self.scoreCand(self.bests[pos])):
+            if pos is not None and ( pos not in self.bests or self.scoreCand(cand) > self.scoreCand(self.bests[pos])):
                 self.bests[pos] = cand
 
     
@@ -205,7 +205,7 @@ class ExtensionsBatch:
             top = rm.getTopDeltaRed(kid, data)
             pos = self.pos(cand)
             self.scoreCand(cand)
-            if pos is not None and (not self.bests.has_key(pos) or -top[0] > self.tmpsco[pos]):
+            if pos is not None and ( pos not in self.bests or -top[0] > self.tmpsco[pos]):
                 self.bests[pos] = cand
                 self.tmpsco[pos] = -top[0]
 

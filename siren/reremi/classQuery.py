@@ -20,7 +20,7 @@ class Op:
                 self.val = 1
             else:
                 self.val = -1
-        elif Op.ops.has_key(nval):
+        elif nval in Op.ops:
             self.val = nval
         else:
             raise Exception('Uninterpretable operator: %s !' % nval)
@@ -524,7 +524,7 @@ class NumTerm(Term):
                 if names is not None and tmpcol in names:
                     ncol = names.index(tmpcol)
 
-            if partsU.groupdict().has_key('lowb') and partsU.group('lowb') is not None:
+            if 'lowb' in partsU.groupdict() and partsU.group('lowb') is not None:
                 tmplowbs = partsU.group('lowb')
                 try:
                     lowb = float(tmplowbs)
@@ -532,7 +532,7 @@ class NumTerm(Term):
                     ncol = None
                     raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(tmplowbs, detail))
 
-            if partsU.groupdict().has_key('upb') and partsU.group('upb') is not None:
+            if 'upb' in partsU.groupdict() and partsU.group('upb') is not None:
                 tmpupbs = partsU.group('upb')
                 try:
                     upb = float(tmpupbs)
@@ -811,7 +811,7 @@ class Query:
             op = self.op
             for buk in self.buk:
                 for literal in buk:
-                    tmp = config.has_key(literal.col()) and literal.truthEval(config[literal.col()])
+                    tmp = literal.col() in config and literal.truthEval(config[literal.col()])
                     if op.isOr():
                         tv = tv or tmp
                     else:

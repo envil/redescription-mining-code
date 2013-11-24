@@ -28,18 +28,18 @@ class Miner:
         self.data = data
 
         row_ids = None
-        if cust_params.has_key("area"):
+        if "area" in cust_params:
             inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
-            if params.has_key("in_weight"):
+            if "in_weight" in params:
                 inw = params["in_weight"]["data"]
-            if params.has_key("out_weight"):
+            if "out_weight" in params:
                 outw = params["out_weight"]["data"]
             weights = dict([(r,outw) for r in range(self.data.nbRows())])
             for old in cust_params["area"]:
                 weights[old] = inw
             cust_params["weights"] = weights
 
-        if cust_params.has_key("weights"):
+        if "weights" in cust_params:
             row_ids = {}
             off = 0
             for (old, mul) in cust_params["weights"].items():
@@ -64,7 +64,7 @@ class Miner:
 
         try:
             self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
-            if params.has_key("pairs_store"):
+            if "pairs_store" in params:
                 self.initial_pairs.setStore(params["pairs_store"]["data"])
         except AttributeError:
             raise Exception('Oups this selection method does not exist !')
@@ -110,9 +110,9 @@ class Miner:
         return [batch[i] for i in tmp_ids]
 
     def part_run(self, cust_params):
-        if cust_params.has_key("reds"):
+        if "reds" in cust_params:
             reds = cust_params["reds"]
-        elif cust_params.has_key("red"):
+        elif "red" in cust_params:
             reds = [cust_params["red"]]
         else:
             reds = []
@@ -120,7 +120,7 @@ class Miner:
             for red in reds:
                 red.recompute(self.data)
 
-        if cust_params.has_key("side"):
+        if "side" in cust_params:
             self.souvenirs.cutOffSide(1-cust_params["side"])
 
         self.count = "C"

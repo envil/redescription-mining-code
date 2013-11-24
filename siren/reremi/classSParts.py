@@ -472,16 +472,16 @@ class SParts:
             self.N = 0
             supp_keys = sdict.keys()
             for i, supp_key in enumerate(SParts.labels):
-                if sdict.has_key(supp_key):
+                if supp_key in sdict:
                     if i > 3 and len(sdict[supp_key]) > 0:
                         self.missing = True
                     self.sParts[i] = set(sdict.pop(supp_key))
 
-            if sdict.has_key('pr_0'):
+            if 'pr_0' in sdict:
                 self.prs[0] = sdict.pop('pr_0')
-            if sdict.has_key('pr_1'):
+            if 'pr_1' in sdict:
                 self.prs[1] = sdict.pop('pr_1')
-            if sdict.has_key('N'):
+            if 'N' in sdict:
                 self.N = sdict.pop('N')
             if not self.missing:
                 del self.sParts[4:]
