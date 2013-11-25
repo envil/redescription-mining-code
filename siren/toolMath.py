@@ -32,7 +32,7 @@ def getDistances(mat, details, side_cols=None, parameters=None, only_enabled=Fal
     types_ids = pickVars(mat, details, side_cols, only_enabled)
 
     if pivots is None: 
-        d = np.zeros((mat.shape[1]*(mat.shape[1]-1)/2.0))
+        d = np.zeros(max(1, mat.shape[1]*(mat.shape[1]-1)/2))
     else:
         d = np.zeros((mat.shape[1], len(pivots)))
     for typ in parameters:
