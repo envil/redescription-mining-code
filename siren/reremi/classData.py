@@ -1325,6 +1325,7 @@ def readDNCFromCSVFiles(filenames):
     return cols, N, coords, rnames, single_dataset
 
 def parseDNCFromCSVData(csv_data):
+    
     cols = [[],[]]
     coords = None
     single_dataset = False
@@ -1700,6 +1701,13 @@ def getDenseArray(vect):
 
 def main():
     print "UNCOMMENT"
+    # rep = "/home/galbrun/redescriptors/data/world/"
+    # data = Data([rep+"carnivora-3l.csv", rep+"carnivora-3l.csv", {}, "NA"], "csv")
+    # pdb.set_trace()
+    # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")
+    # print data
+    # print data.isGeospatial()
+    #data = Data([rep+"carnivora-3.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
     # rep = "/home/galbrun/redescriptors/data/vaalikone/"
     # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
     # rep = "/home/galbrun/redescriptors/data/de/"

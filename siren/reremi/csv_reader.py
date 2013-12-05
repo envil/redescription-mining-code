@@ -50,7 +50,7 @@ def parse_sparse(D, ll, coord, ids, varcol, valcol):
             nids[dictLL[ll[ii]]] = i
 
     ncoord = None
-    if coord is not None:
+    if coord is not None and coord != (None, None):
         ncoord = [[None for i in range(len(dictLL))], [None for i in range(len(dictLL))]]
         for ii in range(len(coord[0])):
             ncoord[0][dictLL[ll[ii]]] = coord[0][ii]
@@ -182,6 +182,8 @@ def row_order(L, R):
         # Order Lcoord according to Lorder
         if LhasCoord:
             coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
+        elif RhasCoord:
+            coord = [(Rcoord[0][Rorder[i]], Rcoord[1][Rorder[i]]) for i in range(len(Rorder))]
         else:
             coord = None
         ids = None
