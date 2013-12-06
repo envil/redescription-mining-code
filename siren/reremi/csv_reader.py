@@ -2,8 +2,14 @@ import csv
 import sys
 import pdb
 
+class CSVRError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 def read_csv(filename, csv_params={}, unknown_string=None):
-    with open(filename, 'rb') as f:
+    with open(filename, 'rU') as f:
         try:
             dialect = csv.Sniffer().sniff(f.read(2048))
         except Exception:
@@ -156,10 +162,17 @@ def row_order(L, R):
         Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
         (Lvarcol, Lvalcol) = is_sparse(L)
         if Lvarcol is not None: 
-            L, Lll, Lcoord, Lids = parse_sparse(L, Lll, Lcoord, Lids, Lvarcol, Lvalcol)
+            try:
+                L, Lll, Lcoord, Lids = parse_sparse(L, Lll, Lcoord, Lids, Lvarcol, Lvalcol)
+            except Exception as arg:
+                raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
+
         (Rvarcol, Rvalcol) = is_sparse(R)
         if Rvarcol is not None: 
-            R, Rll, Rcoord, Rids = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
+            try:
+                R, Rll, Rcoord, Rids = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
+            except Exception as arg:
+                raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
         Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
@@ -179,21 +192,29 @@ def row_order(L, R):
             else:
                 i += 1
 
-        # Order Lcoord according to Lorder
-        if LhasCoord:
-            coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
-        elif RhasCoord:
-            coord = [(Rcoord[0][Rorder[i]], Rcoord[1][Rorder[i]]) for i in range(len(Rorder))]
-        else:
-            coord = None
-        ids = None
-        if LhasIds:
-            ids = [Lids[Lorder[i]] for i in range(len(Lorder))]
-        elif RhasIds:
-            ids = [Rids[Rorder[i]] for i in range(len(Rorder))]
+        try:
+            # Order Lcoord according to Lorder
+            if LhasCoord:
+                coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
+            elif RhasCoord:
+                coord = [(Rcoord[0][Rorder[i]], Rcoord[1][Rorder[i]]) for i in range(len(Rorder))]
+            else:
+                coord = None
+        except Exception as arg:
+            raise CSVRError('Error while trying to get the coordinates of data: %s' % arg)
+
+        try:
+            ids = None
+            if LhasIds:
+                ids = [Lids[Lorder[i]] for i in range(len(Lorder))]
+            elif RhasIds:
+                ids = [Rids[Rorder[i]] for i in range(len(Rorder))]
+        except Exception as arg:
+            raise CSVRError('Error while trying to get the ids of data: %s' % arg)
+
         return (L, R, Lorder, Rorder, coord, ids)
+
     else:
-    
     # if not (LhasCoord or RhasCoord):
     #     # Neither has coordinates
     #     raise ValueError('At least one data file must have coordinates')
@@ -220,16 +241,31 @@ def row_order(L, R):
 
         # Sanity check
         if len(data.values()[0]) != len(R['data'].values()[0]):
-            raise ValueError('The two data sets are not of same size')
+            raise CSVRError('The two data sets are not of same size')
         return (L, R, range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
 
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
-    (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
-    (Rh, Rd) = read_csv(right_filename, csv_params, unknown_string)
+    try:
+        (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
+    except ValueError as arg:
+        raise CSVRError("Error reading the left hand side data: %s" % arg)
+    except csv.Error as arg:
+        raise CSVRError("Error reading the left hand side data: %s" % arg)
+    try:
+        (Rh, Rd) = read_csv(right_filename, csv_params, unknown_string)
+    except ValueError as arg:
+        raise CSVRError("Error reading the right hand side data: %s" % arg)
+    except csv.Error as arg:
+        raise CSVRError("Error reading the right hand side data: %s" % arg)
+
     L = {'data': Ld, 'headers': Lh}
     R = {'data': Rd, 'headers': Rh}
-    (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+    try:
+        (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+    except Exception as arg:
+        raise CSVRError("Error while mapping the two sides together: %s" % arg)
+
     L['order'] = Lorder
     R['order'] = Rorder
     return {'data': (L,R), 'coord': coord, "ids": ids}

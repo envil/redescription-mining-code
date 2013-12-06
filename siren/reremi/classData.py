@@ -1320,8 +1320,11 @@ def readDNCFromCSVFiles(filenames):
         try:
             tmp_data = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
         except ValueError as arg:
-            raise DataError('Data error reading csv %s' % arg)
+            raise DataError('Data error reading csv: %s' % arg)
+        except csv_reader.CSVRError as arg:
+            raise DataError(str(arg).strip("'"))
         cols, N, coords, rnames = parseDNCFromCSVData(tmp_data)
+
     return cols, N, coords, rnames, single_dataset
 
 def parseDNCFromCSVData(csv_data):
@@ -1702,9 +1705,9 @@ def getDenseArray(vect):
 def main():
     print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/world/"
-    # data = Data([rep+"carnivora-3l.csv", rep+"carnivora-3l.csv", {}, "NA"], "csv")
-    # pdb.set_trace()
     # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")
+    # pdb.set_trace()
+    # data = Data([rep+"carnivora-3a.csv", rep+"navegcovermatthews-3a.csv", {}, "NA"], "csv")
     # print data
     # print data.isGeospatial()
     #data = Data([rep+"carnivora-3.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")

@@ -656,6 +656,7 @@ class Siren():
             updates={"menu":True }
         if "error" in updates:
             self.errorBox(updates["error"])
+            self.appendLog("\n\n***" + updates["error"] + "***\n")
         if "menu" in updates:
             self.updateMenus()
         if "progress" in updates:
@@ -663,7 +664,26 @@ class Siren():
         if "status" in updates:
             self.statusbar.SetStatusText(updates["status"], 0)
         if "log" in updates:
-            self.tabs["log"]["text"].AppendText(updates["log"])
+            self.appendLog(updates["log"])
+
+    def loggingLogTab(self, output, message, type_message, source):
+        print "****************"
+        print "SOURCE", source
+        print "OUTPUT", output
+        print "MESSAGE", message
+        print "TYPE_MESSAGE", type_message
+        print "****************"
+        text = "%s" % message
+        header = "@%s:\t" % source
+        text = text.replace("\n", "\n"+header)
+        self.tabs["log"]["text"].AppendText(text)
+
+    def appendLog(self, text):
+        print "++++++++++++++++"
+        print text
+        print "++++++++++++++++"
+        self.tabs["log"]["text"].AppendText(text)
+
 
     def OnStop(self, event):
         if event.GetId() in self.ids_stoppers:
@@ -1101,8 +1121,9 @@ class Siren():
 
         self.logger.resetOut()
         if self.plant is not None and self.plant.getOutQueue() is not None:
-            self.logger.addOut({"*": verb, "error":1, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
+            self.logger.addOut({"log": 0, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
         self.logger.addOut({"error":1}, "stderr")
+        self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
 
     def reloadAll(self):
         if self.plant is not None:
