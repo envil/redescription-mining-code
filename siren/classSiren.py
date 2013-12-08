@@ -667,21 +667,12 @@ class Siren():
             self.appendLog(updates["log"])
 
     def loggingLogTab(self, output, message, type_message, source):
-        print "****************"
-        print "SOURCE", source
-        print "OUTPUT", output
-        print "MESSAGE", message
-        print "TYPE_MESSAGE", type_message
-        print "****************"
         text = "%s" % message
         header = "@%s:\t" % source
         text = text.replace("\n", "\n"+header)
         self.tabs["log"]["text"].AppendText(text)
 
     def appendLog(self, text):
-        print "++++++++++++++++"
-        print text
-        print "++++++++++++++++"
         self.tabs["log"]["text"].AppendText(text)
 
 

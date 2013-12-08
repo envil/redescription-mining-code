@@ -1705,11 +1705,15 @@ def getDenseArray(vect):
 def main():
     print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/world/"
+    # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")
+    # data.writeXML(open("tmp.xml", "w"))
+    
+    # data2 = Data("tmp.xml", "xml")
     # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")
     # pdb.set_trace()
-    # data = Data([rep+"carnivora-3a.csv", rep+"navegcovermatthews-3a.csv", {}, "NA"], "csv")
-    # print data
-    # print data.isGeospatial()
+    # data = Data([rep+"carnivora-3g.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
+    # print data2
+    # print data2.isGeospatial()
     #data = Data([rep+"carnivora-3.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
     # rep = "/home/galbrun/redescriptors/data/vaalikone/"
     # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")

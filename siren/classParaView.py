@@ -145,7 +145,8 @@ class ParaView(GView):
         else:
             Z, d = toolMath.linkage(mat, details, side_cols, osupp)
             zds = [{"Z":Z, "d":d, "ids": range(mat.shape[1])}]
-        mat[idsNAN] = np.nan
+        if len(idsNAN[0]) > 0:
+            mat[idsNAN] = np.nan
         mcols[None] = 0
         precisions = [self.parent.dw.data.col(side, col).getPrec() for side,col in side_cols]
         side_cols.insert(pos_axis, None)
