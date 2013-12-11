@@ -670,7 +670,7 @@ class Siren():
         text = "%s" % message
         header = "@%s:\t" % source
         text = text.replace("\n", "\n"+header)
-        self.tabs["log"]["text"].AppendText(text)
+        self.appendLog(text+"\n")
 
     def appendLog(self, text):
         self.tabs["log"]["text"].AppendText(text)
@@ -1122,6 +1122,7 @@ class Siren():
         self.reloadVars(review=False)
         self.reloadRows()
 
+        # self.plant, msg, err = toolCommMultip.getWP("127.0.0.1", 55444, "sesame")
         self.plant, msg, err = toolCommMultip.getWP(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
         self.resetLogger()
         self.logger.printL(1, msg, "status", "WP")

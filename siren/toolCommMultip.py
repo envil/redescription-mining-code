@@ -1,13 +1,20 @@
-from classWorkPlant import WorkPlant
+from classWorkLocal import WorkLocal
 from classWorkClient import WorkClient
 import pdb
+
+# class WorkPlant:
+#     def __init__(ip="local", numport=None, authkey=None, parent=None):
+#         self.ip = ip
+#         self.numport = numport
+#         self.authkey = authkey
+#         self.parent = parent
 
 def getWP(ip="local", numport=None, authkey=None, plant=None):        
     plt = None
     msg = ""
     err = ""
     if ip == "local":
-        plt = WorkPlant()
+        plt = WorkLocal()
         msg = "Started local plant"
     else:
         try:    
@@ -18,7 +25,7 @@ def getWP(ip="local", numport=None, authkey=None, plant=None):
                 err = "No remote work server available, starting local plant..."
         except Exception as e:
             err = "Error connecting to remote work server, starting local plant..."
-            plt = WorkPlant()
+            plt = WorkLocal()
             msg = "Started local plant"
     return plt, msg, err
 

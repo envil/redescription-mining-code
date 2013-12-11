@@ -38,6 +38,11 @@ class ProjectorProcess(multiprocessing.Process):
             self.proj = proj
             self.start()
 
+    def stop(self):
+        self.proj.stop()
+        self.logger.printL(1, self.proj, "result", self.id)
+        self.logger.printL(1, None, "progress", self.id)
+
     def run(self):
         try:
             self.proj.do()
@@ -48,8 +53,7 @@ class ProjectorProcess(multiprocessing.Process):
             self.logger.printL(1, self.proj, "result", self.id)
             self.logger.printL(1, None, "progress", self.id)
 
-
-class WorkPlant:
+class WorkLocal:
 
     cqueue = multiprocessing.Queue
     type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
@@ -116,8 +120,10 @@ class WorkPlant:
     def layOff(self, wid):
         if wid is not None and wid in self.workers:
             if self.workers[wid]["wtyp"] == "projector" and wid in self.comm_queues:
-                self.workers[wid]["worker"].terminate()
-                self.retire(wid)
+                #self.workers[wid]["worker"].terminate()
+                self.workers[wid]["worker"].stop()
+                #os.kill(self.workers[wid]["worker"].get_ppid(), signal.SIGTERM)
+                # self.retire(wid)
             else:
                 self.sendMessage(self.comm_queues[wid], "stop", "progress", "plant")
                 self.off[wid] = self.workers.pop(wid)

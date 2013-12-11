@@ -1,4 +1,4 @@
-import multiprocessing, time, sys
+import multiprocessing, time, sys, os
 import getopt
 from multiprocessing.managers import SyncManager
 from reremi.classMiner import Miner
@@ -42,6 +42,12 @@ class ProjectorProcess(multiprocessing.Process):
             self.proj = proj
             self.start()
 
+    def stop(self):
+        self.proj.stop()
+        self.logger.printL(1, self.proj, "result", self.id)
+        self.logger.printL(1, None, "progress", self.id)
+        self.terminate()
+
     def run(self):
         try:
             self.proj.do()
@@ -70,6 +76,7 @@ def make_server_manager(port, authkey):
 class WorkServer:
 
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
+        print "PID", os.getpid()
         self.manager = make_server_manager(portnum, authkey)
         self.shared_job_q = self.manager.get_job_q()
         self.shared_ids_d = self.manager.get_ids_d()
@@ -201,7 +208,8 @@ class WorkHandler:
         if self.working[wid]["queue"] is not None:
             self.working[wid]["queue"].put({"message": "stop", "type_message": "progress", "source": "plant"})
         else:
-            self.working[wid]["process"].terminate()
+            self.working[wid]["process"].stop()
+            # self.working[wid]["process"].terminate()
 
     def shutDown(self):
         del self.pending

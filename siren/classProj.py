@@ -3,14 +3,43 @@ import re, random
 import wx
 import numpy as np
 from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
-import inspect
+import inspect, signal
 import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 import toolMath
+import os
 
 import pdb
+
+def my_SIGTERM_handler(sign, frame):
+    ### DIRTY BUSINESS TO KILL THE WHOLE FAMILY SPAWNED BY SCIKIT
+    print "KILLED!", sign
+    kill_children(os.getpid())
+    exit()
+
+def kill_children(pid):
+    tmp = map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
+    for childp in tmp:
+        kill_children(childp)
+        print "Killing %d..." % childp
+        try:
+            os.kill(childp, signal.SIGTERM)
+        except OSError as e:
+            pass
+
+def list_children(pid, l, level=0):
+    tmp = map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
+    for childp in tmp:
+        l.append((level+1, childp))
+        list_children(childp, l, level+1)
+        # print "Killing %d..." % childp
+        # try:
+        #     os.kill(childp, signal.SIGTERM)
+        # except OSError as e:
+        #     pass
+
 
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
@@ -44,6 +73,7 @@ class Proj(object):
     dyn_f = []
     
     def __init__(self, data, params=None, what="entities", transpose=True):
+        # signal.signal(signal.SIGTERM, my_SIGTERM_handler)
         self.transpose = transpose
         self.what = what
         self.data = data
@@ -51,7 +81,14 @@ class Proj(object):
         self.code = ""
         self.mcols = None
         self.initParameters(params)
+        self.pids_ex = set()
 
+    def getPid(self):
+        return os.getpid()
+
+    def stop(self):
+        self.clearCoords()
+        
     def clearCoords(self):
         self.coords_proj = None
 
@@ -78,9 +115,9 @@ class Proj(object):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
 
     def do(self):
+        self.pids_ex = set(map(int,os.popen("ps -o pid --ppid %d --noheaders" % os.getpid()).read().split()))
         self.comp()
-
-
+        
     def getCode(self):
         tt = "%s:" % self.PID
         if self.getParameter("types") is None:
@@ -281,13 +318,15 @@ class DynProj(Proj):
     title_str = "Projection"
 
     def getData(self):
-        if self.data is np.array:
+
+        if type(self.data) is np.array or type(self.data) is np.ndarray:
             if self.transpose:
                 mat = self.data.T
             else:
                 mat = self.data
             idsNAN = np.where(~np.isfinite(mat))
             mat[idsNAN] = np.nanmin(mat) -1
+            matn = toolMath.withen(mat)
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
@@ -412,10 +451,25 @@ class SKmdsProj(DynProj):
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"n_init": 4, "max_iter":100})
     fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"n_jobs": 4})
+    fix_parameters.update({"n_jobs": -2})
     dyn_f = [manifold.MDS]
 
+    def stop(self):
+        l = []
+        list_children(os.getpid(), l)
+        l = [childp for (lev, childp) in l if childp not in self.pids_ex and lev > 1]
+        while len(l) > 0:
+            childp =  l.pop()
+            try:
+                os.kill(childp, signal.SIGTERM)
+            except OSError as e:
+                pass
+        self.clearCoords()
+
     def getX(self, X):
+        l = []
+        list_children(os.getpid(), l)
+        self.pids_ex.update(l) 
         clf = self.applyF(manifold.MDS)
         X_mds = clf.fit_transform(X)
         return X_mds, clf.stress_
@@ -430,8 +484,20 @@ class SKtreeProj(DynProj):
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"max_depth":5, "n_estimators":10})
     fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"n_jobs": 4})
+    fix_parameters.update({"n_jobs": -2})
     dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
+
+    def stop(self):
+        l = []
+        list_children(os.getpid(), l)
+        l = [childp for (lev, childp) in l if childp not in self.pids_ex and lev > 1]
+        while len(l) > 0:
+            childp =  l.pop()
+            try:
+                os.kill(childp, signal.SIGTERM)
+            except OSError as e:
+                pass
+        self.clearCoords()
 
     def getX(self, X):
         X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 

@@ -63,13 +63,13 @@ class EProjView(GView):
         self.runProject()
 
     def getShortDesc(self):
-        return "%s %s" % (self.getRedId(), self.proj.SDESC)
+        return "%s %s" % (self.getRedId(), self.getProj().SDESC)
 
     def getTitleDesc(self):
-        return "%s %s" % (self.getRedId(), self.proj.getTitle())
+        return "%s %s" % (self.getRedId(), self.getProj().getTitle())
 
     def getId(self):
-        return (self.proj.PID, self.vid)
+        return (self.getProj().PID, self.vid)
 
     def additionalElements(self):
         setts_boxes = []
@@ -77,7 +77,7 @@ class EProjView(GView):
         current_w = 1000
         flags = wx.ALIGN_CENTER | wx.ALL
 
-        self.boxes = self.proj.makeBoxes(self.mapFrame)
+        self.boxes = self.getProj().makeBoxes(self.mapFrame)
         self.boxes.sort(key=lambda x : x["type_ctrl"])
         for box in self.boxes:
             block_w = box["label"].GetBestSize()[0] + sum([c.GetBestSize()[0] for c in box["ctrls"]])
@@ -127,7 +127,7 @@ class EProjView(GView):
         self.updateMap()
 
     def OnReproject(self, rid=None):
-        self.proj.initParameters(self.boxes)
+        self.getProj().initParameters(self.boxes)
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
         #     self.initProject(tmp_id)
@@ -138,16 +138,19 @@ class EProjView(GView):
     def initProject(self, rid=None):
         ### print ProjFactory.dispProjsInfo()
         self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
-
+        
     def runProject(self):
         self.init_wait()
-        self.parent.project(self.proj, self.getId())
+        self.parent.project(self.getProj(), self.getId())
         if self.repbut is not None:
             self.repbut.Disable()
             self.repbut.SetLabel("Wait...")
                       
     def readyProj(self, proj):
-        self.proj = proj
+        if proj is not None:
+            self.proj = proj
+        elif self.proj is not None:
+            self.proj.clearCoords()
         self.kill_wait()
         self.updateMap()
         if self.repbut is not None:
@@ -226,24 +229,24 @@ class EProjView(GView):
             #     if len(part) > 0 and pi in draw_settings:
             #         for idp in part:
 
-            x0, x1, y0, y1 = self.proj.getAxisLims()
+            x0, x1, y0, y1 = self.getProj().getAxisLims()
             #siz = round(max(1, min((x1-x0)/20, (y1-y0)/20)))
             siz = 0
             for idp, pi in enumerate(self.suppABCD):
                 if pi in draw_settings and selv[idp] > 0:
                     if draw_settings[pi]["size"] > siz:
                         siz = draw_settings[pi]["size"]
-                    self.axe.plot(self.proj.getCoords(0,idp), self.proj.getCoords(1, idp), gid="%d.%d" % (idp, 1),
+                    self.axe.plot(self.getProj().getCoords(0,idp), self.getProj().getCoords(1, idp), gid="%d.%d" % (idp, 1),
                            mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
                            linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
 
-            # if self.proj.getTitle() is not None:
-            #     self.axe.set_title(self.proj.getTitle(),fontsize=12)
-            if self.proj.getAxisLabel(0) is not None:
-                self.axe.set_xlabel(self.proj.getAxisLabel(0),fontsize=12)
-            if self.proj.getAxisLabel(1) is not None:
-                self.axe.set_ylabel(self.proj.getAxisLabel(1),fontsize=12)
+            # if self.getProj().getTitle() is not None:
+            #     self.axe.set_title(self.getProj().getTitle(),fontsize=12)
+            if self.getProj().getAxisLabel(0) is not None:
+                self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
+            if self.getProj().getAxisLabel(1) is not None:
+                self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
             self.axe.axis([x0-bx, x1+bx, y0-by, y1+by])
             self.updateEmphasize(self.COLHIGH, review=False)
@@ -257,3 +260,7 @@ class EProjView(GView):
             return None
         else:
             return self.proj.getCoords(axi, ids)
+
+
+    def getProj(self):
+        return self.proj

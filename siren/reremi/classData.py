@@ -1428,7 +1428,7 @@ def readDNCFromMulFiles(filenames):
     single_dataset = False
     if len(filenames) >= 2:
         (cols, N) = readVariables(filenames[:2])
-        single_dataset = (filenames[0] == filenames[0])
+        single_dataset = (filenames[0] == filenames[1])
         if len(filenames) >=5  and filenames[4] is not None:
             coords = readCoords(filenames[4])
             if coords is not None and coords.shape[1] != N:
@@ -1707,6 +1707,10 @@ def main():
     # rep = "/home/galbrun/redescriptors/data/world/"
     # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")
     # data.writeXML(open("tmp.xml", "w"))
+
+    rep = "/home/galbrun/redescriptors/data/rajapaja/"
+    data = Data([rep+"mammals.sparsebool", rep+"worldclim_tp.densenum", {}, "NA"], "csv")
+    print data
     
     # data2 = Data("tmp.xml", "xml")
     # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")

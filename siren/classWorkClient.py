@@ -108,19 +108,19 @@ class WorkClient:
             job = {"hid": self.hid, "wid":self.next_workerid, "task": wtype, "more": more, "data": boss.getData(), "preferences": boss.getPreferences()}
             try:
                 self.getJobsQueue().put(job)
-            except socket.error, EOFError:
-                self.onServerDeath()
-
-            
+            except (socket.error, IOError, EOFError):
+                self.onServerDeath(boss)
+ 
     def cleanUpResults(self):
         if self.getResultsQueue() is None:
             return
         while self.getResultsQueue() is not None:
             try:
-                self.getResultsQueue().get_nowait()
+                # self.getResultsQueue().get_nowait()
+                self.getResultsQueue().get(False, 1)
             except Queue.Empty:
                 break
-            except socket.error, EOFError:
+            except (socket.error, IOError, EOFError):
                 self.onServerDeath()
 
 
@@ -152,7 +152,7 @@ class WorkClient:
         if wid is not None and wid in self.workers:
             job = {"hid": self.hid, "wid": wid, "task": "layoff"}
             self.getJobsQueue().put(job)
-            self.off[wid] = self.workers.pop(wid)
+            # self.off[wid] = self.workers.pop(wid)
             return wid
         return None
 
@@ -186,13 +186,13 @@ class WorkClient:
         if self.getJobsQueue() is not None:
             while self.nbWorking() > 0:
                 try:
-                    piece_result = self.getResultsQueue().get()
+                    piece_result = self.getResultsQueue().get(False, 1)
                     if piece_result is not None:
                         self.handlePieceResult(piece_result, updates, parent)
                         if "status"in updates:
                             print updates["status"]
-                except socket.error, EOFError:
-                    self.onServerDeath()
+                except (socket.error, IOError, EOFError):
+                    self.onServerDeath(parent)
 
         return updates
 
@@ -201,22 +201,35 @@ class WorkClient:
         if self.getJobsQueue() is not None:
             while self.nbWorking() > 0:
                 try:
-                    piece_result = self.getResultsQueue().get_nowait()
+                    # piece_result = self.getResultsQueue().get_nowait()
+                    piece_result = self.getResultsQueue().get(False, 1)
                     if piece_result is not None:
                         self.handlePieceResult(piece_result, updates, parent)
                 except Queue.Empty:
                     break
-                except socket.error, EOFError:
-                    self.onServerDeath()
+                except (IOError, EOFError, socket.error):
+                    self.onServerDeath(updates, parent)
         return updates
 
-    def onServerDeath(self):
+    def finishingWki(self, wki, updates=None, parent=None):
+        if wki in self.workers:
+            if updates is not None:
+                if self.workers[wki]["wtyp"] in ["projector"]:
+                    parent.readyProj(self.workers[wki]["vid"], None)
+            self.retired[wki] = self.workers.pop(wki)
+
+    def onServerDeath(self, updates=None, parent=None):
         wkis = self.workers.keys()
         for wki in wkis:
-            self.off[wki] = self.workers.pop(wki)
+            self.finishingWki(wki, updates, parent)
         self.shared_job_q = None
         self.shared_result_q = None
         self.hid = None
+        if updates is not None:
+            self.updateStatus("WP", "Work server died!", updates)
+            self.updateError("WP", "Work server died!", updates)
+            updates["menu"] = True
+            updates["progress"] = True
 
     def handlePieceResult(self, note, updates, parent):
         if note["type_message"] in self.type_messages:
