@@ -340,6 +340,15 @@ class PreferencesManager:
 			strd += self.dispSection(sec)
 		return strd
 
+
+	def getSectionByName(self, name):
+		tmp = [(ti, t) for (ti, t) in enumerate(self.subsections) if t["name"] == name]
+		if len(tmp) == 1:
+			return tmp[0]
+		else:
+			return (None, None)
+
+		
 	def dispSection(self, parameters, level=0):
 		strs = ("\t"*level)+("[%s]\n" % parameters.get("name", ""))
 		for k in self.parameter_types.keys():

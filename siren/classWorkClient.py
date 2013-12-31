@@ -1,4 +1,6 @@
+import re
 import multiprocessing, time, socket, uuid
+from classWorkInactive import WorkInactive
 from multiprocessing.managers import SyncManager
 import Queue
 
@@ -31,7 +33,7 @@ def make_hc_manager(ip, port, authkey):
     manager.connect()
     return manager
 
-class WorkClient:
+class WorkClient(WorkInactive):
 
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
@@ -40,11 +42,20 @@ class WorkClient:
         self.hid = None
         self.work_server = (ip, portnum, authkey)
         self.shared_job_q = None
+        self.ids_q = None
         self.shared_result_q = None
         self.next_workerid = 0
         self.workers = {}
         self.off = {}
         self.retired = {}
+
+    def isActive(self):
+        return True
+
+    def getParametersD(self):
+        return {"workserver_ip": self.work_server[0],
+                "workserver_port": self.work_server[1],
+                "workserver_authkey": self.work_server[2]}
 
     def infoStr(self):
         return "Server %s:%d" % (self.work_server[0], self.work_server[1])
@@ -61,9 +72,41 @@ class WorkClient:
         except socket.error:
             return False
 
+    def getDetailedInfos(self):
+        info = "KO"
+        if self.hid is None:
+            manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
+            self.shared_job_q = manager.get_job_q()
+            self.ids_d = manager.get_ids_d()
+        uid = uuid.uuid4()
+        self.shared_job_q.put({"task": "info", "cid": uid})
+        counter = 10
+        while not self.ids_d.has_key(uid) and counter > 0:
+            time.sleep(1)
+            counter -= 1
+        if self.ids_d.has_key(uid):
+            tmp = self.ids_d.pop(uid)
+            parts = tmp.strip().split()
+            if len(parts) == 0:
+                info = "OK\tDoes not have any clients."
+            else:
+                tasks = 0
+                pending = 0
+                for p in parts:
+                    tmp = re.match("^(?P<cid>[a-zA-Z0-9]*):(?P<run>[0-9]*)\+(?P<pend>[0-9]*)$", p)
+                    if tmp is not None:
+                        tasks += int(tmp.group("run"))
+                        pending += int(tmp.group("pend")) 
+                if len(parts) == 1:
+                    info = "OK\tHas one client, in total %d tasks, of which %d currently running." % (tasks+pending, tasks)
+                else:
+                    info =  "OK\tHas %d clients, in total %d tasks, of which %d currently running." % (len(parts), tasks+pending, tasks)
+        return info
+
+
     def resetHS(self, ip=None, numport=None, authkey=None):
         if self.hid is not None and self.nbWorkers() == 0:
-            ## check results before caling this
+            ## check results before calling this
             self.shared_job_q.put({"hid": self.hid, "task": "shutdown"})
             self.shared_job_q = None
             self.shared_result_q= None
@@ -74,16 +117,16 @@ class WorkClient:
                 self.work_server = (ip, nunmport, authkey)
             manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
             self.shared_job_q = manager.get_job_q()
-            ids_d = manager.get_ids_d()
+            self.ids_d = manager.get_ids_d()
             ### TODO generate uid
             uid = uuid.uuid4()
             self.shared_job_q.put({"task": "startup", "cid": uid})
             counter = 10
-            while not ids_d.has_key(uid) and counter > 0:
+            while not self.ids_d.has_key(uid) and counter > 0:
                 time.sleep(1)
                 counter -= 1
-            if ids_d.has_key(uid):
-                self.hid = ids_d.pop(uid)
+            if self.ids_d.has_key(uid):
+                self.hid = self.ids_d.pop(uid)
                 hc_manager = make_hc_manager(self.work_server[0], self.hid, self.work_server[2])
                 self.shared_result_q = hc_manager.get_result_q()
                 return self.hid

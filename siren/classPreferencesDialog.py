@@ -40,6 +40,8 @@ class PreferencesDialog(wx.Dialog):
 		self.cancel_change = False # Tracks if we should cancel a page change
 		
 		for section in self.pref_handle.getPreferencesManager().subsections:
+			if section.get("name") == "Network":
+				continue
 			sec_id = wx.NewId()
 			self.tabs.append(sec_id)
 			self.controls_map[sec_id] = {"button": {}, "range": {},
@@ -252,7 +254,7 @@ class PreferencesDialog(wx.Dialog):
 			self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
 			self.controls_map[sec_id]["button"]["reset"].Disable()
 			self.controls_map[sec_id]["button"]["apply"].Disable()
-		self.onClose()
+		self.onClose(event)
 
 	def changeHappened(self, event):
 		if event.GetId() in self.objects_map.keys():

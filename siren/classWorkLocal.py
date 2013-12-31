@@ -1,5 +1,6 @@
 import multiprocessing, sys
 from reremi.classMiner import Miner
+from classWorkInactive import WorkInactive
 import Queue
 
 import pdb
@@ -53,7 +54,7 @@ class ProjectorProcess(multiprocessing.Process):
             self.logger.printL(1, self.proj, "result", self.id)
             self.logger.printL(1, None, "progress", self.id)
 
-class WorkLocal:
+class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
     type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
@@ -67,13 +68,30 @@ class WorkLocal:
 
     def __init__(self):
         self.next_workerid = 0
+        self.work_server = ("local", None, None)
         self.workers = {}
         self.off = {}
         self.retired = {}
         self.comm_queues = {"out": self.cqueue()}
 
+    def isActive(self):
+        return True
+
+    def getParametersD(self):
+        return {"workserver_ip": self.work_server[0]}
+
+    def getDetailedInfos(self):
+        return "OK\t" + self.getLoadStr()
     def infoStr(self):
         return "Local"
+    def getLoadStr(self):
+        if len(self.workers) == 0:
+            return "No process running"
+        elif len(self.workers) == 1:
+            return "One process running"
+        else:
+            return "%d processes running" % len(self.workers)
+
 
     def getOutQueue(self):
         return self.comm_queues["out"]

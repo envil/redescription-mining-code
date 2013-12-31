@@ -99,12 +99,21 @@ class WorkServer:
                         self.shared_ids_d.update({job.get("cid"): hid})
                         print "new HID %s -> %s" % (job.get("cid"), hid) 
 
+                    if job.get("task") == "info":
+                        ## create new handler
+                        hid = portnum + self.nextHandlerId
+                        self.shared_ids_d.update({job.get("cid"): self.getLoadStr()})
+                        print "sent INFO %s" % job.get("cid") 
+
                     ## if retire: move from working to retired 
                     elif job.get("hid") in self.handlers:
                         self.handlers[job.get("hid")].handleJob(job)
         # except:
         #     print "Central stop..."
         #     return
+
+    def getLoadStr(self):
+        return " ".join([hd.getLoadStr() for (hdid, hd) in self.handlers.items()])
                         
     def __del__(self):
         hids = self.handlers.keys()
@@ -157,6 +166,10 @@ class WorkHandler:
 
     def getResultsQueue(self):
         return self.shared_result_q
+
+    def getLoadStr(self):
+        return "%d:%d+%d" % (self.id, len(self.working), len(self.pending))
+
 
     def handleJob(self, job):
         ### if acceptable task: launch work if there are free processes, else add job to pending 

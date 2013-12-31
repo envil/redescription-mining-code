@@ -14,10 +14,10 @@ from reremi.toolICList import ICList
 from classGridTable import VarTable, RedTable, RowTable
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
+from classConnectionDialog import ConnectionDialog
 from miscDialogs import ImportDataDialog, ImportDataCSVDialog, FindDialog
 from factView import ViewFactory
-import toolCommMultip
-
+from toolWP import WorkPlant
 
 import pdb
  
@@ -52,7 +52,7 @@ class Siren():
         self.busyDlg = None
         self.findDlg = None
         self.dw = None
-        self.plant = None
+        self.plant = WorkPlant()
         self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
                      1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                      "rows": {"title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
@@ -138,6 +138,7 @@ class Siren():
 
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
+        self.plant.setUpCall(self.doUpdates)
 
     def getReds(self):
         if self.dw is not None:
@@ -219,10 +220,10 @@ class Siren():
 
 
     def updateProgressBar(self):
-        if self.plant is None:
+        if not self.plant.getWP().isActive():
             work_estimate, work_progress = (0, 0)
         else:
-            work_estimate, work_progress = self.plant.getWorkEstimate()
+            work_estimate, work_progress = self.plant.getWP().getWorkEstimate()
         if work_estimate > 0:
             self.progress_bar.SetRange(work_estimate)
             self.progress_bar.SetValue(work_progress)
@@ -382,21 +383,21 @@ class Siren():
     def makeStoppersMenu(self, frame, menuStop=None):
         if menuStop is None:
             menuStop = wx.Menu()
-        if self.plant is None or self.plant.nbWorkers() == 0:
+        if self.plant.getWP().nbWorkers() == 0:
             ID_NOP = wx.NewId()
             m_nop = menuStop.Append(ID_NOP, "No process running", "There is no process currently running.")
             menuStop.Enable(ID_NOP, False)
 
         else:
-            for wdt in self.plant.getWorkersDetails(): 
+            for wdt in self.plant.getWP().getWorkersDetails(): 
                 ID_STOP = wx.NewId()
                 self.ids_stoppers[ID_STOP] = wdt["wid"] 
                 m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
                 frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
-        if self.plant is not None:
+        if self.plant.getWP().isActive():
             menuStop.AppendSeparator()
             ID_PLT = wx.NewId()
-            m_plt = menuStop.Append(ID_PLT, self.plant.infoStr(), "Where processes are handled.")
+            m_plt = menuStop.Append(ID_PLT, self.plant.getWP().infoStr(), "Where processes are handled.")
             menuStop.Enable(ID_PLT, False)
 
         return menuStop
@@ -498,6 +499,11 @@ class Siren():
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
+        if True:
+                ID_CONN = wx.NewId()
+                m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...\tCtrl+k", "Setup worker's connection.")
+                frame.Bind(wx.EVT_MENU, self.OnConnectionDialog, m_conndia)
+
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
         return menuFile
@@ -568,7 +574,7 @@ class Siren():
 
     def deleteView(self, vK):
         if vK in self.view_ids:
-            self.plant.layOff(self.plant.findWid([("wtyp", "project"), ("vid", vK)]))
+            self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
             self.view_ids[vK].mapFrame.Destroy()
             del self.view_ids[vK]
 
@@ -618,12 +624,12 @@ class Siren():
             params = {}
         self.progress_bar.Show()
         if "red" in params and params["red"] is not None and params["red"].length(0) + params["red"].length(1) > 0:
-            self.plant.addWorker("expander", self, params,
+            self.plant.getWP().addWorker("expander", self, params,
                                  {"results_track":0,
                                   "batch_type": "partial",
                                   "results_tab": "exp"})
         else:
-            self.plant.addWorker("miner", self, params,
+            self.plant.getWP().addWorker("miner", self, params,
                                  {"results_track":0,
                                   "batch_type": "final",
                                   "results_tab": "exp"})
@@ -632,17 +638,17 @@ class Siren():
     def project(self, proj=None, vid=None):
         self.progress_bar.Show()
         if proj is not None and vid is not None:
-            wid = self.plant.findWid([("wtyp", "projector"), ("vid", vid)])
+            wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
             if wid is None:
-                self.plant.addWorker("projector", self, proj,
+                self.plant.getWP().addWorker("projector", self, proj,
                                      {"vid": vid})
                 self.checkResults(menu=True)
 
     def checkResults(self, menu=False):
-        updates = self.plant.checkResults(self)
+        updates = self.plant.getWP().checkResults(self)
         if menu:
             updates["menu"] = True
-        if self.plant.nbWorking() > 0:
+        if self.plant.getWP().nbWorking() > 0:
             if self.call_check is None:
                 self.call_check = wx.CallLater(Siren.results_delay, self.checkResults)
             else:
@@ -678,7 +684,7 @@ class Siren():
 
     def OnStop(self, event):
         if event.GetId() in self.ids_stoppers:
-            self.plant.layOff(self.ids_stoppers[event.GetId()])
+            self.plant.getWP().layOff(self.ids_stoppers[event.GetId()])
             self.checkResults(menu=True)
 
     def OnViewTop(self, event):
@@ -986,6 +992,11 @@ class Siren():
         d.ShowModal()
         d.Destroy()
 
+    def OnConnectionDialog(self, event):
+        d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
+        d.ShowModal()
+        d.Destroy()
+
     def OnHelp(self, event):
         wxVer = map(int, wx.__version__.split('.'))
         new_ver = wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3)
@@ -1052,8 +1063,8 @@ class Siren():
         return dets
 
     def OnQuit(self, event):
-        if self.plant is not None:
-            self.plant.closeDown(self)
+        if self.plant.getWP().isActive():
+            self.plant.getWP().closeDown(self)
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
                 return
         self.deleteAllViews()
@@ -1111,23 +1122,24 @@ class Siren():
             verb = self.dw.getPreference('verbosity')
 
         self.logger.resetOut()
-        if self.plant is not None and self.plant.getOutQueue() is not None:
-            self.logger.addOut({"log": 0, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getOutQueue(), self.plant.sendMessage)
+        if self.plant.getWP().isActive() and self.plant.getWP().getOutQueue() is not None:
+            self.logger.addOut({"log": 0, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
         self.logger.addOut({"error":1}, "stderr")
         self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
 
     def reloadAll(self):
         if self.plant is not None:
-            self.plant.closeDown(self)
+            self.plant.getWP().closeDown(self)
         self.reloadVars(review=False)
         self.reloadRows()
 
         # self.plant, msg, err = toolCommMultip.getWP("127.0.0.1", 55444, "sesame")
-        self.plant, msg, err = toolCommMultip.getWP(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
-        self.resetLogger()
-        self.logger.printL(1, msg, "status", "WP")
-        if len(err) > 0:
-            self.logger.printL(1, err, "error", "WP")
+        # self.plant = toolWP.setupWorkPlant(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
+        # msg, err = self.plant.getWP().reset(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
+        # self.resetLogger()
+        # self.logger.printL(1, msg, "status", "WP")
+        # if len(err) > 0:
+        #     self.logger.printL(1, err, "error", "WP")
         self.reloadReds()
 
     def reloadVars(self, review=True):
