@@ -14,4 +14,4 @@ Depends: ${misc:Depends}, ${python:Depends}, debhelper (>=7.0.50~), python-numpy
 Description: The Siren python module, adds Siren and ReReMi
  This provides the ReReMi redescription mining algorithm
  and the Siren interface for interactive mining and visualization 
- of geospatial redescriptions.
+ of redescriptions.

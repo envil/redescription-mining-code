@@ -19,8 +19,8 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '1.0.1'
-DESCRIPTION="Interactive Geospatial Redescription Mining"
+VERSION = '2.0.1'
+DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
 URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
@@ -36,10 +36,34 @@ ST_RESOURCES=['help',
               'icons/siren_icon32x32.png', 'ABOUT', 'LICENSE', 'LICENSE_short',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
-ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
-            'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
+ST_FILES = ['classConnectionDialog.py',
+            'classEProjView.py',
+            'classGridTable.py',
+            'classGView.py',
+            'classInterObjects.py',
+            'classMapView.py',
+            'classParaView.py',
+            'classPreferencesDialog.py',
+            'classProj.py',
+            'classSiren.py',
+            'classVProjView.py',
+            'classWorkClient.py',
+            'classWorkInactive.py',
+            'classWorkLocal.py',
+            'classWorkServer.py',
+            'DataWrapper.py',
+            'factView.py',
+            'miscDialogs.py',
+            'siren.py',
+            'toolMath.py',
+            'toolWP.py',
+            'tsne.py']
+# ST_FILES = ['DataWrapper.py', 'classGridTable.py', 'classMapView.py',
+#             'classPreferencesDialog.py', 'classSiren.py', 'miscDialogs.py']
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
+# ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi']
+ST_PACKAGES = ['wx', 'reremi', 'sklearn', 'mpl_toolkits']
+MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
 DU_RESOURCES_SIREN=['help/*',
