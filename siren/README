@@ -1,6 +1,6 @@
 SIREN --- Interactive, visual redescription mining
 
-Siren is an interactive tool for visual and interactive geospatial redescription mining.
+Siren is an interactive tool for visual and interactive redescription mining.
 
 With a debian-based distribution run the following commands as root to install:
 dpkg -i the_latest_siren_deb_package.deb

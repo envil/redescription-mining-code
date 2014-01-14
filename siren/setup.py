@@ -25,7 +25,7 @@ APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
 VERSION = '2.0.1'
-DESCRIPTION="Interactive Geospatial Redescription Mining"
+DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
 URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
@@ -35,7 +35,8 @@ LICENSE="Apache_2.0"
 ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
-ST_FILES = ['classEProjView.py',
+ST_FILES = ['classConnectionDialog.py',
+            'classEProjView.py',
             'classGridTable.py',
             'classGView.py',
             'classInterObjects.py',
@@ -44,12 +45,34 @@ ST_FILES = ['classEProjView.py',
             'classPreferencesDialog.py',
             'classProj.py',
             'classSiren.py',
+            'classVProjView.py',
+            'classWorkClient.py',
+            'classWorkInactive.py',
+            'classWorkLocal.py',
+            'classWorkServer.py',
             'DataWrapper.py',
             'factView.py',
             'miscDialogs.py',
-            'toolCommMultip.py',
+            'siren.py',
             'toolMath.py',
+            'toolWP.py',
             'tsne.py']
+
+#             'classEProjView.py',
+#             'classGridTable.py',
+#             'classGView.py',
+#             'classInterObjects.py',
+#             'classMapView.py',
+#             'classParaView.py',
+#             'classPreferencesDialog.py',
+#             'classProj.py',
+#             'classSiren.py',
+#             'DataWrapper.py',
+#             'factView.py',
+#             'miscDialogs.py',
+#             'toolCommMultip.py',
+#             'toolMath.py',
+#             'tsne.py']
 #ST_FILES += matplotlib.get_py2exe_datafiles()
 #ST_FILES.append((''.join('mpl_toolkits', 'basemap', 'data'), re.findall(''.join(os.path.dirname(basemap.__file__), 'data')) ))
 
@@ -64,6 +87,7 @@ DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
 DU_FILES = ['siren',
+            'classConnectionDialog',
             'classEProjView',
             'classGridTable',
             'classGView',
@@ -73,12 +97,33 @@ DU_FILES = ['siren',
             'classPreferencesDialog',
             'classProj',
             'classSiren',
+            'classVProjView',
+            'classWorkClient',
+            'classWorkInactive',
+            'classWorkLocal',
+            'classWorkServer',
             'DataWrapper',
             'factView',
             'miscDialogs',
-            'toolCommMultip',
             'toolMath',
+            'toolWP',
             'tsne']
+
+            # 'classEProjView',
+            # 'classGridTable',
+            # 'classGView',
+            # 'classInterObjects',
+            # 'classMapView',
+            # 'classParaView',
+            # 'classPreferencesDialog',
+            # 'classProj',
+            # 'classSiren',
+            # 'DataWrapper',
+            # 'factView',
+            # 'miscDialogs',
+            # 'toolCommMultip',
+            # 'toolMath',
+            # 'tsne'
 
 DU_PACKAGES = ['reremi']
 

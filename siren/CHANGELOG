@@ -1,5 +1,9 @@
 CHANGELOG for Siren
 ===================
+v2.0.1
+------
+* Dialog for setting up (possibly remote) workers
+* Various bug fixes
 
 v2.0.0
 ------
