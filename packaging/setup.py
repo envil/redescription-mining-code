@@ -27,13 +27,15 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help',
-              'commons/siren.css',
-              'commons/siren_icon.png',
-              'commons/top_tools.jpg',
-              'commons/bottom_map.jpg',
-              'commons/both_windows_comm.png',
-              'icons/siren_icon32x32.png', 'ABOUT', 'LICENSE', 'LICENSE_short',
+## ST_RESOURCES=['help',
+##               'commons/siren.css',
+##               'commons/siren_icon.png',
+##               'commons/top_tools.jpg',
+##               'commons/bottom_map.jpg',
+##               'commons/both_windows_comm.png',
+##               'icons/siren_icon32x32.png', 'ABOUT', 'LICENSE', 'LICENSE_short',
+##               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
+ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['classConnectionDialog.py',
