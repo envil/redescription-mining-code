@@ -34,55 +34,55 @@ The data comes from two publicly available datasets: European Mammals atlas and 
 <ol>
 <li>The first tab contains a list of entities. Expanding columns of interest reveals the actual values of the variables.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/BIO/windows/Bio_EntitiesClosed.png"></td>
-<td><img class="web" src="../stories/BIO/windows/Bio_EntitiesOpen.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_EntitiesClosed.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_EntitiesOpen.png"></td>
 </tr></table>
 </li>
 
 <li>Next comes the list of left-hand side variables and right-hand side variables.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/BIO/windows/Bio_VariablesLHS.png"></td>
-<td><img class="web" src="../stories/BIO/windows/Bio_VariablesRHS.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_VariablesRHS.png"></td>
 </tr></table>
 </li>
 
 <li>Let's consider the Moose, plot this variable in a map to create a new redescription.
-<img class="web" src="../stories/BIO/interact/Bio_VOpenRMoose.png">
+<img class="web" src="../screenshots/BIO/interact/Bio_VOpenRMoose.png">
 </li>
 
 <li>Then, we can let the algorithm find best expansions.
-<img class="web" src="../stories/BIO/interact/Bio_ExpansionsInitRMoose.png">
+<img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsInitRMoose.png">
 </li>
 
 <li>After a few seconds, we get a number of expansions and can sort them by accuracy or let the algorithm process them to select the top non-redundant ones, here we obtain one.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/BIO/interact/Bio_ExpansionsSortedRMoose.png"></td>
-<td><img class="web" src="../stories/BIO/interact/Bio_ExpansionsFilteredRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsSortedRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/interact/Bio_ExpansionsFilteredRMoose.png"></td>
 </tr></table>
 </li>
 
 <li>Let's have a look at this redescription about the Moose, simultaneously plotting it in a Multidimensional Scaling projection and on a map.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/BIO/windows/Bio_MDSViewRMoose.png"></td>
-<td><img class="web" src="../stories/BIO/windows/Bio_MapViewRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_MDSViewRMoose.png"></td>
+<td><img class="web" src="../screenshots/BIO/windows/Bio_MapViewRMoose.png"></td>
 </tr></table>
 </li>
 
 <li>We can select a dot to highlight the entities. The views are linked together so the entity will be highlighted across all views for that specific redescription.
-<img class="large" src="../stories/BIO/interact/Bio_SelectDotSideRMoose.png"> 
+<img class="large" src="../screenshots/BIO/interact/Bio_SelectDotSideRMoose.png"> 
 </li>
 
 <li>To select a set of points lying in some area, we can draw an enclosing polygon. Similarly, when we click Edit &#8594; (De)select polygon (or press the corresponding key) to select the dots inside the polygon, they will be highlighted across the different views.
-<img class="large" src="../stories/BIO/interact/Bio_DrawPolySideRMoose.png"> 
-<img class="large" src="../stories/BIO/interact/Bio_SelectPolySideRMoose.png"> 
+<img class="large" src="../screenshots/BIO/interact/Bio_DrawPolySideRMoose.png"> 
+<img class="large" src="../screenshots/BIO/interact/Bio_SelectPolySideRMoose.png"> 
 </li>
 
 <li>With this selected entities we can recompute the left-hand side query while adding weight on this area, to try removing it from E<sub>10</sub>. To do this, we clear the left-hand side query, press ENTER to update the redescription then choose Process &#8594; Overfit LHS.
-<img src="../stories/BIO/interact/Bio_OverfitInitRMoose.png"> 
+<img src="../screenshots/BIO/interact/Bio_OverfitInitRMoose.png"> 
 </li>
 
 <li>And we automatically obtain a new left-hand side query involving Mountain Hare, removing this region from the support.
-<img src="../stories/BIO/interact/Bio_OverfitResultOrgRMoose.png"> 
+<img src="../screenshots/BIO/interact/Bio_OverfitResultOrgRMoose.png"> 
 </li>
 </ol>
 
@@ -108,30 +108,30 @@ Logarithmic transformation was applied to variables having a log-normal distribu
 <h4>Exploration</h4>
 <ol>
 <li>Again, the first tab contains a list of entities...
-<img class="web" src="../stories/US/windows/US_Entities.png">
+<img class="web" src="../screenshots/US/windows/US_Entities.png">
 </li>
 
 <li>... and the following two the list of left-hand side variables and right-hand side variables, respectively.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/US/windows/US_VariablesLHS.png"></td>
-<td><img class="web" src="../stories/US/windows/US_VariablesRHS.png"></td>
+<td><img class="web" src="../screenshots/US/windows/US_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/US/windows/US_VariablesRHS.png"></td>
 </tr></table>
 </li>
 
 <li>Here, the <i>Redescriptions</i> tab contains redescriptions mined previously and loaded from a file.
-<img class="web" src="../stories/US/windows/US_Reds.png">
+<img class="web" src="../screenshots/US/windows/US_Reds.png">
 </li>
 
 <li>Now, we will recompute these redescription over a subset of the entities, say, excluding the east side of the US.
 To do so we plot a redescription with a variable set to its full range to see all entities on the map and draw a polygon enclosing the area we wish to exclude.
-<img class="web" src="../stories/US/interact/US_PolyDisable0.png">
+<img class="web" src="../screenshots/US/interact/US_PolyDisable0.png">
 </li>
 
 <li>Next we click Edit &#8594; (De)select polygon (or press the corresponding key) to select the entities inside the polygon.
-<img class="web" src="../stories/US/interact/US_PolyDisable1.png">
+<img class="web" src="../screenshots/US/interact/US_PolyDisable1.png">
 </li>
 <li>Then clicking Edit &#8594; (Dis)able selected (or press the corresponding key) to disable the entities. This automatically recomputes all redescriptions restricted to the remaining entities (observe the updated statistics in the list and the map). 
-<img class="web" src="../stories/US/interact/US_PolyDisable2.png">
+<img class="web" src="../screenshots/US/interact/US_PolyDisable2.png">
 </li>
 </ol>
 
@@ -153,47 +153,69 @@ Unlike in the previous examples, the entities in this data are not associated to
 <h4>Exploration</h4>
 <ol>
 <li>Once more, we can consult the list of entities in the first tab.
-<img src="../stories/DBLP/windows/DBLPPick_Entities.png">
+<img src="../screenshots/DBLP/windows/DBLPPick_Entities.png">
 </li>
 
 <li>Similarly, left-hand side variables and right-hand side variables are listed in the next two tabs.
 <table class="sides"><tr>
-<td><img class="web" src="../stories/DBLP/windows/DBLPPick_VariablesLHS.png"></td>
-<td><img class="web" src="../stories/DBLP/windows/DBLPPick_VariablesRHS.png"></td>
+<td><img class="web" src="../screenshots/DBLP/windows/DBLPPick_VariablesLHS.png"></td>
+<td><img class="web" src="../screenshots/DBLP/windows/DBLPPick_VariablesRHS.png"></td>
 </tr></table>
 </li>
 
 <li>Redescriptions are listed in the fourth tab.
-<img class="web" src="../stories/DBLP/windows/DBLPPick_Reds.png">
+<img class="web" src="../screenshots/DBLP/windows/DBLPPick_Reds.png">
 </li>
 
 <li>We can visualize the second redescription as a parallel coordinates plot. Using a slider, we can adjust the level of details, i.e. the amount of entities drawn.
-<img class="web" src="../stories/DBLP/interact/DBLPPick_PacoViewRICDMdetails.gif">
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewRICDMdetails.gif">
 </li>
 
 
 <li>We can also visualize it under a couple of projections.
-<img class="large" src="../stories/DBLP/interact/DBLPPick_ViewsSideRICDM.png">
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_ViewsSideRICDM.png">
 </li>
 
 <li>These various views are linked so that when we select a dot or a subset of dots the will be highlighted across the views.
-<img class="large" src="../stories/DBLP/interact/DBLPPick_SelectDotSideRICDM.png">
-<img class="large" src="../stories/DBLP/interact/DBLPPick_SelectPolySideRICDM.png">
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_SelectDotSideRICDM.png">
+<img class="large" src="../screenshots/DBLP/interact/DBLPPick_SelectPolySideRICDM.png">
 </li>
 
 <li>We can edit the redescription directly in the parallel coordinate, modifying the bounds of the literal by dragging the bottom and top sides of the gray interval boxes.
-<img class="web" src="../stories/DBLP/interact/DBLPPick_PacoEditRICDM.png">
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoEditRICDM.png">
 </li>
 
 <li>Let's now build another redescription by selecting a pair of conferences and setting their intervals to generate a new left-hand side query.
-<img class="web" src="../stories/DBLP/interact/DBLPPick_PacoViewExpansionInitRFOCS.png">
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewExpansionInitRFOCS.png">
 </li>
 
 <li>Now we let the algorithm find matching queries for the right-hand side and obtain, for instance, the following redescription.
-<img class="web" src="../stories/DBLP/interact/DBLPPick_PacoViewExpansionRFOCS.png">
+<img class="web" src="../screenshots/DBLP/interact/DBLPPick_PacoViewExpansionRFOCS.png">
 </li>
 </ol>
 
+
+<h3><a name="uc_finnelec"></a>Finnish 2011 parliamentary elections</h3>
+
+<div class="page-header">
+<p>In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 
+</p>
+</div>
+
+<h4>Data</h4>
+<p>
+The data was collected
+from <a href="www.vaalikone.fi">www.vaalikone.fi</a>, the <em>election
+engine</em> of the Finnish newspaper Helsingin Sanomat
+and <a href="http://blogit.hs.fi/hsnext/hsn-vaalikone-on-nyt-avointa-tietoa">made
+publicly available</a>. One view contains candidate personal profile
+attributes, such as party, age, and education, while the answers
+provided to 30 multiple-choice questions and assigned importance form
+the other view.
+</p>
+
+<i>Under translation...</i>
+
 <hr>
-<!-- hhmts start --> <p>Siren --- Last modified: Wed 31 Jul 2013, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
+<!-- hhmts start --> <p>Siren --- Last modified: Wed 18 Dec 2013, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
 </body> </html>
