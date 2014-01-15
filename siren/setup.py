@@ -32,7 +32,7 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
-ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
+ST_RESOURCES=['help', 'commons', 'screenshots/interface', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['classConnectionDialog.py',
@@ -83,7 +83,7 @@ ST_PACKAGES = ['wx', 'reremi', 'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
-DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 'LICENSE',
+DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/interface/*', 'ABOUT', 'LICENSE',
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
 DU_FILES = ['siren',

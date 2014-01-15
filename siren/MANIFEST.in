@@ -3,10 +3,10 @@ include *.xml
 include reremi/*.py 
 include reremi/*.xml
 include reremi/*.xsl
-recursive-include help * 
-recursive-include screenshots *
-recursive-include commons *
-recursive-include icons *
+graft help
+graft screenshots/interface
+graft commons
+graft icons
 include ABOUT
 include LICENSE 
 include LICENSE_short
