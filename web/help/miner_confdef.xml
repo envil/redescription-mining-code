@@ -60,6 +60,15 @@
 	<default><value>0</value><value>1</value></default>
 	<options><value>Conjunction</value><value>Disjunction</value></options>
       </parameter>
+	<parameter>
+	<name>single_side_or</name>
+	<label>Single side OR</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Restrict use of disjunction to only one side.</legend>
+	<default><value>1</value></default>
+	<options><value>no</value><value>yes</value></options>
+      </parameter>
     </section>
     <section>
       <name>Supports of queries</name>
@@ -171,9 +180,9 @@
 	<label>DL score</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Use description length to score candidates</legend>
-	<default><value>1</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<legend>Use description length to score candidates.</legend>
+	<default><value>0</value></default>
+	<options><value>no</value><value>yes</value></options>
       </parameter>
       <parameter>
 	<name>method_pval</name>
@@ -304,8 +313,8 @@
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Not amnesic means the algorithm remembers previously generated redescriptions and avoid generating them again.</legend>
-	<default><value>1</value></default>
-	<options><value>Yes</value><value>No</value></options>
+	<default><value>0</value></default>
+	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
     <section>

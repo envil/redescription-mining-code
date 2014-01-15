@@ -4,7 +4,7 @@
 <html> 
 <head>
 <title>SIREN &#8212; Interactive and visual redescription mining</title>
-<link rel="stylesheet" type="text/css" href="./siren.css"/>
+<link rel="stylesheet" type="text/css" href="../commons/siren.css"/>
 </head>
 <body>
 
