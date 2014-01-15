@@ -4,7 +4,7 @@ include reremi/*.py
 include reremi/*.xml
 include reremi/*.xsl
 graft help
-graft screenshots/interface
+graft screenshots
 graft commons
 graft icons
 include ABOUT
