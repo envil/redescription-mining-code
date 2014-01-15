@@ -4,7 +4,7 @@ PYTHON=/usr/bin/python
 DESTDIR=/
 BUILDIR=$(CURDIR)/debian/siren
 PROJECT=python-siren
-VERSION=1.0
+VERSION=2.0.1
 
 all:
 	@echo "make source - Create source package"
@@ -44,7 +44,7 @@ builddeb:
 	$(PYTHON) setup.py sdist $(COMPILE) --dist-dir=../
 	rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)-$$1\.orig\.tar\.gz/' ../*
 	# build the package
-	dpkg-buildpackage -i"(.svn|dist|outputs|.*icons.*|commons\/web_.*|.*.rtf)" -rfakeroot
+	dpkg-buildpackage -rfakeroot
 
 clean:
 	$(PYTHON) setup.py clean
