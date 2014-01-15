@@ -24,7 +24,7 @@ import mpl_toolkits.basemap as basemap
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -45,7 +45,7 @@ ST_FILES = ['classConnectionDialog.py',
             'classPreferencesDialog.py',
             'classProj.py',
             'classSiren.py',
-            'classVProjView.py',
+            #'classVProjView.py',
             'classWorkClient.py',
             'classWorkInactive.py',
             'classWorkLocal.py',
@@ -97,7 +97,7 @@ DU_FILES = ['siren',
             'classPreferencesDialog',
             'classProj',
             'classSiren',
-            'classVProjView',
+            #'classVProjView',
             'classWorkClient',
             'classWorkInactive',
             'classWorkLocal',
