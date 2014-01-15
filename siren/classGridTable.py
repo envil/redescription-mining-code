@@ -1,7 +1,7 @@
 import wx, wx.grid, re, colorsys, random, datetime, math
 from factView import ViewFactory
 from reremi.toolICList import ICList
-from reremi.classQuery import Query, Literal
+from reremi.classQuery import SYM, Query, Literal
 from reremi.classRedescription import Redescription
 
 import pdb
@@ -191,9 +191,9 @@ class GridTable(wx.grid.PyGridTableBase):
         direct = '  '
         if col == self.sortP[0]:
             if self.sortP[1]:
-                direct = u"\u2191"
+                direct = SYM.SYM_ARRTOP
             else:
-                direct = u"\u2193" 
+                direct = SYM.SYM_ARRBOT
         return "  %s %s" % (self.fields[col][0], direct)
 
     ### GRID METHOD
@@ -504,7 +504,7 @@ class RedTable(GridTable):
                   ('query RHS', 'self.data[x].getQueryRU', None, 300),
                   ('J', 'self.data[x].getRoundAcc', None, 60),
                   ('p-value', 'self.data[x].getRoundPVal', None, 60),
-                  (u'|E\u2081\u2081|', 'self.data[x].getLenI', None, 60),
+                  ('|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', None, 60),
                   ('track', 'self.data[x].getTrack', None, 80)]
     name_m = 'self.data[x].getQueriesU'
 
@@ -933,9 +933,9 @@ class RowTable(GridTable):
         direct = '  '
         if col == self.sortP[0]:
             if self.sortP[1]:
-                direct = u"\u2191"
+                direct = SYM.SYM_ARRTOP
             else:
-                direct = u"\u2193" 
+                direct = SYM.SYM_ARRBOT
         return name + direct
 
     def notify_change(self):

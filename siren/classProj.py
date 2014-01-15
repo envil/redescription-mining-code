@@ -2,7 +2,6 @@
 import re, random
 import wx
 import numpy as np
-from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
 import inspect, signal
 import tsne
 from reremi.classQuery import Query
@@ -59,7 +58,6 @@ def applyF(f, parameters):
     mtd_def = argsF(f)
     args = dict([(a, parameters.get(a, v)) for a,v in mtd_def.items()])
     return f(**args)
-
 
 class Proj(object):
 
@@ -308,7 +306,53 @@ class VrsProj(Proj):
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
 
-    
+
+class ProjFactory:
+    defaultView = AxesProj
+
+    @classmethod
+    def getViewsDetails(tcl, bc, what="entities"):
+        preff_title = "%s " % what.title()
+        details = {}
+        for cls in all_subclasses(Proj):
+            if (re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None) and (what in cls.whats):
+                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
+        return details
+
+    @classmethod
+    def getProj(tcl, data, code = None, boxes=[], what="entities", transpose=True):
+            
+        if code is not None:
+            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
+            if tmp is not None:
+                for cls in all_subclasses(Proj):
+                    if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
+                        return cls(data, code, what, transpose)
+
+        cls = tcl.defaultView
+        # cls = random.choice([p for p in all_subclasses(Proj)
+        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
+        return cls(data, {}, what, transpose)
+
+
+    @classmethod
+    def dispProjsInfo(tcl):
+
+        str_info = ""
+        for cls in all_subclasses(Proj):
+            str_info += "--- %s [%s] ---" % (cls.title_str, cls.PID)
+            str_info += "".join(["\n\t+%s:\t%s" %c for c in cls.gen_parameters.items()])
+            # str_info +=  "".join(["\n\t-%s:\t%s" %c for c in cls.fix_parameters.items()])
+            str_info +=  "\nCalls:"
+            for f in cls.dyn_f:
+                 str_info +=  "\n\t*%s" % f
+            #     str_info +=  "".join(["\n\t\t-%s:\t%s" %c for c in argsF(f).items()])
+            str_info +=  "\n\n"
+        return str_info
+
+#### COMMENT OUT FROM  HERE TO GET RID OF SKLEARN
+from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
+
 ### The various projections with sklearn
 #----------------------------------------------------------------------
 class DynProj(Proj):
@@ -534,49 +578,4 @@ class SKtsneProj(DynProj):
     def getX(self, X):
         X_sne, c = self.applyF(tsne.tsne, {"X":X})
         return X_sne, c
-
-
-class ProjFactory:
-    defaultView = AxesProj
-
-    @classmethod
-    def getViewsDetails(tcl, bc, what="entities"):
-        preff_title = "%s " % what.title()
-        details = {}
-        for cls in all_subclasses(Proj):
-            if (re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None) and (what in cls.whats):
-                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
-        return details
-
-    @classmethod
-    def getProj(tcl, data, code = None, boxes=[], what="entities", transpose=True):
-            
-        if code is not None:
-            tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
-            if tmp is not None:
-                for cls in all_subclasses(Proj):
-                    if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
-                        return cls(data, code, what, transpose)
-
-        cls = tcl.defaultView
-        # cls = random.choice([p for p in all_subclasses(Proj)
-        #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
-        return cls(data, {}, what, transpose)
-
-
-    @classmethod
-    def dispProjsInfo(tcl):
-
-        str_info = ""
-        for cls in all_subclasses(Proj):
-            str_info += "--- %s [%s] ---" % (cls.title_str, cls.PID)
-            str_info += "".join(["\n\t+%s:\t%s" %c for c in cls.gen_parameters.items()])
-            # str_info +=  "".join(["\n\t-%s:\t%s" %c for c in cls.fix_parameters.items()])
-            str_info +=  "\nCalls:"
-            for f in cls.dyn_f:
-                 str_info +=  "\n\t*%s" % f
-            #     str_info +=  "".join(["\n\t\t-%s:\t%s" %c for c in argsF(f).items()])
-            str_info +=  "\n\n"
-        return str_info
-
 

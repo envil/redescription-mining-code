@@ -138,7 +138,7 @@ class Siren():
 
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
-        self.plant.setUpCall(self.doUpdates)
+        self.plant.setUpCall([self.doUpdates, self.resetLogger()])
 
     def getReds(self):
         if self.dw is not None:
@@ -1069,7 +1069,7 @@ class Siren():
                 return
         self.deleteAllViews()
         self.toolFrame.Destroy()
-        sys.exit()
+        exit()
 
     def OnLicense(self, event):
         license_text = None
@@ -1136,7 +1136,6 @@ class Siren():
         # self.plant, msg, err = toolCommMultip.getWP("127.0.0.1", 55444, "sesame")
         # self.plant = toolWP.setupWorkPlant(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
         # msg, err = self.plant.getWP().reset(self.dw.getPreference("workserver_ip"), self.dw.getPreference("workserver_port"), self.dw.getPreference("workserver_authkey"))
-        # self.resetLogger()
         # self.logger.printL(1, msg, "status", "WP")
         # if len(err) > 0:
         #     self.logger.printL(1, err, "error", "WP")

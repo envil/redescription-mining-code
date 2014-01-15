@@ -13,7 +13,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from matplotlib.path import Path
 
-from reremi.classQuery import Query
+from reremi.classQuery import SYM, Query
 from reremi.classSParts import SParts
 from reremi.classRedescription import Redescription
 import factView
@@ -39,12 +39,12 @@ class GView(object):
 
     label_jacc="J ="
     label_pval="p-value ="
-    label_cardAlpha=u"|E\u2081\u2080| ="
-    label_cardBeta=u"|E\u2080\u2081| ="
-    label_cardU=u"|E\u2216E\u2080\u2080| ="
-    label_cardI=u"|E\u2081\u2081| ="
-    label_cardO=u"|E\u2080\u2080| ="
-    label_cardT=u"|E| ="
+    label_cardAlpha="|E"+SYM.SYM_ALPHA+"| ="
+    label_cardBeta="|E"+SYM.SYM_BETA+"| ="
+    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SYM.SYM_DELTA+"| ="
+    label_cardI="|E"+SYM.SYM_GAMMA+"| ="
+    label_cardO="|E"+SYM.SYM_DELTA+"| ="
+    label_cardT="|E| ="
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
@@ -54,8 +54,8 @@ class GView(object):
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
-    map_select_supp = [("l", u"E\u2081\u2080", [SParts.alpha]), ("r", u"E\u2080\u2081", [SParts.beta]),
-                       ("i", u"E\u2081\u2081", [SParts.gamma]), ("o", u"E\u2080\u2080", [SParts.delta])]
+    map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SParts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SParts.beta]),
+                       ("i", "|E"+SYM.SYM_GAMMA+"|", [SParts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SParts.delta])]
 
     TID = "G"
     SDESC = "Viz"

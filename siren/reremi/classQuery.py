@@ -2,18 +2,77 @@ import re, random
 from classSParts import  SParts
 import pdb
 
+class SYM:
+
+    SYMU_OR = ur'\u2228'
+    SYMU_AND = ur'\u2227'
+    SYMU_NOT = ur'\u00ac '
+    SYMU_LEQ = ur'\u2264'
+    SYMU_EIN = ur'\u2208'
+    SYMU_NIN = ur'\u2209'
+    SYMU_NEQ = ur'\u2260'
+
+    SYMU_ALPHA=u"\u2081\u2080"
+    SYMU_BETA=u"\u2080\u2081"
+    SYMU_GAMMA=u"\u2081\u2081"
+    SYMU_DELTA=u"\u2080\u2080"
+    SYMU_SETMIN=u"\u2216"
+
+    SYMU_ARRTOP=u"\u2191"
+    SYMU_ARRBOT=u"\u2193"
+    
+    SYMO_OR = 'OR'
+    SYMO_AND = 'AND'
+    SYMO_NOT = 'NOT '
+    SYMO_LEQ = '<'
+    SYMO_EIN = 'IN'
+    SYMO_NIN = 'NOT IN'
+    SYMO_NEQ = '~'
+
+    SYMO_ALPHA="_10"
+    SYMO_BETA="_01"
+    SYMO_GAMMA="_11"
+    SYMO_DELTA="_00"
+    SYMO_SETMIN="\\"
+
+    SYMO_ARRTOP="^"
+    SYMO_ARRBOT="v"
+
+    SYM_OR = SYMU_OR
+    SYM_AND = SYMU_AND
+    SYM_NOT = SYMU_NOT
+    SYM_LEQ = SYMU_LEQ
+    SYM_EIN = SYMU_EIN
+    SYM_NIN = SYMU_NIN
+    SYM_NEQ = SYMU_NEQ
+
+    SYM_ALPHA=SYMU_ALPHA
+    SYM_BETA=SYMU_BETA
+    SYM_GAMMA=SYMU_GAMMA
+    SYM_DELTA=SYMU_DELTA
+    SYM_SETMIN=SYMU_SETMIN
+
+    SYM_ARRTOP=SYMU_ARRTOP
+    SYM_ARRBOT=SYMU_ARRBOT
+
 class Op:
     
     ops = {0: 'X', 1: '|', -1: '&'}
     opsTex = {0: 'X', 1: '$\lor$', -1: '$\land$'}
-    opsU = {0: 'X', 1: ur'\u2228', -1: ur'\u2227'}
+    opsU = {0: 'X', 1: SYM.SYM_OR, -1: SYM.SYM_AND}
 
-    patt = {-1: '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$))',
-            1: '(?P<op>[|]|'+opsU[1]+'|(\$\\\\lor\$))'}
-    pattAny = '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$)|[|]|'+opsU[1]+'|(\$\\\\lor\$))'
-    bannchar = ops[-1]+opsU[-1]+ops[1]+opsU[1]
+    ### WITH UNICODE
+    # patt = {-1: '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$))',
+    #         1: '(?P<op>[|]|'+opsU[1]+'|(\$\\\\lor\$))'}
+    # pattAny = '(?P<op>[&]|'+opsU[-1]+'|(\$\\\\land\$)|[|]|'+opsU[1]+'|(\$\\\\lor\$))'
+    # bannchar = ops[-1]+opsU[-1]+ops[1]+opsU[1]
 
-    
+    ### WITHOUT UNICODE
+    patt = {-1: '(?P<op>[&]|('+opsU[-1]+')|(\$\\\\land\$))',
+            1: '(?P<op>[|]|('+opsU[1]+')|(\$\\\\lor\$))'}
+    pattAny = '(?P<op>[&]|('+opsU[-1]+')|(\$\\\\land\$)|[|]|('+opsU[1]+')|(\$\\\\lor\$))'
+    bannchar = ops[-1]+ops[1]
+
     def __init__(self, nval=0):
         if type(nval) == bool :
             if nval:
@@ -77,7 +136,8 @@ class Op:
 class Neg:
     symb = ['', '! ']
     symbTex = ['', '$\\neg$ ']
-    symbU = ['', u'\u00ac ']
+
+    symbU = ['', SYM.SYM_NOT]
 
     patt = '(?P<neg>'+symb[1].strip()+'|(\$\\\\neg\$)|'+symbU[1].strip()+')'
 
@@ -120,7 +180,7 @@ class Neg:
 class Term:
     type_id = 0
 
-    patt = '(?P<col>[^\\=<>'+ ur'\u2264'+ur'\u2208'+ur'\u2209'+']+)'
+    patt = '(?P<col>[^\\=<>'+ SYM.SYMU_LEQ + SYM.SYMU_EIN + SYM.SYMU_NIN +']+)'
     
     def __init__(self, ncol):
         self.col = ncol
@@ -248,7 +308,7 @@ class BoolTerm(Term):
 class CatTerm(Term):
     type_id = 2
     
-    patt = ['^\s*\[\s*'+Term.patt+'\s*(?P<neg>'+ur'\u2260'+')?(?(neg)|\=)\s*(?P<cat>\S*)\s*\]\s*$',
+    patt = ['^\s*\[\s*'+Term.patt+'\s*(?P<neg>'+ SYM.SYMU_NEQ +')?(?(neg)|\=)\s*(?P<cat>\S*)\s*\]\s*$',
             '^\s*'+Term.patt+'\s*((?P<neg>\\\\not)\s*)?\\\\in\s*(?P<cat>\S*)\s*$',
             '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
 
@@ -323,7 +383,7 @@ class CatTerm(Term):
             neg = Neg(neg)
 
         if neg.boolVal():
-            symbIn = u'\u2260'
+            symbIn = SYM.SYM_NEQ
         else:
             symbIn = '='
         if type(names) == list  and len(names) > 0:
@@ -364,9 +424,9 @@ class NumTerm(Term):
     patt = ['^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>'+num_patt+')\s*\\\\leq\{\}\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>'+num_patt+')\s*\]\s*\$\s*$',
             '^\s*'+Neg.patt+'?\s*\$\s*\[\s*(?P<lowb>'+num_patt+')\s*\\\\leq\{\}\s*'+Term.patt+'\s*\]\s*\$\s*$',
             '^\s*'+Neg.patt+'?\s*\$\s*\[\s*'+Term.patt+'\s*\\\\leq\{\}\s*(?P<upb>'+num_patt+')\s*\]\s*\$\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + ur'\u2264' +'|<]\s*'+Term.patt+'\s*[' + ur'\u2264' +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + ur'\u2264' +'|<]\s*'+Term.patt+'\s*\]\s*$',
-            '^\s*'+Neg.patt+'?\s*\[\s*'+Term.patt+'\s*[' + ur'\u2264' +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + SYM.SYMU_LEQ +'|<]\s*'+Term.patt+'\s*[' + SYM.SYMU_LEQ +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*(?P<lowb>'+num_patt+')\s*[' + SYM.SYMU_LEQ +'|<]\s*'+Term.patt+'\s*\]\s*$',
+            '^\s*'+Neg.patt+'?\s*\[\s*'+Term.patt+'\s*[' + SYM.SYMU_LEQ +'<]\s*(?P<upb>'+num_patt+')\s*\]\s*$',
             '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*\<\s*(?P<upb>'+num_patt+')\s*$',
             '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*$',
             '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>'+num_patt+')\s*$']
@@ -492,11 +552,11 @@ class NumTerm(Term):
             neg = Neg(neg)
             ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = u'[%s \u2264 ' % float(self.lowb)
+            lb = ('[%s '+ SYM.SYM_LEQ +' ') % float(self.lowb)
         else:
             lb = '['
         if self.upb < float('Inf'):
-            ub = u' \u2264 %s]' % float(self.upb)
+            ub = (u' '+ SYM.SYM_LEQ +' %s]') % float(self.upb)
         else:
             ub = ']'
         negstr = u'%s' % neg.dispU()
@@ -1048,11 +1108,13 @@ class Query:
     def parse(string, names=None):
         #### TODO Check bug
         if not re.search("[a-zA-Z0-9]", string):
+            print "AA", string
             return Query()
         r = Query.parsePar(string, names)
         if r is None:
             r = Query.parseApd(string, names)
         if r is None:
+            print "BB", string
             r = Query()
         return r
     parse = staticmethod(parse)

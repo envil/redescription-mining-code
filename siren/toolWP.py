@@ -8,14 +8,14 @@ class WorkPlant:
     def __init__(self):
         self.wp = None
         self.wp = self.setupWorkPlant()
-        self.upcall = None
+        self.upcall = []
 
-    def setUpCall(self,upcall):
+    def setUpCall(self, upcall):
         self.upcall = upcall         
     def setWP(self,wp):
         self.wp = wp
-        if self.upcall is not None:
-            self.upcall()
+        for upcall in self.upcall:
+            upcall()
     def getWP(self):
         return self.wp
 
