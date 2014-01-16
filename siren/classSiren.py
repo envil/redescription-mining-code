@@ -864,10 +864,11 @@ class Siren():
 
     def OnExpand(self, event):
         if self.selectedTab["type"] in ["Reds"]:
-            self.showTab("exp")
             red = self.selectedTab["tab"].getSelectedItem()
+            self.showTab("exp")
             if red is not None:
-                self.expand(red)
+                params = {"red": red.copy()}
+                self.expand(params)
 
     def expandFV(self, params=None):
         self.showTab("exp")
