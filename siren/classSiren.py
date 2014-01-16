@@ -1123,9 +1123,10 @@ class Siren():
 
         self.logger.resetOut()
         if self.plant.getWP().isActive() and self.plant.getWP().getOutQueue() is not None:
-            self.logger.addOut({"log": 0, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
+            self.logger.addOut({"log": verb, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
+        else:
+            self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
         self.logger.addOut({"error":1}, "stderr")
-        self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
 
     def reloadAll(self):
         if self.plant is not None:

@@ -7,6 +7,12 @@ class Log:
         self.verbosity = -1
         self.addOut(verbosity, output, method_comm)
 
+    def disp(self):
+        tmp = "LOGGER"
+        for out in self.out:
+            tmp += "\n\t* %s -> %s" % (out["verbosity"],  out["destination"])
+        return tmp
+        
     def resetOut(self):
         self.out = []
         self.verbosity = -1

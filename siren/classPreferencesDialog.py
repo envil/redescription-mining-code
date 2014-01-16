@@ -254,7 +254,7 @@ class PreferencesDialog(wx.Dialog):
 			self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
 			self.controls_map[sec_id]["button"]["reset"].Disable()
 			self.controls_map[sec_id]["button"]["apply"].Disable()
-		self.onClose(event)
+		self.onClose()
 
 	def changeHappened(self, event):
 		if event.GetId() in self.objects_map.keys():

@@ -15,6 +15,7 @@ import pdb
 class WorkerProcess(multiprocessing.Process):
     def __init__(self, id, boss, queue_in, cust_params={}):
         multiprocessing.Process.__init__(self)
+        # print "WProcess logs to:", boss.getLogger().disp()
         self.miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
         self.start()
