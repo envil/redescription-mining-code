@@ -30,7 +30,7 @@ class Siren():
     titleHelp = 'SIREN :: help'
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     helpURL = findFile('index.html', ['help', curr_dir+'/help'])
-    helpInternetURL = 'http://www.cs.Helsinki.FI/u/galbrun/redescriptors/siren'
+    helpInternetURL = 'http://www.cs.Helsinki.FI/u/galbrun/redescriptors/siren/help'
  
 
     # For About dialog

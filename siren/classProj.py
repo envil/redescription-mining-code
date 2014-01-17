@@ -1,5 +1,5 @@
 ### TODO check which imports are needed 
-import re, random
+import re, random, sys
 import wx
 import numpy as np
 import inspect, signal
@@ -12,33 +12,33 @@ import os
 
 import pdb
 
-def my_SIGTERM_handler(sign, frame):
-    ### DIRTY BUSINESS TO KILL THE WHOLE FAMILY SPAWNED BY SCIKIT
-    print "KILLED!", sign
-    kill_children(os.getpid())
-    exit()
+# def my_SIGTERM_handler(sign, frame):
+#     ### DIRTY BUSINESS TO KILL THE WHOLE FAMILY SPAWNED BY SCIKIT
+#     print "KILLED!", sign
+#     kill_children(os.getpid())
+#     exit()
 
-def kill_children(pid):
-    tmp = map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
-    for childp in tmp:
-        kill_children(childp)
-        print "Killing %d..." % childp
-        try:
-            os.kill(childp, signal.SIGTERM)
-        except OSError as e:
-            pass
+# def kill_children(pid):
+#     for childp in get_children(pid):
+#         kill_children(childp)
+#         print "Killing %d..." % childp
+#         try:
+#             os.kill(childp, signal.SIGTERM)
+#         except OSError as e:
+#             pass
+
+def get_children(pid):
+    if sys.platform == 'linux2':
+        return map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
+    if sys.platform == 'darwin':
+        #### FILL IN HERE CORRECT OS X LS TO GET THE LIST OF PIDS FOR A GIVEN PARENT ID
+        return [] #map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
+    return []
 
 def list_children(pid, l, level=0):
-    tmp = map(int, os.popen("ps -o pid --ppid %d --noheaders" % pid).read().strip().split())
-    for childp in tmp:
+    for childp in get_children(pid):
         l.append((level+1, childp))
         list_children(childp, l, level+1)
-        # print "Killing %d..." % childp
-        # try:
-        #     os.kill(childp, signal.SIGTERM)
-        # except OSError as e:
-        #     pass
-
 
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
@@ -113,7 +113,7 @@ class Proj(object):
         return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
 
     def do(self):
-        self.pids_ex = set(map(int,os.popen("ps -o pid --ppid %d --noheaders" % os.getpid()).read().split()))
+        self.pids_ex = set(get_children(os.getpid()))
         self.comp()
         
     def getCode(self):
@@ -403,6 +403,34 @@ class DynProj(Proj):
     def getX(self, X):
         pass
 
+
+class KillerProj(DynProj):
+    #----------------------------------------------------------------------
+    # For projections with subprocesses
+
+
+    PID =  "---"
+    SDESC = "---"
+    title_str = "Projection"
+
+    def updatePL(self):
+        l = []
+        list_children(os.getpid(), l)
+        self.pids_ex.update(l) 
+
+    def stop(self):
+        l = []
+        list_children(os.getpid(), l)
+        l.sort()
+        l = [childp for (lev, childp) in l if childp not in self.pids_ex] # and lev > 1]
+        while len(l) > 0:
+            childp =  l.pop()
+            try:
+                os.kill(childp, signal.SIGTERM)
+            except OSError as e:
+                pass
+        self.clearCoords()
+
 class SVDProj(DynProj):
 
     PID = "-SVD"
@@ -485,7 +513,7 @@ class SKlleProj(DynProj):
         X_lle = clf.fit_transform(X)
         return X_lle, clf.reconstruction_error_
 
-class SKmdsProj(DynProj):
+class SKmdsProj(KillerProj):
     #----------------------------------------------------------------------
     # MDS  embedding
 
@@ -498,27 +526,13 @@ class SKmdsProj(DynProj):
     fix_parameters.update({"n_jobs": -2})
     dyn_f = [manifold.MDS]
 
-    def stop(self):
-        l = []
-        list_children(os.getpid(), l)
-        l = [childp for (lev, childp) in l if childp not in self.pids_ex and lev > 1]
-        while len(l) > 0:
-            childp =  l.pop()
-            try:
-                os.kill(childp, signal.SIGTERM)
-            except OSError as e:
-                pass
-        self.clearCoords()
-
     def getX(self, X):
-        l = []
-        list_children(os.getpid(), l)
-        self.pids_ex.update(l) 
+        self.updatePL() 
         clf = self.applyF(manifold.MDS)
         X_mds = clf.fit_transform(X)
         return X_mds, clf.stress_
 
-class SKtreeProj(DynProj):
+class SKtreeProj(KillerProj):
     #----------------------------------------------------------------------
     # Random Trees embedding
 
@@ -531,19 +545,8 @@ class SKtreeProj(DynProj):
     fix_parameters.update({"n_jobs": -2})
     dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
 
-    def stop(self):
-        l = []
-        list_children(os.getpid(), l)
-        l = [childp for (lev, childp) in l if childp not in self.pids_ex and lev > 1]
-        while len(l) > 0:
-            childp =  l.pop()
-            try:
-                os.kill(childp, signal.SIGTERM)
-            except OSError as e:
-                pass
-        self.clearCoords()
-
     def getX(self, X):
+        self.updatePL() 
         X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
         X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
         return X_reduced, 0

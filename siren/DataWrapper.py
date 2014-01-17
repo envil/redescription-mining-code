@@ -32,7 +32,6 @@ def findFile(fname, path=[]):
     If path is not given or an empty list, only checks if the file is present locally.
 
     On Windows, this also chagnges forward slashes to backward slashes in the path."""
-
     if os.path.exists(fname):
         return fname
 
