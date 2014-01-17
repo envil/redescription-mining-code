@@ -1,4 +1,4 @@
-python-siren (2.0.1) UNSTABLE; urgency=low
+python-siren (2.0.2) UNSTABLE; urgency=low
 
     * Dialog for setting up (possibly remote) workers
     * Various bug fixes
