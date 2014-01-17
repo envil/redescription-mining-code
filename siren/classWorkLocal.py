@@ -45,10 +45,11 @@ class ProjectorProcess(multiprocessing.Process):
         self.logger.printL(1, self.proj, "result", self.id)
         self.logger.printL(1, None, "progress", self.id)
 
-    def run(self):
+    def run(self):        
         try:
             self.proj.do()
         except ValueError as e: #Exception as e:
+            pdb.set_trace()
             self.proj.clearCoords()
             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
         finally:

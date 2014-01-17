@@ -431,6 +431,7 @@ class KillerProj(DynProj):
                 pass
         self.clearCoords()
 
+        
 class SVDProj(DynProj):
 
     PID = "-SVD"
@@ -532,7 +533,7 @@ class SKmdsProj(KillerProj):
         X_mds = clf.fit_transform(X)
         return X_mds, clf.stress_
 
-class SKtreeProj(KillerProj):
+class SKtreeProj(DynProj):
     #----------------------------------------------------------------------
     # Random Trees embedding
 
@@ -542,11 +543,9 @@ class SKtreeProj(KillerProj):
     gen_parameters = dict(DynProj.gen_parameters)
     gen_parameters.update({"max_depth":5, "n_estimators":10})
     fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"n_jobs": -2})
     dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
 
     def getX(self, X):
-        self.updatePL() 
         X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
         X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
         return X_reduced, 0
