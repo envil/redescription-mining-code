@@ -1,7 +1,6 @@
-python-siren (2.0.2) UNSTABLE; urgency=low
+python-siren (2.0.3) UNSTABLE; urgency=low
 
     * Dialog for setting up (possibly remote) workers
-    * Various bug fixes
     * Added parallel coordinates visualization
     * Added various projections visualization (scikit)
     * Entity selection by picking dot or drawing polygon
@@ -15,6 +14,7 @@ python-siren (2.0.2) UNSTABLE; urgency=low
     * Updated Python to 2.7.3 (OS X bundle only)
     * Updated wxPython to 2.9.4.0 (OS X bundle only)
     * Updated Basemap to 1.0.5 (OS X bundle only)
+    * Bug fix for class variables in threading
     * Various bug fixes
 
  -- Esther Galbrun <galbrun@cs.helsinki.fi>  Tue, 7 Aug 2012 8:29:53 +0200
