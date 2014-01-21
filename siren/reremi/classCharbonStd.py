@@ -6,11 +6,9 @@ import pdb
 
 class Charbon:
 
-    def __init__(self, constraints, type_parts = 0):
+    def __init__(self, constraints):
         ### For use with no missing values
         self.constraints = constraints
-        SParts.resetPartsIds("grounded")
-
         
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
@@ -42,7 +40,7 @@ class Charbon:
             for neg in self.constraints.neg_query(side):
                 adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 if adv is not None :
-                    cands.append(Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
+                    cands.append(Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
     def getCandidates2(self, side, col, supports, init=0):
@@ -90,13 +88,13 @@ class Charbon:
             for neg in self.constraints.neg_query(side):        
                 adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 if adv is not None :
-                    cands.append((False, Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
+                    cands.append((False, Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
 
                 ### to negate the other side when looking for initial pairs
                 if init == 1 and True in self.constraints.neg_query(side):
                     adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
                     if adv is not None :
-                        cand = Extension(adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
+                        cand = Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
                         cands.append((True, cand))  
 
         return cands
@@ -138,16 +136,16 @@ class Charbon:
                         bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
 
                 if best[0] is not None:
-                    cands.append((False, Extension(best)))
+                    cands.append((False, Extension(self.constraints.getSSetts(), best)))
                 if bestNeg[0] is not None:
-                    cands.append((True, Extension(bestNeg)))
+                    cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
         return cands
 
     def findCover3(self, side, col, lparts, supports, init=0):
         cands = []
 
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegmentsColors(side, supports, self.constraints.ops_query(side, init))
+            segments = col.makeSegmentsColors(self.constraints.getSSetts(), side, supports, self.constraints.ops_query(side, init))
             if side:
                 fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
             else:
@@ -198,7 +196,7 @@ class Charbon:
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
-                    cands.append(Extension(bests[neg]))
+                    cands.append(Extension(self.constraints.getSSetts(), bests[neg]))
         return cands
 
     def findNegativeCover(self, side, op, col, segments, fixed_colors):
@@ -262,7 +260,7 @@ class Charbon:
             tmp = best_t[-1][-1] 
             best_t[-1][-1] = col.getLiteralSeg(True, segments[op], best_t[-1][-1])
             if best_t[-1][-1] is not None:
-                cands.append(Extension(best_t))
+                cands.append(Extension(self.constraints.getSSetts(), best_t))
         return cands
 
     def findPositiveCover(self, side, op, col, segments, fixed_colors):
@@ -324,7 +322,7 @@ class Charbon:
         if best[0] is not None:
             best[-1][-1] = col.getLiteralSeg(False, segments[op], best[-1][-1])
             if best[-1][-1] is not None:
-                cands.append(Extension(best))
+                cands.append(Extension(self.constraints.getSSetts(), best))
         return cands
 
 ################################################################### PAIRS METHODS
@@ -346,9 +344,9 @@ class Charbon:
 
     def doBoolStar(self, colL, colR, side):
         if side == 1:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [colL.supp(), set()]), BoolTerm(colL.getId()), colR)
+            (supports, fixTerm, extCol) = (SParts(self.constraints.getSSetts(), colL.nbRows(), [colL.supp(), set()]), BoolTerm(colL.getId()), colR)
         else:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [set(), colR.supp()]), BoolTerm(colR.getId()), colL)
+            (supports, fixTerm, extCol) = (SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), colR.supp()]), BoolTerm(colR.getId()), colL)
 
         return self.fit(extCol, supports, side, fixTerm)
 
@@ -396,11 +394,11 @@ class Charbon:
         bestScore = None
         if True: ### DOABLE
             ## FIT LHS then RHS
-            supports = SParts(colL.nbRows(), [set(), colR.nonModeSupp()])
+            supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), colR.nonModeSupp()])
             (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, idR)
             for tL in literalsExtL:
                 suppL = colL.suppLiteral(tL)
-                supports = SParts(colL.nbRows(), [suppL, set()])
+                supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL, set()])
                 (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, tL)
                 for i in range(len(scoresR)):
                     if scoresR[i] > bestScore:
@@ -408,11 +406,11 @@ class Charbon:
                         bestScore = scoresR[i]
                         
             ## FIT RHS then LHS
-            supports = SParts(colL.nbRows(), [colL.nonModeSupp(), set()])
+            supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [colL.nonModeSupp(), set()])
             (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, idL)
             for tR in literalsExtR:
                 suppR = colR.suppLiteral(tR)
-                supports = SParts(colL.nbRows(), [set(), suppR])
+                supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), suppR])
                 (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, tR)
                 for i in range(len(scoresL)):
                     if scoresL[i] > bestScore:
@@ -794,5 +792,5 @@ class Charbon:
 
 ### Reintegrate as well as linter
     def inSuppBounds(self, side, op, lparts):
-        return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
-               and SParts.sumPartsId(side, SParts.IDS_cont[op], lparts) >= self.constraints.min_itm_c()
+        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
+               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.min_itm_c()

@@ -24,7 +24,7 @@ import mpl_toolkits.basemap as basemap
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.0.2'
+VERSION = '2.0.3'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"

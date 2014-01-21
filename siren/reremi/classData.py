@@ -7,7 +7,7 @@ from itertools import chain
 
 from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query 
 from classRedescription import Redescription
-from classSParts import SParts
+from classSParts import SSetts
 from toolICList import ICList
 import toolRead, csv_reader
 import pdb
@@ -870,34 +870,34 @@ class NumColM(ColM):
                     suppIt.add(row)
         return suppIt
 
-    def makeSegments(self, side, supports, ops =[False, True]):
+    def makeSegments(self, ssetts, side, supports, ops =[False, True]):
         supports.makeVectorABCD()
-        segments = [[[self.sVals[0][0], None, SParts.makeLParts()]], [[self.sVals[0][0], None, SParts.makeLParts()]]]
-        current_valseg = [[self.sVals[0][0], self.sVals[0][0], SParts.makeLParts()], [self.sVals[0][0], self.sVals[0][0], SParts.makeLParts()]]
+        segments = [[[self.sVals[0][0], None, ssetts.makeLParts()]], [[self.sVals[0][0], None, ssetts.makeLParts()]]]
+        current_valseg = [[self.sVals[0][0], self.sVals[0][0], ssetts.makeLParts()], [self.sVals[0][0], self.sVals[0][0], ssetts.makeLParts()]]
         for (val, row) in self.sVals+[(None, None)]:
             tmp_lparts = supports.lpartsRow(row, self)
 
             for op in ops:
-                if val is not None and SParts.sumPartsId(side, SParts.IDS_varnum[op], tmp_lparts) + SParts.sumPartsId(side, SParts.IDS_varden[op], tmp_lparts) == 0:
+                if val is not None and ssetts.sumPartsId(side, ssetts.IDS_varnum[op], tmp_lparts) + ssetts.sumPartsId(side, ssetts.IDS_varden[op], tmp_lparts) == 0:
                     continue
                 if val is not None and val == current_valseg[op][0]: 
-                    current_valseg[op][2] = SParts.addition(current_valseg[op][2], tmp_lparts)
+                    current_valseg[op][2] = ssetts.addition(current_valseg[op][2], tmp_lparts)
                 else:
-                    tmp_pushadd = SParts.addition(segments[op][-1][2], current_valseg[op][2]) 
-                    if segments[op][-1][1]==None or SParts.sumPartsId(side, SParts.IDS_varnum[op], tmp_pushadd)*SParts.sumPartsId(side, SParts.IDS_varden[op], tmp_pushadd) == 0:
+                    tmp_pushadd = ssetts.addition(segments[op][-1][2], current_valseg[op][2]) 
+                    if segments[op][-1][1]==None or ssetts.sumPartsId(side, ssetts.IDS_varnum[op], tmp_pushadd)*ssetts.sumPartsId(side, ssetts.IDS_varden[op], tmp_pushadd) == 0:
                         segments[op][-1][2] = tmp_pushadd
                         segments[op][-1][1] = current_valseg[op][1]
                     else:
                         segments[op].append(current_valseg[op])
-                    current_valseg[op] = [val, val, SParts.addition(SParts.makeLParts(),tmp_lparts)]
+                    current_valseg[op] = [val, val, ssetts.addition(ssetts.makeLParts(),tmp_lparts)]
         return segments
 
 
-    def makeSegmentsColors(self, side, supports, ops =[False, True]):
+    def makeSegmentsColors(self, ssetts, side, supports, ops =[False, True]):
         supports.makeVectorABCD()
 
-        partids = [[SParts.partId(SParts.gamma, side), SParts.partId(SParts.alpha, side)], \
-                   [SParts.partId(SParts.beta, side), SParts.partId(SParts.delta, side)]]
+        partids = [[ssetts.partId(ssetts.gamma, side), ssetts.partId(ssetts.alpha, side)], \
+                   [ssetts.partId(ssetts.beta, side), ssetts.partId(ssetts.delta, side)]]
         
         segments = [[[self.sVals[0][0], None, [0, 0]]], [[self.sVals[0][0], None, [0, 0]]]]
         current_valseg = [[self.sVals[0][0], self.sVals[0][0], [0, 0]], [self.sVals[0][0], self.sVals[0][0], [0, 0]]]
@@ -1021,10 +1021,10 @@ class Data:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
         else:
             self.cols = [ICList(),ICList()]
-        if self.hasMissing():
-            SParts.resetPartsIds("grounded")
-        else:
-            SParts.resetPartsIds("none")
+        self.ssetts = SSetts(self.hasMissing())
+
+    def getSSetts(self):
+        return self.ssetts
 
     def getValue(self, side, col, rid):
         return self.cols[side][col].getValue(rid)

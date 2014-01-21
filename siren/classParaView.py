@@ -46,7 +46,7 @@ class ParaView(GView):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
-                red = Redescription.fromQueriesPair(qr, self.parent.dw.data)
+                red = Redescription.fromQueriesPair(qr, self.parent.dw.getData())
             else:
                 red = qr
                 queries = [red.query(0), red.query(1)]
@@ -80,7 +80,7 @@ class ParaView(GView):
         red = None
         if changed or force:
             try:
-                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
             except Exception:
                 ### Query could be parse but not recomputed
                 red = None
@@ -129,15 +129,15 @@ class ParaView(GView):
         for side in [0,1]:
             for l in self.sc[side]:
                 side_cols.append((side, l.col()))
-                ranges.append([self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
-                              + [self.parent.dw.data.col(side, l.col()).width])
-                #lit_str.append(l.term.dispU(False, self.parent.dw.data.getNames(side)))
-                lit_str.append(self.parent.dw.data.getNames(side)[l.col()])
+                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                              + [self.parent.dw.getData().col(side, l.col()).width])
+                #lit_str.append(l.term.dispU(False, self.parent.dw.getData().getNames(side)))
+                lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
 
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
         lit_str.insert(pos_axis, "---")
-        mat, details, mcols = self.parent.dw.data.getMatrix()
+        mat, details, mcols = self.parent.dw.getData().getMatrix()
         idsNAN = np.where(~np.isfinite(mat))
         mat[idsNAN] = np.random.random(idsNAN[0].shape[0])
         if len(osupp) > 500:
@@ -148,7 +148,7 @@ class ParaView(GView):
         if len(idsNAN[0]) > 0:
             mat[idsNAN] = np.nan
         mcols[None] = 0
-        precisions = [self.parent.dw.data.col(side, col).getPrec() for side,col in side_cols]
+        precisions = [self.parent.dw.getData().col(side, col).getPrec() for side,col in side_cols]
         side_cols.insert(pos_axis, None)
         precisions.insert(pos_axis, 0)
         data_m = np.vstack([mat[mcols[sc],:] for sc in side_cols])
@@ -161,8 +161,8 @@ class ParaView(GView):
         ranges = []
         for side in [0,1]:
             for l in self.sc[side]:
-                ranges.append([self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
-                              + [self.parent.dw.data.col(side, l.col()).width])
+                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                              + [self.parent.dw.getData().col(side, l.col()).width])
 
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
@@ -196,7 +196,7 @@ class ParaView(GView):
             else:
                 self.ranges = self.updateRanges()
 
-            N = float(self.parent.dw.data.nbRows())
+            N = float(self.parent.dw.getData().nbRows())
 
             t = 0.1
             if self.sld is not None:
@@ -206,7 +206,7 @@ class ParaView(GView):
                 
             ### GATHERING DATA
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
-            tt = [draw_settings["draw_pord"][o] for o in red.suppPartRange()]
+            tt = [draw_settings["draw_pord"][o] for o in self.parent.dw.getData().getSSetts().suppPartRange()]
             self.limits[pos_axis, :] = [np.min(tt), np.max(tt), 0]
             self.qcols = [l for l in red.queries[0].listLiterals()]+[None]+[l for l in red.queries[1].listLiterals()]
 
@@ -228,11 +228,11 @@ class ParaView(GView):
             final[idsNAN] = -1
 
             ### SELECTED DATA
-            selected = self.parent.dw.data.selectedRows()
+            selected = self.parent.dw.getData().selectedRows()
             selp = 0.1
             # if self.sld_sel is not None:
             #     selp = self.sld_sel.GetValue()/100.0
-            selv = np.ones((self.parent.dw.data.nbRows(), 1))
+            selv = np.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
             
@@ -357,8 +357,8 @@ class ParaView(GView):
                     l.term.setRange(cat)
                     alright = True
             if alright:
-                self.ranges[rid] = [self.parent.dw.data.col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
-                                   + [self.parent.dw.data.col(side, l.col()).width]
+                self.ranges[rid] = [self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                                   + [self.parent.dw.getData().col(side, l.col()).width]
                 
                 upAll = self.current_r.queries[side].listLiterals()[pos] != l
                 self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
@@ -366,7 +366,7 @@ class ParaView(GView):
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
-        N = float(self.parent.dw.data.nbRows())
+        N = float(self.parent.dw.getData().nbRows())
         for lid in lids:
             if lid in self.highl:
                 continue
@@ -393,7 +393,7 @@ class ParaView(GView):
 
         if len(lids) == 1 and not lid in self.hight:
             pi = self.suppABCD[lid]
-            tag = self.parent.dw.data.getRName(lid)
+            tag = self.parent.dw.getData().getRName(lid)
             self.hight[lid] = []
             self.hight[lid].append(self.axe.annotate(tag, xy=(len(self.ranges)+1, tt),  xycoords='data',
                                                      xytext=(10, 0), textcoords='offset points', color= draw_settings[pi]["color_e"],

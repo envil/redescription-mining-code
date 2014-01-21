@@ -1,6 +1,5 @@
 from classQuery import Op
 from classRedescription import Redescription
-from classSParts import SParts
 import pdb
 
 class ExtensionError(Exception):
@@ -11,9 +10,9 @@ class ExtensionError(Exception):
 
 class Extension:
 
-    def __init__(self, adv=None, clp=None, sol=None):
+    def __init__(self, ssetts, adv=None, clp=None, sol=None):
         ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
-        
+        self.ssetts = ssetts
         if adv is not None and len(adv) == 3 and len(adv[2]) == 4 and clp==None and sol==None:
             self.adv = adv[0]
             self.clp = adv[1]
@@ -122,7 +121,7 @@ class Extension:
     def pValQueryScore(self, N, prs, coeffs=None):
         if self.isValid():
             if coeffs is None or coeffs["pval_query"] < 0:
-                return coeffs["pval_query"] * SParts.pValQuery(N, prs)
+                return coeffs["pval_query"] * self.ssetts.pValQuery(N, prs)
             elif coeffs["pval_query"] > 0:
                 return -coeffs["pval_fact"]*(coeffs["pval_query"] < self.pValQuery(N, prs))
             else:
@@ -139,11 +138,11 @@ class Extension:
 
     def pValQuery(self, N=0, prs=None):
         if self.isValid():
-            return SParts.pValQueryCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
+            return self.ssetts.pValQueryCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
 
     def pValRed(self, N=0, prs=None):
         if self.isValid():
-            return SParts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
+            return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
 
     def __cmp__(self, other):
         return self.compare(other)

@@ -535,7 +535,7 @@ class RedTable(GridTable):
             return
         tic = datetime.datetime.now()
         for red in self.data:
-            red.setRestrictedSupp(self.parent.dw.data)
+            red.setRestrictedSupp(self.parent.dw.getData())
         #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
         self.uptodate = True
 
@@ -870,7 +870,7 @@ class RowTable(GridTable):
             self.cols_map = {}
             self.fields = []
             self.fields.extend(self.fields_def)
-            if dw.data.hasRNames():
+            if dw.getData().hasRNames():
                 self.fields.append(('name', 'self.data[x].getRName'))
                 name_m = 'self.data[x].getRName'
                 self.fix_col += 1

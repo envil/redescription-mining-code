@@ -899,13 +899,13 @@ class Query:
         return tv
     
     ## return the support associated to a query
-    def recompute(self, side, data= None, restrict=None):
+    def recompute(self, side, data=None, restrict=None):
 
         if len(self) == 0 or data==None:
             sm = (set(), set())
         else:
             sm = None
-
+            
             if len(self) > 0:
                 op = self.op
                 for buk in self.buk:
@@ -1137,3 +1137,4 @@ class Query:
             r = Query()
         return r
     parse = staticmethod(parse)
+

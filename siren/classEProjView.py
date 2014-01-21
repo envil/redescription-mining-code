@@ -216,11 +216,11 @@ class EProjView(GView):
             draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
-            selected = self.parent.dw.data.selectedRows()
+            selected = self.parent.dw.getData().selectedRows()
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-            selv = np.ones((self.parent.dw.data.nbRows(), 1))
+            selv = np.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
 

@@ -36,7 +36,7 @@ class Siren():
     # For About dialog
     name = "Siren"    
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
-    version = '2.0.2'
+    version = '2.0.3'
     cpyright = '(C) 2012-2014 Esther Galbrun and Pauli Miettinen'
 
     pref_dir = os.path.dirname(__file__)
@@ -614,6 +614,7 @@ class Siren():
         try:
             self.dw.openPackage(path)
         except:
+            raise
             return False
         else:
             self.reloadAll()
@@ -741,7 +742,7 @@ class Siren():
 
     def OnImportData(self, event):
         """Shows a custom dialog to open the three data files"""
-        if self.dw.data is not None:
+        if self.dw.getData() is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
         if len(self.dw.reds) > 0:
@@ -755,7 +756,7 @@ class Siren():
 
     def OnImportDataCSV(self, event):
         """Shows a custom dialog to open the two data files"""
-        if self.dw.data is not None:
+        if self.dw.getData() is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
         if self.dw.reds is not None and len(self.dw.reds) > 0:
@@ -768,7 +769,7 @@ class Siren():
         dlg.showDialog()
             
     def OnImportDataXML(self, event):
-        if self.dw.data is not None:
+        if self.dw.getData() is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
         if self.dw.reds is not None and len(self.dw.reds) > 0:
@@ -959,7 +960,7 @@ class Siren():
             self.tabs["rows"]["tab"].flipAllEnabled(rids)
 
     def recomputeAll(self):
-        restrict = self.dw.data.nonselectedRows()
+        restrict = self.dw.getData().nonselectedRows()
         for tab in self.tabs.values():
             if tab["type"] == "Reds":
                 tab["tab"].recomputeAll(restrict)
@@ -1115,7 +1116,7 @@ class Siren():
         self.deleteAllViews()
 
     def resetConstraints(self):
-        self.constraints = Constraints(self.dw.getNbRows(), self.dw.getPreferences())
+        self.constraints = Constraints(self.dw.getData(), self.dw.getPreferences())
 
     def resetLogger(self):
         verb = 1
@@ -1146,12 +1147,12 @@ class Siren():
     def reloadVars(self, review=True):
         ## Initialize variable lists data
         for side in [0,1]:
-            if self.dw.data is not None:
+            if self.dw.getData() is not None:
                 self.tabs[side]["tab"].resetData(self.dw.getDataCols(side))
             else:
                 self.tabs[side]["tab"].resetData(ICList())
-        if self.dw.data is not None:
-            details = {"names": self.dw.data.getNames()}
+        if self.dw.getData() is not None:
+            details = {"names": self.dw.getData().getNames()}
             for tk, tv in self.tabs.items():
                 if tv["type"] == "Reds":
                     tv["tab"].resetDetails(details, review)
@@ -1160,7 +1161,7 @@ class Siren():
 
     def reloadRows(self):
         ## Initialize variable lists data
-        if self.dw.data is not None:
+        if self.dw.getData() is not None:
             self.tabs["rows"]["tab"].resetData(self.dw.getDataRows())
         else:
             self.tabs["rows"]["tab"].resetData(ICList())

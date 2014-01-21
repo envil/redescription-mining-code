@@ -15,7 +15,7 @@ from matplotlib.backends.backend_wxagg import \
 from matplotlib.patches import Ellipse, Polygon
 
 from reremi.classQuery import Query
-from reremi.classSParts import SParts
+from reremi.classSParts import SSetts
 from reremi.classRedescription import Redescription
 from classGView import GView, CustToolbar
 from classInterObjects import MaskCreator
@@ -128,16 +128,16 @@ class MapView(GView):
             draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
-            selected = self.parent.dw.data.selectedRows()
+            selected = self.parent.dw.getData().selectedRows()
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-            selv = np.ones((self.parent.dw.data.nbRows(), 1))
+            selv = np.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
 
             for idp, pi in enumerate(self.suppABCD):
-                if pi != SParts.delta and pi in draw_settings and selv[idp] > 0:
+                if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
                     self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
@@ -157,10 +157,10 @@ class MapView(GView):
                       "color_e": draw_settings[pi]["color_e"],
                       "size": draw_settings[pi]["size"],
                       "alpha": draw_settings[pi]["alpha"]}
-            self.highl[lid].extend(self.drawEntity(lid, dsetts, picker=self.suppABCD[lid] == SParts.delta))
+            self.highl[lid].extend(self.drawEntity(lid, dsetts, picker=self.suppABCD[lid] == SSetts.delta))
 
             if len(lids) == 1:
-                tag = self.parent.dw.data.getRName(lid)
+                tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid)[0], self.getCoords(1,lid)[0]),  xycoords='data',
                                                      xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
@@ -216,7 +216,7 @@ class MapView(GView):
 
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:
-            return [i for i,point in enumerate(self.getPCoords()) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SParts.delta)]
+            return [i for i,point in enumerate(self.getPCoords()) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SSetts.delta)]
         return []
 
     def mapCoords(self, coords, bm=None):

@@ -1,4 +1,3 @@
-from classSParts import SParts
 from classRedescription import  Redescription
 import pdb
 
@@ -7,11 +6,21 @@ class Constraints:
     #     self.cminPairsScore = setts_cust.param['min_score']        
     config_def = "miner_confdef.xml"
 
-    def __init__(self, N, params):
-        self.N = N
+    def __init__(self, data, params):
         self._pv = {}
         for k, v in params.items():
             self._pv[k] = v["data"]
+
+        if data is not None:
+            self.N = data.nbRows()
+            if data.hasMissing() is False:
+                self._pv["parts_type"] = "grounded"
+
+            data.getSSetts().reset(self.partsType(), self._pv["method_pval"])
+            self.ssetts = data.getSSetts() 
+        else:
+            self.N = -1
+            self.ssetts = None
 
         if self._pv["amnesic"] == "yes":
             self._pv["amnesic"] = True
@@ -43,8 +52,10 @@ class Constraints:
                                  "pval_query": self._pv["score.pval_query"],
                                  "pval_fact": self._pv["score.pval_fact"]}
 
-        SParts.setMethodPVal(self._pv["method_pval"])
 
+    def getSSetts(self):
+        return self.ssetts
+        
     def scaleF(self, f):
         if f >= 1:
             return int(f)

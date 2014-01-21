@@ -6,15 +6,15 @@ import pdb
 
 class Redescription:
     diff_score = Query.diff_length + 1
-    print_info_full = SParts.infos.keys() + ["card_"+ label for label in SParts.labels] + list(SParts.labels)
-    print_info = SParts.infos.keys() + ["card_"+ label for label in SParts.labels]
+    print_info = SParts.print_info
+    print_info_full = SParts.print_info_full
     print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
     
-    def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1]):
+    def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
-            self.sParts = SParts(nN, nsupps, nPrs)
+            self.sParts = SParts(ssetts, nN, nsupps, nPrs)
             self.dict_supp_info = None
         else:
             self.sParts = None
@@ -23,10 +23,6 @@ class Redescription:
         self.vectorABCD = None
         self.status = 1
         self.track = []
-
-    def suppPartRange(self):
-        return range(SParts.bottom, SParts.top+1)
-
         
     def fromInitialPair(initialPair, data):
         queryL = Query()
@@ -35,7 +31,7 @@ class Redescription:
         queryR.extend(None, initialPair[1])
         (suppL, missL) = data.literalSuppMiss(0, initialPair[0])
         (suppR, missR) = data.literalSuppMiss(1, initialPair[1])
-        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.nbRows()),len(suppR)/float(data.nbRows())])
+        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.nbRows()),len(suppR)/float(data.nbRows())], data.getSSetts())
         r.track = [(0, initialPair[0].term.col), (1, initialPair[1].term.col)]
         return r
     fromInitialPair = staticmethod(fromInitialPair)
@@ -218,7 +214,7 @@ class Redescription:
             
     def copy(self):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.sParts.supparts(), self.sParts.nbRows(), self.probas())
+                             self.sParts.supparts(), self.sParts.nbRows(), self.probas(), self.sParts.getSSetts())
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -252,9 +248,9 @@ class Redescription:
             (nsuppL, missL) = self.recomputeQuery(0, data, restrict)
             (nsuppR, missR) = self.recomputeQuery(1, data, restrict)
             if len(missL) + len(missR) > 0:
-                self.restricted_sParts = SParts(restrict, [nsuppL, nsuppR, missL, missR])
+                self.restricted_sParts = SParts(data.getSSetts(), restrict, [nsuppL, nsuppR, missL, missR])
             else:
-                self.restricted_sParts = SParts(restrict, [nsuppL, nsuppR])
+                self.restricted_sParts = SParts(data.getSSetts(), restrict, [nsuppL, nsuppR])
             self.restricted_prs = [self.queries[0].proba(0, data, restrict), self.queries[1].proba(1, data, restrict)]
             self.restrict_sub = set(restrict)
         
@@ -264,9 +260,9 @@ class Redescription:
 #        print self.disp()
 #        print ' '.join(map(str, nsuppL)) + ' \t' + ' '.join(map(str, nsuppR))
         if len(missL) + len(missR) > 0:
-            self.sParts = SParts(data.nbRows(), [nsuppL, nsuppR, missL, missR])
+            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR, missL, missR])
         else:
-            self.sParts = SParts(data.nbRows(), [nsuppL, nsuppR])
+            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         self.dict_supp_info = None
 
@@ -512,10 +508,7 @@ class Redescription:
                         supp_val = toolRead.getValue(child, float)
                     if supp_val is not None:
                         dsi[supp_key] = supp_val
-            if sum([len(dsi.get(i, [])) for i in SParts.labels]):
-                self.sParts = SParts(dsi)
-            else:
-                self.sParts = None
+            self.sParts = None # SParts(None, dsi)
             self.dict_supp_info = dsi
         tmp_en = toolRead.getTagData(node, "status_enabled", int)
         if tmp_en is not None:
@@ -584,9 +577,9 @@ class Redescription:
 
         r = None
         if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
-            supportsS = SParts.parseSupport(stringSupport, data.nbRows())
+            supportsS = SParts.parseSupport(stringSupport, data.nbRows(), data.getSSetts())
             if supportsS is not None:
-                r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)])
+                r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)], data.getSSetts())
 
                 tmp = r.getInfoDict()
                 for key in lpartsList.keys():

@@ -16,7 +16,6 @@ import pdb
 from reremi.classRedescription import Redescription
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
-from reremi.classSParts import SParts
 from reremi.toolICList import ICList
 from reremi.toolICDict import ICDict
 from reremi.toolLog import Log
@@ -78,7 +77,6 @@ class DataWrapper(object):
         self.pdp = None
         self.resetRedescriptions()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
-        SParts.setMethodPVal(self.preferences["method_pval"]["data"])
         self.package_filename = None
         self._isChanged = False
         self._isFromPackage = False
@@ -100,6 +98,11 @@ class DataWrapper(object):
         if self.data is not None:
             return self.data.getNames()
         return [[],[]]
+
+    def dataHasMissing(self):
+        if self.data is not None:
+            return self.data.hasMissing()
+        return False
 
     def getNbRows(self):
         if self.data is not None:
@@ -224,8 +227,21 @@ class DataWrapper(object):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
             self.preferences.update(params)
-            SParts.setMethodPVal(self.preferences["method_pval"]["data"])
+            self.resetSSetts()
             #self.isChanged = True
+
+    def setData(self, data):
+        self.data = data
+        self.resetSSetts()
+
+    def resetSSetts(self):
+        if self.getData() is not None:
+            if self.getData().hasMissing() is False:
+                parts_type = "grounded"
+            else:
+                parts_type = self.preferences.get("parts_type", {"data": None})["data"]
+            pval_meth = self.preferences.get("method_pval", {"data": None})["data"]
+            self.getData().getSSetts().reset(parts_type, pval_meth)
 
 
 #################### IMPORTS            
@@ -247,7 +263,7 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         else:
-            self.data = tmp_data
+            self.setData(tmp_data)
             self.resetRedescriptions()
             self.isChanged = True
             self.isFromPackage = False
@@ -279,7 +295,7 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         else:
-            self.data = tmp_data
+            self.setData(tmp_data)
             self.resetRedescriptions()
             self.isChanged = True
             self.isFromPackage = False
@@ -304,7 +320,7 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         else:
-            self.data = tmp_data
+            self.setData(tmp_data)
             self.resetRedescriptions()
             self.isChanged = True
             self.isFromPackage = False
@@ -573,7 +589,7 @@ class DataWrapper(object):
         # Move data class variables
         self.package_name = package_name
         if 'data_filename' in plist:
-            self.data = data
+            self.setData(data)
         else:
             self.data = None
         if 'redescriptions_filename' in plist:

@@ -14,7 +14,7 @@ from matplotlib.patches import Polygon
 from matplotlib.path import Path
 
 from reremi.classQuery import SYM, Query
-from reremi.classSParts import SParts
+from reremi.classSParts import SSetts
 from reremi.classRedescription import Redescription
 import factView
 
@@ -54,8 +54,8 @@ class GView(object):
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
-    map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SParts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SParts.beta]),
-                       ("i", "|E"+SYM.SYM_GAMMA+"|", [SParts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SParts.delta])]
+    map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SSetts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SSetts.beta]),
+                       ("i", "|E"+SYM.SYM_GAMMA+"|", [SSetts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SSetts.delta])]
 
     TID = "G"
     SDESC = "Viz"
@@ -401,7 +401,7 @@ class GView(object):
         self.additionalBinds()
 
     def getCopyRed(self):
-        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.data)
+        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.getData())
         
     def OnExpandAdv(self, event):
         params = {"red": self.getCopyRed()}
@@ -428,8 +428,8 @@ class GView(object):
             self.updateQuery(side)
 
     def refresh(self):
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-        red.setRestrictedSupp(self.parent.dw.data)
+        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+        red.setRestrictedSupp(self.parent.dw.getData())
         self.suppABCD = red.supports().getVectorABCD()
         self.updateText(red)
         self.updateMap()
@@ -451,8 +451,8 @@ class GView(object):
                 changed = True
 
         if changed:
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
-            red.setRestrictedSupp(self.parent.dw.data)
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+            red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
             self.makeMenu()
@@ -462,7 +462,7 @@ class GView(object):
         else: ### wrongly formatted query or not edits, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.data)
+            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
         return red
 
     def setSource(self, source_list=None):
@@ -472,12 +472,12 @@ class GView(object):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
-                red = Redescription.fromQueriesPair(qr, self.parent.dw.data)
+                red = Redescription.fromQueriesPair(qr, self.parent.dw.getData())
             else:
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
-            red.setRestrictedSupp(self.parent.dw.data)
+            red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.setSource(source_list)
             self.updateText(red)
@@ -489,7 +489,7 @@ class GView(object):
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
-            query = Query.parse(stringQ, self.parent.dw.data.getNames(side))
+            query = Query.parse(stringQ, self.parent.dw.getData().getNames(side))
         except:
             query = None
         if query is not None and (len(stringQ) > 0 and len(query) == 0):
@@ -517,7 +517,7 @@ class GView(object):
             self.parent.tabs[self.source_list]["tab"].updateEdit(self.getId(), red)
 
     def updateQueryText(self, query, side):
-        self.MapredMapQ[side].ChangeValue(query.dispU(self.parent.dw.data.getNames(side)))
+        self.MapredMapQ[side].ChangeValue(query.dispU(self.parent.dw.getData().getNames(side)))
 
     def updateText(self, red = None):
         """ Reset red fields and info
@@ -590,7 +590,7 @@ class GView(object):
                                           markeredgewidth=1, linestyle='None'))
 
             if len(lids) == 1:
-                tag = self.parent.dw.data.getRName(lid)
+                tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
                                                      xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
@@ -702,42 +702,42 @@ class GView(object):
     def getDrawSettings(self):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
-        return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SParts.mud, SParts.mua, SParts.mub, SParts.muaB, SParts.mubB,
-                              SParts.delta, SParts.beta, SParts.alpha, SParts.gamma])]),
+        return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub, SSetts.muaB, SSetts.mubB,
+                              SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma])]),
                 "shape": dot_shape,
-                SParts.alpha: {"color_e": [i/255.0 for i in colors[0]],
+                SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],
                                "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
-                SParts.beta: {"color_e": [i/255.0 for i in colors[1]],
+                SSetts.beta: {"color_e": [i/255.0 for i in colors[1]],
                               "color_f": [i/255.0 for i in colors[1]],
                               "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
-                SParts.gamma: {"color_e": [i/255.0 for i in colors[2]],
+                SSetts.gamma: {"color_e": [i/255.0 for i in colors[2]],
                                "color_f": [i/255.0 for i in colors[2]],
                                "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size},
-                SParts.mua: {"color_e": [i/255.0 for i in colors[0]],
+                SSetts.mua: {"color_e": [i/255.0 for i in colors[0]],
                              "color_f": [0.5,0.5,0.5],
                              "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
-                SParts.mub: {"color_e": [i/255.0 for i in colors[1]],
+                SSetts.mub: {"color_e": [i/255.0 for i in colors[1]],
                              "color_f": [0.5,0.5,0.5],
                              "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
-                SParts.muaB: {"color_e": [0.5,0.5,0.5],
+                SSetts.muaB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[1]],
                              "shape": dot_shape,
                               "alpha": GView.DOT_ALPHA, "size": dot_size-1},
-                SParts.mubB: {"color_e": [0.5,0.5,0.5],
+                SSetts.mubB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[0]],
                              "shape": dot_shape,
                               "alpha": GView.DOT_ALPHA, "size": dot_size-1},
-                SParts.mud: {"color_e": [0.5,0.5,0.5],
+                SSetts.mud: {"color_e": [0.5,0.5,0.5],
                              "color_f": [0.5, 0.5, 0.5],
                              "shape": dot_shape,
                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
-                SParts.delta: {"color_e": [0.5,0.5,0.5],
+                SSetts.delta: {"color_e": [0.5,0.5,0.5],
                                "color_f": [0.5, 0.5, 0.5],
                                "shape": dot_shape,
                                "alpha": GView.DOT_ALPHA, "size": dot_size}

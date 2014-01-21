@@ -52,7 +52,7 @@ class Miner:
 
 
         self.logger = logger
-        self.constraints = Constraints(self.data.nbRows(), params)
+        self.constraints = Constraints(self.data, params)
         if self.data.hasMissing():
             self.charbon = classCharbonAlt.Charbon(self.constraints)
         else:

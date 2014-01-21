@@ -8,7 +8,6 @@ class Charbon:
 
     def __init__(self, constraints):
         self.constraints = constraints
-        SParts.resetPartsIds(self.constraints.partsType())
 
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
@@ -35,7 +34,7 @@ class Charbon:
             for neg in self.constraints.neg_query(side):
                 adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if adv is not None :
-                    cands.append(Extension(adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
+                    cands.append(Extension(self.constraints.getSSetts(), adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
     def getCandidates2(self, side, col, supports, init=0):
@@ -69,14 +68,14 @@ class Charbon:
             for neg in self.constraints.neg_query(side):        
                 tmp_adv, tmp_clp  = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if tmp_adv is not None:
-                    cands.append((False, Extension(tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
+                    cands.append((False, Extension(self.constraints.getSSetts(), tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
                 ### to negate the other side when looking for initial pairs
                 if init == 1 and True in self.constraints.neg_query(side):
                     tmp_adv, tmp_clp  = self.getAC(side, op, neg, \
-                                                       SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
+                                                       self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
                     if tmp_adv is not None:
-                        cands.append((True, Extension(tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
+                        cands.append((True, Extension(self.constraints.getSSetts(), tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
         return cands
 
@@ -94,28 +93,28 @@ class Charbon:
                     ### to negate the other side when looking for initial pairs
                     if init ==1 and True in self.constraints.neg_query(side):
                         bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
-                                              SParts.negateParts(1-side, lparts), SParts.negateParts(1-side, lmiss), SParts.negateParts(1-side, lin))
+                                              self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
 
                 if best[0] is not None:
-                    cands.append((False, Extension(best)))
+                    cands.append((False, Extension(self.constraints.getSSetts(), best)))
                 if bestNeg[0] is not None:
-                    cands.append((True, Extension(bestNeg)))
+                    cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
         return cands
 
     def findCover3(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegments(side, supports, self.constraints.ops_query(side, init))
+            segments = col.makeSegments(self.constraints.getSSetts(), side, supports, self.constraints.ops_query(side, init))
             for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, init):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
             if init == 1 and True in self.constraints.neg_query(side):
-                nlparts = SParts.negateParts(1-side, lparts)
-                nlmiss = SParts.negateParts(1-side, lmiss)
+                nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
+                nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
 
                 if self.inSuppBounds(side, True, nlparts): ### DOABLE
-                    nsegments = col.makeSegments(side, supports.negate(1-side), self.constraints.ops_query(side, init))
+                    nsegments = col.makeSegments(self.constraints.getSSetts(), side, supports.negate(1-side), self.constraints.ops_query(side, init))
                     ##H pdb.set_trace()
                     for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, init):
                         cands.append((True, cand))
@@ -138,9 +137,9 @@ class Charbon:
         bests = {False: (None, None, None), True: (None, None, None)}
 
         for seg_s in range(len(segments[op])):
-            lin = SParts.makeLParts()
+            lin = self.constraints.getSSetts().makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
-                lin = SParts.addition(lin, segments[op][seg_e][2])
+                lin = self.constraints.getSSetts().addition(lin, segments[op][seg_e][2])
                 for neg in self.constraints.neg_query(side):
                     bests[neg] = self.updateACT(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
 
@@ -148,33 +147,33 @@ class Charbon:
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
-                    cands.append(Extension(bests[neg]))
+                    cands.append(Extension(self.constraints.getSSetts(), bests[neg]))
         return cands
 
     def findNegativeCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
-        lin_f = SParts.makeLParts()
-        bests_f = [(SParts.advAcc(side, op, False, lparts, lmiss, lin_f), 0, lin_f)] 
+        lin_f = self.constraints.getSSetts().makeLParts()
+        bests_f = [(self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_f), 0, lin_f)] 
         best_track_f = [0]
-        lin_b = SParts.makeLParts()
-        bests_b = [(SParts.advAcc(side, op, False, lparts, lmiss, lin_b), 0, lin_b)]
+        lin_b = self.constraints.getSSetts().makeLParts()
+        bests_b = [(self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_b), 0, lin_b)]
         best_track_b = [0]
         #pdb.set_trace()
         for  i in range(len(segments[op])):
             # FORWARD
-            lin_f = SParts.addition(lin_f, segments[op][i][2])
-            if  SParts.advRatioVar(side, op, lin_f) > bests_f[-1][0]:
-                lin_f = SParts.addition(lin_f, bests_f[-1][2])
-                bests_f.append((SParts.advAcc(side, op, False, lparts, lmiss, lin_f), i+1, lin_f))
-                lin_f = SParts.makeLParts()
+            lin_f = self.constraints.getSSetts().addition(lin_f, segments[op][i][2])
+            if  self.constraints.getSSetts().advRatioVar(side, op, lin_f) > bests_f[-1][0]:
+                lin_f = self.constraints.getSSetts().addition(lin_f, bests_f[-1][2])
+                bests_f.append((self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_f), i+1, lin_f))
+                lin_f = self.constraints.getSSetts().makeLParts()
             best_track_f.append(len(bests_f)-1)
 
             # BACKWARD
-            lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
-            if  SParts.advRatioVar(side, op, lin_b) > bests_b[-1][0]:
-                lin_b = SParts.addition(lin_b, bests_b[-1][2])
-                bests_b.append((SParts.advAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
-                lin_b = SParts.makeLParts()
+            lin_b = self.constraints.getSSetts().addition(lin_b, segments[op][-(i+1)][2])
+            if  self.constraints.getSSetts().advRatioVar(side, op, lin_b) > bests_b[-1][0]:
+                lin_b = self.constraints.getSSetts().addition(lin_b, bests_b[-1][2])
+                bests_b.append((self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_b), i+1, lin_b))
+                lin_b = self.constraints.getSSetts().makeLParts()
             best_track_b.append(len(bests_b)-1)
 
         #pdb.set_trace()
@@ -184,8 +183,8 @@ class Charbon:
                 f = bests_f[0]
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
-            if SParts.advRatioVar(side, op, f[2]) > b[0]:
-                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
+            if self.constraints.getSSetts().advRatioVar(side, op, f[2]) > b[0]:
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, self.constraints.getSSetts().addition(f[2], b[2]))
             else:
                 best_t = self.updateACT(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, b[2])
 
@@ -194,8 +193,8 @@ class Charbon:
                 b = bests_b[0]
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
-            if SParts.advRatioVar(side, op, b[2]) > f[0]: 
-                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, SParts.addition(f[2], b[2]))
+            if self.constraints.getSSetts().advRatioVar(side, op, b[2]) > f[0]: 
+                best_t = self.updateACT(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, lparts, lmiss, self.constraints.getSSetts().addition(f[2], b[2]))
             else:
                 best_t = self.updateACT(best_t, (f[1], len(segments[op])-1), side, op, False, lparts, lmiss, f[2])
 
@@ -203,23 +202,23 @@ class Charbon:
             tmp = best_t[-1][-1]
             best_t[-1][-1] = col.getLiteralSeg(True, segments[op], best_t[-1][-1])
             if best_t[-1][-1] is not None:
-                cands.append(Extension(best_t))
+                cands.append(Extension(self.constraints.getSSetts(), best_t))
         return cands
 
     def findPositiveCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
-        lin_f = SParts.makeLParts()
+        lin_f = self.constraints.getSSetts().makeLParts()
         nb_seg_f = 0
         best_f = (None, None, None)
-        lin_b = SParts.makeLParts()
+        lin_b = self.constraints.getSSetts().makeLParts()
         nb_seg_b = 0
         best_b = (None, None, None)
 
         for  i in range(len(segments[op])-1):
             # FORWARD
             if i > 0 and \
-                   SParts.advAcc(side, op, False, lparts, lmiss, segments[op][i][2]) < SParts.advRatioVar(side, op, lin_f):
-                lin_f = SParts.addition(lin_f, segments[op][i][2])
+                   self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, segments[op][i][2]) < self.constraints.getSSetts().advRatioVar(side, op, lin_f):
+                lin_f = self.constraints.getSSetts().addition(lin_f, segments[op][i][2])
                 nb_seg_f += 1
             else: 
                 lin_f = segments[op][i][2]
@@ -228,8 +227,8 @@ class Charbon:
 
             # BACKWARD
             if i > 0 and \
-               SParts.advAcc(side, op, False, lparts, lmiss, segments[op][-(i+1)][2]) < SParts.advRatioVar(side, op, lin_b):
-                lin_b = SParts.addition(lin_b, segments[op][-(i+1)][2])
+               self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, segments[op][-(i+1)][2]) < self.constraints.getSSetts().advRatioVar(side, op, lin_b):
+                lin_b = self.constraints.getSSetts().addition(lin_b, segments[op][-(i+1)][2])
                 nb_seg_b += 1
             else:
                 lin_b = segments[op][-(i+1)][2]
@@ -241,9 +240,9 @@ class Charbon:
             bests = [best_b, best_f]
 
             if best_b[-1][-1][0] > best_f[-1][-1][0] and best_b[-1][-1][1] > best_f[-1][-1][1] and best_b[-1][-1][0] <= best_f[-1][-1][1]:
-                lin_m = SParts.makeLParts()
+                lin_m = self.constraints.getSSetts().makeLParts()
                 for seg in segments[op][best_b[-1][-1][0]:best_f[-1][-1][1]+1]:
-                    lin_m = SParts.addition(lin_m, seg[2])
+                    lin_m = self.constraints.getSSetts().addition(lin_m, seg[2])
                 tmp_adv_m, tmp_clp_m  = self.getAC(side, op, False, lparts, lmiss, lin_m)
                 if tmp_adv_m is not None:
                     bests.append((tmp_adv_m, tmp_clp_m, [side, op, False, (best_b[-1][-1][0], best_f[-1][-1][1])]))
@@ -259,7 +258,7 @@ class Charbon:
         if best[0] is not None:
             best[-1][-1] = col.getLiteralSeg(False, segments[op], best[-1][-1])
             if best[-1][-1] is not None:
-                cands.append(Extension(best))
+                cands.append(Extension(self.constraints.getSSetts(), best))
         return cands
 
 ################################################################### PAIRS METHODS
@@ -281,9 +280,9 @@ class Charbon:
 
     def doBoolStar(self, colL, colR, side):
         if side == 1:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [colL.supp(), set(), colL.miss(), set()]), BoolTerm(colL.getId()), colR)
+            (supports, fixTerm, extCol) = (SParts(self.constraints.getSSetts(), colL.nbRows(), [colL.supp(), set(), colL.miss(), set()]), BoolTerm(colL.getId()), colR)
         else:
-            (supports, fixTerm, extCol) = (SParts(colL.nbRows(), [set(), colR.supp(), set(), colR.miss()]), BoolTerm(colR.getId()), colL)
+            (supports, fixTerm, extCol) = (SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), colR.supp(), set(), colR.miss()]), BoolTerm(colR.getId()), colL)
 
         return self.fit(extCol, supports, side, fixTerm)
 
@@ -332,11 +331,11 @@ class Charbon:
         bestScore = None
         if True: ### DOABLE
             ## FIT LHS then RHS
-            supports = SParts(colL.nbRows(), [set(), colR.nonModeSupp(), set(), colR.miss()])
+            supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), colR.nonModeSupp(), set(), colR.miss()])
             (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, idR)
             for tL in literalsExtL:
                 suppL = colL.suppLiteral(tL)
-                supports = SParts(colL.nbRows(), [suppL, set(), colL.miss(), set()])
+                supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL, set(), colL.miss(), set()])
                 (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, tL)
                 for i in range(len(scoresR)):
                     if scoresR[i] > bestScore:
@@ -344,11 +343,11 @@ class Charbon:
                         bestScore = scoresR[i]
                         
             ## FIT RHS then LHS
-            supports = SParts(colL.nbRows(), [colL.nonModeSupp(), set(), colL.miss(), set()])
+            supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [colL.nonModeSupp(), set(), colL.miss(), set()])
             (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, idL)
             for tR in literalsExtR:
                 suppR = colR.suppLiteral(tR)
-                supports = SParts(colL.nbRows(), [set(), suppR, set(), colR.miss()])
+                supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), suppR, set(), colR.miss()])
                 (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, tR)
                 for i in range(len(scoresL)):
                     if scoresL[i] > bestScore:
@@ -441,12 +440,12 @@ class Charbon:
                         lmissE = sum(lmissEinF[lowF:upF+1])
                         #totEinF = sum(EinF)
                         
-                        lparts = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - aboveF - belowF + lmissE), \
-                                                    (SParts.partId(SParts.mubB, 1-side), partsMubB ), \
-                                                    (SParts.partId(SParts.delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
-                        lmiss  = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), lmissE ), \
-                                                    (SParts.partId(SParts.mubB, 1-side), missMubB ), \
-                                                    (SParts.partId(SParts.delta, 1-side), totMissEinF - lmissE )], 0)
+                        lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - aboveF - belowF + lmissE), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), partsMubB ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
+                        lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), lmissE ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), missMubB ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), totMissEinF - lmissE )], 0)
 
                         belowEF = 0
                         outBelowEF = 0
@@ -458,9 +457,9 @@ class Charbon:
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.min_itm_in():
                                 
                                 lmissF = sum(lmissFinE[lowE:upE+1])
-                                lin = SParts.makeLParts([(SParts.partId(SParts.alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
-                                                         (SParts.partId(SParts.mubB, 1-side), lmissF ), \
-                                                         (SParts.partId(SParts.delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
+                                lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
+                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), lmissF ), \
+                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
                                 best = self.updateACTP33(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
@@ -495,7 +494,7 @@ class Charbon:
         
         for catL in colL.cats():
             ### TODO DOABLE
-            supports = SParts(colL.nbRows(), [colL.suppCat(catL), set(), colL.miss(), set()])
+            supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [colL.suppCat(catL), set(), colL.miss(), set()])
             lparts = supports.lparts()
             lmiss = supports.lpartsInterX(colR.miss())
             
@@ -504,9 +503,9 @@ class Charbon:
 
                 for (i, nL, nR) in configs:
                     if nL:
-                        tmp_lparts = SParts.negateParts(0, lparts)
-                        tmp_lmiss = SParts.negateParts(0, lmiss)
-                        tmp_lin = SParts.negateParts(0, lin)
+                        tmp_lparts = self.constraints.getSSetts().negateParts(0, lparts)
+                        tmp_lmiss = self.constraints.getSSetts().negateParts(0, lmiss)
+                        tmp_lin = self.constraints.getSSetts().negateParts(0, lin)
                     else:
                         tmp_lparts = lparts
                         tmp_lmiss = lmiss
@@ -555,8 +554,8 @@ class Charbon:
                 marg[buckets[2]] += colE.lenMode()
 
             for cat in colF.cats():
-                lparts = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat)) ), (SParts.mubB, partsMubB ), (SParts.delta, - colF.nbRows())], 1-side)
-                lmiss  = SParts.makeLParts([(SParts.alpha, len(colF.suppCat(cat) & colE.miss()) ), (SParts.mubB, missMubB ), (SParts.delta, -len(colE.miss()) )], 1-side)
+                lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, len(colF.suppCat(cat)) ), (self.constraints.getSSetts().mubB, partsMubB ), (self.constraints.getSSetts().delta, - colF.nbRows())], 1-side)
+                lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, len(colF.suppCat(cat) & colE.miss()) ), (self.constraints.getSSetts().mubB, missMubB ), (self.constraints.getSSetts().delta, -len(colE.miss()) )], 1-side)
                 
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
                 if buckets[2] is not None :
@@ -573,12 +572,12 @@ class Charbon:
                     up = len(interMat)-1
                     while up >= low and \
                           (totIn - below - above >= self.constraints.min_itm_in() or totIn - below - above >= self.constraints.min_itm_out()):
-                        lin = SParts.makeLParts([(SParts.alpha, totIn - below - above), (SParts.mubB, totMiss - missBelow - missAbove ), (SParts.delta, -sum(marg[low:up+1]))], 1-side)
+                        lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, totIn - below - above), (self.constraints.getSSetts().mubB, totMiss - missBelow - missAbove ), (self.constraints.getSSetts().delta, -sum(marg[low:up+1]))], 1-side)
                         for (i, nF, nE) in configs:
                             if nF:
-                                tmp_lparts = SParts.negateParts(1-side, lparts)
-                                tmp_lmiss = SParts.negateParts(1-side, lmiss)
-                                tmp_lin = SParts.negateParts(1-side, lin)
+                                tmp_lparts = self.constraints.getSSetts().negateParts(1-side, lparts)
+                                tmp_lmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
+                                tmp_lin = self.constraints.getSSetts().negateParts(1-side, lin)
                             else:
                                 tmp_lparts = lparts
                                 tmp_lmiss = lmiss
@@ -615,15 +614,15 @@ class Charbon:
     def getAC(self, side, op, neg, lparts, lmiss, lin):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
-        contri = SParts.sumPartsIdInOut(side, neg, SParts.IDS_cont[op], clp)
+        contri = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[op], clp)
         if contri >= self.constraints.min_itm_c():
-            varBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varnum[op], clp)
-            fixBlue = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixnum[op], clp)
+            varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[op], clp)
+            fixBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixnum[op], clp)
             if varBlue+fixBlue >= self.constraints.min_itm_in():
-                sout = SParts.sumPartsIdInOut(side, neg, SParts.IDS_out[op], clp)
+                sout = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_out[op], clp)
                 if sout >= self.constraints.min_itm_out():
-                    varRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_varden[op], clp)
-                    fixRed = SParts.sumPartsIdInOut(side, neg, SParts.IDS_fixden[op], clp)
+                    varRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[op], clp)
+                    fixRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixden[op], clp)
                     if varRed + fixRed == 0:
                         if varBlue + fixBlue > 0:
                             acc = float("Inf")
@@ -684,5 +683,5 @@ class Charbon:
 
 
     def inSuppBounds(self, side, op, lparts):
-        return SParts.sumPartsId(side, SParts.IDS_varnum[op] + SParts.IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
-               and SParts.sumPartsId(side, SParts.IDS_cont[op], lparts) >= self.constraints.min_itm_c()
+        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
+               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.min_itm_c()
