@@ -2,11 +2,41 @@ import csv
 import sys
 import pdb
 
+LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude')
+LONGITUDE = ('long', 'longitude', 'Long', 'Longitude')
+IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
+
+COLID = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
+COLV = ['value', 'Value', 'values', 'Values']
+
+
 class CSVRError(Exception):
     def __init__(self, value):
         self.value = value
     def __str__(self):
         return repr(self.value)
+
+def test_some_numbers(strgs):
+    i = len(strgs)
+    while i > 0:
+        i -= 1
+        try:
+            float(strgs[i])
+            return True
+        except:
+            pass
+    return False
+
+def test_all_numbers(strgs):
+    i = len(strgs)
+    while i > 0:
+        i -= 1
+        try:
+            float(strgs[i])
+        except:
+            return False
+    return True
+
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     with open(filename, 'rU') as f:
@@ -17,20 +47,19 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
         #f.seek(0)
-        header = True
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
-        if header:
-            head = csvreader.next()
-            data = dict(zip(head, [[] for i in range(len(head))]))
-            no_of_columns = len(head)
+        ### Try to read headers
+        head = csvreader.next()
+        if test_some_numbers(head):
+            ### If we read a row with some numerical values, this was no header...
+            head = [i for i in range(len(head))]
+            data = dict(zip(i, [[] for i in range(len(head))]))
+            f.seek(0)
         else:
-            head = None
+            data = dict(zip(head, [[] for i in range(len(head))]))
+        no_of_columns = len(head)
+
         for row in csvreader:
-            if head is None:
-                head = [str(i) for i in range(len(row))]
-                no_of_columns = len(head)
-                data = dict(zip(head,
-                                [[] for i in range(len(row))]))
             if len(row) != no_of_columns:
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
@@ -39,55 +68,77 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                 if row[i] != type(row[i])(unknown_string):
                     data[head[i]].append(row[i])
                 else:
-                    data[head[i]].append(None)
+                    data[head[i]].append(None)        
     return head, data
 
 def parse_sparse(D, ll, coord, ids, varcol, valcol):
+    nids = None
     if varcol is None:
+        ## this is no sparse data...
         return D, ll, coord, ids
     else:
         nll = sorted(set(ll))
-        dictLL = dict([(v,k) for (k,v) in enumerate(nll)])
+        dictLL = {}
+        try:
+            for i in nll:
+                ### in general if numerical ids are provided that should be the row number
+                ### we expect rows to start at one ...
+                dictLL[i] = int(i)-1
+            if (-1 in dictLL.values()):
+                ### ... unless there was a zero
+                dictLL = dict([(k,v+1) for (k, v) in dictLL])
+            nll = ["%d" % v for v in range(max(dictLL.values())+1)]
+            nids = nll
+        except ValueError:
+            dictLL = dict([(v,k) for (k,v) in enumerate(nll)])
+            if ids is not None:
+                nids = [None for i in range(len(nll))]
+                for ii, i in enumerate(ids):
+                    nids[dictLL[ll[ii]]] = i
 
-    nids = None
-    if ids is not None:
-        nids = [None for i in range(len(dictLL))]
-        for ii, i in enumerate(ids):
-            nids[dictLL[ll[ii]]] = i
+    nD = {'data' : {}, 'headers': [], "sparse":True}
+    if valcol is None:
+        ### Actually turning the data from list of ids to sets, Boolean
+        for rid, col in enumerate(D['data'][varcol]):
+            if col in nD['headers']:
+                nD['data'][col].add(dictLL[ll[rid]])
+            else:
+                nD['headers'].append(col)
+                nD['data'][col] = set([dictLL[ll[rid]]])
+    else:
+        ### Actually turning the data from list to dict row:value
+        for rid, col in enumerate(D['data'][varcol]):
+            if col in nD['headers']:
+                nD['data'][col][dictLL[ll[rid]]] = D['data'][valcol][rid]
+            else:
+                nD['headers'].append(col)
+                nD['data'][col] = {dictLL[ll[rid]]: D['data'][valcol][rid]}
 
+    ### mapping the coordinates to the correct order
     ncoord = None
+    hasc, coord_sp = has_coord_sparse(nD)
     if coord is not None and coord != (None, None):
         ncoord = [[None for i in range(len(dictLL))], [None for i in range(len(dictLL))]]
         for ii in range(len(coord[0])):
             ncoord[0][dictLL[ll[ii]]] = coord[0][ii]
             ncoord[1][dictLL[ll[ii]]] = coord[1][ii]
+            if hasc and ( ( coord_sp[0].get(dictLL[ll[ii]]) != ncoord[0][dictLL[ll[ii]]] or
+                            coord_sp[1].get(dictLL[ll[ii]]) != ncoord[1][dictLL[ll[ii]]]) ):
+                raise CSVRError('Found incoherent coordinates! #%d sparse (%s, %s) vs. previous (%s, %s)' % ( dictLL[ll[ii]],
+                                                                                              coord_sp[0].get(dictLL[ll[ii]]), coord_sp[1].get(dictLL[ll[ii]]),
+                                                                                              ncoord[0][dictLL[ll[ii]]], ncoord[1][dictLL[ll[ii]]]))
+    elif hasc:
+        ncoord = [[coord_sp[0].get(i,None) for i in range(len(dictLL))], [coord_sp[1].get(i,None) for i in range(len(dictLL))]]
 
-    nD = {'data' : {}, 'headers': []}
-    if valcol is None:
-        for rid, row in enumerate(D['data'][varcol]):
-            if row in nD['headers']:
-                nD['data'][row].add(dictLL[ll[rid]])
-            else:
-                nD['headers'].append(row)
-                nD['data'][row] = set([dictLL[ll[rid]]])
-    else:
-        for rid, row in enumerate(D['data'][varcol]):
-            if row in nD['headers']:
-                nD['data'][row][dictLL[ll[rid]]] = D['data'][valcol][rid]
-            else:
-                nD['headers'].append(row)
-                nD['data'][row] = {[dictLL[ll[rid]]]: D['data'][valcol][rid]}
-    return nD, nll, ncoord, nids
+    return nD, nll, ncoord, nids, hasc
 
 def has_coord(D):
-    latitude = ('lat', 'latitude', 'Lat', 'Latitude')
-    longitude = ('long', 'longitude', 'Long', 'Longitude')
 
     hasCoord = False
     coord = (None, None)
-    for s in latitude:
+    for s in LATITUDE:
         if s in D['headers']:
-            for t in longitude:
+            for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
                     coord = ( [map(float, p.strip(" :").split(":")) for p in D['data'][s]],
@@ -102,12 +153,32 @@ def has_coord(D):
 
     return (hasCoord, coord)
 
+def has_coord_sparse(D):
+
+    hasCoord = False
+    coord = (None, None)
+    for s in LATITUDE:
+        if s in D['headers']:
+            for t in LONGITUDE:
+                if t in D['headers']:
+                    hasCoord = True
+                    coord = (dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
+                             dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
+                    del D['data'][s]
+                    del D['data'][t]
+                    D['headers'].remove(s)
+                    D['headers'].remove(t)
+                    break
+        if hasCoord:
+            break
+    return (hasCoord, coord)
+
+
 def has_ids(D):
-    identifiers = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
 
     hasIds = False
     ids = None
-    for s in identifiers:
+    for s in IDENTIFIERS:
         if s in D['headers']:
             if not hasIds:
                 hasIds = True
@@ -119,9 +190,8 @@ def has_ids(D):
     return (hasIds, ids)    
 
 def is_sparse(D):
-    colid = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
-    colv = ['value', 'Value', 'values', 'Values']
-
+    colid = list(COLID)
+    colv = list(COLV)
     varcol = None
     valcol = None
     while len(colid) > 0:
@@ -163,16 +233,20 @@ def row_order(L, R):
         (Lvarcol, Lvalcol) = is_sparse(L)
         if Lvarcol is not None: 
             try:
-                L, Lll, Lcoord, Lids = parse_sparse(L, Lll, Lcoord, Lids, Lvarcol, Lvalcol)
+                L, Lll, Lcoord, Lids, LhasCoord_sp = parse_sparse(L, Lll, Lcoord, Lids, Lvarcol, Lvalcol)
+                LhasCoord |= LhasCoord_sp
             except Exception as arg:
                 raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
         (Rvarcol, Rvalcol) = is_sparse(R)
-        if Rvarcol is not None: 
-            try:
-                R, Rll, Rcoord, Rids = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
-            except Exception as arg:
-                raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
+        if Rvarcol is not None:
+            R, Rll, Rcoord, Rids, RhasCoord_sp = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
+            RhasCoord |= RhasCoord_sp
+            #### DEBUG
+            # try:
+            #     R, Rll, Rcoord, Rids = parse_sparse(R, Rll, Rcoord, Rids, Rvarcol, Rvalcol)
+            # except Exception as arg:
+            #     raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
         Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
@@ -219,30 +293,50 @@ def row_order(L, R):
     #     # Neither has coordinates
     #     raise ValueError('At least one data file must have coordinates')
     # elif not (LhasCoord and RhasCoord):
-        # Only one has coordinates, do not re-order rows
+        # Only one has coordinates (or none), do not re-order rows
+            #####TODO HERE PARSE SPARSE ALSO WITHOUT IDS ON BOTH SIDES
+        nbrowsL = len(L['data'].values()[0])
+        if LhasIds:
+            (Lvarcol, Lvalcol) = is_sparse(L)
+            if Lvarcol is not None:
+                try:
+                    L, Lll, Lcoord, Lids, LhasCoord_sp = parse_sparse(L, Lids, None, Lids, Lvarcol, Lvalcol)
+                    LhasCoord |= LhasCoord_sp
+                except Exception as arg:
+                    raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
+            nbrowsL = len(Lids)
+
+        nbrowsR = len(R['data'].values()[0])
+        if RhasIds:
+            (Rvarcol, Rvalcol) = is_sparse(R)
+            if Rvarcol is not None:
+                try:
+                    R, Rll, Rcoord, Rids, RhasCoord_sp = parse_sparse(R, Rids, None, Rids, Rvarcol, Rvalcol)
+                    RhasCoord |= RhasCoord_sp
+                except Exception as arg:
+                    raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
+            nbrowsR = len(Rids)
+            
         data = L['data']
         head = L['headers']
         # extract the coordinates
         if LhasCoord:
-            coord = Lcoord
+            coord = zip(*Lcoord)
         elif RhasCoord:
-            coord = Rcoord
+            coord = zip(*Rcoord)
         else:
             coord = None
 
         ids = None
-        if LhasIds:
-            if len(L["data"].values()[0]) == len(Lids):
-                ids = Lids
-        elif RhasIds:
-            if len(R["data"].values()[0]) == len(Rids):
-                ids = Rids
-
+        if LhasIds: # and len(L["data"].values()[0]) == len(Lids):
+            ids = Lids
+        elif RhasIds: # and if len(R["data"].values()[0]) == len(Rids):
+            ids = Rids
 
         # Sanity check
-        if len(data.values()[0]) != len(R['data'].values()[0]):
+        if nbrowsR != nbrowsL:
             raise CSVRError('The two data sets are not of same size')
-        return (L, R, range(len(data[head[0]])), range(len(data[head[0]])), coord, ids)
+        return (L, R, range(nbrowsL), range(nbrowsR), coord, ids)
 
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
@@ -259,31 +353,72 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
     except csv.Error as arg:
         raise CSVRError("Error reading the right hand side data: %s" % arg)
 
-    L = {'data': Ld, 'headers': Lh}
-    R = {'data': Rd, 'headers': Rh}
-    try:
-        (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
-    except Exception as arg:
-        raise CSVRError("Error while mapping the two sides together: %s" % arg)
+    L = {'data': Ld, 'headers': Lh, "sparse": False}
+    R = {'data': Rd, 'headers': Rh, "sparse": False}
+    (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+    #### DEBUG
+    # try:
+    #     (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+    # except Exception as arg:
+    #     raise CSVRError("Error while mapping the two sides together: %s" % arg)
 
     L['order'] = Lorder
     R['order'] = Rorder
     return {'data': (L,R), 'coord': coord, "ids": ids}
 
+def print_out(data):
+    keysL = sorted(data['data'][0]['headers'])
+    keysR = sorted(data['data'][1]['headers'])
+
+    line = "# "
+    if data['ids'] is not None:
+        line += "ID "
+    if data['coord'] is not None:
+        line += "coord0 coord1"
+    line += " | "
+    line += " ".join(["%s" % k for k in keysL])
+    line += " || "
+    line += " ".join(["%s" % k for k in keysR])
+    line += " |"
+    print line
+    
+    for row in range(len(data['data'][0]['order'])):
+        line = "%d " % row
+        if data['ids'] is not None:
+            line += "%s " % data['ids'][row]
+        if data['coord'] is not None:
+            line += "%s %s" % (data['coord'][row][0], data['coord'][row][1])
+        line += " | "
+        if data["data"][0]["sparse"]:
+            line += " ".join(["%s" % data['data'][0]['data'][k].get(data['data'][0]['order'][row], "--") for k in keysL])
+        else:
+            line += " ".join(["%s" % data['data'][0]['data'][k][data['data'][0]['order'][row]] for k in keysL])
+        line += " || "
+        if data["data"][1]["sparse"]:
+            line += " ".join(["%s" % data['data'][1]['data'][k].get(data['data'][1]['order'][row], "--") for k in keysR])
+        else:
+            line += " ".join(["%s" % data['data'][1]['data'][k][data['data'][1]['order'][row]] for k in keysR])
+        line += " |"
+        print line
 
 def main(argv=[]):
-    rep = "/home/galbrun/redescriptors/data/vaalikone/"
-    res = importCSV(rep+"vaalikone_profiles_re.csv", rep+"vaalikone_questions_re.csv", unknown_string='NA')
-    #res = importCSV('mammals.csv', 'worldclim.csv', unknown_string='NA')
-    print res.keys()
-    print res['data'][0].keys()
-    print "Left data has", len(res['data'][0]['data'][res['data'][0]['headers'][0]]), "rows"
-    print "Left data has", len(res['data'][1]['data'][res['data'][1]['headers'][0]]), "rows"
-    if res['coord'] is not None:
-        print "Coord has", len(res['coord']), "rows"
-    if res['ids'] is not None:
-        print "Ids has", len(res['ids']), "rows"
-
+    print "COMMENT OUT!"
+    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    # # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
+    # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
+    # # res = importCSV(rep+"vaalikone_profiles_test_list.csv", rep+"vaalikone_profiles_test_listopo.csv", unknown_string='NA')
+    # # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
+    # # res = importCSV(rep+'mammals_sparse.csv', rep+'worldclim_poly.csv', unknown_string='NA')
+    # print res.keys()
+    # print res['data'][0].keys()
+    # print "Left data has %d rows ( %d actually )" %(len(res['data'][0]['data'][res['data'][0]['headers'][0]]), len(res['data'][0]['order']))
+    # print "Right data has %d rows ( %d actually )" %(len(res['data'][1]['data'][res['data'][1]['headers'][0]]), len(res['data'][1]['order']))
+    # # pdb.set_trace()
+    # if res['coord'] is not None:
+    #     print "Coord has", len(res['coord']), "rows"
+    # if res['ids'] is not None:
+    #     print "Ids has", len(res['ids']), "rows"
+    # print_out(res)
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -1703,13 +1703,17 @@ def getDenseArray(vect):
 
 
 def main():
-    print "UNCOMMENT"
+    # print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/world/"
     # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")
     # data.writeXML(open("tmp.xml", "w"))
 
-    rep = "/home/galbrun/redescriptors/data/rajapaja/"
-    data = Data([rep+"mammals.sparsebool", rep+"worldclim_tp.densenum", {}, "NA"], "csv")
+    # rep = "/home/galbrun/redescriptors/data/rajapaja/"
+    # data = Data([rep+"mammals.sparsebool", rep+"worldclim_tp.densenum", {}, "NA"], "csv")
+    # print data
+
+    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
     print data
     
     # data2 = Data("tmp.xml", "xml")
