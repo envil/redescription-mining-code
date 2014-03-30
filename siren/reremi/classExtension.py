@@ -213,9 +213,11 @@ class ExtensionsBatch:
                      if self.scoreCand(cand) >= min_impr])
 
     def improvingKids(self, data, min_impr=0, max_var=[-1,-1]):
+
         kids = []
         for (pos, cand) in self.bests.items():
             if self.scoreCand(cand) >= min_impr:
+
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
                 if kid.getAcc() != cand.getAcc():
@@ -223,6 +225,7 @@ class ExtensionsBatch:
             
                 kids.append(kid)
         return kids
+    
 
     def improvingKidsDL(self, data, min_impr=0, max_var=[-1,-1], rm=None):
         tc = rm.getTopDeltaRed(self.current, data)

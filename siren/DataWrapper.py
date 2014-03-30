@@ -48,7 +48,8 @@ class DataWrapper(object):
 
     # CONSTANTS
     # Names of the files in the package
-    DATA_FILENAME = 'data.xml'
+    DATA_LHS_FILENAME = 'data_LHS.csv'
+    DATA_RHS_FILENAME = 'data_RHS.csv'
     REDESCRIPTIONS_FILENAME = 'redescriptions.xml'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
@@ -270,62 +271,62 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-    def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
-        fnames = list(data_filenames)
-        if names_filenames is not None:
-            fnames += names_filenames
-        if coo_filename is not None:
-            fnames += [coo_filename]
-        if entities_filename is not None:
-            fnames += [entities_filename]
-        self._startMessage('importing', fnames)
+    # def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
+    #     fnames = list(data_filenames)
+    #     if names_filenames is not None:
+    #         fnames += names_filenames
+    #     if coo_filename is not None:
+    #         fnames += [coo_filename]
+    #     if entities_filename is not None:
+    #         fnames += [entities_filename]
+    #     self._startMessage('importing', fnames)
         
-        try:
-            tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename, entities_filename)
-        except DataError as details:
-            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
-            self._stopMessage()
-            raise
-        except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
-            self._stopMessage()
-            raise
-        except Exception:
-            self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
-            self._stopMessage()
-            raise
-        else:
-            self.setData(tmp_data)
-            self.resetRedescriptions()
-            self.isChanged = True
-            self.isFromPackage = False
-        finally:
-            self._stopMessage('importing')
+    #     try:
+    #         tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename, entities_filename)
+    #     except DataError as details:
+    #         self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     except IOError as arg:
+    #         self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     except Exception:
+    #         self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     else:
+    #         self.setData(tmp_data)
+    #         self.resetRedescriptions()
+    #         self.isChanged = True
+    #         self.isFromPackage = False
+    #     finally:
+    #         self._stopMessage('importing')
         
 
-    def importDataFromXMLFile(self, data_filename):
-        self._startMessage('importing', data_filename)
-        try:
-            tmp_data = self._readDataFromXMLFile(data_filename)
-        except DataError as details:
-            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
-            self._stopMessage()
-            raise
-        except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
-            self._stopMessage()
-            raise
-        except Exception:
-            self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
-            self._stopMessage()
-            raise
-        else:
-            self.setData(tmp_data)
-            self.resetRedescriptions()
-            self.isChanged = True
-            self.isFromPackage = False
-        finally:
-            self._stopMessage('importing')
+    # def importDataFromXMLFile(self, data_filename):
+    #     self._startMessage('importing', data_filename)
+    #     try:
+    #         tmp_data = self._readDataFromXMLFile(data_filename)
+    #     except DataError as details:
+    #         self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     except IOError as arg:
+    #         self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     except Exception:
+    #         self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     else:
+    #         self.setData(tmp_data)
+    #         self.resetRedescriptions()
+    #         self.isChanged = True
+    #         self.isFromPackage = False
+    #     finally:
+    #         self._stopMessage('importing')
 
     def importRedescriptionsFromFile(self, redescriptions_filename):
         """Loads new redescriptions from file"""
@@ -416,7 +417,6 @@ class DataWrapper(object):
 
 ######################## READS
     def _readDataFromCSVFiles(self, data_filenames):
-        ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
         try:
             data = Data(data_filenames, "csv")
         except Exception:
@@ -424,29 +424,29 @@ class DataWrapper(object):
             raise
         return data
 
-    def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
-        ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
-        try:
+    # def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
+    #     ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
+    #     try:
             
-            filenames = list(data_filenames)
-            if names_filenames is None:
-                filenames.extend([None, None])
-            else:
-                filenames.extend(names_filenames)
-            if coo_filename is not None or entities_filename is not None:
-                filenames.extend([coo_filename, entities_filename])
-            data = Data(filenames, "multiple")
-        except Exception:
-            self._stopMessage()
-            raise
-        return data
+    #         filenames = list(data_filenames)
+    #         if names_filenames is None:
+    #             filenames.extend([None, None])
+    #         else:
+    #             filenames.extend(names_filenames)
+    #         if coo_filename is not None or entities_filename is not None:
+    #             filenames.extend([coo_filename, entities_filename])
+    #         data = Data(filenames, "multiple")
+    #     except Exception:
+    #         self._stopMessage()
+    #         raise
+    #     return data
 
-    def _readDataFromXMLFile(self, filename):
-        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
-            filep = filename
-        else:
-            filep = open(filename, mode='r')
-        return Data(filep, "xml")
+    # def _readDataFromXMLFile(self, filename):
+    #     if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+    #         filep = filename
+    #     else:
+    #         filep = open(filename, mode='r')
+    #     return Data(filep, "xml")
 
 
     def _readRedescriptionsFromFile(self, filename, data=None):
@@ -546,16 +546,18 @@ class DataWrapper(object):
             package_name = plist['package_name']
 
             # Load data
-            if 'data_filename' in plist:
+            if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
                 try:
-                    fd = package.open(plist['data_filename'], 'r')
-                    data = self._readDataFromXMLFile(fd)
+                    fdLHS = package.open(plist['data_LHS_filename'], 'r')
+                    fdRHS = package.open(plist['data_RHS_filename'], 'r')
+                    data = self._readDataFromCSVFiles([fdLHS, fdRHS])
                 except Exception as e:
                     print e
                     self._stopMessage()
                     raise
                 finally:
-                    fd.close()
+                    fdLHS.close()
+                    fdRHS.close()
                     
             # Load redescriptions
             if 'redescriptions_filename' in plist:
@@ -588,7 +590,7 @@ class DataWrapper(object):
         # Closes with ZipFile
         # Move data class variables
         self.package_name = package_name
-        if 'data_filename' in plist:
+        if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
             self.setData(data)
         else:
             self.data = None
@@ -670,7 +672,8 @@ class DataWrapper(object):
         # Write data files
         try:
             if self.data is not None:
-                self._writeData(os.path.join(tmp_dir, plist['data_filename']), toPackage = True)
+                self._writeData([os.path.join(tmp_dir, plist['data_LHS_filename']),
+                                 os.path.join(tmp_dir, plist['data_RHS_filename'])], toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -707,9 +710,13 @@ class DataWrapper(object):
             package.write(os.path.join(tmp_dir, self.PLIST_FILE),
                           arcname = os.path.join('.', self.PLIST_FILE))
             if self.data is not None:
-                package.write(os.path.join(tmp_dir, plist['data_filename']),
-                              arcname = os.path.join('.', plist['data_filename']),
-                    compress_type = zipfile.ZIP_DEFLATED)
+                package.write(os.path.join(tmp_dir, plist['data_LHS_filename']),
+                              arcname = os.path.join('.', plist['data_LHS_filename']),
+                              compress_type = zipfile.ZIP_DEFLATED)
+                package.write(os.path.join(tmp_dir, plist['data_RHS_filename']),
+                              arcname = os.path.join('.', plist['data_RHS_filename']),
+                              compress_type = zipfile.ZIP_DEFLATED)
+
             if self.reds is not None and len(self.reds) > 0:
                 package.write(os.path.join(tmp_dir, plist['redescriptions_filename']),
                               arcname = os.path.join('.',
@@ -771,7 +778,7 @@ class DataWrapper(object):
         with open(filename, mode='w') as f:
             for i in self.rshowids:
                 if self.reds[i].getEnabled():
-                    f.write(self.reds[i].dispU(names)+"\n")
+                    f.write(self.reds[i].disp(style="U", names=names)+"\n")
 
     def _writeRedescriptionsTEX(self, filename, named = False, toPackage = False):
         if named:
@@ -808,9 +815,8 @@ class DataWrapper(object):
         with open(filename, 'w') as f:
             f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True))
 
-    def _writeData(self, filename, toPackage = False):
-        with open(filename, mode='w') as f:
-            self.data.writeXML(f)
+    def _writeData(self, filenames, toPackage = False):
+        self.data.writeCSV(filenames)
     
     def _makePlistDict(self):
         """Makes a dict to write to plist."""
@@ -828,7 +834,8 @@ class DataWrapper(object):
 
                             
         if self.data is not None:
-            d['data_filename'] = self.DATA_FILENAME
+            d['data_LHS_filename'] = self.DATA_LHS_FILENAME
+            d['data_RHS_filename'] = self.DATA_RHS_FILENAME
                                 
         if self.reds is not None and len(self.reds) > 0:
             d['redescriptions_filename'] = self.REDESCRIPTIONS_FILENAME

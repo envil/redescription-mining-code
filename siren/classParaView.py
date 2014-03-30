@@ -131,7 +131,6 @@ class ParaView(GView):
                 side_cols.append((side, l.col()))
                 ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
                               + [self.parent.dw.getData().col(side, l.col()).width])
-                #lit_str.append(l.term.dispU(False, self.parent.dw.getData().getNames(side)))
                 lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
 
         pos_axis = len(self.sc[0])

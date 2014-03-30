@@ -199,7 +199,7 @@ class Redescription:
             self.dict_supp_info = None
             if self.lAvailableCols[side] is not None:
                 self.lAvailableCols[side].remove(literal.col())
-            self.track.append((side, literal.col()))
+            self.track.append(((1-side) * 1-2*int(op.isOr()), literal.col()))
 
     def setFull(self, max_var=None):
         if max_var is not None:
@@ -302,21 +302,21 @@ class Redescription:
 ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
     def getQueriesU(self, details=None):
         if details is not None and "names" in details:
-            return self.queries[0].dispU(details["names"][0]) + "---" + self.queries[1].dispU(details["names"][1])
+            return self.queries[0].disp(details["names"][0], style="U") + "---" + self.queries[1].disp(details["names"][1], style="U")
         else:
-            return self.queries[0].dispU() + "---" + self.queries[1].dispU()
+            return self.queries[0].disp(style="U") + "---" + self.queries[1].disp(style="U")
 
     def getQueryLU(self, details=None):
         if details is not None and "names" in details:
-            return self.queries[0].dispU(details["names"][0])
+            return self.queries[0].disp(details["names"][0], style="U")
         else:
-            return self.queries[0].dispU()
+            return self.queries[0].disp(style="U")
 
     def getQueryRU(self, details=None):
         if details is not None and "names" in details:
-            return self.queries[1].dispU(details["names"][1])
+            return self.queries[1].disp(details["names"][1], style="U")
         else:
-            return self.queries[1].dispU()
+            return self.queries[1].disp(style="U")
 
     def getTrack(self, details=None):
         if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
@@ -384,18 +384,13 @@ class Redescription:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
         return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrack({"format":"str"})))
 
-    def dispQueries(self, names= [None, None], lenIndex=0):
+    def dispQueries(self, names= [None, None], lenIndex=0, style=""):
+        if style != "":
+            if lenIndex > 0:
+                return string.ljust(self.queries[0].disp(names[0], style=style), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].disp(names[1], style=style), lenField)[:lenField]
+            else:
+                return self.queries[0].disp(names[0], style=style) +"\t"+ self.queries[1].disp(names[1], style=style)
         return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)
-
-    def dispQueriesTex(self, names= [None, None], lenField=0):
-        if lenField > 0:
-            return string.ljust(self.queries[0].dispTex(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispTex(names[1]), lenField)[:lenField]
-        return self.queries[0].dispTex(names[0]) +"\t"+ self.queries[1].dispTex(names[1])
-
-    def dispQueriesU(self, names= [None, None], lenField=0):
-        if lenField > 0:
-            return string.ljust(self.queries[0].dispU(names[0]), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].dispU(names[1]), lenField)[:lenField]
-        return self.queries[0].dispU(names[0]) +"\t"+ self.queries[1].dispU(names[1])
 
     def dispTexPrelude():
         return "" + \
@@ -434,9 +429,9 @@ class Redescription:
 
     def dispTexLine(self, queryId, names = [None, None]):
         Query.side = 1
-        tmp0 = self.queries[0].dispTex(names[0])
+        tmp0 = self.queries[0].disp(names[0], style="Tex")
         Query.side = 1
-        tmp1 = self.queries[1].dispTex(names[1])
+        tmp1 = self.queries[1].disp(names[1], style="Tex")
 
         queryidStr = '(%i)' % queryId
         format_list = []
@@ -550,16 +545,12 @@ class Redescription:
     def parseQueries(string):
         parts = string.rsplit('\t')
         if len(parts) >= 2:
-            if parts[0].startswith('('):
-                queryL = CWQuery.parse(parts[0])
-                queryR = CWQuery.parse(parts[1])
-            else:
-                queryL = Query.parse(parts[0])
-                queryR = Query.parse(parts[1])
+            queryL = Query.parse(parts[0])
+            queryR = Query.parse(parts[1])
         else:
             queryL = Query()
             queryR = Query()
-
+            
         if len(parts) >= 3:
             lpartsList = {}
             info_parts = parts[2].split(" ")

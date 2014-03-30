@@ -3,6 +3,9 @@ class WorkInactive:
     def __init__(self):
         self.work_server = (None, None, None)
 
+    def __trunc__(self):
+            return 100000
+
     def getParameters(self):
         return self.work_server
 

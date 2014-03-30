@@ -15,7 +15,7 @@ from classGridTable import VarTable, RedTable, RowTable
 from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
-from miscDialogs import ImportDataDialog, ImportDataCSVDialog, FindDialog
+from miscDialogs import ImportDataCSVDialog, FindDialog
 from factView import ViewFactory
 from toolWP import WorkPlant
 
@@ -460,14 +460,14 @@ class Siren():
         submenuImport = wx.Menu()
         #submenuImportData = wx.Menu()
         ID_IMPORT_DATA_CSV = wx.NewId()
-        m_impDataCSV = submenuImport.Append(ID_IMPORT_DATA_CSV, "Import Data from CSV files", "Import data in CSV format.")
+        m_impDataCSV = submenuImport.Append(ID_IMPORT_DATA_CSV, "Import Data", "Import data in CSV format.")
         frame.Bind(wx.EVT_MENU, self.OnImportDataCSV, m_impDataCSV)
-        ID_IMPORT_DATA_XML = wx.NewId()
-        m_impDataXML = submenuImport.Append(ID_IMPORT_DATA_XML, "Import Data from XML", "Import data in XML format.")
-        frame.Bind(wx.EVT_MENU, self.OnImportDataXML, m_impDataXML)
-        ID_IMPORT_DATA_TRIPLE = wx.NewId()
-        m_impDataTriple = submenuImport.Append(ID_IMPORT_DATA_TRIPLE, "Import Data from separate files", "Import data from separate files")
-        frame.Bind(wx.EVT_MENU, self.OnImportData, m_impDataTriple)
+        # ID_IMPORT_DATA_XML = wx.NewId()
+        # m_impDataXML = submenuImport.Append(ID_IMPORT_DATA_XML, "Import Data from XML", "Import data in XML format.")
+        # frame.Bind(wx.EVT_MENU, self.OnImportDataXML, m_impDataXML)
+        # ID_IMPORT_DATA_TRIPLE = wx.NewId()
+        # m_impDataTriple = submenuImport.Append(ID_IMPORT_DATA_TRIPLE, "Import Data from separate files", "Import data from separate files")
+        # frame.Bind(wx.EVT_MENU, self.OnImportData, m_impDataTriple)
         
         # ID_IMPORT_DATA = wx.NewId()
         # m_impData = submenuImport.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
@@ -740,19 +740,19 @@ class Siren():
     #     """Shows a custom dialog to open the three data files"""
     #     self.selectedTab["tab"].updateFind()
 
-    def OnImportData(self, event):
-        """Shows a custom dialog to open the three data files"""
-        if self.dw.getData() is not None:
-            if not self.checkAndProceedWithUnsavedChanges():
-                return
-        if len(self.dw.reds) > 0:
-            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
-            if sure_dlg.ShowModal() != wx.ID_OK:
-                return
-            sure_dlg.Destroy()
+    # def OnImportData(self, event):
+    #     """Shows a custom dialog to open the three data files"""
+    #     if self.dw.getData() is not None:
+    #         if not self.checkAndProceedWithUnsavedChanges():
+    #             return
+    #     if len(self.dw.reds) > 0:
+    #         sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+    #         if sure_dlg.ShowModal() != wx.ID_OK:
+    #             return
+    #         sure_dlg.Destroy()
 
-        dlg = ImportDataDialog(self)
-        dlg.showDialog()
+    #     dlg = ImportDataDialog(self)
+    #     dlg.showDialog()
 
     def OnImportDataCSV(self, event):
         """Shows a custom dialog to open the two data files"""
@@ -768,29 +768,29 @@ class Siren():
         dlg = ImportDataCSVDialog(self)
         dlg.showDialog()
             
-    def OnImportDataXML(self, event):
-        if self.dw.getData() is not None:
-            if not self.checkAndProceedWithUnsavedChanges():
-                return
-        if self.dw.reds is not None and len(self.dw.reds) > 0:
-            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
-            if sure_dlg.ShowModal() != wx.ID_OK:
-                return
-            sure_dlg.Destroy()
+    # def OnImportDataXML(self, event):
+    #     if self.dw.getData() is not None:
+    #         if not self.checkAndProceedWithUnsavedChanges():
+    #             return
+    #     if self.dw.reds is not None and len(self.dw.reds) > 0:
+    #         sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+    #         if sure_dlg.ShowModal() != wx.ID_OK:
+    #             return
+    #         sure_dlg.Destroy()
 
-        dir_name = os.path.expanduser('~/')
-        open_dlg = wx.FileDialog(self.toolFrame, message="Choose file", defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-            try:
-                self.dw.importDataFromXMLFile(path)
-            except:
-                pass
-            else:
-                self.reloadAll()
+    #     dir_name = os.path.expanduser('~/')
+    #     open_dlg = wx.FileDialog(self.toolFrame, message="Choose file", defaultDir = dir_name,
+    #                              style = wx.OPEN|wx.CHANGE_DIR)
+    #     if open_dlg.ShowModal() == wx.ID_OK:
+    #         path = open_dlg.GetPath()
+    #         try:
+    #             self.dw.importDataFromXMLFile(path)
+    #         except:
+    #             pass
+    #         else:
+    #             self.reloadAll()
 
-        open_dlg.Destroy()
+    #     open_dlg.Destroy()
                 
     def OnImportPreferences(self, event):
         if not self.checkAndProceedWithUnsavedChanges(self.dw.preferences.isChanged):

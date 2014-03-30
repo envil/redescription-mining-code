@@ -30,11 +30,6 @@ def run_filter(params, data, logger):
     tf = miner.filter_run(ta)
     for ti, t in enumerate(tf):
         print t.disp()
-    # names = [None, None]
-    # if data.hasNames():
-    #     names = data.getNames()
-
-    #     print t.dispTexLine(ti, names)
 
 def do_filter(params):
 

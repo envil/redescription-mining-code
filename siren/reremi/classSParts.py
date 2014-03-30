@@ -467,8 +467,9 @@ class SSetts:
 class SParts:
 
     infos = {"acc": "self.acc()", "pval": "self.pVal()"}
-    print_info = infos.keys() + ["card_"+ label for label in SSetts.labels]
-    print_info_full = list(print_info) + list(SSetts.labels)
+    print_finfo = infos.keys()
+    print_iinfo = ["card_"+ label for label in SSetts.labels]
+    print_sinfo = list(SSetts.labels)
 
     def __init__(self, ssetts, N, supports, prs = [1,1]):
         #### init from dict_info
@@ -813,6 +814,16 @@ class SParts:
             return prA*prB
     updateProba = staticmethod(updateProba)
 
+    # update support probabilities
+    def updateProbaMass(prs, OR):
+        if len(prs) == 1:
+            return prs[0]
+        elif OR :
+            return reduce(lambda x, y: x+y-x*y, prs)
+        else :
+            return numpy.prod(prs)
+    updateProbaMass = staticmethod(updateProbaMass)
+
     # update supports and probabilities resulting from appending X to given side with given operator
     def update(self, side, OR, suppX, missX):
         self.vect = None
@@ -955,6 +966,19 @@ class SParts:
             supp = set(XSuppMiss[0] & YSuppMiss[0])
         return (supp, miss)
     partsSuppMiss = staticmethod(partsSuppMiss)
+
+    def partsSuppMissMass(OR, SuppMisses):
+        if len(SuppMisses) == 1:
+            return SuppMisses[0]
+        elif len(SuppMisses) > 1:
+            if OR:
+                supp = reduce(set.union, [X[0] for X in SuppMisses])
+                miss = reduce(set.union, [X[1] for X in SuppMisses]) - supp
+            else:
+                supp = reduce(set.intersection, [X[0] for X in SuppMisses])
+                miss = reduce(set.intersection, [X[0].union(X[1]) for X in SuppMisses]) - supp
+            return (supp, miss)
+    partsSuppMissMass = staticmethod(partsSuppMissMass)
 
         # Make binary out of supp set
     def suppVect(self, N, supp, val=1):

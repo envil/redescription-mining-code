@@ -9,7 +9,7 @@ from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query
 from classRedescription import Redescription
 from classSParts import SSetts
 from toolICList import ICList
-import toolRead, csv_reader
+import csv_reader
 import pdb
 
 
@@ -81,6 +81,9 @@ class ColM(object):
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
         self.vect = None
+
+    def simpleBool(self):
+        return False
                 
     def nbRows(self):
         return self.N
@@ -97,8 +100,13 @@ class ColM(object):
     def getPrec(self, details=None):
         return 0
 
-    def isDense(self):
-        return True
+    def density(self):
+        return 1.0
+
+    def isDense(self, thres=None):
+        if thres is None:
+            thres = 0.5
+        return self.density() > thres
 
     def getName(self, details=None):
         if self.name is not None:
@@ -125,14 +133,14 @@ class ColM(object):
             return float(v)
         except:
             pass
-        return np.nan 
+        return Data.NA_num 
 
     def getVector(self):
         if self.vect is None:
             v = self.numEquiv(False)
             self.vect = [v for i in range(self.N)]
             for n in self.missing:
-                self.vect[n] = self.numEquiv("-")
+                self.vect[n] = self.numEquiv(Data.NA_num)
         return self.vect
     
     def getType(self, details=None):
@@ -187,32 +195,11 @@ class ColM(object):
     def usable(self, min_in=-1, min_out=-1, checkable=True):
         return self.suppInBounds(min_in, min_out) and (not checkable or self.getEnabled())
 
-    def fromXML(self, node):
-        self.name = toolRead.getTagData(node, "name")
-        self.N = toolRead.getTagData(node, "nb_entities", int)
-        tmp_en = toolRead.getTagData(node, "status_enabled", int)
-        if tmp_en is not None:
-            self.enabled = tmp_en
-        tmpm = toolRead.getTagData(node, "missing")
-        if tmpm is not None:
-            self.missing = set(map(int, re.split(Data.separator_str, tmpm.strip())))
-
-    def toXML(self):
-        strd = "<variable>\n"
-        strd += "\t<name><![CDATA[\"%s\"]]></name>\n" % self.getName()
-        strd += "\t<type_id>%d</type_id>\n" % self.type_id
-        strd += "\t<nb_entities>%d</nb_entities>\n" % self.N
-        strd += "\t<status_enabled>%d</status_enabled>\n" % self.enabled
-        strd += self.typespec_placeholder + "\n"
-
-        if self.missing is not None and len(self.missing) > 0:
-            strd += "\t<missing>" + ",".join(map(str,self.missing)) +"</missing>\n"
-        strd += "</variable>\n"
-        return strd
 
 class BoolColM(ColM):
     type_id = BoolTerm.type_id
     width = -1
+    values_eq = {True:1, False:0}
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
     def parseList(listV, indices=None):
@@ -231,9 +218,14 @@ class BoolColM(ColM):
             indices = dict([(v,v) for v in range(len(listV))])
         trues = set()
         miss = set()
-        for i,j in indices.items():
+        if type(listV) is dict:
+            ttt = set(listV.keys()).intersection(indices.keys())
+        else:
+            ttt = [i for i in indices.keys() if i < len(listV)]
+        for i in ttt:
+            j = indices[i]
             vt = listV[i]
-            if vt is None:
+            if vt is None or vt == str(Data.NA_num):
                 miss.add(j)
             else:
                 v = vt.lower()
@@ -244,8 +236,25 @@ class BoolColM(ColM):
         return BoolColM(trues, max(indices.values())+1, miss)
     parseList = staticmethod(parseList)
 
+    def toList(self, sparse=False, fill=False):
+        if sparse:
+            t = int(True)
+            m = Data.NA_num
+            tmp = [(n, t) for n in self.hold]+[(n, m) for n in self.missing]
+            if fill and self.N-1 not in self.hold and self.N-1 not in self.missing:
+                tmp.append((self.N-1, int(False)))
+            return tmp
+        else:
+            return map(str, self.getVector())
+
+    def density(self):
+        return (len(self.hold)+len(self.missing))/float(self.N)
+
     def getTerm(self):
         return BoolTerm(self.id)
+
+    def simpleBool(self):
+        return not self.hasMissing() and self.density() > 0
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i Trues" %( self.lTrue() ))
@@ -263,7 +272,7 @@ class BoolColM(ColM):
         try:
             return int(v)
         except:
-            return np.nan
+            return Data.NA_num
 
     def getVector(self):
         if self.vect is None:
@@ -277,7 +286,7 @@ class BoolColM(ColM):
 
     def getDensity(self, details=None):
         if self.N > 0:
-            return "%1.4f" % (float(self.lTrue())/self.N)
+            return "%1.4f" % self.density()
         return 0
 
     def __init__(self, ncolSupp=set(), N=-1, nmiss=set()):
@@ -303,25 +312,12 @@ class BoolColM(ColM):
         tmp.enabled = self.enabled
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
-
-
-    def fromXML(self, node):
-        ColM.fromXML(self, node)
-        tmp_txt = toolRead.getTagData(node, "rows")
-        if tmp_txt is not None and len(tmp_txt.strip()) > 0:
-            self.hold = set(map(int, re.split(Data.separator_str, tmp_txt.strip())))
-        self.missing -= self.hold
-
-    def toXML(self):
-        tmpl = ColM.toXML(self)
-        strd = "\t<rows>" + ",".join(map(str, self.hold)) +"</rows>\n"
-        return tmpl.replace(self.typespec_placeholder, strd)
     
     def getValue(self, rid):
         # self.getVector()
         if self.vect is None:
             if rid in self.missing:
-                return "-"
+                return Data.NA_num
             return rid in self.hold
         else:
             return self.vect[rid]
@@ -362,9 +358,14 @@ class CatColM(ColM):
             indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
         miss = set()
-        for i,j in indices.items():
+        if type(listV) is dict:
+            ttt = set(listV.keys()).intersection(indices.keys())
+        else:
+            ttt = [i for i in indices.keys() if i < len(listV)]
+        for i in ttt:
+            j = indices[i]
             v = listV[i]
-            if v is None:
+            if v is None or v == str(Data.NA_num):
                 miss.add(j)
             # elif re.match(CatColM.n_patt, v):
             #     return None
@@ -378,6 +379,14 @@ class CatColM(ColM):
         else:
             return None
     parseList = staticmethod(parseList)
+
+    def toList(self, sparse=False, fill=False):
+        cat_dict = dict([(Data.NA_num, Data.NA_num)]+enumerate(self.cats()))
+        if sparse:
+            return [(i,cat_dict[v]) for (i,v) in enumerate(self.getVector())]
+        else:
+            return [cat_dict[v] for (i,v) in enumerate(self.getVector())]
+
 
     def getTerm(self):
         return CatTerm(self.id, self.modeCat())
@@ -409,7 +418,7 @@ class CatColM(ColM):
         if rid < len(self.vvals):
             return self.vvals[rid]
         else:
-            return "-"
+            return Data.NA_num
 
     def getNumValue(self, rid):
         if self.vect is None:
@@ -417,19 +426,18 @@ class CatColM(ColM):
         if rid < len(self.vect):
             return self.vect[rid]
         else:
-            return "-"
-
+            return Data.NA_num
 
     def numEquiv(self, v):
         try:
             return sorted(self.sCats.keys()).index(v)
         except:
-            return np.nan
+            return Data.NA_num
 
     def getVector(self):
         if self.vect is None:
             self.vect = super(CatColM, self).getVector()
-            self.vvals = ["-" for i in range(self.N)]
+            self.vvals = [Data.NA_num for i in range(self.N)]
             for v, cat in enumerate(self.cats()):
                 for i in self.sCats[cat]:
                     self.vect[i] = v
@@ -466,33 +474,6 @@ class CatColM(ColM):
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
 
-    def fromXML(self, node):
-        ColM.fromXML(self, node)
-        self.sCats = {}
-        count_miss = self.N
-        tmp_txt = toolRead.getTagData(node, "values")
-        if tmp_txt is not None:
-            rows = set()
-            row_id = 0
-            for cat in re.split(Data.separator_str, tmp_txt.strip()):
-                while row_id in self.missing:
-                    row_id+=1
-                self.sCats.setdefault(cat, set()).add(row_id)
-                count_miss -= 1
-                row_id += 1
-            if count_miss != len(self.missing):
-                raise DataError("Error reading real values, not the expected number of values!")
-        self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
-
-    def toXML(self):
-        tmpl = ColM.toXML(self)
-        rows = []
-        for cat, cat_supp in self.sCats.items():
-            rows.extend([(row, "%s" % cat) for row in cat_supp])
-        rows.sort(key=lambda x:x[0])
-        strd = "\t\t<values>" + ",".join([row[1] for row in rows]) +"</values>\n"
-        return tmpl.replace(self.typespec_placeholder, strd)
-
     def modeCat(self):
         return sorted(self.sCats.keys(),key=lambda x: len(self.sCats[x]))[-1]
 
@@ -522,22 +503,26 @@ class NumColM(ColM):
     width = 0
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
+    alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
     def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
-        if matchMiss is not False and v == matchMiss:
+        if (matchMiss is not False and v == matchMiss) or v == str(Data.NA_num):
             miss.add(j)
             return v, prec
         else:
             tmatch = re.match(NumColM.p_patt, v)
             if not tmatch:
-                if matchMiss is False:
-                    miss.add(j)
-                return v, prec
+                atmatch = re.match(NumColM.alt_patt, v)
+                if not atmatch:
+                    if matchMiss is False:
+                        miss.add(j)
+                    return v, prec
             else:
                 if len(tmatch.group("dec")) > prec:
                     prec = len(tmatch.group("dec"))
-                val = float(v)
-                if exclude is False or val != exclude:
-                    vals.append((val, j))
+
+            val = float(v)
+            if exclude is False or val != exclude:
+                vals.append((val, j))
         return val, prec
     parseVal = staticmethod(parseVal)
                 
@@ -548,13 +533,37 @@ class NumColM(ColM):
         miss = set()
         vals = []
         N = max(indices.values())+1
-        for i,j in indices.items():
+        if type(listV) is dict:
+            ttt = set(listV.keys()).intersection(indices.keys())
+        else:
+            ttt = [i for i in indices.keys() if i < len(listV)]
+        for i in ttt:
+            j = indices[i]
             val, prec = NumColM.parseVal(listV[i], j, vals, miss, prec, matchMiss=None)
-        if len(vals) > 0 and len(vals) + len(miss) == N:
+        if len(vals) > 0 and (len(vals) + len(miss) == N or type(listV) is dict):
             return NumColM(vals, N, miss, prec)
         else:
             return None
     parseList = staticmethod(parseList)
+
+    def toList(self, sparse=False, fill=False):
+        if self.isDense() and not self.hasMissing():
+            tmp = self.getVector()
+            if sparse:
+                return list(enumerate(tmp))
+            else:
+                return tmp
+        else:
+            tmp = dict([(i,v) for (v,i) in self.sVals])
+            if self.nbRows()-1 not in tmp and fill: 
+                tmp[self.nbRows()-1] = tmp[-1]
+            if sparse:
+                if -1 in tmp:
+                    tmp.pop(-1)
+                return tmp.items()
+            else:
+                return [tmp.get(i, tmp[-1]) for i in range(self.nbRows())]
+
     
     def getTerm(self):
         return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
@@ -601,7 +610,7 @@ class NumColM(ColM):
             return tmp
         except:
             pass
-        return np.nan 
+        return Data.NA_num 
 
     def getVector(self):
         if self.vect is None:
@@ -613,15 +622,15 @@ class NumColM(ColM):
             else:
                 self.vect = dict([(i,v) for (v,i) in self.sVals])
                 if self.isDense():
-                    self.vect[-1] = self.numEquiv("-")
+                    self.vect[-1] = self.numEquiv(Data.NA_num)
                 ### Make sure can recover the length
                 for n in self.missing:
-                    self.vect[n] = self.numEquiv("-")
+                    self.vect[n] = self.numEquiv(Data.NA_num)
                 ## make sure we recover full length
                 if self.nbRows()-1 not in self.vect: 
                     self.vect[self.nbRows()-1] = self.vect[-1]
         return self.vect
-        
+
     def getType(self, details=None):
         return "numerical"
 
@@ -676,6 +685,8 @@ class NumColM(ColM):
     def setMode(self):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
+        if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
+            self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
         if len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N :
             ## gather row ids for which
             if len(self.sVals) > 0:
@@ -684,68 +695,36 @@ class NumColM(ColM):
                 rids = set()
             if len(rids) != len(self.sVals):
                 raise DataError("Error reading real values, multiple values for a row!")
-            rids.discard(-1)
+            has_mv = -1 in rids
+            if has_mv:
+                rids.discard(-1)
             if 2*len(rids) > self.N:
                 self.mode = (-1, set(range(self.N)) - rids - self.missing)
             else:
                 self.mode = (1, rids)
+            if not has_mv:
+                i = 0
+                while i < len(self.sVals) and self.sVals[i][0] < 0:
+                    i+=1
+                self.sVals.insert(i, (0, -1))
         else:
             self.mode = (0, None)
 
-    def fromXML(self, node):
-        ColM.fromXML(self, node)
-        self.buk = None
-        self.colbuk = None
-        self.max_agg = None
-        self.prec = None
-        miss = set()
-        self.sVals = []
-        store_type = toolRead.getTagData(node, "store_type")
-        if store_type == 'dense':
-            i = 0
-            for v in re.split(Data.separator_str, toolRead.getTagData(node, "values")):
-                while i in self.missing:
-                    i+=1
-                val, self.prec = NumColM.parseVal(v, i, self.sVals, miss, self.prec)
-                i+=1
-        elif store_type == 'sparse':
-            tmp_txt = toolRead.getTagData(node, "values").strip()
-            if len(tmp_txt) > 0:
-                for strev in  re.split(Data.separator_str, tmp_txt):
-                    parts = strev.split(":")
-                    val, self.prec = NumColM.parseVal(parts[1], int(parts[0]), self.sVals, miss, self.prec)
-        if len(self.sVals) > 0:
-            tmp_hold = set(zip(*self.sVals)[1])
-        else:
-            tmp_hold = set()
-        if len(tmp_hold) != len(self.sVals):
-            self.sVals = []
-            tmp_hold = set()
-            raise DataError("Error reading real values, multiple values for a row!")
+    def density(self):
+        if self.mode[0] != 0:
+            if self.mode[0] == 1:
+                return len(self.mode[1])/float(self.N)
+            else:
+                return 1-len(self.mode[1])/float(self.N)
+        return 1.0
 
-        if len(miss) > 0:
-            raise DataError("Error reading real values, some values could not be parsed!")
-
-        self.sVals.sort()
-        self.setMode()
-
-    def isDense(self):
-        return self.mode[0] == 0
-
-    def toXML(self):
-        tmpl = ColM.toXML(self)
-        strd = ""
-        if self.isDense():
-            val_f = "%."+ ("%d" % self.getPrec()) +"f"
-            strd += "\t<store_type>dense</store_type>\n"
-            strd += "\t\t<values>" + ",".join([val_f % val for val, row_id in sorted(self.sVals, key = lambda x: x[1])]) +"</values>\n"
-        else:
-            val_f = "%d:%."+ ("%d" % self.getPrec()) +"f"
-            strd += "\t<store_type>sparse</store_type>\n"
-            strd += "\t\t<values>" + ",".join([val_f % (row_id, val) for val, row_id in sorted(self.sVals, key = lambda x: x[1])]) +"</values>\n"
-            # for val, row_id in self.sVals:
-            #     strd += "\t\t<entity><row>%d</row><value>%s</value></entity>\n" % (row_id, val)
-        return tmpl.replace(self.typespec_placeholder, strd)
+    def isDense(self, thres=None):
+        if self.mode[0] != 0:
+            if thres is None:
+                return False
+            else:
+                return self.density() > thres
+        return True
 
     def interNonMode(self, suppX):
         if self.mode[0] == -1:
@@ -986,6 +965,8 @@ class NumColM(ColM):
 
 class Data:
 
+    NA_str = "NA"
+    NA_num  = np.nan
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
 
@@ -1001,13 +982,8 @@ class Data:
 
         elif type(N) == str:
             try:
-                if N == "multiple":
-                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromMulFiles(cols)
-                elif N == "csv":
-                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromCSVFiles(cols)
-                elif N == "xml":
-                    self.cols, self.N, self.coords, self.rnames, self.single_dataset = readDNCFromXMLFile(cols)
-
+                self.cols, self.N, self.coords, self.rnames, self.selected_rows, self.single_dataset = readDNCFromCSVFiles(cols)
+                
             except DataError:
                 self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
                 raise
@@ -1146,65 +1122,138 @@ class Data:
 
     def __str__(self):
         return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
-
-    def toXML(self):
-        ########## XML DATA
-        strd = "<data>\n"
-        strd += "\t<nb_entities>%d</nb_entities>\n" % self.N
-        sides = [0,1]
-        if self.single_dataset:
-            strd += "\t<single_dataset>1</single_dataset>\n"
-            sides = [0]
-        for side in sides:
-            strd += "\t<side>\n"
-            strd += "\t<name>%d</name>\n" % side
-            strd += "\t<nb_variables>%d</nb_variables>\n" % len(self.cols[side])
-            for col in self.cols[side]:
-                strd += col.toXML().replace("\n", "\n\t")
-            strd += "\t</side>\n"
-        if self.isGeospatial():
-            strd += "\t<coordinates>\n"
-            for coord in self.coords:
-                strd += "\t\t<coordinate>\n"
-                strd += "\t\t\t<values>" + ",".join(map(str, coord)) +"</values>\n"
-                strd += "\t\t</coordinate>\n"
-            strd += "\t</coordinates>\n"
-        strd += "</data>"
-        return strd
-
-    def writeXML(self, output):
-        output.write("<root>\n")
-        output.write("<data>\n")
-        output.write("\t<nb_entities>%d</nb_entities>\n" % self.N)
-        sides = [0,1]
-        if self.single_dataset:
-            output.write("\t<single_dataset>1</single_dataset>\n")
-            sides = [0]
-        for side in sides:
-            output.write("\t<side>\n")
-            output.write("\t<name>%d</name>\n" % side)
-            output.write("\t<nb_variables>%d</nb_variables>\n"% len(self.cols[side]) ) 
-            for col in self.cols[side]:
-                output.write(col.toXML().replace("\n", "\n\t"))
-            output.write("\t</side>\n")
-        if self.isGeospatial():
-            output.write("\t<coordinates>\n")
-            for coord in self.coords:
-                output.write("\t\t<coordinate>\n")
-                output.write("\t\t\t<values>" + ",".join([":".join(map(str, cs)) for cs in coord]) +"</values>\n")
-                output.write("\t\t</coordinate>\n")
-            output.write("\t</coordinates>\n")
+        
+    ### TODO REPLACE THE WRITE METHOD
+    def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
+        #### FIGURE OUT HOW TO WRITE, WHERE TO PUT COORDS, WHAT METHOD TO USE
+        #### check whether some row name is worth storing
+        rids = {}
         if self.rnames is not None:
-            output.write("\t<rnames>\n")
-            for rname in self.rnames:
-                output.write("\t\t\t<rname>%s</rname>\n" % rname)
-            output.write("\t</rnames>\n")
-        output.write("</data>\n")
-        output.write("</root>")
+            rids = dict(enumerate([prepareRowName(rname, i, self) for i, rname in enumerate(self.rnames)]))
+        elif len(self.selectedRows()) == 0:
+            rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
+
+        mean_denses = [np.mean([col.density() for col in self.cols[0]]),
+                       np.mean([col.density() for col in self.cols[1]])]
+        argmaxd = 0
+        if mean_denses[0] < mean_denses[1]:
+            argmaxd = 1
+
+        if mean_denses[1-argmaxd] > thres: ## BOTH SIDES ARE DENSE
+            styles = {argmaxd: {"meth": "dense", "details": True},
+                      1-argmaxd: {"meth": "dense", "details": full_details}}
+        elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE
+            methot = "triples"
+            if sum([col.simpleBool() for col in self.cols[1-argmaxd]])==0:
+                methot = "pairs"
+            styles = {argmaxd: {"meth": "dense", "details": True},
+                      1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
+        else:  ## BOTH SIDES ARE SPARSE
+            simpleBool = [sum([col.simpleBool() for col in self.cols[0]]) == 0,
+                          sum([col.simpleBool() for col in self.cols[1]]) == 0]
+            if self.isGeospatial() or len(rids) > 0:
+                if not simpleBool[1-argmax]: ### is not only boolean so can have names and coords
+                    styles = {argmaxd: {"meth": "pairs", "details": full_details},
+                              1-argmaxd: {"meth": "triples", "details": True, "inline": inline}}
+                else: ### otherwise argmax has it
+                    styles = {argmaxd: {"meth": "triples", "details": True, "inline": inline},
+                              1-argmaxd: {"meth": "pairs", "details": full_details}}
+            else:
+                styles = {argmaxd: {"meth": "pairs", "details": full_details},
+                          1-argmaxd: {"meth": "pairs", "details": full_details}}
+                for side in [0,1]:
+                    if not simpleBool[side] or len(cids[side]) > 0:
+                        styles[side]["meth"] = "triples"
+                        styles[side]["inline"] = inline
+
         
-    def write(self, output):
-        self.writeXML(output)
-        
+        meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
+        for side in [0,1]:
+    #### check whether some column name is worth storing
+            cids = {}
+            if sum([not (col.getName() == cid and col.getEnabled()) for cid, col in enumerate(self.cols[side])]) > 0:
+                type_smap = None
+                if full_details and styles[side]["meth"] == "dense":
+                    type_smap = {}
+                cids = dict(enumerate([prepareColumnName(col, type_smap) for col in self.cols[side]]))
+                meth = meths[styles[side].pop("meth")]
+            with open(outputs[side], "wb") as fp:
+                csvf = csv_reader.start_out(fp)
+                meth(side, csvf, rids=rids, cids=cids, **styles[side])
+
+    def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True):
+        header = []
+        if details and len(rids) > 0:
+            header.append(csv_reader.IDENTIFIERS[0])
+        if details and self.isGeospatial():
+            header.append(csv_reader.LATITUDE[0])
+            header.append(csv_reader.LONGITUDE[0])
+        for cid, col in enumerate(self.cols[side]):
+            col.getVector()
+            if len(header) > 0 or len(cids) > 0:
+                header.append(cids.get(cid, cid))
+                
+        if len(header) > 0:
+            csv_reader.write_row(csvf, header)
+
+        for n in range(self.N):
+            row = []
+            if details and len(rids) > 0:
+                row.append(rids.get(n,n))
+            if details and self.isGeospatial():
+                row.append(":".join(map(str, self.coords[0][n])))
+                row.append(":".join(map(str, self.coords[1][n])))
+            for col in self.cols[side]:
+                row.append(col.getValue(n))
+            csv_reader.write_row(csvf, row)
+
+
+    def writeCSVSparseTriples(self, side, csvf, rids={}, cids={}, details=True, inline=False):
+        csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]])
+        if not inline:
+            trids, tcids = {}, {}
+        else:
+            trids, tcids = rids, cids
+            
+        if details and self.isGeospatial():
+            for n in range(self.N):
+                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LATITUDE[0], ":".join(map(str,  self.coords[0][n]))])
+                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LONGITUDE[0], ":".join(map(str,  self.coords[1][n]))])
+
+        fill = False
+        if details and len(rids) > 0 and not inline:
+            for n in range(self.N):
+                csv_reader.write_row(csvf, [n, -1, rids.get(n,n)])
+        else:
+            fill = True
+
+        for ci, col in enumerate(self.cols[side]):
+            if not inline and len(cids) > 0:
+                csv_reader.write_row(csvf, [-1, ci, cids.get(ci,ci)])
+            else:
+                fill = True
+
+            if ci == 0 and fill:
+                tmp = col.toList(sparse=True, fill=False)
+                non_app = col.rows().difference(zip(*tmp)[0])
+                for (n,v) in tmp:
+                    csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), v])
+                for n in non_app:
+                    csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), 0])
+
+            else:
+                for (n,v) in col.toList(sparse=True, fill=fill):
+                    csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), v])
+
+    ### THIS FORMAT ONLY ALLOWS BOOLEAN WITHOUT COORS, IF NAMES THEY HAVE TO BE INLINE
+    def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True):
+        csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]])
+        if not details:
+            rids = {}
+        for ci, col in enumerate(self.cols[side]):
+            for (n,v) in col.toList(sparse=True, fill=False):
+                csv_reader.write_row(csvf, [rids.get(n,n), cids.get(ci,ci)])
+
     def disp(self):
         strd = str(self) +":\n"
         strd += 'Left Hand side columns:\n'
@@ -1323,12 +1372,51 @@ def readDNCFromCSVFiles(filenames):
             raise DataError('Data error reading csv: %s' % arg)
         except csv_reader.CSVRError as arg:
             raise DataError(str(arg).strip("'"))
-        cols, N, coords, rnames = parseDNCFromCSVData(tmp_data)
+        cols, N, coords, rnames, disabled_rows = parseDNCFromCSVData(tmp_data)
 
-    return cols, N, coords, rnames, single_dataset
+    return cols, N, coords, rnames, disabled_rows, single_dataset
+
+
+def prepareRowName(rname, rid=None, data=None):
+    en = ""
+    if rid is not None and data is not None and rid in data.selectedRows():
+        en = "_"
+    return "%s%s" % (en, rname) 
+
+def parseRowsNames(rnames):
+    disabled = set()
+    names = []
+    for i, rname in enumerate(rnames):
+        if rname is None:
+            names.append("%d" % (i+1))
+        else:
+            tmatch = re.match("^(?P<disabled>__*)?(?P<name>.*)$", rname)
+            if tmatch.group("disabled") is not None:
+                disabled.add(i)
+            names.append(tmatch.group("name"))
+    return names, disabled
+
+def prepareColumnName(col, types_smap={}):
+    en = ""
+    if not col.getEnabled():
+        en = "_"
+    if types_smap is None:
+        return "%s%s" % (en, col.getName()) 
+    else:
+        return "%s[%s]%s" % (en, types_smap.get(col.type_id, col.type_id), col.getName()) 
+    
+def parseColumnName(name, types_smap={}):
+    tmatch = re.match("^(?P<disabled>__*)?(\[(?P<type>[0-9])\])?(?P<name>.*)$", name)
+    det = {"name": tmatch.group("name")}
+    if tmatch.group("disabled") is not None:
+        det["enabled"] = False
+    if tmatch.group("type") is not None and tmatch.group("type") in types_smap:
+        det["type"] = types_smap[tmatch.group("type")]
+    return name, det
 
 def parseDNCFromCSVData(csv_data):
-    
+    type_ids_org = [CatColM, NumColM, BoolColM]
+    types_smap = dict([(str(c.type_id), c) for c in type_ids_org])
     cols = [[],[]]
     coords = None
     single_dataset = False
@@ -1338,356 +1426,38 @@ def parseDNCFromCSVData(csv_data):
             coords = np.array([tmp[1], tmp[0]])
         except Exception:
             coords = None
+
+    N = len(csv_data['data'][0]["order"]) ### THE READER CHECKS THAT BOTH SIDES HAVE SAME SIZE
+    if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
+        rnames, disabled_rows = parseRowsNames(csv_data["ids"])
+    else:
+        rnames, disabled_rows = range(N), set()
         
     for side in [0,1]:
         indices = dict([(v,k) for (k,v) in enumerate(csv_data['data'][side]["order"])])
-        N = len(indices)
-        for name in csv_data['data'][side]["headers"]:
+        for name, det in [parseColumnName(header, types_smap) for header in csv_data['data'][side]["headers"]]:
             if len(name) == 0:
                 continue
             values = csv_data['data'][side]["data"][name]
             col = None
-            type_ids = [CatColM, NumColM, BoolColM]
-            while col is None and len(type_ids) >= 1:
-                col = type_ids.pop().parseList(values, indices)
+            
+            if "type" in det:
+                col = det["type"].parseList(values, indices)
+            else:
+                type_ids = list(type_ids_org)
+                while col is None and len(type_ids) >= 1:
+                    col = type_ids.pop().parseList(values, indices)
 
             if col is not None and col.N == N:
                 col.setId(len(cols[side]))
                 col.side = side
-                col.name = name
+                col.name = det.get("name", name)
+                if not det.get("enabled", True):
+                    col.flipEnabled()
                 cols[side].append(col)
             else:
                 raise DataError('Unrecognized variable type!')
-    if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
-        rnames = csv_data["ids"]
-    else:
-        rnames = range(N)
-    return (cols, N, coords, rnames)
-
-def readDNCFromXMLFile(filename):
-    (cols, N, coord, rnames) = ([[],[]], 0, None, None)
-    single_dataset = False
-    try:
-        doc = toolRead.parseXML(filename)
-        dtmp = doc.getElementsByTagName("data")
-    except AttributeError as inst:
-        raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
-    else:
-        if len(dtmp) != 1:
-            raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
-        N = toolRead.getTagData(dtmp[0], "nb_entities", int)
-        tsd = toolRead.getTagData(dtmp[0], "single_dataset", int)
-        if tsd == 1:
-            single_dataset = True
-        for side_data in doc.getElementsByTagName("side"):
-            side = toolRead.getTagData(side_data, "name", int)
-            if side not in [0,1]:
-                print "Unknown side (%s)!" % side
-            else:
-                nb_vars = toolRead.getTagData(side_data, "nb_variables", int)
-                for var_tmp in side_data.getElementsByTagName("variable"):
-                    type_id = toolRead.getTagData(var_tmp, "type_id", int)
-                    if type_id >= len(Data.var_types):
-                        print "Unknown variable type (%d)!" % type_id
-                    else:
-                        col = Data.var_types[type_id]()
-                        col.fromXML(var_tmp)
-                        if col is not None and col.N == N:
-                            col.setId(len(cols[side]))
-                            col.side = side
-                            cols[side].append(col)
-                            if single_dataset:
-                                ocol = col.subsetCol()
-                                ocol.setId(len(cols[1-side]))
-                                ocol.side = 1-side
-                                cols[1-side].append(ocol)
-                                
-
-            if nb_vars != len(cols[side]):
-                print "Number of variables found don't match expectations (%d ~ %d)!" % (nb_vars, len(cols[side]))
-        ctmp = doc.getElementsByTagName("coordinates")
-        if len(ctmp) == 1:
-            coord = []
-            for cotmp in ctmp[0].getElementsByTagName("coordinate"):
-                tmp_txt = toolRead.getTagData(cotmp, "values")
-                if tmp_txt is not None:
-                    coord.append([map(float, p.strip(":").split(":")) for p in re.split(Data.separator_str, tmp_txt.strip())])
-            if len(coord) != 2 or len(coord[0]) != len(coord[1]) or len(coord[0]) != N:
-                coord = None
-            else:
-                coord = np.array(coord)
-        ctmp = doc.getElementsByTagName("rnames")
-        if len(ctmp) == 1:
-            rnames = [v.strip() for v in toolRead.getValues(ctmp[0], str, "rname")]
-            if len(rnames) != N:
-                rnames = None
-    return (cols, N, coord, rnames, single_dataset)
-
-def readDNCFromMulFiles(filenames):
-    cols, N, coords, rnames = [[],[]], 0, None, None
-    single_dataset = False
-    if len(filenames) >= 2:
-        (cols, N) = readVariables(filenames[:2])
-        single_dataset = (filenames[0] == filenames[1])
-        if len(filenames) >=5  and filenames[4] is not None:
-            coords = readCoords(filenames[4])
-            if coords is not None and coords.shape[1] != N:
-                coords = None
-        if len(filenames) >=6  and filenames[5] is not None:
-            rnames = readRNames(filenames[5])
-            if rnames is not None and len(rnames) != N:
-                rnames = None
-
-        names_filenames = [None, None]
-        extension = ".names"
-        if len(filenames) == 3:
-            extension = filenames[2]
-        elif len(filenames) >= 4:
-            if filenames[3] is None and filenames[2] is not None:
-                extension = filenames[2]
-
-            else:
-                for side in [0,1]:
-                    if filenames[2+side] is not None and os.path.exists(filenames[2+side]):
-                        names_filenames[side] = filenames[2+side]
-
-        for side in [0,1]:
-            if names_filenames[side] is None:
-                filename = filenames[side]
-                filename_parts = filename.split('.')
-                filename_parts.pop()
-                names_filename = '.'.join(filename_parts) + extension
-                if os.path.exists(names_filename):
-                    names_filenames[side] = names_filename
-
-            if names_filenames[side] is not None:
-                tmp_names = readNamesSide(names_filenames[side])
-                if len(tmp_names) == len(cols[side]):
-                    for i in range(len(cols[side])):
-                        cols[side][i].name = tmp_names[i]
-                else:
-                    print "Number of names does not match number of variables on side %d." % side
-    return (cols, N, coords, rnames, single_dataset)
-        
-def readCoords(filename):
-    coord = [[], []]
-    with open(filename) as f:
-        for line in f:
-            parts = line.strip().split(" ")
-            if len(parts)==2:
-                for c in [0,1]:
-                    coord[c].append(map(float, parts[c].strip(" :").split(":")))
-            else:
-                tmp = zip(*[map(float, p.split(",")) for p in parts])
-                for c in [0,1]:
-                    coord[c].append(tmp[c])
-            if len(coord[0][-1]) != len(coord[1][-1]):
-                return None
-    return np.array(coord) 
-
-def readRNames(filename):
-    rnames = None
-    with open(filename) as f:
-        rnames = [line.strip() for line in f]
-    return rnames
-
-def readNamesSide(filename):
-    a = []
-    if type(filename) in [unicode, str]:
-        f = codecs.open(filename, encoding='utf-8', mode='r')
-    else: ## Assume it's a file
-        f = filename
-    for line in f:
-        a.append(line.strip())
-    return a
-
-def readVariables(filenames):
-    data = []; nbRowsT = None;
-    for side, filename in enumerate(filenames):
-        (cols, nbRows, nbCols) = readMatrix(filename, side)
-        if len(cols) != nbCols:
-            raise DataError('Matrix in %s does not have the expected number of variables !' % filename)
-
-        else:
-            if nbRowsT is None:
-                nbRowsT = nbRows
-            if nbRowsT == nbRows:
-                for cid, col in enumerate(cols):
-                    col.id = cid
-                    col.side = side
-                data.append(cols)
-            else:
-                raise DataError('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))            
-    return (data, nbRows)
-
-def readMatrix(filename, side = None):
-    ## Read input
-    nbRows = None
-    if isinstance(filename, file):
-        f = filename
-        filename = f.name
-    else:
-        f = open(filename, 'r')
-
-    filename_parts = filename.split('.')
-    type_all = filename_parts.pop()
-    nbRows = None
-    nbCols = None
-    
-    if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'spa'):  
-        row = f.next()
-        a = re.split(Data.separator_str, row)
-        nbRows = int(a[0])
-        nbCols = int(a[1])
-    try:
-        if len(type_all) >= 3 and type_all[0:3] == 'spa':
-            method_parse =  eval('parseCell%s' % (type_all.capitalize()))
-            method_prepare = eval('prepare%s' % (type_all.capitalize()))
-            method_finish = eval('finish%s' % (type_all.capitalize()))
-        elif len(type_all) >= 3 and type_all[0:3] == 'dat':
-            method_parse =  eval('parseVarDatAll')
-            method_prepare = eval('preparePerRow')
-            method_finish = eval('finishVar%s' % (type_all.capitalize()))
-        else:
-            method_parse =  eval('parseVar%s' % (type_all.capitalize()))
-            method_prepare = eval('preparePerRow')
-            method_finish = eval('finishPerRow')
-
-    except NameError as detail:
-        raise DataError("Could not find correct data reader! (%s)" % detail)
-    try:
-        tmpCols = method_prepare(nbRows, nbCols)
-        
-        # print "Reading input data %s (%s)"% (filename, type_all)
-        for row in f:
-            if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows is None:
-                nbRows = len(re.split(Data.separator_str, row))
-            method_parse(tmpCols, re.split(Data.separator_str, row.strip()), nbRows, nbCols)
-
-        ## print "Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all)
-        cols, nbRows, nbCols = method_finish(tmpCols, nbRows, nbCols)
-    except DataError:
-        raise
-    except (AttributeError, ValueError, StopIteration) as detail:
-        raise DataError("Problem with the data format while reading (%s)" % detail)
-    except:
-        raise
-    return (cols, nbRows, nbCols)
-    
-def preparePerRow(nbRows, nbCols):
-    return []
-
-def parseVarMix(tmpCols, a, nbRows, nbCols):
-    name = a.pop(0)
-    type_row = a.pop(0)
-    if type_row[0:3] == 'dat':
-        raise DataError('Oups this row format is not allowed for mixed datat (%s)!' % (type_row))
-    try:
-        method_parse =  eval('parseVar%s' % (type_row.capitalize()))
-    except AttributeError:
-        raise DataError('Oups this row format does not exist (%s)!' % (type_row))
-    method_parse(tmpCols, a, nbRows, nbCols)
-
-def finishPerRow(tmpCols, nbRows, nbCols):
-    ## Todo: check number of rows and cols?
-    return tmpCols, nbRows, len(tmpCols)
-
-def prepareSparsenum(nbRows, nbCols):
-    return [[[(0, -1)], set(), 0] for i in range(nbCols)]
-
-def parseCellSparsenum(tmpCols, a, nbRows, nbCols):
-    id_row = int(a[0])-1
-    id_col = int(a[1])-1
-    if id_col >= nbCols or id_row >= nbRows:
-        raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
-    else :
-        val, tmpCols[id_col][2] = NumColM.parseVal(a[2], id_row, tmpCols[id_col][0], tmpCols[id_col][1], tmpCols[id_col][2], exclude=0)
-
-            
-def finishSparsenum(tmpCols, nbRows, nbCols):
-    return [NumColM(tmpCols[col][0], nbRows, tmpCols[col][1], tmpCols[col][2]) for col in range(len(tmpCols))], nbRows, nbCols
-
-def prepareSparsebool(nbRows, nbCols):
-    return [[set(), set()] for i in range(nbCols)]
-
-def parseCellSparsebool(tmpCols, a, nbRows, nbCols):
-    id_row = int(a[0])-1
-    id_col = int(a[1])-1
-    if id_col >= nbCols or id_row >= nbRows:
-        raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
-    else :
-        try:
-            val = float(a[2])
-            if val != 0:
-                tmpCols[id_col][0].add(id_row)
-        except ValueError:
-            tmpCols[id_col][1].add(id_row)
-        
-def finishSparsebool(tmpCols, nbRows, nbCols):
-    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))], nbRows, nbCols
-
-def parseVarDensenum(tmpCols, a, nbRows, nbCols):
-    prec = None
-    if len(a) == nbRows:
-        tmp = []
-        miss = set()
-        for i in range(len(a)):
-            val, prec = NumColM.parseVal(a[i], i, tmp, miss, prec)
-                
-        tmp.sort(key=lambda x: x[0])
-        tmpCols.append(NumColM(tmp, nbRows, miss, prec))
-    else:
-        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
-                    
-def parseVarDensecat(tmpCols, a, nbRows, nbCols):
-    if len(a) == nbRows:
-        tmp = {}
-        miss = set()
-        for i in range(len(a)):
-            try:
-                cat = float(a[i])
-                if cat in tmp:
-                    tmp[cat].add(i)
-                else:
-                    tmp[cat] = set([i])
-            except ValueError:
-                miss.add(i) 
-        tmpCols.append(CatColM(tmp, nbRows, miss))
-    else:
-        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
-
-def parseVarDensebool(tmpCols, a, nbRows, nbCols):
-    if len(a) == nbRows:
-        tmp = set()
-        miss = set()
-        for i in range(len(a)):
-            try:
-                val = float(a[i])
-                if val != 0: tmp.add(i)
-            except ValueError:
-                miss.add(i) 
-        tmpCols.append(BoolColM(tmp, nbRows, miss))
-    else:
-        raise DataError('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
-             
-def parseVarDatAll(tmpCols, a, nbRows, nbCols):
-    tmpCols.append(set(map(int, a)))
-
-def finishVarDatbool(tmpCols, nbRows, nbCols):
-    nbRows = max([max(tmp) for tmp in tmpCols])+1    
-    return [BoolColM(col, nbRows+1) for col in tmpCols], nbRows, len(tmpCols)  
-
-def finishVarDat(tmpOCols, nbORows, nbOCols):
-    ### Each line contains one transaction
-    ## transpose
-    nbRows = len(tmpOCols)
-    nbCols = max([max(tmp) for tmp in tmpOCols])+1
-
-    tmpCols = [set() for i in range(nbCols)]
-    for ri, row in enumerate(tmpOCols):
-        for i in row:
-            tmpCols[i].add(ri)
-    return [BoolColM(col, nbRows) for col in tmpCols], nbRows, len(tmpCols)  
+    return (cols, N, coords, rnames, disabled_rows)
 
 def getDenseArray(vect):
     if type(vect) is dict:
@@ -1701,7 +1471,6 @@ def getDenseArray(vect):
     else:
         return np.array([vect])
 
-
 def main():
     # print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/world/"
@@ -1712,10 +1481,8 @@ def main():
     # data = Data([rep+"mammals.sparsebool", rep+"worldclim_tp.densenum", {}, "NA"], "csv")
     # print data
 
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
-    print data
-    
+    # rep = "/home/galbrun/"
+    # data = Data([rep+"data1.csv", rep+"data2.csv", {}, "NA"], "csv")    
     # data2 = Data("tmp.xml", "xml")
     # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")
     # pdb.set_trace()
@@ -1723,8 +1490,25 @@ def main():
     # print data2
     # print data2.isGeospatial()
     #data = Data([rep+"carnivora-3.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
-    # rep = "/home/galbrun/redescriptors/data/vaalikone/"
+    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
+    # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
+    rep = "/home/galbrun/TKTL/redescriptors/data/dblp/"
+    data = Data([rep+"coauthor_picked0_num.csv", rep+"conference_picked0_num.csv"], "csv")
+    # print data
+    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"], full_details=True)
+    # data.writeCSV([rep+"testoutL4.csv", rep+"testoutR4.csv"], inline=True)
+    # data.writeCSV([rep+"testoutL3.csv", rep+"testoutR3.csv"])
+    # data2 = Data([rep+"testoutL4.csv", rep+"testoutR4.csv", {}, "nan"], "csv")
+    # print data2
+    # data2.writeCSV([rep+"testoutL2.csv", rep+"testoutR2.csv"])
+
+    # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
+    # data = Data([rep+"mammals_poly.csv", rep+"worldclim_poly.csv"], "csv")
+    # data.selected_rows = set([0,2, data.N-1])
+    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
+    # data2 = Data([rep+"testoutL.csv", rep+"testoutR.csv", {}, "nan"], "csv")
+    # data2.writeCSV([rep+"testoutL2.csv", rep+"testoutR2.csv"])
     # rep = "/home/galbrun/redescriptors/data/de/"
     # rep = "/home/galbrun/redescriptors/data/de/de.siren_FILES/"
     # # print data.hasMissing()

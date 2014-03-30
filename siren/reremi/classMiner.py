@@ -345,7 +345,6 @@ class Miner:
                                 else:
                                     bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
-
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
                                                         
@@ -362,10 +361,10 @@ class Miner:
                     except ExtensionError as details:
                         self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.id)
                         kids = []
-                        
-                    
+
                     self.partial["batch"].extend(kids)
                     self.souvenirs.update(kids)
+
                     ### parent has been used remove availables
                     red.removeAvailables()
                 self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
@@ -375,6 +374,7 @@ class Miner:
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
             nextge_keys = self.partial["batch"].selected(self.constraints.actions_nextge())
             nextge = [self.partial["batch"][i] for i in nextge_keys]
+
             self.partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
             self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
 

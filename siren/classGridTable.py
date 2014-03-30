@@ -597,6 +597,8 @@ class RedTable(GridTable):
                 self.parent.updateMenus()
 
     def getRedId(self, pos):
+        if pos is None:
+            pdb.set_trace()
         if pos < len(self.rids):
             return (self.short, self.rids[pos])
         return (self.short, None)
@@ -608,6 +610,8 @@ class RedTable(GridTable):
         return "%s%s" % (tsh, rid)
                 
     def getRedIdOID(self, oid):
+        if oid not in self.opened_edits:
+            pdb.set_trace()
         return self.getRedIdStr(self.opened_edits.get(oid, None))
 
     def viewData(self, viewT, pos=None, oid=None):
