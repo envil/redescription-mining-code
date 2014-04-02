@@ -2,6 +2,7 @@ import csv
 import sys
 import pdb
 from StringIO import StringIO
+from classQuery import Term
 
 LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude')
 LONGITUDE = ('long', 'longitude', 'Long', 'Longitude')
@@ -68,7 +69,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         head = csvreader.next()
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
-            head = ["%d" % i for i in range(len(head))]
+            head = [Term.pattVName % i for i in range(len(head))]
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
@@ -114,7 +115,7 @@ def parse_sparse(D, coord, ids, varcol, valcol):
             if (-1 in dictLL.values()):
                 ### ... unless there was a zero
                 dictLL = dict([(k,v+1) for (k, v) in dictLL.items()])
-            nll = ["%d" % v for v in range(max(dictLL.values())+1)]
+            nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
             nids = nll
         except ValueError as e:
             ### if the ids are not numerical

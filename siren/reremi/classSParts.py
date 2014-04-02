@@ -467,6 +467,7 @@ class SSetts:
 class SParts:
 
     infos = {"acc": "self.acc()", "pval": "self.pVal()"}
+    print_delta_fields = [ "delta", "card_delta"]
     print_finfo = infos.keys()
     print_iinfo = ["card_"+ label for label in SSetts.labels]
     print_sinfo = list(SSetts.labels)
@@ -564,11 +565,14 @@ class SParts:
     def nbRows(self):
         return self.N
 
-    def toDict(self):
+    def toDict(self, with_delta=False):
         sdict = {}
         for i in range(len(self.sParts)):
                  sdict[self.ssetts.getLabel(i)] = self.part(i)
                  sdict["card_" + self.ssetts.getLabel(i)] = self.lpart(i)
+        if with_delta:
+                 sdict[self.ssetts.getLabel(SSetts.delta)] = self.part(SSetts.delta)
+                 sdict["card_" + self.ssetts.getLabel(SSetts.delta)] = self.lpart(SSetts.delta)
         for side in [0, 1]:
                  if self.prs[side] != -1:
                      sdict["pr_" + str(side)] = self.prs[side]

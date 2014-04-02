@@ -1,6 +1,7 @@
 import re, random, operator, itertools
 from classSParts import  SParts
 from redquery_parser import RedQueryParser
+from grako.exceptions import * # @UnusedWildImport
 import pdb
 
 def recurse_numeric(b, function, args={}):
@@ -218,6 +219,8 @@ class Neg(object):
         return Neg.symbU[self.boolVal()]
 
 class Term(object):
+    
+    pattVName = "v%d"
     type_id = 0
     
     def __init__(self, ncol):
@@ -251,7 +254,7 @@ class Term(object):
             return cmp(self.col, other.col)
     
     def __str__(self):
-        return '%i ' % self.col
+        return (Term.pattVName + ' ') % self.col
     
 class BoolTerm(Term):
     type_id = 1
@@ -296,8 +299,7 @@ class BoolTerm(Term):
                 lab = lab[:lenIndex]
             return lab + ' '
         else:
-            #### # TODO FOR DEBUGGING
-            return ('%s%'+slenIndex+'i') % (strneg, self.col)
+            return ('%s'+Term.pattVName) % (strneg, self.col)
 
     def dispTex(self, neg, names = None):
         if type(neg) == bool:
@@ -306,7 +308,7 @@ class BoolTerm(Term):
         if type(names) == list  and len(names) > 0:
             return '%s%s' % ( neg.dispTex(), names[self.col])
         else:
-            return '%s#%i' % ( neg.dispTex(), self.col)
+            return ('%s$'+Term.pattVName+'$') % ( neg.dispTex(), self.col)
 
     def dispU(self, neg, names = None):
         if type(neg) == bool:
@@ -315,7 +317,7 @@ class BoolTerm(Term):
         if type(names) == list  and len(names) > 0:
             return '%s%s' % ( neg.dispU(), names[self.col])
         else:
-            return '%s#%i' % ( neg.dispU(), self.col)
+            return ('%s'+Term.pattVName) % ( neg.dispU(), self.col)
     
 class CatTerm(Term):
     type_id = 2
@@ -371,7 +373,7 @@ class CatTerm(Term):
                 lab = lab[:lenIndex]
             return lab + strcat
         else:
-            return (('%s#%'+slenIndex+'i') % (strneg, self.col)) + strcat
+            return (('%s'+Term.pattVName) % (strneg, self.col)) + strcat
 
     def dispTex(self, neg, names = None):
         if type(neg) == bool:
@@ -384,7 +386,7 @@ class CatTerm(Term):
         if type(names) == list  and len(names) > 0:
             return '%s %s %s' % (names[self.col], symbIn, self.cat)
         else:
-            return '#%i %s %s' % (self.col, symbIn, self.cat)
+            return ('$'+Term.pattVName+'$ %s %s') % (self.col, symbIn, self.cat)
 
     def dispU(self, neg, names = None):
         if type(neg) == bool:
@@ -397,7 +399,7 @@ class CatTerm(Term):
         if type(names) == list  and len(names) > 0:
             return ('[%s '+symbIn+' %s]') % (names[self.col], self.cat)
         else:
-            return ('[#%i '+symbIn+' %s]') % (self.col, self.cat)
+            return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.cat)
     
 class NumTerm(Term):
     type_id = 3
@@ -493,7 +495,7 @@ class NumTerm(Term):
                 lab = lab[:lenIndex]
             return lab + strbounds
         else:
-            return strneg+(('#%'+slenIndex+'i') % self.col) + strbounds
+            return strneg+(Term.pattVName % self.col) + strbounds
 
     def dispTex(self, neg, names = None):            
         prec = "0.4"
@@ -512,7 +514,7 @@ class NumTerm(Term):
         if type(names) == list  and len(names) > 0:
             idcol = '$ %s $' % names[self.col]
         else:
-            idcol = '#%i' % self.col
+            idcol = Term.pattVName % self.col
         return ''+negstr+lb+idcol+ub+''
 
     def dispU(self, neg, names = None):
@@ -531,7 +533,7 @@ class NumTerm(Term):
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]
         else:
-            idcol = '#%i' % self.col
+            idcol = Term.pattVName % self.col
         return ''+negstr+lb+idcol+ub+''
                
 class Literal(object):
@@ -805,19 +807,15 @@ class Query:
             self.buk.sort(key=lambda x: soK(x))
 
     def listLiterals(self):
-        def evl(b):
-            if len(b) > 0:
-                lits = []
-                nest = []
-                for bb in b:
-                    if isinstance(bb, Literal):
-                        lits.append(bb)
-                    else:
-                        nest.append(evl(bb))
-                return list(itertools.chain(map(sorted, nest)))+sorted(lits)
-            else:
-                return []
-        return evl(self.buk)
+        def evl(b, lits):
+            for bb in b:
+                if isinstance(bb, Literal):
+                    lits.append(bb)
+                else:
+                    evl(bb, lits)
+        lits = []
+        evl(self.buk, lits)
+        return lits
         
     def __str__(self):
         return self.disp()    
@@ -865,9 +863,18 @@ class Query:
     def parse(part, names = None):
         qs = QuerySemantics(names)
         parser = RedQueryParser(parseinfo=False)
-        return parser.parse(part, "query", semantics=qs)
+        try:
+            tmp = parser.parse(part, "query", semantics=qs)
+        except FailedParse as e:
+            tmp = Query()
+            raise Exception("Failed parsing query %s!\n\t%s" % (part, e))
+        return tmp
     parse = staticmethod(parse)
 
+# GENERATE PARSER:
+#     python -m grako -m RedQuery -o redquery_parser.py redquery.ebnf (!!! REMOVE ABSOLUTE_IMPORT FROM GENERATED FILE)
+# RUN:
+#     python redquery_parser.py queries.txt QUERIES
 class QuerySemantics(object):
 
     def __init__(self, names=None):
@@ -928,11 +935,13 @@ class QuerySemantics(object):
         return ast
 
     def parse_vname(self, vname):
-        tmp = re.match("#(?P<id>\d+)$", vname)
+        tmp = re.match("v(?P<id>\d+)$", vname)
         if tmp is not None:
             return int(tmp.group("id"))
         elif self.names is not None and vname in self.names:
             return self.names.index(vname)
+        else:
+            raise Exception("No variables names provided when needed!")
 
 if __name__ == '__main__':
     import codecs
@@ -944,23 +953,23 @@ if __name__ == '__main__':
     qsRHS = QuerySemantics(data.getNames(1))
     parser = RedQueryParser(parseinfo=False)
     
-    with codecs.open("queries.txt", encoding='utf-8', mode='r') as f:
+    with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
         for line in f:
             if len(line.strip().split("\t")) >= 2:
-                pdb.set_trace()
-                tmpLHS = Query.parse(line.strip().split("\t")[0])
+                tmpLHS = Query.parse(line.strip().split("\t")[0], data.getNames(0))
                 tmpLHSN = Query.parse(line.strip().split("\t")[0], data.getNames(0))
                 resLHS = parser.parse(line.strip().split("\t")[0], "query", semantics=qsLHS)
                 resRHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsRHS)
                 resLHS.recompute(0, data)
-                pdb.set_trace()
                 print resLHS
                 print len(resLHS)
-                tmp = resLHS.copy()
-                print tmp
-                tmp.negate()
-                print tmp
-                print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
-                print resLHS.makeIndexesNew('%(buk)s:%(col)i:')
+                pdb.set_trace()
+                print resLHS.listLiterals()
+                # tmp = resLHS.copy()
+                # print tmp
+                # tmp.negate()
+                # print tmp
+                # print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
+                # print resLHS.makeIndexesNew('%(buk)s:%(col)i:')
                 resLHS.reorderLits()
                 print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")

@@ -6,9 +6,30 @@ import pdb
 
 class Redescription:
     diff_score = Query.diff_length + 1
-    print_info = SParts.print_info
-    print_info_full = SParts.print_info_full
+    print_delta_fields = set(SParts.print_delta_fields+["Tex_"+s for s in SParts.print_delta_fields])
+    print_queries_headers = ["query_LHS", "query_RHS"]
+    print_queries_namedsuff = "_named"
+    print_default_fields = ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    print_default_fields_named = ["query_LHS_named", "query_RHS_named", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
     print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
+
+    print_fields_details = {}
+    for sideq in print_queries_headers:
+        print_fields_details[sideq] = (sideq, "", "%s" )
+        print_fields_details[sideq+print_queries_namedsuff] = (sideq+print_queries_namedsuff, "", "%s" )
+        for style in ["U", "Tex"]:
+            print_fields_details[style+"_"+sideq] = (style+"_"+sideq, style, "%s" )
+            print_fields_details[style+"_"+sideq+print_queries_namedsuff] = (style+"_"+sideq+print_queries_namedsuff, style, "%s" )
+    for pif in SParts.print_iinfo:
+        print_fields_details[pif] = (pif, None, "%d" )
+    for pif in SParts.print_finfo:
+        print_fields_details[pif] = (pif, None, "%f" )
+    for pif in SParts.print_sinfo:
+        print_fields_details[pif] = (pif, " ", "%s" )
+    for pit in print_info_tex:
+        print_fields_details["Tex_"+pit[0]] = pit
+    print_fields_details["status_enabled"] = ("status_enabled", None, "%d")
+
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
@@ -43,9 +64,9 @@ class Redescription:
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
-    def getInfoDict(self):
+    def getInfoDict(self, with_delta=False):
         if self.dict_supp_info is None and self.sParts is not None:
-            self.dict_supp_info = (self.restricted_sParts or self.sParts).toDict()
+            self.dict_supp_info = (self.restricted_sParts or self.sParts).toDict(with_delta)
         if self.dict_supp_info is not None:
             return self.dict_supp_info
         return {}
@@ -299,7 +320,7 @@ class Redescription:
     def setDiscarded(self):
         self.status = -2
 
-##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
+    ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
     def getQueriesU(self, details=None):
         if details is not None and "names" in details:
             return self.queries[0].disp(details["names"][0], style="U") + "---" + self.queries[1].disp(details["names"][1], style="U")
@@ -382,90 +403,51 @@ class Redescription:
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s' % (len(self), self.disp(), self.getTrack({"format":"str"})))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=["acc", "card_gamma", "pval"], sep=" "), self.getTrack({"format":"str"})))
 
-    def dispQueries(self, names= [None, None], lenIndex=0, style=""):
-        if style != "":
-            if lenIndex > 0:
-                return string.ljust(self.queries[0].disp(names[0], style=style), lenField)[:lenField] + "\t" + string.ljust(self.queries[1].disp(names[1], style=style), lenField)[:lenField]
-            else:
-                return self.queries[0].disp(names[0], style=style) +"\t"+ self.queries[1].disp(names[1], style=style)
-        return self.queries[0].disp(names[0], lenIndex) +"\t"+ self.queries[1].disp(names[1], lenIndex)
+    def dispHeader(list_fields=None, sep="\t"):
+        if list_fields is None:
+            list_fields = Redescription.print_default_fields
+        return sep.join(list_fields)
+    dispHeader = staticmethod(dispHeader)
 
-    def dispTexPrelude():
-        return "" + \
-        "\\documentclass{article}\n"+ \
-        "\\usepackage{amsmath}\n"+ \
-        "\\usepackage{amsfonts}\n"+ \
-        "\\usepackage{amssymb}\n"+ \
-        "\\usepackage{booktabs}\n"+ \
-        "\\usepackage[mathletters]{ucs}\n"+ \
-        "\\usepackage[utf8x]{inputenc}\n"+ \
-        "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
-        "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-        "\\newcommand{\\pValue}{$p$\\nobreakdash-\\hspace{0pt}value}\n"+ \
-        "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
-        "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
-        "\\begin{document}\n"+ \
-        "\\begin{table}[h]\n"+ \
-        "\\scriptsize\n" + \
-        "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
-        "\\toprule\n" + \
-        " & $q_\\iLHS$ & $q_\\iRHS$ & $\\jacc(R)$ & $\\supp(R)$ & \\pValue \\\\\n" + \
-        "\\midrule"
-    dispTexPrelude = staticmethod(dispTexPrelude)
-    
-    def dispTexConc():
-        return ""+ \
-        "\\bottomrule"+ \
-        "\\end{tabular}\n"+ \
-        "\\end{table}\n"+ \
-        "\\end{document}"
-    dispTexConc = staticmethod(dispTexConc)
 
-    def dispTexHeader():
-        return ' & $q_\iLHS$ & $q_\iRHS$ & $\\jacc$ & $\\supp$ & \\pValue  \\\\'
-    dispTexHeader = staticmethod(dispTexHeader)
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
+        if list_fields is None:
+            list_fields = Redescription.print_default_fields
+        info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
+        info_tmp["status_enabled"] = self.status
+        for side, query_f in enumerate(Redescription.print_queries_headers):
+            for style in ["", "U", "Tex"]:
+                if len(style) > 0:
+                    tmp_f = style +"_"+query_f
+                else:
+                    tmp_f = query_f
+                if tmp_f in list_fields:
+                    info_tmp[tmp_f] = self.queries[side].disp(style=style)
+                        
+                if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
+                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
 
-    def dispTexLine(self, queryId, names = [None, None]):
-        Query.side = 1
-        tmp0 = self.queries[0].disp(names[0], style="Tex")
-        Query.side = 1
-        tmp1 = self.queries[1].disp(names[1], style="Tex")
-
-        queryidStr = '(%i)' % queryId
-        format_list = []
-        return queryidStr + ' & ' + tmp0 + ' & '+ tmp1 + ' & ' +self.dispCaracteristiquesTex()+' \\\\'
-        return queryidStr + ' & ' + self.queries[0].dispTex(names[0])+' & '+self.queries[1].dispTex(names[1])+ ' & ' +self.dispCaracteristiquesTex()+' \\\\'
-
-    def dispLPartsSimple(self):
-        info_tmp = self.getInfoDict()
-        return " ".join([str(info_tmp.get(info_key, "-")) for info_key in Redescription.print_info])
-        
-    def dispLParts(self): 
-        info_tmp = self.getInfoDict()
-        return " ".join(["%s:%s" % (info_key, info_tmp.get(info_key, "-")) for info_key in Redescription.print_info])
-
-    def dispCaracteristiquesTex(self):
-        info_tmp = self.getInfoDict()
         details = []
-        for (info_key, info_round, info_format) in Redescription.print_info_tex:
+        for info_key in list_fields:
             tmp = "-"
-            if info_key in info_tmp:
-                tmp = info_format % round(info_tmp[info_key], info_round)
-            details.append(tmp)
-            
-        return " & ".join(details)
-
-    def dispCaracteristiquesSimple(self):
-        return self.dispLPartsSimple()
-
-    def dispU(self, names= [None, None], lenIndex=0):
-        str_red = self.dispQueriesU(names, lenIndex) +"\t"+ self.dispLPartsSimple()
-        return str_red
-
-    def disp(self, names= [None, None], lenIndex=0):
-        return self.dispQueries(names, lenIndex) +"\t"+ self.dispLPartsSimple()
+            if info_key in Redescription.print_fields_details:
+                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
+                if info_name in info_tmp:
+                    if type(info_round) is int:
+                        tmp = info_format % round(info_tmp[info_name], info_round)
+                    else:
+                        if type(info_tmp[info_name]) in [list, set]:
+                            tmp = info_format % (info_round.join(map(str, info_tmp[info_name])))
+                        else:
+                            tmp = info_format % info_tmp[info_name]
+            if with_fname:
+                info_name = info_name+":"
+            else:
+                info_name = ""
+            details.append(info_name+tmp)
+        return sep.join(details)
         
     def dispSupp(self):
         return self.sParts.dispSupp()
@@ -480,92 +462,94 @@ class Redescription:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()
 
-    def fromXML(self, node):
-        self.queries = [None, None]
-        dsi = {}
-        for query_data in node.getElementsByTagName("query"):
-            side = toolRead.getTagData(query_data, "side", int)
-            if side not in [0,1]:
-                print "Unknown side (%s)!" % side
-            else:
-                query_tmp = toolRead.getTagData(query_data, "ids_expression")
-                self.queries[side] = Query.parse(query_tmp)
-        supp_tmp = node.getElementsByTagName("support")
-        self.track = [tuple([0] + sorted(self.queries[0].invCols())), tuple([1] + sorted(self.queries[1].invCols()))]
-        if len(supp_tmp) == 1:
-            for child in toolRead.children(supp_tmp[0]):
-                if toolRead.isElementNode(child):
-                    supp_key = toolRead.tagName(child)
-                    supp_val = None
-                    if child.hasChildNodes():
-                        supp_val = toolRead.getValues(child, int, "row")
-                    else:
-                        supp_val = toolRead.getValue(child, float)
-                    if supp_val is not None:
-                        dsi[supp_key] = supp_val
-            self.sParts = None # SParts(None, dsi)
-            self.dict_supp_info = dsi
-        tmp_en = toolRead.getTagData(node, "status_enabled", int)
-        if tmp_en is not None:
-            self.status = tmp_en
+    def parseHeader(string, sep="\t"):
+        return [s.strip() for s in string.split(sep)]
+    parseHeader = staticmethod(parseHeader)    
 
+    def parseQueries(string, list_fields=None, sep="\t", names=[None, None]):
+        if list_fields is None:
+            list_fields = Redescription.print_default_fields
+        poplist_fields = list(list_fields) ### to pop out the query fields...
 
-    def toXML(self, full=True, names= [None, None]):
-        strd = "<redescription>\n"
-        strd += "\t<status_enabled>%d</status_enabled>\n" % self.status
+        queries = [None, None]
+        lpartsList = {}
         
-        for side in [0,1]:
-            strd += "\t<query>\n"
-            strd += "\t\t<side>%d</side>\n" % side
-            strd += "\t\t<ids_expression><![CDATA[\"%s\"]]></ids_expression>\n" % self.queries[side].disp()
-            if names[side] is not None:
-                strd += "\t\t<names_expression><![CDATA[\"%s\"]]></names_expression>\n" % self.queries[side].disp(names[side])
-            strd += "\t</query>\n"
-        
-        strd += "\t<support>\n"
-        tmp_info = self.getInfoDict()
-        if full:
-            keys = Redescription.print_info_full
-        else:
-            keys = Redescription.print_info
-        for supp_key in keys:
-            if supp_key in tmp_info:
-                supp_val = tmp_info[supp_key]
-                if type(supp_val) in [list, set]:
-                    strd += "\t\t<%s>\n" % supp_key
-                    for row in supp_val:
-                        strd += "\t\t\t<row>%d</row>\n" % row
-                        strd += "\t\t</%s>\n" % supp_key
+        parts = string.rsplit(sep)
+        for part in parts:
+            str_top = None
+            tmp = part.split(":")
+            if len(tmp) == 2:
+                if tmp[0] in poplist_fields:
+                    key_info =  tmp[0].strip()
+                    str_top =  tmp[1].strip()
                 else:
-                    strd += "\t\t<%s><value>%s</value></%s>\n" % (supp_key, supp_val, supp_key)
-        strd += "\t</support>\n"        
-        strd += "</redescription>\n"
-        return strd
-    
-    def parseQueries(string):
-        parts = string.rsplit('\t')
-        if len(parts) >= 2:
-            queryL = Query.parse(parts[0])
-            queryR = Query.parse(parts[1])
-        else:
-            queryL = Query()
-            queryR = Query()
-            
-        if len(parts) >= 3:
-            lpartsList = {}
-            info_parts = parts[2].split(" ")
-            for info_part in info_parts:
-                tmp = info_part.split(":")
-                if len(tmp) == 2:
-                    lpartsList[tmp[0]] = float(tmp[1])
-        else:
+                    key_info = None
+            else:
+                str_top = part.strip()
+                key_info = poplist_fields[0]
+
+            if key_info in Redescription.print_fields_details:
+                fname, info_round, info_format = Redescription.print_fields_details[key_info]
+                poplist_fields.remove(key_info) ### consume the token
+            else:
+                continue
+                
+            if fname in [k+Redescription.print_queries_namedsuff for k in Redescription.print_queries_headers]:
+                side = 1
+                if fname == Redescription.print_queries_headers[0]+Redescription.print_queries_namedsuff:
+                    side = 0
+                #### named query, try to parse if no alternative
+                if Redescription.print_queries_headers[side] not in list_fields and names[side] is not None: 
+                    try:
+                        query = Query.parse(str_top, names[side])
+                        if query is not None:
+                            queries[side] = query
+                    except Exception as e:
+                        raise Warning("Failed parsing named query %d, %s !:\n\t%s" % (side, str_top, e) )
+
+            elif fname in Redescription.print_queries_headers:
+                side = 1
+                if fname == Redescription.print_queries_headers[0]:
+                    side = 0
+                try:
+                    query = Query.parse(str_top)
+                    if query is not None:
+                        queries[side] = query
+                except Exception as e:
+                    raise Warning("Failed parsing query %d, %s !:\n\t%s" % (side, str_top, e) )
+
+            else:
+                if type(info_round) is str:
+                    if len(str_top.strip()) == 0:
+                        lpartsList[fname] = []
+                    else:
+                        lpartsList[fname] = map(int, str_top.strip().split(info_round))
+                else:
+                    try:
+                        lpartsList[fname] = int(str_top)
+                    except ValueError:
+                        try:
+                            lpartsList[fname] = float(str_top)
+                        except ValueError:
+                            lpartsList[fname] = str_top
+                    
+        for side in [0, 1]:
+            if queries[side] is None:
+                queries[side] =  Query()
+        if len(lpartsList) == 0:
             lpartsList = None
-        return (queryL, queryR, lpartsList)
+        return (queries[0], queries[1], lpartsList)
     parseQueries = staticmethod(parseQueries)
 
-    def parse(stringQueries, stringSupport = None, data = None):
-        (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries)
-
+    def parse(stringQueries, stringSupport = None, data = None, list_fields=None, sep="\t"):
+        if data is not None and data.hasNames():
+            names = data.getNames()
+        else:
+            names = [None, None]
+        (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries, list_fields, sep, names)
+        status_enabled = None
+        if "status_enabled" in lpartsList:
+            status_enabled = lpartsList.pop("status_enabled")
         r = None
         if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
             supportsS = SParts.parseSupport(stringSupport, data.nbRows(), data.getSSetts())
@@ -584,6 +568,8 @@ class Redescription:
                 r.recompute(data)
             else:
                 r.supp_info = lpartsList
+        if r is not None and status_enabled is not None:
+            r.status = status_enabled
         return r
     parse = staticmethod(parse)
   
@@ -608,3 +594,105 @@ class Redescription:
         else: stringSupp= None; commentSupp = ''
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
+
+def printTexRedList(red_list, names=[None, None], fields=None):
+    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
+    tex_headers = ["$q_\\iLHS$","$q_\\iRHS$","$\\jacc(R)$","$\\supp(R)$", "\\pValue"]
+    if type(fields) is list and len(fields) > 0:
+        if fields[0] == -1:
+            tex_fields.extend(fields[1:])
+            tex_headers.extend(fields[1:])
+        else:
+            tex_fields = fields
+            tex_headers = list(fields)
+    str_out = "" + \
+              "\\documentclass{article}\n"+ \
+              "\\usepackage{amsmath}\n"+ \
+              "\\usepackage{amsfonts}\n"+ \
+              "\\usepackage{amssymb}\n"+ \
+              "\\usepackage{booktabs}\n"+ \
+              "\\usepackage[mathletters]{ucs}\n"+ \
+              "\\usepackage[utf8x]{inputenc}\n"+ \
+              "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
+              "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
+              "\\newcommand{\\pValue}{$p$\\nobreakdash-\\hspace{0pt}value}\n"+ \
+              "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
+              "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
+              "\\begin{document}\n"+ \
+              "\\begin{table}[h]\n"+ \
+              "\\scriptsize\n" + \
+              "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
+              "\\toprule\n"
+
+    str_out += " & " + Redescription.dispHeader(tex_headers, " & ") + " \\\\\n"
+    str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
+    str_out += "\\midrule\n"
+    for ri, red in enumerate(red_list):
+
+        str_out += '(%i) & ' % ri
+        str_out += red.disp(names, list_fields=tex_fields, sep=" & ") + " \\\\\n"
+
+    str_out += "" + \
+        "\\bottomrule\n"+ \
+        "\\end{tabular}\n"+ \
+        "\\end{table}\n"+ \
+        "\\end{document}"
+    return str_out
+
+def printRedList(red_list, names=[None, None], fields=None):
+    all_fields = Redescription.print_default_fields
+    if names[0] is not None or names[1] is not None:
+        all_fields = Redescription.print_default_fields_named
+    if type(fields) is list and len(fields) > 0:
+        if fields[0] == -1:
+            all_fields.extend(fields[1:])
+        else:
+            all_fields = fields
+
+    str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
+    for ri, red in enumerate(red_list):
+        str_out += red.disp(list_fields=all_fields, names=names, sep="\t")  + "\n"
+    return str_out
+
+def parseRedList(fp, data, reds=None):
+    list_fields = None
+    if reds is None:
+        reds = []
+    for line in fp:
+        if not re.match("^[ \t]*#", line):
+            if list_fields is None:
+                list_fields = Redescription.parseHeader(line)
+            else:
+                r = Redescription.parse(line, data=data, list_fields=list_fields)
+                if r is not None:
+                    reds.append(r)
+    return reds
+
+if __name__ == '__main__':
+    import codecs
+    from classData import Data
+    from classQuery import Query
+    import sys
+    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
+
+    reds = []
+    with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
+        for line in f:
+            if len(line.strip().split("\t")) >= 2:
+                try:
+                    tmpLHS = Query.parse(line.strip().split("\t")[0], data.getNames(0))
+                    tmpRHS = Query.parse(line.strip().split("\t")[1], data.getNames(1))
+                except:
+                    continue
+                r = Redescription.fromQueriesPair([tmpLHS, tmpRHS], data)
+                reds.append(r)
+
+    with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='w') as f:
+        f.write(printRedList(reds))
+
+    with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='r') as f:
+        reds = parseRedList(f, data)
+
+    for red in reds:
+        print red.disp()

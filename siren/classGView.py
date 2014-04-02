@@ -487,7 +487,6 @@ class GView(object):
             return red
 
     def parseQuery(self, side):
-        pdb.set_trace()
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
             query = Query.parse(stringQ, self.parent.dw.getData().getNames(side))

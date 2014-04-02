@@ -10,10 +10,11 @@ import cPickle
 import codecs
 import collections
 import sys
+import re
 
 import pdb
 
-from reremi.classRedescription import Redescription
+from reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
 from reremi.classData import Data, DataError
 from reremi.classQuery import Query
 from reremi.toolICList import ICList
@@ -50,7 +51,7 @@ class DataWrapper(object):
     # Names of the files in the package
     DATA_LHS_FILENAME = 'data_LHS.csv'
     DATA_RHS_FILENAME = 'data_RHS.csv'
-    REDESCRIPTIONS_FILENAME = 'redescriptions.xml'
+    REDESCRIPTIONS_FILENAME = 'redescriptions.csv'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
@@ -271,92 +272,11 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-    # def importDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
-    #     fnames = list(data_filenames)
-    #     if names_filenames is not None:
-    #         fnames += names_filenames
-    #     if coo_filename is not None:
-    #         fnames += [coo_filename]
-    #     if entities_filename is not None:
-    #         fnames += [entities_filename]
-    #     self._startMessage('importing', fnames)
-        
-    #     try:
-    #         tmp_data = self._readDataFromMulFiles(data_filenames, names_filenames, coo_filename, entities_filename)
-    #     except DataError as details:
-    #         self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     except IOError as arg:
-    #         self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     except Exception:
-    #         self.logger.printL(1,"Unexpected error while importing data from separate files!\n%s" %  sys.exc_info()[1], "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     else:
-    #         self.setData(tmp_data)
-    #         self.resetRedescriptions()
-    #         self.isChanged = True
-    #         self.isFromPackage = False
-    #     finally:
-    #         self._stopMessage('importing')
-        
-
-    # def importDataFromXMLFile(self, data_filename):
-    #     self._startMessage('importing', data_filename)
-    #     try:
-    #         tmp_data = self._readDataFromXMLFile(data_filename)
-    #     except DataError as details:
-    #         self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     except IOError as arg:
-    #         self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     except Exception:
-    #         self.logger.printL(1,"Unexpected error while importing data from file %s!\n%s" % (data_filename, sys.exc_info()[1]), "error", "DW")
-    #         self._stopMessage()
-    #         raise
-    #     else:
-    #         self.setData(tmp_data)
-    #         self.resetRedescriptions()
-    #         self.isChanged = True
-    #         self.isFromPackage = False
-    #     finally:
-    #         self._stopMessage('importing')
-
     def importRedescriptionsFromFile(self, redescriptions_filename):
         """Loads new redescriptions from file"""
         self._startMessage('importing', redescriptions_filename)
         try:
-            (pn, suffix) = os.path.splitext(os.path.basename(redescriptions_filename))
-            if suffix == ".queries":
-                tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
-            else:
-                tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
-        except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
-            self._stopMessage()
-            raise
-        except Exception:
-            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
-            self._stopMessage()
-            raise
-        else:
-            self.reds = tmp_reds
-            self.rshowids = tmp_rshowids
-            #self.isChanged = True
-        finally:
-            self._stopMessage('importing')
-
-    def importRedescriptionsTXTFromFile(self, redescriptions_filename):
-        """Loads new redescriptions from file"""
-        self._startMessage('importing', redescriptions_filename)
-        try:
-            tmp_reds, tmp_rshowids = self._readRedescriptionsTXTFromFile(redescriptions_filename)
+            tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
         except IOError as arg:
             self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
             self._stopMessage()
@@ -463,49 +383,7 @@ class DataWrapper(object):
             filep = filename
         else:
             filep = open(filename, mode='r')
-        
-        doc = toolRead.parseXML(filep)
-        if doc is not None:
-            tmpreds = doc.getElementsByTagName("redescriptions")
-            if len(tmpreds) == 1:
-                reds_node = tmpreds[0]
-                for redx in reds_node.getElementsByTagName("redescription"):
-                    tmp = Redescription()
-                    tmp.fromXML(redx)
-                    tmp.recompute(data)
-                    reds.append(tmp)
-                tmpsi = reds_node.getElementsByTagName("showing_ids")
-                if len(tmpsi) == 1:
-                    show_ids = toolRead.getValues(tmpsi[0], int)
-                    if len(show_ids) == 0 or min(show_ids) < 0 or max(show_ids) >= len(reds):
-                        show_ids = None
-        if show_ids is None:
-            show_ids = range(len(reds))
-        rshowids = ICList(show_ids, True)
-        return reds, rshowids
-
-
-    def _readRedescriptionsTXTFromFile(self, filename, data=None):
-        if data is None:
-            if self.data is None:
-                self._stopMessage()
-                raise Exception("Cannot load redescriptions if data is not loaded")
-            else:
-                data = self.data
-        reds = Batch([])
-        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
-            reds_fp = filename
-        else:
-            reds_fp = open(filename, mode='r')
-
-        for line in reds_fp:
-            parts = line.strip().split('\t')
-            if len(parts) > 1:
-                queryL = Query.parse(parts[0])
-                queryR = Query.parse(parts[1])
-                red = Redescription.fromQueriesPair([queryL, queryR], data)
-                if red is not None:
-                    reds.append(red)
+        parseRedList(filep, data, reds)
         rshowids = ICList(range(len(reds)), True)
         return reds, rshowids
 
@@ -683,7 +561,7 @@ class DataWrapper(object):
         # Write redescriptions
         try:
             if self.reds is not None and len(self.reds) > 0:
-                self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, toPackage = True)
+                self._writeRedescriptions(os.path.join(tmp_dir, plist['redescriptions_filename']), named=False, with_disabled=True, toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -752,64 +630,36 @@ class DataWrapper(object):
             self.savePackageToFile(self.package_filename, None)
 
 
-    def exportRedescriptions(self, filename, named=True):
+    def exportRedescriptions(self, filename):
         self._startMessage('exporting', filename)
-        ### TODO select format
-        (pn, suffix) = os.path.splitext(os.path.basename(filename))
+        named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
+        with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
+        style = ""
+        if re.search("\.tex$", filename):
+            style = "tex"
         try:
-            if suffix == ".tex":
-                self._writeRedescriptionsTEX(filename, named)
-            elif suffix == ".queries_names":
-                self._writeRedescriptionsTXT(filename, True)
-            elif suffix == ".queries":
-                self._writeRedescriptionsTXT(filename, False)
-            else:
-                self._writeRedescriptions(filename, named)
+            self._writeRedescriptions(filename, named=named, with_disabled=with_disabled, style=style)
         except Exception:
             self._stopMessage()
             raise
         self._stopMessage('exporting')
 
-    def _writeRedescriptionsTXT(self, filename, named = False, toPackage = False):
+    def _writeRedescriptions(self, filename, named = False, with_disabled=False, toPackage = False, style=""):
         if named:
             names = self.data.getNames()
         else:
             names = [None, None]
+        red_list = [self.reds[i] for i in self.rshowids if self.reds[i].getEnabled() or with_disabled]
+        if toPackage:
+            fields_supp = [-1, "status_disabled"]
+        else:
+            fields_supp = None
+        # with codecs.open(filename, encoding='utf-8', mode='w') as f:
         with open(filename, mode='w') as f:
-            for i in self.rshowids:
-                if self.reds[i].getEnabled():
-                    f.write(self.reds[i].disp(style="U", names=names)+"\n")
-
-    def _writeRedescriptionsTEX(self, filename, named = False, toPackage = False):
-        if named:
-            names = self.data.getNames()
-        else:
-            names = [None, None]
-        with codecs.open(filename, encoding='utf-8', mode='w') as f:
-            f.write(Redescription.dispTexPrelude()+"\n")
-            for i in self.rshowids:
-                if self.reds[i].getEnabled():
-                    f.write(self.reds[i].dispTexLine(i, names)+"\n")
-            f.write(Redescription.dispTexConc()+"\n")
-            f.write("\n")
-
-    def _writeRedescriptions(self, filename, named = False, toPackage = False):
-        if named:
-            names = self.data.getNames()
-        else:
-            names = [None, None]
-
-        with open(filename, mode='w') as f:
-            f.write("<root>\n")
-            f.write("\t<redescriptions>\n")
-            for i in range(len(self.reds)):
-                f.write(self.reds[i].toXML(False, names).replace("\n", "\n\t\t"))
-            f.write("\t<showing_ids>\n")
-            for i in self.rshowids:
-                f.write("\t\t<value>%i</value>\n" % i)
-            f.write("\t</showing_ids>\n")
-            f.write("\t</redescriptions>\n")
-            f.write("</root>\n")
+            if style == "tex":
+                f.write(printTexRedList(red_list, names, fields_supp))
+            else:
+                f.write(printRedList(red_list, names, fields_supp))
             
     def _writePreferences(self, filename, toPackage = False):
         with open(filename, 'w') as f:

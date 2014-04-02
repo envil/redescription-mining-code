@@ -112,7 +112,7 @@ class ColM(object):
         if self.name is not None:
             return self.name
         else:
-            return "%d" % self.getId()
+            return Term.pattVName % self.getId()
 
     def hasName(self):
         return self.name is not None
@@ -1431,7 +1431,7 @@ def parseDNCFromCSVData(csv_data):
     if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
         rnames, disabled_rows = parseRowsNames(csv_data["ids"])
     else:
-        rnames, disabled_rows = range(N), set()
+        rnames, disabled_rows = [Term.pattVName % n for n in range(N)], set()
         
     for side in [0,1]:
         indices = dict([(v,k) for (k,v) in enumerate(csv_data['data'][side]["order"])])
