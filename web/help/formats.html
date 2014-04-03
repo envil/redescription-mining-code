@@ -29,143 +29,79 @@ In <em>Siren</em>, data include:
 </ol> 
 Obviously, this is required.
 </li>
+<li><h5>Entities names:</h5>Optional additional information, providing names for the entities.</li>
 <li><h5>Variable names:</h5>Optional additional information, providing names for the variables.</li>
 <li><h5>Coordinates:</h5>Optional location information, i.e. geographic coordinates of the entities. This makes the data geospatial.</li>
 </ul>
 </p>
 
 <p>
-Data can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Data, either as CSV files (Menu: Import Data from CSV files), as a set of separate files (Menu: Import Data from separate files) or as a single XML file (Menu: Import Data from XML file). Below, we present the data formats supported by Siren.
+Data can be imported to <em>Siren</em> via the interface menu File &#8594; Import  &#8594; Import Data, as CSV files. Below, we present the data formats supported by Siren.
 </p>
 </div>
 
-<h4><a name="csv_files"></a>CSV data files</h4>
 <p>
-In case the data is imported as CSV files, the program expects a pair of files one for either side in <a href="http://tools.ietf.org/html/rfc4180">character-separated values</a>, as can be imported and exported to and from spreadsheet programms, for instance.
-The first row might contain the names of variables.
-In case of geospatial data, the first two columns of one or both files should contain the coordinates. If the order of the entities in the two files differs, they will be matched based on the coordinates.
+Data can be imported into <em>Siren</em> as CSV files. The program expects a pair of files, one for either side in <a href="http://tools.ietf.org/html/rfc4180">character-separated values</a>, as can be imported and exported to and from spreadsheet programms, for instance.
 </p>
 
-
-<h4><a name="multiple_files"></a>Multiple data files</h4>
-
 <p>
-In case the data is imported as a set of files, the program expects:
+There are two main formats, 
 <ul>
-	<li><h5>Left-hand side variables file:</h5> file containing the left-hand side variables.</li>
-	<li><h5>Right-hand side variables file:</h5> file containing the right-hand side variables.</li>
-	<li><h5>Coordinates file:</h5> file containing the entities coordinates.</li>
+	<li><h5>Full:</h5> standard table format, or</li>
+	<li><h5>Sparse:</h5> compact format for dataset with few non-zeros entries.</li>
 </ul>
+The two data files need not be in the same format.
+</p>
+
+<p>
+If entities names and/or coordinates are provided, they will be used to match entities across the two sides. 
+Otherwise, rows will be match in order and an error will occur if the two side do not contain the same number of rows.
 </p>
 
 
-<h5>Variables formats:</h5>
+<h4><a name="data_csv_full"></a>Full format</h4>
 <p>
-Right-hand side and left-hand side variables are stored in separate files.
-This import mode does not allow for mixed types of variables, contrarily to the <a href="#xml_file">single XML data import mode</a>.
+The data is stored as a table with one column for each variable and one row each entity.
+The first row can contain the names of the variables.
+The entities names can be included as columns named <it>ids</it>. Similarly the coordinates can be included as a pair of columns named <it>longitudes</it> and <it>latitudes</it>, respectively.  
+</p>
 
-Several formats are available:
-<ul>
-<li><em><a name="dense_format"></a>Dense format</em> means variables are stored one per line, with values separated by commas.
-This corresponds roughly to storing your data matrix transposed, in csv format.
-</li>
-<li><em><a name="sparse_format"></a>Sparse format</em> means each row has the form 
+<h4><a name="data_csv_sparse"></a>Sparse format</h4>
+<p>
+This format allows to store data that contains few non-zero entries more compactly, as in the Matlab sparse format (or like the edge list of a bipartite graph).
+</p>
+<p>
+Each line contains an entry of the data as a triple (entity, variable, value). This way, the data is stored as in three columns and as many rows as there are entries.
+In this case the first line of the data file must contains <it>ids</it>, <it>cids</it> and <it>values</it>, indicating the three columns containing the enities, variables and corresponding value, respectively.
+Coordinates can be provided in a similar way under the variable names <it>longitudes</it> and <it>latitudes</it>.
+</p>
+<p>
+Variable names can be provided inline, that is, simply by using the name of the variable for each entry involving it.
+Alternatively, variable names can be specified separately with a special "-1" entity.
+Similarly, entity names can be provided inline or separatly with a special "-1" variable.
+For example, the following four lines
 <pre>
-entity_id [SPC] variable_id [SPC] value
+Espoo; population; 260981
+Helsinki; population; 614074
+Tampere; population; 220609
+Turku; population; 182281
 </pre>
-To make sure no empty entity or variable is omitted, the first row must be 
+are equivalent to the following:
 <pre>
-nb_of_entities [SPC] nb_of_variables [SPC] 0
+20; -1; Espoo
+7; -1; Tampere
+2; -1; Turku
+13; -1; Helsinki
+-1; 3; population
+2; 3; 182281
+7; 3; 220609
+13; 3; 614074
+20; 3; 260981
 </pre>
-This correspond roughly to Matlab representation of sparse matrices.
-</li>
-<li><em><a name="dat_format"></a>Dat format</em> means variables are stored one per line, only the ids of entities for which the variable holds true are stored, separated by commas.
-</li>
-</ul>
-
-The format is determined from the filename extension, below is the table of extensions, - means the format is not available for the given variable type:
-
-<table border=1 id="data_ext">
- <thead>
-    <tr>
-      <th></th>
-<th>dense</th>
-<th>sparse</th>
-<th>dat</th>
-    </tr>
-</thead>
-<tbody>
-<tr>
-<td>1. Boolean</td>
-<td>.densebool</td>
-<td>.sparsebool</td>
-<td>.datbool</td>
-</tr>
-<tr>
-<td>2. categorical</td>
-<td>.densecat</td>
-<td>-</td>
-<td>-</td>
-</tr>
-<tr>
-<td>3. numerical</td>
-<td>.densenum</td>
-<td>.sparsenum</td>
-<td>-</td>
-</tr>
-</tbody>
-</table> 
-
 </p>
-
-<h5>Coordinates format:</h5>
-<p>
-Each entity should be located by a pair of coordinates (i.e. latitude and longitude).
-Coordinates are stored one entity per line, with the two coordinates separated by a comma.
-If the number of coordinates found in the coordinates file does not match the number of entities, coordinates will be ommitted.
-</p>
-
-<h5>Names:</h5> 
-<p>Finally, the files containing the names of variables are obtained from the corresponding data filename by replacing its extension by <em>.names</em>. For example, if the LHS variables data file is <em>some_path/LHS_file.densenum</em> the program expect to find the LHS variables names in a file called <em>some_path/LHS_file.names</em>.
-Names of variables are stored one variable per line. Names may contain spaces and unicode characters but no equality or comparison signs (i.e. =,>,<).
-If the number of names found in the names file does not match the number of variables on the given side, names will be ommitted.
-</p>
-
-
-<h4><a name="xml_file"></a>Single XML file</h4>
 
 <p>
-Here is an example of a simple XML data file. In this example, the data consist of two Boolean variables on the left-hand side, one categorical variable and two numerical variables on the right-hand side, describing a total of ten geolocated entities.
-</p>
-
-<iframe frameborder=0 width=100% height=auto scrolling=auto name="xml_data_example" src="xml_data_example_comm.txt"></iframe>
-
-<p>
-Each variable is stored between <em>variable</em> tags, with it name, type_id, number of entities (numbers of entities should match accross all variables on both sides), etc.
-</p>
-
-<ol>
-<li>
-For <em>Boolean variables</em> (cf. A_red and B_red in example above) the ids of entities for wich the variable holds true are separated by commas and stored between <em>rows</em> tags (cf. <a href="#dat_format">dat format</a>).
-</li>
-
-<li>
-For <em>categorical variables</em> (cf. A_blue in example above) the categories of the entities are separated by commas and stored in order between <em>values</em> tags (cf. <a href="#dense_format">dense format</a>).
-</li>
-
-<li>
-<em>Numerical variables</em> can be stored either in sparse or dense format, depending on convenience. The format used should be indicated using <em>store_type</em> tags. 
-<ul>
-<li>
-Dense format (cf. B_blue in example above) means the values are separated by commas and stored in order between <em>values</em> tags
-(cf. <a href="#dense_format">dense format</a>).</li><li>
-Sparse format (cf. C_blue in example above) means the pairs (entity id:value) are stored only for non-default values, separated by commas between <em>values</em> tags.</li>
-</ul>
-</li>
-</ol>
-
-<p>
-Inside a siren package, the data is stored as a single XML file.
+Finally, in case of fully Boolean data without coordinates, the value can be left out. Each pair of (entity, variable) appearing is considered as True, the rest as False.
 </p>
 
 <h3><a name="red_formats"></a>Redescriptions formats</h3>
@@ -199,9 +135,9 @@ A query is formed by combining literal using Boolean operators.
 </p>
 
 <p>
-For several reasons, Siren evaluates the queries from left to right irrelevant of the operator precedence.
-In other words, it supports only queries that can be parsed in linear order, without trees. For example, (a &#8743; b) &#8744; &#172;c is supported, but (a &#8743; b) &#8744; (c &#8743; d) is not.
-Parenthesis delimiting groups of literals combined with the same operator can be added to ease readability.
+While <em>ReReMi</em> only generate linearly parsable query (see references for more details), <em>Siren</em> can actually evaluates arbitrary queries, as long as they are well formed following the informal grammar below.
+In particular, parenthesis should be used to separated conjunctive blocks and disjunctive block, alternating between operators.
+For example, while the later cannot be generated by <em>ReReMi</em>, (a &#8743; b) &#8744; &#172;c and (a &#8743; b) &#8744; (c &#8743; d) are both supported. (a &#8743; b) &#8743; (c &#8743; d) is not, because of incorrect alternance of operators between parenthesis blocks. It should simply be written as a &#8743; b &#8743; c &#8743; d.
 </p>
 
 <p>
@@ -216,11 +152,11 @@ The preferred syntax for editing queries is marked with bold.
 <table border=1 id="query_syntax">
 <tr>
 <td>conjunction&#160;operator</td><td>AND </td>
-<td><b>&#38;</b>,&#160;&#8743;,&#160;\land</td>
+<td><b>&#38;</b>,&#160;&#8743;</td>
 </tr>
 <tr>
 <td>disjunction&#160;operator</td><td>OR</td>
-<td><b>|</b>,&#160;&#8744;,&#160;\lor</td>
+<td><b>|</b>,&#160;&#8744;</td>
 </tr>
 <tr>
 <td>operator</td><td>OP</td>
@@ -228,7 +164,7 @@ The preferred syntax for editing queries is marked with bold.
 </tr>
 <tr>
 <td>negation</td><td>NEG</td>
-<td><b>!</b>,&#160;&#172;,&#160;\neg</td>
+<td><b>!</b>,&#160;&#172;</td>
 </tr>
 <tr>
 <tr>
@@ -237,26 +173,23 @@ The preferred syntax for editing queries is marked with bold.
 </tr>
 <tr>
 <td>category</td><td>CAT</td>
-<td><b>integer</b></td>
+<td><b>integer</b>,name</td>
 </tr>
 <tr>
 <td>interval&#160;bound</td><td>IBD</td>
-<td><b>float with at least one decimal precision</b></td>
+<td><b>float or integer</b></td>
 </tr>
 <tr>
 <td>less-than&#160;sign</td><td>LEQ</td>
-<td><b>&#60;</b>, &#8804;, \leq{}</td>
+<td><b>&#60;</b>, &#8804;</td>
 </tr>
 <tr>
 <td>Boolean&#160;literal</td><td>BLIT</td>
 <td><b>(NEG)&#160;VAR</b></td>
 </tr>
 <tr>
-<td rowspan=4>categorical&#160;literal</td><td rowspan=4>CLIT</td>
+<td rowspan=3>categorical&#160;literal</td><td rowspan=3>CLIT</td>
 <td><b>(NEG)&#160;VAR&#160;=&#160;CAT</b></td>
-</tr>
-<tr>
-<td>VAR&#160;(\not)\in&#160;CAT</td> 
 </tr>
 <tr>
 <td>VAR&#160;&#8712;&#160;CAT</td> 
@@ -267,19 +200,32 @@ The preferred syntax for editing queries is marked with bold.
 <tr>
 </tr>
 <tr>
-<td rowspan=2>numerical&#160;literal</td><td rowspan=2>NLIT</td>
+<td>numerical&#160;literal</td><td>NLIT</td>
 <td><b>(NEG)&#160;[&#160;(IBD&#160;LEQ)&#160;VAR&#160;(LEQ&#160;IBD)&#160;]</b></td>
-</tr>
-<tr>
-<td>(NEG)&#160;VAR&#160;(&#62;&#160;IBD)&#160;(&#60;&#160;IBD)</td>
 </tr>
 <tr>
 <td>literal</td><td>LIT</td>
 <td><b>BLIT, CLIT, NLIT</b></td>
 </tr>
 <tr>
+<td>conj_item</td><td>CI</td>
+<td><b>LIT&#160;</b>,<b>&#160;DISJ</b></td>
+</tr>
+<tr>
+<td>disj_item</td><td>DI</td>
+<td><b>LIT&#160;</b>,<b>&#160;CONJ</b></td>
+</tr>
+<tr>
+<td>conjunction</td><td>CONJ</td>
+<td><b>CI&#160;{&#160;OR&#160;CI}+</b></td>
+</tr>
+<tr>
+<td>disjunction</td><td>DISJ</td>
+<td><b>DI&#160;{&#160;OR&#160;DI}+</b></td>
+</tr>
+<tr>
 <td>query</td><td>QRY</td>
-<td><b>LIT&#160;(OP&#160;LIT)*</b></td>
+<td><b>LIT&#160;</b>,<b>CONJ&#160;</b>,<b>DISJ</b></td>
 </tr>
 </table>
 
@@ -299,25 +245,23 @@ The statistics of a redescription include:
 
 <h4><a name="export"></a>Exporting Redescriptions</h4>
 <p>
-Redescriptions from the <i>Redescriptions</i> tab can be exported in different formats, determined by the extension of the provided filename:
+Redescriptions from the <i>Redescriptions</i> tab can be exported to a file, one redescription per line, with both queries and basic statistics tab separated. Three of formatting options are available, determined by the provided filename:
 <ul>
-<li><h5>.xml (default)</h5> Each redescription is stored between <em>redescription</em> tags, with both queries and basic statistics.</li>
-<li><h5>.queries</h5> One redescription per line, with both queries and basic statistics tab separated.</li>
-<li><h5>.queries_names</h5> Same, with variable names.</li>
-<li><h5>.tex</h5> Produces a tex file that can be compiled to obtain a table of the redescriptions</li>
+<li><h5>named</h5> Uses the names of the variables instead of variable ids in the queries. Activated if the filename matches the pattern <it>*[a-zA-Z]named[a-zA-Z]*</it></li>
+<li><h5>all</h5> By default disabled redescriptions will not be printed when exporting redescriptions. If the filename matches the pattern <it>*[a-zA-Z]all[a-zA-Z]*</it> disabled redescriptions will also be printed.</li>
+<li><h5>tex</h5> Rather than tab separated format, if the filename as <it>.tex</it> extension, a tex file is produced that can be compiled to obtain a table of the redescriptions. (Cannot be imported back)</li>
 </ul>
-Except for the xml format, disabled redescriptions will not be printed when exporting redescriptions.
 </p>
+
+<p>
+Inside a siren package, the redescriptions are stored in tab separated format together with disabled status.
+</p>
+
 
 <h4><a name="import"></a>Importing Redescriptions</h4>
 <p>
-Both <em>.queries</em> and <em>.xml</em> format can be imported into Siren, <em>.tex</em> cannot.
+Tab separated formats can be imported into Siren, <em>TeX</em> cannot.
 </p>
-
-<p>
-Inside a siren package, the redescriptions are stored in a XML file together with display order and disabled status.
-</p>
-
 
 <hr>
 <!-- hhmts start --> <p>Siren --- Last modified: Wed 15 Jan 2014, galbrun@cs.helsinki.fi</p> <!-- hhmts end -->
