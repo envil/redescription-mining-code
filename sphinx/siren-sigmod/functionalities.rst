@@ -31,11 +31,11 @@ Vizualizing
 
 .. image:: _static/screenshots/PacoView.png 
 
-* The *axis projection* and a number of data projections from the `scikit-learn package <http://scikit-learn.org/>`_ allow to highlight different aspects of the data.
+* A number of *data projections* from the `scikit-learn package <http://scikit-learn.org/>`_ allow to highlight different aspects of the data.
 
 .. image:: _static/screenshots/MDSView.png
 
-* A *map* projection (for geospatial data) to show the locations 
+* A *map* (for geospatial data) to show the locations 
 where both queries hold, only the left hand side query 
 holds and only the right hand side query holds.
 
