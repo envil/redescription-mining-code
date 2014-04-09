@@ -1,8 +1,9 @@
 include siren/*.py 
 include siren/*.xml
-include siren/reremi/*.py 
+include siren/reremi/*.py
 include siren/reremi/*.xml
-include siren/reremi/*.xsl
+include siren/reremi/*.xsl 
+include siren/reremi/grako/*.py
 graft siren/help
 graft siren/commons
 graft siren/icons

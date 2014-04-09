@@ -1,0 +1,188 @@
+body {
+font-family:verdana,helvetica,sans-serif;
+margin:2em;
+color:#444444;
+background-color:#ffffff;
+font-size:small;
+}
+
+dt { color:white; font-weight: bold; }
+dd { display:block; margin:5px;}
+
+img{
+  margin:25px;
+  text-align:center;
+  clear:both;
+  max-width:600px;
+  max-height:600px;
+  display:block;
+}
+
+/* img.web { */
+/*   display:none; */
+/* } */
+
+img.large {
+  max-width:900px;
+  max-height:900px;
+}
+
+h2 {
+color:#777777;
+font-weight:bold;
+font-size:x-large;
+}
+
+h3 {
+color:#777777;
+margin-left:2em;
+margin-top:2.5cm;
+text-align:left;
+font-weight:bold;
+font-size:large;
+}
+
+
+h4 {
+color:#777777;
+text-align:left;
+margin-left:3em;
+margin-top:1cm;
+font-weight:bold;
+font-size:medium;
+}
+
+h5 {
+color:#777777;
+text-align:left;
+font-weight:lighter;
+font-style:italic;
+display:inline;
+font-size:small;
+}
+
+p {
+text-align:justify;
+font-size:small;
+}
+
+
+a{
+text-decoration:none;
+color:#777777;
+font-weight:bold;
+}
+
+a:hover {
+text-decoration:none;
+color:#000000;
+background-color:#999999;
+font-weight:bold;
+}
+
+div.page-header
+{
+padding: 5px 5px;
+margin: 5px 5px;
+border:1px dotted #cccccc;
+background-color:#efefef;
+font-style:italic;
+}
+
+div.page-header p
+{
+padding: 5px 5px;
+margin: 5px 5px;
+}
+
+.parameter-name
+{
+margin-left:5px;
+}
+
+.parameter-legend
+{
+display:block;
+color:#555555;
+font-style:italic;
+width:75%;
+}
+
+div.toc h3 {
+margin-top:1cm;
+padding-left:0px;
+}
+
+div.toc ol  {
+margin-left:0.5cm;
+padding-left:1em;
+font-size:small;
+list-style-type:upper-roman;
+}
+
+div.toc ol ol  {
+margin-left:0cm;
+list-style-type:lower-roman;
+}
+
+div.toc img{
+  margin-top:50px;
+  text-align:center;
+  clear:both;
+  max-width:75px;
+  max-height:75px;
+  display:block;
+}
+
+table
+{
+margin:0.5cm;
+margin-left:4cm;
+text-align:center;
+}
+
+td
+{
+padding:3px 20px;
+}
+
+
+table.sides
+{
+margin:0cm;
+margin-left:0cm;
+text-align:center;
+}
+
+table.sides td
+{
+padding:0px 0px;
+}
+
+table.sides img {
+  margin-left:0px;
+  margin-right:0px;
+  clear:none;
+  display:inline;
+  max-width:450px;
+  max-height:450px;
+}
+
+
+div.film
+{
+margin:0cm;
+padding:0cm;
+}
+
+div.film video
+{
+max-width:90%;
+}
+
+iframe
+{
+width:90%;
+height:50%;
+}
+

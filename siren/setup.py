@@ -24,7 +24,7 @@ import mpl_toolkits.basemap as basemap
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.0.3'
+VERSION = '2.1.0'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -57,34 +57,15 @@ ST_FILES = ['classConnectionDialog.py',
             'toolWP.py',
             'tsne.py']
 
-#             'classEProjView.py',
-#             'classGridTable.py',
-#             'classGView.py',
-#             'classInterObjects.py',
-#             'classMapView.py',
-#             'classParaView.py',
-#             'classPreferencesDialog.py',
-#             'classProj.py',
-#             'classSiren.py',
-#             'DataWrapper.py',
-#             'factView.py',
-#             'miscDialogs.py',
-#             'toolCommMultip.py',
-#             'toolMath.py',
-#             'tsne.py']
-#ST_FILES += matplotlib.get_py2exe_datafiles()
-#ST_FILES.append((''.join('mpl_toolkits', 'basemap', 'data'), re.findall(''.join(os.path.dirname(basemap.__file__), 'data')) ))
-
 ST_MORE_FILES=['ez_setup.py']
-#ST_PACKAGES = ['wx', 'mpl_toolkits.basemap', 'reremi']
-#ST_PACKAGES = ['wx', 'mpl_toolkits', 'reremi', 'sklearn']
-ST_PACKAGES = ['wx', 'reremi', 'sklearn', 'mpl_toolkits']
+ST_PACKAGES = ['wx', 'reremi', 'grako', 'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
 DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 'LICENSE',
               'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
+DU_RESOURCES_GRAKO=[]
 DU_FILES = ['siren',
             'classConnectionDialog',
             'classEProjView',
@@ -106,24 +87,7 @@ DU_FILES = ['siren',
             'toolMath',
             'toolWP',
             'tsne']
-
-            # 'classEProjView',
-            # 'classGridTable',
-            # 'classGView',
-            # 'classInterObjects',
-            # 'classMapView',
-            # 'classParaView',
-            # 'classPreferencesDialog',
-            # 'classProj',
-            # 'classSiren',
-            # 'DataWrapper',
-            # 'factView',
-            # 'miscDialogs',
-            # 'toolCommMultip',
-            # 'toolMath',
-            # 'tsne'
-
-DU_PACKAGES = ['reremi']
+DU_PACKAGES = ['reremi', 'reremi.grako']
 
 extra_options = dict(
     name=NAME,
@@ -260,7 +224,8 @@ else:
         packages=DU_PACKAGES,
         py_modules=DU_FILES,
         package_data={'': DU_RESOURCES_SIREN,
-                      'reremi': DU_RESOURCES_REREMI},
+                      'reremi': DU_RESOURCES_REREMI,
+                      'reremi.grako': DU_RESOURCES_GRAKO},
         ))
     # Run setup
     setup(**extra_options)

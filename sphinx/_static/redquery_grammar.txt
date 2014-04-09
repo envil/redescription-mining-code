@@ -1,0 +1,15 @@
+query = disjunction | conjunction | literal ;
+conjunction = conj_item { ( "&" | :math:`"\land"` ) conj_item }+ ;
+disjunction = disj_item { ( "|" | :math:`"\lor"` ) disj_item }+ ;
+conj_item = literal | ( "(" disjunction ")" ) ;
+disj_item = literal | ( "(" conjunction ")" ) ;
+literal = categorical_literal | realvalued_literal | boolean_literal ;
+categorical_literal = ( ( "[" )? variable_name cat ( "=" | :math:"\neq" | :math:"\in" | :math:"\in" ) category ( "]" )? ) ;
+realvalued_literal = [ neg ] (  ( "[" )? [ variable_value lth ] variable_name lth variable_value ( "]" )? ) ; 
+realvalued_literal = [ neg ] (  ( "[" )? variable_value lth variable_name ( "]" )? ) ; 
+boolean_literal = [ neg ] (  ( "[" )? variable_name ( "]" )? ) ;
+variable_name = ( STRING | ?/v\d+/? ) ;
+category = (STRING | ?/\d+/? ) ;
+variable_value =  ?/[+-]?\d+([.])?\d*([Ee][-+]\d+)?/? ;
+lth = ( "<" | :math:`"\leq"` ) ;
+neg = ( "!" | :math:`"\lnot"` ) ;

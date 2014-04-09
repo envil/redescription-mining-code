@@ -1,0 +1,121 @@
+/*
+ * custom.css_t
+ * ~~~~~~~~~~~~
+ *
+ * Sphinx stylesheet -- pylons theme.
+ *
+ * :copyright: Copyright 2007-2010 by the Sphinx team, see AUTHORS.
+ * :license: BSD, see LICENSE for details.
+ *
+ */
+ 
+@import url("pyramid.css");
+ 
+/* -- page layout ----------------------------------------------------------- */
+
+/* div.related { */
+/*  width:100%; */
+/* position:fixed; */
+/* top:0px; */
+/* height:30px; */
+/* bottom-padding:200px; */
+/* } */
+
+/* div.body { */
+/* margin-top:30px; */
+/* } */
+
+
+/* div.sphinxsidebar { */
+/* margin-top:30px; */
+/* } */
+
+div.sphinxsidebar {
+    position:fixed;
+    width: 230px;
+    padding-bottom:400px;
+    margin-left: 0px;
+    font-size: 0.75em;
+    line-height: 1.5em;
+}
+
+div.admonition.tip {
+    line-height: 1.2em;
+    font-height: 0.8em;
+    font-family: "Nobile", sans-serif, monospace;
+    padding: 10px;
+    background-color: #fafafa;
+    color: #222;
+    border: 2px solid #C6C9CB;
+    margin: 1.5em 0 1.5em 0;
+    border-right-style: none;
+    border-left-style: none;
+}
+
+img {
+  max-width:900px;
+  max-height:600px;
+}
+
+img.sidel {
+    display:inline;
+    max-width:500px;
+
+}
+img.sider {
+    display:inline;
+    max-width:500px;
+}
+
+div.note {
+
+    border:2px solid #a55b19;
+    border-right-style: none;
+    border-left-style: none;
+    padding: 10px 20px 10px 60px;
+    background: #ffefc1;
+}
+
+div.sphinxsidebar ul ul {
+    margin-left: 20px;
+    list-style-image: url(listitem.png);
+}
+
+div.film video
+{
+max-width:90%;
+}
+
+div.film
+{
+margin:0cm;
+padding:0cm;
+}
+
+
+/* padding: 5px 5px; */
+/* margin: 5px 5px; */
+/* border:1px dotted #cccccc; */
+/* background-color:#efefef; */
+/* font-style:italic; */
+
+
+div.logo img {
+    width:100px;
+}
+
+div.related a {
+    color: #888;
+    text-decoration: none;
+}
+
+a, a .pre {
+    color: #888;
+    text-decoration: none;
+
+}
+
+a.headerlink {
+    color: #888;
+    text-decoration: none;
+}

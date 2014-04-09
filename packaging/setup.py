@@ -19,7 +19,7 @@ import subprocess
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.0.3'
+VERSION = '2.1.0'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -29,18 +29,10 @@ LICENSE="Apache_2.0"
 ########## DISTUTILS FILES
 DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 'LICENSE',
               'ui_confdef.xml']
-# DU_RESOURCES_SIREN=['help/*',
-#                     'commons/siren.css',
-#                     'commons/siren_icon.png',
-#                     'commons/top_tools.jpg',
-#                     'commons/bottom_map.jpg',
-#                     'commons/both_windows_comm.png',
-#                     'icons/siren_icon32x32.png',
-#                     'ABOUT', 'LICENSE', 'LICENSE_*',
-#                     'ui_confdef.xml']
 DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
+DU_RESOURCES_GRAKO=[]
 DU_FILES = [] ## ['siren', 'findFiles', 'DataWrapper', 'classGridTable', 'classMapView', 'classPreferencesDialog', 'classSiren','miscDialogs']
-DU_PACKAGES = ['siren', 'siren.reremi']
+DU_PACKAGES = ['siren', 'siren.reremi', 'siren.reremi.grako']
 
 extra_options = dict(
     name=NAME,
@@ -77,7 +69,8 @@ else:
         packages=DU_PACKAGES,
         py_modules=DU_FILES,
         package_data={'siren': DU_RESOURCES_SIREN,
-                      'siren.reremi': DU_RESOURCES_REREMI},
+                      'siren.reremi': DU_RESOURCES_REREMI,
+                      'siren.reremi.grako': DU_RESOURCES_GRAKO},
         ))
     # Run setup
     setup(**extra_options)
