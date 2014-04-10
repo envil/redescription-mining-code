@@ -434,14 +434,17 @@ class Redescription:
             tmp = "-"
             if info_key in Redescription.print_fields_details:
                 info_name, info_round, info_format = Redescription.print_fields_details[info_key]
-                if info_name in info_tmp:
-                    if type(info_round) is int:
-                        tmp = info_format % round(info_tmp[info_name], info_round)
-                    else:
-                        if type(info_tmp[info_name]) in [list, set]:
-                            tmp = info_format % (info_round.join(map(str, info_tmp[info_name])))
+                try:
+                    if info_name in info_tmp:
+                        if type(info_round) is int:
+                            tmp = info_format % round(info_tmp[info_name], info_round)
                         else:
-                            tmp = info_format % info_tmp[info_name]
+                            if type(info_tmp[info_name]) in [list, set]:
+                                tmp = info_format % (info_round.join(map(str, info_tmp[info_name])))
+                            else:
+                                tmp = info_format % info_tmp[info_name]
+                except Exception:
+                    tmp = "-"
             if with_fname:
                 info_name = info_name+":"
             else:
@@ -461,6 +464,37 @@ class Redescription:
         if suppOutput is not None:
             suppOutput.write(self.sParts.dispSupp()+'\n')
             suppOutput.flush()
+            
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def fromXML(self, node):
+        self.queries = [None, None]
+        dsi = {}
+        for query_data in node.getElementsByTagName("query"):
+            side = toolRead.getTagData(query_data, "side", int)
+            if side not in [0,1]:
+                print "Unknown side (%s)!" % side
+            else:
+                query_tmp = toolRead.getTagData(query_data, "ids_expression")
+                self.queries[side] = Query.parseApd(query_tmp)
+        supp_tmp = node.getElementsByTagName("support")
+        self.track = [tuple([0] + sorted(self.queries[0].invCols())), tuple([1] + sorted(self.queries[1].invCols()))]
+        if len(supp_tmp) == 1:
+            for child in toolRead.children(supp_tmp[0]):
+                if toolRead.isElementNode(child):
+                    supp_key = toolRead.tagName(child)
+                    supp_val = None
+                    if child.hasChildNodes():
+                        supp_val = toolRead.getValues(child, int, "row")
+                    else:
+                        supp_val = toolRead.getValue(child, float)
+                    if supp_val is not None:
+                        dsi[supp_key] = supp_val
+            self.sParts = None # SParts(None, dsi)
+            self.dict_supp_info = dsi
+        tmp_en = toolRead.getTagData(node, "status_enabled", int)
+        if tmp_en is not None:
+            self.status = tmp_en
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
     def parseHeader(string, sep="\t"):
         return [s.strip() for s in string.split(sep)]

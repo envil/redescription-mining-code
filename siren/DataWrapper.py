@@ -61,7 +61,8 @@ class DataWrapper(object):
                  findFile('ui_confdef.xml', [pref_dir])]
     #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
     # Stuff to write to plist
-    FILETYPE_VERSION = 3
+    FILETYPE_VERSION = 4
+    XML_FILETYPE_VERSION = 3
     CREATOR = 'DataWrapper'
 
     def __init__(self, logger=None, package_filename = None):
@@ -329,9 +330,6 @@ class DataWrapper(object):
             self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "error", "DW")
             self._stopMessage()
             raise
-        else:
-            self.isChanged = False
-            self.package_filename = package_filename
         finally:
             self._stopMessage('loading')
 
@@ -343,31 +341,6 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         return data
-
-    # def _readDataFromMulFiles(self, data_filenames, names_filenames, coo_filename, entities_filename=None):
-    #     ### WARNING THIS EXPECTS FILENAMES, NOT FILE POINTERS
-    #     try:
-            
-    #         filenames = list(data_filenames)
-    #         if names_filenames is None:
-    #             filenames.extend([None, None])
-    #         else:
-    #             filenames.extend(names_filenames)
-    #         if coo_filename is not None or entities_filename is not None:
-    #             filenames.extend([coo_filename, entities_filename])
-    #         data = Data(filenames, "multiple")
-    #     except Exception:
-    #         self._stopMessage()
-    #         raise
-    #     return data
-
-    # def _readDataFromXMLFile(self, filename):
-    #     if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
-    #         filep = filename
-    #     else:
-    #         filep = open(filename, mode='r')
-    #     return Data(filep, "xml")
-
 
     def _readRedescriptionsFromFile(self, filename, data=None):
         if data is None:
@@ -398,6 +371,7 @@ class DataWrapper(object):
     def _readPackageFromFile(self, filename):
         """Loads a package"""
         # TODO: Check that file exists
+        ischanged = False
         if not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
 
@@ -418,75 +392,176 @@ class DataWrapper(object):
             # if plist['filetype_version'] > self.FILETYPE_VERSION:
             #     self.logger.printL(1,"Too new filetype", "error", "DW")
             #     raise Error('Too new filetype')
-            if plist['filetype_version'] != self.FILETYPE_VERSION:
-                self.logger.printL(1,"Filetype does not match current, reading might fail!", "error", "DW")
 
-            package_name = plist['package_name']
-
-            # Load data
-            if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
-                try:
-                    fdLHS = package.open(plist['data_LHS_filename'], 'r')
-                    fdRHS = package.open(plist['data_RHS_filename'], 'r')
-                    data = self._readDataFromCSVFiles([fdLHS, fdRHS])
-                except Exception as e:
-                    print e
-                    self._stopMessage()
-                    raise
-                finally:
-                    fdLHS.close()
-                    fdRHS.close()
-                    
-            # Load redescriptions
-            if 'redescriptions_filename' in plist:
-                try:
-                    fd = package.open(plist['redescriptions_filename'], 'r')
-                    reds, rshowids = self._readRedescriptionsFromFile(fd, data)
-                except Exception:
-                    self._stopMessage()
-                    raise
-                finally:
-                    fd.close()
-
-            # Load preferences
-            if 'preferences_filename' in plist:
-                try:
-                    fd = package.open(plist['preferences_filename'], 'r')
-                    preferences = self._readPreferencesFromFile(fd)
-                except Exception:
-                    self._stopMessage()
-                    raise
-                finally:
-                    fd.close()
+            ################# START FOR BACKWARD COMPATIBILITY WITH XML
+            if plist['filetype_version'] <= self.XML_FILETYPE_VERSION:
+                old_filename = filename
+                parts = filename.split(".")
+                if len(parts) == 1:
+                    filename += "_new"
+                elif len(parts) > 1:
+                    filename = ".".join(parts[:-1]) + "_new."+ parts[-1]
+                print filename
+                self.logger.printL(1,"Deprecated filetype, will be saved in current filetype as %s instead of %s!" % (filename, old_filename), "error", "DW")
+                package_name = plist['package_name']
+                ischanged = True
+                data, reds, rshowids, preferences = self.loadElementsPackageOLD(package, plist)
+            ################# END FOR BACKWARD COMPATIBILITY WITH XML
+            else:
+                if plist['filetype_version'] != self.FILETYPE_VERSION:
+                    self.logger.printL(1,"Filetype does not match current, reading might fail!", "error", "DW")
+                package_name = plist['package_name']
+                data, reds, rshowids, preferences = self.loadElementsPackage(package, plist)
         except Exception:
             self._stopMessage()
             raise
         finally:
             package.close()
 
-
         # Closes with ZipFile
         # Move data class variables
         self.package_name = package_name
-        if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
+        if data is not None:
             self.setData(data)
         else:
             self.data = None
-        if 'redescriptions_filename' in plist:
+        if reds is not None:
             self.reds = reds
             self.rshowids = rshowids
         else:
             self.reds = Batch([])
             self.rshowids = ICList([], True)
-        if 'preferences_filename' in plist:
+        if preferences:
             self.preferences = preferences
         else:
             self.preferences = self.pm.getDefaultTriplets()
         self.package_filename = os.path.abspath(filename)
-        self.isChanged = False
+        self.isChanged = ischanged
         self.isFromPackage = True
 ##        print "Done Loading"
 
+    def loadElementsPackage(self, package, plist):
+        data, reds, rshowids, preferences = None, None, None, None
+        # Load data
+        if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
+            try:
+                fdLHS = package.open(plist['data_LHS_filename'], 'r')
+                fdRHS = package.open(plist['data_RHS_filename'], 'r')
+                data = self._readDataFromCSVFiles([fdLHS, fdRHS])
+            except Exception as e:
+                print e
+                self._stopMessage()
+                raise
+            finally:
+                fdLHS.close()
+                fdRHS.close()
+
+        # Load redescriptions
+        if 'redescriptions_filename' in plist:
+            try:
+                fd = package.open(plist['redescriptions_filename'], 'r')
+                reds, rshowids = self._readRedescriptionsFromFile(fd, data)
+            except Exception:
+                self._stopMessage()
+                raise
+            finally:
+                fd.close()
+
+        # Load preferences
+        if 'preferences_filename' in plist:
+            try:
+                fd = package.open(plist['preferences_filename'], 'r')
+                preferences = self._readPreferencesFromFile(fd)
+            except Exception:
+                self._stopMessage()
+                raise
+            finally:
+                fd.close()
+        return data, reds, rshowids, preferences
+
+
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def loadElementsPackageOLD(self, package, plist):
+        data, reds, rshowids, preferences = None, None, None, None
+        # Load data
+        if 'data_filename' in plist:
+            try:
+                fd = package.open(plist['data_filename'], 'r')
+                data = self._readDataFromXMLFile(fd)
+            except Exception as e:
+                print e
+                self._stopMessage()
+                raise
+            finally:
+                fd.close()
+
+        # Load redescriptions
+        if 'redescriptions_filename' in plist:
+            try:
+                fd = package.open(plist['redescriptions_filename'], 'r')
+                reds, rshowids = self._readRedescriptionsFromXML(fd, data)
+            except Exception:
+                self._stopMessage()
+                raise
+            finally:
+                fd.close()
+
+        # Load preferences
+        if 'preferences_filename' in plist:
+            try:
+                fd = package.open(plist['preferences_filename'], 'r')
+                preferences = self._readPreferencesFromFile(fd)
+            except Exception:
+                self._stopMessage()
+                raise
+            finally:
+                fd.close()
+        return data, reds, rshowids, preferences
+
+
+    def _readDataFromXMLFile(self, filename):
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+            filep = filename
+        else:
+            filep = open(filename, mode='r')
+        return Data.readDataFromXMLFile(filep)
+
+
+    def _readRedescriptionsFromXML(self, filename, data=None):
+        if data is None:
+            if self.data is None:
+                self._stopMessage()
+                raise Exception("Cannot load redescriptions if data is not loaded")
+            else:
+                data = self.data
+        reds = Batch([])
+        show_ids = None
+
+        if isinstance(filename, file) or isinstance(filename, zipfile.ZipExtFile):
+            filep = filename
+        else:
+            filep = open(filename, mode='r')
+
+        doc = toolRead.parseXML(filep)
+        if doc is not None:
+            tmpreds = doc.getElementsByTagName("redescriptions")
+            if len(tmpreds) == 1:
+                reds_node = tmpreds[0]
+                for redx in reds_node.getElementsByTagName("redescription"):
+                    tmp = Redescription()
+                    tmp.fromXML(redx)
+                    tmp.recompute(data)
+                    reds.append(tmp)
+                tmpsi = reds_node.getElementsByTagName("showing_ids")
+                if len(tmpsi) == 1:
+                    show_ids = toolRead.getValues(tmpsi[0], int)
+                    if len(show_ids) == 0 or min(show_ids) < 0 or max(show_ids) >= len(reds):
+                        show_ids = None
+        if show_ids is None:
+            show_ids = range(len(reds))
+        rshowids = ICList(show_ids, True)
+        return reds, rshowids
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
     def savePackageToFile(self, filename, suffix='.siren'):
         try:
@@ -739,7 +814,11 @@ class DataWrapper(object):
 # def main():
 #     # print "UNCOMMENT"
 #     # pdb.set_trace()
-#     DataWrapper(None,"/home/galbrun/redescriptors/sandbox/runs/de_basic/de2.siren")
+#     dw = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja.siren")
+#     dw.savePackage()
+#     dw_new = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja_new.siren")
+#     for red in dw_new.reds:
+#         print red
 
 # if __name__ == '__main__':
 #     main()

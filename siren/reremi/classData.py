@@ -9,6 +9,9 @@ from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal, Query
 from classRedescription import Redescription
 from classSParts import SSetts
 from toolICList import ICList
+################# START FOR BACKWARD COMPATIBILITY WITH XML
+import toolRead
+################# END FOR BACKWARD COMPATIBILITY WITH XML
 import csv_reader
 import pdb
 
@@ -195,6 +198,17 @@ class ColM(object):
     def usable(self, min_in=-1, min_out=-1, checkable=True):
         return self.suppInBounds(min_in, min_out) and (not checkable or self.getEnabled())
 
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def fromXML(self, node):
+        self.name = toolRead.getTagData(node, "name")
+        self.N = toolRead.getTagData(node, "nb_entities", int)
+        tmp_en = toolRead.getTagData(node, "status_enabled", int)
+        if tmp_en is not None:
+            self.enabled = tmp_en
+        tmpm = toolRead.getTagData(node, "missing")
+        if tmpm is not None:
+            self.missing = set(map(int, re.split(Data.separator_str, tmpm.strip())))
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
 class BoolColM(ColM):
     type_id = BoolTerm.type_id
@@ -343,6 +357,15 @@ class BoolColM(ColM):
         if self.infofull["out"][0] != min_out:
             self.infofull["out"]= (min_out, self.lFalse() >= min_out)
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
+
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def fromXML(self, node):
+        ColM.fromXML(self, node)
+        tmp_txt = toolRead.getTagData(node, "rows")
+        if tmp_txt is not None and len(tmp_txt.strip()) > 0:
+            self.hold = set(map(int, re.split(Data.separator_str, tmp_txt.strip())))
+        self.missing -= self.hold
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
     
 class CatColM(ColM):
     type_id = CatTerm.type_id
@@ -497,6 +520,26 @@ class CatColM(ColM):
         if self.infofull["out"][0] != min_out:
             self.infofull["out"]= (min_out, self.nbRows() - self.cards[0][1] >= min_out)
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
+
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def fromXML(self, node):
+        ColM.fromXML(self, node)
+        self.sCats = {}
+        count_miss = self.N
+        tmp_txt = toolRead.getTagData(node, "values")
+        if tmp_txt is not None:
+            rows = set()
+            row_id = 0
+            for cat in re.split(Data.separator_str, tmp_txt.strip()):
+                while row_id in self.missing:
+                    row_id+=1
+                self.sCats.setdefault(cat, set()).add(row_id)
+                count_miss -= 1
+                row_id += 1
+            if count_miss != len(self.missing):
+                raise DataError("Error reading real values, not the expected number of values!")
+        self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1]) 
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
     
 class NumColM(ColM):
     type_id = NumTerm.type_id
@@ -963,6 +1006,45 @@ class NumColM(ColM):
             n = neg
         return Literal(n, NumTerm(self.getId(), lowb, upb))
 
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def fromXML(self, node):
+        ColM.fromXML(self, node)
+        self.buk = None
+        self.colbuk = None
+        self.max_agg = None
+        self.prec = None
+        miss = set()
+        self.sVals = []
+        store_type = toolRead.getTagData(node, "store_type")
+        if store_type == 'dense':
+            i = 0
+            for v in re.split(Data.separator_str, toolRead.getTagData(node, "values")):
+                while i in self.missing:
+                    i+=1
+                val, self.prec = NumColM.parseVal(v, i, self.sVals, miss, self.prec)
+                i+=1
+        elif store_type == 'sparse':
+            tmp_txt = toolRead.getTagData(node, "values").strip()
+            if len(tmp_txt) > 0:
+                for strev in  re.split(Data.separator_str, tmp_txt):
+                    parts = strev.split(":")
+                    val, self.prec = NumColM.parseVal(parts[1], int(parts[0]), self.sVals, miss, self.prec)
+        if len(self.sVals) > 0:
+            tmp_hold = set(zip(*self.sVals)[1])
+        else:
+            tmp_hold = set()
+        if len(tmp_hold) != len(self.sVals):
+            self.sVals = []
+            tmp_hold = set()
+            raise DataError("Error reading real values, multiple values for a row!")
+
+        if len(miss) > 0:
+            raise DataError("Error reading real values, some values could not be parsed!")
+
+        self.sVals.sort()
+        self.setMode()
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
+        
 class Data:
 
     NA_str = "NA"
@@ -1350,7 +1432,72 @@ class Data:
             self.coords = None
             raise DataError('Number of coordinates does not match number of entities!')
 
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    def readDataFromXMLFile(filename):
+        (cols, N, coord, rnames) = ([[],[]], 0, None, None)
+        single_dataset = False
+        try:
+            try:
+                doc = toolRead.parseXML(filename)
+                dtmp = doc.getElementsByTagName("data")
+            except AttributeError as inst:
+                raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
+            else:
+                if len(dtmp) != 1:
+                    raise DataError("%s is not a valid data file! (%s)" % (filename, inst))
+                N = toolRead.getTagData(dtmp[0], "nb_entities", int)
+                tsd = toolRead.getTagData(dtmp[0], "single_dataset", int)
+                if tsd == 1:
+                    single_dataset = True
+                for side_data in doc.getElementsByTagName("side"):
+                    side = toolRead.getTagData(side_data, "name", int)
+                    if side not in [0,1]:
+                        print "Unknown side (%s)!" % side
+                    else:
+                        nb_vars = toolRead.getTagData(side_data, "nb_variables", int)
+                        for var_tmp in side_data.getElementsByTagName("variable"):
+                            type_id = toolRead.getTagData(var_tmp, "type_id", int)
+                            if type_id >= len(Data.var_types):
+                                print "Unknown variable type (%d)!" % type_id
+                            else:
+                                col = Data.var_types[type_id]()
+                                col.fromXML(var_tmp)
+                                if col is not None and col.N == N:
+                                    col.setId(len(cols[side]))
+                                    col.side = side
+                                    cols[side].append(col)
+                                    if single_dataset:
+                                        ocol = col.subsetCol()
+                                        ocol.setId(len(cols[1-side]))
+                                        ocol.side = 1-side
+                                        cols[1-side].append(ocol)
 
+
+                    if nb_vars != len(cols[side]):
+                        print "Number of variables found don't match expectations (%d ~ %d)!" % (nb_vars, len(cols[side]))
+                ctmp = doc.getElementsByTagName("coordinates")
+                if len(ctmp) == 1:
+                    coord = []
+                    for cotmp in ctmp[0].getElementsByTagName("coordinate"):
+                        tmp_txt = toolRead.getTagData(cotmp, "values")
+                        if tmp_txt is not None:
+                            coord.append([map(float, p.strip(":").split(":")) for p in re.split(Data.separator_str, tmp_txt.strip())])
+                    if len(coord) != 2 or len(coord[0]) != len(coord[1]) or len(coord[0]) != N:
+                        coord = None
+                    else:
+                        coord = np.array(coord)
+                ctmp = doc.getElementsByTagName("rnames")
+                if len(ctmp) == 1:
+                    rnames = [v.strip() for v in toolRead.getValues(ctmp[0], str, "rname")]
+                    if len(rnames) != N:
+                        rnames = None
+        except DataError:
+            cols, N, coords, rnames = [[],[]], 0, None, None
+            raise
+        return Data(cols, N, coord, rnames, single_dataset)
+    readDataFromXMLFile = staticmethod(readDataFromXMLFile)
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
+    
 ############################################################################
 ############## READING METHODS
 ############################################################################
@@ -1470,6 +1617,9 @@ def getDenseArray(vect):
         # return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
     else:
         return np.array([vect])
+
+
+
 
 def main():
     # print "UNCOMMENT"
