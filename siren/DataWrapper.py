@@ -254,15 +254,15 @@ class DataWrapper(object):
         try:
             tmp_data = self._readDataFromCSVFiles(data_filenames)
         except DataError as details:
-            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "dw_error", "DW")
             self._stopMessage()
             raise
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
-            self.logger.printL(1,"Unexpected error while importing data from CSV files!\n%s" %  sys.exc_info()[1], "error", "DW")
+            self.logger.printL(1,"Unexpected error while importing data from CSV files!\n%s" %  sys.exc_info()[1], "dw_error", "DW")
             self._stopMessage()
             raise
         else:
@@ -279,11 +279,11 @@ class DataWrapper(object):
         try:
             tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
-            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "error", "DW")
+            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "dw_error", "DW")
             self._stopMessage()
             raise
         else:
@@ -300,11 +300,11 @@ class DataWrapper(object):
  
             tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
-            self.logger.printL(1,"Unexpected error while importing preferences from file %s!\n%s" % (preferences_filename, sys.exc_info()[1]), "error", "DW")
+            self.logger.printL(1,"Unexpected error while importing preferences from file %s!\n%s" % (preferences_filename, sys.exc_info()[1]), "dw_error", "DW")
             self._stopMessage()
             raise
         else:
@@ -319,15 +319,15 @@ class DataWrapper(object):
         try:
             self._readPackageFromFile(package_filename)
         except DataError as details:
-            self.logger.printL(1,"Problem reading files.\n%s" % details, "error", "DW")
+            self.logger.printL(1,"Problem reading files.\n%s" % details, "dw_error", "DW")
             self._stopMessage()
             raise
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
-            self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "error", "DW")
+            self.logger.printL(1,"Unexpected error while importing package from file %s!\n%s" % (package_filename, sys.exc_info()[1]), "dw_error", "DW")
             self._stopMessage()
             raise
         finally:
@@ -390,7 +390,7 @@ class DataWrapper(object):
                 raise
 
             # if plist['filetype_version'] > self.FILETYPE_VERSION:
-            #     self.logger.printL(1,"Too new filetype", "error", "DW")
+            #     self.logger.printL(1,"Too new filetype", "dw_error", "DW")
             #     raise Error('Too new filetype')
 
             ################# START FOR BACKWARD COMPATIBILITY WITH XML
@@ -402,14 +402,14 @@ class DataWrapper(object):
                 elif len(parts) > 1:
                     filename = ".".join(parts[:-1]) + "_new."+ parts[-1]
                 print filename
-                self.logger.printL(1,"Deprecated filetype, will be saved in current filetype as %s instead of %s!" % (filename, old_filename), "error", "DW")
+                self.logger.printL(1,"Deprecated filetype, will be saved in current filetype as %s instead of %s!" % (filename, old_filename), "dw_error", "DW")
                 package_name = plist['package_name']
                 ischanged = True
                 data, reds, rshowids, preferences = self.loadElementsPackageOLD(package, plist)
             ################# END FOR BACKWARD COMPATIBILITY WITH XML
             else:
                 if plist['filetype_version'] != self.FILETYPE_VERSION:
-                    self.logger.printL(1,"Filetype does not match current, reading might fail!", "error", "DW")
+                    self.logger.printL(1,"Filetype does not match current, reading might fail!", "dw_error", "DW")
                 package_name = plist['package_name']
                 data, reds, rshowids, preferences = self.loadElementsPackage(package, plist)
         except Exception:
@@ -567,15 +567,15 @@ class DataWrapper(object):
         try:
             self._writePackageToFile(filename, suffix)
         except DataError as details:
-            self.logger.printL(1,"Problem writing package.\n%s" % details, "error", "DW")
+            self.logger.printL(1,"Problem writing package.\n%s" % details, "dw_error", "DW")
             self._stopMessage()
             raise
         except IOError as arg:
-            self.logger.printL(1,"Cannot open file for package %s" % filename, "error", "DW")
+            self.logger.printL(1,"Cannot open file for package %s" % filename, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
-            self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "error", "DW")
+            self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "dw_error", "DW")
             self._stopMessage()
             raise
 
@@ -597,7 +597,7 @@ class DataWrapper(object):
         try:
             f = open(os.path.abspath(filename + suffix), 'w')
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "error", "DW")
+            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
             self._stopMessage()
             return
         else:
@@ -806,7 +806,7 @@ class DataWrapper(object):
     #         try:
     #             self.polys = make_polys.makePolys(self.pdp, boundaries)
     #         except Exception as e:
-    #             self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "error", "DW")
+    #             self.logger.printL(1,"Failed drawing polygons.\nFall back to dots...", "dw_error", "DW")
     #             self.polys = None
     #     return self.polys
 

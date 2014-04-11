@@ -16,6 +16,7 @@ def recurse_numeric(b, function, args={}):
     else:
         return function(b, **args)
 
+### WARNING THIS DOES NOT RECURSE ON NEGATIONS
 def recurse_list(b, function, args={}):
     if type(b) is list:
         out = []
@@ -26,10 +27,10 @@ def recurse_list(b, function, args={}):
             tou = recurse_list(bb, function, nargs)
             if type(tou) is list:
                 out.extend(tou)
-            else:
+            elif tou is not None:
                 out.append(tou)
         return out
-    else:
+    elif isinstance(b, Literal):
         return function(b, **args)
 
 def recurse_deep(b, function, args={}):
@@ -39,7 +40,9 @@ def recurse_deep(b, function, args={}):
             nargs = dict(args)
             if "trace" in args:
                 nargs["trace"] = [bi]+args["trace"]
-            out.append(recurse_deep(bb, function, nargs))
+            tmp = recurse_deep(bb, function, nargs)
+            if tmp is not None:
+                out.append(tmp)
         return out
     else:
         return function(b, **args)
@@ -191,6 +194,9 @@ class Neg(object):
             self.neg = -1
         else:
             self.neg = 1
+
+    def copy(self):
+        return Neg(self.neg)
 
     def boolVal(self):
         return self.neg < 0
@@ -717,7 +723,7 @@ class Query:
             self.buk = []
 
     def __len__(self):
-        return recurse_numeric(self.buk, function =lambda x: 1)
+        return recurse_numeric(self.buk, function =lambda x: int(isinstance(x, Literal)))
 
     def __hash__(self):
         return hash(self.op) + recurse_numeric(self.buk, function =lambda x, trace: hash(t)+sum(trace), args = {"trace": []})
@@ -741,9 +747,43 @@ class Query:
         c.buk = recurse_deep(self.buk, function =lambda x: x.copy())
         return c
 
+    def push_negation(self):
+        def evl(b, flip=False):
+            if isinstance(b, Literal):
+                if flip:
+                    b.flip()
+                return (False, b) 
+            else:
+                now_flip = False
+                neg = [bb for bb in b if isinstance(bb, Neg)]
+                if len(neg) == 1:
+                    b.remove(neg[0])
+                    now_flip = True
+                vs = []
+                for bb in b:
+                    sfliped, res = evl(bb, now_flip ^ flip)
+                    if sfliped:
+                        vs.extend(res)
+                    else:
+                        vs.append(res)
+                return (now_flip, vs)
+        sfliped, res =  evl(self.buk, False)
+        self.buk = res
+        if sfliped:
+            self.op.flip()
+        # print self
+        # pdb.set_trace()
+        # print "-------"
+
     def negate(self):
-        self.op.flip()
-        recurse_list(self.buk, function =lambda x: x.flip())
+        neg = [bb for bb in self.buk if isinstance(bb, Neg)]
+        if len(neg) == 1:
+            self.buk.remove(neg[0])
+        else:
+            self.buk.insert(0, Neg(True))
+        self.push_negation()
+        # self.op.flip()
+        # recurse_list(self.buk, function =lambda x: x.flip())
             
     def __cmp__(self, y):
         return self.compare(y)
@@ -837,11 +877,12 @@ class Query:
             else:
                 vs = [evl(bb, op.other(), config) for bb in b]
                 if op.isOr():
-                    return sum(vs) > 0
+                    return  sum(vs) > 0
                 else:
                     return reduce(operator.mul, vs) > 0
-
-        return evl(self.buk, self.op, config)
+        cp = self.copy()
+        cp.push_negation()
+        return evl(cp.buk, cp.op, config)
     
     ## return the support associated to a query
     def recompute(self, side, data=None, restrict=None):
@@ -855,7 +896,9 @@ class Query:
         if len(self) == 0 or data==None:
             return (set(), set())
         else:
-            sm = evl(self.buk, self.op, side, data) 
+            cp = self.copy()
+            cp.push_negation()
+            sm = evl(cp.buk, cp.op, side, data) 
             if restrict is None:
                 return sm
             else:
@@ -877,7 +920,9 @@ class Query:
         elif len(self) == 0 :
             pr = 1
         else:
-            pr = evl(self.buk, self.op, side, data, restrict)
+            cp = self.copy()
+            cp.push_negation()
+            pr = evl(cp.buk, cp.op, side, data, restrict)
         return pr
 
     def probaME(self, dbPr=None, side=None, epsilon=0):
@@ -893,7 +938,9 @@ class Query:
         elif len(self) == 0 :
             pr = 1
         else:
-            pr = evl(self.buk, self.op, dbPr, side, epsilon)
+            cp = self.copy()
+            cp.push_negation()
+            pr = evl(cp.buk, cp.op, dbPr, side, epsilon)
         return pr
 
     #### RESORT TODO FOR DEBUGGING
@@ -921,7 +968,7 @@ class Query:
             for bb in b:
                 if isinstance(bb, Literal):
                     lits.append(bb)
-                else:
+                elif not isinstance(bb, Neg):
                     evl(bb, lits)
         lits = []
         evl(self.buk, lits)
@@ -935,6 +982,8 @@ class Query:
             b = self.buk
         if isinstance(b, Literal):
             return (b.col(), b)
+        elif isinstance(b, Neg):
+            return (-1, b)
         else:
             vs = [self.reorderedLits(bb) for bb in b]
             vs.sort(key=lambda x: x[0])
@@ -947,13 +996,20 @@ class Query:
         def evl(b, op, names, lenIndex, style):
             if isinstance(b, Literal):
                 return b.__getattribute__("disp"+style)(names)
+            if isinstance(b, Neg):
+                return "!NEG!"
             else:
                 vs = [evl(bb, op.other(), names, lenIndex, style) for bb in b]
                 if len(vs) == 1:
                     return vs[0]
                 else:
                     jstr = " %s " % op.__getattribute__("disp"+style)()
-                    return "( "+ jstr.join(vs) + " )"
+                    pref = "( "
+                    suff = " )"
+                    if "!NEG!" in vs:
+                        vs.remove("!NEG!")
+                        pref = Neg(True).__getattribute__("disp"+style)() + "( "
+                    return pref + jstr.join(vs) + suff
 
         if len(self) == 0 :
             if style == "":
@@ -966,7 +1022,13 @@ class Query:
                 return vs[0]
             else:
                 jstr = " %s " % self.op.__getattribute__("disp"+style)()
-                return jstr.join(vs)
+                pref = ""
+                suff = ""
+                if "!NEG!" in vs:
+                    vs.remove("!NEG!")
+                    pref = Neg(True).__getattribute__("disp"+style)() + "( "
+                    suff = " )"
+                return pref + jstr.join(vs) + suff
             #### old code to write the query justified in length lenField
             #### string.ljust(qstr, lenField)[:lenField]
 
@@ -1030,6 +1092,8 @@ class QuerySemantics(object):
             OR = True
         elif "literal" in ast:
             buk = ast["literal"].values()[0]
+        if "mass_neg" in ast:
+            buk.insert(0,Neg(True))
         return Query(OR, buk)
 
     def conjunction(self, ast):
@@ -1051,13 +1115,20 @@ class QuerySemantics(object):
         return tmp
 
     def conj_item(self, ast):
+        if "mass_neg" in ast.keys():
+            del ast["mass_neg"]
+            return [Neg(True)]+ast.values()[0]
         return ast.values()[0]
 
     def disj_item(self, ast):
+        if "mass_neg" in ast.keys():
+            del ast["mass_neg"]
+            return [Neg(True)]+ast.values()[0]
         return ast.values()[0]
 
     def categorical_literal(self, ast):
-        return [Literal("cat_false" in ast.get("cat_test", {}), CatTerm(self.parse_vname(ast.get("variable_name")), ast.get("category")))]
+        return [Literal(("neg" in ast) ^ ("cat_false" in ast.get("cat_test", {})),
+                        CatTerm(self.parse_vname(ast.get("variable_name")), ast.get("category")))]
 
     def realvalued_literal(self, ast):
         return [Literal("neg" in ast, NumTerm(self.parse_vname(ast.get("variable_name")),
@@ -1080,6 +1151,8 @@ class QuerySemantics(object):
         elif self.names is not None and vname in self.names:
             return self.names.index(vname)
         else:
+            print vname
+            pdb.set_trace()
             raise Exception("No variables names provided when needed!")
 
 if __name__ == '__main__':
@@ -1092,23 +1165,30 @@ if __name__ == '__main__':
     qsRHS = QuerySemantics(data.getNames(1))
     parser = RedQueryParser(parseinfo=False)
     
-    with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
+    with codecs.open("../../bazar/queries0.txt", encoding='utf-8', mode='r') as f:
         for line in f:
             if len(line.strip().split("\t")) >= 2:
-                tmpLHS = Query.parse(line.strip().split("\t")[0], data.getNames(0))
-                tmpLHSN = Query.parse(line.strip().split("\t")[0], data.getNames(0))
+                print line.strip()
                 resLHS = parser.parse(line.strip().split("\t")[0], "query", semantics=qsLHS)
                 resRHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsRHS)
-                resLHS.recompute(0, data)
-                print resLHS
-                print len(resLHS)
+                #print "----------"
+                print "ORG   :", resLHS
+                # cp = resLHS.copy()
+                # resLHS.push_negation()
+                # print "COPY  :", cp
+                # print "PUSHED:", resLHS
+                # cp.negate()
+                # print "NEG   :", cp
+                print resLHS.recompute(0, data)
+                print resRHS.recompute(1, data)
                 pdb.set_trace()
-                print resLHS.listLiterals()
+                # print len(resLHS)
+                # print resLHS.listLiterals()
                 # tmp = resLHS.copy()
                 # print tmp
                 # tmp.negate()
                 # print tmp
                 # print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
                 # print resLHS.makeIndexesNew('%(buk)s:%(col)i:')
-                resLHS.reorderLits()
-                print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
+                # resLHS.reorderLits()
+                # print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")

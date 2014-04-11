@@ -1268,8 +1268,8 @@ class Data:
         if details and len(rids) > 0:
             header.append(csv_reader.IDENTIFIERS[0])
         if details and self.isGeospatial():
-            header.append(csv_reader.LATITUDE[0])
             header.append(csv_reader.LONGITUDE[0])
+            header.append(csv_reader.LATITUDE[0])
         for cid, col in enumerate(self.cols[side]):
             col.getVector()
             if len(header) > 0 or len(cids) > 0:
@@ -1299,8 +1299,8 @@ class Data:
             
         if details and self.isGeospatial():
             for n in range(self.N):
-                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LATITUDE[0], ":".join(map(str,  self.coords[0][n]))])
-                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LONGITUDE[0], ":".join(map(str,  self.coords[1][n]))])
+                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LONGITUDE[0], ":".join(map(str,  self.coords[0][n]))])
+                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LATITUDE[0], ":".join(map(str,  self.coords[1][n]))])
 
         fill = False
         if details and len(rids) > 0 and not inline:

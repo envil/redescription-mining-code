@@ -12,7 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '14.091.23.21.44'
+__version__ = '14.101.13.41.34'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -48,7 +48,32 @@ class RedQueryParser(Parser):
             with self._option():
                 self._literal_()
                 self.ast['literal'] = self.last_node
+            with self._option():
+                self._neg_()
+                self.ast['mass_neg'] = self.last_node
+                self._op_parenthesis_()
+                self._conjunction_()
+                self.ast['conjunction'] = self.last_node
+                self._cl_parenthesis_()
+            with self._option():
+                self._neg_()
+                self.ast['mass_neg'] = self.last_node
+                self._op_parenthesis_()
+                self._disjunction_()
+                self.ast['disjunction'] = self.last_node
+                self._cl_parenthesis_()
             self._error('no available options')
+
+    @rule_def
+    def _disjunction_(self):
+        self._disj_item_()
+        self.ast.add_list('@', self.last_node)
+        def block1():
+            self._disj_op_()
+            self._cut()
+            self._disj_item_()
+            self.ast.add_list('@', self.last_node)
+        self._positive_closure(block1)
 
     @rule_def
     def _conjunction_(self):
@@ -61,14 +86,20 @@ class RedQueryParser(Parser):
         self._positive_closure(block1)
 
     @rule_def
-    def _disjunction_(self):
-        self._disj_item_()
-        self.ast.add_list('@', self.last_node)
-        def block1():
-            self._disj_op_()
-            self._disj_item_()
-            self.ast.add_list('@', self.last_node)
-        self._positive_closure(block1)
+    def _disj_item_(self):
+        with self._choice():
+            with self._option():
+                self._literal_()
+            with self._option():
+                with self._group():
+                    with self._optional():
+                        self._neg_()
+                        self.ast['mass_neg'] = self.last_node
+                    self._op_parenthesis_()
+                    self._conjunction_()
+                    self.ast['conjunction'] = self.last_node
+                    self._cl_parenthesis_()
+            self._error('no available options')
 
     @rule_def
     def _conj_item_(self):
@@ -77,22 +108,12 @@ class RedQueryParser(Parser):
                 self._literal_()
             with self._option():
                 with self._group():
+                    with self._optional():
+                        self._neg_()
+                        self.ast['mass_neg'] = self.last_node
                     self._op_parenthesis_()
                     self._disjunction_()
                     self.ast['disjunction'] = self.last_node
-                    self._cl_parenthesis_()
-            self._error('no available options')
-
-    @rule_def
-    def _disj_item_(self):
-        with self._choice():
-            with self._option():
-                self._literal_()
-            with self._option():
-                with self._group():
-                    self._op_parenthesis_()
-                    self._conjunction_()
-                    self.ast['conjunction'] = self.last_node
                     self._cl_parenthesis_()
             self._error('no available options')
 
@@ -133,6 +154,28 @@ class RedQueryParser(Parser):
                     self._cut()
                     self._category_()
                     self.ast['category'] = self.last_node
+            with self._option():
+                self._neg_()
+                self.ast['neg'] = self.last_node
+                with self._group():
+                    self._op_braket_()
+                    self._variable_name_()
+                    self.ast['variable_name'] = self.last_node
+                    self._cat_true_()
+                    self._cut()
+                    self._category_()
+                    self.ast['category'] = self.last_node
+                    self._cl_braket_()
+            with self._option():
+                self._neg_()
+                self.ast['neg'] = self.last_node
+                with self._group():
+                    self._variable_name_()
+                    self.ast['variable_name'] = self.last_node
+                    self._cat_true_()
+                    self._cut()
+                    self._category_()
+                    self.ast['category'] = self.last_node
             self._error('no available options')
 
     @rule_def
@@ -161,12 +204,33 @@ class RedQueryParser(Parser):
                                     self.ast['upper_bound'] = self.last_node
                             with self._option():
                                 with self._group():
+                                    with self._optional():
+                                        self._variable_value_()
+                                        self.ast['upper_bound'] = self.last_node
+                                        self._gth_()
+                                        self._cut()
                                     self._variable_name_()
                                     self.ast['variable_name'] = self.last_node
-                                    self._lth_()
+                                    self._gth_()
                                     self._cut()
                                     self._variable_value_()
+                                    self.ast['lower_bound'] = self.last_node
+                            with self._option():
+                                with self._group():
+                                    self._variable_value_()
+                                    self.ast['lower_bound'] = self.last_node
+                                    self._lth_()
+                                    self._cut()
+                                    self._variable_name_()
+                                    self.ast['variable_name'] = self.last_node
+                            with self._option():
+                                with self._group():
+                                    self._variable_value_()
                                     self.ast['upper_bound'] = self.last_node
+                                    self._gth_()
+                                    self._cut()
+                                    self._variable_name_()
+                                    self.ast['variable_name'] = self.last_node
                             self._error('no available options')
                     self._cl_braket_()
             with self._option():
@@ -190,12 +254,33 @@ class RedQueryParser(Parser):
                                 self.ast['upper_bound'] = self.last_node
                         with self._option():
                             with self._group():
+                                with self._optional():
+                                    self._variable_value_()
+                                    self.ast['upper_bound'] = self.last_node
+                                    self._gth_()
+                                    self._cut()
                                 self._variable_name_()
                                 self.ast['variable_name'] = self.last_node
-                                self._lth_()
+                                self._gth_()
                                 self._cut()
                                 self._variable_value_()
+                                self.ast['lower_bound'] = self.last_node
+                        with self._option():
+                            with self._group():
+                                self._variable_value_()
+                                self.ast['lower_bound'] = self.last_node
+                                self._lth_()
+                                self._cut()
+                                self._variable_name_()
+                                self.ast['variable_name'] = self.last_node
+                        with self._option():
+                            with self._group():
+                                self._variable_value_()
                                 self.ast['upper_bound'] = self.last_node
+                                self._gth_()
+                                self._cut()
+                                self._variable_name_()
+                                self.ast['variable_name'] = self.last_node
                         self._error('no available options')
             self._error('no available options')
 
@@ -250,31 +335,7 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _STRING_(self):
-        self._pattern(r'[^<=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2208\u2209\u2260\u00ac \d]+([^<=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2208\u2209\u2260\u00ac]*[^<=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2208\u2209\u2260\u00ac ])?')
-
-    @rule_def
-    def _special_char_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._parenthesis_()
-                with self._option():
-                    self._braket_()
-                with self._option():
-                    self._op_()
-                with self._option():
-                    self._ath_sym_()
-                self._error('no available options')
-
-    @rule_def
-    def _parenthesis_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._op_parenthesis_()
-                with self._option():
-                    self._cl_parenthesis_()
-                self._error('no available options')
+        self._pattern(r'[^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac \d]+([^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
 
     @rule_def
     def _op_parenthesis_(self):
@@ -285,32 +346,12 @@ class RedQueryParser(Parser):
         self._token(')')
 
     @rule_def
-    def _braket_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._op_braket_()
-                with self._option():
-                    self._cl_braket_()
-                self._error('no available options')
-
-    @rule_def
     def _op_braket_(self):
         self._token('[')
 
     @rule_def
     def _cl_braket_(self):
         self._token(']')
-
-    @rule_def
-    def _op_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._conj_op_()
-                with self._option():
-                    self._disj_op_()
-                self._error('no available options')
 
     @rule_def
     def _conj_op_(self):
@@ -333,18 +374,6 @@ class RedQueryParser(Parser):
                 self._error('expecting one of: | \u2228')
 
     @rule_def
-    def _ath_sym_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._lth_()
-                with self._option():
-                    self._eq_()
-                with self._option():
-                    self._neg_()
-                self._error('no available options')
-
-    @rule_def
     def _lth_(self):
         with self._group():
             with self._choice():
@@ -353,6 +382,16 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('\u2264')
                 self._error('expecting one of: < \u2264')
+
+    @rule_def
+    def _gth_(self):
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._token('>')
+                with self._option():
+                    self._token('\u2265')
+                self._error('expecting one of: > \u2265')
 
     @rule_def
     def _cat_test_(self):
@@ -434,16 +473,16 @@ class RedQuerySemantics(object):
     def query(self, ast):
         return ast
 
-    def conjunction(self, ast):
-        return ast
-
     def disjunction(self, ast):
         return ast
 
-    def conj_item(self, ast):
+    def conjunction(self, ast):
         return ast
 
     def disj_item(self, ast):
+        return ast
+
+    def conj_item(self, ast):
         return ast
 
     def literal(self, ast):
@@ -473,19 +512,10 @@ class RedQuerySemantics(object):
     def STRING(self, ast):
         return ast
 
-    def special_char(self, ast):
-        return ast
-
-    def parenthesis(self, ast):
-        return ast
-
     def op_parenthesis(self, ast):
         return ast
 
     def cl_parenthesis(self, ast):
-        return ast
-
-    def braket(self, ast):
         return ast
 
     def op_braket(self, ast):
@@ -494,19 +524,16 @@ class RedQuerySemantics(object):
     def cl_braket(self, ast):
         return ast
 
-    def op(self, ast):
-        return ast
-
     def conj_op(self, ast):
         return ast
 
     def disj_op(self, ast):
         return ast
 
-    def ath_sym(self, ast):
+    def lth(self, ast):
         return ast
 
-    def lth(self, ast):
+    def gth(self, ast):
         return ast
 
     def cat_test(self, ast):

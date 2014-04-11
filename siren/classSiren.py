@@ -673,6 +673,10 @@ class Siren():
         if "log" in updates:
             self.appendLog(updates["log"])
 
+    def loggingDWError(self, output, message, type_message, source):
+        self.errorBox(message)
+        self.appendLog("\n\n***" + message + "***\n")
+
     def loggingLogTab(self, output, message, type_message, source):
         text = "%s" % message
         header = "@%s:\t" % source
@@ -1128,7 +1132,8 @@ class Siren():
             self.logger.addOut({"log": verb, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
         else:
             self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
-        self.logger.addOut({"error":1}, "stderr")
+        self.logger.addOut({"error":1, "dw_error":1}, "stderr")
+        self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
     def reloadAll(self):
         if self.plant is not None:
@@ -1193,8 +1198,8 @@ class Siren():
             self.busyDlg.Destroy()
             # del self.busyDlg # Removes the dialog
             self.busyDlg = None
-            self.toolFrame.Enable(True)
-            self.statusbar.SetStatusText(msg, 0)
+        self.toolFrame.Enable(True)
+        self.statusbar.SetStatusText(msg, 0)
         
     def errorBox(self, message):
         if self.busyDlg is not None:
@@ -1203,6 +1208,14 @@ class Siren():
         dlg = wx.MessageDialog(self.toolFrame, message, style=wx.OK|wx.ICON_EXCLAMATION|wx.STAY_ON_TOP, caption="Error")
         dlg.ShowModal()
         dlg.Destroy()
+
+    # def warningBox(self, message):
+    #     # if self.busyDlg is not None:
+    #     #     del self.busyDlg
+    #     #     self.busyDlg = None
+    #     dlg = wx.MessageDialog(self.toolFrame, message, style=wx.OK|wx.ICON_INFORMATION|wx.STAY_ON_TOP, caption="Warning")
+    #     dlg.ShowModal()
+    #     dlg.Destroy()
 
     def readyReds(self, reds, tab):
         if len(reds) > 0 and tab in self.tabs:
