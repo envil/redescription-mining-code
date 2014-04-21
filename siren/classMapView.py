@@ -98,13 +98,26 @@ class MapView(GView):
         self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
         self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.MapfigMap.clear()
-        self.bm, args_all = self.makeBasemapProj()
+        try:
+            self.bm, args_all = self.makeBasemapProj()
+        except ValueError:
+            self.bm = None
 
         self.coords_proj = self.mapCoords(self.parent.dw.getCoords(), self.bm)
         
-        self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
+
         if self.bm is not None:
+            self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
             self.bm.ax = self.axe
+        else:
+            llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
+            midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
+            mside = max(abs(llon-midlon), abs(llat-midlat))
+            self.axe = self.MapfigMap.add_subplot(111,
+                                                  xlim=[midlon-1.05*mside, midlon+1.05*mside],
+                                                  ylim=[midlat-1.05*mside, midlat+1.05*mside])
+            self.MapcanvasMap.draw()
+            # self.axe = self.MapfigMap.add_axes([llon, llat, ulat-llat, ulon-llon])
 
         self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
 
@@ -136,9 +149,12 @@ class MapView(GView):
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
 
+            lims = self.axe.get_xlim(), self.axe.get_ylim()
             for idp, pi in enumerate(self.suppABCD):
                 if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
                     self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
+            self.axe.set_xlim(lims[0])
+            self.axe.set_ylim(lims[1])
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)

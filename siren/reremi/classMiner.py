@@ -245,8 +245,8 @@ class Miner:
         if len(ids[0]) > 5000:
            ids[0] = sorted(random.sample(ids[0], 100))
         ### FOR DEBUGING (DANGER!!!)
-        # ids[0] = sorted(random.sample(ids[0], 10))
-        # ids[1] = sorted(random.sample(ids[1], 10))
+        # ids[0] = [12,18] # sorted(random.sample(ids[0], 10))
+        # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):

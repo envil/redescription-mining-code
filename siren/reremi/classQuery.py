@@ -664,7 +664,7 @@ class Literal(object):
         return self.term.tInfo(names)
 
     def __cmp__(self, other):
-        if other is None:
+        if other is None or not isinstance(other, Literal):
             return 1
         elif cmp(self.term, other.term) == 0:
             return cmp(self.neg, other.neg)
@@ -723,17 +723,23 @@ class Query:
             self.buk = []
 
     def __len__(self):
+        if len(self.buk) == 0:
+            return 0
         return recurse_numeric(self.buk, function =lambda x: int(isinstance(x, Literal)))
 
     def __hash__(self):
+        if len(self) == 0:
+            return 0
         return hash(self.op) + recurse_numeric(self.buk, function =lambda x, trace: hash(t)+sum(trace), args = {"trace": []})
 
     def max_depth(self): # Does the query involve some disjunction?
+        if len(self) == 0:
+            return 0
         return max(recurse_list(self.buk, function =lambda x, trace: len(trace), args = {"trace":[]}))
 
     def usesOr(self): # Does the query involve some disjunction?
         max_d = self.max_depth()
-        return max_d > 1 or len(self) > 1  and self.op.isOr() 
+        return max_d > 1 or ( len(self) > 1  and self.op.isOr() )
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
         if nb % 2 == 0: # even bucket: query operator, else other
@@ -767,6 +773,8 @@ class Query:
                     else:
                         vs.append(res)
                 return (now_flip, vs)
+        if len(self) == 0:
+            return
         sfliped, res =  evl(self.buk, False)
         self.buk = res
         if sfliped:
@@ -776,6 +784,8 @@ class Query:
         # print "-------"
 
     def negate(self):
+        if len(self) == 0:
+            return
         neg = [bb for bb in self.buk if isinstance(bb, Neg)]
         if len(neg) == 1:
             self.buk.remove(neg[0])
@@ -864,9 +874,13 @@ class Query:
         return set(recurse_list(self.buk, function =lambda term: term))
     
     def makeIndexesNew(self, format_str):
+        if len(self) == 0:
+            return ""
         return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.col(), 'buk': ".".join(map(str,trace))}, args = {"trace":[]})
     
     def makeIndexes(self, format_str):
+        if len(self) == 0:
+            return ""
         return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.col(), 'buk': len(trace)}, args = {"trace":[]})
     
     ## return the truth value associated to a configuration
@@ -880,6 +894,8 @@ class Query:
                     return  sum(vs) > 0
                 else:
                     return reduce(operator.mul, vs) > 0
+        if len(self) == 0:
+            return True
         cp = self.copy()
         cp.push_negation()
         return evl(cp.buk, cp.op, config)
@@ -971,7 +987,8 @@ class Query:
                 elif not isinstance(bb, Neg):
                     evl(bb, lits)
         lits = []
-        evl(self.buk, lits)
+        if len(self) > 0:
+            evl(self.buk, lits)
         return lits
         
     def __str__(self):
@@ -985,12 +1002,15 @@ class Query:
         elif isinstance(b, Neg):
             return (-1, b)
         else:
+            if len(b) == 0:
+                return ()
             vs = [self.reorderedLits(bb) for bb in b]
             vs.sort(key=lambda x: x[0])
             return (vs[0][0], [v[1] for v in vs])
 
     def reorderLits(self):
-        self.buk = self.reorderedLits()[1]
+        if len(self) > 0:
+            self.buk = self.reorderedLits()[1]
 
     def disp(self, names = None, lenIndex=0, style=""):
         def evl(b, op, names, lenIndex, style):
@@ -1062,6 +1082,8 @@ class Query:
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
     def parse(part, names = None):
+        if len(part.strip()) == 0:
+            return Query()
         qs = QuerySemantics(names)
         parser = RedQueryParser(parseinfo=False)
         try:

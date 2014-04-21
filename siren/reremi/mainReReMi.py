@@ -233,9 +233,11 @@ def run(params):
 
     if queriesOutFp is not None:
         names = None
+        queriesOutFp.write(Redescription.dispHeader()+"\n")
         if data.hasNames() and fn_names is not None:
             names = data.getNames()
             namesOutFp = open(fn_names, "w")
+            namesOutFp.write(Redescription.dispHeader(named=True)+"\n")
         for pos in miner.final["results"]:
             miner.final["batch"][pos].write(queriesOutFp, supportOutFp, namesOutFp, names)
 

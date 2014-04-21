@@ -49,7 +49,6 @@ class ProjectorProcess(multiprocessing.Process):
         try:
             self.proj.do()
         except ValueError as e: #Exception as e:
-            pdb.set_trace()
             self.proj.clearCoords()
             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
         finally:
@@ -107,6 +106,10 @@ class WorkLocal(WorkInactive):
 
     def addWorker(self, wtype, boss, more=None, details={}):
         if wtype in self.type_workers:
+            # pdb.set_trace()
+            # miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), 0, qin=self.cqueue(), cust_params=more)
+            # miner.part_run(more)
+            
             self.next_workerid += 1
             self.comm_queues[self.next_workerid] = self.cqueue()
             self.workers[self.next_workerid] = {"worker": self.type_workers[wtype](self.next_workerid, boss, self.comm_queues[self.next_workerid], more),
@@ -114,7 +117,8 @@ class WorkLocal(WorkInactive):
                                                 "work_progress":0,
                                                 "work_estimate":0}
             self.workers[self.next_workerid].update(details)
-        
+
+            
     def getWorkEstimate(self):
         work_estimate = 0
         work_progress = 0

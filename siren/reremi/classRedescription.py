@@ -1,6 +1,7 @@
 import re, string, numpy
 from classQuery import  *
 from classSParts import  SParts, tool_pValSupp, tool_pValOver
+from classBatch import Batch
 import toolRead
 import pdb
 
@@ -405,16 +406,22 @@ class Redescription:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
         return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=["acc", "card_gamma", "pval"], sep=" "), self.getTrack({"format":"str"})))
 
-    def dispHeader(list_fields=None, sep="\t"):
+    def dispHeader(list_fields=None, sep="\t", named=False):
         if list_fields is None:
-            list_fields = Redescription.print_default_fields
+            if named:
+                list_fields = Redescription.print_default_fields_named
+            else:
+                list_fields = Redescription.print_default_fields
         return sep.join(list_fields)
     dispHeader = staticmethod(dispHeader)
 
 
     def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
         if list_fields is None:
-            list_fields = Redescription.print_default_fields
+            if names[0] is not None or names[1] is not None:
+                list_fields = Redescription.print_default_fields_named
+            else:
+                list_fields = Redescription.print_default_fields
         info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
         info_tmp["status_enabled"] = self.status
         for side, query_f in enumerate(Redescription.print_queries_headers):
@@ -707,6 +714,19 @@ if __name__ == '__main__':
     from classData import Data
     from classQuery import Query
     import sys
+
+    rep = "/home/galbrun/TKTL/redescriptors/data/37billionmiles/"
+    data = Data([rep+"vehicules_out.csv", rep+"grid250m_attributes_out.csv", {}, "NA"], "csv")
+
+    filename = "/home/galbrun/TKTL/redescriptors/sandbox/runs/37billionmiles/37billionmiles_1.queries"
+    filep = open(filename, mode='r')
+
+    reds = Batch([])
+    parseRedList(filep, data, reds)
+    for red in reds:
+        print red.disp()
+
+    exit()
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
 
