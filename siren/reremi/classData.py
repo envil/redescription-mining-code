@@ -1047,6 +1047,9 @@ class NumColM(ColM):
         
 class Data:
 
+    enabled_codes = {(0,0): "F", (1,1): "T", 0: "F", 1: "T", (0,1): "L", (1,0): "R"}
+    enabled_codes_rev_simple = {"F": 0, "T": 1}
+    enabled_codes_rev_double = {"F": (0,0), "T": (1,1), "L": (0,1), "R": (1,0)}
     NA_str = "NA"
     NA_num  = np.nan
     separator_str = "[;, \t]"
@@ -1080,6 +1083,9 @@ class Data:
         else:
             self.cols = [ICList(),ICList()]
         self.ssetts = SSetts(self.hasMissing())
+
+    def isSingleD(self):
+        return self.single_dataset
 
     def getSSetts(self):
         return self.ssetts
@@ -1178,7 +1184,10 @@ class Data:
                 tmp.side = side
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
-        return Data(cols, N, coords, rnames, self.single_dataset)
+        return Data(cols, N, coords, rnames, self.isSingleD())
+
+    def hasSelectedRows(self):
+        return len(self.selected_rows) > 0
 
     def selectedRows(self):
         return self.selected_rows
@@ -1205,14 +1214,13 @@ class Data:
     def __str__(self):
         return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
         
-    ### TODO REPLACE THE WRITE METHOD
     def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
         #### FIGURE OUT HOW TO WRITE, WHERE TO PUT COORDS, WHAT METHOD TO USE
         #### check whether some row name is worth storing
         rids = {}
         if self.rnames is not None:
             rids = dict(enumerate([prepareRowName(rname, i, self) for i, rname in enumerate(self.rnames)]))
-        elif len(self.selectedRows()) == 0:
+        elif len(self.selectedRows()) > 0:
             rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
 
         mean_denses = [np.mean([col.density() for col in self.cols[0]]),
@@ -1221,12 +1229,14 @@ class Data:
         if mean_denses[0] < mean_denses[1]:
             argmaxd = 1
 
+        #### FOR DEBUGING OF DENSE FORMAT, REMOVE!!!!
+        # if mean_denses[1-argmaxd] > 0 : #thres: ## BOTH SIDES ARE DENSE
         if mean_denses[1-argmaxd] > thres: ## BOTH SIDES ARE DENSE
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": "dense", "details": full_details}}
         elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE
             methot = "triples"
-            if sum([col.simpleBool() for col in self.cols[1-argmaxd]])==0:
+            if not self.hasDisabledCols(1-argmaxd) and sum([col.simpleBool() for col in self.cols[1-argmaxd]])==0:
                 methot = "pairs"
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
@@ -1234,12 +1244,18 @@ class Data:
             simpleBool = [sum([col.simpleBool() for col in self.cols[0]]) == 0,
                           sum([col.simpleBool() for col in self.cols[1]]) == 0]
             if self.isGeospatial() or len(rids) > 0:
-                if not simpleBool[1-argmax]: ### is not only boolean so can have names and coords
-                    styles = {argmaxd: {"meth": "pairs", "details": full_details},
+                if not simpleBool[1-argmaxd]: ### is not only boolean so can have names and coords
+                    methot = "pairs"
+                    if self.hasDisabledCols(argmaxd):
+                        methot = "triples"
+                    styles = {argmaxd: {"meth": methot, "details": full_details},
                               1-argmaxd: {"meth": "triples", "details": True, "inline": inline}}
                 else: ### otherwise argmax has it
+                    methot = "pairs"
+                    if self.hasDisabledCols(1-argmaxd):
+                        methot = "triples"
                     styles = {argmaxd: {"meth": "triples", "details": True, "inline": inline},
-                              1-argmaxd: {"meth": "pairs", "details": full_details}}
+                              1-argmaxd: {"meth": methot, "details": full_details}}
             else:
                 styles = {argmaxd: {"meth": "pairs", "details": full_details},
                           1-argmaxd: {"meth": "pairs", "details": full_details}}
@@ -1248,12 +1264,16 @@ class Data:
                         styles[side]["meth"] = "triples"
                         styles[side]["inline"] = inline
 
-        
         meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
-        for side in [0,1]:
+        sides = [0,1]
+        if self.isSingleD() and (len(outputs) == 1 or outputs[0] == outputs[1] or outputs[1] is None):
+            sides = [0]
+            styles[0]["details"] = True
+            styles[0]["single_dataset"] = True
+        for side in sides:
     #### check whether some column name is worth storing
             cids = {}
-            if sum([not (col.getName() == cid and col.getEnabled()) for cid, col in enumerate(self.cols[side])]) > 0:
+            if sum([col.getName() != cid or not col.getEnabled() for cid, col in enumerate(self.cols[side])]) > 0:
                 type_smap = None
                 if full_details and styles[side]["meth"] == "dense":
                     type_smap = {}
@@ -1263,10 +1283,26 @@ class Data:
                 csvf = csv_reader.start_out(fp)
                 meth(side, csvf, rids=rids, cids=cids, **styles[side])
 
-    def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True):
+    def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True, single_dataset=False):
+        discol = []
+        if self.hasDisabledCols(side) or (single_dataset and self.hasDisabledCols()):
+            discol.append(csv_reader.ENABLED_COLS[0])
+            if details and self.hasSelectedRows():
+                discol.append(0)
+            if details and self.isGeospatial():
+                discol.append(0)
+                discol.append(0)
+            for cid, col in enumerate(self.cols[side]):
+                if single_dataset:
+                    discol.append(Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())])
+                else:
+                    discol.append(Data.enabled_codes[col.getEnabled()])
+
         header = []
-        if details and len(rids) > 0:
+        if (details and len(rids) > 0) or len(discol) > 0:
             header.append(csv_reader.IDENTIFIERS[0])
+        if details and self.hasSelectedRows():
+            header.append(csv_reader.ENABLED_ROWS[0])
         if details and self.isGeospatial():
             header.append(csv_reader.LONGITUDE[0])
             header.append(csv_reader.LATITUDE[0])
@@ -1274,14 +1310,18 @@ class Data:
             col.getVector()
             if len(header) > 0 or len(cids) > 0:
                 header.append(cids.get(cid, cid))
-                
+
         if len(header) > 0:
             csv_reader.write_row(csvf, header)
+        if len(discol) > 0:
+            csv_reader.write_row(csvf, discol)
 
         for n in range(self.N):
             row = []
-            if details and len(rids) > 0:
+            if (details and len(rids) > 0) or len(discol) > 0:
                 row.append(rids.get(n,n))
+            if details and self.hasSelectedRows():
+                row.append(Data.enabled_codes[n not in self.selectedRows()])
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
@@ -1290,7 +1330,7 @@ class Data:
             csv_reader.write_row(csvf, row)
 
 
-    def writeCSVSparseTriples(self, side, csvf, rids={}, cids={}, details=True, inline=False):
+    def writeCSVSparseTriples(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]])
         if not inline:
             trids, tcids = {}, {}
@@ -1302,33 +1342,56 @@ class Data:
                 csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LONGITUDE[0], ":".join(map(str,  self.coords[0][n]))])
                 csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.LATITUDE[0], ":".join(map(str,  self.coords[1][n]))])
 
-        fill = False
+        for n in self.selectedRows():
+                csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.ENABLED_ROWS[0], "F"])
+
+        if self.hasDisabledCols(side) or (single_dataset and self.hasDisabledCols()):
+            for cid, col in enumerate(self.cols[side]):
+                if single_dataset:
+                    tmp = Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())]
+                else:
+                    tmp = Data.enabled_codes[col.getEnabled()]
+                if tmp != Data.enabled_codes[1]:
+                    if inline:
+                        csv_reader.write_row(csvf, [csv_reader.ENABLED_COLS[0], cids.get(cid,cid), tmp])
+                    else:
+                        csv_reader.write_row(csvf, [csv_reader.ENABLED_COLS[0], cid, tmp])
+
+        fillR = False
+        ### if names are not written inline, add the entities names now, that serves to recovers the correct number of lines
         if details and len(rids) > 0 and not inline:
             for n in range(self.N):
                 csv_reader.write_row(csvf, [n, -1, rids.get(n,n)])
         else:
-            fill = True
+            ### otherwise it will need fill to recover the number of lines
+            fillR = True
 
         for ci, col in enumerate(self.cols[side]):
+            fillC = False
             if not inline and len(cids) > 0:
+                ### if names are not written inline, add the variable's name now
                 csv_reader.write_row(csvf, [-1, ci, cids.get(ci,ci)])
             else:
-                fill = True
+                fillC = True
 
-            if ci == 0 and fill:
+            if ci == 0 and fillR:
                 tmp = col.toList(sparse=True, fill=False)
                 non_app = col.rows().difference(zip(*tmp)[0])
                 for (n,v) in tmp:
                     csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), v])
                 for n in non_app:
                     csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), 0])
-
             else:
-                for (n,v) in col.toList(sparse=True, fill=fill):
+                for (n,v) in col.toList(sparse=True, fill=fillR):
+                    fillC = False
                     csv_reader.write_row(csvf, [trids.get(n,n), tcids.get(ci,ci), v])
+                if fillC:
+                    ### Filling for column if it does not have any entry
+                    csv_reader.write_row(csvf, [trids.get(0,0), tcids.get(ci,ci), 0])
+                    
 
     ### THIS FORMAT ONLY ALLOWS BOOLEAN WITHOUT COORS, IF NAMES THEY HAVE TO BE INLINE
-    def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True):
+    def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, single_dataset=False):
         csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]])
         if not details:
             rids = {}
@@ -1385,6 +1448,29 @@ class Data:
     def usableIds(self, min_in=-1, min_out=-1):
         return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \
                 [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]
+
+    def getDisabledCols(self, side=None):
+        dis = []
+        if side is None:
+            sides = [0,1]
+        else:
+            sides = [side]
+        for s in sides:
+            for col in self.cols[s]:
+                if not col.getEnabled():
+                    dis.append((s,col.id))
+        return dis
+
+    def hasDisabledCols(self, side=None):
+        if side is None:
+            sides = [0,1]
+        else:
+            sides = [side]
+        for s in sides:
+            for col in self.cols[s]:
+                if not col.getEnabled():
+                    return True
+        return False
 
     def isGeospatial(self):
         return self.coords is not None
@@ -1508,42 +1594,39 @@ def readDNCFromCSVFiles(filenames):
     if len(filenames) >= 2:
         left_filename = filenames[0]
         right_filename = filenames[1]
-        single_dataset = (filenames[0] == filenames[1])
         if len(filenames) >= 3:
             csv_params = filenames[2]
             if len(filenames) >= 4:
                 unknown_string = filenames[3]
         try:
-            tmp_data = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
+            tmp_data, single_dataset = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
         except ValueError as arg:
             raise DataError('Data error reading csv: %s' % arg)
-        except csv_reader.CSVRError as arg:
-            raise DataError(str(arg).strip("'"))
-        cols, N, coords, rnames, disabled_rows = parseDNCFromCSVData(tmp_data)
+        # except csv_reader.CSVRError as arg:
+        #     raise DataError(str(arg).strip("'"))
+        cols, N, coords, rnames, disabled_rows = parseDNCFromCSVData(tmp_data, single_dataset)
 
     return cols, N, coords, rnames, disabled_rows, single_dataset
 
 
 def prepareRowName(rname, rid=None, data=None):
+    return str(rname) 
     en = ""
     if rid is not None and data is not None and rid in data.selectedRows():
         en = "_"
     return "%s%s" % (en, rname) 
 
 def parseRowsNames(rnames):
-    disabled = set()
     names = []
     for i, rname in enumerate(rnames):
         if rname is None:
             names.append("%d" % (i+1))
         else:
-            tmatch = re.match("^(?P<disabled>__*)?(?P<name>.*)$", rname)
-            if tmatch.group("disabled") is not None:
-                disabled.add(i)
-            names.append(tmatch.group("name"))
-    return names, disabled
+            names.append(rname)
+    return names
 
 def prepareColumnName(col, types_smap={}):
+    return str(col.getName()) 
     en = ""
     if not col.getEnabled():
         en = "_"
@@ -1553,15 +1636,17 @@ def prepareColumnName(col, types_smap={}):
         return "%s[%s]%s" % (en, types_smap.get(col.type_id, col.type_id), col.getName()) 
     
 def parseColumnName(name, types_smap={}):
-    tmatch = re.match("^(?P<disabled>__*)?(\[(?P<type>[0-9])\])?(?P<name>.*)$", name)
+    tmatch = re.match("^(\[(?P<type>[0-9])\])?(?P<name>.*)$", name)
     det = {"name": tmatch.group("name")}
-    if tmatch.group("disabled") is not None:
-        det["enabled"] = False
     if tmatch.group("type") is not None and tmatch.group("type") in types_smap:
         det["type"] = types_smap[tmatch.group("type")]
     return name, det
 
-def parseDNCFromCSVData(csv_data):
+def parseDNCFromCSVData(csv_data, single_dataset=False):
+    if single_dataset:
+        sides = (0,0)
+    else:
+        sides = (0,1)
     type_ids_org = [CatColM, NumColM, BoolColM]
     types_smap = dict([(str(c.type_id), c) for c in type_ids_org])
     cols = [[],[]]
@@ -1576,12 +1661,28 @@ def parseDNCFromCSVData(csv_data):
 
     N = len(csv_data['data'][0]["order"]) ### THE READER CHECKS THAT BOTH SIDES HAVE SAME SIZE
     if csv_data.get("ids", None) is not None and len(csv_data["ids"]) == N:
-        rnames, disabled_rows = parseRowsNames(csv_data["ids"])
+        rnames = parseRowsNames(csv_data["ids"])
     else:
-        rnames, disabled_rows = [Term.pattVName % n for n in range(N)], set()
+        rnames = [Term.pattVName % n for n in range(N)]
         
-    for side in [0,1]:
-        indices = dict([(v,k) for (k,v) in enumerate(csv_data['data'][side]["order"])])
+    indices = [dict([(v,k) for (k,v) in enumerate(csv_data['data'][sides[0]]["order"])]),
+               dict([(v,k) for (k,v) in enumerate(csv_data['data'][sides[1]]["order"])])]
+    disabled_rows = set()
+
+    for er in csv_reader.ENABLED_ROWS:
+        for side in set(sides):
+            if er in csv_data['data'][side]["headers"]:
+                csv_data['data'][side]["headers"].remove(er)
+                tmp = csv_data['data'][side]["data"].pop(er)
+                if type(tmp) is dict:
+                    tmp = tmp.items()
+                else:
+                    tmp = enumerate(tmp)
+                for i,v in tmp:
+                    if not Data.enabled_codes_rev_simple[v]:
+                        disabled_rows.add(indices[side][i])
+
+    for sito, side in enumerate(sides):
         for name, det in [parseColumnName(header, types_smap) for header in csv_data['data'][side]["headers"]]:
             if len(name) == 0:
                 continue
@@ -1589,19 +1690,24 @@ def parseDNCFromCSVData(csv_data):
             col = None
             
             if "type" in det:
-                col = det["type"].parseList(values, indices)
+                col = det["type"].parseList(values, indices[side])
             else:
                 type_ids = list(type_ids_org)
                 while col is None and len(type_ids) >= 1:
-                    col = type_ids.pop().parseList(values, indices)
+                    col = type_ids.pop().parseList(values, indices[side])
 
             if col is not None and col.N == N:
-                col.setId(len(cols[side]))
-                col.side = side
+                col.setId(len(cols[sito]))
+                col.side = sito
                 col.name = det.get("name", name)
-                if not det.get("enabled", True):
+                # pdb.set_trace()
+                # if csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None and name in csv_data["data"][side][csv_reader.ENABLED_COLS[0]]:
+                #     print len(cols[sito]), csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None)
+                if not det.get("enabled", True) or \
+                       (csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None \
+                        and not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito] ):
                     col.flipEnabled()
-                cols[side].append(col)
+                cols[sito].append(col)
             else:
                 raise DataError('Unrecognized variable type!')
     return (cols, N, coords, rnames, disabled_rows)
@@ -1627,9 +1733,11 @@ def main():
     # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")
     # data.writeXML(open("tmp.xml", "w"))
 
-    # rep = "/home/galbrun/redescriptors/data/rajapaja/"
-    # data = Data([rep+"mammals.sparsebool", rep+"worldclim_tp.densenum", {}, "NA"], "csv")
+    # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
+    # data = Data([rep+"mammals_poly.csv", rep+"worldclim_nomiss_poly.csv", {}, "NA"], "csv")
     # print data
+    # pdb.set_trace()
+    # data.writeCSV([rep+"mammals_A.csv", rep+"worldclim_A.csv"])
 
     # rep = "/home/galbrun/"
     # data = Data([rep+"data1.csv", rep+"data2.csv", {}, "NA"], "csv")    
@@ -1644,14 +1752,34 @@ def main():
     # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
     # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
     rep = "/home/galbrun/TKTL/redescriptors/data/dblp/"
-    data = Data([rep+"coauthor_picked0_num.csv", rep+"conference_picked0_num.csv"], "csv")
+    # data = Data([rep+"coauthor_picked0_num.csv", rep+"conference_picked0_num.csv"], "csv")
+    data = Data([rep+"coauthor_picked0_num.csv", rep+"coauthor_picked0_num.csv"], "csv")
     # print data
+    # data.selected_rows = set([0,2, data.N-1])
+    # data.cols[0][3].setDisabled()
+    # data.cols[0][5].setDisabled()
+    # data.cols[0][7].setDisabled()
+    # data.cols[1][3].setDisabled()
+    # data.cols[1][10].setDisabled()
+    # for s,c in data.getDisabledCols():
+    #     print s,c,data.cols[s][c].getName()
+
     # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"], full_details=True)
     # data.writeCSV([rep+"testoutL4.csv", rep+"testoutR4.csv"], inline=True)
     # data.writeCSV([rep+"testoutL3.csv", rep+"testoutR3.csv"])
-    # data2 = Data([rep+"testoutL4.csv", rep+"testoutR4.csv", {}, "nan"], "csv")
-    # print data2
-    # data2.writeCSV([rep+"testoutL2.csv", rep+"testoutR2.csv"])
+
+    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
+    # data.writeCSV([rep+"testoutB.csv"])
+
+    # data2 = Data([rep+"testoutB.csv", rep+"testoutB.csv", {}, "nan"], "csv")
+    # data2 = Data([rep+"testoutL.csv", rep+"testoutR.csv", {}, "nan"], "csv")
+    # data2.cols[1][3].setDisabled()
+    print data2
+    print data2.selected_rows
+    for s,c in data2.getDisabledCols():
+        print s,c, data2.cols[s][c].getName()
+    data2.writeCSV([rep+"testoutL2b.csv", rep+"testoutR2b.csv"])
+    exit()
 
     # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
     # data = Data([rep+"mammals_poly.csv", rep+"worldclim_poly.csv"], "csv")

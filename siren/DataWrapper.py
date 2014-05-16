@@ -49,8 +49,8 @@ class DataWrapper(object):
 
     # CONSTANTS
     # Names of the files in the package
-    DATA_LHS_FILENAME = 'data_LHS.csv'
-    DATA_RHS_FILENAME = 'data_RHS.csv'
+    DATA_FILENAMES = ['data_LHS.csv',
+                     'data_RHS.csv']
     REDESCRIPTIONS_FILENAME = 'redescriptions.csv'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
@@ -443,10 +443,13 @@ class DataWrapper(object):
     def loadElementsPackage(self, package, plist):
         data, reds, rshowids, preferences = None, None, None, None
         # Load data
-        if 'data_LHS_filename' in plist and 'data_RHS_filename' in plist:
+        if 'data_LHS_filename' in plist:
             try:
                 fdLHS = package.open(plist['data_LHS_filename'], 'r')
-                fdRHS = package.open(plist['data_RHS_filename'], 'r')
+                if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
+                    fdRHS = package.open(plist['data_RHS_filename'], 'r')
+                else:
+                    fdRHS = None
                 data = self._readDataFromCSVFiles([fdLHS, fdRHS])
             except Exception as e:
                 print e
@@ -454,7 +457,8 @@ class DataWrapper(object):
                 raise
             finally:
                 fdLHS.close()
-                fdRHS.close()
+                if fdRHS is not None: 
+                    fdRHS.close()
 
         # Load redescriptions
         if 'redescriptions_filename' in plist:
@@ -625,8 +629,10 @@ class DataWrapper(object):
         # Write data files
         try:
             if self.data is not None:
-                self._writeData([os.path.join(tmp_dir, plist['data_LHS_filename']),
-                                 os.path.join(tmp_dir, plist['data_RHS_filename'])], toPackage = True)
+                filenames = [os.path.join(tmp_dir, plist['data_LHS_filename']), None]
+                if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
+                    filenames[1] = os.path.join(tmp_dir, plist['data_RHS_filename'])
+                self._writeData(filenames, toPackage = True)
         except IOError:
             shutil.rmtree(tmp_dir)
             self.package_filename = old_package_filename
@@ -666,9 +672,10 @@ class DataWrapper(object):
                 package.write(os.path.join(tmp_dir, plist['data_LHS_filename']),
                               arcname = os.path.join('.', plist['data_LHS_filename']),
                               compress_type = zipfile.ZIP_DEFLATED)
-                package.write(os.path.join(tmp_dir, plist['data_RHS_filename']),
-                              arcname = os.path.join('.', plist['data_RHS_filename']),
-                              compress_type = zipfile.ZIP_DEFLATED)
+                if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
+                    package.write(os.path.join(tmp_dir, plist['data_RHS_filename']),
+                                  arcname = os.path.join('.', plist['data_RHS_filename']),
+                                  compress_type = zipfile.ZIP_DEFLATED)
 
             if self.reds is not None and len(self.reds) > 0:
                 package.write(os.path.join(tmp_dir, plist['redescriptions_filename']),
@@ -759,8 +766,9 @@ class DataWrapper(object):
 
                             
         if self.data is not None:
-            d['data_LHS_filename'] = self.DATA_LHS_FILENAME
-            d['data_RHS_filename'] = self.DATA_RHS_FILENAME
+            d['data_LHS_filename'] = self.DATA_FILENAMES[0]
+            if not self.data.isSingleD():
+                d['data_RHS_filename'] = self.DATA_FILENAMES[1]
                                 
         if self.reds is not None and len(self.reds) > 0:
             d['redescriptions_filename'] = self.REDESCRIPTIONS_FILENAME
