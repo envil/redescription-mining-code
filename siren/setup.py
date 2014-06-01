@@ -24,7 +24,7 @@ import mpl_toolkits.basemap as basemap
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.1.0'
+VERSION = '2.1.1'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -58,7 +58,7 @@ ST_FILES = ['classConnectionDialog.py',
             'tsne.py']
 
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'reremi', 'grako', 'sklearn', 'mpl_toolkits']
+ST_PACKAGES = ['wx', 'reremi', 'reremi.grako', 'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 ########## DISTUTILS FILES
