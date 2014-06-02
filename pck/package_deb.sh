@@ -2,8 +2,9 @@
 
 YAH=$(pwd) # YOU ARE HERE
 
-PACK_REP=packaging_current_$(date "+%Y%m%d%H%M%S")
-#PACK_REP=${YAH}/packaging_current_0
+# PACK_REP=packaging_current_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_current_0
+mkdir $PACK_REP
 ROOT_REP=${PACK_REP}"/python-siren"
 SIREN_REP=${ROOT_REP}"/siren"
 HELP_TRG_REP=${SIREN_REP}"/help"
@@ -12,10 +13,8 @@ HELP_SRC_REP=${SPHINX_REP}"/siren-help/_build/html"
 GUIDE_PDF_SRC=${SPHINX_REP}"/siren-help/_build/latex/Siren.pdf"
 GUIDE_PDF_TRG=${HELP_TRG_REP}"/Siren-UserGuide.pdf"
 
-mkdir $PACK_REP
-
 ### checkout the files for making the .deb package
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/packaging ${ROOT_REP}
+svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/pck/deb ${ROOT_REP}
 
 ### checkout the code itself
 svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/siren ${SIREN_REP}
@@ -54,6 +53,7 @@ done
 rm -rf _static
 mv _tmp _static
 rm -rf ${SPHINX_REP}
+
 
 ### add the __init__.py files
 echo "" > ${SIREN_REP}/icons/__init__.py
