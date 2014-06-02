@@ -17,8 +17,7 @@ import os.path
 import re
 import subprocess
 import pdb
-import matplotlib
-import mpl_toolkits.basemap as basemap
+import glob
 
 INSIDE_SETUP = True
 
@@ -26,7 +25,7 @@ INSIDE_SETUP = True
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.1.1'
+VERSION = '2.1.0'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
@@ -177,7 +176,8 @@ elif sys.platform == 'win32':
     ## Should this be 'win64'??
     from distutils.core import setup
     import py2exe
-    import matplotlib, glob
+    import matplotlib
+
     WICONS = [('icons', glob.glob('icons\\*.ico') + glob.glob('icons\\*.png'))]
     WLICENSES = [('', ['ABOUT', 'LICENSE']+LICENSES)]
     WCONFIGS = [('', ['ui_confdef.xml']), ('reremi', ['reremi\\miner_confdef.xml', 'reremi\\inout_confdef.xml'])]
@@ -203,31 +203,44 @@ elif sys.platform == 'win32':
 else:
     ################ LINUX SETUP
     from distutils.core import setup
-
-    DU_RESOURCES_SIREN=['icons/*.png', 'icons/*.ico', 'help/*', 'ABOUT', 'LICENSE',
-                        'ui_confdef.xml']+LICENSES
+    
+    DU_RESOURCES_SIREN=['ui_confdef.xml', 'ABOUT', 'LICENSE']+LICENSES      
     DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
-    DU_RESOURCES_GRAKO=[]
+
+    patterns = [('reremi.grako', []),
+                ('help', ['help/*']),
+                ('icons', ['icons/*.png', 'icons/*.ico']),
+                ('help._static', ['help/_static/*']),
+                ('help._static.screenshots', ['help/_static/screenshots/*'])]
+                  
     if INSIDE_SETUP:
         DU_FILES = [f[:-3] for f in ST_FILES]
         PACKAGE_DATA = {'': DU_RESOURCES_SIREN,
-                        'reremi': DU_RESOURCES_REREMI,
-                        'reremi.grako': DU_RESOURCES_GRAKO}
-        DU_PACKAGES = ['reremi', 'reremi.grako']
+                        'reremi': DU_RESOURCES_REREMI}
+        DU_PACKAGES = ['reremi']
+        PREFF_DOT = ""
+        PREFF_SLASH = ""
     else:
         DU_FILES = []
         PACKAGE_DATA = {'siren': DU_RESOURCES_SIREN,
-                        'siren.reremi': DU_RESOURCES_REREMI,
-                        'siren.reremi.grako': DU_RESOURCES_GRAKO}
-        DU_PACKAGES = ['siren', 'siren.reremi', 'siren.reremi.grako']
+                        'siren.reremi': DU_RESOURCES_REREMI}
+        DU_PACKAGES = ['siren', 'siren.reremi']
+        PREFF_DOT = "siren."
+        PREFF_SLASH = "siren/"
+
+    for pack, pattern in patterns:
+        DU_PACKAGES.append(PREFF_DOT+pack)
+        PACKAGE_DATA[PREFF_DOT+pack] = []
+        for p in pattern:
+            PACKAGE_DATA[PREFF_DOT+pack].extend([f.split('/')[-1] for f in glob.glob(PREFF_SLASH+p) if os.path.isfile(f)])
 
     extra_options.update(dict(
         platforms="UNIX",
         description=DESCRIPTION,
         long_description=DESCRIPTION + " (r"+ get_svnrevision()+")",
-        packages=DU_PACKAGES,
-        py_modules=DU_FILES,
         package_data=PACKAGE_DATA,
+        packages=DU_PACKAGES,
+        py_modules=DU_FILES
         ))
     # Run setup
     setup(**extra_options)

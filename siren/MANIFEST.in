@@ -4,7 +4,9 @@ include reremi/*.py
 include reremi/*.xml
 include reremi/*.xsl
 include reremi/grako/*.py
-graft help
+recursive-include help *
+recursive-include help/_static *
+recursive-include help/_static/screenshots *
 include icons/*.png
 include icons/*.ico
 include ABOUT
