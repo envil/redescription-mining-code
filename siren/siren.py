@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import wx
+import multiprocessing
 #import wx.richtext
 #from wx.lib import wordwrap
 #from wx.prop import basetableworker
@@ -89,4 +90,5 @@ def siren_run():
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     siren_run()

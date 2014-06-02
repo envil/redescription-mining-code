@@ -20,6 +20,8 @@ import pdb
 import matplotlib
 import mpl_toolkits.basemap as basemap
 
+INSIDE_SETUP = True
+
 # Common info
 APP = 'siren.py'
 NAME="python-siren"
@@ -32,6 +34,7 @@ URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
 
 ########## SETUPTOOLS FILES
+LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
 ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
@@ -61,34 +64,6 @@ ST_MORE_FILES=['ez_setup.py']
 ST_PACKAGES = ['wx', 'reremi', 'reremi.grako', 'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
-########## DISTUTILS FILES
-DU_RESOURCES_SIREN=['icons/*', 'help/*', 'commons/*', 'screenshots/*', 'ABOUT', 'LICENSE',
-              'ui_confdef.xml']
-DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
-DU_RESOURCES_GRAKO=[]
-DU_FILES = ['siren',
-            'classConnectionDialog',
-            'classEProjView',
-            'classGridTable',
-            'classGView',
-            'classInterObjects',
-            'classMapView',
-            'classParaView',
-            'classPreferencesDialog',
-            'classProj',
-            'classSiren',
-            'classWorkClient',
-            'classWorkInactive',
-            'classWorkLocal',
-            'classWorkServer',
-            'DataWrapper',
-            'factView',
-            'miscDialogs',
-            'toolMath',
-            'toolWP',
-            'tsne']
-DU_PACKAGES = ['reremi', 'reremi.grako']
-
 extra_options = dict(
     name=NAME,
     version=VERSION,
@@ -99,22 +74,28 @@ extra_options = dict(
     license=LICENSE,
     )
 
-# Get SVN revision -- works w/o awk/grep/sed
-svn_revision = '-1'
-try:
-    p = subprocess.check_output(['svn', 'info'])
-except (subprocess.CalledProcessError, OSError):
-    print "No SVN found, using default svn revision (-1) instead"
-else:
-    for line in p.splitlines():
-        l = line.split()
-        if l[0] == 'Revision:':
-            svn_revision = l[1]
-            break
+def get_svnrevision():
+    svn_revision = '-1'
+    try:
+        p = subprocess.check_output(['svn', 'info'])
+    except (subprocess.CalledProcessError, OSError):
+        print "No SVN found, using default svn revision (-1) instead"
+    else:
+        for line in p.splitlines():
+            l = line.split()
+            if l[0] == 'Revision:':
+                svn_revision = l[1]
+                break
+    return svn_revision
 
 
 if sys.platform == 'darwin':
+    if not INSIDE_SETUP:
+            print "Use the other setup, inside siren folder"
+
     ################ MAC SETUP
+    # Get SVN revision -- works w/o awk/grep/sed
+    
     # Bootstrap
     import ez_setup
     ez_setup.use_setuptools()
@@ -128,12 +109,11 @@ if sys.platform == 'darwin':
                                                CFBundleTypeIconFile = 'siren_file_icon.icns'),
                                                ],
                 CFBundleShortVersionString = VERSION,
-                CFBundleVersion = svn_revision,
+                CFBundleVersion = get_svnrevision(),
                 CFBundleName = SHORT_NAME
         )
 
     ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png', 'icons/siren_icon.ico', 'icons/usiren_icon.ico']
-    LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx']
     
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'icons/siren_icon.icns',
@@ -190,27 +170,31 @@ if sys.platform == 'darwin':
 
     
 elif sys.platform == 'win32':
+    if not INSIDE_SETUP:
+            print "Use the other setup, inside siren folder"
+
     ################ WINDOWS SETUP
     ## Should this be 'win64'??
     from distutils.core import setup
     import py2exe
     import matplotlib, glob
-    ICONS = [('icons', ['icons\\siren_icon.icns', 'icons\\siren_file_icon.icns', 'icons\\siren_icon32x32.png', 'icons\\siren_icon.ico', 'icons\\usiren_icon.ico'])]
-    LICENSES = [('', ['ABOUT', 'LICENSE', 'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx'])]
-    CONFIGS = [('', ['ui_confdef.xml']), ('reremi', ['reremi\\miner_confdef.xml', 'reremi\\inout_confdef.xml'])]
-    MORE = [('help', glob.glob('help\\*')), ('commons', glob.glob('commons\\*'))]
+    WICONS = [('icons', glob.glob('icons\\*.ico') + glob.glob('icons\\*.png'))]
+    WLICENSES = [('', ['ABOUT', 'LICENSE']+LICENSES)]
+    WCONFIGS = [('', ['ui_confdef.xml']), ('reremi', ['reremi\\miner_confdef.xml', 'reremi\\inout_confdef.xml'])]
+    WMORE = [('help', glob.glob('help\\*'))]
 
     OPTIONS = {
     'packages': ST_PACKAGES,
     'dll_excludes': ['MSVCP90.dll'],
+    'includes' : ['scipy.sparse.csgraph._validation','scipy.special._ufuncs_cxx','matplotlib.backends.backend_tkagg'],
     'excludes': ['email', '_gtkagg', '_tkagg', '_ssl', 'nose', 'pygments', 'doctest'],
     }
     # Set extra options
     MPL = matplotlib.get_py2exe_datafiles()
-    MTK = [('mpl_toolkits\\basemap\\data', glob.glob('C:\\Python27\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*.*'))]
+    MTK = [('mpl_toolkits\\basemap\\data', glob.glob('C:\\Python27\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*'))]
     extra_options.update(dict(
         windows=[APP],
-        data_files=ICONS + LICENSES + CONFIGS + MPL + MTK,
+        data_files= WICONS + WLICENSES + WCONFIGS + WMORE + MPL + MTK,
         options={'py2exe': OPTIONS}))
     # Run setup
     setup(**extra_options)
@@ -220,12 +204,30 @@ else:
     ################ LINUX SETUP
     from distutils.core import setup
 
+    DU_RESOURCES_SIREN=['icons/*.png', 'icons/*.ico', 'help/*', 'ABOUT', 'LICENSE',
+                        'ui_confdef.xml']+LICENSES
+    DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
+    DU_RESOURCES_GRAKO=[]
+    if INSIDE_SETUP:
+        DU_FILES = [f[:-3] for f in ST_FILES]
+        PACKAGE_DATA = {'': DU_RESOURCES_SIREN,
+                        'reremi': DU_RESOURCES_REREMI,
+                        'reremi.grako': DU_RESOURCES_GRAKO}
+        DU_PACKAGES = ['reremi', 'reremi.grako']
+    else:
+        DU_FILES = []
+        PACKAGE_DATA = {'siren': DU_RESOURCES_SIREN,
+                        'siren.reremi': DU_RESOURCES_REREMI,
+                        'siren.reremi.grako': DU_RESOURCES_GRAKO}
+        DU_PACKAGES = ['siren', 'siren.reremi', 'siren.reremi.grako']
+
     extra_options.update(dict(
+        platforms="UNIX",
+        description=DESCRIPTION,
+        long_description=DESCRIPTION + " (r"+ get_svnrevision()+")",
         packages=DU_PACKAGES,
         py_modules=DU_FILES,
-        package_data={'': DU_RESOURCES_SIREN,
-                      'reremi': DU_RESOURCES_REREMI,
-                      'reremi.grako': DU_RESOURCES_GRAKO},
+        package_data=PACKAGE_DATA,
         ))
     # Run setup
     setup(**extra_options)

@@ -248,8 +248,6 @@ if __name__ == '__main__':
                 args[k] = int(args[k])
             except ValueError:
                 del args[k]
-    print args
-    pdb.set_trace()
     if "setuid" in args:
         os.setuid(args.pop("setuid"))
     if "chroot" in args:

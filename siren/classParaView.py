@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
 from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas
+    FigureCanvasWxAgg as FigCanvas, \
+    NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
 import itertools
 
@@ -21,7 +22,7 @@ from classInterObjects import ResizeableRectangle, DraggableRectangle
 import toolMath
 
 import pdb
-
+            
 class ParaView(GView):
 
     TID = "PC"
@@ -135,7 +136,7 @@ class ParaView(GView):
 
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
-        lit_str.insert(pos_axis, "---")
+        lit_str.insert(pos_axis, "-")
         mat, details, mcols = self.parent.dw.getData().getMatrix()
         idsNAN = np.where(~np.isfinite(mat))
         mat[idsNAN] = np.random.random(idsNAN[0].shape[0])
@@ -234,7 +235,6 @@ class ParaView(GView):
             selv = np.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
                 selv[np.array(list(selected))] = selp
-            
             ### PLOTTING
             ### Lines
             for i, r in enumerate(reps):
@@ -373,7 +373,6 @@ class ParaView(GView):
             ### ADDING NOISE AND RESCALING
             mask_noise = - self.limits[:,0] \
                          + np.array([np.abs(r[2])*(N-lid)/(2.0*N)+np.abs(r[2])/4.0 for r in self.ranges])
-
             mask_div = self.limits[:,1]+np.array([np.abs(r[2]) for r in self.ranges]) - self.limits[:,0]
             tt = (N-lid)/(2.0*N)+0.25
 

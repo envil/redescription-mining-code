@@ -3,11 +3,12 @@ include *.xml
 include reremi/*.py 
 include reremi/*.xml
 include reremi/*.xsl
+include reremi/grako/*.py
 graft help
-graft screenshots
-graft commons
-graft icons
+include icons/*.png
+include icons/*.ico
 include ABOUT
-include LICENSE 
+include CHANGELOG
+include LICENSE* 
 include LICENSE_short
 include MANIFEST.in

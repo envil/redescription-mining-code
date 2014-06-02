@@ -44,7 +44,7 @@ class Siren():
     icon_file = findFile('siren_icon32x32.png', ['icons', pref_dir + '/icons'])
 
     license_file = findFile('LICENSE', [pref_dir])
-    external_licenses = ['basemap', 'matplotlib', 'python', 'wx']
+    external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
          

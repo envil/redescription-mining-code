@@ -1,6 +1,7 @@
 import datetime, random, os.path
 import classCharbonStd
 import classCharbonAlt
+from toolLog import Log
 from classRedescription import Redescription
 from classBatch import Batch
 from classExtension import ExtensionError, ExtensionsBatch
@@ -15,7 +16,7 @@ class Miner:
 
 ### INITIALIZATION
 ##################
-    def __init__(self, data, params, logger, mid=None, souvenirs=None, qin=None, cust_params={}):
+    def __init__(self, data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
         self.qin = qin
         self.deps = []
         self.org_data = None
@@ -51,7 +52,10 @@ class Miner:
             self.data = self.data.subset(row_ids)
 
 
-        self.logger = logger
+        if logger is not None:
+            self.logger = logger
+        else:
+             self.logger = Log()       
         self.constraints = Constraints(self.data, params)
         if self.data.hasMissing():
             self.charbon = classCharbonAlt.Charbon(self.constraints)
