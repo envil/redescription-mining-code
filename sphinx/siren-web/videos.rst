@@ -33,14 +33,14 @@ Videos
 
 	 <div class="film">
 	 <center>
-	 <video tabindex="0" poster="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_tutorial_poster.png" controls="controls">
-	 <source src="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_tutorial.webmhd.webm" type="video/webm">
-	 <source src="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_tutorial.m4v" type="video/quicktime">
+	 <video tabindex="0" poster="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_1_tutorial_poster.png" controls="controls">
+	 <source src="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_1_tutorial.webmhd.webm" type="video/webm">
+	 <source src="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_1_tutorial.m4v" type="video/quicktime">
 	 <p>Your browser doesn't understand HTML5 video. Get a new browser.
 	 Meanwhile, you can download the video files from the following links:
 	 <br>
-	 <a href="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_tutorial.webmhd.webm">WebM (.webm)</a><br>
-	 <a href="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_tutorial.m4v">Quicktime (.m4v)</a><br>
+	 <a href="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_1_tutorial.webmhd.webm">WebM (.webm)</a><br>
+	 <a href="http://www.cs.helsinki.fi/u/pamietti/data/siren/sirenv2_1_tutorial.m4v">Quicktime (.m4v)</a><br>
 	 </p></video></center>
 	 </div>
 
