@@ -1,16 +1,17 @@
 include siren/*.py 
 include siren/*.xml
-include siren/reremi/*.py
+include siren/reremi/*.py 
 include siren/reremi/*.xml
-include siren/reremi/*.xsl 
+include siren/reremi/*.xsl
 include siren/reremi/grako/*.py
-graft siren/help
-graft siren/commons
-graft siren/icons
-graft siren/screenshots
+recursive-include siren/help *
+recursive-include siren/help/_static *
+recursive-include siren/help/_static/screenshots *
+include siren/icons/*.png
+include siren/icons/*.ico
 include siren/ABOUT
-include siren/LICENSE 
-include siren/LICENSE_*
-exclude siren/ez_setup.py
-exclude siren/setup.py
+include siren/CHANGELOG
+include siren/LICENSE* 
+include siren/LICENSE_short
+include siren/MANIFEST.in
 include MANIFEST.in
