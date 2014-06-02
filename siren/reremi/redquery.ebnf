@@ -1,9 +1,9 @@
-(* a simple program syntax in EBNF -- Wikipedia *)
+(* redescription queries in EBNF *)
 QUERIES = @+:query {LB @+:query}* {LB}* ;
 LB = ?/\n/? ;
 query = disjunction:disjunction | conjunction:conjunction | literal:literal ;
-query = mass_neg:neg op_parenthesis conjunction:conjunction cl_parenthesis ;
-query = mass_neg:neg op_parenthesis disjunction:disjunction cl_parenthesis ;
+query = [ mass_neg:neg ] op_parenthesis conjunction:conjunction cl_parenthesis ;
+query = [ mass_neg:neg ] op_parenthesis disjunction:disjunction cl_parenthesis ;
 disjunction = @+:disj_item { disj_op >> @+:disj_item }+ ;
 conjunction = @+:conj_item { conj_op @+:conj_item }+ ;
 disj_item = literal | ( [ mass_neg:neg ] op_parenthesis conjunction:conjunction cl_parenthesis ) ;

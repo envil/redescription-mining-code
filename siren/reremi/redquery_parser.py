@@ -12,7 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '14.101.13.41.34'
+__version__ = '14.153.18.10.21'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -49,15 +49,17 @@ class RedQueryParser(Parser):
                 self._literal_()
                 self.ast['literal'] = self.last_node
             with self._option():
-                self._neg_()
-                self.ast['mass_neg'] = self.last_node
+                with self._optional():
+                    self._neg_()
+                    self.ast['mass_neg'] = self.last_node
                 self._op_parenthesis_()
                 self._conjunction_()
                 self.ast['conjunction'] = self.last_node
                 self._cl_parenthesis_()
             with self._option():
-                self._neg_()
-                self.ast['mass_neg'] = self.last_node
+                with self._optional():
+                    self._neg_()
+                    self.ast['mass_neg'] = self.last_node
                 self._op_parenthesis_()
                 self._disjunction_()
                 self.ast['disjunction'] = self.last_node
