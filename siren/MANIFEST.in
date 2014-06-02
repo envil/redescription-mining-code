@@ -12,5 +12,4 @@ include icons/*.ico
 include ABOUT
 include CHANGELOG
 include LICENSE* 
-include LICENSE_short
 include MANIFEST.in
