@@ -1,9 +1,11 @@
 import sys
 import pdb
+import random
         
 class Log:
     def __init__(self, verbosity=1, output = '-', method_comm = None):
         self.out = []
+        self.oqu = []
         self.verbosity = -1
         self.addOut(verbosity, output, method_comm)
 
@@ -11,15 +13,22 @@ class Log:
         tmp = "LOGGER"
         for out in self.out:
             tmp += "\n\t* %s -> %s" % (out["verbosity"],  out["destination"])
+        for out in self.oqu:
+            tmp += "\n\t* %s -> %s" % (out["verbosity"],  out["destination"])
         return tmp
         
     def resetOut(self):
         self.out = []
+        self.oqu = []
         self.verbosity = -1
+
+    def __getstate__(self):
+        return { 'verbosity': self.verbosity, 'oqu': self.oqu, 'out': []}
         
     def addOut(self,  verbosity=1, output = '-', method_comm = None):
+        # print "Adding output:\t", output, type(output), method_comm
         ### CHECK OUTPUT
-        if type(output) == str: 
+        if type(output) == str:
             if output in ['-', "stdout"]:
                 tmp_dest = sys.stdout
             elif output == 'stderr':
@@ -31,6 +40,7 @@ class Log:
                     return
         else:
             tmp_dest = output
+            
 
         ### CHECK VERBOSITY
         if type(verbosity) == int:
@@ -43,11 +53,14 @@ class Log:
             return
 
         ### OK ADD OUTPUT
-        self.out.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
-        return len(self.out)-1
+        if output is not None and type(output) is not str:
+             self.oqu.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
+        else:
+            self.out.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
+        return len(self.out)+len(self.oqu)-1
 
     def printL(self, level, message, type_message="*", source=None):
-        for out in self.out:
+        for out in self.out+self.oqu:
             if ( type_message in out["verbosity"].keys() and level <= out["verbosity"][type_message]) \
                    or  ( type_message not in out["verbosity"].keys() and "*" in out["verbosity"].keys() and level <= out["verbosity"]["*"]):
                 
@@ -65,6 +78,7 @@ class Log:
                     out["destination"].write("%s%s\n" % (header, message))
                     out["destination"].flush()
                 else:
+                    # print "Log printing:\t", type_message, message, "\n\tFrom", source ," to ", out["destination"]
                     out["method"](out["destination"], message, type_message, source)
         
         

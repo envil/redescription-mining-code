@@ -1075,7 +1075,7 @@ class Siren():
                 return
         self.deleteAllViews()
         self.toolFrame.Destroy()
-        exit()
+        sys.exit()
 
     def OnLicense(self, event):
         license_text = None
