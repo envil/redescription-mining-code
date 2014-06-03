@@ -13,7 +13,7 @@
 
   !define M_PRODUCT "Siren"
   !define MUI_FILE "siren"
-  !define M_VERSION "2.1.3"
+  !define M_VERSION "2.1.1"
   !define py2exeOutputDirectory 'dist'
   !define MUI_ICON "icons\siren_icon.ico"
 

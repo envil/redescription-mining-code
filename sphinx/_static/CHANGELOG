@@ -1,5 +1,17 @@
 CHANGELOG for Siren
 ===================
+v2.1.1
+------
+* freeze_support for multiprocessing in windows
+* Bug fix with log outputs and multiprocessing
+* Updated help files
+
+v2.1.0
+------
+* Modified input/output
+* New parsing for the queries based on GRAKO generated parser
+* Removed Custom and XML data formats, everything to CSV
+
 v2.0.3
 ------
 * Bug fix for class variables in threading

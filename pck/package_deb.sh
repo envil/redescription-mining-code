@@ -2,8 +2,8 @@
 
 YAH=$(pwd) # YOU ARE HERE
 
-# PACK_REP=${YAH}/packaging_current_$(date "+%Y%m%d%H%M%S")
-PACK_REP=${YAH}/packaging_current_0
+PACK_REP=${YAH}/packaging_current_$(date "+%Y%m%d%H%M%S")
+# PACK_REP=${YAH}/packaging_current_0
 mkdir $PACK_REP
 ROOT_REP=${PACK_REP}"/python-siren"
 SIREN_REP=${ROOT_REP}"/siren"

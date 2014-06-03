@@ -1,5 +1,8 @@
-python-siren (2.1.3) UNSTABLE; urgency=low
+python-siren (2.1.1) UNSTABLE; urgency=low
 
+    * freeze_support for multiprocessing in windows
+    * Bug fix with log outputs and multiprocessing
+    * Updated help files
     * Modified input/output
     * New parsing for the queries based on GRAKO generated parser
     * Removed Custom and XML data formats, everything to CSV
