@@ -31,6 +31,7 @@ AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
 URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
+COPYRIGHT='(C) 2012-2014 Esther Galbrun and Pauli Miettinen'
 
 ########## SETUPTOOLS FILES
 LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
@@ -110,7 +111,8 @@ if sys.platform == 'darwin':
                 CFBundleShortVersionString = VERSION,
                 CFBundleVersion = get_svnrevision(),
                 CFBundleName = SHORT_NAME,
-                CFBundleIdentifier = "fi.helsinki.cs.siren"
+                CFBundleIdentifier = "fi.helsinki.cs.siren",
+                NSHumanReadableCopyright = COPYRIGHT
         )
 
     ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png', 'icons/siren_icon.ico', 'icons/usiren_icon.ico']

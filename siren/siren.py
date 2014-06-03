@@ -65,6 +65,9 @@ class SirenApp(wx.App):
         import sys
         # When start from command line, this gets called with the script file's name
         if filename != sys.argv[0]:
+            if self.frame.dw.getData() is not None:
+                if not self.frame.checkAndProceedWithUnsavedChanges():
+                    return
             self.frame.LoadFile(filename)
 
     def MacReopenApp(self):

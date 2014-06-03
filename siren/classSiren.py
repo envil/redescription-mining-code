@@ -1100,9 +1100,14 @@ class Siren():
             license_text += "\n\nSiren comes bundled with other software for your convinience.\nThe licenses for this bundled software are below." + external_license_texts
 
         # Show dialog
-        dlg = wx.lib.dialogs.ScrolledMessageDialog(self.toolFrame, license_text, "LICENSE")
-        dlg.ShowModal()
-        dlg.Destroy()
+        try:
+            dlg = wx.lib.dialogs.ScrolledMessageDialog(self.toolFrame, license_text.encode('ascii', errors='ignore'), "LICENSE")
+        except Exception as e:
+            wx.MessageDialog(self.toolFrame, 'Cannot show the license: '+str(e), style=wx.OK, caption="ERROR").ShowModal()
+            sys.stderr.write(str(e))
+        else:
+            dlg.ShowModal()
+            dlg.Destroy()
          
 
     def checkAndProceedWithUnsavedChanges(self, test=None, what="continue"):
