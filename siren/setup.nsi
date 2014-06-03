@@ -20,7 +20,7 @@
   ;Name and file
   Name "${M_PRODUCT}"
   BrandingText "Siren"
-  OutFile "install_siren.exe"
+  OutFile "install_siren_${M_VERSION}.exe"
 
   ;Default installation folder
   InstallDir "$LOCALAPPDATA\${M_PRODUCT}_${M_VERSION}"
