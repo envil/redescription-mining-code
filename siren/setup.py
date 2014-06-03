@@ -60,7 +60,7 @@ ST_FILES = ['classConnectionDialog.py',
             'tsne.py']
 
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'reremi', 'reremi.grako', 'sklearn', 'mpl_toolkits']
+ST_PACKAGES = ['wx', 'reremi',  'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 extra_options = dict(
@@ -109,7 +109,8 @@ if sys.platform == 'darwin':
                                                ],
                 CFBundleShortVersionString = VERSION,
                 CFBundleVersion = get_svnrevision(),
-                CFBundleName = SHORT_NAME
+                CFBundleName = SHORT_NAME,
+                CFBundleIdentifier = "fi.helsinki.cs.siren"
         )
 
     ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png', 'icons/siren_icon.ico', 'icons/usiren_icon.ico']
