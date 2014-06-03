@@ -209,9 +209,7 @@ else:
 
     patterns = [('reremi.grako', []),
                 ('help', ['help/*']),
-                ('icons', ['icons/*.png', 'icons/*.ico']),
-                ('help._static', ['help/_static/*']),
-                ('help._static.screenshots', ['help/_static/screenshots/*'])]
+                ('icons', ['icons/*.png', 'icons/*.ico'])]
                   
     if INSIDE_SETUP:
         DU_FILES = [f[:-3] for f in ST_FILES]
