@@ -191,7 +191,7 @@ latex_elements = {
             '% save the meaning of \\includegraphics\n' + \
             '\\LetLtxMacro\\latexincludegraphics\\includegraphics\n' + \
             '\\renewcommand{\\includegraphics}[2][]{%\n' + \
-            '\\begin{center}\n\\latexincludegraphics[#1, width=0.45\\textwidth]{' + os.path.abspath('../') +'/#2}\n\\end{center}}\n',
+            '\\begin{center}\n\\latexincludegraphics[#1, width=0.45\\textwidth]{#2}\n\\end{center}}\n',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

@@ -20,7 +20,7 @@ The matplotlib library enables to generate high quality figures, seamlessly inte
 CHANGELOG
 ==========
 
-.. literalinclude:: _static/CHANGELOG
+.. literalinclude:: ../_static/CHANGELOG
 
 The latest release for each platform are listed here. Previous versions can be found in `this folder <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/>`_.
 
@@ -78,15 +78,15 @@ Afterward, you might need to run, to fix dependencies, i.e., install missing req
 
 .. code:: bash 
 
-  sudo apt-get -f install
+	  apt-get -f install
 
 Or use a tool like Ubuntu Software Center to open the package and install the application.
 
-If everything went fine, you should find a Siren entry in your Applications menu (probably under Science).
+If everything went fine, you should find a Siren entry in your Applications menu.
 
 You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
 
-.. image:: _static/screenshots/Fullscreen.png
+.. image:: ../_static/screenshots/Fullscreen.png
 
 .. _windows:
 
@@ -97,4 +97,4 @@ For Windows
 
 Download and run to install *Siren*.
 
-.. image:: _static/screenshots/Fullscreen_win.png
+.. image:: ../_static/screenshots/Fullscreen_win.png

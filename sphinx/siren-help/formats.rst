@@ -4,7 +4,7 @@
 Formats
 ***********
 
-.. _dataformats:
+.. _data_formats:
 
 Data formats
 =============

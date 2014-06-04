@@ -22,7 +22,7 @@ algorithm are possible through the interface.
 * Mine extensions of an existing redescription, on both sides or selectively on one side.
 * It is possible to select a subset of variables for use in mining/expanding, by disabling some variables and to specify a subset of entities of interest to emphasize.
 
-.. image:: _static/stories/mine/mine.gif
+.. image:: ../_static/stories/mine/mine.gif
 	   :alt: Siren in action		 
 
 .. _func_viz:
@@ -39,7 +39,7 @@ Parallel Coordinates
 
 A *parallel coordinates* plot represents the values taken by the entites for the variable appearing in the queries. It allows to easily visualize the impact of the queries conditions on the support of the redescription.
 
-.. image:: _static/screenshots/PacoView.png
+.. image:: ../_static/screenshots/PacoView.png
 
 .. _viz_proj:
 
@@ -57,7 +57,7 @@ The *axis projection* and a number of data projections from the `scikit-learn pa
 * `Spectral Embedding <http://scikit-learn.org/0.13/modules/generated/sklearn.manifold.SpectralEmbedding.html#sklearn.manifold.SpectralEmbedding>`_ (Johnson-Lindenstrauss transform)
 * `Totally Random Trees Representation <http://scikit-learn.org/0.13/modules/generated/sklearn.ensemble.RandomTreesEmbedding.html#sklearn.ensemble.RandomTreesEmbedding>`_
 
-.. image:: _static/screenshots/MDSView.png
+.. image:: ../_static/screenshots/MDSView.png
 
 .. _viz_map:
 
@@ -69,7 +69,7 @@ Such redescriptions can be displayed on a map to show the locations
 where both queries hold, only the left hand side query 
 holds and only the right hand side query holds.
 
-.. image:: _static/screenshots/MapView.png
+.. image:: ../_static/screenshots/MapView.png
 
 .. _func_edit:
 
@@ -78,21 +78,21 @@ Editing and Selecting
 
 Existing redescriptions can be edited and the visualization and statistics will be recomputed and changes reflected in the original redescription in the list and other visualizations of that same redescription.
 
-.. image:: _static/screenshots/ViewsSide.png
+.. image:: ../_static/screenshots/ViewsSide.png
 
 It is also possible to build a new redescription from scratch.
 
 Dragging the interval boxes in the parallel coordinates plot allows to edit the redescription interactively.
 
-.. image:: _static/screenshots/PacoEdit.png
+.. image:: ../_static/screenshots/PacoEdit.png
 
 The user can select single entites from a view by clicking the corresponding dot/line in a view.
 
-.. image:: _static/screenshots/SelectDot.png
+.. image:: ../_static/screenshots/SelectDot.png
 
 Furthermore, he can select a subset of entities by drawing a enclosing polygon directly on the view.
 
-.. image:: _static/screenshots/SelectPoly.png
+.. image:: ../_static/screenshots/SelectPoly.png
 
 
 
