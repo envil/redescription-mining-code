@@ -4,7 +4,7 @@
 Introduction
 ***************
 
-.. image:: _static/siren_icon.png
+.. image:: ../_figs/siren_icon.png
 	   :width: 25%
 	   :align: center
 

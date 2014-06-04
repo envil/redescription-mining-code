@@ -32,7 +32,7 @@ Alternatively, if both queries in a visualization are empty *Siren* simply mines
 
 Results will be appended to the redescriptions list in the ``Expansions`` tab.
 
-Before running a mining task make sure you have adjusted the `mining preferences <_static/miner_confdef.xml>`_...
+Before running a mining task make sure you have adjusted the `mining preferences <../_static/miner_confdef.xml>`_...
 
 .. _expanding_red:
 
@@ -44,7 +44,7 @@ You can also press the expansion button to automatically find expansions of any 
 
 Again, results will be appended to the redescriptions list in the ``Expansions`` tab.
 
-Before running an expansion task make sure you have adjusted the `mining preferences <_static/miner_confdef.xml>`_...
+Before running an expansion task make sure you have adjusted the `mining preferences <../_static/miner_confdef.xml>`_...
 
 
 .. _filtering_red:

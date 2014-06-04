@@ -86,7 +86,7 @@ If everything went fine, you should find a Siren entry in your Applications menu
 
 You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
 
-.. image:: ../_static/screenshots/Fullscreen.png
+.. image:: ../_figs/screenshots/Fullscreen.png
 
 .. _windows:
 
@@ -97,4 +97,4 @@ For Windows
 
 Download and run to install *Siren*.
 
-.. image:: ../_static/screenshots/Fullscreen_win.png
+.. image:: ../_figs/screenshots/Fullscreen_win.png

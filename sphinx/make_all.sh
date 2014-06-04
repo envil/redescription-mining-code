@@ -4,34 +4,28 @@ rm -rf send
 mkdir send
 
 cd siren-help/
-rm -rf _build _static
-ln -s ../_static _static
+rm -rf _build
 make html
 make latexpdf
-rm -rf _build/html/_static/screenshots _build/html/_static/stories
 cp -r _build/html ../send/help
 cp _build/latex/Siren.pdf ../send/help/Siren-UserGuide.pdf
 
 cd ../siren-web/
-rm -rf _build _static
-ln -s ../_static _static
+rm -rf _build
 make html
-rm -rf _build/html/_static/screenshots _build/html/_static/stories
 cp -r _build/html ../send/main
 
 cd ../siren-sigmod/
-rm -rf _build _static
-ln -s ../_static _static
+rm -rf _build
 make singlehtml
 make latexpdf
-rm -rf _build/html/_static/screenshots _build/html/_static/stories
 cp -r _build/singlehtml ../send/sigmod
 cp _build/latex/Siren.pdf ../send/sigmod/Siren-SIGMOD.pdf
 
 
 cd ../send/
-sed -i 's:_static/:../_static/:g' */*.html
-sed -i 's:_images/:../_images/:g' */*.html
+sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html
+sed -i 's:\([^/]\)_images/:\1../_images/:g' */*.html
 mv sigmod/_static ./
 mv sigmod/_images ./
 mv main/_static/* ./_static/
