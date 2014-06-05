@@ -52,6 +52,7 @@ class ParaView(GView):
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
+            red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
             self.source_list=source_list
@@ -87,6 +88,7 @@ class ParaView(GView):
                 red = None
                 self.queries = old
         if red is not None:
+            red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
             if upAll:
@@ -182,7 +184,8 @@ class ParaView(GView):
             draw_settings = self.getDrawSettings()
             self.axe.cla()
 
-            osupp = self.suppABCD
+            osupp = red.supports().getVectorABCD()
+            # osupp = self.suppABCD
             pos_axis = len(red.queries[0])
 
             new = [[l.col() for l in red.queries[side].listLiterals()] for side in [0,1]]
