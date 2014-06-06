@@ -1016,6 +1016,10 @@ class Siren():
 
     def _onHelpHTML2(self):
         import wx.html2
+        import urllib
+        # DEBUG
+        #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_ERROR, lambda evt: wx.MessageDialog(self.toolFrame, str(evt), style=wx.OK, caption='WebView Error').ShowModal())
+        #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_LOADED, lambda evt: wx.MessageDialog(self.toolFrame, 'Help files loaded from '+evt.GetURL(), style=wx.OK, caption='Help files loaded!').ShowModal())
         if self.helpURL is None:
             self._onHelpOldSystem()
             return
@@ -1023,8 +1027,9 @@ class Siren():
             self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
             self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
             sizer = wx.BoxSizer(wx.VERTICAL)
-            browser = wx.html2.WebView.New(self.helpFrame)
-            browser.LoadURL('file://'+os.path.abspath(self.helpURL))
+            url = 'file://'+urllib.quote(os.path.abspath(unicode(self.helpURL)).encode('utf-8'))
+            browser = wx.html2.WebView.New(self.helpFrame, url=url)
+            #browser.LoadURL('file://'+os.path.abspath(self.helpURL))
             sizer.Add(browser, 1, wx.EXPAND, 10)
             self.helpFrame.SetSizer(sizer)
             self.helpFrame.SetSize((900, 700))
@@ -1078,9 +1083,10 @@ class Siren():
         sys.exit()
 
     def OnLicense(self, event):
+        import codecs # we want to be able to read UTF-8 license files
         license_text = None
         try:
-            f = open(self.license_file)
+            f = codecs.open(self.license_file, 'r', encoding='utf-8', errors='replace')
             license_text = f.read()
         except:
             wx.MessageDialog(self.toolFrame, 'No license found.', style=wx.OK, caption="No license").ShowModal()
@@ -1090,7 +1096,7 @@ class Siren():
         for ext in self.external_licenses:
             lic = 'LICENSE_'+ext
             try:
-                f = open(findFile(lic, [self.curr_dir]), 'r')
+                f = codecs.open(findFile(lic, [self.curr_dir]), 'r', encoding='utf-8', errors='replace')
                 external_license_texts += '\n\n***********************************\n\n' + f.read()
                 f.close()
             except:
@@ -1101,7 +1107,7 @@ class Siren():
 
         # Show dialog
         try:
-            dlg = wx.lib.dialogs.ScrolledMessageDialog(self.toolFrame, license_text.encode('ascii', errors='ignore'), "LICENSE")
+            dlg = wx.lib.dialogs.ScrolledMessageDialog(self.toolFrame, license_text, "LICENSE")
         except Exception as e:
             wx.MessageDialog(self.toolFrame, 'Cannot show the license: '+str(e), style=wx.OK, caption="ERROR").ShowModal()
             sys.stderr.write(str(e))

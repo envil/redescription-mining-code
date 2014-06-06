@@ -18,6 +18,7 @@ import re
 import subprocess
 import pdb
 import glob
+import time
 
 INSIDE_SETUP = True
 
@@ -31,11 +32,15 @@ AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
 URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
-COPYRIGHT='(C) 2012-2014 Esther Galbrun and Pauli Miettinen'
+COPYRIGHT=u'\u00A9 2012-2014 Esther Galbrun and Pauli Miettinen'
+HELP_PACKAGE_FILENAME = 'help.tar.gz'
+HELP_PACKAGE_URL = URL+HELP_PACKAGE_FILENAME
+HELP_UNPACK_CMD = 'tar xfz '+HELP_PACKAGE_FILENAME # command to unpack the help file to folder help/
 
 ########## SETUPTOOLS FILES
 LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
-ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
+#ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
+ST_RESOURCES=['help', 'ABOUT', 'LICENSE',
               'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = ['classConnectionDialog.py',
@@ -88,13 +93,29 @@ def get_svnrevision():
                 break
     return svn_revision
 
+def load_help_files():
+    try:
+        subprocess.check_call('curl "'+HELP_PACKAGE_URL+'" -o"'+HELP_PACKAGE_FILENAME+'"', shell=True)
+    except CalledProcessError as e:
+        sys.stderr.write('Downloading the help package failed, aborting:\n'+str(e))
+        sys.exit(e.returncode)
+    try:
+        subprocess.check_call(HELP_UNPACK_CMD, shell=True)
+    except CalledProcessError as e:
+        sys.stderr.write('Unpacking the help package failed, aborting:\n'+str(e))
+        sys.exit(e.returncode)
 
+def clean_help_files():
+    subprocess.call('rm -rf help/', shell=True)
+    subprocess.call('rm -rf '+HELP_PACKAGE_FILENAME, shell=True)
+    
+        
 if sys.platform == 'darwin':
     if not INSIDE_SETUP:
             print "Use the other setup, inside siren folder"
 
     ################ MAC SETUP
-    # Get SVN revision -- works w/o awk/grep/sed
+
     
     # Bootstrap
     import ez_setup
@@ -102,6 +123,9 @@ if sys.platform == 'darwin':
     
     from setuptools import setup
 
+    # Get help files
+    load_help_files()
+    
     # A custom plist to associate with .siren -files
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
@@ -147,6 +171,7 @@ if sys.platform == 'darwin':
         subprocess.call('cp '+f+' dist/third-party-licenses/', shell=True)
     subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
     subprocess.call('cp CHANGELOG dist/CHANGELOG', shell=True)
+    subprocess.call('cp help/Siren-UserGuide.pdf dist/UserGuide.pdf', shell=True)
     subprocess.call('ln -s /Applications dist/', shell=True)
     subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
     # Set VolumeIcon's creator
@@ -160,15 +185,22 @@ if sys.platform == 'darwin':
     # Set custom icon
     subprocess.call('SetFile -a C tmp', shell=True)
     # Detach
+    print "Detaching"
+    time.sleep(2)
     subprocess.call('hdiutil detach tmp', shell=True)
     subprocess.call('rm -rf tmp', shell=True)
     subprocess.call('rm -f '+SHORT_NAME+'.dmg', shell=True)
     # Convert
     print "Converting the disk image to the final one"
+    time.sleep(1)
     subprocess.call('hdiutil convert raw-'+SHORT_NAME+'.dmg -format UDZO -o '+SHORT_NAME+'.dmg', shell=True)
     # Clean
     subprocess.call('rm -rf dist build', shell=True)
     subprocess.call('rm -f raw-'+SHORT_NAME+'.dmg', shell=True)
+
+    # Clean help files
+    print "Cleaning help files"
+    clean_help_files()
 
     
 elif sys.platform == 'win32':
