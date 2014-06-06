@@ -23,6 +23,7 @@ svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/siren ${SIREN_REP}
 mkdir ${SPHINX_REP}
 svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/siren-help ${SPHINX_REP}/siren-help
 svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_static ${SPHINX_REP}/_static
+svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_figs ${SPHINX_REP}/_figs
 svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_templates ${SPHINX_REP}/_templates
 
 # ### Update version (almost) everywhere !!DOES NOT WORK!!
@@ -40,16 +41,14 @@ make html
 make latexpdf
 
 rm -rf ${HELP_TRG_REP}
-mv ${HELP_SRC_REP} ${HELP_TRG_REP}
+cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}
 cp ${GUIDE_PDF_SRC} ${GUIDE_PDF_TRG}
 cd ${HELP_TRG_REP}
 rm .buildinfo objects.inv
-for file in $( grep "_static" *.html | sed -e 's/^.*src="\(_static[^"]*\)".*$/\1/' -e 's/^.*href="\(_static[^"]*\)".*$/\1/' | sort | uniq ); do
-	mv $file "${file##[a-z_]*/}"
-done
-mv _static/*.css .
-sed -i -e 's!../main/!http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/!g' -e 's!_static/!!g' -e 's!screenshots/!!g' *.html
-rm -rf _static
+sed -i -e 's:\([^/]\)../_static/:\1:g' -e 's:\([^/]\)_static/:\1:g' -e 's:\([^/]\)_images/:\1:g' -e 's!../main/!http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/!g' *.html
+mv _static/* .
+mv _images/* .
+rm -rf _static _images
 rm -rf ${SPHINX_REP}
 
 # ### add the __init__.py files

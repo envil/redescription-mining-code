@@ -184,8 +184,8 @@ class ParaView(GView):
             draw_settings = self.getDrawSettings()
             self.axe.cla()
 
-            osupp = red.supports().getVectorABCD()
-            # osupp = self.suppABCD
+            # osupp = red.supports().getVectorABCD()
+            osupp = self.suppABCD
             pos_axis = len(red.queries[0])
 
             new = [[l.col() for l in red.queries[side].listLiterals()] for side in [0,1]]
