@@ -666,7 +666,7 @@ class Charbon:
 
     def conflictP22(self, litA, litB):
         # return True
-        return (litA[0] == litB[0]) or (litA[1] == litB[2])
+        return (litA[0] == litB[0]) and (litA[1] != litB[1])
     def conflictP23(self, litA, litB):
         # return True
         return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])

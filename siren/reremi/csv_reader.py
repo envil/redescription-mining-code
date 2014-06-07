@@ -76,18 +76,19 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
-            data = dict(zip(head, [[] for i in range(len(head))]))
+            data = dict([(head[i].strip(),[]) for i in range(len(head))])
         no_of_columns = len(head)
 
         for row in csvreader:
             if len(row) != no_of_columns:
-                pdb.set_trace()
+#                pdb.set_trace()
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
                                  str(no_of_columns)+')')
             for i in range(len(row)):
-                if row[i] != type(row[i])(unknown_string):
-                    data[head[i]].append(row[i])
+                tmp = row[i].strip()
+                if tmp != type(tmp)(unknown_string):
+                    data[head[i]].append(tmp)
                 else:
                     data[head[i]].append(None)        
     if fcl:
@@ -569,6 +570,9 @@ def main(argv=[]):
     # rep = "/home/galbrun/"
     # res = importCSV(rep+"data1.csv", rep+"data2.csv", unknown_string='NA')
     # print res.keys()
+
+    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
+    res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
     
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')

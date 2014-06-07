@@ -1728,6 +1728,11 @@ def getDenseArray(vect):
 
 
 def main():
+
+    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "Na"], "csv")
+    print data
+    exit()
     # print "UNCOMMENT"
     # rep = "/home/galbrun/redescriptors/data/world/"
     # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")

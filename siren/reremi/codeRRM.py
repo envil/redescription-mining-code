@@ -215,8 +215,8 @@ class ColD:
 
     def getCl(self, v, i):
         p = self.getPr(v, i)
-        if p > 1:
-            pdb.set_trace()
+        # if p > 1:
+        #     pdb.set_trace()
         if p > 0:
             return -numpy.log2(p)
         else:
@@ -542,12 +542,12 @@ class LitD:
     def getCl(self, v, i):
         p = self.getPr(v, i)
         if p > 1:
-            pdb.set_trace()
+#            pdb.set_trace()
             return 0
         if p > 0:
             return -numpy.log2(p)
         else:
-            pdb.set_trace()
+#            pdb.set_trace()
             return float("inf")
         
     def getPrs(self, vs, ids=None):

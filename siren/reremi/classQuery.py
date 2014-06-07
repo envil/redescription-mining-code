@@ -429,7 +429,11 @@ class CatTerm(Term):
         else:
             symbIn = '='
         if type(names) == list  and len(names) > 0:
-            return ('[%s '+symbIn+' %s]') % (names[self.col], self.cat)
+            try:
+                return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
+            except UnicodeDecodeError:
+                pdb.set_trace()
+                print names[self.col]
         else:
             return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.cat)
 
@@ -1174,7 +1178,7 @@ class QuerySemantics(object):
             return self.names.index(vname)
         else:
             print vname
-            pdb.set_trace()
+            # pdb.set_trace()
             raise Exception("No variables names provided when needed!")
 
 if __name__ == '__main__':
@@ -1182,28 +1186,35 @@ if __name__ == '__main__':
     from classData import Data
     import sys
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
+    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "Na"], "csv")
     qsLHS = QuerySemantics(data.getNames(0))
     qsRHS = QuerySemantics(data.getNames(1))
     parser = RedQueryParser(parseinfo=False)
-    
-    with codecs.open("../../bazar/queries0.txt", encoding='utf-8', mode='r') as f:
+
+    with open("../../runs/vaalikone_new/vaali_named.csv") as f:
+        header = None
         for line in f:
-            if len(line.strip().split("\t")) >= 2:
-                print line.strip()
+            if header is None:
+                header = line.strip().split("\t")
+            elif len(line.strip().split("\t")) >= 2:
                 resLHS = parser.parse(line.strip().split("\t")[0], "query", semantics=qsLHS)
                 resRHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsRHS)
-                #print "----------"
-                print "ORG   :", resLHS
+                pdb.set_trace()
+                print "----------"
+                print line.strip()
+                print "ORG   :", resLHS, "---", resRHS
+                print len(resLHS.recompute(0, data)[0])
+                print len(resRHS.recompute(1, data)[0])
+
                 # cp = resLHS.copy()
                 # resLHS.push_negation()
                 # print "COPY  :", cp
                 # print "PUSHED:", resLHS
                 # cp.negate()
                 # print "NEG   :", cp
-                print resLHS.recompute(0, data)
-                print resRHS.recompute(1, data)
-                pdb.set_trace()
+                # print resLHS.recompute(0, data)
+                # print resRHS.recompute(1, data)
+                # pdb.set_trace()
                 # print len(resLHS)
                 # print resLHS.listLiterals()
                 # tmp = resLHS.copy()

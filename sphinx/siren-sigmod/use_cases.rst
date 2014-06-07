@@ -9,7 +9,7 @@ Sample Use-Cases
 Finnish 2011 parliamentary elections
 =========================================
 
-We provide a prepared dataset about the Finnish 2011 parliamentary elections. Get the data (non-geospatial), try out *Siren* and learn about the finnish political scene!
+We provide a `prepared dataset <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_ about the Finnish 2011 parliamentary elections. Get the data (non-geospatial), try out *Siren* and learn about the finnish political scene!
 
 To illustrate the use of *Siren*, we present example use-cases from different application domains. 
 
