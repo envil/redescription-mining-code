@@ -4,14 +4,21 @@
 Sample Use-Cases
 ******************
 
-To illustrate the use of *Siren*, we present example use-cases from different fapplication domains. 
+.. _uc_finnelec:
+
+Finnish 2011 parliamentary elections
+=========================================
+
+We provide a prepared dataset about the Finnish 2011 parliamentary elections. Get the data (non-geospatial), try out *Siren* and learn about the finnish political scene!
+
+To illustrate the use of *Siren*, we present example use-cases from different application domains. 
 
 .. _uc_bio:
 
 Biological niche-finding
 =========================
 
-The first use-case concern niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
+One use-case concerns niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
 
 .. image:: ../_figs/stories/BIO/interact/Bio_OverfitResultOrgRMoose.png
 
@@ -20,7 +27,7 @@ The first use-case concern niche-finding, i.e. the problem of finding species' b
 US census and election funds
 =============================
 
-The second use-case considers US census and election data.
+An other use-case considers US census and election data.
 
 .. image:: ../_figs/stories/US/interact/US_PolyDisable1.png
 
@@ -30,13 +37,6 @@ DBLP Computer Science Bibliography
 ===================================
 
 
-The third example we consider non-geospatial data, namely from the DBLP Computer Science Bibliography.
+We also consider non-geospatial data, namely from the DBLP Computer Science Bibliography.
 
 .. image:: ../_figs/stories/DBLP/interact/DBLPPick_PacoEditRICDM.png
-
-.. _uc_finnelec:
-
-Finnish 2011 parliamentary elections
-=========================================
-
-The last use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 

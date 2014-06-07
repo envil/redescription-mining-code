@@ -10,7 +10,7 @@ Biological niche-finding
 =========================
 
 .. note:: 
-   The first use-case concern niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
+   The first use-case concerns niche-finding, i.e. the problem of finding species' bioclimatic envelope, an important task in biology.
 
    The :ref:`video tutorial <vtutorial>` provides a step by step use-case with this data.
 
@@ -134,7 +134,7 @@ DBLP Computer Science Bibliography
 ===================================
 
 .. note::
-   In this third example we consider non-geospatial data, namely from the DBLP Computer Science Bibliography.
+   In this third example, we consider non-geospatial data, namely from the DBLP Computer Science Bibliography.
 
 Data
 -----
@@ -191,11 +191,12 @@ Exploration
 
 .. _uc_finnelec:
 
-Finnish 2011 parliamentary elections
-=========================================
+Finnish 2011 parliamentary elections (Try it out!)
+==================================================
 
 .. note:: 
    In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 
+   The prepared dataset is available `here <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/>`_
 
 Data
 -----
@@ -204,4 +205,16 @@ The data was collected from `www.vaalikone.fi <http://www.vaalikone.fi>`_, the *
 and `made publicly available <http://blogit.hs.fi/hsnext/hsn-vaalikone-on-nyt-avointa-tietoa>`_. One view contains candidate personal profile attributes, such as party, age, and education, while the answers provided to 30 multiple-choice questions and assigned importance form
 the other view.
 
-*Under translation...*
+
+Exploration
+------------
+
+1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_. 
+
+2. Start siren and open the data via :menuselection:`File --> Open`.
+
+3. Explore the premined redescriptions, write and mine new ones, and learn about the finnish political scene...
+
+4. For instance, duplicate redescription R8 :menuselection:`[Left click on the redescription] --> Duplicate`, open R8 and the copy side-by-side in Parallel Coordinates windows :menuselection:`[Left click on the redescription] --> Parallel Coordinates` and remove the term about the education level from the left-hand side query and see how it affects the support (or almost does not)...
+
+.. image:: ../_figs/screenshots/Siren_vaalikone.png
