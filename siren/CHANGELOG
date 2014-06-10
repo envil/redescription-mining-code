@@ -4,6 +4,8 @@ v2.1.1
 ------
 * freeze_support for multiprocessing in windows
 * Bug fix with log outputs and multiprocessing
+* Enable negations by variable types
+* Flip negation of Boolean variables in the Parallel Coordinates View
 * Updated help files
 
 v2.1.0
