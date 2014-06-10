@@ -28,6 +28,8 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
     BACKGROUND_GREY = wx.Colour(240,255,240)
     TEXT_GREY = wx.Colour(131,139,131)
     SBRUSH_GREY = wx.SOLID
+
+    MAP_SORT_NAN = {float('Nan'): None}
     
     """Base class for editors"""
 
@@ -902,7 +904,10 @@ class RowTable(GridTable):
                     rangeV = self.fields[col][2]["range"]
                     lr = row/(1.0*self.nbItems())
                     if type(rangeV) is dict:
-                        lr = rangeV.get(tmp, 0)/(len(rangeV)-1.0)
+                        if len(rangeV) > 1:
+                            lr = rangeV.get(tmp, 0)/(len(rangeV)-1.0)
+                        else:
+                            lr = 1
                     elif type(rangeV) is tuple:
                         if rangeV[0] != rangeV[1]:
                             lr = (rangeV[1]-tmp)/(rangeV[1]-rangeV[0])

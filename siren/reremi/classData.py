@@ -30,7 +30,11 @@ class RowE(object):
 
     def getValue(self, side, col=None):
         if col is None:
-            return self.data.getValue(side["side"], side["col"], self.rid)
+            if side.get("aim", None) == "sort":
+                t = self.data.getValue(side["side"], side["col"], self.rid)
+                return {Data.NA_num:None}.get(t,t)
+            else:
+                return self.data.getValue(side["side"], side["col"], self.rid)
         else:
             return self.data.getValue(side, col, self.rid)
 
@@ -397,7 +401,9 @@ class CatColM(ColM):
                     cats[v].add(j)
                 else:
                     cats[v] = set([j])
-        if len(cats) > 1:
+        if len(cats) > 0:
+            if len(cats) == 1:
+                print "Only one category %s, this is suspicious..." % (cats.keys())
             return CatColM(cats, max(indices.values())+1, miss)
         else:
             return None
@@ -642,7 +648,7 @@ class NumColM(ColM):
             return self.vect.get(rid, self.vect[-1])
         else:
             return self.vect[rid]
-
+            
     def numEquiv(self, v):
         try:
             tmp = float(v)
@@ -1688,7 +1694,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 continue
             values = csv_data['data'][side]["data"][name]
             col = None
-            
+
             if "type" in det:
                 col = det["type"].parseList(values, indices[side])
             else:
@@ -1709,7 +1715,8 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     col.flipEnabled()
                 cols[sito].append(col)
             else:
-                raise DataError('Unrecognized variable type!')
+                pdb.set_trace()
+                raise DataError('Unrecognized variable type!')            
     return (cols, N, coords, rnames, disabled_rows)
 
 def getDenseArray(vect):
@@ -1730,7 +1737,7 @@ def getDenseArray(vect):
 def main():
 
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "Na"], "csv")
+    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "NA"], "csv")
     print data
     exit()
     # print "UNCOMMENT"

@@ -257,10 +257,11 @@ class ParaView(GView):
                 if rg[0] is not None:
                     bds = [(rg[k]-self.limits[i,0]+k*np.abs(rg[2]))/(self.limits[i,1]+np.abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
                     rects = self.axe.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
-                    if self.qcols[i] is not None and self.qcols[i].typeId() == 3:
-                        rects_rez[i] = rects[0]
-                    elif self.qcols[i] is not None and self.qcols[i].typeId() == 2:
-                        rects_drag[i] = rects[0]
+                    if self.qcols[i] is not None:
+                        if self.qcols[i].typeId() == 3:
+                            rects_rez[i] = rects[0]
+                        elif self.qcols[i].typeId() == 2: ###TODO# or self.qcols[i].typeId() == 1:   
+                            rects_drag[i] = rects[0]
 
                         
             self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
@@ -323,6 +324,7 @@ class ParaView(GView):
                 tmp = float("-Inf")
             return tmp
         elif self.qcols[rid].typeId() == 2:
+            # pdb.set_trace()
             v = int(round(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]))
             if v > self.limits[rid, 1]:
                 v = self.limits[rid, 1]
