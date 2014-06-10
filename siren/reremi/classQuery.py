@@ -429,11 +429,12 @@ class CatTerm(Term):
         else:
             symbIn = '='
         if type(names) == list  and len(names) > 0:
-            try:
-                return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
-            except UnicodeDecodeError:
-                pdb.set_trace()
-                print names[self.col]
+            return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
+            # try:
+            #     return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
+            # except UnicodeDecodeError:
+            #     pdb.set_trace()
+            #     print "UnicodeDecodeError", names[self.col]
         else:
             return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.cat)
 
@@ -652,6 +653,12 @@ class Literal(object):
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())
 
+    def valRange(self):
+        if self.term.type_id == 1:
+            return [not self.neg.boolVal(), not self.neg.boolVal()]
+        else:
+            return self.term.valRange()
+
     def __str__(self):
         return self.disp()
 
@@ -680,6 +687,9 @@ class Literal(object):
     
     def isNeg(self):
         return self.neg.boolVal()
+
+    def setNeg(self, neg):
+        self.neg = Neg(neg)
 
     def flip(self):
         self.neg.flip()

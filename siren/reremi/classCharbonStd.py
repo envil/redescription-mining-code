@@ -37,7 +37,7 @@ class Charbon:
             var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
         for op in self.constraints.ops_query(side, init):
-            for neg in self.constraints.neg_query(side):
+            for neg in self.constraints.neg_query(side, col.type_id):
                 adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 if adv is not None :
                     cands.append(Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
@@ -76,7 +76,7 @@ class Charbon:
             fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
             var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-        if init == 1 and True in self.constraints.neg_query(side):
+        if init == 1 and True in self.constraints.neg_query(side, col.type_id):
             if side:
                 nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
                 nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
@@ -85,13 +85,13 @@ class Charbon:
                 nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
 
         for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side):        
+            for neg in self.constraints.neg_query(side, col.type_id):        
                 adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 if adv is not None :
                     cands.append((False, Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
 
                 ### to negate the other side when looking for initial pairs
-                if init == 1 and True in self.constraints.neg_query(side):
+                if init == 1 and True in self.constraints.neg_query(side, col.type_id):
                     adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
                     if adv is not None :
                         cand = Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
@@ -107,14 +107,14 @@ class Charbon:
         else:
             fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
 
-        if init == 1 and True in self.constraints.neg_query(side):
+        if init == 1 and True in self.constraints.neg_query(side, col.type_id):
             if side:
                 nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
             else:
                 nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
 
         for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side):        
+            for neg in self.constraints.neg_query(side, col.type_id):        
                 best = (None, None, None)
                 bestNeg = (None, None, None)
                 for (cat, supp) in col.sCats.iteritems():
@@ -127,7 +127,7 @@ class Charbon:
                     best = self.updateACTColors(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, fixed_colors, var_colors[op])
 
                     ### to negate the other side when looking for initial pairs
-                    if init ==1 and True in self.constraints.neg_query(side):
+                    if init ==1 and True in self.constraints.neg_query(side, col.type_id):
                         if side:
                             nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
                         else:
@@ -155,7 +155,7 @@ class Charbon:
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init == 1 and True in self.constraints.neg_query(side):
+            if init == 1 and True in self.constraints.neg_query(side, col.type_id):
                 if side:
                     nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
                 else:
@@ -174,9 +174,9 @@ class Charbon:
             if len(segments[op]) < self.constraints.max_seg():
                 cands.extend(self.findCoverFullSearch(side, op, col, segments, fixed_colors))
             else:
-                if (False in self.constraints.neg_query(side)):
+                if (False in self.constraints.neg_query(side, col.type_id)):
                     cands.extend(self.findPositiveCover(side, op, col, segments, fixed_colors))
-                if (True in self.constraints.neg_query(side)):
+                if (True in self.constraints.neg_query(side, col.type_id)):
                     cands.extend(self.findNegativeCover(side, op, col, segments, fixed_colors))
         return cands
 
@@ -189,10 +189,10 @@ class Charbon:
             for seg_e in range(seg_s,len(segments[op])):
                 var_colors[0] += segments[op][seg_e][2][0]
                 var_colors[1] += segments[op][seg_e][2][1]
-                for neg in self.constraints.neg_query(side):
+                for neg in self.constraints.neg_query(side, col.type_id):
                     bests[neg] = self.updateACTColors(bests[neg], (seg_s, seg_e), side, op, neg, fixed_colors, var_colors)
 
-        for neg in self.constraints.neg_query(side):
+        for neg in self.constraints.neg_query(side, col.type_id):
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
@@ -537,7 +537,7 @@ class Charbon:
     def subdo22Full(self, colL, colR, side):
         ##### THIS NEEDS CHANGE PARTS
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if True not in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side, 2):
             configs = configs[:1]
         best = [[] for c in configs]
         tot = colL.nbRows()
@@ -583,7 +583,7 @@ class Charbon:
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if True not in self.constraints.neg_query(side):
+        if True not in self.constraints.neg_query(side, 3):
             configs = configs[:1]
         best = [[] for c in configs]
 

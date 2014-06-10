@@ -63,7 +63,7 @@ class Siren():
                      }
         self.tabs_keys = ["rows", 0, 1, "reds", "exp", "hist", "log"]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
-        stn = "reds"
+        stn = "rows"
 
         self.logger = Log()
 
@@ -607,6 +607,7 @@ class Siren():
             path = open_dlg.GetPath()
             self.LoadFile(path)
         open_dlg.Destroy()
+        self.changePage("reds")
         # DEBUGGING
         #wx.MessageDialog(self.toolFrame, 'Opened package from '+path).ShowModal()
 
@@ -771,6 +772,7 @@ class Siren():
 
         dlg = ImportDataCSVDialog(self)
         dlg.showDialog()
+        self.changePage("rows")
             
     # def OnImportDataXML(self, event):
     #     if self.dw.getData() is not None:
@@ -827,6 +829,7 @@ class Siren():
                 pass
         open_dlg.Destroy()
         self.reloadReds(all=False)
+        self.changePage("reds")
         
     def OnExportRedescriptions(self, event):
         if len(self.getReds()) == 0:

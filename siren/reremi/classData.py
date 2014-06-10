@@ -343,6 +343,9 @@ class BoolColM(ColM):
     def getNumValue(self, rid):
         return self.getValue(rid)
 
+    def getCatFromNum(self, n):
+        return n == 1
+
     def supp(self):
         return self.hold
     

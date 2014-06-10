@@ -29,14 +29,15 @@ class Constraints:
         
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"])
         self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"])
+        
+        for type_id in [1,2,3]:
+            self._pv["lhs_neg_query_%d" % type_id] = []
+            for v in params["lhs_neg_query_%d" % type_id]["value"]:
+                self._pv["lhs_neg_query_%d" % type_id].append(bool(v))
 
-        self._pv["lhs_neg_query"] = []
-        for v in params["lhs_neg_query"]["value"]:
-            self._pv["lhs_neg_query"].append(bool(v))
-
-        self._pv["rhs_neg_query"] = []
-        for v in params["rhs_neg_query"]["value"]:
-            self._pv["rhs_neg_query"].append(bool(v))
+            self._pv["rhs_neg_query_%d" % type_id] = []
+            for v in params["rhs_neg_query_%d" % type_id]["value"]:
+                self._pv["rhs_neg_query_%d" % type_id].append(bool(v))
 
         self._pv["lhs_ops_query"] = []
         for v in params["lhs_ops_query"]["value"]:
@@ -128,11 +129,11 @@ class Constraints:
         return self._pv["min_pairscore"]
     def max_overlaparea(self):
         return self._pv["max_overlaparea"]
-    def neg_query(self, side):
+    def neg_query(self, side, type_id):
         if side == 1:
-            return self._pv["rhs_neg_query"]
+            return self._pv["rhs_neg_query_%d" % type_id]
         else:
-            return self._pv["lhs_neg_query"]
+            return self._pv["lhs_neg_query_%d" % type_id]
     def ops_query(self, side, init=False):
         if init > 0:
             return [True]

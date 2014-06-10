@@ -132,7 +132,7 @@ class ParaView(GView):
         for side in [0,1]:
             for l in self.sc[side]:
                 side_cols.append((side, l.col()))
-                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
                               + [self.parent.dw.getData().col(side, l.col()).width])
                 lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
 
@@ -163,7 +163,7 @@ class ParaView(GView):
         ranges = []
         for side in [0,1]:
             for l in self.sc[side]:
-                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
                               + [self.parent.dw.getData().col(side, l.col()).width])
 
         pos_axis = len(self.sc[0])
@@ -260,7 +260,7 @@ class ParaView(GView):
                     if self.qcols[i] is not None:
                         if self.qcols[i].typeId() == 3:
                             rects_rez[i] = rects[0]
-                        elif self.qcols[i].typeId() == 2: ###TODO# or self.qcols[i].typeId() == 1:   
+                        elif self.qcols[i].typeId() == 2 or self.qcols[i].typeId() == 1:   
                             rects_drag[i] = rects[0]
 
                         
@@ -323,8 +323,8 @@ class ParaView(GView):
             elif tmp == self.limits[rid, 0]:
                 tmp = float("-Inf")
             return tmp
-        elif self.qcols[rid].typeId() == 2:
-            # pdb.set_trace()
+        elif self.qcols[rid].typeId() == 2 or self.qcols[rid].typeId() == 1:
+            print b, self.limits[rid, 1], self.limits[rid, 0]
             v = int(round(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]))
             if v > self.limits[rid, 1]:
                 v = self.limits[rid, 1]
@@ -337,7 +337,6 @@ class ParaView(GView):
             c = self.parent.dw.getData().col(side, self.qcols[rid].col())
             if c is not None:
                 return c.getCatFromNum(v)
-            
             
     def receive_release(self, rid, rect):
         if self.current_r is not None:
@@ -360,8 +359,13 @@ class ParaView(GView):
                 if cat is not None:
                     l.term.setRange(cat)
                     alright = True
+            elif l.typeId() == 1:
+                bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                if bl is not None:
+                    l.setNeg(bl==0)
+                    alright = True
             if alright:
-                self.ranges[rid] = [self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.term.valRange()] \
+                self.ranges[rid] = [self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
                                    + [self.parent.dw.getData().col(side, l.col()).width]
                 
                 upAll = self.current_r.queries[side].listLiterals()[pos] != l
@@ -381,7 +385,6 @@ class ParaView(GView):
             mask_div = self.limits[:,1]+np.array([np.abs(r[2]) for r in self.ranges]) - self.limits[:,0]
             tt = (N-lid)/(2.0*N)+0.25
 
-            #pdb.set_trace()
             tmm= (self.data_m[:,lid] + mask_noise)/mask_div
             
             final = np.concatenate(([tt], (self.data_m[:,lid] + mask_noise)/mask_div, [tt]))
