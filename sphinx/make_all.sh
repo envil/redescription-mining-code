@@ -3,6 +3,11 @@
 rm -rf send
 mkdir send
 
+svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/CHANGELOG  _static/
+svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/ui_confdef.xml  _static/
+svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/inout_confdef.xml  _static/
+svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/miner_confdef.xml  _static/
+
 cd siren-help/
 rm -rf _build
 make html

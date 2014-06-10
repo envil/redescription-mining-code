@@ -196,7 +196,7 @@ Finnish 2011 parliamentary elections (Try it out!)
 
 .. note:: 
    In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 
-   The prepared dataset is available `here <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/>`_
+   The prepared dataset is available `here. <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/>`_
 
 Data
 -----
@@ -209,12 +209,14 @@ the other view.
 Exploration
 ------------
 
-1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_. 
+1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_ ( as well as the `english translation of the Q&A <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone_questions_eng.txt>`_). 
 
 2. Start siren and open the data via :menuselection:`File --> Open`.
 
 3. Explore the premined redescriptions, write and mine new ones, and learn about the finnish political scene...
 
-4. For instance, duplicate redescription R8 :menuselection:`[Left click on the redescription] --> Duplicate`, open R8 and the copy side-by-side in Parallel Coordinates windows :menuselection:`[Left click on the redescription] --> Parallel Coordinates` and remove the term about the education level from the left-hand side query and see how it affects the support (or almost does not)...
+.. image:: ../_figs/screenshots/Siren_vaalikone_rows.png
+
+4. For instance, duplicate redescription R8 :menuselection:`[Left click on the redescription] --> Duplicate`, open R8 and the copy side-by-side in Parallel Coordinates windows :menuselection:`[Left click on the redescription] --> Parallel Coordinates` and remove the term about the candidate's gender from the left-hand side query and see how it affects the accuracy of the redescription...
 
 .. image:: ../_figs/screenshots/Siren_vaalikone.png

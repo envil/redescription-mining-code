@@ -25,11 +25,29 @@
 	<default><value>4</value></default>
       </parameter>
       <parameter>
-	<name>lhs_neg_query</name>
-	<label>LHS Literals</label>
+	<name>lhs_neg_query_1</name>
+	<label>LHS Literals Bool</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Types of literals allowed in the left-hand side queries.</legend>
+	<legend>Types of literals allowed in the left-hand side queries for Boolean literals.</legend>
+	<default><value>0</value></default>
+	<options><value>Positive</value><value>Negative</value></options>
+      </parameter>
+      <parameter>
+	<name>lhs_neg_query_2</name>
+	<label>LHS Literals Cat</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Types of literals allowed in the left-hand side queries for categorical literals.</legend>
+	<default><value>0</value></default>
+	<options><value>Positive</value><value>Negative</value></options>
+      </parameter>
+      <parameter>
+	<name>lhs_neg_query_3</name>
+	<label>LHS Literals Num</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Types of literals allowed in the left-hand side queries for numerical literals.</legend>
 	<default><value>0</value></default>
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
@@ -43,11 +61,29 @@
 	<options><value>Conjunction</value><value>Disjunction</value></options>
       </parameter>
       <parameter>
-	<name>rhs_neg_query</name>
-	<label>RHS Literals</label>
+	<name>rhs_neg_query_1</name>
+	<label>RHS Literals Bool</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Types of literals allowed in the right-hand side queries.</legend>
+	<legend>Types of literals allowed in the right-hand side queries for Boolean literals.</legend>
+	<default><value>0</value></default>
+	<options><value>Positive</value><value>Negative</value></options>
+      </parameter>
+      <parameter>
+	<name>rhs_neg_query_2</name>
+	<label>RHS Literals Cat</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Types of literals allowed in the right-hand side queries for categorical literals.</legend>
+	<default><value>0</value></default>
+	<options><value>Positive</value><value>Negative</value></options>
+      </parameter>
+      <parameter>
+	<name>rhs_neg_query_3</name>
+	<label>RHS Literals Num</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Types of literals allowed in the right-hand side queries for numerical literals.</legend>
 	<default><value>0</value></default>
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
