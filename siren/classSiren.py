@@ -1017,6 +1017,7 @@ class Siren():
     def _onHelpHTML2(self):
         import wx.html2
         import urllib
+        import platform
         # DEBUG
         #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_ERROR, lambda evt: wx.MessageDialog(self.toolFrame, str(evt), style=wx.OK, caption='WebView Error').ShowModal())
         #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_LOADED, lambda evt: wx.MessageDialog(self.toolFrame, 'Help files loaded from '+evt.GetURL(), style=wx.OK, caption='Help files loaded!').ShowModal())
@@ -1027,7 +1028,13 @@ class Siren():
             self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
             self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
             sizer = wx.BoxSizer(wx.VERTICAL)
-            url = 'file://'+urllib.quote(os.path.abspath(unicode(self.helpURL)).encode('utf-8'))
+            url = 'file://'+os.path.abspath(self.helpURL)
+            if platform.system() == "Darwin":
+                # OS X returns UTF-8 encoded path names, decode to Unicode
+                #url = url.decode('utf-8')
+                # URLLIB doesn't like unicode strings, so keep w/ UTF-8 encoding
+                # make the URL string URL-safe for OS X
+                url = urllib.quote(url)
             browser = wx.html2.WebView.New(self.helpFrame, url=url)
             #browser.LoadURL('file://'+os.path.abspath(self.helpURL))
             sizer.Add(browser, 1, wx.EXPAND, 10)
