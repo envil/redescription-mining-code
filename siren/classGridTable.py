@@ -230,7 +230,6 @@ class GridTable(wx.grid.PyGridTableBase):
                 return methode(details)
             except IndexError:
                 methode(details)
-                print details
         else:
             return methode
 

@@ -324,7 +324,6 @@ class ParaView(GView):
                 tmp = float("-Inf")
             return tmp
         elif self.qcols[rid].typeId() == 2 or self.qcols[rid].typeId() == 1:
-            print b, self.limits[rid, 1], self.limits[rid, 0]
             v = int(round(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]))
             if v > self.limits[rid, 1]:
                 v = self.limits[rid, 1]
