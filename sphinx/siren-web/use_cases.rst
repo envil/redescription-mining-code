@@ -209,7 +209,7 @@ the other view.
 Exploration
 ------------
 
-1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_ ( as well as the `english translation of the Q&A <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone_questions_eng.txt>`_). 
+1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_ ( as well as the `english translation of the Q&A <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone_translation_eng.txt>`_). 
 
 2. Start siren and open the data via :menuselection:`File --> Open`.
 
@@ -217,6 +217,6 @@ Exploration
 
 .. image:: ../_figs/screenshots/Siren_vaalikone_rows.png
 
-4. For instance, duplicate redescription R8 :menuselection:`[Left click on the redescription] --> Duplicate`, open R8 and the copy side-by-side in Parallel Coordinates windows :menuselection:`[Left click on the redescription] --> Parallel Coordinates` and remove the term about the candidate's gender from the left-hand side query and see how it affects the accuracy of the redescription...
+4. For instance, duplicate redescription R7 :menuselection:`[Left click on the redescription] --> Duplicate`, open R7 and the copy side-by-side in Parallel Coordinates windows :menuselection:`[Left click on the redescription] --> Parallel Coordinates` and remove the term about the candidate's age from the left-hand side query and see how it affects the accuracy of the redescription...
 
 .. image:: ../_figs/screenshots/Siren_vaalikone.png
