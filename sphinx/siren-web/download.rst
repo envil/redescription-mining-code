@@ -45,7 +45,7 @@ You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.f
 For OS X
 ============== 
 
-`Siren.dmg (v2.0.2) <http://www.cs.helsinki.fi/u/pamietti/data/siren/Siren_2_0_2.dmg>`_
+`Siren.dmg (v2.1.1) <http://www.cs.helsinki.fi/u/pamietti/data/siren/Siren_2_1_1.dmg>`_
 
 To *install*, download the above disk image and copy the file Siren to your Applications folder (or anywhere else outside the disk image). Once that is done you only have to double-click the program icon to run *Siren*.
 
