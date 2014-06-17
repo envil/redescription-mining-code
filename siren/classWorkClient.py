@@ -62,8 +62,8 @@ class WorkClient(WorkInactive):
     
     def __del__(self):
         if self.hid is not None:
-            print "delete"
-            self.shared_job_q.put({"hid": self.hid, "task": "shutdown"})
+            # print "delete"
+            self.shared_job_q.put({"hid": self.hid, "task": "layoff"})
 
     def testConnect(self):
         try:
@@ -107,7 +107,7 @@ class WorkClient(WorkInactive):
     def resetHS(self, ip=None, numport=None, authkey=None):
         if self.hid is not None and self.nbWorkers() == 0:
             ## check results before calling this
-            self.shared_job_q.put({"hid": self.hid, "task": "shutdown"})
+            self.shared_job_q.put({"hid": self.hid, "task": "layoff"})
             self.shared_job_q = None
             self.shared_result_q= None
             self.hid = None

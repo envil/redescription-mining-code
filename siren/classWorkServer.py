@@ -172,6 +172,7 @@ class WorkHandler:
 
 
     def handleJob(self, job):
+        print "HANDLING JOB", job.get("task")
         ### if acceptable task: launch work if there are free processes, else add job to pending 
         if job.get("task") in self.type_workers and job.get("wid") not in self.pending \
                and job.get("wid") not in self.working:
@@ -231,12 +232,12 @@ class WorkHandler:
         for wid in workers:
             self.stopJob(wid)
             self.working.pop(wid)
-        time.sleep(2)
+        time.sleep(20)
         del self.working
         self.manager.shutdown()
         self.parent.unregister(self.id)
         print "Worker server stoping..."
-
+        sys.exit()
 
 if __name__ == '__main__':
     args = {}

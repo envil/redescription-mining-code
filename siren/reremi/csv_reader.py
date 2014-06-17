@@ -362,7 +362,7 @@ def row_order(L, R):
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
         both = set(Lll).intersection(Rll)
         if len(both) == 0:
-            raise CSVRError('Error while parsing the data, found no matching rows: %s' % arg)
+            raise CSVRError('Error while parsing the data, found no matching rows!')
 
         # Remove from Lorder and Rorder the parts that aren't in both
         i = 0

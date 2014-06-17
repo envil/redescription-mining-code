@@ -3,7 +3,7 @@ import re, random, sys
 import wx
 import numpy as np
 import inspect, signal
-import tsne
+# import tsne
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
@@ -564,20 +564,21 @@ class SKspecProj(DynProj):
         X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)
         return X_se, 0
 
-class SKtsneProj(DynProj):
-    #----------------------------------------------------------------------
-    # Stochastic Neighbors embedding
+# class SKtsneProj(DynProj):
+#     #----------------------------------------------------------------------
+#     # Stochastic Neighbors embedding
 
-    PID =  "-SKtsne"
-    SDESC = "t-SNE"
-    title_str = "t-SNE Embedding"
-    gen_parameters = dict(DynProj.gen_parameters)
-    gen_parameters.update({"initial_dims":50, "perplexity":20.0})
-    fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"no_dims":2})
-    dyn_f = [tsne.tsne]
+#     ### THIS IS DISABLED "starting with minus"
+#     PID =  "-SKtsne"
+#     SDESC = "t-SNE"
+#     title_str = "t-SNE Embedding"
+#     gen_parameters = dict(DynProj.gen_parameters)
+#     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
+#     fix_parameters = dict(DynProj.fix_parameters)
+#     fix_parameters.update({"no_dims":2})
+#     dyn_f = [tsne.tsne]
 
-    def getX(self, X):
-        X_sne, c = self.applyF(tsne.tsne, {"X":X})
-        return X_sne, c
+#     def getX(self, X):
+#         X_sne, c = self.applyF(tsne.tsne, {"X":X})
+#         return X_sne, c
 

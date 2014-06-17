@@ -1400,7 +1400,7 @@ class Data:
                     
 
     ### THIS FORMAT ONLY ALLOWS BOOLEAN WITHOUT COORS, IF NAMES THEY HAVE TO BE INLINE
-    def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, single_dataset=False):
+    def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]])
         if not details:
             rids = {}

@@ -29,7 +29,7 @@ class ConnectionDialog(PreferencesDialog):
 		Initialize the config dialog
 		"""
 		wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Worker setup') #, size=(550, 300))
-
+		self.parent = parent
 		self.pref_handle = pref_handle
 		self.info_box = None
 		self.controls_map = {}
@@ -163,13 +163,14 @@ class ConnectionDialog(PreferencesDialog):
 	def setupWP(self, ip, portnum, authkey):
 		try:
 			if self.wp_handle.getWP().nbWorkers() > 0:
-				self.wp_handle.getWP().closeDown()
+				print "Closing down"
+				self.wp_handle.getWP().closeDown(self.parent)
 			self.wp_handle.setWP(self.wp_handle.setupWorkPlant(ip, portnum, authkey))
 			msg, color = self.receiveInfo(self.wp_handle.getWP().getDetailedInfos())
 			self.updateInfo(self.wp_handle.getWP().infoStr()+msg, color)
-		except Exception as e:	
+		except ValueError as e: #Exception as e:	
 			self.no_problem = False
-			self.updateInfo("Failed, check the parameters and try again (%s)" % e, ConnectionDialog.FAIL_FC)
+			self.updateInfo("Failed, check the parameters and try again\n(%s)" % e, ConnectionDialog.FAIL_FC)
 
 	def fillCurrent(self):
 		for (k,v) in self.wp_handle.getWP().getParametersD().items():

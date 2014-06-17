@@ -71,12 +71,44 @@ class EProjView(GView):
     def getId(self):
         return (self.getProj().PID, self.vid)
 
+    # def makeBoxes(self, frame, proj):
+    #     boxes = []
+    #     for kp in proj.getTunableParamsK():
+    #         label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
+    #         ctrls = []
+    #         value = proj.getParameter(kp)
+    #         if type(value) in [int, float]:
+    #             type_ctrl = "text"
+    #             ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
+    #         elif type(value) is bool:
+    #             type_ctrl = "checkbox" 
+    #             ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
+    #             ctrls[-1].SetValue(value)
+    #         elif type(value) is list and kp in proj.options_parameters:
+    #             type_ctrl = "checkbox"
+    #             for k,v in proj.options_parameters[kp]:
+    #                 ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
+    #                 ctrls[-1].SetValue(v in value)
+    #         elif kp in proj.options_parameters:
+    #             type_ctrl = "choice" 
+    #             ctrls.append(wx.Choice(frame, wx.NewId()))
+    #             strs = [k for k,v in proj.options_parameters[kp]]
+    #             ctrls[-1].AppendItems(strings=strs)
+    #             try:
+    #                 ind = strs.index(value)
+    #                 ctrls[-1].SetSelection(ind)
+    #             except ValueError:
+    #                 pass
+    #         boxes.append({"key": kp, "label": label, "type_ctrl": type_ctrl, "ctrls":ctrls, "value":value})
+    #     return boxes
+
     def additionalElements(self):
         setts_boxes = []
         max_w = self.fwidth-50
         current_w = 1000
         flags = wx.ALIGN_CENTER | wx.ALL
 
+        # self.boxes = self.makeBoxes(self.mapFrame, self.getProj())
         self.boxes = self.getProj().makeBoxes(self.mapFrame)
         self.boxes.sort(key=lambda x : x["type_ctrl"])
         for box in self.boxes:

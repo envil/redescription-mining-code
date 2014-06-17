@@ -11,7 +11,7 @@ class WorkPlant:
         self.upcall = []
 
     def setUpCall(self, upcall):
-        self.upcall = upcall         
+        self.upcall = upcall
     def setWP(self,wp):
         self.wp = wp
         for upcall in self.upcall:
@@ -28,7 +28,7 @@ class WorkPlant:
             # elif ip == "local":
 
             if ip is not None and ip != "local":
-                try:    
+                try:
                     wp = WorkClient(ip, numport, authkey)
                 except Exception as e:
                     wp = WorkInactive()

@@ -138,7 +138,8 @@ class Siren():
 
         ### W/O THIS DW THINK IT'S CHANGED!
         self.dw.isChanged = False
-        self.plant.setUpCall([self.doUpdates, self.resetLogger()])
+        self.plant.setUpCall([self.doUpdates, self.resetLogger])
+        self.resetLogger()
 
     def getReds(self):
         if self.dw is not None:

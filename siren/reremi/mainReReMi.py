@@ -37,6 +37,10 @@ def do_filter(params):
     for k, v in  params.items():
         params_l[k] = v["data"]
 
+    if sys.platform != 'darwin':
+        for p in ['result_rep', 'data_rep']:
+            params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+
     fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
     if fn_queries != "-" and params_l['logfile'] == "+":
         fn_log = params_l['result_rep']+params_l['out_base']+".fillog"
@@ -112,6 +116,10 @@ def run_dl(params):
     for k, v in  params.items():
         params_l[k] = v["data"]
 
+    if sys.platform != 'darwin':
+        for p in ['result_rep', 'data_rep']:
+            params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+
     ### construct filenames
     if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
         style_data = "csv"
@@ -171,6 +179,10 @@ def run(params):
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
+
+    if sys.platform != 'darwin':
+        for p in ['result_rep', 'data_rep']:
+            params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
 
     ### construct filenames
     if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
