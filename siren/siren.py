@@ -26,14 +26,30 @@ class SirenApp(wx.App):
     def OnInit(self):
         self.frame = Siren()
 
-        import sys
-        if len(sys.argv) > 1:
+        import sys, os.path, platform
+        if len(sys.argv) > 1 and platform.system() != 'Darwin':
+            # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
             # DEBUG
             #print "Loading file", sys.argv[-1]
-            self.frame.LoadFile(sys.argv[1])
+            filename = sys.argv[1]
+            (p, ext) = os.path.splitext(filename)
+            if ext == '.siren':
+                self.frame.LoadFile(filename)
+            elif ext == '.csv':
+                # If the first file is .csv, check if we've got two files and use them as left and right files
+                LHfile = filename
+                RHfile = filename
+                if len(sys.argv) > 2:
+                    (f, ext2) = os.path.splitext(sys.argv[2])
+                    if ext2 == '.csv':
+                        RHfile = sys.argv[2]
+                self.frame.dw.importDataFromCSVFiles([LHfile, RHfile, {}, 'NA'])
+                self.frame.reloadAll()
+            else:
+                sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
+                
 
-
-        if len(sys.argv) > 2 and sys.argv[2] == "debug":
+        if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # DEBUG
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
@@ -62,13 +78,21 @@ class SirenApp(wx.App):
 
     def MacOpenFile(self, filename):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""
-        import sys
+        import sys, os.path
+        #sys.stderr.write('In MacOpenFile with filename '+filename)
         # When start from command line, this gets called with the script file's name
         if filename != sys.argv[0]:
             if self.frame.dw.getData() is not None:
                 if not self.frame.checkAndProceedWithUnsavedChanges():
                     return
-            self.frame.LoadFile(filename)
+            (p, ext) = os.path.splitext(filename)
+            if ext == '.siren':
+                self.frame.LoadFile(filename)
+            elif ext == '.csv':
+                self.frame.dw.importDataFromCSVFiles([filename, filename, {}, 'NA'])
+                self.frame.reloadAll()
+            else:
+                 wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()
 
     def MacReopenApp(self):
         """Called when the doc icon is clicked, and ???"""
