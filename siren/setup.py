@@ -131,6 +131,10 @@ if sys.platform == 'darwin':
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
                                                CFBundleTypeIconFile = 'siren_file_icon.icns'),
+                                        dict(CFBundleTypeName   = 'fi.helsinki.cs.siren.csv',
+                                             CFBundleTypeRole   = 'Viewer',
+                                             LSHandlerRank      = 'Alternate',
+                                             LSItemContentTypes = ['public.comma-separated-values-text'])
                                                ],
                 CFBundleShortVersionString = VERSION,
                 CFBundleVersion = get_svnrevision(),
