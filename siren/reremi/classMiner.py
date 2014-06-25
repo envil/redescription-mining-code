@@ -263,6 +263,13 @@ class Miner:
                 idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
             if len(idsR) > 5000:
                 idsR = sorted(random.sample(idsR, 1000))
+                
+            ## In case of singleton dataset, don't try pairs of same id 
+            # if self.data.isSingleD() and idL in idsR: 
+            #     idsR.remove(idL)
+
+            if self.data.isSingleD() and idL in idsR: ## In case of singleton dataset, don't try pairs of same id 
+                idsR = [id for id in idsR if id > idL]
 
             for idR in idsR:
                 if not self.questionLive():

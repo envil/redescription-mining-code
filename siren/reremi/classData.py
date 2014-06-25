@@ -1739,6 +1739,13 @@ def getDenseArray(vect):
 
 def main():
 
+    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/football/"
+    data = Data([rep+"D1.csv", rep+"D1.csv", {}, "NA"], "csv")
+    pdb.set_trace()
+    print data
+    exit()
+
+
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "NA"], "csv")
     print data
