@@ -406,7 +406,7 @@ class CatColM(ColM):
                     cats[v] = set([j])
         if len(cats) > 0:
             if len(cats) == 1:
-                print "Only one category %s, this is suspicious..." % (cats.keys())
+                print "Only one category %s, this is suspicious!.." % (cats.keys())
             return CatColM(cats, max(indices.values())+1, miss)
         else:
             return None
@@ -1702,6 +1702,8 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 col = det["type"].parseList(values, indices[side])
             else:
                 type_ids = list(type_ids_org)
+                # if "" in values:
+                #     pdb.set_trace()
                 while col is None and len(type_ids) >= 1:
                     col = type_ids.pop().parseList(values, indices[side])
 
@@ -1739,9 +1741,9 @@ def getDenseArray(vect):
 
 def main():
 
-    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/football/"
-    data = Data([rep+"D1.csv", rep+"D1.csv", {}, "NA"], "csv")
-    pdb.set_trace()
+    rep = "/home/galbrun/TKTL/redescriptors/data/football/other/"
+    # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
+    data = Data([rep+"D1_playstats_0.csv", rep+"D1_betstats_0.csv", {}, ""], "csv")
     print data
     exit()
 

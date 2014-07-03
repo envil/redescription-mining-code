@@ -358,6 +358,9 @@ def row_order(L, R):
         Lll = ["::".join(map(str, p)) for p in zip(*order_keys[0])]
         Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
 
+        if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
+            print 'Those ids are no real ids, they are not unique!..'
+
         Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
         both = set(Lll).intersection(Rll)
