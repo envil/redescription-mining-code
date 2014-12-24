@@ -127,7 +127,7 @@ class ImportDataCSVDialog(object):
 
         ctrl_id = wx.NewId()
         label = wx.StaticText(self.dlg, wx.ID_ANY, "Missing:")
-        self.missing_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "")
+        self.missing_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "NA")
         so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
         so_sizer.Add(self.missing_ctrl, 0)
 
@@ -172,8 +172,7 @@ class ImportDataCSVDialog(object):
         dialect_dict = {}
         if self.dlg.ShowModal() == wx.ID_OK:
             tmp = self.missing_ctrl.GetValue()
-            if len(tmp) > 0:
-                na = tmp
+            na = tmp
                 
             for item, ctrl_single in self.dialect_ctrl.items():
                 tmp = self.dialect_options[item]['opts'][ctrl_single.GetCurrentSelection()][0]

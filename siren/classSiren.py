@@ -36,7 +36,7 @@ class Siren():
     # For About dialog
     name = "Siren"    
     programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
-    version = '2.1.1'
+    version = '2.2.0'
     cpyright = '(C) 2012-2014 Esther Galbrun and Pauli Miettinen'
 
     pref_dir = os.path.dirname(__file__)

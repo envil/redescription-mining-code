@@ -1,5 +1,9 @@
 CHANGELOG for Siren
 ===================
+v2.2.0
+------
+* Integrated tree-based (CART) mining methods from T.Zinchenko MSc Thesis
+
 v2.1.1
 ------
 * freeze_support for multiprocessing in windows

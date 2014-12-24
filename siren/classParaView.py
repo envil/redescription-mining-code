@@ -130,12 +130,14 @@ class ParaView(GView):
         ranges = []
         lit_str = []
         for side in [0,1]:
-            for l in self.sc[side]:
-                side_cols.append((side, l.col()))
-                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
-                              + [self.parent.dw.getData().col(side, l.col()).width])
-                lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
-
+            try:
+                for l in self.sc[side]:
+                    side_cols.append((side, l.col()))
+                    ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
+                                  + [self.parent.dw.getData().col(side, l.col()).width])
+                    lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
+            except AttributeError:
+                pdb.set_trace()
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
         lit_str.insert(pos_axis, "-")
