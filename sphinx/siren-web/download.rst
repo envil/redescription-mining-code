@@ -31,7 +31,7 @@ Feel free to contact us for support or with feedback, bug reports and questions.
 Source code
 ============
 
-`python-siren-2.1.1.tar.gz <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren-2.1.1.tar.gz>`_
+`python-siren-2.2.0.tar.gz <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren-2.2.0.tar.gz>`_
 
 The source code has been packaged using `Python distutils <http://docs.python.org/install/index.html>`_. 
 To `install <http://docs.python.org/install/index.html#the-new-standard-distutils>`_, unpack the downloaded archive and run ``python setup.py install`` from within the created folder. 
@@ -68,7 +68,7 @@ You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.f
 For Linux
 ========== 
 
-`python-siren_2.1.1_all.deb <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren_2.1.1_all.deb>`_
+`python-siren_2.2.0_all.deb <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren_2.2.0_all.deb>`_
 
 With a debian-based distribution run the following commands as root to install
 
