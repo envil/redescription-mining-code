@@ -119,3 +119,7 @@ a.headerlink {
     color: #888;
     text-decoration: none;
 }
+
+div.body div.toctree-wrapper  {
+display: none;
+}
