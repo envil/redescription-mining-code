@@ -9,6 +9,9 @@ class Charbon:
     def __init__(self, constraints):
         self.constraints = constraints
 
+    def withTree(self):
+        return False
+
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
         try:

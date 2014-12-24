@@ -1,6 +1,6 @@
 import re, string, pdb
 from classRedescription import  Redescription
-from classQuery import  Literal
+from classQuery import  Literal, Query
 
 class InitialPairs:
 
@@ -163,3 +163,63 @@ class IPalternate(InitialPairs):
             for col in self.pairs_side[side].keys():
                 self.pairs_side[side][col].sort(key=lambda x: self.pairs[x][2])
         self.sorted = True
+
+
+class IPsingle(InitialPairs):
+    def __init__(self):
+        InitialPairs.__init__(self)
+        self.pairs = []
+        self.psst = {}
+        self.nb_pairs = 0
+
+    def __str__(self):
+        return "Initial Pairs single %d" % len(self.pairs)
+
+    def add(self, literalL, literalR, scoP): 
+        if (literalL.col(), 0) in self.psst:
+            self.psst[(literalL.col(), 0)].add(literalL)
+        else:
+            self.psst[(literalL.col(), 0)] = set([literalL])
+        if (literalR.col(), 1) in self.psst:
+            self.psst[(literalR.col(), 1)].add(literalR)
+        else:
+            self.psst[(literalR.col(), 1)] = set([literalR])
+        self.sorted = False
+                
+    def pop(self, cond=None):
+        if not self.sorted:
+            self._sort()
+        if len(self.pairs) > 0 and self.countdown != 0:
+            tt = self.pairs.pop(0)
+            if cond is not None:
+                while not cond(tt) and len(self.pairs) > 0:
+                    tt = self.pairs.pop(0)
+                if len(self.pairs) == 0:
+                    return
+            return tt
+
+    def _sort(self):
+        tt = sorted(self.psst.keys())
+        first_turn = True
+        count = self.countdown
+        self.sorted = True
+        while len(tt) > 0:
+            i = 0
+            while i < len(tt):
+                if not first_turn:
+                    count -= 1
+                    if count == 0:
+                        return
+                self.pairs.append((tt[i][1], self.psst[tt[i]].pop()))
+                if len(self.psst[tt[i]]) == 0:
+                    tt.pop(i)
+                else:
+                    i+=1
+            first_turn = False
+
+    def get(self, data, cond=None):
+        pair = self.pop() #cond)
+        if pair is not None:
+            queries = [Query(), Query()]
+            queries[pair[0]].extend(True, pair[1])
+            return Redescription.fromQueriesPair(queries, data)

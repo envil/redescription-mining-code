@@ -151,6 +151,13 @@ class Constraints:
         return self._pv["score_coeffs"]
     def dl_score(self):
         return self._pv["dl_score"] == "yes"
+    def min_node_size(self):
+        return self._pv["min_node_size"]
+    def max_depth(self):
+        return self._pv["max_depth"]
+    def mine_algo(self):
+        return self._pv["mine_algo"]
+
 
 
     def filter_nextge(self, red):

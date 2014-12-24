@@ -1432,7 +1432,7 @@ class Data:
 
     def col(self, side, literal):
         colid = None
-        if type(literal) == int and literal < len(self.cols[side]):
+        if type(literal) in [int, np.int64] and literal < len(self.cols[side]):
             colid = literal
         elif literal.term.colId() < len(self.cols[side]):
             colid = literal.term.colId()

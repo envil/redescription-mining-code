@@ -1,6 +1,8 @@
 import datetime, random, os.path
 import classCharbonStd
 import classCharbonAlt
+import classCharbonTree
+import classCharbonTreeD
 from toolLog import Log
 from classRedescription import Redescription
 from classBatch import Batch
@@ -57,7 +59,12 @@ class Miner:
         else:
              self.logger = Log()       
         self.constraints = Constraints(self.data, params)
-        if self.data.hasMissing():
+
+        if self.constraints.mine_algo() == "trees":
+            self.charbon = classCharbonTree.Charbon(self.constraints)
+        elif self.constraints.mine_algo() == "treed":
+            self.charbon = classCharbonTreeD.Charbon(self.constraints)
+        elif self.data.hasMissing():
             self.charbon = classCharbonAlt.Charbon(self.constraints)
         else:
             self.charbon = classCharbonStd.Charbon(self.constraints)
@@ -67,7 +74,11 @@ class Miner:
             self.souvenirs = souvenirs
 
         try:
-            self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
+            if self.charbon.withTree():
+                self.initial_pairs = eval('IPsingle()')
+            else:
+                self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
+
             if "pairs_store" in params:
                 self.initial_pairs.setStore(params["pairs_store"]["data"])
         except AttributeError:
@@ -251,6 +262,7 @@ class Miner:
         ### FOR DEBUGING (DANGER!!!)
         # ids[0] = [12,18] # sorted(random.sample(ids[0], 10))
         # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
+
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
         pairs = 0
         for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
@@ -313,6 +325,51 @@ class Miner:
         self.partial["batch"].reset()
         self.partial["batch"].extend(nextge)
 
+        if self.charbon.withTree():
+            self.expandRedescriptionsTree(nextge)
+        else:
+            self.expandRedescriptionsGreedy(nextge)
+
+
+    def expandRedescriptionsTree(self, nextge):
+        if len(nextge) > 0 and self.questionLive():
+
+            tmp_gen = self.progress_ss["current"]
+            for redi, red in enumerate(nextge):
+                for side in [0,1]:
+                    new_red = self.charbon.getTreeCandidates(side, self.data, red)
+
+                    #     self.progress_ss["current"] += self.progress_ss["cand_side"][side]
+                    #     self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+                    # if self.logger.verbosity >= 4:
+                    #     self.logger.printL(4, bests, "log", self.id)
+                    if new_red is not None:
+                        self.partial["batch"].append(new_red)
+
+                self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
+                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.id)
+
+            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
+
+        ### Do before selecting next gen to allow tuning the beam
+        ### ask to update results
+        self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
+        if 1 in self.partial["results"]:
+            self.partial["results"] = [1]
+        else:
+            self.partial["results"] = []
+        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
+        self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
+        for red in self.partial["results"]:
+            self.logger.printL(2, "--- %s" % self.partial["batch"][red])
+
+        return self.partial
+        
+
+    def expandRedescriptionsGreedy(self, nextge):
 
         while len(nextge) > 0  and self.questionLive():
 
@@ -338,7 +395,7 @@ class Miner:
                             if not self.questionLive(): return
 
                             if self.double_check:
-                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init)                  
+                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init)
                                 for cand in tmp: ### TODO remove, only for debugging
                                     kid = cand.kid(red, self.data)
                                     if kid.getAcc() != cand.getAcc():

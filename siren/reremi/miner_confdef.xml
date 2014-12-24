@@ -4,7 +4,7 @@
   <info>Mining preferences for the ReReMi algorithm. A default preferences file can be obtained by copying this file and removing the &#60;default&#62; tags around default values, or by calling the main mining routine: <em>mainReReMi.py --config</em>.</info>
   <section>
     <name>Basic</name>
-    <section>
+<section>
       <name>Types of queries</name>
       <parameter>
 	<name>lhs_max_var</name>
@@ -135,6 +135,39 @@
 	<length>5</length>
 	<default><value>0.05</value></default>
       </parameter>
+    </section>
+</section>
+<section>
+    <name>Trees</name>
+   <section>
+      <name>Mining with trees</name>
+      <parameter>
+	<name>mine_algo</name>
+	<label>Mining Algo</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Method for mining, greedy or alternative methods based on classification trees CART (restrictions apply)</legend>
+	<default><value>0</value></default>
+	<options><value>greedy</value><value>trees</value><value>treed</value></options>
+      </parameter>
+      <parameter>
+	<name>min_node_size</name>
+	<label>Min node size</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Minimum number of entities in a leaf node.</legend>
+	<length>4</length>
+	<default><value>1</value></default>
+      </parameter>
+    <parameter>
+	<name>max_depth</name>
+	<label>Max tree depth</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum depth of the classification tree.</legend>
+	<length>2</length>
+	<default><value>2</value></default>
+      </parameter>   
     </section>
   </section>
   <section>
