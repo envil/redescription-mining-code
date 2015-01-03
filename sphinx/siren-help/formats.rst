@@ -48,7 +48,7 @@ Full format
 
 The data is stored as a table with one column for each variable and one row each entity.
 The first row can contain the names of the variables.
-The entities names can be included as columns named *ids*. Similarly the coordinates can be included as a pair of columns named *longitudes* and *latitudes*, respectively.  
+The entities names can be included as columns named *id*. Similarly the coordinates can be included as a pair of columns named *longitude* and *latitude*, respectively.  
 
 
 .. _data_csv_sparse:
@@ -59,8 +59,8 @@ Sparse format
 This format allows to store data that contains few non-zero entries more compactly, as in the Matlab sparse format (or like the edge list of a bipartite graph).
 
 Each line contains an entry of the data as a triple (entity, variable, value). This way, the data is stored as in three columns and as many rows as there are entries.
-In this case the first line of the data file must contains *ids*, *cids* and *values*, indicating the three columns containing the enities, variables and corresponding value, respectively.
-Coordinates can be provided in a similar way under the variable names *longitudes* and *latitudes*.
+In this case the first line of the data file must contains *id*, *cid* and *value*, indicating the three columns containing the enities, variables and corresponding value, respectively.
+Coordinates can be provided in a similar way under the variable names *longitude* and *latitude*.
 
 Variable names can be provided inline, that is, simply by using the name of the variable for each entry involving it.
 Alternatively, variable names can be specified separately with a special "-1" entity.

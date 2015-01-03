@@ -4,8 +4,8 @@ import pdb
 from StringIO import StringIO
 from classQuery import Term
 
-LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude')
-LONGITUDE = ('long', 'longitude', 'Long', 'Longitude')
+LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
+LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
 IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
 
 ENABLED_ROWS = ('enabled_row', 'enabled_rows')
