@@ -148,7 +148,7 @@
 	<value_type>text</value_type>
 	<legend>Method for mining, greedy or alternative methods based on classification trees CART (restrictions apply)</legend>
 	<default><value>0</value></default>
-	<options><value>greedy</value><value>trees</value><value>treed</value></options>
+	<options><value>greedy</value><value>layeredtrees</value><value>splittrees</value></options>
       </parameter>
       <parameter>
 	<name>min_node_size</name>

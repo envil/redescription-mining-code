@@ -24,6 +24,7 @@ Siren - Interactive and visual redescription mining
 
    intro
    functionalities
+   algorithms
    use_cases
    download
    videos

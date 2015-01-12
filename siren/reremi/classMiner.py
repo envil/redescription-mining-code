@@ -60,9 +60,9 @@ class Miner:
              self.logger = Log()       
         self.constraints = Constraints(self.data, params)
 
-        if self.constraints.mine_algo() == "trees":
+        if self.constraints.mine_algo() == "layeredtrees":
             self.charbon = classCharbonTree.Charbon(self.constraints)
-        elif self.constraints.mine_algo() == "treed":
+        elif self.constraints.mine_algo() == "splittrees":
             self.charbon = classCharbonTreeD.Charbon(self.constraints)
         elif self.data.hasMissing():
             self.charbon = classCharbonAlt.Charbon(self.constraints)

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"> 
+<head> 
+  <title>Building Redescriptions with trees, the CartWheel way</title> 
+  <link rel="stylesheet" type="text/css" media="screen, projection, print" 
+   href="../_static/slidyA.css" />   <!-- <script src="http://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js" --> 
+  <script src="../_static/slidy_org.js"
+   charset="utf-8" type="text/javascript"></script> 
+  <style type="text/css"> 
+    <!-- your custom style rules --> 
+  </style> 
+</head>
+<body class="bd">
+  <div class="slide">
+	<h1>Initialisation</h1>
+	<p>Start with some initial target.</p><br/>
+	<img src="../_static/drawing_labelsRndL.svg">
+  </div>
+  <div class="slide">
+	<h1>First layer LHS</h1>
+	<p>Build first layer of the classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsRndL.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree1L.svg">
+   </div>
+  <div class="slide">
+	<h1>Second layer LHS</h1>
+	<p>Build second layer of the classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_tree1L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree2L.svg">
+  </div>
+  <div class="slide">
+	<h1>Third layer LHS</h1>
+	<p>Build third layer of the classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_tree2L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree3L.svg">
+  </div>
+  <div class="slide">
+	<h1>Relabel leaves</h1>
+	<p>Relabel the entities in the leaves of the tree.</p><br/>
+	<img src="../_static/drawing_tree3L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_labelsOut3L.svg">
+  </div>
+  <div class="slide">
+	<h1>Use as target for RHS</h1>
+	<p>Use these new labels as the target.</p><br/>
+	<img src="../_static/drawing_labelsOut3L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_labelsIn3R.svg">
+  </div>
+  <div class="slide">
+	<h1>First layer RHS</h1>
+	<p>Build first layer of the classification tree over right-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsIn3R.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree1R.svg">
+   </div>
+  <div class="slide">
+	<h1>Second layer RHS</h1>
+	<p>Build second layer of the classification tree over right-hand side variables.</p><br/>
+	<img src="../_static/drawing_tree1R.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree2R.svg">
+  </div>
+  <div class="slide">
+	<h1>Third layer RHS</h1>
+	<p>Build third layer of the classification tree over right-hand side variables.</p><br/>
+	<img src="../_static/drawing_tree2R.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree3R.svg">
+  </div>
+  <div class="slide">
+	<h1>Relabel leaves RHS</h1>
+	<p>Relabel the entities in the leaves of the tree.</p><br/>
+	<img src="../_static/drawing_tree3R.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_labelsOut3R.svg">
+  </div>
+<div class="slide">
+	<h1>Use as target for LHS</h1>
+	<p>Use these new labels as the target to build a new tree over the left-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsOut3L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_labelsIn3L.svg">
+  </div>
+  <div class="slide">
+	<h1>First layer LHS</h1>
+	<p>Build first layer of a new classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsIn3L.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_tree1L.svg">
+   </div>
+   <div class="slide">
+	<h1>Iterate...</h1>
+	<p>Continue alternating between the two sides...</p><br/>
+	<img src="../_static/drawing_bigarr.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_bigarr.svg">
+   </div>
+   <div class="slide">
+	<h1>Iterate...</h1>
+	<p>... until the supports converge.</p><br/>
+	<img src="../_static/drawing_bigarr.svg">
+	<img src="../_static/drawing_arr.svg">
+	<img src="../_static/drawing_bigarr.svg">
+   </div>
+   <div class="slide">
+	<h1>Extract redescriptions</h1>
+	<p>Take the last tree from each side,</p><br/>
+	<img src="../_static/drawing_tree3L.svg">
+	<img src="../_static/drawing_pad.svg">
+	<img src="../_static/drawing_tree3Rc.svg">
+   </div>
+   <div class="slide">
+	<h1>Extract redescriptions</h1>
+	<p>select the branches leading to positive leaves,</p><br/>
+	<img src="../_static/drawing_tree3L_pathblue.svg">
+	<img src="../_static/drawing_pad.svg">
+	<img src="../_static/drawing_tree3R_pathred.svg">
+   </div>
+   <div class="slide">
+	<h1>Extract redescriptions</h1>
+	<p>and compute the supports</p><br/>
+	<img src="../_static/drawing_tree3L_blocksblue.svg">
+	<img src="../_static/drawing_pad.svg">
+	<img src="../_static/drawing_tree3R_blocksred.svg">
+   </div>
+   <div class="slide">
+	<h1>Extract redescriptions</h1>
+	<p>and compute the supports across the two sides.</p><br/>
+	<img src="../_static/drawing_tree3L_blockscolors.svg">
+	<img src="../_static/drawing_pad.svg">
+	<img src="../_static/drawing_tree3R_blockscolors.svg">
+   </div>
+</body>
+</html>
