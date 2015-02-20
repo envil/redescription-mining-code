@@ -171,6 +171,7 @@ class IPsingle(InitialPairs):
         self.pairs = []
         self.psst = {}
         self.nb_pairs = 0
+        self.sorted = False
 
     def __str__(self):
         return "Initial Pairs single %d" % len(self.pairs)
