@@ -1,4 +1,4 @@
-import re, string, numpy
+import re, string, numpy, codecs
 from classQuery import  *
 from classSParts import  SParts, tool_pValSupp, tool_pValOver
 from classBatch import Batch
@@ -330,13 +330,13 @@ class Redescription:
 
     def getQueryLU(self, details=None):
         if details is not None and "names" in details:
-            return self.queries[0].disp(details["names"][0], style="U")
+            return self.queries[0].disp(details["names"][0], style="U") #, unicd=True)
         else:
             return self.queries[0].disp(style="U")
 
     def getQueryRU(self, details=None):
         if details is not None and "names" in details:
-            return self.queries[1].disp(details["names"][1], style="U")
+            return self.queries[1].disp(details["names"][1], style="U") #, unicd=True)
         else:
             return self.queries[1].disp(style="U")
 
@@ -508,6 +508,9 @@ class Redescription:
     parseHeader = staticmethod(parseHeader)    
 
     def parseQueries(string, list_fields=None, sep="\t", names=[None, None]):
+        if type(string) is str:
+            string = codecs.decode(string, 'utf-8','replace')
+            
         if list_fields is None:
             list_fields = Redescription.print_default_fields
         poplist_fields = list(list_fields) ### to pop out the query fields...
@@ -540,13 +543,17 @@ class Redescription:
                 if fname == Redescription.print_queries_headers[0]+Redescription.print_queries_namedsuff:
                     side = 0
                 #### named query, try to parse if no alternative
+                print names[side], str_top, type(str_top)
                 if Redescription.print_queries_headers[side] not in list_fields and names[side] is not None: 
                     try:
                         query = Query.parse(str_top, names[side])
-                        if query is not None:
-                            queries[side] = query
                     except Exception as e:
-                        raise Warning("Failed parsing named query %d, %s !:\n\t%s" % (side, str_top, e) )
+                         raise Warning("Failed parsing named query %d, %s !:\n\t%s" % (side, str_top, e) )
+                    # except UnicodeDecodeError:
+                    #      pdb.set_trace()
+
+                    if query is not None:
+                        queries[side] = query
 
             elif fname in Redescription.print_queries_headers:
                 side = 1
@@ -710,7 +717,6 @@ def parseRedList(fp, data, reds=None):
     return reds
 
 if __name__ == '__main__':
-    import codecs
     from classData import Data
     from classQuery import Query
     import sys

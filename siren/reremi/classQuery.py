@@ -1,4 +1,4 @@
-import re, random, operator, itertools
+import re, random, operator, itertools, codecs
 from classSParts import  SParts
 from redquery_parser import RedQueryParser
 from grako.exceptions import * # @UnusedWildImport
@@ -329,9 +329,9 @@ class BoolTerm(Term):
             neg = Neg(neg)
 
         if type(names) == list  and len(names) > 0:
-            return '%s%s' % ( neg.dispU(), names[self.col])
+            return u'%s%s' % ( neg.dispU(), names[self.col])
         else:
-            return ('%s'+Term.pattVName) % ( neg.dispU(), self.col)
+            return (u'%s'+Term.pattVName) % ( neg.dispU(), self.col)
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
@@ -358,12 +358,15 @@ class CatTerm(Term):
         self.col = ncol
         self.cat = ncat
 
+    def getCat(self):
+        return self.cat
+    
     def valRange(self):
-        return [self.cat, self.cat]
+        return [self.getCat(), self.getCat()]
 
     def setRange(self, cat):
-        self.cat = cat
-
+        self.cat = cat #codecs.encode(cat, 'utf-8','replace')
+            
     def copy(self):
         return CatTerm(self.col, self.cat)
             
@@ -429,14 +432,13 @@ class CatTerm(Term):
         else:
             symbIn = '='
         if type(names) == list  and len(names) > 0:
-            return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
-            # try:
-            #     return (u'[%s '+symbIn+' %s]') % (names[self.col], self.cat)
-            # except UnicodeDecodeError:
-            #     pdb.set_trace()
-            #     print "UnicodeDecodeError", names[self.col]
+            try:
+                return ('[%s '+symbIn+' %s]') % (names[self.col], self.getCat())
+            except UnicodeDecodeError:
+                pdb.set_trace()
+                self.getCat()
         else:
-            return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.cat)
+            return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.getCat())
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
@@ -585,15 +587,18 @@ class NumTerm(Term):
         else:
             lb = '['
         if self.upb < float('Inf'):
-            ub = (u' '+ SYM.SYM_LEQ +' %s]') % float(self.upb)
+            ub = (' '+ SYM.SYM_LEQ +' %s]') % float(self.upb)
         else:
             ub = ']'
-        negstr = u'%s' % neg.dispU()
+        negstr = '%s' % neg.dispU()
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]
         else:
             idcol = Term.pattVName % self.col
-        return ''+negstr+lb+idcol+ub+''
+        try:
+            return negstr+lb+idcol+ub
+        except UnicodeDecodeError:
+            return negstr+lb+"v"+str(self.col)+ub
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     num_patt = '-?\d+\.\d+'
@@ -1184,8 +1189,11 @@ class QuerySemantics(object):
         tmp = re.match("v(?P<id>\d+)$", vname)
         if tmp is not None:
             return int(tmp.group("id"))
-        elif self.names is not None and vname in self.names:
-            return self.names.index(vname)
+        elif self.names is not None:
+            if type(vname) is str and type(self.names[0]) is unicode:
+                vname = codecs.decode(v, 'utf-8','replace')
+            if vname in self.names:
+                return self.names.index(vname)
         else:
             print vname
             # pdb.set_trace()

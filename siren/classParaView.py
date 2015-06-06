@@ -1,4 +1,5 @@
 ### TODO check which imports are needed 
+from __future__ import unicode_literals
 import wx
 import numpy as np
 # The recommended way to use wx with mpl is with the WXAgg

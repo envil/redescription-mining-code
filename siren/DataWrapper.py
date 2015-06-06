@@ -711,6 +711,14 @@ class DataWrapper(object):
         else:
             self.savePackageToFile(self.package_filename, None)
 
+    def exportPreferences(self, filename, inc_def=False):
+        self._startMessage('exporting prefs', filename)
+        try:
+            self._writePreferences(filename, False, inc_def)
+        except Exception:
+            self._stopMessage()
+            raise
+        self._stopMessage('exporting prefs')
 
     def exportRedescriptions(self, filename):
         self._startMessage('exporting', filename)
@@ -739,13 +747,13 @@ class DataWrapper(object):
         # with codecs.open(filename, encoding='utf-8', mode='w') as f:
         with open(filename, mode='w') as f:
             if style == "tex":
-                f.write(printTexRedList(red_list, names, fields_supp))
+                f.write(codecs.encode(printTexRedList(red_list, names, fields_supp), 'utf-8','replace'))
             else:
-                f.write(printRedList(red_list, names, fields_supp))
+                f.write(codecs.encode(printRedList(red_list, names, fields_supp), 'utf-8','replace'))
             
-    def _writePreferences(self, filename, toPackage = False):
+    def _writePreferences(self, filename, toPackage = False, inc_def=False):
         with open(filename, 'w') as f:
-            f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True))
+            f.write(PreferencesReader(self.pm).dispParameters(self.preferences, True, defaults=inc_def))
 
     def _writeData(self, filenames, toPackage = False):
         self.data.writeCSV(filenames)

@@ -500,6 +500,10 @@ class Siren():
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
+        ID_EXPORTP = wx.NewId()
+        m_exportp = menuFile.Append(ID_EXPORTP, "&Export Preferences\tShift+Ctrl+E", "Export preferences.")
+        frame.Bind(wx.EVT_MENU, self.OnExportPreferences, m_exportp)
+
         if True:
                 ID_CONN = wx.NewId()
                 m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...\tCtrl+k", "Setup worker's connection.")
@@ -851,6 +855,22 @@ class Siren():
             except:
                 pass
         save_dlg.Destroy()
+
+    def OnExportPreferences(self, event):
+        if self.dw.package_filename is not None:
+            dir_name = os.path.dirname(self.dw.package_filename)
+        else:
+            dir_name = os.path.expanduser('~/')
+
+        save_dlg = wx.FileDialog(self.toolFrame, message='Export preferences to:', defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        if save_dlg.ShowModal() == wx.ID_OK:
+            path = save_dlg.GetPath()
+            try:
+                self.dw.exportPreferences(path, inc_def=True)
+            except:
+                pass
+        save_dlg.Destroy()
+
 
     def changePage(self, tabn):
         if tabn in self.tabs and not self.tabs[tabn]["hide"]:

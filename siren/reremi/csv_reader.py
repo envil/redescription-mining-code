@@ -1,5 +1,5 @@
 import csv
-import sys
+import sys, codecs
 import pdb
 from StringIO import StringIO
 from classQuery import Term
@@ -45,6 +45,9 @@ def test_all_numbers(strgs):
 def start_out(fp):
     return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
 def write_row(csvf, row_data):
+    for i in range(len(row_data)):
+        if type(row_data[i]) is unicode:
+            row_data[i] = codecs.encode(row_data[i], 'utf-8','replace')
     csvf.writerow(row_data)
     
 
@@ -69,7 +72,8 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         #f.seek(0)
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
-        head = csvreader.next()
+        head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
@@ -88,11 +92,15 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             for i in range(len(row)):
                 tmp = row[i].strip()
                 if tmp != type(tmp)(unknown_string):
+                    if type(tmp) is str:
+                        tmp = codecs.decode(tmp, 'utf-8','replace')
                     data[head[i]].append(tmp)
                 else:
                     data[head[i]].append(None)        
     if fcl:
         f.close()
+    ## HERE DEBUG UTF-8
+
     return head, data
 
 def parse_sparse(D, coord, ids, varcol, valcol):
@@ -355,9 +363,11 @@ def row_order(L, R):
         # sort per concatenated lat & long
         # Lll = map(lambda x,y: str(x)+str(y), Llat, Llong)
         # Rll = map(lambda x,y: str(x)+str(y), Rlat, Rlong)
-        Lll = ["::".join(map(str, p)) for p in zip(*order_keys[0])]
-        Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
-
+        formatL = "::".join(["%s" for i in range(len(order_keys[0]))])
+        formatR = "::".join(["%s" for i in range(len(order_keys[1]))])
+        Lll = [formatL % p for p in zip(*order_keys[0])]
+        Rll = [formatR % p for p in zip(*order_keys[1])]
+        # Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
         if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
             print 'Those ids are no real ids, they are not unique!..'
 

@@ -470,12 +470,17 @@ class PreferencesReader:
 						else:
 							tmp_ok = False
 					if tmp_ok:
+						# if name == 'map_elem_circ' or name == 'rhs_neg_query_2':
+						# 	pdb.set_trace()
+				
 						values = {}
 						if len(tmp_opts) > 0:
 							for k in tmp_opts[0].keys():
 								values[k] = []
 								for t in tmp_opts:
 									values[k].append(t[k])
+						else:
+							values = {'text': [], 'data': [], 'value': []}
 						pv[name] = values
 		return pv
 

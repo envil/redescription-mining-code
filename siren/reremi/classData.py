@@ -462,6 +462,8 @@ class CatColM(ColM):
 
     def numEquiv(self, v):
         try:
+            if type(v) is str and type(self.sCats.keys()[0]) is unicode:
+                v = codecs.decode(v, 'utf-8','replace')
             return sorted(self.sCats.keys()).index(v)
         except:
             return Data.NA_num
@@ -1231,13 +1233,11 @@ class Data:
             rids = dict(enumerate([prepareRowName(rname, i, self) for i, rname in enumerate(self.rnames)]))
         elif len(self.selectedRows()) > 0:
             rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
-
         mean_denses = [np.mean([col.density() for col in self.cols[0]]),
                        np.mean([col.density() for col in self.cols[1]])]
         argmaxd = 0
         if mean_denses[0] < mean_denses[1]:
             argmaxd = 1
-
         #### FOR DEBUGING OF DENSE FORMAT, REMOVE!!!!
         # if mean_denses[1-argmaxd] > 0 : #thres: ## BOTH SIDES ARE DENSE
         if mean_denses[1-argmaxd] > thres: ## BOTH SIDES ARE DENSE
@@ -1619,7 +1619,7 @@ def readDNCFromCSVFiles(filenames):
 
 
 def prepareRowName(rname, rid=None, data=None):
-    return str(rname) 
+    return "%s" % rname 
     en = ""
     if rid is not None and data is not None and rid in data.selectedRows():
         en = "_"
@@ -1635,7 +1635,7 @@ def parseRowsNames(rnames):
     return names
 
 def prepareColumnName(col, types_smap={}):
-    return str(col.getName()) 
+    return "%s" % col.getName() 
     en = ""
     if not col.getEnabled():
         en = "_"

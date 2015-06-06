@@ -35,6 +35,8 @@ class SirenApp(wx.App):
             (p, ext) = os.path.splitext(filename)
             if ext == '.siren':
                 self.frame.LoadFile(filename)
+            elif ext == ".conf":
+                self.frame.dw.importPreferencesFromFile(filename)
             elif ext == '.csv':
                 # If the first file is .csv, check if we've got two files and use them as left and right files
                 LHfile = filename

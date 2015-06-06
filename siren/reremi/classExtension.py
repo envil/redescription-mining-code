@@ -89,7 +89,7 @@ class Extension:
     def disp(self, base_acc=None, N=0, prs=None, coeffs=None):
         strPieces = ["", "", ""]
         if self.isValid():
-            strPieces[self.getSide()] = str(Op(self.getOp())) + " " + str(self.getLiteral()) 
+            strPieces[self.getSide()] = "%s %s" % (Op(self.getOp()), self.getLiteral()) 
             if base_acc is None:
                 strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
                                 % (self.getAcc(), self.getVarBlue(), self.getVarRed())

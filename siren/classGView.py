@@ -517,7 +517,7 @@ class GView(object):
             self.parent.tabs[self.source_list]["tab"].updateEdit(self.getId(), red)
 
     def updateQueryText(self, query, side):
-        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side)))
+        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side))) #, unicd=True), unicd=True))
 
     def updateText(self, red = None):
         """ Reset red fields and info
