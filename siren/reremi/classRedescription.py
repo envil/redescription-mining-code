@@ -10,8 +10,12 @@ class Redescription:
     print_delta_fields = set(SParts.print_delta_fields+["Tex_"+s for s in SParts.print_delta_fields])
     print_queries_headers = ["query_LHS", "query_RHS"]
     print_queries_namedsuff = "_named"
-    print_default_fields = ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
-    print_default_fields_named = ["query_LHS_named", "query_RHS_named", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    print_default_fields_stats = ["acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+
+    print_default_fields = print_queries_headers+print_default_fields_stats
+    # ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    print_default_fields_named = [p+print_queries_namedsuff for p in print_queries_headers]+print_default_fields_stats
+    #["query_LHS_named", "query_RHS_named", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
     print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
 
     print_fields_details = {}
@@ -458,12 +462,22 @@ class Redescription:
                 info_name = ""
             details.append(info_name+tmp)
         return sep.join(details)
+
+    def dispQueries(self, names=[None,None], sep='\t'):
+        if names[0] is not None or names[1] is not None:
+            list_fields = Redescription.print_default_fields_named
+        else:
+            list_fields = Redescription.print_default_fields
+        return self.disp(list_fields=list_fields, sep=sep, names=names)
+
+    def dispStats(self, sep='\t'):
+        return self.disp(list_fields=Redescription.print_default_fields_stats, sep=sep)
         
     def dispSupp(self):
         return self.sParts.dispSupp()
     
-    def write(self, output, suppOutput, namesOutput=None, names=None):
-        output.write(self.disp()+'\n')
+    def write(self, output, suppOutput, namesOutput=None, names=None, addto=''):
+        output.write(self.disp()+addto+'\n')
         output.flush()
         if namesOutput is not None and names is not None:
             namesOutput.write(self.disp(names)+'\n')

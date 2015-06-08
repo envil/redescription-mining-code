@@ -3,7 +3,7 @@
 import sys, re, datetime, os.path
 from toolLog import Log
 from classData import Data
-from classRedescription import Redescription
+from classRedescription import Redescription, parseRedList
 from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import Miner
@@ -12,16 +12,6 @@ from codeRRM import RedModel
 import pdb
 
 import pickle
-
-def loadRedescriptions(filename, data):
-    fp = open(filename, "r")
-    tmp = []
-    red = Redescription.load(fp, None, data)
-    while red[0] != None and red[1] != -1:
-        if len(red[0]) > 0:
-            tmp.append(red[0])
-        red = Redescription.load(fp, None, data)
-    return tmp
 
 def run_filter(params, data, logger):
     # ta = do_filter(params)    
@@ -76,7 +66,7 @@ def do_filter(params):
     #     print red
 
     # restrict = set(range(500))
-    ta = loadRedescriptions(fn_queries, data)
+    ta = parseRedList(open(fn_queries, "r"), data)
     for ti, t in enumerate(ta):
         print t.disp(names)
 
@@ -146,7 +136,7 @@ def run_dl(params):
     rm = RedModel(data)
 
     logger.printL(2, "Loading reds...", "log")
-    reds = loadRedescriptions(fn_queries, data)
+    reds = parseRedList(open(fn_queries, "r"), data)
 
     logger.printL(2, "Computing initial DL...", "log")
     ocs = rm.getEncodedLength(data)
@@ -201,7 +191,7 @@ def run(params):
     if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0:
         if len(params_l['ext_queries']) > 0:
             fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
-            fn_names = fn_queries+"_names" 
+            fn_names = params_l['result_rep']+params_l['out_base']+"_named"+params_l['ext_queries']
             try:
                 tfs = open(fn_queries, "a")
                 tfs.close()
@@ -262,11 +252,110 @@ def run(params):
 ## END of main()
 
 
+def run_splits(params):
+
+    ticO = datetime.datetime.now()
+
+    params_l = {}
+    for k, v in  params.items():
+        params_l[k] = v["data"]
+
+    if sys.platform != 'darwin':
+        for p in ['result_rep', 'data_rep']:
+            params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+
+    ### construct filenames
+    if params_l['ext_l'] == ".csv" and params_l['ext_r'] == ".csv":
+        style_data = "csv"
+        add_info = [{}, params_l['str_NA']]
+    else:
+        style_data = "multiple"
+        add_info = []
+        
+    fn_l = params_l['data_rep']+params_l['data_l']+params_l['ext_l']
+    fn_r = params_l['data_rep']+params_l['data_r']+params_l['ext_r']
+
+    fn_log = params_l['logfile']
+    fn_queries = "-"
+    fn_support = None
+    if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0:
+        if len(params_l['ext_queries']) > 0:
+            fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+            fn_names = params_l['result_rep']+params_l['out_base']+"_named"+params_l['ext_queries']
+            try:
+                tfs = open(fn_queries, "a")
+                tfs.close()
+            except IOError:
+                print "Queries output file not writable, use stdout instead..."
+                fn_queries = "-"
+                fn_names = None
+                
+            if fn_queries != "-" and params_l['logfile'] == "+":
+                fn_log = params_l['result_rep']+params_l['out_base']+".log"
+
+        if fn_queries != "-" and len(params_l['ext_support']) > 0:
+            fn_support = params_l['result_rep']+params_l['out_base']+params_l['ext_support']
+
+    logger = Log(params_l['verbosity'], fn_log)
+    data = Data([fn_l, fn_r]+add_info, style_data)
+    logger.printL(2, data, "log")
+
+    if fn_queries == "-":
+        queriesOutFp = sys.stdout
+    else:
+        queriesOutFp = open(fn_queries, "w")
+
+    if fn_support is None:
+        supportOutFp = None
+    else:
+        supportOutFp = open(fn_support, "w")
+    namesOutFp = None
+
+    if queriesOutFp is not None:
+        names = None
+        queriesOutFp.write(Redescription.dispHeader()+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats)+"\n")
+        if data.hasNames() and fn_names is not None:
+            names = data.getNames()
+            namesOutFp = open(fn_names, "w")
+            namesOutFp.write(Redescription.dispHeader(named=True)+"\t---\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats, named=True)+"\n")
+
+    subsets_rids = data.rsubsets_split(2, 4)
+    for si, subset in enumerate(subsets_rids):
+        logger.printL(1, "---------- SI# %d ---------------" % si, "log")
+        if queriesOutFp is not None:
+            queriesOutFp.write("### ---------- SI# %d ---------------\n### %s\n" % (si, subset))
+        if namesOutFp is not None:
+            namesOutFp.write("### ---------- SI# %d ---------------\n### %s\n" % (si, subset))
+        sL, sT = data.get_LTsplit(subset)
+        miner = Miner(sL, params, logger)
+        try:
+            miner.full_run()
+        except KeyboardInterrupt:
+            logger.printL(1, 'Stopped...', "log")
+            
+        if queriesOutFp is not None:
+            for pos in miner.final["results"]:
+                red = miner.final["batch"][pos].copy()
+                red.recompute(sT)
+                miner.final["batch"][pos].write(queriesOutFp, supportOutFp, namesOutFp, names, "\t---\t"+red.dispStats())
+
+    queriesOutFp.close()
+    if supportOutFp is not None:
+        supportOutFp.close()
+
+    tacO = datetime.datetime.now()
+    logger.printL(1, 'THE END (at %s, elapsed %s)' % (tacO, tacO - ticO), "log")
+## END of main()
+
+
+
 if __name__ == "__main__":
     params, pr, pm = getParams(sys.argv)
     if len(sys.argv) > 2 and sys.argv[2] == "filter":
         do_filter(params)
     elif len(sys.argv) > 2 and sys.argv[2] == "dl":
         run_dl(params)
+    elif len(sys.argv) > 2 and sys.argv[2] == "splits":
+        run_splits(params)
     else:
         run(params)

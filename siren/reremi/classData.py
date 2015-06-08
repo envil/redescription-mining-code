@@ -1163,12 +1163,26 @@ class Data:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
 
+    def rsubsets_split(self, divT=1, nbsubs=10):
+        uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]/divT),nbsubs), return_inverse=True)
+        return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
+
+    def get_LTsplit(self, row_idsT):
+        row_idsL = set(range(self.nbRows()))
+        row_idsT = row_idsL.intersection(row_idsT)
+        row_idsL.difference_update(row_idsT)
+        return self.subset(row_idsL), self.subset(row_idsT)
+
     def subset(self, row_ids=None):
         coords = None
         rnames = None
         if row_ids is None:
             N = self.nbRows()
         else:
+            if type(row_ids) is set:
+                row_ids = sorted(row_ids)
+            if type(row_ids) is list:
+                row_ids = dict([(r,[ri]) for (ri, r) in enumerate(row_ids)])
             N = sum([len(news) for news in row_ids.values()])
         if self.rnames is not None:
             if row_ids is None:
@@ -1740,6 +1754,16 @@ def getDenseArray(vect):
 
 
 def main():
+
+    rep = "/home/galbrun/TKTL/redescriptors/generaliz/data/"
+    # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
+    data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
+
+    subsets_rids = data.rsubsets_split(2, 7)
+    for si, subset in enumerate(subsets_rids):
+        sL, sT = data.get_LTsplit(subset)
+        print "Train:", sL, "Test:", sT
+    exit()
 
     rep = "/home/galbrun/TKTL/redescriptors/data/football/other/"
     # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")

@@ -1008,16 +1008,16 @@ class RedModel:
                     best = (top[0], ri, top[1])
                 elif top[0] < 0:
                     keep.append(ri)
-            if best[1] is not None:
+            if best[2] is not None:
                 if logger is not None:
-                    logger.printL(2, "Adding %f\t%s\t%s..." % (best[0], dirs[best[2]], reds[best[1]].dispQueries(names)), "log")
+                    logger.printL(2, "Adding %f\t%s\t%s..." % (best[0], reds[best[1]], reds[best[1]].dispQueries()), "log")
                 self.addRed(reds[best[1]], data, best[2])
                 if clean:
                     popids = self.cleanUp(data)
                     if logger is not None and len(popids) > 0:
                         logger.printL(2, "Cleaned up %d..." % len(popids), "log")
             reds = [reds[i] for i in keep]
-
+        return reds
 
 class DataModel:
     SIDE_DIFF = []
