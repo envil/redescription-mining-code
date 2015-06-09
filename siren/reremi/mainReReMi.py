@@ -278,23 +278,24 @@ def run_splits(params):
     fn_log = params_l['logfile']
     fn_queries = "-"
     fn_support = None
+    fn_names = None
     if params_l['out_base'] != "-"  and len(params_l['out_base']) > 0:
         if len(params_l['ext_queries']) > 0:
             fn_queries = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
-            fn_names = params_l['result_rep']+params_l['out_base']+"_named"+params_l['ext_queries']
+            # fn_names = params_l['result_rep']+params_l['out_base']+"_named"+params_l['ext_queries']
             try:
                 tfs = open(fn_queries, "a")
                 tfs.close()
             except IOError:
                 print "Queries output file not writable, use stdout instead..."
                 fn_queries = "-"
-                fn_names = None
+                # fn_names = None
                 
             if fn_queries != "-" and params_l['logfile'] == "+":
                 fn_log = params_l['result_rep']+params_l['out_base']+".log"
 
-        if fn_queries != "-" and len(params_l['ext_support']) > 0:
-            fn_support = params_l['result_rep']+params_l['out_base']+params_l['ext_support']
+        # if fn_queries != "-" and len(params_l['ext_support']) > 0:
+        #     fn_support = params_l['result_rep']+params_l['out_base']+params_l['ext_support']
 
     logger = Log(params_l['verbosity'], fn_log)
     data = Data([fn_l, fn_r]+add_info, style_data)
@@ -313,32 +314,41 @@ def run_splits(params):
 
     if queriesOutFp is not None:
         names = None
-        queriesOutFp.write(Redescription.dispHeader()+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats)+"\n")
+        queriesOutFp.write(Redescription.dispHeader()+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats)+"\tacc_diff\n")
         if data.hasNames() and fn_names is not None:
             names = data.getNames()
             namesOutFp = open(fn_names, "w")
-            namesOutFp.write(Redescription.dispHeader(named=True)+"\t---\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats, named=True)+"\n")
+            namesOutFp.write(Redescription.dispHeader(named=True)+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats, named=True)+"\tacc_diff\n")
 
-    subsets_rids = data.rsubsets_split(2, 4)
-    for si, subset in enumerate(subsets_rids):
-        logger.printL(1, "---------- SI# %d ---------------" % si, "log")
-        if queriesOutFp is not None:
-            queriesOutFp.write("### ---------- SI# %d ---------------\n### %s\n" % (si, subset))
-        if namesOutFp is not None:
-            namesOutFp.write("### ---------- SI# %d ---------------\n### %s\n" % (si, subset))
-        sL, sT = data.get_LTsplit(subset)
-        miner = Miner(sL, params, logger)
-        try:
-            miner.full_run()
-        except KeyboardInterrupt:
-            logger.printL(1, 'Stopped...', "log")
-            
-        if queriesOutFp is not None:
-            for pos in miner.final["results"]:
-                red = miner.final["batch"][pos].copy()
-                red.recompute(sT)
-                miner.final["batch"][pos].write(queriesOutFp, supportOutFp, namesOutFp, names, "\t---\t"+red.dispStats())
+    runid = 0
+    while runid < params_l['splits_runs']:
+        subsets_rids = data.getSplit(params_l['splits_nb'], params_l['splits_dim'], params_l['splits_grain'])
+        data.addSplitCol(subsets_rids)
+        si = 0
+        while si < len(subsets_rids):
+            subset = subsets_rids[si]
+            logger.printL(1, "---------- RUN %d SPLIT s%d ---------------" % (runid, si), "log")
+            if queriesOutFp is not None:
+                queriesOutFp.write("### ---------- RUN %d SPLIT s%d ---------------\n### %s\n" % (runid, si, subset))
+            if namesOutFp is not None:
+                namesOutFp.write("### ---------- RUN %d SPLIT s%d ---------------\n### %s\n" % (runid, si, subset))
+            sL, sT = data.get_LTsplit(subset)
+            miner = Miner(sL, params, logger)
+            try:
+                miner.full_run()
+            except KeyboardInterrupt:
+                logger.printL(1, 'Stopped...', "log")
+                si = len(subsets_rids)
+                runid = params_l['splits_runs']
 
+            if queriesOutFp is not None:
+                for pos in miner.final["results"]:
+                    red = miner.final["batch"][pos].copy()
+                    red.recompute(sT)
+                    acc_diff = (red.getAcc()-miner.final["batch"][pos].getAcc())/miner.final["batch"][pos].getAcc()
+                    miner.final["batch"][pos].write(queriesOutFp, supportOutFp, namesOutFp, names, "\t"+red.dispStats()+"\t%f" % acc_diff)
+            si += 1
+        runid += 1
     queriesOutFp.close()
     if supportOutFp is not None:
         supportOutFp.close()

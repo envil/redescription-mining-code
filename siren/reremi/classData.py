@@ -406,7 +406,7 @@ class CatColM(ColM):
                     cats[v] = set([j])
         if len(cats) > 0:
             if len(cats) == 1:
-                print "Only one category %s, this is suspicious!.." % (cats.keys())
+                print "Only one category %s, this is suspect!.." % (cats.keys())
             return CatColM(cats, max(indices.values())+1, miss)
         else:
             return None
@@ -494,13 +494,13 @@ class CatColM(ColM):
             N = self.nbRows()
         else:
             miss = set()
-            scats[cat] = {}
+            scats = {}
             N = sum([len(news) for news in row_ids.values()])
             for old in self.missing.intersection(row_ids.keys()):
                 miss.update(row_ids[old])
-            for cat in self.cats():
+            for cat, rs in self.sCats.items():
                 scats[cat] = set()
-                for old in self.hold.intersection(row_ids.keys()):
+                for old in rs.intersection(row_ids.keys()):
                     scats[cat].update(row_ids[old])
         tmp = CatColM(scats, N, miss)
         tmp.name = self.name
@@ -1068,6 +1068,7 @@ class Data:
 
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
         self.single_dataset = single_dataset
+        self.split = None 
         self.as_array = [None, None, None]
         self.selected_rows = set()
         if type(N) == int:
@@ -1088,13 +1089,13 @@ class Data:
             print "Input non recognized!"
             self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
             raise
-            
+        
         if type(self.cols) == list and len(self.cols) == 2:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
         else:
             self.cols = [ICList(),ICList()]
         self.ssetts = SSetts(self.hasMissing())
-
+        
     def isSingleD(self):
         return self.single_dataset
 
@@ -1163,9 +1164,43 @@ class Data:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
 
-    def rsubsets_split(self, divT=1, nbsubs=10):
-        uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]/divT),nbsubs), return_inverse=True)
-        return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
+    def getSplit(self, nbsubs=10, coo_dim=-1, grain=10., force=False):
+        if not self.isGeospatial() or coo_dim < 0 or coo_dim >= len(self.getCoords()):
+            coo_dim = -1
+        if self.split is None or force or len(self.split["split_ids"]) != nbsubs or self.split["coo_dim"] != coo_dim or self.split["grain"] != grain:
+            self.split = {"coo_dim": coo_dim,
+                          "grain": grain,
+                          "split_ids": self.rsubsets_split(nbsubs, coo_dim, grain)}
+        return self.split['split_ids']            
+
+    def addSplitCol(self, subsets, sito=0):
+        col = CatColM(dict([("s%d" % i, s) for (i,s) in enumerate(subsets)]), self.nbRows())
+        col.setId(len(self.cols[sito]))
+        col.side = sito
+        col.name = "split"
+        self.cols[sito].append(col)
+        
+    def rsubsets_split(self, nbsubs=10, coo_dim=-1, grain=10.):
+        # uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
+        # return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
+        if self.isGeospatial() and coo_dim >= 0 and coo_dim < len(self.getCoords()):
+            nv = np.floor(self.getCoords()[coo_dim]*grain)
+            uv, uids = np.unique(nv, return_inverse=True)
+            sizes = [(len(uv)/nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)/nbsubs+1, len(uv)%nbsubs)]
+            maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
+            np.random.shuffle(maps_to)
+            subsets_ids = [set() for i in range(nbsubs)]
+            for i in range(len(uv)):
+                subsets_ids[maps_to[i]].update(np.where(uids==i)[0])
+        else:
+            sizes = [(self.nbRows()/nbsubs, nbsubs - self.nbRows()%nbsubs), (self.nbRows()/nbsubs+1, self.nbRows()%nbsubs)]
+            maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
+            np.random.shuffle(maps_to)
+            subsets_ids = [set() for i in range(nbsubs)]
+            for i in range(nbsubs):
+                subsets_ids[i].update(np.where(maps_to==i)[0])
+        return subsets_ids
+        
 
     def get_LTsplit(self, row_idsT):
         row_idsL = set(range(self.nbRows()))
@@ -1193,15 +1228,14 @@ class Data:
                     for new in news:
                         rnames[new]=self.rnames[old]
         if self.coords is not None:
-            coords = []
-            for coord in self.coords:
-                if row_ids is None:
-                    coords.append(list(coord))
-                else:
-                    coords.append([0 for i in range(N)])
-                    for old, news in row_ids.items():
-                        for new in news:
-                            coords[-1][new]=coord[old]
+            if row_ids is None:
+                coords = self.coords.copy()
+            else:
+                maps_to = np.array([0 for i in range(N)])
+                for old, news in row_ids.items():
+                    maps_to[news] = old
+                coords = self.coords[:,maps_to]
+
         cols = [[],[]]
         for side in [0,1]:
             for col in self.cols[side]:
@@ -1759,7 +1793,7 @@ def main():
     # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
     data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
 
-    subsets_rids = data.rsubsets_split(2, 7)
+    subsets_rids = data.rsubsets_split(10, 0, 10.)
     for si, subset in enumerate(subsets_rids):
         sL, sT = data.get_LTsplit(subset)
         print "Train:", sL, "Test:", sT

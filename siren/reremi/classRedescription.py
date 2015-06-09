@@ -480,7 +480,7 @@ class Redescription:
         output.write(self.disp()+addto+'\n')
         output.flush()
         if namesOutput is not None and names is not None:
-            namesOutput.write(self.disp(names)+'\n')
+            namesOutput.write(self.disp(names)+addto+'\n')
             namesOutput.flush()
         if suppOutput is not None:
             suppOutput.write(self.sParts.dispSupp()+'\n')

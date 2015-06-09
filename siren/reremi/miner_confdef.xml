@@ -464,5 +464,44 @@
 	<default><value>5000</value></default>
       </parameter>
     </section>
+    <section>
+      <name>Splits</name>
+      <parameter>
+	<name>splits_nb</name>
+	<label>Number of splits</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Number of splits in which to partition the data.</legend>
+	<length>2</length>
+	<default><value>10</value></default>
+      </parameter>
+      <parameter>
+	<name>splits_dim</name>
+	<label>Splitting dimension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Coordinates dimension used to split the data, if -1 or not a coordinate dimension splitting is done randomly.</legend>
+	<length>1</length>
+	<default><value>0</value></default>
+      </parameter>
+      <parameter>
+	<name>splits_grain</name>
+	<label>Granularity of split</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Granularity of split when using coordinate, greater granularity, results in larger bands.</legend>
+	<length>3</length>
+	<default><value>10</value></default>
+      </parameter>
+      <parameter>
+	<name>splits_runs</name>
+	<label>Number of runs with splits</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Number of runs with splits.</legend>
+	<length>3</length>
+	<default><value>1</value></default>
+      </parameter>
+    </section>
   </section>
 </root>
