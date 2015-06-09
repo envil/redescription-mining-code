@@ -323,7 +323,7 @@ def run_splits(params):
     runid = 0
     while runid < params_l['splits_runs']:
         subsets_rids = data.getSplit(params_l['splits_nb'], params_l['splits_dim'], params_l['splits_grain'])
-        data.addSplitCol(subsets_rids)
+        # data.addSplitCol(subsets_rids)
         si = 0
         while si < len(subsets_rids):
             subset = subsets_rids[si]

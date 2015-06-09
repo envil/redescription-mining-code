@@ -282,7 +282,10 @@ def make_lits(side, tree_exp, data):
         if "split" in tree_exp[node_id]:
             lit = make_literal(side, tree_exp[node_id]["split"], data)
             for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][0], data, which=0):
-                lls.append([lit.copy()]+l)
+                try:
+                    lls.append([lit.copy()]+l)
+                except AttributeError:
+                    pdb.set_trace()
             lit.flip()
             for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][1], data, which=1):
                 lls.append([lit.copy()]+l)
@@ -310,6 +313,8 @@ def make_literal(side, node, data):
             else:
                 rng = (threshold, float("inf")) 
             lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+        else:
+            raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].type_id)
     return lit
 
 
