@@ -445,19 +445,22 @@ class Siren():
             menuFile = wx.Menu()
         m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
-        
+
+        ## Save  
         m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
         if self.getData() is not None and self.dw.isFromPackage and self.dw.package_filename is not None:
             frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
         else:
             menuFile.Enable(wx.ID_SAVE, False)
-        
+
+        ## Save As...
         m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
         if self.getData() is None:
             menuFile.Enable(wx.ID_SAVEAS, False)
         else:
             frame.Bind(wx.EVT_MENU, self.OnSaveAs, m_saveas)
 
+        ## Import submenu
         submenuImport = wx.Menu()
         #submenuImportData = wx.Menu()
         ID_IMPORT_DATA_CSV = wx.NewId()
@@ -482,7 +485,6 @@ class Siren():
         else:
             submenuImport.Enable(ID_IMPORT_REDESCRIPTIONS, False)
 
-
         ID_IMPORT_PREFERENCES = wx.NewId()
         m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
@@ -490,25 +492,35 @@ class Siren():
         ID_IMPORT = wx.NewId()
         m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuImport)
 
-        ID_EXPORT = wx.NewId()
-        m_export = menuFile.Append(ID_EXPORT, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
+        
+        ## Export submenu
+        submenuExport = wx.Menu() # Submenu for exporting
+        
+        ID_EXPORT_REDESCRIPTIONS = wx.NewId()
+        m_exportRedescriptions = submenuExport.Append(ID_EXPORT_REDESCRIPTIONS, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
         if len(self.getReds()) == 0:
-            menuFile.Enable(ID_EXPORT, False)
+            submenuExport.Enable(ID_EXPORT_REDESCRIPTIONS, False)
         else:
-            frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_export)
+            frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_exportRedescriptions)
 
+        ID_EXPORT_PREF = wx.NewId()
+        m_exportPref = submenuExport.Append(ID_EXPORT_PREF, "&Export Preferences", "Export preferences.")
+        frame.Bind(wx.EVT_MENU, self.OnExportPreferences, m_exportPref)
+
+        ID_EXPORT = wx.NewId()
+        m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
+        
+        ## Preferences
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
-        ID_EXPORTP = wx.NewId()
-        m_exportp = menuFile.Append(ID_EXPORTP, "&Export Preferences\tShift+Ctrl+E", "Export preferences.")
-        frame.Bind(wx.EVT_MENU, self.OnExportPreferences, m_exportp)
-
+        ## Worker setup
         if True:
                 ID_CONN = wx.NewId()
                 m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...\tCtrl+k", "Setup worker's connection.")
                 frame.Bind(wx.EVT_MENU, self.OnConnectionDialog, m_conndia)
 
+        ## Quit
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)
         return menuFile
