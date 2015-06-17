@@ -1,6 +1,5 @@
 ### TODO check which imports are needed 
 import re, random, sys
-import wx
 import numpy as np
 import inspect, signal
 # import tsne
@@ -154,36 +153,36 @@ class Proj(object):
             params["only_able"] = False
         return params
 
-    def makeBoxes(self, frame):
-        boxes = []
-        for kp in self.getTunableParamsK():
-            label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
-            ctrls = []
-            value = self.getParameter(kp)
-            if type(value) in [int, float]:
-                type_ctrl = "text"
-                ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
-            elif type(value) is bool:
-                type_ctrl = "checkbox" 
-                ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
-                ctrls[-1].SetValue(value)
-            elif type(value) is list and kp in self.options_parameters:
-                type_ctrl = "checkbox"
-                for k,v in self.options_parameters[kp]:
-                    ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
-                    ctrls[-1].SetValue(v in value)
-            elif kp in self.options_parameters:
-                type_ctrl = "choice" 
-                ctrls.append(wx.Choice(frame, wx.NewId()))
-                strs = [k for k,v in self.options_parameters[kp]]
-                ctrls[-1].AppendItems(strings=strs)
-                try:
-                    ind = strs.index(value)
-                    ctrls[-1].SetSelection(ind)
-                except ValueError:
-                    pass
-            boxes.append({"key": kp, "label": label, "type_ctrl": type_ctrl, "ctrls":ctrls, "value":value})
-        return boxes
+    # def makeBoxes(self, frame):
+    #     boxes = []
+    #     for kp in self.getTunableParamsK():
+    #         label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
+    #         ctrls = []
+    #         value = self.getParameter(kp)
+    #         if type(value) in [int, float]:
+    #             type_ctrl = "text"
+    #             ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
+    #         elif type(value) is bool:
+    #             type_ctrl = "checkbox" 
+    #             ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
+    #             ctrls[-1].SetValue(value)
+    #         elif type(value) is list and kp in self.options_parameters:
+    #             type_ctrl = "checkbox"
+    #             for k,v in self.options_parameters[kp]:
+    #                 ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
+    #                 ctrls[-1].SetValue(v in value)
+    #         elif kp in self.options_parameters:
+    #             type_ctrl = "choice" 
+    #             ctrls.append(wx.Choice(frame, wx.NewId()))
+    #             strs = [k for k,v in self.options_parameters[kp]]
+    #             ctrls[-1].AppendItems(strings=strs)
+    #             try:
+    #                 ind = strs.index(value)
+    #                 ctrls[-1].SetSelection(ind)
+    #             except ValueError:
+    #                 pass
+    #         boxes.append({"key": kp, "label": label, "type_ctrl": type_ctrl, "ctrls":ctrls, "value":value})
+    #     return boxes
 
     def readBoxes(self, boxes):
         params = {}

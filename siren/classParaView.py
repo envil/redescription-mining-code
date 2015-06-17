@@ -413,6 +413,7 @@ class ParaView(GView):
 
 
     def additionalElements(self):
+        t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
 
@@ -421,7 +422,7 @@ class ParaView(GView):
         self.buttons = []
         self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
                              "function": self.OnExpandSimp})
-        self.sld = wx.Slider(self.mapFrame, -1, 30, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
+        self.sld = wx.Slider(self.mapFrame, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
         self.sld_sel = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
         add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags)
         add_box.AddSpacer((20,-1))

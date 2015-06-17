@@ -74,6 +74,16 @@
 	<default><value>1</value></default>
 	<options><value>Yes</value><value>No</value></options>
       </parameter>
+      <parameter>
+	<name>details_level</name>
+	<label>Details level</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Level of details for plotting the parallel coordinates.</legend>
+	<range_min>0</range_min>
+	<range_max>100</range_max>
+	<default><value>50</value></default>
+      </parameter>
     </section>
   </section>
   <section>
@@ -232,7 +242,7 @@
 	<label>Workserver Port</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
-	<legend>Listening port of the server executing computational the tasks.</legend>
+	<legend>Listening port of the server executing the computational tasks.</legend>
 	<length>6</length>
 	<default><value>55444</value></default>
       </parameter>
@@ -241,7 +251,7 @@
 	<label>Workserver Key</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Authentification key on the server executing computational the tasks.</legend>
+	<legend>Authentification key on the server executing the computational tasks.</legend>
 	<length>10</length>
 	<default><value>ReReMi</value></default>
       </parameter>

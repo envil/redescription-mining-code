@@ -4,6 +4,18 @@
   <info>Mining preferences for the ReReMi algorithm. A default preferences file can be obtained by copying this file and removing the &#60;default&#62; tags around default values, or by calling the main mining routine: <em>mainReReMi.py --config</em>.</info>
   <section>
     <name>Basic</name>
+    <section>
+      <name>Mining Method</name>
+      <parameter>
+	<name>mine_algo</name>
+	<label>Mining Algo</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Method for mining.</legend>
+	<default><value>0</value></default>
+	<options><value>greedy</value><value>trees</value></options>
+      </parameter>
+</section>
 <section>
       <name>Types of queries</name>
       <parameter>
@@ -138,39 +150,6 @@
     </section>
 </section>
 <section>
-    <name>Trees</name>
-   <section>
-      <name>Mining with trees</name>
-      <parameter>
-	<name>mine_algo</name>
-	<label>Mining Algo</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Method for mining, greedy or alternative methods based on classification trees CART (restrictions apply)</legend>
-	<default><value>0</value></default>
-	<options><value>greedy</value><value>layeredtrees</value><value>splittrees</value></options>
-      </parameter>
-      <parameter>
-	<name>min_node_size</name>
-	<label>Min node size</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Minimum number of entities in a leaf node.</legend>
-	<length>4</length>
-	<default><value>1</value></default>
-      </parameter>
-    <parameter>
-	<name>max_depth</name>
-	<label>Max tree depth</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Maximum depth of the classification tree.</legend>
-	<length>2</length>
-	<default><value>2</value></default>
-      </parameter>   
-    </section>
-  </section>
-  <section>
     <name>Scoring</name>
     <section>
       <name>Extension candidates</name>
@@ -274,79 +253,7 @@
     </section>
   </section>
   <section>
-    <name>Filtering</name>
-    <section>
-      <name>Final filtering</name>
-      <parameter>
-	<name>min_fin_c</name>
-	<label>Min contribution</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum contribution of a literal i.e., number of supporting entities impacted, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_in</name>
-	<label>Min support</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of supporting entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_out</name>
-	<label>Min uncovered</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of uncovered entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_var</name>
-	<label>Min number of variables</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Maximum number of variables per redescription, applied as post processing.</legend>
-	<length>2</length>
-	<default><value>2</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_acc</name>
-	<label>Min accuracy</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimim accuracy, applied as post processing.</legend>
-	<length>5</length>
-	<default><value>0.01</value></default>
-      </parameter>
-      <parameter>
-	<name>max_fin_pval</name>
-	<label>Max p-value</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Maximum p-value, applied as post processing.</legend>
-	<length>5</length>
-	<default><value>0.01</value></default>
-      </parameter>
-    </section>
-    <section>
-      <name>Additional filtering</name>
-      <parameter>
-	<name>max_overlaparea</name>
-	<label>Max Area Overlap</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Maximum overlap of the area of two redescriptions to be considered redundant.</legend>
-	<length>5</length>
-	<default><value>0.5</value></default>
-      </parameter>
-    </section>
-  </section>
-  <section>
-    <name>Advanced</name>
+    <name>Search</name>
     <section>
       <name>Beam search</name>
       <parameter>
@@ -501,6 +408,111 @@
 	<legend>Number of runs with splits.</legend>
 	<length>3</length>
 	<default><value>1</value></default>
+      </parameter>
+    </section>
+  </section>
+<section>
+    <name>Trees</name>
+   <section>
+      <name>Mining with trees</name>
+      <parameter>
+	<name>tree_mine_algo</name>
+	<label>Tree Growing Variant</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Method for growing the redescriptions based on classification trees CART (restrictions apply)</legend>
+	<default><value>0</value></default>
+	<options><value>splittrees</value><value>layeredtrees</value></options>
+      </parameter>
+      <parameter>
+	<name>min_node_size</name>
+	<label>Min node size</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Minimum number of entities in a leaf node.</legend>
+	<length>4</length>
+	<default><value>1</value></default>
+      </parameter>
+    <parameter>
+	<name>max_depth</name>
+	<label>Max tree depth</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum depth of the classification tree.</legend>
+	<length>2</length>
+	<default><value>2</value></default>
+      </parameter>   
+    </section>
+  </section>
+  <section>
+    <name>Filtering</name>
+    <section>
+      <name>Final filtering</name>
+      <parameter>
+	<name>min_fin_c</name>
+	<label>Min contribution</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum contribution of a literal i.e., number of supporting entities impacted, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_in</name>
+	<label>Min support</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of supporting entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_out</name>
+	<label>Min uncovered</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of uncovered entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_var</name>
+	<label>Min number of variables</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum number of variables per redescription, applied as post processing.</legend>
+	<length>2</length>
+	<default><value>2</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_acc</name>
+	<label>Min accuracy</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimim accuracy, applied as post processing.</legend>
+	<length>5</length>
+	<default><value>0.01</value></default>
+      </parameter>
+      <parameter>
+	<name>max_fin_pval</name>
+	<label>Max p-value</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Maximum p-value, applied as post processing.</legend>
+	<length>5</length>
+	<default><value>0.01</value></default>
+      </parameter>
+    </section>
+    <section>
+      <name>Additional filtering</name>
+      <parameter>
+	<name>max_overlaparea</name>
+	<label>Max Area Overlap</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Maximum overlap of the area of two redescriptions to be considered redundant.</legend>
+	<length>5</length>
+	<default><value>0.5</value></default>
       </parameter>
     </section>
   </section>

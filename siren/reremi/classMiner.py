@@ -60,14 +60,16 @@ class Miner:
              self.logger = Log()       
         self.constraints = Constraints(self.data, params)
 
-        if self.constraints.mine_algo() == "layeredtrees":
-            self.charbon = classCharbonTree.Charbon(self.constraints)
-        elif self.constraints.mine_algo() == "splittrees":
-            self.charbon = classCharbonTreeD.Charbon(self.constraints)
-        elif self.data.hasMissing():
-            self.charbon = classCharbonAlt.Charbon(self.constraints)
+        if self.constraints.mine_algo() == "trees":
+            if self.constraints.tree_mine_algo() == "layeredtrees":
+                self.charbon = classCharbonTree.Charbon(self.constraints)
+            else:
+                self.charbon = classCharbonTreeD.Charbon(self.constraints)
         else:
-            self.charbon = classCharbonStd.Charbon(self.constraints)
+            if self.data.hasMissing():
+                self.charbon = classCharbonAlt.Charbon(self.constraints)
+            else:
+                self.charbon = classCharbonStd.Charbon(self.constraints)
         if souvenirs is None:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:

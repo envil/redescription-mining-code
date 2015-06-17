@@ -1,8 +1,5 @@
 import numpy as np
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
 import random
-import matplotlib
 import scipy.spatial.distance
 import scipy.cluster
 import itertools

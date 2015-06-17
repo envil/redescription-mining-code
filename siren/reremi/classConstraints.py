@@ -157,6 +157,8 @@ class Constraints:
         return self._pv["max_depth"]
     def mine_algo(self):
         return self._pv["mine_algo"]
+    def tree_mine_algo(self):
+        return self._pv["tree_mine_algo"]
 
 
 
