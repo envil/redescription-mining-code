@@ -199,6 +199,8 @@ class Miner:
         self.logger.printL(1,"Start full run %s" % ticF, "time", self.id)
 
         initial_red = self.initial_pairs.get(self.data, self.testIni)
+        # for i in range(93):
+        #     initial_red = self.initial_pairs.get(self.data, self.testIni)
         # while initial_red is not None and self.questionLive():
         #     initial_red = self.initial_pairs.get(self.data)
         # exit()
@@ -262,7 +264,7 @@ class Miner:
         if len(ids[0]) > 5000:
            ids[0] = sorted(random.sample(ids[0], 100))
         ### FOR DEBUGING (DANGER!!!)
-        # ids[0] = [12,18] # sorted(random.sample(ids[0], 10))
+        ids[0] = [0,1] # sorted(random.sample(ids[0], 10))
         # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
 
         total_pairs = (float(len(ids[0])))*(float(len(ids[1])))

@@ -11,44 +11,6 @@ def next_nid():
     NID += 1
     return NID
 
-
-# mammals_data_file_name = '/home/r/r_rpart/python_version/mammals.csv'
-# climate_data_file_name = '/home/r/r_rpart/python_version/worldclim_tp.csv'
-
-mammals_data_file_name = './mammals.csv'
-climate_data_file_name = './worldclim_tp.csv'
-
-prep_mammals_data_file_name = './mammals_prep.csv'
-prep_climate_data_file_name = './worldclim_tp_prep.csv'
-
-legend_file_name = "legend.txt"
-
-# #### LOAD, FILTER AND SAVE THE DATA
-# data = [{"head": None, "rows": {}, "data": None}, {"head": None, "rows": {}, "data": None}]
-# side = 0
-# for (filename, side, SEP) in [(mammals_data_file_name, 0, ';'), (climate_data_file_name, 1, ',')]:
-#     for line in open(filename):
-#         if data[side]["head"] is None:
-#             data[side]["head"] = line.rstrip().split(SEP)
-#             data[side]["data"] = np.ones((0,len(data[side]["head"])-3))
-#         else:
-#             data[side]["rows"][line.rstrip().split(SEP)[2]] = data[side]["data"].shape[0]
-#             data[side]["data"] = np.vstack([data[side]["data"], np.array(map(float, line.rstrip().split(SEP)[3:]))])
-
-# keep_rows = sorted(set(data[0]["rows"].keys()).intersection(data[1]["rows"].keys()))
-# rowsids = [data[0]["rows"][r] for r in keep_rows]
-# cols = list(np.where(np.sum(data[0]["data"][rowsids,:], axis=0))[0])
-# dt = data[0]["data"][rowsids,:]
-# dt = dt[:,cols]
-# with open(legend_file_name, "w") as fo:
-#     fo.write(";".join([data[0]["head"][c+3] for c in cols])+"\n")
-#     fo.write(";".join(data[1]["head"][3:])+"\n")
-#     fo.write(";".join(keep_rows)+"\n")
-
-# np.savetxt(prep_mammals_data_file_name, dt, fmt="%d")
-# rowsids = [data[1]["rows"][r] for r in keep_rows]
-# np.savetxt(prep_climate_data_file_name, data[1]["data"][rowsids,:], fmt="%.1f")
-
 def gather_supp(tree_exp):
     def recurse_gather(tree_exp, node_id, support_vs, which=None):
         if "split" in tree_exp[node_id]:
@@ -100,23 +62,35 @@ def get_tree(decision_tree, candidates):
         new_node = {"id": new_nid, "parent": parent} #,
         children = []
         if decision_tree.children_left[node_id] != tree._tree.TREE_LEAF:
+
             nvar = decision_tree.feature[node_id]
             if candidates is not None:
                 nvar = candidates[nvar]
             lcid, rcid = (decision_tree.children_left[node_id], decision_tree.children_right[node_id])
             dl = decision_tree.value[lcid][0]
             dr = decision_tree.value[rcid][0]
-            if dl[0] < dl[1] and dr[1] < dr[0]:
+
+            # jL = dl[1]/(dl[1]+dl[0]+dr[0])
+            # jR = dr[1]/(dr[1]+dl[0]+dr[0])
+
+            # if (dl[0] < dl[1] and dr[0] < dr[1]) or (dl[0] > dl[1] and dr[0] > dr[1]):
+            # ### both are or aren't majority classes, either way stop extension
+            #     tree_exp["root"] = None
+            #     return
+
+            #if jL > jR: 
+            if dl[0] < dl[1] and dr[1] < dr[0]: ### left child is majority positive -> Bool False
                 new_node["split"] = (decision_tree.feature[node_id], nvar, decision_tree.threshold[node_id], 1)
                 children = [lcid, rcid]
                 new_node["children"] = [next_nid(), next_nid()]
-            elif dl[1] < dl[0] and dr[0] < dr[1]:
+            #else:
+            elif dl[1] < dl[0] and dr[0] < dr[1]: ### right child is majority positive -> Bool True
                 new_node["split"] = (decision_tree.feature[node_id], nvar, decision_tree.threshold[node_id], -1)
                 children = [rcid, lcid]
                 new_node["children"] = [next_nid(), next_nid()]
-            else:
-                tree_exp["root"] = None
-                return
+            else: ### both are or aren't, either way stop extension
+                 tree_exp["root"] = None
+                 return
             for cci, cid in enumerate(children):
                 recurse(decision_tree, cid, tree_exp, candidates, parent=new_nid, depth=depth + 1, new_nid = new_node["children"][cci])    
 
@@ -139,6 +113,7 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3):
     data_rpart = tree.DecisionTreeClassifier(max_depth = 1, min_samples_leaf = min_bucket).fit(in_data, in_target)
     # split_vector = data_rpart.predict(in_data) #Binary vectoFile "/home/r/NetBeansProjects/RedescriptionTrees/src/redescriptiontrees_method2.py", line 201, in <module>r of the tree for Jaccard
     split_tree = get_tree(data_rpart.tree_, candidates)
+    # print "SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]]
     # ttt = set_supp(split_tree, in_data)
     # if sum(ttt-split_vector) > 0:
     #     print "Something smells bad around here splitting..."
@@ -236,7 +211,7 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
     #### account for dummy tree on other side when counting levels
     while min(len(trees_pile[side_ini]),len(trees_pile[1-side_ini])-1) <= max_level and len(trees_pile[current_side][-1]) > 0:
         target = np.sum([trees_store[tree]["over_supp"] for tree in trees_pile[current_side][-1]], axis=0)
-
+        # print "TARGET", current_side, sum(target)
         current_side = 1-current_side
         trees_pile[current_side].append([])
         
@@ -249,6 +224,7 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                 # print "BRANCH\t(%d,%d)\t%d %d\t%d:%d/%d"  % (current_side, len(trees_pile[current_side]),
                 #                                              gp_tree["id"], leaf, sum(mask),
                 #                                              sum(target[mask]), sum(mask)-sum(target[mask]))
+                # print current_side, dt[mask,:].shape
                 split_tree = splitting(target[mask], dt[mask,:], gp_tree["candidates"], max_depth=1, min_bucket=min_bucket)
                 if split_tree["root"] is not None:
                     set_supp(split_tree, dt[mask,:], mask)
@@ -259,6 +235,7 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     vrs = get_variables(split_tree["nodes"], split_tree["root"])
                     cand_vrs = [vvi for vvi in gp_tree["candidates"] if vvi not in vrs]
                     split_tree["candidates"] = cand_vrs
+                    # print "CANDIDATES", current_side, cand_vrs, vrs
                         
                     split_tree["id"] = PID
                     trees_pile[current_side][-1].append(PID)
@@ -266,47 +243,54 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     PID += 1
     return trees_pile, trees_store, PID
 
-def extract_reds(trees_pile, trees_store, data):
+def extract_reds(trees_pile, trees_store, data, cols_map):
     outids = (piece_together(trees_store, trees_pile[0]), piece_together(trees_store, trees_pile[1]))
     if outids[0] is not None and outids[1] is not None:
-        qus = (make_lits(0, trees_store[outids[0]], data), make_lits(1, trees_store[outids[1]], data))
+        qus = (make_lits(0, trees_store[outids[0]], data, cols_map[0]), make_lits(1, trees_store[outids[1]], data, cols_map[1]))
         supps = (gather_supp(trees_store[outids[0]]), gather_supp(trees_store[outids[1]]))
         trees = (trees_store[outids[0]], trees_store[outids[1]])
+        pdb.set_trace()
         return qus, supps, trees
     return None
 
 
-def make_lits(side, tree_exp, data):
-    def recurse_lits(side, tree_exp, node_id, data, which=0):
+def make_lits(side, tree_exp, data, cols_info):
+    def recurse_lits(side, tree_exp, node_id, data, cols_info, which=0):
         lls = []
         if "split" in tree_exp[node_id]:
-            lit = make_literal(side, tree_exp[node_id]["split"], data)
-            for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][0], data, which=0):
+            lit = make_literal(side, tree_exp[node_id]["split"], data, cols_info)
+            for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][0], data, cols_info, which=0):
                 try:
                     lls.append([lit.copy()]+l)
                 except AttributeError:
                     pdb.set_trace()
             lit.flip()
-            for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][1], data, which=1):
+            for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][1], data, cols_info, which=1):
                 lls.append([lit.copy()]+l)
         elif which == 0:
             lls.append([])
         return lls
-    tmp = recurse_lits(side, tree_exp["nodes"], tree_exp["root"], data)
+    tmp = recurse_lits(side, tree_exp["nodes"], tree_exp["root"], data, cols_info)
     return Query(True, tmp)
 
-def make_literal(side, node, data):
+def make_literal(side, node, data, cols_info):
     lit=None
     ### HERE test for literal
     if isinstance(node, Literal):
         lit = node
     elif len(node) > 2:
-        cid = node[-3]
+        if node[-3] in cols_info:
+            side, cid, cbin = cols_info[node[-3]]
+        else:
+            raise Warning("Literal cannot be parsed !")
+            cid = node[-3]
         threshold = node[-2]
         direct = node[-1]
 
         if data.cols[side][cid].type_id == BoolTerm.type_id:
             lit = Literal(direct > 0, BoolTerm(cid))
+        elif data.cols[side][cid].type_id == CatTerm.type_id:
+            lit = Literal(direct > 0, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
         elif data.cols[side][cid].type_id == NumTerm.type_id:
             if direct > 0:
                 rng = (float("-inf"), threshold)
