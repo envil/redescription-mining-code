@@ -1,4 +1,3 @@
-import numpy as np
 import tempfile
 import time
 import os
@@ -14,15 +13,15 @@ import re
 
 import pdb
 
-from reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
-from reremi.classData import Data, DataError
-from reremi.classQuery import Query
-from reremi.toolICList import ICList
-from reremi.toolICDict import ICDict
-from reremi.toolLog import Log
-from reremi.classBatch import Batch
-from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-import reremi.toolRead as toolRead
+from classRedescription import Redescription, printTexRedList, printRedList, parseRedList
+from classData import Data, DataError
+from classQuery import Query
+from toolICList import ICList
+from toolICDict import ICDict
+from toolLog import Log
+from classBatch import Batch
+from classPreferencesManager import PreferencesManager, PreferencesReader
+import toolRead as toolRead
 
 #from findFiles import findFile
 

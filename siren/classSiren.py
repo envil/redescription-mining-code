@@ -10,9 +10,9 @@ from reremi.classData import Data, DataError
 from reremi.classConstraints import Constraints
 from reremi.classBatch import Batch
 from reremi.toolICList import ICList
+from reremi.DataWrapper import DataWrapper, findFile
 
 from classGridTable import VarTable, RedTable, RowTable
-from DataWrapper import DataWrapper, findFile
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from miscDialogs import ImportDataCSVDialog, FindDialog
