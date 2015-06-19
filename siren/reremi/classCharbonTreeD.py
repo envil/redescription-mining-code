@@ -13,6 +13,10 @@ class Charbon(classCharbonStd.Charbon):
         return True
 
     def getTreeCandidates(self, side, data, red):
+        if side not in [0,1]:
+            side = 1
+            if len(red.queries[0]) == 1:
+                side = 0
         if len(red.queries[side]) != 1:
             return None
 

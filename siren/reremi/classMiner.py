@@ -3,6 +3,8 @@ import classCharbonStd
 import classCharbonAlt
 import classCharbonTree
 import classCharbonTreeD
+import classCharbonTreeCW
+import classCharbonTreeLL
 from toolLog import Log
 from classRedescription import Redescription
 from classBatch import Batch
@@ -60,11 +62,15 @@ class Miner:
              self.logger = Log()       
         self.constraints = Constraints(self.data, params)
 
-        if self.constraints.mine_algo() == "trees":
+        if self.constraints.mine_algo() == "trees" and not self.data.hasMissing():
             if self.constraints.tree_mine_algo() == "layeredtrees":
                 self.charbon = classCharbonTree.Charbon(self.constraints)
-            else:
+            elif self.constraints.tree_mine_algo() == "cartwheel":
+                self.charbon = classCharbonTreeCW.Charbon(self.constraints)
+            elif self.constraints.tree_mine_algo() == "splittrees":
                 self.charbon = classCharbonTreeD.Charbon(self.constraints)
+            else:
+                self.charbon = classCharbonTreeLL.Charbon(self.constraints)
         else:
             if self.data.hasMissing():
                 self.charbon = classCharbonAlt.Charbon(self.constraints)
@@ -340,31 +346,33 @@ class Miner:
 
             tmp_gen = self.progress_ss["current"]
             for redi, red in enumerate(nextge):
-                for side in [0,1]:
-                    new_red = self.charbon.getTreeCandidates(side, self.data, red)
+                new_red = self.charbon.getTreeCandidates(-1, self.data, red)
 
-                    #     self.progress_ss["current"] += self.progress_ss["cand_side"][side]
-                    #     self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-
-                    # if self.logger.verbosity >= 4:
-                    #     self.logger.printL(4, bests, "log", self.id)
-                    if new_red is not None:
-                        self.partial["batch"].append(new_red)
+                if new_red is not None:
+                    self.partial["batch"].append(new_red)
 
                 self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
                 self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-                self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.id)
+                self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.id)
 
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
             self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
-        if 1 in self.partial["results"]:
-            self.partial["results"] = [1]
-        else:
-            self.partial["results"] = []
+        self.partial["results"] = []
+        if 1 in self.partial["batch"].selected(self.constraints.actions_partial()):
+            addR = True
+            ii = 0
+            while addR and ii < len(self.final["batch"]):
+                ### check identity
+                addR = (self.partial["batch"][1].supp(0) != self.final["batch"][ii].supp(0) or
+                        self.partial["batch"][1].supp(1) != self.final["batch"][ii].supp(1) or
+                        self.partial["batch"][1].invColsSide(0) != self.final["batch"][ii].invColsSide(0) or
+                        self.partial["batch"][1].invColsSide(1) != self.final["batch"][ii].invColsSide(1))
+                ii += 1
+            if addR:
+                self.partial["results"].append(1)
         self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
         self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
         for red in self.partial["results"]:

@@ -155,12 +155,12 @@ class Constraints:
         return self._pv["min_node_size"]
     def max_depth(self):
         return self._pv["max_depth"]
+    def max_rounds(self):
+        return self._pv["max_rounds"]
     def mine_algo(self):
         return self._pv["mine_algo"]
     def tree_mine_algo(self):
         return self._pv["tree_mine_algo"]
-
-
 
     def filter_nextge(self, red):
         ### could add check disabled

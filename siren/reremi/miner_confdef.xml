@@ -422,7 +422,7 @@
 	<value_type>text</value_type>
 	<legend>Method for growing the redescriptions based on classification trees CART (restrictions apply)</legend>
 	<default><value>0</value></default>
-	<options><value>splittrees</value><value>layeredtrees</value></options>
+	<options><value>splittrees</value><value>cartwheel</value><value>relayer</value><value>layeredtrees</value></options>
       </parameter>
       <parameter>
 	<name>min_node_size</name>
@@ -432,6 +432,15 @@
 	<legend>Minimum number of entities in a leaf node.</legend>
 	<length>4</length>
 	<default><value>1</value></default>
+      </parameter>
+      <parameter>
+	<name>max_rounds</name>
+	<label>Max rounds</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum number of alternation in CartWheels.</legend>
+	<length>3</length>
+	<default><value>10</value></default>
       </parameter>
     <parameter>
 	<name>max_depth</name>

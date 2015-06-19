@@ -249,7 +249,6 @@ def extract_reds(trees_pile, trees_store, data, cols_map):
         qus = (make_lits(0, trees_store[outids[0]], data, cols_map[0]), make_lits(1, trees_store[outids[1]], data, cols_map[1]))
         supps = (gather_supp(trees_store[outids[0]]), gather_supp(trees_store[outids[1]]))
         trees = (trees_store[outids[0]], trees_store[outids[1]])
-        pdb.set_trace()
         return qus, supps, trees
     return None
 
