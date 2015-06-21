@@ -10,8 +10,8 @@ from reremi.classData import Data, DataError
 from reremi.classConstraints import Constraints
 from reremi.classBatch import Batch
 from reremi.toolICList import ICList
-from reremi.DataWrapper import DataWrapper, findFile
 
+from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
@@ -448,7 +448,7 @@ class Siren():
 
         ## Save  
         m_save = menuFile.Append(wx.ID_SAVE, "&Save\tCtrl+S", "Save the current project.")
-        if self.getData() is not None and self.dw.isFromPackage and self.dw.package_filename is not None:
+        if self.getData() is not None and self.dw.isFromPackage and self.dw.getPackageSaveFilename() is not None:
             frame.Bind(wx.EVT_MENU, self.OnSave, m_save)
         else:
             menuFile.Enable(wx.ID_SAVE, False)
@@ -613,8 +613,8 @@ class Siren():
 
         wcd = 'All files|*|Siren packages (*.siren)|*.siren'
 
-        if self.dw.package_filename is not None:
-            dir_name = os.path.dirname(self.dw.package_filename)
+        if self.dw.getPackageSaveFilename() is not None:
+            dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
             dir_name = os.path.expanduser('~/')
         path = dir_name            
@@ -722,7 +722,7 @@ class Siren():
         self.toTop()
             
     def OnSave(self, event):
-        if not (self.dw.isFromPackage and self.dw.package_filename is not None):
+        if not (self.dw.isFromPackage and self.dw.getPackageSaveFilename() is not None):
             wx.MessageDialog(self.toolFrame, 'Cannot save data that is not from a package\nUse Save As... instead', style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
         try:
@@ -731,8 +731,8 @@ class Siren():
             pass
             
     def OnSaveAs(self, event):
-        if self.dw.package_filename is not None:
-            dir_name = os.path.dirname(self.dw.package_filename)
+        if self.dw.getPackageSaveFilename() is not None:
+            dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
             dir_name = os.path.expanduser('~/')
 
@@ -854,8 +854,8 @@ class Siren():
                              style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
         
-        if self.dw.package_filename is not None:
-            dir_name = os.path.dirname(self.dw.package_filename)
+        if self.dw.getPackageSaveFilename() is not None:
+            dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
             dir_name = os.path.expanduser('~/')
 
@@ -869,8 +869,8 @@ class Siren():
         save_dlg.Destroy()
 
     def OnExportPreferences(self, event):
-        if self.dw.package_filename is not None:
-            dir_name = os.path.dirname(self.dw.package_filename)
+        if self.dw.getPackageSaveFilename() is not None:
+            dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
             dir_name = os.path.expanduser('~/')
 

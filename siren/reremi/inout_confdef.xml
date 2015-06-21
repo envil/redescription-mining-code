@@ -61,7 +61,7 @@
 	<value_type>text</value_type>
 	<legend>Extension of the file containing the left hand side data.</legend>
 	<length>10</length>
-	<default><value>.sparsebool</value></default>
+	<default><value>.csv</value></default>
       </parameter>
       <parameter>
 	<name>ext_r</name>
@@ -70,7 +70,7 @@
 	<value_type>text</value_type>
 	<legend>Extension of the file containing the right hand side data.</legend>
 	<length>10</length>
-	<default><value>.sparsebool</value></default>
+	<default><value>.csv</value></default>
       </parameter>
       <parameter>
 	<name>str_NA</name>
@@ -125,6 +125,15 @@
 	<legend>Extension of the file where to save the supports.</legend>
 	<length>10</length>
 	<default><value>.supports</value></default>
+      </parameter>
+      <parameter>
+	<name>ext_log</name>
+	<label>Log data extension</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Extension of the file where to save log traces.</legend>
+	<length>10</length>
+	<default><value>.csv</value></default>
       </parameter>
     </section>
   </section>
