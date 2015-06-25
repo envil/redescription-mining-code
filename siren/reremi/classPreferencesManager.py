@@ -422,8 +422,9 @@ class PreferencesReader:
 			params_l[k] = v["data"]
 		return params_l
 	
-	def getParameters(self, filename=None, arguments=None):
-		pv = self.pm.getDefaultTriplets()
+	def getParameters(self, filename=None, arguments=None, pv=None):
+		if pv is None:
+			pv = self.pm.getDefaultTriplets()
 		tmp = self.readParametersDict(self.readParametersFromFile(filename))
 		pv.update(tmp)
 		tmp = self.readParametersDict(self.readParametersFromArguments(arguments))

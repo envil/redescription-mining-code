@@ -1,4 +1,4 @@
-import datetime, random, os.path
+import random, os.path
 import classCharbonStd
 import classCharbonAlt
 import classCharbonTree
@@ -157,15 +157,13 @@ class Miner:
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         
-        ticE = datetime.datetime.now()
-        self.logger.printL(1,"Start part run %s" % ticE, "time", self.id)
+        self.logger.clockTic(self.id, "part run")        
         self.logger.printL(1, (100, 0), 'progress', self.id)
         self.logger.printL(1, "Expanding...", 'status', self.id) ### todo ID
 
         self.expandRedescriptions(reds)
 
-        tacE = datetime.datetime.now()
-        self.logger.printL(1,"End part run %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.questionLive()), "time", self.id)
+        self.logger.clockTac(self.id, "part run", "%s" % self.questionLive())        
         if not self.questionLive():
             self.logger.printL(1, 'Interrupted...', 'status', self.id)
         else:
@@ -193,17 +191,11 @@ class Miner:
         
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
-        ticP = datetime.datetime.now()
-        self.logger.printL(1,"Start Pairs %s" % ticP, "time", self.id)
- 
+        self.logger.clockTic(self.id, "pairs")
         self.initializeRedescriptions(ids)
-        
-        tacP = datetime.datetime.now()
-        self.logger.printL(1,"End Pairs %s, elapsed %s (%s)" % (tacP, tacP-ticP, self.questionLive()), "time", self.id)
+        self.logger.clockTac(self.id, "pairs")
 
-        ticF = datetime.datetime.now()
-        self.logger.printL(1,"Start full run %s" % ticF, "time", self.id)
-
+        self.logger.clockTic(self.id, "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
         # for i in range(93):
         #     initial_red = self.initial_pairs.get(self.data, self.testIni)
@@ -214,8 +206,7 @@ class Miner:
 
         while initial_red is not None and self.questionLive():
             self.count += 1
-            ticE = datetime.datetime.now()
-            self.logger.printL(1,"Start expansion %s" % ticE, "time", self.id)
+            self.logger.clockTic(self.id, "expansion")
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
             self.expandRedescriptions([initial_red])
             
@@ -225,14 +216,12 @@ class Miner:
                 treds = [self.final["batch"][pos] for pos in self.final["results"]]
                 self.rm = self.rm.fillCopy(self.data, treds)
 
-            tacE = datetime.datetime.now()
-            self.logger.printL(1,"End expansion %s, elapsed %s (%s)" % (tacE, tacE-ticE, self.questionLive()), "time", self.id)
+            self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
             self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
 
             initial_red = self.initial_pairs.get(self.data, self.testIni)
 
-        tacF = datetime.datetime.now()
-        self.logger.printL(1,"End full run %s, elapsed %s (%s)" % (tacF, tacF-ticF, self.questionLive()), "time", self.id)
+        self.logger.clockTac(self.id, "full run", "%s" % self.questionLive())        
         if not self.questionLive():
             self.logger.printL(1, 'Interrupted...', 'status', self.id)
         else:

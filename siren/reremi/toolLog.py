@@ -1,6 +1,7 @@
 import sys
 import pdb
 import random
+import datetime
         
 class Log:
     def __init__(self, verbosity=1, output = '-', method_comm = None):
@@ -8,7 +9,48 @@ class Log:
         self.oqu = []
         self.verbosity = -1
         self.addOut(verbosity, output, method_comm)
+        self.tics = {None: datetime.datetime.now()}
 
+    def getTic(self, id, name=None):
+        if name is None:
+            return self.tics[None]
+        elif (id, name) in self.tics:
+            return self.tics[(id, name)]
+        else:
+            return None
+        
+    def setTic(self, id, name):
+        self.tics[(id, name)] = datetime.datetime.now()
+        return self.tics[(id, name)]
+
+    def setTac(self, id, name=None):
+        if name is None:
+            return (self.tics[None], datetime.datetime.now())
+        elif (id, name) in self.tics:
+            return (self.tics.pop((id,name)), datetime.datetime.now())
+
+    def getTac(self, id, name):
+        if name is None:
+            return (self.tics[None], datetime.datetime.now())
+        elif (id, name) in self.tics:
+            return (self.tics[(id,name)], datetime.datetime.now())
+
+    def clockTic(self, id, name=None, details=None):
+        tic = self.setTic(id,name)
+        if name is None: name = "\t"
+        mess = "Start %s\t((at %s))" % (name, tic)
+        if details is not None:
+            mess += ("\t%s" % details)
+        self.printL(1, mess, "time", id)
+
+    def clockTac(self, id, name=None, details=""):
+        tic, tac = self.getTac(id,name)
+        if name is None: name = "\t"
+        mess = "End %s\t((at %s, elapsed %s))" % (name, tac, tac-tic)
+        if details is not None:
+            mess += ("\t%s" % details)
+        self.printL(1, mess, "time", id)
+    
     def disp(self):
         tmp = "LOGGER"
         for out in self.out:

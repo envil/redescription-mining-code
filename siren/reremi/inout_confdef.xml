@@ -28,6 +28,24 @@
     <section>
       <name>Files</name>
       <parameter>
+	<name>LHS_data</name>
+	<label>LHS data filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Complete filename for the left hand side data.</legend>
+	<length>310</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
+	<name>RHS_data</name>
+	<label>RHS data filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Complete filename for the right hand side data.</legend>
+	<length>310</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
 	<name>data_rep</name>
 	<label>Data repertory</label>
 	<parameter_type>open</parameter_type>
@@ -38,19 +56,19 @@
       </parameter>
       <parameter>
 	<name>data_l</name>
-	<label>LHS data filename</label>
+	<label>LHS data basename</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Name of the file containing the left hand side data.</legend>
+	<legend>Basename of the file containing the left hand side data.</legend>
 	<length>50</length>
 	<default><value>left</value></default>
       </parameter>
       <parameter>
 	<name>data_r</name>
-	<label>RHS data filename</label>
+	<label>RHS data basename</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Name of the file containing the right hand side data.</legend>
+	<legend>Basename of the file containing the right hand side data.</legend>
 	<length>50</length>
 	<default><value>right</value></default>
       </parameter>
@@ -134,6 +152,33 @@
 	<legend>Extension of the file where to save log traces.</legend>
 	<length>10</length>
 	<default><value>.csv</value></default>
+      </parameter>
+      <parameter>
+	<name>queries_file</name>
+	<label>Queries filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Complete filename for the queries.</legend>
+	<length>310</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
+	<name>queries_named_file</name>
+	<label>Named queries filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Complete filename for the queries with variable names.</legend>
+	<length>310</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
+	<name>support_file</name>
+	<label>Support filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Complete filename for the support.</legend>
+	<length>310</length>
+	<default><value></value></default>
       </parameter>
     </section>
   </section>

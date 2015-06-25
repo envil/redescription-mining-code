@@ -8,11 +8,11 @@ import re
 
 import pdb
 
-from reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
-from reremi.classData import Data, DataError
-from reremi.classQuery import Query
-from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-import reremi.toolRead as toolRead
+from classRedescription import Redescription, printTexRedList, printRedList, parseRedList
+from classData import Data
+from classQuery import Query
+from classPreferencesManager import PreferencesReader
+import toolRead as toolRead
 
 
 class Package(object):
@@ -32,6 +32,8 @@ class Package(object):
     XML_FILETYPE_VERSION = 3
 
     CREATOR = "ReReMi/Siren Package"
+    DEFAULT_EXT = ".siren"
+    DEFAULT_TMP = "siren"
 
     def __init__(self, filename, callback_mess=None, mode="r"):
         if mode !="w" and not zipfile.is_zipfile(filename):
@@ -180,6 +182,8 @@ class Package(object):
 
 ######### WRITING ELEMENTS
 ##########################
+    def getTmpDir(self):
+        return tempfile.mkdtemp(prefix=self.DEFAULT_TMP)
             
     ## The saving function
     def writeToFile(self, filename, contents):
@@ -187,7 +191,7 @@ class Package(object):
         old_package_filename = self.filename
         self.filename = os.path.abspath(filename)
         # Get a temp folder
-        tmp_dir = tempfile.mkdtemp(prefix='siren')
+        tmp_dir = self.getTmpDir()
         #package_dir = os.path.join(tmp_dir, filename)
         #os.mkdir(package_dir)
 

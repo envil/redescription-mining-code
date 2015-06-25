@@ -377,7 +377,7 @@ class DataWrapper(object):
         return contents
 
 
-    def savePackageToFile(self, filename, suffix='.siren'):
+    def savePackageToFile(self, filename, suffix=Package.DEFAULT_EXT):
         try:
             if self.package is None:
                 self.package = Package(None, self._stopMessage, mode="w")
@@ -396,7 +396,7 @@ class DataWrapper(object):
             raise
 
     ## The saving function
-    def _writePackageToFile(self, filename, suffix='.siren'):
+    def _writePackageToFile(self, filename, suffix=Package.DEFAULT_EXT):
         """Saves all information to a new file"""
         if suffix is None:
             (filename, suffix) = os.path.splitext(filename)
