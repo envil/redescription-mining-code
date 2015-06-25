@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys, re, os.path
+import tempfile
 from toolLog import Log
 from classPackage import Package
 from classData import Data
@@ -43,7 +44,7 @@ def loadAll(arguments=[]):
         elements_read = package.read(pm)        
         data = elements_read.get("data", None)
         params = elements_read.get("preferences", None)
-        tmp_dir = package.getTmpDir() + "/"
+        tmp_dir = package.getTmpDir()
     params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
 
     if params is None:
@@ -59,6 +60,9 @@ def loadAll(arguments=[]):
         data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
     logger.printL(2, data, "log")
 
+    if pack_filename is not None:
+        filenames["package"] = os.path.abspath(pack_filename)
+    print filenames
     return params, data, logger, filenames
 
 def trunToDict(params):
@@ -74,8 +78,10 @@ def prepareFilenames(params_l, tmp_dir=None):
                  }
     
     for p in ['result_rep', 'data_rep']:
-        if tmp_dir is not None:
-            params_l[p] = tmp_dir
+        if params_l[p] == "__TMP_DIR__":
+            if tmp_dir is None:
+                tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
+            params_l[p] = tmp_dir + "/"
         elif sys.platform != 'darwin':
             params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
 

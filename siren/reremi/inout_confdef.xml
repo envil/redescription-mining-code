@@ -52,7 +52,7 @@
 	<value_type>text</value_type>
 	<legend>Repertory where the data files are stored.</legend>
 	<length>250</length>
-	<default><value>../data/</value></default>
+	<default><value>__TMP_DIR__</value></default>
       </parameter>
       <parameter>
 	<name>data_l</name>
@@ -106,7 +106,7 @@
 	<value_type>text</value_type>
 	<legend>Repertory where to save the results.</legend>
 	<length>250</length>
-	<default><value>../results/</value></default>
+	<default><value>__TMP_DIR__</value></default>
       </parameter>
       <parameter>
 	<name>out_base</name>
