@@ -307,7 +307,7 @@ class BoolColM(ColM):
             return self.vect[rid]
 
     def getNumValue(self, rid):
-        return self.getValue(rid)
+        return int(self.getValue(rid))
 
     def getCatFromNum(self, n):
         return n == 1
@@ -626,7 +626,10 @@ class NumColM(ColM):
             return self.vect.get(rid, self.vect[-1])
         else:
             return self.vect[rid]
-            
+
+    def getNumValue(self, rid):
+        return self.getValue(rid)
+        
     def numEquiv(self, v):
         try:
             tmp = float(v)
@@ -1030,10 +1033,13 @@ class RowE(object):
         self.data = data
 
     def getValue(self, side, col=None):
+        ##### HERE
         if col is None:
             if side.get("aim", None) == "sort":
-                t = self.data.getValue(side["side"], side["col"], self.rid)
+                t = self.data.getNumValue(side["side"], side["col"], self.rid)
                 return {BoolColM.NA: None, CatColM.NA: None, NumColM.NA: None}.get(t,t)
+            elif side.get("aim", None) == "row":
+                return self.data.getNumValue(side["side"], side["col"], self.rid)
             else:
                 return self.data.getValue(side["side"], side["col"], self.rid)
         else:
@@ -1109,6 +1115,10 @@ class Data:
 
     def getValue(self, side, col, rid):
         return self.cols[side][col].getValue(rid)
+
+    def getNumValue(self, side, col, rid):
+        return self.cols[side][col].getNumValue(rid)
+
 
     def getRName(self, rid):
         if self.rnames is not None and rid < len(self.rnames):

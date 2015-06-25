@@ -883,7 +883,7 @@ class RowTable(GridTable):
                 nb = max(1,len(dw.getDataCols(side))-1.0)
                 for ci, col in enumerate(dw.getDataCols(side)):
                     self.cols_map[(side, col.getId())] = len(self.fields)
-                    self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "r":ci/nb}))
+                    self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "NA": col.NA, "r":ci/nb}))
             if review:
                 self.ResetView()
 
@@ -892,12 +892,16 @@ class RowTable(GridTable):
     def GetValue(self, row, col):
         """Return the value of a cell"""
         if row < self.nbItems() and col < len(self.fields):
-            details = {"aim": "list"}
+            details = {"aim": "row"}
             details.update(self.details)
             tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
+            details = {"aim": "list"}
+            details.update(self.details)
+            labl = self.getFieldV(self.sortids[row], self.fields[col], details)
             if col >= self.fix_col:
                 h = 125*self.fields[col][2]["side"] + int(100*self.fields[col][2]["r"])
-                if tmp == "-" or (type(tmp) is float and math.isnan(tmp)):
+                if tmp == "-" or (math.isnan(tmp) and math.isnan(self.fields[col][2]["NA"])) \
+                       or (tmp == self.fields[col][2]["NA"]):
                     l = 255
                 else:
                     rangeV = self.fields[col][2]["range"]
@@ -920,12 +924,12 @@ class RowTable(GridTable):
                 # else:
                 #     lr = (tmp - self.fields[col][2]["min"])/sc
                 if col in self.sc:
-                    return "#h%dl%d#%s" % (h,l,tmp)
+                    return "#h%dl%d#%s" % (h,l,labl)
                 else:
                     try:
                         return "#h%dl%d#%s" % (h,l,"")
                     except TypeError:
-                        print h,l, tmp, self.fields[col][2]["range"]
+                        print h,l, tmp, self.fields[col][2]["range"], self.fields[col][2]["NA"]
             else:
                 return tmp
         else:

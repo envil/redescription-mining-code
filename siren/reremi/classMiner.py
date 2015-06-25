@@ -13,8 +13,20 @@ from classSouvenirs import Souvenirs
 from classConstraints import Constraints
 from classInitialPairs import *
 from codeRRM import RedModel
+from classData import BoolColM, CatColM, NumColM
 
 import pdb
+
+TREE_CLASSES = { "layeredtrees": classCharbonTree,
+                 "cartwheel": classCharbonTreeCW,
+                 "splittrees": classCharbonTreeD,
+                 "relayer": classCharbonTreeLL}
+TREE_DEF = classCharbonTreeLL
+
+PAIR_LOADS = [[1,2,3],
+              [2,4,6],
+              [3,6,10]]
+
 
 class Miner:
 
@@ -63,14 +75,7 @@ class Miner:
         self.constraints = Constraints(self.data, params)
 
         if self.constraints.mine_algo() == "trees" and not self.data.hasMissing():
-            if self.constraints.tree_mine_algo() == "layeredtrees":
-                self.charbon = classCharbonTree.Charbon(self.constraints)
-            elif self.constraints.tree_mine_algo() == "cartwheel":
-                self.charbon = classCharbonTreeCW.Charbon(self.constraints)
-            elif self.constraints.tree_mine_algo() == "splittrees":
-                self.charbon = classCharbonTreeD.Charbon(self.constraints)
-            else:
-                self.charbon = classCharbonTreeLL.Charbon(self.constraints)
+            self.charbon = TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF).Charbon(self.constraints)
         else:
             if self.data.hasMissing():
                 self.charbon = classCharbonAlt.Charbon(self.constraints)
@@ -173,14 +178,8 @@ class Miner:
         self.logger.printL(1, None, 'progress', self.id)
         return self.partial
 
-    def full_run(self, cust_params={}):
-        self.final["results"] = []
-        self.final["batch"].reset()
-        self.count = 0
-
-        ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
-        self.progress_ss["pair_gen"] = 10
-        self.progress_ss["pairs_gen"] = (len(ids[0])/self.constraints.mod_lhs())*(len(ids[1])/self.constraints.mod_rhs())*self.progress_ss["pair_gen"]
+    def init_progress_full(self, list_explore):
+        self.progress_ss["pairs_gen"] = sum([p[-1] for p in list_explore])
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
@@ -188,21 +187,22 @@ class Miner:
         self.progress_ss["expansion"] = (self.constraints.max_var()[0]+self.constraints.max_var()[0]-2)*2*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.max_red()*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
-        
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+    def full_run(self, cust_params={}):
+        self.final["results"] = []
+        self.final["batch"].reset()
+        self.count = 0
+        
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
+
+        #### progress initialized after listing pairs
         self.logger.clockTic(self.id, "pairs")
-        self.initializeRedescriptions(ids)
+        self.initializeRedescriptions()
         self.logger.clockTac(self.id, "pairs")
 
         self.logger.clockTic(self.id, "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
-        # for i in range(93):
-        #     initial_red = self.initial_pairs.get(self.data, self.testIni)
-        # while initial_red is not None and self.questionLive():
-        #     initial_red = self.initial_pairs.get(self.data)
-        # exit()
-
 
         while initial_red is not None and self.questionLive():
             self.count += 1
@@ -242,6 +242,39 @@ class Miner:
             return top[0] < 0
         return True
     
+    def getInitExploreList(self, ids):
+        explore_list = []
+        if ids is None:
+            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+        ## IDSPAIRS
+        if len(ids[0]) > 5000:
+           ids[0] = sorted(random.sample(ids[0], 100))
+        ### FOR DEBUGING (DANGER!!!)
+        # ids[0] = [0,1] # sorted(random.sample(ids[0], 10))
+        # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
+
+        for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
+            idL = ids[0][cL]
+            if len(self.deps) > 0:
+                idsR = [ids[1][cR] for cR in range(cL+1, len(ids[1]), self.constraints.mod_rhs()) if len(self.deps[ids[1][cR]] & self.deps[idL]) == 0]                
+            else:
+                idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
+            if len(idsR) > 5000:
+                idsR = sorted(random.sample(idsR, 100))
+                
+            ## In case of singleton dataset, don't try pairs of same id 
+            # if self.data.isSingleD() and idL in idsR: 
+            #     idsR.remove(idL)
+
+            if self.data.isSingleD() and idL in idsR: ## In case of singleton dataset, don't try pairs of same id 
+                idsR = [id for id in idsR if id > idL]
+
+            explore_list.extend([(idL, idR, self.getPairLoad(idL, idR)) for idR in idsR])
+        return explore_list
+
+    def getPairLoad(self, idL, idR):
+        return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
+        
     def initializeRedescriptions(self, ids=None):
         self.initial_pairs.reset()
 
@@ -252,66 +285,46 @@ class Miner:
 
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+        explore_list = self.getInitExploreList(ids)
+        self.init_progress_full(list_explore)
+        
+        total_pairs = len(explore_list)
+        for pairs, (idL, idR, pload) in enumerate(explore_list):
+            if not self.questionLive():
+                return
 
-        if ids is None:
-            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
-        ## IDSPAIRS
-        if len(ids[0]) > 5000:
-           ids[0] = sorted(random.sample(ids[0], 100))
-        ### FOR DEBUGING (DANGER!!!)
-        ids[0] = [0,1] # sorted(random.sample(ids[0], 10))
-        # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
+            self.progress_ss["current"] += pload
+            if pairs % 100 == 0:
+                self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+            if pairs % 10 == 5:
+                print idL, idR, pload
 
-        total_pairs = (float(len(ids[0])))*(float(len(ids[1])))
-        pairs = 0
-        for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
-            idL = ids[0][cL]
-            self.logger.printL(3, 'Searching pairs %i <=> *...' %(idL), "status", self.id)
-            self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-            if len(self.deps) > 0:
-                idsR = [ids[1][cR] for cR in range(cL+1, len(ids[1]), self.constraints.mod_rhs()) if len(self.deps[ids[1][cR]] & self.deps[idL]) == 0]                
-            else:
-                idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
-            if len(idsR) > 5000:
-                idsR = sorted(random.sample(idsR, 1000))
-                
-            ## In case of singleton dataset, don't try pairs of same id 
-            # if self.data.isSingleD() and idL in idsR: 
-            #     idsR.remove(idL)
-
-            if self.data.isSingleD() and idL in idsR: ## In case of singleton dataset, don't try pairs of same id 
-                idsR = [id for id in idsR if id > idL]
-
-            for idR in idsR:
-                if not self.questionLive():
-                    return
-                
-                pairs += 1
-                self.progress_ss["current"] += self.progress_ss["pair_gen"]
-                self.logger.printL(7, 'Searching pairs %i <=> %i ...' %(idL, idR), 'status', self.id)
+                self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                 self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-                seen = []
-                (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
-                for i in range(len(scores)):
-                    nsc = None
-                    if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
-                        if self.rm is not None:
-                        #### HERE DL
-                            tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                            top = self.rm.getTopDeltaRed(tmp, self.data)
-                            if top[0] < 0:
-                                nsc = -top[0]
-                        else:
-                            nsc = scores[i]
-                    if nsc is not None:
-                        seen.append((literalsL[i], literalsR[i]))
-                        self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
-                        if self.double_check:
-                            tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                            if tmp.getAcc() != scores[i]:
-                                self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
 
-                        self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
+            seen = []
+            (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
+            for i in range(len(scores)):
+                nsc = None
+                if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
+                    if self.rm is not None:
+                    #### HERE DL
+                        tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
+                        top = self.rm.getTopDeltaRed(tmp, self.data)
+                        if top[0] < 0:
+                            nsc = -top[0]
+                    else:
+                        nsc = scores[i]
+                if nsc is not None:
+                    seen.append((literalsL[i], literalsR[i]))
+                    self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
+                    if self.double_check:
+                        tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
+                        if tmp.getAcc() != scores[i]:
+                            self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
+
+                    self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
         self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
         if self.initial_pairs.getStore() is not None:
