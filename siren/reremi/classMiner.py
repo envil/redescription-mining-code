@@ -1,10 +1,4 @@
 import random, os.path
-import classCharbonStd
-import classCharbonAlt
-import classCharbonTree
-import classCharbonTreeD
-import classCharbonTreeCW
-import classCharbonTreeLL
 from toolLog import Log
 from classRedescription import Redescription
 from classBatch import Batch
@@ -17,15 +11,20 @@ from classData import BoolColM, CatColM, NumColM
 
 import pdb
 
-TREE_CLASSES = { "layeredtrees": classCharbonTree,
-                 "cartwheel": classCharbonTreeCW,
-                 "splittrees": classCharbonTreeD,
-                 "relayer": classCharbonTreeLL}
-TREE_DEF = classCharbonTreeLL
+from classCharbonGMiss import CharbonGMiss
+from classCharbonGStd import CharbonGStd
+from classCharbonTAlt import CharbonTCW, CharbonTRelay, CharbonTLayer
+from classCharbonTSplit import CharbonTSplit
 
-PAIR_LOADS = [[1,2,3],
-              [2,4,6],
-              [3,6,10]]
+TREE_CLASSES = { "layeredtrees": CharbonTLayer,
+                 "cartwheel": CharbonTCW,
+                 "splittrees": CharbonTSplit,
+                 "relayer": CharbonTRelay}
+TREE_DEF = CharbonTRelay
+
+# PAIR_LOADS = [[1,2,3],
+#               [2,4,6],
+#               [3,6,10]]
 
 
 class Miner:
@@ -74,20 +73,14 @@ class Miner:
              self.logger = Log()       
         self.constraints = Constraints(self.data, params)
 
-        if self.constraints.mine_algo() == "trees" and not self.data.hasMissing():
-            self.charbon = TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF).Charbon(self.constraints)
-        else:
-            if self.data.hasMissing():
-                self.charbon = classCharbonAlt.Charbon(self.constraints)
-            else:
-                self.charbon = classCharbonStd.Charbon(self.constraints)
+        self.charbon = self.initCharbon()
         if souvenirs is None:
             self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
         else:
             self.souvenirs = souvenirs
 
         try:
-            if self.charbon.withTree():
+            if self.charbon.isTreeBased():
                 self.initial_pairs = eval('IPsingle()')
             else:
                 self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
@@ -114,6 +107,16 @@ class Miner:
             if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
                 for name in names[0]:
                     self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
+
+    def initCharbon(self):
+        if self.constraints.algo_family() == "trees" and not self.data.hasMissing():
+            return TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF)(self.constraints)
+        else:
+            if self.data.hasMissing():
+                return CharbonGMiss(self.constraints)
+            else:
+                return CharbonGStd(self.constraints)
+
                             
     def kill(self):
         self.want_to_live = False
@@ -178,8 +181,8 @@ class Miner:
         self.logger.printL(1, None, 'progress', self.id)
         return self.partial
 
-    def init_progress_full(self, list_explore):
-        self.progress_ss["pairs_gen"] = sum([p[-1] for p in list_explore])
+    def init_progress_full(self, explore_list):
+        self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
@@ -246,34 +249,19 @@ class Miner:
         explore_list = []
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
-        ## IDSPAIRS
-        if len(ids[0]) > 5000:
-           ids[0] = sorted(random.sample(ids[0], 100))
-        ### FOR DEBUGING (DANGER!!!)
-        # ids[0] = [0,1] # sorted(random.sample(ids[0], 10))
-        # ids[1] = [35,43,21] # sorted(random.sample(ids[1], 10))
 
-        for cL in range(0, len(ids[0]), self.constraints.mod_lhs()):
-            idL = ids[0][cL]
-            if len(self.deps) > 0:
-                idsR = [ids[1][cR] for cR in range(cL+1, len(ids[1]), self.constraints.mod_rhs()) if len(self.deps[ids[1][cR]] & self.deps[idL]) == 0]                
-            else:
-                idsR = [ids[1][cR] for cR in range(0, len(ids[1]), self.constraints.mod_rhs())]
-            if len(idsR) > 5000:
-                idsR = sorted(random.sample(idsR, 100))
-                
-            ## In case of singleton dataset, don't try pairs of same id 
-            # if self.data.isSingleD() and idL in idsR: 
-            #     idsR.remove(idL)
-
-            if self.data.isSingleD() and idL in idsR: ## In case of singleton dataset, don't try pairs of same id 
-                idsR = [id for id in idsR if id > idL]
-
-            explore_list.extend([(idL, idR, self.getPairLoad(idL, idR)) for idR in idsR])
+        for idL in ids[0]:
+            for idR in ids[1]:
+                if (len(self.deps) == 0 or len(self.deps[idR] & self.deps[idL]) == 0) and \
+                       ( not self.data.isSingleD() or idR > idL): 
+                    explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
+        pdb.set_trace()
         return explore_list
 
     def getPairLoad(self, idL, idR):
-        return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
+        return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
+        # return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
+    
         
     def initializeRedescriptions(self, ids=None):
         self.initial_pairs.reset()
@@ -286,7 +274,7 @@ class Miner:
         self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
         explore_list = self.getInitExploreList(ids)
-        self.init_progress_full(list_explore)
+        self.init_progress_full(explore_list)
         
         total_pairs = len(explore_list)
         for pairs, (idL, idR, pload) in enumerate(explore_list):
@@ -298,7 +286,6 @@ class Miner:
                 self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                 self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
             if pairs % 10 == 5:
-                print idL, idR, pload
 
                 self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                 self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
@@ -337,7 +324,7 @@ class Miner:
         self.partial["batch"].reset()
         self.partial["batch"].extend(nextge)
 
-        if self.charbon.withTree():
+        if self.charbon.isTreeBased():
             self.expandRedescriptionsTree(nextge)
         else:
             self.expandRedescriptionsGreedy(nextge)

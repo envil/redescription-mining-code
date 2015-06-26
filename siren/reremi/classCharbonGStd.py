@@ -1,19 +1,12 @@
+from classCharbon import CharbonGreedy
 from classExtension import Extension
-from classInitialPairs import *
 from classSParts import SParts
 from classQuery import  *
 import pdb
 
-class Charbon:
+class CharbonGStd(CharbonGreedy):
 
-    def __init__(self, constraints):
-        ### For use with no missing values
-        self.constraints = constraints
-
-    def withTree(self):
-        return False
-
-        
+    name = "GreedyStd"
     def getCandidates(self, side, col, supports, init=0):
         method_string = 'self.getCandidates%i' % col.type_id
         try:

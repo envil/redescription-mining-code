@@ -253,6 +253,9 @@ class BoolColM(ColM):
     def getRange(self):
         return dict([(k,v) for (v,k) in enumerate([True, False])])
 
+    def getNbValues(self):
+        return 2
+    
     def numEquiv(self, v):
         try:
             return int(v)
@@ -420,6 +423,9 @@ class CatColM(ColM):
 
     def getRange(self):
         return dict([(k,v) for (v,k) in enumerate(self.ord_cats)])
+
+    def getNbValues(self):
+        return self.nbCats()
 
     def getCategories(self, details=None):
         if self.nbCats() < 5:
@@ -665,6 +671,9 @@ class NumColM(ColM):
     def getMax(self, details=None):
         return self.sVals[-1][0]
 
+    def getNbValues(self):
+        return self.nbUniq
+
     def compPrec(self, details=None):
         for (v,i) in self.sVals:
             if len(str(v % 1))-2 > self.prec:
@@ -733,7 +742,8 @@ class NumColM(ColM):
                 self.sVals.insert(i, (0, -1))
         else:
             self.mode = (0, None)
-
+        self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
+        
     def density(self):
         if self.mode[0] != 0:
             if self.mode[0] == 1:

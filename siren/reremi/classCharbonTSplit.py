@@ -1,9 +1,21 @@
-from sklearn import tree
 import numpy as np
+from sklearn import tree
+
+from classCharbon import CharbonTree
 from classQuery import  *
-import sys
+from classRedescription import  *
+
 
 import pdb
+
+#########################################################################
+################# from trees_m2
+#########################################################################
+# from sklearn import tree
+# import numpy as np
+# from classQuery import  *
+### import sys
+
 
 NID = 0
 def next_nid():
@@ -252,7 +264,6 @@ def extract_reds(trees_pile, trees_store, data, cols_map):
         return qus, supps, trees
     return None
 
-
 def make_lits(side, tree_exp, data, cols_info):
     def recurse_lits(side, tree_exp, node_id, data, cols_info, which=0):
         lls = []
@@ -301,41 +312,54 @@ def make_literal(side, node, data, cols_info):
     return lit
 
 
-#The following variable will contain trees and splitting lists for every animal
-def run_main(args):
-    animals_trees = {}
+#########################################################################
+#########################################################################
 
-    data = [np.loadtxt(prep_mammals_data_file_name),
-            np.loadtxt(prep_climate_data_file_name)]
-    if data[0].shape[0] == data[1].shape[0]: 
-        nb_rows = data[0].shape[0]
-    else:
-        raise ValueError("Number of rows doesn't match! %d ~ %d" % (data[0].shape[0], data[1].shape[0]))
+    
+class CharbonTSplit(CharbonTree):
 
-    rownames = []
-    with open(legend_file_name) as fp:
-        colnames = [fp.readline().rstrip().split(";"),
-                    fp.readline().rstrip().split(";")]
-        rownames = fp.readline().rstrip().split(";")
-    if nb_rows != len(rownames): 
-        raise Warning("Nb of labels does not match number of rows! %d ~ %d" % (nb_rows, len(rownames)))
-    if data[0].shape[1] != len(colnames[0]): 
-        raise Warning("Nb of labels does not match number of columns on the left! %d ~ %d" % (data[0].shape[1], len(colnames[0])))
-    if data[1].shape[1] != len(colnames[1]): 
-        raise Warning("Nb of labels does not match number of columns on the right! %d ~ %d" % (data[1].shape[1], len(colnames[1])))
+    name = "TreeSplit"
+    def getTreeCandidates(self, side, data, red):
+        if side not in [0,1]:
+            side = 1
+            if len(red.queries[0]) == 1:
+                side = 0
+        if len(red.queries[side]) != 1:
+            return None
 
-#####################################################################
-    side_ini = 0
-    max_level = 3
-    min_bucket = 2 #max(1,int(np.round(np.sum(data_L[:,aid])/100.0)))
+        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], bincats=True)
+        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], bincats=True)
 
-   
-    for vid in [1, 2]: #range(4): #data[side_ini].shape[1]):
-        trees_pile, trees_store, PID = initialize_treepile(data, side_ini, vid)
-        reds = get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, PID)
-        # print "----", vid
-        # print reds[0][0], reds[1][0]
+        cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
+                     dict([(i,d) for (d,i) in tcols_r.items() if len(d) == 3])]
+        llt = red.queries[side].listLiterals()[0]
+        ss = data.supp(side, llt)
+        data_tt = [in_data_l.T, in_data_r.T]
 
+        supp = np.zeros(data.nbRows(), dtype=bool)
+        supp[list(ss)] = True
+        if side == 0:
+            mmap = tcols_l
+        else:
+            mmap = tcols_r
+        if llt.term.type_id == 2:
+            off = data.cols[side][llt.col()].numEquiv(llt.term.getCat())
+        else:
+            off = 0
+        vid = mmap[(side, llt.col(), off)]
+        more = {"involved": [vid], "supp": supp}
+        trees_pile, trees_store, PID = trees_m2.initialize_treepile(data_tt, side, llt, more)
+        trees_pile, trees_store, PID = trees_m2.get_trees_pair(data_tt, trees_pile, trees_store, side,
+                                                               max_level=self.constraints.max_depth(),
+                                                               min_bucket=self.constraints.min_node_size(), PID=PID)
 
-if __name__ == "__main__":
-    run_main(sys.argv)
+        redt = trees_m2.extract_reds(trees_pile, trees_store, data, cols_info)
+        if redt is not None:
+            red = Redescription.fromQueriesPair(redt[0], data)
+            # print red
+            # if np.sum(redt[1][0]*redt[1][1]) != red.sParts.lenI():
+            #     print np.sum(redt[1][0]*redt[1][1])
+            #     pdb.set_trace()
+            return red
+        return None
+

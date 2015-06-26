@@ -7,11 +7,11 @@
     <section>
       <name>Mining Method</name>
       <parameter>
-	<name>mine_algo</name>
-	<label>Mining Algo</label>
+	<name>algo_family</name>
+	<label>Algo family</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Method for mining.</legend>
+	<legend>Type of mining algorithm to use.</legend>
 	<default><value>0</value></default>
 	<options><value>greedy</value><value>trees</value></options>
       </parameter>
@@ -295,24 +295,6 @@
     </section>
     <section>
       <name>Initial pairs</name>
-      <parameter>
-	<name>mod_lhs</name>
-	<label>Modulo LHS</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Search initial pairs only for every Xth variable on the left-hand side. Equals one by default, i.e., process all variables.</legend>
-	<length>3</length>
-	<default><value>1</value></default>
-      </parameter>
-      <parameter>
-	<name>mod_rhs</name>
-	<label>Modulo RHS</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Search initial pairs only for every Xth variable on the right-hand side. Equals one by default, i.e., process all variables.</legend>
-	<length>3</length>
-	<default><value>1</value></default>
-      </parameter>
       <parameter>
 	<name>min_pairscore</name>
 	<label>Min score</label>

@@ -1,15 +1,13 @@
+from classCharbon import CharbonGreedy
 from classExtension import Extension
-from classInitialPairs import *
 from classSParts import SParts
 from classQuery import  *
 import pdb
 
-class Charbon:
+class CharbonGMiss(CharbonGreedy):
 
-    def __init__(self, constraints):
-        self.constraints = constraints
-
-    def withTree(self):
+    name = "GreedyMiss"
+    def handlesMiss(self):
         return False
 
     def getCandidates(self, side, col, supports, init=0):
