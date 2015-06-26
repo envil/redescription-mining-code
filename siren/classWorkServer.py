@@ -1,7 +1,7 @@
 import multiprocessing, time, sys, os
 import getopt
 from multiprocessing.managers import SyncManager
-from reremi.classMiner import Miner
+from reremi.classMiner import instMiner
 from reremi.toolLog import Log
 
 import pdb
@@ -18,7 +18,7 @@ class WorkerProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, cust_params={}):
         multiprocessing.Process.__init__(self)
         logger = Log({"*": preferences.get("verbosity", 0), "error":1, "progress":2, "result":1}, result_q, sendMessage)
-        self.miner = Miner(data, preferences, logger, pid, qin=queue_in, cust_params=cust_params)
+        self.miner = instMiner(data, preferences, logger, pid, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
         self.start()
 

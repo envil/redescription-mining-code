@@ -1,3 +1,4 @@
+from classQuery import Literal
 import pdb
 
 class Charbon:
@@ -10,6 +11,17 @@ class Charbon:
         self.constraints = constraints
 
 
+
+class CharbonGreedy(Charbon):
+
+    name = "G"
+
+    def isTreeBased(self):
+        return False
+    def handlesMiss(self):
+        return False
+
+
 class CharbonTree(Charbon):
 
     name = "T"
@@ -20,11 +32,5 @@ class CharbonTree(Charbon):
 
     ### def getTreeCandidates(self, side, data, red)
 
-class CharbonGreedy(Charbon):
-
-    name = "G"
-
-    def isTreeBased(self):
-        return False
-    def handlesMiss(self):
-        return False
+    def computeInitTerm(self, colL):
+        return [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.min_itm_in(), self.constraints.min_itm_out())]

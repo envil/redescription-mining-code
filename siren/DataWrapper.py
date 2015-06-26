@@ -237,7 +237,7 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
@@ -258,7 +258,7 @@ class DataWrapper(object):
         try:
             tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
@@ -279,7 +279,7 @@ class DataWrapper(object):
  
             tmp_preferences = self._readPreferencesFromFile(preferences_filename)
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
@@ -302,7 +302,7 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
             self._stopMessage()
             raise
         except Exception:
@@ -351,16 +351,16 @@ class DataWrapper(object):
             self.data = None
         if elements_read.get("reds") is not None:
             self.reds = Batch(elements_read.get("reds"))
-            self.rshowids = ICList(elements_read.get("rshowids"), True)
+            self.rshowids = ICList(elements_read.get("rshowids"), False)
         else:
             self.reds = Batch([])
-            self.rshowids = ICList([], True)
+            self.rshowids = ICList([], False)
         if elements_read.get("preferences"):
             self.preferences = ICDict(elements_read.get("preferences"))
         else:
             self.preferences = self.pm.getDefaultTriplets()
         self.package = package
-        self._isChanged = len(elements_read) > 0
+        self._isChanged = False
         self._isFromPackage = True
 ##        print "Done Loading"
 
@@ -411,7 +411,7 @@ class DataWrapper(object):
         try:
             f = open(os.path.abspath(filename+suffix), 'a+')
         except IOError as arg:
-            self.logger.printL(1,"Cannot open %s" % arg, "dw_error", "DW")
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
             self._stopMessage()
             return
         else:

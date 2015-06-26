@@ -348,12 +348,12 @@ class CharbonTSplit(CharbonTree):
             off = 0
         vid = mmap[(side, llt.col(), off)]
         more = {"involved": [vid], "supp": supp}
-        trees_pile, trees_store, PID = trees_m2.initialize_treepile(data_tt, side, llt, more)
-        trees_pile, trees_store, PID = trees_m2.get_trees_pair(data_tt, trees_pile, trees_store, side,
+        trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more)
+        trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,
                                                                max_level=self.constraints.max_depth(),
                                                                min_bucket=self.constraints.min_node_size(), PID=PID)
 
-        redt = trees_m2.extract_reds(trees_pile, trees_store, data, cols_info)
+        redt = extract_reds(trees_pile, trees_store, data, cols_info)
         if redt is not None:
             red = Redescription.fromQueriesPair(redt[0], data)
             # print red

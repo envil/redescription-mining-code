@@ -5,8 +5,7 @@ from classBatch import Batch
 from classExtension import ExtensionError, ExtensionsBatch
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
-from classInitialPairs import *
-from codeRRM import RedModel
+from classInitialPairs import InitialPairs
 from classData import BoolColM, CatColM, NumColM
 
 import pdb
@@ -15,6 +14,8 @@ from classCharbonGMiss import CharbonGMiss
 from classCharbonGStd import CharbonGStd
 from classCharbonTAlt import CharbonTCW, CharbonTRelay, CharbonTLayer
 from classCharbonTSplit import CharbonTSplit
+
+
 
 TREE_CLASSES = { "layeredtrees": CharbonTLayer,
                  "cartwheel": CharbonTCW,
@@ -40,9 +41,9 @@ class Miner:
             self.id = mid
         else:
             self.id = 1
-        self.double_check = False #True
         self.data = data
 
+        self.max_processes = params["nb_processes"]["data"]
         row_ids = None
         if "area" in cust_params:
             inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
@@ -79,26 +80,12 @@ class Miner:
         else:
             self.souvenirs = souvenirs
 
-        try:
-            if self.charbon.isTreeBased():
-                self.initial_pairs = eval('IPsingle()')
-            else:
-                self.initial_pairs = eval('IP%s()' % (self.constraints.pair_sel()))
-
-            if "pairs_store" in params:
-                self.initial_pairs.setStore(params["pairs_store"]["data"])
-        except AttributeError:
-            raise Exception('Oups this selection method does not exist !')
-
+        self.initial_pairs = InitialPairs(self.constraints.pair_sel(), self.constraints.max_red(), params.get("pairs_store"))
+        
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
 
         self.progress_ss = {"total":0, "current":0}
-        self.rm = None
-        if self.constraints.dl_score():
-            self.logger.printL(1,"Using DL for scoring...")
-            self.rm = RedModel(data)
-
 
         ### Dependencies between variables 
         self.deps = []
@@ -181,8 +168,11 @@ class Miner:
         self.logger.printL(1, None, 'progress', self.id)
         return self.partial
 
-    def init_progress_full(self, explore_list):
-        self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
+    def init_progress_full(self, explore_list=None):
+        if explore_list is not None:
+            self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
+        else:
+            self.progress_ss["pairs_gen"] = 0
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
@@ -203,7 +193,7 @@ class Miner:
         self.logger.clockTic(self.id, "pairs")
         self.initializeRedescriptions()
         self.logger.clockTac(self.id, "pairs")
-
+        
         self.logger.clockTic(self.id, "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
 
@@ -215,9 +205,6 @@ class Miner:
             
             self.final["batch"].extend([self.partial["batch"][i] for i in self.partial["results"]])
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
-            if self.rm is not None:
-                treds = [self.final["batch"][pos] for pos in self.final["results"]]
-                self.rm = self.rm.fillCopy(self.data, treds)
 
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
             self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
@@ -236,13 +223,81 @@ class Miner:
 
 ### HIGH LEVEL CALLING FUNCTIONS
 ################################
+
+####################################################
+#####      INITIAL PAIRS
+####################################################
+
+    def initializeRedescriptions(self, ids=None):
+        self.initial_pairs.reset()
+        if self.charbon.isTreeBased():
+            self.initializeRedescriptionsTree(ids)
+        else:
+            self.initializeRedescriptionsGreedy(ids)
+
+    def initializeRedescriptionsTree(self, ids=None):
+        self.logger.printL(1, 'Searching for initial literals...', 'status', self.id)
+        self.init_progress_full()
+        
+        if ids is None:
+            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+
+        sides = [0,1]
+        if self.data.isSingleD(): sides = [0]
+        for side in sides:
+            for idl in ids[side]:
+                for (l,v) in self.charbon.computeInitTerm(self.data.col(side, idl)):
+                    if side == 0:
+                        self.initial_pairs.add(l, None, {"score":0, side: idl, 1-side: -1})
+                    else:
+                        self.initial_pairs.add(None, l, {"score":0, side: idl, 1-side: -1})
+
+        self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.id)
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+        
+    def initializeRedescriptionsGreedy(self, ids=None):
+        self.initial_pairs.reset()
+
+        ### Loading pairs from file if filename provided
+        if not self.initial_pairs.loadFromFile():
+
+            self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
+            explore_list = self.getInitExploreList(ids)
+            self.init_progress_full(explore_list)
+
+            total_pairs = len(explore_list)
+            for pairs, (idL, idR, pload) in enumerate(explore_list):
+                if not self.questionLive():
+                    return
+
+                self.progress_ss["current"] += pload
+                if pairs % 100 == 0:
+                    self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                    self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                if pairs % 10 == 5:
+
+                    self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                    self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+                seen = []
+                (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
+                for i in range(len(scores)):
+                    if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
+                        seen.append((literalsL[i], literalsR[i]))
+                        self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
+                        self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
+            self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+            ### Saving pairs to file if filename provided
+            self.initial_pairs.saveToFile()
+
+        return self.initial_pairs
+
     def testIni(self, pair):
         if pair is None:
             return False
-        if self.rm is not None:
-            tmp = Redescription.fromInitialPair(pair, self.data)
-            top = self.rm.getTopDeltaRed(tmp, self.data)
-            return top[0] < 0
         return True
     
     def getInitExploreList(self, ids):
@@ -250,75 +305,22 @@ class Miner:
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
 
+        ### WARNING DANGEROUS few pairs for DEBUG!
         for idL in ids[0]:
             for idR in ids[1]:
                 if (len(self.deps) == 0 or len(self.deps[idR] & self.deps[idL]) == 0) and \
                        ( not self.data.isSingleD() or idR > idL): 
                     explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
-        pdb.set_trace()
         return explore_list
 
     def getPairLoad(self, idL, idR):
         return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
         # return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
-    
-        
-    def initializeRedescriptions(self, ids=None):
-        self.initial_pairs.reset()
 
-        if self.initial_pairs.getStore() is not None and os.path.isfile(self.initial_pairs.getStore()):
-            self.initial_pairs.load(self.initial_pairs.getStore())
-            self.initial_pairs.setCountdown(self.constraints.max_red())
-            return self.initial_pairs 
 
-        self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
-        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-        explore_list = self.getInitExploreList(ids)
-        self.init_progress_full(explore_list)
-        
-        total_pairs = len(explore_list)
-        for pairs, (idL, idR, pload) in enumerate(explore_list):
-            if not self.questionLive():
-                return
-
-            self.progress_ss["current"] += pload
-            if pairs % 100 == 0:
-                self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
-                self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-            if pairs % 10 == 5:
-
-                self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
-                self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-
-            seen = []
-            (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
-            for i in range(len(scores)):
-                nsc = None
-                if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
-                    if self.rm is not None:
-                    #### HERE DL
-                        tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                        top = self.rm.getTopDeltaRed(tmp, self.data)
-                        if top[0] < 0:
-                            nsc = -top[0]
-                    else:
-                        nsc = scores[i]
-                if nsc is not None:
-                    seen.append((literalsL[i], literalsR[i]))
-                    self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
-                    if self.double_check:
-                        tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
-                        if tmp.getAcc() != scores[i]:
-                            self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
-
-                    self.initial_pairs.add(literalsL[i], literalsR[i], nsc)
-        self.logger.printL(1, 'Found %i pairs, keeping at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
-        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-        if self.initial_pairs.getStore() is not None:
-            self.initial_pairs.store(self.initial_pairs.getStore())
-        self.initial_pairs.setCountdown(self.constraints.max_red())
-        return self.initial_pairs
-
+####################################################
+#####      REDS EXPANSIONS
+####################################################
     def expandRedescriptions(self, nextge):
         self.partial["results"] = []
         self.partial["batch"].reset()
@@ -395,24 +397,7 @@ class Miner:
                         for v in red.availableColsSide(side, self.deps, self.data.single_dataset):
                             if not self.questionLive(): return
 
-                            if self.double_check:
-                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init)
-                                for cand in tmp: ### TODO remove, only for debugging
-                                    kid = cand.kid(red, self.data)
-                                    if kid.getAcc() != cand.getAcc():
-                                        pdb.set_trace()
-                                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s" % (self.count, len(red), redi, red, cand, kid), "log", self.id)
-
-                                if self.rm is not None:
-                                    bests.updateDL(tmp, self.rm, self.data)
-                                else:
-                                    bests.update(tmp)
-                            else:
-                                #### HERE DL
-                                if self.rm is not None:
-                                    bests.updateDL(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init), self.rm, self.data)
-                                else:
-                                    bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                            bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
@@ -421,11 +406,7 @@ class Miner:
                         self.logger.printL(4, bests, "log", self.id)
 
                     try:
-                        ### DL HERE
-                        if self.rm is not None:
-                            kids = bests.improvingKidsDL(self.data, self.constraints.min_impr(), self.constraints.max_var(), self.rm)
-                        else:
-                            kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
+                        kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
 
                     except ExtensionError as details:
                         self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.id)
@@ -457,3 +438,87 @@ class Miner:
 
         return self.partial
 
+#######################################################################
+########### MULTIPROCESSING MINER
+#######################################################################
+
+import multiprocessing
+
+class MinerDistrib(Miner):
+
+        
+    def initializeRedescriptionsGreedy(self, ids=None):
+        self.initial_pairs.reset()
+
+        ### Loading pairs from file if filename provided
+        if not self.initial_pairs.loadFromFile():
+
+            self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
+            explore_list = self.getInitExploreList(ids)
+            self.init_progress_full(explore_list)
+
+            self.rqueue = multiprocessing.Queue()
+            total_pairs = len(explore_list)
+            pairs = 0
+            workers = {}
+            K = self.max_processes
+            for k in range(K):
+                workers[k] = PairsProcess(k, explore_list[k::K], self.charbon, self.data, self.rqueue)
+
+            while len(workers) > 0:
+                m = self.rqueue.get()
+                if m["what"] == "done":
+                    del workers[m["id"]]
+                elif m["what"] == "pairs":
+                    scores, literalsL, literalsR, idL, idR = m["scores"], m["lLs"], m["lRs"], m["idL"], m["idR"]
+                    pairs += 1
+                    if pairs % 100 == 0:
+                        self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                        self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                    if pairs % 10 == 5:
+                            
+                        self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                        self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+
+                    for i in range(len(scores)):
+                        if scores[i] >= self.constraints.min_pairscore():
+                            self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
+                            self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
+            self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+
+            ### Saving pairs to file if filename provided
+            self.initial_pairs.saveToFile()
+
+        return self.initial_pairs
+    
+class PairsProcess(multiprocessing.Process):
+    def __init__(self, sid, explore_list, charbon, data, rqueue):
+        multiprocessing.Process.__init__(self)
+        self.daemon = True
+        self.id = sid
+        self.explore_list = explore_list
+        self.charbon = charbon
+        self.data = data
+        self.queue = rqueue
+        self.start()
+
+    def run(self):
+        for pairs, (idL, idR, pload) in enumerate(self.explore_list):
+            (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
+            self.queue.put({"id": self.id, "what": "pairs", "lLs": literalsL, "lRs": literalsR, "idL": idL, "idR": idR, "scores": scores})
+        self.queue.put({"id": self.id, "what": "done"})
+
+
+
+#######################################################################
+########### MINER INSTANCIATION
+#######################################################################
+
+def instMiner(data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
+    if params["nb_processes"]["data"] > 1:
+        return MinerDistrib(data, params, logger, mid, souvenirs, qin, cust_params)
+    else:
+        return Miner(data, params, logger, mid, souvenirs, qin, cust_params)

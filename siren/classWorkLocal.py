@@ -1,5 +1,5 @@
 import multiprocessing, sys
-from reremi.classMiner import Miner
+from reremi.classMiner import instMiner
 from classWorkInactive import WorkInactive
 import Queue
 
@@ -16,7 +16,7 @@ class WorkerProcess(multiprocessing.Process):
     def __init__(self, id, boss, queue_in, cust_params={}):
         multiprocessing.Process.__init__(self)
         # print "WProcess logs to:", boss.getLogger().disp()
-        self.miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
+        self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
         self.start()
 
@@ -106,10 +106,6 @@ class WorkLocal(WorkInactive):
 
     def addWorker(self, wtype, boss, more=None, details={}):
         if wtype in self.type_workers:
-            # pdb.set_trace()
-            # miner = Miner(boss.getData(), boss.getPreferences(), boss.getLogger(), 0, qin=self.cqueue(), cust_params=more)
-            # miner.part_run(more)
-            
             self.next_workerid += 1
             self.comm_queues[self.next_workerid] = self.cqueue()
             self.workers[self.next_workerid] = {"worker": self.type_workers[wtype](self.next_workerid, boss, self.comm_queues[self.next_workerid], more),

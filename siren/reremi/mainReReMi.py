@@ -8,9 +8,8 @@ from classData import Data
 from classRedescription import Redescription, parseRedList
 from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
-from classMiner import Miner
+from classMiner import instMiner
 from classQuery import Query
-from codeRRM import RedModel
 import pdb
 
 
@@ -35,6 +34,8 @@ def loadAll(arguments=[]):
                 if len(arguments) > 2 and os.path.isfile(arguments[2]):
                     config_filename = arguments[2]
                     options_args = arguments[3:]
+                else:
+                    options_args = arguments[2:]
             else:
                 config_filename = arguments[1]
                 options_args = arguments[2:]
@@ -45,8 +46,8 @@ def loadAll(arguments=[]):
         data = elements_read.get("data", None)
         params = elements_read.get("preferences", None)
         tmp_dir = package.getTmpDir()
+        
     params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
-
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
@@ -207,45 +208,13 @@ def loadPackage(filename, pm):
 #     for ti, t in enumerate(ta):
 #         print t.disp(names)
         
-def run_dl(args):
-
-    params, data, logger, filenames = loadAll(args)
-    names = data.getNames()
-
-    logger.printL(2, "DL Model...", "log")
-    rm = RedModel(data)
-
-    logger.printL(2, "Loading reds...", "log")
-    reds = parseRedList(open(filenames["queries"], "r"), data)
-
-    logger.printL(2, "Computing initial DL...", "log")
-    ocs = rm.getEncodedLength(data)
-    oc = sum(ocs)
-    logger.printL(2, "Initial DL >> LHS=%f RHS=%f Qs=%f..." % tuple(ocs), "log")
-
-    dirs = {None:"<>", 0:">>", 1:"<<"}
-    try:
-        rm.filterReds(reds, data, True, logger)
-        logger.printL(2, "Done...", "log")
-    except KeyboardInterrupt:
-        logger.printL(1, 'Stopped...', "log")
-
-    logger.printL(2, "Computing final DL...", "log")
-    ncs = rm.getEncodedLength(data)
-    nc = sum(ncs)
-    logger.printL(2, "Final DL >> LHS=%f RHS=%f Qs=%f Gain=%f..." % (ncs[0], ncs[1], ncs[2], (oc-nc)/oc), "log")
-
-    for ri, (sideAdd, red) in enumerate(rm.getReds()):
-        logger.printL(1, "* (%d) %s\t%s" % (ri, dirs[sideAdd], red.dispQueries(names)), "log")
-        logger.printL(1, "RED\t%s" % red.disp(), "log")
-    logger.clockTac(0, None)
 
 
 def run(args):
     
     params, data, logger, filenames = loadAll(args)
 
-    miner = Miner(data, params, logger)
+    miner = instMiner(data, params, logger)
     try:
         miner.full_run()
     except KeyboardInterrupt:
@@ -275,7 +244,7 @@ def run_splits(args):
             logger.printL(1, header_split, "log")
 
             sL, sT = data.get_LTsplit(subset)
-            miner = Miner(sL, params, logger)
+            miner = instMiner(sL, params, logger)
             try:
                 miner.full_run()
             except KeyboardInterrupt:
@@ -303,11 +272,19 @@ def run_splits(args):
 ###########
     
 if __name__ == "__main__":
-    if sys.argv[-1] == "filter":
-        do_filter(sys.argv[:-1])
-    elif sys.argv[-1] == "dl":
-        run_dl(sys.argv[:-1])
-    elif sys.argv[-1] == "splits":
-        run_splits(sys.argv[:-1])
-    else:
-        run(sys.argv)
+
+    rep = "/home/galbrun/Desktop/v2015.siren_FILES/"
+    dataA = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "NA"], "csv")
+
+
+    params, data, logger, filenames = loadAll(sys.argv)
+    pdb.set_trace()
+    dataA.writeCSV([rep+"LHS_A.csv", rep+"RHS_A.csv"])
+    data.writeCSV([rep+"LHS_B.csv", rep+"RHS_B.csv"])
+    
+
+    
+    # if sys.argv[-1] == "splits":
+    #     run_splits(sys.argv[:-1])
+    # else:
+    #     run(sys.argv)

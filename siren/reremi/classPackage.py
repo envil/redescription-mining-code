@@ -36,6 +36,8 @@ class Package(object):
     DEFAULT_TMP = "siren"
 
     def __init__(self, filename, callback_mess=None, mode="r"):
+        if mode !="w" and not os.path.isfile(filename):
+            raise IOError('File does not exist')
         if mode !="w" and not zipfile.is_zipfile(filename):
             raise IOError('File is of wrong type')
         self.filename = filename
@@ -340,3 +342,4 @@ def writePreferences(preferences, pm, filename, toPackage = False, inc_def=False
 
 def writeData(data, filenames, toPackage = False):
     data.writeCSV(filenames)
+

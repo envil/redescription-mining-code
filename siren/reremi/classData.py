@@ -38,10 +38,12 @@ class ColM(object):
     initSums = staticmethod(initSums)
 
     def valToStr(self, val):
-        if val == self.NA:
-            return NA_str
-        else:
-            return str(val)
+        ### this is for writing, actually keep the original type, csv writer will take care of it
+        return val
+        # if val == self.NA: # or (np.isnan(val) and np.isnan(self.NA)):
+        #     return NA_str
+        # else:
+        #     return val #"%s" % val
 
     def parseList(list):
         return None
@@ -73,6 +75,12 @@ class ColM(object):
 
     def hasMissing(self):
         return self.missing is not None and len(self.missing) > 0
+
+    def nbMissing(self):
+        if self.missing is not None:
+            return len(self.missing)
+        return 0
+
 
     def getPrec(self, details=None):
         return 0
@@ -238,6 +246,12 @@ class BoolColM(ColM):
     def getTerm(self):
         return BoolTerm(self.id)
 
+    def getInitTerms(self, minIn=0, minOut=0):
+        if len(self.hold) >= minIn and self.N-(len(self.hold)+self.nbMissing()) >= minOut:
+            return [(BoolTerm(self.id), len(self.hold))]
+        else:
+            return []
+        
     def simpleBool(self):
         return not self.hasMissing() and self.density() > 0
 
@@ -417,6 +431,13 @@ class CatColM(ColM):
 
     def getTerm(self):
         return CatTerm(self.id, self.modeCat())
+
+    def getInitTerms(self, minIn=0, minOut=0):
+        terms = []
+        for cat in self.cats():
+            if len(self.sCats[cat]) >= minIn and self.N-(len(self.sCats[cat])+self.nbMissing()) >= minOut:
+                terms.append((CatTerm(self.id, cat), len(self.sCats[cat])))
+        return terms
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i categories" % self.nbCats())
@@ -600,6 +621,9 @@ class NumColM(ColM):
     
     def getTerm(self):
         return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
+
+    def getInitTerms(self, minIn=0, minOut=0):
+        return []
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i values not in mode" % self.lenNonMode())

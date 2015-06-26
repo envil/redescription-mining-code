@@ -51,14 +51,24 @@ class Redescription:
         self.track = []
         
     def fromInitialPair(initialPair, data):
-        queryL = Query()
-        queryR = Query()
-        queryL.extend(None, initialPair[0])
-        queryR.extend(None, initialPair[1])
-        (suppL, missL) = data.literalSuppMiss(0, initialPair[0])
-        (suppR, missR) = data.literalSuppMiss(1, initialPair[1])
-        r = Redescription(queryL, queryR, [suppL, suppR, missL, missR], data.nbRows(), [len(suppL)/float(data.nbRows()),len(suppR)/float(data.nbRows())], data.getSSetts())
-        r.track = [(0, initialPair[0].term.col), (1, initialPair[1].term.col)]
+        if initialPair[0] is None and initialPair[1] is None:
+            return None
+        supps_miss = [set(), set(), set(), set()]
+        queries = [None, None]
+        for side in [0,1]:
+            suppS, missS = (set(), set())
+            if type(initialPair[side]) is Query:
+                queries[side] = initialPair[side]
+                suppS, missS = initialPair[side].recompute(side, data)
+            else:
+                queries[side] = Query()
+                if type(initialPair[side]) is Literal:
+                    queries[side].extend(None, initialPair[side])                
+                    suppS, missS = data.literalSuppMiss(side, initialPair[side])
+            supps_miss[side] = suppS
+            supps_miss[side+2] = missS
+        r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
+        r.track = [(-1, -1)]
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 

@@ -15,6 +15,15 @@
 	<default><value>0</value></default>
 	<options><value>greedy</value><value>trees</value></options>
       </parameter>
+      <parameter>
+	<name>nb_processes</name>
+	<label>Nb processes</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>number of mining processes to use.</legend>
+	<default><value>1</value></default>
+	<length>2</length>
+      </parameter>
 </section>
 <section>
       <name>Types of queries</name>

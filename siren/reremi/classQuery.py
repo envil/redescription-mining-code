@@ -419,9 +419,9 @@ class CatTerm(Term):
             symbIn = '\\not\\in'
         
         if type(names) == list  and len(names) > 0:
-            return '%s %s %s' % (names[self.col], symbIn, self.cat)
+            return '%s $%s$ %s' % (names[self.col], symbIn, self.cat)
         else:
-            return ('$'+Term.pattVName+'$ %s %s') % (self.col, symbIn, self.cat)
+            return ('$'+Term.pattVName+' %s$ %s') % (self.col, symbIn, self.cat)
 
     def dispU(self, neg, names = None):
         if type(neg) == bool:
