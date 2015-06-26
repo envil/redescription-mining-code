@@ -85,10 +85,6 @@ class Constraints:
         return self._pv["batch_out"]
     def batch_cap(self): 
         return self._pv["batch_cap"]
-    def mod_lhs(self):
-        return self._pv["mod_lhs"]
-    def mod_rhs(self):
-        return self._pv["mod_rhs"]
     def max_agg(self):
         return self._pv["max_agg"]
     def max_prodbuckets(self):
