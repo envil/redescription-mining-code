@@ -7,6 +7,7 @@ class Constraints:
     config_def = "miner_confdef.xml"
 
     def __init__(self, data, params):
+        self.deps = []
         self._pv = {}
         for k, v in params.items():
             self._pv[k] = v["data"]
@@ -145,8 +146,6 @@ class Constraints:
         return self._pv["pair_sel"]
     def score_coeffs(self):
         return self._pv["score_coeffs"]
-    def dl_score(self):
-        return self._pv["dl_score"] == "yes"
     def min_node_size(self):
         return self._pv["min_node_size"]
     def max_depth(self):
@@ -208,6 +207,19 @@ class Constraints:
 
     def parameters_filterredundant(self):
        return {"filter_funct": self.pair_filter_redundant, "filter_thres": self.max_overlaparea(), "filter_max":0}
+
+    def setDeps(self, deps=[]):
+       self.deps = deps
+
+    def getDeps(self, col=None):
+        if col is None:
+            return self.deps
+        else:
+            return self.deps[col]
+
+    def hasDeps(self):
+        return len(self.deps) > 0
+
 
         # possibly useful functions for reds comparison:
         # they should be symmetric

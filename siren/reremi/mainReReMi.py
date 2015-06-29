@@ -272,19 +272,8 @@ def run_splits(args):
 ###########
     
 if __name__ == "__main__":
-
-    rep = "/home/galbrun/Desktop/v2015.siren_FILES/"
-    dataA = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "NA"], "csv")
-
-
-    params, data, logger, filenames = loadAll(sys.argv)
-    pdb.set_trace()
-    dataA.writeCSV([rep+"LHS_A.csv", rep+"RHS_A.csv"])
-    data.writeCSV([rep+"LHS_B.csv", rep+"RHS_B.csv"])
-    
-
-    
-    # if sys.argv[-1] == "splits":
-    #     run_splits(sys.argv[:-1])
-    # else:
-    #     run(sys.argv)
+        
+    if sys.argv[-1] == "splits":
+        run_splits(sys.argv[:-1])
+    else:
+        run(sys.argv)

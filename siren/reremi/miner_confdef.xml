@@ -232,15 +232,6 @@
 	<legend>Weight for entities outside selected area (only when such an area is specified).</legend>
 	<default><value>1</value></default>
       </parameter>
-	<parameter>
-	<name>dl_score</name>
-	<label>DL score</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Use description length to score candidates.</legend>
-	<default><value>0</value></default>
-	<options><value>no</value><value>yes</value></options>
-      </parameter>
       <parameter>
 	<name>method_pval</name>
 	<label>p-value formula</label>

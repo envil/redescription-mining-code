@@ -5,16 +5,16 @@ from classQuery import  Literal, Query
 import pdb
 
 ### Popping out from the last
-def fifo_sort(pairs_store, pairs_details):
-    return sorted(pairs_store.keys(), reverse=True)
+def fifo_sort(pairs_store, pairs_details, drop_set=set()):
+    return sorted(drop_set.symmetric_difference(pairs_store.keys()), reverse=True)
 
-def filo_sort(pairs_store, pairs_details):
-    return sorted(pairs_store.keys())
+def filo_sort(pairs_store, pairs_details, drop_set=set()):
+    return sorted(drop_set.symmetric_difference(pairs_store.keys()))
 
-def overall_sort(pairs_store, pairs_details):
-    return sorted(pairs_store.keys(), key=lambda x: pairs_details[x].get("score", -1))
+def overall_sort(pairs_store, pairs_details, drop_set=set()):
+    return sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get("score", -1))
 
-def alternate_sort(pairs_store, pairs_details):
+def alternate_sort(pairs_store, pairs_details, drop_set=set()):
     best_sides = [{}, {}]
     for k in pairs_store.keys():
         for side in [0,1]:
@@ -31,7 +31,7 @@ def alternate_sort(pairs_store, pairs_details):
         for c, vs in best_sides[side].items():
             for pp, v in enumerate(vs):
                 pairs_details[v]["rank_%d"%side] = pp
-    ord_ids = sorted(pairs_details.keys(), key=lambda x: pairs_details[x].get("score")-max(pairs_details[x].get("rank_0"), pairs_details[x].get("rank_1")))
+    ord_ids = sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get("score")-max(pairs_details[x].get("rank_0"), pairs_details[x].get("rank_1")))
     return ord_ids
 
 SORT_METHODS= {"overall": overall_sort,
@@ -44,7 +44,8 @@ class InitialPairs:
 
     def __init__(self, sort_meth="overall", max_out=-1, save_filename=None):
         self.max_out = max_out
-        self.count_out = 0 
+        self.list_out = []
+        self.drop_set = set() 
         self.pairs_store = {}
         self.pairs_details = {}
         self.sorted_ids = None
@@ -85,7 +86,8 @@ class InitialPairs:
         return False
     
     def reset(self):
-        self.count_out = 0 
+        self.list_out = []
+        self.drop_set = set()
         self.pairs_store.clear()
         self.pairs_details.clear()
         self.sorted_ids = None
@@ -96,11 +98,17 @@ class InitialPairs:
     def setMaxOut(self, n):
         self.max_out = n
 
+    def getNbOut(self):
+        return len(self.list_out)
+
     def getMaxOut(self):
         return self.max_out
 
     def getRemainOut(self):
-        return self.max_out - self.count_out
+        if self.max_out == -1:
+            return self.max_out
+        else:
+            return self.max_out - self.getNbOut()
 
     def __str__(self):
         return "Initial Pairs %d" % len(self.pairs_store)
@@ -116,22 +124,24 @@ class InitialPairs:
 
     def _sort(self):
         if self.sorted_ids is None:
-            self.sorted_ids = self.sort_meth(self.pairs_store, self.pairs_details)
+            self.sorted_ids = self.sort_meth(self.pairs_store, self.pairs_details, self.drop_set)
         
     def pop(self, cond=None):
-        if len(self.pairs_store) > 0 and (self.max_out == -1 or self.max_out > self.count_out):
+        if len(self.pairs_store) > 0 and (self.max_out == -1 or self.max_out > self.getNbOut()):
             self._sort()
             nid = self.sorted_ids.pop()
-            tt = self.pairs_store.pop(nid)
-            dt = self.pairs_details.pop(nid)
+            tt = self.pairs_store[nid]
+            dt = self.pairs_details[nid]
+            self.drop_set.add(nid)
             if cond is not None:
                 while not cond(tt) and len(self.pairs_store) > 0:
                     nid = self.sorted_ids.pop()
-                    tt = self.pairs_store.pop(nid)
-                    dt = self.pairs_details.pop(nid)
+                    tt = self.pairs_store[nid]
+                    dt = self.pairs_details[nid]
+                    self.drop_set.add(nid)
                 if not cond(tt) and len(self.pairs_store) == 0:
                     return
-            self.count_out += 1
+            self.list_out.append(nid)
             return tt
 
     def get(self, data, cond=None):
