@@ -220,7 +220,7 @@ class WorkLocal(WorkInactive):
             return
         
         worker_info = self.workers[source]
-        if worker_info["wtyp"] in ["expander", "miner"]:
+        if worker_info["wtyp"] in ["expander", "miner"] and  worker_info["batch_type"] in message:
             tap = message[worker_info["batch_type"]]
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:

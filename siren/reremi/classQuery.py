@@ -4,6 +4,8 @@ from redquery_parser import RedQueryParser
 from grako.exceptions import * # @UnusedWildImport
 import pdb
 
+VARIABLE_MARK = 'v'
+
 def recurse_numeric(b, function, args={}):
     if type(b) is list:
         out = 0
@@ -230,7 +232,7 @@ class Neg(object):
 
 class Term(object):
     
-    pattVName = "v%d"
+    pattVName = VARIABLE_MARK+"%d"
     type_id = 0
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
@@ -1104,7 +1106,7 @@ class Query:
         if len(part.strip()) == 0:
             return Query()
         qs = QuerySemantics(names)
-        parser = RedQueryParser(parseinfo=False)
+        parser = RedQueryParser(parseinfo=False, variable_mark=VARIABLE_MARK)
         try:
             tmp = parser.parse(part, "query", semantics=qs)
         except FailedParse as e:
@@ -1186,7 +1188,7 @@ class QuerySemantics(object):
         return ast
 
     def parse_vname(self, vname):
-        tmp = re.match("v(?P<id>\d+)$", vname)
+        tmp = re.match(VARIABLE_MARK+"(?P<id>\d+)$", vname)
         if tmp is not None:
             return int(tmp.group("id"))
         elif self.names is not None:

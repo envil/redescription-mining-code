@@ -605,7 +605,11 @@ class RedTable(GridTable):
         return (self.short, None)
 
     def getRedIdStr(self, pos):
-        tsh, rid = self.getRedId(pos)
+        try:
+            tsh, rid = self.getRedId(pos)
+        except TypeError:
+            print "Error getRedIdStr", pos
+            pdb.set_trace()
         if rid is None: rid = "?"
         if tsh is None: tsh = "?"
         return "%s%s" % (tsh, rid)

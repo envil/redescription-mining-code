@@ -138,9 +138,11 @@ def parse_sparse(D, coord, ids, varcol, valcol):
             if (-1 in dictLL.values()):
                 ### ... unless there was a zero
                 dictLL = dict([(k,v+1) for (k, v) in dictLL.items()])
+            if max(dictLL.values()) > len(dictLL):
+                numerical_ids = False
+        if numerical_ids:        
             nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
             nids = nll
-
         if not numerical_ids:
             ### if the ids are not numerical
             row_named = True
@@ -149,7 +151,6 @@ def parse_sparse(D, coord, ids, varcol, valcol):
                 nids = [None for i in range(len(nll))]
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
-
 
     nD = {'data' : {}, 'headers': [], "sparse":True, ENABLED_COLS[0]: None}
     if valcol is None:

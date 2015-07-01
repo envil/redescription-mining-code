@@ -14,10 +14,12 @@ from grako.exceptions import * # @UnusedWildImport
 
 __version__ = '14.153.18.10.21'
 
+
 class RedQueryParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=True, variable_mark='v', **kwargs):
         super(RedQueryParser, self).__init__(whitespace=whitespace,
             nameguard=nameguard, **kwargs)
+	self.variable_mark = variable_mark
 
     @rule_def
     def _QUERIES_(self):
@@ -314,8 +316,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._STRING_()
                 with self._option():
-                    self._pattern(r'v\d+')
-                self._error('expecting one of: v\\d+')
+                    self._pattern(self.variable_mark+r'\d+')
+                self._error('expecting one of: '+self.variable_mark+'\\d+')
 
     @rule_def
     def _category_(self):

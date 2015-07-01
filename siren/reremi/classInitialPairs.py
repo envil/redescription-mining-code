@@ -129,20 +129,21 @@ class InitialPairs:
     def pop(self, cond=None):
         if len(self.pairs_store) > 0 and (self.max_out == -1 or self.max_out > self.getNbOut()):
             self._sort()
-            nid = self.sorted_ids.pop()
-            tt = self.pairs_store[nid]
-            dt = self.pairs_details[nid]
-            self.drop_set.add(nid)
-            if cond is not None:
-                while not cond(tt) and len(self.pairs_store) > 0:
-                    nid = self.sorted_ids.pop()
-                    tt = self.pairs_store[nid]
-                    dt = self.pairs_details[nid]
-                    self.drop_set.add(nid)
-                if not cond(tt) and len(self.pairs_store) == 0:
-                    return
-            self.list_out.append(nid)
-            return tt
+            if len(self.sorted_ids):
+                nid = self.sorted_ids.pop()
+                tt = self.pairs_store[nid]
+                dt = self.pairs_details[nid]
+                self.drop_set.add(nid)
+                if cond is not None:
+                    while not cond(tt) and len(self.pairs_store) > 0:
+                        nid = self.sorted_ids.pop()
+                        tt = self.pairs_store[nid]
+                        dt = self.pairs_details[nid]
+                        self.drop_set.add(nid)
+                    if not cond(tt) and len(self.pairs_store) == 0:
+                        return
+                self.list_out.append(nid)
+                return tt
 
     def get(self, data, cond=None):
         pair = self.pop(cond)

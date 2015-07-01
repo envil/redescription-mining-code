@@ -1,4 +1,4 @@
-import random, os.path
+import random, os.path, re
 from toolLog import Log
 from classRedescription import Redescription
 from classBatch import Batch
@@ -457,7 +457,7 @@ class Miner:
             for idR in ids[1]:
                 if ( not self.constraints.hasDeps() or \
                        len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
-                       ( not self.data.isSingleD() or idR > idL): 
+                       ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]): 
                     explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
         return explore_list
 
@@ -523,7 +523,9 @@ class MinerDistrib(Miner):
             pairs = 0
             K = self.max_processes
             for k in range(K-1):
+                # print k, len(explore_list[k*batch_size:(k+1)*batch_size])
                 self.workers[k] = PairsProcess(k, explore_list[k*batch_size:(k+1)*batch_size], self.charbon, self.data, self.rqueue)
+            # print K-1, len(explore_list[(K-1)*batch_size:])
             self.workers[K-1] = PairsProcess(K-1, explore_list[(K-1)*batch_size:], self.charbon, self.data, self.rqueue)
 
             self.pairWorkers = len(self.workers)

@@ -59,6 +59,7 @@ def loadAll(arguments=[]):
 
     if pack_filename is None:
         data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
+        pdb.set_trace()
     logger.printL(2, data, "log")
 
     if pack_filename is not None:
