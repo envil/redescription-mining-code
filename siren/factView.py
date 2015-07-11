@@ -1,6 +1,7 @@
 import classGView
 import classMapView
 import classParaView
+import classTreeView
 import classEProjView
 #from classVProjView import VProjView
 

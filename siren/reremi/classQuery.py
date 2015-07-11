@@ -1,4 +1,4 @@
-import re, random, operator, itertools, codecs
+import re, random, operator, itertools, codecs, numpy
 from classSParts import  SParts
 from redquery_parser import RedQueryParser
 from grako.exceptions import * # @UnusedWildImport
@@ -248,6 +248,12 @@ class Term(object):
     def setRange(self, newR):
         pass
 
+    def getComplement(self):
+        return None
+
+    def isComplement(self, term):
+        return False
+
 #     def simple(self, neg):
 #         return neg
 
@@ -258,10 +264,13 @@ class Term(object):
         if other is None:
             return 1
         else:
-            return cmp(self.type_id, other.type_id)
+            return cmp(self.typeId(), other.typeId())
     
     def colId(self):
         return self.col
+
+    def typeId(self):
+        return self.type_id
     
     def cmpCol(self, other):
         if other is None:
@@ -469,11 +478,22 @@ class NumTerm(Term):
     type_id = 3
     
     def __init__(self, ncol, nlowb, nupb):
-        if nlowb == float('-Inf') and nupb == float('Inf') or nlowb > nupb:
+        if numpy.isinf(nlowb) and numpy.isinf(nupb) or nlowb > nupb:
             raise Warning('Unbounded numerical term !')
         self.col = ncol
         self.lowb = nlowb
         self.upb = nupb
+
+    def getComplement(self):
+        if numpy.isinf(self.lowb):
+            return NumTerm(self.col, self.upb, float("Inf"))
+        elif numpy.isinf(self.upb):
+            return NumTerm(self.col, float("-Inf"), self.lowb)
+        return None
+
+    def isComplement(self, term):
+        return (numpy.isinf(self.lowb) and numpy.isinf(term.upb) and term.lowb == self.upb) or \
+               (numpy.isinf(term.lowb) and numpy.isinf(self.upb) and self.lowb == term.upb)
 
 #     def simple(self, neg):
 #         if neg:
@@ -491,13 +511,24 @@ class NumTerm(Term):
         return [self.lowb, self.upb]
 
     def setRange(self, bounds):
-        if bounds[0] == float('-Inf') and bounds[1] == float('Inf') or bounds[0] > bounds[1]:
+        if numpy.isinf(bounds[0]) and numpy.isinf(bounds[1]) or bounds[0] > bounds[1]:
             raise Warning('Unbounded numerical term !')
         self.lowb = bounds[0]
         self.upb = bounds[1]
             
     def copy(self):
         return NumTerm(self.col, self.lowb, self.upb)
+
+    def getUpb(self):
+        return self.upb
+    def getLowb(self):
+        return self.lowb
+    def isUpbounded(self):
+        return not numpy.isinf(self.upb)
+    def isLowbounded(self):
+        return not numpy.isinf(self.lowb)
+    
+
 
     def truthEval(self, variableV):
         return self.lowb <= variableV and variableV <= self.upb
@@ -655,42 +686,52 @@ class Literal(object):
     def __init__(self, nneg, nterm):
         self.term = nterm ## Already an Term instance
         self.neg = Neg(nneg)
-#         self.neg = Neg(self.term.simple(nneg))
 
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())
 
     def valRange(self):
-        if self.term.type_id == 1:
+        if self.typeId() == 1:
             return [not self.neg.boolVal(), not self.neg.boolVal()]
         else:
-            return self.term.valRange()
+            return self.getTerm().valRange()
 
     def __str__(self):
         return self.disp()
 
     def disp(self, names = None, lenIndex=0):
-        return self.term.disp(self.neg, names, lenIndex)
+        return self.getTerm().disp(self.neg, names, lenIndex)
 
     def dispTex(self, names = None):
-        return self.term.dispTex(self.neg, names)
+        return self.getTerm().dispTex(self.neg, names)
     
     def dispU(self, names = None):
-        return self.term.dispU(self.neg, names)
+        return self.getTerm().dispU(self.neg, names)
 
     def tInfo(self, names = None):
-        return self.term.tInfo(names)
+        return self.getTerm().tInfo(names)
 
     def __cmp__(self, other):
         if other is None or not isinstance(other, Literal):
             return 1
-        elif cmp(self.term, other.term) == 0:
+        elif cmp(self.getTerm(), other.getTerm()) == 0:
             return cmp(self.neg, other.neg)
+        elif self.getTerm().isComplement(other.getTerm()) and self.neg != other.neg:
+            return 0
         else:
-            return cmp(self.term, other.term)
+            return cmp(self.getTerm(), other.getTerm())
      
     def __hash__(self):
-        return hash(self.term)+hash(self.neg)
+        return hash(self.getTerm())+hash(self.neg)
+
+    def getTerm(self):
+        return self.term
+
+    def colId(self):
+        return self.getTerm().colId()
+
+    def typeId(self):
+        return self.getTerm().typeId()
     
     def isNeg(self):
         return self.neg.boolVal()
@@ -701,18 +742,22 @@ class Literal(object):
     def flip(self):
         self.neg.flip()
 
+    def cmpFlip(self, term):
+        if other is None or not isinstance(other, Literal):
+            return 1
+        elif cmp(self.getTerm(), other.getTerm()) == 0:
+            return 1-cmp(self.neg, other.neg)
+        elif self.getTerm().isComplement(other.getTerm()) and self.neg == other.neg:
+            return 0
+        else:
+            return cmp(self.getTerm(), other.getTerm())
+
     def truthEval(self, variableV):
         if self.isNeg():
-            return not self.term.truthEval(variableV)
+            return not self.getTerm().truthEval(variableV)
         else:
-            return self.term.truthEval(variableV)
-
-    def typeId(self):
-        return self.term.type_id
+            return self.getTerm().truthEval(variableV)
             
-    def col(self):
-        return self.term.colId()
-
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def parse(string):
         i = 0
@@ -889,7 +934,7 @@ class Query:
     comparePair = staticmethod(comparePair)
     
     def invCols(self):
-        return set(recurse_list(self.buk, function =lambda term: term.col()))
+        return set(recurse_list(self.buk, function =lambda term: term.colId()))
     
     def invLiterals(self):
         return set(recurse_list(self.buk, function =lambda term: term))
@@ -897,18 +942,104 @@ class Query:
     def makeIndexesNew(self, format_str):
         if len(self) == 0:
             return ""
-        return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.col(), 'buk': ".".join(map(str,trace))}, args = {"trace":[]})
+        return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.colId(), 'buk': ".".join(map(str,trace))}, args = {"trace":[]})
     
     def makeIndexes(self, format_str):
         if len(self) == 0:
             return ""
-        return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.col(), 'buk': len(trace)}, args = {"trace":[]})
+        return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.colId(), 'buk': len(trace)}, args = {"trace":[]})
+
+    def recTree(self, bids, branches, commons, tree, pid=None, fdest=0, depth=1):
+        mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
+        kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
+
+        if len(kks) == 1:
+            pick = kks[0]
+        else:
+            ### choose the split
+            pick = kks[0]
+
+
+        split_commons = [{},{},{}]
+        to_sides = [[v[0] for v in commons[pick][0]], [v[0] for v in commons[pick][1]]]
+        to_sides.append([bid for bid in bids if bid not in to_sides[0] and bid not in to_sides[1]])
+        for k, vs in commons.items():
+            vvs = [[[],[]],[[],[]],[[],[]]]
+            if k != pick:
+                for yn_org in [0,1]:
+                    for v in vs[yn_org]:
+                        if v[0] in to_sides[0]:
+                            vvs[0][yn_org].append(v)
+                        elif v[0] in to_sides[1]:
+                            vvs[1][yn_org].append(v)
+                        else:
+                            vvs[2][yn_org].append(v)
+            for dest in [0,1,2]:
+                if len(vvs[dest][0])+len(vvs[dest][1]) > 0:
+                    split_commons[dest][k]=vvs[dest]
+
+        tid = len(tree)
+        tree[tid] = {"split": pick, "children": [[],[]], "parent": pid, "depth": depth, "dest": fdest}
+        for dest in [0,1]:
+            if len(split_commons[dest]) > 0:
+                cid = self.recTree(to_sides[dest], branches, split_commons[dest], tree, tid, dest, depth+1)
+                tree[tid]["children"][dest].append(cid)
+            elif len(to_sides[dest]) > 0:
+                cid = len(tree)
+                tree[cid] = {"leaves": to_sides[dest], "parent": tid, "depth": depth+1, "dest": dest}
+                tree[tid]["children"][dest].append(cid)
+
+        if len(split_commons[2]) > 0:
+            # pdb.set_trace()
+            # print tree[tid]["split"]
+            cid = self.recTree(to_sides[2], branches, split_commons[2], tree, pid, fdest, depth)
+            tree[pid]["children"][fdest].append(cid)
+        elif len(to_sides[2]) > 0:
+            pdb.set_trace()
+
+        return tid
+            
+    def toTree(self):
+        branches = []
+        if self.max_depth() == 2 and self.op.isOr():
+            for buk in self.buk:
+                if type(buk) is list:
+                    branches.append(list(buk))
+                else:
+                    branches.append([buk])
+        elif self.max_depth() == 1 and not self.op.isOr():
+            branches.append(list(self.buk))
+
+        if len(branches) > 0:
+            commons = {}                    
+            for bi, branch in enumerate(branches):
+                for li, l in enumerate(branch):
+                    if l.getTerm() in commons:
+                        key = l.getTerm()
+                        cpm = False 
+                    else:
+                        key = l.getTerm().getComplement()
+                        cpm = True
+                        if key is None or key not in commons:
+                            key = l.getTerm()
+                            cpm = False 
+                            commons[key] = [[],[]]
+                    ## is it the yes or no branch?
+                    if (not cpm and not l.isNeg()) or (cpm and l.isNeg()):
+                        commons[key][0].append((bi, li))
+                    else:
+                        commons[key][1].append((bi, li))
+            tree = {None: {"children": [[],[]], "depth": 0}}
+            tid = self.recTree(range(len(branches)), branches, commons, tree)
+            tree[None]["children"][0].append(tid)
+            return tree
+
     
     ## return the truth value associated to a configuration
     def truthEval(self, config = {}):
         def evl(b, op, config = {}):
             if isinstance(b, Literal):
-                return b.col() in config and b.truthEval(config[b.col()])                
+                return b.colId() in config and b.truthEval(config[b.colId()])                
             else:
                 vs = [evl(bb, op.other(), config) for bb in b]
                 if op.isOr():
@@ -997,7 +1128,7 @@ class Query:
                 if type(x) is list:
                     return -1
                 else:
-                    return x.col()
+                    return x.colId()
             self.buk.sort(key=lambda x: soK(x))
 
     def listLiterals(self):
@@ -1019,7 +1150,7 @@ class Query:
         if b is None:
             b = self.buk
         if isinstance(b, Literal):
-            return (b.col(), b)
+            return (b.colId(), b)
         elif isinstance(b, Neg):
             return (-1, b)
         else:
@@ -1196,6 +1327,8 @@ class QuerySemantics(object):
                 vname = codecs.decode(v, 'utf-8','replace')
             if vname in self.names:
                 return self.names.index(vname)
+            #print "No match"
+            raise Exception("No matching variable")
         else:
             print vname
             # pdb.set_trace()

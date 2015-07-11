@@ -219,6 +219,13 @@ class Siren():
 ###########     MENUS
 ######################################################################
 
+    def callOnTab(self, source_id=None, meth=None, args={}):
+        if source_id is not None and source_id in self.tabs:
+            try:
+                mett = getattr(self.tabs[source_id]["tab"], meth)
+                return mett(**args)
+            except AttributeError:
+                return None
 
     def updateProgressBar(self):
         if not self.plant.getWP().isActive():
@@ -357,13 +364,16 @@ class Siren():
             menuViz = wx.Menu()
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
-                for item in ViewFactory.getViewsInfo(self.dw.isGeospatial(), self.selectedTab["type"]):
+                for item in self.getViewsItems(self.selectedTab["type"]):
                     ID_NEWV = wx.NewId()
                     m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                               "Plot %s in new window." % item["title"])
                     frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
                     self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
+
+    def getViewsItems(self, tab_type=None):
+        return ViewFactory.getViewsInfo(self.dw.isGeospatial(), tab_type)
 
     def makeProcessMenu(self, frame, menuPro=None):
         if menuPro is None:
@@ -1113,7 +1123,7 @@ class Siren():
         for side,pref in [(0,""), (1,"")]:
             dets += "\n"
             for lit in red.queries[side].listLiterals():
-                dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.col()).getName(), self.dw.getData().getValue(side, lit.col(), rid)))
+                dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.colId()).getName(), self.dw.getData().getValue(side, lit.colId(), rid)))
         return dets
 
     def OnQuit(self, event):

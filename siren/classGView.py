@@ -16,7 +16,6 @@ from matplotlib.path import Path
 from reremi.classQuery import SYM, Query
 from reremi.classSParts import SSetts
 from reremi.classRedescription import Redescription
-import factView
 
 import pdb
 
@@ -189,10 +188,10 @@ class GView(object):
                 if action in self.actions_map:
                     self.actions_map[action]["key"] = key
                     self.keys_map[key] = action
-
+        
     def getRedId(self):
         if self.source_list is not None:
-            return self.parent.tabs[self.source_list]["tab"].getRedIdOID(self.getId())
+            return self.parent.callOnTab(self.source_list, meth="getRedIdOID", args={"oid": self.getId()})
         return "?"
 
     def getShortDesc(self):
@@ -236,7 +235,7 @@ class GView(object):
     def makeVizMenu(self, frame, menuViz=None):
         if menuViz is None:
             menuViz = wx.Menu()
-        for item in factView.ViewFactory.getViewsInfo(self.parent.dw.isGeospatial()):
+        for item in self.parent.getViewsItems():
             if item["viewT"] != self.getId()[0]:
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
@@ -271,6 +270,7 @@ class GView(object):
     def makeProcessMenu(self, frame, menuPro=None):
         if menuPro is None:
             menuPro = wx.Menu()
+
         for process, details in sorted(self.processes_map.items(), key=lambda x: (x[1]["order"], x[1]["label"])):
             ID_PRO = wx.NewId()
             m_pro = menuPro.Append(ID_PRO, details["label"], details["legend"])
@@ -311,7 +311,8 @@ class GView(object):
             self.mc.doActionForKey(self.menu_map_act[event.GetId()])
 
     def OnOtherV(self, event):
-        self.parent.tabs[self.source_list]["tab"].viewData(self.ids_viewT[event.GetId()], oid=self.getId())
+        self.parent.callOnTab(self.source_list, meth="viewData",
+                              args={"viewT": self.ids_viewT[event.GetId()], "oid": self.getId()})
         
     def drawFrame(self):
         self.QIds = [wx.NewId(), wx.NewId()]
@@ -419,8 +420,7 @@ class GView(object):
         
     def OnQuit(self, event=None, upMenu=True):
         self.parent.deleteView(self.getId())
-        if self.source_list is not None and self.source_list in self.parent.tabs:
-            self.parent.tabs[self.source_list]["tab"].unregisterView(self.getId(), upMenu)
+        self.parent.callOnTab(self.source_list, meth="unregisterView", args={"key": self.getId(), "upMenu": upMenu})
 
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:
@@ -510,11 +510,12 @@ class GView(object):
     def updateHist(self, red = None):
         if red is not None:
             if self.source_list != "hist":
-                self.parent.tabs["hist"]["tab"].insertItem(red, -1)
+                self.parent.callOnTab("hist", meth="insertItem", args={"item": red, "row": -1})
 
     def updateOriginal(self, red = None):
-        if red is not None and self.source_list is not None and self.source_list in self.parent.tabs:
-            self.parent.tabs[self.source_list]["tab"].updateEdit(self.getId(), red)
+        if red is not None:
+            self.parent.callOnTab(self.source_list, meth="updateEdit",
+                                  args={"edit_key": self.getId(), "red": red})
 
     def updateQueryText(self, query, side):
         self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side))) #, unicd=True), unicd=True))
@@ -567,7 +568,7 @@ class GView(object):
 
     def updateEmphasize(self, colhigh='#FFFF00', review=True):
         if self.source_list is not None:
-            lids = self.parent.tabs[self.source_list]["tab"].getEmphasizedR(self.getId())
+            lids = self.parent.callOnTab(self.source_list, meth="getEmphasizedR", args={"edit_key": self.getId()})
             self.emphasizeOnOff(turn_on=lids, turn_off=None, colhigh=colhigh, review=review)
 
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), colhigh='#FFFF00', review=True):
@@ -621,12 +622,12 @@ class GView(object):
                 del self.highl[lid]
 
     def sendEmphasize(self, lids):
-        if self.source_list is not None and self.source_list in self.parent.tabs:
-            self.parent.tabs[self.source_list]["tab"].setEmphasizedR(self.getId(), lids, show_info=self.q_active_info())
+        return self.parent.callOnTab(self.source_list, meth="setEmphasizedR",
+                                     args={"edit_key": self.getId(), "lids": lids, "show_info":self.q_active_info()})
 
     def sendFlipEmphasizedR(self):
-        if self.source_list is not None and self.source_list in self.parent.tabs:
-            self.parent.tabs[self.source_list]["tab"].doFlipEmphasizedR(self.getId())
+        return self.parent.callOnTab(self.source_list, meth="doFlipEmphasizedR",
+                                     args={"edit_key": self.getId()})
 
     def OnPick(self, event):
         if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
@@ -675,7 +676,7 @@ class GView(object):
     def getColors(self):
         t = self.parent.dw.getPreferences()
         colors = []
-        for color_k, color in GView.colors_def:
+        for color_k, color in self.colors_def:
             try:
                 color_t = t[color_k]["data"]
             except:
@@ -689,8 +690,8 @@ class GView(object):
             dot_shape = t["dot_shape"]["data"]
             dot_size = t["dot_size"]["data"]
         except:
-            dot_shape = GView.DOT_SHAPE
-            dot_size = GView.DOT_SIZE
+            dot_shape = self.DOT_SHAPE
+            dot_size = self.DOT_SIZE
         return (dot_shape, dot_size)
 
     def getMissDetails(self):
@@ -708,39 +709,39 @@ class GView(object):
                 SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],
                                "shape": dot_shape,
-                               "alpha": GView.DOT_ALPHA, "size": dot_size},
+                               "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.beta: {"color_e": [i/255.0 for i in colors[1]],
                               "color_f": [i/255.0 for i in colors[1]],
                               "shape": dot_shape,
-                               "alpha": GView.DOT_ALPHA, "size": dot_size},
+                               "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.gamma: {"color_e": [i/255.0 for i in colors[2]],
                                "color_f": [i/255.0 for i in colors[2]],
                                "shape": dot_shape,
-                               "alpha": GView.DOT_ALPHA, "size": dot_size},
+                               "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.mua: {"color_e": [i/255.0 for i in colors[0]],
                              "color_f": [0.5,0.5,0.5],
                              "shape": dot_shape,
-                             "alpha": GView.DOT_ALPHA, "size": dot_size-1},
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.mub: {"color_e": [i/255.0 for i in colors[1]],
                              "color_f": [0.5,0.5,0.5],
                              "shape": dot_shape,
-                             "alpha": GView.DOT_ALPHA, "size": dot_size-1},
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.muaB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[1]],
                              "shape": dot_shape,
-                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
+                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.mubB: {"color_e": [0.5,0.5,0.5],
                               "color_f": [i/255.0 for i in colors[0]],
                              "shape": dot_shape,
-                              "alpha": GView.DOT_ALPHA, "size": dot_size-1},
+                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.mud: {"color_e": [0.5,0.5,0.5],
                              "color_f": [0.5, 0.5, 0.5],
                              "shape": dot_shape,
-                             "alpha": GView.DOT_ALPHA, "size": dot_size-1},
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.delta: {"color_e": [0.5,0.5,0.5],
                                "color_f": [0.5, 0.5, 0.5],
                                "shape": dot_shape,
-                               "alpha": GView.DOT_ALPHA, "size": dot_size}
+                               "alpha": self.DOT_ALPHA, "size": dot_size}
                 }
         
 def HTMLColorToRGB(colorstring):

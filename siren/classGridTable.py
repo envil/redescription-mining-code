@@ -1,5 +1,4 @@
 import wx, wx.grid, re, colorsys, random, datetime, math
-from factView import ViewFactory
 from reremi.toolICList import ICList
 from reremi.classQuery import SYM, Query, Literal
 from reremi.classRedescription import Redescription
@@ -850,7 +849,7 @@ class VarTable(GridTable):
         self.sortP = (None, False)
         self.fields = []
         self.fields.extend(self.fields_def)
-        for tyid in set([r.type_id for r in self.data]):
+        for tyid in set([r.typeId() for r in self.data]):
             self.fields.extend(self.fields_var[tyid])
 
 
@@ -1039,7 +1038,7 @@ class RowTable(GridTable):
             if red is not None:
                 for side in [0,1]:
                     for l in red.queries[side].listLiterals():
-                        self.sc.add(self.cols_map[(side, l.col())])
+                        self.sc.add(self.cols_map[(side, l.colId())])
             self.redraw()
         return row
 

@@ -297,18 +297,18 @@ def make_literal(side, node, data, cols_info):
         threshold = node[-2]
         direct = node[-1]
 
-        if data.cols[side][cid].type_id == BoolTerm.type_id:
+        if data.cols[side][cid].typeId() == BoolTerm.type_id:
             lit = Literal(direct > 0, BoolTerm(cid))
-        elif data.cols[side][cid].type_id == CatTerm.type_id:
+        elif data.cols[side][cid].typeId() == CatTerm.type_id:
             lit = Literal(direct > 0, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
-        elif data.cols[side][cid].type_id == NumTerm.type_id:
+        elif data.cols[side][cid].typeId() == NumTerm.type_id:
             if direct > 0:
                 rng = (float("-inf"), threshold)
             else:
                 rng = (threshold, float("inf")) 
             lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
         else:
-            raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].type_id)
+            raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())
     return lit
 
 
@@ -342,11 +342,11 @@ class CharbonTSplit(CharbonTree):
             mmap = tcols_l
         else:
             mmap = tcols_r
-        if llt.term.type_id == 2:
-            off = data.cols[side][llt.col()].numEquiv(llt.term.getCat())
+        if llt.typeId() == 2:
+            off = data.cols[side][llt.colId()].numEquiv(llt.getTerm().getCat())
         else:
             off = 0
-        vid = mmap[(side, llt.col(), off)]
+        vid = mmap[(side, llt.colId(), off)]
         more = {"involved": [vid], "supp": supp}
         trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more)
         trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,

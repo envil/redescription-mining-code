@@ -177,7 +177,6 @@ class ExtensionsBatch:
         self.tmpsco = {}
     def scoreCand(self, cand):
         if cand is not None:
-            #if cand.literal.term.col == 1: pdb.set_trace()
             return cand.score(self.base_acc, self.N, self.prs, self.coeffs)
 
     def pos(self, cand):

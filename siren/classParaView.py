@@ -42,7 +42,7 @@ class ParaView(GView):
         GView.__init__(self, parent, vid)
     
     def getId(self):
-        return (ParaView.TID, self.vid)
+        return (self.TID, self.vid)
 
     def setCurrent(self, qr=None, source_list=None):
         if qr is not None:
@@ -133,10 +133,10 @@ class ParaView(GView):
         for side in [0,1]:
             try:
                 for l in self.sc[side]:
-                    side_cols.append((side, l.col()))
-                    ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
-                                  + [self.parent.dw.getData().col(side, l.col()).width])
-                    lit_str.append(self.parent.dw.getData().getNames(side)[l.col()])
+                    side_cols.append((side, l.colId()))
+                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
+                                  + [self.parent.dw.getData().col(side, l.colId()).width])
+                    lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
             except AttributeError:
                 pdb.set_trace()
         pos_axis = len(self.sc[0])
@@ -166,8 +166,8 @@ class ParaView(GView):
         ranges = []
         for side in [0,1]:
             for l in self.sc[side]:
-                ranges.append([self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
-                              + [self.parent.dw.getData().col(side, l.col()).width])
+                ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
+                              + [self.parent.dw.getData().col(side, l.colId()).width])
 
         pos_axis = len(self.sc[0])
         ranges.insert(pos_axis, [None, None, 1])
@@ -191,10 +191,10 @@ class ParaView(GView):
             osupp = self.suppABCD
             pos_axis = len(red.queries[0])
 
-            new = [[l.col() for l in red.queries[side].listLiterals()] for side in [0,1]]
+            new = [[l.colId() for l in red.queries[side].listLiterals()] for side in [0,1]]
             current = None
             if self.sc is not None:
-                current = [[l.col() for l in self.sc[side]] for side in [0,1]]
+                current = [[l.colId() for l in self.sc[side]] for side in [0,1]]
             self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
             if self.zds is None or current != new:
                 self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
@@ -336,7 +336,7 @@ class ParaView(GView):
             pos_axis = len(self.current_r.queries[0])
             if pos_axis < rid:
                 side = 1
-            c = self.parent.dw.getData().col(side, self.qcols[rid].col())
+            c = self.parent.dw.getData().col(side, self.qcols[rid].colId())
             if c is not None:
                 return c.getCatFromNum(v)
             
@@ -367,8 +367,8 @@ class ParaView(GView):
                     l.setNeg(bl==0)
                     alright = True
             if alright:
-                self.ranges[rid] = [self.parent.dw.getData().col(side, l.col()).numEquiv(r) for r in l.valRange()] \
-                                   + [self.parent.dw.getData().col(side, l.col()).width]
+                self.ranges[rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
+                                   + [self.parent.dw.getData().col(side, l.colId()).width]
                 
                 upAll = self.current_r.queries[side].listLiterals()[pos] != l
                 self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)

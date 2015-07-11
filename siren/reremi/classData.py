@@ -29,6 +29,7 @@ class DataError(Exception):
 
 class ColM(object):
 
+    type_id = None
     width = 0
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
     NA = NA_bool
@@ -138,24 +139,32 @@ class ColM(object):
     def getRange(self):
         return []
 
+    def typeId(self):
+        return self.type_id
 
     def miss(self):
         return self.missing
 
     def suppLiteral(self, literal):
-        if literal.isNeg():
-            return self.rows() - self.suppTerm(literal.term) - self.miss()
-        else:
-            return self.suppTerm(literal.term)
+        if isinstance(literal, Term): ### It's a literal, not a term
+            return self.suppTerm(literal)
+        elif isinstance(literal, Literal):
+            if literal.isNeg():
+                return self.rows() - self.suppTerm(literal.getTerm()) - self.miss()
+            else:
+                return self.suppTerm(literal.getTerm())
 
     def lMiss(self):
         return len(self.miss())
 
     def lSuppLiteral(self, literal):
-        if literal.isNeg():
-            return self.nbRows() - len(self.suppTerm(literal.term)) - self.lMiss()
-        else:
-            return len(self.suppTerm(literal.term))
+        if isinstance(literal, Term): ### It's a literal, not a term
+            return len(self.suppTerm(literal))
+        elif isinstance(literal, Literal):
+            if literal.isNeg():
+                return self.nbRows() - len(self.suppTerm(literal.getTerm())) - self.lMiss()
+            else:
+                return len(self.suppTerm(literal.getTerm()))
 
     def getEnabled(self, details=None):
         return self.enabled
@@ -1067,7 +1076,6 @@ class RowE(object):
         self.data = data
 
     def getValue(self, side, col=None):
-        ##### HERE
         if col is None:
             if side.get("aim", None) == "sort":
                 t = self.data.getNumValue(side["side"], side["col"], self.rid)
@@ -1203,17 +1211,17 @@ class Data:
                 tcols = [c for c in range(len(self.cols[side]))]
             else:
                 tcols = [col] 
-            tcols = [c for c in tcols if self.cols[side][c].type_id in types and (not only_able or self.cols[side][c].getEnabled())]
+            tcols = [c for c in tcols if self.cols[side][c].typeId() in types and (not only_able or self.cols[side][c].getEnabled())]
             if len(tcols) > 0:
                 for col in tcols:
                     bids = [0]
-                    if bincats and self.cols[side][col].type_id == 2:
+                    if bincats and self.cols[side][col].typeId() == 2:
                         bids = range(self.cols[side][col].nbCats()) 
                     mcols[(side, col)] = len(details)
                     for bid in bids:
                         mcols[(side, col, bid)] = off
                         off += 1
-                    details.append({"side": side, "col": col, "type": self.cols[side][col].type_id, "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
+                    details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
         mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats).reshape((self.nbRows(),-1)) for d in details]).T
         if store:
             self.as_array[1] = (mat, details, mcols)
@@ -1307,7 +1315,7 @@ class Data:
         return self.selected_rows
 
     def nonselectedRows(self):
-        return set(range(self.nbRows())) - self.selected_rows
+        return self.rows() - self.selected_rows
 
     def addSelectedRow(self, rid):
         self.selected_rows.add(rid)
@@ -1537,10 +1545,12 @@ class Data:
         colid = None
         if type(literal) in [int, np.int64] and literal < len(self.cols[side]):
             colid = literal
-        elif literal.term.colId() < len(self.cols[side]):
-            colid = literal.term.colId()
-            if literal.term.type_id != self.cols[side][colid].type_id:
-                raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.term.type_id, self.cols[side][colid].type_id))
+        elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(self.cols[side]):
+            colid = literal.colId()
+            if colid is None:
+                pdb.set_trace()
+            if literal.typeId() != self.cols[side][colid].typeId():
+                raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.typeId(), self.cols[side][colid].typeId()))
                 colid = None
         if colid is not None:
             return self.cols[side][colid]
@@ -1745,7 +1755,7 @@ def prepareColumnName(col, types_smap={}):
     if types_smap is None:
         return "%s%s" % (en, col.getName()) 
     else:
-        return "%s[%s]%s" % (en, types_smap.get(col.type_id, col.type_id), col.getName()) 
+        return "%s[%s]%s" % (en, types_smap.get(col.typeId(), col.typeId()), col.getName()) 
     
 def parseColumnName(name, types_smap={}):
     tmatch = re.match("^(\[(?P<type>[0-9])\])?(?P<name>.*)$", name)

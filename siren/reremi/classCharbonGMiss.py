@@ -11,11 +11,11 @@ class CharbonGMiss(CharbonGreedy):
         return False
 
     def getCandidates(self, side, col, supports, init=0):
-        method_string = 'self.getCandidates%i' % col.type_id
+        method_string = 'self.getCandidates%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
-              raise Exception('Oups No candidates method for this type of data (%i)!'  % col.type_id)
+              raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
         cands = method_compute(side, col, supports, init)
         # for cand in cands:
         #     supp = col.suppLiteral(cand.getLiteral())
@@ -32,7 +32,7 @@ class CharbonGMiss(CharbonGreedy):
         lin = supports.lpartsInterX(col.hold)
 
         for op in self.constraints.ops_query(side, init):
-            for neg in self.constraints.neg_query(side, col.type_id):
+            for neg in self.constraints.neg_query(side, col.typeId()):
                 adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if adv is not None :
                     cands.append(Extension(self.constraints.getSSetts(), adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
@@ -55,24 +55,24 @@ class CharbonGMiss(CharbonGreedy):
 
 ####################### COVER METHODS
     def findCover(self, side, col, lparts, lmiss, supports, init=0):
-        method_string = 'self.findCover%i' % col.type_id
+        method_string = 'self.findCover%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
-              raise Exception('Oups No covering method for this type of data (%i)!'  % col.type_id)
+              raise Exception('Oups No covering method for this type of data (%i)!'  % col.typeId())
         return method_compute(side, col, lparts, lmiss, supports, init)
 
     def findCover1(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
         lin = supports.lpartsInterX(col.supp())
         for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side, col.type_id):        
+            for neg in self.constraints.neg_query(side, col.typeId()):        
                 tmp_adv, tmp_clp  = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if tmp_adv is not None:
                     cands.append((False, Extension(self.constraints.getSSetts(), tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
                 ### to negate the other side when looking for initial pairs
-                if init == 1 and True in self.constraints.neg_query(side, col.type_id):
+                if init == 1 and True in self.constraints.neg_query(side, col.typeId()):
                     tmp_adv, tmp_clp  = self.getAC(side, op, neg, \
                                                        self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
                     if tmp_adv is not None:
@@ -84,7 +84,7 @@ class CharbonGMiss(CharbonGreedy):
         cands = []
 
         for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side, col.type_id):        
+            for neg in self.constraints.neg_query(side, col.typeId()):        
                 best = (None, None, None)
                 bestNeg = (None, None, None)
                 for (cat, supp) in col.sCats.iteritems():
@@ -92,7 +92,7 @@ class CharbonGMiss(CharbonGreedy):
                     best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
 
                     ### to negate the other side when looking for initial pairs
-                    if init ==1 and True in self.constraints.neg_query(side, col.type_id):
+                    if init ==1 and True in self.constraints.neg_query(side, col.typeId()):
                         bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
                                               self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
 
@@ -110,7 +110,7 @@ class CharbonGMiss(CharbonGreedy):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init == 1 and True in self.constraints.neg_query(side, col.type_id):
+            if init == 1 and True in self.constraints.neg_query(side, col.typeId()):
                 nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
                 nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
 
@@ -127,9 +127,9 @@ class CharbonGMiss(CharbonGreedy):
             if len(segments[op]) < self.constraints.max_seg():
                 cands.extend(self.findCoverFullSearch(side, op, col, segments, lparts, lmiss))
             else:
-                if (False in self.constraints.neg_query(side, col.type_id)):
+                if (False in self.constraints.neg_query(side, col.typeId())):
                     cands.extend(self.findPositiveCover(side, op, col, segments, lparts, lmiss))
-                if (True in self.constraints.neg_query(side, col.type_id)):
+                if (True in self.constraints.neg_query(side, col.typeId())):
                     cands.extend(self.findNegativeCover(side, op, col, segments, lparts, lmiss))
         return cands
 
@@ -141,10 +141,10 @@ class CharbonGMiss(CharbonGreedy):
             lin = self.constraints.getSSetts().makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
                 lin = self.constraints.getSSetts().addition(lin, segments[op][seg_e][2])
-                for neg in self.constraints.neg_query(side, col.type_id):
+                for neg in self.constraints.neg_query(side, col.typeId()):
                     bests[neg] = self.updateACT(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
 
-        for neg in self.constraints.neg_query(side, col.type_id):
+        for neg in self.constraints.neg_query(side, col.typeId()):
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
@@ -266,14 +266,14 @@ class CharbonGMiss(CharbonGreedy):
 ###################################################################
 
     def computePair(self, colL, colR):
-        min_type = min(colL.type_id, colR.type_id)
-        max_type = max(colL.type_id, colR.type_id)
+        min_type = min(colL.typeId(), colR.typeId())
+        max_type = max(colL.typeId(), colR.typeId())
         method_string = 'self.do%i%i' % (min_type, max_type)
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups this combination does not exist (%i %i)!'  % (min_type, max_type))
-        if colL.type_id == min_type:
+        if colL.typeId() == min_type:
             (scores, literalsL, literalsR) = method_compute(colL, colR, 1)
         else:
             (scores, literalsR, literalsL) =  method_compute(colL, colR, 0)

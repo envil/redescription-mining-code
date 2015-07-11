@@ -188,9 +188,9 @@ class ColFactory:
     
     def getCol(side, ci, data, typeC, details={}):
         try:
-            method_col =  eval("ColD" + typeC + ColFactory.CT.get(data.cols[side][ci].type_id, "-"))
+            method_col =  eval("ColD" + typeC + ColFactory.CT.get(data.cols[side][ci].typeId(), "-"))
         except AttributeError:
-            raise Exception('No ColD for this type (%s - %s)!'  %  (typeC, data.cols[side][ci].type_id))
+            raise Exception('No ColD for this type (%s - %s)!'  %  (typeC, data.cols[side][ci].typeId()))
         c = method_col(side, ci, data, details)
         return c, c.getClsSum(data.cols[side][ci].getVector())
     getCol = staticmethod(getCol)
@@ -279,7 +279,7 @@ class ColDFullCat(ColDFull):
         self.d = ProbDDiscrete(dict([(c, len(data.cols[self.side][self.ci].suppCat(c))) for c in data.cols[self.side][self.ci].cats()]))
 
     def getLL(self, lit):
-        return pr2cl(self.getPr(lit.term.cat, None))
+        return pr2cl(self.getPr(lit.getTerm().getCat(), None))
 
 class ColDFullNum(ColDFull):
     def __init__(self, side, ci, data, details = {}):
@@ -294,10 +294,10 @@ class ColDFullNum(ColDFull):
 
     def getLL(self, lit):
         ll = 2
-        if lit.term.lowb > float("-Inf"):
-            ll += pr2cl(self.getPr(lit.term.lowb, None))
-        if lit.term.upb < float("Inf"):
-            ll += pr2cl(self.getPr(lit.term.upb, None))
+        if lit.getTerm().isLowbounded():
+            ll += pr2cl(self.getPr(lit.getTerm().getLowb(), None))
+        if lit.getTerm().isUpbounded():
+            ll += pr2cl(self.getPr(lit.getTerm().getUpb(), None))
         return ll
 
     def getPrs(self, vs, ids=None):
@@ -483,9 +483,9 @@ class LitFactory:
     
     def getLit(side, ci, data, supp, bkp, lit, rid=-1):
         try:
-            method_col =  eval("LitD" + LitFactory.CT.get(data.cols[side][ci].type_id, "-"))
+            method_col =  eval("LitD" + LitFactory.CT.get(data.cols[side][ci].typeId(), "-"))
         except AttributeError:
-            raise Exception('No LitD for this type (%s)!'  %  data.cols[side][ci].type_id)
+            raise Exception('No LitD for this type (%s)!'  %  data.cols[side][ci].typeId())
         c = method_col(side, ci, data, supp, bkp, {rid:lit})
         return c
     getLit = staticmethod(getLit)
@@ -662,9 +662,9 @@ class LitDCat(LitD):
         if rnge is not None:
             rnge = set(rnge)
             if lit.isNeg():
-                rnge.discard(lit.term.cat)
+                rnge.discard(lit.getTerm().getCat())
             else:
-                rnge &= set([lit.term.cat])
+                rnge &= set([lit.getTerm().getCat()])
         return rnge
 
     def interRnge(self, data, lits):
@@ -700,13 +700,13 @@ class LitDNum(LitD):
             ### DOES NOT WORK WITH NEGATIONS
             return [float("Inf"), float("-Inf")]
         elif rnge is None:
-            rnge = [lit.term.lowb, lit.term.upb]
+            rnge = lit.getTerm()valRange()
         else:
             rnge = list(rnge)
-            if lit.term.lowb > rnge[0]:
-                rnge[0] = lit.term.lowb 
-            if lit.term.upb < rnge[1]:
-                rnge[1] = lit.term.upb
+            if lit.getTerm().getLowb() > rnge[0]:
+                rnge[0] = lit.getTerm().getLowb() 
+            if lit.getTerm().getUpb() < rnge[1]:
+                rnge[1] = lit.getTerm().getUpb()
         return rnge
 
     def interRnge(self, data, lits):
