@@ -81,6 +81,16 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             f.seek(0)
         else:
             data = dict([(head[i].strip(),[]) for i in range(len(head))])
+            if len(data) != len(head):
+                map_names = {}
+                for i in range(len(head)):
+                    if head[i] in map_names:
+                        map_names[head[i]].append(i)
+                        head[i] += "(duplicate#%d)" % (len(map_names[head[i]]))
+                    else:
+                        map_names[head[i]] = [i]
+                data = dict([(head[i].strip(),[]) for i in range(len(head))])
+                #raise ValueError('some columns have the same name, this is a very bad idea...')
         no_of_columns = len(head)
 
         for row in csvreader:

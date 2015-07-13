@@ -1547,8 +1547,6 @@ class Data:
             colid = literal
         elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(self.cols[side]):
             colid = literal.colId()
-            if colid is None:
-                pdb.set_trace()
             if literal.typeId() != self.cols[side][colid].typeId():
                 raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.typeId(), self.cols[side][colid].typeId()))
                 colid = None
@@ -1786,7 +1784,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         rnames = parseRowsNames(csv_data["ids"])
     else:
         rnames = [Term.pattVName % n for n in range(N)]
-        
+
     indices = [dict([(v,k) for (k,v) in enumerate(csv_data['data'][sides[0]]["order"])]),
                dict([(v,k) for (k,v) in enumerate(csv_data['data'][sides[1]]["order"])])]
     disabled_rows = set()

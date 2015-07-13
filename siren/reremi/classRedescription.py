@@ -234,8 +234,8 @@ class Redescription:
             self.sParts.update(side, op.isOr(), suppX, missX)
             self.dict_supp_info = None
             if self.lAvailableCols[side] is not None:
-                self.lAvailableCols[side].remove(literal.col())
-            self.track.append(((1-side) * 1-2*int(op.isOr()), literal.col()))
+                self.lAvailableCols[side].remove(literal.colId())
+            self.track.append(((1-side) * 1-2*int(op.isOr()), literal.colId()))
 
     def setFull(self, max_var=None):
         if max_var is not None:
