@@ -25,6 +25,9 @@
 	<length>2</length>
       </parameter>
 </section>
+</section>
+<section>
+    <name>Greedy</name>
 <section>
       <name>Types of queries</name>
       <parameter>

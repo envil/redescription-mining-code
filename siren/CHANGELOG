@@ -1,5 +1,13 @@
 CHANGELOG for Siren
 ===================
+v3.0.0
+------
+* Integrated more tree-based mining methods
+* Visualization for trees
+* Distributed computation
+* Fixed the previous tree-based methods
+* Fixed a bug in loading data
+
 v2.2.0
 ------
 * Integrated tree-based (CART) mining methods from T.Zinchenko MSc Thesis

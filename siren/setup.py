@@ -26,13 +26,13 @@ INSIDE_SETUP = True
 APP = 'siren.py'
 NAME="python-siren"
 SHORT_NAME="Siren"
-VERSION = '2.2.0'
+VERSION = '3.0.0'
 DESCRIPTION="Interactive Redescription Mining"
 AUTHOR="Esther Galbrun and Pauli Miettinen"
 AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
 URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
 LICENSE="Apache_2.0"
-COPYRIGHT=u'\u00A9 2012-2014 Esther Galbrun and Pauli Miettinen'
+COPYRIGHT=u'\u00A9 2012-2015 Esther Galbrun and Pauli Miettinen'
 HELP_PACKAGE_FILENAME = 'help.tar.gz'
 HELP_PACKAGE_URL = URL+HELP_PACKAGE_FILENAME
 HELP_UNPACK_CMD = 'tar xfz '+HELP_PACKAGE_FILENAME # command to unpack the help file to folder help/
@@ -49,6 +49,7 @@ ST_FILES = ['classConnectionDialog.py',
             'classGView.py',
             'classInterObjects.py',
             'classMapView.py',
+            'classTreeView.py',
             'classParaView.py',
             'classPreferencesDialog.py',
             'classProj.py',
