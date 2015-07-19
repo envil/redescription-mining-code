@@ -1,5 +1,10 @@
-python-siren (2.2.0) UNSTABLE; urgency=low
+python-siren (3.0.0) UNSTABLE; urgency=low
 
-    * Integrated tree-based (CART) mining methods from T.Zinchenko MSc Thesis
+    * Integrated more tree-based mining methods
+    * Visualization for trees
+    * Distributed computation
+    * Fixed the previous tree-based methods
+    * Fixed a bug in loading data
 
- -- Esther Galbrun <galbrun@cs.helsinki.fi>  Wed, 24 Dec 2014 11:29:53 +0200
+ -- Esther Galbrun <galbrun@cs.helsinki.fi>  Sun, 19 Dec 2015 11:29:53 +0200
+
