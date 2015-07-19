@@ -1,5 +1,6 @@
 #!/bin/bash
 
+PASS=${1}
 YAH=$(pwd) # YOU ARE HERE
 
 PACK_REP=${YAH}/packaging_current_$(date "+%Y%m%d%H%M%S")
@@ -14,17 +15,17 @@ GUIDE_PDF_SRC=${SPHINX_REP}"/siren-help/_build/latex/Siren.pdf"
 GUIDE_PDF_TRG=${HELP_TRG_REP}"/Siren-UserGuide.pdf"
 
 ### checkout the files for making the .deb package
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/pck/deb ${ROOT_REP}
+svn co --password ${PASS} https://vcs.hiit.fi/svn/redescriptors/sandbox/pck/deb ${ROOT_REP}
 
 ### checkout the code itself
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/siren ${SIREN_REP}
+svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/siren ${SIREN_REP}
 
 ### checkout the sources for the help pages
 mkdir ${SPHINX_REP}
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/siren-help ${SPHINX_REP}/siren-help
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_static ${SPHINX_REP}/_static
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_figs ${SPHINX_REP}/_figs
-svn co  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_templates ${SPHINX_REP}/_templates
+svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/siren-help ${SPHINX_REP}/siren-help
+svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_static ${SPHINX_REP}/_static
+svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_figs ${SPHINX_REP}/_figs
+svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_templates ${SPHINX_REP}/_templates
 
 # ### Update version (almost) everywhere !!DOES NOT WORK!!
 # # VERSION=$(grep "VERSION = '[0-9.a-z]*'" ${SIREN_REP}/setup.py | sed "s/VERSION *= *.\([0-9.a-z]*\)'/\1/" )
@@ -50,6 +51,8 @@ mv _static/* .
 mv _images/* .
 rm -rf _static _images
 rm -rf ${SPHINX_REP}
+rm slides_*.html drawing_*.svg slidy*s
+
 
 # ### add the __init__.py files
 echo "" > ${SIREN_REP}/icons/__init__.py
