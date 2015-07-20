@@ -518,7 +518,8 @@ class GView(object):
                                   args={"edit_key": self.getId(), "red": red})
 
     def updateQueryText(self, query, side):
-        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side))) #, unicd=True), unicd=True))
+        #self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side)))
+        self.MapredMapQ[side].ChangeValue(query.disp()) #, unicd=True), unicd=True))
 
     def updateText(self, red = None):
         """ Reset red fields and info
@@ -631,7 +632,14 @@ class GView(object):
 
     def OnPick(self, event):
         if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
-            self.sendEmphasize([int(event.artist.get_gid().split(".")[0])])
+            gid_parts = event.artist.get_gid().split(".")
+            if gid_parts[-1] == "1":
+                self.sendEmphasize([int(gid_parts[0])])
+            else:
+                self.sendOtherPick(gid_parts)
+
+    def sendOtherPick(self, gid_parts):
+        pass
 
     def doActionForKey(self, key):
         if self.keys_map.get(key, None in self.actions_map):

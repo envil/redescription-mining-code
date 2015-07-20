@@ -949,7 +949,7 @@ class Query:
             return ""
         return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.colId(), 'buk': len(trace)}, args = {"trace":[]})
 
-    def recTree(self, bids, branches, commons, tree, pid=None, fdest=0, depth=1):
+    def recTree(self, bids, commons, tree, pid=None, fdest=0, depth=1):
         mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
         kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
 
@@ -982,17 +982,22 @@ class Query:
         tree[tid] = {"split": pick, "children": [[],[]], "parent": pid, "depth": depth, "dest": fdest}
         for dest in [0,1]:
             if len(split_commons[dest]) > 0:
-                cid = self.recTree(to_sides[dest], branches, split_commons[dest], tree, tid, dest, depth+1)
+                cid = self.recTree(to_sides[dest], split_commons[dest], tree, tid, dest, depth+1)
                 tree[tid]["children"][dest].append(cid)
             elif len(to_sides[dest]) > 0:
                 cid = len(tree)
-                tree[cid] = {"leaves": to_sides[dest], "parent": tid, "depth": depth+1, "dest": dest}
+                if len(commons[pick][dest]) == 1:
+                    bid = commons[pick][dest][0]
+                else:
+                    print "Not exactly one branch ending in %d: %s!" % (cid, commons[pick][dest])
+                    bid = None
+                tree[cid] = {"leaves": to_sides[dest], "parent": tid, "depth": depth+1, "dest": dest, "bid": bid}
                 tree[tid]["children"][dest].append(cid)
 
         if len(split_commons[2]) > 0:
             # pdb.set_trace()
             # print tree[tid]["split"]
-            cid = self.recTree(to_sides[2], branches, split_commons[2], tree, pid, fdest, depth)
+            cid = self.recTree(to_sides[2], split_commons[2], tree, pid, fdest, depth)
             tree[pid]["children"][fdest].append(cid)
         elif len(to_sides[2]) > 0:
             pdb.set_trace()
@@ -1007,9 +1012,13 @@ class Query:
                     branches.append(list(buk))
                 else:
                     branches.append([buk])
-        elif self.max_depth() == 1 and not self.op.isOr():
+        elif self.max_depth() == 1 and (not self.op.isOr() or len(self.buk) == 1):
             branches.append(list(self.buk))
+        else:
+            print "Not a tree form!", self.disp(), self.buk
+            #raise Warning("Not tree form!")
 
+        tree = {None: {"children": [[],[]], "depth": 0}}
         if len(branches) > 0:
             commons = {}                    
             for bi, branch in enumerate(branches):
@@ -1029,10 +1038,9 @@ class Query:
                         commons[key][0].append((bi, li))
                     else:
                         commons[key][1].append((bi, li))
-            tree = {None: {"children": [[],[]], "depth": 0}}
-            tid = self.recTree(range(len(branches)), branches, commons, tree)
+            tid = self.recTree(range(len(branches)), commons, tree)
             tree[None]["children"][0].append(tid)
-            return tree
+        return tree
 
     
     ## return the truth value associated to a configuration
@@ -1124,12 +1132,35 @@ class Query:
             self.op = self.op.other()
             self.buk = [self.buk, literal]
         if resort:
-            def soK(x):
-                if type(x) is list:
-                    return -1
-                else:
-                    return x.colId()
-            self.buk.sort(key=lambda x: soK(x))
+            self.doSort()
+
+    def appendBuk(self, buk, op=None, resort=False):
+        if op is None:
+            op = Op(1)
+        if len(self) == 0:
+            self.buk.extend(buk)
+            self.op = op.other()
+        elif len(self) == 1 and self.buk != buk:
+            self.buk = [self.buk, buk]
+            self.op = op
+        elif self.op == op:
+            if buk not in self.buk:
+                self.buk.append(buk)
+        else:
+            if self.buk != buk:
+                self.op = self.op.other()
+                self.buk = [self.buk, buk]
+        if resort:
+            self.doSort()
+
+    def doSort(self):
+        def soK(x):
+            if type(x) is list:
+                return -1
+            else:
+                return x.colId()
+        self.buk.sort(key=lambda x: soK(x))
+
 
     def listLiterals(self):
         def evl(b, lits):

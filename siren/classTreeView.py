@@ -15,7 +15,7 @@ from matplotlib.backends.backend_wxagg import \
 from matplotlib.patches import Ellipse
 import itertools
 
-from reremi.classQuery import Query
+from reremi.classQuery import Query, Literal
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView, CustToolbar
@@ -23,6 +23,8 @@ from classInterObjects import ResizeableRectangle, DraggableRectangle
 import toolMath
 
 import pdb
+
+SIGN = -1
             
 class TreeView(GView):
 
@@ -39,6 +41,7 @@ class TreeView(GView):
         self.sld = None
         self.ri = None
         self.qcols = None
+        self.trees = None
         GView.__init__(self, parent, vid)
     
     def getId(self):
@@ -118,7 +121,7 @@ class TreeView(GView):
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
 
-        # self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         # self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
         # self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
         # self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
@@ -152,7 +155,7 @@ class TreeView(GView):
         oids = np.argsort((mat[:,:-1].sum(axis=1)+(mat[:,-1]+1)*mat.max()*mat.shape[1])/(mask.sum(axis=1)))
         mat[oids,-1] = np.linspace(1., 2., mat.shape[0])
         for li, k in zip(*np.where(mat[:, :-1]> 0)):
-            self.axe.plot((Xss[keys[k][0]][-1], 0), (keys[k][-1], mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
+            self.axe.plot((Xss[keys[k][0]][-1], 0), (SIGN*keys[k][-1], SIGN*mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
 
     def plotTreesT(self, trees, supps, lparts, Xss, Yss, draw_settings):
         keys = []
@@ -191,20 +194,26 @@ class TreeView(GView):
         
         pos = []
         for i in range(len(counts)):
-            bot, top = bb[i] + i*maj_space, bb[i+1] + i*maj_space
-            span = top-bot - (len(counts[i])-1)*min_space
-            sbb = span*np.cumsum([0]+counts[i])/(1.0*np.sum(counts[i]))
-            for j in range(len(sbb)-1): 
-                pos.append((1+bot+j*min_space+sbb[j], 1+bot+j*min_space+sbb[j+1]))
+            if len(counts[i]) > 0 and np.sum(counts[i]) > 0:
+                bot, top = bb[i] + i*maj_space, bb[i+1] + i*maj_space
+                span = top-bot - (len(counts[i])-1)*min_space
+                sbb = span*np.cumsum([0]+counts[i])/(1.0*np.sum(counts[i]))
+                for j in range(len(sbb)-1): 
+                    pos.append((1+bot+j*min_space+sbb[j], 1+bot+j*min_space+sbb[j+1]))
 
         # pos = np.linspace(1., 2., len(connects))
         for pi, (part, points, nb) in enumerate(connects):
             for point in points:
                 #self.axe.plot((0, Xss[keys[point-1][0]][-1], 0, 0),
-                self.axe.fill((0, Xss[keys[point-1][0]][-1], 0, 0),
-                              (pos[pi][0], keys[point-1][-1], pos[pi][1], pos[pi][0]),
-                              color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
-            
+                if SIGN > 0:
+                    self.axe.fill((0, Xss[keys[point-1][0]][-1], 0, 0),
+                                  (pos[pi][0], keys[point-1][-1], pos[pi][1], pos[pi][0]),
+                                  color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+                else:
+                    self.axe.fill((0, Xss[keys[point-1][0]][-1], 0, 0),
+                                  (pos[pi][0]-3., SIGN*keys[point-1][-1], pos[pi][1]-3., pos[pi][0]-3.),
+                                  color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+
         
     def plotTree(self, side, tree, node, Xs, Ys, supps=None, ds=None):
         
@@ -212,9 +221,9 @@ class TreeView(GView):
         color_dot = {0: ds[0]["color_e"], 1: ds[1]["color_e"]}
         line_style = {0: "-", 1: "--"}
         if "leaves" in tree[node]:
-            self.axe.plot((Xs[tree[node]["depth"]], Xs[-1]), (Ys[node], Ys[(node, "L")]), 'k:')
-            self.axe.plot(Xs[tree[node]["depth"]], Ys[node], 'k.')
-            self.axe.plot(Xs[-1], Ys[(node, "L")], 'ko')
+            self.axe.plot((Xs[tree[node]["depth"]], Xs[-1]), (SIGN*Ys[node], SIGN*Ys[(node, "L")]), 'k:')
+            self.axe.plot(Xs[tree[node]["depth"]], SIGN*Ys[node], 'k.')
+            self.axe.plot(Xs[-1], SIGN*Ys[(node, "L")], 'ko', picker=5, gid="%d:%d:-1.T" % (side, node))
             # self.axe.text(Xs[-1], Ys[(node, "L")], "%s" % tree[node]["leaves"])
             # self.axe.text(Xs[-1], Ys[(node, "L")], "%s" % (supps[node]), horizontalalignment=align[side])
 
@@ -223,25 +232,25 @@ class TreeView(GView):
                 for ynb in [0,1]:
                     cs = tree[node]["children"][ynb]
                     if len(cs) == 0 and node is not None:
-                        self.axe.plot((Xs[tree[node]["depth"]], Xs[tree[node]["depth"]+1]), (Ys[node], Ys[(node, "X%d" % ynb)]), 'k'+line_style[ynb], linewidth=1.5)
-                        self.axe.plot((Xs[tree[node]["depth"]+1], Xs[-1]), (Ys[(node, "X%d" % ynb)], Ys[(node, "X%d" % ynb)]), 'k:')
-                        self.axe.plot(Xs[tree[node]["depth"]+1], Ys[(node, "X%d" % ynb)], 'k.')
-                        self.axe.plot(Xs[-1], Ys[(node, "X%d" % ynb)], 'wo')
+                        self.axe.plot((Xs[tree[node]["depth"]], Xs[tree[node]["depth"]+1]), (SIGN*Ys[node], SIGN*Ys[(node, "X%d" % ynb)]), 'k'+line_style[ynb], linewidth=1.5)
+                        self.axe.plot((Xs[tree[node]["depth"]+1], Xs[-1]), (SIGN*Ys[(node, "X%d" % ynb)], SIGN*Ys[(node, "X%d" % ynb)]), 'k:')
+                        self.axe.plot(Xs[tree[node]["depth"]+1], SIGN*Ys[(node, "X%d" % ynb)], 'k.')
+                        self.axe.plot(Xs[-1], SIGN*Ys[(node, "X%d" % ynb)], 'wo', picker=5, gid="%d:%d:%d.T" % (side, node, ynb))
                         # self.axe.text(Xs[-1], Ys[(node, "X%d" % ynb)], "%s" % ([len(s) for s in supps[(node, "X%d" % ynb)]]), horizontalalignment=align[side])
 
                         
                     for ci, child in enumerate(cs):
-                        self.axe.plot((Xs[tree[node]["depth"]], Xs[tree[child]["depth"]]), (Ys[node], Ys[child]), 'k'+line_style[ynb], linewidth=1.5)
+                        self.axe.plot((Xs[tree[node]["depth"]], Xs[tree[child]["depth"]]), (SIGN*Ys[node], SIGN*Ys[child]), 'k'+line_style[ynb], linewidth=1.5)
                         self.plotTree(side, tree, child, Xs, Ys, supps, ds=ds)
 
             if "split" in tree[node]:
-                self.axe.plot(Xs[tree[node]["depth"]], Ys[node], color=color_dot[side], marker='s')
-                self.axe.annotate(tree[node]["split"].disp(names=self.parent.dw.getData().getNames(side)),
-                                  xy =(Xs[tree[node]["depth"]], Ys[node]), xytext =(Xs[tree[node]["depth"]], Ys[node]+0.02), horizontalalignment='center', color=color_dot[side],
+                self.axe.plot(Xs[tree[node]["depth"]], SIGN*Ys[node], color=color_dot[side], marker='s')
+                self.axe.annotate(tree[node]["split"].disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
+                                  xy =(Xs[tree[node]["depth"]], SIGN*Ys[node]), xytext =(Xs[tree[node]["depth"]], SIGN*Ys[node]+0.02), horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                   )
-                self.axe.annotate(tree[node]["split"].disp(names=self.parent.dw.getData().getNames(side)),
-                                  xy =(Xs[tree[node]["depth"]], Ys[node]), xytext =(Xs[tree[node]["depth"]], Ys[node]+0.02), horizontalalignment='center', color=color_dot[side],
+                self.axe.annotate(tree[node]["split"].disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
+                                  xy =(Xs[tree[node]["depth"]], SIGN*Ys[node]), xytext =(Xs[tree[node]["depth"]], SIGN*Ys[node]+0.02), horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
                                   )
                 # self.axe.text(Xs[tree[node]["depth"]], Ys[node]-0.05, "%s" % (supps[node]), horizontalalignment='center')
@@ -281,7 +290,10 @@ class TreeView(GView):
             if node is not None:
                 Ys[node] = (np.max(ext_p[0]) + np.min(ext_p[1]))/2.01
             else:
-                Ys[node] = np.mean(ext_p[0]+ext_p[1])
+                if len(ext_p[0])+len(ext_p[1]) > 0:
+                    Ys[node] = np.mean(ext_p[0]+ext_p[1])
+                else:
+                    Ys[node] = 1.5 
         return Ys[node]
 
     def computeSuppSide(self, side, tree, supps={}, node=None, subsets=None):
@@ -346,17 +358,22 @@ class TreeView(GView):
             red = self.current_r
             draw_settings = self.getDrawSettings()
             self.axe.cla()
-            trees = [red.queries[0].toTree(), red.queries[1].toTree()]
-            if trees[0] is not None and trees[1] is not None:
+            self.trees = [red.queries[0].toTree(), red.queries[1].toTree()]
+            if self.trees[0] is not None and self.trees[1] is not None:
                 rsupp = red.supports().parts()
-                supps = self.computeSupps(trees, rsupp)
-                Xs0, Ys0 = self.positionTree(0, trees[0])
-                Xs1, Ys1 = self.positionTree(1, trees[1])
+                supps = self.computeSupps(self.trees, rsupp)
+                Xs0, Ys0 = self.positionTree(0, self.trees[0])
+                Xs1, Ys1 = self.positionTree(1, self.trees[1])
                 
-                self.plotTrees(trees, supps, [len(r) for r in rsupp], [Xs0, Xs1], [Ys0, Ys1])
+                self.plotTrees(self.trees, supps, [len(r) for r in rsupp], [Xs0, Xs1], [Ys0, Ys1])
 
                 self.axe.set_xlim([-1.5,1.5])
-                self.axe.set_ylim([0.9,2.1])
+                if SIGN > 0:
+                    self.axe.set_ylim([0.9,2.1])
+                else:
+                    self.axe.set_ylim([-2.1, -0.9,])
+                self.axe.set_xticks([])
+                self.axe.set_yticks([])
 
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
@@ -393,3 +410,41 @@ class TreeView(GView):
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
+
+
+    def sendOtherPick(self, gid_parts):
+        if gid_parts[-1] == "T":
+            pp = gid_parts[0].split(":")
+            if len(pp) == 3:
+                side, node, onoff = map(int, pp)
+                if self.trees is not None and node in self.trees[side]:
+                    if onoff == -1:
+                        self.removeBranchQ(side, node)
+                    else:
+                        self.addBranchQ(side, node, onoff)
+
+    def removeBranchQ(self, side, node):
+        if self.trees[side][node].get("bid") is not None:
+            bidd = self.trees[side][node].get("bid")[0]
+            qu = self.queries[side].copy()
+            bd = qu.buk.pop(bidd)            
+            # print "BEFORE", self.queries[side]
+            # print "AFTER", qu
+            if qu != self.queries[side]:
+                self.updateQuery(side, query=qu)
+
+    def addBranchQ(self, side, node, ynb):
+        cn = node
+        buk = [Literal(ynb, self.trees[side][cn]["split"])]
+        while self.trees[side][cn]["parent"] is not None:
+            prt = self.trees[side][cn]["parent"]
+            neg = cn in self.trees[side][prt]["children"][1]
+            buk.insert(0, Literal(neg, self.trees[side][prt]["split"]))
+            cn = prt
+        # pdb.set_trace()
+        qu = self.queries[side].copy()
+        qu.appendBuk(buk)
+        # print "BEFORE", self.queries[side]
+        # print "AFTER", qu
+        if qu != self.queries[side]:
+            self.updateQuery(side, query=qu)
