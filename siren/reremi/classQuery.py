@@ -1,4 +1,4 @@
-import re, random, operator, itertools, codecs, numpy
+import re, random, operator, itertools, codecs, numpy, copy
 from classSParts import  SParts
 from redquery_parser import RedQueryParser
 from grako.exceptions import * # @UnusedWildImport
@@ -777,6 +777,359 @@ class Literal(object):
             return None
     parse = staticmethod(parse)
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
+
+class QTree:
+
+    branchN, branchY  = (0, 1)
+    
+    def __init__(self, root_id=None, branches=None, fill=False):
+        self.root_id = root_id
+        self.tree = {root_id: {"children": [[],[]], "depth": 0}}
+        self.leaves = set()
+        self.supps = None
+        self.Ys = None
+        self.Xs = None
+        self.max_depth = 0
+        if branches is not None:
+            self.build(branches)
+            if fill:
+                self.fill()
+
+    def copy(self):
+        cp = QTree(root_id=self.root_id)
+        cp.tree = copy.deepcopy(self.tree)
+        cp.leaves = set(self.leaves)
+        cp.supps = copy.deepcopy(self.supps)
+        cp.Ys = copy.deepcopy(self.Ys)
+        cp.Xs = copy.deepcopy(self.Xs)
+        cp.max_depth = self.max_depth
+        return cp
+            
+    def __str__(self):
+        return self.dispNode(self.root_id)
+
+    def dispNode(self, nid):
+        strn = ""
+        if "split" in self.tree[nid]:
+            if self.supps is not None:
+                sc = self.supps.get(nid, [])
+                st = sum(sc)
+                suppsn = " + ".join(map(str, self.supps.get(nid, []))) + ( " = %d" % st )
+            else:
+                suppsn = ""
+            if self.Ys is not None:
+                yn = str(self.Ys.get(nid, ""))
+            else:
+                yn = ""
+            strn += "%s'-- (%d) %d:N %s%s[%s]\t%s\n" % ("\t" * self.tree[nid]["depth"], nid,
+                                                    self.tree[nid]["ynb"], self.tree[nid]["split"],
+                                                    "\t" * self.max_depth, suppsn, yn)
+        if "children" in self.tree[nid]:
+            for ynb in [0,1]:
+                for node in self.tree[nid]["children"][ynb]:
+                    strn += self.dispNode(node)
+        else:
+            if self.supps is not None:
+                sc = [len(s) for s in self.supps.get((nid, "L"), [])]
+                st = sum(sc)
+                suppsn = " + ".join(map(str, self.supps.get(nid, []))) + ( " = %d" % st )
+            else:
+                suppsn = ""
+            if self.Ys is not None:
+                yn = str(self.Ys.get(nid, "")) + "---" + str(self.Ys.get((nid, "L"), ""))
+            else:
+                yn = ""
+            strn += "%s'-- (%d) %d:L %s%s[%s]\t%s\n" % ("\t" * self.tree[nid]["depth"], nid,
+                                                    self.tree[nid]["ynb"], self.tree[nid]["leaf"],
+                                                    "\t" * self.max_depth, suppsn, yn)
+        return strn
+
+    def hasNode(self, node):
+        return node in self.tree
+    def isRootNode(self, node):
+        return node == self.root_id
+    def isLeafNode(self, node):
+        return node in self.tree and "leaf" in self.tree[node]
+    def isLeafInNode(self, node):
+        return node in self.tree and self.tree[node].get("leaf", None) >= 0
+    def isLeafOutNode(self, node):
+        return node in self.tree and self.tree[node].get("leaf", None) == -1
+    def isSplitNode(self, node):
+        return node in self.tree and "split" in self.tree[node]
+    def isParentNode(self, node):
+        return node in self.tree and "children" in self.tree[node]
+
+    def getMaxDepth(self):
+        return self.max_depth
+    def getLeaves(self):
+        return self.leaves
+
+    def getNodeSplit(self, node):
+        return self.tree[node]["split"]
+    def getNodeBranch(self, node):
+        return self.tree[node]["ynb"]
+    def getNodeLeaf(self, node):
+        return self.tree[node]["leaf"]
+    def getNodeParent(self, node):
+        return self.tree[node]["parent"]
+    def getNodeChildren(self, node, ynb):
+        return self.tree[node]["children"][ynb]
+    def nbNodeChildren(self, node, ynb):
+        return len(self.tree[node]["children"][ynb])
+    def trimNodeChildren(self, node, ynb):
+        while len(self.tree[node]["children"][ynb]) > 0:
+            c = self.tree[node]["children"][ynb].pop()
+            if self.isParentNode(c):
+                self.trimNodeChildren(c, 0)
+                self.trimNodeChildren(c, 1)
+            else:
+                self.leaves.discard(c)
+
+    def getNodeXY(self, node):
+        if self.Ys is not None and self.Xs is not None:
+            return (self.Xs[self.tree[node]["depth"]], self.Ys[node])
+        return (None, None)
+
+    def getBranchQuery(self, node):
+        cn = node
+        buk = []
+        while self.getNodeParent(cn) is not None:
+            prt = self.getNodeParent(cn)
+            neg = cn in self.getNodeChildren(prt, self.branchN)
+            buk.insert(0, Literal(neg, self.getNodeSplit(prt)))
+            cn = prt
+        return buk
+
+    def getQuery(self):
+        buks = []
+        for node in self.leaves:
+            if self.isLeafInNode(node):
+                buks.append((node, self.getBranchQuery(node)))
+        buks.sort(key=lambda x: (self.getNodeLeaf(x[0]), x[0]))
+        qu = Query()
+        qu.op = Op(1)
+        qu.buk = [x[1] for x in buks]
+        return qu
+        
+    def getSimpleQuery(self):
+        cp = self.copy()
+        cp.recSimply(cp.root_id)
+        return cp.getQuery().toTree().getQuery()
+
+    def recSimply(self, node):
+        if self.isLeafNode(node):
+            if self.isLeafInNode(node):
+                return 1
+            else:
+                return -1
+
+        else:
+            pr = [None, None]
+            for ynb in [0,1]:
+                if ynb == QTree.branchY or not self.isRootNode(node):
+                    chlds = self.getNodeChildren(node, ynb)
+                    tmppr = set([self.recSimply(c) for c in chlds])
+                    pr[ynb] = max(tmppr)
+                    if pr[ynb] == 1:
+                        self.trimNodeChildren(node, ynb)
+                        self.addLeafNode(node, ynb, 1)
+            if pr[0] == pr[1]:
+                return pr[0]
+            else:
+                return 0
+    
+    def getBottomX(self):
+        if self.Xs is not None:
+            return self.Xs[-1]
+        return None
+
+    def getNodeSupps(self, node):
+        if self.supps is not None:
+            return self.supps[node]
+        return None
+    def getNodeSuppSets(self, node):
+        if self.supps is not None and self.isLeafNode(node):
+            return self.supps[(node, "L")]
+        return None
+
+    def setNodeLeaf(self, node, bid):
+        if node in self.tree and "leaf" in self.tree[node]:
+            self.tree[node]["leaf"] = bid
+
+    def setNodeLeaf(self, node, bid):
+        if node in self.tree and "leaf" in self.tree[node]:
+            self.tree[node]["leaf"] = bid
+
+    def addSplitNode(self, pid, ynb, split):
+        if pid in self.tree:
+            tid = len(self.tree)
+            self.tree[tid] = {"split": split, "children": [[],[]], "parent": pid,
+                              "depth": self.tree[pid]["depth"]+1, "ynb": ynb}
+            self.tree[pid]["children"][ynb].append(tid)
+            if self.tree[tid]["depth"] > self.max_depth:
+                self.max_depth = self.tree[tid]["depth"]
+            return tid
+
+    def addLeafNode(self, pid, ynb, bid):
+        if pid in self.tree:
+            tid = len(self.tree)
+            self.tree[tid] = {"leaf": bid, "parent": pid,
+                              "depth": self.tree[pid]["depth"]+1, "ynb": ynb}
+            self.tree[pid]["children"][ynb].append(tid)
+            self.leaves.add(tid)
+            if self.tree[tid]["depth"] > self.max_depth:
+                self.max_depth = self.tree[tid]["depth"]
+            return tid
+
+    def build(self, branches):
+        if len(branches) > 0:
+            commons = {}                    
+            for bi, branch in enumerate(branches):
+                for li, l in enumerate(branch):
+                    if l.getTerm() in commons:
+                        key = l.getTerm()
+                        cpm = False 
+                    else:
+                        key = l.getTerm().getComplement()
+                        cpm = True
+                        if key is None or key not in commons:
+                            key = l.getTerm()
+                            cpm = False 
+                            commons[key] = [[],[]]
+                    ## is it the yes or no branch?
+                    if (not cpm and not l.isNeg()) or (cpm and l.isNeg()):
+                        commons[key][self.branchY].append((bi, li))
+                    else:
+                        commons[key][self.branchN].append((bi, li))
+            self.recTree(range(len(branches)), commons, pid=None, fynb=QTree.branchY)
+
+    def recTree(self, bids, commons, pid, fynb):
+        mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
+        kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
+        ### TODO choose the split
+        # pdb.set_trace()
+        pick = sorted(kks)[0]
+
+        split_commons = [{},{},{}]
+        to_ynbs = [[v[0] for v in commons[pick][0]], [v[0] for v in commons[pick][1]]]
+        to_ynbs.append([bid for bid in bids if bid not in to_ynbs[0] and bid not in to_ynbs[1]])
+        for k, vs in commons.items():
+            vvs = [[[],[]],[[],[]],[[],[]]]
+            if k != pick:
+                for yn_org in [0,1]:
+                    for v in vs[yn_org]:
+                        if v[0] in to_ynbs[0]:
+                            vvs[0][yn_org].append(v)
+                        elif v[0] in to_ynbs[1]:
+                            vvs[1][yn_org].append(v)
+                        else:
+                            vvs[2][yn_org].append(v)
+            for ynb in [0,1,2]:
+                if len(vvs[ynb][0])+len(vvs[ynb][1]) > 0:
+                    split_commons[ynb][k]=vvs[ynb]
+
+        tid = self.addSplitNode(pid, fynb, pick)
+        for ynb in [0,1]:
+            if len(split_commons[ynb]) > 0:
+                self.recTree(to_ynbs[ynb], split_commons[ynb], tid, ynb)
+            elif len(to_ynbs[ynb]) > 0:
+                if len(to_ynbs[ynb]) == 1:
+                    bid = to_ynbs[ynb][0]
+                else:
+                    print "Not exactly one branch ending in %d: %s!" % (tid, to_ynbs[ynb])
+                    bid = None
+                self.addLeafNode(tid, ynb, bid)
+
+        if len(split_commons[2]) > 0:
+            self.recTree(to_ynbs[2], split_commons[2], pid, fynb)
+        elif len(to_ynbs[2]) > 0:
+            pdb.set_trace()
+
+    def fill(self):
+        basic_nodes = self.tree.keys()
+        for ni in basic_nodes:
+            if "children" in self.tree[ni] and ni != self.root_id:
+                for ynb in [0,1]:
+                    if len(self.tree[ni]["children"][ynb]) == 0:
+                        self.addLeafNode(ni, ynb, -1)
+
+    def computeSupps(self, side, data, subsets=None):
+        self.supps = {}
+        if subsets is None:
+            subsets = [data.rows()]
+        self.recSupps(side, data, self.root_id, subsets)
+
+    def recSupps(self, side, data, node, subsets):
+        self.supps[node] = [len(s) for s in subsets]
+        if self.isLeafNode(node):
+            self.supps[(node, "L")] = subsets
+        else:
+            supps_node = [None, None, None] 
+            if self.isSplitNode(node):
+                supp, miss = data.literalSuppMiss(side, self.tree[node]["split"])
+                supps_node[QTree.branchY] = [supp & s for s in subsets]
+                supps_node[QTree.branchN] = [(s - supp) - miss  for s in subsets]
+                supps_node[-1] = [supp & miss for s in subsets]
+
+            else:
+                supps_node[QTree.branchY] = subsets
+                supps_node[QTree.branchN] = [set() for s in subsets]
+                supps_node[-1] = [set() for s in subsets]
+
+            if self.isParentNode(node):
+                for ynb in [0,1]:
+                    # cs = tree[node]["children"][ynb]
+                    # if len(cs) == 0 and node is not None:
+                    #     supps[(node, "X%d" % ynb)] = supps_node[ynb]
+
+                    for child in self.getNodeChildren(node, ynb):
+                        self.recSupps(side, data, child, supps_node[ynb])
+        
+    def positionTree(self, side, all_width=1.0, height_inter=[1., 2.]):
+        mdepth = self.getMaxDepth()
+        width = all_width/(mdepth+1)
+        self.Xs = [-2*(0.5-side)*(i+2)*width for i in range(mdepth+2)][::-1]
+        leaves = []
+        self.getLeavesYs(side, None, [0., 1.], leaves)
+        leaves.sort(key=lambda x: x[-1])
+        if len(leaves) < 2:
+            width = 0
+        else:
+            width = (height_inter[1]-height_inter[0])/(len(leaves)-1)
+        self.Ys = {}
+        for li, leaf in enumerate(leaves):
+            self.Ys[leaf[0]] = height_inter[0] + li*width
+        self.setYs(side, None)
+
+    def getLeavesYs(self, side, node, interval, leaves):
+        if self.isLeafNode(node):
+            leaves.append((node, (interval[1]+interval[0])/2.))
+        elif self.isParentNode(node):
+            eps = (interval[1]-interval[0])/10.
+            mid = (interval[1]+interval[0])/2.
+            for ynb, subint in [(QTree.branchN, (interval[0]+eps, mid)), (QTree.branchY, (mid, interval[1]-eps))]:
+                if self.nbNodeChildren(node, ynb) > 0:
+                    width = (subint[1]-subint[0])/self.nbNodeChildren(node, ynb)
+                    for ci, child in enumerate(self.getNodeChildren(node, ynb)):
+                        self.getLeavesYs(side, child, [subint[0]+ci*width, subint[0]+(ci+1)*width], leaves)
+
+    def setYs(self, side, node):
+        if self.isLeafNode(node):
+            return self.Ys[node]
+
+        elif self.isParentNode(node):
+            ext_p = [[],[]]
+            for ynb in [0,1]:
+                for ci, child in enumerate(self.getNodeChildren(node, ynb)):
+                    ext_p[ynb].append(self.setYs(side, child))
+            if node is not None:
+                self.Ys[node] = (numpy.max(ext_p[0]) + numpy.min(ext_p[1]))/2.01
+            else:
+                if len(ext_p[0])+len(ext_p[1]) > 0:
+                    self.Ys[node] = numpy.mean(ext_p[0]+ext_p[1])
+                else:
+                    self.Ys[node] = 1.5 
+        return self.Ys[node]
             
 class Query:
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
@@ -948,63 +1301,8 @@ class Query:
         if len(self) == 0:
             return ""
         return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.colId(), 'buk': len(trace)}, args = {"trace":[]})
-
-    def recTree(self, bids, commons, tree, pid=None, fdest=0, depth=1):
-        mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
-        kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
-
-        if len(kks) == 1:
-            pick = kks[0]
-        else:
-            ### choose the split
-            pick = kks[0]
-
-
-        split_commons = [{},{},{}]
-        to_sides = [[v[0] for v in commons[pick][0]], [v[0] for v in commons[pick][1]]]
-        to_sides.append([bid for bid in bids if bid not in to_sides[0] and bid not in to_sides[1]])
-        for k, vs in commons.items():
-            vvs = [[[],[]],[[],[]],[[],[]]]
-            if k != pick:
-                for yn_org in [0,1]:
-                    for v in vs[yn_org]:
-                        if v[0] in to_sides[0]:
-                            vvs[0][yn_org].append(v)
-                        elif v[0] in to_sides[1]:
-                            vvs[1][yn_org].append(v)
-                        else:
-                            vvs[2][yn_org].append(v)
-            for dest in [0,1,2]:
-                if len(vvs[dest][0])+len(vvs[dest][1]) > 0:
-                    split_commons[dest][k]=vvs[dest]
-
-        tid = len(tree)
-        tree[tid] = {"split": pick, "children": [[],[]], "parent": pid, "depth": depth, "dest": fdest}
-        for dest in [0,1]:
-            if len(split_commons[dest]) > 0:
-                cid = self.recTree(to_sides[dest], split_commons[dest], tree, tid, dest, depth+1)
-                tree[tid]["children"][dest].append(cid)
-            elif len(to_sides[dest]) > 0:
-                cid = len(tree)
-                if len(commons[pick][dest]) == 1:
-                    bid = commons[pick][dest][0]
-                else:
-                    print "Not exactly one branch ending in %d: %s!" % (cid, commons[pick][dest])
-                    bid = None
-                tree[cid] = {"leaves": to_sides[dest], "parent": tid, "depth": depth+1, "dest": dest, "bid": bid}
-                tree[tid]["children"][dest].append(cid)
-
-        if len(split_commons[2]) > 0:
-            # pdb.set_trace()
-            # print tree[tid]["split"]
-            cid = self.recTree(to_sides[2], split_commons[2], tree, pid, fdest, depth)
-            tree[pid]["children"][fdest].append(cid)
-        elif len(to_sides[2]) > 0:
-            pdb.set_trace()
-
-        return tid
             
-    def toTree(self):
+    def toTree(self, fill=False):
         branches = []
         if self.max_depth() == 2 and self.op.isOr():
             for buk in self.buk:
@@ -1018,29 +1316,7 @@ class Query:
             print "Not a tree form!", self.disp(), self.buk
             #raise Warning("Not tree form!")
 
-        tree = {None: {"children": [[],[]], "depth": 0}}
-        if len(branches) > 0:
-            commons = {}                    
-            for bi, branch in enumerate(branches):
-                for li, l in enumerate(branch):
-                    if l.getTerm() in commons:
-                        key = l.getTerm()
-                        cpm = False 
-                    else:
-                        key = l.getTerm().getComplement()
-                        cpm = True
-                        if key is None or key not in commons:
-                            key = l.getTerm()
-                            cpm = False 
-                            commons[key] = [[],[]]
-                    ## is it the yes or no branch?
-                    if (not cpm and not l.isNeg()) or (cpm and l.isNeg()):
-                        commons[key][0].append((bi, li))
-                    else:
-                        commons[key][1].append((bi, li))
-            tid = self.recTree(range(len(branches)), commons, tree)
-            tree[None]["children"][0].append(tid)
-        return tree
+        return QTree(branches=branches, fill=True)
 
     
     ## return the truth value associated to a configuration
@@ -1135,23 +1411,30 @@ class Query:
             self.doSort()
 
     def appendBuk(self, buk, op=None, resort=False):
+        bid = None
         if op is None:
             op = Op(1)
         if len(self) == 0:
+            bid = len(self.buk)
             self.buk.extend(buk)
             self.op = op.other()
         elif len(self) == 1 and self.buk != buk:
+            bid = 1
             self.buk = [self.buk, buk]
             self.op = op
         elif self.op == op:
             if buk not in self.buk:
+                bid = len(self.buk)
                 self.buk.append(buk)
         else:
             if self.buk != buk:
+                bid = 1
                 self.op = self.op.other()
                 self.buk = [self.buk, buk]
         if resort:
             self.doSort()
+            bid = None
+        return bid
 
     def doSort(self):
         def soK(x):

@@ -581,6 +581,8 @@ class GView(object):
 
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
+        if len(lids) > 5:
+            print "Warning slow, emphasizing %d entities..." % len(lids)
         for lid in lids:
             if lid in self.highl:
                 continue
