@@ -15,7 +15,7 @@ from matplotlib.backends.backend_wxagg import \
 from matplotlib.patches import Ellipse
 import itertools
 
-from reremi.classQuery import Query
+from reremi.classQuery import Query, BoolTerm, CatTerm, NumTerm
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView, CustToolbar
@@ -35,7 +35,7 @@ class ParaView(GView):
         self.reps = set()
         self.current_r = None
         self.zds = None
-        self.sc = None
+        self.lits = None
         self.sld = None
         self.ri = None
         self.qcols = None
@@ -132,14 +132,18 @@ class ParaView(GView):
         lit_str = []
         for side in [0,1]:
             try:
-                for l in self.sc[side]:
+                for l in self.litsort[side]:
                     side_cols.append((side, l.colId()))
-                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
-                                  + [self.parent.dw.getData().col(side, l.colId()).width])
+                    if l.typeId() == BoolColM.type_id:
+                        ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in [self.lits[side][l][0][-1], self.lits[side][l][0][-1]]] \
+                                      + [self.parent.dw.getData().col(side, l.colId()).width])
+                    else:
+                        ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
+                                      + [self.parent.dw.getData().col(side, l.colId()).width])
                     lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
             except AttributeError:
                 pdb.set_trace()
-        pos_axis = len(self.sc[0])
+        pos_axis = len(self.litsort[0])
         ranges.insert(pos_axis, [None, None, 1])
         lit_str.insert(pos_axis, "-")
         mat, details, mcols = self.parent.dw.getData().getMatrix()
@@ -165,11 +169,11 @@ class ParaView(GView):
             
         ranges = []
         for side in [0,1]:
-            for l in self.sc[side]:
+            for l in self.litsort[side]:
                 ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
                               + [self.parent.dw.getData().col(side, l.colId()).width])
 
-        pos_axis = len(self.sc[0])
+        pos_axis = len(self.litsort[0])
         ranges.insert(pos_axis, [None, None, 1])
         return ranges
 
@@ -179,25 +183,21 @@ class ParaView(GView):
         """
 
         if self.current_r is not None:
-
             self.highl = {}
             self.hight = {}
 
             red = self.current_r
+
             draw_settings = self.getDrawSettings()
             self.axe.cla()
 
             # osupp = red.supports().getVectorABCD()
             osupp = self.suppABCD
-            pos_axis = len(red.queries[0])
-
-            new = [[l.colId() for l in red.queries[side].listLiterals()] for side in [0,1]]
-            current = None
-            if self.sc is not None:
-                current = [[l.colId() for l in self.sc[side]] for side in [0,1]]
-            self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
-            if self.zds is None or current != new:
-                self.sc =  [[l for l in red.queries[side].listLiterals()] for side in [0,1]]
+            lits = [red.queries[side].listLiteralsDetails()  for side in [0,1]]
+            if self.zds is None or lits != self.lits:
+                self.lits = lits
+                self.litsort = [sorted(self.lits[side].keys(), key=lambda x: self.lits[side][x])   for side in [0,1]]
+                pos_axis = len(self.litsort[0])
                 self.data_m, self.lit_str, self.limits, self.ranges, self.zds = self.prepareData(osupp)
             else:
                 self.ranges = self.updateRanges()
@@ -214,7 +214,7 @@ class ParaView(GView):
             self.data_m[pos_axis, :] = [draw_settings["draw_pord"][o] for o in osupp]
             tt = [draw_settings["draw_pord"][o] for o in self.parent.dw.getData().getSSetts().suppPartRange()]
             self.limits[pos_axis, :] = [np.min(tt), np.max(tt), 0]
-            self.qcols = [l for l in red.queries[0].listLiterals()]+[None]+[l for l in red.queries[1].listLiterals()]
+            self.qcols = [l for l in self.litsort[0]]+[None]+[l for l in self.litsort[1]]
 
             ### SAMPLING ENTITIES
             reps, clusters = toolMath.sampleZds(self.zds, t)
@@ -251,7 +251,7 @@ class ParaView(GView):
             self.axe.set_xticks(range(len(self.lit_str)+2))
             # tmp = [""]+["\n\n"*(i%2)+s for (i,s) in enumerate(self.lit_str)]+[""]
             tmp = [""]+self.lit_str+[""]
-            self.axe.set_xticklabels(tmp) #, rotation=20)
+            self.axe.set_xticklabels(tmp, rotation=20, ha="right")
 
             ### Bars
             rects_drag = {}
@@ -261,9 +261,9 @@ class ParaView(GView):
                     bds = [(rg[k]-self.limits[i,0]+k*np.abs(rg[2]))/(self.limits[i,1]+np.abs(rg[2]) - self.limits[i,0]) for k in [0,1]]
                     rects = self.axe.bar(i+.95, bds[1]-bds[0], 0.1, bds[0], edgecolor='0.3', color='0.7', alpha=0.7, zorder=10)
                     if self.qcols[i] is not None:
-                        if self.qcols[i].typeId() == 3:
+                        if self.qcols[i].typeId() == NumColM.type_id:
                             rects_rez[i] = rects[0]
-                        elif self.qcols[i].typeId() == 2 or self.qcols[i].typeId() == 1:   
+                        elif self.qcols[i].typeId() == CatColM.type_id or self.qcols[i].typeId() == BoolColM.type_id:   
                             rects_drag[i] = rects[0]
 
                         
@@ -311,7 +311,7 @@ class ParaView(GView):
     def getPinvalue(self, rid, b, direc=0):
         if self.qcols is None or self.qcols[rid] is None:
             return 0
-        elif self.qcols[rid].typeId() == 3:
+        elif self.qcols[rid].typeId() == NumColM.type_id:
             v = b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]
             prec = int(self.limits[rid, 2])
             if direc < 0:
@@ -321,12 +321,12 @@ class ParaView(GView):
             else:
                 tmp = np.around(v, prec)            
 
-            if tmp == self.limits[rid, 1]:
+            if tmp >= self.limits[rid, 1]:
                 tmp = float("Inf")
-            elif tmp == self.limits[rid, 0]:
+            elif tmp <= self.limits[rid, 0]:
                 tmp = float("-Inf")
             return tmp
-        elif self.qcols[rid].typeId() == 2 or self.qcols[rid].typeId() == 1:
+        elif self.qcols[rid].typeId() == CatColM.type_id or self.qcols[rid].typeId() == BoolColM.type_id:
             v = int(round(b*(self.limits[rid, 1]-self.limits[rid, 0])+self.limits[rid, 0]))
             if v > self.limits[rid, 1]:
                 v = self.limits[rid, 1]
@@ -341,36 +341,49 @@ class ParaView(GView):
                 return c.getCatFromNum(v)
             
     def receive_release(self, rid, rect):
-        if self.current_r is not None:
-            pos_axis = len(self.current_r.queries[0])
+        if self.current_r is not None and self.litsort is not None:
+            pos_axis = len(self.litsort[0])
             side = 0
             pos = rid
             if rid > pos_axis:
                 side = 1
                 pos -= (pos_axis+1)
             copied = self.current_r.queries[side].copy()
-            l = copied.listLiterals()[pos]
+            ### HERE RELEASE
+            l = self.litsort[side][pos]
             alright = False
-            if l.typeId() == 3:
+            upAll = False
+            if l.typeId() == NumColM.type_id:
                 ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
                 bounds = [self.getPinvalue(rid, b, direc) for (b,direc) in ys]
-                l.term.setRange(bounds)
+                upAll = (l.valRange() != bounds)
+                if upAll:
+                    for path, comp, neg in self.lits[side][l]:
+                        ll = copied.getBukElemAt(path)
+                        ll.getTerm().setRange(bounds)
+                        if comp:
+                            ll.flip()
                 alright = True
-            elif l.typeId() == 2:
+            elif l.typeId() == CatColM.type_id:
                 cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if cat is not None:
-                    l.term.setRange(cat)
+                    upAll = (l.getCat() != cat)
+                    if upAll:
+                        for path, comp, neg in self.lits[side][l]:
+                            copied.getBukElemAt(path).getTerm().setRange(cat)
                     alright = True
-            elif l.typeId() == 1:
+            elif l.typeId() == BoolColM.type_id:
                 bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if bl is not None:
-                    l.setNeg(bl==0)
+                    upAll = bl != self.lits[side][l][0][-1]
+                    if upAll:
+                        for path, comp, neg in self.lits[side][l]:
+                            copied.getBukElemAt(path).flip()
                     alright = True
-            if alright:
+            if alright and upAll:
                 self.ranges[rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
                                    + [self.parent.dw.getData().col(side, l.colId()).width]
                 
-                upAll = self.current_r.queries[side].listLiterals()[pos] != l
                 self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
 
                 

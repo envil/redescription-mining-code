@@ -528,8 +528,6 @@ class NumTerm(Term):
     def isLowbounded(self):
         return not numpy.isinf(self.lowb)
     
-
-
     def truthEval(self, variableV):
         return self.lowb <= variableV and variableV <= self.upb
                         
@@ -1165,6 +1163,18 @@ class Query:
             return self.op.copy()
         else: 
             return self.op.other()
+
+    def getBukElemAt(self, path, buk=None, i=None):
+        if i is None:
+            i = len(path)-1
+        if buk is None:
+            buk = self.buk
+        if path[i] < len(buk):
+            if i == 0:
+                return buk[path[i]]
+            else:
+                return self.getBukElemAt(path, buk[path[i]], i-1)
+        return None
         
     def copy(self):
         c = Query()
@@ -1301,6 +1311,14 @@ class Query:
         if len(self) == 0:
             return ""
         return recurse_list(self.reorderedLits()[1], function =lambda term, trace: format_str % {'col': term.colId(), 'buk': len(trace)}, args = {"trace":[]})
+
+    def isTreeCompatible(self):
+        ### a DNF with several conjunctions
+        ### or a single conjunction
+        ### or a single literal
+        return (self.max_depth() == 2 and self.op.isOr()) or \
+               (self.max_depth() == 1 and not self.op.isOr()) or \
+               (len(self.buk) == 1 and isinstance(self.buk[0], Literal)) 
             
     def toTree(self, fill=False):
         branches = []
@@ -1310,7 +1328,8 @@ class Query:
                     branches.append(list(buk))
                 else:
                     branches.append([buk])
-        elif self.max_depth() == 1 and (not self.op.isOr() or len(self.buk) == 1):
+        elif (self.max_depth() == 1 and not self.op.isOr()) or \
+                 (len(self.buk) == 1 and isinstance(self.buk[0], Literal)):
             branches.append(list(self.buk))
         else:
             print "Not a tree form!", self.disp(), self.buk
@@ -1456,6 +1475,30 @@ class Query:
         if len(self) > 0:
             evl(self.buk, lits)
         return lits
+
+    def listLiteralsDetails(self):
+        def evl(b, lits, path):
+            for bi, l in enumerate(b):
+                if isinstance(l, Literal):
+                    if l.getTerm() in lits:
+                        key = l.getTerm()
+                        cpm = False 
+                    else:
+                        key = l.getTerm().getComplement()
+                        cpm = True
+                        if key is None or key not in lits:
+                            key = l.getTerm()
+                            cpm = False 
+                            lits[key] = []
+                    lits[key].append((tuple([bi]+path), cpm, not l.isNeg()))
+                elif not isinstance(l, Neg):
+                    evl(l, lits, [bi]+path)
+        lits = {}
+        path = []
+        if len(self) > 0:
+            evl(self.buk, lits, path)
+        return lits
+
         
     def __str__(self):
         return self.disp()    

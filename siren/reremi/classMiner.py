@@ -108,59 +108,58 @@ class ExpMiner:
         
 
     def expandRedescriptionsGreedy(self, nextge, partial, final=None):
+        while len(nextge) > 0:
+            kids = set()
 
-        kids = set()
+            tmp_gen = self.progress_ss["current"]
+            for redi, red in enumerate(nextge):
+                ### To know whether some of its extensions were found already
+                nb_extensions = red.updateAvailable(self.souvenirs)
 
-        tmp_gen = self.progress_ss["current"]
+                if red.nbAvailableCols() > 0:
+                    bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
+                    for side in [0,1]:
+                    ##for side in [1]:
+                        ### check whether we are extending a redescription with this side empty
+                        if red.length(side) == 0:
+                            init = 1
+                        else:
+                            init = red.usesOr(1-side)*-1 
+                        for v in red.availableColsSide(side, self.constraints.getDeps(), self.data.single_dataset):
+                            if not self.questionLive(): return
 
-        for redi, red in enumerate(nextge):
-            ### To know whether some of its extensions were found already
-            nb_extensions = red.updateAvailable(self.souvenirs)
+                            bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
-            if red.nbAvailableCols() > 0:
-                bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
-                for side in [0,1]:
-                ##for side in [1]:
-                    ### check whether we are extending a redescription with this side empty
-                    if red.length(side) == 0:
-                        init = 1
-                    else:
-                        init = red.usesOr(1-side)*-1 
-                    for v in red.availableColsSide(side, self.constraints.getDeps(), self.data.single_dataset):
-                        if not self.questionLive(): return
+                        self.progress_ss["current"] += self.progress_ss.get("cand_side", [1,1])[side]
+                        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
 
-                        bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                    if self.logger.verbosity >= 4:
+                        self.logger.printL(4, bests, "log", self.ppid)
 
-                    self.progress_ss["current"] += self.progress_ss.get("cand_side", [1,1])[side]
-                    self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
+                    try:
+                        kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
 
-                if self.logger.verbosity >= 4:
-                    self.logger.printL(4, bests, "log", self.ppid)
+                    except ExtensionError as details:
+                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.ppid)
+                        kids = []
 
-                try:
-                    kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
+                    partial["batch"].extend(kids)
+                    ## SOUVENIRS
+                    if self.upSouvenirs:
+                        self.souvenirs.update(kids)
 
-                except ExtensionError as details:
-                    self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.ppid)
-                    kids = []
+                    ### parent has been used remove availables
+                    red.removeAvailables()
+                self.progress_ss["current"] = tmp_gen + self.progress_ss.get("generation",0)
+                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
+                self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.ppid)
 
-                partial["batch"].extend(kids)
-                ## SOUVENIRS
-                if self.upSouvenirs:
-                    self.souvenirs.update(kids)
+            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
+            nextge_keys = partial["batch"].selected(self.constraints.actions_nextge())
+            nextge = [partial["batch"][i] for i in nextge_keys]
 
-                ### parent has been used remove availables
-                red.removeAvailables()
-            self.progress_ss["current"] = tmp_gen + self.progress_ss.get("generation",0)
-            self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
-            self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.ppid)
-
-        self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
-        nextge_keys = partial["batch"].selected(self.constraints.actions_nextge())
-        nextge = [partial["batch"][i] for i in nextge_keys]
-
-        partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
-        self.logger.printL(1, {"partial":partial["batch"]}, 'result', self.ppid)
+            partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
+            self.logger.printL(1, {"partial":partial["batch"]}, 'result', self.ppid)
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
@@ -171,7 +170,6 @@ class ExpMiner:
             self.logger.printL(2, "--- %s" % partial["batch"][red])
 
         return partial
-
 
 
 class Miner:

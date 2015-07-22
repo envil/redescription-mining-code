@@ -13,6 +13,9 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
+from matplotlib.lines import Line2D
+from matplotlib.patches import Polygon
+
 import itertools
 
 from reremi.classQuery import Query, Literal, QTree
@@ -32,10 +35,13 @@ class TreeView(GView):
     title_str = "Tree"
 
     all_width = 1.
-    height_inter = [2., 5.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
+    height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
     maj_space = 0.05
     min_space = 0.01
     flat_space = 0.03
+    margins_sides = 0.5
+    margins_tb = 0.1
+    margin_hov = min_space/2.
 
 
     def __init__(self, parent, vid, more=None):
@@ -46,6 +52,8 @@ class TreeView(GView):
         self.ri = None
         self.qcols = None
         self.trees = None
+        self.store_supp = None
+        self.current_hover = None
         GView.__init__(self, parent, vid)
     
     def getId(self):
@@ -129,8 +137,8 @@ class TreeView(GView):
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         # self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
         # self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
-        # self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
-        # self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_click)
+        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.MapcanvasMap.draw()
 
     def plotTrees(self, trees):
@@ -180,12 +188,16 @@ class TreeView(GView):
                 mat[list(supp_part)] += 2**(ki+1)
                 parts[list(supp_part), si] = True
         connects = []
+        map_p = {}
+        store_lids = {}
         for v in numpy.unique(mat):
             idxs = tuple([i for (i,vb) in enumerate(bin(v)[::-1]) if vb == '1'])
             for i in range(parts.shape[1]):
                 c = numpy.sum((mat == v)*parts[:,i])
                 if c > 0:
+                    map_p[(i, idxs, c)] = (v, i)
                     connects.append((i, idxs, c))
+                    store_lids[(v,i)] = numpy.where((mat == v)*parts[:,i])[0]
 
         tot_height = self.height_inter[1]-self.height_inter[0]
         scores = {}
@@ -211,17 +223,31 @@ class TreeView(GView):
                     pos.append((self.height_inter[0]+tot_height*(bot+j*self.min_space+sbb[j]),
                                 self.height_inter[0]+tot_height*(bot+j*self.min_space+sbb[j+1])))
 
+        store_pos = {}
         # pos = numpy.linspace(1., 2., len(connects))
         for pi, (part, points, nb) in enumerate(connects):
+            tmp_store_pos = [(pos[pi][0], pos[pi][1])]
             for point in points:
                 #self.axe.plot((0, Xss[keys[point-1][0]][-1], 0, 0),
                 b = trees[keys[point-1][0]].getBottomX()
-                ff = -2.*(0.5-keys[point-1][0])*self.flat_space
+                ff = numpy.sign(b)*self.flat_space
                 self.axe.fill((0, ff, b, ff, 0, 0),
                               (pos[pi][0], pos[pi][0], keys[point-1][-1],
                                pos[pi][1], pos[pi][1], pos[pi][0]),
                               color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+                tmp_store_pos.append((b, keys[point-1][-1]))
+            # if (part, points, nb) == (0, (4,16), 1173):
+            #     print "THIS:", map_p[(part, points, nb)], tmp_store_pos
+            store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
+            store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
+        self.store_supp = {"pos": store_pos, "mat": mat, "parts": parts, "lids": store_lids}
+        self.makePMapping()
 
+    def makePMapping(self):
+        tmp = []
+        for bnds, p in sorted([(v[-1][0], k) for (k,v) in self.store_supp["pos"].items()]):
+            tmp.extend([(bnds[0], p, -1), (bnds[1], p, 1)])
+        self.store_supp["pmap"] = tmp
         
     def plotTree(self, side, tree, node, ds=None):
         
@@ -298,8 +324,8 @@ class TreeView(GView):
 
                 self.plotTrees(self.trees)
 
-                self.axe.set_xlim([-self.all_width-.5, self.all_width+.5])
-                self.axe.set_ylim([self.height_inter[0]-0.1, self.height_inter[1]+0.1])
+                self.axe.set_xlim([-self.all_width-self.margins_sides, self.all_width+self.margins_sides])
+                self.axe.set_ylim([self.height_inter[0]-self.margins_tb, self.height_inter[1]+self.margins_tb])
 
                 self.axe.set_xticks([])
                 self.axe.set_yticks([])
@@ -379,3 +405,93 @@ class TreeView(GView):
         qu = self.trees[side].getSimpleQuery()
         self.updateQuery(side, query=qu, force=True)
 
+
+    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+        draw_settings = self.getDrawSettings()
+        for lid in lids:
+            if lid in self.highl:
+                continue
+
+            v = self.store_supp["mat"][lid]
+            pi = numpy.where(self.store_supp["parts"][lid,:])[0][0]
+            pl = numpy.sum(self.store_supp["parts"][:lid,pi]*(self.store_supp["mat"][:lid]==v))
+            _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
+            bott, top = ppos[0]
+            center = bott + (top-bott)*pl/float(nb)
+            self.highl[lid] = []
+            for l in ppos[1:]:
+                ff = numpy.sign(l[0])*self.flat_space
+                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
+
+
+
+            if len(lids) < 10 and not lid in self.hight:
+                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_e"], linewidth=1, alpha=0.5))
+                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=colhigh, linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
+                tag = self.parent.dw.getData().getRName(lid)
+                self.hight[lid] = []
+                self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),
+                                                         xycoords='data',
+                                                         xytext=(10, 0), textcoords='offset points',
+                                                         color= draw_settings[pi]["color_e"],
+                                                         size=10, va="center", backgroundcolor="#FFFFFF",
+                                                         bbox=dict(boxstyle="round", facecolor="#FFFFFF",
+                                                                   ec=draw_settings[pi]["color_e"]),
+                                                         arrowprops=dict(arrowstyle="wedge,tail_width=1.",
+                                                                         fc="#FFFFFF",
+                                                                         ec=draw_settings[pi]["color_e"],
+                                                                         patchA=None, patchB=self.el,
+                                                                         relpos=(0.2, 0.5))
+                                                         ))
+
+    def on_click(self, event):
+        if event.inaxes != self.axe: return
+        if numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
+            lid = self.getLidAt(event.ydata)
+            if lid is not None: 
+                self.sendEmphasize([lid])
+                self.current_hover = None
+
+
+    def on_motion(self, event):
+        lid = None
+        if event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
+            lid = self.getLidAt(event.ydata)
+            if lid is not None and lid != self.current_hover:
+                if self.current_hover is not None:
+                    emph_off = set([self.current_hover])
+                else:
+                    emph_off = set()
+                self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
+                self.current_hover = lid
+        if lid is None and lid != self.current_hover:
+            self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
+            self.current_hover = None
+        # if self.ri is not None:
+        #     self.drs[self.ri].do_motion(event)
+
+    def getLidAt(self, y):
+        pp, rp = self.getRPPoint(y)
+        if pp is not None:
+            # print "LID", self.store_supp["lids"][pp][rp], pp, rp, len(self.store_supp["lids"][pp])
+            return self.store_supp["lids"][pp][rp]
+
+
+    def getRPPoint(self, y):
+        ### Get the code part and line rank for position y
+        if self.store_supp is not None and "pmap" in self.store_supp:
+            pmap = self.store_supp["pmap"]
+            i = 0
+            while i < len(pmap) and y > pmap[i][0]:
+                i += 1
+            if i < len(pmap) and pmap[i][-1] == 1:
+                pp = pmap[i][1]
+                return pp, min(int(self.store_supp["pos"][pp][2]*(y - self.store_supp["pos"][pp][3][0][0])/(self.store_supp["pos"][pp][3][0][1] - self.store_supp["pos"][pp][3][0][0])), self.store_supp["pos"][pp][2]-1)
+            else:
+                if i < len(pmap)-1 and y + self.margin_hov > pmap[i][0] and pmap[i+1][-1] == 1:
+                    return pmap[i+1][1], 0
+
+                elif i > 0 and y - self.margin_hov <= pmap[i-1][0] and pmap[i-1][-1] == 1:
+                    pp = pmap[i-1][1]
+                    return pp, self.store_supp["pos"][pp][2]-1
+        return None, 0

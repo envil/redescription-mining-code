@@ -837,7 +837,7 @@ class VarTable(GridTable):
         if pos is None:
             datVar = self.getSelectedItem()
         else:
-            dataVar = self.getItemAtRow(pos)
+            datVar = self.getItemAtRow(pos)
         queries = [Query(), Query()]
         queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
         self.parent.newRedVHist(queries, viewT)
