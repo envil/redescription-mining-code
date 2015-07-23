@@ -1,12 +1,13 @@
 ### TODO check which imports are needed 
 import re
 import wx
-import numpy as np
+import numpy
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
+import scipy.spatial.distance
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse
@@ -32,6 +33,8 @@ class EProjView(GView):
     defaultViewT = ProjFactory.defaultView.PID + "_" + what
     wait_delay = 300
 
+    margin_hov = 0.01
+
     @classmethod
     def getViewsDetails(tcl):
         return ProjFactory.getViewsDetails(tcl, what=tcl.what)
@@ -47,6 +50,7 @@ class EProjView(GView):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
+        self.current_hover = None
         self.initProject(more)
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.panel = wx.Panel(self.mapFrame, -1)
@@ -207,6 +211,7 @@ class EProjView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.MapcanvasMap.draw()
 
     def init_wait(self):
@@ -252,9 +257,9 @@ class EProjView(GView):
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-            selv = np.ones((self.parent.dw.getData().nbRows(), 1))
+            selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
-                selv[np.array(list(selected))] = selp
+                selv[numpy.array(list(selected))] = selp
 
             # for pi in draw_settings["draw_pord"]:
             #     part = [i for i,e in enumerate(self.suppABCD) if e == pi]
@@ -296,3 +301,40 @@ class EProjView(GView):
 
     def getProj(self):
         return self.proj
+
+
+    def on_motion(self, event):
+        if self.proj is not None and self.getCoords() is not None and not self.mc.isActive():            
+            lid = None
+            if event.inaxes == self.axe:
+                lid = self.getLidAt(event.xdata, event.ydata)
+                if lid is not None and lid != self.current_hover:
+                    if self.current_hover is not None:
+                        emph_off = set([self.current_hover])
+                    else:
+                        emph_off = set()
+                    self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
+                    self.current_hover = lid
+            if lid is None and lid != self.current_hover:
+                self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
+                self.current_hover = None
+            # if self.ri is not None:
+            #     self.drs[self.ri].do_motion(event)
+
+    def getLidAt(self, x, y):
+        coords = self.getCoords()
+        d = scipy.spatial.distance.cdist(zip(*[coords[0], coords[1]]), [(x,y)])
+        lid = numpy.argmin(d)
+        mmd = scipy.spatial.distance.cdist([(min(coords[0]), min(coords[1]))], [(max(coords[0]), max(coords[1]))])[0,0]
+        if d[lid,0] < self.margin_hov * mmd:
+            return lid
+        return None
+        # d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, numpy.array([(x,y)]))
+        # cands = [self.hover_access[i] for i in numpy.argsort(d, axis=0)[:5]]
+        # i = 0
+        # while i < len(cands):
+        #     path = Polygon(self.getCoordsP(cands[i]), closed=True)
+        #     if path.contains_point((x,y), radius=0.0):
+        #         return cands[i]
+        #     i += 1
+        # return None

@@ -64,6 +64,8 @@ class GView(object):
     typesI = ["Var", "Reds", "Row"]
     fwidth = 600
 
+    max_emphlbl = 5
+
     @classmethod
     def getViewsDetails(tcl):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
@@ -81,6 +83,7 @@ class GView(object):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
+        self.current_hover = None
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.mapFrame.SetMinSize((self.fwidth,-1))
         self.panel = wx.Panel(self.mapFrame, -1)
@@ -593,16 +596,20 @@ class GView(object):
                                           marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
                                           markeredgewidth=1, linestyle='None'))
 
-            if len(lids) == 1:
+            if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),  xycoords='data',
-                                                     xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
-                                                     size=10, va="center", backgroundcolor="#FFFFFF",
-                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
-                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                     ))
+                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),
+                                                         xycoords='data', xytext=(-10, 15), textcoords='offset points',
+                                                         color= draw_settings[pi]["color_e"], size=10,
+                                                         va="center", backgroundcolor="#FFFFFF",
+                                                         bbox=dict(boxstyle="round", facecolor="#FFFFFF",
+                                                                   ec=draw_settings[pi]["color_e"]),
+                                                         arrowprops=dict(arrowstyle="wedge,tail_width=1.",
+                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                         patchA=None, patchB=self.el, relpos=(0.2, 0.5))
+                                                         ))
+
             
     def emphasizeOff(self, lids = None):
         if lids is None:
@@ -714,7 +721,7 @@ class GView(object):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
         return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub, SSetts.muaB, SSetts.mubB,
-                              SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma])]),
+                                                                 SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma])]), 
                 "shape": dot_shape,
                 SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],

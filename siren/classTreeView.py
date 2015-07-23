@@ -45,15 +45,9 @@ class TreeView(GView):
 
 
     def __init__(self, parent, vid, more=None):
-        self.reps = set()
         self.current_r = None
-        self.zds = None
-        self.sc = None
-        self.ri = None
-        self.qcols = None
         self.trees = None
         self.store_supp = None
-        self.current_hover = None
         GView.__init__(self, parent, vid)
     
     def getId(self):
@@ -425,23 +419,20 @@ class TreeView(GView):
 
 
 
-            if len(lids) < 10 and not lid in self.hight:
+            if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_e"], linewidth=1, alpha=0.5))
                 self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=colhigh, linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),
-                                                         xycoords='data',
-                                                         xytext=(10, 0), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_e"],
-                                                         size=10, va="center", backgroundcolor="#FFFFFF",
+                                                         xycoords='data', xytext=(10, 0), textcoords='offset points',
+                                                         color= draw_settings[pi]["color_e"], size=10,
+                                                         va="center", backgroundcolor="#FFFFFF",
                                                          bbox=dict(boxstyle="round", facecolor="#FFFFFF",
                                                                    ec=draw_settings[pi]["color_e"]),
                                                          arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF",
-                                                                         ec=draw_settings[pi]["color_e"],
-                                                                         patchA=None, patchB=self.el,
-                                                                         relpos=(0.2, 0.5))
+                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                         patchA=None, patchB=self.el, relpos=(0.2, 0.5))
                                                          ))
 
     def on_click(self, event):
@@ -467,8 +458,6 @@ class TreeView(GView):
         if lid is None and lid != self.current_hover:
             self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
             self.current_hover = None
-        # if self.ri is not None:
-        #     self.drs[self.ri].do_motion(event)
 
     def getLidAt(self, y):
         pp, rp = self.getRPPoint(y)

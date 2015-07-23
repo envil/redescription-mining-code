@@ -3,6 +3,8 @@ from reremi.classMiner import instMiner
 from classWorkInactive import WorkInactive
 import Queue
 
+import multiprocessing.queues
+
 import pdb
 
 ##### WITH MULTIPROCESSING
@@ -58,6 +60,7 @@ class ProjectorProcess(multiprocessing.Process):
 class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
+    #cqueue = multiprocessing.queues.SimpleQueue
     type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
@@ -214,6 +217,9 @@ class WorkLocal(WorkInactive):
                 self.workers[source]["work_progress"] = message[1]
                 self.workers[source]["work_estimate"] = message[0]
             updates["progress"] = True
+        elif source in self.off and message is None:
+            self.retire(source)
+
             
     def sendResult(self, source, message, updates, parent):
         if source not in self.workers:

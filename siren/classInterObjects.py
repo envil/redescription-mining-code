@@ -204,8 +204,8 @@ class MaskCreator(object):
                                        "order":2, "active_q": self.q_false},
                             "add": {"method": self.do_add, "label": "Add polygon vertex",
                                        "legend": "Insert a polygon vertex at pointer", "order":1, "active_q": self.q_false},
-                            "erase": {"method": self.do_erease, "label": "Erease polygon",
-                                      "legend": "Erease the polygon", "order":3, "active_q": self.q_has_poly}
+                            "erase": {"method": self.do_erase, "label": "Erase polygon",
+                                      "legend": "Erase the polygon", "order":3, "active_q": self.q_has_poly}
                             }
         self.setKeys()
         canvas = self.ax.figure.canvas
@@ -331,7 +331,7 @@ class MaskCreator(object):
                         if i not in inds]
         self._update_line()
 
-    def do_erease(self, event=None):
+    def do_erase(self, event=None):
         self.clear()
 
     def do_add(self,event=None):

@@ -70,7 +70,6 @@ class ExpMiner:
             else:
                 return self.expandRedescriptionsGreedy(nextge, partial, final)
 
-
     def expandRedescriptionsTree(self, nextge, partial, final=None):
         tmp_gen = self.progress_ss["current"]
         for redi, red in enumerate(nextge):
@@ -110,9 +109,10 @@ class ExpMiner:
     def expandRedescriptionsGreedy(self, nextge, partial, final=None):
         while len(nextge) > 0:
             kids = set()
-
+            redi = 0
             tmp_gen = self.progress_ss["current"]
-            for redi, red in enumerate(nextge):
+            while redi < len(nextge):
+                red = nextge[redi]
                 ### To know whether some of its extensions were found already
                 nb_extensions = red.updateAvailable(self.souvenirs)
 
@@ -126,9 +126,11 @@ class ExpMiner:
                         else:
                             init = red.usesOr(1-side)*-1 
                         for v in red.availableColsSide(side, self.constraints.getDeps(), self.data.single_dataset):
-                            if not self.questionLive(): return
-
-                            bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                            if not self.questionLive():
+                                nextge = []
+                        
+                            else:
+                                bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
 
                         self.progress_ss["current"] += self.progress_ss.get("cand_side", [1,1])[side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
@@ -153,6 +155,7 @@ class ExpMiner:
                 self.progress_ss["current"] = tmp_gen + self.progress_ss.get("generation",0)
                 self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.ppid)
                 self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.ppid)
+                redi += 1
 
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
             nextge_keys = partial["batch"].selected(self.constraints.actions_nextge())
@@ -168,7 +171,6 @@ class ExpMiner:
         self.logger.printL(1, "%d redescriptions selected" % len(partial["results"]), 'status', self.ppid)
         for red in partial["results"]:
             self.logger.printL(2, "--- %s" % partial["batch"][red])
-
         return partial
 
 
@@ -240,8 +242,13 @@ class Miner:
         self.constraints.setDeps(deps)
 
     def initCharbon(self):
-        if self.constraints.algo_family() == "trees" and not self.data.hasMissing():
-            return TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF)(self.constraints)
+        if self.constraints.algo_family() == "trees":
+            if self.data.hasMissing():
+                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK TO GREEDY...", 'log', self.id)
+                return CharbonGStd(self.constraints)
+            else:
+                return TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF)(self.constraints)
+
         else:
             if self.data.hasMissing():
                 return CharbonGMiss(self.constraints)
@@ -347,8 +354,12 @@ class Miner:
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
             partial = self.expandRedescriptions([initial_red])
             ## SOUVENIRS self.souvenirs.update(partial["batch"])
-            
-            self.final["batch"].extend([partial["batch"][i] for i in partial["results"]])
+
+            if partial is not None:
+                self.final["batch"].extend([partial["batch"][i] for i in partial["results"]])
+            else:
+                print "Partial NONE"
+                
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
 
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
@@ -504,6 +515,10 @@ class MinerDistrib(Miner):
         self.logger.printL(1, None, 'progress', self.id)
         return self.final
 
+    def shareLogger(self):
+        if not self.logger.usesOutMethods():
+            return self.logger
+        return None
         
     def initializeRedescriptionsGreedy(self, ids=None):
         self.initial_pairs.reset()
@@ -537,8 +552,10 @@ class MinerDistrib(Miner):
                 self.count += 1
                 self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
                 self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,k))
-                self.workers[k] = ExpandProcess(k, self.id, self.count, self.data, self.charbon, self.constraints,
-                                                self.souvenirs, self.rqueue, [initial_red], final=self.final, logger=self.logger)
+                self.workers[k] = ExpandProcess(k, self.id, self.count, self.data,
+                                                self.charbon, self.constraints,
+                                                self.souvenirs, self.rqueue, [initial_red],
+                                                final=self.final, logger=self.shareLogger())
 
        
     def handlePairResult(self, m):

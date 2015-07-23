@@ -1,12 +1,13 @@
 ### TODO check which imports are needed 
 import wx
-import numpy as np
+import numpy
 import re
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
+import scipy.spatial.distance
 from matplotlib.widgets import Cursor
 #from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap
@@ -126,15 +127,17 @@ class MapView(GView):
 
         self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
         self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.MapcanvasMap.draw()
             
     def updateMap(self):
         """ Redraws the map
         """
 
-        if self.suppABCD is not None and self.getCoords() is not None:
+        if self.suppABCD is not None and self.hasProjCoords() is not None:
             self.highl = {}
             self.hight = {}
+            self.hover_access = [i for (i, v) in enumerate(self.suppABCD) if v != SSetts.delta] 
             
             self.axe.cla()
             self.makeBasemapBack(self.bm)
@@ -145,9 +148,9 @@ class MapView(GView):
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-            selv = np.ones((self.parent.dw.getData().nbRows(), 1))
+            selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
             if len(selected) > 0:
-                selv[np.array(list(selected))] = selp
+                selv[numpy.array(list(selected))] = selp
 
             lims = self.axe.get_xlim(), self.axe.get_ylim()
             for idp, pi in enumerate(self.suppABCD):
@@ -178,7 +181,7 @@ class MapView(GView):
             if len(lids) == 1:
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid)[0], self.getCoords(1,lid)[0]),  xycoords='data',
+                self.hight[lid].append(self.axe.annotate(tag, xy=self.getCoordsM(lid),  xycoords='data',
                                                      xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
                                                      size=10, va="center", backgroundcolor="#FFFFFF",
                                                      bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
@@ -216,22 +219,22 @@ class MapView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-    def getPCoords(self):
-        if self.coords_proj is None:
-            return []
-        return [(self.coords_proj[0][i][0], self.coords_proj[1][i][0]) for i in range(len(self.coords_proj[0]))]
+    def hasProjCoords(self):
+        return self.coords_proj is not None
 
-    def getCoords(self, axi=None, ids=None):
-        if self.coords_proj is None:
-            return self.coords_proj
-        if axi is None:
-            return self.coords_proj
-        elif ids is None:
-            return self.coords_proj[axi]
-        return self.coords_proj[axi][ids]
+    def getPCoords(self):
+        if self.hasProjCoords():
+            return zip(*[self.coords_proj[0][0,:,0], self.coords_proj[0][1,:,0]])
+        return []
+
+    def getCoordsM(self, id):
+        return self.coords_proj[0][:,id,0]
+
+    def getCoordsP(self, id):
+        return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
 
     def apply_mask(self, path, radius=0.0):
-        if path is not None and self.getCoords() is not None:
+        if path is not None and self.hasProjCoords():
             return [i for i,point in enumerate(self.getPCoords()) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SSetts.delta)]
         return []
 
@@ -239,11 +242,16 @@ class MapView(GView):
         self.mapoly = self.getMapPoly() & (min([len(cs) for cs in coords[0]]) > 2)
         if bm is None:
             return coords
-        proj_coords = [[],[]]
+        nbc_max = max([len(c) for c in coords[0]])
+        proj_coords = [numpy.zeros((2, len(coords[0]), nbc_max+1)), []]
+
         for i in range(len(coords[0])):
             p0, p1 = bm(coords[0][i], coords[1][i])
-            proj_coords[0].append([np.mean(p0)] + list(p0))
-            proj_coords[1].append([np.mean(p1)] + list(p1))
+            proj_coords[1].append(len(p0)+1)
+            proj_coords[0][0,i,0] = numpy.mean(p0)
+            proj_coords[0][0,i,1:proj_coords[1][-1]] = p0
+            proj_coords[0][1,i,0] = numpy.mean(p1)
+            proj_coords[0][1,i,1:proj_coords[1][-1]] = p1
         return proj_coords
 
     def drawPoly(self):
@@ -263,11 +271,12 @@ class MapView(GView):
         else:
             args = {}
         if self.drawPoly():
-            return [self.axe.add_patch(Polygon(zip(self.getCoords(0,idp)[1:], self.getCoords(1,idp)[1:]), closed=True, fill=True,
+            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True,
                                               fc=dsetts["color_f"], ec=dsetts["color_e"], alpha=dsetts["alpha"]*selv, **args))]
                     
         else:
-            return self.axe.plot(self.getCoords(0,idp)[:1], self.getCoords(1,idp)[:1],
+            x, y = self.getCoordsM(idp)
+            return self.axe.plot(x, y,
                                  mfc=dsetts["color_f"], mec=dsetts["color_e"],
                                  marker=dsetts["shape"], markersize=dsetts["size"],
                                  linestyle='None', alpha=dsetts["alpha"]*selv, **args)
@@ -321,7 +330,7 @@ class MapView(GView):
             step -= 10
         if step == 0:
             step = 1
-        return np.arange(int(llat/step)*step,(int(ulat/step)+1)*step,step), np.arange(int(llon/step)*step,(int(ulon/step)+1)*step,step)
+        return numpy.arange(int(llat/step)*step,(int(ulat/step)+1)*step,step), numpy.arange(int(llon/step)*step,(int(ulon/step)+1)*step,step)
 
     def makeBasemapProj(self):
         proj, resolution = self.getBasemapProjSetts()
@@ -332,7 +341,7 @@ class MapView(GView):
         rsphere=6370997.0
         pi=3.1415926 
         
-        width = 2*pi*rsphere*np.cos((min(abs(llon), abs(ulon))-blon)/180)*(ulat-llat+2*blat)/360
+        width = 2*pi*rsphere*numpy.cos((min(abs(llon), abs(ulon))-blon)/180)*(ulat-llat+2*blat)/360
         height = 2*pi*rsphere*(ulon-llon+2*blat)/360
         lon_0 = llon + (ulon-llon)/2.0
         lat_0 = llat + (ulat-llat)/2.0
@@ -386,3 +395,31 @@ class MapView(GView):
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
 
 
+    def on_motion(self, event):
+        if not self.mc.isActive():            
+            lid = None
+            if event.inaxes == self.axe:
+                lid = self.getLidAt(event.xdata, event.ydata)
+                if lid is not None and lid != self.current_hover:
+                    if self.current_hover is not None:
+                        emph_off = set([self.current_hover])
+                    else:
+                        emph_off = set()
+                    self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
+                    self.current_hover = lid
+            if lid is None and lid != self.current_hover:
+                self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
+                self.current_hover = None
+            # if self.ri is not None:
+            #     self.drs[self.ri].do_motion(event)
+
+    def getLidAt(self, x, y):
+        d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, [(x,y)])
+        cands = [self.hover_access[i] for i in numpy.argsort(d, axis=0)[:5]]
+        i = 0
+        while i < len(cands):
+            path = Polygon(self.getCoordsP(cands[i]), closed=True)
+            if path.contains_point((x,y), radius=0.0):
+                return cands[i]
+            i += 1
+        return None

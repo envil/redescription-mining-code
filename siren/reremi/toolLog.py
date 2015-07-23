@@ -101,6 +101,12 @@ class Log:
             self.out.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
         return len(self.out)+len(self.oqu)-1
 
+    def usesOutMethods(self):
+        for out in self.out+self.oqu:
+            if out["method"] is not None:
+                return True
+        return False
+
     def printL(self, level, message, type_message="*", source=None):
         for out in self.out+self.oqu:
             if ( type_message in out["verbosity"].keys() and level <= out["verbosity"][type_message]) \
