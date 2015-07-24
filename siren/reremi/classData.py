@@ -84,6 +84,9 @@ class ColM(object):
     def density(self):
         return 1.0
 
+    def minGap(self):
+        return 0
+
     def isDense(self, thres=None):
         if thres is None:
             thres = 0.5
@@ -262,6 +265,9 @@ class BoolColM(ColM):
             return 0.0
         else:
             return len(self.hold)/float(self.N-len(self.missing))
+
+    def minGap(self):
+        return 1.
 
     def getTerm(self):
         return BoolTerm(self.id)
@@ -454,6 +460,8 @@ class CatColM(ColM):
             return tmp
         return self.vect
 
+    def minGap(self):
+        return 1
 
     def getTerm(self):
         return CatTerm(self.id, self.modeCat())
@@ -705,6 +713,11 @@ class NumColM(ColM):
             pass
         return self.NA 
 
+    def minGap(self):
+        if self.vect is None:
+            self.mkVector()
+        return np.min(np.diff(np.unique(self.vect[np.isfinite(self.vect)])))
+
     def mkVector(self):
         if self.isDense():
             self.vect = np.ones(self.N)*self.NA
@@ -735,6 +748,7 @@ class NumColM(ColM):
                 self.prec = len(str(v % 1))-2
         
     def getPrec(self, details=None):
+        pdb.set_trace()
         if self.prec is None:
             self.compPrec()
         return self.prec
@@ -806,6 +820,7 @@ class NumColM(ColM):
             else:
                 return 1-len(self.mode[1])/float(self.N)
         return 1.0
+
 
     def isDense(self, thres=None):
         if self.mode[0] != 0:

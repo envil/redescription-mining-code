@@ -40,7 +40,7 @@ class ParaView(GView):
     org_spreadL = 0.49 #(2/3.-0.5)
     org_spreadR = 0.49
     flat_space = 0.06
-    maj_space = 0.1
+    maj_space = 0.001
     max_group_clustering = 100
     nb_clusters = 10
     margins_sides = 0.05
@@ -53,7 +53,6 @@ class ParaView(GView):
         self.reps = set()
         self.current_r = None
         self.prepared_data = None
-        self.lits = None
         self.sld = None
         self.ri = None
         GView.__init__(self, parent, vid)
@@ -143,23 +142,35 @@ class ParaView(GView):
         self.MapfigMap.canvas.mpl_connect('axes_leave_event', self.on_axes_out)
         self.MapcanvasMap.draw()
 
-    def prepareData(self, draw_ppos=None):
-        pos_axis = len(self.litsort[0])
-
+    def prepareData(self, red, draw_ppos=None):
+        
+        lits = [red.queries[side].listLiteralsDetails()  for side in [0,1]]
+        litsort = [sorted(lits[side].keys(), key=lambda x: lits[side][x])   for side in [0,1]]
+        pos_axis = len(litsort[0])
+        
+        ranges = self.updateRanges(litsort, lits)
+        
         side_cols = []
         lit_str = []
         for side in [0,1]:
-            for l in self.litsort[side]:
+            for l in litsort[side]:
                 side_cols.append((side, l.colId()))
-                lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
-
-        precisions = [self.parent.dw.getData().col(side, col).getPrec() for side,col in side_cols]
-
+                # lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
+                lit_str.append("v%d" % l.colId())
         side_cols.insert(pos_axis, None)
-        precisions.insert(pos_axis, 0)
-        qcols = [l for l in self.litsort[0]]+[None]+[l for l in self.litsort[1]]
 
-        ranges = self.updateRanges()
+        if self.prepared_data is not None and self.prepared_data["side_cols"] == side_cols:
+            self.prepared_data["ranges"] = ranges
+            self.prepared_data["lits"] = lits
+            self.prepared_data["litsort"] = litsort
+            return self.prepared_data
+
+        # precisions = [self.parent.dw.getData().col(side, col).getPrec() for side,col in side_cols]
+        precisions = [10**numpy.floor(numpy.log10(self.parent.dw.getData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
+
+        precisions.insert(pos_axis, 1)
+        precisions = numpy.array(precisions)
+        qcols = [l for l in litsort[0]]+[None]+[l for l in litsort[1]]
         
         mat, details, mcols = self.parent.dw.getData().getMatrix(nans=numpy.nan)
         mcols[None] = -1
@@ -168,12 +179,13 @@ class ParaView(GView):
             data_m = numpy.vstack([mat, draw_ppos[self.suppABCD]])[cids]
         else:
             data_m = numpy.vstack([mat, self.suppABCD])[cids]
-        limits = numpy.vstack([numpy.nanmin(data_m, axis=1), numpy.nanmax(data_m, axis=1), precisions])
 
+        limits = numpy.vstack([numpy.nanmin(data_m, axis=1),
+                               numpy.nanmax(data_m, axis=1), precisions, numpy.zeros(precisions.shape)])
         denoms = limits[1,:]-limits[0,:]
         denoms[denoms==0] = 1.
         scaled_m = numpy.vstack([(data_m[i,:]-limits[0,i])/denoms[i] for i in range(data_m.shape[0])])
-
+        spaces = []
         ### spreading lines over range
         N = data_m.shape[1]
         avgs = numpy.nanmean(numpy.vstack([scaled_m, numpy.zeros_like(scaled_m[i,:])]), axis=0)
@@ -187,10 +199,22 @@ class ParaView(GView):
                 top, bot = self.missing_yy-len(idsNAN)*self.missing_w/N, \
                            self.missing_yy+len(idsNAN)*self.missing_w/N
                 nanvs = numpy.linspace(top, bot, len(idsNAN))
-                
-            if ranges[i][-1] == 0:
-                pos_lids.append(scaled_m[i])
-            else:
+
+            spreadv = numpy.zeros(data_m[i,:].shape)
+            w = abs(limits[2,i])
+            limits[0,i]-=0.5*w
+            limits[1,i]+=0.5*w
+            av_space = w - self.maj_space * denoms[i]
+            # # pdb.set_trace()
+            # prec = limits[-1,i]/(limits[1,i]-limits[0,i])
+            # print i,prec, limits[-1,i], (limits[1,i]-limits[0,i])
+            # if prec < 0.001:
+            # # if ranges[i][-1] == 0:
+            #     pos_lids.append(scaled_m[i])
+            # else:
+            # pdb.set_trace()
+            if av_space > 0:
+                limits[-1,i] = av_space
                 ww = numpy.array([50, 10, 100])
                 if i == 0:
                     cc = [i+1, i+1, pos_axis]
@@ -198,23 +222,22 @@ class ParaView(GView):
                     cc = [i-1, i-1, pos_axis]
                 else:
                     cc = [i-1, i+1, pos_axis]
-                w = abs(ranges[i][-1])
-                center = 0.5*w
-                av_space = center - 0.5*self.maj_space * (denoms[i] + w)  
                 pos_help = numpy.dot(ww, scaled_m[cc,:])+avgs
-                spreadv = numpy.zeros(data_m[i,:].shape)
+                
                 vs = numpy.unique(scaled_m[i,:])
                 for v in vs:
                     if v != self.missing_yy:
                         vids = list(numpy.where(scaled_m[i,:]==v)[0])
                         vids.sort(key=lambda x: pos_help[x])
-                        top, bot = center-len(vids)*av_space/N, center+len(vids)*av_space/N
+                        top, bot = -len(vids)*av_space*0.5/N, len(vids)*av_space*0.5/N
                         spreadv[vids] += numpy.linspace(top, bot, len(vids))
-                pos_lids.append((data_m[i,:]-limits[0,i] + spreadv)/(denoms[i] + w))
+                        # spreadv[vids] += 3 # numpy.linspace(top, bot, len(vids))
+            # if i == 0:
+            #     pdb.set_trace()
 
+            pos_lids.append((data_m[i,:]-limits[0,i] + spreadv)/(limits[1,i]-limits[0,i]))
             if nanvs is not None:
                 pos_lids[-1][idsNAN] = nanvs
-
 
         spreadL = numpy.zeros(data_m[i,:].shape)
         spreadL[numpy.argsort(pos_lids[0])] = numpy.linspace(0.5-self.org_spreadL, 0.5+self.org_spreadL, N)
@@ -223,7 +246,7 @@ class ParaView(GView):
 
         pos_lids.extend([spreadR,spreadL])
         pos_lids = numpy.vstack(pos_lids)
-        
+
         xlabels = lit_str
         xticks = [x for x,v in enumerate(side_cols) if v is not None]
         ycols = [-1]
@@ -281,21 +304,23 @@ class ParaView(GView):
                          "qcols": qcols,
                          "data_m": data_m,
                          "scaled_m": scaled_m,
-                         "pos_lids": pos_lids}
+                         "pos_lids": pos_lids,
+                         "lits": lits,
+                         "litsort": litsort
+                         }
         return prepared_data
 
-    def updateRanges(self):
+    def updateRanges(self, litsort, lits):
         ranges = []
         for side in [0,1]:
-            for l in self.litsort[side]:
+            for l in litsort[side]:
                 if l.typeId() == BoolColM.type_id:
                     ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r)
-                                   for r in [self.lits[side][l][0][-1], self.lits[side][l][0][-1]]] 
-                                  + [self.parent.dw.getData().col(side, l.colId()).width])
+                                   for r in [lits[side][l][0][-1], lits[side][l][0][-1]]])
                 else:
-                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
-                                  + [self.parent.dw.getData().col(side, l.colId()).width])
-        ranges.insert(len(self.litsort[0]), [None, None, 1])
+                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r)
+                                   for r in l.valRange()])
+        ranges.insert(len(litsort[0]), [None, None])
         return ranges
 
 
@@ -308,17 +333,9 @@ class ParaView(GView):
             self.hight = {}
 
             red = self.current_r
-
             draw_settings = self.getDrawSettings()
 
-            lits = [red.queries[side].listLiteralsDetails()  for side in [0,1]]
-            if self.prepared_data is None or lits != self.lits:
-                self.lits = lits
-                self.litsort = [sorted(self.lits[side].keys(), key=lambda x: self.lits[side][x])   for side in [0,1]]
-                pos_axis = len(self.litsort[0])
-                self.prepared_data = self.prepareData(draw_ppos = draw_settings["draw_ppos"])
-            else:
-                self.prepared_data["ranges"] = self.updateRanges()
+            self.prepared_data = self.prepareData(red, draw_ppos = draw_settings["draw_ppos"])
 
             ### SAMPLING ENTITIES
             t = 0.1
@@ -341,6 +358,7 @@ class ParaView(GView):
             self.axe.cla()
             ycols = self.prepared_data["ycols"]
             for r in self.reps:
+                # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
                 if selv[r] > 0:
                     self.axe.plot(self.prepared_data["xs"], self.prepared_data["pos_lids"][self.prepared_data["ycols"],r],
                                   color=draw_settings[self.suppABCD[r]]["color_e"],
@@ -355,9 +373,7 @@ class ParaView(GView):
             rects_rez = {}
             for i, rg in enumerate(self.prepared_data["ranges"]):
                 if rg[0] is not None:
-                    bds = [(rg[k]-self.prepared_data["limits"][0,i]+
-                            k*numpy.abs(rg[2]))/(self.prepared_data["limits"][1,i]+numpy.abs(rg[2]) -
-                                              self.prepared_data["limits"][0,i]) for k in [0,1]]
+                    bds = self.getYsforRange(i, rg)
                     rects = self.axe.bar(i-self.rect_halfwidth, bds[1]-bds[0], 2*self.rect_halfwidth, bds[0],
                                          edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=10)
 
@@ -383,7 +399,7 @@ class ParaView(GView):
 
             #### fit window size
             extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
-                      self.missing_yy-self.margins_tb, 0]
+                      self.missing_yy-self.margins_tb, -0.5*self.margins_tb]
             self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
                           [extent[2], extent[2], extent[3], extent[3]],
                           color='1', alpha=0.66, zorder=10, ec="1" )
@@ -393,6 +409,7 @@ class ParaView(GView):
                 self.axe.set_ylim([self.missing_yy-self.margins_tb,1+self.margins_tb])
             else:
                 self.axe.set_ylim([0-self.margins_tb,1+self.margins_tb])
+            
 
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
@@ -426,19 +443,26 @@ class ParaView(GView):
         else:
             self.on_motion(event)
 
+    def getVforY(self, rid, y):
+        return self.prepared_data["limits"][0,rid] + y*(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid])
+    def getYforV(self, rid, v, direc=0):
+        return (v-self.prepared_data["limits"][0,rid]+direc*0.5*self.prepared_data["limits"][-1,rid])/(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid])
+    def getYsforRange(self, rid, range):
+        return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[1], direc=1)]
+
     def getPinvalue(self, rid, b, direc=0):
         if self.prepared_data is None or self.prepared_data["qcols"][rid] is None:
             return 0
         elif self.prepared_data["qcols"][rid].typeId() == NumColM.type_id:
-            v = b*(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0, rid])+self.prepared_data["limits"][0, rid]
-            prec = int(self.prepared_data["limits"][2, rid])
+            v = self.getVforY(rid, b)
+            prec = -numpy.log10(self.prepared_data["limits"][2, rid])
+            #tmp = 10**-prec*numpy.around(v*10**prec)
             if direc < 0:
                 tmp = 10**-prec*numpy.ceil(v*10**prec)
             elif direc > 0:
                 tmp = 10**-prec*numpy.floor(v*10**prec)
             else:
                 tmp = numpy.around(v, prec)            
-
             if tmp >= self.prepared_data["limits"][1, rid]:
                 tmp = float("Inf")
             elif tmp <= self.prepared_data["limits"][0, rid]:
@@ -459,7 +483,7 @@ class ParaView(GView):
                 return c.getCatFromNum(v)
             
     def receive_release(self, rid, rect):
-        if self.current_r is not None and self.litsort is not None:
+        if self.current_r is not None and self.prepared_data is not None:
             pos_axis = self.prepared_data["pos_axis"]
             side = 0
             pos = rid
@@ -468,7 +492,7 @@ class ParaView(GView):
                 pos -= (pos_axis+1)
             copied = self.current_r.queries[side].copy()
             ### HERE RELEASE
-            l = self.litsort[side][pos]
+            l = self.prepared_data["litsort"][side][pos]
             alright = False
             upAll = False
             if l.typeId() == NumColM.type_id:
@@ -476,7 +500,7 @@ class ParaView(GView):
                 bounds = [self.getPinvalue(rid, b, direc) for (b,direc) in ys]
                 upAll = (l.valRange() != bounds)
                 if upAll:
-                    for path, comp, neg in self.lits[side][l]:
+                    for path, comp, neg in self.prepared_data["lits"][side][l]:
                         ll = copied.getBukElemAt(path)
                         ll.getTerm().setRange(bounds)
                         if comp:
@@ -487,20 +511,19 @@ class ParaView(GView):
                 if cat is not None:
                     upAll = (l.getCat() != cat)
                     if upAll:
-                        for path, comp, neg in self.lits[side][l]:
+                        for path, comp, neg in self.prepared_data["lits"][side][l]:
                             copied.getBukElemAt(path).getTerm().setRange(cat)
                     alright = True
             elif l.typeId() == BoolColM.type_id:
                 bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if bl is not None:
-                    upAll = bl != self.lits[side][l][0][-1]
+                    upAll = bl != self.prepared_data["lits"][side][l][0][-1]
                     if upAll:
-                        for path, comp, neg in self.lits[side][l]:
+                        for path, comp, neg in self.prepared_data["lits"][side][l]:
                             copied.getBukElemAt(path).flip()
                     alright = True
             if alright and upAll:
-                self.prepared_data["ranges"][rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()] \
-                                   + [self.parent.dw.getData().col(side, l.colId()).width]
+                self.prepared_data["ranges"][rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
                 
                 self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
 
