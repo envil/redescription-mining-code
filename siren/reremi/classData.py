@@ -20,7 +20,6 @@ NA_num  = np.nan
 NA_bool  = -1
 NA_cat  = -1
 
-
 class DataError(Exception):
     def __init__(self, value):
         self.value = value
@@ -37,14 +36,6 @@ class ColM(object):
     def initSums(N):
         return [0 for i in range(N)]
     initSums = staticmethod(initSums)
-
-    def valToStr(self, val):
-        ### this is for writing, actually keep the original type, csv writer will take care of it
-        return val
-        # if val == self.NA: # or (np.isnan(val) and np.isnan(self.NA)):
-        #     return NA_str
-        # else:
-        #     return val #"%s" % val
 
     def parseList(list):
         return None
@@ -82,6 +73,10 @@ class ColM(object):
             return len(self.missing)
         return 0
 
+    def valToStr(self, val):
+        if val == self.NA:
+            return Data.NA_str 
+        return val
 
     def getPrec(self, details=None):
         return 0
@@ -121,9 +116,18 @@ class ColM(object):
             pass
         return self.NA
 
-    def getVector(self, bincats=False):
+
+    def mkVector(self):
+        self.vect = np.ones(self.N, dtype=np.int)*self.NA
+        
+    def getVector(self, bincats=False, nans=None):
         if self.vect is None:
-            self.vect = np.ones(self.N, dtype=np.int)*self.NA
+            self.mkVector()
+        if self.hasMissing() and nans is not None and \
+               not ( (np.isnan(nans) and np.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
+            tmp = np.array(self.vect, dtype=np.float, copy=True)
+            tmp[tmp==self.NA] = nans
+            return tmp
         return self.vect
 
     def getType(self, details=None):
@@ -136,8 +140,11 @@ class ColM(object):
         return "-"
     def getMax(self, details=None):
         return "-"
+    def getMissInfo(self, details=None):
+        return "%1.2f%%: %d"% (len(self.missing)/float(self.N), len(self.missing))
     def getRange(self):
         return []
+
 
     def typeId(self):
         return self.type_id
@@ -178,7 +185,7 @@ class ColM(object):
         self.enabled = 0
 
     def __str__(self):
-        return "%s variable %i %s, %d missing values" %(self.getType(), self.getId(), self.getName(), self.lMiss())
+        return "%s variable %i %s, %d missing values" %(self.getType(), self.getId(), self.getName().encode('ascii', 'replace'), self.lMiss())
 
     def suppInBounds(self, min_in=-1, min_out=-1):
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
@@ -247,10 +254,14 @@ class BoolColM(ColM):
                 tmp.append((self.N-1, int(False)))
             return tmp
         else:
-            return map(self.valToStr, self.getVector())
+            # return map(self.valToStr, self.getVector())
+            return self.getVector()
 
     def density(self):
-        return (len(self.hold)+len(self.missing))/float(self.N)
+        if self.N == len(self.missing):
+            return 0.0
+        else:
+            return len(self.hold)/float(self.N-len(self.missing))
 
     def getTerm(self):
         return BoolTerm(self.id)
@@ -285,12 +296,10 @@ class BoolColM(ColM):
         except:
             return self.NA
 
-    def getVector(self, bincats=False):
-        if self.vect is None:
-            self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(False)
-            self.vect[list(self.missing)] = self.NA
-            self.vect[list(self.hold)] = self.numEquiv(True)
-        return self.vect
+    def mkVector(self):
+        self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(False)
+        self.vect[list(self.missing)] = self.NA
+        self.vect[list(self.hold)] = self.numEquiv(True)
 
     def getType(self, details=None):
         return "Boolean"
@@ -424,7 +433,12 @@ class CatColM(ColM):
             cat_dict = self.ord_cats + [NA_str]
             return [cat_dict[v] for v in self.getVector()]
 
-    def getVector(self, bincats=False):
+    def mkVector(self):
+        self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(self.NA)
+        for v, cat in enumerate(self.ord_cats):
+            self.vect[list(self.sCats[cat])] = v
+
+    def getVector(self, bincats=False, nans=None):
         if bincats:
             vect = np.zeros((self.N, self.nbCats()), dtype=np.int)
             for v, cat in enumerate(self.ord_cats):
@@ -432,9 +446,12 @@ class CatColM(ColM):
             return vect
         
         if self.vect is None:
-            self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(self.NA)
-            for v, cat in enumerate(self.ord_cats):
-                self.vect[list(self.sCats[cat])] = v
+            self.mkVector()
+        if self.hasMissing() and nans is not None and \
+               not ( (np.isnan(nans) and np.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
+            tmp = np.array(self.vect, dtype=np.float, copy=True)
+            tmp[tmp==self.NA] = nans
+            return tmp
         return self.vect
 
 
@@ -519,8 +536,8 @@ class CatColM(ColM):
         return self.cards[-1][0]
 
     def getCatFromNum(self, n):
-        if n < self.nbCats():
-            return self.cats()[n]
+        if n>= 0 and n < self.nbCats():
+            return self.cats()[int(n)]
         return self.NA
 
     def cats(self):
@@ -666,6 +683,13 @@ class NumColM(ColM):
         else:
             return self.vect[rid]
 
+    def valToStr(self, val):
+        if (np.isnan(val) and np.isnan(self.NA)) or \
+               val == self.NA:
+            return Data.NA_str
+        return val
+
+
     def getNumValue(self, rid):
         return self.getValue(rid)
         
@@ -681,18 +705,16 @@ class NumColM(ColM):
             pass
         return self.NA 
 
-    def getVector(self, bincats=False):
-        if self.vect is None:
-            if self.isDense():
-                self.vect = np.ones(self.N)*self.NA
-            else:
-                self.vect = np.zeros(self.N)
-                self.vect[list(self.missing)] = self.NA
+    def mkVector(self):
+        if self.isDense():
+            self.vect = np.ones(self.N)*self.NA
+        else:
+            self.vect = np.zeros(self.N)
+            self.vect[list(self.missing)] = self.NA
 
-            if len(self.sVals) > 0:
-                vals, ids = zip(*self.sVals)
-                self.vect[list(ids)] = vals
-        return self.vect
+        if len(self.sVals) > 0:
+            vals, ids = zip(*self.sVals)
+            self.vect[list(ids)] = vals
 
     def getType(self, details=None):
         return "numerical"
@@ -1118,6 +1140,7 @@ class Data:
     enabled_codes_rev_double = {"F": (0,0), "T": (1,1), "L": (0,1), "R": (1,0)}
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
+    NA_str = "NA"
 
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
         self.single_dataset = single_dataset
@@ -1132,7 +1155,7 @@ class Data:
 
         elif type(N) == str:
             try:
-                self.cols, self.N, self.coords, self.rnames, self.selected_rows, self.single_dataset = readDNCFromCSVFiles(cols)
+                self.cols, self.N, self.coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
                 
             except DataError:
                 self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
@@ -1190,7 +1213,7 @@ class Data:
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
         
-    def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False):
+    def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
         if store and self.as_array[0] == (side_cols, types, only_able, bincats):
             return self.as_array[1]
 
@@ -1222,7 +1245,7 @@ class Data:
                         mcols[(side, col, bid)] = off
                         off += 1
                     details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
-        mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats).reshape((self.nbRows(),-1)) for d in details]).T
+        mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
         if store:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
@@ -1707,16 +1730,16 @@ class Data:
 ############################################################################
 ############## READING METHODS
 ############################################################################
-def readDNCFromCSVFiles(filenames):
+def readDNCFromCSVFiles(filenames, unknown_string = None):
     cols, N, coords, rnames = [[],[]], 0, None, None
-    csv_params={}; unknown_string=None
+    csv_params={}; 
     single_dataset = False
     if len(filenames) >= 2:
         left_filename = filenames[0]
         right_filename = filenames[1]
         if len(filenames) >= 3:
             csv_params = filenames[2]
-            if len(filenames) >= 4:
+            if len(filenames) >= 4 and filenames[3] is not None:
                 unknown_string = filenames[3]
         try:
             tmp_data, single_dataset = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
@@ -1726,7 +1749,7 @@ def readDNCFromCSVFiles(filenames):
         #     raise DataError(str(arg).strip("'"))
         cols, N, coords, rnames, disabled_rows = parseDNCFromCSVData(tmp_data, single_dataset)
 
-    return cols, N, coords, rnames, disabled_rows, single_dataset
+    return cols, N, coords, rnames, disabled_rows, single_dataset, unknown_string
 
 
 def prepareRowName(rname, rid=None, data=None):
@@ -1801,7 +1824,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 for i,v in tmp:
                     if not Data.enabled_codes_rev_simple[v]:
                         disabled_rows.add(indices[side][i])
-
+    # pdb.set_trace()
     for sito, side in enumerate(sides):
         for name, det in [parseColumnName(header, types_smap) for header in csv_data['data'][side]["headers"]]:
             if len(name) == 0:
@@ -1852,6 +1875,14 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 def main():
 
+    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/tests/v2015_test.siren_FILES/"
+    # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
+    data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
+    pdb.set_trace()
+    print data
+    exit()
+    
     rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "NA"], "csv")
     mat = data.getMatrix(bincats=False)

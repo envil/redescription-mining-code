@@ -31,6 +31,8 @@ class Package(object):
     FILETYPE_VERSION = 4
     XML_FILETYPE_VERSION = 3
 
+    NA_str = "NA"
+
     CREATOR = "ReReMi/Siren Package"
     DEFAULT_EXT = ".siren"
     DEFAULT_TMP = "siren"
@@ -151,7 +153,7 @@ class Package(object):
                     fdRHS = self.package.open(self.plist['data_RHS_filename'], 'r')
                 else:
                     fdRHS = None
-                data = Data([fdLHS, fdRHS], "csv")
+                data = Data([fdLHS, fdRHS, {}, self.plist.get('NA_str', None)], "csv")
             except Exception:
                 data = None
                 self.raiseMess()
@@ -279,6 +281,7 @@ class Package(object):
 
         fns = {}              
         if "data" in contents:
+            d['NA_str'] = contents["data"].NA_str
             fns['data_LHS_filename'] = self.DATA_FILENAMES[0]
             if not contents["data"].isSingleD():
                 fns['data_RHS_filename'] = self.DATA_FILENAMES[1]

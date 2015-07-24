@@ -28,8 +28,9 @@ class ParaView(GView):
 
     TID = "PC"
     SDESC = "Pa.Co."
-    ordN = 1
+    ordN = 2
     title_str = "Parallel Coordinates"
+    typesI = ["Var", "Reds"]
 
     rect_halfwidth = 0.05
     rect_alpha = 0.7
@@ -38,13 +39,15 @@ class ParaView(GView):
 
     org_spreadL = 0.49 #(2/3.-0.5)
     org_spreadR = 0.49
-    flat_space = 0.03
+    flat_space = 0.06
     maj_space = 0.1
     max_group_clustering = 100
     nb_clusters = 10
     margins_sides = 0.05
     margins_tb = 0.05
     margin_hov = 0.01
+    missing_yy = -0.1
+    missing_w = -0.05
         
     def __init__(self, parent, vid, more=None):
         self.reps = set()
@@ -140,7 +143,7 @@ class ParaView(GView):
         self.MapfigMap.canvas.mpl_connect('axes_leave_event', self.on_axes_out)
         self.MapcanvasMap.draw()
 
-    def prepareData(self, draw_pord=None):
+    def prepareData(self, draw_ppos=None):
         pos_axis = len(self.litsort[0])
 
         side_cols = []
@@ -158,16 +161,11 @@ class ParaView(GView):
 
         ranges = self.updateRanges()
         
-        mat, details, mcols = self.parent.dw.getData().getMatrix()
+        mat, details, mcols = self.parent.dw.getData().getMatrix(nans=numpy.nan)
         mcols[None] = -1
         cids = [mcols[sc] for sc in side_cols]
-        #reps.sort(key=lambda x: draw_settings["draw_pord"][osupp[x]])
-        if draw_pord is not None:
-            tmp = sorted(numpy.unique(self.suppABCD), key=lambda x: draw_pord[x])
-            dd = -numpy.ones(numpy.max(tmp)+1)
-            for (p,v) in enumerate(tmp):
-                dd[v] = p
-            data_m = numpy.vstack([mat, dd[self.suppABCD]])[cids]
+        if draw_ppos is not None:
+            data_m = numpy.vstack([mat, draw_ppos[self.suppABCD]])[cids]
         else:
             data_m = numpy.vstack([mat, self.suppABCD])[cids]
         limits = numpy.vstack([numpy.nanmin(data_m, axis=1), numpy.nanmax(data_m, axis=1), precisions])
@@ -177,10 +175,19 @@ class ParaView(GView):
         scaled_m = numpy.vstack([(data_m[i,:]-limits[0,i])/denoms[i] for i in range(data_m.shape[0])])
 
         ### spreading lines over range
-        N = float(data_m.shape[1])
-        avgs = numpy.mean(scaled_m, axis=0)
+        N = data_m.shape[1]
+        avgs = numpy.nanmean(numpy.vstack([scaled_m, numpy.zeros_like(scaled_m[i,:])]), axis=0)
         pos_lids = []
         for i in range(data_m.shape[0]):
+
+            idsNAN = list(numpy.where(~numpy.isfinite(scaled_m[i,:]))[0])
+            nanvs = None
+            if len(idsNAN) > 0:
+                scaled_m[i,idsNAN] = self.missing_yy
+                top, bot = self.missing_yy-len(idsNAN)*self.missing_w/N, \
+                           self.missing_yy+len(idsNAN)*self.missing_w/N
+                nanvs = numpy.linspace(top, bot, len(idsNAN))
+                
             if ranges[i][-1] == 0:
                 pos_lids.append(scaled_m[i])
             else:
@@ -196,13 +203,18 @@ class ParaView(GView):
                 av_space = center - 0.5*self.maj_space * (denoms[i] + w)  
                 pos_help = numpy.dot(ww, scaled_m[cc,:])+avgs
                 spreadv = numpy.zeros(data_m[i,:].shape)
-                vs = numpy.unique(data_m[i,:])
+                vs = numpy.unique(scaled_m[i,:])
                 for v in vs:
-                    vids = list(numpy.where(data_m[i,:]==v)[0])
-                    vids.sort(key=lambda x: pos_help[x])
-                    top, bot = center-len(vids)*av_space/N, center+len(vids)*av_space/N
-                    spreadv[vids] += numpy.linspace(top, bot, len(vids))
+                    if v != self.missing_yy:
+                        vids = list(numpy.where(scaled_m[i,:]==v)[0])
+                        vids.sort(key=lambda x: pos_help[x])
+                        top, bot = center-len(vids)*av_space/N, center+len(vids)*av_space/N
+                        spreadv[vids] += numpy.linspace(top, bot, len(vids))
                 pos_lids.append((data_m[i,:]-limits[0,i] + spreadv)/(denoms[i] + w))
+
+            if nanvs is not None:
+                pos_lids[-1][idsNAN] = nanvs
+
 
         spreadL = numpy.zeros(data_m[i,:].shape)
         spreadL[numpy.argsort(pos_lids[0])] = numpy.linspace(0.5-self.org_spreadL, 0.5+self.org_spreadL, N)
@@ -230,7 +242,10 @@ class ParaView(GView):
             # numpy.random.shuffle(ids)
             rg = ids.shape[0]/self.max_group_clustering+1
             for i in range(rg):
-                if i > 0 and ((i+1)*self.max_group_clustering - ids.shape[0]) > 2*self.max_group_clustering/3.:
+                if i == 0 and ids.shape[0] < self.nb_clusters:
+                    sorting_samples[ids] = -0.1*v+float(i)/rg
+                    break
+                elif i > 0 and ((i+1)*self.max_group_clustering - ids.shape[0]) > 2*self.max_group_clustering/3.:
                     left_over.extend(ids[i*self.max_group_clustering:])
                     break
                 else:
@@ -253,17 +268,12 @@ class ParaView(GView):
                 sorting_samples[subids[ci]] = v+10*numpy.arange(1., ci.shape[0]+1)
         sampling_ord = numpy.argsort(sorting_samples)
 
-        ### TODO: Handle missing values
-        # idsNAN = numpy.where(~numpy.isfinite(mat))
-        # mat[idsNAN] = numpy.random.random(idsNAN[0].shape[0])
-
         prepared_data = {"pos_axis": pos_axis,
                          "N": N,
                          "xlabels": xlabels,
                          "xticks": xticks,
                          "ycols": ycols,
                          "xs": xs,
-                         "precisions": precisions,
                          "limits": limits,
                          "ranges": ranges,
                          "sampling_ord": sampling_ord,
@@ -306,7 +316,7 @@ class ParaView(GView):
                 self.lits = lits
                 self.litsort = [sorted(self.lits[side].keys(), key=lambda x: self.lits[side][x])   for side in [0,1]]
                 pos_axis = len(self.litsort[0])
-                self.prepared_data = self.prepareData(draw_pord = draw_settings["draw_pord"])
+                self.prepared_data = self.prepareData(draw_ppos = draw_settings["draw_ppos"])
             else:
                 self.prepared_data["ranges"] = self.updateRanges()
 
@@ -320,21 +330,18 @@ class ParaView(GView):
             #self.reps = set(self.prepared_data["sampling_ord"])
 
             ### SELECTED DATA
-            selv = numpy.ones(self.prepared_data["N"])
-            # selected = self.parent.dw.getData().selectedRows()
-            # selp = 0.1
-            # # if self.sld_sel is not None:
-            # #     selp = self.sld_sel.GetValue()/100.0
-            # selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
-            # if len(selected) > 0:
-            #     selv[numpy.array(list(selected))] = selp
+            selv = 1*numpy.ones(self.prepared_data["N"])
+            selected = self.parent.dw.getData().selectedRows()
+            if self.sld_sel is not None and len(selected) > 0:
+                selp = self.sld_sel.GetValue()/100.0
+                selv[list(selected)] = selp
 
             ### PLOTTING
             ### Lines
             self.axe.cla()
             ycols = self.prepared_data["ycols"]
             for r in self.reps:
-                if True: #selv[i] > 0:
+                if selv[r] > 0:
                     self.axe.plot(self.prepared_data["xs"], self.prepared_data["pos_lids"][self.prepared_data["ycols"],r],
                                   color=draw_settings[self.suppABCD[r]]["color_e"],
                                   alpha=draw_settings[self.suppABCD[r]]["alpha"]*selv[r], picker=2, gid="%d.%d" % (r, 1))
@@ -375,9 +382,17 @@ class ParaView(GView):
                 self.drs.append(dr)
 
             #### fit window size
+            extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
+                      self.missing_yy-self.margins_tb, 0]
+            self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
+                          [extent[2], extent[2], extent[3], extent[3]],
+                          color='1', alpha=0.66, zorder=10, ec="1" )
             self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
                                numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
-            self.axe.set_ylim([0-self.margins_tb,1+self.margins_tb])
+            if self.parent.dw.getData().hasMissing():
+                self.axe.set_ylim([self.missing_yy-self.margins_tb,1+self.margins_tb])
+            else:
+                self.axe.set_ylim([0-self.margins_tb,1+self.margins_tb])
 
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
@@ -567,7 +582,7 @@ class ParaView(GView):
 
     def on_motion(self, event):
         lid = None
-        if event.inaxes == self.axe and numpy.abs(numpy.around(event.xdata) - event.xdata) < self.flat_space and event.ydata >= 0 and event.ydata <= 1:
+        if event.inaxes == self.axe and numpy.abs(numpy.around(event.xdata) - event.xdata) < self.flat_space and event.ydata >= self.missing_yy-.1 and event.ydata <= 1:
             lid = self.getLidAt(event.ydata, int(numpy.around(event.xdata)))
             if lid is not None and lid != self.current_hover:
                 if self.current_hover is not None:

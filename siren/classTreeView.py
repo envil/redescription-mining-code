@@ -31,9 +31,10 @@ class TreeView(GView):
 
     TID = "TR"
     SDESC = "Tree."
-    ordN = 1
-    title_str = "Tree"
-
+    ordN = 5
+    title_str = "Decision Tree"
+    typesI = ["Var", "Reds"]
+    
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
     maj_space = 0.05
@@ -43,6 +44,10 @@ class TreeView(GView):
     margins_tb = 0.1
     margin_hov = min_space/2.
 
+    @classmethod
+    def suitableView(tcl, geo=False, queries=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
+               ( queries is None or (queries[0].isTreeCompatible() and queries[1].isTreeCompatible()))
 
     def __init__(self, parent, vid, more=None):
         self.current_r = None

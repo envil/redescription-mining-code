@@ -26,7 +26,7 @@ class EProjView(GView):
 
     TID = "EPJ"
     SDESC = "E.Proj."
-    ordN = 3
+    ordN = 10
     what = "entities"
     title_str = "Entities Projection"
     typesI = ["Var", "Reds", "Row"]

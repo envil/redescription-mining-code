@@ -18,10 +18,10 @@ class ViewFactory:
         avs_views.update(cls.getViewsDetails())
 
     @classmethod
-    def getViewsInfo(tcl, geo=False, typesI=None):
+    def getViewsInfo(tcl, tabT=None, geo=False, queries=None, excludeT=None):
         infos = [{"viewT": viewT, "title": details["title"], "ord": details["ord"]} \
-                 for viewT, details in tcl.avs_views.items() \
-                 if (geo or not details["class"].geo) and (typesI is None or typesI in details["class"].typesI)]
+                 for viewT, details in tcl.avs_views.items() if (excludeT is None or viewT not in excludeT) and \
+                 details["class"].suitableView(geo, queries, tabT)]
         infos.sort(key=lambda x: (x["ord"], x["title"]))
         return infos
 

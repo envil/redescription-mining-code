@@ -1,6 +1,6 @@
 ### TODO check which imports are needed 
 import wx
-import numpy as np
+import numpy
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
@@ -69,6 +69,10 @@ class GView(object):
     @classmethod
     def getViewsDetails(tcl):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
+
+    @classmethod
+    def suitableView(tcl, geo=False, queries=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
 
     def __init__(self, parent, vid, more=None):
         self.active_info = False
@@ -238,13 +242,12 @@ class GView(object):
     def makeVizMenu(self, frame, menuViz=None):
         if menuViz is None:
             menuViz = wx.Menu()
-        for item in self.parent.getViewsItems():
-            if item["viewT"] != self.getId()[0]:
-                ID_NEWV = wx.NewId()
-                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                         "Plot %s in new window." % item["title"])
-                frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
-                self.ids_viewT[ID_NEWV] = item["viewT"]
+        for item in self.parent.getViewsItems(queries=self.getQueries(), excludeT=[self.getId()[0]]):
+            ID_NEWV = wx.NewId()
+            m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
+                                    "Plot %s in new window." % item["title"])
+            frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
+            self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
 
     def makeActionsMenu(self, frame, menuAct=None):
@@ -403,6 +406,10 @@ class GView(object):
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
+
+    def getQueries(self):
+        ### the actual queries, not copies, to test, etc. not for modifications
+        return self.queries
 
     def getCopyRed(self):
         return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.getData())
@@ -683,7 +690,7 @@ class GView(object):
             
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:
-            points = np.transpose((self.getCoords(0), self.getCoords(1)))
+            points = numpy.transpose((self.getCoords(0), self.getCoords(1)))
             return [i for i,point in enumerate(points) if path.contains_point(point, radius=radius)]
         return []
 
@@ -720,8 +727,17 @@ class GView(object):
     def getDrawSettings(self):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()
-        return {"draw_pord": dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub, SSetts.muaB, SSetts.mubB,
-                                                                 SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma])]), 
+        draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub,
+                                                        SSetts.muaB, SSetts.mubB,
+                                                        SSetts.delta, SSetts.beta,
+                                                        SSetts.alpha, SSetts.gamma])])
+            
+        dd = numpy.nan*numpy.ones(numpy.max(draw_pord.keys())+1)
+        for (p,v) in enumerate([SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma]):
+            dd[v] = p
+
+        return {"draw_pord": draw_pord,
+                "draw_ppos": dd,
                 "shape": dot_shape,
                 SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],

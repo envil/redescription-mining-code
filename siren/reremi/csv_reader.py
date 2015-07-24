@@ -595,12 +595,12 @@ def main(argv=[]):
     # res = importCSV(rep+"data1.csv", rep+"data2.csv", unknown_string='NA')
     # print res.keys()
 
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
-    res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
+    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
+    # res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
     
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    res = importCSV(rep+"testoutL.csv", rep+"testoutR.csv", unknown_string='NA')
+    res = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
     # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
     # # res = importCSV(rep+"vaalikone_profiles_test_list.csv", rep+"vaalikone_profiles_test_listopo.csv", unknown_string='NA')
     # # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"

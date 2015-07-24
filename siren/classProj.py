@@ -255,8 +255,8 @@ class AxesProj(Proj):
                 sc = tuple(map(int, str(tmp).split(".")[:2]))
                 if sc in mcols:
                     scs[ai] = sc
-            self.setParameter(axis, float("%d.%d" % scs[ai]))
-            self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
+        self.setParameter(axis, float("%d.%d" % scs[ai]))
+        self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
         for side in [0,1]:
             self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1

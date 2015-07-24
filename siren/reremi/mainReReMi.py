@@ -59,7 +59,6 @@ def loadAll(arguments=[]):
 
     if pack_filename is None:
         data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
-        pdb.set_trace()
     logger.printL(2, data, "log")
 
     if pack_filename is not None:
@@ -76,7 +75,7 @@ def trunToDict(params):
 def prepareFilenames(params_l, tmp_dir=None):
     filenames = {"queries": "-",
                  "style_data": "csv",
-                 "add_info": [{}, params_l['str_NA']]
+                 "add_info": [{}, params_l['NA_str']]
                  }
     
     for p in ['result_rep', 'data_rep']:
@@ -214,7 +213,6 @@ def loadPackage(filename, pm):
 def run(args):
     
     params, data, logger, filenames = loadAll(args)
-
     miner = instMiner(data, params, logger)
     try:
         miner.full_run()

@@ -171,6 +171,9 @@ class Redescription:
     def query(self, side=None):
         return self.queries[side]
 
+    def getQueries(self):
+        return self.queries
+
     def probas(self):
         return self.sParts.probas()
 

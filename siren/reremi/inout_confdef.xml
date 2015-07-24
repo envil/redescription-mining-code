@@ -91,13 +91,13 @@
 	<default><value>.csv</value></default>
       </parameter>
       <parameter>
-	<name>str_NA</name>
+	<name>NA_str</name>
 	<label>NA representation</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
 	<legend>String representation for missing values (CSV format).</legend>
 	<length>10</length>
-	<default><value>NA</value></default>
+	<default><value>nan</value></default>
       </parameter>
       <parameter>
 	<name>result_rep</name>

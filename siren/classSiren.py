@@ -364,7 +364,10 @@ class Siren():
             menuViz = wx.Menu()
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
-                for item in self.getViewsItems(self.selectedTab["type"]):
+                queries = None
+                if self.selectedTab["type"] == "Reds":
+                    queries = self.selectedTab["tab"].getSelectedQueries()
+                for item in self.getViewsItems(self.selectedTab["type"], queries=queries):
                     ID_NEWV = wx.NewId()
                     m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                               "Plot %s in new window." % item["title"])
@@ -372,8 +375,8 @@ class Siren():
                     self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
 
-    def getViewsItems(self, tab_type=None):
-        return ViewFactory.getViewsInfo(self.dw.isGeospatial(), tab_type)
+    def getViewsItems(self, tab_type=None, queries=None, excludeT=None):
+        return ViewFactory.getViewsInfo(tab_type, self.dw.isGeospatial(), queries, excludeT)
 
     def makeProcessMenu(self, frame, menuPro=None):
         if menuPro is None:

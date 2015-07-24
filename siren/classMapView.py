@@ -31,6 +31,7 @@ class MapView(GView):
     ordN = 1
     geo = True
     MAP_POLY = True #False
+    typesI = ["Var", "Reds"]
 
     marg_f = 100.0
     proj_def = "mill"
@@ -415,7 +416,7 @@ class MapView(GView):
 
     def getLidAt(self, x, y):
         d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, [(x,y)])
-        cands = [self.hover_access[i] for i in numpy.argsort(d, axis=0)[:5]]
+        cands = [self.hover_access[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
         i = 0
         while i < len(cands):
             path = Polygon(self.getCoordsP(cands[i]), closed=True)

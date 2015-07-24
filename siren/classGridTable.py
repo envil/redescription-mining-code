@@ -124,6 +124,16 @@ class GridTable(wx.grid.PyGridTableBase):
     renderer = CustRenderer
     name_m = None
 
+    #### COLUMN WIDTHS
+    width_colcheck = 25
+    width_colid = 50
+    width_colname = 150
+    width_colnamew = 300
+    width_colinfo = 80
+    width_colinfow = 100
+    width_colinfon = 8
+
+
     def __init__(self, parent, tabId, frame, short=None):
         wx.grid.PyGridTableBase.__init__(self)
         self.details = {}
@@ -413,7 +423,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if col is None: col = 0
         self.GetView().SetGridCursor(row,col)
         self.GetView().SelectRow(row)
-
+        
     def neutraliseSort(self):
         self.sortP = (None, False)
 
@@ -516,10 +526,10 @@ class RedTable(GridTable):
         self.emphasized = {}
         self.uptodate = True
 
-
     def setSelectedRow(self,row, col=0):
         self.GetView().SetGridCursor(row,0)
         self.GetView().SelectRow(row)
+        self.parent.updateMenus()
 
     def resetData(self, data, srids=None):
         GridTable.resetData(self, data, srids)
@@ -595,6 +605,13 @@ class RedTable(GridTable):
                 self.ResetView()
             if upMenu:
                 self.parent.updateMenus()
+
+    def getSelectedQueries(self):
+        if self.getSelectedRow() is not None:
+            red = self.getItemAtRow(self.getSelectedRow())
+            if isinstance(red, Redescription):
+                return red.getQueries()
+        return
 
     def getRedId(self, pos):
         # if pos is None:
@@ -824,13 +841,15 @@ class RedTable(GridTable):
 
 class VarTable(GridTable):     
 
-    fields_def = [('','self.data[x].getEnabled'),
-                  ('id', 'self.data[x].getId'),
-                  ('name', 'self.data[x].getName', None, 300),
-                  ('type', 'self.data[x].getType', None, 100)]
-    fields_var = {1: [('density', 'self.data[x].getDensity', None, 80)],
-                  2:[('categories', 'self.data[x].getCategories', None, 80)],
-                  3:[('min', 'self.data[x].getMin', None, 80), ('max', 'self.data[x].getMax', None, 80)]}
+    fields_def = [('','self.data[x].getEnabled', None, GridTable.width_colcheck),
+                  ('id', 'self.data[x].getId', None, GridTable.width_colid),
+                  ('name', 'self.data[x].getName', None, GridTable.width_colnamew),
+                  ('type', 'self.data[x].getType', None, GridTable.width_colinfow)]
+    fields_miss = [('missing', 'self.data[x].getMissInfo', None, GridTable.width_colinfo)]
+    fields_var = {1: [('density', 'self.data[x].getDensity', None, GridTable.width_colinfo)],
+                  2:[('categories', 'self.data[x].getCategories', None, GridTable.width_colinfo)],
+                  3:[('min', 'self.data[x].getMin', None, GridTable.width_colinfo),
+                     ('max', 'self.data[x].getMax', None, GridTable.width_colinfo)]}
     name_m = 'self.data[x].getName'
 
     def viewData(self, viewT, pos=None):
@@ -849,6 +868,8 @@ class VarTable(GridTable):
         self.sortP = (None, False)
         self.fields = []
         self.fields.extend(self.fields_def)
+        if len([r for r in self.data if r.hasMissing()]) > 0:
+            self.fields.extend(self.fields_miss)
         for tyid in set([r.typeId() for r in self.data]):
             self.fields.extend(self.fields_var[tyid])
 
@@ -974,17 +995,17 @@ class RowTable(GridTable):
     def redraw(self, details={}, review=True):
         crow, ccol = self.GetView().GetGridCursorRow(), self.GetView().GetGridCursorCol()
         self.ResetView()
-        self.GetView().SetColMinimalAcceptableWidth(5)
+        self.GetView().SetColMinimalAcceptableWidth(8)
         #self.GetView().SetRowMinimalAcceptableHeight(5)
-        self.GetView().SetDefaultColSize(1, True)
+        self.GetView().SetDefaultColSize(8, True)
         #self.GetView().SetDefaultRowSize(1, True)
-        self.GetView().SetColSize(0, 30)
-        self.GetView().SetColSize(1, 50)
+        self.GetView().SetColSize(0, self.width_colcheck)
+        self.GetView().SetColSize(1, self.width_colid)
         for i in range(2, self.fix_col):
             # details = {"aim": "list"}
             # details.update(self.details)
             # sz = max([len("%s" % self.getFieldV(sid, self.fields[i], details)) for sid in self.sortids])
-            self.GetView().SetColSize(i, 80) #10*(sz+2))
+            self.GetView().SetColSize(i, self.width_colname) #10*(sz+2))
         for cid in self.sc:
             pls = 2
             if cid == self.sortP[0]:
