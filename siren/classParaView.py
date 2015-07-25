@@ -155,8 +155,8 @@ class ParaView(GView):
         for side in [0,1]:
             for l in litsort[side]:
                 side_cols.append((side, l.colId()))
-                # lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
-                lit_str.append("v%d" % l.colId())
+                lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
+                # lit_str.append("v%d" % l.colId())
         side_cols.insert(pos_axis, None)
 
         if self.prepared_data is not None and self.prepared_data["side_cols"] == side_cols:
@@ -248,7 +248,8 @@ class ParaView(GView):
         pos_lids = numpy.vstack(pos_lids)
 
         xlabels = lit_str
-        xticks = [x for x,v in enumerate(side_cols) if v is not None]
+        xticks = [x for x,v in enumerate(side_cols)]# if v is not None]
+        lit_str.insert(pos_axis, "#")
         ycols = [-1]
         xs = [-1]
         for i in range(len(side_cols)):
@@ -361,7 +362,7 @@ class ParaView(GView):
                 # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
                 if selv[r] > 0:
                     self.axe.plot(self.prepared_data["xs"], self.prepared_data["pos_lids"][self.prepared_data["ycols"],r],
-                                  color=draw_settings[self.suppABCD[r]]["color_e"],
+                                  color=draw_settings[self.suppABCD[r]]["color_l"],
                                   alpha=draw_settings[self.suppABCD[r]]["alpha"]*selv[r], picker=2, gid="%d.%d" % (r, 1))
 
             ### Labels
@@ -399,10 +400,10 @@ class ParaView(GView):
 
             #### fit window size
             extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
-                      self.missing_yy-self.margins_tb, -0.5*self.margins_tb]
+                      self.missing_yy-self.margins_tb, 0]
             self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
                           [extent[2], extent[2], extent[3], extent[3]],
-                          color='1', alpha=0.66, zorder=10, ec="1" )
+                          color='1', alpha=0.66, zorder=5, ec="1" )
             self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
                                numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
             if self.parent.dw.getData().hasMissing():
@@ -552,12 +553,12 @@ class ParaView(GView):
                 y = self.prepared_data["pos_lids"][self.prepared_data["ycols"][-1],lid]
                 self.hight[lid].append(self.axe.annotate(tag, xy=(x,y),
                                                          xycoords='data', xytext=(10, 0), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_e"], size=10,
+                                                         color= draw_settings[pi]["color_l"], size=10,
                                                          va="center", backgroundcolor="#FFFFFF",
                                                          bbox=dict(boxstyle="round", facecolor="#FFFFFF",
-                                                                   ec=draw_settings[pi]["color_e"]),
+                                                                   ec=draw_settings[pi]["color_l"]),
                                                          arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_l"],
                                                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
                                                          ))
 

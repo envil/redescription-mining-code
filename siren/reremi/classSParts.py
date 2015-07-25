@@ -622,6 +622,12 @@ class SParts:
 
     def parts(self, side=0):
         return [self.part(i, side) for i in range(self.ssetts.top+1)]
+
+    def parts4M(self, side=0):
+        if self.missing:
+            return [self.part(i, side) for i in range(self.ssetts.delta+1)]+[set().union(*[self.part(i, side) for i in range(self.ssetts.delta+1, self.ssetts.top+1)])]
+        else:
+            return self.parts(side)
             
     def lparts(self, side=0):
         return [self.lpart(i, side) for i in range(self.ssetts.top+1)]

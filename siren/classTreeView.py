@@ -23,7 +23,6 @@ from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView, CustToolbar
 from classInterObjects import ResizeableRectangle, DraggableRectangle
-import toolMath
 
 import pdb
             
@@ -43,7 +42,8 @@ class TreeView(GView):
     margins_sides = 0.5
     margins_tb = 0.1
     margin_hov = min_space/2.
-
+    missing_yy = -1./6
+    
     @classmethod
     def suitableView(tcl, geo=False, queries=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
@@ -146,6 +146,9 @@ class TreeView(GView):
         # self.plotTreesBasic(trees, draw_settings)
         for side in [0,1]:
             self.plotTree(side, trees[side], None, draw_settings)
+            if self.hasMissingPoint(side):
+                b = trees[side].getBottomX()
+                self.axe.plot(b, self.height_inter[0]+self.missing_yy, 'o', mec='k', mfc=draw_settings[-1]["color_l"], zorder=10)
 
     def plotTreesBasic(self, trees, draw_settings):
         keys = []
@@ -166,7 +169,7 @@ class TreeView(GView):
         for li, k in zip(*numpy.where(mat[:, :-1]> 0)):
             x,y = trees[keys[k][0]].getNodeXY(keys[k][1])
             b = trees[keys[k][0]].getBottomX()
-            self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
+            self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_l"])
 
     def plotTreesT(self, trees, draw_settings):
         keys = []
@@ -201,10 +204,12 @@ class TreeView(GView):
         tot_height = self.height_inter[1]-self.height_inter[0]
         scores = {}
         for x in connects:
-            ppi = pmap[x[0]]
-            lmp = numpy.mean([keys[xx-1][-1] for xx in x[1] if keys[xx-1][0]==0])
-            rmp = numpy.mean([keys[xx-1][-1] for xx in x[1] if keys[xx-1][0]==1])
-            scores[x] = (ppi, lmp, rmp)
+            sctmp = [pmap[x[0]], -1, -1]
+            for side in [0,1]:
+                nps = [keys[xx-1][-1] for xx in x[1] if keys[xx-1][0]==side]
+                if len(nps) > 0:
+                    sctmp[1+side] = numpy.mean(nps)
+            scores[x] = tuple(sctmp)
 
         connects.sort(key=lambda x: scores[x])
         counts = [[] for i in lparts]
@@ -223,23 +228,36 @@ class TreeView(GView):
                                 self.height_inter[0]+tot_height*(bot+j*self.min_space+sbb[j+1])))
 
         store_pos = {}
+        has_miss_points = [False, False]
         # pos = numpy.linspace(1., 2., len(connects))
         for pi, (part, points, nb) in enumerate(connects):
             tmp_store_pos = [(pos[pi][0], pos[pi][1])]
+            hasBSides = [False, False]
             for point in points:
                 #self.axe.plot((0, Xss[keys[point-1][0]][-1], 0, 0),
+                hasBSides[keys[point-1][0]] = True
                 b = trees[keys[point-1][0]].getBottomX()
                 ff = numpy.sign(b)*self.flat_space
                 self.axe.fill((0, ff, b, ff, 0, 0),
                               (pos[pi][0], pos[pi][0], keys[point-1][-1],
                                pos[pi][1], pos[pi][1], pos[pi][0]),
-                              color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+                              color=draw_settings[part]["color_l"]) #, linewidth=nb/nbtot)
                 tmp_store_pos.append((b, keys[point-1][-1]))
+            for side, hS in enumerate(hasBSides):
+                if not hS:
+                    b = trees[side].getBottomX()
+                    ff = -numpy.sign(0.5-side)*self.flat_space
+                    self.axe.fill((0, ff, b, ff, 0, 0),
+                                  (pos[pi][0], pos[pi][0], self.height_inter[0]+self.missing_yy,
+                                   pos[pi][1], pos[pi][1], pos[pi][0]),
+                                  color=draw_settings[part]["color_l"]) #, linewidth=nb/nbtot)
+                    tmp_store_pos.append((b, self.height_inter[0]+self.missing_yy))
+                    has_miss_points[side] = True
             # if (part, points, nb) == (0, (4,16), 1173):
             #     print "THIS:", map_p[(part, points, nb)], tmp_store_pos
+            # store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
             store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
-            store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
-        self.store_supp = {"pos": store_pos, "mat": mat, "parts": parts, "lids": store_lids}
+        self.store_supp = {"pos": store_pos, "mat": mat, "parts": parts, "lids": store_lids, "has_miss_points": has_miss_points}
         self.makePMapping()
 
     def makePMapping(self):
@@ -251,7 +269,7 @@ class TreeView(GView):
     def plotTree(self, side, tree, node, ds=None):
         
         align = {0: 'left', 1: "right"}
-        color_dot = {0: ds[0]["color_e"], 1: ds[1]["color_e"]}
+        color_dot = {0: ds[0]["color_l"], 1: ds[1]["color_l"]}
         line_style = {QTree.branchY: "-", QTree.branchN: "--"}
         # rsym = {0: ">", 1: "<"}
         x, y = tree.getNodeXY(node)
@@ -265,9 +283,9 @@ class TreeView(GView):
             self.axe.plot((x, b), (y, y), 'k:')
             self.axe.plot(x, y, 'k.')
             if tree.isLeafInNode(node):
-                self.axe.plot(b, y, 'ko', picker=5, gid="%d:%d:-1.T" % (side, node))
+                self.axe.plot(b, y, 'ko', picker=5, gid="%d:%d:-1.T" % (side, node), zorder=10)
             else:
-                self.axe.plot(b, y, 'wo', picker=5, gid="%d:%d:+1.T" % (side, node))
+                self.axe.plot(b, y, 'wo', picker=5, gid="%d:%d:+1.T" % (side, node), zorder=10)
                 
         else:
             # if tree.isRootNode(node):
@@ -281,14 +299,14 @@ class TreeView(GView):
 
             if tree.isSplitNode(node):
                 self.axe.plot(x, y, color=color_dot[side], marker='s')
-                self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
-                # self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
+                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
+                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
                                   xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                   )
-                self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
-                # self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
+                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
+                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
                                   xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
@@ -310,7 +328,7 @@ class TreeView(GView):
                 self.trees = [red.queries[0].toTree(), red.queries[1].toTree()]
                     
             if self.trees[0] is not None and self.trees[1] is not None:
-                rsupp = red.supports().parts()
+                rsupp = red.supports().parts4M()
                 for side in [0,1]:
                     self.trees[side].computeSupps(side, self.parent.dw.getData(), rsupp)
                     if update_trees:
@@ -324,7 +342,11 @@ class TreeView(GView):
                 self.plotTrees(self.trees)
 
                 self.axe.set_xlim([-self.all_width-self.margins_sides, self.all_width+self.margins_sides])
-                self.axe.set_ylim([self.height_inter[0]-self.margins_tb, self.height_inter[1]+self.margins_tb])
+                if self.hasMissingPoints():
+                    self.axe.set_ylim([self.height_inter[0]+self.missing_yy-self.margins_tb,
+                                       self.height_inter[1]+self.margins_tb])
+                else:
+                    self.axe.set_ylim([self.height_inter[0]-self.margins_tb, self.height_inter[1]+self.margins_tb])
 
                 self.axe.set_xticks([])
                 self.axe.set_yticks([])
@@ -332,7 +354,15 @@ class TreeView(GView):
                 self.MapcanvasMap.draw()
                 self.MapfigMap.canvas.SetFocus()
 
+    def hasMissingPoints(self):
+        return self.hasMissingPoint(0) or self.hasMissingPoint(1)
 
+    def hasMissingPoint(self, side):
+        if self.store_supp is None:
+            return False
+        return self.store_supp["has_miss_points"][side]
+
+                    
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -420,23 +450,23 @@ class TreeView(GView):
             self.highl[lid] = []
             for l in ppos[1:]:
                 ff = numpy.sign(l[0])*self.flat_space
-                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
+                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
 
 
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
-                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_e"], linewidth=1, alpha=0.5))
+                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_l"], linewidth=1, alpha=0.5))
                 self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=colhigh, linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),
                                                          xycoords='data', xytext=(10, 0), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_e"], size=10,
+                                                         color= draw_settings[pi]["color_l"], size=10,
                                                          va="center", backgroundcolor="#FFFFFF",
                                                          bbox=dict(boxstyle="round", facecolor="#FFFFFF",
-                                                                   ec=draw_settings[pi]["color_e"]),
+                                                                   ec=draw_settings[pi]["color_l"]),
                                                          arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
+                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_l"],
                                                                          patchA=None, patchB=self.el, relpos=(0.2, 0.5))
                                                          ))
 

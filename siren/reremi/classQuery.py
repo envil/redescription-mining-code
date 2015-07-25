@@ -1056,6 +1056,9 @@ class QTree:
         if subsets is None:
             subsets = [data.rows()]
         self.recSupps(side, data, self.root_id, subsets)
+        # print "SUPPORT %d" % side
+        # print [(n, s) for (n, s) in self.supps.items() if type(n) is int]
+        # pdb.set_trace()
 
     def recSupps(self, side, data, node, subsets):
         self.supps[node] = [len(s) for s in subsets]
@@ -1067,7 +1070,7 @@ class QTree:
                 supp, miss = data.literalSuppMiss(side, self.tree[node]["split"])
                 supps_node[QTree.branchY] = [supp & s for s in subsets]
                 supps_node[QTree.branchN] = [(s - supp) - miss  for s in subsets]
-                supps_node[-1] = [supp & miss for s in subsets]
+                supps_node[-1] = [s & miss for s in subsets]
 
             else:
                 supps_node[QTree.branchY] = subsets
@@ -1314,9 +1317,11 @@ class Query:
 
     def isTreeCompatible(self):
         ### a DNF with several conjunctions
+        ### or a single disjunction
         ### or a single conjunction
         ### or a single literal
         return (self.max_depth() == 2 and self.op.isOr()) or \
+               (self.max_depth() == 1 and self.op.isOr()) or \
                (self.max_depth() == 1 and not self.op.isOr()) or \
                (len(self.buk) == 1 and isinstance(self.buk[0], Literal)) 
             
@@ -1328,6 +1333,9 @@ class Query:
                     branches.append(list(buk))
                 else:
                     branches.append([buk])
+        elif self.max_depth() == 1 and self.op.isOr():
+            for buk in self.buk:
+                branches.append([buk])
         elif (self.max_depth() == 1 and not self.op.isOr()) or \
                  (len(self.buk) == 1 and isinstance(self.buk[0], Literal)):
             branches.append(list(self.buk))

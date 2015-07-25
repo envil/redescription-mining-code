@@ -528,8 +528,8 @@ class GView(object):
                                   args={"edit_key": self.getId(), "red": red})
 
     def updateQueryText(self, query, side):
-        #self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side)))
-        self.MapredMapQ[side].ChangeValue(query.disp()) #, unicd=True), unicd=True))
+        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side)))
+        #self.MapredMapQ[side].ChangeValue(query.disp()) #, unicd=True), unicd=True))
 
     def updateText(self, red = None):
         """ Reset red fields and info
@@ -736,45 +736,61 @@ class GView(object):
         for (p,v) in enumerate([SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma]):
             dd[v] = p
 
+        basic_grey = [0.5,0.5,0.5]
+        light_grey = [0.66,0.66,0.66]
         return {"draw_pord": draw_pord,
                 "draw_ppos": dd,
                 "shape": dot_shape,
                 SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],
+                               "color_l": [i/255.0 for i in colors[0]],
                                "shape": dot_shape,
                                "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.beta: {"color_e": [i/255.0 for i in colors[1]],
                               "color_f": [i/255.0 for i in colors[1]],
+                              "color_l": [i/255.0 for i in colors[1]],
                               "shape": dot_shape,
                                "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.gamma: {"color_e": [i/255.0 for i in colors[2]],
                                "color_f": [i/255.0 for i in colors[2]],
+                               "color_l": [i/255.0 for i in colors[2]],
                                "shape": dot_shape,
                                "alpha": self.DOT_ALPHA, "size": dot_size},
                 SSetts.mua: {"color_e": [i/255.0 for i in colors[0]],
-                             "color_f": [0.5,0.5,0.5],
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
                              "shape": dot_shape,
                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
                 SSetts.mub: {"color_e": [i/255.0 for i in colors[1]],
-                             "color_f": [0.5,0.5,0.5],
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
                              "shape": dot_shape,
                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.muaB: {"color_e": [0.5,0.5,0.5],
+                SSetts.muaB: {"color_e": basic_grey,
                               "color_f": [i/255.0 for i in colors[1]],
+                             "color_l": light_grey,
                              "shape": dot_shape,
                               "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.mubB: {"color_e": [0.5,0.5,0.5],
+                SSetts.mubB: {"color_e": basic_grey,
                               "color_f": [i/255.0 for i in colors[0]],
+                             "color_l": light_grey,
                              "shape": dot_shape,
                               "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.mud: {"color_e": [0.5,0.5,0.5],
-                             "color_f": [0.5, 0.5, 0.5],
+                SSetts.mud: {"color_e": basic_grey,
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
                              "shape": dot_shape,
                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.delta: {"color_e": [0.5,0.5,0.5],
-                               "color_f": [0.5, 0.5, 0.5],
+                SSetts.delta: {"color_e": basic_grey,
+                               "color_f": basic_grey,
+                               "color_l": basic_grey,
                                "shape": dot_shape,
-                               "alpha": self.DOT_ALPHA, "size": dot_size}
+                               "alpha": self.DOT_ALPHA, "size": dot_size},
+                -1: {"color_e": basic_grey,
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
+                             "shape": dot_shape,
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1}
                 }
         
 def HTMLColorToRGB(colorstring):
