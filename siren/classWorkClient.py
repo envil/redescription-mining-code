@@ -1,8 +1,8 @@
-import re
-import multiprocessing, time, socket, uuid
-from classWorkInactive import WorkInactive
+import multiprocessing, time, socket, uuid, re
 from multiprocessing.managers import SyncManager
 import Queue
+
+from classWorkInactive import WorkInactive
 
 import pdb
 
@@ -56,9 +56,6 @@ class WorkClient(WorkInactive):
         return {"workserver_ip": self.work_server[0],
                 "workserver_port": self.work_server[1],
                 "workserver_authkey": self.work_server[2]}
-
-    def infoStr(self):
-        return "Server %s:%d" % (self.work_server[0], self.work_server[1])
     
     def __del__(self):
         if self.hid is not None:
@@ -103,6 +100,8 @@ class WorkClient(WorkInactive):
                     info =  "OK\tHas %d clients, in total %d tasks, of which %d currently running." % (len(parts), tasks+pending, tasks)
         return info
 
+    def infoStr(self):
+        return "Server %s:%d" % (self.work_server[0], self.work_server[1])
 
     def resetHS(self, ip=None, numport=None, authkey=None):
         if self.hid is not None and self.nbWorkers() == 0:
@@ -166,23 +165,6 @@ class WorkClient(WorkInactive):
             except (socket.error, IOError, EOFError):
                 self.onServerDeath()
 
-
-    def getWorkEstimate(self):
-        work_estimate = 0
-        work_progress = 0
-        for worker in self.workers.values():
-            work_estimate += worker["work_estimate"]
-            work_progress += worker["work_progress"]
-        ### progress should not go over estimate, but well...
-        work_progress = min(work_progress, work_estimate)
-        return work_estimate, work_progress
-        
-    def nbWorkers(self):
-        return len(self.workers)
-
-    def nbWorking(self):
-        return len(self.workers)+len(self.off)
-
     def closeDown(self, parent):
         for wid in self.workers.keys():
             self.layOff(wid)
@@ -207,22 +189,6 @@ class WorkClient(WorkInactive):
             self.getJobsQueue().put(job)            
             self.retired[wid] = self.workers.pop(wid)
         return None
-
-    def findWid(self, fields):
-        for wid, worker in sorted(self.workers.items()):
-            found = True
-            for f,v in fields:
-                found &= (worker.get(f, None) == v)
-            if found:
-                return wid
-        return None
-
-    def getWorkersDetails(self):
-        details = []
-        for wid, worker in sorted(self.workers.items()):
-            details.append({"wid": wid, "wtyp": worker["wtyp"]})
-        return details
-
 
     def monitorResults(self, parent):
         updates = {}
@@ -273,61 +239,3 @@ class WorkClient(WorkInactive):
             self.updateError("WP", "Work server died!", updates)
             updates["menu"] = True
             updates["progress"] = True
-
-    def handlePieceResult(self, note, updates, parent):
-        if note["type_message"] in self.type_messages:
-            if note["type_message"] == "result":
-                self.sendResult(note["source"], note["message"], updates, parent)
-            else:
-                method = eval(self.type_messages[note["type_message"]])
-                if callable(method):
-                    method(note["source"], note["message"], updates)
-
-    def updateLog(self, source, message, updates):
-        text = "%s" % message
-        header = "@%s:\t" % source
-        text = text.replace("\n", "\n"+header)
-        if "log" not in updates:
-            updates["log"] = ""
-        updates["log"] += header+text+"\n"
-
-    def updateError(self, source, message, updates):
-        updates["error"] = "@%s:%s" % (source, message) 
-
-    def updateStatus(self, source, message, updates):
-        updates["status"] = "@%s:%s" % (source, message) 
-
-    def updateProgress(self, source, message, updates):
-        if source in self.workers:
-            if message is None:
-                self.retire(source)
-                updates["menu"] = True
-            elif len(message) > 1:
-                self.workers[source]["work_progress"] = message[1]
-                self.workers[source]["work_estimate"] = message[0]
-            updates["progress"] = True
-            
-    def sendResult(self, source, message, updates, parent):
-        if source not in self.workers:
-            return
-        
-        worker_info = self.workers[source]
-        if worker_info["wtyp"] in ["expander", "miner"]:
-            tap = message[worker_info["batch_type"]]
-            nb_tap = len(tap)
-            if nb_tap > worker_info["results_track"]:
-                tmp = []
-                for red in tap[worker_info["results_track"]:nb_tap]:
-                    redc = red.copy()
-                    redc.track.insert(0, (source, "W"))
-                    tmp.append(redc)
-                worker_info["results_track"] = nb_tap
-                if parent is None:
-                    print "Ready reds %s %s" % (tmp, worker_info["results_tab"])
-                else:
-                    parent.readyReds(tmp, worker_info["results_tab"])
-        elif worker_info["wtyp"] in ["projector"]:
-            if parent is None:
-                print "Ready proj %s %s" % (worker_info["vid"], message)
-            else:
-                parent.readyProj(worker_info["vid"], message)
