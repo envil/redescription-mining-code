@@ -21,8 +21,37 @@ from reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView, CustToolbar
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 
-
 import pdb
+
+def shuffle_ids(inl, i, cc):
+    ii = (7*cc+8*i+1) % len(inl)
+    if cc % 2:
+        dt = numpy.hstack([inl,inl])[ii:(len(inl)+ii)]
+    else:
+        dt = numpy.hstack([inl,inl])[(len(inl)+ii):ii:-1]
+    tmp = shuffle_order(dt)
+
+    iii = (11*cc+3*i+1) % len(inl)
+    ddt = numpy.array(range(len(inl)), dtype=numpy.int)
+    if i % 2:
+        ddt = numpy.hstack([ddt,ddt])[iii:(len(inl)+iii)]
+    else:
+        ddt = numpy.hstack([ddt,ddt])[(len(inl)+iii):iii:-1]
+
+    dtmp = shuffle_order(ddt)
+    ttt = tmp[dtmp]
+    # print "ORD:", ii, i, cc, len(tmp), ttt[:10]
+    # pdb.set_trace()
+    return ttt
+
+def shuffle_order(ids):
+    scores = [max([ii-1 for ii,vv in enumerate(bin(v)) if vv!='1']) for v in range(len(ids))]
+    vs = numpy.unique(scores)
+    if vs.shape[0] == len(ids):
+        return ids[numpy.argsort(scores)]
+
+    ovs = shuffle_order(vs)
+    return numpy.hstack([shuffle_order(ids[numpy.where(scores==v)[0]]) for v in ovs])
             
 class ParaView(GView):
 
@@ -40,9 +69,9 @@ class ParaView(GView):
     org_spreadL = 0.49 #(2/3.-0.5)
     org_spreadR = 0.49
     flat_space = 0.06
-    maj_space = 0.001
-    max_group_clustering = 100
-    nb_clusters = 10
+    maj_space = 0.05
+    max_group_clustering = 2**8
+    nb_clusters = 5
     margins_sides = 0.05
     margins_tb = 0.05
     margin_hov = 0.01
@@ -52,7 +81,7 @@ class ParaView(GView):
     def __init__(self, parent, vid, more=None):
         self.reps = set()
         self.current_r = None
-        self.prepared_data = None
+        self.prepared_data = {}
         self.sld = None
         self.ri = None
         GView.__init__(self, parent, vid)
@@ -159,157 +188,80 @@ class ParaView(GView):
                 # lit_str.append("v%d" % l.colId())
         side_cols.insert(pos_axis, None)
 
-        if self.prepared_data is not None and self.prepared_data["side_cols"] == side_cols:
-            self.prepared_data["ranges"] = ranges
-            self.prepared_data["lits"] = lits
-            self.prepared_data["litsort"] = litsort
-            return self.prepared_data
+        if self.prepared_data.get("side_cols", None) != side_cols:
+            precisions = [10**numpy.floor(numpy.log10(self.parent.dw.getData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
 
-        # precisions = [self.parent.dw.getData().col(side, col).getPrec() for side,col in side_cols]
-        precisions = [10**numpy.floor(numpy.log10(self.parent.dw.getData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
-
-        precisions.insert(pos_axis, 1)
-        precisions = numpy.array(precisions)
-        qcols = [l for l in litsort[0]]+[None]+[l for l in litsort[1]]
+            precisions.insert(pos_axis, 1)
+            precisions = numpy.array(precisions)
         
-        mat, details, mcols = self.parent.dw.getData().getMatrix(nans=numpy.nan)
-        mcols[None] = -1
-        cids = [mcols[sc] for sc in side_cols]
-        if draw_ppos is not None:
-            data_m = numpy.vstack([mat, draw_ppos[self.suppABCD]])[cids]
+            mat, details, mcols = self.parent.dw.getData().getMatrix(nans=numpy.nan)
+            mcols[None] = -1
+            cids = [mcols[sc] for sc in side_cols]
+            if draw_ppos is not None:
+                data_m = numpy.vstack([mat, draw_ppos[self.suppABCD]])[cids]
+            else:
+                data_m = numpy.vstack([mat, self.suppABCD])[cids]
+
+            limits = numpy.vstack([numpy.nanmin(data_m, axis=1),
+                                   numpy.nanmax(data_m, axis=1), precisions, numpy.zeros(precisions.shape)])
+            denoms = limits[1,:]-limits[0,:]
+            denoms[denoms==0] = 1.
+            scaled_m = numpy.vstack([(data_m[i,:]-limits[0,i])/denoms[i] for i in range(data_m.shape[0])])
+
+            ### spreading lines over range
+            pos_lids = self.getPos(scaled_m, data_m, limits, denoms, pos_axis)
+
+            qcols = [l for l in litsort[0]]+[None]+[l for l in litsort[1]]
+            xlabels = lit_str
+            xticks = [x for x,v in enumerate(side_cols)]# if v is not None]
+            lit_str.insert(pos_axis, None)
+            ycols = [-1]
+            xs = [-1]
+            for i in range(len(side_cols)):
+                ycols.extend([i,i])
+                xs.extend([i-self.flat_space, i+self.flat_space])
+            ycols.append(-2)
+            xs.append(len(side_cols))
+
+            #### ORDERING LINES FOR DETAILS SUBSAMPLING BY GETTING CLUSTERS
+            sampling_ord = self.getSamplingOrd(scaled_m, pos_axis)
+
+            return {"pos_axis": pos_axis, "N": data_m.shape[1],
+                    "side_cols": side_cols, "qcols": qcols, "lits": lits, "litsort": litsort,
+                    "xlabels": xlabels, "xticks": xticks, "ycols": ycols, "xs": xs,
+                    "limits": limits, "ranges": ranges, "sampling_ord": sampling_ord,
+                    "data_m": data_m, "scaled_m": scaled_m, "pos_lids": pos_lids}
+
         else:
-            data_m = numpy.vstack([mat, self.suppABCD])[cids]
+            limits = self.prepared_data["limits"].copy()
+            data_m = self.prepared_data["data_m"].copy()
+            scaled_m = self.prepared_data["scaled_m"].copy()
 
-        limits = numpy.vstack([numpy.nanmin(data_m, axis=1),
-                               numpy.nanmax(data_m, axis=1), precisions, numpy.zeros(precisions.shape)])
-        denoms = limits[1,:]-limits[0,:]
-        denoms[denoms==0] = 1.
-        scaled_m = numpy.vstack([(data_m[i,:]-limits[0,i])/denoms[i] for i in range(data_m.shape[0])])
-        spaces = []
-        ### spreading lines over range
-        N = data_m.shape[1]
-        avgs = numpy.nanmean(numpy.vstack([scaled_m, numpy.zeros_like(scaled_m[i,:])]), axis=0)
-        pos_lids = []
-        for i in range(data_m.shape[0]):
+            if draw_ppos is not None:
+                data_m[pos_axis,:] = numpy.array([draw_ppos[self.suppABCD]])
+            else:
+                data_m[pos_axis,:] = numpy.array(self.suppABCD)
 
-            idsNAN = list(numpy.where(~numpy.isfinite(scaled_m[i,:]))[0])
-            nanvs = None
-            if len(idsNAN) > 0:
-                scaled_m[i,idsNAN] = self.missing_yy
-                top, bot = self.missing_yy-len(idsNAN)*self.missing_w/N, \
-                           self.missing_yy+len(idsNAN)*self.missing_w/N
-                nanvs = numpy.linspace(top, bot, len(idsNAN))
+            ### test whether support changed
+            if numpy.sum(data_m[pos_axis,:] != self.prepared_data["data_m"][pos_axis,:]) > 0:
+                limits[:, pos_axis] = numpy.array([numpy.nanmin(data_m[pos_axis,:]), numpy.nanmax(data_m[pos_axis,:]), 1, 0])
+                denoms = numpy.ones(limits[1,:].shape)
+                denoms[pos_axis] = limits[1,pos_axis]-limits[0,pos_axis]
+                scaled_m[pos_axis,:] = (data_m[pos_axis,:]-limits[0,pos_axis])/denoms[pos_axis]
 
-            spreadv = numpy.zeros(data_m[i,:].shape)
-            w = abs(limits[2,i])
-            limits[0,i]-=0.5*w
-            limits[1,i]+=0.5*w
-            av_space = w - self.maj_space * denoms[i]
-            # # pdb.set_trace()
-            # prec = limits[-1,i]/(limits[1,i]-limits[0,i])
-            # print i,prec, limits[-1,i], (limits[1,i]-limits[0,i])
-            # if prec < 0.001:
-            # # if ranges[i][-1] == 0:
-            #     pos_lids.append(scaled_m[i])
-            # else:
-            # pdb.set_trace()
-            if av_space > 0:
-                limits[-1,i] = av_space
-                ww = numpy.array([50, 10, 100])
-                if i == 0:
-                    cc = [i+1, i+1, pos_axis]
-                elif i == data_m.shape[0]-1:
-                    cc = [i-1, i-1, pos_axis]
-                else:
-                    cc = [i-1, i+1, pos_axis]
-                pos_help = numpy.dot(ww, scaled_m[cc,:])+avgs
-                
-                vs = numpy.unique(scaled_m[i,:])
-                for v in vs:
-                    if v != self.missing_yy:
-                        vids = list(numpy.where(scaled_m[i,:]==v)[0])
-                        vids.sort(key=lambda x: pos_help[x])
-                        top, bot = -len(vids)*av_space*0.5/N, len(vids)*av_space*0.5/N
-                        spreadv[vids] += numpy.linspace(top, bot, len(vids))
-                        # spreadv[vids] += 3 # numpy.linspace(top, bot, len(vids))
-            # if i == 0:
-            #     pdb.set_trace()
+                update_pos = [pos_axis]
+                pos_lids = self.prepared_data["pos_lids"].copy()
+                tmp_pos_lids = self.getPos(scaled_m, data_m,
+                                           limits, denoms, pos_axis, update_pos)
+                for i, j in enumerate(update_pos):
+                    pos_lids[j,:] = tmp_pos_lids[i,:]
+                return {"lits": lits, "litsort": litsort,
+                        "limits": limits, "ranges": ranges,
+                        "data_m": data_m, "scaled_m": scaled_m, "pos_lids": pos_lids}
+            else:
+                return {"lits": lits, "litsort": litsort, "ranges": ranges}
 
-            pos_lids.append((data_m[i,:]-limits[0,i] + spreadv)/(limits[1,i]-limits[0,i]))
-            if nanvs is not None:
-                pos_lids[-1][idsNAN] = nanvs
 
-        spreadL = numpy.zeros(data_m[i,:].shape)
-        spreadL[numpy.argsort(pos_lids[0])] = numpy.linspace(0.5-self.org_spreadL, 0.5+self.org_spreadL, N)
-        spreadR = numpy.zeros(data_m[i,:].shape)
-        spreadR[numpy.argsort(pos_lids[-1])] = numpy.linspace(0.5-self.org_spreadR, 0.5+self.org_spreadR, N)
-
-        pos_lids.extend([spreadR,spreadL])
-        pos_lids = numpy.vstack(pos_lids)
-
-        xlabels = lit_str
-        xticks = [x for x,v in enumerate(side_cols)]# if v is not None]
-        lit_str.insert(pos_axis, "#")
-        ycols = [-1]
-        xs = [-1]
-        for i in range(len(side_cols)):
-            ycols.extend([i,i])
-            xs.extend([i-self.flat_space, i+self.flat_space])
-        ycols.append(-2)
-        xs.append(len(side_cols))
-                
-        #### ORDERING LINES FOR DETAILS SUBSAMPLING BY GETTING CLUSTERS
-        sorting_samples = numpy.zeros(scaled_m[i,:].shape)
-        left_over = []
-        for v in numpy.unique(scaled_m[pos_axis,:]):
-            ids = numpy.where(scaled_m[pos_axis,:]==v)[0]
-            # numpy.random.shuffle(ids)
-            rg = ids.shape[0]/self.max_group_clustering+1
-            for i in range(rg):
-                if i == 0 and ids.shape[0] < self.nb_clusters:
-                    sorting_samples[ids] = -0.1*v+float(i)/rg
-                    break
-                elif i > 0 and ((i+1)*self.max_group_clustering - ids.shape[0]) > 2*self.max_group_clustering/3.:
-                    left_over.extend(ids[i*self.max_group_clustering:])
-                    break
-                else:
-                    subids = ids[i*self.max_group_clustering:(i+1)*self.max_group_clustering]
-                    d = scipy.spatial.distance.pdist(scaled_m[:,subids].T)
-                    Z = scipy.cluster.hierarchy.linkage(d)
-                    T = scipy.cluster.hierarchy.fcluster(Z, self.nb_clusters, criterion="maxclust")        
-                    for cc in numpy.unique(T):
-                        ci = numpy.where(T==cc)[0]
-                        #numpy.random.shuffle(ci)
-                        sorting_samples[subids[ci]] = -0.1*v+float(i)/rg+10*numpy.arange(1., ci.shape[0]+1)
-        if len(left_over) > 0:
-            subids = numpy.array(left_over)
-            d = scipy.spatial.distance.pdist(scaled_m[:,subids].T)
-            Z = scipy.cluster.hierarchy.linkage(d)
-            T = scipy.cluster.hierarchy.fcluster(Z, self.nb_clusters, criterion="maxclust")
-            for cc in numpy.unique(T):
-                ci = numpy.where(T==cc)[0]
-                #numpy.random.shuffle(ci)
-                sorting_samples[subids[ci]] = v+10*numpy.arange(1., ci.shape[0]+1)
-        sampling_ord = numpy.argsort(sorting_samples)
-
-        prepared_data = {"pos_axis": pos_axis,
-                         "N": N,
-                         "xlabels": xlabels,
-                         "xticks": xticks,
-                         "ycols": ycols,
-                         "xs": xs,
-                         "limits": limits,
-                         "ranges": ranges,
-                         "sampling_ord": sampling_ord,
-                         "side_cols": side_cols,
-                         "qcols": qcols,
-                         "data_m": data_m,
-                         "scaled_m": scaled_m,
-                         "pos_lids": pos_lids,
-                         "lits": lits,
-                         "litsort": litsort
-                         }
-        return prepared_data
 
     def updateRanges(self, litsort, lits):
         ranges = []
@@ -336,7 +288,7 @@ class ParaView(GView):
             red = self.current_r
             draw_settings = self.getDrawSettings()
 
-            self.prepared_data = self.prepareData(red, draw_ppos = draw_settings["draw_ppos"])
+            self.prepared_data.update(self.prepareData(red, draw_ppos = draw_settings["draw_ppos"]))
 
             ### SAMPLING ENTITIES
             t = 0.1
@@ -364,10 +316,6 @@ class ParaView(GView):
                     self.axe.plot(self.prepared_data["xs"], self.prepared_data["pos_lids"][self.prepared_data["ycols"],r],
                                   color=draw_settings[self.suppABCD[r]]["color_l"],
                                   alpha=draw_settings[self.suppABCD[r]]["alpha"]*selv[r], picker=2, gid="%d.%d" % (r, 1))
-
-            ### Labels
-            self.axe.set_xticks(self.prepared_data["xticks"])
-            self.axe.set_xticklabels(self.prepared_data["xlabels"], rotation=20, ha="right")
 
             ### Bars slidable/draggable rectangles
             rects_drag = {}
@@ -407,10 +355,33 @@ class ParaView(GView):
             self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
                                numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
             if self.parent.dw.getData().hasMissing():
-                self.axe.set_ylim([self.missing_yy-self.margins_tb,1+self.margins_tb])
+                bot = self.missing_yy-self.margins_tb
             else:
-                self.axe.set_ylim([0-self.margins_tb,1+self.margins_tb])
-            
+                bot = 0-self.margins_tb
+            self.axe.set_ylim([bot,1+self.margins_tb])
+
+            ### Labels
+            self.axe.set_xticks(self.prepared_data["xticks"])
+            self.axe.set_xticklabels(["" for i in self.prepared_data["xlabels"]]) #, rotation=20, ha="right")
+            side = 0
+            for lbi, lbl in enumerate(self.prepared_data["xlabels"]):
+                if lbl is None:
+                    side = 1
+                else:
+                    tt = self.axe.annotate(lbl,
+                                           xy =(self.prepared_data["xticks"][lbi], bot),
+                                           xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
+                                           horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_l"],
+                                           bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7), zorder=15
+                                           )
+                    self.axe.annotate(lbl,
+                                      xy =(self.prepared_data["xticks"][lbi], bot),
+                                      xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
+                                      horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_l"],
+                                      bbox=dict(boxstyle="round", fc=draw_settings[side]["color_l"], ec="none", alpha=0.3), zorder=15
+                                      )
+
+
 
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
@@ -452,7 +423,7 @@ class ParaView(GView):
         return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[1], direc=1)]
 
     def getPinvalue(self, rid, b, direc=0):
-        if self.prepared_data is None or self.prepared_data["qcols"][rid] is None:
+        if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
             return 0
         elif self.prepared_data["qcols"][rid].typeId() == NumColM.type_id:
             v = self.getVforY(rid, b)
@@ -484,7 +455,7 @@ class ParaView(GView):
                 return c.getCatFromNum(v)
             
     def receive_release(self, rid, rect):
-        if self.current_r is not None and self.prepared_data is not None:
+        if self.current_r is not None and "pos_axis" in self.prepared_data:
             pos_axis = self.prepared_data["pos_axis"]
             side = 0
             pos = rid
@@ -523,11 +494,12 @@ class ParaView(GView):
                         for path, comp, neg in self.prepared_data["lits"][side][l]:
                             copied.getBukElemAt(path).flip()
                     alright = True
-            if alright and upAll:
+            if alright:
                 self.prepared_data["ranges"][rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
-                
-                self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
-
+                if upAll:
+                    self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
+                else:
+                    self.updateMap()
                 
     def emphasizeOn(self, lids, colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
@@ -622,10 +594,106 @@ class ParaView(GView):
         #     self.drs[self.ri].do_motion(event)
 
     def getLidAt(self, y, axid):
-        if self.prepared_data is not None:
+        if "pos_lids" in self.prepared_data:
             rlid = numpy.argmin((self.prepared_data["pos_lids"][axid,self.reps]-y)**2)
             lid = self.reps[rlid]
             if abs(self.prepared_data["pos_lids"][axid,lid]-y) < self.margin_hov:
                 return lid
         return None
+
+
+    def getPos(self, scaled_m, data_m, limits, denoms, pos_axis, update_pos=None):
+        N = data_m.shape[1]
+        avgs = numpy.nanmean(numpy.vstack([scaled_m, numpy.zeros_like(scaled_m[0,:])]), axis=0)
+        pos_lids = []
+        do_all = False
+        if update_pos is None:
+            do_all = True
+            update_pos = range(data_m.shape[0])
+        for i in update_pos:
+            idsNAN = list(numpy.where(~numpy.isfinite(scaled_m[i,:]))[0])
+            nanvs = None
+            if len(idsNAN) > 0:
+                scaled_m[i,idsNAN] = self.missing_yy
+                top, bot = self.missing_yy-len(idsNAN)*self.missing_w/N, \
+                           self.missing_yy+len(idsNAN)*self.missing_w/N
+                nanvs = numpy.linspace(top, bot, len(idsNAN))
+
+            spreadv = numpy.zeros(data_m[i,:].shape)
+            w = abs(limits[2,i])
+            limits[0,i]-=0.5*w
+            limits[1,i]+=0.5*w
+            av_space = w - self.maj_space * denoms[i]
+            if av_space > 0:
+                limits[-1,i] = av_space
+                ww = numpy.array([50, 10, 100])
+                if scaled_m.shape[0] == 1:
+                    pos_help = numpy.ones(scaled_m[i,:].shape)
+                    single = True
+                else:
+                    if i == 0:
+                        cc = [i+1, i+1, pos_axis]
+                    elif i == data_m.shape[0]-1:
+                        cc = [i-1, i-1, pos_axis]
+                    else:
+                        cc = [i-1, i+1, pos_axis]
+                    pos_help = numpy.dot(ww, scaled_m[cc,:])+avgs
+                
+                vs = numpy.unique(scaled_m[i,:])
+                for v in vs:
+                    if v != self.missing_yy:
+                        vids = list(numpy.where(scaled_m[i,:]==v)[0])
+                        vids.sort(key=lambda x: pos_help[x])
+                        top, bot = -len(vids)*av_space*0.5/N, len(vids)*av_space*0.5/N
+                        spreadv[vids] += numpy.linspace(top, bot, len(vids))
+
+            pos_lids.append((data_m[i,:]-limits[0,i] + spreadv)/(limits[1,i]-limits[0,i]))
+            if nanvs is not None:
+                pos_lids[-1][idsNAN] = nanvs
+
+        if do_all:
+            spreadL = numpy.zeros(data_m[i,:].shape)
+            spreadL[numpy.argsort(pos_lids[0])] = numpy.linspace(0.5-self.org_spreadL, 0.5+self.org_spreadL, N)
+            spreadR = numpy.zeros(data_m[i,:].shape)
+            spreadR[numpy.argsort(pos_lids[-1])] = numpy.linspace(0.5-self.org_spreadR, 0.5+self.org_spreadR, N)
+
+            pos_lids.extend([spreadR,spreadL])
+        pos_lids = numpy.vstack(pos_lids)
+        return pos_lids
+
+    def getSamplingOrd(self, scaled_m, pos_axis):
+        sorting_samples = numpy.zeros(scaled_m[0,:].shape)
+        left_over = []
+        for v in numpy.unique(scaled_m[pos_axis,:]):
+            ids = numpy.where(scaled_m[pos_axis,:]==v)[0]
+            # numpy.random.shuffle(ids)
+            rg = ids.shape[0]/self.max_group_clustering+1
+            for i in range(rg):
+                if i == 0 and ids.shape[0] < self.nb_clusters:
+                    sorting_samples[ids] = -0.1*v+float(i)/rg
+                    break
+                elif i > 0 and ((i+1)*self.max_group_clustering - ids.shape[0]) > 2*self.max_group_clustering/3.:
+                    left_over.extend(ids[i*self.max_group_clustering:])
+                    break
+                else:
+                    subids = ids[i*self.max_group_clustering:(i+1)*self.max_group_clustering]
+                    d = scipy.spatial.distance.pdist(scaled_m[:,subids].T)
+                    Z = scipy.cluster.hierarchy.linkage(d)
+                    T = scipy.cluster.hierarchy.fcluster(Z, self.nb_clusters, criterion="maxclust")        
+                    for cc in numpy.unique(T):
+                        ci = shuffle_ids(numpy.where(T==cc)[0], i, cc)
+                        #numpy.random.shuffle(ci)
+                        sorting_samples[subids[ci]] = -0.1*v+float(i)/rg+10*numpy.arange(1., ci.shape[0]+1)
+        if len(left_over) > 0:
+            subids = numpy.array(left_over)
+            d = scipy.spatial.distance.pdist(scaled_m[:,subids].T)
+            Z = scipy.cluster.hierarchy.linkage(d)
+            T = scipy.cluster.hierarchy.fcluster(Z, self.nb_clusters, criterion="maxclust")
+            for cc in numpy.unique(T):
+                ci = shuffle_ids(numpy.where(T==cc)[0], 0, cc)
+                #numpy.random.shuffle(ci)
+                sorting_samples[subids[ci]] = v+10*numpy.arange(1., ci.shape[0]+1)
+        sampling_ord = numpy.argsort(sorting_samples)
+        return sampling_ord
+
 
