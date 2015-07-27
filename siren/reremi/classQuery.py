@@ -1,10 +1,82 @@
 import re, random, operator, itertools, codecs, numpy, copy
 from classSParts import  SParts
 from redquery_parser import RedQueryParser
+import scipy.spatial.distance
 from grako.exceptions import * # @UnusedWildImport
 import pdb
 
 VARIABLE_MARK = 'v'
+
+def foldRowsTT(tt):
+    changed = False
+    tts = numpy.argsort(numpy.abs(0.5*tt.shape[0] - tt.sum(axis=0)))
+    for i in tts:
+        cols = [j for j in range(tt.shape[1]) if j != i]
+        idL = numpy.where(tt[:,i]==1)[0]
+        idR = numpy.where(tt[:,i]==0)[0]
+        L = tt[idL,:]
+        R = tt[idR,:]
+        ps = zip(*numpy.where(scipy.spatial.distance.cdist(L[:,cols], R[:,cols], 'hamming')==0))
+        keep = numpy.ones(tt.shape[0], dtype = numpy.bool)
+        for p in ps:
+            changed = True
+            tt[idL[p[0]], i] = -1
+            keep[idR[p[1]]] = False
+        tt = tt[keep,:]
+    return tt, changed
+
+def foldColsTT(tt):
+    # org = tt.copy()
+    idsO = []
+    # idsM = []
+    ps = zip(*numpy.where(scipy.spatial.distance.squareform((scipy.spatial.distance.pdist(tt, 'hamming')*tt.shape[1] == 2))))
+    # while(len(ps)) > 0:
+    for rows in ps:
+        # rows = ps[0]
+        cols = numpy.where(tt[rows[0],:] != tt[rows[1],:])[0]
+        block = tt[rows,:][:,cols]
+        pr, pc  = numpy.where(block ==-1)
+        if len(pr) == 1 and pr[0] ==1:
+            changed = True
+            if pc[0] == 1:
+                # tt[rows[0], cols[0]] = -1
+                idsO.append((rows[0], cols[0]))
+                # idsM.append((rows[1], cols[1]))
+            else:
+                # tt[rows[0], cols[1]] = -1
+                idsO.append((rows[0], cols[1]))
+                # idsM.append((rows[1], cols[0]))
+    if len(idsO) > 0:
+        tt[zip(*idsO)] = -1
+    return tt, len(idsO) > 0
+
+def subsRowsTT(tt):
+    tts = numpy.argsort(-numpy.sum(tt==-1, axis=1))
+    keep = numpy.ones(tt.shape[0], dtype = numpy.bool)
+    for row in tts:
+        if keep[row]:
+            cmask = tt[row, :] != -1
+            ps = numpy.where(scipy.spatial.distance.cdist(tt[:,cmask], [tt[row,cmask]], 'hamming')==0)[0]
+            for p in ps:
+                if p != row:
+                    keep[p] = False
+    return tt[keep,:], numpy.sum(~keep) > 0
+
+def simplerTT(tt):
+    # nbrows = tt.shape[0]
+    # nbnn = numpy.sum(tt>-1)
+    # ttchanged = 0
+    if tt.shape[0] > 2:
+        changed = [True, True, True]
+        while sum(changed) > 0:
+            tt, changed[0] = foldRowsTT(tt)
+            tt, changed[1] = foldColsTT(tt)
+            tt, changed[2] = subsRowsTT(tt)
+    #         ttchanged += sum(changed)
+    # if ttchanged > 0:
+    #     print "SIMPLIFY FROM (%d, %d) TO (%d, %d)" % (nbrows, nbnn, tt.shape[0], numpy.sum(tt>-1))
+    #     print tt
+    return tt
 
 def recurse_numeric(b, function, args={}):
     if type(b) is list:
@@ -905,8 +977,12 @@ class QTree:
                 buks.append((node, self.getBranchQuery(node)))
         buks.sort(key=lambda x: (self.getNodeLeaf(x[0]), x[0]))
         qu = Query()
-        qu.op = Op(1)
-        qu.buk = [x[1] for x in buks]
+        if len(buks) == 1:
+            qu.op = Op(-1)
+            qu.buk = buks[0][1]
+        else:
+            qu.op = Op(1)
+            qu.buk = [x[1] for x in buks]
         return qu
         
     def getSimpleQuery(self):
@@ -926,11 +1002,12 @@ class QTree:
             for ynb in [0,1]:
                 if ynb == QTree.branchY or not self.isRootNode(node):
                     chlds = self.getNodeChildren(node, ynb)
-                    tmppr = set([self.recSimply(c) for c in chlds])
-                    pr[ynb] = max(tmppr)
-                    if pr[ynb] == 1:
-                        self.trimNodeChildren(node, ynb)
-                        self.addLeafNode(node, ynb, 1)
+                    if len(chlds) > 0:
+                        tmppr = set([self.recSimply(c) for c in chlds])
+                        pr[ynb] = max(tmppr)
+                        if pr[ynb] == 1:
+                            self.trimNodeChildren(node, ynb)
+                            self.addLeafNode(node, ynb, 1)
             if pr[0] == pr[1]:
                 return pr[0]
             else:
@@ -1005,6 +1082,8 @@ class QTree:
         mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
         kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
         ### TODO choose the split
+        # if len(kks) > 1:
+        #     pdb.set_trace()
         # pdb.set_trace()
         pick = sorted(kks)[0]
 
@@ -1569,7 +1648,98 @@ class Query:
             #### old code to write the query justified in length lenField
             #### string.ljust(qstr, lenField)[:lenField]
 
-            
+    def algExp(self):
+        def evl(b, op, tmap):
+            if isinstance(b, Literal):
+                if b.getTerm() not in tmap:
+                    key = b.getTerm().getComplement()
+                    if b.isNeg():
+                        return "t[%s]" % tmap[key]
+                    else:
+                        return "(not t[%s])" % tmap[key]
+                elif b.isNeg():
+                    return "(not t[%s])" % tmap[b.getTerm()]
+                else:
+                    return "t[%s]" % tmap[b.getTerm()]
+            if isinstance(b, Neg):
+                return "!NEG!"
+            else:
+                vs = [evl(bb, op.other(), tmap) for bb in b]
+                if len(vs) == 1:
+                    return vs[0]
+                else:
+                    if op.isOr():
+                        jstr = " or "
+                    else:
+                        jstr = " and "
+                    if "!NEG!" in vs:
+                        vs.remove("!NEG!")
+                        pref = "( not ("
+                        suff = "))"
+                    else:
+                        pref = "( "
+                        suff = " )"
+                    return pref + jstr.join(vs) + suff
+
+        if len(self) == 0 :
+            return 'False', {}
+        else:
+            tmap = dict([(v,i) for (i,v) in enumerate(sorted(self.listLiteralsDetails().keys()))])
+            vs = [evl(bb, self.op.other(), tmap) for bb in self.buk]
+            if len(vs) == 1:
+                return vs[0], tmap
+            else:
+                if self.op.isOr():
+                    jstr = " or "
+                else:
+                    jstr = " and "
+                if "!NEG!" in vs:
+                    vs.remove("!NEG!")
+                    pref = "( not ("
+                    suff = "))"
+                else:
+                    pref = "( "
+                    suff = " )"
+                return pref + jstr.join(vs) + suff, tmap
+
+    def truthTable(self):
+        def recTT(lstr, vlist, nbvar):
+            if nbvar == 0:
+                if eval(lstr, {}, {"t": vlist}) == 1 :
+                    return [vlist]
+                else:
+                    return []
+            else:
+                ####
+                return recTT(lstr, [False]+vlist, nbvar-1)+recTT(lstr, [True]+vlist, nbvar-1)
+
+        lstr, tmap = self.algExp()
+        tb = recTT(lstr, [], len(tmap))
+        return numpy.array(tb, dtype=numpy.int), tmap
+
+    def algEL(self):
+        if len(self) > 0:
+            tt, tmap = self.truthTable()
+            stt = tt.copy()
+            stt = simplerTT(stt)
+            tlist = sorted(tmap.keys(), key=lambda x: tmap[x])
+            branches = []
+            for bi in range(stt.shape[0]):
+                branches.append([Literal(1-stt[bi,ti], tlist[ti]) for ti in range(stt.shape[1]) if stt[bi,ti] != -1])
+            if len(branches) > 0:
+                # for b in branches:
+                #     print [t.disp() for t in b]
+                #pdb.set_trace()
+                qt = QTree(branches=branches)
+                tmp = qt.getQuery()
+                # tto, tmapo = tmp.truthTable()
+                # if numpy.sum(tt != tto) >0:
+                #     print "----- SOMETHING WENT WRONG !"
+                #     pdb.set_trace()
+                return tmp
+        return Query()
+
+        
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def parseApd(string):
         bannchar = Op.ops[-1]+Op.ops[1]
