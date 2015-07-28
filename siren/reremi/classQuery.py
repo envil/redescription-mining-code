@@ -62,20 +62,65 @@ def subsRowsTT(tt):
                     keep[p] = False
     return tt[keep,:], numpy.sum(~keep) > 0
 
+def triplesRowsTT(tt):
+    tts = numpy.argsort(-numpy.sum(tt==-1, axis=1))
+    keep = numpy.ones(tt.shape[0], dtype = numpy.bool)
+    pivots = []
+    pairs = []
+    for row in tts:
+        # if row == 2:
+        #     print tt
+        #     pdb.set_trace()
+        cmask = tt[row, :] == -1
+        ps = zip(*numpy.where(scipy.spatial.distance.squareform((scipy.spatial.distance.pdist(tt[:,cmask]==-1, 'hamming') == 0))))
+        for p in ps:
+            if p[0] < p[1]:
+                matches = tt[p[0],:] == tt[p[1],:]
+                ### MATCHING CONDITIONS:
+                ### a) where row == -1:
+                ###    i) all -1 match, ii, there are non -1, ii) in all of them p[0] and p[1] are complements 
+                ### b) where row != -1:
+                ###    i) one value is -1 (if rows don't match), ii) the other (or both if match) is the value in row 
+                if ( numpy.sum(cmask * matches) == 0 or numpy.max(tt[p,:][:, cmask * matches]) == -1 )  and \
+                   numpy.sum(cmask * ~matches) > 0 and \
+                   numpy.all(tt[p[0], cmask * ~matches] == (1-tt[p[1], cmask * ~matches])) and \
+                   numpy.all(numpy.min(tt[p,:][:, ~cmask * ~matches], axis=0) == -1) and \
+                   numpy.all(numpy.max(tt[p,:][:, ~cmask], axis=0) == tt[row, ~cmask]) :
+                    pivots.append(row)
+                    pairs.append(p)
+                                          
+            # for p in ps:
+            #     if p[0] < p[1]:
+            #         matches = tt[p[0],:] == tt[p[1],:]
+            #         if numpy.max(numpy.min(tt[p,:][:, ~(cmask + matches)],axis=0)) == -1 \
+            #                and (numpy.sum(matches) == 0 or numpy.min(tt[p[0], matches]) > -1):
+            #             pivots.append(row)
+            #             pairs.append(p)
+
+    if len(pivots) > 0:
+        if len(pivots) > 1:
+            print "More than one pivot", pivots, pairs
+            pdb.set_trace()
+        keep[pivots] = False
+        # print "Found triple"
+    return tt[keep,:], numpy.sum(~keep)>0
+
+
 def simplerTT(tt):
     # nbrows = tt.shape[0]
     # nbnn = numpy.sum(tt>-1)
     # ttchanged = 0
     if tt.shape[0] > 2:
-        changed = [True, True, True]
+        changed = [True, True, True, True]
         while sum(changed) > 0:
             tt, changed[0] = foldRowsTT(tt)
             tt, changed[1] = foldColsTT(tt)
             tt, changed[2] = subsRowsTT(tt)
+            tt, changed[3] = triplesRowsTT(tt)
     #         ttchanged += sum(changed)
     # if ttchanged > 0:
     #     print "SIMPLIFY FROM (%d, %d) TO (%d, %d)" % (nbrows, nbnn, tt.shape[0], numpy.sum(tt>-1))
-    #     print tt
+    #     # print tt
     return tt
 
 def recurse_numeric(b, function, args={}):
@@ -978,11 +1023,19 @@ class QTree:
         buks.sort(key=lambda x: (self.getNodeLeaf(x[0]), x[0]))
         qu = Query()
         if len(buks) == 1:
-            qu.op = Op(-1)
+            if len(buks[0][1]) == 1:
+                qu.op = Op(0)
+            else:
+                qu.op = Op(-1)
             qu.buk = buks[0][1]
         else:
             qu.op = Op(1)
-            qu.buk = [x[1] for x in buks]
+            qu.buk = []
+            for x in buks:
+                if len(x[1]) ==1:
+                    qu.buk.append(x[1][0])
+                else:
+                    qu.buk.append(x[1])
         return qu
         
     def getSimpleQuery(self):
@@ -1550,7 +1603,6 @@ class Query:
                 return x.colId()
         self.buk.sort(key=lambda x: soK(x))
 
-
     def listLiterals(self):
         def evl(b, lits):
             for bb in b:
@@ -1594,7 +1646,7 @@ class Query:
         if b is None:
             b = self.buk
         if isinstance(b, Literal):
-            return (b.colId(), b)
+            return ((b.colId(), b.isNeg(), b.valRange()), b)
         elif isinstance(b, Neg):
             return (-1, b)
         else:
@@ -1717,7 +1769,8 @@ class Query:
         tb = recTT(lstr, [], len(tmap))
         return numpy.array(tb, dtype=numpy.int), tmap
 
-    def algEL(self):
+    def algNormalized(self):
+        tmp = Query()
         if len(self) > 0:
             tt, tmap = self.truthTable()
             stt = tt.copy()
@@ -1732,12 +1785,25 @@ class Query:
                 #pdb.set_trace()
                 qt = QTree(branches=branches)
                 tmp = qt.getQuery()
-                # tto, tmapo = tmp.truthTable()
-                # if numpy.sum(tt != tto) >0:
-                #     print "----- SOMETHING WENT WRONG !"
-                #     pdb.set_trace()
-                return tmp
-        return Query()
+                tto, tmapo = tmp.truthTable()
+                idsc = [tmap[l] for l in tmapo.keys()]
+                dropC = [i for (l,i) in tmap.items() if l not in tmapo]
+                ctt = tt
+                if len(dropC) > 0:
+                    keep_rows = numpy.all(tt[:, dropC]==1, axis=1)
+                    ctt = tt[keep_rows,:][:,idsc]
+                if numpy.sum(ctt != tto) >0:
+                    print "----- SOMETHING WENT WRONG !"
+                    pdb.set_trace()
+        if len(self) == 0 and len(tmp) == 0:
+            return tmp, False
+        else:
+            tmp.reorderLits()
+            comp = self.reorderedLits()[1]
+            if comp == tmp.buk and self.op == tmp.op:
+                return tmp, False
+            else:
+                return tmp, True
 
         
     ################# START FOR BACKWARD COMPATIBILITY WITH XML

@@ -292,6 +292,27 @@ class Redescription:
                 self.restricted_sParts = SParts(data.getSSetts(), restrict, [nsuppL, nsuppR])
             self.restricted_prs = [self.queries[0].proba(0, data, restrict), self.queries[1].proba(1, data, restrict)]
             self.restrict_sub = set(restrict)
+
+
+    def getNormalized(self, data=None, side=None):
+        if side is not None:
+            sides = [side]
+        else:
+            sides = [0,1]
+        queries = [self.queries[side] for side in [0,1]]
+        c = [False, False]
+        for side in sides:
+            queries[side], c[side] = self.queries[side].algNormalized()
+        if c[side] or c[side]:
+            red = Redescription.fromQueriesPair(queries, data)
+            ### check that support is same
+            # if self.supports() != red.supports():
+            #     print "ERROR ! SUPPORT CHANGED WHEN NORMALIZING..."
+            #     pdb.set_trace()
+            return red, True            
+        else:
+            return self, False
+
         
     def recompute(self, data):
         (nsuppL, missL) = self.recomputeQuery(0, data)

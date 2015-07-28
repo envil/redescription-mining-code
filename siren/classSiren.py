@@ -53,17 +53,18 @@ class Siren():
         self.findDlg = None
         self.dw = None
         self.plant = WorkPlant()
-        self.tabs = {0: {"title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
-                     1: {"title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
-                     "rows": {"title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
-                     "reds": {"title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
-                     "exp": {"title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
-                     "hist": {"title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
-                     "log": {"title":"Log", "short": "Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}
-                     }
-        self.tabs_keys = ["rows", 0, 1, "reds", "exp", "hist", "log"]
+        tmp_tabs = [{"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
+                    {"id": 0, "title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
+                    {"id": 1, "title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
+                    {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
+                    {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
+                    {"id": "hist", "title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
+                    {"id": "log", "title":"Log", "short": "Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}]
+        
+        self.tabs = dict([(p["id"], p) for p in tmp_tabs])
+        self.tabs_keys = [p["id"] for p in tmp_tabs]
         self.selectedTab = self.tabs[self.tabs_keys[0]]
-        stn = "rows"
+        stn = self.tabs_keys[0]
 
         self.logger = Log()
 
@@ -337,6 +338,10 @@ class Siren():
                     ID_MOVEREDS = wx.NewId()
                     m_movereds = menuRed.Append(ID_MOVEREDS, "A&ppend Enabled to Redescriptions", "Move all enabled redescriptions to main Redescriptions tab.")
                     frame.Bind(wx.EVT_MENU, self.OnMoveReds, m_movereds)
+
+                ID_NOR = wx.NewId()
+                m_nor = menuRed.Append(ID_NOR, "&Normalize", "Normalize current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnNormalize, m_nor)
 
                 ID_DUP = wx.NewId()
                 m_dup = menuRed.Append(ID_DUP, "&Duplicate", "Duplicate current redescription.")
@@ -1000,6 +1005,18 @@ class Siren():
     def OnPaste(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
+            self.doUpdates({"menu":True}) ### update paste entry
+
+    def OnNormalize(self, event):
+        if self.selectedTab["type"] in ["Reds"]:
+            red = self.selectedTab["tab"].getSelectedItem()
+            if red is not None:
+                redn, changed = red.getNormalized(self.dw.getData())
+                if changed:
+                    self.selectedTab["tab"].updateEdit(None, redn, self.selectedTab["tab"].getSelectedRow())
+                if self.selectedTab["id"] != "hist":
+                    self.tabs["hist"]["tab"].insertItem(red, row=-1)
+                    
             self.doUpdates({"menu":True}) ### update paste entry
 
     def OnDuplicate(self, event):

@@ -553,6 +553,27 @@ class SParts:
                     if si != self.ssetts.delta:
                         self.sParts[self.ssetts.delta] -= sp
 
+    # def __eq__(self, other):
+    #     print "Calling EQ"
+    #     if isinstance(other, SParts) and len(other.sParts) == len(self.sParts):
+    #         for i, p in enumerate(self.sParts):
+    #             if other.sParts[i] != p:                    
+    #                 return False
+    #         return True
+    #     return False
+
+    def __cmp__(self, other):
+        if isinstance(other, SParts) and len(other.sParts) == len(self.sParts):
+            lps = [len(p) for p in self.sParts]
+            lpo = [len(p) for p in other.sParts]
+            if lps == lpo:
+                for i, p in enumerate(self.sParts):
+                    if other.sParts[i] != p:                    
+                        return cmp(p, other.sParts[i])
+                return 0
+            return cmp(lps, lpo)
+        return -1
+
     def pVal(self):
         try:
             return eval('self.pVal%s()' % (self.ssetts.methodpVal))

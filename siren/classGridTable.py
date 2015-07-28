@@ -565,8 +565,10 @@ class RedTable(GridTable):
 
     def insertItem(self, item, row=None, upView=True):
         if row is None or row >= len(self.sortids):
+            row_inserted = len(self.data)
             self.sortids.append(len(self.data))
         else:
+            row_inserted = row+1
             self.sortids.insert(row+1, len(self.data))
         self.last_rid += 1
         self.rids.append(self.last_rid)
@@ -574,6 +576,7 @@ class RedTable(GridTable):
         if upView:
             self.neutraliseSort()
             self.ResetView()
+        return row_inserted
 
     def deleteItem(self, pos, upView=True):
         upMenu = False
@@ -671,11 +674,11 @@ class RedTable(GridTable):
                 self.parent.updateMenus()
 
             
-    def updateEdit(self, edit_key, red):
-        if edit_key in self.opened_edits.keys() \
-               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
+    def updateEdit(self, edit_key, red, toed=None):
+        if edit_key in self.opened_edits.keys():
+            toed = self.opened_edits[edit_key]
+        if toed is not None and toed >= 0 and toed < len(self.data):
             if self.tabId != "hist":
-                toed = self.opened_edits[edit_key]
                 self.data[toed] = red
 
                 for k,v in self.opened_edits.items():
@@ -685,10 +688,12 @@ class RedTable(GridTable):
                             mc.setCurrent(red, self.tabId)
 
             else:
-                old_toed = self.opened_edits[edit_key]
+                old_toed = toed
                 new_toed = len(self.data)
-                self.insertItem(red, -1)
-                
+                row_inserted = self.insertItem(red, -1)
+                if edit_key is None: ## edit comes from the tab itself, not from a view
+                    self.setSelectedRow(row_inserted)
+            
                 for k,v in self.opened_edits.items():
                     if v == old_toed:
                         self.opened_edits[k] = new_toed 
@@ -698,7 +703,7 @@ class RedTable(GridTable):
                             if k != edit_key:
                                 mc.setCurrent(red, self.tabId)
 
-                if old_toed in self.emphasized:
+                if old_toed in self.emphasized and edit_key in self.opened_edits:
                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
                     del self.emphasized[old_toed]
 
@@ -794,7 +799,8 @@ class RedTable(GridTable):
 
     def pasteItem(self, row = None):
         if self.parent.buffer_copy is not None:
-            self.insertItem(self.parent.buffer_copy, row)
+            row_inserted = self.insertItem(self.parent.buffer_copy, row)
+            self.setSelectedRow(row_inserted)
             self.parent.buffer_copy = None
             
     def filterToOne(self, parameters):
