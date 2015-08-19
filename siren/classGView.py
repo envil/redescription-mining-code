@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from matplotlib.path import Path
@@ -56,15 +57,38 @@ class GView(object):
     map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SSetts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SSetts.beta]),
                        ("i", "|E"+SYM.SYM_GAMMA+"|", [SSetts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SSetts.delta])]
 
+    infos_details = [{"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"},
+                     {"id": "lenI", "label": label_cardI, "meth": "getLenI", "format": "%i", "color":2},
+                     {"id": "lenA", "label": label_cardAlpha, "meth": "getLenA", "format": "%i", "color":0},
+                     {"id": "lenT", "label": label_cardT, "meth": "getLenT", "format": "%i"},
+                     {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"},
+                     {"id": "lenO", "label": label_cardO, "meth": "getLenO", "format": "%i"},
+                     {"id": "lenB", "label": label_cardBeta, "meth": "getLenB", "format": "%i", "color":1},
+                     {"id": "lenU", "label": label_cardU, "meth": "getLenU", "format": "%i"},]
+    
     TID = "G"
     SDESC = "Viz"
     ordN = 0
     title_str = "View"
     geo = False
     typesI = ["Var", "Reds", "Row"]
-    fwidth = 600
 
     max_emphlbl = 5
+
+    nb_cols = 4
+    spacer_w = 20
+    spacer_h = 10
+    nbadd_boxes = 0 
+    butt_w = 75
+    fwidth = 400
+    info_band_height = 205
+
+    def getSpacerW(self):
+        return self.spacer_w
+    def getSpacerH(self):
+        return self.spacer_h
+    def getInfoH(self):
+        return self.info_band_height+self.nbadd_boxes*22
 
     @classmethod
     def getViewsDetails(tcl):
@@ -89,9 +113,8 @@ class GView(object):
         self.hight = {}
         self.current_hover = None
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-        self.mapFrame.SetMinSize((self.fwidth,-1))
+        self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
         self.panel = wx.Panel(self.mapFrame, -1)
-        self.drawMap()
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -320,79 +343,6 @@ class GView(object):
         self.parent.callOnTab(self.source_list, meth="viewData",
                               args={"viewT": self.ids_viewT[event.GetId()], "oid": self.getId()})
         
-    def drawFrame(self):
-        self.QIds = [wx.NewId(), wx.NewId()]
-        self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0], style=wx.TE_PROCESS_ENTER),
-                           wx.TextCtrl(self.mapFrame, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
-        colors = self.getColors()
-        self.MapredMapQ[0].SetForegroundColour(colors[0])
-        self.MapredMapQ[1].SetForegroundColour(colors[1])
-        styRL = wx.ALIGN_RIGHT|wx.ALL
-        styFL = wx.ALIGN_LEFT|wx.ALL
-        self.MapredMapInfoJL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoVL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoJV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoVV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoIL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoUL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoIV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoUV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoRL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoBL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoRV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoBV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoOL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoTL = wx.StaticText(self.mapFrame,  style=styRL)
-        self.MapredMapInfoOV = wx.StaticText(self.mapFrame,  style=styFL)
-        self.MapredMapInfoTV = wx.StaticText(self.mapFrame,  style=styFL)
-
-        colors = self.getColors()
-        self.MapredMapInfoBV.SetForegroundColour(colors[0])
-        self.MapredMapInfoRV.SetForegroundColour(colors[1])
-        self.MapredMapInfoIV.SetForegroundColour(colors[2])
-        
-        flagsL = wx.LEFT | wx.ALIGN_RIGHT | wx.EXPAND
-        flagsV = wx.RIGHT |wx.ALIGN_LEFT | wx.EXPAND
-        # statsBox = wx.GridSizer(rows=3, cols=8, hgap=5, vgap=5)
-
-        suppBox = wx.GridSizer(rows=2, cols=8, hgap=1, vgap=1)
-
-        suppBox.Add(self.MapredMapInfoJL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoJV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoBL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoBV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoIL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoIV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoRL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoRV, 0, border=5, flag=flagsV) 
-
-        suppBox.Add(self.MapredMapInfoVL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoVV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoUL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoUV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoOL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoOV, 0, border=5, flag=flagsV)
-        suppBox.Add(self.MapredMapInfoTL, 0, border=5, flag=flagsL)
-        suppBox.Add(self.MapredMapInfoTV, 0, border=5, flag=flagsV)
-
-
-        allinfosBox = wx.BoxSizer(wx.VERTICAL)
-        flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL  | wx.EXPAND
-        ## if self.parent.dw.getCoords() is not None:
-        allinfosBox.Add(self.MapcanvasMap, 0, wx.ALL| wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
-        
-        allinfosBox.Add(self.MapredMapQ[0], 0, border=0, flag=flags)
-        allinfosBox.Add(self.MapredMapQ[1], 0, border=0, flag=flags)
-        # allinfosBox.Add(statsBox, 0, border=1, flag=flags)
-        allinfosBox.Add(suppBox, 0, border=15, flag=flags)
-
-        flags = wx.ALIGN_CENTER | wx.ALL | wx.ALIGN_CENTER_VERTICAL
-        for add_box in self.additionalElements():
-            allinfosBox.Add(add_box, 0, border=1, flag=flags)
-
-        self.mapFrame.SetSizer(allinfosBox)
-        allinfosBox.Fit(self.mapFrame)
-
     def additionalElements(self):
         return []
 
@@ -401,8 +351,8 @@ class GView(object):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
     def binds(self):
-        # self.mapFrame.Bind(wx.EVT_KEY_UP, self.mkey_press_callback)
         self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+        self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
@@ -427,6 +377,24 @@ class GView(object):
     def OnExpandSimp(self, event):
         params = {"red": self.getCopyRed()}
         self.parent.expandFV(params)
+
+    def _onSize(self, event=None):
+        self._SetSize()
+
+    def _SetSize( self ):
+        pixels = tuple(self.mapFrame.GetClientSize() )
+        self.panel.SetSize( pixels )
+        figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))
+        self.MapcanvasMap.SetSize(figsize )
+        self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
+                                        float( figsize[1] )/(self.MapfigMap.get_dpi() ))
+        self.fillBox.SetMinSize((figsize[0], figsize[1]))
+        curr = self.innerBox1.GetMinSize()
+        self.innerBox1.SetMinSize((1*figsize[0], curr[1]))
+        self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
+        self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
+        self.masterBox.Layout()
+        #print figsize, self.innerBox.GetSize(), self.innerBox1.GetSize()
         
     def OnQuit(self, event=None, upMenu=True):
         self.parent.deleteView(self.getId())
@@ -509,7 +477,97 @@ class GView(object):
     def drawMap(self):
         """ Draws the map
         """
-        pass
+        if not hasattr( self, 'subplot' ):
+            self.subplot = self.MapfigMap.add_subplot( 111 )
+
+        theta = numpy.arange( 0, 45*2*numpy.pi, 0.02 )
+
+        rad0 = (0.8*theta/(2*numpy.pi) + 1)
+        r0 = rad0*(8 + numpy.sin( theta*7 + rad0/1.8 ))
+        x0 = r0*numpy.cos( theta )
+        y0 = r0*numpy.sin( theta )
+
+        rad1 = (0.8*theta/(2*numpy.pi) + 1)
+        r1 = rad1*(6 + numpy.sin( theta*7 + rad1/1.9 ))
+        x1 = r1*numpy.cos( theta )
+        y1 = r1*numpy.sin( theta )
+
+        self.point_lists = [[(xi,yi) for xi,yi in zip( x0, y0 )],
+                            [(xi,yi) for xi,yi in zip( x1, y1 )]]
+        self.clr_list = [[225,200,160], [219,112,147]]
+            
+        for i, pt_list in enumerate( self.point_lists ):
+            plot_pts = numpy.array( pt_list )
+            clr = [float( c )/255. for c in self.clr_list[i]]
+            self.subplot.plot( plot_pts[:,0], plot_pts[:,1], color=clr )
+        
+        
+    def drawFrame(self):
+        # initialize matplotlib stuff
+        self.MapfigMap = Figure(None)
+        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
+        self.QIds = [wx.NewId(), wx.NewId()]
+        self.MapredMapQ = [wx.TextCtrl(self.panel, self.QIds[0], style=wx.TE_PROCESS_ENTER),
+                           wx.TextCtrl(self.panel, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
+        # self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0]),
+        #                    wx.TextCtrl(self.mapFrame, self.QIds[1])]
+        colors = self.getColors()
+        self.MapredMapQ[0].SetForegroundColour(colors[0])
+        self.MapredMapQ[1].SetForegroundColour(colors[1])
+
+        # styL = wx.ALIGN_RIGHT | wx.EXPAND
+        # styV = wx.ALIGN_LEFT | wx.EXPAND
+        # sizz = (70,-1)
+        
+        self.info_items = {}
+        for info_item in self.infos_details:
+            # self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"], style=styL, size=sizz),
+            #                                     wx.StaticText(self.panel, label="--", style=styV, size=sizz))
+            self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"]),
+                                                wx.StaticText(self.panel, label="XXX"))
+
+
+            if info_item.get("color") is not None:
+                self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item.get("color")])
+
+        adds = self.additionalElements()
+        self.drawMap()
+
+        self.masterBox = wx.BoxSizer(wx.VERTICAL)
+
+        self.fillBox = wx.BoxSizer(wx.HORIZONTAL)
+        self.innerBox = wx.BoxSizer(wx.HORIZONTAL)
+        self.innerBox1 = wx.BoxSizer(wx.VERTICAL)
+        self.masterBox.Add(self.fillBox, 0, border=1,  flag= wx.EXPAND)
+
+        self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER)
+        self.innerBox1.Add(self.MapredMapQ[1], 0, border=1,  flag= wx.ALIGN_CENTER)
+
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()))
+        
+        cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
+        for pi, elem in enumerate(self.infos_details):
+            ci = 2*(pi % self.nb_cols)
+            cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT)
+            cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT)
+
+        lineB = wx.BoxSizer(wx.HORIZONTAL)
+        for ci, col in enumerate(cols):
+            lineB.Add(col, 0, border=1,  flag= wx.ALIGN_CENTER|wx.EXPAND)
+            if ci % 2 == 1 and ci < len(cols)-1:
+                lineB.AddSpacer((self.getSpacerW(),-1))
+        self.innerBox1.Add(lineB, 0, border=1,  flag= wx.ALIGN_CENTER)
+
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()))
+        for add in adds:
+            self.innerBox1.Add(add, 0, border=1,  flag= wx.ALIGN_CENTER)
+
+        self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
+        self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
+        self.panel.SetSizer(self.masterBox)
+        self._SetSize()
+
             
     def updateMap(self):
         """ Redraws the map
@@ -540,42 +598,16 @@ class GView(object):
             self.setMapredInfo(red)
 
     def setMapredInfo(self, red = None, details=None):
-        if red is None:
-            self.MapredMapInfoJL.SetLabel("")
-            self.MapredMapInfoJV.SetLabel("")
-            self.MapredMapInfoVL.SetLabel("")
-            self.MapredMapInfoVV.SetLabel("")
-            self.MapredMapInfoIL.SetLabel("")
-            self.MapredMapInfoIV.SetLabel("")
-            self.MapredMapInfoUL.SetLabel("")
-            self.MapredMapInfoUV.SetLabel("")
-            self.MapredMapInfoBL.SetLabel("")
-            self.MapredMapInfoBV.SetLabel("")
-            self.MapredMapInfoRL.SetLabel("")
-            self.MapredMapInfoRV.SetLabel("")
-            self.MapredMapInfoOL.SetLabel("")
-            self.MapredMapInfoOV.SetLabel("")
-            self.MapredMapInfoTL.SetLabel("")
-            self.MapredMapInfoTV.SetLabel("")
-
-        else:
-            self.MapredMapInfoJL.SetLabel(self.label_jacc)
-            self.MapredMapInfoJV.SetLabel("%1.3f" % red.getRoundAcc())
-            self.MapredMapInfoVL.SetLabel(self.label_pval)
-            self.MapredMapInfoVV.SetLabel("%1.3f" % red.getRoundPVal())
-            self.MapredMapInfoIL.SetLabel(self.label_cardI)
-            self.MapredMapInfoIV.SetLabel("%i" % red.getLenI())
-            self.MapredMapInfoUL.SetLabel(self.label_cardU)
-            self.MapredMapInfoUV.SetLabel("%i" % red.getLenU())
-            self.MapredMapInfoBL.SetLabel(self.label_cardAlpha)
-            self.MapredMapInfoBV.SetLabel("%i" % red.getLenA())
-            self.MapredMapInfoRL.SetLabel(self.label_cardBeta)
-            self.MapredMapInfoRV.SetLabel("%i" % red.getLenB())
-
-            self.MapredMapInfoOL.SetLabel(self.label_cardO)
-            self.MapredMapInfoOV.SetLabel("%i" % red.getLenO())
-            self.MapredMapInfoTL.SetLabel(self.label_cardT)
-            self.MapredMapInfoTV.SetLabel("%i" % red.getLenT())
+        for det in self.infos_details:
+            if red is not None:
+                meth = getattr(red,det["meth"], None)
+            else:
+                meth = None
+                
+            if meth is not None:
+                self.info_items[det["id"]][1].SetLabel(det["format"] % meth())
+            else:
+                self.info_items[det["id"]][1].SetLabel("XX")
 
     def updateEmphasize(self, colhigh='#FFFF00', review=True):
         if self.source_list is not None:
@@ -591,8 +623,6 @@ class GView(object):
 
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
-        if len(lids) > 5:
-            print "Warning slow, emphasizing %d entities..." % len(lids)
         for lid in lids:
             if lid in self.highl:
                 continue

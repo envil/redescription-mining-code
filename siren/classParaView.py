@@ -9,16 +9,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
 import itertools
 
 from reremi.classQuery import Query, BoolTerm, CatTerm, NumTerm
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-from classGView import GView, CustToolbar
+from classGView import GView
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
@@ -154,11 +151,13 @@ class ParaView(GView):
         """
         self.highl = {}
         self.hight = {}
-        self.MapfigMap = plt.figure()
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        self.MapfigMap.clear()
-        self.axe = self.MapfigMap.add_subplot(111)
+
+        if not hasattr( self, 'axe' ):
+            self.axe = self.MapfigMap.add_subplot( 111 )
+
+        # self.MapfigMap = plt.figure()
+        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        #self.MapfigMap.clear()
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -280,7 +279,6 @@ class ParaView(GView):
     def updateMap(self):
         """ Redraws the map
         """
-
         if self.current_r is not None:
             self.highl = {}
             self.hight = {}
@@ -538,31 +536,45 @@ class ParaView(GView):
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
+        add_boxA = wx.BoxSizer(wx.VERTICAL)
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
-        add_box.AddSpacer((20,-1))
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
                              "function": self.OnExpandSimp})
-        self.sld = wx.Slider(self.mapFrame, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 10, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
-        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags)
-        add_box.AddSpacer((20,-1))
+        self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        
+        self.sld = wx.Slider(self.panel, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
+        self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
+
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        v_box = wx.BoxSizer(wx.VERTICAL)
+        label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
+        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        v_box.Add(label, 0, border=1, flag=flags)
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
         
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,u"- opac. disabled  +")
-        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL)
-        v_box.Add(self.sld_sel, 0, border=3, flag=flags)
-        add_box.Add(v_box, 0, border=3, flag=flags)
-        add_box.AddSpacer((20,-1))
+        label = wx.StaticText(self.panel, wx.ID_ANY, "-        details       +")
+        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        v_box.Add(label, 0, border=1, flag=wx.ALIGN_CENTER | wx.ALL )
+        v_box.Add(self.sld, 0, border=1, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
         
-        v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY, "-      details      +")
-        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
-        v_box.Add(self.sld, 0, border=3, flag=flags)
-        add_box.Add(v_box, 0, border=3, flag=flags)
+        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
+        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+
+        add_box.Add(add_boxA, 0, border=3, flag=flags)
+        add_box.AddSpacer((self.getSpacerW(),-1))
+        add_box.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+        #return [add_boxbis, add_box]
         return [add_box]
+
 
     def additionalBinds(self):
         for button in self.buttons:

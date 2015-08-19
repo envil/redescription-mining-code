@@ -8,17 +8,14 @@ import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
-from matplotlib.widgets import Cursor
 #from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse, Polygon
 
 from reremi.classQuery import Query
 from reremi.classSParts import SSetts
 from reremi.classRedescription import Redescription
-from classGView import GView, CustToolbar
+from classGView import GView
 from classInterObjects import MaskCreator
 
 import pdb
@@ -95,41 +92,40 @@ class MapView(GView):
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
             return
-        
-        self.MapfigMap = plt.figure()
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        self.MapfigMap.clear()
-        try:
-            self.bm, args_all = self.makeBasemapProj()
-        except ValueError:
-            self.bm = None
 
-        self.coords_proj = self.mapCoords(self.parent.dw.getCoords(), self.bm)
-        
+        # self.MapfigMap = plt.figure()
+        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
+        # self.MapfigMap.clear()
+        if not hasattr( self, 'axe' ):
+            try:
+                self.bm, args_all = self.makeBasemapProj()
+            except ValueError:
+                self.bm = None
 
-        if self.bm is not None:
-            self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
-            self.bm.ax = self.axe
-        else:
-            llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-            midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
-            mside = max(abs(llon-midlon), abs(llat-midlat))
-            self.axe = self.MapfigMap.add_subplot(111,
-                                                  xlim=[midlon-1.05*mside, midlon+1.05*mside],
-                                                  ylim=[midlat-1.05*mside, midlat+1.05*mside])
+            self.coords_proj = self.mapCoords(self.parent.dw.getCoords(), self.bm)
+            if self.bm is not None:
+                self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
+                self.bm.ax = self.axe
+            else:
+                llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
+                midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
+                mside = max(abs(llon-midlon), abs(llat-midlat))
+                self.axe = self.MapfigMap.add_subplot(111,
+                                                      xlim=[midlon-1.05*mside, midlon+1.05*mside],
+                                                      ylim=[midlat-1.05*mside, midlat+1.05*mside])
             self.MapcanvasMap.draw()
             # self.axe = self.MapfigMap.add_axes([llon, llat, ulat-llat, ulon-llon])
 
-        self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
+            self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
 
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-        self.axe.add_patch(self.el)
+            self.el = Ellipse((2, -1), 0.5, 0.5)
+            self.axe.add_patch(self.el)
 
-        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
-        self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        self.MapcanvasMap.draw()
+            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
+            self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
+            self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
+            self.MapcanvasMap.draw()
             
     def updateMap(self):
         """ Redraws the map
@@ -162,6 +158,7 @@ class MapView(GView):
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)
+
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
 
@@ -191,25 +188,33 @@ class MapView(GView):
                                                      ))
 
     def additionalElements(self):
+        t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL
+        add_boxA = wx.BoxSizer(wx.VERTICAL)
+        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags | wx.EXPAND)
-        add_box.AddSpacer((20,-1))
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
                              "function": self.OnExpandSimp})
-        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
-        add_box.AddSpacer((20,-1))
+        self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        
+        self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
 
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
+
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  opac. disabled  +")
-        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL)
-        v_box.Add(self.sld_sel, 0, border=3, flag=flags)
-        add_box.Add(v_box, 0, border=3, flag=flags)
+        label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
+        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        v_box.Add(label, 0, border=1, flag=flags)
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        add_boxA.Add(v_box, 0, border=1, flag=flags)
+        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
+        add_box.Add(add_boxA, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW(),-1))
+        add_box.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+        #return [add_boxbis, add_box]
         return [add_box]
+
 
     def additionalBinds(self):
         for button in self.buttons:

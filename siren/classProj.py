@@ -244,19 +244,21 @@ class AxesProj(Proj):
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-        if len(mcols) == 0:
+        mm = [m for m in mcols.keys() if len(m)==2]
+        if len(mm) == 0:
             return
-        scs = random.sample(mcols.keys(), 2)
+        scs = random.sample(mm, 2)
         side_lstr = {0:"LHS", 1:"RHS"}
         self.labels = ["", ""]
         for ai, axis in enumerate(["Xaxis", "Yaxis"]):
             tmp = self.getParameter(axis)
             if tmp > 0:
                 sc = tuple(map(int, str(tmp).split(".")[:2]))
-                if sc in mcols:
+                if sc in mm:
                     scs[ai] = sc
-        self.setParameter(axis, float("%d.%d" % scs[ai]))
-        self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
+            
+            self.setParameter(axis, float("%d.%d" % scs[ai]))
+            self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
         for side in [0,1]:
             self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1

@@ -8,15 +8,13 @@ import matplotlib
 #matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
 from reremi.toolLog import Log
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
-from classGView import GView, CustToolbar
+from classGView import GView
 from classProj import ProjFactory
 from classInterObjects import MaskCreator
 
@@ -33,6 +31,7 @@ class EProjView(GView):
     defaultViewT = ProjFactory.defaultView.PID + "_" + what
     wait_delay = 300
 
+    #info_band_height = 240
     margin_hov = 0.01
 
     @classmethod
@@ -54,8 +53,7 @@ class EProjView(GView):
         self.initProject(more)
         self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.panel = wx.Panel(self.mapFrame, -1)
-        self.mapFrame.SetMinSize((600,-1))
-        self.drawMap()
+        self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -112,8 +110,8 @@ class EProjView(GView):
         current_w = 1000
         flags = wx.ALIGN_CENTER | wx.ALL
 
-        self.boxes = self.makeBoxes(self.mapFrame, self.getProj())
-        # self.boxes = self.getProj().makeBoxes(self.mapFrame)
+        self.boxes = self.makeBoxes(self.panel, self.getProj())
+        # self.boxes = self.getProj().makeBoxes(self.panel)
         self.boxes.sort(key=lambda x : x["type_ctrl"])
         for box in self.boxes:
             block_w = box["label"].GetBestSize()[0] + sum([c.GetBestSize()[0] for c in box["ctrls"]])
@@ -122,35 +120,45 @@ class EProjView(GView):
                 setts_boxes[-1].AddSpacer((10,-1))
                 current_w = 10
             current_w += block_w + 10
+            box["label"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             setts_boxes[-1].Add(box["label"], 0, border=0, flag=flags | wx.ALIGN_RIGHT)
             for c in box["ctrls"]:
+                c.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
                 setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
             setts_boxes[-1].AddSpacer((10,-1))
 
         add_box = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag= flags | wx.EXPAND)
-        add_box.AddSpacer((20,-1))
         
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(80,-1), label="Expand"),
+        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
                              "function": self.OnExpandSimp})
-        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
-        self.buttons.append({"element": wx.Button(self.mapFrame, size=(100,-1), label="Reproject"),
+        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Reproject"),
                              "function": self.OnReproject})
-        add_box.Add(self.buttons[-1]["element"], 0, border=3, flag=flags | wx.EXPAND)
         self.repbut = self.buttons[-1]["element"]
-        add_box.AddSpacer((20,-1))
+        self.sld_sel = wx.Slider(self.panel, -1, 50, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
 
-        self.sld_sel = wx.Slider(self.mapFrame, -1, 50, 0, 100, wx.DefaultPosition, (150, -1), wx.SL_HORIZONTAL)
+        add_boxA = wx.BoxSizer(wx.VERTICAL)
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.mapFrame, wx.ID_ANY,"-  opac. disabled  +")
-        v_box.Add(label, 0, border=3, flag=wx.ALIGN_CENTER | wx.ALL )
-        v_box.Add(self.sld_sel, 0, border=3, flag=flags)
-        add_box.Add(v_box, 0, border=3, flag=flags)
-        add_box.AddSpacer((20,-1))
-        setts_boxes.append(add_box)
+        label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
+        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        v_box.Add(label, 0, border=1, flag=flags)
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags)
 
+        add_boxA.Add(v_box, 0, border=1, flag=flags)
+        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+        add_box.Add(add_boxA, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW(),-1))
+
+        add_boxA = wx.BoxSizer(wx.VERTICAL)
+        for but in self.buttons:
+            but["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            add_boxA.Add(but["element"], 0, border=1, flag=flags)
+        add_box.Add(add_boxA, 0, border=1, flag=flags)
+        setts_boxes.append(add_box)
+        #return [add_boxbis, add_box]
+        self.nbadd_boxes = len(setts_boxes)-1 
         return setts_boxes
 
     def additionalBinds(self):
@@ -197,12 +205,17 @@ class EProjView(GView):
     def drawMap(self):
         """ Draws the map
         """
-        
-        self.MapfigMap = plt.figure()
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        self.MapfigMap.clear()
-        self.axe = self.MapfigMap.add_subplot(111)
+        self.highl = {}
+        self.hight = {}
+
+        if not hasattr( self, 'axe' ):
+            self.axe = self.MapfigMap.add_subplot( 111 )
+
+        # self.MapfigMap = plt.figure()
+        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
+        # self.MapfigMap.clear()
+        # self.axe = self.MapfigMap.add_subplot(111)
 
         self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
 

@@ -9,9 +9,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
@@ -21,7 +18,7 @@ import itertools
 from reremi.classQuery import Query, Literal, QTree
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-from classGView import GView, CustToolbar
+from classGView import GView
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
@@ -123,11 +120,12 @@ class TreeView(GView):
         """
         self.highl = {}
         self.hight = {}
-        self.MapfigMap = plt.figure()
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        self.MapfigMap.clear()
-        self.axe = self.MapfigMap.add_subplot(111)
+        # self.MapfigMap = plt.figure()
+        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
+        # self.MapfigMap.clear()
+        if not hasattr( self, 'axe' ):
+            self.axe = self.MapfigMap.add_subplot( 111 )
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -366,21 +364,49 @@ class TreeView(GView):
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxA = wx.BoxSizer(wx.VERTICAL)
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
+
+        self.buttons = []
+        self.buttons.extend([{"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Expand"),
+                             "function": self.OnExpandSimp},
+                            {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify LHS"),
+                             "function": self.OnSimplifyLHS},
+                            {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify RHS"),
+                             "function": self.OnSimplifyRHS}])
+        
+
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        self.buttons[1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
+        
+        self.buttons[2]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        add_boxB.Add(self.buttons[2]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
+        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+        add_box.Add(add_boxA, 0, border=3, flag=flags)
+        add_box.AddSpacer((self.getSpacerW(),-1))
+        self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        add_box.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        #return [add_boxbis, add_box]
+        return [add_box]
+
+        t = self.parent.dw.getPreferences()
+        add_box = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
 
         add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
         add_box.AddSpacer((10,-1))
-        self.buttons = []
-        self.buttons.extend([{"element": wx.Button(self.mapFrame, wx.NewId(), size=(80,-1), label="Expand"),
-                             "function": self.OnExpandSimp},
-                            {"element": wx.Button(self.mapFrame, wx.NewId(), size=(110,-1), label="Simplify LHS"),
-                             "function": self.OnSimplifyLHS},
-                            {"element": wx.Button(self.mapFrame, wx.NewId(), size=(110,-1), label="Simplify RHS"),
-                             "function": self.OnSimplifyRHS}])
 
         for bi, butt in enumerate(self.buttons):
             if bi > 0:
                 add_box.AddSpacer((20,-1))
+            butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             add_box.Add(butt["element"], 0, border=3, flag=flags)
         add_box.AddSpacer((10,-1))
 
