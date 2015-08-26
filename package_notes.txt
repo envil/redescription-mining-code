@@ -1,0 +1,20 @@
+Packaging
+=========
+
+First, remember to edit setup.py and Manifest.in to include new files and siren/common_details.py and CHANGELOG to update version number and latest changes.
+Also update help pages accordingly.
+Run prepare_pck_files.py (src|deb|win) to generate info files.
+
+For Linux:
+===========
+run package_deb.sh
+
+* tar: run python setup.py sdist from the siren folder
+* deb: run make builddeb from the packaging folder
+
+For Windows:
+=======================
+_init_.py and pyproj.py belong to the site-packages\mpl_toolkits\basemap folder, edited so that they can find their data
+Run python setup.py py2exe in the siren folder (test the executable), then compile the setup.nsi script using NSIS (Nullsoft Scriptable Install System)
+
+#scp python-siren-2.0.3.tar.gz  python-siren_2.0.3_all.deb  install_siren.exe CHANGELOG melkki.cs.helsinki.fi:~/public_html/redescriptors/code/siren/

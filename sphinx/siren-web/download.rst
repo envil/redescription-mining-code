@@ -22,7 +22,7 @@ CHANGELOG
 
 .. literalinclude:: ../_static/CHANGELOG
 
-The latest release for each platform are listed here. Previous versions can be found in `this folder <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/>`_.
+The latest release for each platform are listed here. Previous versions can be found in :code_url:`this folder </>`.
 
 Feel free to contact us for support or with feedback, bug reports and questions.
 
@@ -31,27 +31,27 @@ Feel free to contact us for support or with feedback, bug reports and questions.
 Source code
 ============
 
-`python-siren-2.2.0.tar.gz <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren-2.2.0.tar.gz>`_
+:src_release:`.tar.gz`
 
 The source code has been packaged using `Python distutils <http://docs.python.org/install/index.html>`_. 
 To `install <http://docs.python.org/install/index.html#the-new-standard-distutils>`_, unpack the downloaded archive and run ``python setup.py install`` from within the created folder. 
 
 *Siren* requires a number of python libraries: ``scipy``, ``numpy``, ``matplotlib``, ``wxPython``, ``mpl_toolkit.Basemap`` and ``sklearn`` (scikit-learn). Make sure they are installed and accessible before you run *Siren*.
 
-You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
+You can find help under *Siren*'s Help menu or :project_url:`online <help/>`.
 
 .. _mac:
 
 For OS X
 ============== 
 
-`Siren.dmg (v2.1.1) <http://www.cs.helsinki.fi/u/pamietti/data/siren/Siren_2_1_1.dmg>`_
+:mac_release:`.dmg`
 
 To *install*, download the above disk image and copy the file Siren to your Applications folder (or anywhere else outside the disk image). Once that is done you only have to double-click the program icon to run *Siren*.
 
 To *run* the program, double-click the program icon.
 
-You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
+You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
 .. warning::
    **Note for users of OS X with Gatekeeper activated (10.7.5 and newer)**
@@ -68,7 +68,7 @@ You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.f
 For Linux
 ========== 
 
-`python-siren_2.2.0_all.deb <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/python-siren_2.2.0_all.deb>`_
+:deb_release:`.deb`
 
 With a debian-based distribution run the following commands as root to install
 
@@ -87,7 +87,7 @@ Or use a tool like Ubuntu Software Center to open the package and install the ap
 
 If everything went fine, you should find a Siren entry in your Applications menu.
 
-You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
+You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
 .. image:: ../_figs/screenshots/Fullscreen.png
 
@@ -96,7 +96,7 @@ You can find help under *Siren*'s Help menu or `online <http://www.cs.helsinki.f
 For Windows
 ============
 
-`install_siren_2.1.1.exe <http://www.cs.helsinki.fi/u/galbrun/redescriptors/code/siren/install_siren_2.1.1.exe>`_ 
+:win_release:`.exe`
 
 Download and run to install *Siren*.
 
