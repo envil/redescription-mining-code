@@ -14,9 +14,9 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from matplotlib.path import Path
 
-from reremi.classQuery import SYM, Query
-from reremi.classSParts import SSetts
-from reremi.classRedescription import Redescription
+from ..reremi.classQuery import SYM, Query
+from ..reremi.classSParts import SSetts
+from ..reremi.classRedescription import Redescription
 
 import pdb
 
@@ -385,16 +385,20 @@ class GView(object):
         pixels = tuple(self.mapFrame.GetClientSize() )
         self.panel.SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))
-        self.MapcanvasMap.SetSize(figsize )
-        self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
-                                        float( figsize[1] )/(self.MapfigMap.get_dpi() ))
-        self.fillBox.SetMinSize((figsize[0], figsize[1]))
+        # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
+        #                                 float( figsize[1] )/(self.MapfigMap.get_dpi() ))
+        self.MapcanvasMap.SetMinSize(figsize )
+        # #self.fillBox.SetMinSize((figsize[0], figsize[1]))
         curr = self.innerBox1.GetMinSize()
         self.innerBox1.SetMinSize((1*figsize[0], curr[1]))
         self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
         self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
         self.masterBox.Layout()
-        #print figsize, self.innerBox.GetSize(), self.innerBox1.GetSize()
+        self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
+                                        float( figsize[1] )/(self.MapfigMap.get_dpi() ))
+
+        # self.MapfigMap.set_size_inches(1, 1)
+
         
     def OnQuit(self, event=None, upMenu=True):
         self.parent.deleteView(self.getId())
@@ -534,12 +538,14 @@ class GView(object):
         adds = self.additionalElements()
         self.drawMap()
 
-        self.masterBox = wx.BoxSizer(wx.VERTICAL)
+        self.masterBox =  wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
+        #self.masterBox = wx.BoxSizer(wx.VERTICAL)
 
-        self.fillBox = wx.BoxSizer(wx.HORIZONTAL)
+        #self.fillBox = wx.BoxSizer(wx.HORIZONTAL)
         self.innerBox = wx.BoxSizer(wx.HORIZONTAL)
         self.innerBox1 = wx.BoxSizer(wx.VERTICAL)
-        self.masterBox.Add(self.fillBox, 0, border=1,  flag= wx.EXPAND)
+        self.masterBox.Add(self.MapcanvasMap, 0, border=1,  flag= wx.EXPAND)
+        #self.masterBox.Add(self.fillBox, 0, border=1,  flag= wx.EXPAND)
 
         self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER)
         self.innerBox1.Add(self.MapredMapQ[1], 0, border=1,  flag= wx.ALIGN_CENTER)

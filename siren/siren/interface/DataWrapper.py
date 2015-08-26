@@ -5,16 +5,16 @@ import re
 
 import pdb
 
-from reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
-from reremi.classData import Data, DataError
-from reremi.classQuery import Query
-from reremi.toolICList import ICList
-from reremi.toolICDict import ICDict
-from reremi.toolLog import Log
-from reremi.classBatch import Batch
-from reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-import reremi.toolRead as toolRead
-from reremi.classPackage import Package, writePreferences, writeRedescriptions
+from ..reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
+from ..reremi.classData import Data, DataError
+from ..reremi.classQuery import Query
+from ..reremi.toolICList import ICList
+from ..reremi.toolICDict import ICDict
+from ..reremi.toolLog import Log
+from ..reremi.classBatch import Batch
+from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
+from ..reremi import toolRead
+from ..reremi.classPackage import Package, writePreferences, writeRedescriptions
 
 #from findFiles import findFile
 
@@ -40,8 +40,8 @@ class DataWrapper(object):
     """
 
     pref_dir = os.path.dirname(__file__)
-    conf_defs = [findFile('miner_confdef.xml', ['reremi', pref_dir+'/reremi']),
-                 findFile('ui_confdef.xml', [pref_dir])]
+    conf_defs = [findFile('miner_confdef.xml', ['../reremi', os.path.split(pref_dir)[0]+'/reremi', './confs']),
+                 findFile('ui_confdef.xml', [pref_dir, './confs'])]
     #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
 
     def __init__(self, logger=None, package_filename = None):

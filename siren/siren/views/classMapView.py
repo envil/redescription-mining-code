@@ -12,9 +12,9 @@ import scipy.spatial.distance
 import mpl_toolkits.basemap
 from matplotlib.patches import Ellipse, Polygon
 
-from reremi.classQuery import Query
-from reremi.classSParts import SSetts
-from reremi.classRedescription import Redescription
+from ..reremi.classQuery import Query
+from ..reremi.classSParts import SSetts
+from ..reremi.classRedescription import Redescription
 from classGView import GView
 from classInterObjects import MaskCreator
 

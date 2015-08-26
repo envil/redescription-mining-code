@@ -3,9 +3,9 @@ import re, random, sys
 import numpy as np
 import inspect, signal
 # import tsne
-from reremi.classQuery import Query
-from reremi.classRedescription import Redescription
-from reremi.classData import BoolColM, CatColM, NumColM
+from ..reremi.classQuery import Query
+from ..reremi.classRedescription import Redescription
+from ..reremi.classData import BoolColM, CatColM, NumColM
 import os
 
 import pdb
@@ -361,234 +361,234 @@ class ProjFactory:
         return str_info
 
 #### COMMENT OUT FROM  HERE TO GET RID OF SKLEARN
-from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
+if sys.platform != 'win32':
+    from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
 
-### The various projections with sklearn
-#----------------------------------------------------------------------
-class DynProj(Proj):
+    ### The various projections with sklearn
+    #----------------------------------------------------------------------
+    class DynProj(Proj):
 
-    PID =  "---"
-    SDESC = "---"
-    title_str = "Projection"
+        PID =  "---"
+        SDESC = "---"
+        title_str = "Projection"
 
-    def getData(self):
+        def getData(self):
 
-        if type(self.data) is np.array or type(self.data) is np.ndarray:
-            if self.transpose:
-                mat = self.data.T
-            else:
-                mat = self.data
-            idsNAN = np.where(~np.isfinite(mat))
-            mat[idsNAN] = np.nanmin(mat) -1
-            matn = withen(mat)
-        else:
-            if self.transpose:
-                mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-                if len(self.mcols) == 0:
-                    return
-                idsNAN = np.where(~np.isfinite(mat))
-                mat[idsNAN] = np.nanmin(mat) -1
-                matn = withen(mat.T)
-            else:
-                mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
-                if len(self.mcols) == 0:
-                    return
-                
-                idsNAN = np.where(~np.isfinite(mat))
-                mat[idsNAN] = np.nanmin(mat) -1
-
-                if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
-                    selected = np.array(list(self.data.nonselectedRows()))
-                    matn = withen(mat[:,selected])
+            if type(self.data) is np.array or type(self.data) is np.ndarray:
+                if self.transpose:
+                    mat = self.data.T
                 else:
-                    matn = withen(mat)
-        return matn
+                    mat = self.data
+                idsNAN = np.where(~np.isfinite(mat))
+                mat[idsNAN] = np.nanmin(mat) -1
+                matn = withen(mat)
+            else:
+                if self.transpose:
+                    mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+                    if len(self.mcols) == 0:
+                        return
+                    idsNAN = np.where(~np.isfinite(mat))
+                    mat[idsNAN] = np.nanmin(mat) -1
+                    matn = withen(mat.T)
+                else:
+                    mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+                    if len(self.mcols) == 0:
+                        return
 
-    def comp(self):
-        matn = self.getData()
-        if matn is not None:
-            X_pro, err = self.getX(matn)
-            self.coords_proj = (X_pro[:,0], X_pro[:,1])
+                    idsNAN = np.where(~np.isfinite(mat))
+                    mat[idsNAN] = np.nanmin(mat) -1
 
-    def getX(self, X):
-        pass
+                    if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
+                        selected = np.array(list(self.data.nonselectedRows()))
+                        matn = withen(mat[:,selected])
+                    else:
+                        matn = withen(mat)
+            return matn
+
+        def comp(self):
+            matn = self.getData()
+            if matn is not None:
+                X_pro, err = self.getX(matn)
+                self.coords_proj = (X_pro[:,0], X_pro[:,1])
+
+        def getX(self, X):
+            pass
 
 
-class KillerProj(DynProj):
-    #----------------------------------------------------------------------
-    # For projections with subprocesses
+    class KillerProj(DynProj):
+        ## ----------------------------------------------------------------------
+        # For projections with subprocesses
 
 
-    PID =  "---"
-    SDESC = "---"
-    title_str = "Projection"
+        PID =  "---"
+        SDESC = "---"
+        title_str = "Projection"
 
-    def updatePL(self):
-        l = []
-        list_children(os.getpid(), l)
-        self.pids_ex.update(l) 
+        def updatePL(self):
+            l = []
+            list_children(os.getpid(), l)
+            self.pids_ex.update(l) 
 
-    def stop(self):
-        l = []
-        list_children(os.getpid(), l)
-        l.sort()
-        l = [childp for (lev, childp) in l if childp not in self.pids_ex] # and lev > 1]
-        while len(l) > 0:
-            childp =  l.pop()
-            try:
-                os.kill(childp, signal.SIGTERM)
-            except OSError as e:
-                pass
-        self.clearCoords()
+        def stop(self):
+            l = []
+            list_children(os.getpid(), l)
+            l.sort()
+            l = [childp for (lev, childp) in l if childp not in self.pids_ex] # and lev > 1]
+            while len(l) > 0:
+                childp =  l.pop()
+                try:
+                    os.kill(childp, signal.SIGTERM)
+                except OSError as e:
+                    pass
+            self.clearCoords()
 
-        
-class SVDProj(DynProj):
+    class SVDProj(DynProj):
 
-    PID = "-SVD"
-    SDESC = "SVD"
-    title_str = "SVD Projection"
-    fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"compute_uv": True, "full_matrices":False })
-    dyn_f = [np.linalg.svd]
-    
-    def comp(self):
-        matn = self.getData()
-        U, s, V = self.applyF(np.linalg.svd, {"a": matn.T})
-        tmp = np.dot(U[:2], matn.T)
-        self.coords_proj = (tmp[0], tmp[1])
+        PID = "-SVD"
+        SDESC = "SVD"
+        title_str = "SVD Projection"
+        fix_parameters = dict(DynProj.fix_parameters)
+        fix_parameters.update({"compute_uv": True, "full_matrices":False })
+        dyn_f = [np.linalg.svd]
 
-    def getAxisLabel(self, axi):
-        return "dimension %d" % (axi+1)
+        def comp(self):
+            matn = self.getData()
+            U, s, V = self.applyF(np.linalg.svd, {"a": matn.T})
+            tmp = np.dot(U[:2], matn.T)
+            self.coords_proj = (tmp[0], tmp[1])
 
-class SKrandProj(DynProj):
+        def getAxisLabel(self, axi):
+            return "dimension %d" % (axi+1)
 
-    PID =  "SKrand"
-    SDESC = "Random"
-    title_str = "Sparse Random Projection"
-    fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"n_components": 2 })
-    dyn_f = [random_projection.SparseRandomProjection]
-    
-    # Random 2D projection using a random unitary matrix
-    def getX(self, X):
-        rp = self.applyF(random_projection.SparseRandomProjection)
-        X_projected = rp.fit_transform(X)
-        return X_projected, 0
+    class SKrandProj(DynProj):
 
-class SKpcaProj(DynProj):
-    #----------------------------------------------------------------------
-    # Projection on to the first 2 principal components
+        PID =  "SKrand"
+        SDESC = "Random"
+        title_str = "Sparse Random Projection"
+        fix_parameters = dict(DynProj.fix_parameters)
+        fix_parameters.update({"n_components": 2 })
+        dyn_f = [random_projection.SparseRandomProjection]
 
-    PID =  "SKpca"
-    SDESC = "PCA"
-    title_str = "Randomized PCA Projection"
-    gen_parameters = dict(Proj.gen_parameters)
-    gen_parameters.update({"iterated_power": 3 })
-    dyn_f = [decomposition.RandomizedPCA]
+        # Random 2D projection using a random unitary matrix
+        def getX(self, X):
+            rp = self.applyF(random_projection.SparseRandomProjection)
+            X_projected = rp.fit_transform(X)
+            return X_projected, 0
 
-    def getX(self, X):
-        X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
-        return X_pca, 0
+    class SKpcaProj(DynProj):
+       #----------------------------------------------------------------------
+       # Projection on to the first 2 principal components
 
-class SKisoProj(DynProj):
-    #----------------------------------------------------------------------
-    # Isomap projection
+       PID =  "SKpca"
+       SDESC = "PCA"
+       title_str = "Randomized PCA Projection"
+       gen_parameters = dict(Proj.gen_parameters)
+       gen_parameters.update({"iterated_power": 3 })
+       dyn_f = [decomposition.RandomizedPCA]
 
-    PID =  "SKiso"
-    SDESC = "Isomap"
-    title_str = "Isomap Embedding"
-    gen_parameters = dict(DynProj.gen_parameters)
-    gen_parameters.update({"n_neighbors": 5, "max_iter":100})
-    dyn_f = [manifold.Isomap]
+       def getX(self, X):
+           X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
+           return X_pca, 0
 
-    def getX(self, X):
-        X_iso = self.applyF(manifold.Isomap).fit_transform(X)
-        return X_iso, 0
+    class SKisoProj(DynProj):
+        #----------------------------------------------------------------------
+        # Isomap projection
 
-class SKlleProj(DynProj):
-    #----------------------------------------------------------------------
-    # Locally linear embedding
+        PID =  "SKiso"
+        SDESC = "Isomap"
+        title_str = "Isomap Embedding"
+        gen_parameters = dict(DynProj.gen_parameters)
+        gen_parameters.update({"n_neighbors": 5, "max_iter":100})
+        dyn_f = [manifold.Isomap]
 
-    PID =  "SKlle"
-    SDESC = "LLE"
-    title_str = "Locally Linear Embedding"
-    gen_parameters = dict(DynProj.gen_parameters)
-    gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
-    options_parameters = dict(DynProj.options_parameters)
-    options_parameters["method"] = [("standard", "standard"), ("hessian", "hessian"), ("modified", "modified"), ("ltsa", "ltsa")]
-    dyn_f = [manifold.LocallyLinearEmbedding]
+        def getX(self, X):
+            X_iso = self.applyF(manifold.Isomap).fit_transform(X)
+            return X_iso, 0
 
-    def getX(self, X):
-        ### methods: standard, modified, hessian, ltsa
-        clf = self.applyF(manifold.LocallyLinearEmbedding)
-        X_lle = clf.fit_transform(X)
-        return X_lle, clf.reconstruction_error_
+    class SKlleProj(DynProj):
+        #----------------------------------------------------------------------
+        # Locally linear embedding
 
-class SKmdsProj(KillerProj):
-    #----------------------------------------------------------------------
-    # MDS  embedding
+        PID =  "SKlle"
+        SDESC = "LLE"
+        title_str = "Locally Linear Embedding"
+        gen_parameters = dict(DynProj.gen_parameters)
+        gen_parameters.update({"n_neighbors": 5, "max_iter":100, "method": "standard"})
+        options_parameters = dict(DynProj.options_parameters)
+        options_parameters["method"] = [("standard", "standard"), ("hessian", "hessian"), ("modified", "modified"), ("ltsa", "ltsa")]
+        dyn_f = [manifold.LocallyLinearEmbedding]
 
-    PID =  "SKmds"
-    SDESC = "MDS"
-    title_str = "Multidimensional Scaling"
-    gen_parameters = dict(DynProj.gen_parameters)
-    gen_parameters.update({"n_init": 4, "max_iter":100})
-    fix_parameters = dict(DynProj.fix_parameters)
-    fix_parameters.update({"n_jobs": -2})
-    dyn_f = [manifold.MDS]
+        def getX(self, X):
+            ### methods: standard, modified, hessian, ltsa
+            clf = self.applyF(manifold.LocallyLinearEmbedding)
+            X_lle = clf.fit_transform(X)
+            return X_lle, clf.reconstruction_error_
 
-    def getX(self, X):
-        self.updatePL() 
-        clf = self.applyF(manifold.MDS)
-        X_mds = clf.fit_transform(X)
-        return X_mds, clf.stress_
+    class SKmdsProj(KillerProj):
+        #----------------------------------------------------------------------
+        # MDS  embedding
 
-class SKtreeProj(DynProj):
-    #----------------------------------------------------------------------
-    # Random Trees embedding
+        PID =  "SKmds"
+        SDESC = "MDS"
+        title_str = "Multidimensional Scaling"
+        gen_parameters = dict(DynProj.gen_parameters)
+        gen_parameters.update({"n_init": 4, "max_iter":100})
+        fix_parameters = dict(DynProj.fix_parameters)
+        fix_parameters.update({"n_jobs": -2})
+        dyn_f = [manifold.MDS]
 
-    PID =  "SKtree"
-    SDESC = "Rand.Trees"
-    title_str = "Totally Random Trees Representation"
-    gen_parameters = dict(DynProj.gen_parameters)
-    gen_parameters.update({"max_depth":5, "n_estimators":10})
-    fix_parameters = dict(DynProj.fix_parameters)
-    dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
+        def getX(self, X):
+            self.updatePL() 
+            clf = self.applyF(manifold.MDS)
+            X_mds = clf.fit_transform(X)
+            return X_mds, clf.stress_
 
-    def getX(self, X):
-        X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
-        X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
-        return X_reduced, 0
+    class SKtreeProj(DynProj):
+        #----------------------------------------------------------------------
+        # Random Trees embedding
 
-class SKspecProj(DynProj):
-    #----------------------------------------------------------------------
-    # Spectral embedding
+        PID =  "SKtree"
+        SDESC = "Rand.Trees"
+        title_str = "Totally Random Trees Representation"
+        gen_parameters = dict(DynProj.gen_parameters)
+        gen_parameters.update({"max_depth":5, "n_estimators":10})
+        fix_parameters = dict(DynProj.fix_parameters)
+        dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
 
-    PID =  "SKspec"
-    SDESC = "Spectral"
-    title_str = "Spectral Embedding"
-    dyn_f = [manifold.SpectralEmbedding]
+        def getX(self, X):
+            X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
+            X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
+            return X_reduced, 0
 
-    def getX(self, X):
-        ### eigen solvers: arpack, lobpcg
-        X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)
-        return X_se, 0
+    class SKspecProj(DynProj):
+        #----------------------------------------------------------------------
+        # Spectral embedding
 
-# class SKtsneProj(DynProj):
-#     #----------------------------------------------------------------------
-#     # Stochastic Neighbors embedding
+        PID =  "SKspec"
+        SDESC = "Spectral"
+        title_str = "Spectral Embedding"
+        dyn_f = [manifold.SpectralEmbedding]
 
-#     ### THIS IS DISABLED "starting with minus"
-#     PID =  "-SKtsne"
-#     SDESC = "t-SNE"
-#     title_str = "t-SNE Embedding"
-#     gen_parameters = dict(DynProj.gen_parameters)
-#     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
-#     fix_parameters = dict(DynProj.fix_parameters)
-#     fix_parameters.update({"no_dims":2})
-#     dyn_f = [tsne.tsne]
+        def getX(self, X):
+            ### eigen solvers: arpack, lobpcg
+            X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)
+            return X_se, 0
 
-#     def getX(self, X):
-#         X_sne, c = self.applyF(tsne.tsne, {"X":X})
-#         return X_sne, c
+    # class SKtsneProj(DynProj):
+    #     #----------------------------------------------------------------------
+    #     # Stochastic Neighbors embedding
+
+    #     ### THIS IS DISABLED "starting with minus"
+    #     PID =  "-SKtsne"
+    #     SDESC = "t-SNE"
+    #     title_str = "t-SNE Embedding"
+    #     gen_parameters = dict(DynProj.gen_parameters)
+    #     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
+    #     fix_parameters = dict(DynProj.fix_parameters)
+    #     fix_parameters.update({"no_dims":2})
+    #     dyn_f = [tsne.tsne]
+
+    #     def getX(self, X):
+    #         X_sne, c = self.applyF(tsne.tsne, {"X":X})
+    #         return X_sne, c
 

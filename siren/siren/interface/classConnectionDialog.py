@@ -1,7 +1,6 @@
 import wx
 import pdb
 from classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
-import toolWP
 
 ### USAGE this class provides a wx Modal dialog to modify a dictionary of preferences managed with the PreferenceManager
 ## It is launched with the following command:

@@ -11,9 +11,9 @@ import scipy.spatial.distance
 from matplotlib.patches import Ellipse
 from matplotlib.lines import Line2D
 
-from reremi.toolLog import Log
-from reremi.classQuery import Query
-from reremi.classRedescription import Redescription
+from ..reremi.toolLog import Log
+from ..reremi.classQuery import Query
+from ..reremi.classRedescription import Redescription
 from classGView import GView
 from classProj import ProjFactory
 from classInterObjects import MaskCreator

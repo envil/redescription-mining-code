@@ -5,50 +5,53 @@ import sys
 # import wx.lib.agw.pybusyinfo as PBI
 import wx.lib.dialogs
 
-from reremi.toolLog import Log
-from reremi.classData import Data, DataError
-from reremi.classConstraints import Constraints
-from reremi.classBatch import Batch
-from reremi.toolICList import ICList
+from ..reremi.toolLog import Log
+from ..reremi.classData import Data, DataError
+from ..reremi.classConstraints import Constraints
+from ..reremi.classBatch import Batch
+from ..reremi.toolICList import ICList
 
 from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from miscDialogs import ImportDataCSVDialog, FindDialog
-from factView import ViewFactory
-from toolWP import WorkPlant
+from ..views.factView import ViewFactory
+from ..work.toolWP import WorkPlant
+from ..common_details import common_variables
 
 import pdb
  
 class Siren():
     """ The main frame of the application
     """
-
-    titleTool = 'SIREN :: tools'
-    titlePref = 'SIREN :: '
-    titleHelp = 'SIREN :: help'
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    helpURL = findFile('index.html', ['help', curr_dir+'/help'])
-    helpInternetURL = 'http://www.cs.Helsinki.FI/u/galbrun/redescriptors/siren/help'
+    root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
+    
+    titleTool = common_variables["PROJECT_NAME"]+' :: tools'
+    titlePref = common_variables["PROJECT_NAME"]+' :: '
+    titleHelp = common_variables["PROJECT_NAME"]+' :: help'
+    helpURL = findFile('index.html', ['../../help', root_dir+'/help', './help'])
+    helpInternetURL = common_variables["PROJECT_URL"]+'help'
  
-
     # For About dialog
-    name = "Siren"    
-    programURL = "http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren"
-    version = '2.2.0'
-    cpyright = '(C) 2012-2014 Esther Galbrun and Pauli Miettinen'
+    name = common_variables["PROJECT_NAME"]    
+    programURL = common_variables["PROJECT_URL"]
+    version = common_variables["VERSION"]
+    cpyright = '(c) '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
+               +common_variables["COPYRIGHT_YEAR_TO"]+' ' \
+               +common_variables["PROJECT_AUTHORS"]
+    about_text = common_variables["PROJECT_DESCRIPTION_LINE"]+"\n"
+    
 
-    pref_dir = os.path.dirname(__file__)
-    about_file = findFile('ABOUT', [pref_dir])
-    icon_file = findFile('siren_icon32x32.png', ['icons', pref_dir + '/icons'])
-
-    license_file = findFile('LICENSE', [pref_dir])
+    icon_file = findFile('siren_icon32x32.png', ['../../icons', root_dir + '/icons', './icons'])
+    license_file = findFile('LICENSE', ['../../licenses', root_dir+ '/licenses', './licenses'])
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
          
     def __init__(self):
+        
         self.busyDlg = None
         self.findDlg = None
         self.dw = None
@@ -71,7 +74,8 @@ class Siren():
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, size=(tmp[0]*0.66,tmp[1]*0.9))
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-        
+        self.toolFrame.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
+
         self.view_ids = {}
         self.selectedViewX = -1
         self.buffer_copy = None
@@ -80,7 +84,7 @@ class Siren():
         
         self.create_tool_panel()
         self.changePage(stn)
-
+        
         # #### COMMENT OUT TO LOAD DBLP ON STARTUP
         # tmp_num_filename='../data/dblp/coauthor_picked.datnum'
         # tmp_bool_filename='../data/dblp/conference_picked.datnum'
@@ -113,8 +117,7 @@ class Siren():
         self.info.SetCopyright(self.cpyright)
         self.info.SetVersion(self.version)
         self.info.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
-        with open(self.about_file) as f:
-            self.info.SetDescription(f.read())
+        self.info.SetDescription(self.about_text)
         #with open(self.licence_file) as f:
         #    self.info.SetLicence(f.read())
 
@@ -1169,7 +1172,7 @@ class Siren():
         for ext in self.external_licenses:
             lic = 'LICENSE_'+ext
             try:
-                f = codecs.open(findFile(lic, [self.curr_dir]), 'r', encoding='utf-8', errors='replace')
+                f = codecs.open(findFile(lic, ["../../licenses", self.root_dir+"/licenses", "./licenses"]), 'r', encoding='utf-8', errors='replace')
                 external_license_texts += '\n\n***********************************\n\n' + f.read()
                 f.close()
             except:

@@ -1,7 +1,7 @@
 import sys
 import wx
 import os.path, re
-from reremi.classData import DataError
+from ..reremi.classData import DataError
 
 import pdb
 

@@ -358,7 +358,7 @@ class Miner:
 
     def initializeRedescriptionsTree(self, ids=None):
         self.logger.printL(1, 'Searching for initial literals...', 'status', self.id)
-        self.init_progress_full()
+        self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.id)
         
         if ids is None:
             ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
@@ -374,7 +374,7 @@ class Miner:
                         self.initial_pairs.add(None, l, {"score":0, side: idl, 1-side: -1})
         self.initial_pairs.setMaxOut(-1)
         self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.id)
-        self.send_progress(1)
+        self.logger.sendCompleted(self.id)
 
         
     def initializeRedescriptionsGreedy(self, ids=None):

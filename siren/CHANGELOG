@@ -5,6 +5,7 @@ v3.0.0
 * Integrated more tree-based mining methods
 * Visualization for trees
 * Distributed computation
+* Modified visualization layout
 * Fixed the previous tree-based methods
 * Fixed a bug in loading data
 

@@ -2,7 +2,7 @@ import multiprocessing
 import multiprocessing.queues
 import Queue
 
-from reremi.classMiner import instMiner
+from ..reremi.classMiner import instMiner
 from classWorkInactive import WorkInactive
 
 import pdb

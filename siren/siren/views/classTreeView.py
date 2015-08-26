@@ -15,9 +15,9 @@ from matplotlib.patches import Polygon
 
 import itertools
 
-from reremi.classQuery import Query, Literal, QTree
-from reremi.classRedescription import Redescription
-from reremi.classData import BoolColM, CatColM, NumColM
+from ..reremi.classQuery import Query, Literal, QTree
+from ..reremi.classRedescription import Redescription
+from ..reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 

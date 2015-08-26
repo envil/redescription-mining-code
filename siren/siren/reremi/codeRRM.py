@@ -700,7 +700,7 @@ class LitDNum(LitD):
             ### DOES NOT WORK WITH NEGATIONS
             return [float("Inf"), float("-Inf")]
         elif rnge is None:
-            rnge = lit.getTerm()valRange()
+            rnge = lit.getTerm().valRange()
         else:
             rnge = list(rnge)
             if lit.getTerm().getLowb() > rnge[0]:

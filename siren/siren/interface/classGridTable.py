@@ -1,7 +1,7 @@
 import wx, wx.grid, re, colorsys, random, datetime, math
-from reremi.toolICList import ICList
-from reremi.classQuery import SYM, Query, Literal
-from reremi.classRedescription import Redescription
+from ..reremi.toolICList import ICList
+from ..reremi.classQuery import SYM, Query, Literal
+from ..reremi.classRedescription import Redescription
 
 import pdb
 

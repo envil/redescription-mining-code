@@ -12,8 +12,8 @@ import multiprocessing
 import pdb
 #from reremi import *
 
-from classSiren import Siren
-from classGridTable import CustRenderer
+from siren.interface.classSiren import Siren
+from siren.interface.classGridTable import CustRenderer
              
 ## MAIN APP CLASS ###
 class SirenApp(wx.App):

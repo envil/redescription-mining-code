@@ -12,9 +12,9 @@ import scipy.cluster
 from matplotlib.patches import Ellipse
 import itertools
 
-from reremi.classQuery import Query, BoolTerm, CatTerm, NumTerm
-from reremi.classRedescription import Redescription
-from reremi.classData import BoolColM, CatColM, NumColM
+from ..reremi.classQuery import Query, BoolTerm, CatTerm, NumTerm
+from ..reremi.classRedescription import Redescription
+from ..reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 

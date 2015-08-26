@@ -20,53 +20,36 @@ import pdb
 import glob
 import time
 
-INSIDE_SETUP = True
+from siren.common_details import common_variables
 
 # Common info
-APP = 'siren.py'
-NAME="python-siren"
-SHORT_NAME="Siren"
-VERSION = '3.0.0'
-DESCRIPTION="Interactive Redescription Mining"
-AUTHOR="Esther Galbrun and Pauli Miettinen"
-AUTHOR_EMAIL="galbrun@cs.helsinki.fi"
-URL="http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/"
+APP = common_variables["MAIN_FILENAME"]
+NAME = common_variables["PACKAGE_NAME"]
+SHORT_NAME = common_variables["PROJECT_NAME"]
+VERSION = common_variables["VERSION"]
+DESCRIPTION = common_variables["PROJECT_DESCRIPTION"]
+DESCRIPTION_LONG = common_variables["PROJECT_DESCRIPTION_LONG"]
+AUTHOR = common_variables["PROJECT_AUTHORS"]
+AUTHOR_EMAIL = common_variables["MAINTAINER_EMAIL"]
+URL = common_variables["PROJECT_URL"]
 LICENSE="Apache_2.0"
-COPYRIGHT=u'\u00A9 2012-2015 Esther Galbrun and Pauli Miettinen'
+COPYRIGHT=u'\u00A9 '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
+               +common_variables["COPYRIGHT_YEAR_FROM"]+' ' \
+               +common_variables["PROJECT_AUTHORS"]
 HELP_PACKAGE_FILENAME = 'help.tar.gz'
 HELP_PACKAGE_URL = URL+HELP_PACKAGE_FILENAME
 HELP_UNPACK_CMD = 'tar xfz '+HELP_PACKAGE_FILENAME # command to unpack the help file to folder help/
 
 ########## SETUPTOOLS FILES
-LICENSES = ['LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
+LICENSES = ['licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
 #ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
-ST_RESOURCES=['help', 'ABOUT', 'LICENSE',
-              'ui_confdef.xml', 'reremi/miner_confdef.xml', 'reremi/inout_confdef.xml']
+ST_RESOURCES=['help', 'LICENSE',
+              'siren/interface/ui_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
-ST_FILES = ['classConnectionDialog.py',
-            'classEProjView.py',
-            'classGridTable.py',
-            'classGView.py',
-            'classInterObjects.py',
-            'classMapView.py',
-            'classTreeView.py',
-            'classParaView.py',
-            'classPreferencesDialog.py',
-            'classProj.py',
-            'classSiren.py',
-            'classWorkClient.py',
-            'classWorkInactive.py',
-            'classWorkLocal.py',
-            'classWorkServer.py',
-            'factView.py',
-            'miscDialogs.py',
-            'siren.py',
-            'toolMath.py',
-            'toolWP.py',
-            'tsne.py']
-pdb.set_trace()
+ST_FILES = [common_variables["MAIN_FILENAME"]]
+
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'reremi',  'sklearn', 'mpl_toolkits']
+ST_PACKAGES = ['wx', 'code',  'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 extra_options = dict(
@@ -109,14 +92,9 @@ def clean_help_files():
     subprocess.call('rm -rf help/', shell=True)
     subprocess.call('rm -rf '+HELP_PACKAGE_FILENAME, shell=True)
     
-        
 if sys.platform == 'darwin':
-    if not INSIDE_SETUP:
-            print "Use the other setup, inside siren folder"
 
-    ################ MAC SETUP
-
-    
+    ################ MAC SETUP    
     # Bootstrap
     import ez_setup
     ez_setup.use_setuptools()
@@ -208,19 +186,20 @@ if sys.platform == 'darwin':
 
     
 elif sys.platform == 'win32':
-    if not INSIDE_SETUP:
-            print "Use the other setup, inside siren folder"
-
     ################ WINDOWS SETUP
     ## Should this be 'win64'??
     from distutils.core import setup
     import py2exe
     import matplotlib
 
+
     WICONS = [('icons', glob.glob('icons\\*.ico') + glob.glob('icons\\*.png'))]
-    WLICENSES = [('', ['ABOUT', 'LICENSE']+LICENSES)]
-    WCONFIGS = [('', ['ui_confdef.xml']), ('reremi', ['reremi\\miner_confdef.xml', 'reremi\\inout_confdef.xml'])]
-    WMORE = [('help', glob.glob('help\\*'))]
+    WLICENSES = [('licenses', ['LICENSE']+glob.glob('licenses\\LICENSE*'))]
+    #WCONFIGS = [('siren.interface', ['siren\\interface\\ui_confdef.xml']),
+    #            ('siren.reremi', ['siren\\reremi\\miner_confdef.xml', 'siren\\reremi\\inout_confdef.xml'])]
+    WCONFIGS = [('confs', ['siren\\interface\\ui_confdef.xml','siren\\reremi\\miner_confdef.xml', 'siren\\reremi\\inout_confdef.xml'])]
+    WMORE = [('help', glob.glob('help\\*')),
+             ('', ['LICENSE'])]
 
     OPTIONS = {
     'packages': ST_PACKAGES,
@@ -232,9 +211,10 @@ elif sys.platform == 'win32':
     MPL = matplotlib.get_py2exe_datafiles()
     MTK = [('mpl_toolkits\\basemap\\data', glob.glob('C:\\Python27\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*'))]
     extra_options.update(dict(
-        windows=[APP],
+        windows=[{"script": APP, "icon_resources": [(1, "icons\\siren_icon.ico")]}],
         data_files= WICONS + WLICENSES + WCONFIGS + WMORE + MPL + MTK,
-        options={'py2exe': OPTIONS}))
+        options={'py2exe': OPTIONS})
+        )
     # Run setup
     setup(**extra_options)
 
@@ -243,27 +223,22 @@ else:
     ################ LINUX SETUP
     from distutils.core import setup
     
-    DU_RESOURCES_SIREN=['ui_confdef.xml', 'ABOUT', 'LICENSE']+LICENSES      
-    DU_RESOURCES_REREMI=['miner_confdef.xml', 'inout_confdef.xml']
-
-    patterns = [('reremi.grako', []),
+    patterns = [('siren.reremi.grako', []),
+                ('siren.reremi', ['siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']),
+                ('siren.interface', ['siren/interface/ui_confdef.xml']),
+                ('siren.work', []),
+                ('siren.views', []),
+                ('', ['LICENSE', 'CHANGELOG']),
                 ('help', ['help/*']),
-                ('icons', ['icons/*.png', 'icons/*.ico'])]
+                ('icons', ['icons/*.png', 'icons/*.ico']),
+                ('licenses', ['licenses/LICENSE*'])]
                   
-    if INSIDE_SETUP:
-        DU_FILES = [f[:-3] for f in ST_FILES]
-        PACKAGE_DATA = {'': DU_RESOURCES_SIREN,
-                        'reremi': DU_RESOURCES_REREMI}
-        DU_PACKAGES = ['reremi']
-        PREFF_DOT = ""
-        PREFF_SLASH = ""
-    else:
-        DU_FILES = []
-        PACKAGE_DATA = {'siren': DU_RESOURCES_SIREN,
-                        'siren.reremi': DU_RESOURCES_REREMI}
-        DU_PACKAGES = ['siren', 'siren.reremi']
-        PREFF_DOT = "siren."
-        PREFF_SLASH = "siren/"
+    
+    DU_FILES = [f[:-3] for f in ST_FILES]
+    PACKAGE_DATA = {'siren': []}
+    DU_PACKAGES = ['siren']
+    PREFF_DOT = ""
+    PREFF_SLASH = ""
 
     for pack, pattern in patterns:
         DU_PACKAGES.append(PREFF_DOT+pack)
@@ -274,7 +249,7 @@ else:
     extra_options.update(dict(
         platforms="UNIX",
         description=DESCRIPTION,
-        long_description=DESCRIPTION, # + " (r"+ get_svnrevision()+")",
+        long_description=DESCRIPTION_LONG,
         package_data=PACKAGE_DATA,
         packages=DU_PACKAGES,
         py_modules=DU_FILES
