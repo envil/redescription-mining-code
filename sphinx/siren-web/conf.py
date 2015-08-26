@@ -10,8 +10,12 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
+__SIREN_PYTHON_PATH__ = "../../python-siren/"
 import sys, os
+sys.path.append(__SIREN_PYTHON_PATH__)
+from siren.common_details import common_variables
+print common_variables
+exit()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
