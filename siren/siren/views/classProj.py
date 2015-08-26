@@ -6,7 +6,6 @@ import inspect, signal
 from reremi.classQuery import Query
 from reremi.classRedescription import Redescription
 from reremi.classData import BoolColM, CatColM, NumColM
-import toolMath
 import os
 
 import pdb
@@ -25,6 +24,16 @@ import pdb
 #             os.kill(childp, signal.SIGTERM)
 #         except OSError as e:
 #             pass
+
+def withen(mat):
+    tt = numpy.std(mat, 0)
+    tt[numpy.where(tt == 0)] = 1
+    return (mat - numpy.tile(numpy.mean(mat, 0), (mat.shape[0], 1)))/numpy.tile(tt, (mat.shape[0], 1))
+
+def withenR(mat):
+    tt = numpy.std(mat, 1)
+    tt[numpy.where(tt == 0)] = 1
+    return (mat - numpy.tile(numpy.mean(mat, 1), (mat.shape[1], 1)).T)/numpy.tile(tt, (mat.shape[1], 1)).T
 
 def get_children(pid):
     if sys.platform == 'linux2':
@@ -371,7 +380,7 @@ class DynProj(Proj):
                 mat = self.data
             idsNAN = np.where(~np.isfinite(mat))
             mat[idsNAN] = np.nanmin(mat) -1
-            matn = toolMath.withen(mat)
+            matn = withen(mat)
         else:
             if self.transpose:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
@@ -379,7 +388,7 @@ class DynProj(Proj):
                     return
                 idsNAN = np.where(~np.isfinite(mat))
                 mat[idsNAN] = np.nanmin(mat) -1
-                matn = toolMath.withen(mat.T)
+                matn = withen(mat.T)
             else:
                 mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
                 if len(self.mcols) == 0:
@@ -390,9 +399,9 @@ class DynProj(Proj):
 
                 if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
                     selected = np.array(list(self.data.nonselectedRows()))
-                    matn = toolMath.withen(mat[:,selected])
+                    matn = withen(mat[:,selected])
                 else:
-                    matn = toolMath.withen(mat)
+                    matn = withen(mat)
         return matn
 
     def comp(self):

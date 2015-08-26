@@ -64,7 +64,7 @@ ST_FILES = ['classConnectionDialog.py',
             'toolMath.py',
             'toolWP.py',
             'tsne.py']
-
+pdb.set_trace()
 ST_MORE_FILES=['ez_setup.py']
 ST_PACKAGES = ['wx', 'reremi',  'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
@@ -274,7 +274,7 @@ else:
     extra_options.update(dict(
         platforms="UNIX",
         description=DESCRIPTION,
-        long_description=DESCRIPTION + " (r"+ get_svnrevision()+")",
+        long_description=DESCRIPTION, # + " (r"+ get_svnrevision()+")",
         package_data=PACKAGE_DATA,
         packages=DU_PACKAGES,
         py_modules=DU_FILES
