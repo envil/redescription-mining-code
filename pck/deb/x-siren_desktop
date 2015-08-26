@@ -1,7 +1,0 @@
-[Desktop Entry]
-Comment=Siren File
-
-Icon=siren
-Type=MimeType
-MimeType=x-content/x-siren
-Patterns=*.siren;

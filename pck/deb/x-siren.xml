@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
-  <mime-type type="x-content/x-siren">
-    <comment>Siren redescription mining package</comment>
-    <glob pattern="*.siren"/>
-  </mime-type>
-</mime-info>
