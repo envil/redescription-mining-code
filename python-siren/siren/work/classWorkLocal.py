@@ -149,8 +149,13 @@ class WorkLocal(WorkInactive):
         updates = {}
         while self.nbWorking() > 0:
             try:
-                piece_result = self.comm_queues["out"].get_nowait()
+                piece_result = self.comm_queues["out"].get(False, 1)
+                # piece_result = self.comm_queues["out"].get_nowait()
+                # print "P", piece_result['type_message']
+                # if ( piece_result['type_message'] != 'progress'):
                 self.handlePieceResult(piece_result, updates, parent)
+                # else:
+                #     print piece_result
             except Queue.Empty:
                 break
         return updates

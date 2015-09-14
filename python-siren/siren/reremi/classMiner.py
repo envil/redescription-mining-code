@@ -304,15 +304,12 @@ class Miner:
         self.count = 0
         
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
-
         #### progress initialized after listing pairs
         self.logger.clockTic(self.id, "pairs")
         self.initializeRedescriptions()
         self.logger.clockTac(self.id, "pairs")
-        
         self.logger.clockTic(self.id, "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
-
         while initial_red is not None and self.questionLive():
             self.count += 1
             self.logger.clockTic(self.id, "expansion")
@@ -329,8 +326,7 @@ class Miner:
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
 
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
-            self.logger.printL(1, {"final":self.final["batch"]}, 'result', self.id)
-
+            self.logger.printL(1, {"final": self.final["batch"]}, 'result', self.id)
             initial_red = self.initial_pairs.get(self.data, self.testIni)
 
         self.logger.clockTac(self.id, "full run", "%s" % self.questionLive())        
@@ -374,7 +370,7 @@ class Miner:
                         self.initial_pairs.add(None, l, {"score":0, side: idl, 1-side: -1})
         self.initial_pairs.setMaxOut(-1)
         self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.id)
-        self.logger.sendCompleted(self.id)
+        # self.logger.sendCompleted(self.id)
 
         
     def initializeRedescriptionsGreedy(self, ids=None):
