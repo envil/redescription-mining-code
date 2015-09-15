@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.mlab import dist_point_to_segment
 
-class ResizeableRectangle:
+class ResizeableRectangle(object):
     # draggable rectangle with the animation blit techniques; see
     # http://www.scipy.org/Cookbook/Matplotlib/Animations
 

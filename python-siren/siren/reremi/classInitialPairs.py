@@ -40,7 +40,7 @@ SORT_METHODS= {"overall": overall_sort,
                "filo": filo_sort}
 DEFAULT_METHOD = overall_sort
 
-class InitialPairs:
+class InitialPairs(object):
 
     def __init__(self, sort_meth="overall", max_out=-1, save_filename=None):
         self.max_out = max_out

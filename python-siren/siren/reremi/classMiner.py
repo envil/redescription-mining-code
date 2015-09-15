@@ -15,8 +15,6 @@ from classCharbonGStd import CharbonGStd
 from classCharbonTAlt import CharbonTCW, CharbonTRelay, CharbonTLayer
 from classCharbonTSplit import CharbonTSplit
 
-
-
 TREE_CLASSES = { "layeredtrees": CharbonTLayer,
                  "cartwheel": CharbonTCW,
                  "splittrees": CharbonTSplit,
@@ -27,7 +25,7 @@ TREE_DEF = CharbonTRelay
 #               [2,4,6],
 #               [3,6,10]]
 
-class DummyLog:
+class DummyLog(object):
     verbosity = 0
     def printL(self, level, message, type_message="*", source=None):
         pass
@@ -35,7 +33,7 @@ class DummyLog:
         pass
 
 
-class ExpMiner:
+class ExpMiner(object):
     def __init__(self, ppid, count, data, charbon, constraints, souvenirs, logger=None, question_live=None):
         self.charbon = charbon
         self.data = data
@@ -166,7 +164,7 @@ class ExpMiner:
         return partial
 
 
-class Miner:
+class Miner(object):
 
 ### INITIALIZATION
 ##################

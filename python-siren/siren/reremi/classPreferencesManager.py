@@ -10,7 +10,7 @@ import pdb
 
 ### for color parameter, both data and value are the integer triplets representation
 
-class CParameter:
+class CParameter(object):
 	type_id = "X"
 	value_types = {"text": str, "boolean": bool, "integer": int, "float": float, "color": str}
 	reversed_types = dict([(v,k) for (k,v) in value_types.items()])
@@ -313,7 +313,7 @@ class ColorCParameter(CParameter):
 		return None
 		
 
-class PreferencesManager:
+class PreferencesManager(object):
       	parameter_types = {"open": OpenCParameter,
 			   "range": RangeCParameter,
 			   "single_options": SingleOptionsCParameter,
@@ -409,7 +409,7 @@ class PreferencesManager:
 			return parameters
 
 
-class PreferencesReader:
+class PreferencesReader(object):
 	def __init__(self, pm):
 		self.pm = pm
 

@@ -3,7 +3,7 @@ from classWorkLocal import WorkLocal
 from classWorkClient import WorkClient
 import pdb
 
-class WorkPlant:
+class WorkPlant(object):
 
     def __init__(self):
         self.wp = None

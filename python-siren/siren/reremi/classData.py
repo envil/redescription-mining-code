@@ -1148,7 +1148,7 @@ class RowE(object):
     def getRName(self, details=None):
         return self.data.getRName(self.rid)
         
-class Data:
+class Data(object):
 
     enabled_codes = {(0,0): "F", (1,1): "T", 0: "F", 1: "T", (0,1): "L", (1,0): "R"}
     enabled_codes_rev_simple = {"F": 0, "T": 1}

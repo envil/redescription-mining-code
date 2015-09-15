@@ -5,7 +5,7 @@ from classBatch import Batch
 import toolRead
 import pdb
 
-class Redescription:
+class Redescription(object):
     diff_score = Query.diff_length + 1
     print_delta_fields = set(SParts.print_delta_fields+["Tex_"+s for s in SParts.print_delta_fields])
     print_queries_headers = ["query_LHS", "query_RHS"]

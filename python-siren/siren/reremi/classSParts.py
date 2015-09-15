@@ -20,7 +20,7 @@ def tool_pValSupp(nbRows, supp, pr):
     ## probability that an termset with marginal probability pr has support equal or larger than supp
     return 1-binom.cdf(supp-1, nbRows, pr) 
 
-class SSetts:
+class SSetts(object):
 
     # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
@@ -464,7 +464,7 @@ class SSetts:
                 lp[lpartsY] += 1
         return lp
 
-class SParts:
+class SParts(object):
 
     infos = {"acc": "self.acc()", "pval": "self.pVal()"}
     print_delta_fields = [ "delta", "card_delta"]

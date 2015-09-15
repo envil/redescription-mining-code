@@ -1,7 +1,7 @@
 from classRedescription import  Redescription
 import pdb
 
-class Constraints:
+class Constraints(object):
     
     #     self.cminPairsScore = setts_cust.param['min_score']        
     config_def = "miner_confdef.xml"

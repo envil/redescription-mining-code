@@ -2,15 +2,27 @@ import sys
 import pdb
 import random
 import datetime
+import copy
         
-class Log:
+class Log(object):
     def __init__(self, verbosity=1, output = '-', method_comm = None):
+        self.tics = {None: datetime.datetime.now()}
+        self.progress_ss = {"current": 0, "total": 0}
+        self.bit = 1
         self.out = []
         self.oqu = []
         self.verbosity = -1
         self.addOut(verbosity, output, method_comm)
-        self.tics = {None: datetime.datetime.now()}
-        self.progress_ss = {"current": 0, "total": 0} 
+
+    #### FOR PICKLING !!
+    def __getstate__(self):
+        tmp = {}
+        for k,v in self.__dict__.items():
+            if k == 'out':
+                tmp[k] = []
+            else:
+                tmp[k] = v
+        return tmp
 
     ############ THE CLOCK PART
     def getTic(self, id, name=None):
@@ -112,13 +124,11 @@ class Log:
         self.out = []
         self.oqu = []
         self.verbosity = -1
-
-    def __getstate__(self):
-        return { 'verbosity': self.verbosity, 'oqu': self.oqu, 'out': []}
         
     def addOut(self,  verbosity=1, output = '-', method_comm = None):
         # print "Adding output:\t", output, type(output), method_comm
         ### CHECK OUTPUT
+        self.bit = 0
         if type(output) == str:
             if output in ['-', "stdout"]:
                 tmp_dest = sys.stdout

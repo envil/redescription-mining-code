@@ -2,6 +2,7 @@ import os, os.path
 import wx
 import time
 import sys
+import pickle
 # import wx.lib.agw.pybusyinfo as PBI
 import wx.lib.dialogs
 

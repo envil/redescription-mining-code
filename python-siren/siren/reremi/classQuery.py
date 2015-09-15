@@ -168,7 +168,7 @@ def recurse_deep(b, function, args={}):
 
 
 
-class SYM:
+class SYM(object):
 
     SYMU_OR = ur'\u2228'
     SYMU_AND = ur'\u2227'
@@ -893,7 +893,7 @@ class Literal(object):
     parse = staticmethod(parse)
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
-class QTree:
+class QTree(object):
 
     branchN, branchY  = (0, 1)
     
@@ -1264,7 +1264,7 @@ class QTree:
                     self.Ys[node] = 1.5 
         return self.Ys[node]
             
-class Query:
+class Query(object):
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
     side = 0
     def __init__(self, OR=True, buk=None):

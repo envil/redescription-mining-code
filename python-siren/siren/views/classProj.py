@@ -317,7 +317,7 @@ class VrsProj(Proj):
         return "%s" % self.labels[axi]
 
 
-class ProjFactory:
+class ProjFactory(object):
     defaultView = AxesProj
 
     @classmethod

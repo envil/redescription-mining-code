@@ -73,7 +73,7 @@ def make_server_manager(port, authkey):
     print 'Central server started at port %s' % port
     return manager
 
-class WorkServer:
+class WorkServer(object):
 
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
         print "PID", os.getpid()
@@ -148,7 +148,7 @@ def make_hs_manager(port, authkey):
     return manager
 
 
-class WorkHandler:
+class WorkHandler(object):
 
     type_workers = {"expander": {"launch": ExpanderProcess, "stop": "message"},
                     "miner": {"launch": MinerProcess, "stop": "message"},

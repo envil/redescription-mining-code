@@ -1,7 +1,7 @@
 from classQuery import Literal
 import pdb
 
-class Charbon:
+class Charbon(object):
     name = "-"
     def getAlgoName(self):
         return self.name

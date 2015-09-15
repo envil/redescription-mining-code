@@ -8,7 +8,7 @@ class ExtensionError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class Extension:
+class Extension(object):
 
     def __init__(self, ssetts, adv=None, clp=None, sol=None):
         ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
@@ -166,7 +166,7 @@ class Extension:
         return cmp(self.adv, other_adv)
         
     
-class ExtensionsBatch:
+class ExtensionsBatch(object):
     def __init__(self, N=0, coeffs=None, current=None):
         self.current = current
         self.base_acc = self.current.getAcc()

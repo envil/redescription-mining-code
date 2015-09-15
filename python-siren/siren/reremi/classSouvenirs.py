@@ -1,7 +1,7 @@
 from classQuery import *
 import pdb
 
-class Souvenirs:
+class Souvenirs(object):
 
     format_index_pref = ':%(lengthL)i:%(lengthR)i:%(side)i:%(op)i:'
     format_index_suff = '%(buk)i:%(col)i:'
