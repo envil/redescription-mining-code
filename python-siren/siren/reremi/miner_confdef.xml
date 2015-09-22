@@ -26,6 +26,99 @@
       </parameter>
 </section>
 </section>
+    <section>
+      <name>Filtering</name>
+    <section>
+      <name>Intermediate supports of queries</name>
+      <parameter>
+	<name>min_itm_c</name>
+	<label>Min contribution</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum contribution of a literal i.e., number of supporting entities impacted. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>3</value></default>
+      </parameter>
+      <parameter>
+	<name>min_itm_in</name>
+	<label>Min support</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of supporting entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>0.05</value></default>
+      </parameter>
+      <parameter>
+	<name>min_itm_out</name>
+	<label>Min uncovered</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of uncovered entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>0.05</value></default>
+      </parameter>
+    </section>
+    <section>
+      <name>Final filtering</name>
+      <parameter>
+	<name>min_fin_in</name>
+	<label>Min support</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of supporting entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_out</name>
+	<label>Min uncovered</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum number of uncovered entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<length>5</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_var</name>
+	<label>Min total number of variables</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum number of variables per redescription, applied as post processing.</legend>
+	<length>2</length>
+	<default><value>2</value></default>
+      </parameter>
+      <parameter>
+	<name>min_fin_acc</name>
+	<label>Min accuracy</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimim accuracy, applied as post processing.</legend>
+	<length>5</length>
+	<default><value>0.01</value></default>
+      </parameter>
+      <parameter>
+	<name>max_fin_pval</name>
+	<label>Max p-value</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Maximum p-value, applied as post processing.</legend>
+	<length>5</length>
+	<default><value>0.01</value></default>
+      </parameter>
+    </section>
+    <section>
+      <name>Additional filtering</name>
+      <parameter>
+	<name>max_overlaparea</name>
+	<label>Max Area Overlap</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Maximum overlap of the area of two redescriptions to be considered redundant.</legend>
+	<length>5</length>
+	<default><value>0.5</value></default>
+      </parameter>
+    </section>
+</section>
 <section>
     <name>Greedy</name>
 <section>
@@ -128,36 +221,6 @@
 	<legend>Restrict use of disjunction to only one side.</legend>
 	<default><value>1</value></default>
 	<options><value>no</value><value>yes</value></options>
-      </parameter>
-    </section>
-    <section>
-      <name>Supports of queries</name>
-      <parameter>
-	<name>min_itm_c</name>
-	<label>Min contribution</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum contribution of a literal i.e., number of supporting entities impacted. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>3</value></default>
-      </parameter>
-      <parameter>
-	<name>min_itm_in</name>
-	<label>Min support</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of supporting entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>0.05</value></default>
-      </parameter>
-      <parameter>
-	<name>min_itm_out</name>
-	<label>Min uncovered</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of uncovered entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>0.05</value></default>
       </parameter>
     </section>
 </section>
@@ -436,78 +499,6 @@
 	<length>2</length>
 	<default><value>2</value></default>
       </parameter>   
-    </section>
-  </section>
-  <section>
-    <name>Filtering</name>
-    <section>
-      <name>Final filtering</name>
-      <parameter>
-	<name>min_fin_c</name>
-	<label>Min contribution</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum contribution of a literal i.e., number of supporting entities impacted, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_in</name>
-	<label>Min support</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of supporting entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_out</name>
-	<label>Min uncovered</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimum number of uncovered entities, applied as post processing. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
-	<length>5</length>
-	<default><value>-1</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_var</name>
-	<label>Min number of variables</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Maximum number of variables per redescription, applied as post processing.</legend>
-	<length>2</length>
-	<default><value>2</value></default>
-      </parameter>
-      <parameter>
-	<name>min_fin_acc</name>
-	<label>Min accuracy</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Minimim accuracy, applied as post processing.</legend>
-	<length>5</length>
-	<default><value>0.01</value></default>
-      </parameter>
-      <parameter>
-	<name>max_fin_pval</name>
-	<label>Max p-value</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Maximum p-value, applied as post processing.</legend>
-	<length>5</length>
-	<default><value>0.01</value></default>
-      </parameter>
-    </section>
-    <section>
-      <name>Additional filtering</name>
-      <parameter>
-	<name>max_overlaparea</name>
-	<label>Max Area Overlap</label>
-	<parameter_type>open</parameter_type>
-	<value_type>float</value_type>
-	<legend>Maximum overlap of the area of two redescriptions to be considered redundant.</legend>
-	<length>5</length>
-	<default><value>0.5</value></default>
-      </parameter>
     </section>
   </section>
 </root>

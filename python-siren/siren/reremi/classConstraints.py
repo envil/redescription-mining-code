@@ -29,7 +29,7 @@ class Constraints(object):
             self._pv["amnesic"] = False
         
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"])
-        self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_fin_in"], self._pv["min_fin_out"])
+        _, self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(-1, self._pv["min_fin_in"], self._pv["min_fin_out"])
         
         for type_id in [1,2,3]:
             self._pv["lhs_neg_query_%d" % type_id] = []
@@ -59,6 +59,8 @@ class Constraints(object):
         return self.ssetts
         
     def scaleF(self, f):
+        if f == -1:
+            return -1
         if f >= 1:
             return int(f)
         elif f >= 0 and f < 1 and self.N != 0:
@@ -169,12 +171,45 @@ class Constraints(object):
 
                  
     def filter_partial(self,red):
+        # print "filter partial", red
+        # print {'min_itm_out': red.getLenO() >= self.min_itm_out(),
+        #        'min_itm_in': red.getLenI() >= self.min_itm_in(),
+        #        'max_fin_pval': red.getPVal() <= self.max_fin_pval()}
+        # print {'min_itm_out': (red.getLenO(), self.min_itm_out()),
+        #        'min_itm_in': (red.getLenI(), self.min_itm_in()),
+        #        'max_fin_pval': (red.getPVal(), self.max_fin_pval())}
+
+        if red.getLenO() >= self.min_itm_out()\
+               and red.getLenI() >= self.min_itm_in() \
+               and red.getPVal() <= self.max_fin_pval():
+            # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
+            # print "--------- RED KEEP"
+            return False
+        else:
+            # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
+            return True
+
+    def filter_final(self,red):
+        # print "filter final", red
+        # print {'min_fin_var': red.length(0) + red.length(1) >= self.min_fin_var(),
+        #        'min_fin_out': red.getLenO() >= self.min_fin_out(),
+        #        'min_fin_in': red.getLenI() >= self.min_fin_in(),
+        #        'min_fin_acc': red.getAcc()  >= self.min_fin_acc(),
+        #        'max_fin_pval': red.getPVal() <= self.max_fin_pval()}
+        # print {'min_fin_var': (red.length(0) + red.length(1), self.min_fin_var()),
+        #        'min_fin_out': (red.getLenO(), self.min_fin_out()),
+        #        'min_fin_in': (red.getLenI(), self.min_fin_in()),
+        #        'min_fin_acc': (red.getAcc(), self.min_fin_acc()),
+        #        'max_fin_pval': (red.getPVal(), self.max_fin_pval())}
+
+
         if red.length(0) + red.length(1) >= self.min_fin_var() \
                    and red.getLenO() >= self.min_fin_out()\
                    and red.getLenI() >= self.min_fin_in() \
                    and red.getAcc()  >= self.min_fin_acc() \
                    and red.getPVal() <= self.max_fin_pval():
             # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
+            print "--------- RED KEEP"
             return False
         else:
             # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
@@ -198,7 +233,7 @@ class Constraints(object):
                 ("cut", { "cutoff_nb": self.batch_out(), "cutoff_direct": 1, "equal_funct": self.sort_partial})]
 
     def actions_final(self):
-       return [("filtersingle", {"filter_funct": self.filter_partial}),
+       return [("filtersingle", {"filter_funct": self.filter_final}),
                ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
                ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})]
 

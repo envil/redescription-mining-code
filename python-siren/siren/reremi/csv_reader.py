@@ -1,5 +1,5 @@
 import csv
-import sys, codecs
+import sys, codecs, re
 import pdb
 from StringIO import StringIO
 from classQuery import Term
@@ -53,6 +53,7 @@ def write_row(csvf, row_data):
 
 
 def read_csv(filename, csv_params={}, unknown_string=None):
+    type_all = None
     if type(filename) is str or type(filename) is unicode:
         f = open(filename, 'rU')
         fcl = True
@@ -80,6 +81,11 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
+            
+            tmp = re.match('type=(?P<type>\w)', head[-1])
+            if tmp is not None:
+                head.pop()
+                type_all = tmp.group('type')
             data = dict([(head[i].strip(),[]) for i in range(len(head))])
             if len(data) != len(head):
                 map_names = {}
@@ -110,8 +116,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
     if fcl:
         f.close()
     ## HERE DEBUG UTF-8
-
-    return head, data
+    return head, data, type_all
 
 def parse_sparse(D, coord, ids, varcol, valcol):
     nids = None
@@ -148,7 +153,8 @@ def parse_sparse(D, coord, ids, varcol, valcol):
             if (-1 in dictLL.values()):
                 ### ... unless there was a zero
                 dictLL = dict([(k,v+1) for (k, v) in dictLL.items()])
-            if max(dictLL.values()) > len(dictLL):
+            if max(dictLL.values()) > 2*len(dictLL):
+                print "Too large ids compared to number of rows (>2x)!..."
                 numerical_ids = False
         if numerical_ids:        
             nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
@@ -162,8 +168,9 @@ def parse_sparse(D, coord, ids, varcol, valcol):
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
 
-    nD = {'data' : {}, 'headers': [], "sparse":True, ENABLED_COLS[0]: None}
+    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: None}
     if valcol is None:
+        nD['bool'] = True
         ### Turning the data from list of ids to sets, Boolean
         for rid, col in enumerate(D['data'][varcol]):
             if col in nD['headers']:
@@ -347,7 +354,7 @@ def row_order(L, R):
             LhasCoord |= LhasCoord_sp
         # except Exception as arg:
         #     raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
-    
+
     if RhasIds and Rvarcol is not None:
         try:
             R, Rcoord, Rids, RhasCoord_sp, RhasIds = parse_sparse(R, Rcoord, Rids, Rvarcol, Rvalcol)
@@ -529,28 +536,31 @@ def row_order_single(L):
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     single_dataset = (left_filename == right_filename) or (right_filename is None)
     try:
-        (Lh, Ld) = read_csv(left_filename, csv_params, unknown_string)
+        (Lh, Ld, Ltype) = read_csv(left_filename, csv_params, unknown_string)
     except ValueError as arg:
         raise CSVRError("Error reading the left hand side data: %s" % arg)
     except csv.Error as arg:
         raise CSVRError("Error reading the left hand side data: %s" % arg)
-    L = {'data': Ld, 'headers': Lh, "sparse": False, ENABLED_COLS[0]: None}
+    L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None}
 
     if single_dataset:
         (L, Lorder, coord, ids) = row_order_single(L)
         L['order'] = Lorder
+        L["type_all"]= Ltype
         R = None
     else:
         try:
-            (Rh, Rd) = read_csv(right_filename, csv_params, unknown_string)
+            (Rh, Rd, Rtype) = read_csv(right_filename, csv_params, unknown_string)
         except ValueError as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
         except csv.Error as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
-        R = {'data': Rd, 'headers': Rh, "sparse": False, ENABLED_COLS[0]: None}
+        R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None}
         (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
         L['order'] = Lorder
         R['order'] = Rorder
+        L["type_all"]= Ltype
+        R["type_all"]= Rtype
 
     return {'data': (L,R), 'coord': coord, "ids": ids}, single_dataset
 
@@ -558,34 +568,40 @@ def print_out(data):
     keysL = sorted(data['data'][0]['headers'])
     keysR = sorted(data['data'][1]['headers'])
 
-    line = "# "
+    line = "# ;"
     if data['ids'] is not None:
-        line += "ID "
+        line += "ID; "
     if data['coord'] is not None:
-        line += "coord0 coord1"
+        line += "coord0; coord1; "
     line += " | "
-    line += " ".join(["%s" % k for k in keysL])
+    line += "; ".join(["%s" % k for k in keysL])
     line += " || "
-    line += " ".join(["%s" % k for k in keysR])
+    line += "; ".join(["%s" % k for k in keysR])
     line += " |"
     print line
     
     for row in range(len(data['data'][0]['order'])):
-        line = "%d " % row
+        line = "%d; " % row
         if data['ids'] is not None:
-            line += "%s " % data['ids'][row]
+            line += "%s; " % data['ids'][row]
         if data['coord'] is not None:
-            line += "%s %s" % (data['coord'][row][0], data['coord'][row][1])
+            line += "%s; %s; " % (data['coord'][row][0], data['coord'][row][1])
         line += " | "
         if data["data"][0]["sparse"]:
-            line += " ".join(["%s" % data['data'][0]['data'][k].get(data['data'][0]['order'][row], "--") for k in keysL])
+            if data["data"][0]["bool"]:
+                line += "; ".join(["%s" % int(data['data'][0]['order'][row] in data['data'][0]['data'][k]) for k in keysL])
+            else:
+                line += "; ".join(["%s" % data['data'][0]['data'][k].get(data['data'][0]['order'][row], "--") for k in keysL])
         else:
-            line += " ".join(["%s" % data['data'][0]['data'][k][data['data'][0]['order'][row]] for k in keysL])
+            line += "; ".join(["%s" % data['data'][0]['data'][k][data['data'][0]['order'][row]] for k in keysL])
         line += " || "
         if data["data"][1]["sparse"]:
-            line += " ".join(["%s" % data['data'][1]['data'][k].get(data['data'][1]['order'][row], "--") for k in keysR])
+            if data["data"][1]["bool"]:
+                line += "; ".join(["%s" % int(data['data'][1]['order'][row] in data['data'][1]['data'][k]) for k in keysR])
+            else:
+                line += "; ".join(["%s" % data['data'][1]['data'][k].get(data['data'][1]['order'][row], "--") for k in keysR])
         else:
-            line += " ".join(["%s" % data['data'][1]['data'][k][data['data'][1]['order'][row]] for k in keysR])
+            line += "; ".join(["%s" % data['data'][1]['data'][k][data['data'][1]['order'][row]] for k in keysR])
         line += " |"
         print line
 
@@ -598,9 +614,12 @@ def main(argv=[]):
     # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
     # res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
     
-    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
+    # rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
+    rep = "/home/galbrun/Desktop/A.siren_FILES/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    res = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
+    pdb.set_trace()
+    res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
+    pdb.set_trace()
     # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
     # # res = importCSV(rep+"vaalikone_profiles_test_list.csv", rep+"vaalikone_profiles_test_listopo.csv", unknown_string='NA')
     # # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"

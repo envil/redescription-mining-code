@@ -44,7 +44,8 @@ class Package(object):
             raise IOError('File is of wrong type')
         self.filename = filename
         self.callback_mess = callback_mess
-        self.plist = {}
+        self.plist = dict(creator = self.CREATOR,
+                          filetype_version = self.FILETYPE_VERSION)
 
     def raiseMess(self):
         if self.callback_mess is not None:

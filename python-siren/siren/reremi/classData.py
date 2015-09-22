@@ -210,12 +210,24 @@ class ColM(object):
 
 class BoolColM(ColM):
     type_id = BoolTerm.type_id
+    letter = 'B'
     width = -1
     values_eq = {True:1, False:0}
     NA = NA_bool
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
-    def parseList(listV, indices=None):
+    def parseList(listV, indices=None, force=False):
+        if force:
+            tt = set()
+            ok = True
+            for idx, v in listV.items():
+                try:
+                    if int(v) != 0:
+                        tt.add(idx)
+                except ValueError:
+                    ok = False
+            if ok:
+                listV = tt
         if type(listV) is set:
             if type(indices) is int:
                 trues = set(indices)
@@ -383,6 +395,7 @@ class BoolColM(ColM):
     
 class CatColM(ColM):
     type_id = CatTerm.type_id
+    letter = 'C'
     width = 1
     NA =  NA_cat
 
@@ -400,7 +413,7 @@ class CatColM(ColM):
     initSums = staticmethod(initSums)
 
     n_patt = "^-?\d+(\.\d+)?$"
-    def parseList(listV, indices=None):
+    def parseList(listV, indices=None, force=False):
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
@@ -589,6 +602,7 @@ class CatColM(ColM):
     
 class NumColM(ColM):
     type_id = NumTerm.type_id
+    letter = 'N'
     width = 0
     NA = NA_num
 
@@ -616,7 +630,7 @@ class NumColM(ColM):
         return val, prec
     parseVal = staticmethod(parseVal)
                 
-    def parseList(listV, indices=None):
+    def parseList(listV, indices=None, force=False):
         prec = None
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
@@ -632,6 +646,9 @@ class NumColM(ColM):
             val, prec = NumColM.parseVal(listV[i], j, vals, miss, prec, matchMiss=None)
         if len(vals) > 0 and (len(vals) + len(miss) == N or type(listV) is dict):
             return NumColM(vals, N, miss, prec)
+        elif force:
+            # pdb.set_trace()
+            return NumColM(vals, N, miss, prec, force=True)
         else:
             return None
     parseList = staticmethod(parseList)
@@ -748,12 +765,11 @@ class NumColM(ColM):
                 self.prec = len(str(v % 1))-2
         
     def getPrec(self, details=None):
-        pdb.set_trace()
         if self.prec is None:
             self.compPrec()
         return self.prec
 
-    def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None):
+    def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None, force=False):
         ColM.__init__(self, N, nmiss)
         self.prec = prec
         self.sVals = ncolSupp
@@ -762,7 +778,7 @@ class NumColM(ColM):
         self.buk = None
         self.colbuk = None
         self.max_agg = None
-        self.setMode()
+        self.setMode(force)
 
     def subsetCol(self, row_ids=None):
         if row_ids is None:
@@ -784,12 +800,12 @@ class NumColM(ColM):
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
 
-    def setMode(self):
+    def setMode(self, force=False):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
         if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
             self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
-        if len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N :
+        if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
             ## gather row ids for which
             if len(self.sVals) > 0:
                 rids = set(zip(*self.sVals)[1])
@@ -1155,6 +1171,7 @@ class Data(object):
     enabled_codes_rev_double = {"F": (0,0), "T": (1,1), "L": (0,1), "R": (1,0)}
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
+    all_types_map = dict([(None, None)]+[(v.letter, v) for v in var_types[1:]])
     NA_str = "NA"
 
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
@@ -1186,6 +1203,12 @@ class Data(object):
         else:
             self.cols = [ICList(),ICList()]
         self.ssetts = SSetts(self.hasMissing())
+
+    def getCommonType(self, side):
+        s = set([col.letter for col in self.cols[side]])
+        if len(s) == 1:
+            return s.pop()
+        return None
         
     def isSingleD(self):
         return self.single_dataset
@@ -1399,12 +1422,13 @@ class Data(object):
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
         else:  ## BOTH SIDES ARE SPARSE
-            simpleBool = [sum([col.simpleBool() for col in self.cols[0]]) == 0,
-                          sum([col.simpleBool() for col in self.cols[1]]) == 0]
+            simpleBool = [sum([not col.simpleBool() for col in self.cols[0]]) == 0,
+                          sum([not col.simpleBool() for col in self.cols[1]]) == 0]
+
             if self.isGeospatial() or len(rids) > 0:
                 if not simpleBool[1-argmaxd]: ### is not only boolean so can have names and coords
                     methot = "pairs"
-                    if self.hasDisabledCols(argmaxd):
+                    if self.hasDisabledCols(argmaxd) or not simpleBool[argmaxd]:
                         methot = "triples"
                     styles = {argmaxd: {"meth": methot, "details": full_details},
                               1-argmaxd: {"meth": "triples", "details": True, "inline": inline}}
@@ -1469,6 +1493,10 @@ class Data(object):
             if len(header) > 0 or len(cids) > 0:
                 header.append(cids.get(cid, cid))
 
+        letter = self.getCommonType(side)
+        if letter is not None:
+            header.append("type=%s" % letter)
+
         if len(header) > 0:
             csv_reader.write_row(csvf, header)
         if len(discol) > 0:
@@ -1489,7 +1517,11 @@ class Data(object):
 
 
     def writeCSVSparseTriples(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
-        csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]])
+        header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]]
+        letter = self.getCommonType(side)
+        if letter is not None:
+            header.append("type=%s" % letter)
+        csv_reader.write_row(csvf, header)
         if not inline:
             trids, tcids = {}, {}
         else:
@@ -1550,7 +1582,11 @@ class Data(object):
 
     ### THIS FORMAT ONLY ALLOWS BOOLEAN WITHOUT COORS, IF NAMES THEY HAVE TO BE INLINE
     def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
-        csv_reader.write_row(csvf, [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]])
+        header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]]
+        letter = self.getCommonType(side)
+        if letter is not None:
+            header.append("type=%s" % letter)
+        csv_reader.write_row(csvf, header)
         if not details:
             rids = {}
         for ci, col in enumerate(self.cols[side]):
@@ -1810,6 +1846,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     cols = [[],[]]
     coords = None
     single_dataset = False
+
     if csv_data.get("coord", None) is not None:
         try:
             tmp = zip(*csv_data["coord"])
@@ -1847,14 +1884,19 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             values = csv_data['data'][side]["data"][name]
             col = None
 
-            if "type" in det:
-                col = det["type"].parseList(values, indices[side])
-            else:
-                type_ids = list(type_ids_org)
-                # if "" in values:
-                #     pdb.set_trace()
-                while col is None and len(type_ids) >= 1:
-                    col = type_ids.pop().parseList(values, indices[side])
+            if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
+                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
+                if col is None:
+                    print "DID NOT MANAGE FORCE PARSING..."
+            if col is None:
+                if "type" in det:
+                    col = det["type"].parseList(values, indices[side])
+                else:
+                    type_ids = list(type_ids_org)
+                    # if "" in values:
+                    #     pdb.set_trace()
+                    while col is None and len(type_ids) >= 1:
+                        col = type_ids.pop().parseList(values, indices[side])
 
             if col is not None and col.N == N:
                 col.setId(len(cols[sito]))
@@ -1889,6 +1931,18 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 
 def main():
+    rep = "/home/galbrun/Desktop/"
+    data = Data([rep+"conference_filtered_bool.csv", rep+"coauthor_filtered_bool.csv", {}, "nan"], "csv")
+    print data
+    data.writeCSV([rep+"testoutL2b.csv", rep+"testoutR2b.csv"])
+    data2 = Data([rep+"testoutL2b.csv", rep+"testoutR2b.csv", {}, "nan"], "csv")
+    print data2
+    exit()
+
+    rep = "/home/galbrun/Desktop/A.siren_FILES/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
+    print data
+    exit()
 
     rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/tests/v2015_test.siren_FILES/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')

@@ -764,6 +764,7 @@ class Siren():
             path = save_dlg.GetPath()
             try:
                 self.dw.savePackageToFile(path)
+                self.updateMenus()
             except:
                 pass
         save_dlg.Destroy()
