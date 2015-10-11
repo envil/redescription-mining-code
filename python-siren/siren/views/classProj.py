@@ -1,6 +1,5 @@
-### TODO check which imports are needed 
 import re, random, sys
-import numpy as np
+import numpy
 import inspect, signal
 # import tsne
 from ..reremi.classQuery import Query
