@@ -209,14 +209,14 @@ class Constraints(object):
                    and red.getAcc()  >= self.min_fin_acc() \
                    and red.getPVal() <= self.max_fin_pval():
             # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
-            print "--------- RED KEEP"
+            # print "--------- RED KEEP"
             return False
         else:
             # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
             return True
 
     def pair_filter_partial(self, redA, redB):
-        return redA.oneSideIdentical(redB) and not redA.equivalent(redB)
+        return (redA.oneSideIdentical(redB) and not redA.equivalent(redB)) or redA.bothSidesIdentical(redB)
 
     def pair_filter_redundant(self, redA, redB):
         return redA.overlapAreaMax(redB)

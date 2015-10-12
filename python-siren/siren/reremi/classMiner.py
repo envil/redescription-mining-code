@@ -320,7 +320,6 @@ class Miner(object):
                 self.final["batch"].extend([partial["batch"][i] for i in partial["results"]])
             else:
                 print "Partial NONE"
-
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
 
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())

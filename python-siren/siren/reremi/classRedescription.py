@@ -129,6 +129,8 @@ class Redescription(object):
     
     def oneSideIdentical(self, redescription):
         return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
+    def bothSidesIdentical(self, redescription):
+        return self.queries[0] == redescription.queries[0] and self.queries[1] == redescription.queries[1]
 
     def equivalent(self, y):
        return abs(self.compare(y)) < Query.diff_balance

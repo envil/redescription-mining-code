@@ -121,8 +121,15 @@ class GView(object):
         self.setKeys()
         self.prepareProcesses()
         self.makeMenu()
+        self.initSizeRelative()
         self.mapFrame.Show()
         self.suppABCD = None
+
+    def initSizeRelative(self):
+        ds = wx.DisplaySize()
+        self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
+        self._SetSize()
+
 
     def getActionsDetails(self):
         details = []
@@ -381,7 +388,7 @@ class GView(object):
     def _onSize(self, event=None):
         self._SetSize()
 
-    def _SetSize( self ):
+    def _SetSize( self):
         pixels = tuple(self.mapFrame.GetClientSize() )
         self.panel.SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))

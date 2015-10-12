@@ -10,6 +10,7 @@ import pdb
 
 class CharbonTCW(CharbonTree):
     name = "TreeCartWheel"
+
     def initializeData(self, side, data):
         in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], bincats=True)
         in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], bincats=True)
@@ -35,9 +36,9 @@ class CharbonTCW(CharbonTree):
         return target, side
 
     def getTreeCandidates(self, side, data, red):
+
         in_data, cols_info = self.initializeData(side, data)
         target, side = self.initializeTrg(side, data, red)
-
         if side is None:
             jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, target)
             jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, target)
@@ -116,6 +117,12 @@ class CharbonTCW(CharbonTree):
                 todo.append(to_parent[todo[ii]][1])
                 tn = todo.pop(ii)
                 todo.pop(count_c[to_parent[tn][1]])
+                ### BUG IN HIDING...
+                # try:
+                #     todo.pop(count_c[to_parent[tn][1]])
+                # except IndexError:
+                #     print "Popping error !", len(todo), tn, to_parent[tn][1], count_c[to_parent[tn][1]]  
+                #     pdb.set_trace()                    
                 ii -= 1
             else:
                 count_c[to_parent[todo[ii]][1]] = ii
@@ -167,7 +174,7 @@ class CharbonTCW(CharbonTree):
         return lI/(lL+lR-lI)
 
     def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket):
-        dtc = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket)
+        dtc = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         dtc = dtc.fit(in_data, in_target)
         
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets
@@ -269,7 +276,7 @@ class CharbonTLayer(CharbonTCW):
 
 
 def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket):
-    data_rpart_l = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket)
+    data_rpart_l = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
     data_rpart_l = data_rpart_l.fit(in_data_l, in_target)
     
     #Form Vectors for computing Jaccard. The same vectors are used to form new targets
@@ -283,7 +290,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
     else:
         target = split_vector_l
     
-        data_rpart_r = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket)
+        data_rpart_r = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         data_rpart_r = data_rpart_r.fit(in_data_r, target)
         
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets

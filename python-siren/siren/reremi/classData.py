@@ -215,19 +215,22 @@ class BoolColM(ColM):
     values_eq = {True:1, False:0}
     NA = NA_bool
 
-    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True}
+    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True, 0:False, 1:True}
     def parseList(listV, indices=None, force=False):
-        if force:
-            tt = set()
-            ok = True
-            for idx, v in listV.items():
-                try:
-                    if int(v) != 0:
-                        tt.add(idx)
-                except ValueError:
-                    ok = False
-            if ok:
-                listV = tt
+        if  force:
+            if type(listV) is list:
+                listV = set([i for (i, v) in enumerate(listV) if BoolColM.values.get(v, True)])
+            elif type(listV) is not set:
+                tt = set()
+                ok = True
+                for idx, v in listV.items():
+                    try:
+                        if int(v) != 0:
+                            tt.add(idx)
+                    except ValueError:
+                        ok = False
+                if ok:
+                    listV = tt
         if type(listV) is set:
             if type(indices) is int:
                 trues = set(indices)
@@ -1931,6 +1934,13 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 
 def main():
+
+    rep = "/home/galbrun/Desktop/DBLPsirenFrozen.siren_FILES/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
+    print data
+    pdb.set_trace()
+    exit()
+
     rep = "/home/galbrun/Desktop/"
     data = Data([rep+"conference_filtered_bool.csv", rep+"coauthor_filtered_bool.csv", {}, "nan"], "csv")
     print data

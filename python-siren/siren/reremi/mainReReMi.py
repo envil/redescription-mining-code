@@ -46,7 +46,7 @@ def loadAll(arguments=[]):
         data = elements_read.get("data", None)
         params = elements_read.get("preferences", None)
         tmp_dir = package.getTmpDir()
-        
+
     params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
@@ -155,6 +155,9 @@ def outputResults(filenames, results_batch, data=None, header=None, header_named
         names = data.getNames()
         filesfp["queries_named"] = open(filenames["queries_named"], mode)
         filesfp["queries_named"].write(header_named+"\n")
+
+    #### TO DEBUG: output all shown in siren, i.e. no filtering
+    ## for pos in range(len(results_batch["batch"])):
 
     for pos in results_batch["results"]:
         if data_recompute is not None:

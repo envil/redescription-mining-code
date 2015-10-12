@@ -1,6 +1,6 @@
 import os, os.path
 import wx
-import time
+import time, math
 import sys
 import pickle
 # import wx.lib.agw.pybusyinfo as PBI
@@ -237,9 +237,10 @@ class Siren():
             work_estimate, work_progress = (0, 0)
         else:
             work_estimate, work_progress = self.plant.getWP().getWorkEstimate()
+        # print "PROGRESS", work_estimate, work_progress, type(work_estimate)
         if work_estimate > 0:
-            self.progress_bar.SetRange(work_estimate)
-            self.progress_bar.SetValue(work_progress)
+            self.progress_bar.SetRange(10**5)
+            self.progress_bar.SetValue(math.floor(10**5*(work_progress/float(work_estimate))))
             self.progress_bar.Show()
         else:
             self.progress_bar.SetRange(1)
