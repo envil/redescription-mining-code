@@ -269,11 +269,11 @@ class AxesProj(Proj):
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
         for side in [0,1]:
-            self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1
+            self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
         for side in [0,1]:
             if details[mcols[scs[side]]]["type"] != NumColM.type_id:
-                self.coords_proj[side] += 0.33*np.random.rand(len(self.coords_proj[side])) 
+                self.coords_proj[side] += 0.33*numpy.random.rand(len(self.coords_proj[side])) 
 
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
@@ -296,7 +296,7 @@ class VrsProj(Proj):
         rids = range(self.data.nbRows())
         if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
             rids = list(self.data.nonselectedRows())
-            selected = np.array(rids)
+            selected = numpy.array(rids)
             mat = mat[:,selected]
             
         scs = random.sample(rids, 2)
@@ -309,7 +309,7 @@ class VrsProj(Proj):
             self.labels[ai] = "%s" % scs[ai]
         self.coords_proj = [mat[:,rids.index(scs[0])], mat[:,rids.index(scs[1])]]
         for side in [0,1]:
-            self.coords_proj[side][np.where(~np.isfinite(self.coords_proj[side]))] = np.nanmin(self.coords_proj[side]) -1
+            self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
 
     def getAxisLabel(self, axi):
@@ -373,32 +373,32 @@ if sys.platform != 'win32':
 
         def getData(self):
 
-            if type(self.data) is np.array or type(self.data) is np.ndarray:
+            if type(self.data) is numpy.array or type(self.data) is numpy.ndarray:
                 if self.transpose:
                     mat = self.data.T
                 else:
                     mat = self.data
-                idsNAN = np.where(~np.isfinite(mat))
-                mat[idsNAN] = np.nanmin(mat) -1
+                idsNAN = numpy.where(~numpy.isfinite(mat))
+                mat[idsNAN] = numpy.nanmin(mat) -1
                 matn = withen(mat)
             else:
                 if self.transpose:
                     mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
                     if len(self.mcols) == 0:
                         return
-                    idsNAN = np.where(~np.isfinite(mat))
-                    mat[idsNAN] = np.nanmin(mat) -1
+                    idsNAN = numpy.where(~numpy.isfinite(mat))
+                    mat[idsNAN] = numpy.nanmin(mat) -1
                     matn = withen(mat.T)
                 else:
                     mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
                     if len(self.mcols) == 0:
                         return
 
-                    idsNAN = np.where(~np.isfinite(mat))
-                    mat[idsNAN] = np.nanmin(mat) -1
+                    idsNAN = numpy.where(~numpy.isfinite(mat))
+                    mat[idsNAN] = numpy.nanmin(mat) -1
 
                     if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
-                        selected = np.array(list(self.data.nonselectedRows()))
+                        selected = numpy.array(list(self.data.nonselectedRows()))
                         matn = withen(mat[:,selected])
                     else:
                         matn = withen(mat)
@@ -448,12 +448,12 @@ if sys.platform != 'win32':
         title_str = "SVD Projection"
         fix_parameters = dict(DynProj.fix_parameters)
         fix_parameters.update({"compute_uv": True, "full_matrices":False })
-        dyn_f = [np.linalg.svd]
+        dyn_f = [numpy.linalg.svd]
 
         def comp(self):
             matn = self.getData()
-            U, s, V = self.applyF(np.linalg.svd, {"a": matn.T})
-            tmp = np.dot(U[:2], matn.T)
+            U, s, V = self.applyF(numpy.linalg.svd, {"a": matn.T})
+            tmp = numpy.dot(U[:2], matn.T)
             self.coords_proj = (tmp[0], tmp[1])
 
         def getAxisLabel(self, axi):

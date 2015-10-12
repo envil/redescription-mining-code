@@ -60,6 +60,7 @@ class EProjView(GView):
         self.setKeys()
         self.prepareProcesses()
         self.makeMenu()
+        self.initSizeRelative()
         self.mapFrame.Show()
         self.suppABCD = None
         self.runProject()
