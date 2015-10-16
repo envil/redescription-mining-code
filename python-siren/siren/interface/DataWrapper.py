@@ -268,7 +268,6 @@ class DataWrapper(object):
         else:
             self.reds = tmp_reds
             self.rshowids = tmp_rshowids
-            #self.isChanged = True
         finally:
             self._stopMessage('importing')
 
@@ -418,7 +417,8 @@ class DataWrapper(object):
             f.close()
             
         self.package.writeToFile(filename+suffix, self.prepareContentPackage())
-        self._isChanged = False
+        # self._isChanged = False
+        self.isChanged = False
         self._isFromPackage = True
 
         # Tell others we're done

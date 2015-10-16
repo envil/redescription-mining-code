@@ -122,7 +122,7 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3):
     if sum(in_target) <= min_bucket:
         return {"root": None}
 
-    data_rpart = tree.DecisionTreeClassifier(max_depth = 1, min_samples_leaf = min_bucket).fit(in_data, in_target, random_state=0)
+    data_rpart = tree.DecisionTreeClassifier(max_depth = 1, min_samples_leaf = min_bucket, random_state=0).fit(in_data, in_target)
     # split_vector = data_rpart.predict(in_data) #Binary vectoFile "/home/r/NetBeansProjects/RedescriptionTrees/src/redescriptiontrees_method2.py", line 201, in <module>r of the tree for Jaccard
     split_tree = get_tree(data_rpart.tree_, candidates)
     # print "SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]]

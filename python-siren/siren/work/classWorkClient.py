@@ -70,18 +70,31 @@ class WorkClient(WorkInactive):
             return False
 
     def getDetailedInfos(self):
+        counter = 10
         info = "KO"
         if self.hid is None:
-            manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
-            self.shared_job_q = manager.get_job_q()
-            self.ids_d = manager.get_ids_d()
+            try:
+                manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
+            except (socket.error, IOError, EOFError):
+                self.onServerDeath()
+                info =  "KO\tMaybe the server died, in any case, it did not respond..."
+                counter = 0
+            else:
+                self.shared_job_q = manager.get_job_q()
+                self.ids_d = manager.get_ids_d()
         uid = uuid.uuid4()
-        self.shared_job_q.put({"task": "info", "cid": uid})
-        counter = 10
-        while not self.ids_d.has_key(uid) and counter > 0:
+        if counter > 0:
+            try:
+                self.shared_job_q.put({"task": "info", "cid": uid})
+            except (socket.error, IOError, EOFError):
+                self.onServerDeath()
+                info =  "KO\tMaybe the server died, in any case, it did not respond..."
+                counter = 0
+            
+        while counter > 0 and not self.ids_d.has_key(uid):
             time.sleep(1)
             counter -= 1
-        if self.ids_d.has_key(uid):
+        if counter > 0 and self.ids_d.has_key(uid):
             tmp = self.ids_d.pop(uid)
             parts = tmp.strip().split()
             if len(parts) == 0:

@@ -38,6 +38,7 @@ class Package(object):
     DEFAULT_TMP = "siren"
 
     def __init__(self, filename, callback_mess=None, mode="r"):
+        filename = os.path.abspath(filename)
         if mode !="w" and not os.path.isfile(filename):
             raise IOError('File does not exist')
         if mode !="w" and not zipfile.is_zipfile(filename):
@@ -46,6 +47,9 @@ class Package(object):
         self.callback_mess = callback_mess
         self.plist = dict(creator = self.CREATOR,
                           filetype_version = self.FILETYPE_VERSION)
+
+    def __str__(self):
+        return "PACKAGE: %s" % self.filename
 
     def raiseMess(self):
         if self.callback_mess is not None:

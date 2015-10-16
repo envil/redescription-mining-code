@@ -31,7 +31,7 @@ common_variables = {
     "VERSION_MAC_UNDERSC": "2_1_1",
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Sun, 23 Aug 2015 11:29:53 +0200",
+    "LAST_CHANGES_DATE": "Sun, 16 Oct 2015 11:29:53 +0100",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
     "MAINTAINER_LOGIN": "galbrun",

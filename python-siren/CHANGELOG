@@ -1,5 +1,10 @@
 CHANGELOG for Siren
 ===================
+v3.0.1
+------
+* Fixed various bugs (server info on failure, DW unchange on saving package)
+* Added main entry-point for server
+
 v3.0.0
 ------
 * Integrated more tree-based mining methods
