@@ -49,7 +49,7 @@ ST_RESOURCES=['help', 'LICENSE',
 ST_FILES = [common_variables["MAIN_FILENAME"]]
 
 ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx', 'code',  'sklearn', 'mpl_toolkits']
+ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
 
 extra_options = dict(
