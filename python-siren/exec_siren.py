@@ -23,6 +23,8 @@ class SirenApp(wx.App):
         self.Bind(wx.EVT_ACTIVATE_APP, self.OnActivate)
 
     def OnInit(self):
+        # Set the app name here to *hard coded* Siren
+        self.SetAppName("Siren")
         self.frame = Siren()
 
         import sys, os.path, platform
@@ -82,7 +84,7 @@ class SirenApp(wx.App):
     def MacOpenFile(self, filename):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""
         import sys, os.path
-        #sys.stderr.write('In MacOpenFile with filename '+filename)
+        sys.stderr.write('In MacOpenFile with filename '+filename)
         # When start from command line, this gets called with the script file's name
         if filename != sys.argv[0]:
             if self.frame.dw.getData() is not None:
