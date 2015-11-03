@@ -279,4 +279,3 @@ if __name__ == "__main__":
         run_splits(sys.argv[:-1])
     else:
         run(sys.argv)
-

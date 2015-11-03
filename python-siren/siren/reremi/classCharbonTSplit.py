@@ -347,6 +347,7 @@ class CharbonTSplit(CharbonTree):
         else:
             off = 0
         vid = mmap[(side, llt.colId(), off)]
+        # pdb.set_trace()
         more = {"involved": [vid], "supp": supp}
         trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more)
         trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,

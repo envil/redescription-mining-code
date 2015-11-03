@@ -38,11 +38,12 @@ class Package(object):
     DEFAULT_TMP = "siren"
 
     def __init__(self, filename, callback_mess=None, mode="r"):
-        filename = os.path.abspath(filename)
-        if mode !="w" and not os.path.isfile(filename):
-            raise IOError('File does not exist')
-        if mode !="w" and not zipfile.is_zipfile(filename):
-            raise IOError('File is of wrong type')
+        if filename is not None:
+            filename = os.path.abspath(filename)
+            if mode !="w" and not os.path.isfile(filename):
+                raise IOError('File does not exist')
+            if mode !="w" and not zipfile.is_zipfile(filename):
+                raise IOError('File is of wrong type')
         self.filename = filename
         self.callback_mess = callback_mess
         self.plist = dict(creator = self.CREATOR,
@@ -108,7 +109,7 @@ class Package(object):
             preferences = self.readPreferences(pm, options_args)
             if preferences is not None:
                 elements_read["preferences"] = preferences
-
+            ## self.plist["NA_str"] = "nan"
             data = self.readData()
             if data is not None:
                 elements_read["data"] = data

@@ -1625,7 +1625,7 @@ class Data(object):
         elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(self.cols[side]):
             colid = literal.colId()
             if literal.typeId() != self.cols[side][colid].typeId():
-                raise DataError("The type of literal does not match the type of the corresponding variable (%s~%s)!" % (literal.typeId(), self.cols[side][colid].typeId()))
+                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (side, colid, literal, literal.typeId(), self.cols[side][colid].typeId()))
                 colid = None
         if colid is not None:
             return self.cols[side][colid]
@@ -1879,7 +1879,6 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 for i,v in tmp:
                     if not Data.enabled_codes_rev_simple[v]:
                         disabled_rows.add(indices[side][i])
-    # pdb.set_trace()
     for sito, side in enumerate(sides):
         for name, det in [parseColumnName(header, types_smap) for header in csv_data['data'][side]["headers"]]:
             if len(name) == 0:
@@ -1896,8 +1895,8 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     col = det["type"].parseList(values, indices[side])
                 else:
                     type_ids = list(type_ids_org)
-                    # if "" in values:
-                    #     pdb.set_trace()
+                    # if sito == 1 and len(cols[sito]) == 2:
+                    #      pdb.set_trace()
                     while col is None and len(type_ids) >= 1:
                         col = type_ids.pop().parseList(values, indices[side])
 

@@ -756,7 +756,9 @@ def parseRedList(fp, data, reds=None):
     list_fields = None
     if reds is None:
         reds = []
+    lid = 0
     for line in fp:
+        lid += 1
         if not re.match("^[ \t]*#", line):
             if list_fields is None:
                 list_fields = Redescription.parseHeader(line)
