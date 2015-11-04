@@ -36,18 +36,17 @@ class CharbonTCW(CharbonTree):
         return target, side
 
     def getTreeCandidates(self, side, data, red):
-
         in_data, cols_info = self.initializeData(side, data)
         target, side = self.initializeTrg(side, data, red)
         if side is None:
-            jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, target)
-            jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, target)
+            jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
+            jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
             if jj0 > jj1:
                 jj, suppvs, dtcs = (jj0, suppvs0, dtcs0)
             else:
                 jj, suppvs, dtcs = (jj1, suppvs1, dtcs1)
         else:
-            jj, suppvs, dtcs = self.getSplit(side, in_data, target)
+            jj, suppvs, dtcs = self.getSplit(side, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
 
         if dtcs[0] is not None and dtcs[1] is not None:
             red = self.get_redescription(dtcs, suppvs, data, cols_info)
@@ -136,7 +135,7 @@ class CharbonTCW(CharbonTree):
         qu = Query(True, buks)
         return qu
 
-    def getSplit(self, side, in_data, target):
+    def getSplit(self, side, in_data, target, singleD=False, cols_info=None):
         suppvs = [None, None]
         dtcs = [None, None]
         best = (0, suppvs, dtcs)
@@ -150,11 +149,24 @@ class CharbonTCW(CharbonTree):
         while rounds < self.constraints.max_rounds() and rounds >= 0:            
             rounds += 1
             try:
-                dtc, suppv = self.splitting_with_depth(in_data[current_side], suppvs[1-current_side], self.constraints.max_depth(), self.constraints.min_node_size())
+                ##### HERE
+                if dtcs[1-current_side] is not None and singleD:
+                    if cols_info is None:
+                        tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]
+                    else:
+                        ttm = [cols_info[current_side][c][1] for c in dtcs[1-current_side].tree_.feature if c >= 0]
+                        tt = [kk for (kk,vv) in cols_info[current_side].items() if vv[1] in ttm]
+                    feed_data = in_data[current_side].copy()
+                    feed_data[:,tt] = 0.
+                else:
+                    feed_data = in_data[current_side]
+
+                dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], self.constraints.max_depth(), self.constraints.min_node_size())
             except IndexError:
                 pdb.set_trace()
                 print current_side
-            if dtc is None or (suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
+            if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
+                               and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
                 rounds = -1
             else:
@@ -163,7 +175,7 @@ class CharbonTCW(CharbonTree):
                 current_side = 1-current_side
                 if suppvs[0] is not None and suppvs[1] is not None:
                     jj = self.getJacc(suppvs)
-                    if jj > best[0]:
+                    if jj > best[0] and dtcs[current_side] is not None:
                         best = (jj, list(suppvs), list(dtcs))
         return best
 
@@ -187,7 +199,7 @@ class CharbonTCW(CharbonTree):
 
 class CharbonTRelay(CharbonTCW):
     name = "TreeRelay"
-    def getSplit(self, side, in_data, target):
+    def getSplit(self, side, in_data, target, singleD=False, cols_info=None):
         suppvs = [None, None]
         dtcs = [None, None]
         best = (0, suppvs, dtcs)
@@ -202,8 +214,21 @@ class CharbonTRelay(CharbonTCW):
         while depth[0] <= self.constraints.max_depth() or depth[1] <= self.constraints.max_depth():
         # while rounds < 30 and rounds >= 0:            
             rounds += 1
-            dtc, suppv = self.splitting_with_depth(in_data[current_side], suppvs[1-current_side], depth[current_side], self.constraints.min_node_size())
-            if dtc is None or (suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
+            ##### HERE
+            if dtcs[1-current_side] is not None and singleD:
+                if cols_info is None:
+                    tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]
+                else:
+                    ttm = [cols_info[current_side][c][1] for c in dtcs[1-current_side].tree_.feature if c >= 0]
+                    tt = [kk for (kk,vv) in cols_info[current_side].items() if vv[1] in ttm]
+                feed_data = in_data[current_side].copy()
+                feed_data[:,tt] = 0.
+            else:
+                feed_data = in_data[current_side]
+
+            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.min_node_size())
+            if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
+                               and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
                 rounds = -1
                 depth[current_side] = self.constraints.max_depth()+1
@@ -215,7 +240,7 @@ class CharbonTRelay(CharbonTCW):
                 current_side = 1-current_side
                 if suppvs[0] is not None and suppvs[1] is not None:
                     jj = self.getJacc(suppvs)
-                    if jj > best[0]:
+                    if jj > best[0] and dtcs[current_side] is not None:
                         best = (jj, list(suppvs), list(dtcs))
         return best
 
@@ -226,7 +251,7 @@ class CharbonTLayer(CharbonTCW):
         in_data, cols_info = self.initializeData(side, data)
         target, side = self.initializeTrg(side, data, red)
 
-        current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.min_node_size())
+        current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.min_node_size(), data.isSingleD(), cols_info)
         if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
             return self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
                                           [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
@@ -234,14 +259,15 @@ class CharbonTLayer(CharbonTCW):
         return None
 
 
-    def getSplit(self, in_data_l, in_data_r, target, depth, in_min_bucket):
+    def getSplit(self, in_data_l, in_data_r, target, depth, in_min_bucket, singleD=False, cols_info=None):
         current_split_result = {'data_rpart_l': None, 'data_rpart_r': None}
         if np.count_nonzero(target) > in_min_bucket:
             flag = True
             
             while flag:
                 if depth <= self.constraints.max_depth():
-                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket)
+                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result)
+                    # print "Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
                     #Check if we have both vectors (split was successful on the left and right matrix) 
                     if current_split_result['data_rpart_l'] is None or current_split_result['data_rpart_r'] is None:
                         if depth != 2:
@@ -272,12 +298,24 @@ class CharbonTLayer(CharbonTCW):
                                 depth = depth + 1
                 else:
                     flag = False
+        # print "Result", current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
+        # pdb.set_trace()
         return current_split_result
 
 
-def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket):
+def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket, singleD=False, cols_info=None, current_split_result=None):
+    feed_data = in_data_l.copy()
+    if singleD and current_split_result['data_rpart_r'] is not None:
+        if cols_info is None:
+            tt = [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
+        else:
+            # print "R", current_split_result['data_rpart_r'].tree_.feature, [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
+            ttm = [cols_info[1][c][1] for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
+            tt = [kk for (kk,vv) in cols_info[1].items() if vv[1] in ttm]
+        feed_data[:,tt] = 0.
+    
     data_rpart_l = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
-    data_rpart_l = data_rpart_l.fit(in_data_l, in_target)
+    data_rpart_l = data_rpart_l.fit(feed_data, in_target)
     
     #Form Vectors for computing Jaccard. The same vectors are used to form new targets
     split_vector_l = data_rpart_l.predict(in_data_l) #Binary vector of the left tree for Jaccard
@@ -288,10 +326,20 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
         data_rpart_l = None
         data_rpart_r = None
     else:
+
+        feed_data = in_data_r.copy()
+        if singleD:
+            if cols_info is None:
+                tt = [c for c in data_rpart_l.tree_.feature if c >= 0]
+            else:
+                # print "L", data_rpart_l.tree_.feature, [c for c in data_rpart_l.tree_.feature if c >= 0]
+                ttm = [cols_info[0][c][1] for c in data_rpart_l.tree_.feature if c >= 0]
+                tt = [kk for (kk,vv) in cols_info[0].items() if vv[1] in ttm]
+            feed_data[:,tt] = 0.
         target = split_vector_l
     
         data_rpart_r = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
-        data_rpart_r = data_rpart_r.fit(in_data_r, target)
+        data_rpart_r = data_rpart_r.fit(feed_data, target)
         
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets
         split_vector_r = data_rpart_r.predict(in_data_r) #Binary vector of the left tree for Jaccard
@@ -299,5 +347,6 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
         if (len(set(split_vector_r)) <= 1):
             split_vector_r = None
             data_rpart_r = None
-    result = {'split_vector_l': split_vector_l, 'split_vector_r' : split_vector_r, 'data_rpart_l' : data_rpart_l, 'data_rpart_r' : data_rpart_r}
+    result = {'split_vector_l': split_vector_l, 'split_vector_r' : split_vector_r,
+              'data_rpart_l' : data_rpart_l, 'data_rpart_r' : data_rpart_r}
     return result 

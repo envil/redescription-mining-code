@@ -134,13 +134,18 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3):
     # print sum(ttt-split_vector), sum(ttt), "vs", sum(split_vector) 
     return split_tree
 
-def init_tree(data, side, vid=None, more={}):
+def init_tree(data, side, vid=None, more={}, cols_info=None):
     #### TEST INIT
     parent_tree = {"id": None,
                    "branch": None,
                    "candidates": range(data[side].shape[1])}
     if vid is not None:
-        for vv in more.get("involved", [vid]):
+        invol = more.get("involved", [vid])
+        if cols_info is not None:
+            ttm = [cols_info[side][c][1] for c in invol]
+            invol = [kk for (kk,vv) in cols_info[side].items() if vv[1] in ttm]
+
+        for vv in invol:
             parent_tree["candidates"].remove(vv)
         if "supp" in more:
             supp_pos = more["supp"]
@@ -167,7 +172,7 @@ def init_tree(data, side, vid=None, more={}):
                                     
     return parent_tree
 
-def initialize_treepile(data, side_ini, vid, more={}):
+def initialize_treepile(data, side_ini, vid, more={}, cols_info=None):
     trees_pile = [[[]],[[]]]
     trees_store = {}
 
@@ -179,7 +184,7 @@ def initialize_treepile(data, side_ini, vid, more={}):
     trees_store[PID] = anc_tree
     PID += 1
 
-    parent_tree = init_tree(data, side_ini, vid, more)
+    parent_tree = init_tree(data, side_ini, vid, more, cols_info)
     parent_tree["id"] = PID
     trees_pile[side_ini][-1].append(PID)
     trees_store[PID] = parent_tree
@@ -218,7 +223,10 @@ def piece_together(trees_store, trees_pile_side):
         out = treeid
     return out
 
-def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, PID=0):
+def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, PID=0, singleD=False, cols_info=None):
+    if singleD:
+        candidates = list(trees_store[1]["candidates"])
+
     current_side = side_ini
     #### account for dummy tree on other side when counting levels
     while min(len(trees_pile[side_ini]),len(trees_pile[1-side_ini])-1) <= max_level and len(trees_pile[current_side][-1]) > 0:
@@ -229,26 +237,32 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
         
         for gpid in trees_pile[current_side][-2]:
             gp_tree = trees_store[gpid]
+            if not singleD:
+                candidates = gp_tree["candidates"]
             
-            dt = data[current_side][:, gp_tree["candidates"]]
+            dt = data[current_side][:, candidates]
             for leaf in gp_tree["leaves"]:            
                 mask = gp_tree["nodes"][leaf]["support"]
                 # print "BRANCH\t(%d,%d)\t%d %d\t%d:%d/%d"  % (current_side, len(trees_pile[current_side]),
                 #                                              gp_tree["id"], leaf, sum(mask),
                 #                                              sum(target[mask]), sum(mask)-sum(target[mask]))
                 # print current_side, dt[mask,:].shape
-                split_tree = splitting(target[mask], dt[mask,:], gp_tree["candidates"], max_depth=1, min_bucket=min_bucket)
+                split_tree = splitting(target[mask], dt[mask,:], candidates, max_depth=1, min_bucket=min_bucket)
                 if split_tree["root"] is not None:
                     set_supp(split_tree, dt[mask,:], mask)
                     # print "\tX", split_tree["nodes"][split_tree["root"]]["split"], [sum(split_tree["nodes"][lf]["support"]) for lf in split_tree["leaves"]], sum(split_tree["over_supp"])
                     
                     split_tree["branch"] = (gp_tree["id"], leaf)
-                    
                     vrs = get_variables(split_tree["nodes"], split_tree["root"])
-                    cand_vrs = [vvi for vvi in gp_tree["candidates"] if vvi not in vrs]
-                    split_tree["candidates"] = cand_vrs
-                    # print "CANDIDATES", current_side, cand_vrs, vrs
-                        
+                    
+                    if cols_info is None:
+                        candidates = [vvi for vvi in candidates if vvi not in vrs]
+                    else:
+                        ttm = [cols_info[current_side][c][1] for c in vrs]
+                        candidates = [vvi for vvi in candidates if cols_info[current_side][vvi][1] not in ttm]
+
+                    split_tree["candidates"] = list(candidates)
+                    # print "CANDIDATES", current_side, vrs
                     split_tree["id"] = PID
                     trees_pile[current_side][-1].append(PID)
                     trees_store[PID] = split_tree
@@ -332,6 +346,7 @@ class CharbonTSplit(CharbonTree):
 
         cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
                      dict([(i,d) for (d,i) in tcols_r.items() if len(d) == 3])]
+
         llt = red.queries[side].listLiterals()[0]
         ss = data.supp(side, llt)
         data_tt = [in_data_l.T, in_data_r.T]
@@ -347,17 +362,16 @@ class CharbonTSplit(CharbonTree):
         else:
             off = 0
         vid = mmap[(side, llt.colId(), off)]
-        # pdb.set_trace()
         more = {"involved": [vid], "supp": supp}
-        trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more)
+        trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more, cols_info=cols_info)
         trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,
-                                                               max_level=self.constraints.max_depth(),
-                                                               min_bucket=self.constraints.min_node_size(), PID=PID)
+                                                      max_level=self.constraints.max_depth(),
+                                                      min_bucket=self.constraints.min_node_size(),
+                                                      PID=PID, singleD=data.isSingleD(), cols_info=cols_info)
 
         redt = extract_reds(trees_pile, trees_store, data, cols_info)
         if redt is not None:
             red = Redescription.fromQueriesPair(redt[0], data)
-            # print red
             # if np.sum(redt[1][0]*redt[1][1]) != red.sParts.lenI():
             #     print np.sum(redt[1][0]*redt[1][1])
             #     pdb.set_trace()
