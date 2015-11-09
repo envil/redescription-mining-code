@@ -43,7 +43,7 @@ HELP_UNPACK_CMD = 'tar xfz '+HELP_PACKAGE_FILENAME # command to unpack the help 
 ########## SETUPTOOLS FILES
 LICENSES = ['licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
 #ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
-ST_RESOURCES=['help', 'LICENSE',
+ST_RESOURCES=['help', 'LICENSE', 'CHANGELOG',
               'siren/interface/ui_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = [common_variables["MAIN_FILENAME"]]
@@ -103,6 +103,9 @@ if sys.platform == 'darwin':
 
     # Get help files
     load_help_files()
+
+    # Rename exec_siren.py as Siren.py
+    subprocess.call('cp '+APP+' Siren.py', shell=True)
     
     # A custom plist to associate with .siren -files
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
@@ -131,13 +134,14 @@ if sys.platform == 'darwin':
     #'includes': ['reremi'],
     'resources': ST_RESOURCES+ICONS+LICENSES,
     'site_packages': True,
+    'includes': ['server_siren.py'],
     #'semi-standalone': True, # depends on local Python
     'plist': Plist,
     }
     # Set extra options
     extra_options.update(dict(
-        app=[APP],
-        data_files=ST_FILES,
+        app=['Siren.py'],
+        #data_files=ST_FILES,
         options={'py2app': OPTIONS},
         setup_requires=['py2app']
         ))
@@ -150,8 +154,8 @@ if sys.platform == 'darwin':
     subprocess.call('cp LICENSE dist/', shell=True)
     subprocess.call('mkdir dist/third-party-licenses/', shell=True)
     for f in LICENSES:
-        subprocess.call('cp '+f+' dist/third-party-licenses/', shell=True)
-    subprocess.call('cp README_mac.rtf dist/README.rtf', shell=True)
+        subprocess.call('cp '+f+'/LICENSE* dist/third-party-licenses/', shell=True)
+    subprocess.call('cp licenses/README_mac.rtf dist/README.rtf', shell=True)
     subprocess.call('cp CHANGELOG dist/CHANGELOG', shell=True)
     subprocess.call('cp help/Siren-UserGuide.pdf dist/UserGuide.pdf', shell=True)
     subprocess.call('ln -s /Applications dist/', shell=True)
