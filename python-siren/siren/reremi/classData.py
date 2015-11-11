@@ -1185,27 +1185,30 @@ class Data(object):
         if type(N) == int:
             self.cols = cols
             self.N = N
-            self.setCoords(coords)
             self.rnames = rnames
 
         elif type(N) == str:
             try:
-                self.cols, self.N, self.coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
+                self.cols, self.N, coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
                 
             except DataError:
-                self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
+                self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
                 raise
 
         else:
             print "Input non recognized!"
-            self.cols, self.N, self.coords, self.rnames = [[],[]], 0, None, None
+            self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
             raise
+        self.setCoords(coords)
         
         if type(self.cols) == list and len(self.cols) == 2:
             self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
         else:
             self.cols = [ICList(),ICList()]
         self.ssetts = SSetts(self.hasMissing())
+
+    def addCol(self, col, sito=0, name=None):
+        addCol(self.cols, col, sito, name)
 
     def getCommonType(self, side):
         s = set([col.letter for col in self.cols[side]])
@@ -1291,34 +1294,125 @@ class Data(object):
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
 
-    def getSplit(self, nbsubs=10, coo_dim=-1, grain=10., force=False):
-        if not self.isGeospatial() or coo_dim < 0 or coo_dim >= len(self.getCoords()):
-            coo_dim = -1
-        if self.split is None or force or len(self.split["split_ids"]) != nbsubs or self.split["coo_dim"] != coo_dim or self.split["grain"] != grain:
-            self.split = {"coo_dim": coo_dim,
-                          "grain": grain,
-                          "split_ids": self.rsubsets_split(nbsubs, coo_dim, grain)}
-        return self.split['split_ids']            
+    def getSplit(self, nbsubs=10, coo_dim=None, grain=10., force=False):
+        if coo_dim is not None and \
+               not (( self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords())) or \
+                    ( coo_dim >= 0 and coo_dim < len(self.cols[0])+len(self.cols[1]) )):
+            coo_dim = None
 
-    def addSplitCol(self, subsets, sito=0):
-        col = CatColM(dict([("s%d" % i, s) for (i,s) in enumerate(subsets)]), self.nbRows())
-        col.setId(len(self.cols[sito]))
-        col.side = sito
-        col.name = "split"
-        self.cols[sito].append(col)
+        if ( self.split is None ) or ( self.split["source"] != "auto" ) \
+                 or self.split["parameters"].get("nbsubs", None) != nbsubs \
+                 or self.split["parameters"].get("coo_dim", None) != coo_dim \
+                 or self.split["parameters"].get("grain", None) != grain :
+            if coo_dim is None:
+                vals = None
+                grain = None
+            elif self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords()):
+                vals = self.getCoordPoints()[:,abs(coo_dim)-1]
+            else: ## is in the variables
+                if coo_dim >= len(self.cols[0]):
+                    col = self.cols[1][coo_dim-len(self.cols[0])]
+                else:
+                    col = self.cols[0][coo_dim]
+                vals = col.getVector()
+
+            self.split = {"source": "auto",
+                          "parameters": {"coo_dim": coo_dim, "grain": grain, "nbsubs": nbsubs},
+                          "splits": self.rsubsets_split(nbsubs, vals, grain)}
+            skeys = ["%d" % i for (i,v) in enumerate(self.split['splits'])]
+            self.split["split_ids"] = dict([(v,k) for (k,v) in enumerate(skeys)])
+        return self.split['splits']            
+
+    def dropLT(self):
+        if self.split is not None:
+            if "lt_ids" in self.split:
+                del self.split["lt_ids"]
+                del self.split["lt_sids"]
+
+
+    def assignLT(self, learn_sids, test_sids):
+        if self.split is None:
+            return
+        rids = {"learn": set(), "test": set()}
+        for (which, sids) in [("learn", learn_sids), ("test", test_sids)]:
+            for sid in sids:
+                if sid in self.split["split_ids"]:
+                    rids[which].update(self.split["splits"][self.split["split_ids"][sid]])
+        self.split["lt_ids"] = rids
+        self.split["lt_sids"] = {"learn": learn_sids, "test": test_sids}
+
+    def hasSplits(self):
+        return self.split is not None
+    def hasAutoSplits(self):
+        return self.split is not None and self.split["source"] == "auto"
+    def hasLT(self):
+        return self.split is not None and "lt_ids" in self.split
+    def getLT(self):
+        if self.hasLT():
+            return self.split["lt_ids"]
+        else:
+            return {}
+    def getLTsids(self):
+        if self.hasLT():
+            return self.split["lt_sids"]
+        else:
+            return {}
+
+
+    def getFoldsInfo(self):
+        return self.split
+
+    def addFoldsCol(self, subsets=None, sito=1):
+        suff = "cust"
+        if subsets is None and self.split is not None:
+            if self.split["source"] != "auto":
+                subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
+                suff = "%s-g%s" % ((self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
+        if type(subsets) is list:
+            subsets = dict(enumerate(subsets))
+        if subsets is not None and type(subsets) is dict:
+            col = CatColM(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), self.nbRows())
+            self.addCol(col, sito, "folds_split_"+suff)
+
+    def extractFolds(self, side, colid):
+        splits = None
+        if type(self.cols[side][colid]) is CatColM:
+            self.cols[side][colid].setDisabled()
+            splits = dict([(re.sub("^F:", "", f), set(fsupp)) for (f, fsupp) in self.cols[side][colid].sCats.items()])
+            skeys = sorted(splits.keys())
+            self.split = {"source": "data",
+                          "parameters": {"side": side, "colid": colid, "colname": self.cols[side][colid].getName()},
+                          "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
+                          "splits": [splits[k] for k in skeys]}
+        return splits
+
+    def findCandsFolds(self):
+        return self.getColsByName("^folds_split_")
+
+    def getColsByName(self, pattern):
+        results = []
+        for (sito, cols) in enumerate(self.cols):
+            for (ci, col) in enumerate(cols):
+                if re.search(pattern, col.getName()):
+                    results.append((sito, ci))
+        return results
         
-    def rsubsets_split(self, nbsubs=10, coo_dim=-1, grain=10.):
+    def rsubsets_split(self, nbsubs=10, split_vals=None, grain=10.):
         # uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
         # return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
-        if self.isGeospatial() and coo_dim >= 0 and coo_dim < len(self.getCoords()):
-            nv = np.floor(self.getCoords()[coo_dim]*grain)
-            uv, uids = np.unique(nv, return_inverse=True)
-            sizes = [(len(uv)/nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)/nbsubs+1, len(uv)%nbsubs)]
-            maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
-            np.random.shuffle(maps_to)
-            subsets_ids = [set() for i in range(nbsubs)]
-            for i in range(len(uv)):
-                subsets_ids[maps_to[i]].update(np.where(uids==i)[0])
+        if split_vals is not None:
+            uv, uids = np.unique(split_vals, return_inverse=True)
+            if len(uv) > nbsubs:
+                nv = np.floor(split_vals*grain)
+                uv, uids = np.unique(nv, return_inverse=True)
+                sizes = [(len(uv)/nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)/nbsubs+1, len(uv)%nbsubs)]
+                maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
+                np.random.shuffle(maps_to)
+                subsets_ids = [set() for i in range(nbsubs)]
+                for i in range(len(uv)):
+                    subsets_ids[maps_to[i]].update(np.where(uids==i)[0])
+            else:
+                subsets_ids = [set(np.where(uids==i)[0]) for i in range(len(uv))]
         else:
             sizes = [(self.nbRows()/nbsubs, nbsubs - self.nbRows()%nbsubs), (self.nbRows()/nbsubs+1, self.nbRows()%nbsubs)]
             maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
@@ -1675,6 +1769,9 @@ class Data(object):
     def getCoords(self):
         return self.coords
 
+    def getCoordPoints(self):
+        return self.coords_points
+
     def getCoordsExtrema(self):
         if self.isGeospatial():
             return [min(chain.from_iterable(self.coords[0])), max(chain.from_iterable(self.coords[0])), min(chain.from_iterable(self.coords[1])), max(chain.from_iterable(self.coords[1]))]
@@ -1709,10 +1806,13 @@ class Data(object):
                         raise DataError('Number of names does not match number of variables!')
 
     def setCoords(self, coords):
+        ### coords are NOT turned to a numpy array because polygons might have different numbers of points
         if coords is None or (len(coords)==2 and len(coords[0]) == self.nbRows()):
             self.coords = coords
+            self.coords_points = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
         else:
             self.coords = None
+            self.coords_points = None
             raise DataError('Number of coordinates does not match number of entities!')
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
@@ -1805,6 +1905,14 @@ def readDNCFromCSVFiles(filenames, unknown_string = None):
 
     return cols, N, coords, rnames, disabled_rows, single_dataset, unknown_string
 
+def addCol(cols, col, sito=0, name=None):
+    col.setId(len(cols[sito]))
+    col.side = sito
+    if name is None:
+        col.name = Term.pattVName % len(cols[sito])
+    else:
+        col.name = name
+    cols[sito].append(col)
 
 def prepareRowName(rname, rid=None, data=None):
     return "%s" % rname 
@@ -1901,17 +2009,11 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                         col = type_ids.pop().parseList(values, indices[side])
 
             if col is not None and col.N == N:
-                col.setId(len(cols[sito]))
-                col.side = sito
-                col.name = det.get("name", name)
-                # pdb.set_trace()
-                # if csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None and name in csv_data["data"][side][csv_reader.ENABLED_COLS[0]]:
-                #     print len(cols[sito]), csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None)
                 if not det.get("enabled", True) or \
                        (csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None \
                         and not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito] ):
                     col.flipEnabled()
-                cols[sito].append(col)
+                addCol(cols, col, sito, det.get("name", name))
             else:
                 pdb.set_trace()
                 raise DataError('Unrecognized variable type!')            
@@ -1934,144 +2036,37 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 def main():
 
-    rep = "/home/galbrun/Desktop/DBLPsirenFrozen.siren_FILES/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
-    print data
-    pdb.set_trace()
-    exit()
+    # rep = "/home/galbrun/TKTL/redescriptors/generaliz/data/"
+    # # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
+    # data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
+    # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
+    # data2 = Data(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv", {}, ""], "csv")
+    # print data, data2
+    # exit()
 
-    rep = "/home/galbrun/Desktop/"
-    data = Data([rep+"conference_filtered_bool.csv", rep+"coauthor_filtered_bool.csv", {}, "nan"], "csv")
-    print data
-    data.writeCSV([rep+"testoutL2b.csv", rep+"testoutR2b.csv"])
-    data2 = Data([rep+"testoutL2b.csv", rep+"testoutR2b.csv", {}, "nan"], "csv")
-    print data2
-    exit()
-
-    rep = "/home/galbrun/Desktop/A.siren_FILES/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
-    print data
-    exit()
-
-    rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/tests/v2015_test.siren_FILES/"
-    # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
-    data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
-    pdb.set_trace()
-    print data
-    exit()
-    
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "NA"], "csv")
-    mat = data.getMatrix(bincats=False)
-    matB = data.getMatrix(bincats=True)
-    exit()
+    # subsets_rids = data.rsubsets_split(10, 0, 10.)
+    # for si, subset in enumerate(subsets_rids):
+    #     sL, sT = data.get_LTsplit(subset)
+    #     print "Train:", sL, "Test:", sT
+    # exit()
 
 
-    rep = "/home/galbrun/TKTL/redescriptors/generaliz/data/"
-    # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
-    data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
-    data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
-    data2 = Data(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv", {}, ""], "csv")
-    print data, data2
-    exit()
-
-    subsets_rids = data.rsubsets_split(10, 0, 10.)
-    for si, subset in enumerate(subsets_rids):
-        sL, sT = data.get_LTsplit(subset)
-        print "Train:", sL, "Test:", sT
-    exit()
-
-    rep = "/home/galbrun/TKTL/redescriptors/data/football/other/"
-    # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
-    data = Data([rep+"D1_playstats_0.csv", rep+"D1_betstats_0.csv", {}, ""], "csv")
-    print data
-    exit()
-
-
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "NA"], "csv")
-    print data
-    exit()
-    # print "UNCOMMENT"
-    # rep = "/home/galbrun/redescriptors/data/world/"
-    # data = Data([rep+"carnivora-3r.csv", rep+"navegcovermatthews-3r.csv", {}, "NA"], "csv")
-    # data.writeXML(open("tmp.xml", "w"))
-
-    # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
-    # data = Data([rep+"mammals_poly.csv", rep+"worldclim_nomiss_poly.csv", {}, "NA"], "csv")
-    # print data
-    # pdb.set_trace()
-    # data.writeCSV([rep+"mammals_A.csv", rep+"worldclim_A.csv"])
-
-    # rep = "/home/galbrun/"
-    # data = Data([rep+"data1.csv", rep+"data2.csv", {}, "NA"], "csv")    
-    # data2 = Data("tmp.xml", "xml")
-    # data = Data([rep+"carnivora-3l.csv", rep+"navegcovermatthews-3l.csv", {}, "NA"], "csv")
-    # pdb.set_trace()
-    # data = Data([rep+"carnivora-3g.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
-    # print data2
-    # print data2.isGeospatial()
-    #data = Data([rep+"carnivora-3.csv", rep+"navegcovermatthews-3.csv", {}, "NA"], "csv")
-    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    # data = Data([rep+"vaalikone_profiles_miss.csv", rep+"vaalikone_questions_miss.csv", {}, "NA"], "csv")
-    # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
-    rep = "/home/galbrun/TKTL/redescriptors/data/dblp/"
-    # data = Data([rep+"coauthor_picked0_num.csv", rep+"conference_picked0_num.csv"], "csv")
-    data = Data([rep+"coauthor_picked0_num.csv", rep+"coauthor_picked0_num.csv"], "csv")
-    print data
-    # data.selected_rows = set([0,2, data.N-1])
-    # data.cols[0][3].setDisabled()
-    # data.cols[0][5].setDisabled()
-    # data.cols[0][7].setDisabled()
-    # data.cols[1][3].setDisabled()
-    # data.cols[1][10].setDisabled()
-    # for s,c in data.getDisabledCols():
-    #     print s,c,data.cols[s][c].getName()
-
-    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"], full_details=True)
-    # data.writeCSV([rep+"testoutL4.csv", rep+"testoutR4.csv"], inline=True)
-    # data.writeCSV([rep+"testoutL3.csv", rep+"testoutR3.csv"])
-
-    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
-    # data.writeCSV([rep+"testoutB.csv"])
-
-    # data2 = Data([rep+"testoutB.csv", rep+"testoutB.csv", {}, "nan"], "csv")
-    # data2 = Data([rep+"testoutL.csv", rep+"testoutR.csv", {}, "nan"], "csv")
-    # data2.cols[1][3].setDisabled()
-    print data2
-    print data2.selected_rows
-    for s,c in data2.getDisabledCols():
-        print s,c, data2.cols[s][c].getName()
-    data2.writeCSV([rep+"testoutL2b.csv", rep+"testoutR2b.csv"])
-    exit()
-
-    # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
+    rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
     # data = Data([rep+"mammals_poly.csv", rep+"worldclim_poly.csv"], "csv")
-    # data.selected_rows = set([0,2, data.N-1])
-    # data.writeCSV([rep+"testoutL.csv", rep+"testoutR.csv"])
-    # data2 = Data([rep+"testoutL.csv", rep+"testoutR.csv", {}, "nan"], "csv")
-    # data2.writeCSV([rep+"testoutL2.csv", rep+"testoutR2.csv"])
-    # rep = "/home/galbrun/redescriptors/data/de/"
-    # rep = "/home/galbrun/redescriptors/data/de/de.siren_FILES/"
-    # # print data.hasMissing()
-    # # print len(data.cols[1][0].missing)
-    # #data.writeXML(open("tmp.xml", "w"))
-    # data2 = Data("data.xml", "xml")
-    # print data2.hasRNames()
-    # print data2
-    # print data2.hasMissing()
-    # print data2.cols[1][0].missing == data.cols[1][0].missing
-    
-    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.csv",
-    #               "/home/galbrun/redescriptors/data/rajapaja/worldclim_nomiss.csv"], "csv")
-    # data = Data(["/home/galbrun/redescriptors/data/world/mammals.csv",
-    #               "/home/galbrun/redescriptors/data/world/worldclim.csv"], "csv")
-    # print data
-    # print data.getCoordsExtrema()
-    # data = Data("/home/galbrun/re.siren_FILES/data.xml", "xml")
-    # data = Data("/home/galbrun/redescriptors/data/rajapaja/data_poly.xml", "xml")
-    # print data.getCoordsExtrema()
+    data = Data([rep+"mammals.csv", rep+"worldclim.csv"], "csv")
+    print data
+    print data.getCoordPoints().shape
+    # subsets =
+    data.getSplit(nbsubs=5, coo_dim=19, grain=1.)
+    data.addFoldsCol()
+    data.getSplit(nbsubs=10, coo_dim=-1, grain=10.)
+    data.addFoldsCol()
+    data.getSplit(nbsubs=4, coo_dim=-2, grain=10.)
+    data.addFoldsCol()
+    print data.findCandsFolds()
+    pdb.set_trace()
+    splits = data.extractFolds(1, 69)    
+
     # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
     #              "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names",

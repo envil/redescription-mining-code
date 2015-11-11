@@ -5,7 +5,10 @@ from classBatch import Batch
 import toolRead
 import pdb
 
+ACTIVE_RSET_ID = "S0"
+
 class Redescription(object):
+
     diff_score = Query.diff_length + 1
     print_delta_fields = set(SParts.print_delta_fields+["Tex_"+s for s in SParts.print_delta_fields])
     print_queries_headers = ["query_LHS", "query_RHS"]
@@ -37,7 +40,7 @@ class Redescription(object):
 
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
-        self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
+        self.resetRestrictedSuppSets()
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
             self.sParts = SParts(ssetts, nN, nsupps, nPrs)
@@ -49,7 +52,7 @@ class Redescription(object):
         self.vectorABCD = None
         self.status = 1
         self.track = []
-        
+
     def fromInitialPair(initialPair, data):
         if initialPair[0] is None and initialPair[1] is None:
             return None
@@ -69,6 +72,8 @@ class Redescription(object):
             supps_miss[side+2] = missS
         r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
         r.track = [(-1, -1)]
+        if data.hasLT():
+            r.setRestrictedSupp(data)
         return r
     fromInitialPair = staticmethod(fromInitialPair)
 
@@ -79,9 +84,19 @@ class Redescription(object):
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
-    def getInfoDict(self, with_delta=False):
+    def getInfoDict(self, with_delta=False, rset_id=None):
+        if self.dict_supp_info is not None and self.sParts is not None:
+            if (rset_id is not None and "rset_id" not in self.dict_supp_info) or \
+                   (rset_id is None and "rset_id" in self.dict_supp_info):
+                #### if there is a dict_supp_info but it does not correspond to the one requested, erase
+                self.dict_supp_info = None
+        
         if self.dict_supp_info is None and self.sParts is not None:
-            self.dict_supp_info = (self.restricted_sParts or self.sParts).toDict(with_delta)
+            if rset_id in self.restricted_sets and self.restricted_sets[rset_id]["sParts"] is not None:
+                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_delta)
+                self.dict_supp_info["rset_id"] = rset_id
+            else:
+                self.dict_supp_info = self.sParts.toDict(with_delta)
         if self.dict_supp_info is not None:
             return self.dict_supp_info
         return {}
@@ -279,21 +294,36 @@ class Redescription(object):
         return [self.invColsSide(0), self.invColsSide(1)]
         
     def setRestrictedSupp(self, data):
+        ### USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
+        self.setRestrictedSuppSets(data, supp_sets=None)
+
+    def resetRestrictedSuppSets(self):
+        self.restricted_sets = {}
+
+    def setRestrictedSuppSets(self, data, supp_sets=None):
         self.dict_supp_info = None
-        restrict = data.nonselectedRows()
-        if len(restrict) == 0:
-            self.restrict_sub = None 
-            self.restricted_sParts = None
-            self.restricted_prs = None
-        elif self.restrict_sub != restrict:
-            (nsuppL, missL) = self.recomputeQuery(0, data, restrict)
-            (nsuppR, missR) = self.recomputeQuery(1, data, restrict)
-            if len(missL) + len(missR) > 0:
-                self.restricted_sParts = SParts(data.getSSetts(), restrict, [nsuppL, nsuppR, missL, missR])
+        if supp_sets is None:
+            if data.hasLT():
+                supp_sets = data.getLT()
             else:
-                self.restricted_sParts = SParts(data.getSSetts(), restrict, [nsuppL, nsuppR])
-            self.restricted_prs = [self.queries[0].proba(0, data, restrict), self.queries[1].proba(1, data, restrict)]
-            self.restrict_sub = set(restrict)
+                supp_sets = {ACTIVE_RSET_ID: data.nonselectedRows()}
+        for sid, sset in supp_sets.items():
+            if len(sset) == 0:
+                self.restricted_sets[sid] = {"sParts": None,
+                                             "prs": None,
+                                             "rids": set()}
+            elif sid not in self.restricted_sets or self.restricted_sets[sid]["rids"] != sset:
+                (nsuppL, missL) = self.recomputeQuery(0, data, sset)
+                (nsuppR, missR) = self.recomputeQuery(1, data, sset)
+                if len(missL) + len(missR) > 0:
+                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR, missL, missR])
+                else:
+                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR])
+
+                self.restricted_sets[sid] = {"sParts": rsParts,
+                                             "prs": [self.queries[0].proba(0, data, sset),
+                                                     self.queries[1].proba(1, data, sset)],
+                                             "rids": set(sset)}
 
 
     def getNormalized(self, data=None, side=None):
@@ -326,6 +356,8 @@ class Redescription(object):
         else:
             self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
+        if data.hasLT():
+            self.setRestrictedSupp(data)
         self.dict_supp_info = None
 
     def check(self, data):
@@ -389,11 +421,38 @@ class Redescription(object):
     def getEnabled(self, details=None):
         return 1*(self.status>0)
 
+    def getRSet(self, details=None):
+        if details is not None and details.get("rset_id") in self.restricted_sets:
+            return self.restricted_sets[details.get("rset_id")]
+        elif ACTIVE_RSET_ID in self.restricted_sets:
+            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
+        else:
+            return None
+
+    def getRSetParts(self, details=None):
+        if details is not None and details.get("rset_id") in self.restricted_sets:
+            return self.restricted_sets[details.get("rset_id")]["sParts"]
+        elif ACTIVE_RSET_ID in self.restricted_sets:
+            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
+        else:
+            return self.sParts
+
+
+    def getAccRatio(self, details=None):
+        if details is not None and details.get("rset_id_num") in self.restricted_sets \
+               and details.get("rset_id_den") in self.restricted_sets:
+            acc_num = self.restricted_sets[details.get("rset_id_num")]["sParts"].acc()
+            acc_den = self.restricted_sets[details.get("rset_id_den")]["sParts"].acc()
+            if acc_den == 0:
+                return float('Inf')
+            return acc_num/acc_den
+        return 1.
+
     def getAcc(self, details=None):
-        return (self.restricted_sParts or self.sParts).acc()
+        return self.getRSetParts(details).acc()
 
     def getPVal(self, details=None):
-        return (self.restricted_sParts or self.sParts).pVal()
+        return self.getRSetParts(details).pVal()
 
     def getRoundAcc(self, details=None):
         return round(self.getAcc(details), 3)
@@ -401,40 +460,43 @@ class Redescription(object):
     def getRoundPVal(self, details=None):
         return round(self.getPVal(details), 3)
 
+    def getRoundAccRatio(self, details=None):
+        return round(self.getAccRatio(details), 3)
+
 
     def getLenI(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenI()
+        return self.getRSetParts(details).lenI()
     def getLenU(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenU()
+        return self.getRSetParts(details).lenU()
     def getLenL(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenL()
+        return self.getRSetParts(details).lenL()
     def getLenR(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenR()
+        return self.getRSetParts(details).lenR()
     def getLenO(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenO()
+        return self.getRSetParts(details).lenO()
     def getLenT(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenT()
+        return self.getRSetParts(details).lenT()
     def getLenA(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenA()
+        return self.getRSetParts(details).lenA()
     def getLenB(self, details=None):
-        return (self.restricted_sParts or self.sParts).lenB()
+        return self.getRSetParts(details).lenB()
     
     def getSuppI(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppI()
+        return self.getRSetParts(details).suppI()
     def getSuppU(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppU()
+        return self.getRSetParts(details).suppU()
     def getSuppL(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppL()
+        return self.getRSetParts(details).suppL()
     def getSuppR(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppR()
+        return self.getRSetParts(details).suppR()
     def getSuppO(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppO()
+        return self.getRSetParts(details).suppO()
     def getSuppT(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppT()
+        return self.getRSetParts(details).suppT()
     def getSuppA(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppA()
+        return self.getRSetParts(details).suppA()
     def getSuppB(self, details=None):
-        return (self.restricted_sParts or self.sParts).suppB()
+        return self.getRSetParts(details).suppB()
 
 
 ##### PRINTING AND PARSING METHODS

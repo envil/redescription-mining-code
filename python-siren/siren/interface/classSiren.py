@@ -16,6 +16,7 @@ from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
+from classSplitDialog import SplitDialog
 from miscDialogs import ImportDataCSVDialog, FindDialog
 from ..views.factView import ViewFactory
 from ..work.toolWP import WorkPlant
@@ -52,7 +53,7 @@ class Siren():
     results_delay = 1000
          
     def __init__(self):
-        
+        self.initialized = True
         self.busyDlg = None
         self.findDlg = None
         self.dw = None
@@ -145,7 +146,16 @@ class Siren():
         self.dw.isChanged = False
         self.plant.setUpCall([self.doUpdates, self.resetLogger])
         self.resetLogger()
+        self.initialized = True
 
+    def isInitialized(self):
+        return self.initialized
+
+    def hasDataLoaded(self):
+        if self.dw is not None:
+            return self.dw.getData() is not None
+        return False
+    
     def getReds(self):
         if self.dw is not None:
             return self.dw.getReds()
@@ -542,6 +552,13 @@ class Siren():
                 ID_CONN = wx.NewId()
                 m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...\tCtrl+k", "Setup worker's connection.")
                 frame.Bind(wx.EVT_MENU, self.OnConnectionDialog, m_conndia)
+
+        ## Split setup
+        if True:
+                ID_SPLT = wx.NewId()
+                m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...\tCtrl+l", "Setup learn/test data splits.")
+                frame.Bind(wx.EVT_MENU, self.OnSplitDialog, m_spltdia)
+
 
         ## Quit
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
@@ -1074,6 +1091,12 @@ class Siren():
         d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
         d.ShowModal()
         d.Destroy()
+
+    def OnSplitDialog(self, event):
+        d = SplitDialog(self.toolFrame, self.dw, self)
+        d.ShowModal()
+        d.Destroy()
+
 
     def OnHelp(self, event):
         wxVer = map(int, wx.__version__.split('.'))

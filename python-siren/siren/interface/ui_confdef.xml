@@ -257,4 +257,38 @@
       </parameter>
     </section>
   </section>
+  <section>
+    <name>Split</name>
+    <section>
+      <name>Automatic splits</name>
+      <parameter>
+	<name>nb_folds</name>
+	<label>Nb folds</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Number of parts the data should be split into.</legend>
+	<range_min>2</range_min>
+	<range_max>20</range_max>
+	<default><value>5</value></default>
+      </parameter>
+      <parameter>
+	<name>coo_dim</name>
+	<label>Strips direction</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Coordinate to cut the strips along.</legend>
+	<length>3</length>
+	<default><value>-1</value></default>
+      </parameter>
+      <parameter>
+	<name>grain</name>
+	<label>Granularity</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Granularity of the cut (lower means narrower strips).</legend>
+	<length>3</length>
+	<default><value>1</value></default>
+      </parameter>
+    </section>
+  </section>
 </root>

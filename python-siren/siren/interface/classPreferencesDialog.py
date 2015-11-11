@@ -40,7 +40,7 @@ class PreferencesDialog(wx.Dialog):
 		self.cancel_change = False # Tracks if we should cancel a page change
 		
 		for section in self.pref_handle.getPreferencesManager().subsections:
-			if section.get("name") == "Network":
+			if section.get("name") in ["Network", "Split"]:
 				continue
 			sec_id = wx.NewId()
 			self.tabs.append(sec_id)

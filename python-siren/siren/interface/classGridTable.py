@@ -507,15 +507,39 @@ class GridTable(wx.grid.PyGridTableBase):
 
 class RedTable(GridTable):
 
+    # SYMU_LEARN = ur'\u25e9'
+    # SYMU_TEST = ur'\u25ea'
+    # SYMU_LEARN = ur'\u25d6'
+    # SYMU_TEST = ur'\u25d7'
+    SYMU_LEARN = ur'\u25d0'
+    SYMU_TEST = ur'\u25d1'
+    SYMU_RATIO = ur'\u2298'
+
+
     fields_sizes = []
-    fields_def = [('', 'self.data[x].getEnabled'),
-                  ('id', 'self.getRedIdStr(x)', None, 60),
-                  ('query LHS', 'self.data[x].getQueryLU', None, 300),
-                  ('query RHS', 'self.data[x].getQueryRU', None, 300),
-                  ('J', 'self.data[x].getRoundAcc', None, 60),
-                  ('p-value', 'self.data[x].getRoundPVal', None, 60),
-                  ('|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', None, 60),
-                  ('track', 'self.data[x].getTrack', None, 80)]
+    fields_def_nosplit = [('', 'self.data[x].getEnabled'),
+                          ('id', 'self.getRedIdStr(x)', None, 60),
+                          ('query LHS', 'self.data[x].getQueryLU', None, 300),
+                          ('query RHS', 'self.data[x].getQueryRU', None, 300),
+                          ('J', 'self.data[x].getRoundAcc', None, 60),
+                          ('p-value', 'self.data[x].getRoundPVal', None, 60),
+                          ('|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', None, 60),
+                          ('track', 'self.data[x].getTrack', None, 80)]
+
+    fields_def_splits = [('', 'self.data[x].getEnabled'),
+                         ('id', 'self.getRedIdStr(x)', None, 60),
+                         ('query LHS', 'self.data[x].getQueryLU', None, 300),
+                         ('query RHS', 'self.data[x].getQueryRU', None, 300),
+                         (SYMU_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "learn", "rset_id_den": "test"}, 60),
+                         (SYMU_LEARN+'J', 'self.data[x].getRoundAcc', {"rset_id": "learn"}, 60),
+                         (SYMU_TEST+'J', 'self.data[x].getRoundAcc', {"rset_id": "test"}, 60),
+                         (SYMU_LEARN+'pV', 'self.data[x].getRoundPVal', {"rset_id": "learn"}, 60),
+                         (SYMU_TEST+'pV', 'self.data[x].getRoundPVal', {"rset_id": "test"}, 60),
+                         (SYMU_LEARN+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "learn"}, 60),
+                         (SYMU_TEST+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "test"}, 60),
+                         ('track', 'self.data[x].getTrack', None, 80)]
+    fields_def = fields_def_nosplit
+    #fields_def = fields_def_splits
     name_m = 'self.data[x].getQueriesU'
 
     def __init__(self, parent, tabId, frame, short=None):
@@ -524,6 +548,10 @@ class RedTable(GridTable):
         self.last_rid = 0
         self.opened_edits = {}
         self.emphasized = {}
+        if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
+            self.fields = self.fields_def_splits
+        else:
+            self.fields = self.fields_def_nosplit
         self.uptodate = True
 
     def setSelectedRow(self,row, col=0):
@@ -549,13 +577,29 @@ class RedTable(GridTable):
         #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
         self.uptodate = True
 
+    def refreshComp(self):
+        if self.uptodate:
+            return
+        tic = datetime.datetime.now()
+        for red in self.data:
+            red.recompute(self.parent.dw.getData())
+        #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
+        self.uptodate = True
+
+
     def recomputeAll(self, restrict):
         self.uptodate = False
-        self.refreshRestrict()
+        # self.refreshRestrict()
+        self.refreshComp()
         for k,v in self.opened_edits.items():
             mc = self.parent.accessViewX(k)
             if mc is not None:
                 mc.refresh()
+        if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
+            self.fields = self.fields_def_splits
+        else:
+            self.fields = self.fields_def_nosplit
+        self.ResetView()
 
     def insertItems(self, items):
         for item in items:
