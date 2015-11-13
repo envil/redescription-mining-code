@@ -1423,6 +1423,7 @@ class Data(object):
         return subsets_ids
         
 
+    #### old version for reremi run subsplits
     def get_LTsplit(self, row_idsT):
         row_idsL = set(range(self.nbRows()))
         row_idsT = row_idsL.intersection(row_idsT)
@@ -1470,6 +1471,18 @@ class Data(object):
         return len(self.selected_rows) > 0
 
     def selectedRows(self):
+        return self.selected_rows
+
+    def getVizRows(self, details=None):
+        if details is not None and details.get("rset_id", None) in self.getLT():
+            if len(self.selected_rows) == 0:
+                return set(self.getLT()[details["rset_id"]])
+            return set(self.getLT()[details["rset_id"]])  - self.selected_rows
+        return self.nonselectedRows()
+
+    def getUnvizRows(self, details=None):
+        if details is not None and details.get("rset_id", None) in self.getLT():
+            return self.selected_rows.union(*[s for (k,s) in self.getLT().items() if k != details["rset_id"]])
         return self.selected_rows
 
     def nonselectedRows(self):

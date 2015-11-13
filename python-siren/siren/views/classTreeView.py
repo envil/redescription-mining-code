@@ -64,8 +64,9 @@ class TreeView(GView):
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
-            red.setRestrictedSupp(self.parent.dw.getData())
-            self.suppABCD = red.supports().getVectorABCD()
+            ## red.setRestrictedSupp(self.parent.dw.getData())
+            ## self.suppABCD = red.supports().getVectorABCD()
+            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
             self.current_r = red
             self.source_list=source_list
             self.updateText(red)
@@ -100,8 +101,9 @@ class TreeView(GView):
                 red = None
                 self.queries = old
         if red is not None:
-            red.setRestrictedSupp(self.parent.dw.getData())
-            self.suppABCD = red.supports().getVectorABCD()
+            # red.setRestrictedSupp(self.parent.dw.getData())
+            # self.suppABCD = red.supports().getVectorABCD()
+            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
             self.current_r = red
             if upAll:
                 self.updateText(red)
@@ -327,6 +329,7 @@ class TreeView(GView):
                     
             if self.trees[0] is not None and self.trees[1] is not None:
                 rsupp = red.supports().parts4M()
+                ## rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
                 for side in [0,1]:
                     self.trees[side].computeSupps(side, self.parent.dw.getData(), rsupp)
                     if update_trees:
@@ -375,9 +378,17 @@ class TreeView(GView):
                              "function": self.OnSimplifyLHS},
                             {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify RHS"),
                              "function": self.OnSimplifyRHS}])
-        
+
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
 
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        v_box = wx.BoxSizer(wx.HORIZONTAL)
+        v_box.Add(self.boxL, 0, border=0, flag=flags)
+        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
+
         self.buttons[1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerW(),-1))
@@ -415,6 +426,8 @@ class TreeView(GView):
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
+        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
 
     def sendOtherPick(self, gid_parts):
@@ -504,10 +517,9 @@ class TreeView(GView):
                 self.sendEmphasize([lid])
                 self.current_hover = None
 
-
     def on_motion(self, event):
         lid = None
-        if event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
+        if self.hoverActive() and event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
             lid = self.getLidAt(event.ydata)
             if lid is not None and lid != self.current_hover:
                 if self.current_hover is not None:

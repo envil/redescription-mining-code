@@ -186,6 +186,15 @@ class SYM(object):
 
     SYMU_ARRTOP=u"\u2191"
     SYMU_ARRBOT=u"\u2193"
+    # SYMU_LEARN = ur'\u25e9'
+    # SYMU_TEST = ur'\u25ea'
+    # SYMU_LEARN = ur'\u25d6'
+    # SYMU_TEST = ur'\u25d7'
+    # SYMU_LEARN = ur'\u25d0'
+    # SYMU_TEST = ur'\u25d1'
+    SYMU_LEARN = ur'\u25d5'
+    SYMU_TEST = ur'\u25d4'
+    SYMU_RATIO = ur'\u2298'
     
     SYMO_OR = 'OR'
     SYMO_AND = 'AND'
@@ -203,6 +212,10 @@ class SYM(object):
 
     SYMO_ARRTOP="^"
     SYMO_ARRBOT="v"
+    SYMO_LEARN = '[l]'
+    SYMO_TEST = '[t]'
+    SYMO_RATIO = '[r]'
+
 
     ## WITH UNICODE
     SYM_OR = SYMU_OR
@@ -221,6 +234,9 @@ class SYM(object):
 
     SYM_ARRTOP=SYMU_ARRTOP
     SYM_ARRBOT=SYMU_ARRBOT
+    SYM_LEARN = SYMU_LEARN
+    SYM_TEST = SYMU_TEST
+    SYM_RATIO = SYMU_RATIO
 
     ## WITHOUT UNICODE
     # SYM_OR = SYMO_OR
@@ -239,6 +255,9 @@ class SYM(object):
 
     # SYM_ARRTOP=SYMO_ARRTOP
     # SYM_ARRBOT=SYMO_ARRBOT
+    # SYM_LEARN = SYMO_LEARN
+    # SYM_TEST = SYMO_TEST
+    # SYMU_RATIO = SYMO_RATIO
 
 class Op(object):
     

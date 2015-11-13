@@ -544,6 +544,7 @@ class Siren():
         m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
         
         ## Preferences
+        menuFile.AppendSeparator()
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
         frame.Bind(wx.EVT_MENU, self.OnPreferencesDialog, m_preferencesdia)
 
@@ -559,7 +560,7 @@ class Siren():
                 m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...\tCtrl+l", "Setup learn/test data splits.")
                 frame.Bind(wx.EVT_MENU, self.OnSplitDialog, m_spltdia)
 
-
+        menuFile.AppendSeparator()
         ## Quit
         m_quit = menuFile.Append(wx.ID_EXIT, "&Quit", "Close window and quit program.")
         frame.Bind(wx.EVT_MENU, self.OnQuit, m_quit)

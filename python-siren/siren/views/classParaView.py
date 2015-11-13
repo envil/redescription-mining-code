@@ -299,7 +299,8 @@ class ParaView(GView):
 
             ### SELECTED DATA
             selv = 1*numpy.ones(self.prepared_data["N"])
-            selected = self.parent.dw.getData().selectedRows()
+            selected = self.getUnvizRows()
+            # selected = self.parent.dw.getData().selectedRows()
             if self.sld_sel is not None and len(selected) > 0:
                 selp = self.sld_sel.GetValue()/100.0
                 selv[list(selected)] = selp
@@ -408,7 +409,7 @@ class ParaView(GView):
         self.ri = None
 
     def on_motion_all(self, event):
-        if event.inaxes == self.axe and self.ri is not None:
+        if self.hoverActive() and event.inaxes == self.axe and self.ri is not None:
             self.drs[self.ri].do_motion(event)
         else:
             self.on_motion(event)
@@ -547,8 +548,16 @@ class ParaView(GView):
         
         self.sld = wx.Slider(self.panel, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
-
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
+        
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        v_box = wx.BoxSizer(wx.HORIZONTAL)
+        v_box.Add(self.boxL, 0, border=0, flag=flags)
+        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
+
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
@@ -568,7 +577,6 @@ class ParaView(GView):
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
-
         add_box.Add(add_boxA, 0, border=3, flag=flags)
         add_box.AddSpacer((self.getSpacerW(),-1))
         add_box.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
@@ -579,18 +587,17 @@ class ParaView(GView):
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        ##self.sld.Bind(wx.EVT_SLIDER, self.OnSlide)
         self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        ##self.sld.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
-        ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
     def OnSlide(self, event):
         self.updateMap()
 
     def on_motion(self, event):
         lid = None
-        if event.inaxes == self.axe and numpy.abs(numpy.around(event.xdata) - event.xdata) < self.flat_space and event.ydata >= self.missing_yy-.1 and event.ydata <= 1:
+        if self.hoverActive() and event.inaxes == self.axe and numpy.abs(numpy.around(event.xdata) - event.xdata) < self.flat_space and event.ydata >= self.missing_yy-.1 and event.ydata <= 1:
             lid = self.getLidAt(event.ydata, int(numpy.around(event.xdata)))
             if lid is not None and lid != self.current_hover:
                 if self.current_hover is not None:

@@ -164,7 +164,6 @@ class SplitDialog(PreferencesDialog):
 				ids[lt] = [self.stored_splits_ids[bid] for bid, box in self.controls_map["add"][lt].items() if box.IsChecked()]
 			self.data_handle.getData().assignLT(ids["learn"], ids["test"])
 		self.tool.recomputeAll()
-		print "Applied"
 		self.EndModal(0)
 
 

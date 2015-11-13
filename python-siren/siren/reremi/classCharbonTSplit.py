@@ -229,7 +229,8 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
 
     current_side = side_ini
     #### account for dummy tree on other side when counting levels
-    while min(len(trees_pile[side_ini]),len(trees_pile[1-side_ini])-1) <= max_level and len(trees_pile[current_side][-1]) > 0:
+    while min(len(trees_pile[side_ini]),len(trees_pile[1-side_ini])-1) < max_level and len(trees_pile[current_side][-1]) > 0:
+        # print side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1])
         target = np.sum([trees_store[tree]["over_supp"] for tree in trees_pile[current_side][-1]], axis=0)
         # print "TARGET", current_side, sum(target)
         current_side = 1-current_side
@@ -267,6 +268,8 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     trees_pile[current_side][-1].append(PID)
                     trees_store[PID] = split_tree
                     PID += 1
+    # print side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1])
+    # pdb.set_trace()
     return trees_pile, trees_store, PID
 
 def extract_reds(trees_pile, trees_store, data, cols_map):

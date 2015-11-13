@@ -507,15 +507,6 @@ class GridTable(wx.grid.PyGridTableBase):
 
 class RedTable(GridTable):
 
-    # SYMU_LEARN = ur'\u25e9'
-    # SYMU_TEST = ur'\u25ea'
-    # SYMU_LEARN = ur'\u25d6'
-    # SYMU_TEST = ur'\u25d7'
-    SYMU_LEARN = ur'\u25d0'
-    SYMU_TEST = ur'\u25d1'
-    SYMU_RATIO = ur'\u2298'
-
-
     fields_sizes = []
     fields_def_nosplit = [('', 'self.data[x].getEnabled'),
                           ('id', 'self.getRedIdStr(x)', None, 60),
@@ -530,13 +521,13 @@ class RedTable(GridTable):
                          ('id', 'self.getRedIdStr(x)', None, 60),
                          ('query LHS', 'self.data[x].getQueryLU', None, 300),
                          ('query RHS', 'self.data[x].getQueryRU', None, 300),
-                         (SYMU_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "learn", "rset_id_den": "test"}, 60),
-                         (SYMU_LEARN+'J', 'self.data[x].getRoundAcc', {"rset_id": "learn"}, 60),
-                         (SYMU_TEST+'J', 'self.data[x].getRoundAcc', {"rset_id": "test"}, 60),
-                         (SYMU_LEARN+'pV', 'self.data[x].getRoundPVal', {"rset_id": "learn"}, 60),
-                         (SYMU_TEST+'pV', 'self.data[x].getRoundPVal', {"rset_id": "test"}, 60),
-                         (SYMU_LEARN+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "learn"}, 60),
-                         (SYMU_TEST+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "test"}, 60),
+                         (SYM.SYM_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "learn", "rset_id_den": "test"}, 60),
+                         (SYM.SYM_LEARN+'J', 'self.data[x].getRoundAcc', {"rset_id": "learn"}, 60),
+                         (SYM.SYM_TEST+'J', 'self.data[x].getRoundAcc', {"rset_id": "test"}, 60),
+                         (SYM.SYM_LEARN+'pV', 'self.data[x].getRoundPVal', {"rset_id": "learn"}, 60),
+                         (SYM.SYM_TEST+'pV', 'self.data[x].getRoundPVal', {"rset_id": "test"}, 60),
+                         (SYM.SYM_LEARN+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "learn"}, 60),
+                         (SYM.SYM_TEST+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "test"}, 60),
                          ('track', 'self.data[x].getTrack', None, 80)]
     fields_def = fields_def_nosplit
     #fields_def = fields_def_splits

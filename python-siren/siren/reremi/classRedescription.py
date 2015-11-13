@@ -425,7 +425,7 @@ class Redescription(object):
         if details is not None and details.get("rset_id") in self.restricted_sets:
             return self.restricted_sets[details.get("rset_id")]
         elif ACTIVE_RSET_ID in self.restricted_sets:
-            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
+            return self.restricted_sets[ACTIVE_RSET_ID]
         else:
             return None
 

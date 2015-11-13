@@ -44,6 +44,9 @@ class EProjView(GView):
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
+        self.boxL = None
+        self.boxT = None
+        self.rsets = None
         self.vid = vid
         self.buttons = []
         self.act_butt = [1]
@@ -138,15 +141,38 @@ class EProjView(GView):
                              "function": self.OnReproject})
         self.repbut = self.buttons[-1]["element"]
         self.sld_sel = wx.Slider(self.panel, -1, 50, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
 
         add_boxA = wx.BoxSizer(wx.VERTICAL)
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        v_box = wx.BoxSizer(wx.HORIZONTAL)
+        v_box.Add(self.boxL, 0, border=0, flag=flags)
+        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
+
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         v_box.Add(label, 0, border=1, flag=flags)
         v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        # add_boxA = wx.BoxSizer(wx.VERTICAL)
+        # v_box = wx.BoxSizer(wx.VERTICAL)
+        # label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
+        # label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        # v_box.Add(label, 0, border=1, flag=flags)
+        # v_box.Add(self.sld_sel, 0, border=1, flag=flags)
 
-        add_boxA.Add(v_box, 0, border=1, flag=flags)
+        # add_boxA.Add(v_box, 0, border=1, flag=flags)
+        # add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)
@@ -166,7 +192,8 @@ class EProjView(GView):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
     def OnSlide(self, event):
         self.updateMap()
@@ -267,7 +294,7 @@ class EProjView(GView):
             draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
-            selected = self.parent.dw.getData().selectedRows()
+            selected = self.getUnvizRows()
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
@@ -316,9 +343,11 @@ class EProjView(GView):
     def getProj(self):
         return self.proj
 
+    def hoverActive(self):
+        return GView.hoverActive(self) and not self.mc.isActive()
 
     def on_motion(self, event):
-        if self.proj is not None and self.getCoords() is not None and not self.mc.isActive():            
+        if self.hoverActive() and self.proj is not None and self.getCoords() is not None:            
             lid = None
             if event.inaxes == self.axe:
                 lid = self.getLidAt(event.xdata, event.ydata)

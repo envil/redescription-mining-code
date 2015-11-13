@@ -921,7 +921,8 @@ class SParts(object):
     def makeVectorABCD(self):
         if self.vect is None:
             if len(self.sParts) == 4:
-                svect = {}
+                # svect = {}
+                self.vect = {}
                 for partId in range(len(self.sParts)):
                     for i in self.sParts[partId]:
                         self.vect[i] = partId

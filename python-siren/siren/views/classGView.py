@@ -46,6 +46,10 @@ class GView(object):
     label_cardO="|E"+SYM.SYM_DELTA+"| ="
     label_cardT="|E| ="
 
+    label_learn = SYM.SYM_LEARN+":"
+    label_test = SYM.SYM_TEST+":"
+    label_ratio = SYM.SYM_RATIO+":"
+
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
         
@@ -105,6 +109,9 @@ class GView(object):
         self.source_list = None
         self.mc = None
         self.sld_sel = None
+        self.boxL = None
+        self.boxT = None
+        self.rsets = None
         self.vid = vid
         self.circle = None
         self.buttons = []
@@ -163,12 +170,14 @@ class GView(object):
     def q_has_selected(self):
         return len(self.getSelected()) > 0
 
-    def getSelected(self):
-        return self.highl.keys()
-
-
     def q_true(self):
         return True
+
+    def hoverActive(self):
+        return self.parent.dw.getPreferences()['hover_entities']['data'] == 'yes' 
+
+    def getSelected(self):
+        return self.highl.keys()
 
     def getWeightCover(self, params):
         params["area"] = self.getSelected()
@@ -252,6 +261,14 @@ class GView(object):
             self.MapfigMap.canvas.SetFocus()
         except AttributeError:
             self.mapFrame.SetFocus()
+
+    def getDetailsSplit(self):
+        return self.rsets
+
+    def getVizRows(self):
+        return self.parent.dw.getData().getVizRows(self.getDetailsSplit())
+    def getUnvizRows(self):
+        return self.parent.dw.getData().getUnvizRows(self.getDetailsSplit())
 
     def makeMenu(self, frame=None):
         if frame is None:
@@ -349,6 +366,46 @@ class GView(object):
     def OnOtherV(self, event):
         self.parent.callOnTab(self.source_list, meth="viewData",
                               args={"viewT": self.ids_viewT[event.GetId()], "oid": self.getId()})
+
+    def showSplitsBoxes(self, show=True):
+        self.boxL.Show(show)
+        self.boxT.Show(show)
+
+    def autoShowSplitsBoxes(self):
+        if self.parent.dw.getData().hasLT():
+            self.showSplitsBoxes(True)
+        else:
+            self.showSplitsBoxes(False)
+
+        
+    def OnSplitsChange(self, event):
+        new_rsets = None
+        buttons = [self.boxL, self.boxT]
+        part = ["learn", "test"]
+        if event.GetId() == self.boxL.GetId():
+            which = 0
+        else:
+            which = 1
+            
+        if buttons[which].GetValue():
+            if buttons[1-which].GetValue():
+                buttons[1-which].SetValue(False)
+            new_rsets = {"rset_id": part[which]}
+
+        else:
+            if buttons[1-which].GetValue():
+                new_rsets = {"rset_id": part[1-which]}
+            else:
+                new_rsets =None
+        # if self.boxL is not None and self.boxT is not None:
+        #     if self.boxL.GetValue() and not self.boxT.GetValue():
+
+        #     elif not self.boxL.GetValue() and self.boxT.GetValue():
+        #         new_rsets = {"rset_id": "test"}
+        if self.rsets != new_rsets:
+            self.rsets = new_rsets
+            self.refresh()
+
         
     def additionalElements(self):
         return []
@@ -363,7 +420,8 @@ class GView(object):
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
-
+        self.autoShowSplitsBoxes()
+        
     def getQueries(self):
         ### the actual queries, not copies, to test, etc. not for modifications
         return self.queries
@@ -417,6 +475,7 @@ class GView(object):
             self.updateQuery(side)
 
     def refresh(self):
+        self.autoShowSplitsBoxes()
         red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
         red.setRestrictedSupp(self.parent.dw.getData())
         self.suppABCD = red.supports().getVectorABCD()
@@ -618,7 +677,7 @@ class GView(object):
                 meth = None
                 
             if meth is not None:
-                self.info_items[det["id"]][1].SetLabel(det["format"] % meth())
+                self.info_items[det["id"]][1].SetLabel(det["format"] % meth(self.getDetailsSplit()))
             else:
                 self.info_items[det["id"]][1].SetLabel("XX")
 

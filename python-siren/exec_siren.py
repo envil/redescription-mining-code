@@ -56,12 +56,24 @@ class SirenApp(wx.App):
             # DEBUG
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
+            ### SPLITS
+            self.frame.dw.getData().extractFolds(1, 12)
+            splits_info = self.frame.dw.getData().getFoldsInfo()
+            stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+            ids = {}
+            checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
+            for lt, bids in checked:
+                ids[lt] = [stored_splits_ids[bid] for bid in bids]
+            self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
+            self.frame.recomputeAll()
+
             tab = "reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
+            self.frame.tabs[tab]["tab"].viewData("TR", 3)
+            self.frame.tabs[tab]["tab"].viewData("MAP", 3)
             self.frame.tabs[tab]["tab"].viewData("PC", 3)
-            # self.frame.tabs[tab]["tab"].viewData("TR", 3)
-            # self.frame.tabs[tab]["tab"].viewData("SKrand_entities", 3)
+            self.frame.tabs[tab]["tab"].viewData("SKrand_entities", 3)
             # mapV = self.frame.getViewX(None, "PC")
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)

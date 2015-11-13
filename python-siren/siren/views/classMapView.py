@@ -84,7 +84,7 @@ class MapView(GView):
                "lcc": ["lat_0", "lon_0","lat_1", "lon_1", "lat_2", "lon_2","width", "height"],
                "eqdc": ["lat_0", "lon_0", "lat_1", "lat_2","width", "height"],
                "aea": ["lat_0", "lon_0", "lat_1", "lat_2","width", "height"]}
-            
+
     def drawMap(self):
         """ Draws the map
         """
@@ -141,7 +141,8 @@ class MapView(GView):
             draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
-            selected = self.parent.dw.getData().selectedRows()
+            selected = self.getUnvizRows()
+            # selected = self.parent.dw.getData().selectedRows()
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
@@ -191,6 +192,7 @@ class MapView(GView):
         t = self.parent.dw.getPreferences()
         add_box = wx.BoxSizer(wx.HORIZONTAL)
         add_boxA = wx.BoxSizer(wx.VERTICAL)
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
         self.buttons = []
@@ -199,15 +201,38 @@ class MapView(GView):
         self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
 
+        # v_box = wx.BoxSizer(wx.VERTICAL)
+        # label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
+        # label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        # v_box.Add(label, 0, border=1, flag=flags)
+        # v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        # add_boxA.Add(v_box, 0, border=1, flag=flags)
+        # add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+        ##############################################
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        v_box = wx.BoxSizer(wx.HORIZONTAL)
+        v_box.Add(self.boxL, 0, border=0, flag=flags)
+        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW(),-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         v_box.Add(label, 0, border=1, flag=flags)
         v_box.Add(self.sld_sel, 0, border=1, flag=flags)
-        add_boxA.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        
+        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+
+        ##############################################
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)
         add_box.AddSpacer((self.getSpacerW(),-1))
@@ -221,6 +246,8 @@ class MapView(GView):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
+        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
     def OnSlide(self, event):
         self.updateMap()
@@ -401,8 +428,11 @@ class MapView(GView):
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
 
 
+    def hoverActive(self):
+        return GView.hoverActive(self) and not self.mc.isActive()
+
     def on_motion(self, event):
-        if not self.mc.isActive():            
+        if self.hoverActive():
             lid = None
             if event.inaxes == self.axe:
                 lid = self.getLidAt(event.xdata, event.ydata)

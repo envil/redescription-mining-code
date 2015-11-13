@@ -75,6 +75,15 @@
 	<options><value>Yes</value><value>No</value></options>
       </parameter>
       <parameter>
+	<name>hover_entities</name>
+	<label>Hover entities</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Show details entities labels on hover.</legend>
+	<default><value>1</value></default>
+	<options><value>Yes</value><value>No</value></options>
+      </parameter>
+      <parameter>
 	<name>details_level</name>
 	<label>Details level</label>
 	<parameter_type>range</parameter_type>
