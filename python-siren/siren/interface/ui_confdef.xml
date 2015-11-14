@@ -72,7 +72,7 @@
 	<value_type>text</value_type>
 	<legend>Show details of different missing values.</legend>
 	<default><value>1</value></default>
-	<options><value>Yes</value><value>No</value></options>
+	<options><value>yes</value><value>no</value></options>
       </parameter>
       <parameter>
 	<name>hover_entities</name>
@@ -81,7 +81,7 @@
 	<value_type>text</value_type>
 	<legend>Show details entities labels on hover.</legend>
 	<default><value>1</value></default>
-	<options><value>Yes</value><value>No</value></options>
+	<options><value>yes</value><value>no</value></options>
       </parameter>
       <parameter>
 	<name>details_level</name>
@@ -229,7 +229,7 @@
 	<value_type>text</value_type>
 	<legend>Use polygons to represent entities on the map</legend>
 	<default><value>1</value></default>
-	<options><value>No</value><value>Yes</value></options>
+	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
   </section>

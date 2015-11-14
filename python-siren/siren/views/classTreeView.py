@@ -151,6 +151,7 @@ class TreeView(GView):
                 self.axe.plot(b, self.height_inter[0]+self.missing_yy, 'o', mec='k', mfc=draw_settings[-1]["color_l"], zorder=10)
 
     def plotTreesBasic(self, trees, draw_settings):
+        ##### DRAW each line
         keys = []
         for side in [0,1]:
             for k in trees[side].getLeaves():
@@ -172,17 +173,20 @@ class TreeView(GView):
             self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_l"])
 
     def plotTreesT(self, trees, draw_settings):
+        ##### DRAW polygons
         keys = []
         lparts = trees[0].getNodeSupps(None)
         order_parts = [r for r in range(len(lparts)) if r != 2][::-1]+[2]
         pmap = dict([(v,i) for (i,v) in enumerate(order_parts)])
-        nbrows = numpy.sum(lparts)
+        ## nbrows = numpy.sum(lparts)
+        nbrows = self.parent.dw.getData().nbRows()
         nbtot = .05*nbrows
         nbparts = len(lparts)
         for side in [0,1]:
             for k in trees[side].getLeaves():
                 keys.append((side, k, trees[side].getNodeXY(k)[1]))
-                    
+
+        ## pdb.set_trace()
         mat = numpy.zeros(nbrows, dtype=int)
         parts = numpy.zeros((nbrows, nbparts), dtype=bool)
         for ki, (side, k, pos) in enumerate(keys):
@@ -328,8 +332,8 @@ class TreeView(GView):
                 self.trees = [red.queries[0].toTree(), red.queries[1].toTree()]
                     
             if self.trees[0] is not None and self.trees[1] is not None:
-                rsupp = red.supports().parts4M()
-                ## rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
+                ## rsupp = red.supports().parts4M()
+                rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
                 for side in [0,1]:
                     self.trees[side].computeSupps(side, self.parent.dw.getData(), rsupp)
                     if update_trees:

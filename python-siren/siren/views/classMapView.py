@@ -293,7 +293,7 @@ class MapView(GView):
     def getMapPoly(self):
         t = self.parent.dw.getPreferences()
         try:
-            mapoly = t["map_poly"]["data"] == "Yes"
+            mapoly = t["map_poly"]["data"] == "yes"
         except:
             mapoly = MapView.MAP_POLY
         return mapoly
@@ -429,6 +429,7 @@ class MapView(GView):
 
 
     def hoverActive(self):
+        print "Active", GView.hoverActive(self), self.mc.isActive()
         return GView.hoverActive(self) and not self.mc.isActive()
 
     def on_motion(self, event):

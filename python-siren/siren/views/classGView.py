@@ -822,7 +822,7 @@ class GView(object):
 
     def getMissDetails(self):
         t = self.parent.dw.getPreferences()
-        if t["miss_details"]["data"] == "Yes":
+        if t["miss_details"]["data"] == "yes":
             return True
         return False
 
