@@ -383,9 +383,6 @@ class TreeView(GView):
                             {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify RHS"),
                              "function": self.OnSimplifyRHS}])
 
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
-
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
         v_box = wx.BoxSizer(wx.HORIZONTAL)
         v_box.Add(self.boxL, 0, border=0, flag=flags)
@@ -404,34 +401,29 @@ class TreeView(GView):
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
-        add_box.Add(add_boxA, 0, border=3, flag=flags)
-        add_box.AddSpacer((self.getSpacerW(),-1))
+        ##############################################
+
+        add_box.Add(add_boxA, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        add_boxB = wx.BoxSizer(wx.VERTICAL)
         self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        add_box.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+
+        hh_box = wx.BoxSizer(wx.HORIZONTAL)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        add_boxB.Add(hh_box, 0, border=1, flag=flags)
+
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW(),-1))
+
         #return [add_boxbis, add_box]
-        return [add_box]
-
-        t = self.parent.dw.getPreferences()
-        add_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL | wx.EXPAND
-
-        add_box.Add(self.MaptoolbarMap, 0, border=3, flag=flags)
-        add_box.AddSpacer((10,-1))
-
-        for bi, butt in enumerate(self.buttons):
-            if bi > 0:
-                add_box.AddSpacer((20,-1))
-            butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            add_box.Add(butt["element"], 0, border=3, flag=flags)
-        add_box.AddSpacer((10,-1))
-
         return [add_box]
 
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
 
     def sendOtherPick(self, gid_parts):

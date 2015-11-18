@@ -201,8 +201,6 @@ class MapView(GView):
         self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
 
         # v_box = wx.BoxSizer(wx.VERTICAL)
         # label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
@@ -219,7 +217,7 @@ class MapView(GView):
         v_box.Add(self.boxT, 0, border=0, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerW(),-1))
-
+ 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
@@ -227,16 +225,26 @@ class MapView(GView):
         v_box.Add(self.sld_sel, 0, border=1, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
-        
-        
+                
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
         ##############################################
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        add_boxB = wx.BoxSizer(wx.VERTICAL)
+        add_boxB.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+
+        hh_box = wx.BoxSizer(wx.HORIZONTAL)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        add_boxB.Add(hh_box, 0, border=1, flag=flags)
+
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
         add_box.AddSpacer((self.getSpacerW(),-1))
-        add_box.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+
         #return [add_boxbis, add_box]
         return [add_box]
 
@@ -246,8 +254,6 @@ class MapView(GView):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
-        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
     def OnSlide(self, event):
         self.updateMap()

@@ -53,10 +53,15 @@ class EProjView(GView):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
+        self.inlaid = self.parent.getVizInlaid()
         self.initProject(more)
-        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-        self.panel = wx.Panel(self.mapFrame, -1)
-        self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
+
+        if self.isInlaid():
+            self.mapFrame = self.parent.tabs["viz"]["tab"]
+        else:        
+            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+            self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
+        self.panel = wx.Panel(self.mapFrame, -1)    
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -141,9 +146,7 @@ class EProjView(GView):
                              "function": self.OnReproject})
         self.repbut = self.buttons[-1]["element"]
         self.sld_sel = wx.Slider(self.panel, -1, 50, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
-
+        
         add_boxA = wx.BoxSizer(wx.VERTICAL)
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -160,6 +163,14 @@ class EProjView(GView):
         v_box.Add(label, 0, border=1, flag=flags)
         v_box.Add(self.sld_sel, 0, border=1, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
+
+        for butt in self.buttons[1:]:
+            add_boxB.AddSpacer((self.getSpacerW(),-1))
+            v_box = wx.BoxSizer(wx.HORIZONTAL)
+            butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            v_box.Add(butt["element"], 0, border=0, flag=flags)
+            add_boxB.Add(v_box, 0, border=1, flag=flags)
+
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
         
         # add_boxA = wx.BoxSizer(wx.VERTICAL)
@@ -179,9 +190,14 @@ class EProjView(GView):
         add_box.AddSpacer((self.getSpacerW(),-1))
 
         add_boxA = wx.BoxSizer(wx.VERTICAL)
-        for but in self.buttons:
-            but["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            add_boxA.Add(but["element"], 0, border=1, flag=flags)
+        self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        add_boxA.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+
+        hh_box = wx.BoxSizer(wx.HORIZONTAL)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        add_boxA.Add(hh_box, 0, border=1, flag=flags)
+
         add_box.Add(add_boxA, 0, border=1, flag=flags)
         setts_boxes.append(add_box)
         #return [add_boxbis, add_box]
@@ -192,8 +208,6 @@ class EProjView(GView):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
 
     def OnSlide(self, event):
         self.updateMap()

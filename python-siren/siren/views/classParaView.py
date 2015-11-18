@@ -409,7 +409,7 @@ class ParaView(GView):
         self.ri = None
 
     def on_motion_all(self, event):
-        if self.hoverActive() and event.inaxes == self.axe and self.ri is not None:
+        if event.inaxes == self.axe and self.ri is not None:
             self.drs[self.ri].do_motion(event)
         else:
             self.on_motion(event)
@@ -548,8 +548,6 @@ class ParaView(GView):
         
         self.sld = wx.Slider(self.panel, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
         
         add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
         v_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -577,20 +575,31 @@ class ParaView(GView):
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
-        add_box.Add(add_boxA, 0, border=3, flag=flags)
+        ##############################################
+
+        add_box.Add(add_boxA, 0, border=1, flag=flags)
+        add_box.AddSpacer((self.getSpacerW()/2.,-1))
+        
+        add_boxB = wx.BoxSizer(wx.VERTICAL)
+        add_boxB.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+
+        hh_box = wx.BoxSizer(wx.HORIZONTAL)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        add_boxB.Add(hh_box, 0, border=1, flag=flags)
+
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
         add_box.AddSpacer((self.getSpacerW(),-1))
-        add_box.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
+
         #return [add_boxbis, add_box]
         return [add_box]
-
 
     def additionalBinds(self):
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+
 
     def OnSlide(self, event):
         self.updateMap()

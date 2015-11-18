@@ -35,7 +35,7 @@ class Siren():
     titleHelp = common_variables["PROJECT_NAME"]+' :: help'
     helpURL = findFile('index.html', ['../../help', root_dir+'/help', './help'])
     helpInternetURL = common_variables["PROJECT_URL"]+'help'
- 
+    
     # For About dialog
     name = common_variables["PROJECT_NAME"]    
     programURL = common_variables["PROJECT_URL"]
@@ -51,8 +51,10 @@ class Siren():
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
+    viz_max_r, viz_max_c = (2,2)
          
     def __init__(self):
+        self.curr_pos = {"row": 0, "col": -1, "layer": 0}
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None
@@ -77,7 +79,7 @@ class Siren():
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, size=(tmp[0]*0.66,tmp[1]*0.9))
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-        # self.toolFrame.Bind(wx.EVT_SIZE, self.OnSize)
+        self.toolFrame.Bind(wx.EVT_SIZE, self.OnSize)
         self.toolFrame.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
 
         self.view_ids = {}
@@ -171,8 +173,28 @@ class Siren():
     def getLogger(self):
         return self.logger
 
+    #### HERE INLAID SWITCH
     def getVizInlaid(self):
-        return False #True
+        return False
+        ## return True
+
+    def getVizNextPos(self):
+        self.curr_pos["col"] += 1
+        if self.curr_pos["col"] == self.viz_max_c:
+            self.curr_pos["col"] = 0
+            self.curr_pos["row"] += 1
+            if self.curr_pos["row"] == self.viz_max_r:
+                self.curr_pos["row"] = 0
+                self.curr_pos["layer"] += 1
+        return (self.curr_pos["row"], self.curr_pos["col"])
+
+    def getVizGridSize(self):
+        if self.curr_pos["layer"] > 0:
+            return (self.viz_max_r, self.viz_max_c)
+        elif self.curr_pos["row"] > 0:
+            return (self.curr_pos["row"]+1, self.viz_max_c)
+        else:
+            return (1, self.curr_pos["col"]+1)
 
         
 ######################################################################
@@ -222,7 +244,8 @@ class Siren():
 
             elif self.tabs[tab_id]["type"] == "Viz":
                 self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
-                self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
+                # self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
+                self.tabs[tab_id]["tab"].SetSizer(wx.GridBagSizer(vgap=0, hgap=0))
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
@@ -647,7 +670,11 @@ class Siren():
     def deleteView(self, vK):
         if vK in self.view_ids:
             self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
-            self.view_ids[vK].mapFrame.Destroy()
+            if not self.view_ids[vK].isInlaid():
+                self.view_ids[vK].mapFrame.Destroy()
+            else:
+                panel = self.view_ids[vK].popSizer()
+                panel.Destroy()
             del self.view_ids[vK]
 
     def deleteAllViews(self):
@@ -1191,10 +1218,12 @@ class Siren():
                 dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.colId()).getName(), self.dw.getData().getValue(side, lit.colId(), rid)))
         return dets
 
-    # def OnSize(self, event):
-    #     if self.getVizInlaid() and self.isInitialized():
-    #         print "Relay"
-    #     event.Skip()
+    def OnSize(self, event):
+        if self.getVizInlaid() and self.isInitialized():
+            for (vid, view) in self.view_ids.items():
+                if view.isInlaid():
+                    view._SetSize()
+        event.Skip()
 
     def OnQuit(self, event):
         if self.plant.getWP().isActive():

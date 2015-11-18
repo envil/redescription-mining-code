@@ -46,9 +46,13 @@ class GView(object):
     label_cardO="|E"+SYM.SYM_DELTA+"| ="
     label_cardT="|E| ="
 
-    label_learn = SYM.SYM_LEARN+":"
-    label_test = SYM.SYM_TEST+":"
-    label_ratio = SYM.SYM_RATIO+":"
+    label_learn = SYM.SYM_LEARN #+":"
+    label_test = SYM.SYM_TEST #+":"
+    label_ratio = SYM.SYM_RATIO #+":"
+
+    label_inout = SYM.SYM_INOUT
+    label_outin = SYM.SYM_OUTIN 
+    label_cross = SYM.SYM_CROSS
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
@@ -113,7 +117,6 @@ class GView(object):
         self.boxT = None
         self.rsets = None
         self.vid = vid
-        self.circle = None
         self.buttons = []
         self.act_butt = [1]
         self.highl = {}
@@ -123,11 +126,11 @@ class GView(object):
 
         if self.isInlaid():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
-            self.panel = self.parent.tabs["viz"]["tab"]
+            # self.panel = self.parent.tabs["viz"]["tab"]
         else:        
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
             self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
-            self.panel = wx.Panel(self.mapFrame, -1)
+        self.panel = wx.Panel(self.mapFrame, -1)
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -432,6 +435,10 @@ class GView(object):
             self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        self.boxPop.Bind(wx.EVT_TOGGLEBUTTON, self.OnPop)
+        self.boxKil.Bind(wx.EVT_TOGGLEBUTTON, self.OnKil)
         self.additionalBinds()
         self.autoShowSplitsBoxes()
         
@@ -459,14 +466,17 @@ class GView(object):
     def _onSize(self, event=None):
         self._SetSize()
 
-    def _SetSize( self):
+    def _SetSize(self):
         pixels = tuple(self.mapFrame.GetClientSize() )
         if self.isInlaid():
-            laybox = self.panel.GetSizer()
-            pixels = (pixels[0]/float(laybox.GetCols()), pixels[1]/float(laybox.GetRows()))
+            laybox = self.mapFrame.GetSizer()
+            # sz = (laybox.GetCols(), laybox.GetRows())
+            sz = self.parent.getVizGridSize()
+            pixels = (max(self.fwidth, pixels[0]/float(sz[1])), pixels[1]/float(sz[0]))
+            ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
-            self.panel.SetSize( pixels )
             laybox = self.masterBox
+        self.panel.SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))
         # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
         #                                 float( figsize[1] )/(self.MapfigMap.get_dpi() ))
@@ -474,6 +484,7 @@ class GView(object):
         # #self.fillBox.SetMinSize((figsize[0], figsize[1]))
         curr = self.innerBox1.GetMinSize()
         self.innerBox1.SetMinSize((1*figsize[0], curr[1]))
+        ## print "\tMapcanvasMap:", figsize, "\tinnerBox1:", (1*figsize[0], curr[1])
         self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
         self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
         laybox.Layout()
@@ -482,7 +493,12 @@ class GView(object):
 
         # self.MapfigMap.set_size_inches(1, 1)
 
-        
+    def OnPop(self, event=None):
+        print "Popping"
+
+    def OnKil(self, event=None):
+        self.OnQuit()
+
     def OnQuit(self, event=None, upMenu=True):
         self.parent.deleteView(self.getId())
         self.parent.callOnTab(self.source_list, meth="unregisterView", args={"key": self.getId(), "upMenu": upMenu})
@@ -499,6 +515,8 @@ class GView(object):
         self.suppABCD = red.supports().getVectorABCD()
         self.updateText(red)
         self.updateMap()
+        if self.isInlaid():
+            self._SetSize()
 
     def updateQuery(self, sd=None, query=None):
         if sd is None:
@@ -593,7 +611,7 @@ class GView(object):
     def drawFrame(self):
         # initialize matplotlib stuff
         self.MapfigMap = Figure(None)
-        self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
+        self.MapcanvasMap = FigCanvas(self.panel, -1, self.MapfigMap)
         self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
         self.QIds = [wx.NewId(), wx.NewId()]
         self.MapredMapQ = [wx.TextCtrl(self.panel, self.QIds[0], style=wx.TE_PROCESS_ENTER),
@@ -618,6 +636,15 @@ class GView(object):
 
             if info_item.get("color") is not None:
                 self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item.get("color")])
+
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
+
+        if self.isInlaid():
+            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=(25,25))
+        else:
+            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=(25,25))
 
         adds = self.additionalElements()
         self.drawMap()
@@ -656,12 +683,21 @@ class GView(object):
         self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
 
+        self.panel.SetSizer(self.masterBox)
         if self.isInlaid():
-            self.panel.GetSizer().Add(self.masterBox)
+            pos = self.parent.getVizNextPos()
+            self.mapFrame.GetSizer().Add(self.panel, pos=pos, flag=wx.ALL, border=2)
             # self.panel.GetSizer().Fit(self.panel)
-        else:
-            self.panel.SetSizer(self.masterBox)
+            # self.mapFrame.GetSizer().Add(self.masterBox, pos=pos, flag=wx.ALL, border=2)
+            
         self._SetSize()
+
+    def popSizer(self):
+        if self.isInlaid():
+            # self.panel.GetSizer().Detach(self.masterBox)
+            self.mapFrame.GetSizer().Remove(self.panel)
+            self.mapFrame.GetSizer().Layout()
+        return self.panel
 
             
     def updateMap(self):
