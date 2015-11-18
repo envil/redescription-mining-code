@@ -64,6 +64,7 @@ class Siren():
                     {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
                     {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
                     {"id": "hist", "title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
+                    {"id": "viz", "title":"Visualizations", "short": "V", "type":"Viz", "hide":not self.getVizInlaid(), "style":None},
                     {"id": "log", "title":"Log", "short": "Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}]
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
@@ -76,6 +77,7 @@ class Siren():
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, size=(tmp[0]*0.66,tmp[1]*0.9))
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+        # self.toolFrame.Bind(wx.EVT_SIZE, self.OnSize)
         self.toolFrame.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
 
         self.view_ids = {}
@@ -168,6 +170,10 @@ class Siren():
             return self.dw.getPreferences()
     def getLogger(self):
         return self.logger
+
+    def getVizInlaid(self):
+        return False #True
+
         
 ######################################################################
 ###########     TOOL PANEL
@@ -213,6 +219,14 @@ class Siren():
                 boxS = wx.BoxSizer(wx.VERTICAL)
                 boxS.Add(self.tabs[tab_id]["text"], 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
                 self.tabs[tab_id]["tab"].SetSizer(boxS)
+
+            elif self.tabs[tab_id]["type"] == "Viz":
+                self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
+                self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
+                if self.tabs[tab_id]["hide"]:
+                    self.tabs[tab_id]["tab"].Hide()
+                self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
+
 
         self.toolFrame.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
         self.toolFrame.Show()
@@ -442,7 +456,7 @@ class Siren():
 
         menuViews.AppendMenu(wx.NewId(), "&Tabs",self.makeTabsMenu(frame))
 
-        for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items()], key=lambda x: x[1]):
+        for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items() if not view.isInlaid()], key=lambda x: x[1]):
             ID_VIEW = wx.NewId()
             self.opened_views[ID_VIEW] = vid 
             m_view = menuViews.Append(ID_VIEW, "%s" % desc, "Bring view %s on top." % desc)
@@ -759,7 +773,8 @@ class Siren():
     def OnCloseViews(self, event):
         view_keys = self.view_ids.keys()
         for key in view_keys:
-            self.view_ids[key].OnQuit()
+            if self.view_ids[key].isInlaid():
+                self.view_ids[key].OnQuit()
         self.toTop()
             
     def OnSave(self, event):
@@ -1175,6 +1190,11 @@ class Siren():
             for lit in red.queries[side].listLiterals():
                 dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.colId()).getName(), self.dw.getData().getValue(side, lit.colId(), rid)))
         return dets
+
+    # def OnSize(self, event):
+    #     if self.getVizInlaid() and self.isInitialized():
+    #         print "Relay"
+    #     event.Skip()
 
     def OnQuit(self, event):
         if self.plant.getWP().isActive():

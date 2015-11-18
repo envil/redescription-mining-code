@@ -119,9 +119,15 @@ class GView(object):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-        self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-        self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
-        self.panel = wx.Panel(self.mapFrame, -1)
+        self.inlaid = self.parent.getVizInlaid()
+
+        if self.isInlaid():
+            self.mapFrame = self.parent.tabs["viz"]["tab"]
+            self.panel = self.parent.tabs["viz"]["tab"]
+        else:        
+            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+            self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
+            self.panel = wx.Panel(self.mapFrame, -1)
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -137,6 +143,8 @@ class GView(object):
         self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
         self._SetSize()
 
+    def isInlaid(self):
+        return self.inlaid
 
     def getActionsDetails(self):
         details = []
@@ -247,7 +255,8 @@ class GView(object):
         return "%s %s" % (self.getRedId(), self.title_str)
 
     def updateTitle(self):
-        self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+        if not self.isInlaid():
+            self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
 
     def getId(self):
         return (self.TID, self.vid)
@@ -271,6 +280,9 @@ class GView(object):
         return self.parent.dw.getData().getUnvizRows(self.getDetailsSplit())
 
     def makeMenu(self, frame=None):
+        if self.isInlaid():
+            return
+        
         if frame is None:
             frame = self.mapFrame
         self.menu_map_act = {}
@@ -415,8 +427,9 @@ class GView(object):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
     def binds(self):
-        self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-        self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
+        if not self.isInlaid():
+            self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
+            self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.additionalBinds()
@@ -448,7 +461,12 @@ class GView(object):
 
     def _SetSize( self):
         pixels = tuple(self.mapFrame.GetClientSize() )
-        self.panel.SetSize( pixels )
+        if self.isInlaid():
+            laybox = self.panel.GetSizer()
+            pixels = (pixels[0]/float(laybox.GetCols()), pixels[1]/float(laybox.GetRows()))
+        else:
+            self.panel.SetSize( pixels )
+            laybox = self.masterBox
         figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))
         # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
         #                                 float( figsize[1] )/(self.MapfigMap.get_dpi() ))
@@ -458,7 +476,7 @@ class GView(object):
         self.innerBox1.SetMinSize((1*figsize[0], curr[1]))
         self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
         self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
-        self.masterBox.Layout()
+        laybox.Layout()
         self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
                                         float( figsize[1] )/(self.MapfigMap.get_dpi() ))
 
@@ -637,7 +655,12 @@ class GView(object):
 
         self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
-        self.panel.SetSizer(self.masterBox)
+
+        if self.isInlaid():
+            self.panel.GetSizer().Add(self.masterBox)
+            # self.panel.GetSizer().Fit(self.panel)
+        else:
+            self.panel.SetSizer(self.masterBox)
         self._SetSize()
 
             

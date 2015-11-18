@@ -429,7 +429,6 @@ class MapView(GView):
 
 
     def hoverActive(self):
-        print "Active", GView.hoverActive(self), self.mc.isActive()
         return GView.hoverActive(self) and not self.mc.isActive()
 
     def on_motion(self, event):
