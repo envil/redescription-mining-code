@@ -77,7 +77,11 @@ def get_tree(decision_tree, candidates):
 
             nvar = decision_tree.feature[node_id]
             if candidates is not None:
-                nvar = candidates[nvar]
+                try:
+                    nvar = candidates[nvar]
+                except IndexError:
+                    pdb.set_trace()
+                    print nvar, candidates
             lcid, rcid = (decision_tree.children_left[node_id], decision_tree.children_right[node_id])
             dl = decision_tree.value[lcid][0]
             dr = decision_tree.value[rcid][0]
@@ -257,12 +261,12 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     vrs = get_variables(split_tree["nodes"], split_tree["root"])
                     
                     if cols_info is None:
-                        candidates = [vvi for vvi in candidates if vvi not in vrs]
+                        ncandidates = [vvi for vvi in candidates if vvi not in vrs]
                     else:
                         ttm = [cols_info[current_side][c][1] for c in vrs]
-                        candidates = [vvi for vvi in candidates if cols_info[current_side][vvi][1] not in ttm]
+                        ncandidates = [vvi for vvi in candidates if cols_info[current_side][vvi][1] not in ttm]
 
-                    split_tree["candidates"] = list(candidates)
+                    split_tree["candidates"] = list(ncandidates)
                     # print "CANDIDATES", current_side, vrs
                     split_tree["id"] = PID
                     trees_pile[current_side][-1].append(PID)

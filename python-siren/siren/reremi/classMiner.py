@@ -179,6 +179,8 @@ class Miner(object):
         self.data = data
 
         self.max_processes = params["nb_processes"]["data"]
+
+        #### SETTING UP DATA
         row_ids = None
         if "area" in cust_params:
             inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
@@ -191,13 +193,20 @@ class Miner(object):
                 weights[old] = inw
             cust_params["weights"] = weights
 
+        keep_rows = None
+        if self.data.hasSelectedRows() or self.data.hasLT():
+            keep_rows = self.data.getVizRows({"rset_id": "learn"})
+            if "weights" not in cust_params:
+                row_ids = dict([(v,[k]) for (k,v) in enumerate(keep_rows)])
+            
         if "weights" in cust_params:
             row_ids = {}
             off = 0
             for (old, mul) in cust_params["weights"].items():
-                row_ids[old] = [off+r for r in range(mul)]
-                off += mul
-                
+                if keep_rows is None or old in keep_rows:
+                    row_ids[old] = [off+r for r in range(mul)]
+                    off += mul
+
         if row_ids is not None:
             self.org_data = self.data
             self.data = self.data.subset(row_ids)

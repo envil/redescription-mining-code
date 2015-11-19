@@ -521,7 +521,7 @@ class RedTable(GridTable):
                          ('id', 'self.getRedIdStr(x)', None, 60),
                          ('query LHS', 'self.data[x].getQueryLU', None, 300),
                          ('query RHS', 'self.data[x].getQueryRU', None, 300),
-                         (SYM.SYM_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "learn", "rset_id_den": "test"}, 60),
+                         (SYM.SYM_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "test", "rset_id_den": "learn"}, 60),
                          (SYM.SYM_LEARN+'J', 'self.data[x].getRoundAcc', {"rset_id": "learn"}, 60),
                          (SYM.SYM_TEST+'J', 'self.data[x].getRoundAcc', {"rset_id": "test"}, 60),
                          (SYM.SYM_LEARN+'pV', 'self.data[x].getRoundPVal', {"rset_id": "learn"}, 60),

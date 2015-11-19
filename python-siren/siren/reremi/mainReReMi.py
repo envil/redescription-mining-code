@@ -216,6 +216,19 @@ def loadPackage(filename, pm):
 def run(args):
     
     params, data, logger, filenames = loadAll(args)
+
+    ############################
+    #### SPLITS
+    # data.extractFolds(1, 12)
+    # splits_info = data.getFoldsInfo()
+    # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+    # ids = {}
+    # checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
+    # for lt, bids in checked:
+    #     ids[lt] = [stored_splits_ids[bid] for bid in bids]
+    # data.assignLT(ids["learn"], ids["test"])
+    ############################
+
     miner = instMiner(data, params, logger)
     try:
         miner.full_run()
