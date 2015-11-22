@@ -150,12 +150,12 @@ class EProjView(GView):
         add_boxA = wx.BoxSizer(wx.VERTICAL)
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
 
-        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
         v_box = wx.BoxSizer(wx.HORIZONTAL)
         v_box.Add(self.boxL, 0, border=0, flag=flags)
         v_box.Add(self.boxT, 0, border=0, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerW(),-1))
+        add_boxB.AddSpacer((self.getSpacerWn(),-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
@@ -165,13 +165,13 @@ class EProjView(GView):
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
         for butt in self.buttons[1:]:
-            add_boxB.AddSpacer((self.getSpacerW(),-1))
+            add_boxB.AddSpacer((self.getSpacerWn(),-1))
             v_box = wx.BoxSizer(wx.HORIZONTAL)
             butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             v_box.Add(butt["element"], 0, border=0, flag=flags)
             add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
         
         # add_boxA = wx.BoxSizer(wx.VERTICAL)
         # v_box = wx.BoxSizer(wx.VERTICAL)
@@ -187,7 +187,7 @@ class EProjView(GView):
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerW(),-1))
+        add_box.AddSpacer((self.getSpacerWn(),-1))
 
         add_boxA = wx.BoxSizer(wx.VERTICAL)
         self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))

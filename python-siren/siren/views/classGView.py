@@ -84,7 +84,7 @@ class GView(object):
     max_emphlbl = 5
 
     nb_cols = 4
-    spacer_w = 20
+    spacer_w = 15
     spacer_h = 10
     nbadd_boxes = 0 
     butt_w = 75
@@ -93,6 +93,8 @@ class GView(object):
 
     def getSpacerW(self):
         return self.spacer_w
+    def getSpacerWn(self):
+        return self.spacer_w/4.
     def getSpacerH(self):
         return self.spacer_h
     def getInfoH(self):
@@ -494,7 +496,24 @@ class GView(object):
         # self.MapfigMap.set_size_inches(1, 1)
 
     def OnPop(self, event=None):
-        print "Popping"
+        panel = self.popSizer()
+        if self.isInlaid():
+            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+            self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
+            self.inlaid = False
+            self.boxPop.SetLabel(self.label_outin)
+        else:
+            self.mapFrame.Destroy()
+            self.mapFrame = self.parent.tabs["viz"]["tab"]
+            self.inlaid = True
+            self.boxPop.SetLabel(self.label_inout)
+
+            
+        self.panel.Reparent(self.mapFrame)
+        self.binds()
+        self.mapFrame.Show()
+        self._SetSize()
+            
 
     def OnKil(self, event=None):
         self.OnQuit()
@@ -686,7 +705,7 @@ class GView(object):
         self.panel.SetSizer(self.masterBox)
         if self.isInlaid():
             pos = self.parent.getVizNextPos()
-            self.mapFrame.GetSizer().Add(self.panel, pos=pos, flag=wx.ALL, border=2)
+            self.mapFrame.GetSizer().Add(self.panel, pos=pos, flag=wx.ALL, border=0)
             # self.panel.GetSizer().Fit(self.panel)
             # self.mapFrame.GetSizer().Add(self.masterBox, pos=pos, flag=wx.ALL, border=2)
             

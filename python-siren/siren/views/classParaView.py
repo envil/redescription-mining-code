@@ -549,12 +549,12 @@ class ParaView(GView):
         self.sld = wx.Slider(self.panel, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
         
-        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
         v_box = wx.BoxSizer(wx.HORIZONTAL)
         v_box.Add(self.boxL, 0, border=0, flag=flags)
         v_box.Add(self.boxT, 0, border=0, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerW(),-1))
+        add_boxB.AddSpacer((self.getSpacerWn(),-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
@@ -562,7 +562,7 @@ class ParaView(GView):
         v_box.Add(label, 0, border=1, flag=flags)
         v_box.Add(self.sld_sel, 0, border=1, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerW(),-1))
+        add_boxB.AddSpacer((self.getSpacerWn(),-1))
         
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY, "-        details       +")
@@ -570,7 +570,7 @@ class ParaView(GView):
         v_box.Add(label, 0, border=1, flag=wx.ALIGN_CENTER | wx.ALL )
         v_box.Add(self.sld, 0, border=1, flag=flags)
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerW()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
         
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
@@ -578,7 +578,7 @@ class ParaView(GView):
         ##############################################
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerW()/2.,-1))
+        add_box.AddSpacer((self.getSpacerWn()/2.,-1))
         
         add_boxB = wx.BoxSizer(wx.VERTICAL)
         add_boxB.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
@@ -589,7 +589,7 @@ class ParaView(GView):
         add_boxB.Add(hh_box, 0, border=1, flag=flags)
 
         add_box.Add(add_boxB, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerW(),-1))
+        add_box.AddSpacer((self.getSpacerWn(),-1))
 
         #return [add_boxbis, add_box]
         return [add_box]
