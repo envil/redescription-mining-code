@@ -19,6 +19,7 @@ from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
 from miscDialogs import ImportDataCSVDialog, FindDialog
 from ..views.factView import ViewFactory
+from ..views.classFiller import Filler
 from ..work.toolWP import WorkPlant
 from ..common_details import common_variables
 
@@ -51,10 +52,12 @@ class Siren():
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
-    viz_max_r, viz_max_c = (2,2)
+    viz_grid = [2,2]
+    color_add = (16, 82, 0)
+    color_drop = (190, 10, 10)
+
          
     def __init__(self):
-        self.curr_pos = {"row": 0, "col": -1, "layer": 0}
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None
@@ -83,6 +86,7 @@ class Siren():
         self.toolFrame.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
 
         self.view_ids = {}
+        self.vfiller_ids = {}
         self.selectedViewX = -1
         self.buffer_copy = None
         
@@ -173,29 +177,6 @@ class Siren():
     def getLogger(self):
         return self.logger
 
-    #### HERE INLAID SWITCH
-    def getVizInlaid(self):
-        return False
-        ## return True
-
-    def getVizNextPos(self):
-        self.curr_pos["col"] += 1
-        if self.curr_pos["col"] == self.viz_max_c:
-            self.curr_pos["col"] = 0
-            self.curr_pos["row"] += 1
-            if self.curr_pos["row"] == self.viz_max_r:
-                self.curr_pos["row"] = 0
-                self.curr_pos["layer"] += 1
-        return (self.curr_pos["row"], self.curr_pos["col"])
-
-    def getVizGridSize(self):
-        if self.curr_pos["layer"] > 0:
-            return (self.viz_max_r, self.viz_max_c)
-        elif self.curr_pos["row"] > 0:
-            return (self.curr_pos["row"]+1, self.viz_max_c)
-        else:
-            return (1, self.curr_pos["col"]+1)
-
         
 ######################################################################
 ###########     TOOL PANEL
@@ -250,9 +231,10 @@ class Siren():
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
 
-
         self.toolFrame.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
         self.toolFrame.Show()
+        if self.getVizInlaid():
+            self.initVizTab()
 
     def makeStatus(self, frame):
         ### status bar
@@ -265,6 +247,224 @@ class Siren():
         self.progress_bar.SetPosition((rect.x+2, rect.y+2))
         self.progress_bar.SetSize((rect.width-2, rect.height-2))
         self.progress_bar.Hide()
+
+######################################################################
+###########     INLAID VIZ TAB
+######################################################################
+
+    #### HERE INLAID SWITCH
+    def getVizInlaid(self):
+        return False
+        # return True
+
+    def getVizBbsiz(self):
+        return 8
+    def getVizBb(self):
+        return self.getVizBbsiz()+2
+        
+    def initVizTab(self):
+        self.vfiller_ids = {}
+        self.vused_ids = {}
+        self.fillInViz()
+        self.addVizExts()
+        self.setVizButtAble()
+        self.updateVizcellSelected()
+
+    def getVizcellSelected(self):
+        return self.selected_cell
+    def setVizcellSelected(self, pos):
+        self.selected_cell = pos
+    def updateVizcellSelected(self):
+        if len(self.vfiller_ids) > 0:
+            self.selected_cell = sorted(self.vfiller_ids.keys(), key=lambda x: x[0]+x[1])[0]
+            uid = self.selected_cell
+        else:
+            self.selected_cell = sorted(self.vused_ids.keys(), key=lambda x: self.vused_ids[x][1])[0]
+            uid = None
+        self.setActiveViz(uid)
+
+    def getVizPlotPos(self, vid):
+        sel = self.getVizcellSelected()
+        if sel in self.vfiller_ids:
+            pv = self.vfiller_ids.pop(sel)
+            panel = pv.popSizer()
+            panel.Destroy()
+        else:
+            ### Free another view            
+            self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
+
+        #### mark cell used    
+        self.vused_ids[sel] = (vid, len(self.vused_ids))            
+        self.updateVizcellSelected()
+        return sel
+
+    def getVizGridSize(self):
+        return self.viz_grid
+    def getVizGridNbDim(self, dim=None):
+        if dim is None:
+            return self.viz_grid
+        else:
+            return self.viz_grid[dim]
+    
+    def decrementVizGridDim(self, dim, id):
+        self.viz_grid[dim] -= 1
+        self.dropGridDimViz(dim, id)
+        self.resizeViz()
+        self.setVizButtAble()
+        self.updateVizcellSelected()
+
+    def incrementVizGridDim(self, dim):
+        self.viz_grid[dim] += 1
+        self.addGridDimViz(dim)
+        self.resizeViz()
+        self.setVizButtAble()
+        self.updateVizcellSelected()
+        
+    def fillInViz(self):
+        for i in range(1, self.getVizGridNbDim(0)+1):
+            for j in range(1, self.getVizGridNbDim(1)+1):
+                self.vfiller_ids[(i,j)] = Filler(self, (i,j))
+
+    def addGridDimViz(self, dim):
+        for bi, but in self.buttons.items():
+            if but["action"][1] == -1:
+                self.tabs["viz"]["tab"].GetSizer().Detach(but["button"])
+                ddim = but["action"][0]
+                ppos, pspan = ([1, 1], [1, 1])
+                ppos[ddim] += self.getVizGridNbDim(ddim)
+                pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
+                self.tabs["viz"]["tab"].GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+
+        sizeb = (self.getVizBbsiz(), 1)
+        bid = wx.NewId()
+        but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[dim], sizeb[1-dim]))
+        but.SetBackgroundColour(self.color_drop)
+        posb = [0,0]
+        posb[dim] = self.getVizGridNbDim(dim)
+        self.tabs["viz"]["tab"].GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+        self.buttons[bid] = {"action": (dim, self.getVizGridNbDim(dim)), "button": but}
+        but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
+        ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
+
+        ppos = [self.getVizGridNbDim(dim), self.getVizGridNbDim(dim)]
+        for i in range(1, self.getVizGridNbDim(1-dim)+1):
+            ppos[1-dim] = i
+            self.vfiller_ids[tuple(ppos)] = Filler(self, tuple(ppos))
+
+    def dropGridDimViz(self, dim, cid):
+        ssel = [0,0]
+        ssel[dim] = cid
+        for i in range(1, self.getVizGridNbDim(1-dim)+1):
+            ssel[1-dim] = i
+            sel = tuple(ssel)
+            if sel in self.vfiller_ids:
+                pv = self.vfiller_ids.pop(sel)
+                panel = pv.popSizer()
+                panel.Destroy()
+            else:
+                # ## Free another view
+                self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
+
+        for ccid in range(cid+1, self.getVizGridNbDim(dim)+2):
+            ssel = [0,0]
+            ssel[dim] = ccid
+            nnel = [0,0]
+            nnel[dim] = ccid-1
+
+            for i in range(1, self.getVizGridNbDim(1-dim)+1):
+                ssel[1-dim] = i
+                nnel[1-dim] = i
+                sel = tuple(ssel)
+                nel = tuple(nnel)
+                if sel in self.vfiller_ids:
+                    self.vfiller_ids[sel].resetGPos(nel)
+                    self.vfiller_ids[nel] = self.vfiller_ids.pop(sel)
+                else:
+                    self.view_ids[self.vused_ids[sel][0]].resetGPos(nel)
+                    self.vused_ids[nel] = self.vused_ids.pop(sel)
+                    
+        ### adjust buttons
+        bis = self.buttons.keys()
+        for bi in bis:
+            but = self.buttons[bi]
+            if but["action"][1] == -1:
+                self.tabs["viz"]["tab"].GetSizer().Detach(but["button"])
+                ddim = but["action"][0]
+                ppos, pspan = ([1, 1], [1, 1])
+                ppos[ddim] += self.getVizGridNbDim(ddim)
+                pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
+                self.tabs["viz"]["tab"].GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+            elif but["action"][0] == dim and but["action"][1] == self.getVizGridNbDim(dim)+1:
+                bb = self.buttons.pop(bi)
+                self.tabs["viz"]["tab"].GetSizer().Detach(bb["button"])
+                bb["button"].Destroy()
+
+    def addVizExts(self):
+        self.buttons = {}
+        sizeb = (self.getVizBbsiz(), 1)
+        for which in [0, 1]:
+            posb = [0,0]
+            for i in range(1, self.getVizGridNbDim(which)+1):
+                bid = wx.NewId()
+                but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[which], sizeb[1-which]))
+                but.SetBackgroundColour(self.color_drop)
+                posb[which] = i
+                self.tabs["viz"]["tab"].GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+                self.buttons[bid] = {"action": (which, i), "button": but}
+                but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
+                # but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
+
+            bid = wx.NewId()
+            but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[1-which], sizeb[which]))
+            but.SetBackgroundColour(self.color_add)
+            ppos, pspan = ([1, 1], [1, 1])
+            ppos[which] += self.getVizGridNbDim(which)
+            pspan[1-which] = self.getVizGridNbDim(1-which)
+            self.tabs["viz"]["tab"].GetSizer().Add(but, pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+            self.buttons[bid] = {"action": (which, -1), "button": but}
+            but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
+            ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
+
+    def setVizButtAble(self):
+        for bi, bb in self.buttons.items():
+            if bb["action"][1] == 1 and self.getVizGridNbDim(bb["action"][0]) == 1:
+                bb["button"].Disable()
+            else:
+                bb["button"].Enable()
+
+    # def OnPrintName(self, event=None):
+    #     if event.GetId() in self.buttons:
+    #         print "button", self.buttons[event.GetId()]["action"]
+    #     else:
+    #         print "button", event.GetId(), "not there"
+    #     event.Skip()
+
+    def OnChangeGridViz(self, event=None):
+        if self.buttons[event.GetId()]["action"][1] == -1:
+            self.incrementVizGridDim(self.buttons[event.GetId()]["action"][0])
+        else:
+            self.decrementVizGridDim(self.buttons[event.GetId()]["action"][0], self.buttons[event.GetId()]["action"][1])
+        
+    def setActiveViz(self, fid=None):
+        for k,v in self.vfiller_ids.items():
+            if k == fid:
+                self.setVizcellSelected(fid)
+                v.setActive()
+            else:
+                v.setUnactive()
+
+    def resizeViz(self):
+        if self.getVizInlaid() and self.isInitialized():
+            for (vid, view) in self.view_ids.items():
+                if view.isInlaid():
+                    view._SetSize()
+            for (vid, view) in self.vfiller_ids.items():
+                view._SetSize()
+
+    def setVizcellFreeded(self, pos):
+        self.vused_ids.pop(pos)
+        self.vfiller_ids[pos] = Filler(self, pos)
+        self.updateVizcellSelected()
 
 
 ######################################################################
@@ -667,14 +867,17 @@ class Siren():
         self.view_ids[self.selectedViewX].toTop()
         return self.view_ids[self.selectedViewX]
 
-    def deleteView(self, vK):
+    def deleteView(self, vK, freeing=True):
         if vK in self.view_ids:
             self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
             if not self.view_ids[vK].isInlaid():
                 self.view_ids[vK].mapFrame.Destroy()
             else:
+                pos = self.view_ids[vK].getGPos()
                 panel = self.view_ids[vK].popSizer()
                 panel.Destroy()
+                if freeing:
+                    self.setVizcellFreeded(pos)
             del self.view_ids[vK]
 
     def deleteAllViews(self):
@@ -1219,12 +1422,9 @@ class Siren():
         return dets
 
     def OnSize(self, event):
-        if self.getVizInlaid() and self.isInitialized():
-            for (vid, view) in self.view_ids.items():
-                if view.isInlaid():
-                    view._SetSize()
+        self.resizeViz()
         event.Skip()
-
+                
     def OnQuit(self, event):
         if self.plant.getWP().isActive():
             self.plant.getWP().closeDown(self)

@@ -60,7 +60,7 @@ class EProjView(GView):
             self.mapFrame = self.parent.tabs["viz"]["tab"]
         else:        
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.fwidth, 2*self.info_band_height))
+            self.mapFrame.SetMinSize((self.fwidth, self.fheight))
         self.panel = wx.Panel(self.mapFrame, -1)    
         self.drawFrame()
         self.binds()
