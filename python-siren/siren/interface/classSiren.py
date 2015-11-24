@@ -1,4 +1,4 @@
-import os, os.path
+import os, os.path, random
 import wx
 import time, math
 import sys
@@ -24,6 +24,9 @@ from ..work.toolWP import WorkPlant
 from ..common_details import common_variables
 
 import pdb
+
+def getRandomColor():
+    return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
  
 class Siren():
     """ The main frame of the application
@@ -56,6 +59,7 @@ class Siren():
     intab = True
     color_add = (16, 82, 0)
     color_drop = (190, 10, 10)
+    color_vizb = (20, 20, 20)
 
          
     def __init__(self):
@@ -75,6 +79,7 @@ class Siren():
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
         self.tabs_keys = [p["id"] for p in tmp_tabs]
+        self.viz_postab = self.tabs_keys.index("viz")
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         stn = self.tabs_keys[0]
 
@@ -170,7 +175,9 @@ class Siren():
         """
         self.makeStatus(self.toolFrame)
         self.doUpdates()
-	self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
+        self.splitter = wx.SplitterWindow(self.toolFrame)
+        
+	self.tabbed = wx.Notebook(self.splitter, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
 
         #### Draw tabs
         for tab_id in self.tabs_keys:
@@ -203,7 +210,7 @@ class Siren():
                 self.tabs[tab_id]["tab"].SetSizer(boxS)
 
             elif self.tabs[tab_id]["type"] == "Viz":
-                # self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
+                #self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
                 self.tabs[tab_id]["tab"] = wx.ScrolledWindow(self.tabbed, -1, style=wx.HSCROLL|wx.VSCROLL)
                 self.tabs[tab_id]["tab"].SetScrollRate( 5, 5 )        
                 # self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
@@ -213,15 +220,28 @@ class Siren():
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
 
         self.toolFrame.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
+        self.splitter.Initialize(self.tabbed)
+        self.splitter.SetSashGravity(1.)
+        self.splitter.SetMinimumPaneSize(0)
+        self.splitter.Bind(wx.EVT_SPLITTER_UNSPLIT, self.OnSplitchange)
+        # self.splitter.Initialize(self.tabbed)
+        # self.splitter.SplitHorizontally(self.tabbed, self.tabs["viz"]["tab"])
+        self.tabbed.Bind(wx.EVT_SIZE, self.OnSize)
 
     def makeStatus(self, frame):
         ### status bar
         self.statusbar = frame.CreateStatusBar()
-        self.statusbar.SetFieldsCount(3)
-        self.statusbar.SetStatusWidths([300, 150, -1])
+        self.statusbar.SetFieldsCount(4)
+        self.statusbar.SetStatusWidths([25, 300, 150, -1])
+
+        rect = self.statusbar.GetFieldRect(0)
+        self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "", style=wx.ALIGN_CENTER, size=(rect.height,rect.height))
+        self.buttViz.SetBackgroundColour(getRandomColor())
+        self.buttViz.SetPosition((rect.x+2, rect.y+2))
+        self.buttViz.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitchange)
 
         self.progress_bar = wx.Gauge(self.statusbar, -1, style=wx.GA_HORIZONTAL|wx.GA_SMOOTH)
-        rect = self.statusbar.GetFieldRect(1)
+        rect = self.statusbar.GetFieldRect(2)
         self.progress_bar.SetPosition((rect.x+2, rect.y+2))
         self.progress_bar.SetSize((rect.width-2, rect.height-2))
         self.progress_bar.Hide()
@@ -259,8 +279,15 @@ class Siren():
             self.addVizExts()
             self.setVizButtAble()
             self.updateVizcellSelected()
+            if not self.tabs["viz"]["hide"]:
+                self.tabs["viz"]["tab"].Show()
+            if self.viz_postab > len(self.tabs_keys) or self.tabs_keys[self.viz_postab] != "viz":
+                self.tabs_keys.insert(self.viz_postab, "viz")
+
         else:
             self.tabs["viz"]["tab"].Hide()
+            if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
+                self.tabs_keys.pop(self.viz_postab)
 
     def clearVizTab(self):
         for sel in self.vfiller_ids:
@@ -480,7 +507,30 @@ class Siren():
         self.vfiller_ids[pos] = Filler(self, pos)
         self.updateVizcellSelected()
 
+    def vizTabToSplit(self):
+        self.tabbed.RemovePage(self.viz_postab)
+        self.tabs_keys.pop(self.viz_postab)
+        self.tabs["viz"]["tab"].Reparent(self.splitter)
+        self.splitter.SplitHorizontally(self.tabbed, self.tabs["viz"]["tab"])
 
+    def vizSplitToTab(self):
+        if self.splitter.IsSplit():
+            self.splitter.Unsplit(self.tabs["viz"]["tab"])
+        self.tabs["viz"]["tab"].Reparent(self.tabbed)
+        self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])
+        self.tabs["viz"]["tab"].Show()
+        self.tabs_keys.insert(self.viz_postab, "viz")
+        print "Inserting (spl)", self.tabs_keys
+
+    def OnSplitchange(self, event):
+        if self.hasVizIntab():
+            if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
+                self.vizTabToSplit()
+            else:
+                self.vizSplitToTab()
+            self.doUpdates({"menu":True})
+        self.buttViz.SetBackgroundColour(getRandomColor())
+                
 ######################################################################
 ###########     MENUS
 ######################################################################
@@ -995,7 +1045,7 @@ class Siren():
         if "progress" in updates:
             self.updateProgressBar()
         if "status" in updates:
-            self.statusbar.SetStatusText(updates["status"], 0)
+            self.statusbar.SetStatusText(updates["status"], 1)
         if "log" in updates:
             self.appendLog(updates["log"])
 
@@ -1573,7 +1623,7 @@ class Siren():
 
     def startFileActionMsg(self, msg, short_msg=''):
         """Shows a dialog that we're reading a file"""
-        self.statusbar.SetStatusText(short_msg, 0)
+        self.statusbar.SetStatusText(short_msg, 1)
         self.toolFrame.Enable(False)
         self.busyDlg = wx.BusyInfo(msg, self.toolFrame)
         #self.busyDlg = CBusyDialog.showBox(self.toolFrame, msg, short_msg, None)
@@ -1589,7 +1639,7 @@ class Siren():
             # del self.busyDlg # Removes the dialog
             self.busyDlg = None
         self.toolFrame.Enable(True)
-        self.statusbar.SetStatusText(msg, 0)
+        self.statusbar.SetStatusText(msg, 1)
         
     def errorBox(self, message):
         if self.busyDlg is not None:

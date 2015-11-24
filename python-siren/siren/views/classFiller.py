@@ -8,7 +8,7 @@ class Filler(object):
     unactive_color = (225,225,225)
     active_color = (255,249,178)
     active_color = (247,247,200)
-    
+
     def __init__(self, parent, pos):
         self.parent = parent
         self.pos = pos
@@ -33,12 +33,12 @@ class Filler(object):
         self.parent.setActiveViz(self.getGPos())
 
     def _SetSize(self):
-        pixels = tuple(self.mapFrame.GetClientSize() )
+        pixels = tuple(self.mapFrame.GetClientSize())
         laybox = self.mapFrame.GetSizer()
         # sz = (laybox.GetCols(), laybox.GetRows())
         sz = self.parent.getVizGridSize()
         pixels = (max(GView.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                  max(GView.fwidth, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+                  max(GView.fheight, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
         self.boxSel.SetMinSize(pixels)
         self.panel.SetMinSize(pixels)
         laybox.Layout()

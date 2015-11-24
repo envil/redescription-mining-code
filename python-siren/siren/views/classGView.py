@@ -89,7 +89,7 @@ class GView(object):
     nbadd_boxes = 0 
     butt_w = 75
     fwidth = 400
-    fheight = 400
+    fheight = 350
     # info_band_height = 205
     # info_band_height = 192
 
@@ -517,8 +517,8 @@ class GView(object):
             laybox = self.mapFrame.GetSizer()
             # sz = (laybox.GetCols(), laybox.GetRows())
             sz = self.parent.getVizGridSize()
-            pixels = (max(self.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                      max(self.fwidth, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+            pixels = (max(GView.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
+                      max(GView.fheight, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
             laybox = self.mapFrame.GetSizer()
