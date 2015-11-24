@@ -53,10 +53,10 @@ class EProjView(GView):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-        self.inlaid = self.parent.getVizInlaid()
+        self.intab = self.parent.showVizIntab()
         self.initProject(more)
 
-        if self.isInlaid():
+        if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
         else:        
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))

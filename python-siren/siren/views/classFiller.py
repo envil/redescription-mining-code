@@ -1,13 +1,13 @@
-### TODO check which imports are needed 
 import wx
+from classGView import GView
 
 import pdb
 
 
 class Filler(object):
     unactive_color = (225,225,225)
-    active_color = (249,249,249)
-    fwidth = 400
+    active_color = (255,249,178)
+    active_color = (247,247,200)
     
     def __init__(self, parent, pos):
         self.parent = parent
@@ -16,7 +16,7 @@ class Filler(object):
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.binds()
-        self.mapFrame.Show()
+        # self.mapFrame.Show()
 
     def getGPos(self):
         return self.pos
@@ -37,10 +37,8 @@ class Filler(object):
         laybox = self.mapFrame.GetSizer()
         # sz = (laybox.GetCols(), laybox.GetRows())
         sz = self.parent.getVizGridSize()
-        pixels = (max(self.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                  (pixels[1]-2*self.parent.getVizBb())/float(sz[0]))
-        # pixels = ((pixels[0]-self.parent.getVizBb())/float(sz[1]),
-        #           (pixels[1]-self.parent.getVizBb())/float(sz[0]))
+        pixels = (max(GView.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
+                  max(GView.fwidth, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
         self.boxSel.SetMinSize(pixels)
         self.panel.SetMinSize(pixels)
         laybox.Layout()

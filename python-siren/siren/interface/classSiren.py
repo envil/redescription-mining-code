@@ -53,6 +53,7 @@ class Siren():
 
     results_delay = 1000
     viz_grid = [2,2]
+    intab = True
     color_add = (16, 82, 0)
     color_drop = (190, 10, 10)
 
@@ -69,7 +70,7 @@ class Siren():
                     {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
                     {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
                     {"id": "hist", "title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
-                    {"id": "viz", "title":"Visualizations", "short": "V", "type":"Viz", "hide":not self.getVizInlaid(), "style":None},
+                    {"id": "viz", "title":"Visualizations", "short": "V", "type":"Viz", "hide": False, "style":None},
                     {"id": "log", "title":"Log", "short": "Log", "type":"Text", "hide": True, "style": wx.TE_READONLY|wx.TE_MULTILINE}]
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
@@ -80,13 +81,13 @@ class Siren():
         self.logger = Log()
 
         tmp = wx.DisplaySize()
-        self.toolFrame = wx.Frame(None, -1, self.titleTool, size=(tmp[0]*0.66,tmp[1]*0.9))
+        self.toolFrame = wx.Frame(None, -1, self.titleTool, pos = wx.DefaultPosition,
+                                  size=(tmp[0]*0.66,tmp[1]*0.9), style = wx.DEFAULT_FRAME_STYLE)
         self.toolFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
         self.toolFrame.Bind(wx.EVT_SIZE, self.OnSize)
         self.toolFrame.SetIcon(wx.Icon(self.icon_file, wx.BITMAP_TYPE_PNG))
 
         self.view_ids = {}
-        self.vfiller_ids = {}
         self.selectedViewX = -1
         self.buffer_copy = None
         
@@ -95,29 +96,6 @@ class Siren():
         self.create_tool_panel()
         self.changePage(stn)
         
-        # #### COMMENT OUT TO LOAD DBLP ON STARTUP
-        # tmp_num_filename='../data/dblp/coauthor_picked.datnum'
-        # tmp_bool_filename='../data/dblp/conference_picked.datnum'
-        # tmp_coo_filename='../data/dblp/coordinates_rand.names'
-        # tmp_redescriptions_filename='../data/dblp/dblp_picked_real.queries'
-        # tmp_settings_filename='../data/dblp/dblp_picked_real.conf'
-
-        # #### COMMENT OUT TO LOAD RAJAPAJA ON STARTUP
-        # tmp_num_filename='../rajapaja/worldclim_tp.densenum'
-        # tmp_bool_filename='../rajapaja/mammals.datbool'
-        # tmp_coo_filename='../rajapaja/coordinates.names'
-        # tmp_redescriptions_filename='../rajapaja/rajapaja.queries'
-        # tmp_settings_filename='../rajapaja/rajapaja_conf.xml'
-
-        # ### COMMENT OUT TO LOAD US ON STARTUP
-        # tmp_num_filename='../data/us/us_politics_funds_cont.densenum'
-        # tmp_bool_filename='../data/us/us_socio_eco_cont.densenum'
-        # tmp_coo_filename='../data/us/us_coordinates_cont.names'
-        # tmp_redescriptions_filename='../data/us/us.queries'
-        # tmp_settings_filename='../data/us/us.conf'
-
-        # #### COMMENT OUT TO LOAD SOMETHING ON STARTUP
-        # (Almost) all of the above should stay in dw
         self.dw = DataWrapper(self.logger)
 
         ### About dialog
@@ -143,7 +121,6 @@ class Siren():
         #self.dw.importDataFromMulFiles([tmp_bool_filename, tmp_num_filename], None, tmp_coo_filename)
         #self.dw.importRedescriptionsTXTFromFile(tmp_redescriptions_filename)
         #self.dw.importPreferencesFromFile(tmp_settings_filename)
-
  
         ### INITIALISATION OF DATA
         self.resetConstraints()
@@ -154,7 +131,9 @@ class Siren():
         self.dw.isChanged = False
         self.plant.setUpCall([self.doUpdates, self.resetLogger])
         self.resetLogger()
+
         self.initialized = True
+        self.toolFrame.Show()
 
     def isInitialized(self):
         return self.initialized
@@ -224,7 +203,9 @@ class Siren():
                 self.tabs[tab_id]["tab"].SetSizer(boxS)
 
             elif self.tabs[tab_id]["type"] == "Viz":
-                self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
+                # self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
+                self.tabs[tab_id]["tab"] = wx.ScrolledWindow(self.tabbed, -1, style=wx.HSCROLL|wx.VSCROLL)
+                self.tabs[tab_id]["tab"].SetScrollRate( 5, 5 )        
                 # self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
                 self.tabs[tab_id]["tab"].SetSizer(wx.GridBagSizer(vgap=0, hgap=0))
                 if self.tabs[tab_id]["hide"]:
@@ -232,9 +213,6 @@ class Siren():
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
 
         self.toolFrame.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
-        self.toolFrame.Show()
-        if self.getVizInlaid():
-            self.initVizTab()
 
     def makeStatus(self, frame):
         ### status bar
@@ -249,27 +227,64 @@ class Siren():
         self.progress_bar.Hide()
 
 ######################################################################
-###########     INLAID VIZ TAB
+###########     INTAB VIZ TAB
 ######################################################################
 
-    #### HERE INLAID SWITCH
-    def getVizInlaid(self):
-        return False
-        # return True
+    #### HERE INTAB SWITCH
+    def showVizIntab(self):
+        return self.hasVizIntab() and self.intab
+
+    def hasVizIntab(self):
+        return (self.viz_grid[0]*self.viz_grid[1]) > 0
+
+    def isReadyVizIntab(self):
+        return self.hasVizIntab() and hasattr(self, 'vfiller_ids') and len(self.vfiller_ids) + len(self.vused_ids) + len(self.buttons) > 0
+
 
     def getVizBbsiz(self):
-        return 8
+        return 9
     def getVizBb(self):
-        return self.getVizBbsiz()+2
+        return self.getVizBbsiz()+3
         
     def initVizTab(self):
         self.vfiller_ids = {}
         self.vused_ids = {}
-        self.fillInViz()
-        self.addVizExts()
-        self.setVizButtAble()
-        self.updateVizcellSelected()
+        self.buttons = {}
+        
+        if self.dw is not None:
+            self.viz_grid = [self.dw.getPreference('intab_nbr'), self.dw.getPreference('intab_nbc')]
 
+        if self.hasVizIntab():
+            self.fillInViz()
+            self.addVizExts()
+            self.setVizButtAble()
+            self.updateVizcellSelected()
+        else:
+            self.tabs["viz"]["tab"].Hide()
+
+    def clearVizTab(self):
+        for sel in self.vfiller_ids:
+            panel = self.vfiller_ids[sel].popSizer()
+            panel.Destroy()
+        for sel in self.vused_ids:
+            ### Free another view            
+            self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
+            
+        for bi, bb in self.buttons.items():
+            self.tabs["viz"]["tab"].GetSizer().Detach(bb["button"])
+            bb["button"].Destroy()
+
+        self.vfiller_ids = {}
+        self.vused_ids = {}
+        self.buttons = {}
+        self.selected_cell = None
+
+    def reloadVizTab(self):
+        if self.isReadyVizIntab():
+            self.clearVizTab()
+        self.initVizTab()
+        self.doUpdates({"menu":True})
+            
     def getVizcellSelected(self):
         return self.selected_cell
     def setVizcellSelected(self, pos):
@@ -400,7 +415,6 @@ class Siren():
                 bb["button"].Destroy()
 
     def addVizExts(self):
-        self.buttons = {}
         sizeb = (self.getVizBbsiz(), 1)
         for which in [0, 1]:
             posb = [0,0]
@@ -454,9 +468,9 @@ class Siren():
                 v.setUnactive()
 
     def resizeViz(self):
-        if self.getVizInlaid() and self.isInitialized():
+        if self.isReadyVizIntab():
             for (vid, view) in self.view_ids.items():
-                if view.isInlaid():
+                if view.isIntab():
                     view._SetSize()
             for (vid, view) in self.vfiller_ids.items():
                 view._SetSize()
@@ -619,6 +633,15 @@ class Siren():
     def makeVizMenu(self, frame, menuViz=None):
         if menuViz is None:
             menuViz = wx.Menu()
+
+            #### not for popup menu
+            if self.hasVizIntab():
+                ID_CHECK = wx.NewId()
+                m_check = menuViz.AppendCheckItem(ID_CHECK, "Plot in tab", "Plot inside visualization tab.")
+                frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
+                if self.intab:
+                    m_check.Check()
+            
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
                 queries = None
@@ -679,7 +702,7 @@ class Siren():
 
         menuViews.AppendMenu(wx.NewId(), "&Tabs",self.makeTabsMenu(frame))
 
-        for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items() if not view.isInlaid()], key=lambda x: x[1]):
+        for vid, desc in sorted([(vid, view.getShortDesc()) for (vid, view) in self.view_ids.items() if not view.isIntab()], key=lambda x: x[1]):
             ID_VIEW = wx.NewId()
             self.opened_views[ID_VIEW] = vid 
             m_view = menuViews.Append(ID_VIEW, "%s" % desc, "Bring view %s on top." % desc)
@@ -870,7 +893,7 @@ class Siren():
     def deleteView(self, vK, freeing=True):
         if vK in self.view_ids:
             self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
-            if not self.view_ids[vK].isInlaid():
+            if not self.view_ids[vK].isIntab():
                 self.view_ids[vK].mapFrame.Destroy()
             else:
                 pos = self.view_ids[vK].getGPos()
@@ -1003,7 +1026,7 @@ class Siren():
     def OnCloseViews(self, event):
         view_keys = self.view_ids.keys()
         for key in view_keys:
-            if self.view_ids[key].isInlaid():
+            if self.view_ids[key].isIntab():
                 self.view_ids[key].OnQuit()
         self.toTop()
             
@@ -1303,6 +1326,9 @@ class Siren():
         for tab in self.tabs.values():
             if tab["type"] == "Reds":
                 tab["tab"].recomputeAll(restrict)
+
+    def OnVizCheck(self, event):
+        self.intab = event.IsChecked()
             
     def OnTabW(self, event):
         if event.GetId() in self.check_tab:
@@ -1511,6 +1537,7 @@ class Siren():
         # if len(err) > 0:
         #     self.logger.printL(1, err, "error", "WP")
         self.reloadReds()
+        self.reloadVizTab()
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data

@@ -136,9 +136,9 @@ class GView(object):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-        self.inlaid = self.parent.getVizInlaid()
+        self.intab = self.parent.showVizIntab()
 
-        if self.isInlaid():
+        if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             # self.panel = self.parent.tabs["viz"]["tab"]
         else:        
@@ -153,7 +153,8 @@ class GView(object):
         self.prepareProcesses()
         self.makeMenu()
         self.initSizeRelative()
-        self.mapFrame.Show()
+        if not self.isIntab():
+            self.mapFrame.Show()
         self.suppABCD = None
 
     def initSizeRelative(self):
@@ -161,8 +162,8 @@ class GView(object):
         self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
         self._SetSize()
 
-    def isInlaid(self):
-        return self.inlaid
+    def isIntab(self):
+        return self.intab
 
     def getActionsDetails(self):
         details = []
@@ -273,7 +274,7 @@ class GView(object):
         return "%s %s" % (self.getRedId(), self.title_str)
 
     def updateTitle(self):
-        if not self.isInlaid():
+        if not self.isIntab():
             self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
 
     def getId(self):
@@ -298,7 +299,7 @@ class GView(object):
         return self.parent.dw.getData().getUnvizRows(self.getDetailsSplit())
 
     def makeMenu(self, frame=None):
-        if self.isInlaid():
+        if self.isIntab():
             return
         
         if frame is None:
@@ -445,7 +446,7 @@ class GView(object):
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
     def binds_n(self):
-        if not self.isInlaid():
+        if not self.isIntab():
             self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
             self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         # self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
@@ -456,7 +457,7 @@ class GView(object):
         # self.boxKil.Bind(wx.EVT_TOGGLEBUTTON, self.OnKil)
 
     def binds(self):
-        if not self.isInlaid():
+        if not self.isIntab():
             self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
             self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
@@ -512,12 +513,12 @@ class GView(object):
 
     def _SetSize(self):
         pixels = tuple(self.mapFrame.GetClientSize() )
-        if self.isInlaid():
+        if self.isIntab():
             laybox = self.mapFrame.GetSizer()
             # sz = (laybox.GetCols(), laybox.GetRows())
             sz = self.parent.getVizGridSize()
             pixels = (max(self.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                      (pixels[1]-2*self.parent.getVizBb())/float(sz[0]))
+                      max(self.fwidth, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
             laybox = self.mapFrame.GetSizer()
@@ -542,12 +543,12 @@ class GView(object):
     def OnPop(self, event=None):
         pos = self.getGPos()
         panel = self.popSizer()
-        if self.isInlaid():
+        if self.isIntab():
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
             self.mapFrame.SetMinSize((self.fwidth, self.fheight))
             self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
             
-            self.inlaid = False
+            self.intab = False
             self.boxPop.SetLabel(self.label_outin)
             self.parent.setVizcellFreeded(pos)
             self.panel.Reparent(self.mapFrame)
@@ -556,14 +557,16 @@ class GView(object):
         else:
             self.mapFrame.Destroy()
             self.mapFrame = self.parent.tabs["viz"]["tab"]
-            self.inlaid = True
+            self.intab = True
             self.boxPop.SetLabel(self.label_inout)
             self.panel.Reparent(self.mapFrame)
             self.pos = self.parent.getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
             
         self.binds_n()
-        self.mapFrame.Show()
+        self.makeMenu()
+        if not self.isIntab():
+            self.mapFrame.Show()
         self._SetSize()
             
     def OnKil(self, event=None):
@@ -585,7 +588,7 @@ class GView(object):
         self.suppABCD = red.supports().getVectorABCD()
         self.updateText(red)
         self.updateMap()
-        if self.isInlaid():
+        if self.isIntab():
             self._SetSize()
 
     def updateQuery(self, sd=None, query=None):
@@ -710,12 +713,12 @@ class GView(object):
         self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
         self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
 
-        if self.isInlaid():
+        if self.isIntab():
             self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=(25,25))
         else:
             self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=(25,25))
         self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=(25,25))
-        if not self.parent.getVizInlaid():
+        if not self.parent.hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()
 
@@ -758,7 +761,7 @@ class GView(object):
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
         self.boxh = self.innerBox.GetMinSizeTuple()[1]
         self.panel.SetSizer(self.masterBox)
-        if self.isInlaid():
+        if self.isIntab():
             self.pos = self.parent.getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.pos, flag=wx.ALL, border=0)
         else:
@@ -769,7 +772,7 @@ class GView(object):
         self._SetSize()
 
     def popSizer(self):
-        if self.isInlaid():
+        if self.isIntab():
             self.pos = None
             self.mapFrame.GetSizer().Detach(self.panel)
             self.mapFrame.GetSizer().Layout()

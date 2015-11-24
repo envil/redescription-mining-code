@@ -20,6 +20,24 @@
     <section>
       <name>Vizualizations</name>
       <parameter>
+	<name>intab_nbr</name>
+	<label>Intab grid rows</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Number of rows of the grid for visualizations in the tab.</legend>
+	<length>1</length>
+	<default><value>1</value></default>
+      </parameter>
+      <parameter>
+	<name>intab_nbc</name>
+	<label>Intab grid cols</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Number of columns of the grid for visualizations in the tab.</legend>
+	<length>1</length>
+	<default><value>2</value></default>
+      </parameter>
+      <parameter>
 	<name>color_l</name>
 	<label>Color LHS</label>
 	<parameter_type>color_pick</parameter_type>

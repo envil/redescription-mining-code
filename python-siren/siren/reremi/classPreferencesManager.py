@@ -487,10 +487,11 @@ class PreferencesReader(object):
 
 	def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False):
 		indents = ""
-		strd = ""
+		strd, header, footer = ("", "", "")
 		if sections:
 			indents = "\t"*(level+1)
-			strd += ("\t"*level)+"<section>\n"+indents+("<name>%s</name>\n" % parameters.get("name", ""))
+			header = ("\t"*level)+"<section>\n"+indents+("<name>%s</name>\n" % parameters.get("name", ""))
+			footer = ("\t"*level)+"</section>\n"
 		
 		for k in self.pm.parameter_types.keys():
 			for item_id in parameters[k]:
@@ -512,22 +513,22 @@ class PreferencesReader(object):
 
 		for k in parameters["subsections"]:
 			strd += self.dispParametersRec(k, pv, level+1, sections, helps, defaults)
-		if sections:
-			strd += ("\t"*level)+"</section>\n"
-
-		return strd
+		if len(strd) > 0:
+			return header + strd + footer
+		else:
+			return ""
 
 
 	def dispParameters(self, pv=None, sections=True, helps=False, defaults=False):
-		strd = "<root>\n"
 		if pv is None:
 			pv = self.pm.getDefaultTriplets()
-
+			
+		strd = ""
 		for subsection in self.pm.subsections:
 			strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults)
-		strd += "</root>"
-		return strd
-
+		if len(strd) == 0:
+			strd = "<!-- Using only default parameters --> "
+		return "<root>\n"+strd+"</root>"
 
 # def rdictStr(rdict, level=0):
 # 	strd = ""
