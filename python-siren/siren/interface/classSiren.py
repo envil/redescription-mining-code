@@ -485,7 +485,6 @@ class Siren():
             self.incrementVizGridDim(self.buttons[event.GetId()]["action"][0])
         else:
             self.decrementVizGridDim(self.buttons[event.GetId()]["action"][0], self.buttons[event.GetId()]["action"][1])
-        
     def setActiveViz(self, fid=None):
         for k,v in self.vfiller_ids.items():
             if k == fid:
@@ -502,11 +501,24 @@ class Siren():
             for (vid, view) in self.vfiller_ids.items():
                 view._SetSize()
 
+    def hideShowBxViz(self):
+        if self.isReadyVizIntab():
+            for (vid, view) in self.view_ids.items():
+                if view.isIntab():
+                    view.hideShowOpt()
+                    # view._SetSize()
+            # for (vid, view) in self.vfiller_ids.items():
+            #     view._SetSize()
+
+
     def setVizcellFreeded(self, pos):
         self.vused_ids.pop(pos)
         self.vfiller_ids[pos] = Filler(self, pos)
         self.updateVizcellSelected()
 
+    def isVizSplit(self):
+        return self.splitter.IsSplit()
+    
     def vizTabToSplit(self):
         self.tabbed.RemovePage(self.viz_postab)
         self.tabs_keys.pop(self.viz_postab)
@@ -520,7 +532,6 @@ class Siren():
         self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])
         self.tabs["viz"]["tab"].Show()
         self.tabs_keys.insert(self.viz_postab, "viz")
-        print "Inserting (spl)", self.tabs_keys
 
     def OnSplitchange(self, event):
         if self.hasVizIntab():
@@ -528,6 +539,7 @@ class Siren():
                 self.vizTabToSplit()
             else:
                 self.vizSplitToTab()
+            self.hideShowBxViz()
             self.doUpdates({"menu":True})
         self.buttViz.SetBackgroundColour(getRandomColor())
                 

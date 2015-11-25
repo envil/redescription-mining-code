@@ -60,8 +60,9 @@ class EProjView(GView):
             self.mapFrame = self.parent.tabs["viz"]["tab"]
         else:        
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.fwidth, self.fheight))
-        self.panel = wx.Panel(self.mapFrame, -1)    
+            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
+            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+        self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.binds()
         self.prepareActions()
@@ -69,7 +70,8 @@ class EProjView(GView):
         self.prepareProcesses()
         self.makeMenu()
         self.initSizeRelative()
-        self.mapFrame.Show()
+        if not self.isIntab():
+            self.mapFrame.Show()
         self.suppABCD = None
         self.runProject()
 
@@ -150,39 +152,33 @@ class EProjView(GView):
         add_boxA = wx.BoxSizer(wx.VERTICAL)
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
 
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         v_box = wx.BoxSizer(wx.HORIZONTAL)
-        v_box.Add(self.boxL, 0, border=0, flag=flags)
-        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        v_box.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        v_box.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerWn(),-1))
+
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        # add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "ts"})
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        v_box.Add(label, 0, border=1, flag=flags)
-        v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags) #, userData={"where": "*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
         for butt in self.buttons[1:]:
             add_boxB.AddSpacer((self.getSpacerWn(),-1))
             v_box = wx.BoxSizer(wx.HORIZONTAL)
             butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            
             v_box.Add(butt["element"], 0, border=0, flag=flags)
             add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         
-        # add_boxA = wx.BoxSizer(wx.VERTICAL)
-        # v_box = wx.BoxSizer(wx.VERTICAL)
-        # label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
-        # label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        # v_box.Add(label, 0, border=1, flag=flags)
-        # v_box.Add(self.sld_sel, 0, border=1, flag=flags)
-
-        # add_boxA.Add(v_box, 0, border=1, flag=flags)
-        # add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
-
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
 
@@ -194,8 +190,8 @@ class EProjView(GView):
         add_boxA.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
 
         hh_box = wx.BoxSizer(wx.HORIZONTAL)
-        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
-        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxA.Add(hh_box, 0, border=1, flag=flags)
 
         add_box.Add(add_boxA, 0, border=1, flag=flags)

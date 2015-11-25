@@ -9,6 +9,16 @@ class Filler(object):
     active_color = (255,249,178)
     active_color = (247,247,200)
 
+
+    def getVizType(self):
+        if self.parent.isVizSplit():
+            return "s"
+        return "t"
+    def getFWidth(self):
+        return GView.fwidth[self.getVizType()]    
+    def getFHeight(self):
+        return GView.fheight[self.getVizType()]
+
     def __init__(self, parent, pos):
         self.parent = parent
         self.pos = pos
@@ -37,8 +47,8 @@ class Filler(object):
         laybox = self.mapFrame.GetSizer()
         # sz = (laybox.GetCols(), laybox.GetRows())
         sz = self.parent.getVizGridSize()
-        pixels = (max(GView.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                  max(GView.fheight, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+        pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
+                  max(self.getFHeight(), (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
         self.boxSel.SetMinSize(pixels)
         self.panel.SetMinSize(pixels)
         laybox.Layout()

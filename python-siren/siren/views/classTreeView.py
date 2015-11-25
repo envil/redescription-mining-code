@@ -26,7 +26,7 @@ import pdb
 class TreeView(GView):
 
     TID = "TR"
-    SDESC = "Tree."
+    SDESC = "Tree"
     ordN = 5
     title_str = "Decision Tree"
     typesI = ["Var", "Reds"]
@@ -383,12 +383,14 @@ class TreeView(GView):
                             {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify RHS"),
                              "function": self.OnSimplifyRHS}])
 
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         v_box = wx.BoxSizer(wx.HORIZONTAL)
-        v_box.Add(self.boxL, 0, border=0, flag=flags)
-        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        v_box.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        v_box.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
+        add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "*"})
+
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
 
         self.buttons[1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
@@ -396,7 +398,7 @@ class TreeView(GView):
         
         self.buttons[2]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(self.buttons[2]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
@@ -411,8 +413,8 @@ class TreeView(GView):
         add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
 
         hh_box = wx.BoxSizer(wx.HORIZONTAL)
-        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
-        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags, userData={"where":"*"})
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags, userData={"where":"*"})
         add_boxB.Add(hh_box, 0, border=1, flag=flags)
 
         add_box.Add(add_boxB, 0, border=1, flag=flags)

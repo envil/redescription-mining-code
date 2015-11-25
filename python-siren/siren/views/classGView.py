@@ -88,10 +88,8 @@ class GView(object):
     spacer_h = 10
     nbadd_boxes = 0 
     butt_w = 75
-    fwidth = 400
-    fheight = 350
-    # info_band_height = 205
-    # info_band_height = 192
+    fwidth = {"i": 400, "t": 400, "s": 250}
+    fheight = {"i": 400, "t": 300, "s": 200}
 
     def getSpacerW(self):
         return self.spacer_w
@@ -99,13 +97,18 @@ class GView(object):
         return self.spacer_w/4.
     def getSpacerH(self):
         return self.spacer_h
-    def getInfoH(self):
-        return self.boxh
-        # return self.info_band_height+self.nbadd_boxes*25
-
+    def getVizType(self):
+        if self.isIntab():
+            if self.parent.isVizSplit():
+                return "s"
+            return "t"
+        return "i"
+    def getFWidth(self):
+        return self.fwidth[self.getVizType()]    
+    def getFHeight(self):
+        return self.fheight[self.getVizType()]
     def getGPos(self):
         return self.pos
-
     def resetGPos(self, npos):
         self.mapFrame.GetSizer().Detach(self.panel)
         self.pos = npos
@@ -143,7 +146,7 @@ class GView(object):
             # self.panel = self.parent.tabs["viz"]["tab"]
         else:        
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.fwidth, self.fheight))
+            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
             self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
@@ -164,6 +167,23 @@ class GView(object):
 
     def isIntab(self):
         return self.intab
+
+    def hideShowOptRec(self, box, where):
+        if isinstance(box, wx.SizerItem) and box.IsSizer():
+            box = box.GetSizer()
+        if isinstance(box, wx.Sizer) or box.IsSizer():
+            for child in box.GetChildren():
+                self.hideShowOptRec(child, where)
+        else:
+            ww = (box.GetUserData() or {"where": "i"}).get("where")
+            if where in ww or ww == "*":
+                box.Show(True)
+            else:
+                box.Show(False)
+
+    def hideShowOpt(self):
+        self.hideShowOptRec(self.innerBox1, self.getVizType())
+        self.autoShowSplitsBoxes()
 
     def getActionsDetails(self):
         details = []
@@ -276,6 +296,7 @@ class GView(object):
     def updateTitle(self):
         if not self.isIntab():
             self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+        self.info_title.SetLabel(self.getTitleDesc())
 
     def getId(self):
         return (self.TID, self.vid)
@@ -513,51 +534,55 @@ class GView(object):
 
     def _SetSize(self):
         pixels = tuple(self.mapFrame.GetClientSize() )
+        boxsize = self.innerBox1.GetMinSize()
+        min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
-            laybox = self.mapFrame.GetSizer()
             # sz = (laybox.GetCols(), laybox.GetRows())
             sz = self.parent.getVizGridSize()
-            pixels = (max(GView.fwidth, (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                      max(GView.fheight, (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+            min_size = (self.getFWidth(), self.getFHeight())
+            max_size = ((pixels[0]-2*self.parent.getVizBb())/float(sz[1]),
+                        (pixels[1]-2*self.parent.getVizBb())/float(sz[0]))
+            pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
+                      max(self.getFHeight(), (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
-            laybox = self.mapFrame.GetSizer()
-            # laybox = self.masterBox
+            
+            max_size = (-1, -1)
+        
         self.panel.SetSize( pixels )
-        figsize = (pixels[0], max(pixels[1]-self.getInfoH(), 10))
+        figsize = (pixels[0], max(pixels[1]-boxsize[1], 10))
         # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
         #                                 float( figsize[1] )/(self.MapfigMap.get_dpi() ))
-        self.MapcanvasMap.SetMinSize(figsize )
+        self.MapcanvasMap.SetMinSize(figsize)
         # #self.fillBox.SetMinSize((figsize[0], figsize[1]))
-        curr = self.innerBox1.GetMinSize()
-        self.innerBox1.SetMinSize((1*figsize[0], curr[1]))
+        self.innerBox1.SetMinSize((1*figsize[0], -1)) #boxsize[1]))
         ## print "\tMapcanvasMap:", figsize, "\tinnerBox1:", (1*figsize[0], curr[1])
         self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
         self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
-        laybox.Layout()
+        self.mapFrame.GetSizer().Layout()
         self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
                                         float( figsize[1] )/(self.MapfigMap.get_dpi() ))
-
+        # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
         # self.MapfigMap.set_size_inches(1, 1)
 
     def OnPop(self, event=None):
         pos = self.getGPos()
         panel = self.popSizer()
         if self.isIntab():
+            self.intab = False
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.fwidth, self.fheight))
+            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
             self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
             
-            self.intab = False
             self.boxPop.SetLabel(self.label_outin)
             self.parent.setVizcellFreeded(pos)
             self.panel.Reparent(self.mapFrame)
             self.mapFrame.GetSizer().Add(self.panel)
 
         else:
+            self.intab = True
             self.mapFrame.Destroy()
             self.mapFrame = self.parent.tabs["viz"]["tab"]
-            self.intab = True
             self.boxPop.SetLabel(self.label_inout)
             self.panel.Reparent(self.mapFrame)
             self.pos = self.parent.getVizPlotPos(self.getId())
@@ -567,6 +592,7 @@ class GView(object):
         self.makeMenu()
         if not self.isIntab():
             self.mapFrame.Show()
+        self.hideShowOpt()
         self._SetSize()
             
     def OnKil(self, event=None):
@@ -683,6 +709,7 @@ class GView(object):
         
     def drawFrame(self):
         # initialize matplotlib stuff
+        self.opt_hide = []
         self.MapfigMap = Figure(None)
         self.MapcanvasMap = FigCanvas(self.panel, -1, self.MapfigMap)
         self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
@@ -698,6 +725,8 @@ class GView(object):
         # styL = wx.ALIGN_RIGHT | wx.EXPAND
         # styV = wx.ALIGN_LEFT | wx.EXPAND
         # sizz = (70,-1)
+
+        self.info_title = wx.StaticText(self.panel, label="? ?")
         
         self.info_items = {}
         for info_item in self.infos_details:
@@ -722,7 +751,6 @@ class GView(object):
             self.boxPop.Hide()
             self.boxKil.Hide()
 
-
         adds = self.additionalElements()
         self.drawMap()
 
@@ -735,31 +763,31 @@ class GView(object):
         self.masterBox.Add(self.MapcanvasMap, 0, border=1,  flag= wx.EXPAND)
         #self.masterBox.Add(self.fillBox, 0, border=1,  flag= wx.EXPAND)
 
-        self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER)
-        self.innerBox1.Add(self.MapredMapQ[1], 0, border=1,  flag= wx.ALIGN_CENTER)
+        self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
+        self.innerBox1.Add(self.MapredMapQ[1], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
 
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()))
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
         
         cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
         for pi, elem in enumerate(self.infos_details):
             ci = 2*(pi % self.nb_cols)
-            cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT)
-            cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT)
+            cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+            cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+        # self.opt_hide.extend(cols)
 
         lineB = wx.BoxSizer(wx.HORIZONTAL)
         for ci, col in enumerate(cols):
             lineB.Add(col, 0, border=1,  flag= wx.ALIGN_CENTER|wx.EXPAND)
             if ci % 2 == 1 and ci < len(cols)-1:
-                lineB.AddSpacer((self.getSpacerW(),-1))
+                lineB.AddSpacer((self.getSpacerW(),-1), userData={"where": "it"})
         self.innerBox1.Add(lineB, 0, border=1,  flag= wx.ALIGN_CENTER)
 
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()))
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
         for add in adds:
             self.innerBox1.Add(add, 0, border=1,  flag= wx.ALIGN_CENTER)
-
+            
         self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
-        self.boxh = self.innerBox.GetMinSizeTuple()[1]
         self.panel.SetSizer(self.masterBox)
         if self.isIntab():
             self.pos = self.parent.getVizPlotPos(self.getId())
@@ -768,8 +796,10 @@ class GView(object):
             self.mapFrame.GetSizer().Add(self.panel)
             # self.panel.GetSizer().Fit(self.panel)
             # self.mapFrame.GetSizer().Add(self.masterBox, pos=pos, flag=wx.ALL, border=2)
-            
+
+        self.hideShowOpt()
         self._SetSize()
+
 
     def popSizer(self):
         if self.isIntab():

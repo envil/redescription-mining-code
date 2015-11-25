@@ -202,29 +202,24 @@ class MapView(GView):
         
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
 
-        # v_box = wx.BoxSizer(wx.VERTICAL)
-        # label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
-        # label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        # v_box.Add(label, 0, border=1, flag=flags)
-        # v_box.Add(self.sld_sel, 0, border=1, flag=flags)
-        # add_boxA.Add(v_box, 0, border=1, flag=flags)
-        # add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
-
         ##############################################
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         v_box = wx.BoxSizer(wx.HORIZONTAL)
-        v_box.Add(self.boxL, 0, border=0, flag=flags)
-        v_box.Add(self.boxT, 0, border=0, flag=flags)
+        v_box.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        v_box.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
+        add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "*"})
+
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        # add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "ts"})
  
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        v_box.Add(label, 0, border=1, flag=flags)
-        v_box.Add(self.sld_sel, 0, border=1, flag=flags)
+        v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
                 
         add_boxA.Add(add_boxB, 0, border=1, flag=flags)
         add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
@@ -238,8 +233,8 @@ class MapView(GView):
         add_boxB.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
 
         hh_box = wx.BoxSizer(wx.HORIZONTAL)
-        hh_box.Add(self.boxPop, 0, border=0, flag=flags)
-        hh_box.Add(self.boxKil, 0, border=0, flag=flags)
+        hh_box.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
+        hh_box.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(hh_box, 0, border=1, flag=flags)
 
         add_box.Add(add_boxB, 0, border=1, flag=flags)
