@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys, re, os.path
+import numpy
 import tempfile
 from toolLog import Log
 from classPackage import Package
@@ -8,7 +9,7 @@ from classData import Data
 from classRedescription import Redescription, parseRedList
 from classBatch import Batch
 from classPreferencesManager import PreferencesManager, PreferencesReader
-from classMiner import instMiner
+from classMiner import instMiner, StatsMiner
 from classQuery import Query
 import pdb
 
@@ -238,50 +239,24 @@ def run(args):
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
 
-
 def run_splits(args):
 
-    params, data, logger, filenames = loadAll(args)
-    params_l = trunToDict(params)
-    header = Redescription.dispHeader()+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats)+"\tacc_diff\n"
-    header_named = Redescription.dispHeader(named=True)+"\t"+Redescription.dispHeader(list_fields=Redescription.print_default_fields_stats, named=True)+"\tacc_diff\n"
+    params, data, logger, filenames = loadAll(args)    
+    #### TODO generic
+    data.extractFolds(1, 12)
+    stM = StatsMiner(data, params, logger)
+    reds_list, all_stats, header = stM.run_stats()
 
-    runid = 0
-    while runid < params_l['splits_runs']:
-        subsets_rids = data.getSplit(params_l['splits_nb'], params_l['splits_dim'], params_l['splits_grain'])
-        # data.addSplitCol(subsets_rids)
-        si = 0
-        while si < len(subsets_rids):
-            subset = subsets_rids[si]
-            header_split = "### ---------- RUN %d SPLIT s%d ---------------" % (runid, si)
-            header_splitlist = "### %s\n" % subset
+    nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
+    tot = numpy.array(all_stats[-1])
+    summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
 
-            logger.printL(1, header_split, "log")
-
-            sL, sT = data.get_LTsplit(subset)
-            miner = instMiner(sL, params, logger)
-            try:
-                miner.full_run()
-            except KeyboardInterrupt:
-                logger.printL(1, 'Stopped...', "log")
-                si = len(subsets_rids)
-                runid = params_l['splits_runs']
-
-            if si*runid == 0:
-                outputResults(filenames, miner.final, data,
-                              header="\n".join([header, header_split, header_splitlist]),
-                              header_named="\n".join([header_named, header_split, header_splitlist]),
-                              mode="w", data_recompute=sT)
-            else:
-                outputResults(filenames, miner.final, data,
-                              header="\n".join([header_split, header_splitlist]),
-                              header_named="\n".join([header_split, header_splitlist]),
-                              mode="a+", data_recompute=sT)
-
-            si += 1
-        runid += 1
-
-    logger.clockTac(0, None)
+    info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
+    numpy.savetxt("tmp_stats.txt", summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
+    # print header
+    # print summary_mat
+    for red in reds_list:
+        print red
 
 ##### MAIN
 ###########

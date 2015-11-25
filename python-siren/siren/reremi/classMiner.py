@@ -327,8 +327,6 @@ class Miner(object):
 
             if partial is not None:
                 self.final["batch"].extend([partial["batch"][i] for i in partial["results"]])
-            else:
-                print "Partial NONE"
             self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
 
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
@@ -637,6 +635,69 @@ def instMiner(data, params, logger=None, mid=None, souvenirs=None, qin=None, cus
     else:
         return Miner(data, params, logger, mid, souvenirs, qin, cust_params)
 
-
-
-
+class StatsMiner:
+    def __init__(self, data, params, logger=None, cust_params={}):
+        self.data = data
+        self.params = params
+        self.logger = logger
+        self.cust_params = cust_params
+        
+    def run_stats(self):
+        splits_info = self.data.getFoldsInfo()
+        stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+        summaries = {}
+        nbfolds = len(stored_splits_ids)
+        for kfold in range(nbfolds):
+            ids = {"learn": [], "test": []}
+            for splt in range(nbfolds):
+                if splt == kfold:
+                    ids["test"].append(stored_splits_ids[splt])
+                else:
+                    ids["learn"].append(stored_splits_ids[splt])
+            self.data.assignLT(ids["learn"], ids["test"])
+            miner = instMiner(self.data, self.params, self.logger)
+            try:
+                miner.full_run()
+            except KeyboardInterrupt:
+                self.logger.printL(1, 'Stopped...', "log")
+            
+            stats = []
+            reds = []
+            for pos in miner.final["results"]:
+                red = miner.final["batch"][pos]
+                red.recompute(self.data)
+                stats.append([red.getAccRatio({"rset_id_num": "test", "rset_id_den": "learn"}),
+                              red.getAcc(), red.getAcc({"rset_id": "learn"}), red.getAcc({"rset_id": "test"}),
+                              red.getLenI()/float(red.getLenT()),
+                              red.getLenI({"rset_id": "learn"})/float(red.getLenT({"rset_id": "learn"})),
+                              red.getLenI({"rset_id": "test"})/float(red.getLenT({"rset_id": "test"})),
+                              red.getPVal(), red.getPVal({"rset_id": "learn"}), red.getPVal({"rset_id": "test"})])
+                reds.append(red)
+            summaries[kfold] = {"reds": reds, "stats": stats}
+        reds_map = []
+        stack_stats = []
+        all_stats = {}
+        for k,rr in summaries.items():
+            all_stats[k] = rr["stats"]
+            stack_stats.extend(rr["stats"])
+            for ri, r in enumerate(rr["reds"]):
+                found = None
+                i = 0
+                while i < len(reds_map) and found is None:
+                    if reds_map[i]["red"].compare(r) == 0:
+                        found = i
+                    i += 1
+                if found is None:
+                    reds_map.append({"red": r, "pos": [(k, ri)]})
+                else:
+                    reds_map[i]["pos"].append((k,ri))
+        reds_map.sort(key=lambda x: x["red"].getAcc(), reverse=True)
+        reds_list = []
+        for rr in reds_map:
+            rr["red"].track = rr["pos"]
+            reds_list.append(rr["red"])
+        all_stats[-1] =  stack_stats
+        header = ["J ratio", "J all", "J learn", "J test",
+                  "E11/E all", "E11/E learn", "E11/E test",
+                  "pV all", "pV learn", "pV test"]
+        return reds_list, all_stats, header

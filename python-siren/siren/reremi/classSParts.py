@@ -756,20 +756,20 @@ class SParts(object):
             return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, 0)
         else:
             return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, 0)
-    def lenD(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_diff, side)
+    # def lenD(self, side=0):
+    #     return self.lparts_union(self.ssetts.IDS_diff, side)
     
-    def lenI(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_inter, side)
-    def lenU(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_inter+self.ssetts.IDS_diff, side)
-        return self.suppI(side) | self.suppD(side)
-    def lenL(self, side=0):
-        return self.lenSide(0)
-    def lenR(self, side=0):
-        return self.lenSide(1)
-    def lenO(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_uncovered, side)
+    # def lenI(self, side=0):
+    #     return self.lparts_union(self.ssetts.IDS_inter, side)
+    # def lenU(self, side=0):
+    #     return self.lparts_union(self.ssetts.IDS_inter+self.ssetts.IDS_diff, side)
+    #     return self.suppI(side) | self.suppD(side)
+    # def lenL(self, side=0):
+    #     return self.lenSide(0)
+    # def lenR(self, side=0):
+    #     return self.lenSide(1)
+    # def lenO(self, side=0):
+    #     return self.lparts_union(self.ssetts.IDS_uncovered, side)
     def lenT(self, side=0):
         if len(self.sParts) == 4:
             return self.lparts_union(range(4), side)
