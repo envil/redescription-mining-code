@@ -337,9 +337,9 @@ def make_literal(side, node, data, cols_info):
 #########################################################################
 
     
-class CharbonTSplit(CharbonTree):
+class CharbonTLayer(CharbonTree):
 
-    name = "TreeSplit"
+    name = "TreeLayer"
     def getTreeCandidates(self, side, data, red):
         if side not in [0,1]:
             side = 1

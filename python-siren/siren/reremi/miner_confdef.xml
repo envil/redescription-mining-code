@@ -470,7 +470,7 @@
 	<value_type>text</value_type>
 	<legend>Method for growing the redescriptions based on classification trees CART (restrictions apply)</legend>
 	<default><value>0</value></default>
-	<options><value>splittrees</value><value>cartwheel</value><value>relayer</value><value>layeredtrees</value></options>
+	<options><value>splittrees</value><value>cartwheel</value><value>sprit</value><value>layeredtrees</value></options>
       </parameter>
       <parameter>
 	<name>min_node_size</name>

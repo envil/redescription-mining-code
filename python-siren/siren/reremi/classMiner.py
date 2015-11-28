@@ -12,14 +12,14 @@ import pdb
 
 from classCharbonGMiss import CharbonGMiss
 from classCharbonGStd import CharbonGStd
-from classCharbonTAlt import CharbonTCW, CharbonTRelay, CharbonTLayer
-from classCharbonTSplit import CharbonTSplit
+from classCharbonTAlt import CharbonTCW, CharbonTSprit, CharbonTSplit
+from classCharbonTLayer import CharbonTLayer
 
 TREE_CLASSES = { "layeredtrees": CharbonTLayer,
                  "cartwheel": CharbonTCW,
                  "splittrees": CharbonTSplit,
-                 "relayer": CharbonTRelay}
-TREE_DEF = CharbonTRelay
+                 "sprit": CharbonTSprit}
+TREE_DEF = CharbonTLayer
 
 # PAIR_LOADS = [[1,2,3],
 #               [2,4,6],

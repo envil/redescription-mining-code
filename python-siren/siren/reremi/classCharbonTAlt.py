@@ -197,8 +197,8 @@ class CharbonTCW(CharbonTree):
         return dtc, suppv
 
 
-class CharbonTRelay(CharbonTCW):
-    name = "TreeRelay"
+class CharbonTSprit(CharbonTCW):
+    name = "TreeSprit"
     def getSplit(self, side, in_data, target, singleD=False, cols_info=None):
         suppvs = [None, None]
         dtcs = [None, None]
@@ -244,9 +244,9 @@ class CharbonTRelay(CharbonTCW):
                         best = (jj, list(suppvs), list(dtcs))
         return best
 
-class CharbonTLayer(CharbonTCW):
+class CharbonTSplit(CharbonTCW):
 
-    name = "TreeLayer"
+    name = "TreeSplit"
     def getTreeCandidates(self, side, data, red):
         in_data, cols_info = self.initializeData(side, data)
         target, side = self.initializeTrg(side, data, red)

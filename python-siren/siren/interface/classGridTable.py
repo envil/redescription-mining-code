@@ -751,11 +751,9 @@ class RedTable(GridTable):
         count = 0
         if edit_key in self.opened_edits.keys():
             toed = self.opened_edits[edit_key]
-            print "Counting ", edit_key, toed
         if toed is not None and toed >= 0 and toed < len(self.data):
             for k,v in self.opened_edits.items():
                 if v == toed: # and k != edit_key:
-                    print "Count +1", (v, k)
                     count += 1
         return count
 
