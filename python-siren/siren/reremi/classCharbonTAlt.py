@@ -87,9 +87,9 @@ class CharbonTCW(CharbonTree):
                         lit = Literal(neg, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
                     elif data.cols[side][cid].typeId() == NumTerm.type_id:
                         if neg:
-                            rng = (float("-inf"), threshold[parent])
+                            rng = (float("-inf"), data.cols[side][cid].getRoundThres(threshold[parent], "high"))
                         else:
-                            rng = (threshold[parent], float("inf")) 
+                            rng = (data.cols[side][cid].getRoundThres(threshold[parent], "low"), float("inf")) 
                         lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
                     else:
                         raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())

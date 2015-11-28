@@ -101,7 +101,7 @@ class ParaView(GView):
             self.source_list=source_list
             self.updateText(red)
             self.updateMap()
-            self.updateHist(red)
+            self.updateHist(red, init=True)
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True):

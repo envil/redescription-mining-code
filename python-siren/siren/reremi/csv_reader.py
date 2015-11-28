@@ -74,14 +74,12 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
         head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
-
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
-            
             tmp = re.match('type=(?P<type>\w)', head[-1])
             if tmp is not None:
                 head.pop()

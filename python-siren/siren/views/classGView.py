@@ -666,7 +666,7 @@ class GView(object):
             self.updateText(red)
             self.updateMap()
             self.makeMenu()
-            self.updateHist(red)
+            self.updateHist(red, init=True)
             return red
 
     def parseQuery(self, side):
@@ -815,10 +815,17 @@ class GView(object):
         pass
 
 
-    def updateHist(self, red = None):
+    def updateHist(self, red = None, init=False):
+        ### if this is an history update on opening viz, only do if no other viz open for red
         if red is not None:
             if self.source_list != "hist":
+                if init:
+                    count = self.parent.callOnTab(self.source_list, meth="getViewsCount",
+                                                  args={"edit_key": self.getId()})
+                    if count > 1:
+                        return
                 self.parent.callOnTab("hist", meth="insertItem", args={"item": red, "row": -1})
+
 
     def updateOriginal(self, red = None):
         if red is not None:

@@ -677,7 +677,32 @@ class NumColM(ColM):
         return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
 
     def getInitTerms(self, minIn=0, minOut=0):
-        return []
+        terms = []
+        if self.lenMode() >= minIn and self.lenNonMode() >= minOut: 
+            idx = self.sVals.index((0,-1))
+            low_idx, hi_idx = (idx-1, idx+1)
+            while low_idx > 0 and self.sVals[low_idx][0] == self.sVals[idx][0]:
+                low_idx -= 1
+            while hi_idx < len(self.sVals) and self.sVals[hi_idx][0] == self.sVals[idx][0]:
+                hi_idx += 1
+            if low_idx >= 0 and low_idx+1 >= minIn and ( self.nbRows() - (low_idx+1) ) >= minOut :
+                terms.append((NumTerm(self.id, float("-Inf"), self.sVals[low_idx][0]), low_idx+1))
+            if hi_idx < len(self.sVals) and (len(self.sVals)-hi_idx) >= minIn \
+                   and ( self.nbRows() - (len(self.sVals)-hi_idx) ) >= minOut :
+                terms.append((NumTerm(self.id, self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
+        return terms
+
+    def getRoundThres(self, thres, which):
+        ## return thres ### NO ROUNDING, many digits...
+        i = 0
+        while i < len(self.sVals) -1 and self.sVals[i][0] < thres:
+            i+= 1
+        if which == "high":
+            ## print thres, which, self.sVals[i-1][0] 
+            return self.sVals[i-1][0]
+        else:
+            ## print thres, which, self.sVals[i][0] 
+            return self.sVals[i][0]
 
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i values not in mode" % self.lenNonMode())
@@ -1520,14 +1545,12 @@ class Data(object):
         argmaxd = 0
         if mean_denses[0] < mean_denses[1]:
             argmaxd = 1
-        #### FOR DEBUGING OF DENSE FORMAT, REMOVE!!!!
-        # if mean_denses[1-argmaxd] > 0 : #thres: ## BOTH SIDES ARE DENSE
         if mean_denses[1-argmaxd] > thres: ## BOTH SIDES ARE DENSE
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": "dense", "details": full_details}}
         elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE
             methot = "triples"
-            if not self.hasDisabledCols(1-argmaxd) and sum([col.simpleBool() for col in self.cols[1-argmaxd]])==0:
+            if not self.hasDisabledCols(1-argmaxd) and sum([not col.simpleBool() for col in self.cols[1-argmaxd]])==0:
                 methot = "pairs"
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
@@ -1820,13 +1843,14 @@ class Data(object):
 
     def setCoords(self, coords):
         ### coords are NOT turned to a numpy array because polygons might have different numbers of points
-        if coords is None or (len(coords)==2 and len(coords[0]) == self.nbRows()):
-            self.coords = coords
-            self.coords_points = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
-        else:
-            self.coords = None
-            self.coords_points = None
-            raise DataError('Number of coordinates does not match number of entities!')
+        self.coords = None
+        self.coords_points = None
+        if coords is not None:
+            if (len(coords)==2 and len(coords[0]) == self.nbRows()):
+                self.coords = coords
+                self.coords_points = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+            else:
+                raise DataError('Number of coordinates does not match number of entities!')
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def readDataFromXMLFile(filename):
@@ -2048,7 +2072,14 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 
 def main():
-
+    rep = "/home/galbrun/"
+    data = Data([rep+"coauthor_picked0_numA.csv", rep+"conference_picked0_numA.csv", {}, ""], "csv")
+    data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
+    # for side in [0,1]:
+    #     for col in data.cols[side]:
+    #         print col
+    #     pdb.set_trace()
+    exit()
     # rep = "/home/galbrun/TKTL/redescriptors/generaliz/data/"
     # # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
     # data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
@@ -2057,28 +2088,6 @@ def main():
     # print data, data2
     # exit()
 
-    # subsets_rids = data.rsubsets_split(10, 0, 10.)
-    # for si, subset in enumerate(subsets_rids):
-    #     sL, sT = data.get_LTsplit(subset)
-    #     print "Train:", sL, "Test:", sT
-    # exit()
-
-
-    rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
-    # data = Data([rep+"mammals_poly.csv", rep+"worldclim_poly.csv"], "csv")
-    data = Data([rep+"mammals.csv", rep+"worldclim.csv"], "csv")
-    print data
-    print data.getCoordPoints().shape
-    # subsets =
-    data.getSplit(nbsubs=5, coo_dim=19, grain=1.)
-    data.addFoldsCol()
-    data.getSplit(nbsubs=10, coo_dim=-1, grain=10.)
-    data.addFoldsCol()
-    data.getSplit(nbsubs=4, coo_dim=-2, grain=10.)
-    data.addFoldsCol()
-    print data.findCandsFolds()
-    pdb.set_trace()
-    splits = data.extractFolds(1, 69)    
 
     # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
     #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,

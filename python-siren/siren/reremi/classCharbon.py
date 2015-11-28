@@ -33,4 +33,9 @@ class CharbonTree(Charbon):
     ### def getTreeCandidates(self, side, data, red)
 
     def computeInitTerm(self, colL):
-        return [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.min_itm_in(), self.constraints.min_itm_out())]
+        tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.min_itm_in(), self.constraints.min_itm_out())]
+        # tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.min_itm_in()/4., self.constraints.min_itm_out()/4.)]
+        # if len(tmp) > 0:
+        #     pdb.set_trace()
+        #     print colL.getId(), len(tmp), "\t", self.constraints.min_itm_in()/4., self.constraints.min_itm_out()/4.
+        return tmp

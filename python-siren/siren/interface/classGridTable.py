@@ -621,6 +621,7 @@ class RedTable(GridTable):
             for i in range(len(self.sortids)):
                 self.sortids[i] -= (self.sortids[i] > pos)
                 i+=1
+            #### TODO BUG MOVE
             ### TODO destruct the associated mapView if any?? 
             ### TODO add possibility to undo delete here
             self.rids.pop(pos)
@@ -652,8 +653,8 @@ class RedTable(GridTable):
         return
 
     def getRedId(self, pos):
-        # if pos is None:
-        #     pdb.set_trace()
+        if pos is None:
+            return (None, None)
         if pos < len(self.rids):
             return (self.short, self.rids[pos])
         return (self.short, None)
@@ -746,6 +747,18 @@ class RedTable(GridTable):
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
+    def getViewsCount(self, edit_key):
+        count = 0
+        if edit_key in self.opened_edits.keys():
+            toed = self.opened_edits[edit_key]
+            print "Counting ", edit_key, toed
+        if toed is not None and toed >= 0 and toed < len(self.data):
+            for k,v in self.opened_edits.items():
+                if v == toed: # and k != edit_key:
+                    print "Count +1", (v, k)
+                    count += 1
+        return count
+
     def addAndViewTop(self, queries, viewT):
         mapV = self.parent.getViewX(None, viewT)
         red = mapV.setCurrent(queries)
@@ -809,6 +822,7 @@ class RedTable(GridTable):
         self.ResetView()
 
     def moveEnabled(self, dest):
+        #### HERE NOW
         reds = []
         i = 0
         while i < len(self.data):
