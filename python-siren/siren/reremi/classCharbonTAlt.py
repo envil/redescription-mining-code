@@ -185,8 +185,8 @@ class CharbonTCW(CharbonTree):
         lI = np.sum(supps[0] * supps[1])
         return lI/(lL+lR-lI)
 
-    def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket):
-        dtc = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
+    def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket,  split_criterion="gini"):
+        dtc = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         dtc = dtc.fit(in_data, in_target)
         
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets
@@ -226,7 +226,7 @@ class CharbonTSprit(CharbonTCW):
             else:
                 feed_data = in_data[current_side]
 
-            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.min_node_size())
+            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.min_node_size(), split_criterion=self.constraints.split_criterion())
             if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
                                and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
@@ -266,7 +266,7 @@ class CharbonTSplit(CharbonTCW):
             
             while flag:
                 if depth <= self.constraints.max_depth():
-                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result)
+                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result, split_criterion=self.constraints.split_criterion())
                     # print "Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
                     #Check if we have both vectors (split was successful on the left and right matrix) 
                     if current_split_result['data_rpart_l'] is None or current_split_result['data_rpart_r'] is None:
@@ -303,7 +303,7 @@ class CharbonTSplit(CharbonTCW):
         return current_split_result
 
 
-def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket, singleD=False, cols_info=None, current_split_result=None):
+def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket, singleD=False, cols_info=None, current_split_result=None, split_criterion="gini"):
     feed_data = in_data_l.copy()
     if singleD and current_split_result['data_rpart_r'] is not None:
         if cols_info is None:
@@ -314,7 +314,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
             tt = [kk for (kk,vv) in cols_info[1].items() if vv[1] in ttm]
         feed_data[:,tt] = 0.
     
-    data_rpart_l = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
+    data_rpart_l = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
     data_rpart_l = data_rpart_l.fit(feed_data, in_target)
     
     #Form Vectors for computing Jaccard. The same vectors are used to form new targets
@@ -338,7 +338,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
             feed_data[:,tt] = 0.
         target = split_vector_l
     
-        data_rpart_r = tree.DecisionTreeClassifier(max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
+        data_rpart_r = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         data_rpart_r = data_rpart_r.fit(feed_data, target)
         
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets

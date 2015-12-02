@@ -499,6 +499,15 @@
 	<length>2</length>
 	<default><value>2</value></default>
       </parameter>   
+    <parameter>
+	<name>split_criterion</name>
+	<label>Split criterion</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Score to use to split during the decision tree induction.</legend>
+	<default><value>0</value></default>
+	<options><value>gini</value><value>entropy</value></options>
+      </parameter>   
     </section>
   </section>
 </root>

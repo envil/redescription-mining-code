@@ -122,11 +122,11 @@ def get_tree(decision_tree, candidates):
     return tree_exp
 
 #Function which does split of left and right trees
-def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3):
+def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3, split_criterion="gini"):
     if sum(in_target) <= min_bucket:
         return {"root": None}
 
-    data_rpart = tree.DecisionTreeClassifier(max_depth = 1, min_samples_leaf = min_bucket, random_state=0).fit(in_data, in_target)
+    data_rpart = tree.DecisionTreeClassifier(criterion=split_criterion, max_depth = 1, min_samples_leaf = min_bucket, random_state=0).fit(in_data, in_target)
     # split_vector = data_rpart.predict(in_data) #Binary vectoFile "/home/r/NetBeansProjects/RedescriptionTrees/src/redescriptiontrees_method2.py", line 201, in <module>r of the tree for Jaccard
     split_tree = get_tree(data_rpart.tree_, candidates)
     # print "SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]]
@@ -227,7 +227,7 @@ def piece_together(trees_store, trees_pile_side):
         out = treeid
     return out
 
-def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, PID=0, singleD=False, cols_info=None):
+def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, split_criterion="gini", PID=0, singleD=False, cols_info=None):
     if singleD:
         candidates = list(trees_store[1]["candidates"])
 
@@ -252,7 +252,8 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                 #                                              gp_tree["id"], leaf, sum(mask),
                 #                                              sum(target[mask]), sum(mask)-sum(target[mask]))
                 # print current_side, dt[mask,:].shape
-                split_tree = splitting(target[mask], dt[mask,:], candidates, max_depth=1, min_bucket=min_bucket)
+                split_tree = splitting(target[mask], dt[mask,:], candidates,
+                                       max_depth=1, min_bucket=min_bucket, split_criterion=split_criterion)
                 if split_tree["root"] is not None:
                     set_supp(split_tree, dt[mask,:], mask)
                     # print "\tX", split_tree["nodes"][split_tree["root"]]["split"], [sum(split_tree["nodes"][lf]["support"]) for lf in split_tree["leaves"]], sum(split_tree["over_supp"])
@@ -374,6 +375,7 @@ class CharbonTLayer(CharbonTree):
         trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,
                                                       max_level=self.constraints.max_depth(),
                                                       min_bucket=self.constraints.min_node_size(),
+                                                      split_criterion=self.constraints.split_criterion(),
                                                       PID=PID, singleD=data.isSingleD(), cols_info=cols_info)
 
         redt = extract_reds(trees_pile, trees_store, data, cols_info)

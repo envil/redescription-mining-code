@@ -158,6 +158,8 @@ class Constraints(object):
         return self._pv["algo_family"]
     def tree_mine_algo(self):
         return self._pv["tree_mine_algo"]
+    def split_criterion(self):
+        return self._pv["split_criterion"]
 
     def filter_nextge(self, red):
         ### could add check disabled
