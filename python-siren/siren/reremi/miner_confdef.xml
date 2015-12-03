@@ -327,7 +327,7 @@
 	<label>Max number of pairs</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
-	<legend>Maximum number of initial pairs extended. Zero leads to expand all.</legend>
+	<legend>Maximum number of initial pairs extended, -1 leads to expand all.</legend>
 	<length>4</length>
 	<default><value>100</value></default>
       </parameter>

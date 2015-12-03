@@ -215,17 +215,17 @@ class BoolColM(ColM):
     values_eq = {True:1, False:0}
     NA = NA_bool
 
-    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '1': True, 0:False, 1:True}
+    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '0.0': False, '1': True, 0:False, 1:True}
     def parseList(listV, indices=None, force=False):
-        if  force:
+        if force:
             if type(listV) is list:
-                listV = set([i for (i, v) in enumerate(listV) if BoolColM.values.get(v, True)])
+                listV = set([i for (i, v) in enumerate(listV) if not BoolColM.values.get(v, False)])
             elif type(listV) is not set:
                 tt = set()
                 ok = True
                 for idx, v in listV.items():
                     try:
-                        if int(v) != 0:
+                        if float(v) != 0:
                             tt.add(idx)
                     except ValueError:
                         ok = False
@@ -1213,12 +1213,35 @@ class Data(object):
             self.rnames = rnames
 
         elif type(N) == str:
-            try:
-                self.cols, self.N, coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
+            if N == "multiple" and len(cols) >= 2:
+                try:         
+                    data_filenames = [cols[0], cols[1]]
+                    if len(cols) >= 4 and cols[2] is not None or cols[3] is not None:
+                        names_filenames = [cols[2], cols[3]]
+                    else:
+                        names_filenames = None
+                    if len(cols) >= 5 and cols[4] is not None:
+                        coo_filename = cols[4]
+                    else:
+                        coo_filename = None
+                    if len(cols) >= 6 and cols[5] is not None:
+                        enames_filename = cols[5]
+                    else:
+                        enames_filename = None
+
+                    self.cols, self.N, coords, self.rnames = readDNCFromFiles(data_filenames, names_filenames, coo_filename, enames_filename)
+
+                except DataError:
+                    self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
+                    raise
+
+            else:
+                try:
+                    self.cols, self.N, coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
                 
-            except DataError:
-                self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
-                raise
+                except DataError:
+                    self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
+                    raise
 
         else:
             print "Input non recognized!"
@@ -2069,36 +2092,262 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 #         return np.array([vect])
 
 
+############################################################################
+############## LEGACY READING METHODS
+############################################################################
+def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None, enames_filename=None):
+    if names_filenames == 0 or  names_filenames == None:
+        names_filenames = ".names"
+    (cols, N) = readVariables(data_filenames)
+    if coo_filename != None:
+        coords = readCoords(coo_filename)
+    else:
+        coords = None
 
+    if type(names_filenames) == str:
+        extension = names_filenames
+        names_filenames = [None, None]
+        for side in [0,1]:
+            filename = data_filenames[side]
+            filename_parts = filename.split('.')
+            filename_parts.pop()
+            names_filename = '.'.join(filename_parts) + extension
+            if os.path.exists(names_filename):
+                names_filenames[side] = names_filename
+
+    for side in [0,1]:
+        if names_filenames[side] != None:
+            tmp_names = readNamesSide(names_filenames[side])
+            if len(tmp_names) == len(cols[side]):
+                for i, col in enumerate(cols[side]):
+                    col.name = tmp_names[i]
+
+    rnames = []
+    if enames_filename is not None and os.path.exists(enames_filename):
+        with open(enames_filename) as fp:
+           tmp = [f.strip() for f in fp.readlines()]
+        rnames = parseRowsNames(tmp)
+    if len(rnames) != N:
+        rnames = None
+    return (cols, N, coords, rnames)
+        
+def readCoords(filename):
+    coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
+    return coord
+
+def readNamesSide(filename):
+    a = []
+    if type(filename) in [unicode, str]:
+        f = codecs.open(filename, encoding='utf-8', mode='r')
+    else: ## Assume it's a file
+        f = filename
+    for line in f:
+        a.append(line.strip())
+    return a
+
+def readVariables(filenames):
+    data = []; nbRowsT = None;
+    for side, filename in enumerate(filenames):
+        (cols, nbRows, nbCols) = readMatrix(filename, side)
+        if len(cols) != nbCols:
+            raise DataError('Matrix in %s does not have the expected number of variables !' % filename)
+
+        else:
+            if nbRowsT == None:
+                nbRowsT = nbRows
+                data.append(cols)
+            elif nbRowsT == nbRows:
+                data.append(cols)
+            else:
+                raise DataError('All matrices do not have the same number of entities (%i ~ %i)!' % (nbRowsT, nbRows))
+    return (data, nbRows)
+
+def readMatrix(filename, side = None):
+    ## Read input
+    nbRows = None
+    names = []
+    if isinstance(filename, file):
+        f = filename
+        filename = f.name
+    else:
+        f = open(filename, 'r')
+
+    filename_parts = filename.split('.')
+    type_all = filename_parts.pop()
+    nbRows = None
+    nbCols = None
+
+    if len(type_all) >= 3 and (type_all[0:3] == 'mix' or type_all[0:3] == 'dat' or type_all[0:3] == 'spa'):  
+        row = f.next()
+        a = row.split()
+        nbRows = int(a[0])
+        nbCols = int(a[1])
+    try:
+        if len(type_all) >= 3 and type_all[0:3] == 'dat':
+            method_parse =  eval('parseCell%s' % (type_all.capitalize()))
+            method_prepare = eval('prepare%s' % (type_all.capitalize()))
+            method_finish = eval('finish%s' % (type_all.capitalize()))
+        else:
+            method_parse =  eval('parseVar%s' % (type_all.capitalize()))
+            method_prepare = eval('prepareNonDat')
+            method_finish = eval('finishNonDat')
+    except NameError as detail:
+        raise DataError("Could not find correct data reader! (%s)" % detail)
+    try:
+        tmpCols = method_prepare(nbRows, nbCols)
+
+        # print "Reading input data %s (%s)"% (filename, type_all)
+        for row in f:
+            if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbRows == None:
+                nbRows = len(row.split())
+            method_parse(tmpCols, row.split(), nbRows, nbCols)
+
+        if  len(type_all) >= 3 and type_all[0:3] == 'den' and nbCols == None:
+            nbCols = len(tmpCols)
+
+        ## print "Done with reading input data %s (%i x %i %s)"% (filename, nbRows, len(tmpCols), type_all)
+        cols = method_finish(tmpCols, nbRows, nbCols)
+        for (cid, col) in enumerate(cols):
+            col.setId(cid)
+            col.side = side
+    except (AttributeError, ValueError, StopIteration) as detail:
+        raise DataError("Problem with the data format while reading (%s)" % detail)
+    return (cols, nbRows, nbCols)
+    
+def prepareNonDat(nbRows, nbCols):
+    return []
+
+def parseVarMix(tmpCols, a, nbRows, nbCols):
+    name = a.pop(0)
+    type_row = a.pop(0)
+    if type_row[0:3] == 'dat':
+        raise DataError('Oups this row format is not allowed for mixed datat (%s)!' % (type_row))
+    try:
+        method_parse =  eval('parseVar%s' % (type_row.capitalize()))
+    except AttributeError:
+        raise DataError('Oups this row format does not exist (%s)!' % (type_row))
+    method_parse(tmpCols, a, nbRows, nbCols)
+
+def finishNonDat(tmpCols, nbRows, nbCols):
+    return tmpCols
+
+def prepareDatnum(nbRows, nbCols):
+    return [[[(0, -1)], set()] for i in range(nbCols)]
+
+def parseCellDatnum(tmpCols, a, nbRows, nbCols):
+    id_row = int(a[0])-1
+    id_col = int(a[1])-1
+    if id_col >= nbCols or id_row >= nbRows:
+        raise DataError('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
+    else :
+        try:
+            val = float(a[2])
+            if val != 0:
+                tmpCols[id_col][0].append((val, id_row))
+        except ValueError:
+            tmpCols[id_col][1].add(id_row)
+            
+def finishDatnum(tmpCols, nbRows, nbCols):
+    return [NumColM(sorted(tmpCols[col][0], key=lambda x: x[0]), nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
+        
+def prepareDatbool(nbRows, nbCols):
+    return [[set(), set()] for i in range(nbCols)]
+
+def parseCellDatbool(tmpCols, a, nbRows, nbCols):
+    id_row = int(a[0])-1
+    id_col = int(a[1])-1
+    if id_col >= nbCols or id_row >= nbRows:
+        raise Exception('Outside expected columns and rows (%i,%i)' % (id_col, id_row))
+    else :
+        try:
+            val = float(a[2])
+            if val != 0:
+                tmpCols[id_col][0].add(id_row)
+        except ValueError:
+            tmpCols[id_col][1].add(id_row)
+        
+def finishDatbool(tmpCols, nbRows, nbCols):
+    return [BoolColM(tmpCols[col][0], nbRows, tmpCols[col][1]) for col in range(len(tmpCols))]
+
+def parseVarDensenum(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = []
+        miss = set()
+        for i in range(len(a)):
+            try:
+                val = float(a[i])
+                tmp.append((val,i))
+            except ValueError:
+                miss.add(i)
+        tmp.sort(key=lambda x: x[0])
+        tmpCols.append(NumColM( tmp, nbRows, miss ))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+                    
+def parseVarDensecat(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = {}
+        miss = set()
+        for i in range(len(a)):
+            try:
+                cat = float(a[i])
+                if tmp.has_key(cat):
+                    tmp[cat].add(i)
+                else:
+                    tmp[cat] = set([i])
+            except ValueError:
+                miss.add(i) 
+        tmpCols.append(CatColM(tmp, nbRows, miss))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+
+def parseVarDensebool(tmpCols, a, nbRows, nbCols):
+    if len(a) == nbRows:
+        tmp = set()
+        miss = set()
+        for i in range(len(a)):
+            try:
+                val = float(a[i])
+                if val != 0: tmp.add(i)
+            except ValueError:
+                miss.add(i) 
+        tmpCols.append(BoolColM( tmp, nbRows , miss))
+    else:
+        raise Exception('Number of rows does not match (%i ~ %i)' % (nbRows,len(a)))
+    
+                        
+def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
+    tmp = set()
+    for i in range(len(a)):
+        tmp.add(int(a[i]))
+    if max(tmp) >= nbRows:
+        raise Exception('Too many rows (%i ~ %i)' % (nbRows, max(tmp)))
+    else:
+        tmpCols.append(BoolColM( tmp, nbRows ))
+
+#####################################################
+#####################################################
 
 def main():
     rep = "/home/galbrun/"
-    data = Data([rep+"coauthor_picked0_numA.csv", rep+"conference_picked0_numA.csv", {}, ""], "csv")
-    data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
-    # for side in [0,1]:
-    #     for col in data.cols[side]:
-    #         print col
-    #     pdb.set_trace()
-    exit()
-    # rep = "/home/galbrun/TKTL/redescriptors/generaliz/data/"
-    # # data = Data([rep+"top_plstats_0.csv", rep+"top_btstats_0.csv", {}, "NA"], "csv")
-    # data = Data([rep+"mammals_points.csv", rep+"worldclim_tp_points.csv", {}, ""], "csv")
+    data = Data([rep+"dblp_data/coauthor_filtered0_numA.csv", rep+"dblp_data/conference_filtered0_numA.csv", {}, ""], "csv")
+    print data
+    # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
     # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
-    # data2 = Data(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv", {}, ""], "csv")
-    # print data, data2
     # exit()
 
-
-    # data = Data(["/home/galbrun/redescriptors/data/rajapaja/mammals.sparsebool",
-    #              "/home/galbrun/redescriptors/data/rajapaja/worldclim_tp.densenum", None, None,
-    #              "/home/galbrun/redescriptors/data/rajapaja/coordinates_poly.names",
-    #              "/home/galbrun/redescriptors/data/rajapaja/entities.names"], "multiple")
-    # data = Data(["/home/galbrun/redescriptors/data/dblp/conference_picked.sparsenum",
-    #              "/home/galbrun/redescriptors/data/dblp/coauthor_picked.sparsenum", None, None,
+    # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",
+    #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.datnum",
+    #              "/home/galbrun/dblp_data/filtered/conference_filtered.names",
+    #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names",
     #              None,
-    #              "/home/galbrun/redescriptors/data/dblp/coauthor_picked.names"], "multiple")
-    # print data.hasRNames()
-    # data.writeXML(open("tmp.xml", "w"))
+    #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names"], "multiple")
+    # data.writeCSV(["/home/galbrun/dblp_data/conference_filtered.csv",
+    #                "/home/galbrun/dblp_data/coauthor_filtered.csv"])
+
+    exit()
+
+
 
 if __name__ == '__main__':
     main()
