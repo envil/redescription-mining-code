@@ -219,7 +219,7 @@ class BoolColM(ColM):
     def parseList(listV, indices=None, force=False):
         if force:
             if type(listV) is list:
-                listV = set([i for (i, v) in enumerate(listV) if not BoolColM.values.get(v, False)])
+                listV = set([i for (i, v) in enumerate(listV) if BoolColM.values.get(v, True)])
             elif type(listV) is not set:
                 tt = set()
                 ok = True

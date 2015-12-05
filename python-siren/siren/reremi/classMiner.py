@@ -325,10 +325,20 @@ class Miner(object):
             self.logger.updateProgress({"rcount": self.count}, 1, self.id)
             ## SOUVENIRS self.souvenirs.update(partial["batch"])
 
+            
+            self.logger.clockTic(self.id, "select")        
+            added = []
             if partial is not None:
+                added = [len(self.final["batch"])+ i for i in range(len(partial["results"]))]
                 self.final["batch"].extend([partial["batch"][i] for i in partial["results"]])
-            self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
-
+            self.final["results"] = self.final["batch"].selected(self.constraints.actions_final(), ids=self.final["results"]+added, new_ids=added)
+            # self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
+            # if (self.final["results"] != ttt):
+            #     pdb.set_trace()
+            #     print "Not same"
+            ### DEBUG self.final["results"] = range(len(self.final["batch"]))
+            self.logger.clockTac(self.id, "select")
+        
             self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
             self.logger.printL(1, {"final": self.final["batch"]}, 'result', self.id)
             initial_red = self.initial_pairs.get(self.data, self.testIni)
@@ -541,10 +551,16 @@ class MinerDistrib(Miner):
                 self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
 
     def handleExpandResult(self, m):
+        added = [len(self.final["batch"])+ i for i in range(len(m["out"]["results"]))]
         self.final["batch"].extend([m["out"]["batch"][i] for i in m["out"]["results"]])
-        self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
-        self.souvenirs.update(m["out"]["batch"])
-        
+
+        self.logger.clockTic(self.id, "select_%d-%d" % (m["count"], m["id"]))        
+        self.final["results"] = self.final["batch"].selected(self.constraints.actions_final(), ids=self.final["results"]+added, new_ids=added)
+        # self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
+        self.logger.clockTac(self.id, "select_%d-%d" % (m["count"], m["id"]))
+
+        if not self.constraints.amnesic():
+            self.souvenirs.update(m["out"]["batch"])
         self.logger.clockTac(self.id, "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
         self.logger.printL(1, {"final":self.final["batch"]}, 'result', self.id)
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.id)

@@ -16,9 +16,12 @@ class Souvenirs(object):
 
     def nbCols(self, side):
         return len(self.availableMo[side])
+
+    def isAmnesic(self):
+        return self.amnesic
     
     def __str__(self):
-        if self.amnesic :
+        if self.isAmnesic():
             return 'Amnesic, Availables :%i x %i' % (len(self.availableMo[0]), len(self.availableMo[1]))
         else :
             return '%i souvenirs, %i indexes, Availables :%i x %i' \
@@ -54,7 +57,7 @@ class Souvenirs(object):
     
     def extOneStep(self, red, side):
         cols_ext = red.invColsSide(side)
-        if not self.amnesic:
+        if not self.isAmnesic():
             other_side = 1-side
             lengthL = red.length(0)+(1-side)
             lengthR = red.length(1)+side
@@ -129,7 +132,7 @@ class Souvenirs(object):
         return cols  
 
     def lookForQueries(self, indexes_p):
-        if len(indexes_p) > 0 and not self.amnesic:
+        if len(indexes_p) > 0 and not self.isAmnesic():
             query_ids = set([-1])
             id_inds = 0
             while id_inds < len(indexes_p) and indexes_p[id_inds] in self.indexes and len(query_ids) > 0:
@@ -146,7 +149,7 @@ class Souvenirs(object):
         
     def update(self, redList):
         for red in redList:
-            if not self.amnesic:
+            if not self.isAmnesic():
                 self.add(red)
 
         

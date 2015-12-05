@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, re, os.path
+import sys, re, os.path, datetime
 import numpy
 import tempfile
 from toolLog import Log
@@ -8,6 +8,7 @@ from classPackage import Package
 from classData import Data
 from classRedescription import Redescription, parseRedList
 from classBatch import Batch
+from classConstraints import Constraints
 from classPreferencesManager import PreferencesManager, PreferencesReader
 from classMiner import instMiner, StatsMiner
 from classQuery import Query
@@ -23,6 +24,7 @@ def loadAll(arguments=[]):
     config_filename = None
     tmp_dir = None
     params = None
+    reds = None
     options_args = arguments[1:]
 
     if len(arguments) > 1:
@@ -45,6 +47,7 @@ def loadAll(arguments=[]):
         package = Package(pack_filename)
         elements_read = package.read(pm)        
         data = elements_read.get("data", None)
+        reds = elements_read.get("reds", None)
         params = elements_read.get("preferences", None)
         tmp_dir = package.getTmpDir()
 
@@ -65,7 +68,7 @@ def loadAll(arguments=[]):
     if pack_filename is not None:
         filenames["package"] = os.path.abspath(pack_filename)
     print filenames
-    return params, data, logger, filenames
+    return params, data, logger, filenames, reds
 
 def trunToDict(params):
     params_l = {}
@@ -216,7 +219,7 @@ def loadPackage(filename, pm):
 
 def run(args):
     
-    params, data, logger, filenames = loadAll(args)
+    params, data, logger, filenames, _ = loadAll(args)
 
     ############################
     #### SPLITS
@@ -239,9 +242,82 @@ def run(args):
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
 
+def run_filter(args):
+
+    #### on 100
+    # [84, 1, 43, 85, 6, 5, 7, 66, 11, 44, 90, 14, 31, 86, 75, 39, 58, 52, 55, 33, 89, 93, 18, 77, 53, 91, 34, 68, 65, 92, 76, 74, 80, 20, 56, 22, 78, 82, 25]
+    # [(8, False), (0, False), (2, False), (9, False), (27, False), (42, False), (61, False), (84, True), (19, False), (17, False), (3, False), (10, False), (4, False), (1, True), (62, False), (46, False), (28, False), (32, False), (43, True), (63, False), (13, False), (85, True), (6, True), (5, True), (7, True), (66, True), (11, True), (29, False), (15, False), (44, True), (90, True), (70, False), (87, False), (12, False), (14, True), (16, False), (23, False), (31, True), (38, False), (36, False), (37, False), (86, True), (88, False), (73, False), (83, False), (51, False), (75, True), (39, True), (57, False), (58, True), (97, False), (67, False), (52, True), (30, False), (95, False), (47, False), (55, True), (50, False), (35, False), (33, True), (89, True), (69, False), (45, False), (93, True), (18, True), (54, False), (77, True), (53, True), (91, True), (34, True), (64, False), (68, True), (96, False), (65, True), (98, False), (92, True), (48, False), (49, False), (26, False), (40, False), (76, True), (74, True), (72, False), (94, False), (71, False), (99, False), (80, True), (21, False), (20, True), (56, True), (22, True), (81, False), (78, True), (79, False), (82, True), (59, False), (41, False), (60, False), (25, True), (24, False)]
+## [0, 2, 9, 27, 42, 61, 19, 17, 3, 10, 4, 62, 46, 28, 32, 63, 13, 29, 15, 70, 87, 12, 16, 23, 38, 36, 37, 88, 73, 83, 51, 57, 97, 67, 30, 95, 47, 50, 35, 69, 45, 54, 64, 96, 98, 48, 49, 26, 40, 72, 94, 71, 99, 21, 81, 79, 59, 41, 60, 24, 8]
+
+    params, data, logger, filenames, reds = loadAll(args)
+    constraints = Constraints(data, params)
+    reds = []
+    with open("/home/galbrun/current/redescriptions.csv") as fd:
+        parseRedList(fd, data, reds)
+
+    # bbatch = Batch(reds)
+    # # org_ids = bbatch.selected(constraints.actions_final())
+    # # pdb.set_trace()
+    
+    # cc = constraints.actions_final()
+    # ttt = [0, 2, 9, 27, 42, 61, 84, 19, 17, 3, 10, 4, 1, 62, 46, 28, 32, 43, 63, 13, 85, 6, 5, 7, 66, 11, 29, 15, 44, 90, 70, 87, 12, 14, 16, 23, 31, 38, 36, 37, 86, 88, 73, 83, 51, 75, 39, 57, 58, 97, 67, 52, 30, 95, 47, 55, 50, 35, 33, 89, 69, 45, 93, 18, 54, 77, 53, 91, 34, 64, 68, 96, 65, 98, 92, 48, 49, 26, 40, 76, 74, 72, 94, 71, 99, 80, 21, 20, 56, 22, 81, 78, 79, 82, 59, 41, 60, 25, 24, 8]
+    # for i in range(len(ttt)):
+    #     for j in range(i):
+    #         if bbatch.filterLast([ttt[j],ttt[i]], cc[-1][1]):
+    #             print j, i, ttt[j], ttt[i]
+    # pdb.set_trace()
+
+    rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
+    rr_tests = [[73]] ## [2]
+    for ri, add_redids in enumerate(rr_tests):
+
+        include_redids = [84, 77, 53, 29, 94]
+
+        bbatch = Batch([reds[i] for i in include_redids]+[reds[i] for i in add_redids])
+        org_ids = bbatch.selected(constraints.actions_final())
+        
+        batch = Batch([reds[i] for i in include_redids])
+        pids = batch.selected(constraints.actions_final())
+        batch.extend([reds[i] for i in add_redids])
+        # tmp_ids = batch.selected(self.constraints.actions_redundant())
+        ticc = datetime.datetime.now()
+        new_ids = range(len(include_redids), len(include_redids)+len(add_redids))
+        tmp_ids = batch.selected(constraints.actions_final(), ids= pids+new_ids, new_ids=new_ids)
+        tacc = datetime.datetime.now()
+        print "Elapsed ", ri, tacc-ticc
+        if tmp_ids != org_ids:
+            print "Not indentical"
+        pdb.set_trace()
+        print len(tmp_ids), len(org_ids)
+
+        
+    return [batch[i] for i in tmp_ids]
+
+    ############################
+    #### SPLITS
+    # data.extractFolds(1, 12)
+    # splits_info = data.getFoldsInfo()
+    # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+    # ids = {}
+    # checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
+    # for lt, bids in checked:
+    #     ids[lt] = [stored_splits_ids[bid] for bid in bids]
+    # data.assignLT(ids["learn"], ids["test"])
+    ############################
+
+    miner = instMiner(data, params, logger)
+    try:
+        miner.full_run()
+    except KeyboardInterrupt:
+        logger.printL(1, 'Stopped...', "log")
+
+    outputResults(filenames, miner.final, data)
+    logger.clockTac(0, None)
+
+
 def run_splits(args):
 
-    params, data, logger, filenames = loadAll(args)    
+    params, data, logger, filenames, _ = loadAll(args)    
     #### TODO generic
     data.extractFolds(1, 12)
     stM = StatsMiner(data, params, logger)
@@ -265,5 +341,7 @@ if __name__ == "__main__":
         
     if sys.argv[-1] == "splits":
         run_splits(sys.argv[:-1])
+    elif sys.argv[-1] == "filter":
+        run_filter(sys.argv[:-1])
     else:
         run(sys.argv)
