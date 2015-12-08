@@ -68,6 +68,7 @@ class ExpMiner(object):
 
     def expandRedescriptionsTree(self, nextge, partial, final=None):
         for redi, red in enumerate(nextge):
+            self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             new_red = self.charbon.getTreeCandidates(-1, self.data, red.copy())
             if new_red is not None:
                 partial["batch"].append(new_red)
@@ -101,12 +102,15 @@ class ExpMiner(object):
         
 
     def expandRedescriptionsGreedy(self, nextge, partial, final=None):
+        first_round = True
         while len(nextge) > 0:
             kids = set()
             redi = 0
 
             while redi < len(nextge):
                 red = nextge[redi]
+                if first_round:
+                    self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
                 ### To know whether some of its extensions were found already
                 nb_extensions = red.updateAvailable(self.souvenirs)
 
@@ -147,6 +151,7 @@ class ExpMiner(object):
                 self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.ppid)
                 redi += 1
 
+            first_round = False
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
             nextge_keys = partial["batch"].selected(self.constraints.actions_nextge())
             nextge = [partial["batch"][i] for i in nextge_keys]
@@ -319,14 +324,14 @@ class Miner(object):
         initial_red = self.initial_pairs.get(self.data, self.testIni)
         while initial_red is not None and self.questionLive():
             self.count += 1
-            self.logger.clockTic(self.id, "expansion")
+            self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
             partial = self.expandRedescriptions([initial_red])
             self.logger.updateProgress({"rcount": self.count}, 1, self.id)
             ## SOUVENIRS self.souvenirs.update(partial["batch"])
 
             
-            self.logger.clockTic(self.id, "select")        
+            # self.logger.clockTic(self.id, "select")        
             added = []
             if partial is not None:
                 added = [len(self.final["batch"])+ i for i in range(len(partial["results"]))]
@@ -337,9 +342,9 @@ class Miner(object):
             #     pdb.set_trace()
             #     print "Not same"
             ### DEBUG self.final["results"] = range(len(self.final["batch"]))
-            self.logger.clockTac(self.id, "select")
-        
-            self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
+            # self.logger.clockTac(self.id, "select")
+
+            self.logger.clockTac(self.id, "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
             self.logger.printL(1, {"final": self.final["batch"]}, 'result', self.id)
             initial_red = self.initial_pairs.get(self.data, self.testIni)
 
@@ -379,10 +384,11 @@ class Miner(object):
             for idl in ids[side]:
                 for (l,v) in self.charbon.computeInitTerm(self.data.col(side, idl)):
                     if side == 0:
-                        self.initial_pairs.add(l, None, {"score":0, side: idl, 1-side: -1})
+                        self.initial_pairs.add(l, None, {"score":v, side: idl, 1-side: -1})
                     else:
-                        self.initial_pairs.add(None, l, {"score":0, side: idl, 1-side: -1})
-        self.initial_pairs.setMaxOut(-1)
+                        self.initial_pairs.add(None, l, {"score":v, side: idl, 1-side: -1})
+        ## UNLIMITED PAIRS FOR TREES?
+        # self.initial_pairs.setMaxOut(-1)
         self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.id)
         # self.logger.sendCompleted(self.id)
 
@@ -554,10 +560,10 @@ class MinerDistrib(Miner):
         added = [len(self.final["batch"])+ i for i in range(len(m["out"]["results"]))]
         self.final["batch"].extend([m["out"]["batch"][i] for i in m["out"]["results"]])
 
-        self.logger.clockTic(self.id, "select_%d-%d" % (m["count"], m["id"]))        
+        # self.logger.clockTic(self.id, "select_%d-%d" % (m["count"], m["id"]))        
         self.final["results"] = self.final["batch"].selected(self.constraints.actions_final(), ids=self.final["results"]+added, new_ids=added)
         # self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
-        self.logger.clockTac(self.id, "select_%d-%d" % (m["count"], m["id"]))
+        # self.logger.clockTac(self.id, "select_%d-%d" % (m["count"], m["id"]))
 
         if not self.constraints.amnesic():
             self.souvenirs.update(m["out"]["batch"])

@@ -678,7 +678,8 @@ class NumColM(ColM):
 
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
-        if self.lenMode() >= minIn and self.lenNonMode() >= minOut: 
+        # if self.lenMode() >= minIn and self.lenNonMode() >= minOut:
+        if self.lenNonMode() >= minIn and self.lenMode() >= minOut: 
             idx = self.sVals.index((0,-1))
             low_idx, hi_idx = (idx-1, idx+1)
             while low_idx > 0 and self.sVals[low_idx][0] == self.sVals[idx][0]:
