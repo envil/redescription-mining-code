@@ -56,7 +56,7 @@ class Siren():
 
     results_delay = 1000
     viz_grid = [2,2]
-    intab = True
+    intab = False #True
     color_add = (16, 82, 0)
     color_drop = (190, 10, 10)
     color_vizb = (20, 20, 20)

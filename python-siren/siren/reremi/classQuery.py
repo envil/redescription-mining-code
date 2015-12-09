@@ -1044,7 +1044,13 @@ class QTree(object):
         while self.getNodeParent(cn) is not None:
             prt = self.getNodeParent(cn)
             neg = cn in self.getNodeChildren(prt, self.branchN)
-            buk.insert(0, Literal(neg, self.getNodeSplit(prt)))
+            tmp = self.getNodeSplit(prt)
+            if neg and tmp.type_id == NumTerm.type_id and tmp.getComplement() is not None:
+                buk.insert(0, Literal(not neg, tmp.getComplement()))
+                ## print neg, tmp, "=>", buk[0]
+            else:
+                buk.insert(0, Literal(neg, tmp))
+                ## print neg, tmp, "->", buk[0]
             cn = prt
         return buk
 
@@ -1206,7 +1212,8 @@ class QTree(object):
         if len(split_commons[2]) > 0:
             self.recTree(to_ynbs[2], split_commons[2], pid, fynb)
         elif len(to_ynbs[2]) > 0:
-            pdb.set_trace()
+            print "Unexpected something"
+            # pdb.set_trace()
 
     def fill(self):
         basic_nodes = self.tree.keys()
