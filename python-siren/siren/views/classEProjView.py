@@ -117,7 +117,7 @@ class EProjView(GView):
 
     def additionalElements(self):
         setts_boxes = []
-        max_w = self.fwidth-50
+        max_w = self.getFWidth()-50
         current_w = 1000
         flags = wx.ALIGN_CENTER | wx.ALL
 
