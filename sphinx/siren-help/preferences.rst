@@ -17,7 +17,7 @@ Mining parameters
 
 Mining parameters are specified `here <../_static/miner_confdef.xml>`_ and can be set through the interface.
 
-.. image:: ../_figs/screenshots/PrefsBasic.png
+.. image:: ../_figs/screenshots/PrefsMine.png
 
 .. _interface_parameters:
 
@@ -26,16 +26,12 @@ Interface parameters
 
 Interface parameters are specified `here <../_static/ui_confdef.xml>`_  and can be set through the interface.
 
-.. image:: ../_figs/screenshots/PrefsInterface.png
-.. image:: ../_figs/screenshots/PrefsMaps.png
+.. image:: ../_figs/screenshots/PrefsInterface2.png
 
 
 For instance, this allows to modify the appearance of the maps.
 
-.. image:: ../_figs/screenshots/MapAlt0.png
-   :class: sideL
-.. image:: ../_figs/screenshots/MapAlt1.png
-   :class: sideR
+.. image:: ../_figs/screenshots/MapVariants.png
 
 .. _preferences_file:
 

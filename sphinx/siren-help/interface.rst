@@ -81,9 +81,18 @@ Sliders allow to set the opacity of disabled entities, as well as the level of d
 
 Expansion can be started by pressing the ``Expand`` button. The expansion will be delegated to a background process. It can be interrupted via the menu :menuselection:`Process --> Stop expander XXX`, where running task are listed. Redescriptions generated during the expansion will be appended to the list of redescriptions in the ``Expansions`` tab.
 
+.. _display_modes:
+
+Display modes
+==============
+
+.. image:: ../_figs/screenshots/TreeView.png
+.. image:: ../_figs/screenshots/VizTab.png
+.. image:: ../_figs/screenshots/VizSplitFrame.png
+
 .. _menu:
 
-Menu
+Menus
 ======
 
 .. note::
@@ -109,15 +118,13 @@ The content of the ``Edit`` submenu depends on the tab or view currently active.
 
 If the tab contains redescriptions, it will also allow to filter the redescription and to copy, cut and paste them.
 
-These functionalities can also be accessed via the contextual menu on right-click.
-
 .. image:: ../_figs/screenshots/MenuEditReds.png
 .. image:: ../_figs/screenshots/MenuEditView.png
 
 .. _view_menu:
 
 Views
-========
+--------
 
 If the tab contains redescriptions or variables the ``View`` menu will allow to open a :ref:`view window <view_window>` to visualize the selected item.
 
@@ -126,7 +133,7 @@ If the tab contains redescriptions or variables the ``View`` menu will allow to 
 .. _process_menu:
 
 Process
-========
+---------
 
 The ``Process`` menu allows to start mining redescriptions and contains a list of running task and allows to interrupt any of them.
 
@@ -136,7 +143,7 @@ The ``Process`` menu allows to start mining redescriptions and contains a list o
 .. _windows_menu:
 
 Windows
-========
+----------
 
 The ``Windows`` menu contains a list of tabs and allows to show or hide any of them.
 It also contains a list of Views currently opened sorted by redescription, allowing to access any of them and close all at once.
@@ -146,8 +153,21 @@ It also contains a list of Views currently opened sorted by redescription, allow
 .. _help_menu:
 
 Help
-======
+------
 
 The ``Help`` menu provides access to this help and to more information about *Siren* and licensing.
 
 .. image:: ../_figs/screenshots/MenuHelp.png
+
+Contextual menu
+----------------
+
+Many ``Edit`` and ``Views`` functionalities can also be accessed via the contextual menu upon right-click on a redescription.
+.. image:: ../_figs/screenshots/MenuContextRed.png
+
+k-fold mining
+===============
+
+.. image:: ../_figs/screenshots/SplitsSettings.png
+.. image:: ../_figs/screenshots/SplitsList.png
+.. image:: ../_figs/screenshots/SplitsVizNLT.png

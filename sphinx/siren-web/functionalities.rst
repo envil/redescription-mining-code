@@ -67,7 +67,7 @@ holds and only the right hand side query holds.
 
 .. _viz_cv:
 
-Coordinated views
+Display modes
 ---------------------------
 
 Visualizations can be displayed either in their own windows separate from the main application window or in a dedicated grid of illustrations in the main application window. In addition, the main
@@ -99,7 +99,7 @@ The user can select single entites from a view by clicking the corresponding dot
 
 .. image:: ../_figs/screenshots/SelectDot.png
 
-Furthermore, he can select a subset of entities by drawing a enclosing polygon directly on the view.
+In addition, the user can also select a subset of entities by drawing a enclosing polygon directly on the view.
 
 .. image:: ../_figs/screenshots/SelectPoly.png
 
