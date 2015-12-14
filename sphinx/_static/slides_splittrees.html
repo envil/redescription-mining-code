@@ -3,7 +3,7 @@
  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"> 
 <head> 
-  <title>Building Redescriptions with trees, the split way</title> 
+  <title>Building Redescriptions with trees, the layered way</title> 
   <link rel="stylesheet" type="text/css" media="screen, projection, print" 
    href="../_static/slidyA.css" />   <!-- <script src="http://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js" -->
   <script src="../_static/slidy_org.js"
@@ -26,7 +26,7 @@
 	<img src="../_static/drawing_tree1L.svg">
    </div>
    <div class="slide">
-	<h1>Relabel LHS leaves</h1>
+	<h1>Relabel leaves</h1>
 	<p>Relabel the entities in the leaves of the tree.</p><br/>
 	<img src="../_static/drawing_tree1L.svg">
 	<img src="../_static/drawing_arr.svg">
@@ -47,7 +47,7 @@
 	<img src="../_static/drawing_tree1R.svg">
    </div>
    <div class="slide">
-	<h1>Relabel RHS leaves</h1>
+	<h1>Relabel leaves</h1>
 	<p>Relabel the entities in the leaves of the tree.</p><br/>
 	<img src="../_static/drawing_tree1R.svg">
 	<img src="../_static/drawing_arr.svg">
@@ -60,24 +60,50 @@
 	<img src="../_static/drawing_arr.svg">
 	<img src="../_static/drawing_labelsIn1L.svg">
   </div>
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>Continue alternating between the two sides...</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>... until the supports converge.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
+
+
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Relabel leaves</h1> -->
+  <!-- 	<p>Relabel the entities in the leaves of the tree.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_tree1L.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsOut1L.svg"> -->
+  <!-- </div> -->
+  <!-- <div class="slide"> -->
+  <!-- 	<h1>Use as target for RHS</h1> -->
+  <!-- 	<p>Use these new labels as the target.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_labelsOut1L.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsIn1R.svg"> -->
+  <!-- </div> -->
+
+
+
   <div class="slide">
-	<h1>Split the target for LHS</h1>
-	<p>Split the target according to the tree under construction for the LHS.</p><br/>
-	<img src="../_static/drawing_labelsIn1L.svg">
+	<h1>Two layers LHS</h1>
+	<p>Build a depth two classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsIn1R.svg">
 	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedIn2L.svg">
-  </div>
-  <div class="slide">
-	<h1>Expand LHS tree</h1>
-	<p>Build depth one classification trees over left-hand side variables separately for either split.</p><br/>
-	<img src="../_static/drawing_labelsSplittedIn2L.svg">
-	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedOut2L.svg">
-  </div>
-  <div class="slide">
-	<h1>Relabel LHS leaves</h1>
+	<img src="../_static/drawing_tree2L.svg">
+   </div>
+   <div class="slide">
+	<h1>Relabel leaves</h1>
 	<p>Relabel the entities in the leaves of the tree.</p><br/>
-	<img src="../_static/drawing_labelsSplittedOut2L.svg">
+	<img src="../_static/drawing_tree2L.svg">
 	<img src="../_static/drawing_arr.svg">
 	<img src="../_static/drawing_labelsOut2L.svg">
   </div>
@@ -89,54 +115,70 @@
 	<img src="../_static/drawing_labelsRndR.svg">
   </div>
   <div class="slide">
-	<h1>Split the target for RHS</h1>
-	<p>Split the target according to the tree under construction for the RHS.</p><br/>
-	<img src="../_static/drawing_labelsIn1R.svg">
+	<h1>Two layer RHS</h1>
+	<p>Build a depth two classification tree over right-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsRndR.svg">
 	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedIn2R.svg">
-  </div>
-  <div class="slide">
-	<h1>Expand RHS tree</h1>
-	<p>Build depth one classification trees over right-hand side variables separately for either split.</p><br/>
-	<img src="../_static/drawing_labelsSplittedIn2R.svg">
-	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedOut2R.svg">
-  </div>
-  <div class="slide">
-	<h1>Relabel RHS leaves</h1>
+	<img src="../_static/drawing_tree2R.svg">
+   </div>
+   <div class="slide">
+	<h1>Relabel leaves</h1>
 	<p>Relabel the entities in the leaves of the tree.</p><br/>
-	<img src="../_static/drawing_labelsSplittedOut2R.svg">
+	<img src="../_static/drawing_tree2R.svg">
 	<img src="../_static/drawing_arr.svg">
 	<img src="../_static/drawing_labelsOut2R.svg">
   </div>
-
-
   <div class="slide">
 	<h1>Use as target for LHS</h1>
 	<p>Use these new labels as the target.</p><br/>
 	<img src="../_static/drawing_labelsOut2R.svg">
 	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsIn1L.svg">
+	<img src="../_static/drawing_labelsRndL.svg">
   </div>
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>Continue alternating between the two sides...</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>... until the supports converge.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
+
+
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Relabel leaves</h1> -->
+  <!-- 	<p>Relabel the entities in the leaves of the tree.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_tree2L.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsOut2L.svg"> -->
+  <!-- </div> -->
+  <!-- <div class="slide"> -->
+  <!-- 	<h1>Use as target for RHS</h1> -->
+  <!-- 	<p>Use these new labels as the target.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_labelsOut2L.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsRndR.svg"> -->
+  <!-- </div> -->
+
+
 
   <div class="slide">
-	<h1>Split the target for LHS</h1>
-	<p>Split the target according to the tree under construction for the LHS.</p><br/>
-	<img src="../_static/drawing_labelsIn1L.svg">
+	<h1>Three layers LHS</h1>
+	<p>Build a depth three classification tree over left-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsRndR.svg">
 	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedIn3L.svg">
-  </div>
-  <div class="slide">
-	<h1>Expand LHS tree</h1>
-	<p>Build depth one classification trees over left-hand side variables separately for each split.</p><br/>
-	<img src="../_static/drawing_labelsSplittedIn3L.svg">
-	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedOut3L.svg">
-  </div>
-  <div class="slide">
-	<h1>Relabel LHS leaves</h1>
+	<img src="../_static/drawing_tree3L.svg">
+   </div>
+   <div class="slide">
+	<h1>Relabel leaves</h1>
 	<p>Relabel the entities in the leaves of the tree.</p><br/>
-	<img src="../_static/drawing_labelsSplittedOut3L.svg">
+	<img src="../_static/drawing_tree3L.svg">
 	<img src="../_static/drawing_arr.svg">
 	<img src="../_static/drawing_labelsOut3L.svg">
   </div>
@@ -148,27 +190,40 @@
 	<img src="../_static/drawing_labelsRndR.svg">
   </div>
   <div class="slide">
-	<h1>Split the target for RHS</h1>
-	<p>Split the target according to the tree under construction for the RHS.</p><br/>
-	<img src="../_static/drawing_labelsIn1R.svg">
+	<h1>Three layer RHS</h1>
+	<p>Build a depth three classification tree over right-hand side variables.</p><br/>
+	<img src="../_static/drawing_labelsRndR.svg">
 	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedIn3R.svg">
-  </div>
-  <div class="slide">
-	<h1>Expand RHS tree</h1>
-	<p>Build depth one classification trees over right-hand side variables separately for each split.</p><br/>
-	<img src="../_static/drawing_labelsSplittedIn3R.svg">
-	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsSplittedOut3R.svg">
-  </div>
-  <div class="slide">
-	<h1>Relabel RHS leaves</h1>
-	<p>Relabel the entities in the leaves of the tree.</p><br/>
-	<img src="../_static/drawing_labelsSplittedOut3R.svg">
-	<img src="../_static/drawing_arr.svg">
-	<img src="../_static/drawing_labelsOut3R.svg">
-  </div>
-
+	<img src="../_static/drawing_tree3R.svg">
+   </div>
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Relabel leaves</h1> -->
+  <!-- 	<p>Relabel the entities in the leaves of the tree.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_tree3R.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsOut3R.svg"> -->
+  <!-- </div> -->
+  <!-- <div class="slide"> -->
+  <!-- 	<h1>Use as target for RHS</h1> -->
+  <!-- 	<p>Use these new labels as the target.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_labelsOut3R.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_labelsRndL.svg"> -->
+  <!-- </div> -->
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>Continue alternating between the two sides...</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
+  <!--  <div class="slide"> -->
+  <!-- 	<h1>Iterate...</h1> -->
+  <!-- 	<p>... until the supports converge.</p><br/> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!-- 	<img src="../_static/drawing_arr.svg"> -->
+  <!-- 	<img src="../_static/drawing_bigarr.svg"> -->
+  <!--  </div> -->
 
    <div class="slide">
 	<h1>Extract redescriptions</h1>

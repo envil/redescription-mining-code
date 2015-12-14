@@ -15,16 +15,6 @@ The interface is built with the wxPython Open Source GUI toolkit, ensuring cross
 
 The matplotlib library enables to generate high quality figures, seamlessly integrated in the interface.
 
-.. _changelog:
-
-CHANGELOG
-==========
-
-.. literalinclude:: ../_static/CHANGELOG
-
-The latest release for each platform are listed here. Previous versions can be found in :code_url:`this folder </>`.
-
-Feel free to contact us for support or with feedback, bug reports and questions.
 
 .. _code:
 
@@ -101,3 +91,14 @@ For Windows
 Download and run to install *Siren*.
 
 .. image:: ../_figs/screenshots/Fullscreen_win.png
+
+.. _changelog:
+
+CHANGELOG
+==========
+
+.. literalinclude:: ../_static/CHANGELOG
+
+The latest release for each platform are listed here. Previous versions can be found in :code_url:`this folder </>`.
+
+Feel free to contact us for support or with feedback, bug reports and questions.
