@@ -24,6 +24,8 @@ cp -r ${SPH_REP} ${SPHINX_REP}
 # svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/inout_confdef.xml  _static/
 # svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/miner_confdef.xml  _static/
 cp ${SRC_REP}/siren/interface/*confdef.xml ${SRC_REP}/siren/reremi/*confdef.xml ${SPHINX_REP}/_static/
+sed -i 's:\./reremi/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
+
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/_static/
 
 mkdir ${SPHINX_REP}/siren
@@ -63,16 +65,16 @@ cp _build/latex/Siren.pdf ${OUT_REP}/icdm/Siren-ICDM.pdf
 cd ${OUT_REP}
 sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html
 sed -i 's:\([^/]\)_images/:\1../_images/:g' */*.html
-mv sigmod/_static ./
-mv sigmod/_images ./
+mv help/_static ./
+mv help/_images ./
 mv main/_static/* ./_static/
 mv main/_images/* ./_images/
-mv help/_static/* ./_static/
-mv help/_images/* ./_images/
+mv sigmod/_static/* ./_static/
+mv sigmod/_images/* ./_images/
 mv icdm/_static/* ./_static/
 mv icdm/_images/* ./_images/
 rm */objects.inv
-rmdir help/_images help/_static main/_images main/_static icdm/_images icdm/_static
+rmdir main/_images main/_static sigmod/_images sigmod/_static icdm/_images icdm/_static
 
 cd ${PACK_REP}
 tar -cvzf sphinx-siren-out.tar.gz out

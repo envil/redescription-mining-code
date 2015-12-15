@@ -335,7 +335,7 @@ class Redescription(object):
         c = [False, False]
         for side in sides:
             queries[side], c[side] = self.queries[side].algNormalized()
-        if c[side] or c[side]:
+        if c[0] or c[1]:
             red = Redescription.fromQueriesPair(queries, data)
             ### check that support is same
             # if self.supports() != red.supports():

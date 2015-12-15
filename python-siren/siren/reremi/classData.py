@@ -1346,7 +1346,7 @@ class Data(object):
     def getSplit(self, nbsubs=10, coo_dim=None, grain=10., force=False):
         if coo_dim is not None and \
                not (( self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords())) or \
-                    ( coo_dim >= 0 and coo_dim < len(self.cols[0])+len(self.cols[1]) )):
+                    ( coo_dim > 0 and coo_dim < len(self.cols[0])+len(self.cols[1])+1 )):
             coo_dim = None
 
         if ( self.split is None ) or ( self.split["source"] != "auto" ) \
@@ -1359,10 +1359,10 @@ class Data(object):
             elif self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords()):
                 vals = self.getCoordPoints()[:,abs(coo_dim)-1]
             else: ## is in the variables
-                if coo_dim >= len(self.cols[0]):
-                    col = self.cols[1][coo_dim-len(self.cols[0])]
+                if coo_dim-1 >= len(self.cols[0]):
+                    col = self.cols[1][coo_dim-len(self.cols[0])-1]
                 else:
-                    col = self.cols[0][coo_dim]
+                    col = self.cols[0][coo_dim-1]
                 vals = col.getVector()
 
             self.split = {"source": "auto",

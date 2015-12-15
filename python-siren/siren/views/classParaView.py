@@ -556,7 +556,7 @@ class ParaView(GView):
         add_boxB.Add(v_box, 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "*"})
 
-        add_boxA.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
         # add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "ts"})
 
         v_box = wx.BoxSizer(wx.VERTICAL)

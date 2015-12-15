@@ -713,6 +713,8 @@ class Siren():
                     ID_NEWV = wx.NewId()
                     m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                               "Plot %s in new window." % item["title"])
+                    if not item["suitable"]:
+                        m_newv.Enable(False)
                     frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
                     self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
@@ -1366,6 +1368,7 @@ class Siren():
             red = self.selectedTab["tab"].getSelectedItem()
             if red is not None:
                 redn, changed = red.getNormalized(self.dw.getData())
+                ## print "Normalize", red, redn
                 if changed:
                     self.selectedTab["tab"].updateEdit(None, redn, self.selectedTab["tab"].getSelectedRow())
                 if self.selectedTab["id"] != "hist":

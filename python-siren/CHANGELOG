@@ -1,5 +1,13 @@
 CHANGELOG for Siren
 ===================
+v3.1.0
+------
+* Visualization tab and splitted frame
+* Learn/Test splits, interface and integration to vizualizations
+* Initial target vectors for trees based on categorical and sparse numerical variables. List sorting and cut-off.
+* More efficient filtering of results on return of a result, comparing only what as changed.
+* Fixed various bugs (naming of tree algorithms, saving data to package)
+
 v3.0.1
 ------
 * Fixed various bugs (server info on failure, DW unchange on saving package)
