@@ -55,7 +55,7 @@ class Siren():
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
-    viz_grid = [2,2]
+    viz_grid = [2,0]
     intab = False #True
     color_add = (16, 82, 0)
     color_drop = (190, 10, 10)
@@ -526,7 +526,7 @@ class Siren():
         self.splitter.SplitHorizontally(self.tabbed, self.tabs["viz"]["tab"])
 
     def vizSplitToTab(self):
-        if self.splitter.IsSplit():
+        if self.isVizSplit():
             self.splitter.Unsplit(self.tabs["viz"]["tab"])
         self.tabs["viz"]["tab"].Reparent(self.tabbed)
         self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+### usage: python prepare_pck_files.py win|src|clean
+
 import sys, re, os.path, glob, subprocess
 
 from siren.common_details import common_variables
