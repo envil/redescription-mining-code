@@ -61,8 +61,8 @@ extlinks = {'project_url': (cv["PROJECT_URL"]+"%s", cv["PROJECT_NAME"]),
                             cv["PROJECT_NAME"]+" (v"+release+") "),
             'deb_release': (cv["CODE_URL"]+cv["PACKAGE_NAME"]+"_"+release+"_all%s",
                             cv["PROJECT_NAME"]+" (v"+release+") "),
-            'mac_release': (cv["CODE_MAC_URL"]+cv["PROJECT_NAME"]+"_"+cv["VERSION_MAC_UNDERSC"]+"%s",
-                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
+            'mac_release': (cv["CODE_MAC_URL"]+cv["PROJECT_NAME"]+"_2_1_1%s",
+                            cv["PROJECT_NAME"]+" (v"+release+") "),
             'win_release': (cv["CODE_URL"]+"install_"+cv["PROJECT_NAMELOW"]+"_"+release+"%s",
                             cv["PROJECT_NAME"]+" (v"+release+") ")
             }

@@ -14,7 +14,7 @@ There are some other approaches too. For more details, check the :ref:`reference
 
 .. _algogreedy:
 
-Greedily
+Greedy
 =============
 
 .. _algreremi:
@@ -24,7 +24,7 @@ ReReMi
 
 The *ReReMi* algorithm is a greedy update scheme for mining redescription that basically tries to find the best atomic extension at each step, constructing queries iteratively. It is presented in the related publications, listed in the :ref:`references <references>` section.
 
-With Trees
+Tree-based
 =============
 
 .. _cartlayered:

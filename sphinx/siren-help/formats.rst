@@ -65,10 +65,11 @@ Coordinates can be provided in a similar way under the variable names *longitude
 Variable names can be provided inline, that is, simply by using the name of the variable for each entry involving it.
 Alternatively, variable names can be specified separately with a special "-1" entity.
 Similarly, entity names can be provided inline or separatly with a special "-1" variable.
-For example, the following four lines
+For example, the following five lines
 
 .. code:: bash 
 	  
+	  id; cid; value
 	  Espoo; population; 260981
 	  Helsinki; population; 614074
 	  Tampere; population; 220609
@@ -76,8 +77,9 @@ For example, the following four lines
 	  
 are equivalent to the following:
 
-.. code:: bash 
-
+.. code:: bash
+ 
+	  id; cid; value
 	  20; -1; Espoo
 	  7; -1; Tampere
 	  2; -1; Turku
@@ -91,6 +93,10 @@ are equivalent to the following:
 
 Finally, in case of fully Boolean data without coordinates, the value can be left out. Each pair of (entity, variable) appearing is considered as True, the rest as False.
 
+For both full and sparse formats a mention of type can be append to the first row, in such case all variable will be parse to the given type. 
+For instance, in the example above the first line would be turned to ``id; cid; value; type=N`` to ensure that all variables, including population are interpreted as numerical (N) variables. Respectively B and C can be used to ensure that all variables are Boolean and categorical, respectively.
+
+This can be useful when handling a dataset of numerical variables where some contains only two distinct values and might otherwise be interpreted as Boolean variables. It can also be a handy way to turn a dataset to fully Boolean based on zero/non-zero values. However, be warned that this can cause some troubles... 
 
 .. _red_formats:
 
@@ -159,7 +165,7 @@ The statistics of a redescription include:
 
 * accuracy, as measured by Jaccard coefficient :math:`|E_{11}| / (|E_{10}|+|E_{11}|+|E_{01}|)`,
 * p-value,
-* cardinality of the :ref:`support sets <supports>` :math:`E_{10}`, :math:`E_{01}`, :math:`E_{11}`, :math:`E_{00}` (sometimes also referred to as alpha, beta, gamma and delta, respectively).
+* cardinality of the :ref:`support sets <supports>`  :math:`E_{10}`, :math:`E_{01}`, :math:`E_{11}`, :math:`E_{00}` (sometimes also referred to as alpha, beta, gamma and delta, respectively).
 
 .. _export:
 

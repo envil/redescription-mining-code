@@ -51,9 +51,9 @@ copyright = u''+cv["COPYRIGHT_YEAR_FROM"]+", "+cv["PROJECT_AUTHORS"]
 # built documents.
 #
 # The short X.Y version.
-version = '.'.join(cv["VERSION"].split('.')[:-1])
+version = "3.0"
 # The full version, including alpha/beta/rc tags.
-release = cv["VERSION"]
+release = "3.0.0"
 
 extlinks = {'project_url': (cv["PROJECT_URL"]+"%s", cv["PROJECT_NAME"]),
             'code_url': (cv["CODE_URL"]+"%s", cv["PACKAGE_NAME"]),
@@ -61,8 +61,8 @@ extlinks = {'project_url': (cv["PROJECT_URL"]+"%s", cv["PROJECT_NAME"]),
                             cv["PROJECT_NAME"]+" (v"+release+") "),
             'deb_release': (cv["CODE_URL"]+cv["PACKAGE_NAME"]+"_"+release+"_all%s",
                             cv["PROJECT_NAME"]+" (v"+release+") "),
-            'mac_release': (cv["CODE_MAC_URL"]+cv["PROJECT_NAME"]+"_"+cv["VERSION_MAC_UNDERSC"]+"%s",
-                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
+            'mac_release': (cv["CODE_MAC_URL"]+cv["PROJECT_NAME"]+cv["VERSION_MAC_UNDERSC"]+"%s",
+                            cv["PROJECT_NAME"]+" (v"+release+") "),
             'win_release': (cv["CODE_URL"]+"install_"+cv["PROJECT_NAMELOW"]+"_"+release+"%s",
                             cv["PROJECT_NAME"]+" (v"+release+") ")
             }
