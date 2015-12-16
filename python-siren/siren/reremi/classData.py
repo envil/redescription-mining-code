@@ -1414,9 +1414,9 @@ class Data(object):
     def addFoldsCol(self, subsets=None, sito=1):
         suff = "cust"
         if subsets is None and self.split is not None:
-            if self.split["source"] != "auto":
+            if self.split["source"] == "auto":
                 subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
-                suff = "%s-g%s" % ((self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
+                suff = "%d%sg%s" % (len(self.cols[sito]), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
         if type(subsets) is list:
             subsets = dict(enumerate(subsets))
         if subsets is not None and type(subsets) is dict:

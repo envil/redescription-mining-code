@@ -367,61 +367,58 @@ class TreeView(GView):
             return False
         return self.store_supp["has_miss_points"][side]
 
-                    
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
-        add_box = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxA = wx.BoxSizer(wx.VERTICAL)
-        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        add_box = wx.BoxSizer(wx.VERTICAL)
+        
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
         self.buttons = []
         self.buttons.extend([{"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Expand"),
                              "function": self.OnExpandSimp},
-                            {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify LHS"),
+                            {"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Simplify LHS"),
                              "function": self.OnSimplifyLHS},
-                            {"element": wx.Button(self.panel, wx.NewId(), size=(115,-1), label="Simplify RHS"),
+                            {"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Simplify RHS"),
                              "function": self.OnSimplifyRHS}])
+        for i in range(len(self.buttons)):
+            self.buttons[i]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            
+        ##############################################
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
 
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
-        v_box = wx.BoxSizer(wx.HORIZONTAL)
-        v_box.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
-        v_box.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "*"})
-
-        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
-
-        self.buttons[1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerWn(),-1))
         
-        self.buttons[2]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(self.buttons[2]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
+        add_boxB.AddSpacer((self.getSpacerWn(),-1))
         
-        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
-        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+        add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
 
         ##############################################
-
-        add_box.Add(add_boxA, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         
-        add_boxB = wx.BoxSizer(wx.VERTICAL)
-        self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
 
-        hh_box = wx.BoxSizer(wx.HORIZONTAL)
-        hh_box.Add(self.boxPop, 0, border=0, flag=flags, userData={"where":"*"})
-        hh_box.Add(self.boxKil, 0, border=0, flag=flags, userData={"where":"*"})
-        add_boxB.Add(hh_box, 0, border=1, flag=flags)
+        add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
 
+        add_boxB.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
+
+        add_boxB.Add(self.MaptoolbarMap, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((self.getSpacerWn()/2,-1))
         add_box.Add(add_boxB, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerWn(),-1))
 
         #return [add_boxbis, add_box]
         return [add_box]
+
 
     def additionalBinds(self):
         for button in self.buttons:

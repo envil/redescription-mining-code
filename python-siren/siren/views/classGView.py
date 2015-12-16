@@ -22,8 +22,14 @@ import pdb
 
 class CustToolbar(NavigationToolbar):
     def __init__(self, plotCanvas, parent):
+        self.toolitems = (('Save', 'Save the figure', 'filesave', 'save_figure'),)
         NavigationToolbar.__init__(self, plotCanvas)
         self.parent = parent
+
+        # self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'), (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure'))
+
+    def set_history_buttons(self):
+        pass
 
     def mouse_move(self, event=None):
         if event is not None:
@@ -87,7 +93,9 @@ class GView(object):
     spacer_w = 15
     spacer_h = 10
     nbadd_boxes = 0 
-    butt_w = 75
+    butt_w = 90
+    sld_w = 115
+    butt_shape = (27, 27)
     fwidth = {"i": 400, "t": 400, "s": 250}
     fheight = {"i": 400, "t": 300, "s": 200}
 
@@ -583,6 +591,7 @@ class GView(object):
             self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
             
             self.boxPop.SetLabel(self.label_outin)
+            self.boxPop.SetValue(False)
             self.parent.setVizcellFreeded(pos)
             self.panel.Reparent(self.mapFrame)
             self.mapFrame.GetSizer().Add(self.panel)
@@ -592,6 +601,7 @@ class GView(object):
             self.mapFrame.Destroy()
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             self.boxPop.SetLabel(self.label_inout)
+            self.boxPop.SetValue(False)
             self.panel.Reparent(self.mapFrame)
             self.pos = self.parent.getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
@@ -747,14 +757,14 @@ class GView(object):
             if info_item.get("color") is not None:
                 self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item.get("color")])
 
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=(25,25))
+        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=self.butt_shape)
+        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=self.butt_shape)
 
         if self.isIntab():
-            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=(25,25))
+            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=self.butt_shape)
         else:
-            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=(25,25))
-        self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=(25,25))
+            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=self.butt_shape)
+        self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
         if not self.parent.hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()

@@ -244,7 +244,8 @@ class SplitDialog(PreferencesDialog):
 		source_pos = map_source.get(source_name, -1)
 		self.controls_map["add"]["source"].Select(source_pos)
 
-	def onSaveToC(self):
+	def onSaveToC(self, event=None):
 		if self.data_handle.getData().hasAutoSplits():
 			self.data_handle.getData().addFoldsCol()
 			self.controls_map[self.sec_id]["button"]["save_col"].Disable()
+			self.tool.reloadVars()

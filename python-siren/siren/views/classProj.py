@@ -100,7 +100,8 @@ class Proj(object):
     def getAxisLabel(self, axis=0):
         return None
     def getTitle(self):
-        return "%s %s" % (self.what.title(), self.title_str)
+        return self.title_str
+        # return "%s %s" % (self.what.title(), self.title_str)
 
     def getMCols(self):
         return self.mcols
@@ -548,7 +549,7 @@ if sys.platform != 'win32':
 
         PID =  "SKtree"
         SDESC = "Rand.Trees"
-        title_str = "Totally Random Trees Representation"
+        title_str = "Totally Random Trees Rep."
         gen_parameters = dict(DynProj.gen_parameters)
         gen_parameters.update({"max_depth":5, "n_estimators":10})
         fix_parameters = dict(DynProj.fix_parameters)

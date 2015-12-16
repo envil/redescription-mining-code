@@ -44,6 +44,7 @@ class EProjView(GView):
         self.parent = parent
         self.queries = [Query(), Query()]
         self.source_list = None
+        self.pos = None
         self.boxL = None
         self.boxT = None
         self.rsets = None
@@ -138,67 +139,71 @@ class EProjView(GView):
                 setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
             setts_boxes[-1].AddSpacer((10,-1))
 
-        add_box = wx.BoxSizer(wx.HORIZONTAL)
-        flags = wx.ALIGN_CENTER | wx.ALL
+        add_boxes = self.additionalElementsPlus()
+
+        setts_boxes.extend(add_boxes)
+        #return [add_boxbis, add_box]
+        self.nbadd_boxes = len(setts_boxes)-1 
+        return setts_boxes
+
+
+    def additionalElementsPlus(self):
+        t = self.parent.dw.getPreferences()
+        add_box = wx.BoxSizer(wx.VERTICAL)
         
+        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
+
         self.buttons = []
-        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
-                             "function": self.OnExpandSimp})
-        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Reproject"),
-                             "function": self.OnReproject})
+        self.buttons.extend([{"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
+                              "function": self.OnExpandSimp},
+                             {"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Reproject"),
+                              "function": self.OnReproject}])
         self.repbut = self.buttons[-1]["element"]
-        self.sld_sel = wx.Slider(self.panel, -1, 50, 0, 100, wx.DefaultPosition, (115, -1), wx.SL_HORIZONTAL)
-        
-        add_boxA = wx.BoxSizer(wx.VERTICAL)
+        for i in range(len(self.buttons)):
+            self.buttons[i]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+
+        self.sld_sel = wx.Slider(self.panel, -1, 50, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
+            
+        ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
-        v_box = wx.BoxSizer(wx.HORIZONTAL)
-        v_box.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
-        v_box.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
-
-        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
-        # add_boxB.AddSpacer((self.getSpacerWn(),-1), userData={"where": "ts"})
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
-        v_box.Add(self.sld_sel, 0, border=1, flag=flags) #, userData={"where": "*"})
+        v_box.Add(self.sld_sel, 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
+        
+        add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerWn(),-1))
+        
+        add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
 
-        for butt in self.buttons[1:]:
-            add_boxB.AddSpacer((self.getSpacerWn(),-1))
-            v_box = wx.BoxSizer(wx.HORIZONTAL)
-            butt["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            
-            v_box.Add(butt["element"], 0, border=0, flag=flags)
-            add_boxB.Add(v_box, 0, border=1, flag=flags)
-
+        ##############################################
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
         add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
         
-        add_boxA.Add(add_boxB, 0, border=1, flag=flags)
-        add_boxA.Add(self.MaptoolbarMap, 0, border=1, flag=flags)
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
 
-        add_box.Add(add_boxA, 0, border=1, flag=flags)
-        add_box.AddSpacer((self.getSpacerWn(),-1))
+        add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
 
-        add_boxA = wx.BoxSizer(wx.VERTICAL)
-        self.buttons[0]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        add_boxA.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
 
-        hh_box = wx.BoxSizer(wx.HORIZONTAL)
-        hh_box.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
-        hh_box.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxA.Add(hh_box, 0, border=1, flag=flags)
+        add_boxB.Add(self.MaptoolbarMap, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((self.getSpacerWn()/2,-1))
+        add_box.Add(add_boxB, 0, border=1, flag=flags)
 
-        add_box.Add(add_boxA, 0, border=1, flag=flags)
-        setts_boxes.append(add_box)
         #return [add_boxbis, add_box]
-        self.nbadd_boxes = len(setts_boxes)-1 
-        return setts_boxes
+        return [add_box]
+
 
     def additionalBinds(self):
         for button in self.buttons:

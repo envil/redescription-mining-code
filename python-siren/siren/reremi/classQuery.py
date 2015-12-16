@@ -195,7 +195,8 @@ class SYM(object):
     SYMU_LEARN = ur'\u25d5'
     SYMU_TEST = ur'\u25d4'
     SYMU_RATIO = ur'\u2298'
-    SYMU_CROSS = ur'\u274c'
+    # SYMU_CROSS = ur'\u274c'
+    SYMU_CROSS = ur'\u2715'
     SYMU_INOUT = ur'\u21d7'
     SYMU_OUTIN = ur'\u21d8'
     

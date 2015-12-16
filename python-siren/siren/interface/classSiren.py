@@ -140,6 +140,9 @@ class Siren():
         self.initialized = True
         self.toolFrame.Show()
 
+    def sysTLin(self):
+        return sys.platform not in ["darwin", 'win32']
+
     def isInitialized(self):
         return self.initialized
 
@@ -235,9 +238,10 @@ class Siren():
         self.statusbar.SetStatusWidths([25, 300, 150, -1])
 
         rect = self.statusbar.GetFieldRect(0)
-        self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "", style=wx.ALIGN_CENTER, size=(rect.height,rect.height))
-        self.buttViz.SetBackgroundColour(getRandomColor())
-        self.buttViz.SetPosition((rect.x+2, rect.y+2))
+        self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "s", style=wx.ALIGN_CENTER|wx.TE_RICH, size=(rect.height+4, rect.height+4))
+        self.buttViz.SetForegroundColour((0,0,0))
+        self.buttViz.SetBackgroundColour((255,255,255))
+        self.buttViz.SetPosition((rect.x, rect.y))
         self.buttViz.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitchange)
 
         self.progress_bar = wx.Gauge(self.statusbar, -1, style=wx.GA_HORIZONTAL|wx.GA_SMOOTH)
@@ -279,7 +283,7 @@ class Siren():
             self.addVizExts()
             self.setVizButtAble()
             self.updateVizcellSelected()
-            if not self.tabs["viz"]["hide"] and sys.platform not in ["darwin", 'win32']:
+            if not self.tabs["viz"]["hide"] and not self.sysTLin():
                 self.tabs["viz"]["tab"].Show()
             if self.viz_postab > len(self.tabs_keys) or self.tabs_keys[self.viz_postab] != "viz":
                 self.tabs_keys.insert(self.viz_postab, "viz")
@@ -530,7 +534,7 @@ class Siren():
             self.splitter.Unsplit(self.tabs["viz"]["tab"])
         self.tabs["viz"]["tab"].Reparent(self.tabbed)
         self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])
-        if sys.platform not in ["darwin", 'win32']:
+        if self.sysTLin():
             self.tabs["viz"]["tab"].Show()
         self.tabs_keys.insert(self.viz_postab, "viz")
 
@@ -538,11 +542,19 @@ class Siren():
         if self.hasVizIntab():
             if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
                 self.vizTabToSplit()
+                self.buttViz.SetValue(False)
+                self.buttViz.SetLabel("u")
+                self.buttViz.SetForegroundColour((255, 255, 255))
+                self.buttViz.SetBackgroundColour((0, 0, 0))
             else:
                 self.vizSplitToTab()
+                self.buttViz.SetValue(False)
+                self.buttViz.SetLabel("s")
+                self.buttViz.SetForegroundColour((0,0,0))
+                self.buttViz.SetBackgroundColour((255, 255, 255))
+
             self.hideShowBxViz()
             self.doUpdates({"menu":True})
-        self.buttViz.SetBackgroundColour(getRandomColor())
                 
 ######################################################################
 ###########     MENUS
@@ -792,10 +804,14 @@ class Siren():
             tab_prop = self.tabs[tab_id]
             ID_CHECK = wx.NewId()
             self.check_tab[ID_CHECK] = tab_id 
-            m_check = menuTabs.AppendCheckItem(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
+            #### TEST NO CHECK
+            if self.sysTLin():
+                m_check = menuTabs.AppendCheckItem(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
+                if tab_prop["hide"] == False:
+                    m_check.Check()
+            else:
+                m_check = menuTabs.Append(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
             frame.Bind(wx.EVT_MENU, self.OnTabW, m_check)
-            if tab_prop["hide"] == False:
-                m_check.Check()
         return menuTabs
 
     def makeFileMenu(self, frame, menuFile=None):
@@ -1401,9 +1417,11 @@ class Siren():
             tab_id = self.check_tab[event.GetId()]
             if self.toolFrame.FindFocus() is not None and self.toolFrame.FindFocus().GetGrandParent() is not None \
                    and self.toolFrame.FindFocus().GetGrandParent().GetParent() == self.toolFrame:
-                if not event.IsChecked():
-                    self.hideTab(tab_id)
-                    return
+                #### TEST NO CHECK
+                if self.sysTLin():
+                    if not event.IsChecked():
+                        self.hideTab(tab_id)
+                        return
             else: self.toTop()
             self.showTab(tab_id)
 
