@@ -279,7 +279,7 @@ class Siren():
             self.addVizExts()
             self.setVizButtAble()
             self.updateVizcellSelected()
-            if not self.tabs["viz"]["hide"]:
+            if not self.tabs["viz"]["hide"] and sys.platform not in ["darwin", 'win32']:
                 self.tabs["viz"]["tab"].Show()
             if self.viz_postab > len(self.tabs_keys) or self.tabs_keys[self.viz_postab] != "viz":
                 self.tabs_keys.insert(self.viz_postab, "viz")
@@ -530,7 +530,8 @@ class Siren():
             self.splitter.Unsplit(self.tabs["viz"]["tab"])
         self.tabs["viz"]["tab"].Reparent(self.tabbed)
         self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])
-        self.tabs["viz"]["tab"].Show()
+        if sys.platform not in ["darwin", 'win32']:
+            self.tabs["viz"]["tab"].Show()
         self.tabs_keys.insert(self.viz_postab, "viz")
 
     def OnSplitchange(self, event):
@@ -1461,7 +1462,7 @@ class Siren():
             self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
             sizer = wx.BoxSizer(wx.VERTICAL)
             url = 'file://'+os.path.abspath(self.helpURL)
-            if platform.system() == "Darwin":
+            if sys.platform == "darwin":
                 # OS X returns UTF-8 encoded path names, decode to Unicode
                 #url = url.decode('utf-8')
                 # URLLIB doesn't like unicode strings, so keep w/ UTF-8 encoding
@@ -1590,6 +1591,7 @@ class Siren():
         self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
     def reloadAll(self):
+        self.reloadVizTab()
         if self.plant is not None:
             self.plant.getWP().closeDown(self)
         self.reloadVars(review=False)
@@ -1602,7 +1604,7 @@ class Siren():
         # if len(err) > 0:
         #     self.logger.printL(1, err, "error", "WP")
         self.reloadReds()
-        self.reloadVizTab()
+        self.tabbed.ChangeSelection(self.tabs_keys.index(self.tabbed.GetSelection()))
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data

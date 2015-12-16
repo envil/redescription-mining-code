@@ -160,10 +160,6 @@ class GView(object):
             self.mapFrame.Show()
         self.suppABCD = None
 
-    def initSizeRelative(self):
-        ds = wx.DisplaySize()
-        self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
-        self._SetSize()
 
     def isIntab(self):
         return self.intab
@@ -529,11 +525,20 @@ class GView(object):
         params = {"red": self.getCopyRed()}
         self.parent.expandFV(params)
 
+    def initSizeRelative(self):
+        ds = wx.DisplaySize()
+        self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
+        # print "Init size", (ds[0]/2.5, ds[1]/1.5)
+        # self._SetSize((ds[0]/2.5, ds[1]/1.5))
+
     def _onSize(self, event=None):
         self._SetSize()
 
-    def _SetSize(self):
-        pixels = tuple(self.mapFrame.GetClientSize() )
+    def _SetSize(self, initSize=None):
+        if initSize is None:
+            pixels = tuple(self.mapFrame.GetClientSize() )
+        else:
+            pixels = initSize
         boxsize = self.innerBox1.GetMinSize()
         min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
@@ -546,9 +551,9 @@ class GView(object):
                       max(self.getFHeight(), (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
-            
+            pixels = (max(self.getFWidth(), pixels[0]),
+                      max(self.getFHeight(), pixels[1]))  
             max_size = (-1, -1)
-        
         self.panel.SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-boxsize[1], 10))
         # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
@@ -562,8 +567,11 @@ class GView(object):
         self.mapFrame.GetSizer().Layout()
         self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
                                         float( figsize[1] )/(self.MapfigMap.get_dpi() ))
+        ### The line below is primarily for Windows, works fine without in Linux...
+        self.panel.SetClientSizeWH(pixels[0], pixels[1])
         # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
         # self.MapfigMap.set_size_inches(1, 1)
+        
 
     def OnPop(self, event=None):
         pos = self.getGPos()
