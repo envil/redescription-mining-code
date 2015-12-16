@@ -283,7 +283,7 @@ class Siren():
             self.addVizExts()
             self.setVizButtAble()
             self.updateVizcellSelected()
-            if not self.tabs["viz"]["hide"] and not self.sysTLin():
+            if not self.tabs["viz"]["hide"] and self.sysTLin():
                 self.tabs["viz"]["tab"].Show()
             if self.viz_postab > len(self.tabs_keys) or self.tabs_keys[self.viz_postab] != "viz":
                 self.tabs_keys.insert(self.viz_postab, "viz")
