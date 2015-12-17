@@ -18,11 +18,15 @@ from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
+from ..interface.DataWrapper import initIcons
+
+
 import pdb
+
 
 class CustToolbar(NavigationToolbar):
     def __init__(self, plotCanvas, parent):
-        self.toolitems = (('Save', 'Save the figure', 'filesave', 'save_figure'),)
+        self.toolitems = [] #  (('Save', 'Save the figure', 'filesave', 'save_figure'),)
         NavigationToolbar.__init__(self, plotCanvas)
         self.parent = parent
 
@@ -40,6 +44,7 @@ class CustToolbar(NavigationToolbar):
             self.set_cursor(0)
         else:
             self.set_cursor(1)
+
 
 class GView(object):
 
@@ -59,6 +64,15 @@ class GView(object):
     label_inout = SYM.SYM_INOUT
     label_outin = SYM.SYM_OUTIN 
     label_cross = SYM.SYM_CROSS
+
+    icons_setts = {"learn_act": "learn_act", 
+                   "test_act": "test_act",
+                   "learn_dis": "learn_dis",
+                   "test_dis": "test_dis",
+                   "kil": "cross",
+                   "inout": "up_right",
+                   "outin": "down_right",
+                   "save": "savefig"}
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
@@ -138,15 +152,20 @@ class GView(object):
         self.mc = None
         self.pos = None
         self.sld_sel = None
+        self.savef = None
         self.boxL = None
         self.boxT = None
         self.rsets = None
+        self.rwhich = None
         self.vid = vid
         self.buttons = []
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
         self.current_hover = None
+
+        self.icons = initIcons(self.icons_setts)
+
         self.intab = self.parent.showVizIntab()
 
         if self.isIntab():
@@ -432,32 +451,33 @@ class GView(object):
             self.showSplitsBoxes(True)
         else:
             self.showSplitsBoxes(False)
-
         
     def OnSplitsChange(self, event):
         new_rsets = None
-        buttons = [self.boxL, self.boxT]
-        part = ["learn", "test"]
-        if event.GetId() == self.boxL.GetId():
+        parts = [{"butt": self.boxL, "id": "learn",
+                  "act_icon": self.icons["learn_act"], "dis_icon": self.icons["learn_dis"]},
+                 {"butt": self.boxT, "id": "test",
+                  "act_icon": self.icons["test_act"], "dis_icon": self.icons["test_dis"]}]
+        if event.GetId() == parts[0]["butt"].GetId():
             which = 0
         else:
             which = 1
+        if self.rwhich is None: ### None active
+            self.rwhich = which
+            new_rsets = {"rset_id": parts[which]["id"]}
+            parts[which]["butt"].SetBitmap(parts[which]["act_icon"])
             
-        if buttons[which].GetValue():
-            if buttons[1-which].GetValue():
-                buttons[1-which].SetValue(False)
-            new_rsets = {"rset_id": part[which]}
+        elif self.rwhich == which:  ### Current active
+            self.rwhich = None
+            new_rsets =None
+            parts[which]["butt"].SetBitmap(parts[which]["dis_icon"])
+            
+        else:  ### Other active
+            self.rwhich = which
+            new_rsets = {"rset_id": parts[which]["id"]}
+            parts[which]["butt"].SetBitmap(parts[which]["act_icon"])
+            parts[1-which]["butt"].SetBitmap(parts[1-which]["dis_icon"])
 
-        else:
-            if buttons[1-which].GetValue():
-                new_rsets = {"rset_id": part[1-which]}
-            else:
-                new_rsets =None
-        # if self.boxL is not None and self.boxT is not None:
-        #     if self.boxL.GetValue() and not self.boxT.GetValue():
-
-        #     elif not self.boxL.GetValue() and self.boxT.GetValue():
-        #         new_rsets = {"rset_id": "test"}
         if self.rsets != new_rsets:
             self.rsets = new_rsets
             self.refresh()
@@ -487,10 +507,16 @@ class GView(object):
             self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        self.boxPop.Bind(wx.EVT_TOGGLEBUTTON, self.OnPop)
-        self.boxKil.Bind(wx.EVT_TOGGLEBUTTON, self.OnKil)
+        self.savef.Bind(wx.EVT_LEFT_UP, self.OnSaveFig)
+        self.boxL.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
+        self.boxT.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
+        self.boxPop.Bind(wx.EVT_LEFT_UP, self.OnPop)
+        self.boxKil.Bind(wx.EVT_LEFT_UP, self.OnKil)
+
+        # self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        # self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
+        # self.boxPop.Bind(wx.EVT_TOGGLEBUTTON, self.OnPop)
+        # self.boxKil.Bind(wx.EVT_TOGGLEBUTTON, self.OnKil)
 
         # self.panel.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver)
         # self.panel.Bind(wx.EVT_LEAVE_WINDOW, self.onMouseLeave)
@@ -579,7 +605,9 @@ class GView(object):
         self.panel.SetClientSizeWH(pixels[0], pixels[1])
         # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
         # self.MapfigMap.set_size_inches(1, 1)
-        
+
+    def OnSaveFig(self, event=None):
+        self.MaptoolbarMap.save_figure(event)
 
     def OnPop(self, event=None):
         pos = self.getGPos()
@@ -589,9 +617,10 @@ class GView(object):
             self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
             self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
             self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
-            
-            self.boxPop.SetLabel(self.label_outin)
-            self.boxPop.SetValue(False)
+
+            self.boxPop.SetBitmap(self.icons["outin"])
+            # self.boxPop.SetLabel(self.label_outin)
+            # self.boxPop.SetValue(False)
             self.parent.setVizcellFreeded(pos)
             self.panel.Reparent(self.mapFrame)
             self.mapFrame.GetSizer().Add(self.panel)
@@ -600,8 +629,10 @@ class GView(object):
             self.intab = True
             self.mapFrame.Destroy()
             self.mapFrame = self.parent.tabs["viz"]["tab"]
-            self.boxPop.SetLabel(self.label_inout)
-            self.boxPop.SetValue(False)
+            
+            self.boxPop.SetBitmap(self.icons["inout"])
+            # self.boxPop.SetLabel(self.label_inout)
+            # self.boxPop.SetValue(False)
             self.panel.Reparent(self.mapFrame)
             self.pos = self.parent.getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
@@ -757,20 +788,48 @@ class GView(object):
             if info_item.get("color") is not None:
                 self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item.get("color")])
 
-        self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=self.butt_shape)
-        self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=self.butt_shape)
+        adds = self.additionalElements()
+
+        ### UTILITIES BUTTONS
+        self.savef = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["save"])
+        self.boxL = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["learn_dis"])
+        self.boxT = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["test_dis"])
+        # self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=self.butt_shape)
+        # self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=self.butt_shape)
 
         if self.isIntab():
-            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=self.butt_shape)
+            # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=self.butt_shape)
+            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["inout"])
         else:
-            self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=self.butt_shape)
-        self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
+            # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=self.butt_shape)
+            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["outin"])
+        # self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
+        self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["kil"])
         if not self.parent.hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()
 
-        adds = self.additionalElements()
         self.drawMap()
+
+        ### PUTTING EVERYTHING IN SIZERS
+        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
+        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
+        
+        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
+
+        add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
+
+        add_boxB.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
+
+        add_boxB.Add(self.savef, 0, border=0, flag=flags, userData={"where": "*"})
+        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
+
 
         self.masterBox =  wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
         #self.masterBox = wx.BoxSizer(wx.VERTICAL)
@@ -784,7 +843,7 @@ class GView(object):
         self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
         self.innerBox1.Add(self.MapredMapQ[1], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
 
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "*"})
         
         cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
         for pi, elem in enumerate(self.infos_details):
@@ -803,6 +862,9 @@ class GView(object):
         self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
         for add in adds:
             self.innerBox1.Add(add, 0, border=1,  flag= wx.ALIGN_CENTER)
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "it"})
+        self.innerBox1.Add(add_boxB, 0, border=1,  flag= wx.ALIGN_CENTER)
+        self.innerBox1.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "*"})
             
         self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)

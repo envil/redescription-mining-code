@@ -12,7 +12,7 @@ from ..reremi.classConstraints import Constraints
 from ..reremi.classBatch import Batch
 from ..reremi.toolICList import ICList
 
-from DataWrapper import DataWrapper, findFile
+from DataWrapper import DataWrapper, findFile, initIcons
 from classGridTable import VarTable, RedTable, RowTable
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
@@ -27,6 +27,7 @@ import pdb
 
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+
  
 class Siren():
     """ The main frame of the application
@@ -48,7 +49,8 @@ class Siren():
                +common_variables["COPYRIGHT_YEAR_TO"]+' ' \
                +common_variables["PROJECT_AUTHORS"]
     about_text = common_variables["PROJECT_DESCRIPTION_LINE"]+"\n"
-    
+
+    icons_setts = {"split_frame": "split", "unsplit_frame": "unsplit"}
 
     icon_file = findFile('siren_icon32x32.png', ['../../icons', root_dir + '/icons', './icons'])
     license_file = findFile('LICENSE', ['../../licenses', root_dir+ '/licenses', './licenses'])
@@ -84,7 +86,7 @@ class Siren():
         stn = self.tabs_keys[0]
 
         self.logger = Log()
-
+        self.icons = initIcons(self.icons_setts)
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, pos = wx.DefaultPosition,
                                   size=(tmp[0]*0.66,tmp[1]*0.9), style = wx.DEFAULT_FRAME_STYLE)
@@ -238,11 +240,14 @@ class Siren():
         self.statusbar.SetStatusWidths([25, 300, 150, -1])
 
         rect = self.statusbar.GetFieldRect(0)
-        self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "s", style=wx.ALIGN_CENTER|wx.TE_RICH, size=(rect.height+4, rect.height+4))
-        self.buttViz.SetForegroundColour((0,0,0))
-        self.buttViz.SetBackgroundColour((255,255,255))
+        
+        self.buttViz = wx.StaticBitmap(self.statusbar, wx.NewId(), self.icons["split_frame"], size=(rect.height+4, rect.height+4))
+        # self.buttViz.SetMargins(0, 0)
+        # self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "s", style=wx.ALIGN_CENTER|wx.TE_RICH, size=(rect.height+4, rect.height+4))
+        # self.buttViz.SetForegroundColour((0,0,0))
+        # self.buttViz.SetBackgroundColour((255,255,255))
         self.buttViz.SetPosition((rect.x, rect.y))
-        self.buttViz.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitchange)
+        self.buttViz.Bind(wx.EVT_LEFT_UP, self.OnSplitchange)
 
         self.progress_bar = wx.Gauge(self.statusbar, -1, style=wx.GA_HORIZONTAL|wx.GA_SMOOTH)
         rect = self.statusbar.GetFieldRect(2)
@@ -542,16 +547,18 @@ class Siren():
         if self.hasVizIntab():
             if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
                 self.vizTabToSplit()
-                self.buttViz.SetValue(False)
-                self.buttViz.SetLabel("u")
-                self.buttViz.SetForegroundColour((255, 255, 255))
-                self.buttViz.SetBackgroundColour((0, 0, 0))
+                self.buttViz.SetBitmap(self.icons["unsplit_frame"])
+                # self.buttViz.SetValue(False)
+                # self.buttViz.SetLabel("u")
+                # self.buttViz.SetForegroundColour((255, 255, 255))
+                # self.buttViz.SetBackgroundColour((0, 0, 0))
             else:
                 self.vizSplitToTab()
-                self.buttViz.SetValue(False)
-                self.buttViz.SetLabel("s")
-                self.buttViz.SetForegroundColour((0,0,0))
-                self.buttViz.SetBackgroundColour((255, 255, 255))
+                self.buttViz.SetBitmap(self.icons["split_frame"])
+                # self.buttViz.SetValue(False)
+                # self.buttViz.SetLabel("s")
+                # self.buttViz.SetForegroundColour((0,0,0))
+                # self.buttViz.SetBackgroundColour((255, 255, 255))
 
             self.hideShowBxViz()
             self.doUpdates({"menu":True})

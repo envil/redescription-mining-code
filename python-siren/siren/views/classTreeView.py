@@ -369,7 +369,6 @@ class TreeView(GView):
 
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
-        add_box = wx.BoxSizer(wx.VERTICAL)
         
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
@@ -395,29 +394,9 @@ class TreeView(GView):
         
         add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
-        add_box.Add(add_boxB, 0, border=1, flag=flags)
-
-        ##############################################
-        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
-        
-        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
-
-        add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
-
-        add_boxB.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
-
-        add_boxB.Add(self.MaptoolbarMap, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((self.getSpacerWn()/2,-1))
-        add_box.Add(add_boxB, 0, border=1, flag=flags)
 
         #return [add_boxbis, add_box]
-        return [add_box]
+        return [add_boxB]
 
 
     def additionalBinds(self):
