@@ -47,6 +47,7 @@ class EProjView(GView):
         self.pos = None
         self.boxL = None
         self.boxT = None
+        self.icons = self.parent.icons
         self.rsets = None
         self.vid = vid
         self.buttons = []

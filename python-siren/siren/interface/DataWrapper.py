@@ -3,8 +3,6 @@ import collections
 import sys
 import re
 
-from wx import Bitmap, NullBitmap
-
 import pdb
 
 from ..reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
@@ -35,19 +33,6 @@ def findFile(fname, path=[]):
             return testpath
 
     return None
-
-def initIcons(icons_setts, path=[]):
-    icons = {}
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
-    for icon_name, icon_file in icons_setts.items():
-        tmp = findFile(icon_file+".png", path+['../../icons', root_dir + '/icons', './icons'])
-        if tmp is not None:    
-            icons[icon_name] = Bitmap(tmp)
-        else:
-            icons[icon_name] = NullBitmap
-    return icons
-
 
 
 class DataWrapper(object):

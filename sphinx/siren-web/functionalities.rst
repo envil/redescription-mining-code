@@ -74,7 +74,7 @@ Visualizations can be displayed either in their own windows separate from the ma
 window can be split horizontaly into two frames in order to examine at the same
 time a list of redescriptions and several visualizations.
 
-.. image:: ../_figs/screenshots/SplitFrameListViz.png
+.. image:: ../_figs/screenshots/VizSplitFrame.png
 
 .. _func_edit:
 

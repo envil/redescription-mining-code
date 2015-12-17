@@ -12,7 +12,7 @@ from ..reremi.classConstraints import Constraints
 from ..reremi.classBatch import Batch
 from ..reremi.toolICList import ICList
 
-from DataWrapper import DataWrapper, findFile, initIcons
+from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
@@ -27,6 +27,19 @@ import pdb
 
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+
+def initIcons(icons_setts, path=[]):
+    icons = {}
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
+    for icon_name, icon_file in icons_setts.items():
+        tmp = findFile(icon_file+".png", path+['../../icons', root_dir + '/icons', './icons'])
+        if tmp is not None:    
+            icons[icon_name] = wx.Bitmap(tmp)
+        else:
+            icons[icon_name] = wx.NullBitmap
+    return icons
+
 
  
 class Siren():
@@ -50,7 +63,17 @@ class Siren():
                +common_variables["PROJECT_AUTHORS"]
     about_text = common_variables["PROJECT_DESCRIPTION_LINE"]+"\n"
 
-    icons_setts = {"split_frame": "split", "unsplit_frame": "unsplit"}
+    icons_setts = {"split_frame": "split",
+                   "unsplit_frame": "unsplit",
+                   "learn_act": "learn_act", 
+                   "test_act": "test_act",
+                   "learn_dis": "learn_dis",
+                   "test_dis": "test_dis",
+                   "kil": "cross",
+                   "inout": "up_right",
+                   "outin": "down_right",
+                   "save": "savefig"}
+
 
     icon_file = findFile('siren_icon32x32.png', ['../../icons', root_dir + '/icons', './icons'])
     license_file = findFile('LICENSE', ['../../licenses', root_dir+ '/licenses', './licenses'])

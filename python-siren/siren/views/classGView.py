@@ -18,8 +18,6 @@ from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
-from ..interface.DataWrapper import initIcons
-
 
 import pdb
 
@@ -64,15 +62,6 @@ class GView(object):
     label_inout = SYM.SYM_INOUT
     label_outin = SYM.SYM_OUTIN 
     label_cross = SYM.SYM_CROSS
-
-    icons_setts = {"learn_act": "learn_act", 
-                   "test_act": "test_act",
-                   "learn_dis": "learn_dis",
-                   "test_dis": "test_dis",
-                   "kil": "cross",
-                   "inout": "up_right",
-                   "outin": "down_right",
-                   "save": "savefig"}
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
     DOT_ALPHA = 0.6
@@ -155,6 +144,7 @@ class GView(object):
         self.savef = None
         self.boxL = None
         self.boxT = None
+        self.icons = self.parent.icons
         self.rsets = None
         self.rwhich = None
         self.vid = vid
@@ -163,9 +153,6 @@ class GView(object):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-
-        self.icons = initIcons(self.icons_setts)
-
         self.intab = self.parent.showVizIntab()
 
         if self.isIntab():
@@ -829,7 +816,6 @@ class GView(object):
 
         add_boxB.Add(self.savef, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
-
 
         self.masterBox =  wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
         #self.masterBox = wx.BoxSizer(wx.VERTICAL)
