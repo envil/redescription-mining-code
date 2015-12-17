@@ -806,6 +806,7 @@ class GView(object):
         add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
 
+        add_boxB.Add(self.MaptoolbarMap, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
