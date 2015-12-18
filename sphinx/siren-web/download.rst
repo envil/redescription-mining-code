@@ -79,7 +79,7 @@ If everything went fine, you should find a Siren entry in your Applications menu
 
 You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
-.. image:: ../_figs/screenshots/Fullscreen.png
+.. image:: ../_figs/screenshots/Partscreen.png
 
 .. _windows:
 
