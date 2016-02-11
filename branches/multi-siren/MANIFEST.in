@@ -1,0 +1,18 @@
+exclude prepare_deb_files.py
+include siren/reremi/*.py 
+include siren/reremi/*.xml
+include siren/reremi/*.xsl
+include siren/reremi/grako/*.py
+include siren/interface/*.py 
+include siren/interface/*.xml
+include siren/work/*.py 
+include siren/views/*.py 
+recursive-include help *
+recursive-include help/_static *
+recursive-include help/_static/screenshots *
+include icons/*.png
+include icons/*.ico
+include CHANGELOG
+include LICENSE 
+include licenses/LICENSE*
+include MANIFEST.in
