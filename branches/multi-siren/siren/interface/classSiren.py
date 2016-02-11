@@ -14,6 +14,7 @@ from ..reremi.toolICList import ICList
 
 from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
+from classCtrlTable import RedCtrl
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
@@ -85,7 +86,6 @@ class Siren():
     color_add = (16, 82, 0)
     color_drop = (190, 10, 10)
     color_vizb = (20, 20, 20)
-
          
     def __init__(self):
         self.initialized = True
@@ -96,6 +96,7 @@ class Siren():
         tmp_tabs = [{"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
                     {"id": 0, "title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
                     {"id": 1, "title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
+                    {"id": "redsc", "title":"RedescriptionsC", "short": "C", "type":"RedsC", "hide":False, "style":None},
                     {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
                     {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
                     {"id": "hist", "title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
@@ -214,6 +215,13 @@ class Siren():
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
+
+            elif self.tabs[tab_id]["type"] == "RedsC":
+                self.tabs[tab_id]["tab"] = RedCtrl(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
+                if self.tabs[tab_id]["hide"]:
+                    self.tabs[tab_id]["tab"].Hide()
+                self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSplitP(), self.tabs[tab_id]["title"])
+
 
             elif self.tabs[tab_id]["type"] == "Var":
                 self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
@@ -567,6 +575,9 @@ class Siren():
         self.tabs_keys.insert(self.viz_postab, "viz")
 
     def OnSplitchange(self, event):
+        if event.GetEventType() == 10194 and \
+               event.GetWindowBeingRemoved().GetParent().GetId() != self.splitter.GetId():
+            return
         if self.hasVizIntab():
             if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
                 self.vizTabToSplit()
@@ -1652,7 +1663,8 @@ class Siren():
         # if len(err) > 0:
         #     self.logger.printL(1, err, "error", "WP")
         self.reloadReds()
-        self.tabbed.ChangeSelection(self.tabs_keys.index(self.tabbed.GetSelection()))
+        # self.tabbed.ChangeSelection(self.tabs_keys.index(self.tabbed.GetSelection()))
+        self.tabbed.ChangeSelection(3)
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data
@@ -1665,6 +1677,8 @@ class Siren():
             details = {"names": self.dw.getData().getNames()}
             for tk, tv in self.tabs.items():
                 if tv["type"] == "Reds":
+                    tv["tab"].resetDetails(details, review)
+                elif tv["type"] == "RedsC":
                     tv["tab"].resetDetails(details, review)
                 elif tv["type"] == "Row":
                     tv["tab"].resetFields(self.dw, review)
@@ -1680,6 +1694,7 @@ class Siren():
     def reloadReds(self, all=True):
         ## Initialize red lists data
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
+        self.tabs["redsc"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
         if all:
             self.tabs["exp"]["tab"].resetData(Batch())
             self.tabs["hist"]["tab"].resetData(Batch())

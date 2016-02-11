@@ -138,8 +138,7 @@ class GridTable(wx.grid.PyGridTableBase):
         wx.grid.PyGridTableBase.__init__(self)
         self.details = {}
         self.short = short
-        self.sc = set()
-        self.fvc = 0
+        self.sc = set() # show column (for collapsed/expanded columns)
         self.parent = parent
         self.tabId = tabId
         self.fields = self.fields_def
@@ -148,7 +147,7 @@ class GridTable(wx.grid.PyGridTableBase):
         self.sortP = (None, False)
         self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
-        self.matching = []
+        self.matching = [] ### for find function
         
         #### GRID
         self.grid = wx.grid.Grid(frame)
@@ -230,7 +229,6 @@ class GridTable(wx.grid.PyGridTableBase):
         #     return None
 
     def getFieldV(self, x, field, details):
-        self.fvc += 1
         methode = eval(field[1])
         if callable(methode):
             if len(field) > 2 and field[2] is not None:
