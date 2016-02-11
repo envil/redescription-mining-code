@@ -20,7 +20,7 @@ from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
 from miscDialogs import ImportDataCSVDialog, FindDialog
 from ..views.factView import ViewFactory
-from ..views.classFiller import Filler
+from ..views.classViewsManager import VizManager
 from ..work.toolWP import WorkPlant
 from ..common_details import common_variables
 
@@ -81,17 +81,13 @@ class Siren():
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
 
     results_delay = 1000
-    viz_grid = [2,0]
-    intab = False #True
-    color_add = (16, 82, 0)
-    color_drop = (190, 10, 10)
-    color_vizb = (20, 20, 20)
          
     def __init__(self):
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None
         self.dw = None
+        self.vizm = None
         self.plant = WorkPlant()
         tmp_tabs = [{"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
                     {"id": 0, "title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
@@ -105,7 +101,6 @@ class Siren():
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
         self.tabs_keys = [p["id"] for p in tmp_tabs]
-        self.viz_postab = self.tabs_keys.index("viz")
         self.selectedTab = self.tabs[self.tabs_keys[0]]
         stn = self.tabs_keys[0]
 
@@ -123,7 +118,7 @@ class Siren():
         self.buffer_copy = None
         
         self.call_check = None
-        
+
         self.create_tool_panel()
         self.changePage(stn)
         
@@ -189,6 +184,8 @@ class Siren():
             return self.dw.getPreferences()
     def getLogger(self):
         return self.logger
+    def getVizm(self):
+        return self.vizm
 
         
 ######################################################################
@@ -205,7 +202,6 @@ class Siren():
         self.makeStatus(self.toolFrame)
         self.doUpdates()
         self.splitter = wx.SplitterWindow(self.toolFrame)
-        
 	self.tabbed = wx.Notebook(self.splitter, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
 
         #### Draw tabs
@@ -246,11 +242,9 @@ class Siren():
                 self.tabs[tab_id]["tab"].SetSizer(boxS)
 
             elif self.tabs[tab_id]["type"] == "Viz":
+                self.vizm = VizManager(self, tab_id, self.tabbed, self.tabs[tab_id]["title"]) 
                 #self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
-                self.tabs[tab_id]["tab"] = wx.ScrolledWindow(self.tabbed, -1, style=wx.HSCROLL|wx.VSCROLL)
-                self.tabs[tab_id]["tab"].SetScrollRate( 5, 5 )        
-                # self.tabs[tab_id]["tab"].SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
-                self.tabs[tab_id]["tab"].SetSizer(wx.GridBagSizer(vgap=0, hgap=0))
+                self.tabs[tab_id]["tab"] = self.vizm.getSW()
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
@@ -286,317 +280,6 @@ class Siren():
         self.progress_bar.SetSize((rect.width-2, rect.height-2))
         self.progress_bar.Hide()
 
-######################################################################
-###########     INTAB VIZ TAB
-######################################################################
-
-    #### HERE INTAB SWITCH
-    def showVizIntab(self):
-        return self.hasVizIntab() and self.intab
-
-    def hasVizIntab(self):
-        return (self.viz_grid[0]*self.viz_grid[1]) > 0
-
-    def isReadyVizIntab(self):
-        return self.hasVizIntab() and hasattr(self, 'vfiller_ids') and len(self.vfiller_ids) + len(self.vused_ids) + len(self.buttons) > 0
-
-
-    def getVizBbsiz(self):
-        return 9
-    def getVizBb(self):
-        return self.getVizBbsiz()+3
-        
-    def initVizTab(self):
-        self.vfiller_ids = {}
-        self.vused_ids = {}
-        self.buttons = {}
-        
-        if self.dw is not None:
-            self.viz_grid = [self.dw.getPreference('intab_nbr'), self.dw.getPreference('intab_nbc')]
-
-        if self.hasVizIntab():
-            self.fillInViz()
-            self.addVizExts()
-            self.setVizButtAble()
-            self.updateVizcellSelected()
-            if not self.tabs["viz"]["hide"] and self.sysTLin():
-                self.tabs["viz"]["tab"].Show()
-            if self.viz_postab > len(self.tabs_keys) or self.tabs_keys[self.viz_postab] != "viz":
-                self.tabs_keys.insert(self.viz_postab, "viz")
-
-        else:
-            self.tabs["viz"]["tab"].Hide()
-            if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
-                self.tabs_keys.pop(self.viz_postab)
-
-    def clearVizTab(self):
-        for sel in self.vfiller_ids:
-            panel = self.vfiller_ids[sel].popSizer()
-            panel.Destroy()
-        for sel in self.vused_ids:
-            ### Free another view            
-            self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
-            
-        for bi, bb in self.buttons.items():
-            self.tabs["viz"]["tab"].GetSizer().Detach(bb["button"])
-            bb["button"].Destroy()
-
-        self.vfiller_ids = {}
-        self.vused_ids = {}
-        self.buttons = {}
-        self.selected_cell = None
-
-    def reloadVizTab(self):
-        if self.isReadyVizIntab():
-            self.clearVizTab()
-        self.initVizTab()
-        self.doUpdates({"menu":True})
-            
-    def getVizcellSelected(self):
-        return self.selected_cell
-    def setVizcellSelected(self, pos):
-        self.selected_cell = pos
-    def updateVizcellSelected(self):
-        if len(self.vfiller_ids) > 0:
-            self.selected_cell = sorted(self.vfiller_ids.keys(), key=lambda x: x[0]+x[1])[0]
-            uid = self.selected_cell
-        else:
-            self.selected_cell = sorted(self.vused_ids.keys(), key=lambda x: self.vused_ids[x][1])[0]
-            uid = None
-        self.setActiveViz(uid)
-
-    def getVizPlotPos(self, vid):
-        sel = self.getVizcellSelected()
-        if sel in self.vfiller_ids:
-            pv = self.vfiller_ids.pop(sel)
-            panel = pv.popSizer()
-            panel.Destroy()
-        else:
-            ### Free another view            
-            self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
-
-        #### mark cell used    
-        self.vused_ids[sel] = (vid, len(self.vused_ids))            
-        self.updateVizcellSelected()
-        return sel
-
-    def getVizGridSize(self):
-        return self.viz_grid
-    def getVizGridNbDim(self, dim=None):
-        if dim is None:
-            return self.viz_grid
-        else:
-            return self.viz_grid[dim]
-    
-    def decrementVizGridDim(self, dim, id):
-        self.viz_grid[dim] -= 1
-        self.dropGridDimViz(dim, id)
-        self.resizeViz()
-        self.setVizButtAble()
-        self.updateVizcellSelected()
-
-    def incrementVizGridDim(self, dim):
-        self.viz_grid[dim] += 1
-        self.addGridDimViz(dim)
-        self.resizeViz()
-        self.setVizButtAble()
-        self.updateVizcellSelected()
-        
-    def fillInViz(self):
-        for i in range(1, self.getVizGridNbDim(0)+1):
-            for j in range(1, self.getVizGridNbDim(1)+1):
-                self.vfiller_ids[(i,j)] = Filler(self, (i,j))
-
-    def addGridDimViz(self, dim):
-        for bi, but in self.buttons.items():
-            if but["action"][1] == -1:
-                self.tabs["viz"]["tab"].GetSizer().Detach(but["button"])
-                ddim = but["action"][0]
-                ppos, pspan = ([1, 1], [1, 1])
-                ppos[ddim] += self.getVizGridNbDim(ddim)
-                pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
-                self.tabs["viz"]["tab"].GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-
-        sizeb = (self.getVizBbsiz(), 1)
-        bid = wx.NewId()
-        but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[dim], sizeb[1-dim]))
-        but.SetBackgroundColour(self.color_drop)
-        posb = [0,0]
-        posb[dim] = self.getVizGridNbDim(dim)
-        self.tabs["viz"]["tab"].GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-        self.buttons[bid] = {"action": (dim, self.getVizGridNbDim(dim)), "button": but}
-        but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
-        ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
-
-        ppos = [self.getVizGridNbDim(dim), self.getVizGridNbDim(dim)]
-        for i in range(1, self.getVizGridNbDim(1-dim)+1):
-            ppos[1-dim] = i
-            self.vfiller_ids[tuple(ppos)] = Filler(self, tuple(ppos))
-
-    def dropGridDimViz(self, dim, cid):
-        ssel = [0,0]
-        ssel[dim] = cid
-        for i in range(1, self.getVizGridNbDim(1-dim)+1):
-            ssel[1-dim] = i
-            sel = tuple(ssel)
-            if sel in self.vfiller_ids:
-                pv = self.vfiller_ids.pop(sel)
-                panel = pv.popSizer()
-                panel.Destroy()
-            else:
-                # ## Free another view
-                self.view_ids[self.vused_ids[sel][0]].OnQuit(upMenu=False, freeing=False)
-
-        for ccid in range(cid+1, self.getVizGridNbDim(dim)+2):
-            ssel = [0,0]
-            ssel[dim] = ccid
-            nnel = [0,0]
-            nnel[dim] = ccid-1
-
-            for i in range(1, self.getVizGridNbDim(1-dim)+1):
-                ssel[1-dim] = i
-                nnel[1-dim] = i
-                sel = tuple(ssel)
-                nel = tuple(nnel)
-                if sel in self.vfiller_ids:
-                    self.vfiller_ids[sel].resetGPos(nel)
-                    self.vfiller_ids[nel] = self.vfiller_ids.pop(sel)
-                else:
-                    self.view_ids[self.vused_ids[sel][0]].resetGPos(nel)
-                    self.vused_ids[nel] = self.vused_ids.pop(sel)
-                    
-        ### adjust buttons
-        bis = self.buttons.keys()
-        for bi in bis:
-            but = self.buttons[bi]
-            if but["action"][1] == -1:
-                self.tabs["viz"]["tab"].GetSizer().Detach(but["button"])
-                ddim = but["action"][0]
-                ppos, pspan = ([1, 1], [1, 1])
-                ppos[ddim] += self.getVizGridNbDim(ddim)
-                pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
-                self.tabs["viz"]["tab"].GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-            elif but["action"][0] == dim and but["action"][1] == self.getVizGridNbDim(dim)+1:
-                bb = self.buttons.pop(bi)
-                self.tabs["viz"]["tab"].GetSizer().Detach(bb["button"])
-                bb["button"].Destroy()
-
-    def addVizExts(self):
-        sizeb = (self.getVizBbsiz(), 1)
-        for which in [0, 1]:
-            posb = [0,0]
-            for i in range(1, self.getVizGridNbDim(which)+1):
-                bid = wx.NewId()
-                but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[which], sizeb[1-which]))
-                but.SetBackgroundColour(self.color_drop)
-                posb[which] = i
-                self.tabs["viz"]["tab"].GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-                self.buttons[bid] = {"action": (which, i), "button": but}
-                but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
-                # but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
-
-            bid = wx.NewId()
-            but = wx.Button(self.tabs["viz"]["tab"], bid, "", style=wx.NO_BORDER, size=(sizeb[1-which], sizeb[which]))
-            but.SetBackgroundColour(self.color_add)
-            ppos, pspan = ([1, 1], [1, 1])
-            ppos[which] += self.getVizGridNbDim(which)
-            pspan[1-which] = self.getVizGridNbDim(1-which)
-            self.tabs["viz"]["tab"].GetSizer().Add(but, pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-            self.buttons[bid] = {"action": (which, -1), "button": but}
-            but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
-            ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
-
-    def setVizButtAble(self):
-        for bi, bb in self.buttons.items():
-            if bb["action"][1] == 1 and self.getVizGridNbDim(bb["action"][0]) == 1:
-                bb["button"].Disable()
-            else:
-                bb["button"].Enable()
-
-    # def OnPrintName(self, event=None):
-    #     if event.GetId() in self.buttons:
-    #         print "button", self.buttons[event.GetId()]["action"]
-    #     else:
-    #         print "button", event.GetId(), "not there"
-    #     event.Skip()
-
-    def OnChangeGridViz(self, event=None):
-        if self.buttons[event.GetId()]["action"][1] == -1:
-            self.incrementVizGridDim(self.buttons[event.GetId()]["action"][0])
-        else:
-            self.decrementVizGridDim(self.buttons[event.GetId()]["action"][0], self.buttons[event.GetId()]["action"][1])
-    def setActiveViz(self, fid=None):
-        for k,v in self.vfiller_ids.items():
-            if k == fid:
-                self.setVizcellSelected(fid)
-                v.setActive()
-            else:
-                v.setUnactive()
-
-    def resizeViz(self):
-        if self.isReadyVizIntab():
-            for (vid, view) in self.view_ids.items():
-                if view.isIntab():
-                    view._SetSize()
-            for (vid, view) in self.vfiller_ids.items():
-                view._SetSize()
-
-    def hideShowBxViz(self):
-        if self.isReadyVizIntab():
-            for (vid, view) in self.view_ids.items():
-                if view.isIntab():
-                    view.hideShowOpt()
-                    # view._SetSize()
-            # for (vid, view) in self.vfiller_ids.items():
-            #     view._SetSize()
-
-
-    def setVizcellFreeded(self, pos):
-        self.vused_ids.pop(pos)
-        self.vfiller_ids[pos] = Filler(self, pos)
-        self.updateVizcellSelected()
-
-    def isVizSplit(self):
-        return self.splitter.IsSplit()
-    
-    def vizTabToSplit(self):
-        self.tabbed.RemovePage(self.viz_postab)
-        self.tabs_keys.pop(self.viz_postab)
-        self.tabs["viz"]["tab"].Reparent(self.splitter)
-        self.splitter.SplitHorizontally(self.tabbed, self.tabs["viz"]["tab"])
-
-    def vizSplitToTab(self):
-        if self.isVizSplit():
-            self.splitter.Unsplit(self.tabs["viz"]["tab"])
-        self.tabs["viz"]["tab"].Reparent(self.tabbed)
-        self.tabbed.InsertPage(self.viz_postab, self.tabs["viz"]["tab"], self.tabs["viz"]["title"])
-        if self.sysTLin():
-            self.tabs["viz"]["tab"].Show()
-        self.tabs_keys.insert(self.viz_postab, "viz")
-
-    def OnSplitchange(self, event):
-        if event.GetEventType() == 10194 and \
-               event.GetWindowBeingRemoved().GetParent().GetId() != self.splitter.GetId():
-            return
-        if self.hasVizIntab():
-            if self.viz_postab < len(self.tabs_keys) and self.tabs_keys[self.viz_postab] == "viz":
-                self.vizTabToSplit()
-                self.buttViz.SetBitmap(self.icons["unsplit_frame"])
-                # self.buttViz.SetValue(False)
-                # self.buttViz.SetLabel("u")
-                # self.buttViz.SetForegroundColour((255, 255, 255))
-                # self.buttViz.SetBackgroundColour((0, 0, 0))
-            else:
-                self.vizSplitToTab()
-                self.buttViz.SetBitmap(self.icons["split_frame"])
-                # self.buttViz.SetValue(False)
-                # self.buttViz.SetLabel("s")
-                # self.buttViz.SetForegroundColour((0,0,0))
-                # self.buttViz.SetBackgroundColour((255, 255, 255))
-
-            self.hideShowBxViz()
-            self.doUpdates({"menu":True})
-                
 ######################################################################
 ###########     MENUS
 ######################################################################
@@ -751,11 +434,11 @@ class Siren():
             menuViz = wx.Menu()
 
             #### not for popup menu
-            if self.hasVizIntab():
+            if self.getVizm() is not None and self.getVizm().hasVizIntab():
                 ID_CHECK = wx.NewId()
                 m_check = menuViz.AppendCheckItem(ID_CHECK, "Plot in tab", "Plot inside visualization tab.")
                 frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
-                if self.intab:
+                if self.getVizm().intab:
                     m_check.Check()
             
         if self.selectedTab["type"] in ["Var","Reds", "Row"]:
@@ -1022,7 +705,7 @@ class Siren():
                 panel = self.view_ids[vK].popSizer()
                 panel.Destroy()
                 if freeing:
-                    self.setVizcellFreeded(pos)
+                    self.getVizm().setVizcellFreeded(pos)
             del self.view_ids[vK]
 
     def deleteAllViews(self):
@@ -1037,6 +720,11 @@ class Siren():
 ###########     ACTIONS
 ######################################################################
 
+    def OnSplitchange(self, event):
+        if event.GetEventType() == 10022 or \
+               event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId():
+            self.getVizm().OnSplitchange()
+        
     def OnOpen(self, event):
         if not self.checkAndProceedWithUnsavedChanges():
                 return
@@ -1451,7 +1139,7 @@ class Siren():
                 tab["tab"].recomputeAll(restrict)
 
     def OnVizCheck(self, event):
-        self.intab = event.IsChecked()
+        self.getVizm().setVizCheck(event.IsChecked())
             
     def OnTabW(self, event):
         if event.GetId() in self.check_tab:
@@ -1573,7 +1261,8 @@ class Siren():
         return dets
 
     def OnSize(self, event):
-        self.resizeViz()
+        if self.getVizm() is not None:
+            self.getVizm().resizeViz()
         event.Skip()
                 
     def OnQuit(self, event):
@@ -1650,7 +1339,7 @@ class Siren():
         self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
     def reloadAll(self):
-        self.reloadVizTab()
+        self.getVizm().reloadVizTab()
         if self.plant is not None:
             self.plant.getWP().closeDown(self)
         self.reloadVars(review=False)

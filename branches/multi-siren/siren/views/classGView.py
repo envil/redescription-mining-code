@@ -110,7 +110,7 @@ class GView(object):
         return self.spacer_h
     def getVizType(self):
         if self.isIntab():
-            if self.parent.isVizSplit():
+            if self.parent.getVizm().isVizSplit():
                 return "s"
             return "t"
         return "i"
@@ -153,7 +153,7 @@ class GView(object):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-        self.intab = self.parent.showVizIntab()
+        self.intab = self.parent.getVizm().showVizIntab()
 
         if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
@@ -564,12 +564,12 @@ class GView(object):
         min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
             # sz = (laybox.GetCols(), laybox.GetRows())
-            sz = self.parent.getVizGridSize()
+            sz = self.parent.getVizm().getVizGridSize()
             min_size = (self.getFWidth(), self.getFHeight())
-            max_size = ((pixels[0]-2*self.parent.getVizBb())/float(sz[1]),
-                        (pixels[1]-2*self.parent.getVizBb())/float(sz[0]))
-            pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                      max(self.getFHeight(), (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+            max_size = ((pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1]),
+                        (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0]))
+            pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1])),
+                      max(self.getFHeight(), (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
             pixels = (max(self.getFWidth(), pixels[0]),
@@ -608,7 +608,7 @@ class GView(object):
             self.boxPop.SetBitmap(self.icons["outin"])
             # self.boxPop.SetLabel(self.label_outin)
             # self.boxPop.SetValue(False)
-            self.parent.setVizcellFreeded(pos)
+            self.parent.getVizm().setVizcellFreeded(pos)
             self.panel.Reparent(self.mapFrame)
             self.mapFrame.GetSizer().Add(self.panel)
 
@@ -621,7 +621,7 @@ class GView(object):
             # self.boxPop.SetLabel(self.label_inout)
             # self.boxPop.SetValue(False)
             self.panel.Reparent(self.mapFrame)
-            self.pos = self.parent.getVizPlotPos(self.getId())
+            self.pos = self.parent.getVizm().getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
             
         self.binds_n()
@@ -792,7 +792,7 @@ class GView(object):
             self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["outin"])
         # self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
         self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["kil"])
-        if not self.parent.hasVizIntab():
+        if not self.parent.getVizm().hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()
 
@@ -857,7 +857,7 @@ class GView(object):
         self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
         self.panel.SetSizer(self.masterBox)
         if self.isIntab():
-            self.pos = self.parent.getVizPlotPos(self.getId())
+            self.pos = self.parent.getVizm().getVizPlotPos(self.getId())
             self.mapFrame.GetSizer().Add(self.panel, pos=self.pos, flag=wx.ALL, border=0)
         else:
             self.mapFrame.GetSizer().Add(self.panel)

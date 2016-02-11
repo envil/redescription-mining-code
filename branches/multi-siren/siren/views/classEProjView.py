@@ -55,7 +55,7 @@ class EProjView(GView):
         self.highl = {}
         self.hight = {}
         self.current_hover = None
-        self.intab = self.parent.showVizIntab()
+        self.intab = self.parent.getVizm().showVizIntab()
         self.initProject(more)
 
         if self.isIntab():
