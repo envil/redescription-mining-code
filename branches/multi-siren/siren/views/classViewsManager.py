@@ -3,135 +3,144 @@ from classFiller import Filler
 
 import pdb
 
-class ViewsManager:
+# class ViewsManager:
 
-    def __init__(self, parent):
-        self.selectedViewX
-        self.opened_edits = {}
-        self.view_ids = {}
-        self.parent = parent
-        
-    def registerView(self, key, pos, upMenu=True):
-        self.opened_edits[key] = pos
-        if upMenu:
-            self.parent.updateMenus()
+#     def __init__(self, parent):
+#         self.parent = parent
+#         self.vid_to_rid = {}
+#         self.rid_to_vids = {}
 
-    def unregisterView(self, key, upMenu=True):
-        if key in self.opened_edits.keys():
-            pos = self.opened_edits[key]
-            del self.opened_edits[key]
-            ### if there are no other view referring to same red, clear emphasize lines
-            if pos not in self.opened_edits.values():
-                if pos in self.emphasized:
-                    del self.emphasized[pos]
-            if upMenu:
-                self.parent.updateMenus()
+#         self.selectedViewX
+#         self.opened_edits = {}
+#         self.emphasized = {}
 
+#     def registerView(self, rid, vid):
+#         self.vid_to_rid[vid] = rid
+#         if rid not in self.rid_to_vids:
+#             self.rid_to_vids[rid] = []
+#         self.rid_to_vids[rid].append(vid)
+
+#     def unregisterView(self, vid):
+#         if vid in self.vid_to_rid:
+#             rid = self.vid_to_rid[vid]
+#             self.rid_to_vids[rid].remove(vid)
+#             del self.vid_to_rid[vid]
+
+#             if len(self.rid_to_vids[rid]) == 0:
+#                 del self.rid_to_vids[rid]
+#                 if rid in self.emphasized:
+#                     del self.emphasized[rid]
+#             return self.nbViews(rid)
+#         return -1
+
+#     def nbViews(self, rid):
+#         return len(self.rid_to_vids.get(rid, []))
             
-    def updateEdit(self, edit_key, red, toed=None):
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
-        if toed is not None and toed >= 0 and toed < len(self.data):
-            if self.tabId != "hist":
-                self.data[toed] = red
-
-                for k,v in self.opened_edits.items():
-                    if v == toed and k != edit_key:
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.setCurrent(red, self.tabId)
-
-            else:
-                old_toed = toed
-                new_toed = len(self.data)
-                row_inserted = self.insertItem(red, -1)
-                if edit_key is None: ## edit comes from the tab itself, not from a view
-                    self.setSelectedRow(row_inserted)
+#     def updateEdit(self, edit_vid, red, toed=None):
+#         rid = self.vid_to_rid.get(edit_vid)
+#         if rid is not None:
             
-                for k,v in self.opened_edits.items():
-                    if v == old_toed:
-                        self.opened_edits[k] = new_toed 
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.updateTitle()
-                            if k != edit_key:
-                                mc.setCurrent(red, self.tabId)
+#         if toed is not None and toed >= 0 and toed < len(self.data):
+#             if self.tabId != "hist":
+#                 self.data[toed] = red
 
-                if old_toed in self.emphasized and edit_key in self.opened_edits:
-                    self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
-                    del self.emphasized[old_toed]
+#                 for k,v in self.opened_edits.items():
+#                     if v == toed and k != edit_key:
+#                         mc = self.parent.accessViewX(k)
+#                         if mc is not None:
+#                             mc.setCurrent(red, self.tabId)
 
-                self.parent.updateMenus()
-            self.ResetView()
-        ### TODO else insert (e.g. created from variable)
-
-    def getViewsCount(self, edit_key):
-        count = 0
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
-        if toed is not None and toed >= 0 and toed < len(self.data):
-            for k,v in self.opened_edits.items():
-                if v == toed: # and k != edit_key:
-                    count += 1
-        return count
-
-    def addAndViewTop(self, queries, viewT):
-        mapV = self.parent.getViewX(None, viewT)
-        red = mapV.setCurrent(queries)
-        self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
-        mapV.setSource(self.tabId)
-        self.parent.updateMenus()
-        mapV.updateTitle()
-
-######################################################################
-###########     MAP VIEWS
-######################################################################
-
-
-    def getDefaultViewT(self, tabId=None):
-        if tabId is not None and tabId in self.tabs:
-            return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial(), type_tab=self.tabs[tabId]["type"])
-        else:
-            return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial())
-
-    def accessViewX(self, mid):
-        if mid in self.view_ids:
-            return self.view_ids[mid]
-
-    def getViewX(self, vid=None, viewT=None):
-        if viewT is None:
-            viewT = self.getDefaultViewT()
+#             else:
+#                 old_toed = toed
+#                 new_toed = len(self.data)
+#                 row_inserted = self.insertItem(red, -1)
+#                 if edit_key is None: ## edit comes from the tab itself, not from a view
+#                     self.setSelectedRow(row_inserted)
             
-        if (viewT, vid) not in self.view_ids:
-            view = ViewFactory.getView(viewT, self, wx.NewId())
-            if view is None:
-                return
-            self.selectedViewX = view.getId()
-            self.view_ids[self.selectedViewX] = view
-        else:
-            self.selectedViewX = (viewT, vid)
-        self.view_ids[self.selectedViewX].toTop()
-        return self.view_ids[self.selectedViewX]
+#                 for k,v in self.opened_edits.items():
+#                     if v == old_toed:
+#                         self.opened_edits[k] = new_toed 
+#                         mc = self.parent.accessViewX(k)
+#                         if mc is not None:
+#                             mc.updateTitle()
+#                             if k != edit_key:
+#                                 mc.setCurrent(red, self.tabId)
 
-    def deleteView(self, vK, freeing=True):
-        if vK in self.view_ids:
-            self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
-            if not self.view_ids[vK].isIntab():
-                self.view_ids[vK].mapFrame.Destroy()
-            else:
-                pos = self.view_ids[vK].getGPos()
-                panel = self.view_ids[vK].popSizer()
-                panel.Destroy()
-                if freeing:
-                    self.setVizcellFreeded(pos)
-            del self.view_ids[vK]
+#                 if old_toed in self.emphasized and edit_key in self.opened_edits:
+#                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
+#                     del self.emphasized[old_toed]
 
-    def deleteAllViews(self):
-        self.selectedViewX = -1
-        for vK in self.view_ids.keys():
-            self.view_ids[vK].OnQuit(None, upMenu=False)
-        self.view_ids = {}
-        self.updateMenus()
+#                 self.parent.updateMenus()
+#             self.ResetView()
+#         ### TODO else insert (e.g. created from variable)
+
+#     def getViewsCount(self, edit_key):
+#         count = 0
+#         if edit_key in self.opened_edits.keys():
+#             toed = self.opened_edits[edit_key]
+#         if toed is not None and toed >= 0 and toed < len(self.data):
+#             for k,v in self.opened_edits.items():
+#                 if v == toed: # and k != edit_key:
+#                     count += 1
+#         return count
+
+#     def addAndViewTop(self, queries, viewT):
+#         mapV = self.parent.getViewX(None, viewT)
+#         red = mapV.setCurrent(queries)
+#         self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
+#         mapV.setSource(self.tabId)
+#         self.parent.updateMenus()
+#         mapV.updateTitle()
+
+# ######################################################################
+# ###########     MAP VIEWS
+# ######################################################################
+
+
+#     def getDefaultViewT(self, tabId=None):
+#         if tabId is not None and tabId in self.tabs:
+#             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial(), type_tab=self.tabs[tabId]["type"])
+#         else:
+#             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial())
+
+#     def accessViewX(self, mid):
+#         if mid in self.view_ids:
+#             return self.view_ids[mid]
+
+#     def getViewX(self, vid=None, viewT=None):
+#         if viewT is None:
+#             viewT = self.getDefaultViewT()
+            
+#         if (viewT, vid) not in self.view_ids:
+#             view = ViewFactory.getView(viewT, self, wx.NewId())
+#             if view is None:
+#                 return
+#             self.selectedViewX = view.getId()
+#             self.view_ids[self.selectedViewX] = view
+#         else:
+#             self.selectedViewX = (viewT, vid)
+#         self.view_ids[self.selectedViewX].toTop()
+#         return self.view_ids[self.selectedViewX]
+
+#     def deleteView(self, vK, freeing=True):
+#         if vK in self.view_ids:
+#             self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
+#             if not self.view_ids[vK].isIntab():
+#                 self.view_ids[vK].mapFrame.Destroy()
+#             else:
+#                 pos = self.view_ids[vK].getGPos()
+#                 panel = self.view_ids[vK].popSizer()
+#                 panel.Destroy()
+#                 if freeing:
+#                     self.setVizcellFreeded(pos)
+#             del self.view_ids[vK]
+
+#     def deleteAllViews(self):
+#         self.selectedViewX = -1
+#         for vK in self.view_ids.keys():
+#             self.view_ids[vK].OnQuit(None, upMenu=False)
+#         self.view_ids = {}
+#         self.updateMenus()
 
 
 ######################################################################
@@ -482,3 +491,135 @@ class VizManager:
 
             self.hideShowBxViz()
             self.parent.doUpdates({"menu":True})
+
+
+######################################################################
+######################################################################
+######################################################################
+
+#     def __init__(self, parent):
+#         self.selectedViewX
+#         self.opened_edits = {}
+#         self.view_ids = {}
+#         self.parent = parent
+#         self.emphasized = {}
+        
+#     def registerView(self, key, pos, upMenu=True):
+#         self.opened_edits[key] = pos
+#         if upMenu:
+#             self.parent.updateMenus()
+
+#     def unregisterView(self, key, upMenu=True):
+#         if key in self.opened_edits.keys():
+#             pos = self.opened_edits[key]
+#             del self.opened_edits[key]
+#             ### if there are no other view referring to same red, clear emphasize lines
+#             if pos not in self.opened_edits.values():
+#                 if pos in self.emphasized:
+#                     del self.emphasized[pos]
+#             if upMenu:
+#                 self.parent.updateMenus()
+            
+#     def updateEdit(self, edit_key, red, toed=None):
+#         if edit_key in self.opened_edits.keys():
+#             toed = self.opened_edits[edit_key]
+#         if toed is not None and toed >= 0 and toed < len(self.data):
+#             if self.tabId != "hist":
+#                 self.data[toed] = red
+
+#                 for k,v in self.opened_edits.items():
+#                     if v == toed and k != edit_key:
+#                         mc = self.parent.accessViewX(k)
+#                         if mc is not None:
+#                             mc.setCurrent(red, self.tabId)
+
+#             else:
+#                 old_toed = toed
+#                 new_toed = len(self.data)
+#                 row_inserted = self.insertItem(red, -1)
+#                 if edit_key is None: ## edit comes from the tab itself, not from a view
+#                     self.setSelectedRow(row_inserted)
+            
+#                 for k,v in self.opened_edits.items():
+#                     if v == old_toed:
+#                         self.opened_edits[k] = new_toed 
+#                         mc = self.parent.accessViewX(k)
+#                         if mc is not None:
+#                             mc.updateTitle()
+#                             if k != edit_key:
+#                                 mc.setCurrent(red, self.tabId)
+
+#                 if old_toed in self.emphasized and edit_key in self.opened_edits:
+#                     self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
+#                     del self.emphasized[old_toed]
+
+#                 self.parent.updateMenus()
+#             self.ResetView()
+#         ### TODO else insert (e.g. created from variable)
+
+#     def getViewsCount(self, edit_key):
+#         count = 0
+#         if edit_key in self.opened_edits.keys():
+#             toed = self.opened_edits[edit_key]
+#         if toed is not None and toed >= 0 and toed < len(self.data):
+#             for k,v in self.opened_edits.items():
+#                 if v == toed: # and k != edit_key:
+#                     count += 1
+#         return count
+
+#     def addAndViewTop(self, queries, viewT):
+#         mapV = self.parent.getViewX(None, viewT)
+#         red = mapV.setCurrent(queries)
+#         self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
+#         mapV.setSource(self.tabId)
+#         self.parent.updateMenus()
+#         mapV.updateTitle()
+
+
+# ###########     MAP VIEWS
+
+
+#     def getDefaultViewT(self, tabId=None):
+#         if tabId is not None and tabId in self.tabs:
+#             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial(), type_tab=self.tabs[tabId]["type"])
+#         else:
+#             return ViewFactory.getDefaultViewT(geo=self.dw.isGeospatial())
+
+#     def accessViewX(self, mid):
+#         if mid in self.view_ids:
+#             return self.view_ids[mid]
+
+#     def getViewX(self, vid=None, viewT=None):
+#         if viewT is None:
+#             viewT = self.getDefaultViewT()
+            
+#         if (viewT, vid) not in self.view_ids:
+#             view = ViewFactory.getView(viewT, self, wx.NewId())
+#             if view is None:
+#                 return
+#             self.selectedViewX = view.getId()
+#             self.view_ids[self.selectedViewX] = view
+#         else:
+#             self.selectedViewX = (viewT, vid)
+#         self.view_ids[self.selectedViewX].toTop()
+#         return self.view_ids[self.selectedViewX]
+
+#     def deleteView(self, vK, freeing=True):
+#         if vK in self.view_ids:
+#             self.plant.getWP().layOff(self.plant.getWP().findWid([("wtyp", "project"), ("vid", vK)]))
+#             if not self.view_ids[vK].isIntab():
+#                 self.view_ids[vK].mapFrame.Destroy()
+#             else:
+#                 pos = self.view_ids[vK].getGPos()
+#                 panel = self.view_ids[vK].popSizer()
+#                 panel.Destroy()
+#                 if freeing:
+#                     self.setVizcellFreeded(pos)
+#             del self.view_ids[vK]
+
+#     def deleteAllViews(self):
+#         self.selectedViewX = -1
+#         for vK in self.view_ids.keys():
+#             self.view_ids[vK].OnQuit(None, upMenu=False)
+#         self.view_ids = {}
+#         self.updateMenus()

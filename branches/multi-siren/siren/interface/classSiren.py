@@ -14,7 +14,7 @@ from ..reremi.toolICList import ICList
 
 from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RedTable, RowTable
-from classCtrlTable import RedCtrl
+from classCtrlTable import RedsManager
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
@@ -213,11 +213,10 @@ class Siren():
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "RedsC":
-                self.tabs[tab_id]["tab"] = RedCtrl(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
+                self.tabs[tab_id]["tab"] = RedsManager(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSplitP(), self.tabs[tab_id]["title"])
-
 
             elif self.tabs[tab_id]["type"] == "Var":
                 self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
@@ -1383,7 +1382,7 @@ class Siren():
     def reloadReds(self, all=True):
         ## Initialize red lists data
         self.tabs["reds"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
-        self.tabs["redsc"]["tab"].resetData(self.dw.getReds(), self.dw.getShowIds())
+        self.tabs["redsc"]["tab"].resetData(self.dw.getReds(), sord=self.dw.getShowIds())
         if all:
             self.tabs["exp"]["tab"].resetData(Batch())
             self.tabs["hist"]["tab"].resetData(Batch())
