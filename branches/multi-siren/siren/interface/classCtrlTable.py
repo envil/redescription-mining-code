@@ -16,9 +16,7 @@ def makeContainersIL(icons):
         il.Add(wx.ArtProvider.GetBitmap(icon, wx.ART_FRAME_ICON))
     return il
 
-
-
-
+###### DRAG AND DROP UTILITY
 class ListDrop(wx.PyDropTarget):
     """ Drop target for simple lists. """
 
@@ -52,29 +50,31 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
     def __init__(self, parent, ID=wx.ID_ANY, pos=wx.DefaultPosition,
                      size=wx.DefaultSize, style=0):
-        print "init ctrl basis"
         wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
         listmix.ListCtrlAutoWidthMixin.__init__(self)
         self.parent = parent
-        self.data_src = None
+        self.cm = None
         self.pid = None
         self.upOn = True
-
+        self.InsertColumn(0, '')
         dt = ListDrop(self._dd)
         self.SetDropTarget(dt)
+        
 
-        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self._onSelect)
-        #self.Bind(wx.EVT_LIST_KEY_DOWN, self.OnKeyDown)
-        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
-        self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick)
-
-    def setDataSrc(self, data_src, pid=None):
-        self.data_src = data_src
+    def setCManager(self, cm, pid=None):
+        self.cm = cm
         self.pid = pid
-    def getDataSrc(self):
-        return self.data_src
-    def hasDataSrc(self):
-        return self.data_src is not None
+    def getCManager(self):
+        return self.cm
+    def getDataHdl(self):
+        if self.hasCManager():
+            return self.cm.getDataHdl()
+    def getViewHdl(self):
+        if self.hasCManager():
+            return self.cm.getViewHdl()
+
+    def hasCManager(self):
+        return self.cm is not None
     def getPid(self):
         return self.pid
 
@@ -84,29 +84,23 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         return self.upOn
 
     def getAssociated(self, which):
-        if self.hasDataSrc():
-            return self.getDataSrc().getAssociated(self.getPid(), which)
+        if self.hasCManager():
+            return self.getCManager().getAssociated(self.getPid(), which)
         return None
     
-    def OnColClick(self, event):
-        pass 
-
-    def OnKeyDown(self, event):
-        pass
+    # def OnKeyDown(self, event):
+    #     pass
         # print event.GetKeyCode(), event.GetModifiers()
         # if event.GetKeyCode() in [wx.WXK_LEFT, wx.WXK_RIGHT]:
         #     print "navigate"
         #     # self.listm.jumpToNextLC(self)
-
-    def _onSelect(self, event):
-        pass
     
     # def OnDeSelect(self, event):
     #     index = event.GetIndex()
     #     self.SetItemBackgroundColour(index, 'WHITE')
 
-    def OnFocus(self, event):
-        self.SetItemBackgroundColour(0, wx.SystemSettings_GetColour(wx.SYS_COLOUR_3DHIGHLIGHT))
+    # def OnFocus(self, event):
+    #     self.SetItemBackgroundColour(0, wx.SystemSettings_GetColour(wx.SYS_COLOUR_3DHIGHLIGHT))
 
     def _onInsert(self, event):
         # Sequencing on a drop event is:
@@ -117,13 +111,13 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         # wx.EVT_LIST_INSERT_ITEM
         #--------------------------------
         # this call to onStripe catches any addition to the list; drag or not
-        if self.hasDataSrc():
+        if self.hasCManager():
             self._onStripe()
-            # self.getDataSrc().setIndices(self.getPid(), "drag", -1)
+            # self.getCManager().setIndices(self.getPid(), "drag", -1)
             event.Skip()
 
     def _onDelete(self, event):
-        if self.hasDataSrc():
+        if self.hasCManager():
             self._onStripe()
             event.Skip()
 
@@ -145,7 +139,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
     def _startDrag(self, e):
         """ Put together a data object for drag-and-drop _from_ this list. """
         # Create the data object: Just use plain text.
-        if self.hasDataSrc():
+        if self.hasCManager():
             txt = ",".join(map(str, self.getSelection()))
             data = wx.PyTextDataObject()
             data.SetText(txt)
@@ -161,7 +155,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
     def _dd(self, x, y, text): ## drag release
         # Find insertion point.
-        if self.hasDataSrc():
+        if self.hasCManager():
             trg_where = {"index": None, "after": False}
             index, flags = self.HitTest((x, y))
             if index == wx.NOT_FOUND: ### if not found move to end
@@ -173,7 +167,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
                 # If the user is dropping into the lower half of the rect, we want to insert _after_ this item.
                 if y > (rect.y - rect.height/2.):
                     trg_where["after"] = True
-            self.getDataSrc().manageDrag(self, trg_where, text)
+            self.getCManager().manageDrag(self, trg_where, text)
 
     def _onStripe(self):
         if self.GetItemCount()>0:
@@ -182,6 +176,12 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
                     self.SetItemBackgroundColour(x,wx.SystemSettings_GetColour(wx.SYS_COLOUR_3DLIGHT))
                 else:
                     self.SetItemBackgroundColour(x,wx.WHITE)
+
+    def GetNumberRows(self):
+        return self.GetItemCount()
+    def GetNumberCols(self):
+        return self.GetColumnCount()
+
 
 class ListCtrlContainers(ListCtrlBasis):
     type_lc = "containers" 
@@ -192,20 +192,22 @@ class ListCtrlContainers(ListCtrlBasis):
         ListCtrlBasis.__init__(self, parent, ID, pos, size,
                                style=wx.LC_REPORT | wx.LC_HRULES | wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
         self.InsertColumn(0, '')
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self._onSelect)
+        self.AssignImageList(makeContainersIL(LIST_TYPES_ICONS), wx.IMAGE_LIST_SMALL)
+        # self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
 
-    def setDataSrc(self, data_src, pid=None):
-        ListCtrlBasis.setDataSrc(self, data_src, pid)
-        self.SetImageList(makeContainersIL(LIST_TYPES_ICONS), wx.IMAGE_LIST_SMALL)
+    def setCManager(self, cm, pid=None):
+        ListCtrlBasis.setCManager(self, cm, pid)
 
     def upItem(self, i, llid):
-        self.SetStringItem(i, 0, self.getDataSrc().getList(llid).getShortStr())
-        self.SetItemImage(i, self.getDataSrc().getList(llid).getSrcTypId())
+        self.SetStringItem(i, 0, self.getDataHdl().getList(llid).getShortStr())
+        self.SetItemImage(i, self.getDataHdl().getList(llid).getSrcTypId())
 
     def loadData(self, lid=None, cascade=True):
         if self.GetItemCount() > 0:
             self.DeleteAllItems()
         if self.getPid() is not None:
-            for (i, llid) in enumerate(self.getDataSrc().getOrdLists()):
+            for (i, llid) in enumerate(self.getDataHdl().getOrdLists()):
                 self.InsertStringItem(i, "")
                 self.upItem(i, llid)
                 if llid == lid:
@@ -215,16 +217,17 @@ class ListCtrlContainers(ListCtrlBasis):
                     if not cascade:
                         self.turnUp(True)
 
-        if lid is None and cascade:
-            ll = self.getAssociated("items")
-            ll.loadData(lid)
+        # if lid is None and cascade:
+        #     ll = self.getAssociated("items")
+        #     ll.loadData(lid)
 
     def _onSelect(self, event):
         if self.isUp():
-            self.getDataSrc().setLid(self.getPid(), lid=None, pos=event.GetIndex())
+            self.getViewHdl().setLid(self.getPid(), lid=None, pos=event.GetIndex())
 
     def _onStripe(self):
         pass
+
 
 class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     type_lc = "items" 
@@ -234,40 +237,42 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
         ListCtrlBasis.__init__(self, parent, ID, pos, size,
                                style=wx.LC_REPORT | wx.LC_HRULES) # | wx.LC_NO_HEADER)
         listmix.CheckListCtrlMixin.__init__(self)
-
+        
+        self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)        
         self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)        
         self.Bind(wx.EVT_LIST_INSERT_ITEM, self._onInsert)
         self.Bind(wx.EVT_LIST_DELETE_ITEM, self._onDelete)
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnViewData)
         self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self.OnRightClick)
+        self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick)
         self.upck = True
 
     def getNbCols(self):
-        return self.getDataSrc().getNbFields()
+        return self.getDataHdl().getNbFields()
     def getColsInfo(self, lid=None, cs=None):
-        return self.getDataSrc().getColsInfo(lid, cs)
+        return self.getDataHdl().getColsInfo(lid, cs)
     def getItemForIid(self, iid):
         try:
-            return self.getDataSrc().getItemForIid(iid)
+            return self.getDataHdl().getItemForIid(iid)
         except KeyError:
             return None
     def getItemForPos(self, pos):
         try:
-            return self.getDataSrc().getItemForPos(pos) ### implement
+            return self.getDataHdl().getItemForPos(pos) ### implement
         except KeyError:
             return None
     def getItemData(self, iid, pos):
-        return self.getDataSrc().getItemData(iid, pos)
+        return self.getDataHdl().getItemData(iid, pos)
 
-    def setDataSrc(self, data_src, pid=None):
-        self.data_src = data_src
+    def setCManager(self, cm, pid=None):
+        self.cm = cm
         self.pid = pid
 
     def OnCheckItem(self, index, flag):
         #### set disabled on item
         if self.upck:
             lid = self.getAssociated("lid")
-            self.getDataSrc().checkItem(lid, index, flag)
+            self.getDataHdl().checkItem(lid, index, flag)
             self.setBckColor(index, flag)
 
     def OnViewData(self, event):
@@ -294,7 +299,9 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     #         self.parent.updateMenus()
 
     def OnRightClick(self, event):
-        print "Right Click"
+        if self.hasCManager():
+            self.getCManager().makePopupMenu()
+
 
     def upItem(self, i, rdt):
         for (cid, cv) in enumerate(rdt["cols"]):
@@ -325,12 +332,12 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
         ### check nb cols match
         if self.getNbCols() != self.GetColumnCount():
             self.DeleteAllColumns()
-            for cid, col in enumerate(self.getDataSrc().getColsInfo(lid)):
+            for cid, col in enumerate(self.getDataHdl().getColsInfo(lid)):
                 self.InsertColumn(cid, col["title"], format=col["format"], width=col["width"])
         else:
             self.updateColsTitles(lid)
 
-        ll = self.getDataSrc().getList(lid)
+        ll = self.getDataHdl().getList(lid)
         if ll is not None:
             # for item in ll.getItems():
             #     print item.status, item
@@ -342,10 +349,10 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     def OnColClick(self, event):
         colS = event.GetColumn()
         if colS == -1:
-            pass ### TODO select all
+            event.Skip()
         else:
             lid = self.getAssociated("lid")
-            ll = self.getDataSrc().getList(lid)
+            ll = self.getDataHdl().getList(lid)
             (oldC, newC) = ll.setSort(colS)
             if oldC is not None or newC is not None:
                 self.updateColsTitles(lid)
@@ -380,13 +387,108 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     #     self.frame.Bind(wx.EVT_TOOL, handle.onPaste, id=wx.ID_PASTE)
     #     self.frame.Bind(wx.EVT_TOOL, handle.onFind, id=wx.ID_FIND)
 
+class SplitBrowser:
 
-class ListManager:
+    def __init__(self, parent, pid, frame):
+        self.parent = parent
+        self.pid = pid
+        self.active_lid = None
+        self.cm = None
+
+        self.sw = wx.SplitterWindow(frame, -1, style=wx.SP_LIVE_UPDATE) #|wx.SP_NOBORDER)
+        panelL = wx.Panel(self.sw, -1)
+        panelR = wx.Panel(self.sw, -1)
+        
+        self.lcc = ListCtrlContainers(panelL, -1)
+        self.lci = ListCtrlItems(panelR, -1)
+
+        vbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        vbox1.Add(self.lcc, 1, wx.EXPAND)
+        panelL.SetSizer(vbox1)
+        vbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        vbox1.Add(self.lci, 1, wx.EXPAND)
+        panelR.SetSizer(vbox1)
+        
+        self.sw.SplitVertically(panelL, panelR, self.lcc.list_width)
+        self.sw.SetSashGravity(0.)
+        self.sw.SetMinimumPaneSize(1)
+
+        ### WITHOUT SPLITTER
+        # panel = wx.Panel(frame, wx.NewId())
+
+        # list1 = ListCtrlContainers(panel, -1)
+        # list2 = ListCtrlItems(panel, -1)
+        
+        # vbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        # vbox1.Add(list1, 1, wx.EXPAND)
+        # vbox1.Add(list2, 1, wx.EXPAND)
+        # panel.SetSizer(vbox1)
+        # self.sw = panel
+
+    def getSW(self):
+        return self.sw
+    def getCM(self):
+        return self.cm
+    def getDataHdl(self):
+        if self.cm is not None:
+            return self.cm.getDataHdl()
+        return None
+    def getWhich(self, which):
+        if which == "items":
+            return self.lci
+        if which == "containers":
+            return self.lcc
+        if which == "pid":
+            return self.pid
+        if which == "lid":
+            return self.active_lid
+
+    def GetNumberRows(self):
+        return self.lci.GetNumberRows()
+    def GetNumberCols(self):
+        return self.lci.GetNumberCols()
+
+    def nbItems(self):
+        return self.GetNumberRows()
+
+    def Hide(self):
+        self.getSW().Hide()
+
+    def Show(self):
+        self.getSW().Show()
+
+    def resetCM(self, cm=None):
+        self.cm = cm
+        if cm is not None:
+            self.lcc.setCManager(cm, self.pid)
+            self.lci.setCManager(cm, self.pid)
+            if len(self.getDataHdl().getOrdLists()) > 0: ## TODO
+                self.active_lid = self.getDataHdl().getOrdLists()[0]
+                self.lcc.loadData(self.active_lid)
+
+    def refresh(self, cascade=True):
+        self.lcc.loadData(self.active_lid, cascade)
+
+    def updateLid(self, lid):
+        if lid != self.active_lid: # check validity lid 
+            self.active_lid = lid
+            self.refresh()
+
+    def setLid(self, pid=0, lid=None, pos=None):
+        if lid is not None:
+            self.active_lid = lid
+            self.lcc.Focus(self.getDataHdl().getListPosForId(lid))
+        elif pos is not None:
+            lid = self.getDataHdl().getListIdAtPos(pos)
+            self.active_lid = lid
+            self.lci.loadData(lid)
+
+        
+class RefsList:
 
     list_types_map = dict([(v,k) for (k,v) in enumerate(LIST_TYPES_NAMES)])
     
     def __init__(self, parent, id, src=('manual', None), name=None, iids=[]):        
-        print "init list manager"
         self.id = id
         self.src = src
         self.parent = parent
@@ -400,7 +502,7 @@ class ListManager:
     def getSrcTyp(self):
         return self.src[0]
     def getSrcTypId(self):
-        return ListManager.list_types_map[self.src[0]]
+        return RefsList.list_types_map[self.src[0]]
     def getSrcInfo(self):
         return self.src[1]
     def setSrc(self, src_typ, src_info=None):
@@ -432,10 +534,10 @@ class ListManager:
             idxs = set([self.getIidAtPos(pos) for pos in poss])
 
         if self.sortP[0] is not None:
+            tmp = [(x, self.parent.getItemFieldV(x, self.parent.fields[self.sortP[0]], {"aim": "sort", "id": x})) for x in self.sortids]
             self.sortids.sort(key= lambda x:
-                              self.parent.getItemFieldV(x, self.parent.fields[self.sortP[0]], {"aim": "sort", "iid": x}),
+                              self.parent.getItemFieldV(x, self.parent.fields[self.sortP[0]], {"aim": "sort", "id": x}),
                               reverse=self.sortP[1])
-
             new_poss = []
             if len(idxs) > 0:
                 new_poss = [pos for (pos, idx) in enumerate(self.sortids) if idx in idxs] 
@@ -455,16 +557,16 @@ class ListManager:
         return self.sortids
 
     def getItemDataAtPos(self, pos):
-        rid = self.getRidAtPos(pos)
+        rid = self.getIidAtPos(pos)
         return self.parent.getItemData(rid, pos)
 
-    def getPosForRid(self, idx):
+    def getPosForIid(self, idx):
         try:
             return self.sortids.index(idx)
         except IndexError:
             return None
 
-    def getRidAtPos(self, pos):
+    def getIidAtPos(self, pos):
         try:
             return self.sortids[pos]
         except IndexError:
@@ -473,7 +575,7 @@ class ListManager:
         if poss is None:
             return list(self.sortids)
         else:
-            return [self.getRidAtPos(p) for p in poss]
+            return [self.getIidAtPos(p) for p in poss]
     def getVIidsAtPoss(self, poss=None):
         return [l for l in self.getIidsAtPoss(poss) if l is not None]
 
@@ -506,7 +608,8 @@ class ListManager:
         #     if ttd[i] == 0:
         #         self.items.pop(i)
 
-class ContentManager:
+
+class DataSet:
 
     str_item = 'item'
     fields_def = []
@@ -514,7 +617,6 @@ class ContentManager:
     check_m = None
 
     def __init__(self):
-        print "init content manager"
         self.details = {}
         self.items = {}        
         self.niid = 0
@@ -585,7 +687,7 @@ class ContentManager:
         if callable(methode):
             if len(field) > 2 and field[2] is not None:
                 details.update(field[2])
-                details.update(self.details)
+            details.update(self.details)
             try:
                 return methode(details)
             except IndexError:
@@ -604,7 +706,7 @@ class ContentManager:
 
         self.items.update(dict(zip(iids, items)))
         ## TODO handle sord (order of display)
-        self.lists[nlid] = ListManager(self, nlid, src, "", iids) 
+        self.lists[nlid] = RefsList(self, nlid, src, "", iids) 
         self.lists_ord.append(nlid)
         return nlid
 
@@ -614,11 +716,9 @@ class ContentManager:
         nlid = self.addList(items, src, sord)
         return nlid
 
-    def resetDetails(self, details={}, review=True):
+    def resetDetails(self, details={}):
         self.resetAllSorts()
         self.details = details
-        if review:
-            self.splitctrl.updateAllPanels()
 
     def resetAllSorts(self):
         for lk, ll in self.lists.items():
@@ -642,7 +742,7 @@ class ContentManager:
     def getVLidsAtPoss(self, poss=None):
         return [l for l in self.getLidsAtPoss(poss) if l is not None]
 
-
+    ####### DATA ACTION
     def deleteLists(self, lids=[], sel=None):
         if len(lids) == 0 and sel is not None:
             lids = self.getVLidsAtPoss(sel)
@@ -731,7 +831,7 @@ class ContentManager:
                 self.deleteItems(self.buffer["iids"])
             self.buffer = {}
 
-    def doDrag(self, lid, sel, pos):
+    def moveItems(self, lid, nlid, sel, pos):
         iids = self.lists[lid].deleteItems(sel)
         self.lists[nlid].insertIids(iids, pos)
 
@@ -741,242 +841,10 @@ class ContentManager:
             if iid is not None:
                 ck = self.getItemFieldV(iid, self.getCheckF(), {})
                 if (ck == 1 and not check) or ( ck == 0 and check):
-                    self.getItemForRid(rid).flipEnabled()
+                    self.getItemForIid(iid).flipEnabled()
         
-class SplitCtrl:
 
-    def __init__(self, parent, frame):
-        print "init split ctrl"
-        self.parent = parent
-        self.panels = []
-        self.cm = None
-        #### draw
-        self.addSplitPanel(frame)
-
-    def getFocusCtrl(self):
-        return self.getSplitP().FindFocus()
-
-    def getFocusPid(self):
-        f = self.getFocusCtrl()
-        if f is not None:
-            if f.getPid() in self.panels:
-                return f.getPid()
-        return None
-
-    def GetNumberRows(self):
-        """Return the number of rows in the active items ctrl"""
-        pid = self.GetFocusPid()
-        if pid is not None:
-            return self.panels[pid]["items"].nbItems()
-        return 0
-
-    def GetNumberCols(self):
-        """Return the number of columns in the active items ctrl"""
-        return self.panels[pid]["items"].nbCols()
-
-    def nbItems(self):
-        return self.GetNumberRows()
-
-    def Hide(self):
-        self.getSplitP().Hide()
-
-    def Show(self):
-        self.getSplitP().Show()
-
-    def resetCM(self, cm, pid=None):
-        if pid is None:
-            pid = 0
-        self.cm = cm
-        self.panels[pid]["containers"].setDataSrc(cm, pid)
-        self.panels[pid]["items"].setDataSrc(cm, pid)
-        if len(self.cm.getOrdLists()) > 0:
-            self.panels[pid]["lid"] = self.cm.getOrdLists()[0]
-            self.panels[pid]["containers"].loadData(self.panels[pid]["lid"])
-
-    def getCM(self):
-        return self.cm
-        
-    def updateAllPanels(self, cascade=True):
-        for p in self.panels:
-            print "update all", p["lid"], self.cm.getOrdLists(), self.cm.lists
-            p["containers"].loadData(p["lid"], cascade)
-
-    def addData(self, data, src=None, sord=None):
-        nlid = self.cm.addList(items=data, src=src, sord=sord)
-        for p in self.panels:
-            if p["lid"] is None:
-                p["lid"] = nlid
-        self.updateAllPanels()
-        return nlid
-
-    def resetData(self, data, src=None, sord=None):
-        self.cm.clearLists()
-        return self.addData(data, src=src, sord=sord)
-    
-    def onNewList(self):
-        self.addData(data=[], src=('manual', None))
-        self.updateAllPanels(cascade=False)
-
-    def onDeleteLists(self, sel):
-        def_lid = self.cm.deleteLists(sel=sel)
-        for p in self.panels:
-            if p["lid"] == lid:
-                p["lid"] = def_lid
-            p["containers"].loadData(p["lid"]) ## triggers loadData for associated items
-    def onDeleteItems(self, pid, sel):
-        lid = self.panels[pid]["lid"]
-        self.cm.deleteItemsLid(lid, sel)
-        self.updateAllPanels()
-
-    def onCutLists(self, sel):
-        iids = self.cutLists(sel=sel)
-        self.updateAllPanels()        
-    def onCutItems(self, pid, sel=None):
-        lid = self.panels[pid]["lid"]
-        iids = self.cm.cutItemsLid(lid, sel)
-        self.updateAllPanels()
-
-    def onCopyLists(self, sel):
-        iids = self.cutLists(sel=sel)
-    def onCopyItems(self, pid, sel=None):
-        lid = self.panels[pid]["lid"]
-        iids = self.cm.cutItemsLid(lid, sel)
-
-    def onPasteAny(self, ctrl, sel):
-        lid = self.panels[ctrl.getPid()]["lid"]
-        if ctrl.type_lc == "containers":
-            pos = -1
-        else:
-            pos = sel
-        iids = self.cm.pasteItems(lid, pos)
-        if len(iids) > 0:
-            self.updateAllPanels()
-                
-
-    def getSplitP(self):
-        return self.splitP
-
-    def setLid(self, pid=0, lid=None, pos=None):
-        if lid is not None:
-            self.panels[pid]["lid"] = lid
-            self.panels[pid]["containers"].Focus(self.cm.getListPosForId(lid))
-        elif pos is not None:
-            lid = self.cm.getListIdAtPos(pos)
-            self.panels[pid]["lid"] = lid
-            self.panels[pid]["items"].loadData(lid)
-
-    def getAssociated(self, pid, which):
-        try:
-            return self.panels[pid][which]
-        except IndexError:
-            return None
-
-
-    # def jumpToNextLC(self, lc):
-    #     if lc.type_lc == "items":
-    #         fc = self.lcs["containers"]
-    #     else:
-    #         fc = self.lcs["items"]
-    #     fc.SetFocus()
-    #     if fc.GetFirstSelected() == -1:
-    #         fc.Select(0)
-
-    ##### drawing
-    def drawSplitPanel(self, frame):
-
-        subsplitter = wx.SplitterWindow(frame, -1, style=wx.SP_LIVE_UPDATE) #|wx.SP_NOBORDER)
-        panelL = wx.Panel(subsplitter, -1)
-        panelR = wx.Panel(subsplitter, -1)
-        
-        list1 = ListCtrlContainers(panelL, -1)
-        list2 = ListCtrlItems(panelR, -1)
-        
-        vbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        vbox1.Add(list1, 1, wx.EXPAND)
-        panelL.SetSizer(vbox1)
-
-        vbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        vbox1.Add(list2, 1, wx.EXPAND)
-        panelR.SetSizer(vbox1)
-        subsplitter.SplitVertically(panelL, panelR, list1.list_width)
-        subsplitter.SetSashGravity(0.)
-        subsplitter.SetMinimumPaneSize(1)
-        
-        self.splitP = subsplitter
-        return list1, list2
-
-    def addSplitPanel(self, frame, lid=None):
-        list1, list2 = self.drawSplitPanel(frame)
-
-        # if lid is None and len(self.lists) > 0:
-        #     lid = self.lists_ord[0]
-
-        pid = len(self.panels)
-        self.panels.append({"containers": list1, "items": list2, "lid": lid, "pid": pid}) 
-        
-    def onOpen(self, event):
-        self.getSplitP().FindFocus()
-        pass
-    def onSave(self, event):
-        pass
-    def onSaveAs(self, event):
-        pass
-    def onNewFolder(self, event):
-        self.onNewList()
-    def onTrash(self, event):
-        ctrl = self.getSplitP().FindFocus()
-        sel = ctrl.getSelection()
-        if len(sel) > 0:
-            if ctrl.type_lc == "containers":
-                self.cm.onDeleteLists(sel)
-            elif ctrl.type_lc == "items":
-                self.cm.onDeleteItems(ctrl.getPid(), sel)
-
-    def onCut(self, event):
-        ctrl = self.getSplitP().FindFocus()
-        sel = ctrl.getSelection()
-        if len(sel) > 0:
-            if ctrl.type_lc == "containers":
-                self.cm.onCutLists(sel)
-            elif ctrl.type_lc == "items":
-                self.cm.onCutItems(ctrl.getPid(), sel)
-    def onCopy(self, event):
-        ctrl = self.getSplitP().FindFocus()
-        sel = ctrl.getSelection()
-        if len(sel) > 0:
-            if ctrl.type_lc == "containers":
-                self.cm.onCopyLists(sel)
-            elif ctrl.type_lc == "items":
-                self.cm.onCopyItems(ctrl.getPid(), sel)
-    def onPaste(self, event):
-        ctrl = self.getSplitP().FindFocus()
-        sel = ctrl.GetFocusedItem()
-        self.cm.onPasteAny(ctrl, sel)
-
-    def onFind(self, event):
-        pass
-    
-    def manageDrag(self, ctrl, trg_where, text):
-        lid = self.panels[ctrl.getPid()]["lid"]
-        sel = map(int, text.split(','))
-        pos = None
-        if ctrl.type_lc == "containers":
-            if trg_where['index'] != -1:
-                nlid = self.cm.getLidAtPos(trg_where['index'])
-                if nlid != lid:
-                    pos = -1
-        else:
-            nlid = lid
-            pos = trg_where['index']
-            if trg_where['after'] and pos != -1:
-                pos += 1
-        if pos is not None:
-            self.cm.doDrag(lid, sel, pos)
-        self.updateAllPanels()
-
-
-
-class RedsManager(ContentManager):
+class RedsSet(DataSet):
     str_red = 'item'
     ###################### FIELDS REDS
     fields_def_nosplit = [('', str_red+'.getSortAble', None, 20, wx.LIST_FORMAT_LEFT),
@@ -1006,27 +874,170 @@ class RedsManager(ContentManager):
     name_m = str_red+'.getQueriesU'
     check_m = str_red+'.getEnabled'
 
-    def __init__(self, parent, tabId, frame, short=None):
-        ContentManager.__init__(self)
-        self.tabId = tabId
+    def __init__(self, parent):
+        DataSet.__init__(self)
         self.parent = parent
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
             self.fields = self.fields_def_splits
         else:
             self.fields = self.fields_def_nosplit
-        self.splitctrl = SplitCtrl(self, frame)
-        self.splitctrl.resetCM(self, 0)
-        print "init reds manager done"
+
+
+class ContentManager:
+
+    def __init__(self, parent, tabId, frame, short=None):
+        self.tabId = tabId
+        self.parent = parent
+        self.initData(parent)
+        self.initBrowsers(frame)
+
+    def initData(self, parent):
+        self.data = DataSet()
+    def initBrowsers(self, frame):
+        self.browsers = {0: SplitBrowser(self, 0, frame)}
+        self.browsers[0].resetCM(self)
 
     def getAssociated(self, pid, which):
-        return self.splitctrl.getAssociated(pid, which)
+        if pid in self.browsers:
+            return self.browsers[pid].getWhich(which)
+        return None
 
-    def getSplitP(self):
-        return self.splitctrl.getSplitP()
+
+    def getDataHdl(self):
+        return self.data
+    def getViewHdl(self, pid=0):
+        return self.browsers[pid]
+    def getSW(self, pid=0):
+        return self.browsers[0].getSW()
+
+    ################## CONTENT MANAGEMENT METHODS
+    def addData(self, data, src=None, sord=None):
+        # return None
+        nlid = self.getDataHdl().addList(items=data, src=src, sord=sord)
+        self.getViewHdl().updateLid(nlid)
+        return nlid
 
     def resetData(self, data, src=None, sord=None):
-        self.clearLists()
-        self.splitctrl.addData(data, src, sord)
+        self.getDataHdl().clearLists()
+        return self.addData(data, src=src, sord=sord)
 
-    def setLid(self, pid=0, lid=None, pos=None):
-        self.splitctrl.setLid(pid, lid, pos)
+    def resetDetails(self, details={}, review=True):
+        self.getDataHdl().resetDetails(details)
+        if review:
+            self.getViewHdl().refresh()
+
+    
+    # def onNewList(self):
+    #     self.addData(data=[], src=('manual', None))
+    #     self.browser.refresh(cascade=False)
+
+    # def onDeleteLists(self, sel):
+    #     print "TODO"
+    #     # def_lid = self.getDataHdl().deleteLists(sel=sel)
+    #     # for p in self.panels:
+    #     #     if p["lid"] == lid:
+    #     #         p["lid"] = def_lid
+    #     #     p["containers"].loadData(p["lid"]) ## triggers loadData for associated items
+    # def onDeleteItems(self, pid, sel):
+    #     self.browser.
+    #     lid = self.panels[pid]["lid"]
+    #     self.cm.deleteItemsLid(lid, sel)
+    #     self.updateAllPanels()
+
+    # def onCutLists(self, sel):
+    #     iids = self.cutLists(sel=sel)
+    #     self.updateAllPanels()        
+    # def onCutItems(self, pid, sel=None):
+    #     lid = self.panels[pid]["lid"]
+    #     iids = self.cm.cutItemsLid(lid, sel)
+    #     self.updateAllPanels()
+
+    # def onCopyLists(self, sel):
+    #     iids = self.cutLists(sel=sel)
+    # def onCopyItems(self, pid, sel=None):
+    #     lid = self.panels[pid]["lid"]
+    #     iids = self.cm.cutItemsLid(lid, sel)
+
+    # def onPasteAny(self, ctrl, sel):
+    #     lid = self.panels[ctrl.getPid()]["lid"]
+    #     if ctrl.type_lc == "containers":
+    #         pos = -1
+    #     else:
+    #         pos = sel
+    #     iids = self.cm.pasteItems(lid, pos)
+    #     if len(iids) > 0:
+    #         self.updateAllPanels()
+                        
+    # def onOpen(self, event):
+    #     self.getSW().FindFocus()
+    #     pass
+    # def onSave(self, event):
+    #     pass
+    # def onSaveAs(self, event):
+    #     pass
+    # def onNewFolder(self, event):
+    #     self.onNewList()
+    # def onTrash(self, event):
+    #     ctrl = self.getSW().FindFocus()
+    #     sel = ctrl.getSelection()
+    #     if len(sel) > 0:
+    #         if ctrl.type_lc == "containers":
+    #             self.cm.onDeleteLists(sel)
+    #         elif ctrl.type_lc == "items":
+    #             self.cm.onDeleteItems(ctrl.getPid(), sel)
+
+    # def onCut(self, event):
+    #     ctrl = self.getSW().FindFocus()
+    #     sel = ctrl.getSelection()
+    #     if len(sel) > 0:
+    #         if ctrl.type_lc == "containers":
+    #             self.cm.onCutLists(sel)
+    #         elif ctrl.type_lc == "items":
+    #             self.cm.onCutItems(ctrl.getPid(), sel)
+    # def onCopy(self, event):
+    #     ctrl = self.getSW().FindFocus()
+    #     sel = ctrl.getSelection()
+    #     if len(sel) > 0:
+    #         if ctrl.type_lc == "containers":
+    #             self.cm.onCopyLists(sel)
+    #         elif ctrl.type_lc == "items":
+    #             self.cm.onCopyItems(ctrl.getPid(), sel)
+    # def onPaste(self, event):
+    #     ctrl = self.getSW().FindFocus()
+    #     sel = ctrl.GetFocusedItem()
+    #     self.cm.onPasteAny(ctrl, sel)
+
+    # def onFind(self, event):
+    #     pass
+    
+    def manageDrag(self, ctrl, trg_where, text):
+        lid = self.getAssociated(ctrl.getPid(),"lid")
+        sel = map(int, text.split(','))
+        pos = None
+        if ctrl.type_lc == "containers":
+            if trg_where['index'] != -1:
+                nlid = self.getDataHdl().getLidAtPos(trg_where['index'])
+                if nlid != lid:
+                    pos = -1
+        else:
+            nlid = lid
+            pos = trg_where['index']
+            if trg_where['after'] and pos != -1:
+                pos += 1
+        if pos is not None:
+            self.getDataHdl().moveItems(lid, nlid, sel, pos)
+        self.getViewHdl().refresh()
+
+    def makePopupMenu(self):
+        self.parent.makePopupMenu(self.parent.toolFrame)
+
+
+    def GetNumberRows(self):
+        return self.getViewHdl().GetNumberRows()
+    def GetNumberCols(self):
+        return self.getViewHdl().GetNumberCols()
+
+class RedsManager(ContentManager):
+
+    def initData(self, parent):
+        self.data = RedsSet(parent)

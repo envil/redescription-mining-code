@@ -169,6 +169,7 @@ class GridTable(wx.grid.PyGridTableBase):
         # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
         # self.grid.SetColAttr(0,attr)
 
+        ########## HERE
         self.grid.Bind(wx.EVT_KEY_UP, self.OnKU)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.setFocus)
@@ -243,9 +244,11 @@ class GridTable(wx.grid.PyGridTableBase):
     ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < self.nbItems() and col < len(self.fields):
+        if row >= 0 and row < self.nbItems() and col >= 0 and col < len(self.fields):
             details = {"aim": "list"}
             details.update(self.details)
+            # print "Here!", self.tabId, self.parent.selectedTab['id']#, self.sortids, row, self.fields, col
+            #pdb.set_trace()
             return "%s" % self.getFieldV(self.sortids[row], self.fields[col], details)
         else:
             return None
@@ -966,7 +969,7 @@ class RowTable(GridTable):
     ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < self.nbItems() and col < len(self.fields):
+        if row >= 0 and row < self.nbItems() and col >= 0 and col < len(self.fields):
             details = {"aim": "row"}
             details.update(self.details)
             tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
@@ -1008,6 +1011,7 @@ class RowTable(GridTable):
             else:
                 return tmp
         else:
+            # print "Get Value RowTable", row, col
             return None
 
     ### GRID METHOD

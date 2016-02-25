@@ -182,12 +182,14 @@ class VizManager:
             self.updateVizcellSelected()
             if not self.parent.tabs["viz"]["hide"] and self.parent.sysTLin():
                 self.getSW().Show()
-            if self.viz_postab > len(self.parent.tabs_keys) or self.parent.tabs_keys[self.viz_postab] != "viz":
+            if self.viz_postab >= len(self.parent.tabs_keys) or self.parent.tabs_keys[self.viz_postab] != "viz":
+                # print "In Viz"
                 self.parent.tabs_keys.insert(self.viz_postab, "viz")
 
         else:
             self.getSW().Hide()
             if self.viz_postab < len(self.parent.tabs_keys) and self.parent.tabs_keys[self.viz_postab] == "viz":
+                # print "Pop Viz"
                 self.parent.tabs_keys.pop(self.viz_postab)
 
     def getTitle(self):
@@ -455,24 +457,34 @@ class VizManager:
         self.updateVizcellSelected()
 
     def isVizSplit(self):
-        return self.parent.splitter.IsSplit()
+        return self.parent.hasSplit() and self.parent.splitter.IsSplit()
     
     def vizTabToSplit(self):
+        if not self.parent.hasSplit():
+            return
         self.parent.tabbed.RemovePage(self.viz_postab)
+        # print "Pop viz tab key"
         self.parent.tabs_keys.pop(self.viz_postab)
         self.getSW().Reparent(self.parent.splitter)
         self.parent.splitter.SplitHorizontally(self.parent.tabbed, self.getSW())
 
     def vizSplitToTab(self):
+        if not self.parent.hasSplit():
+            return
         if self.isVizSplit():
             self.parent.splitter.Unsplit(self.getSW())
         self.getSW().Reparent(self.parent.tabbed)
         self.parent.tabbed.InsertPage(self.viz_postab, self.getSW(), self.getTitle())
         if self.parent.sysTLin():
             self.getSW().Show()
+        # print "Insert viz tab key"
         self.parent.tabs_keys.insert(self.viz_postab, "viz")
+        
 
     def OnSplitchange(self):
+        if not self.parent.hasSplit():
+            return
+
         if self.hasVizIntab():
             if self.viz_postab < len(self.parent.tabs_keys) and self.parent.tabs_keys[self.viz_postab] == "viz":
                 self.vizTabToSplit()
