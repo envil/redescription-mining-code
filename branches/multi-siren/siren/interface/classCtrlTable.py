@@ -2,7 +2,7 @@ import sys
 import wx
 import wx.lib.mixins.listctrl  as  listmix
 
-from ..reremi.classQuery import SYM, Query, Literal
+from ..reremi.classQuery import SYM
 from ..reremi.classRedescription import Redescription
 
 import pdb
@@ -59,7 +59,19 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         self.InsertColumn(0, '')
         dt = ListDrop(self._dd)
         self.SetDropTarget(dt)
-        
+        self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self.OnRightClick)
+
+    def OnRightClick(self, event):
+        if self.hasCManager():
+            self.getViewHdl().markFocus(self)
+            self.getCManager().makePopupMenu()
+
+    def getTypeL(self):
+        return self.type_lc
+    def isItemsL(self):
+        return False
+    def isContainersL(self):
+        return False
 
     def setCManager(self, cm, pid=None):
         self.cm = cm
@@ -87,7 +99,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         if self.hasCManager():
             return self.getCManager().getAssociated(self.getPid(), which)
         return None
-    
+
     # def OnKeyDown(self, event):
     #     pass
         # print event.GetKeyCode(), event.GetModifiers()
@@ -121,6 +133,8 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
             self._onStripe()
             event.Skip()
 
+    def getFirstSelection(self):
+        return self.GetFirstSelected()
     def getSelection(self):
         l = []
         idx = -1
@@ -130,6 +144,8 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
                 break
             l.append(idx)
         return l
+    def getNbSelected(self):
+        return self.GetSelectedItemCount()
 
     def onExtDelete(self, event):
         """ Put together a data object for drag-and-drop _from_ this list. """
@@ -195,6 +211,9 @@ class ListCtrlContainers(ListCtrlBasis):
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self._onSelect)
         self.AssignImageList(makeContainersIL(LIST_TYPES_ICONS), wx.IMAGE_LIST_SMALL)
         # self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+        
+    def isContainersL(self):
+        return True
 
     def setCManager(self, cm, pid=None):
         ListCtrlBasis.setCManager(self, cm, pid)
@@ -243,9 +262,11 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
         self.Bind(wx.EVT_LIST_INSERT_ITEM, self._onInsert)
         self.Bind(wx.EVT_LIST_DELETE_ITEM, self._onDelete)
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnViewData)
-        self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self.OnRightClick)
         self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick)
         self.upck = True
+
+    def isItemsL(self):
+        return True
 
     def getNbCols(self):
         return self.getDataHdl().getNbFields()
@@ -297,11 +318,6 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     #         mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
     #         mapV.updateTitle()
     #         self.parent.updateMenus()
-
-    def OnRightClick(self, event):
-        if self.hasCManager():
-            self.getCManager().makePopupMenu()
-
 
     def upItem(self, i, rdt):
         for (cid, cv) in enumerate(rdt["cols"]):
@@ -362,31 +378,6 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
                 for pos in new_poss:
                     self.Select(pos)
 
-    # def makeToolbar(self, handle):
-    #     toolbar = self.frame.CreateToolBar()
-    #     toolbar.AddLabelTool(wx.ID_OPEN, 'Open', wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_SAVE, 'Save', wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_SAVEAS, 'Save as', wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE_AS, wx.ART_TOOLBAR))
-    #     #toolbar.InsertSeparator(3)
-    #     toolbar.AddLabelTool(wx.ID_NEW, 'New folder', wx.ArtProvider.GetBitmap(wx.ART_NEW_DIR, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_DELETE, 'Delete', wx.ArtProvider.GetBitmap(wx.ART_DELETE, wx.ART_TOOLBAR))
-    #     toolbar.InsertSeparator(5)
-    #     toolbar.AddLabelTool(wx.ID_CUT, 'Cut', wx.ArtProvider.GetBitmap(wx.ART_CUT, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_COPY, 'Copy', wx.ArtProvider.GetBitmap(wx.ART_COPY, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_PASTE, 'Paste', wx.ArtProvider.GetBitmap(wx.ART_PASTE, wx.ART_TOOLBAR))
-    #     toolbar.AddLabelTool(wx.ID_FIND, 'Find', wx.ArtProvider.GetBitmap(wx.ART_FIND, wx.ART_TOOLBAR))
-    #     toolbar.Realize()
-
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onOpen, id=wx.ID_OPEN)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onSave, id=wx.ID_SAVE)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onSaveAs, id=wx.ID_SAVEAS)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onNewFolder, id=wx.ID_NEW)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onTrash, id=wx.ID_DELETE)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onCut, id=wx.ID_CUT)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onCopy, id=wx.ID_COPY)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onPaste, id=wx.ID_PASTE)
-    #     self.frame.Bind(wx.EVT_TOOL, handle.onFind, id=wx.ID_FIND)
-
 class SplitBrowser:
 
     def __init__(self, parent, pid, frame):
@@ -394,6 +385,7 @@ class SplitBrowser:
         self.pid = pid
         self.active_lid = None
         self.cm = None
+        self.last_foc = None
 
         self.sw = wx.SplitterWindow(frame, -1, style=wx.SP_LIVE_UPDATE) #|wx.SP_NOBORDER)
         panelL = wx.Panel(self.sw, -1)
@@ -433,6 +425,15 @@ class SplitBrowser:
         if self.cm is not None:
             return self.cm.getDataHdl()
         return None
+    def getLid(self):
+        return self.active_lid
+    def getLCC(self):
+        return self.lcc
+    def getLCI(self):
+        return self.lci
+    def getPid(self):
+        return self.pid
+
     def getWhich(self, which):
         if which == "items":
             return self.lci
@@ -442,14 +443,65 @@ class SplitBrowser:
             return self.pid
         if which == "lid":
             return self.active_lid
+    def getFocused(self):
+        ff = self.sw.FindFocus()
+        if ff is not None:
+            return ff
+        return self.last_foc
+    def getFocusedL(self):
+        ret = None
+        ff = self.sw.FindFocus()
+        if ff is not None and (ff == self.lci or ff == self.lcc):
+            ret = ff
+        if (self.last_foc == self.lci or self.last_foc == self.lcc):
+            ret = self.last_foc
+        return ret
 
-    def GetNumberRows(self):
+    def markFocus(self, foc=None):
+        if foc is not None:
+            self.last_foc = foc
+        else:
+            self.last_foc = self.sw.FindFocus()
+
+    def GetNumberRowsItems(self):
         return self.lci.GetNumberRows()
-    def GetNumberCols(self):
+    def GetNumberRowsContainers(self):
+        return self.lcc.GetNumberRows()
+    def GetNumberColsItems(self):
         return self.lci.GetNumberCols()
-
+    def GetNumberColsContainers(self):
+        return self.lcc.GetNumberCols()
+    def GetNumberRowsFocused(self):
+        ll = self.getFocusedL()
+        if ll is not None:
+            return ll.GetNumberRows()
+        return 0
+    def GetNumberColsFocused(self):
+        ll = self.getFocusedL()
+        if ll is not None:
+            return ll.GetNumberCols()
+        return 0
+    def GetNumberRows(self):
+        return self.GetNumberRowsFocused()
+    def GetNumberCols(self):
+        return self.GetNumberColsFocused()
     def nbItems(self):
-        return self.GetNumberRows()
+        return self.lci.GetNumberRows()
+    def nbLists(self):
+        return self.lcc.GetNumberRows()
+
+    def nbSelectedItems(self):
+        return self.lci.getNbSelected()
+    def nbSelectedLists(self):
+        return self.lcc.getNbSelected()
+    def nbSelectedFocused(self):
+        ll = self.getFocusedL()
+        if ll is not None:
+            return ll.getNbSelected()
+        return 0
+    def nbSelected(self):
+        return self.nbSelectedFocused()
+
 
     def Hide(self):
         self.getSW().Hide()
@@ -623,6 +675,7 @@ class DataSet:
         self.nlid = 0
         self.lists = {}
         self.lists_ord = []
+        self.buffer = {}
 
     #### ACCESSING LISTS
     def getListPosForId(self, idx):
@@ -798,7 +851,7 @@ class DataSet:
         self.setBuffer(iids, 'copy')
         return iids
     def copyItemsLid(self, lid, sel=None):
-        iids = self.lists[lid].getIidsatPoss(sel)
+        iids = self.lists[lid].getIidsAtPoss(sel)
         self.setBuffer(iids, 'copy')
         return iids
 
@@ -818,12 +871,15 @@ class DataSet:
             else:
                 self.clearBuffer()
         return iids
+
+    def isEmptyBuffer(self):
+        return len(self.buffer) == 0
     
     def setBuffer(self, iids, action):
         self.clearBuffer()
         self.buffer["iids"] = iids
         self.buffer["action"] = action
-        print self.buffer
+        print "Buffer:", self.buffer
 
     def clearBuffer(self):
         if "action" in self.buffer:
@@ -924,49 +980,79 @@ class ContentManager:
     def resetDetails(self, details={}, review=True):
         self.getDataHdl().resetDetails(details)
         if review:
-            self.getViewHdl().refresh()
+            self.refreshAll()
 
-    
-    # def onNewList(self):
-    #     self.addData(data=[], src=('manual', None))
-    #     self.browser.refresh(cascade=False)
+    def refreshAll(self):
+        for bi, brs in self.browsers.items():
+            brs.refresh()
 
-    # def onDeleteLists(self, sel):
-    #     print "TODO"
-    #     # def_lid = self.getDataHdl().deleteLists(sel=sel)
-    #     # for p in self.panels:
-    #     #     if p["lid"] == lid:
-    #     #         p["lid"] = def_lid
-    #     #     p["containers"].loadData(p["lid"]) ## triggers loadData for associated items
-    # def onDeleteItems(self, pid, sel):
-    #     self.browser.
-    #     lid = self.panels[pid]["lid"]
-    #     self.cm.deleteItemsLid(lid, sel)
-    #     self.updateAllPanels()
+    def onNewList(self):
+        self.addData(data=[], src=('manual', None))
+        self.refreshAll()
+        
+    def onDeleteAny(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                self.onDeleteItems(lc.getPid(), sel)
+            elif lc.isContainersL():
+                sel = lc.getSelection()
+                self.onDeleteLists(sel)        
+    def onDeleteLists(self, sel):
+        def_lid = self.getDataHdl().deleteLists(sel=sel)
+        if len(def_lid) > 0:
+            self.refreshAll()
+    def onDeleteItems(self, pid, sel):
+        lid = self.browsers[pid].getLid()
+        self.getDataHdl().deleteItemsLid(lid, sel)
+        self.refreshAll()
 
-    # def onCutLists(self, sel):
-    #     iids = self.cutLists(sel=sel)
-    #     self.updateAllPanels()        
-    # def onCutItems(self, pid, sel=None):
-    #     lid = self.panels[pid]["lid"]
-    #     iids = self.cm.cutItemsLid(lid, sel)
-    #     self.updateAllPanels()
+    def onCutAny(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                self.onCutItems(lc.getPid(), sel)
+            elif lc.isContainersL():
+                sel = lc.getSelection()
+                self.onCutLists(sel)        
+    def onCutLists(self, sel):
+        iids = self.getDataHdl().cutLists(sel=sel)
+        self.refreshAll()
+    def onCutItems(self, pid, sel=None):
+        lid = self.browsers[pid].getLid()
+        iids = self.getDataHdl().cutItemsLid(lid, sel)
+        self.refreshAll()
 
-    # def onCopyLists(self, sel):
-    #     iids = self.cutLists(sel=sel)
-    # def onCopyItems(self, pid, sel=None):
-    #     lid = self.panels[pid]["lid"]
-    #     iids = self.cm.cutItemsLid(lid, sel)
+    def onCopyAny(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                self.onCopyItems(lc.getPid(), sel)
+            elif lc.isContainersL():
+                sel = lc.getSelection()
+                self.onCopyLists(sel)
+    def onCopyLists(self, sel):
+        iids = self.getDataHdl().copyLists(sel=sel)
+    def onCopyItems(self, pid, sel=None):
+        lid = self.browsers[pid].getLid()
+        iids = self.getDataHdl().copyItemsLid(lid, sel)
 
-    # def onPasteAny(self, ctrl, sel):
-    #     lid = self.panels[ctrl.getPid()]["lid"]
-    #     if ctrl.type_lc == "containers":
-    #         pos = -1
-    #     else:
-    #         pos = sel
-    #     iids = self.cm.pasteItems(lid, pos)
-    #     if len(iids) > 0:
-    #         self.updateAllPanels()
+    def onPasteAny(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            lid = self.browsers[lc.getPid()].getLid()
+            pos = -1
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                if len(sel) > 0:
+                    pos = sel[-1]
+            pdb.set_trace()
+            iids = self.getDataHdl().pasteItems(lid, pos)
+            if len(iids) > 0:
+                self.refreshAll()
                         
     # def onOpen(self, event):
     #     self.getSW().FindFocus()
@@ -1032,12 +1118,70 @@ class ContentManager:
         self.parent.makePopupMenu(self.parent.toolFrame)
 
 
+    def GetNumberRowsItems(self):
+        return self.getViewHdl().GetNumberRowsItems()
+    def GetNumberRowsContainers(self):
+        return self.getViewHdl().GetNumberRowsContainers()
+    def GetNumberColsItems(self):
+        return self.getViewHdl().GetNumberColsItems()
+    def GetNumberColsContainers(self):
+        return self.getViewHdl().GetNumberColsContainers()
+    def GetNumberRowsFocused(self):
+        return self.getViewHdl().GetNumberRowsFocused()
+    def GetNumberColsFocused(self):
+        return self.getViewHdl().GetNumberColsFocused()
     def GetNumberRows(self):
-        return self.getViewHdl().GetNumberRows()
+        return self.GetNumberRowsFocused()
     def GetNumberCols(self):
-        return self.getViewHdl().GetNumberCols()
+        return self.GetNumberColsFocused()
+    def nbItems(self):
+        return self.getViewHdl().nbItems()
+    def nbLists(self):
+        return self.getViewHdl().nbLists()
 
+    def nbSelectedItems(self):
+        return self.getViewHdl().nbSelectedItems()
+    def nbSelectedLists(self):
+        return self.getViewHdl().nbSelectedLists()
+    def nbSelectedFocused(self):
+        return self.getViewHdl().nbSelectedFocused()
+    def nbSelected(self):
+        return self.getViewHdl().nbSelected()
+
+
+    def isEmptyBuffer(self):
+        return self.getDataHdl().isEmptyBuffer()
+    def hasFocusContainersL(self):
+        return self.getViewHdl().getFocusedL() is not None and self.getViewHdl().getFocusedL().isContainersL()
+    def hasFocusItemsL(self):
+        return self.getViewHdl().getFocusedL() is not None and self.getViewHdl().getFocusedL().isItemsL()
+    def getNbSelected(self):
+        if self.getViewHdl().getFocusedL() is not None:
+            return len(self.getViewHdl().getFocusedL().getSelection())
+        return 0
+    def getSelectedItemPos(self):
+        if self.nbSelectedItems() == 1:
+            pos = self.getViewHdl().getLCI().getFirstSelection()
+            if pos > -1:
+                return pos
+        return None
+    def getSelectedItemIid(self):
+        pos = self.getSelectedItemPos()
+        if pos > -1:
+            return self.getDataHdl().getList(self.getViewHdl().getLid()).getIidAtPos(pos)
+        return None
+    def getSelectedItem(self):
+        iid = self.getSelectedItemIid()
+        if iid is not None:
+            return self.getDataHdl().getItemForIid(iid)
+        return None
+    
 class RedsManager(ContentManager):
 
     def initData(self, parent):
         self.data = RedsSet(parent)
+    def getSelectedQueries(self):
+        red = self.getSelectedItem()
+        if red is not None and isinstance(red, Redescription):
+            return red.getQueries()
+        return 

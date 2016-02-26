@@ -89,10 +89,10 @@ class Siren():
         self.dw = None
         self.vizm = None
         self.plant = WorkPlant()
-        tmp_tabs = [# {"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
+        tmp_tabs = [{"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
+                    {"id": 0, "title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
+                    {"id": 1, "title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                     {"id": "redsa", "title":"RedescriptionsA", "short": "A", "type":"RedsC", "hide":False, "style":None},
-                    # {"id": 0, "title":"LHS Variables", "short": "LHS", "type":"Var", "hide":False, "style":None},
-                    # {"id": 1, "title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                     {"id": "redsc", "title":"RedescriptionsC", "short": "C", "type":"RedsC", "hide":False, "style":None},
                     # {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
                     # {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
@@ -104,7 +104,7 @@ class Siren():
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
         self.tabs_keys = [p["id"] for p in tmp_tabs]
-        stn = self.tabs_keys[-1]
+        stn = 'redsc' #self.tabs_keys[-1]
         self.selectedTab = self.tabs[stn]
 
 
@@ -219,7 +219,7 @@ class Siren():
         else:
             self.tabbed = wx.Notebook(self.toolFrame, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
         # self.tabbed.Bind(wx.EVT_LEFT_DOWN, self.testLeftD)
-                
+
         tmp_keys = list(self.tabs_keys)
         #### Draw tabs
         for tab_id in tmp_keys:
@@ -338,12 +338,18 @@ class Siren():
         if menuCon.GetMenuItemCount() > ct:
             ct = menuCon.GetMenuItemCount()
             menuCon.AppendSeparator()
-        self.makeRedMenu(frame, menuCon)
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
+            self.makeRedMenu(frame, menuCon)
+        elif self.selectedTab["type"] in ["RedsC"]:
+            self.makeRedCMenu(frame, menuCon)
         if menuCon.GetMenuItemCount() > ct:
             ct = menuCon.GetMenuItemCount()
             menuCon.AppendSeparator()
         # menuCon.AppendMenu(wx.NewId(), "&View", self.makeVizMenu(frame))
-        self.makeVizMenu(frame, menuCon)
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
+            self.makeVizMenu(frame, menuCon)
+        elif self.selectedTab["type"] in ["RedsC"]:
+            self.makeVizCMenu(frame, menuCon)
 
         frame.PopupMenu(menuCon)
         menuCon.Destroy()
@@ -364,10 +370,10 @@ class Siren():
         if menuRed is None:
             menuRed = wx.Menu()
         
-        if self.selectedTab["type"] in ["Var","Reds", "Row", "RedsC"]:
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
 
-                if self.selectedTab["type"] in ["Reds", "Var", "RedsC"]:
+                if self.selectedTab["type"] in ["Reds", "Var"]:
                     ID_DETAILS = wx.NewId()
                     m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
                     frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
@@ -377,7 +383,7 @@ class Siren():
                     m_high = menuRed.Append(ID_HIGH, "Highlight in views", "Highlight the entity in all opened views.")
                     frame.Bind(wx.EVT_MENU, self.OnHigh, m_high)
 
-                if self.selectedTab["type"] in ["Row", "Var", "Reds", "RedsC"]:
+                if self.selectedTab["type"] in ["Row", "Var", "Reds"]:
                     ID_FIND = wx.NewId()
                     m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
                     frame.Bind(wx.EVT_MENU, self.OnFind, m_find)
@@ -395,7 +401,7 @@ class Siren():
                 m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all items.")
                 frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
 
-        if self.selectedTab["type"] in ["Reds", "RedsC"]:
+        if self.selectedTab["type"] in ["Reds"]:
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
                 ID_EXPAND = wx.NewId()
                 m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
@@ -447,6 +453,84 @@ class Siren():
 
         return menuRed
 
+    def makeRedCMenu(self, frame, menuRed=None):
+        ### Todo checks for cut, paste, etc
+        if menuRed is None:
+            menuRed = wx.Menu()
+
+        if "tab" in self.selectedTab and self.selectedTab["type"] in ["RedsC"]:
+            if  self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1:
+                ID_DETAILS = wx.NewId()
+                m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
+                frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
+
+            if self.selectedTab["tab"].nbItems() > 0:
+                ID_FIND = wx.NewId()
+                m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
+                frame.Bind(wx.EVT_MENU, self.OnFind, m_find)
+                    
+                ID_ENABLED = wx.NewId()
+                m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
+                frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
+
+                ID_ENABLEDALL = wx.NewId()
+                m_enabledall = menuRed.Append(ID_ENABLEDALL, "&Enable All", "Enable all items.")
+                frame.Bind(wx.EVT_MENU, self.OnEnabledAll, m_enabledall)
+
+                ID_DISABLEDALL = wx.NewId()
+                m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all items.")
+                frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
+
+            if self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1:
+                ID_NOR = wx.NewId()
+                m_nor = menuRed.Append(ID_NOR, "&Normalize", "Normalize current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnNormalize, m_nor)
+
+                ID_EXPAND = wx.NewId()
+                m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+
+                ID_FILTER_ONE = wx.NewId()
+                m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+R", "Disable redescriptions redundant to current downwards.")
+                frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
+
+            if self.selectedTab["tab"].nbItems() > 0:
+                ID_FILTER_ALL = wx.NewId()
+                m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant\tShift+Ctrl+R", "Disable redescriptions redundant to previous encountered.")
+                frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
+
+                ID_PROCESS = wx.NewId()
+                m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
+                frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
+
+                ID_DELDISABLED = wx.NewId()
+                m_deldisabled = menuRed.Append(ID_DELDISABLED, "De&lete Disabled", "Delete all disabled redescriptions.")
+                frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
+
+                m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
+
+                m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+
+            if not self.selectedTab["tab"].isEmptyBuffer():
+                m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+
+            if self.selectedTab["tab"].hasFocusContainersL():
+                ID_NN = wx.NewId()
+                m_newl = menuRed.Append(ID_NN, "New List", "New List.")
+                frame.Bind(wx.EVT_MENU, self.OnNewList, m_newl)
+
+
+        if menuRed.GetMenuItemCount() == 0:
+            ID_NOR = wx.NewId()
+            m_nor = menuRed.Append(ID_NOR, "No items", "There are no items to edit.")
+            menuRed.Enable(ID_NOR, False)
+
+        return menuRed
+
+
     def makeVizMenu(self, frame, menuViz=None):
         if menuViz is None:
             menuViz = wx.Menu()
@@ -473,6 +557,40 @@ class Siren():
                     frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
                     self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
+
+    def makeVizCMenu(self, frame, menuViz=None):
+        if menuViz is None:
+            countIts = 0
+            menuViz = wx.Menu()
+
+            #### not for popup menu
+            if self.getVizm() is not None and self.getVizm().hasVizIntab():
+                ID_CHECK = wx.NewId()
+                m_check = menuViz.AppendCheckItem(ID_CHECK, "Plot in tab", "Plot inside visualization tab.")
+                frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
+                if self.getVizm().intab:
+                    m_check.Check()
+        else:
+            countIts = menuViz.GetMenuItemCount()
+
+        if "tab" in self.selectedTab and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1:
+            queries = self.selectedTab["tab"].getSelectedQueries()
+            for item in self.getViewsItems("Reds", queries=queries):
+                ID_NEWV = wx.NewId()
+                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
+                                          "Plot %s in new window." % item["title"])
+                if not item["suitable"]:
+                    m_newv.Enable(False)
+                frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
+                self.ids_viewT[ID_NEWV] = item["viewT"]
+
+        if menuViz.GetMenuItemCount() == countIts:
+            ID_NOR = wx.NewId()
+            m_nor = menuViz.Append(ID_NOR, "No visualization", "There are no visualizations.")
+            menuViz.Enable(ID_NOR, False)
+
+        return menuViz
+
 
     def getViewsItems(self, tab_type=None, queries=None, excludeT=None):
         return ViewFactory.getViewsInfo(tab_type, self.dw.isGeospatial(), queries, excludeT)
@@ -666,8 +784,14 @@ class Siren():
     def makeMenu(self, frame):
         menuBar = wx.MenuBar()
         menuBar.Append(self.makeFileMenu(frame), "&File")
-        menuBar.Append(self.makeRedMenu(frame), "&Edit")
-        menuBar.Append(self.makeVizMenu(frame), "&View")
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
+            menuBar.Append(self.makeRedMenu(frame), "&Edit")
+        elif self.selectedTab["type"] in ["RedsC"]:
+            menuBar.Append(self.makeRedCMenu(frame), "&Edit")
+        if self.selectedTab["type"] in ["Var","Reds", "Row"]:
+            menuBar.Append(self.makeVizMenu(frame), "&View")
+        elif self.selectedTab["type"] in ["RedsC"]:
+            menuBar.Append(self.makeVizCMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
         menuBar.Append(self.makeViewsMenu(frame), "&Windows")
         menuBar.Append(self.makeHelpMenu(frame), "&Help")
@@ -1079,9 +1203,10 @@ class Siren():
             elif self.selectedTab["short"] == "RHS":
                 self.showCol(1, self.selectedTab["tab"].getSelectedPos())
                 shw = True
-        elif self.selectedTab["type"] in ["Reds"] and "rows" in self.tabs:
+        elif self.selectedTab["type"] in ["Reds", "RedsC"] and "rows" in self.tabs:
             row = self.tabs["rows"]["tab"].showRidRed(self.tabs["rows"]["tab"].getSelectedRow(), self.selectedTab["tab"].getSelectedItem())
             shw = True
+
         if shw:
             self.showTab("rows")
 
@@ -1120,6 +1245,12 @@ class Siren():
     def OnDeleteDisabled(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].deleteDisabled()
+        if self.selectedTab["type"] in ["RedsC"]:
+            self.selectedTab["tab"].onDeleteAny()
+    def OnNewList(self, event):
+        if self.selectedTab["type"] in ["RedsC"]:
+            self.selectedTab["tab"].onNewList()
+
 
     def OnMoveReds(self, event):
         if "exp" in self.tabs and "reds" in self.tabs: 
@@ -1129,16 +1260,26 @@ class Siren():
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].cutItem(self.selectedTab["tab"].getSelectedRow())
             self.doUpdates({"menu":True}) ### update paste entry
+        elif self.selectedTab["type"] in ["RedsC"]:
+            self.selectedTab["tab"].onCutAny()
+            self.doUpdates({"menu":True}) ### update paste entry
 
     def OnCopy(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].copyItem(self.selectedTab["tab"].getSelectedRow())
+            self.doUpdates({"menu":True}) ### update paste entry
+        elif self.selectedTab["type"] in ["RedsC"]:
+            self.selectedTab["tab"].onCopyAny()
             self.doUpdates({"menu":True}) ### update paste entry
 
     def OnPaste(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].pasteItem(self.selectedTab["tab"].getSelectedRow())
             self.doUpdates({"menu":True}) ### update paste entry
+        elif self.selectedTab["type"] in ["RedsC"]:
+            self.selectedTab["tab"].onPasteAny()
+            self.doUpdates({"menu":True}) ### update paste entry
+
 
     def OnNormalize(self, event):
         if self.selectedTab["type"] in ["Reds"]:
@@ -1388,8 +1529,8 @@ class Siren():
         self.reloadReds()
         # self.tabbed.ChangeSelection(self.tabs_keys.index(self.tabbed.GetSelection()))
         ### TODO HERE
-        self.tabbed.ChangeSelection(1)
-        self.OnPageChanged(-1)
+        # self.tabbed.ChangeSelection(1)
+        # self.OnPageChanged(-1)
         
     def reloadVars(self, review=True):
         ## Initialize variable lists data

@@ -92,9 +92,10 @@ class SirenApp(wx.App):
             pass
 
     def OnActivate(self, event):
-        if event.GetActive():
-            self.BringWindowToFront()
-        event.Skip()
+        pass
+        # if event.GetActive():
+        #     self.BringWindowToFront()
+        # event.Skip()
 
     def MacOpenFile(self, filename):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""
