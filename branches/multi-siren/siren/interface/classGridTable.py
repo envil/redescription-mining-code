@@ -458,6 +458,9 @@ class GridTable(wx.grid.PyGridTableBase):
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
 
+    def quitFind(self):
+        pass
+
     def updateFindO(self, matching, non_matching, cid=None):
         if len(matching) > 0:
             self.sortP = (None, False)

@@ -1,7 +1,6 @@
 import sys
 import wx
 import wx.lib.mixins.listctrl  as  listmix
-
 from ..reremi.classQuery import SYM
 from ..reremi.classRedescription import Redescription
 
@@ -146,6 +145,29 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         return l
     def getNbSelected(self):
         return self.GetSelectedItemCount()
+    def setFocusRow(self, row):
+        self.Focus(row)
+    def setFoundRow(self, row):
+        self.Focus(row)
+        # #self.SetItemBackgroundColour(0, wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        # if self.IsSelected(row):
+        #     self.SetItemTextColour(row, wx.Colour(0,222,222))
+        # else:
+        self.SetItemTextColour(row, wx.Colour(139,0,0))
+    def setUnfoundRow(self, row):
+        self.SetItemTextColour(row, wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+
+
+    def clearSelection(self):
+        sels = self.getSelection()
+        for sel in sels:
+            self.Select(sel, on=0)
+        return sels
+    def setSelection(self, sels):
+        self.clearSelection()
+        for sel in sels:
+            self.Select(sel, on=1)
+
 
     def onExtDelete(self, event):
         """ Put together a data object for drag-and-drop _from_ this list. """
@@ -502,7 +524,6 @@ class SplitBrowser:
     def nbSelected(self):
         return self.nbSelectedFocused()
 
-
     def Hide(self):
         self.getSW().Hide()
 
@@ -529,11 +550,16 @@ class SplitBrowser:
     def setLid(self, pid=0, lid=None, pos=None):
         if lid is not None:
             self.active_lid = lid
-            self.lcc.Focus(self.getDataHdl().getListPosForId(lid))
+            self.lcc.setFocusRow(self.getDataHdl().getListPosForId(lid))
         elif pos is not None:
             lid = self.getDataHdl().getListIdAtPos(pos)
             self.active_lid = lid
             self.lci.loadData(lid)
+
+    def setSelectedItem(self, iid):
+        pos = self.getDataHdl().getList(self.getLid()).getPosForIid(iid)
+        self.lci.setFocusRow(pos)
+
 
         
 class RefsList:
@@ -899,6 +925,14 @@ class DataSet:
                 if (ck == 1 and not check) or ( ck == 0 and check):
                     self.getItemForIid(iid).flipEnabled()
         
+    def getNamesList(self, lid):
+        """list of queries for search"""
+        names_list = []
+        details = {"aim": "list"}
+        details.update(self.details)
+        return [(x, "%s" % self.getItemFieldV(iid, self.getNameF(), details)) for (x, iid) in enumerate(self.getList(lid).getIids())]
+        # return [(x, "%s" % self.getItemFieldV(x, self.getNameF(), details)) for x in self.getList(lid).getIids()]
+
 
 class RedsSet(DataSet):
     str_red = 'item'
@@ -944,6 +978,9 @@ class ContentManager:
     def __init__(self, parent, tabId, frame, short=None):
         self.tabId = tabId
         self.parent = parent
+        self.matching = []
+        self.curr_match = None
+        self.prev_sels = None
         self.initData(parent)
         self.initBrowsers(frame)
 
@@ -1095,7 +1132,48 @@ class ContentManager:
 
     # def onFind(self, event):
     #     pass
-    
+
+    def getNamesList(self):
+        lid = self.getViewHdl().getLid()
+        return self.getDataHdl().getNamesList(lid)
+
+    #### FIND HERE
+    def updateFind(self, matching=None, non_matching=None, cid=None):
+        if matching is not None:
+            if self.curr_match is not None and self.curr_match >= 0 and self.curr_match < len(self.matching): 
+                self.getViewHdl().getLCI().setUnfoundRow(self.matching[self.curr_match])
+            self.curr_match = None
+            self.matching = matching
+
+        if matching is None or len(matching) > 0:
+            self.getNextMatch()
+            if self.curr_match == -1:
+                if self.prev_sels is None:
+                    self.prev_sels = self.getViewHdl().getLCI().clearSelection()
+                self.getViewHdl().getLCI().setSelection(self.matching)
+            elif self.curr_match == 0:
+                self.getViewHdl().getLCI().clearSelection()
+            if self.curr_match >= 0:
+                self.getViewHdl().getLCI().setFoundRow(self.matching[self.curr_match])
+                if self.matching[self.curr_match-1] != self.matching[self.curr_match]:
+                    self.getViewHdl().getLCI().setUnfoundRow(self.matching[self.curr_match-1])
+            
+    def getNextMatch(self, n=None):
+        if len(self.matching) > 0:
+            if self.curr_match is None:
+                self.curr_match = -1
+            else:
+                self.curr_match += 1
+                if self.curr_match == len(self.matching):
+                    self.curr_match = 0
+
+    def quitFind(self, matching=None, non_matching=None, cid=None):
+        if self.curr_match >=0 and self.curr_match < len(self.matching):
+            self.getViewHdl().getLCI().setUnfoundRow(self.matching[self.curr_match])
+        if self.prev_sels is not None and self.curr_match != -1:
+            self.getViewHdl().getLCI().setSelection(self.prev_sels)
+        self.prev_sels = None
+            
     def manageDrag(self, ctrl, trg_where, text):
         lid = self.getAssociated(ctrl.getPid(),"lid")
         sel = map(int, text.split(','))

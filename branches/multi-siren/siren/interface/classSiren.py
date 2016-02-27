@@ -94,7 +94,7 @@ class Siren():
                     {"id": 1, "title":"RHS Variables", "short": "RHS", "type":"Var", "hide":False, "style":None},
                     {"id": "redsa", "title":"RedescriptionsA", "short": "A", "type":"RedsC", "hide":False, "style":None},
                     {"id": "redsc", "title":"RedescriptionsC", "short": "C", "type":"RedsC", "hide":False, "style":None},
-                    # {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
+                    {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
                     # {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
                     # {"id": "redsa", "title":"RedescriptionsA", "short": "A", "type":"RedsC", "hide":False, "style":None},
                     {"id": "viz", "title":"Visualizations", "short": "V", "type":"Viz", "hide": False, "style":None},
@@ -1014,6 +1014,7 @@ class Siren():
         save_dlg.Destroy()
 
     def quitFind(self):
+        self.selectedTab["tab"].quitFind()
         if self.findDlg is not None:
             self.findDlg = None
 
@@ -1566,8 +1567,8 @@ class Siren():
         if "redsa" in self.tabs:
             self.tabs["redsa"]["tab"].resetData(self.dw.getReds(), sord=self.dw.getShowIds())
         if "redsc" in self.tabs:
-            self.tabs["redsc"]["tab"].resetData(self.dw.getReds(), sord=self.dw.getShowIds())
-            self.tabs["redsc"]["tab"].addData([rr.copy() for rr in self.dw.getReds()[:2]], src=('run', None))
+            self.tabs["redsc"]["tab"].resetData([rr.copy() for rr in self.dw.getReds()[:2]])
+            self.tabs["redsc"]["tab"].addData(self.dw.getReds(), src=('run', None))
 
         if all:
             for tt in ["exp", "hist"]:
