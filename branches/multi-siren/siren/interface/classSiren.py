@@ -95,7 +95,7 @@ class Siren():
                     {"id": "redsa", "title":"RedescriptionsA", "short": "A", "type":"RedsC", "hide":False, "style":None},
                     {"id": "redsc", "title":"RedescriptionsC", "short": "C", "type":"RedsC", "hide":False, "style":None},
                     {"id": "reds", "title":"Redescriptions", "short": "R", "type":"Reds", "hide":False, "style":None},
-                    # {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
+                    {"id": "exp", "title":"Expansions",  "short": "E", "type":"Reds", "hide":True, "style":None},
                     # {"id": "redsa", "title":"RedescriptionsA", "short": "A", "type":"RedsC", "hide":False, "style":None},
                     {"id": "viz", "title":"Visualizations", "short": "V", "type":"Viz", "hide": False, "style":None},
                     # {"id": "hist", "title":"History", "short": "H", "type":"Reds", "hide":True, "style":None},
@@ -490,11 +490,11 @@ class Siren():
                 m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
 
+            if self.selectedTab["tab"].nbItems() > 0:
                 ID_FILTER_ONE = wx.NewId()
                 m_filter_one = menuRed.Append(ID_FILTER_ONE, "&Filter redundant to current\tCtrl+R", "Disable redescriptions redundant to current downwards.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterToOne, m_filter_one)
 
-            if self.selectedTab["tab"].nbItems() > 0:
                 ID_FILTER_ALL = wx.NewId()
                 m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant\tShift+Ctrl+R", "Disable redescriptions redundant to previous encountered.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
@@ -504,8 +504,8 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
 
                 ID_DELDISABLED = wx.NewId()
-                m_deldisabled = menuRed.Append(ID_DELDISABLED, "De&lete Disabled", "Delete all disabled redescriptions.")
-                frame.Bind(wx.EVT_MENU, self.OnDeleteDisabled, m_deldisabled)
+                m_deldisabled = menuRed.Append(ID_DELDISABLED, "De&lete", "Delete current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnDelete, m_deldisabled)
 
                 m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
@@ -1179,7 +1179,7 @@ class Siren():
             self.showTab("hist")
 
     def OnExpand(self, event):
-        if self.selectedTab["type"] in ["Reds"]:
+        if self.selectedTab["type"] in ["Reds", "RedsC"]:
             red = self.selectedTab["tab"].getSelectedItem()
             self.showTab("exp")
             if red is not None:
@@ -1216,15 +1216,15 @@ class Siren():
         self.expand()
 
     def OnFilterToOne(self, event):
-        if self.selectedTab["type"] in ["Reds"]:
+        if self.selectedTab["type"] in ["Reds", "RedsC"]:
             self.selectedTab["tab"].filterToOne(self.constraints.parameters_filterredundant())
 
     def OnFilterAll(self, event):
-        if self.selectedTab["type"] in ["Reds"]:
+        if self.selectedTab["type"] in ["Reds", "RedsC"]:
             self.selectedTab["tab"].filterAll(self.constraints.parameters_filterredundant())
 
     def OnProcessAll(self, event):
-        if self.selectedTab["type"] in ["Reds"]:
+        if self.selectedTab["type"] in ["Reds", "RedsC"]:
             self.selectedTab["tab"].processAll(self.constraints.actions_final(), True)
 
     def OnFlipExCol(self, event):
@@ -1232,22 +1232,24 @@ class Siren():
             self.selectedTab["tab"].flipFocusCol(self.selectedTab["tab"].getSelectedCol())
 
     def OnFlipEnabled(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "RedsC", "Row"]:
             self.selectedTab["tab"].flipEnabled(self.selectedTab["tab"].getSelectedRow())
 
     def OnEnabledAll(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "RedsC", "Row"]:
             self.selectedTab["tab"].setAllEnabled()
 
     def OnDisabledAll(self, event):
-        if self.selectedTab["type"] in ["Var", "Reds", "Row"]:
+        if self.selectedTab["type"] in ["Var", "Reds", "RedsC", "Row"]:
             self.selectedTab["tab"].setAllDisabled()
 
     def OnDeleteDisabled(self, event):
         if self.selectedTab["type"] in ["Reds"]:
             self.selectedTab["tab"].deleteDisabled()
+    def OnDelete(self, event):
         if self.selectedTab["type"] in ["RedsC"]:
             self.selectedTab["tab"].onDeleteAny()
+
     def OnNewList(self, event):
         if self.selectedTab["type"] in ["RedsC"]:
             self.selectedTab["tab"].onNewList()
@@ -1283,7 +1285,7 @@ class Siren():
 
 
     def OnNormalize(self, event):
-        if self.selectedTab["type"] in ["Reds"]:
+        if self.selectedTab["type"] in ["Reds", "RedsC"]:
             red = self.selectedTab["tab"].getSelectedItem()
             if red is not None:
                 redn, changed = red.getNormalized(self.dw.getData())
@@ -1308,7 +1310,7 @@ class Siren():
     def recomputeAll(self):
         restrict = self.dw.getData().nonselectedRows()
         for tab in self.tabs.values():
-            if tab["type"] == "Reds":
+            if tab["type"] in ["Reds", "RedsC"]:
                 tab["tab"].recomputeAll(restrict)
 
     def OnVizCheck(self, event):
@@ -1567,7 +1569,8 @@ class Siren():
         if "redsa" in self.tabs:
             self.tabs["redsa"]["tab"].resetData(self.dw.getReds(), sord=self.dw.getShowIds())
         if "redsc" in self.tabs:
-            self.tabs["redsc"]["tab"].resetData([rr.copy() for rr in self.dw.getReds()[:2]])
+            if len(self.dw.getReds()) > 2:
+                self.tabs["redsc"]["tab"].resetData([self.dw.getReds()[i].copy() for i in [0,1]])
             self.tabs["redsc"]["tab"].addData(self.dw.getReds(), src=('run', None))
 
         if all:

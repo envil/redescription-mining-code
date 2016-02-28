@@ -1,15 +1,14 @@
-from toolICList import *
-import pdb
+from toolICOrdict import *
 
-class Batch(ICList):
+class Batch(ICOrdict):
     
-    def reset(self):
-        ### remove all elements while keeping the reference
-        del self[:]
+    # def reset(self):
+    #     ### remove all elements while keeping the reference
+    #     del self[:]
     
     def applyFunctTo(self, funct, ids, complement=False, check=None, changes= False):
         if complement:
-            ids = (set(range(len(self)))-set(ids))
+            ids = self.getComplementKeys(ids)
         for i in ids:
             if check is None or self.applyFunct(check, i):
                 self.applyFunct(funct, i)
@@ -21,11 +20,11 @@ class Batch(ICList):
                 if funct == "identity":
                     result = self[i]
                 elif funct[0]== ".":
-                    result = eval("self[i]"+funct)
+                    result = eval("self.getElement(i)"+funct)
                 else:
-                    result = eval(funct)(self[i])
+                    result = eval(funct)(self.getElement(i))
             elif callable(funct):
-                result = funct(self[i])
+                result = funct(self.getElement(i))
         except TypeError:
             result = None
         else:
@@ -40,7 +39,7 @@ class Batch(ICList):
         parameters.update(custom_parameters)
 
         if callable(parameters["sort_funct"]) and len(ids) > 0:
-            ids.sort(key=lambda x: parameters["sort_funct"](self[x]), reverse=parameters["sort_reverse"])
+            ids.sort(key=lambda x: parameters["sort_funct"](self.getElement(x)), reverse=parameters["sort_reverse"])
         return ids
 
     def filterLast(self, ids, custom_parameters):
@@ -63,7 +62,7 @@ class Batch(ICList):
             posC = len(ids)-1
             posP = 0
             while filter_out <= parameters["filter_max"]  and posP < posC:
-                filter_out += (parameters["filter_funct"](self[ids[posC]], self[ids[posP]]) > parameters["filter_thres"]) 
+                filter_out += (parameters["filter_funct"](self.getElement(ids[posC]), self.getElement(ids[posP])) > parameters["filter_thres"]) 
                 posP += 1
             return filter_out > parameters["filter_max"]
         return False
@@ -79,18 +78,18 @@ class Batch(ICList):
             if callable(parameters["filter_funct"]):
                 return [i for i in ids if (( new_ids is not None and \
                                              ( i not in new_ids \
-                                               or not parameters["filter_funct"](self[i]) <= parameters["filter_thres"]))
+                                               or not parameters["filter_funct"](self.getElement(i)) <= parameters["filter_thres"]))
                                            or (new_ids is None and \
-                                               not parameters["filter_funct"](self[i]) <= parameters["filter_thres"]))]
+                                               not parameters["filter_funct"](self.getElement(i)) <= parameters["filter_thres"]))]
             else:
                 return []
         else:
             if callable(parameters["filter_funct"]):
                 return [i for i in ids if (( new_ids is not None and \
                                              ( i not in new_ids \
-                                               or not parameters["filter_funct"](self[i]) > parameters["filter_thres"]))
+                                               or not parameters["filter_funct"](self.getElement(i)) > parameters["filter_thres"]))
                                            or (new_ids is None and \
-                                               not parameters["filter_funct"](self[i]) > parameters["filter_thres"]))]
+                                               not parameters["filter_funct"](self.getElement(i)) > parameters["filter_thres"]))]
             else:
                 return ids
 
@@ -106,7 +105,7 @@ class Batch(ICList):
             posC = 0
             posP = 1
             while posP < len(ids):
-                if (parameters["filter_funct"](self[ids[posP]], self[ids[posC]]) > parameters["filter_thres"]):
+                if (parameters["filter_funct"](self.getElement(ids[posP]), self.getElement(ids[posC])) > parameters["filter_thres"]):
                     comp_ids.append(ids.pop(posP))
                 else:
                     posP += 1
@@ -187,7 +186,7 @@ class Batch(ICList):
     def selected(self, actions_parameters =[], ids=None, complement=False, new_ids=None):
         ### applies a sequence of action to select a sequence of elements from the batch
         if ids is None:
-            ids = range(len(self))
+            ids = self.getIds()
         before_ids = list(ids)
         if len(self) > 0:
             for action, parameters in actions_parameters:
@@ -208,7 +207,7 @@ class Batch(ICList):
     def selected_old(self, actions_parameters =[], ids=None, complement=False, new_ids=None):
         ### applies a sequence of action to select a sequence of elements from the batch
         if ids is None:
-            ids = range(len(self))
+            ids = self.getIds()
         before_ids = list(ids)
         if len(self) > 0:
             ## pdb.set_trace()
@@ -226,5 +225,5 @@ class Batch(ICList):
 
 
     def __str__(self):
-        return 'Redescriptions batch %i elements, isChanged = %s' % (len(self), self.isChanged)
+        return 'Batch with %i elements, isChanged = %s' % (len(self), self.isChanged)
 

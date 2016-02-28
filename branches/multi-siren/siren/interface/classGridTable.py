@@ -575,7 +575,7 @@ class RedTable(GridTable):
     def refreshComp(self):
         if self.uptodate:
             return
-        tic = datetime.datetime.now()
+        # tic = datetime.datetime.now()
         for red in self.data:
             red.recompute(self.parent.dw.getData())
         #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic

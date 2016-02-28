@@ -3,6 +3,7 @@ import wx
 import wx.lib.mixins.listctrl  as  listmix
 from ..reremi.classQuery import SYM
 from ..reremi.classRedescription import Redescription
+from ..reremi.classBatch import Batch
 
 import pdb
 
@@ -381,8 +382,13 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             #     print item.status, item
             for i in range(len(ll)):
                 self.InsertStringItem(i, "")
-                rdt = ll.getItemDataAtPos(i)
-                self.upItem(i, rdt)
+                self.loadItem(ll, i)
+
+    def loadItem(self, ll, i):
+        pap = self.IsSelected(i)
+        rdt = ll.getItemDataAtPos(i)
+        self.upItem(i, rdt)
+        self.Select(i, pap)
 
     def OnColClick(self, event):
         colS = event.GetColumn()
@@ -535,7 +541,7 @@ class SplitBrowser:
         if cm is not None:
             self.lcc.setCManager(cm, self.pid)
             self.lci.setCManager(cm, self.pid)
-            if len(self.getDataHdl().getOrdLists()) > 0: ## TODO
+            if len(self.getDataHdl().getOrdLists()) > 0:
                 self.active_lid = self.getDataHdl().getOrdLists()[0]
                 self.lcc.loadData(self.active_lid)
 
@@ -654,6 +660,11 @@ class RefsList:
             return list(self.sortids)
         else:
             return [self.getIidAtPos(p) for p in poss]
+    def getIidsAfterPos(self, pos=None):
+        if pos is None:
+            return list(self.sortids)
+        else:
+            return list(self.sortids[pos:])
     def getVIidsAtPoss(self, poss=None):
         return [l for l in self.getIidsAtPoss(poss) if l is not None]
 
@@ -696,8 +707,7 @@ class DataSet:
 
     def __init__(self):
         self.details = {}
-        self.items = {}        
-        self.niid = 0
+        self.items = Batch()
         self.nlid = 0
         self.lists = {}
         self.lists_ord = []
@@ -746,14 +756,14 @@ class DataSet:
     def getColsInfo(self, lid=None, cs=None):
         infos = [{"title": field[0], "format": field[-1], "width": field[-2]} for field in self.getFields()]
         if lid is not None:
-            sort_info = self.lists[lid].getSortInfo() ### TODO implement
+            sort_info = self.lists[lid].getSortInfo()
             if sort_info[0] is not None:
                 infos[sort_info[0]]["title"] += sort_info[1] 
         return infos
     def getItemForIid(self, iid):
         return self.items[iid]
     def getItemData(self, iid, pos):
-        details = {"aim": "list", "id": iid, "pos": pos} ## TODO rid -> id in redescription
+        details = {"aim": "list", "id": iid, "pos": pos} 
         dt = ["%s" % self.getItemFieldV(iid, field, details) for field in self.getFields()]
         ck = self.getItemFieldV(iid, self.getCheckF(), details)==1
         return {"cols": dt, "checked": ck}
@@ -778,12 +788,10 @@ class DataSet:
     def addList(self, items=[], src=None, sord=None):
         if src is None:
             src = ('manual', None)
-        iids = [self.niid+i for i in range(len(items))]
         nlid = self.nlid
         self.nlid += 1
-        self.niid += len(items)
 
-        self.items.update(dict(zip(iids, items)))
+        iids = self.items.extend(items)
         ## TODO handle sord (order of display)
         self.lists[nlid] = RefsList(self, nlid, src, "", iids) 
         self.lists_ord.append(nlid)
@@ -821,6 +829,10 @@ class DataSet:
     def getVLidsAtPoss(self, poss=None):
         return [l for l in self.getLidsAtPoss(poss) if l is not None]
 
+    def substituteItem(self, item, iid):
+        if iid in self.items:
+            self.items[iid] = item
+
     ####### DATA ACTION
     def deleteLists(self, lids=[], sel=None):
         if len(lids) == 0 and sel is not None:
@@ -841,7 +853,7 @@ class DataSet:
             del self.lists[lid]
     def clearLists(self):
         self.lists = {}
-        self.items = {}
+        self.items.reset()
         self.lists_ord = []
 
     def deleteItemsLid(self, lid, sel=None):
@@ -849,7 +861,7 @@ class DataSet:
         self.deleteItems(diids)
     def deleteItems(self, diids=None):
         if diids is None:
-            diids = self.items.keys()
+            diids = self.items.getIds()
         for drid in diids:
             self.deleteItem(drid)
     def deleteItem(self, drid):
@@ -886,9 +898,7 @@ class DataSet:
         if "action" in self.buffer and lid in self.lists:
             if self.buffer["action"] == 'copy':
                 rcop = [self.items[rid].copy() for rid in self.buffer["iids"]]
-                iids = [self.niid+i for i in range(len(rcop))]
-                self.niid += len(rcop)
-                self.items.update(dict(zip(iids, rcop)))
+                iids = self.items.extend(rcop)
             elif self.buffer["action"] == 'cut':
                 iids = self.buffer["iids"]
             if len(iids) > 0:
@@ -933,6 +943,17 @@ class DataSet:
         return [(x, "%s" % self.getItemFieldV(iid, self.getNameF(), details)) for (x, iid) in enumerate(self.getList(lid).getIids())]
         # return [(x, "%s" % self.getItemFieldV(x, self.getNameF(), details)) for x in self.getList(lid).getIids()]
 
+    def filterToOne(self, compare_ids, parameters):
+        disable_ids = self.items.filtertofirstIds(compare_ids, parameters, complement=True)
+        self.items.applyFunctTo(".setDisabled()", disable_ids, changes= True)
+
+    def filterAll(self, compare_ids, parameters):
+        disable_ids = self.items.filterpairsIds(compare_ids, parameters, complement=True)
+        self.items.applyFunctTo(".setDisabled()", disable_ids, changes= True)
+
+    # def processAll(self, actions_parameters, init_current=True):
+    #     ### TODO
+
 
 class RedsSet(DataSet):
     str_red = 'item'
@@ -968,6 +989,14 @@ class RedsSet(DataSet):
         DataSet.__init__(self)
         self.parent = parent
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
+            self.fields = self.fields_def_splits
+        else:
+            self.fields = self.fields_def_nosplit
+
+    def recomputeAll(self, data):
+        for ri, red in self.items.items():
+            red.recompute(data)
+        if data.hasLT():
             self.fields = self.fields_def_splits
         else:
             self.fields = self.fields_def_nosplit
@@ -1086,58 +1115,86 @@ class ContentManager:
                 sel = lc.getSelection()
                 if len(sel) > 0:
                     pos = sel[-1]
-            pdb.set_trace()
             iids = self.getDataHdl().pasteItems(lid, pos)
             if len(iids) > 0:
                 self.refreshAll()
-                        
-    # def onOpen(self, event):
-    #     self.getSW().FindFocus()
-    #     pass
-    # def onSave(self, event):
-    #     pass
-    # def onSaveAs(self, event):
-    #     pass
-    # def onNewFolder(self, event):
-    #     self.onNewList()
-    # def onTrash(self, event):
-    #     ctrl = self.getSW().FindFocus()
-    #     sel = ctrl.getSelection()
-    #     if len(sel) > 0:
-    #         if ctrl.type_lc == "containers":
-    #             self.cm.onDeleteLists(sel)
-    #         elif ctrl.type_lc == "items":
-    #             self.cm.onDeleteItems(ctrl.getPid(), sel)
 
-    # def onCut(self, event):
-    #     ctrl = self.getSW().FindFocus()
-    #     sel = ctrl.getSelection()
-    #     if len(sel) > 0:
-    #         if ctrl.type_lc == "containers":
-    #             self.cm.onCutLists(sel)
-    #         elif ctrl.type_lc == "items":
-    #             self.cm.onCutItems(ctrl.getPid(), sel)
-    # def onCopy(self, event):
-    #     ctrl = self.getSW().FindFocus()
-    #     sel = ctrl.getSelection()
-    #     if len(sel) > 0:
-    #         if ctrl.type_lc == "containers":
-    #             self.cm.onCopyLists(sel)
-    #         elif ctrl.type_lc == "items":
-    #             self.cm.onCopyItems(ctrl.getPid(), sel)
-    # def onPaste(self, event):
-    #     ctrl = self.getSW().FindFocus()
-    #     sel = ctrl.GetFocusedItem()
-    #     self.cm.onPasteAny(ctrl, sel)
+            
+    def manageDrag(self, ctrl, trg_where, text):
+        lid = self.getAssociated(ctrl.getPid(),"lid")
+        sel = map(int, text.split(','))
+        pos = None
+        if ctrl.type_lc == "containers":
+            if trg_where['index'] != -1:
+                nlid = self.getDataHdl().getLidAtPos(trg_where['index'])
+                if nlid != lid:
+                    pos = -1
+        else:
+            nlid = lid
+            pos = trg_where['index']
+            if trg_where['after'] and pos != -1:
+                pos += 1
+        if pos is not None:
+            self.getDataHdl().moveItems(lid, nlid, sel, pos)
+        self.getViewHdl().refresh()
 
-    # def onFind(self, event):
-    #     pass
 
+    def getIidsForAction(self, down=True):
+        sel = []
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            lid = self.browsers[lc.getPid()].getLid()
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                if len(sel) == 1 and down:
+                    iids = self.getDataHdl().getList(lid).getIidsAfterPos(sel[0])
+                else:
+                    iids = self.getDataHdl().getList(lid).getIidsAtPoss(sel)
+            elif lc.isContainersL():
+                iids = self.getDataHdl().getList(lid).getIids()
+        print "IIDS for action", iids
+        return iids
+
+    def getIidsForActionDown(self):
+        sel = []
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            lid = self.browsers[lc.getPid()].getLid()
+            if lc.isItemsL():
+                sel = lc.getSelection()
+                iids = self.getDataHdl().getList(lid).getIidsAtPoss(sel)
+            elif lc.isContainersL():
+                iids = self.getDataHdl().getList(lid).getIids()
+        print "IIDS for action", iids
+        return iids
+
+    
+    def flipEnabled(self, iids):
+        for iid in iids:
+            self.getDataHdl().getItemForIid(iid).flipEnabled()
+        self.refreshAll()
+    def setAllEnabled(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            lid = self.browsers[lc.getPid()].getLid()
+            iids = self.getDataHdl().getList(lid).getIids()
+            for iid in iids:
+                self.getDataHdl().getItemForIid(iid).setEnabled()
+        self.refreshAll()
+    def setAllDisabled(self):
+        lc = self.getViewHdl().getFocusedL()
+        if lc is not None:
+            lid = self.browsers[lc.getPid()].getLid()
+            iids = self.getDataHdl().getList(lid).getIids()
+            for iid in iids:
+                self.getDataHdl().getItemForIid(iid).setDisabled()
+        self.refreshAll()
+
+    #### FIND FUNCTIONS
     def getNamesList(self):
         lid = self.getViewHdl().getLid()
         return self.getDataHdl().getNamesList(lid)
 
-    #### FIND HERE
     def updateFind(self, matching=None, non_matching=None, cid=None):
         if matching is not None:
             if self.curr_match is not None and self.curr_match >= 0 and self.curr_match < len(self.matching): 
@@ -1173,29 +1230,27 @@ class ContentManager:
         if self.prev_sels is not None and self.curr_match != -1:
             self.getViewHdl().getLCI().setSelection(self.prev_sels)
         self.prev_sels = None
-            
-    def manageDrag(self, ctrl, trg_where, text):
-        lid = self.getAssociated(ctrl.getPid(),"lid")
-        sel = map(int, text.split(','))
-        pos = None
-        if ctrl.type_lc == "containers":
-            if trg_where['index'] != -1:
-                nlid = self.getDataHdl().getLidAtPos(trg_where['index'])
-                if nlid != lid:
-                    pos = -1
-        else:
-            nlid = lid
-            pos = trg_where['index']
-            if trg_where['after'] and pos != -1:
-                pos += 1
-        if pos is not None:
-            self.getDataHdl().moveItems(lid, nlid, sel, pos)
-        self.getViewHdl().refresh()
 
+    #### Generate pop up menu
     def makePopupMenu(self):
         self.parent.makePopupMenu(self.parent.toolFrame)
 
+    ### TODO
+    def filterToOne(self, parameters):
+        compare_ids = self.getIidsForAction(down=True) 
+        self.getDataHdl().filterToOne(compare_ids, parameters)
+        self.refreshAll()
+        
+    def filterAll(self, parameters):
+        compare_ids = self.getIidsForAction(down=True) 
+        self.getDataHdl().filterAll(compare_ids, parameters)
+        self.refreshAll()
 
+    def processAll(self, actions_parameters, init_current=True):
+        ### TODO implement
+        pass 
+
+        
     def GetNumberRowsItems(self):
         return self.getViewHdl().GetNumberRowsItems()
     def GetNumberRowsContainers(self):
@@ -1253,6 +1308,27 @@ class ContentManager:
         if iid is not None:
             return self.getDataHdl().getItemForIid(iid)
         return None
+    def substituteItem(self, item, iid):
+        self.getDataHdl().substituteItem(item, iid)
+        # self.refreshAll()
+        ll = self.getDataHdl().getList(self.getViewHdl().getLid())
+        pos = ll.getPosForIid(iid)
+        self.getViewHdl().getLCI().loadItem(ll, pos)
+    def substituteSelectedItem(self, item):
+        iid = self.getSelectedItemIid()
+        if iid is not None:
+            self.substituteItem(item, iid)
+    def updateEdit(self, edit_key, item, iids):
+        if len(iids) == 1:
+            self.substituteItem(item, iids[0])
+
+    # def getSelectedRow(self): ### legacy no s
+    #     lc = self.getViewHdl().getFocusedL()
+    #     if lc is not None:
+    #         return lc.getSelection()
+    #     return []
+    def getSelectedRow(self): ### legacy no s
+        return self.getIidsForAction()
     
 class RedsManager(ContentManager):
 
@@ -1263,3 +1339,17 @@ class RedsManager(ContentManager):
         if red is not None and isinstance(red, Redescription):
             return red.getQueries()
         return 
+
+    def refreshComp(self, data):
+        self.getDataHdl().recomputeAll(data)
+        self.uptodate = True
+
+    def recomputeAll(self, restrict):
+        if self.parent.hasDataLoaded():
+            self.uptodate = False
+            self.refreshComp(self.parent.dw.getData())
+            # for k,v in self.opened_edits.items():
+            #     mc = self.parent.accessViewX(k)
+            #     if mc is not None:
+            #         mc.refresh()
+            self.refreshAll()

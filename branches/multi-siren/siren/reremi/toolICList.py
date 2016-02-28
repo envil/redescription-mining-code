@@ -111,6 +111,15 @@ class ICList(list):
         list.reverse(self)
         self._isChanged = True
 
+    def reset(self):
+        del self[:]
+        self._isChanged = True
+
+    def getElement(self, i):
+        return self[i]
+    def getIds(self):
+        return range(len(self))
+
     # Printing
     def __repr__(self):
         return 'ICList('+list.__repr__(self)+', isChanged = '+str(self.isChanged)+')'
