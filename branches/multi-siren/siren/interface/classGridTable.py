@@ -507,7 +507,7 @@ class GridTable(wx.grid.PyGridTableBase):
     def OnViewData(self, event):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
-            self.viewData(self.parent.getDefaultViewT(self.tabId))
+            self.viewData(self.parent.viewsm.getDefaultViewT(self.parent.tabs[self.tabId]["type"]))
 
 class RedTable(GridTable):
 
@@ -541,8 +541,6 @@ class RedTable(GridTable):
         GridTable.__init__(self, parent, tabId, frame, short)
         self.rids = []
         self.last_rid = 0
-        self.opened_edits = {}
-        self.emphasized = {}
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
             self.fields = self.fields_def_splits
         else:
@@ -586,10 +584,6 @@ class RedTable(GridTable):
         self.uptodate = False
         # self.refreshRestrict()
         self.refreshComp()
-        for k,v in self.opened_edits.items():
-            mc = self.parent.accessViewX(k)
-            if mc is not None:
-                mc.refresh()
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
             self.fields = self.fields_def_splits
         else:
@@ -630,20 +624,8 @@ class RedTable(GridTable):
             ### TODO add possibility to undo delete here
             self.rids.pop(pos)
             self.data.pop(pos)
-            for edit_key in self.opened_edits.keys():
-                if self.opened_edits[edit_key] == pos:
-                    self.opened_edits[edit_key] = None
-                elif self.opened_edits[edit_key] > pos:
-                    self.opened_edits[edit_key] -= 1
-                    upMenu = True
-                    self.parent.accessViewX(edit_key).updateTitle()
-            ks = sorted(self.emphasized.keys())
-            for k in ks:
-                if k == pos:
-                    del self.emphasized[k]
-                elif k > pos:
-                    self.emphasized[k-1] = self.emphasized[k]
-                    del self.emphasized[k]
+            #### VIEW MAN
+            upMenu = self.parent.viewsm.deleteItem(edit_key)
             if upView:
                 self.ResetView()
             if upMenu:
@@ -674,58 +656,20 @@ class RedTable(GridTable):
         return "%s%s" % (tsh, rid)
                 
     def getRedIdOID(self, oid):
-        # if oid not in self.opened_edits:
-        #     pdb.set_trace()
-        return self.getRedIdStr(self.opened_edits.get(oid, None))
+        return self.getRedIdStr(self.parent.viewsm.getToed(oid))
 
     def viewData(self, viewT, pos=None, oid=None):
-        if oid is not None:
-            if oid in self.opened_edits:
-                pos = self.opened_edits[oid]
         if pos is None:
             pos = self.getSelectedPos()
-        vid = None
-        for (k,v) in self.opened_edits.items():
-            if v == pos and viewT == k[0]:
-                vid = k[1]
-                break
-            
-        mapV = self.parent.getViewX(vid, viewT)
-        if vid is None and mapV is not None:
-            self.registerView(mapV.getId(), pos, upMenu=False)
-            mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
-            mapV.updateTitle()
-            self.parent.updateMenus()
-            
-    def registerView(self, key, pos, upMenu=True):
-        self.opened_edits[key] = pos
-        if upMenu:
-            self.parent.updateMenus()
+        red = self.getItemAtRow(self.getRowFromPosition(pos))
+        self.parent.viewsm.viewData(viewT, pos, oid, red, self.tabId)
 
-    def unregisterView(self, key, upMenu=True):
-        if key in self.opened_edits.keys():
-            pos = self.opened_edits[key]
-            del self.opened_edits[key]
-            ### if there are no other view referring to same red, clear emphasize lines
-            if pos not in self.opened_edits.values():
-                if pos in self.emphasized:
-                    del self.emphasized[pos]
-            if upMenu:
-                self.parent.updateMenus()
-
-            
     def updateEdit(self, edit_key, red, toed=None):
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
+        toed = self.parent.viewsm.getToed()
         if toed is not None and toed >= 0 and toed < len(self.data):
             if self.tabId != "hist":
                 self.data[toed] = red
-
-                for k,v in self.opened_edits.items():
-                    if v == toed and k != edit_key:
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.setCurrent(red, self.tabId)
+                self.parent.viewsm.updateEdit(edit_key, red, toed, self.tabId)
 
             else:
                 old_toed = toed
@@ -733,86 +677,20 @@ class RedTable(GridTable):
                 row_inserted = self.insertItem(red, -1)
                 if edit_key is None: ## edit comes from the tab itself, not from a view
                     self.setSelectedRow(row_inserted)
-            
-                for k,v in self.opened_edits.items():
-                    if v == old_toed:
-                        self.opened_edits[k] = new_toed 
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.updateTitle()
-                            if k != edit_key:
-                                mc.setCurrent(red, self.tabId)
 
-                if old_toed in self.emphasized and edit_key in self.opened_edits:
-                    self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
-                    del self.emphasized[old_toed]
-
-                self.parent.updateMenus()
+                self.parent.viewsm.updateEditHist(edit_key, red, new_toed, old_toed, self.tabId)
             self.ResetView()
         ### TODO else insert (e.g. created from variable)
 
-    def getViewsCount(self, edit_key):
-        count = 0
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
-        if toed is not None and toed >= 0 and toed < len(self.data):
-            for k,v in self.opened_edits.items():
-                if v == toed: # and k != edit_key:
-                    count += 1
-        return count
-
     def addAndViewTop(self, queries, viewT):
-        mapV = self.parent.getViewX(None, viewT)
-        red = mapV.setCurrent(queries)
-        self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
-        mapV.setSource(self.tabId)
-        self.parent.updateMenus()
-        mapV.updateTitle()
+        print "To reimplement"
+        # mapV = self.parent.viewsm.getViewX(None, viewT)
+        # red = mapV.setCurrent(queries)
+        # self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
+        # mapV.setSource(self.tabId)
+        # self.parent.updateMenus()
+        # mapV.updateTitle()
 
-    def doFlipEmphasizedR(self, edit_key):
-        if edit_key in self.opened_edits.keys() and self.opened_edits[edit_key] in self.emphasized:
-            self.parent.flipRowsEnabled(self.emphasized[self.opened_edits[edit_key]])
-            self.setEmphasizedR(edit_key, self.emphasized[self.opened_edits[edit_key]])
-
-    def getEmphasizedR(self, edit_key):
-        if edit_key in self.opened_edits.keys() \
-               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data) \
-               and self.opened_edits[edit_key] in self.emphasized:
-            return self.emphasized[self.opened_edits[edit_key]]
-        return set()
-
-    def setAllEmphasizedR(self, lids=None, show_info=False, no_off=False):
-        for edit_key in self.opened_edits.keys():
-            self.setEmphasizedR(edit_key, lids, show_info, no_off)
-
-    def setEmphasizedR(self, edit_key, lids=None, show_info=False, no_off=False):
-        if edit_key in self.opened_edits.keys() \
-               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
-
-            toed = self.opened_edits[edit_key]
-            if toed not in self.emphasized:
-                self.emphasized[toed] = set()
-            if lids is None:
-                turn_off = self.emphasized[toed]
-                turn_on =  set()
-                self.emphasized[toed] = set()
-            else:
-                turn_on =  set(lids) - self.emphasized[toed]
-                if no_off:
-                    turn_off = set()
-                    self.emphasized[toed].update(turn_on)
-                else:
-                    turn_off = set(lids) & self.emphasized[toed]
-                    self.emphasized[toed].symmetric_difference_update(lids)
-
-            for k,v in self.opened_edits.items():
-                if v == toed:
-                    mm = self.parent.accessViewX(k)
-                    mm.emphasizeOnOff(turn_on=turn_on, turn_off=turn_off)
-            
-            if len(turn_on) == 1 and show_info:
-                for lid in turn_on:
-                    self.parent.showDetailsBox(lid, self.data[toed])
 
     def deleteDisabled(self):
         i = 0

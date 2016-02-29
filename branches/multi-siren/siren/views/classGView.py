@@ -19,6 +19,8 @@ from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
 
+### VIEW MAN --> callOnTab
+
 import pdb
 
 
@@ -351,7 +353,8 @@ class GView(object):
     def makeVizMenu(self, frame, menuViz=None):
         if menuViz is None:
             menuViz = wx.Menu()
-        for item in self.parent.getViewsItems(queries=self.getQueries(), excludeT=[self.getId()[0]]):
+        ### VIEW MAN
+        for item in self.parent.viewsm.getViewsItems(queries=self.getQueries(), excludeT=[self.getId()[0]]):
             ID_NEWV = wx.NewId()
             m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                     "Plot %s in new window." % item["title"])
@@ -635,8 +638,9 @@ class GView(object):
         self.OnQuit()
 
     def OnQuit(self, event=None, upMenu=True, freeing=True):
-        self.parent.deleteView(self.getId(), freeing)
-        self.parent.callOnTab(self.source_list, meth="unregisterView", args={"key": self.getId(), "upMenu": upMenu})
+        ### VIEW MAN
+        self.parent.viewsm.deleteView(self.getId(), freeing)
+        self.parent.viewsm.unregisterView(key=self.getId(), upMenu=upMenu)
 
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:
@@ -925,7 +929,8 @@ class GView(object):
 
     def updateEmphasize(self, colhigh='#FFFF00', review=True):
         if self.source_list is not None:
-            lids = self.parent.callOnTab(self.source_list, meth="getEmphasizedR", args={"edit_key": self.getId()})
+            ### lids = self.parent.callOnTab(self.source_list, meth="getEmphasizedR", args={"edit_key": self.getId()})
+            lids = self.parent.viewsm.getEmphasizedR(edit_key=self.getId())
             self.emphasizeOnOff(turn_on=lids, turn_off=None, colhigh=colhigh, review=review)
 
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), colhigh='#FFFF00', review=True):
@@ -983,12 +988,15 @@ class GView(object):
                 del self.highl[lid]
 
     def sendEmphasize(self, lids):
-        return self.parent.callOnTab(self.source_list, meth="setEmphasizedR",
-                                     args={"edit_key": self.getId(), "lids": lids, "show_info":self.q_active_info()})
+        # return self.parent.callOnTab(self.source_list, meth="setEmphasizedR",
+        #                              args={"edit_key": self.getId(), "lids": lids, "show_info":self.q_active_info()})
+        return self.parent.viewsm.setEmphasizedR(edit_key=self.getId(), lids=lids, show_info=self.q_active_info())
+
 
     def sendFlipEmphasizedR(self):
-        return self.parent.callOnTab(self.source_list, meth="doFlipEmphasizedR",
-                                     args={"edit_key": self.getId()})
+        # return self.parent.callOnTab(self.source_list, meth="doFlipEmphasizedR",
+        #                              args={"edit_key": self.getId()})
+        return self.parent.viewsm.doFlipEmphasizedR(edit_key=self.getId())
 
     def OnPick(self, event):
         if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 

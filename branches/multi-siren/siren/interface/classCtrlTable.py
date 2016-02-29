@@ -284,10 +284,14 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
         self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)        
         self.Bind(wx.EVT_LIST_INSERT_ITEM, self._onInsert)
         self.Bind(wx.EVT_LIST_DELETE_ITEM, self._onDelete)
-        self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnViewData)
+        self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.OnItemActivated)
         self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick)
         self.upck = True
 
+    def OnItemActivated(self, event):
+        if self.hasCManager():
+            return self.cm.onItemActivated(self, event.GetIndex())
+        
     def isItemsL(self):
         return True
 
@@ -318,29 +322,6 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             lid = self.getAssociated("lid")
             self.getDataHdl().checkItem(lid, index, flag)
             self.setBckColor(index, flag)
-
-    def OnViewData(self, event):
-        print "View Data"
-    #     self.viewData(self.parent.getDefaultViewT(self.tabId))
-        
-    # def viewData(self, viewT, pos=None, oid=None):
-    #     if oid is not None:
-    #         if oid in self.opened_edits:
-    #             pos = self.opened_edits[oid]
-    #     if pos is None:
-    #         pos = self.getSelectedPos()
-    #     vid = None
-    #     for (k,v) in self.opened_edits.items():
-    #         if v == pos and viewT == k[0]:
-    #             vid = k[1]
-    #             break
-            
-    #     mapV = self.parent.getViewX(vid, viewT)
-    #     if vid is None and mapV is not None:
-    #         self.registerView(mapV.getId(), pos, upMenu=False)
-    #         mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
-    #         mapV.updateTitle()
-    #         self.parent.updateMenus()
 
     def upItem(self, i, rdt):
         for (cid, cv) in enumerate(rdt["cols"]):
@@ -638,7 +619,7 @@ class RefsList:
         self.setSort()
         
     def getIids(self):
-        return self.sortids
+        return list(self.sortids)
 
     def getItemDataAtPos(self, pos):
         rid = self.getIidAtPos(pos)
@@ -1152,7 +1133,6 @@ class ContentManager:
                     iids = self.getDataHdl().getList(lid).getIidsAtPoss(sel)
             elif lc.isContainersL():
                 iids = self.getDataHdl().getList(lid).getIids()
-        print "IIDS for action", iids
         return iids
 
     def getIidsForActionDown(self):
@@ -1247,8 +1227,35 @@ class ContentManager:
         self.refreshAll()
 
     def processAll(self, actions_parameters, init_current=True):
-        ### TODO implement
         pass 
+        ### TODO implement
+        # selected_row = self.getSelectedRow()
+        # selected_id = None
+        # if selected_row is not None:
+        #     selected_id = self.getPositionFromRow(selected_row)
+
+
+        # current_ids = None
+        # if init_current:
+        #     current_ids = [i for i in self.sortids if self.data[i].getEnabled()]
+            
+        # selected_ids = self.data.selected(actions_parameters, current_ids)
+        # top, middle, bottom = [], [], []
+        # while len(self.sortids)>0:
+        #     i = self.sortids.pop(0)
+        #     if i not in selected_ids:
+        #         if self.data[i].getEnabled():
+        #             middle.append(i)
+        #         else:
+        #             bottom.append(i)
+        # self.data.applyFunctTo(".setDisabled()", middle)
+        # self.sortids.extend(selected_ids+middle+bottom)
+
+        # if selected_id is not None:
+        #     self.setSelectedRow(self.getRowFromPosition(selected_id))
+
+        # self.ResetView()
+
 
         
     def GetNumberRowsItems(self):
@@ -1329,6 +1336,34 @@ class ContentManager:
     #     return []
     def getSelectedRow(self): ### legacy no s
         return self.getIidsForAction()
+
+    def onItemActivated(self, lic, pos):
+        self.viewData(self.parent.getDefaultViewT(self.tabId), pos)
+
+    def viewData(self, viewT, pos=None, oid=None):
+        pdb.set_trace()
+        print "View Data", viewT, pos, oid
+        
+
+    #     if oid is not None:
+    #         if oid in self.opened_edits:
+    #             pos = self.opened_edits[oid]
+    #     if pos is None:
+    #         pos = self.getSelectedPos()
+    #     vid = None
+    #     for (k,v) in self.opened_edits.items():
+    #         if v == pos and viewT == k[0]:
+    #             vid = k[1]
+    #             break
+            
+    #     mapV = self.parent.getViewX(vid, viewT)
+    #     if vid is None and mapV is not None:
+    #         self.registerView(mapV.getId(), pos, upMenu=False)
+    #         mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
+    #         mapV.updateTitle()
+    #         self.parent.updateMenus()
+
+
     
 class RedsManager(ContentManager):
 
