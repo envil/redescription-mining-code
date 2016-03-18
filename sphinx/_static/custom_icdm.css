@@ -1,0 +1,128 @@
+/*
+ * custom.css_t
+ * ~~~~~~~~~~~~
+ *
+ * Sphinx stylesheet -- pylons theme.
+ *
+ * :copyright: Copyright 2007-2010 by the Sphinx team, see AUTHORS.
+ * :license: BSD, see LICENSE for details.
+ *
+ */
+ 
+@import url("pyramid.css");
+ 
+/* -- page layout ----------------------------------------------------------- */
+
+div.body h1 {
+margin-top:200px;
+}
+
+div.related {
+ width:100%;
+position:fixed;
+top:0px;
+background-color:black;
+color:grey;
+padding-top:20px;
+padding-bottom:20px;
+font-size:22pt;
+}
+
+div.related ul {
+    padding-left: 100px;
+}
+
+div.body {
+margin-top:70px;
+padding-top:30px;
+padding-bottom:130px;
+}
+
+div.sphinxsidebar {
+margin-top:70px;
+    position:fixed;
+    width: 230px;
+    padding-bottom:400px;
+    margin-left: 0px;
+    font-size: 0.75em;
+    line-height: 1.5em;
+}
+
+
+
+img {
+  max-width:600px;
+  max-height:600px;
+}
+
+img.sidel {
+    display:inline;
+    max-width:500px;
+
+}
+img.sider {
+    display:inline;
+    max-width:500px;
+}
+
+div.note {
+
+    border:2px solid #a55b19;
+    border-right-style: none;
+    border-left-style: none;
+    padding: 10px 20px 10px 60px;
+    background: #ffefc1;
+}
+
+div.sphinxsidebar ul ul {
+    margin-left: 20px;
+    list-style-image: url(listitem.png);
+}
+
+div.film video
+{
+max-width:90%;
+}
+
+div.film
+{
+margin:0cm;
+padding:0cm;
+}
+
+
+/* padding: 5px 5px; */
+/* margin: 5px 5px; */
+/* border:1px dotted #cccccc; */
+/* background-color:#efefef; */
+/* font-style:italic; */
+
+
+div.logo img {
+    width:100px;
+}
+
+div.related a {
+    color: #888;
+    text-decoration: none;
+}
+
+a, a .pre {
+    color: #888;
+    text-decoration: none;
+
+}
+
+a.headerlink {
+    color: #888;
+    text-decoration: none;
+}
+
+iframe.inslides {
+margin:10px;
+padding:1em;
+border:dotted 1px #888; 
+width:90%; 
+min-height:400px;
+max-height:400px; 
+}
