@@ -73,6 +73,16 @@ class ICDict(collections.MutableMapping):
         print "has_key() has been deprecated, use 'key in ICDict' instead"
         return key in self.data
 
+    def reset(self):
+        self.data.clear()
+        self._isChanged = True
+
+    def getElement(self, i):
+        return self.data.get(i, None)
+    def getIds(self):
+        return self.data.keys()
+
+
     @classmethod
     def fromkeys(cls, seq, value=None):
         new = ICDict()

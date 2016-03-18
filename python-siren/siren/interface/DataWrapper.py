@@ -72,9 +72,9 @@ class DataWrapper(object):
         if package_filename is not None:
             self.openPackage(package_filename)
         
-    def resetRedescriptions(self):
-        self.reds = Batch([])
-        self.rshowids = ICList([], True)
+    def resetRedescriptions(self, reds=[]):
+        self.reds = Batch(reds)
+        self.rshowids = ICList(range(len(reds)), True)
 
     def getColNames(self):
         if self.data is not None:
@@ -123,6 +123,10 @@ class DataWrapper(object):
         if self.reds is not None:
             return self.reds
         return []
+    def getNbReds(self):
+        if self.reds is not None:
+            return len(self.reds)
+        return 0
 
     def getShowIds(self):
         if self.rshowids is not None:
@@ -226,6 +230,26 @@ class DataWrapper(object):
             self.getData().getSSetts().reset(parts_type, pval_meth)
 
 
+################################################################
+    def loadRedescriptionsFromFile(self, redescriptions_filename):
+        """Loads new redescriptions from file"""
+        tmp_reds, tmp_rshowids = (None, None)
+        self._startMessage('importing', redescriptions_filename)
+        try:
+            tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
+        except IOError as arg:
+            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
+            self._stopMessage()
+            raise
+        except Exception:
+            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "dw_error", "DW")
+            self._stopMessage()
+            raise
+        finally:
+            self._stopMessage('importing')
+        return tmp_reds, tmp_rshowids
+
+
 #################### IMPORTS            
     def importDataFromCSVFiles(self, data_filenames):
         fnames = list(data_filenames[:2])
@@ -270,6 +294,7 @@ class DataWrapper(object):
             self.rshowids = tmp_rshowids
         finally:
             self._stopMessage('importing')
+
 
     def importPreferencesFromFile(self, preferences_filename):
         """Imports mining preferences from file"""
@@ -446,7 +471,7 @@ class DataWrapper(object):
             raise
         self._stopMessage('exporting prefs')
 
-    def exportRedescriptions(self, filename):
+    def exportRedescriptions(self, filename, reds=None, rshowids=None):
         self._startMessage('exporting', filename)
         with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
         style = ""
@@ -458,7 +483,12 @@ class DataWrapper(object):
         if re.search("\.tex$", filename):
             style = "tex"
         try:
-            writeRedescriptions(self.reds, filename, self.rshowids, names=names, with_disabled=with_disabled, style=style)
+            if reds is None:
+                reds = self.reds
+                rshowids = self.rshowids
+            if rshowids is None:
+                rshowids = range(len(reds))
+            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style)
         except Exception:
             self._stopMessage()
             raise

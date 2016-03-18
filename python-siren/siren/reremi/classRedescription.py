@@ -418,6 +418,14 @@ class Redescription(object):
         else:
             return self.track
 
+    def getSortAble(self, details=None):
+        if details.get("aim") == "sort":
+            return (self.status, details.get("id", "?"))
+        return ""
+
+    def getShortRid(self, details=None):
+        return "R%s" % details.get("id", "?")
+
     def getEnabled(self, details=None):
         return 1*(self.status>0)
 

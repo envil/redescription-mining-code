@@ -58,25 +58,26 @@ class SirenApp(wx.App):
             # self.frame.expand()
 
             # ### SPLITS
-            self.frame.dw.getData().extractFolds(1, 12)
-            splits_info = self.frame.dw.getData().getFoldsInfo()
-            stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
-            ids = {}
-            checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
-            for lt, bids in checked:
-                ids[lt] = [stored_splits_ids[bid] for bid in bids]
-            self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
-            self.frame.recomputeAll()
+            # self.frame.dw.getData().extractFolds(1, 12)
+            # splits_info = self.frame.dw.getData().getFoldsInfo()
+            # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+            # ids = {}
+            # checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
+            # for lt, bids in checked:
+            #     ids[lt] = [stored_splits_ids[bid] for bid in bids]
+            # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
+            # self.frame.recomputeAll()
 
             tab = "reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
             # self.frame.tabs[tab]["tab"].viewData("TR", 3)
-            self.frame.tabs[tab]["tab"].viewData("MAP", 1)
-            # self.frame.tabs[tab]["tab"].viewData("TR", 1)
-            # self.frame.tabs[tab]["tab"].viewData("PC", 1)
-            # self.frame.tabs[tab]["tab"].viewData("PC", 2)
-            # self.frame.tabs[tab]["tab"].viewData("SKrand_entities", 1)
+            ## self.frame.tabs[tab]["tab"].viewData(2, "MAP")
+            self.frame.tabs[tab]["tab"].viewListData(1, "OVE")
+            # self.frame.tabs[tab]["tab"].viewData(1, "TR")
+            # self.frame.tabs[tab]["tab"].viewData(1, "PC")
+            # self.frame.tabs[tab]["tab"].viewData(2, "PC")
+            # self.frame.tabs[tab]["tab"].viewData(1, "SKrand_entities")
             # mapV = self.frame.getViewX(None, "PC")
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
@@ -92,9 +93,10 @@ class SirenApp(wx.App):
             pass
 
     def OnActivate(self, event):
-        if event.GetActive():
-            self.BringWindowToFront()
-        event.Skip()
+        pass
+        # if event.GetActive():
+        #     self.BringWindowToFront()
+        # event.Skip()
 
     def MacOpenFile(self, filename):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""

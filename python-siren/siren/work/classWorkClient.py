@@ -130,7 +130,6 @@ class WorkClient(WorkInactive):
             manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
             self.shared_job_q = manager.get_job_q()
             self.ids_d = manager.get_ids_d()
-            ### TODO generate uid
             uid = uuid.uuid4()
             self.shared_job_q.put({"task": "startup", "cid": uid})
             counter = 10

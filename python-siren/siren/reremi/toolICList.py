@@ -5,7 +5,7 @@ class ICList(list):
     To initialize from any iterable i, use iclist = ICList(i). By default, iclist.isChanged = False
     just after initialization; to override, use iclist = ICList(i, isChanged=True). Following
     operations set iclist.isChanged to true:
-    iclist.isChaged = True
+    iclist.isChanged = True
     iclist[i] = x
     del iclist[i]
     iclist[i:j] = aniterator
@@ -110,6 +110,15 @@ class ICList(list):
     def reverse(self):
         list.reverse(self)
         self._isChanged = True
+
+    def reset(self):
+        del self[:]
+        self._isChanged = True
+
+    def getElement(self, i):
+        return self[i]
+    def getIds(self):
+        return range(len(self))
 
     # Printing
     def __repr__(self):

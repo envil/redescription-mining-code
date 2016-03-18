@@ -116,7 +116,6 @@ class WorkLocal(WorkInactive):
                                                 "work_progress":0,
                                                 "work_estimate":0}
             self.workers[self.next_workerid].update(details)
-
             
 
     def closeDown(self, parent):

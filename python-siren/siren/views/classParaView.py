@@ -1,12 +1,11 @@
-### TODO check which imports are needed 
 from __future__ import unicode_literals
 import wx
 import numpy
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
-import matplotlib
-#matplotlib.use('WXAgg')
+# The recommended way to use wx with mpl is with the WXAgg backend. 
+# import matplotlib
+# matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 import scipy.spatial.distance
 import scipy.cluster
 from matplotlib.patches import Ellipse
@@ -56,7 +55,7 @@ class ParaView(GView):
     SDESC = "Pa.Co."
     ordN = 2
     title_str = "Parallel Coordinates"
-    typesI = ["Var", "Reds"]
+    typesI = "vr"
 
     rect_halfwidth = 0.05
     rect_alpha = 0.7
@@ -81,12 +80,13 @@ class ParaView(GView):
         self.prepared_data = {}
         self.sld = None
         self.ri = None
+        self.ticks_ann = []
         GView.__init__(self, parent, vid)
     
     def getId(self):
         return (self.TID, self.vid)
 
-    def setCurrent(self, qr=None, source_list=None):
+    def setCurrent(self, qr=None):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
@@ -98,10 +98,9 @@ class ParaView(GView):
             red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
-            self.source_list=source_list
             self.updateText(red)
             self.updateMap()
-            self.updateHist(red, init=True)
+            ## self.updateHist(red, init=True)
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True):
@@ -137,8 +136,8 @@ class ParaView(GView):
             if upAll:
                 self.updateText(red)
                 self.makeMenu()
-                self.updateOriginal(red)
-                self.updateHist(red)
+                self.sendEditBack(red)
+                ## self.updateHist(red)
             self.updateMap()
             return red
         else: ### wrongly formatted query, revert
@@ -154,6 +153,9 @@ class ParaView(GView):
 
         if not hasattr( self, 'axe' ):
             self.axe = self.MapfigMap.add_subplot( 111 )
+            # rect = 0.1,0.2,0.8,0.7
+            # self.axe = self.MapfigMap.add_axes(rect)
+
 
         # self.MapfigMap = plt.figure()
         # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
@@ -168,6 +170,7 @@ class ParaView(GView):
         self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_release)
         self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion_all)
         self.MapfigMap.canvas.mpl_connect('axes_leave_event', self.on_axes_out)
+        self.MapfigMap.canvas.mpl_connect('draw_event', self.on_draw)
         self.MapcanvasMap.draw()
 
     def prepareData(self, red, draw_ppos=None):
@@ -345,24 +348,23 @@ class ParaView(GView):
                                                   pinf=self.getPinvalue, annotation=self.annotation)
                 self.drs.append(dr)
 
+            if self.parent.dw.getData().hasMissing():
+                bot = self.missing_yy-self.margins_tb
+            else:
+                bot = 0-self.margins_tb
+
             #### fit window size
             extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
                       self.missing_yy-self.margins_tb, 0]
             self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
                           [extent[2], extent[2], extent[3], extent[3]],
                           color='1', alpha=0.66, zorder=5, ec="1" )
-            self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
-                               numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
-            if self.parent.dw.getData().hasMissing():
-                bot = self.missing_yy-self.margins_tb
-            else:
-                bot = 0-self.margins_tb
-            self.axe.set_ylim([bot,1+self.margins_tb])
-
+            
             ### Labels
             self.axe.set_xticks(self.prepared_data["xticks"])
             self.axe.set_xticklabels(["" for i in self.prepared_data["xlabels"]]) #, rotation=20, ha="right")
             side = 0
+            self.ticks_ann = []
             for lbi, lbl in enumerate(self.prepared_data["xlabels"]):
                 if lbl is None:
                     side = 1
@@ -373,6 +375,8 @@ class ParaView(GView):
                                            horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_l"],
                                            bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7), zorder=15
                                            )
+                    self.ticks_ann.append(tt)
+                    
                     self.axe.annotate(lbl,
                                       xy =(self.prepared_data["xticks"][lbi], bot),
                                       xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
@@ -380,7 +384,12 @@ class ParaView(GView):
                                       bbox=dict(boxstyle="round", fc=draw_settings[side]["color_l"], ec="none", alpha=0.3), zorder=15
                                       )
 
+            borders_draw = [numpy.min(self.prepared_data["xticks"])-1-self.margins_sides, bot,
+                            numpy.max(self.prepared_data["xticks"])+1+self.margins_sides, 1+self.margins_tb]
 
+            self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
+                               numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
+            self.axe.set_ylim([bot,1+self.margins_tb])            
 
             self.updateEmphasize(self.COLHIGH, review=False)
             self.MapcanvasMap.draw()
@@ -577,6 +586,8 @@ class ParaView(GView):
 
 
     def additionalBinds(self):
+        self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
@@ -705,5 +716,22 @@ class ParaView(GView):
                 sorting_samples[subids[ci]] = v+10*numpy.arange(1., ci.shape[0]+1)
         sampling_ord = numpy.argsort(sorting_samples)
         return sampling_ord
+        
+    def on_draw(self, event):
 
+        renderer1 = self.MapcanvasMap.get_renderer()
+        llboxes = []
+        for ll in self.ticks_ann:
+            lbbox = ll.get_window_extent(renderer1)
+            llboxes.append(lbbox.inverse_transformed(self.MapfigMap.transFigure))
 
+        if len(llboxes) > 0:
+            lcbbox = mtransforms.Bbox.union(llboxes)
+            if 1.1*lcbbox.height > 0.1:
+                self.MapfigMap.subplots_adjust(bottom=1.1*lcbbox.height)
+            elif self.MapfigMap.subplotpars.bottom != 0.1:
+                self.MapfigMap.subplots_adjust(bottom=0.1)
+            if lcbbox.extents[0] < 0:
+                self.MapfigMap.subplots_adjust(left=1.1*(self.MapfigMap.subplotpars.left-lcbbox.extents[0]))
+            elif self.MapfigMap.subplotpars.left != 0.1:
+                self.MapfigMap.subplots_adjust(left=0.1)

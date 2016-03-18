@@ -138,8 +138,7 @@ class GridTable(wx.grid.PyGridTableBase):
         wx.grid.PyGridTableBase.__init__(self)
         self.details = {}
         self.short = short
-        self.sc = set()
-        self.fvc = 0
+        self.sc = set() # show column (for collapsed/expanded columns)
         self.parent = parent
         self.tabId = tabId
         self.fields = self.fields_def
@@ -148,7 +147,7 @@ class GridTable(wx.grid.PyGridTableBase):
         self.sortP = (None, False)
         self.currentRows = self.nbItems()
         self.currentColumns = len(self.fields)
-        self.matching = []
+        self.matching = [] ### for find function
         
         #### GRID
         self.grid = wx.grid.Grid(frame)
@@ -170,6 +169,7 @@ class GridTable(wx.grid.PyGridTableBase):
         # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
         # self.grid.SetColAttr(0,attr)
 
+        ########## HERE
         self.grid.Bind(wx.EVT_KEY_UP, self.OnKU)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.setFocus)
@@ -230,7 +230,6 @@ class GridTable(wx.grid.PyGridTableBase):
         #     return None
 
     def getFieldV(self, x, field, details):
-        self.fvc += 1
         methode = eval(field[1])
         if callable(methode):
             if len(field) > 2 and field[2] is not None:
@@ -245,9 +244,11 @@ class GridTable(wx.grid.PyGridTableBase):
     ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < self.nbItems() and col < len(self.fields):
+        if row >= 0 and row < self.nbItems() and col >= 0 and col < len(self.fields):
             details = {"aim": "list"}
             details.update(self.details)
+            # print "Here!", self.tabId, self.parent.selectedTab['id']#, self.sortids, row, self.fields, col
+            #pdb.set_trace()
             return "%s" % self.getFieldV(self.sortids[row], self.fields[col], details)
         else:
             return None
@@ -309,8 +310,11 @@ class GridTable(wx.grid.PyGridTableBase):
             self.ResetView()
             self.resetSizes()
             
-    def resetData(self, data, srids=None):
-        self.data = data
+    def resetData(self, data=None, srids=None):
+        if data is not None:
+            self.data = data
+        else:
+            self.data = ICList()
         
         if srids is not None:
             self.sortids = srids
@@ -457,6 +461,9 @@ class GridTable(wx.grid.PyGridTableBase):
         if selected_id is not None:
             self.setSelectedRow(self.getRowFromPosition(selected_id), selected_col)
 
+    def quitFind(self):
+        pass
+
     def updateFindO(self, matching, non_matching, cid=None):
         if len(matching) > 0:
             self.sortP = (None, False)
@@ -503,394 +510,7 @@ class GridTable(wx.grid.PyGridTableBase):
     def OnViewData(self, event):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
-            self.viewData(self.parent.getDefaultViewT(self.tabId))
-
-class RedTable(GridTable):
-
-    fields_sizes = []
-    fields_def_nosplit = [('', 'self.data[x].getEnabled'),
-                          ('id', 'self.getRedIdStr(x)', None, 60),
-                          ('query LHS', 'self.data[x].getQueryLU', None, 300),
-                          ('query RHS', 'self.data[x].getQueryRU', None, 300),
-                          ('J', 'self.data[x].getRoundAcc', None, 60),
-                          ('p-value', 'self.data[x].getRoundPVal', None, 60),
-                          ('|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', None, 60),
-                          ('track', 'self.data[x].getTrack', None, 80)]
-
-    fields_def_splits = [('', 'self.data[x].getEnabled'),
-                         ('id', 'self.getRedIdStr(x)', None, 60),
-                         ('query LHS', 'self.data[x].getQueryLU', None, 300),
-                         ('query RHS', 'self.data[x].getQueryRU', None, 300),
-                         (SYM.SYM_RATIO+'J', 'self.data[x].getRoundAccRatio', {"rset_id_num": "test", "rset_id_den": "learn"}, 60),
-                         (SYM.SYM_LEARN+'J', 'self.data[x].getRoundAcc', {"rset_id": "learn"}, 60),
-                         (SYM.SYM_TEST+'J', 'self.data[x].getRoundAcc', {"rset_id": "test"}, 60),
-                         (SYM.SYM_LEARN+'pV', 'self.data[x].getRoundPVal', {"rset_id": "learn"}, 60),
-                         (SYM.SYM_TEST+'pV', 'self.data[x].getRoundPVal', {"rset_id": "test"}, 60),
-                         (SYM.SYM_LEARN+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "learn"}, 60),
-                         (SYM.SYM_TEST+'|E'+SYM.SYM_GAMMA+'|', 'self.data[x].getLenI', {"rset_id": "test"}, 60),
-                         ('track', 'self.data[x].getTrack', None, 80)]
-    fields_def = fields_def_nosplit
-    #fields_def = fields_def_splits
-    name_m = 'self.data[x].getQueriesU'
-
-    def __init__(self, parent, tabId, frame, short=None):
-        GridTable.__init__(self, parent, tabId, frame, short)
-        self.rids = []
-        self.last_rid = 0
-        self.opened_edits = {}
-        self.emphasized = {}
-        if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
-            self.fields = self.fields_def_splits
-        else:
-            self.fields = self.fields_def_nosplit
-        self.uptodate = True
-
-    def setSelectedRow(self,row, col=0):
-        self.GetView().SetGridCursor(row,0)
-        self.GetView().SelectRow(row)
-        self.parent.updateMenus()
-
-    def resetData(self, data, srids=None):
-        GridTable.resetData(self, data, srids)
-        self.rids = [i+1 for i in range(len(self.data))]
-        self.last_rid = len(self.data)
-        
-    def ResetView(self):
-        self.refreshRestrict()
-        GridTable.ResetView(self)
-
-    def refreshRestrict(self):
-        if self.uptodate:
-            return
-        tic = datetime.datetime.now()
-        for red in self.data:
-            red.setRestrictedSupp(self.parent.dw.getData())
-        #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
-        self.uptodate = True
-
-    def refreshComp(self):
-        if self.uptodate:
-            return
-        tic = datetime.datetime.now()
-        for red in self.data:
-            red.recompute(self.parent.dw.getData())
-        #print "Done restrict support ", self.tabId, len(self.data), datetime.datetime.now() - tic
-        self.uptodate = True
-
-
-    def recomputeAll(self, restrict):
-        self.uptodate = False
-        # self.refreshRestrict()
-        self.refreshComp()
-        for k,v in self.opened_edits.items():
-            mc = self.parent.accessViewX(k)
-            if mc is not None:
-                mc.refresh()
-        if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
-            self.fields = self.fields_def_splits
-        else:
-            self.fields = self.fields_def_nosplit
-        self.ResetView()
-
-    def insertItems(self, items):
-        for item in items:
-            self.insertItem(item, None, False)
-        self.neutraliseSort()
-        self.ResetView()
-
-    def insertItem(self, item, row=None, upView=True):
-        if row is None or row >= len(self.sortids):
-            row_inserted = len(self.data)
-            self.sortids.append(len(self.data))
-        else:
-            row_inserted = row+1
-            self.sortids.insert(row+1, len(self.data))
-        self.last_rid += 1
-        self.rids.append(self.last_rid)
-        self.data.append(item)
-        if upView:
-            self.neutraliseSort()
-            self.ResetView()
-        return row_inserted
-
-    def deleteItem(self, pos, upView=True):
-        upMenu = False
-        row = self.getRowFromPosition(pos)
-        if row is not None:
-            self.sortids.pop(row)
-            for i in range(len(self.sortids)):
-                self.sortids[i] -= (self.sortids[i] > pos)
-                i+=1
-            #### TODO BUG MOVE
-            ### TODO destruct the associated mapView if any?? 
-            ### TODO add possibility to undo delete here
-            self.rids.pop(pos)
-            self.data.pop(pos)
-            for edit_key in self.opened_edits.keys():
-                if self.opened_edits[edit_key] == pos:
-                    self.opened_edits[edit_key] = None
-                elif self.opened_edits[edit_key] > pos:
-                    self.opened_edits[edit_key] -= 1
-                    upMenu = True
-                    self.parent.accessViewX(edit_key).updateTitle()
-            ks = sorted(self.emphasized.keys())
-            for k in ks:
-                if k == pos:
-                    del self.emphasized[k]
-                elif k > pos:
-                    self.emphasized[k-1] = self.emphasized[k]
-                    del self.emphasized[k]
-            if upView:
-                self.ResetView()
-            if upMenu:
-                self.parent.updateMenus()
-
-    def getSelectedQueries(self):
-        if self.getSelectedRow() is not None:
-            red = self.getItemAtRow(self.getSelectedRow())
-            if isinstance(red, Redescription):
-                return red.getQueries()
-        return
-
-    def getRedId(self, pos):
-        if pos is None:
-            return (None, None)
-        if pos < len(self.rids):
-            return (self.short, self.rids[pos])
-        return (self.short, None)
-
-    def getRedIdStr(self, pos):
-        try:
-            tsh, rid = self.getRedId(pos)
-        except TypeError:
-            print "Error getRedIdStr", pos
-            pdb.set_trace()
-        if rid is None: rid = "?"
-        if tsh is None: tsh = "?"
-        return "%s%s" % (tsh, rid)
-                
-    def getRedIdOID(self, oid):
-        # if oid not in self.opened_edits:
-        #     pdb.set_trace()
-        return self.getRedIdStr(self.opened_edits.get(oid, None))
-
-    def viewData(self, viewT, pos=None, oid=None):
-        if oid is not None:
-            if oid in self.opened_edits:
-                pos = self.opened_edits[oid]
-        if pos is None:
-            pos = self.getSelectedPos()
-        vid = None
-        for (k,v) in self.opened_edits.items():
-            if v == pos and viewT == k[0]:
-                vid = k[1]
-                break
-            
-        mapV = self.parent.getViewX(vid, viewT)
-        if vid is None and mapV is not None:
-            self.registerView(mapV.getId(), pos, upMenu=False)
-            mapV.setCurrent(self.getItemAtRow(self.getRowFromPosition(pos)), self.tabId)
-            mapV.updateTitle()
-            self.parent.updateMenus()
-            
-    def registerView(self, key, pos, upMenu=True):
-        self.opened_edits[key] = pos
-        if upMenu:
-            self.parent.updateMenus()
-
-    def unregisterView(self, key, upMenu=True):
-        if key in self.opened_edits.keys():
-            pos = self.opened_edits[key]
-            del self.opened_edits[key]
-            ### if there are no other view referring to same red, clear emphasize lines
-            if pos not in self.opened_edits.values():
-                if pos in self.emphasized:
-                    del self.emphasized[pos]
-            if upMenu:
-                self.parent.updateMenus()
-
-            
-    def updateEdit(self, edit_key, red, toed=None):
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
-        if toed is not None and toed >= 0 and toed < len(self.data):
-            if self.tabId != "hist":
-                self.data[toed] = red
-
-                for k,v in self.opened_edits.items():
-                    if v == toed and k != edit_key:
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.setCurrent(red, self.tabId)
-
-            else:
-                old_toed = toed
-                new_toed = len(self.data)
-                row_inserted = self.insertItem(red, -1)
-                if edit_key is None: ## edit comes from the tab itself, not from a view
-                    self.setSelectedRow(row_inserted)
-            
-                for k,v in self.opened_edits.items():
-                    if v == old_toed:
-                        self.opened_edits[k] = new_toed 
-                        mc = self.parent.accessViewX(k)
-                        if mc is not None:
-                            mc.updateTitle()
-                            if k != edit_key:
-                                mc.setCurrent(red, self.tabId)
-
-                if old_toed in self.emphasized and edit_key in self.opened_edits:
-                    self.emphasized[self.opened_edits[edit_key]] = self.emphasized[old_toed]
-                    del self.emphasized[old_toed]
-
-                self.parent.updateMenus()
-            self.ResetView()
-        ### TODO else insert (e.g. created from variable)
-
-    def getViewsCount(self, edit_key):
-        count = 0
-        if edit_key in self.opened_edits.keys():
-            toed = self.opened_edits[edit_key]
-        if toed is not None and toed >= 0 and toed < len(self.data):
-            for k,v in self.opened_edits.items():
-                if v == toed: # and k != edit_key:
-                    count += 1
-        return count
-
-    def addAndViewTop(self, queries, viewT):
-        mapV = self.parent.getViewX(None, viewT)
-        red = mapV.setCurrent(queries)
-        self.registerView(mapV.getId(), len(self.data)-1, upMenu=False)
-        mapV.setSource(self.tabId)
-        self.parent.updateMenus()
-        mapV.updateTitle()
-
-    def doFlipEmphasizedR(self, edit_key):
-        if edit_key in self.opened_edits.keys() and self.opened_edits[edit_key] in self.emphasized:
-            self.parent.flipRowsEnabled(self.emphasized[self.opened_edits[edit_key]])
-            self.setEmphasizedR(edit_key, self.emphasized[self.opened_edits[edit_key]])
-
-    def getEmphasizedR(self, edit_key):
-        if edit_key in self.opened_edits.keys() \
-               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data) \
-               and self.opened_edits[edit_key] in self.emphasized:
-            return self.emphasized[self.opened_edits[edit_key]]
-        return set()
-
-    def setAllEmphasizedR(self, lids=None, show_info=False, no_off=False):
-        for edit_key in self.opened_edits.keys():
-            self.setEmphasizedR(edit_key, lids, show_info, no_off)
-
-    def setEmphasizedR(self, edit_key, lids=None, show_info=False, no_off=False):
-        if edit_key in self.opened_edits.keys() \
-               and self.opened_edits[edit_key] >= 0 and self.opened_edits[edit_key] < len(self.data):
-
-            toed = self.opened_edits[edit_key]
-            if toed not in self.emphasized:
-                self.emphasized[toed] = set()
-            if lids is None:
-                turn_off = self.emphasized[toed]
-                turn_on =  set()
-                self.emphasized[toed] = set()
-            else:
-                turn_on =  set(lids) - self.emphasized[toed]
-                if no_off:
-                    turn_off = set()
-                    self.emphasized[toed].update(turn_on)
-                else:
-                    turn_off = set(lids) & self.emphasized[toed]
-                    self.emphasized[toed].symmetric_difference_update(lids)
-
-            for k,v in self.opened_edits.items():
-                if v == toed:
-                    mm = self.parent.accessViewX(k)
-                    mm.emphasizeOnOff(turn_on=turn_on, turn_off=turn_off)
-            
-            if len(turn_on) == 1 and show_info:
-                for lid in turn_on:
-                    self.parent.showDetailsBox(lid, self.data[toed])
-
-    def deleteDisabled(self):
-        i = 0
-        while i < len(self.data):
-            if not self.data[i].getEnabled():
-                self.deleteItem(i, False)
-            else:
-                i+=1
-        self.ResetView()
-
-    def moveEnabled(self, dest):
-        #### HERE NOW
-        reds = []
-        i = 0
-        while i < len(self.data):
-            if self.data[i].getEnabled():
-                reds.append(self.data[i])
-                self.deleteItem(i, False)
-            else:
-                i+=1
-        if len(reds) > 0:
-            dest.insertItems(reds)
-            self.ResetView()
-
-    def copyItem(self, row):
-        pos = self.getPositionFromRow(row)
-        if pos is not None:
-            self.parent.buffer_copy = self.data[pos].copy()
-
-    def cutItem(self, row):
-        pos = self.getPositionFromRow(row)
-        if pos is not None:
-            self.parent.buffer_copy = self.data[pos].copy()
-            self.deleteItem(pos)
-
-    def pasteItem(self, row = None):
-        if self.parent.buffer_copy is not None:
-            row_inserted = self.insertItem(self.parent.buffer_copy, row)
-            self.setSelectedRow(row_inserted)
-            self.parent.buffer_copy = None
-            
-    def filterToOne(self, parameters):
-        if self.getSelectedRow() < self.nbItems(): 
-            compare_ids = self.sortids[self.getSelectedRow():]
-            disable_ids = self.data.filtertofirstIds(compare_ids, parameters, complement=True)
-            self.data.applyFunctTo(".setDisabled()", disable_ids, changes= True)
-            self.ResetView()
-
-    def filterAll(self, parameters):
-        all_ids = list(self.sortids)
-        disable_ids = self.data.filterpairsIds(all_ids, parameters, complement=True)
-        self.data.applyFunctTo(".setDisabled()", disable_ids, changes= True)
-        self.ResetView()
-
-    def processAll(self, actions_parameters, init_current=True):
-        selected_row = self.getSelectedRow()
-        selected_id = None
-        if selected_row is not None:
-            selected_id = self.getPositionFromRow(selected_row)
-
-
-        current_ids = None
-        if init_current:
-            current_ids = [i for i in self.sortids if self.data[i].getEnabled()]
-            
-        selected_ids = self.data.selected(actions_parameters, current_ids)
-        top, middle, bottom = [], [], []
-        while len(self.sortids)>0:
-            i = self.sortids.pop(0)
-            if i not in selected_ids:
-                if self.data[i].getEnabled():
-                    middle.append(i)
-                else:
-                    bottom.append(i)
-        self.data.applyFunctTo(".setDisabled()", middle)
-        self.sortids.extend(selected_ids+middle+bottom)
-
-        if selected_id is not None:
-            self.setSelectedRow(self.getRowFromPosition(selected_id))
-
-        self.ResetView()
-
+            self.viewData()
 
 class VarTable(GridTable):     
 
@@ -905,18 +525,17 @@ class VarTable(GridTable):
                      ('max', 'self.data[x].getMax', None, GridTable.width_colinfo)]}
     name_m = 'self.data[x].getName'
 
-    def viewData(self, viewT, pos=None):
+    def viewData(self, pos=None, viewT=None):
+        if viewT is None:
+            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
         if pos is None:
             datVar = self.getSelectedItem()
         else:
             datVar = self.getItemAtRow(pos)
         queries = [Query(), Query()]
         queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
-        self.parent.newRedVHist(queries, viewT)
+        self.parent.viewsm.newRedVHist(queries, viewT)
  
-    def updateEdit(self, edit_key, red):
-        pass
-
     def resetFields(self, dw=None, review=True):
         self.sortP = (None, False)
         self.fields = []
@@ -938,13 +557,12 @@ class RowTable(GridTable):
         GridTable.__init__(self, parent, tabId, frame, short)
         self.fix_col = 0
 
-    def viewData(self, viewT, pos=None):
+    def viewData(self, pos=None, viewT=None):
+        if viewT is None:
+            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
         queries = [Query(), Query()]
-        self.parent.newRedVHist(queries, viewT)
+        self.parent.viewsm.newRedVHist(queries, viewT)
  
-    def updateEdit(self, edit_key, red):
-        pass
-
     def resetFields(self, dw=None, review=True):
         self.sortP = (None, False)
         self.fix_col = 2
@@ -968,7 +586,7 @@ class RowTable(GridTable):
     ### GRID METHOD
     def GetValue(self, row, col):
         """Return the value of a cell"""
-        if row < self.nbItems() and col < len(self.fields):
+        if row >= 0 and row < self.nbItems() and col >= 0 and col < len(self.fields):
             details = {"aim": "row"}
             details.update(self.details)
             tmp = self.getFieldV(self.sortids[row], self.fields[col], details)
@@ -1010,6 +628,7 @@ class RowTable(GridTable):
             else:
                 return tmp
         else:
+            # print "Get Value RowTable", row, col
             return None
 
     ### GRID METHOD
@@ -1030,8 +649,12 @@ class RowTable(GridTable):
     def notify_change(self):
         self.parent.recomputeAll()
         
-    def resetData(self, data, srids=None):
-        self.data = data
+    def resetData(self, data=None, srids=None):
+        if data is not None:
+            self.data = data
+        else:
+            self.data = ICList()
+
         if srids is not None:
             self.sortids = srids
         else:

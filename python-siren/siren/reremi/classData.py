@@ -133,6 +133,10 @@ class ColM(object):
             return tmp
         return self.vect
 
+    def getSortAble(self, details=None):
+        if details.get("aim") == "sort":
+            return (self.enabled, self.getId())
+        return ""
     def getType(self, details=None):
         return "-"
     def getDensity(self, details=None):
@@ -1259,14 +1263,34 @@ class Data(object):
     def addCol(self, col, sito=0, name=None):
         addCol(self.cols, col, sito, name)
 
+                    
+    def hasMissing(self, side=None):
+        for side in self.getSides(side):
+            for c in self.cols[side]:
+                if c.hasMissing():
+                    return True
+        return False
+
+    def getAllTypes(self, side=None):
+        typs = []
+        for side in self.getSides(side):
+            typs.extend([col.typeId() for col in self.cols[side]])
+        return set(typs)
+
     def getCommonType(self, side):
         s = set([col.letter for col in self.cols[side]])
         if len(s) == 1:
             return s.pop()
         return None
+
         
     def isSingleD(self):
         return self.single_dataset
+
+    def getSides(self, side=None):
+        if side is not None:
+            return [side]
+        return range(len(self.cols))
 
     def getSSetts(self):
         return self.ssetts
@@ -1542,13 +1566,6 @@ class Data(object):
 
     def removeSelectedRow(self, rid):
         self.selected_rows.discard(rid)
-                    
-    def hasMissing(self):
-        for side in [0,1]:
-            for c in self.cols[side]:
-                if c.hasMissing():
-                    return True
-        return False
 
     def getRows(self):
         return [RowE(i, self) for i in range(self.nbRows())]
@@ -1772,6 +1789,9 @@ class Data(object):
     def colsSide(self, side): 
         return self.cols[side]
 
+    def getElement(self, iid):
+        return self.col(iid[0], iid[1])
+
     def col(self, side, literal):
         colid = None
         if type(literal) in [int, np.int64] and literal < len(self.cols[side]):
@@ -1802,26 +1822,25 @@ class Data(object):
 
     def getDisabledCols(self, side=None):
         dis = []
-        if side is None:
-            sides = [0,1]
-        else:
-            sides = [side]
-        for s in sides:
+        for s in self.getSides(side):
             for col in self.cols[s]:
                 if not col.getEnabled():
                     dis.append((s,col.id))
         return dis
 
     def hasDisabledCols(self, side=None):
-        if side is None:
-            sides = [0,1]
-        else:
-            sides = [side]
-        for s in sides:
+        for s in self.getSides(side):
             for col in self.cols[s]:
                 if not col.getEnabled():
                     return True
         return False
+
+    def getIids(self, side=None):
+        iids = []
+        for s in self.getSides(side):
+            iids.extend([(side, cc.getId()) for cc in self.cols[side]])
+        return iids
+
 
     def isGeospatial(self):
         return self.coords is not None

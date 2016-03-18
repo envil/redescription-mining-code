@@ -1,11 +1,9 @@
-### TODO check which imports are needed 
 from __future__ import unicode_literals
 import wx
 import numpy
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
-import matplotlib
-#matplotlib.use('WXAgg')
+# The recommended way to use wx with mpl is with the WXAgg backend. 
+# import matplotlib
+# matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
@@ -19,7 +17,6 @@ from ..reremi.classQuery import Query, Literal, QTree
 from ..reremi.classRedescription import Redescription
 from ..reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
-from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
             
@@ -29,7 +26,7 @@ class TreeView(GView):
     SDESC = "Tree"
     ordN = 5
     title_str = "Decision Tree"
-    typesI = ["Var", "Reds"]
+    typesI = "vr"
     
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
@@ -42,9 +39,9 @@ class TreeView(GView):
     missing_yy = -1./6
     
     @classmethod
-    def suitableView(tcl, geo=False, queries=None, tabT=None):
+    def suitableView(tcl, geo=False, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
-               ( queries is None or (queries[0].isTreeCompatible() and queries[1].isTreeCompatible()))
+               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
 
     def __init__(self, parent, vid, more=None):
         self.current_r = None
@@ -55,7 +52,7 @@ class TreeView(GView):
     def getId(self):
         return (self.TID, self.vid)
 
-    def setCurrent(self, qr=None, source_list=None):
+    def setCurrent(self, qr=None):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
@@ -68,10 +65,9 @@ class TreeView(GView):
             ## self.suppABCD = red.supports().getVectorABCD()
             self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
             self.current_r = red
-            self.source_list=source_list
             self.updateText(red)
             self.updateMap()
-            self.updateHist(red, init=True)
+            ## self.updateHist(red, init=True)
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
@@ -108,8 +104,8 @@ class TreeView(GView):
             if upAll:
                 self.updateText(red)
                 self.makeMenu()
-                self.updateOriginal(red)
-                self.updateHist(red)
+                self.sendEditBack(red)
+                ## self.updateHist(red)
             self.updateMap(update_trees)
             return red
         else: ### wrongly formatted query, revert
@@ -122,12 +118,12 @@ class TreeView(GView):
         """
         self.highl = {}
         self.hight = {}
-        # self.MapfigMap = plt.figure()
-        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        # self.MapfigMap.clear()
+
         if not hasattr( self, 'axe' ):
             self.axe = self.MapfigMap.add_subplot( 111 )
+            # rect = 0.01,0.01,0.98,0.98
+            # self.axe = self.MapfigMap.add_axes(rect)
+            # self.axe.set_frame_on(False)
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -397,11 +393,6 @@ class TreeView(GView):
 
         #return [add_boxbis, add_box]
         return [add_boxB]
-
-
-    def additionalBinds(self):
-        for button in self.buttons:
-            button["element"].Bind(wx.EVT_BUTTON, button["function"])
 
 
     def sendOtherPick(self, gid_parts):
