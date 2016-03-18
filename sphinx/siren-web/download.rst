@@ -18,8 +18,12 @@ The matplotlib library enables to generate high quality figures, seamlessly inte
 
 .. _code:
 
+
 Source code
 ============
+
+The source code is hosted in a Git repository on `InriaForge <https://gforge.inria.fr/projects/siren/>`_.
+You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
 
 :src_release:`.tar.gz`
 
@@ -101,4 +105,4 @@ CHANGELOG
 
 The latest release for each platform are listed here. Previous versions can be found in :code_url:`this folder </>`.
 
-Feel free to contact us for support or with feedback, bug reports and questions.
+Feel free to contact us for support or with feedback, bug reports and questions. :contact_email:`mailto:`

@@ -191,6 +191,7 @@
 
 {%- block footer %}
     <div class="footer">
+    <img src="http://www.loria.fr/~egalbrun/php/pixel.php">
     {%- if show_copyright %}
       {%- if hasdoc('copyright') %}
         {% trans path=pathto('copyright'), copyright=copyright|e %}&copy; <a href="{{ path }}">Copyright</a> {{ copyright }}.{% endtrans %}
@@ -204,6 +205,8 @@
     {%- if show_sphinx %}
       {% trans sphinx_version=sphinx_version|e %}Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> {{ sphinx_version }}.{% endtrans %}
     {%- endif %}
+<br/>
+The source code hosted in a Git repository on <a href="https://gforge.inria.fr/projects/siren/">InriaForge</a>. You can <a href="https://gforge.inria.fr/scm/?group_id=8278">clone it.</a>
     </div>
 {%- endblock %}
   </body>

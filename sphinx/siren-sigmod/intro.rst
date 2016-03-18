@@ -8,9 +8,9 @@ Introduction
 .. note:: 
    This webpage summarizes information about the demonstration of the *Siren* interactive interface for redescription mining to be presented at the `2014 ACM SIGMOD/PODS Conference, Snowbird, Utah, USA on June 22-27, 2014 <http://sigmod2014.org>`_.
 
-   Esther Galbrun and Pauli Miettinen. Interactive Redescription Mining. In *SIGMOD*. 2014. `Preprint <http://www.cs.helsinki.fi/u/galbrun/pdfs/GM14_interactive.pdf>`_.
+   Esther Galbrun and Pauli Miettinen. Interactive Redescription Mining. In *SIGMOD*. 2014. :pdf_link:`Preprint <GM14_interactive.pdf>`.
 
-   More details can be found on the main *Siren* `webpage <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/main/>`_ or in the `user guide <http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/help/>`_.
+   More details can be found on the main *Siren* :project_url:`webpage <main/>` or in the :project_url:`user guide <help/>`.
 
 
 Redescription mining is a powerful data analysis tool that aims at finding alternative descriptions of the same entities.

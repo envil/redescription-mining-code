@@ -35,6 +35,7 @@ cp ${SRC_REP}/siren/common_details.py ${SPHINX_REP}/siren/
 ### UPDATE THE IMPORT PATH FOR COMMON VARIABLES IN SPHINX CONF FILES
 sed -i -e s:__SIREN_PYTHON_PATH__:${SPHINX_REP}/siren:g ${SPHINX_REP}/*/conf.py
 
+# #### MAKE HELP
 cd ${SPHINX_REP}/siren-help/
 rm -rf _build
 make html
@@ -42,39 +43,32 @@ make latexpdf
 cp -r _build/html ${OUT_REP}/help
 cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
 
+# #### MAKE MAIN
 cd ${SPHINX_REP}/siren-web/
 rm -rf _build
 make html
 cp -r _build/html ${OUT_REP}/main
 
-cd ${SPHINX_REP}/siren-sigmod/
-rm -rf _build
-make singlehtml
-make latexpdf
-cp -r _build/singlehtml ${OUT_REP}/sigmod
-cp _build/latex/Siren.pdf ${OUT_REP}/sigmod/Siren-SIGMOD.pdf
-
-cd ${SPHINX_REP}/siren-icdm/
-rm -rf _build
-make singlehtml
-make latexpdf
-cp -r _build/singlehtml ${OUT_REP}/icdm
-cp _build/latex/Siren.pdf ${OUT_REP}/icdm/Siren-ICDM.pdf
-
+#### MAKE CONF SPECIFIC
+for conf in "sigmod" "icdm"; do
+    cd ${SPHINX_REP}/siren-${conf}/
+    rm -rf _build
+    make singlehtml
+    make latexpdf
+    cp -r _build/singlehtml ${OUT_REP}/${conf}
+    cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
+done
 
 cd ${OUT_REP}
 sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html
 sed -i 's:\([^/]\)_images/:\1../_images/:g' */*.html
-mv help/_static ./
-mv help/_images ./
-mv main/_static/* ./_static/
-mv main/_images/* ./_images/
-mv sigmod/_static/* ./_static/
-mv sigmod/_images/* ./_images/
-mv icdm/_static/* ./_static/
-mv icdm/_images/* ./_images/
+mkdir ./_static/ ./_images/
+for fold in "help" "main" "sigmod" "icdm"; do
+    mv ${fold}/_static/* ./_static/
+    mv ${fold}/_images/* ./_images/
+    rmdir ${fold}/_static ${fold}/_images
+done
 rm */objects.inv
-rmdir main/_images main/_static sigmod/_images sigmod/_static icdm/_images icdm/_static
 
-cd ${PACK_REP}
-tar -cvzf sphinx-siren-out.tar.gz out
+# cd ${PACK_REP}
+# tar -cvzf sphinx-siren-out.tar.gz out

@@ -54,7 +54,7 @@ Finally the third method available in *Siren* construct queries by progressively
 .. _cartwheels:
 
 CARTWheels (a variant is available in Siren)
--------------------------------------
+---------------------------------------------
 
 The first algorithm introduced for redescription mining was actually based on alternating between constructing CARTs and hence was called the CARTWheels algorithm.
 

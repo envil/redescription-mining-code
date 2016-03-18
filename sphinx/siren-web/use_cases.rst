@@ -196,7 +196,7 @@ Finnish 2011 parliamentary elections (Try it out!)
 
 .. note:: 
    In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 
-   The prepared dataset is available `here. <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/>`_
+   The prepared dataset is available :data_link:`here <vaalikone/>`.
 
 Data
 -----
@@ -209,7 +209,7 @@ the other view.
 Exploration
 ------------
 
-1. Download the `data as .siren file <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone.siren>`_ ( as well as the `english translation of the Q&A <http://www.cs.helsinki.fi/u/galbrun/redescriptors/data/vaalikone/vaalikone_translation_eng.txt>`_). 
+1. Download the :data_link:`data as .siren file <vaalikone/vaalikone.siren>` ( as well as the :data_link:`english translation of the Q&A <vaalikone/vaalikone_translation_eng.txt>`). 
 
 2. Start siren and open the data via :menuselection:`File --> Open`.
 

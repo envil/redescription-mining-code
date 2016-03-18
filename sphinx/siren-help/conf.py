@@ -12,8 +12,9 @@
 # serve to show the default.
 
 import sys, os
+from datetime import datetime
 sys.path.append("__SIREN_PYTHON_PATH__")
-from common_details import common_variables
+from common_details import common_variables, getExtLinks
 cv = common_variables
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -63,7 +64,8 @@ release = cv["VERSION"]
 # non-false value, then it is used:
 #today = ''
 # Else, today_fmt is used as the format for a strftime call.
-today_fmt = '%B, %Y'
+# today_fmt = '%B, %Y'
+today = datetime.strptime(cv["LAST_CHANGES_DATE"].split(" +")[0], "%a, %d %b %Y %H:%M:%S").strftime("%B, %Y")
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -128,6 +130,7 @@ html_style = "custom.css"
 #html_favicon = None
 
 html_copy_source = False
+# html_output_encoding = 'iso-8859-1'
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
