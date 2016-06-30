@@ -14,6 +14,7 @@ from classMiner import instMiner, StatsMiner
 from classQuery import Query
 import pdb
 
+from codeRRM import RedModel
 
 def loadAll(arguments=[]):
     pref_dir = os.path.dirname(os.path.abspath(__file__))
@@ -173,8 +174,8 @@ def outputResults(filenames, results_batch, data=None, header=None, header_named
         else:
             results_batch["batch"][pos].write(filesfp["queries"], filesfp["support"], filesfp["queries_named"], names)
 
-    for ffp in filesfp.values():
-        if ffp is not None:
+    for (ffi, ffp) in filesfp.items():
+        if ffp is not None and filenames.get(ffi, "") != "-":
             ffp.close()
 
 def loadPackage(filename, pm):
@@ -242,6 +243,37 @@ def run(args):
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
 
+def run_filterRM(args):
+
+    params, data, logger, filenames, reds = loadAll(args)
+    constraints = Constraints(data, params)
+
+    candidate_ids = range(len(reds))
+    scores = numpy.zeros((len(reds)+2, len(reds)))
+    keep_ids = []
+    rm = RedModel(data)
+    best = (0, -1)
+    while best[-1] is not None:
+        best = (0, None)
+        tic = datetime.datetime.now()
+        for rr, ri in enumerate(candidate_ids):
+            top = rm.getTopDeltaRed(reds[ri], data)
+            scores[ri, len(keep_ids)] = top[0]
+            if top[0] < best[0]:
+                best = (top[0], top[1], rr)
+                # print top, reds[ri].disp()
+
+        if best[-1] is not None:
+            ri = candidate_ids.pop(best[-1])
+            scores[-2, len(keep_ids)] = (datetime.datetime.now()-tic).total_seconds()
+            scores[-1, len(keep_ids)] = ri
+            keep_ids.append(ri)
+            rm.addRed(reds[ri], data, best[1])
+            print "%f\t%d\t%s" % (best[0], ri, reds[ri].disp())
+
+    numpy.savetxt('scores.txt', scores, fmt="%f")
+
+    
 def run_filter(args):
 
     #### on 100
@@ -343,5 +375,7 @@ if __name__ == "__main__":
         run_splits(sys.argv[:-1])
     elif sys.argv[-1] == "filter":
         run_filter(sys.argv[:-1])
+    elif sys.argv[-1] == "filterRM":
+        run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)

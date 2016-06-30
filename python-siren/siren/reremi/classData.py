@@ -144,7 +144,7 @@ class ColM(object):
     def getMax(self, details=None):
         return "-"
     def getMissInfo(self, details=None):
-        return "%1.2f%%: %d"% (len(self.missing)/float(self.N), len(self.missing))
+        return "%1.2f: %d"% (len(self.missing)/float(self.N), len(self.missing))
     def getRange(self):
         return []
 
@@ -610,7 +610,7 @@ class NumColM(ColM):
     NA = NA_num
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
-    alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
+    alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]\d+)?$"
     def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
         if (matchMiss is not False and v == matchMiss) or v == str(NumColM.NA):
             miss.add(j)
@@ -624,9 +624,10 @@ class NumColM(ColM):
                         miss.add(j)
                     return v, prec
             else:
-                if len(tmatch.group("dec")) > prec:
-                    prec = len(tmatch.group("dec"))
-
+                pprec = len(re.match(NumColM.p_patt, str(float(v))).group("dec"))
+                if pprec > prec:
+                    prec = pprec
+                    
             val = float(v)
             if exclude is False or val != exclude:
                 vals.append((val, j))
@@ -2331,7 +2332,7 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
 
 def main():
     rep = "/home/galbrun/"
-    data = Data([rep+"dblp_data/coauthor_filtered0_numA.csv", rep+"dblp_data/conference_filtered0_numA.csv", {}, ""], "csv")
+    data = Data([rep+"short/Jena18Odata_soil2.csv", rep+"short/Jena18Odata_soil2.csv", {}, ""], "csv")
     print data
     # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
     # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])

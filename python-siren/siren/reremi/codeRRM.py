@@ -142,6 +142,9 @@ class ProbDContinuous(ProbD):
     def __init__(self, lb, ub, prec=1):
         self.bounds = (lb, ub)
         self.l = float(ub-lb)
+        if numpy.isinf(self.l):
+            pdb.set_trace()
+            print self.l, ub, lb
         self.prec = float(prec)
 
     def __str__(self):
@@ -152,7 +155,7 @@ class ProbDContinuous(ProbD):
         return ProbDContinuous(self.bounds[0], self.bounds[1], self.prec)
         
     def getPr(self, v):
-        if type(v) is float or type(v) is int:
+        if type(v) in [float, int, numpy.float64]:
             if v <= self.bounds[1] and v >= self.bounds[0]:
                 return 1/(10**self.prec*self.l +1)
             return 0
@@ -486,6 +489,8 @@ class LitFactory:
             method_col =  eval("LitD" + LitFactory.CT.get(data.cols[side][ci].typeId(), "-"))
         except AttributeError:
             raise Exception('No LitD for this type (%s)!'  %  data.cols[side][ci].typeId())
+        # if side == 1 and ci == 19:
+        #     pdb.set_trace()
         c = method_col(side, ci, data, supp, bkp, {rid:lit})
         return c
     getLit = staticmethod(getLit)
@@ -698,7 +703,7 @@ class LitDNum(LitD):
     def upRnge(self, rnge, lit):
         if lit.isNeg():
             ### DOES NOT WORK WITH NEGATIONS
-            return [float("Inf"), float("-Inf")]
+            return rnge # [float("Inf"), float("-Inf")]
         elif rnge is None:
             rnge = lit.getTerm().valRange()
         else:
@@ -766,10 +771,10 @@ class RedModel:
         for side in [0,1]:
             if sideAdd is None or sideAdd == side:            
                 for lit in red.invLiteralsSide(side):
-                    if lit.col() in lits[side]:
-                        nlits[side][lit.col()] = lits[side][lit.col()].addCopy(lit, supp, data, rid)
+                    if lit.colId() in lits[side]:
+                        nlits[side][lit.colId()] = lits[side][lit.colId()].addCopy(lit, supp, data, rid)
                     else:
-                        nlits[side][lit.col()] = LitFactory.getLit(side, lit.col(), data, supp, self.dm.getD(side, lit.col(), "Full"), lit, rid)
+                        nlits[side][lit.colId()] = LitFactory.getLit(side, lit.colId(), data, supp, self.dm.getD(side, lit.colId(), "Full"), lit, rid)
                     
             for li, l in lits[side].items():
                 if li not in nlits[side]:
@@ -828,27 +833,35 @@ class RedModel:
             if len(suppt) > 0:
                 for side in [0, 1]:
                     for lit in red.invLiteralsSide(side):
-                                            
-                        vals = data.cols[side][lit.col()].getVector()
-                        if lit.col() in sb["lits"][side]:
-                            lt = sb["lits"][side][lit.col()].addCopy(lit, suppt, data, -1)
-                            lC = sb["lits"][side][lit.col()]
+
+                        try:
+                            vals = data.cols[side][lit.colId()].getVector()
+                        except AttributeError:
+                            pdb.set_trace()
+                            print lit
+                        if lit.colId() in sb["lits"][side]:
+                            lt = sb["lits"][side][lit.colId()].addCopy(lit, suppt, data, -1)
+                            lC = sb["lits"][side][lit.colId()]
                             sI = lt.getSupp()
                             sO = list(suppt & (lC.getSupp() - sI))
                             sI = list(sI)
-                            lB = self.dm.getColD(side, lit.col())
+                            lB = self.dm.getColD(side, lit.colId())
                             nFB = len(sO)
                         else:
-                            lt = LitFactory.getLit(side, lit.col(), data, suppt, self.dm.getD(side, lit.col(), "Full"), lit, -1)
+                            lt = LitFactory.getLit(side, lit.colId(), data, suppt, self.dm.getD(side, lit.colId(), "Full"), lit, -1)
                             sI = list(lt.getSupp())
                             sO = list([])
-                            lC = self.dm.getColD(side, lit.col())
+                            lC = self.dm.getColD(side, lit.colId())
                             lB = lC
                             nFB = len(suppt) - len(sI)
 
                         cFallB[side] += nFB
-                        totS[side] += sum([pr2cl(pc/pn) for (pn,pc) in \
-                                           zip(lt.getPrs(vals, sI), lC.getPrs(vals, sI))])
+                        try:
+                            totS[side] += sum([pr2cl(pc/pn) for (pn,pc) in \
+                                               zip(lt.getPrs(vals, sI), lC.getPrs(vals, sI))])
+                        except ZeroDivisionError:
+                            pdb.set_trace()
+                            lt.getPrs(vals, sI)
 
                         if len(sO) > 0:
                             totS[side] += sum([pr2cl(pc/pn) for (pc,pn) in \
@@ -868,15 +881,15 @@ class RedModel:
             suppt = set(sb["supp"])
             for side in sides:
                 for lit in red.invLiteralsSide(side):                 
-                    if lit.col() in sb["lits"][side] and sb["lits"][side][lit.col()].hasRid(rid):
-                        vals = data.cols[side][lit.col()].getVector()
+                    if lit.colId() in sb["lits"][side] and sb["lits"][side][lit.colId()].hasRid(rid):
+                        vals = data.cols[side][lit.colId()].getVector()
 
-                        lt = sb["lits"][side][lit.col()].removeCopy(rid, suppt, self.dm.getD(side, lit.col(), "Full"), data)
-                        lC = sb["lits"][side][lit.col()]
+                        lt = sb["lits"][side][lit.colId()].removeCopy(rid, suppt, self.dm.getD(side, lit.colId(), "Full"), data)
+                        lC = sb["lits"][side][lit.colId()]
                         sI = lC.getSupp()
                         sO = list(suppt & (lt.getSupp() - sI))
                         sI = list(sI)
-                        lB = self.dm.getColD(side, lit.col())
+                        lB = self.dm.getColD(side, lit.colId())
                         nFB = len(sO)
 
                         cFallB[side] += nFB
@@ -892,7 +905,7 @@ class RedModel:
             ### LENGTH OF QUERY DESCRIPTION, BOTH SIDES
             for lit in red.invLiteralsSide(side):
                 tot -= self.stdcl["cols"][side]+2
-                tot -= self.dm.getColD(side, lit.col(), "Full").getLL(lit)
+                tot -= self.dm.getColD(side, lit.colId(), "Full").getLL(lit)
         for side in sides:
             ### LENGTH OF SUPPORT DESCRIPTION, OPPOSITE SIDE
             tot -= pr2cl(1.0/len(red.supp(1-side)))*(len(red.supp(1-side))-red.getLenI())
@@ -919,7 +932,7 @@ class RedModel:
         for side in [0,1]:
             for lit in red.invLiteralsSide(side):
                 ql[side] += self.stdcl["cols"][side]+2
-                ql[side] += self.dm.getColD(side, lit.col(), "Full").getLL(lit)
+                ql[side] += self.dm.getColD(side, lit.colId(), "Full").getLL(lit)
         return ql
 
     def getSLRed(self, red):

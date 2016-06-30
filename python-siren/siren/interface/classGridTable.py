@@ -16,12 +16,12 @@ def getRGB(h,l, s):
 
 class CustRenderer(wx.grid.PyGridCellRenderer):
 
-    BACKGROUND = wx.Colour(100,100,100)
-    TEXT = wx.Colour(100,100,100)
+    BACKGROUND = wx.Colour(255, 255, 255, 255) # wx.Colour(100,100,100)
+    TEXT = wx.Colour(76, 76, 76, 255)  #wx.Colour(100,100,100)
     SBRUSH = wx.SOLID
     
-    BACKGROUND_SELECTED = wx.Colour(100,100,100)
-    TEXT_SELECTED = wx.Colour(100,100,100)
+    BACKGROUND_SELECTED = wx.Colour(240, 119, 70, 255) # wx.Colour(100,100,100)
+    TEXT_SELECTED = wx.Colour(255, 255, 255, 255) # wx.Colour(100,100,100)
     SBRUSH_SELECTED = wx.SOLID
 
     BACKGROUND_GREY = wx.Colour(240,255,240)

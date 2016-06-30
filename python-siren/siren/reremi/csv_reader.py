@@ -68,6 +68,8 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             dialect = csv.Sniffer().sniff(f.read(2048))
         except Exception:
             dialect = "excel"
+        # pdb.set_trace()
+        # print "Dialect", dialect
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
         #f.seek(0)

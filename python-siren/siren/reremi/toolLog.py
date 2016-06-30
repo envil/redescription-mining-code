@@ -184,6 +184,7 @@ class Log(object):
                         header = "[[%-10s]]\t" % header
                     out["destination"].write("%s%s\n" % (header, message))
                     out["destination"].flush()
+
                 else:
                     # print "Log printing:\t", type_message, message, "\n\tFrom", source ," to ", out["destination"]
                     out["method"](out["destination"], message, type_message, source)

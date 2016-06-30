@@ -71,7 +71,7 @@ common_variables = {
     "PDFS_URL": home_eg+"pdfs/",
     "DATA_URL": home_eg+"redescriptors/data/",
     "PROJECT_URL": home_siren,
-    "CODE_URL": home_eg+"redescriptors/code/siren/",
+    "CODE_URL": home_siren+"/code/",
     "CODE_MAC_URL": "http://www.cs.helsinki.fi/u/pamietti/data/siren/",
     "DOWNLOAD_URL": home_siren+"php/download.php",
     "CODE_LOC": "1",
