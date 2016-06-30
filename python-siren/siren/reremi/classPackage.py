@@ -28,7 +28,7 @@ class Package(object):
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
 
-    FILETYPE_VERSION = 4
+    FILETYPE_VERSION = 5
     XML_FILETYPE_VERSION = 3
 
     NA_str = "NA"

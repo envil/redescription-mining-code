@@ -18,20 +18,41 @@ from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
-
 import pdb
 
 
 class CustToolbar(NavigationToolbar):
     def __init__(self, plotCanvas, parent):
-        self.toolitems = [(None, None, None, None)] #  (('Save', 'Save the figure', 'filesave', 'save_figure'),)
+        self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'))
+        # , (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure')
+
         NavigationToolbar.__init__(self, plotCanvas)
         self.parent = parent
 
-        # self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'), (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure'))
 
-    def set_history_buttons(self):
-        pass
+    # def _init_toolbar(self):
+    #     print "_init_toolbar"
+
+    #     self._parent = self.canvas.GetParent()
+
+    #     self.wx_ids = {}
+    #     for text, tooltip_text, image_file, callback in self.toolitems:
+    #         if text is None:
+    #             self.AddSeparator()
+    #             continue
+    #         self.wx_ids[text] = wx.NewId()
+    #         if text in ['Pan', 'Zoom']:
+    #            self.AddCheckTool(self.wx_ids[text], _load_bitmap(image_file + '.png'),
+    #                              shortHelp=text, longHelp=tooltip_text)
+    #         else:
+    #            self.AddSimpleTool(self.wx_ids[text], _load_bitmap(image_file + '.png'),
+    #                               text, tooltip_text)
+    #         bind(self, wx.EVT_TOOL, getattr(self, callback), id=self.wx_ids[text])
+
+    #     self.Realize()
+
+    # def set_history_buttons(self):
+    #     pass
 
     def mouse_move(self, event=None):
         if event is not None:

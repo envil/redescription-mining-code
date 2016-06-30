@@ -1653,7 +1653,10 @@ class Data(object):
 
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            if len(header) == 0:
+                header.append("")
+            header[-1] += " # type=%s" % letter
+            # header.append("type=%s" % letter)
 
         if len(header) > 0:
             csv_reader.write_row(csvf, header)
@@ -1678,7 +1681,7 @@ class Data(object):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]]
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            header[-1].append("# type=%s" % letter)
         csv_reader.write_row(csvf, header)
         if not inline:
             trids, tcids = {}, {}
@@ -1743,7 +1746,10 @@ class Data(object):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]]
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            if len(header) == 0:
+                header.append("")
+            header[-1] += " # type=%s" % letter
+            # header.append("type=%s" % letter)
         csv_reader.write_row(csvf, header)
         if not details:
             rids = {}

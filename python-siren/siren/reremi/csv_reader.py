@@ -54,6 +54,7 @@ def write_row(csvf, row_data):
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     type_all = None
+    skipfirst = False
     if type(filename) is str or type(filename) is unicode:
         f = open(filename, 'rU')
         fcl = True
@@ -76,16 +77,23 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
         head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+
+        tmp = re.search('#*\s*"?type=(?P<type>\w)"?', head[-1])
+        if tmp is not None:
+            tt = head.pop().split("type=")[0].strip("# \"'")
+            if len(tt) > 0:
+                head.append(tt)
+            type_all = tmp.group('type')
+            if len(head) == 0:
+                head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+                skipfirst = True
+
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
-            tmp = re.match('type=(?P<type>\w)', head[-1])
-            if tmp is not None:
-                head.pop()
-                type_all = tmp.group('type')
             data = dict([(head[i].strip(),[]) for i in range(len(head))])
             if len(data) != len(head):
                 map_names = {}
@@ -100,8 +108,10 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         no_of_columns = len(head)
 
         for row in csvreader:
+            if skipfirst:
+                skipfirst = False
+                continue
             if len(row) != no_of_columns:
-#                pdb.set_trace()
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
                                  str(no_of_columns)+')')
