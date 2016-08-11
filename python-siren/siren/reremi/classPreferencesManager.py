@@ -1,3 +1,4 @@
+import glob, os.path, sys
 import getopt, re
 import toolRead
 import pdb
@@ -565,9 +566,15 @@ def getParams(arguments, conf_defs):
 
     return params
 
+def getPM(conf_defs=None):
+    if conf_defs is None:
+        pref_dir = os.path.dirname(os.path.abspath(__file__))
+        conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
+    return PreferencesManager(conf_defs)
+
 if __name__ == "__main__":
-	import glob, os.path, sys
 	pref_dir = os.path.dirname(os.path.abspath(__file__))
 	conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
 	params = getParams(sys.argv, conf_defs)
 	print params
+

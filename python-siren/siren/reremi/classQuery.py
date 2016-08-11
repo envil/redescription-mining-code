@@ -643,9 +643,11 @@ class NumTerm(Term):
         return None
 
     def isComplement(self, term):
-        return (numpy.isinf(self.lowb) and numpy.isinf(term.upb) and term.lowb == self.upb) or \
-               (numpy.isinf(term.lowb) and numpy.isinf(self.upb) and self.lowb == term.upb)
-
+        if term.type_id == self.type_id:
+            return (numpy.isinf(self.lowb) and numpy.isinf(term.upb) and term.lowb == self.upb) or \
+                   (numpy.isinf(term.lowb) and numpy.isinf(self.upb) and self.lowb == term.upb)
+        else:
+            return False
 #     def simple(self, neg):
 #         if neg:
 #             if self.lowb == float('-Inf'):

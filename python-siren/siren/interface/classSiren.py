@@ -1652,7 +1652,7 @@ class Siren():
         # if len(err) > 0:
         #     self.logger.printL(1, err, "error", "WP")
         self.reloadReds()
-        self.tabbed.ChangeSelection(self.tabs_keys.index(self.tabbed.GetSelection()))
+        self.tabbed.ChangeSelection(self.tabbed.GetSelection())
 
     def reloadVars(self, review=True):
         ## Initialize variable lists data

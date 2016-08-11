@@ -1446,7 +1446,8 @@ class Data(object):
                 if re.search(pattern, col.getName()):
                     results.append((sito, ci))
         return results
-        
+
+    ### creating subsets split
     def rsubsets_split(self, nbsubs=10, split_vals=None, grain=10.):
         # uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
         # return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
@@ -1878,8 +1879,23 @@ class Data(object):
         self.coords_points = None
         if coords is not None:
             if (len(coords)==2 and len(coords[0]) == self.nbRows()):
-                self.coords = coords
-                self.coords_points = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+                coords_tmp = coords
+                coords_points_tmp = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+                #### check for duplicates and randomize
+                ids_miss = np.where((coords_points_tmp[:,1]==-361) & (coords_points_tmp[:,0]==-361))[0]
+                ids_pres = list(set(range(self.nbRows())).difference(ids_miss))
+                # keys_cc = ["%s:%s" % (coords_points_tmp[v,0], coords_points_tmp[v,1]) for v in ids_pres]
+                # pdb.set_trace()
+                # if len(ids_pres) > len(set(keys_cc)):
+                #     print len(ids_pres), len(set(keys_cc))
+                miss_cc = (np.min(coords_points_tmp[ids_pres,0]), np.min(coords_points_tmp[ids_pres,1]))
+                coords_points_tmp[ids_miss,0] = miss_cc[0]
+                coords_points_tmp[ids_miss,1] = miss_cc[1]
+                for cci in ids_miss:
+                    coords_tmp[0][cci] = [miss_cc[0]]
+                    coords_tmp[1][cci] = [miss_cc[1]]
+                self.coords_points = coords_points_tmp
+                self.coords = coords_tmp
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
 

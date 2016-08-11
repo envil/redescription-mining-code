@@ -268,8 +268,8 @@ def has_coord(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = ( [map(float, p.strip(" :").split(":")) for p in D['data'][s]],
-                              [map(float, p.strip(" :").split(":")) for p in D['data'][t]])
+                    coord = ( [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][s]],
+                              [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][t]])
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -288,8 +288,8 @@ def has_coord_sparse(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = (dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
-                             dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
+                    coord = (dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
+                             dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
