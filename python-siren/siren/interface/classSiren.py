@@ -41,6 +41,39 @@ def initIcons(icons_setts, path=[]):
     return icons
 
 
+class ProjCache():
+
+    def __init__(self, capac=10):
+        self.cache = {}
+        ### for now, unused
+        self.capac = capac
+
+    def queryPC(self, proj, vid):
+        phsh = "%s:%s" % (vid[0], proj.getParamsHash())
+        # print "Query PC", proj, vid, phsh
+        if phsh in self.cache:
+            if self.cache[phsh]["coords"] is not None:
+                proj.setCoords(self.cache[phsh]["coords"])
+                self.cache[phsh]["served"].append((vid, proj)) 
+                return 0
+            else:
+                self.cache[phsh]["waiting"].append((vid, proj)) 
+                return 1
+        elif "random_state" not in proj.getParameters():
+            self.cache[phsh] = {"coords": None, "waiting": [], "served": []}
+        return -1
+
+    def incomingPC(self, proj, vid):
+        phsh = "%s:%s" % (vid[0], proj.getParamsHash())
+        # print "Incoming PC", proj, vid, phsh
+        if phsh in self.cache:
+            self.cache[phsh]["coords"] = proj.getCoords()
+            while len(self.cache[phsh]["waiting"]) > 0:
+                tmp =  self.cache[phsh]["waiting"].pop()
+                tmp[1].setCoords(self.cache[phsh]["coords"])
+                self.cache[phsh]["served"].append(tmp)
+            return self.cache[phsh]["served"] 
+        return []
  
 class Siren():
     """ The main frame of the application
@@ -91,6 +124,7 @@ class Siren():
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None
+        self.proj_cache = ProjCache()
         self.dw = None
         self.plant = WorkPlant()
         tmp_tabs = [{"id": "rows", "title":"Entities", "short": "Ent", "type":"Row", "hide":False, "style":None},
@@ -996,6 +1030,7 @@ class Siren():
                 return
             self.selectedViewX = view.getId()
             self.view_ids[self.selectedViewX] = view
+            view.lastStepInit()
         else:
             self.selectedViewX = (viewT, vid)
         self.view_ids[self.selectedViewX].toTop()
@@ -1074,13 +1109,22 @@ class Siren():
         self.checkResults(menu=True)
 
     def project(self, proj=None, vid=None):
+        ### HERE
         self.progress_bar.Show()
         if proj is not None and vid is not None:
-            wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
-            if wid is None:
-                self.plant.getWP().addWorker("projector", self, proj,
-                                     {"vid": vid})
-                self.checkResults(menu=True)
+            out = self.proj_cache.queryPC(proj, vid)
+            if out == 0:
+                # print "Found previous proj"
+                self.readyProj(vid, proj)
+            elif out < 0:
+                # print "No previous proj"
+                wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
+                if wid is None:
+                    self.plant.getWP().addWorker("projector", self, proj,
+                                         {"vid": vid})
+                    self.checkResults(menu=True)
+            # else:
+            #     print "Waiting previous proj"
 
     def checkResults(self, menu=False):
         updates = self.plant.getWP().checkResults(self)
@@ -1729,6 +1773,12 @@ class Siren():
                 red.setRestrictedSupp(self.getData())
             self.tabs[tab]["tab"].insertItems(reds)
 
-    def readyProj(self, vid, proj):
+    def readyProj(self, vid, proj):        
+        adjunct_vps = self.proj_cache.incomingPC(proj, vid)
+        # print "Ready proj", vid, proj, adjunct_vps
+        # print "View IDS", self.view_ids.keys()
         if vid in self.view_ids:
             self.view_ids[vid].readyProj(proj)
+        for (avid, aproj) in adjunct_vps:
+            if avid in self.view_ids:
+                self.view_ids[avid].readyProj(aproj)

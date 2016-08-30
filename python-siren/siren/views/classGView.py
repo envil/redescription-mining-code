@@ -195,6 +195,8 @@ class GView(object):
             self.mapFrame.Show()
         self.suppABCD = None
 
+    def lastStepInit(self):
+        pass
 
     def isIntab(self):
         return self.intab

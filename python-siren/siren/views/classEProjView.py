@@ -75,7 +75,10 @@ class EProjView(GView):
         if not self.isIntab():
             self.mapFrame.Show()
         self.suppABCD = None
+
+    def lastStepInit(self):
         self.runProject()
+
 
     def getShortDesc(self):
         return "%s %s" % (self.getRedId(), self.getProj().SDESC)
@@ -195,6 +198,7 @@ class EProjView(GView):
 
     def OnReproject(self, rid=None):
         self.getProj().initParameters(self.boxes)
+        self.getProj().addParamsRandrep()
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
         #     self.initProject(tmp_id)
@@ -208,10 +212,10 @@ class EProjView(GView):
         
     def runProject(self):
         self.init_wait()
-        self.parent.project(self.getProj(), self.getId())
         if self.repbut is not None:
             self.repbut.Disable()
             self.repbut.SetLabel("Wait...")
+        self.parent.project(self.getProj(), self.getId())
                       
     def readyProj(self, proj):
         if proj is not None:
