@@ -65,6 +65,15 @@
 	<default><value>#A020f0</value></default>
       </parameter>
       <parameter>
+	<name>color_h</name>
+	<label>Color Highlight</label>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
+	<legend>Color for highlighting entities.</legend>
+	<length>7</length>
+	<default><value>#FFFF00</value></default>
+      </parameter>
+      <parameter>
 	<name>dot_size</name>
 	<label>Dot size</label>
 	<parameter_type>range</parameter_type>

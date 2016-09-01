@@ -68,6 +68,7 @@ def applyF(f, parameters):
 
 class Proj(object):
 
+    rint_max = 10000
     PID = "---"
     SDESC = "---"
     whats = ["variables", "entities"]
@@ -105,6 +106,9 @@ class Proj(object):
 
     def getMCols(self):
         return self.mcols
+
+    def setCoords(self, coords):
+        self.coords_proj = coords
 
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:
@@ -223,11 +227,19 @@ class Proj(object):
         self.params.update(self.fix_parameters)
         self.params.update(params)
 
+    def addParamsRandrep(self):
+        pass
+        
     def getParameters(self, params={}):
         loc_params = {}
         loc_params.update(self.params)
         loc_params.update(params)
         return loc_params
+
+    def getParamsHash(self):
+        prms = self.getParameters()
+        return ";".join(["%s=%s" % (k, prms[k]) for k in sorted(prms.keys())])
+
 
     def getTunableParamsK(self):
         return self.gen_parameters.keys()
@@ -250,6 +262,10 @@ class AxesProj(Proj):
     gen_parameters = {"Xaxis": -1.0, "Yaxis": -1.0}
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
+
+    def addParamsRandrep(self):
+        if self.params.get("Yaxis", -1) == -1 or self.params.get("Xaxis", -1) == -1:
+            self.params["random_state"] = random.randint(0, self.rint_max)
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
@@ -288,6 +304,10 @@ class VrsProj(Proj):
     gen_parameters = dict(Proj.gen_parameters)
     gen_parameters.update({"Xaxis": -1, "Yaxis": -1})
     dyn_f = []
+
+    def addParamsRandrep(self):
+        if self.params.get("Yaxis", -1) == -1 or self.params.get("Xaxis", -1) == -1:
+            self.params["random_state"] = random.randint(0, self.rint_max)
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
@@ -450,6 +470,7 @@ if sys.platform != 'win32':
         fix_parameters = dict(DynProj.fix_parameters)
         fix_parameters.update({"compute_uv": True, "full_matrices":False })
         dyn_f = [numpy.linalg.svd]
+        #### http://docs.scipy.org/doc/numpy/reference/generated/numpy.linalg.svd.html
 
         def comp(self):
             matn = self.getData()
@@ -468,6 +489,10 @@ if sys.platform != 'win32':
         fix_parameters = dict(DynProj.fix_parameters)
         fix_parameters.update({"n_components": 2 })
         dyn_f = [random_projection.SparseRandomProjection]
+        #### http://scikit-learn.org/stable/modules/random_projection.html
+
+        def addParamsRandrep(self):
+            self.params["random_state"] = random.randint(0, self.rint_max)
 
         # Random 2D projection using a random unitary matrix
         def getX(self, X):
@@ -485,7 +510,11 @@ if sys.platform != 'win32':
        gen_parameters = dict(Proj.gen_parameters)
        gen_parameters.update({"iterated_power": 3 })
        dyn_f = [decomposition.RandomizedPCA]
+       #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
 
+       def addParamsRandrep(self):
+           self.params["random_state"] = random.randint(0, self.rint_max)
+ 
        def getX(self, X):
            X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
            return X_pca, 0
@@ -500,6 +529,10 @@ if sys.platform != 'win32':
         gen_parameters = dict(DynProj.gen_parameters)
         gen_parameters.update({"n_neighbors": 5, "max_iter":100})
         dyn_f = [manifold.Isomap]
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.manifold.Isomap.html
+
+        # def addParamsRandrep(self):
+        #     self.params["random_state"] = random.randint(0, self.rint_max)
 
         def getX(self, X):
             X_iso = self.applyF(manifold.Isomap).fit_transform(X)
@@ -517,6 +550,7 @@ if sys.platform != 'win32':
         options_parameters = dict(DynProj.options_parameters)
         options_parameters["method"] = [("standard", "standard"), ("hessian", "hessian"), ("modified", "modified"), ("ltsa", "ltsa")]
         dyn_f = [manifold.LocallyLinearEmbedding]
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.manifold.LocallyLinearEmbedding.html
 
         def getX(self, X):
             ### methods: standard, modified, hessian, ltsa
@@ -536,6 +570,7 @@ if sys.platform != 'win32':
         fix_parameters = dict(DynProj.fix_parameters)
         fix_parameters.update({"n_jobs": -2})
         dyn_f = [manifold.MDS]
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.manifold.MDS.html
 
         def getX(self, X):
             self.updatePL() 
@@ -554,6 +589,12 @@ if sys.platform != 'win32':
         gen_parameters.update({"max_depth":5, "n_estimators":10})
         fix_parameters = dict(DynProj.fix_parameters)
         dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomTreesEmbedding.html
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
+
+        def addParamsRandrep(self):
+            self.params["random_state"] = random.randint(0, self.rint_max)
+
 
         def getX(self, X):
             X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
@@ -568,7 +609,8 @@ if sys.platform != 'win32':
         SDESC = "Spectral"
         title_str = "Spectral Embedding"
         dyn_f = [manifold.SpectralEmbedding]
-
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.manifold.SpectralEmbedding.html
+        
         def getX(self, X):
             ### eigen solvers: arpack, lobpcg
             X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)

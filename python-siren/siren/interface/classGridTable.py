@@ -1,5 +1,6 @@
 import wx, wx.grid, re, colorsys, random, datetime, math
 from ..reremi.toolICList import ICList
+from ..reremi.classData import ColM
 from ..reremi.classQuery import SYM, Query, Literal
 from ..reremi.classRedescription import Redescription
 
@@ -732,10 +733,12 @@ class RowTable(GridTable):
         row = self.getRowForItem(rid)
         if row is not None:
             self.setSelectedRow(row)
-            if red is not None:
+            if isinstance(red, Redescription):
                 for side in [0,1]:
                     for l in red.queries[side].listLiterals():
                         self.sc.add(self.cols_map[(side, l.colId())])
+            elif isinstance(red, ColM):
+                self.sc.add(self.cols_map[(red.getSide(), red.getId())])
             self.redraw()
         return row
 

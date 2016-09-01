@@ -43,6 +43,8 @@ class EProjView(GView):
         self.initProject(more)
         self.initView()
         self.suppABCD = None
+
+    def lastStepInit(self):
         self.runProject()
 
     def getShortDesc(self):
@@ -165,6 +167,7 @@ class EProjView(GView):
 
     def OnReproject(self, rid=None):
         self.getProj().initParameters(self.boxes)
+        self.getProj().addParamsRandrep()
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
         #     self.initProject(tmp_id)
@@ -178,10 +181,10 @@ class EProjView(GView):
         
     def runProject(self):
         self.init_wait()
-        self.parent.project(self.getProj(), self.getId())
         if self.repbut is not None:
             self.repbut.Disable()
             self.repbut.SetLabel("Wait...")
+        self.parent.project(self.getProj(), self.getId())
                       
     def readyProj(self, proj):
         if proj is not None:
@@ -286,7 +289,7 @@ class EProjView(GView):
                 self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
             self.axe.axis([x0-bx, x1+bx, y0-by, y1+by])
-            self.updateEmphasize(self.COLHIGH, review=False)
+            self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
         else:

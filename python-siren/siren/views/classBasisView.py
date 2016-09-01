@@ -9,6 +9,7 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.text import Annotation
 from matplotlib.patches import Polygon
 from matplotlib.path import Path
 
@@ -143,6 +144,9 @@ class BasisView(object):
         self.initSizeRelative()
         if not self.isIntab():
             self.mapFrame.Show()
+
+    def lastStepInit(self):
+        pass
 
     def isIntab(self):
         return self.intab
@@ -468,7 +472,7 @@ class BasisView(object):
     def setSizeSpec(self, figsize):
         pass
 
-    def _SetSize(self, initSize=None):
+    def _SetSize(self, initSize=None): 
         if initSize is None:
             pixels = tuple(self.mapFrame.GetClientSize() )
         else:
@@ -708,18 +712,19 @@ class BasisView(object):
     def updateText(self, red = None):
         pass
 
-    def updateEmphasize(self, colhigh='#FFFF00', review=True):
+    def updateEmphasize(self, review=True):
         lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
-        self.emphasizeOnOff(turn_on=lids, turn_off=None, colhigh=colhigh, review=review)
+        self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
 
-    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), colhigh='#FFFF00', review=True):
+    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), review=True):
         self.emphasizeOff(turn_off)
-        self.emphasizeOn(turn_on, colhigh)
+        self.emphasizeOn(turn_on)
         self.makeMenu()
-        if review:
-            self.MapcanvasMap.draw()
+        # if review:
+        #     print "draw"
+        #     self.MapcanvasMap.draw()
 
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+    def emphasizeOn(self, lids):
         pass
     
     def emphasizeOff(self, lids = None):
@@ -732,12 +737,19 @@ class BasisView(object):
         return self.parent.viewsm.doFlipEmphasizedR(vkey=self.getId())
 
     def OnPick(self, event):
-        if event.mouseevent.button in self.act_butt and (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
+        if event.mouseevent.button in self.act_butt:
             gid_parts = event.artist.get_gid().split(".")
-            if gid_parts[-1] == "1":
-                self.sendEmphasize([int(gid_parts[0])])
-            else:
-                self.sendOtherPick(gid_parts)
+            if (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
+                if gid_parts[-1] == "1":
+                    self.sendEmphasize([int(gid_parts[0])])
+                else:
+                    self.sendOtherPick(gid_parts)
+    #         elif isinstance(event.artist, Annotation):
+    #             if gid_parts[-1] == "T":
+    #                 self.sendEntFocus([int(gid_parts[0])])
+
+    # def sendEntFocus(self, gid_parts):
+    #     pass
 
     def sendOtherPick(self, gid_parts):
         pass
@@ -775,6 +787,13 @@ class BasisView(object):
     def apply_mask(self, path, radius=0.0):
         pass
 
+    def getColorHigh(self):        
+        t = self.parent.dw.getPreferences()
+        if "color_h" in t:
+            return [i/255.0 for i in t["color_h"]["data"]]
+        else:
+            return self.COLHIGH
+
     def getColors(self):
         t = self.parent.dw.getPreferences()
         colors = []
@@ -804,6 +823,7 @@ class BasisView(object):
 
     def getDrawSettings(self):
         colors = self.getColors()
+        colhigh = self.getColorHigh()
         dot_shape, dot_size = self.getDot()
         draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub,
                                                         SSetts.muaB, SSetts.mubB,
@@ -819,6 +839,7 @@ class BasisView(object):
         return {"draw_pord": draw_pord,
                 "draw_ppos": dd,
                 "shape": dot_shape,
+                "colhigh": colhigh,
                 SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
                                "color_f": [i/255.0 for i in colors[0]],
                                "color_l": [i/255.0 for i in colors[0]],

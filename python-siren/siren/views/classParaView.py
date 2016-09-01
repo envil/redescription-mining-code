@@ -335,17 +335,17 @@ class ParaView(GView):
                                  self.prepared_data["qcols"][i].typeId() == BoolColM.type_id:   
                             rects_drag[i] = rects[0]
 
-            self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
+            # self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             self.drs = []
             self.ri = None
             for rid, rect in rects_rez.items():
                 dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
                 self.drs.append(dr)
 
             for rid, rect in rects_drag.items():
                 dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
                 self.drs.append(dr)
 
             if self.parent.dw.getData().hasMissing():
@@ -391,7 +391,7 @@ class ParaView(GView):
                                numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
             self.axe.set_ylim([bot,1+self.margins_tb])            
 
-            self.updateEmphasize(self.COLHIGH, review=False)
+            self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
 
@@ -509,7 +509,7 @@ class ParaView(GView):
                 else:
                     self.updateMap()
                 
-    def emphasizeOn(self, lids, colhigh='#FFFF00'):
+    def emphasizeOn(self, lids):
         draw_settings = self.getDrawSettings()
         for lid in lids:
             if lid in self.highl:
@@ -519,11 +519,11 @@ class ParaView(GView):
             if lid in self.reps:
                 self.highl[lid].extend(self.axe.plot(self.prepared_data["xs"],
                                                      self.prepared_data["pos_lids"][self.prepared_data["ycols"],lid],
-                                                     color=colhigh, linewidth=1))
+                                                     color=draw_settings["colhigh"], linewidth=1))
             else:
                 self.highl[lid].extend(self.axe.plot(self.prepared_data["xs"],
                                                      self.prepared_data["pos_lids"][self.prepared_data["ycols"],lid],
-                                                     color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
+                                                     color=draw_settings["colhigh"], linewidth=1, picker=2, gid="%d.%d" % (lid, 1)))
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 pi = self.suppABCD[lid]
@@ -531,7 +531,7 @@ class ParaView(GView):
                 self.hight[lid] = []
                 x = self.prepared_data["xs"][-1]+self.margins_sides
                 y = self.prepared_data["pos_lids"][self.prepared_data["ycols"][-1],lid]
-                self.hight[lid].append(self.axe.annotate(tag, xy=(x,y),
+                self.hight[lid].append(self.axe.annotate(tag, xy=(x,y), # picker=True, gid="%d.T" % lid,
                                                          xycoords='data', xytext=(10, 0), textcoords='offset points',
                                                          color= draw_settings[pi]["color_l"], size=10,
                                                          va="center", backgroundcolor="#FFFFFF",

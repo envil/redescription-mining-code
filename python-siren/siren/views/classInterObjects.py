@@ -80,8 +80,11 @@ data"""
 
         # blit just the redrawn area
         canvas.blit(axes.bbox)
-        if self.annotation is not None:
-            canvas.blit(self.annotation.get_bbox_patch())
+        # if self.annotation is not None:
+        #     try:
+        #         canvas.blit(self.annotation.get_bbox_patch())
+        #     except AttributeError:
+        #         print "Failed blit"
 
     def contains(self, event):
         return self.rect.contains(event)
@@ -104,6 +107,9 @@ data"""
     def update_rect(self):
         if self.press is None:
             return
+        #### to force redraw of annotation, somehow blit ceased to function
+        self.annotation = None
+        
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
         dx, dy = self.dx, self.dy
         bt = self.border_tol
@@ -119,6 +125,17 @@ data"""
                     else:
                         self.annotation.set_text("%s" % b)
                     self.annotation.xytext = (x0+0.25, b)
+                    self.annotation.xy = (x0+0.25, b)
+
+                else:
+                    b = y0+dy
+                    if self.pinf is not None:
+                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+                    else:
+                        self.annotation = self.rect.axes.annotate("%s" % b,
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+                        
 
         elif abs(y0+h0-ypress)<bt*h0:
             if h0+dy > 0:
@@ -131,6 +148,17 @@ data"""
                     else:
                         self.annotation.set_text("%s" % b)
                     self.annotation.xytext = (x0+0.25, b)
+                    self.annotation.xy = (x0+0.25, b)
+
+                else:
+                    b = y0+h0+dy
+                    if self.pinf is not None:
+                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+                    else:
+                        self.annotation = self.rect.axes.annotate("%s" % b,
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+
 
 class DraggableRectangle(ResizeableRectangle):
 

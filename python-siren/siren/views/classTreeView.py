@@ -439,7 +439,7 @@ class TreeView(GView):
         self.updateQuery(side, query=qu, force=True)
 
 
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+    def emphasizeOn(self, lids):
         draw_settings = self.getDrawSettings()
         for lid in lids:
             if lid in self.highl:
@@ -454,13 +454,13 @@ class TreeView(GView):
             self.highl[lid] = []
             for l in ppos[1:]:
                 ff = numpy.sign(l[0])*self.flat_space
-                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
+                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=draw_settings["colhigh"], linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
 
 
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_l"], linewidth=1, alpha=0.5))
-                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=colhigh, linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
+                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings["colhigh"], linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),

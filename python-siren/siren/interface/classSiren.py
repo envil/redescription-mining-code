@@ -43,6 +43,39 @@ def initIcons(icons_setts, path=[]):
     return icons
 
 
+class ProjCache():
+
+    def __init__(self, capac=10):
+        self.cache = {}
+        ### for now, unused
+        self.capac = capac
+
+    def queryPC(self, proj, vid):
+        phsh = "%s:%s" % (vid[0], proj.getParamsHash())
+        # print "Query PC", proj, vid, phsh
+        if phsh in self.cache:
+            if self.cache[phsh]["coords"] is not None:
+                proj.setCoords(self.cache[phsh]["coords"])
+                self.cache[phsh]["served"].append((vid, proj)) 
+                return 0
+            else:
+                self.cache[phsh]["waiting"].append((vid, proj)) 
+                return 1
+        elif "random_state" not in proj.getParameters():
+            self.cache[phsh] = {"coords": None, "waiting": [], "served": []}
+        return -1
+
+    def incomingPC(self, proj, vid):
+        phsh = "%s:%s" % (vid[0], proj.getParamsHash())
+        # print "Incoming PC", proj, vid, phsh
+        if phsh in self.cache:
+            self.cache[phsh]["coords"] = proj.getCoords()
+            while len(self.cache[phsh]["waiting"]) > 0:
+                tmp =  self.cache[phsh]["waiting"].pop()
+                tmp[1].setCoords(self.cache[phsh]["coords"])
+                self.cache[phsh]["served"].append(tmp)
+            return self.cache[phsh]["served"] 
+        return []
  
 class Siren():
     """ The main frame of the application
@@ -76,7 +109,7 @@ class Siren():
                    "outin": "down_right",
                    "save": "savefig"}
 
-    main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1}
+    main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
     icon_file = findFile('siren_icon32x32.png', ['../../icons', root_dir + '/icons', './icons'])
     license_file = findFile('LICENSE', ['../../licenses', root_dir+ '/licenses', './licenses'])
@@ -88,19 +121,21 @@ class Siren():
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None
+        self.proj_cache = ProjCache()
         self.dw = None
         self.vizm = None
         self.plant = WorkPlant()
         self.viewsm = ViewsManager(self)
+
+                    # {"id": self.getDefaultTabId("v0"), "title":"LHS Variables",
+                    #  "short": "LHS", "type":"v", "hide":False, "style":None},
+                    # {"id": self.getDefaultTabId("v1"), "title":"RHS Variables",
+                    #  "short": "RHS", "type":"v", "hide":False, "style":None},
         
         tmp_tabs = [{"id": self.getDefaultTabId("e"), "title":"Entities",
                      "short": "Ent", "type":"e", "hide":False, "style":None},
-                    {"id": self.getDefaultTabId("v0"), "title":"LHS Variables",
-                     "short": "LHS", "type":"v", "hide":False, "style":None},
-                    {"id": self.getDefaultTabId("v1"), "title":"RHS Variables",
-                     "short": "RHS", "type":"v", "hide":False, "style":None},
-                    {"id": "v", "title":"Variables",
-                     "short": "Vars", "type":"V", "hide":False, "style":None},
+                    {"id": self.getDefaultTabId("v"), "title":"Variables",
+                     "short": "Vars", "type":"v", "hide":False, "style":None},
                     {"id": self.getDefaultTabId("r"), "title":"Redescriptions",
                      "short": "Reds", "type":"r", "hide":False, "style":None},
                     {"id": self.getDefaultTabId("z"), "title":"Visualizations",
@@ -111,7 +146,11 @@ class Siren():
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
         self.tabs_keys = [p["id"] for p in tmp_tabs]
-        stn = self.getDefaultTabId("r")
+        stn = self.tabs.keys()[0]
+        if self.getDefaultTabId("v") in self.tabs:
+            stn = self.getDefaultTabId("v")
+        elif self.getDefaultTabId("e") in self.tabs:
+            stn = self.getDefaultTabId("e")
         self.selectedTab = self.tabs[stn]
 
         self.logger = Log()
@@ -261,17 +300,17 @@ class Siren():
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSW(), self.tabs[tab_id]["title"])
 
-            elif self.tabs[tab_id]["type"] == "V":
+            elif self.tabs[tab_id]["type"] == "v":
                 self.tabs[tab_id]["tab"] = VarsManager(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
                 if self.tabs[tab_id]["hide"]:
                     self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSW(), self.tabs[tab_id]["title"])
 
-            elif self.tabs[tab_id]["type"] == "v":
-                self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].grid.Hide()
-                self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
+            # elif self.tabs[tab_id]["type"] == "v":
+            #     self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
+            #     if self.tabs[tab_id]["hide"]:
+            #         self.tabs[tab_id]["tab"].grid.Hide()
+            #     self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "e":
                 self.tabs[tab_id]["tab"] = RowTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
@@ -334,7 +373,7 @@ class Siren():
         if tab is None:
             tab = self.selectedTab
         if "tab" in tab:
-            return tab["type"] in ffilter  
+            return tab["type"].lower() in ffilter  
         return False
     def getTabsMatchType(self, ffilter):
         return [(ti,tab) for (ti, tab) in self.tabs.items() if self.matchTabType(ffilter, tab)]
@@ -348,14 +387,6 @@ class Siren():
 ######################################################################
 ###########     MENUS
 ######################################################################
-
-    def callOnTab(self, source_id=None, meth=None, args={}):
-        if source_id is not None and source_id in self.tabs:
-            try:
-                mett = getattr(self.tabs[source_id]["tab"], meth)
-                return mett(**args)
-            except AttributeError:
-                return None
 
     def updateProgressBar(self):
         if not self.plant.getWP().isActive():
@@ -414,7 +445,7 @@ class Siren():
         if self.matchTabType("ev"):
             if "tab" in self.selectedTab and self.selectedTab["tab"].GetNumberRows() > 0:
 
-                if self.matchTabType("v"):
+                if self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL():
                     ID_DETAILS = wx.NewId()
                     m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
                     frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
@@ -426,15 +457,15 @@ class Siren():
                         menuRed.Enable(ID_HIGH, False)
                     frame.Bind(wx.EVT_MENU, self.OnHigh, m_high)
 
-                if self.matchTabType("ev"):
+                if self.matchTabType("e") or ( self.matchTabType("v") and self.selectedTab["tab"].nbItems() > 0):
                     ID_FIND = wx.NewId()
                     m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
                     frame.Bind(wx.EVT_MENU, self.OnFind, m_find)
 
-                    
-                ID_ENABLED = wx.NewId()
-                m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
-                frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
+                if self.matchTabType("e") or ( self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL()):
+                    ID_ENABLED = wx.NewId()
+                    m_enabled = menuRed.Append(ID_ENABLED, "En&able/Disable\tCtrl+D", "Enable/Disable current item.")
+                    frame.Bind(wx.EVT_MENU, self.OnFlipEnabled, m_enabled)
 
                 ID_ENABLEDALL = wx.NewId()
                 m_enabledall = menuRed.Append(ID_ENABLEDALL, "&Enable All", "Enable all items.")
@@ -535,23 +566,24 @@ class Siren():
 
 
     def makeVizMenu(self, frame, menuViz=None):
+        popp = True
         if menuViz is None:
             countIts = 0
             menuViz = wx.Menu()
-
+            
             #### not for popup menu
             if self.getVizm() is not None and self.getVizm().hasVizIntab():
+                popp = False
                 ID_CHECK = wx.NewId()
                 m_check = menuViz.AppendCheckItem(ID_CHECK, "Plot in tab", "Plot inside visualization tab.")
                 frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
                 if self.getVizm().intab:
                     m_check.Check()
-        else:
-            countIts = menuViz.GetMenuItemCount()
+        # else:
+        countIts = menuViz.GetMenuItemCount()
             
         queries = None
-        if self.matchTabType("ev") or ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ):
-
+        if self.matchTabType("e") or ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ) or ( self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ):
             if self.matchTabType("r"):
                 queries = self.selectedTab["tab"].getSelectedQueries()
 
@@ -789,7 +821,7 @@ class Siren():
 
     def OnSplitchange(self, event):
         if self.hasSplit():
-            if event.GetEventType() == 10022 or \
+            if event.GetEventType() == 10022 or event.GetEventType() == 10029 or \
                    event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId():
                 self.getVizm().OnSplitchange()
 
@@ -844,13 +876,22 @@ class Siren():
         self.checkResults(menu=True)
 
     def project(self, proj=None, vid=None):
+        # print "Projecting..."
         self.progress_bar.Show()
         if proj is not None and vid is not None:
-            wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
-            if wid is None:
-                self.plant.getWP().addWorker("projector", self, proj,
-                                     {"vid": vid})
-                self.checkResults(menu=True)
+            out = self.proj_cache.queryPC(proj, vid)
+            if out == 0:
+                # print "Found previous proj"
+                self.readyProj(None, vid, proj)
+            elif out < 0:
+                # print "No previous proj"
+                wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
+                if wid is None:
+                    self.plant.getWP().addWorker("projector", self, proj,
+                                         {"vid": vid})
+                    self.checkResults(menu=True)
+            # else:
+            #     print "Waiting previous proj"
 
     def checkResults(self, menu=False):
         updates = self.plant.getWP().checkResults(self)
@@ -1129,14 +1170,7 @@ class Siren():
 
     def OnShowCol(self, event):
         shw = False
-        if self.matchTabType("v"):
-            if self.selectedTab["id"] == self.getDefaultTabId("v0"):
-                self.showCol(0, self.selectedTab["tab"].getSelectedPos())
-                shw = True
-            elif self.selectedTab["id"] == self.getDefaultTabId("v1"):
-                self.showCol(1, self.selectedTab["tab"].getSelectedPos())
-                shw = True
-        elif self.matchTabType("r") and self.getDefaultTabId("e") in self.tabs:
+        if self.matchTabType("vr") and self.getDefaultTabId("e") in self.tabs:
             row = self.tabs[self.getDefaultTabId("e")]["tab"].showRidRed(self.tabs[self.getDefaultTabId("e")]["tab"].getSelectedRow(), self.selectedTab["tab"].getSelectedItem())
             shw = True
 
@@ -1359,6 +1393,8 @@ class Siren():
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
                 return
         self.viewsm.deleteAllViews()
+        if self.vizm is not None:
+            self.vizm.OnQuit()
         self.toolFrame.Destroy()
         sys.exit()
 
@@ -1427,7 +1463,8 @@ class Siren():
         self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
     def reloadAll(self):
-        self.getVizm().reloadVizTab()
+        if self.getVizm() is not None:
+            self.getVizm().reloadVizTab()
         if self.plant is not None:
             self.plant.getWP().closeDown(self)
         self.reloadVars(review=False)
@@ -1436,14 +1473,9 @@ class Siren():
         
     def reloadVars(self, review=True):
         ## Initialize variable lists data
-        for side in [0,1]:
-            if side in self.tabs:
-                if self.dw.getData() is not None:
-                    self.tabs[self.getDefaultTabId("v%d" % side)]["tab"].resetData(self.dw.getDataCols(side))
-                else:
-                    self.tabs[self.getDefaultTabId("v%d" % side)]["tab"].resetData()
         if self.dw.getData() is not None:
-            self.tabs["v"]["tab"].resetData(src='pack', data=self.dw.getData())
+            if self.getDefaultTabId("v") in self.tabs:
+                self.tabs[self.getDefaultTabId("v")]["tab"].resetData(src='pack', data=self.dw.getData())
             details = {"names": self.dw.getData().getNames()}
             for ti, tab in self.getTabsMatchType("r"):
                 tab["tab"].resetDetails(details, review)
@@ -1528,6 +1560,13 @@ class Siren():
             self.tabs[self.getDefaultTabId("r")]["tab"].insertItems(src, reds)
 
     def readyProj(self, wid, vid, proj):
+        adjunct_vps = self.proj_cache.incomingPC(proj, vid)
+
         vv = self.viewsm.accessViewX(vid)
         if vv is not None:
             vv.readyProj(proj)
+
+        for (avid, aproj) in adjunct_vps:
+            vv = self.viewsm.accessViewX(avid)
+            if vv is not None:
+                vv.readyProj(aproj)

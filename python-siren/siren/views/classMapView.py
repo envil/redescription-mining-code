@@ -157,7 +157,7 @@ class MapView(GView):
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
 
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+    def emphasizeOn(self, lids):
         draw_settings = self.getDrawSettings()
         for lid in lids:
             if lid in self.highl:
@@ -165,7 +165,7 @@ class MapView(GView):
             pi = self.suppABCD[lid]
             self.highl[lid] = []
             dsetts = {"shape": draw_settings[pi]["shape"],
-                      "color_f": colhigh,
+                      "color_f": draw_settings["colhigh"],
                       "color_e": draw_settings[pi]["color_e"],
                       "size": draw_settings[pi]["size"],
                       "alpha": draw_settings[pi]["alpha"]}

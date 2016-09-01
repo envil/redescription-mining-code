@@ -22,7 +22,9 @@ class ViewsManager:
         self.selectedViewX = -1
 
     def isGeospatial(self):
-        return self.parent.dw.isGeospatial()
+        if self.parent.dw is not None:
+            return self.parent.dw.isGeospatial()
+        return False
 
     def getViewsItems(self, typv="R", tab_type=None, what=None, vkey=None):
         excludeT = None
@@ -112,6 +114,7 @@ class ViewsManager:
             self.registerView(mapV.getId(), ikey, upMenu=False)
             mapV.setCurrent(what)
             mapV.updateTitle()
+            mapV.lastStepInit()
             self.parent.updateMenus()
             
     def registerView(self, vkey, ikey, upMenu=True):
@@ -232,7 +235,7 @@ class ViewsManager:
         return set()
 
     def setAllEmphasizedR(self, lids=None, show_info=False, no_off=False):
-        if vkey in self.vtoi:
+        for vkey in self.vtoi:
             self.setEmphasizedR(vkey, lids, show_info, no_off)
 
     def setEmphasizedR(self, vkey, lids=None, show_info=False, no_off=False):

@@ -75,12 +75,15 @@ class VizManager:
 
     def drawSW(self, frame):
         self.sw = wx.ScrolledWindow(frame, -1, style=wx.HSCROLL|wx.VSCROLL)
-        self.sw.SetScrollRate(5, 5)        
+        self.sw.SetScrollRate(5, 5)
         # sw.SetSizer(wx.GridSizer(rows=2, cols=3, vgap=0, hgap=0))
         self.sw.SetSizer(wx.GridBagSizer(vgap=0, hgap=0))
 
     def getSW(self):
         return self.sw
+
+    def OnQuit(self):
+        self.clearVizTab()
 
     def clearVizTab(self):
         for sel in self.vfiller_ids:

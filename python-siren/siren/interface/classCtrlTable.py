@@ -1,7 +1,7 @@
 import sys, os.path
 import wx
 import wx.lib.mixins.listctrl  as  listmix
-from ..reremi.classQuery import SYM
+from ..reremi.classQuery import SYM, Literal, Query
 from ..reremi.classRedescription import Redescription
 from ..reremi.classBatch import Batch
 from ..reremi.classData import Data
@@ -12,9 +12,10 @@ LIST_TYPES_NAMES = ['file', 'run', 'manual', 'history']
 LIST_TYPES_ICONS = [wx.ART_REPORT_VIEW, wx.ART_EXECUTABLE_FILE, wx.ART_LIST_VIEW, wx.ART_LIST_VIEW]
 
 def makeContainersIL(icons):
-    il = wx.ImageList(32, 32)
+    size_side = 16
+    il = wx.ImageList(size_side, size_side)
     for (i, icon) in enumerate(icons): 
-        il.Add(wx.ArtProvider.GetBitmap(icon, wx.ART_FRAME_ICON))
+        il.Add(wx.ArtProvider.GetBitmap(icon, wx.ART_FRAME_ICON, (size_side, size_side)))
     return il
 
 ###### DRAG AND DROP UTILITY
@@ -313,7 +314,12 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         dt = ListDrop(self._dd)
         self.SetDropTarget(dt)
         self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self.OnRightClick)
+        # self.Bind(wx.EVT_LIST_ITEM_FOCUSED, self.OnFoc)
+        self.Bind(wx.EVT_LEFT_UP, self.OnLeftClick)
 
+    def OnLeftClick(self, event):
+        self.getCManager().makeMainMenu()
+        
     def OnRightClick(self, event):
         if self.hasCManager():
             self.getViewHdl().markFocus(self)
@@ -552,8 +558,8 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
 
     def getNbCols(self):
         return self.getDataHdl().getNbFields()
-    def getColsInfo(self, lid=None, cs=None):
-        return self.getDataHdl().getColsInfo(lid, cs)
+    def getColsInfo(self, lid=None, cs=None, refresh=False):
+        return self.getDataHdl().getColsInfo(lid, cs, refresh)
     def getItemForIid(self, iid):
         try:
             return self.getDataHdl().getItemForIid(iid)
@@ -603,19 +609,18 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             tmp.SetText(col["title"])
             self.SetColumn(cid, tmp)
 
-    def loadData(self, lid=None):
+    def loadData(self, lid=None, refresh=True):
         if self.GetItemCount() > 0:
             self.DeleteAllItems()
         if lid is None:
             return
         ### check nb cols match
-        if self.getNbCols() != self.GetColumnCount():
+        if refresh or self.getNbCols() != self.GetColumnCount():
             self.DeleteAllColumns()
-            for cid, col in enumerate(self.getDataHdl().getColsInfo(lid)):
+            for cid, col in enumerate(self.getColsInfo(lid, refresh=refresh)):
                 self.InsertColumn(cid, col["title"], format=col["format"], width=col["width"])
         else:
             self.updateColsTitles(lid)
-
         ll = self.getDataHdl().getList(lid)
         if ll is not None:
             # for item in ll.getItems():
@@ -642,7 +647,7 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
                 self.updateColsTitles(lid)
             new_poss = ll.updateSort(self.getSelection())
             if new_poss is not None:
-                self.loadData(lid)
+                self.loadData(lid, refresh=False)
                 for pos in new_poss:
                     self.Select(pos)
 
@@ -1059,12 +1064,12 @@ class StaticContent:
             return self.fields[i]
         return None
 
-    def getFields(self):
+    def getFields(self, lid=None, refresh=False):
         return self.fields
     def getNbFields(self):
         return len(self.fields)
-    def getColsInfo(self, lid=None, cs=None):
-        infos = [{"title": field[0], "format": field[-1], "width": field[-2]} for field in self.getFields()]
+    def getColsInfo(self, lid=None, cs=None, refresh=False):
+        infos = [{"title": field[0], "format": field[-1], "width": field[-2]} for field in self.getFields(lid, refresh)]
         if lid is not None:
             sort_info = self.lists[lid].getSortInfo()
             if sort_info[0] is not None:
@@ -1268,7 +1273,10 @@ class EditableContent(StaticContent):
             self.buffer = {}
 
     def insertItem(self, lid, item, iid=None, pos=-1):
-        iid = self.items.insert(iid, item)
+        if iid is None:
+            iid = self.items.append(item)
+        else:
+            iid = self.items.insert(iid, item)
         self.lists[lid].insertIid(iid, pos)
         return iid
     def insertItems(self, lid, items):
@@ -1308,14 +1316,14 @@ class VarsSet(StaticContent):
         self.parent = parent
         self.resetFields()
         
-    def resetFields(self):
+    def resetFields(self, side=None):
         self.resetAllSorts()
         self.fields = []
         if self.items is not None:
             self.fields.extend(self.fields_def)
             if self.items.hasMissing():
                 self.fields.extend(self.fields_miss)
-            for tyid in self.items.getAllTypes():
+            for tyid in self.items.getAllTypes(side):
                 self.fields.extend(self.fields_var[tyid])
 
     def resetContent(self, src, content):
@@ -1328,6 +1336,10 @@ class VarsSet(StaticContent):
             self.lists_ord.append(side)
         return side
 
+    def getFields(self, lid=None, refresh=False):
+        if refresh:
+            self.resetFields(side=lid)
+        return self.fields
 
 
 class RedsSet(EditableContent):
@@ -1710,6 +1722,8 @@ class ContentManager:
     #### Generate pop up menu
     def makePopupMenu(self):
         self.parent.makePopupMenu(self.parent.toolFrame)
+    def makeMainMenu(self):
+        self.parent.makeMenu(self.parent.toolFrame)
         
     def GetNumberRowsItems(self):
         return self.getViewHdl().GetNumberRowsItems()
@@ -1861,10 +1875,29 @@ class VarsManager(ContentManager):
         self.data = VarsSet(parent)
     def resetData(self, src=None, data=[], sord=None):
         nlid = self.getDataHdl().resetContent(src, data)
-        pdb.set_trace()
         if nlid is not None:
             self.getViewHdl().updateLid(nlid)
         return nlid
+
+    def viewItem(self, datVar=None, rid=None, viewT=None):
+        if viewT is None:
+            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
+        if datVar is None and rid is not None:
+            datVar = self.getDataHdl().getItemForIid(rid)
+        queries = [Query(), Query()]
+        queries[datVar.getSide()].extend(-1, Literal(False, datVar.getTerm()))
+        self.parent.viewsm.newRedVHist(queries, viewT)
+
+    def viewData(self, rid=None, viewT=None):
+        if rid is None:
+            rid = self.getSelectedItemIid()
+        datVar = self.getDataHdl().getItemForIid(rid)
+        if viewT is None:
+            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
+        queries = [Query(), Query()]
+        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+        self.parent.viewsm.newRedVHist(queries, viewT)
+
 
     
 class RedsManager(ContentManager):
