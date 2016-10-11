@@ -419,6 +419,7 @@ class CharbonGStd(CharbonGreedy):
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
+        ## pdb.set_trace() CHECK
         best = []
         bUp=1
         interMat = []

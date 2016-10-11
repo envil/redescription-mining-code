@@ -451,6 +451,7 @@ class DataWrapper(object):
         with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
         style = ""
         named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
+        full_supp = re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None
         if named:
             names = self.data.getNames()
         else:
@@ -458,7 +459,7 @@ class DataWrapper(object):
         if re.search("\.tex$", filename):
             style = "tex"
         try:
-            writeRedescriptions(self.reds, filename, self.rshowids, names=names, with_disabled=with_disabled, style=style)
+            writeRedescriptions(self.reds, filename, self.rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp)
         except Exception:
             self._stopMessage()
             raise

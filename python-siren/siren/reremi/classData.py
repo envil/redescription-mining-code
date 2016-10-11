@@ -1,4 +1,3 @@
-
 import os.path
 import numpy as np
 import scipy.sparse
@@ -19,6 +18,8 @@ NA_str = "NA"
 NA_num  = np.nan
 NA_bool  = -1
 NA_cat  = -1
+
+MODE_VALUE = 0
 
 class DataError(Exception):
     def __init__(self, value):
@@ -736,6 +737,7 @@ class NumColM(ColM):
         if type(self.vect) is dict:
             return self.vect.get(rid, self.vect[-1])
         else:
+            self.getVector()
             return self.vect[rid]
 
     def valToStr(self, val):
@@ -775,17 +777,22 @@ class NumColM(ColM):
         if len(self.sVals) > 0:
             vals, ids = zip(*self.sVals)
             self.vect[list(ids)] = vals
-
+        ### mode rows HERE
+        
+            
     def getType(self, details=None):
         return "numerical"
 
     def getRange(self, details=None):
         return (self.getMin(details), self.getMax(details))
     def getMin(self, details=None):
-        return self.sVals[0][0]
+        if len(self.sVals) > 0:
+            return self.sVals[0][0]
+        return MODE_VALUE ### DEBUG
     def getMax(self, details=None):
-        return self.sVals[-1][0]
-
+        if len(self.sVals) > 0:
+            return self.sVals[-1][0]
+        return MODE_VALUE
     def getNbValues(self):
         return self.nbUniq
 
@@ -833,9 +840,13 @@ class NumColM(ColM):
     def setMode(self, force=False):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
-        if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
-            self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
-        if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
+        tmpV = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
+        # pdb.set_trace()
+        # if len([i for v,i in self.sVals if v == MODE_VALUE]) > 0.1*self.N compute vector
+        #     self.sVals = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
+        if force or ( len(self.sVals)+len(self.missing) > 0 and len(tmpV)+len(self.missing) != self.N \
+                          and len(self.sVals) - len(tmpV)  > 0.1*self.N):
+            self.sVals = tmpV              
             ## gather row ids for which
             if len(self.sVals) > 0:
                 rids = set(zip(*self.sVals)[1])
@@ -854,9 +865,9 @@ class NumColM(ColM):
                 i = 0
                 while i < len(self.sVals) and self.sVals[i][0] < 0:
                     i+=1
-                self.sVals.insert(i, (0, -1))
-        else:
-            self.mode = (0, None)
+                self.sVals.insert(i, (MODE_VALUE, -1))
+        else: ### MODE unused
+            self.mode = (MODE_VALUE, None)
         self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
         
     def density(self):
@@ -1218,7 +1229,7 @@ class Data(object):
             if N == "multiple" and len(cols) >= 2:
                 try:         
                     data_filenames = [cols[0], cols[1]]
-                    if len(cols) >= 4 and cols[2] is not None or cols[3] is not None:
+                    if len(cols) >= 4 and (cols[2] is not None or cols[3] is not None):
                         names_filenames = [cols[2], cols[3]]
                     else:
                         names_filenames = None
@@ -1673,7 +1684,7 @@ class Data(object):
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
-            for col in self.cols[side]:
+            for cci, col in enumerate(self.cols[side]):
                 row.append(col.valToStr(col.getValue(n)))
             csv_reader.write_row(csvf, row)
 
@@ -1682,7 +1693,7 @@ class Data(object):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]]
         letter = self.getCommonType(side)
         if letter is not None:
-            header[-1].append("# type=%s" % letter)
+            header[-1] += " # type=%s" % letter
         csv_reader.write_row(csvf, header)
         if not inline:
             trids, tcids = {}, {}
@@ -2354,10 +2365,15 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
 
 def main():
     rep = "/home/galbrun/"
-    data = Data([rep+"short/Jena18Odata_soil2.csv", rep+"short/Jena18Odata_soil2.csv", {}, ""], "csv")
+    # data = Data([rep+"short/Jena18Odata_soil2.csv", rep+"short/Jena18Odata_soil2.csv", {}, ""], "csv")
+    data = Data([rep+"short/teeth/agg_IUCN_NA.csv", rep+"short/teeth/bio_IUCN_NA.csv", {}, ""], "csv")
+    pdb.set_trace()
+    # data = Data([rep+"short/test/data_LHS.csv", rep+"short/test/data_RHS.csv", {}, ""], "csv")
     print data
     # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
-    # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
+    data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
+
+    dataRL = Data(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv", {}, ""], "csv")
     # exit()
 
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",

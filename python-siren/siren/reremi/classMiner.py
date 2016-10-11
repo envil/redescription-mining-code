@@ -326,6 +326,7 @@ class Miner(object):
             self.count += 1
             self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
+            # pdb.set_trace()
             partial = self.expandRedescriptions([initial_red])
             self.logger.updateProgress({"rcount": self.count}, 1, self.id)
             ## SOUVENIRS self.souvenirs.update(partial["batch"])

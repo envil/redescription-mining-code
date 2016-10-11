@@ -14,6 +14,7 @@ class Redescription(object):
     print_queries_headers = ["query_LHS", "query_RHS"]
     print_queries_namedsuff = "_named"
     print_default_fields_stats = ["acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    print_default_fields_supp = ["alpha", "beta", "gamma"] #, "delta"]
 
     print_default_fields = print_queries_headers+print_default_fields_stats
     # ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
@@ -799,7 +800,7 @@ def printTexRedList(red_list, names=[None, None], fields=None):
         "\\end{document}"
     return str_out
 
-def printRedList(red_list, names=[None, None], fields=None):
+def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
     all_fields = Redescription.print_default_fields
     if names[0] is not None or names[1] is not None:
         all_fields = Redescription.print_default_fields_named
@@ -808,7 +809,8 @@ def printRedList(red_list, names=[None, None], fields=None):
             all_fields.extend(fields[1:])
         else:
             all_fields = fields
-
+    if full_supp:
+        all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
         str_out += red.disp(list_fields=all_fields, names=names, sep="\t")  + "\n"

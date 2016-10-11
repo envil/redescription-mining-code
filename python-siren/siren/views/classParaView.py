@@ -332,17 +332,17 @@ class ParaView(GView):
                                  self.prepared_data["qcols"][i].typeId() == BoolColM.type_id:   
                             rects_drag[i] = rects[0]
 
-            self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
+            # self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             self.drs = []
             self.ri = None
             for rid, rect in rects_rez.items():
                 dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
                 self.drs.append(dr)
 
             for rid, rect in rects_drag.items():
                 dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
                 self.drs.append(dr)
 
             #### fit window size

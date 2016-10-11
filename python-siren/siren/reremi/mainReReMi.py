@@ -6,7 +6,7 @@ import tempfile
 from toolLog import Log
 from classPackage import Package, saveAsPackage
 from classData import Data
-from classRedescription import Redescription, parseRedList
+from classRedescription import Redescription, parseRedList, printRedList
 from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
@@ -290,7 +290,7 @@ def run_filter(args):
         tacc = datetime.datetime.now()
         print "Elapsed ", ri, tacc-ticc
         if tmp_ids != org_ids:
-            print "Not indentical"
+            print "Not identical"
         pdb.set_trace()
         print len(tmp_ids), len(org_ids)
         
@@ -341,7 +341,7 @@ def run_splits(args, splt=""):
 ###########
     
 if __name__ == "__main__":
-        
+    
     if re.match("splits", sys.argv[-1]):
         run_splits(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":
@@ -350,3 +350,19 @@ if __name__ == "__main__":
         run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)
+
+
+    # pm = getPM()
+    # package = Package(sys.argv[-1])
+    # elements_read = package.read(pm)        
+
+    # if elements_read.get("reds") is not None:
+    #     reds = elements_read.get("reds")
+    #     data = elements_read.get("data")
+    #     with open("test.txt", "w") as fp:
+    #         fp.write(printRedList(reds, [None, None], None, full_supp=True))
+    #     rrr = []
+    #     with open("test.txt") as fp:
+    #         parseRedList(fp, data, rrr)
+    #     print [r.disp() for r in rrr]
+
