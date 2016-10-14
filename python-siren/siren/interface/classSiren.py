@@ -1090,6 +1090,7 @@ class Siren():
             return False
         else:
             self.reloadAll()
+            self.resetConstraints()
             return True
 
     def expand(self, params={}):
@@ -1293,6 +1294,7 @@ class Siren():
             except:
                 pass
         open_dlg.Destroy()
+        self.resetConstraints()
         
     def OnImportRedescriptions(self, event):
         if self.dw.reds is not None:
@@ -1516,7 +1518,8 @@ class Siren():
         d = PreferencesDialog(self.toolFrame, self.dw)
         d.ShowModal()
         d.Destroy()
-
+        self.resetConstraints()
+        
     def OnConnectionDialog(self, event):
         d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
         d.ShowModal()

@@ -146,14 +146,39 @@ class MapView(GView):
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-            selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
-            if len(selected) > 0:
-                selv[numpy.array(list(selected))] = selp
 
+            
             lims = self.axe.get_xlim(), self.axe.get_ylim()
-            for idp, pi in enumerate(self.suppABCD):
-                if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
-                    self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
+            pick = self.getPickerOn()
+            if not pick and not self.drawPoly(): #### NO PICKER, FASTER PLOTTING.
+                vec = numpy.array(self.suppABCD)
+                pparts = set(self.suppABCD) 
+                if len(selected) > 0:
+                    vec[numpy.array(list(selected))] *= -1
+                    signs = [(1, 1), (selp, -1)]
+                else:
+                    signs = [(1, 1)]
+                    
+                for i in pparts:
+                    if i != SSetts.delta:
+                        dsetts = draw_settings[i]
+                        for (alpha, sign) in signs: 
+                            idps = numpy.where(vec == i*sign)[0]
+                            coords = self.coords_proj[0][:,idps,0]
+                            self.axe.plot(coords[0], coords[1],
+                                            mfc=dsetts["color_f"], mec=dsetts["color_e"],
+                                            marker=dsetts["shape"], markersize=dsetts["size"],
+                                            linestyle='None', alpha=dsetts["alpha"]*alpha)
+
+            else:
+                selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
+                if len(selected) > 0:
+                    selv[numpy.array(list(selected))] = selp
+
+                for idp, pi in enumerate(self.suppABCD):
+                    if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
+                        self.drawEntity(idp, draw_settings[pi], picker=pick, selv=selv[idp])
+                    
             self.axe.set_xlim(lims[0])
             self.axe.set_ylim(lims[1])
 
@@ -275,6 +300,7 @@ class MapView(GView):
             mapoly = MapView.MAP_POLY
         return mapoly
 
+    
     def drawEntity(self, idp, dsetts, picker=False, selv=1):
         if picker:
             args = {"picker": dsetts["size"], "gid": "%d.%d" % (idp, 1)}

@@ -92,6 +92,15 @@
 	<default><value>1</value></default>
 	<options><value>yes</value><value>no</value></options>
       </parameter>
+    <parameter>
+	<name>use_picker</name>
+	<label>Clickable markers</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Draw clickable markers for entities using pickers, disabling makes plotting faster</legend>
+	<default><value>1</value></default>
+	<options><value>no</value><value>yes</value></options>
+      </parameter>
       <parameter>
 	<name>hover_entities</name>
 	<label>Hover entities</label>

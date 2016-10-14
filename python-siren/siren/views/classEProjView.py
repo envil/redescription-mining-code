@@ -309,14 +309,33 @@ class EProjView(GView):
             x0, x1, y0, y1 = self.getProj().getAxisLims()
             #siz = round(max(1, min((x1-x0)/20, (y1-y0)/20)))
             siz = 0
-            for idp, pi in enumerate(self.suppABCD):
-                if pi in draw_settings and selv[idp] > 0:
-                    if draw_settings[pi]["size"] > siz:
-                        siz = draw_settings[pi]["size"]
-                    self.axe.plot(self.getProj().getCoords(0,idp), self.getProj().getCoords(1, idp), gid="%d.%d" % (idp, 1),
-                           mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                           marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                           linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
+            if not self.getPickerOn(): #### NO PICKER, FASTER PLOTTING
+                vec = numpy.array(self.suppABCD)
+                pparts = sorted(set(self.suppABCD), reverse=True) 
+                if len(selected) > 0:
+                    vec[numpy.array(list(selected))] *= -1
+                    signs = [(1, 1), (selp, -1)]
+                else:
+                    signs = [(1, 1)]
+                    
+                for i in pparts:
+                    dsetts = draw_settings[i]
+                    for (alpha, sign) in signs: 
+                        idps = numpy.where(vec == i*sign)[0]
+                        self.axe.plot(self.getProj().getCoords(0,idps), self.getProj().getCoords(1,idps),
+                                          mfc=dsetts["color_f"], mec=dsetts["color_e"],
+                                          marker=dsetts["shape"], markersize=dsetts["size"],
+                                          linestyle='None', alpha=dsetts["alpha"]*alpha)
+
+            else:
+                for idp, pi in enumerate(self.suppABCD):
+                    if pi in draw_settings and selv[idp] > 0:
+                        if draw_settings[pi]["size"] > siz:
+                            siz = draw_settings[pi]["size"]
+                        self.axe.plot(self.getProj().getCoords(0,idp), self.getProj().getCoords(1, idp), gid="%d.%d" % (idp, 1),
+                            mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
+                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
+                            linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
 
             # if self.getProj().getTitle() is not None:
             #     self.axe.set_title(self.getProj().getTitle(),fontsize=12)

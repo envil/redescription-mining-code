@@ -11,7 +11,7 @@ class Constraints(object):
         self._pv = {}
         for k, v in params.items():
             self._pv[k] = v["data"]
-
+            
         if data is not None:
             self.N = data.nbRows()
             if data.hasMissing() is False:
@@ -223,6 +223,9 @@ class Constraints(object):
     def pair_filter_redundant(self, redA, redB):
         return redA.overlapAreaMax(redB)
 
+    def pair_filter_redundant_rows(self, redA, redB):
+        return redA.overlapRows(redB)
+    
     def actions_nextge(self):
         return [("filtersingle", {"filter_funct": self.filter_nextge}),
                 ("sort", {"sort_funct": self.sort_nextge, "sort_reverse": True }),
@@ -243,6 +246,8 @@ class Constraints(object):
        return [("filterpairs", self.parameters_filterredundant())]
 
     def parameters_filterredundant(self):
+       if self.max_overlaparea() < 0:
+           return {"filter_funct": self.pair_filter_redundant_rows, "filter_thres": -self.max_overlaparea(), "filter_max":0}
        return {"filter_funct": self.pair_filter_redundant, "filter_thres": self.max_overlaparea(), "filter_max":0}
 
     def setDeps(self, deps=[]):

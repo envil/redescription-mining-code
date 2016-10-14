@@ -92,6 +92,8 @@ class GView(object):
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
+    PICKER_ON = True # False
+    
     map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SSetts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SSetts.beta]),
                        ("i", "|E"+SYM.SYM_GAMMA+"|", [SSetts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SSetts.delta])]
 
@@ -145,7 +147,7 @@ class GView(object):
         self.mapFrame.GetSizer().Detach(self.panel)
         self.pos = npos
         self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-
+        
     @classmethod
     def getViewsDetails(tcl):
         return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
@@ -1091,6 +1093,15 @@ class GView(object):
             return True
         return False
 
+    def getPickerOn(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            pickon = t["use_picker"]["data"] == "yes"
+        except:
+            pickon = GView.PICKER_ON
+        return pickon
+
+    
     def getDrawSettings(self):
         colors = self.getColors()
         dot_shape, dot_size = self.getDot()

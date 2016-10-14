@@ -114,7 +114,7 @@ class Redescription(object):
             return Query.comparePair(self.queries[0], self.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
-
+        
     def interArea(self, redB, side):
         if redB is not None:
             return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
@@ -142,6 +142,11 @@ class Redescription(object):
         return self.overlapAreaSide(redB, 1)
     def overlapAreaMax(self, redB):
         return max(self.overlapAreaSide(redB, 0), self.overlapAreaSide(redB, 1))
+
+    def overlapRows(self, redB):
+        if redB is not None:
+            return len(redB.getSuppI() & self.getSuppI())/float(min(redB.getLenI(), self.getLenI()))
+        return 0
     
     def oneSideIdentical(self, redescription):
         return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
