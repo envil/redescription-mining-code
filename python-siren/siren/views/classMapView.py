@@ -151,7 +151,7 @@ class MapView(GView):
             lims = self.axe.get_xlim(), self.axe.get_ylim()
             pick = self.getPickerOn()
             if not pick and not self.drawPoly(): #### NO PICKER, FASTER PLOTTING.
-                vec = numpy.array(self.suppABCD)
+                vec = numpy.array(self.suppABCD)+1
                 pparts = set(self.suppABCD) 
                 if len(selected) > 0:
                     vec[numpy.array(list(selected))] *= -1
@@ -160,14 +160,17 @@ class MapView(GView):
                     signs = [(1, 1)]
                     
                 for i in pparts:
-                    if i != SSetts.delta:
+                    if True: #i != SSetts.delta:
                         dsetts = draw_settings[i]
-                        for (alpha, sign) in signs: 
-                            idps = numpy.where(vec == i*sign)[0]
+                        for (alpha, sign) in signs:
+                            msize = dsetts["size"]
+                            if i == SSetts.delta:
+                                msize *= 0.5
+                            idps = numpy.where(vec == (i+1)*sign)[0]
                             coords = self.coords_proj[0][:,idps,0]
                             self.axe.plot(coords[0], coords[1],
                                             mfc=dsetts["color_f"], mec=dsetts["color_e"],
-                                            marker=dsetts["shape"], markersize=dsetts["size"],
+                                            marker=dsetts["shape"], markersize=msize,
                                             linestyle='None', alpha=dsetts["alpha"]*alpha)
 
             else:
