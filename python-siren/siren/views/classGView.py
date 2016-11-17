@@ -85,13 +85,14 @@ class GView(object):
     label_cross = SYM.SYM_CROSS
 
     colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
-    DOT_ALPHA = 0.6
+    DOT_ALPHA = 0.65
         
-    COLHIGH='#FFFF00'
+    COLHIGH=(1,1,0)
 
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
+    DELTA_ON = False
     PICKER_ON = True # False
     
     map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SSetts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SSetts.beta]),
@@ -105,7 +106,7 @@ class GView(object):
                      {"id": "lenO", "label": label_cardO, "meth": "getLenO", "format": "%i"},
                      {"id": "lenB", "label": label_cardBeta, "meth": "getLenB", "format": "%i", "color":1},
                      {"id": "lenU", "label": label_cardU, "meth": "getLenU", "format": "%i"},]
-    
+        
     TID = "G"
     SDESC = "Viz"
     ordN = 0
@@ -147,6 +148,10 @@ class GView(object):
         self.mapFrame.GetSizer().Detach(self.panel)
         self.pos = npos
         self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+
+    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
+    def getCMap(self, ltid):
+        return plt.get_cmap(self.ltids_map.get(ltid, "jet"))
         
     @classmethod
     def getViewsDetails(tcl):
@@ -175,9 +180,11 @@ class GView(object):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
+        self.dots_draws = {}
         self.current_hover = None
         self.intab = self.parent.showVizIntab()
-
+        self.store_size = None
+        
         if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             # self.panel = self.parent.tabs["viz"]["tab"]
@@ -199,7 +206,7 @@ class GView(object):
 
     def lastStepInit(self):
         pass
-
+        
     def isIntab(self):
         return self.intab
 
@@ -585,6 +592,10 @@ class GView(object):
             pixels = tuple(self.mapFrame.GetClientSize() )
         else:
             pixels = initSize
+        ## print "Set Size", self.store_size, pixels
+        if self.store_size == pixels:
+            return
+        self.store_size = pixels
         boxsize = self.innerBox1.GetMinSize()
         min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
@@ -662,7 +673,11 @@ class GView(object):
     def OnQuit(self, event=None, upMenu=True, freeing=True):
         self.parent.deleteView(self.getId(), freeing)
         self.parent.callOnTab(self.source_list, meth="unregisterView", args={"key": self.getId(), "upMenu": upMenu})
+        self.MapcanvasMap = None
 
+    def wasKilled(self):
+        return self.MapcanvasMap is None
+        
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:
             side = self.QIds.index(event.GetId())
@@ -725,11 +740,25 @@ class GView(object):
             self.suppABCD = red.supports().getVectorABCD()
             self.setSource(source_list)
             self.updateText(red)
+            self.lastStepInit()
             self.updateMap()
             self.makeMenu()
             self.updateHist(red, init=True)
             return red
 
+    def isSingleVar(self):
+        return (len(self.queries[0]) == 0 and self.queries[1].isBasis(1, self.parent.dw.getData())) or \
+          (len(self.queries[1]) == 0 and self.queries[0].isBasis(0, self.parent.dw.getData()))
+
+    def getQCols(self):
+        return [(0,c) for c in self.queries[0].invCols()]+[(1,c) for c in self.queries[1].invCols()]
+    
+    def getValVector(self, side, c):
+        return self.parent.dw.getData().col(side, c).getVector()
+
+    def getLitTypeId(self, side, c):
+        return self.parent.dw.getData().col(side, c).typeId()
+    
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
@@ -960,33 +989,41 @@ class GView(object):
         if review:
             self.MapcanvasMap.draw()
 
+    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
+        if picker:
+            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
+        else:
+            args = {}
+        x, y = self.getCoordsXY(idp)
+        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
+
+    def drawAnnotation(self, idp, xy, ec, tag):
+        return self.axe.annotate(tag, xy=xy,
+                                xycoords='data', xytext=(-10, 15), textcoords='offset points',
+                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
+                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
+                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
+                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))
+    
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
+        dsetts = draw_settings["default"]
+        pick = self.getPickerOn()
+        if len(self.dots_draws) == 0:
+            return
+
         for lid in lids:
             if lid in self.highl:
                 continue
-            pi = self.suppABCD[lid]
+
             self.highl[lid] = []
-            self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
-                                          mfc=colhigh, mec=draw_settings[pi]["color_e"],
-                                          marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                                          markeredgewidth=1, linestyle='None'))
+            self.highl[lid].extend(self.drawEntity(lid, colhigh, self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), dsetts))
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),
-                                                         xycoords='data', xytext=(-10, 15), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_e"], size=10,
-                                                         va="center", backgroundcolor="#FFFFFF",
-                                                         bbox=dict(boxstyle="round", facecolor="#FFFFFF",
-                                                                   ec=draw_settings[pi]["color_e"]),
-                                                         arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                         patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                         ))
-
-            
+                self.hight[lid].append(self.drawAnnotation(lid, self.getCoordsXY(lid), self.getPlotColor(lid, "ec"), tag))
+        
     def emphasizeOff(self, lids = None):
         if lids is None:
             lids = self.highl.keys()
@@ -1065,6 +1102,8 @@ class GView(object):
 
     def getCoords(axi=None, ids=None):
         return None
+    def getCoordsXY(id):
+        return (0,0)
 
     def getColors(self):
         t = self.parent.dw.getPreferences()
@@ -1101,6 +1140,18 @@ class GView(object):
             pickon = GView.PICKER_ON
         return pickon
 
+    def getDeltaOn(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            deltaon = t["draw_delta"]["data"] == "yes"
+        except:
+            deltaon = GView.DELTA_ON
+        return deltaon
+
+    def getPlotColor(self, idp, prop):
+        return tuple(self.dots_draws[prop+"_dots"][idp])
+    def getPlotProp(self, idp, prop):
+        return self.dots_draws[prop+"_dots"][idp]
     
     def getDrawSettings(self):
         colors = self.getColors()
@@ -1168,8 +1219,13 @@ class GView(object):
                              "color_f": basic_grey,
                              "color_l": light_grey,
                              "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1}
-                }
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
+                "default": {"color_e": basic_grey,
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
+                             "shape": dot_shape,
+                             "alpha": self.DOT_ALPHA, "size": dot_size}
+                    }
         
 def HTMLColorToRGB(colorstring):
     """ convert #RRGGBB to an (R, G, B) tuple """

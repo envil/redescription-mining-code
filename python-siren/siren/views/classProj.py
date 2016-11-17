@@ -269,9 +269,10 @@ class AxesProj(Proj):
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
 
-    def addParamsRandrep(self):
+    def addParamsRandrep(self, more={}):
         if self.params.get("Yaxis", -1) == -1 or self.params.get("Xaxis", -1) == -1:
             self.params["random_state"] = random.randint(0, self.rint_max)
+        self.params.update(more)
 
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
@@ -279,6 +280,14 @@ class AxesProj(Proj):
         if len(mm) == 0:
             return
         scs = random.sample(mm, 2)
+        if "vids" in self.params:
+            if len(self.params["vids"]) == 1:
+                scs[1] = self.params["vids"][0]
+
+            elif len(self.params["vids"]) > 1:
+                scs = random.sample(self.params["vids"], 2)
+                nn = [m for m in mm if m in self.params["vids"]]
+         
         side_lstr = {0:"LHS", 1:"RHS"}
         self.labels = ["", ""]
         for ai, axis in enumerate(["Xaxis", "Yaxis"]):

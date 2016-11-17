@@ -288,6 +288,9 @@ class BoolColM(ColM):
     def getTerm(self):
         return BoolTerm(self.id)
 
+    def isBasis(self, term):
+        return False
+    
     def getInitTerms(self, minIn=0, minOut=0):
         if len(self.hold) >= minIn and self.N-(len(self.hold)+self.nbMissing()) >= minOut:
             return [(BoolTerm(self.id), len(self.hold))]
@@ -481,8 +484,12 @@ class CatColM(ColM):
         return 1
 
     def getTerm(self):
-        return CatTerm(self.id, self.modeCat())
+        return CatTerm(self.id, "c?")
+        ## return CatTerm(self.id, self.modeCat())
 
+    def isBasis(self, term):
+        return term.getCat() == "c?"
+        
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
         for cat in self.cats():
@@ -676,7 +683,11 @@ class NumColM(ColM):
                 return [tmp.get(i, tmp[-1]) for i in range(self.nbRows())]
     
     def getTerm(self):
-        return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
+        return NumTerm(self.id, self.getMin(), self.getMax())
+        ## return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
+
+    def isBasis(self, term):
+        return  ( term.getUpb() == self.getMax() and term.getLowb() == self.getMin() )
 
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
@@ -1814,7 +1825,10 @@ class Data(object):
 
     def literalSuppMiss(self, side, literal):
         return (self.supp(side, literal), self.miss(side,literal))
-            
+
+    def literalIsBasis(self, side, literal):
+        return self.col(side, literal).isBasis(literal.getTerm())
+    
     def usableIds(self, min_in=-1, min_out=-1):
         return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \
                 [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]

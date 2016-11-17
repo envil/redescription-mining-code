@@ -93,12 +93,21 @@
 	<options><value>yes</value><value>no</value></options>
       </parameter>
     <parameter>
+	<name>draw_delta</name>
+	<label>Draw uncovered</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Draw uncovered entities (map)</legend>
+	<default><value>1</value></default>
+	<options><value>no</value><value>yes</value></options>
+      </parameter>
+      <parameter>
 	<name>use_picker</name>
 	<label>Clickable markers</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Draw clickable markers for entities using pickers, disabling makes plotting faster</legend>
-	<default><value>1</value></default>
+	<default><value>0</value></default>
 	<options><value>no</value><value>yes</value></options>
       </parameter>
       <parameter>

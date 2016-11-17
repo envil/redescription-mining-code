@@ -50,7 +50,6 @@ class ProjCache():
 
     def queryPC(self, proj, vid):
         phsh = "%s:%s" % (vid[0], proj.getParamsHash())
-        # print "Query PC", proj, vid, phsh
         if phsh in self.cache:
             if self.cache[phsh]["coords"] is not None:
                 proj.setCoords(self.cache[phsh]["coords"])
@@ -65,7 +64,6 @@ class ProjCache():
 
     def incomingPC(self, proj, vid):
         phsh = "%s:%s" % (vid[0], proj.getParamsHash())
-        # print "Incoming PC", proj, vid, phsh
         if phsh in self.cache:
             self.cache[phsh]["coords"] = proj.getCoords()
             while len(self.cache[phsh]["waiting"]) > 0:
@@ -1030,7 +1028,6 @@ class Siren():
                 return
             self.selectedViewX = view.getId()
             self.view_ids[self.selectedViewX] = view
-            view.lastStepInit()
         else:
             self.selectedViewX = (viewT, vid)
         self.view_ids[self.selectedViewX].toTop()
@@ -1117,7 +1114,7 @@ class Siren():
             if out == 0:
                 # print "Found previous proj"
                 self.readyProj(vid, proj)
-            elif out < 0:
+            else: #if out < 0:
                 # print "No previous proj"
                 wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
                 if wid is None:

@@ -35,6 +35,8 @@ class ViewFactory(object):
         if type_tab == "Row":
             return classEProjView.EProjView.defaultViewT
         elif geo:
+            ### Test
+            return classEProjView.EProjView.defaultViewT
             return classMapView.MapView.TID
         else:
             return classParaView.ParaView.TID

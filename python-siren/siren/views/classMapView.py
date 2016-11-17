@@ -29,7 +29,7 @@ class MapView(GView):
     geo = True
     MAP_POLY = True #False
     typesI = ["Var", "Reds"]
-
+    
     marg_f = 100.0
     proj_def = "mill"
     proj_names = {"None": None,
@@ -130,13 +130,20 @@ class MapView(GView):
     def updateMap(self):
         """ Redraws the map
         """
-
+        
         if self.suppABCD is not None and self.hasProjCoords() is not None:
             self.highl = {}
             self.hight = {}
             self.hover_access = [i for (i, v) in enumerate(self.suppABCD) if v != SSetts.delta] 
-            
+
             self.axe.cla()
+            # for xx in self.MapfigMap.axes:
+            #     if xx == self.axe:
+            #         xx.cla()
+            #     else:
+            #         xx.cla()
+            #         self.MapfigMap.delaxes(xx)
+            
             self.makeBasemapBack(self.bm)
             draw_settings = self.getDrawSettings()
 
@@ -146,76 +153,65 @@ class MapView(GView):
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0
-
             
             lims = self.axe.get_xlim(), self.axe.get_ylim()
             pick = self.getPickerOn()
-            if not pick and not self.drawPoly(): #### NO PICKER, FASTER PLOTTING.
-                vec = numpy.array(self.suppABCD)+1
-                pparts = set(self.suppABCD) 
-                if len(selected) > 0:
-                    vec[numpy.array(list(selected))] *= -1
-                    signs = [(1, 1), (selp, -1)]
-                else:
-                    signs = [(1, 1)]
-                    
-                for i in pparts:
-                    if True: #i != SSetts.delta:
-                        dsetts = draw_settings[i]
-                        for (alpha, sign) in signs:
-                            msize = dsetts["size"]
-                            if i == SSetts.delta:
-                                msize *= 0.5
-                            idps = numpy.where(vec == (i+1)*sign)[0]
-                            coords = self.coords_proj[0][:,idps,0]
-                            self.axe.plot(coords[0], coords[1],
-                                            mfc=dsetts["color_f"], mec=dsetts["color_e"],
-                                            marker=dsetts["shape"], markersize=msize,
-                                            linestyle='None', alpha=dsetts["alpha"]*alpha)
+
+            dsetts = draw_settings["default"]
+            sz_dots = numpy.ones(len(self.suppABCD))*dsetts["size"]
+            draw_indices = range(len(self.suppABCD))
+
+            if self.isSingleVar():
+                ccs = self.getQCols()
+                ltid = self.getLitTypeId(ccs[0][0], ccs[0][1])
+                vals = self.getValVector(ccs[0][0], ccs[0][1])
+                cmap, vmin, vmax = (self.getCMap(ltid), numpy.min(vals), numpy.max(vals))
+                
+                norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+                mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+                ec_dots = numpy.array([mapper.to_rgba(v) for v in vals])
+                fc_dots = ec_dots.copy()
+                fc_dots[:,-1] = dsetts["alpha"]
+                mapper.set_array(vals)
 
             else:
-                selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
-                if len(selected) > 0:
-                    selv[numpy.array(list(selected))] = selp
+                mapper = None
+                vec = numpy.array(self.suppABCD)
+                u, indices = numpy.unique(vec, return_inverse=True)
+                ec_clusts = numpy.array([draw_settings[i]["color_e"]+[1.] for i in u])
+                ec_dots = ec_clusts[indices]
+                fc_clusts = numpy.array([draw_settings[i]["color_f"]+[ draw_settings[i]["alpha"] ] for i in u])
+                fc_dots = fc_clusts[indices]
 
-                for idp, pi in enumerate(self.suppABCD):
-                    if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
-                        self.drawEntity(idp, draw_settings[pi], picker=pick, selv=selv[idp])
-                    
+                if self.getDeltaOn():
+                    sz_dots[numpy.where(vec==SSetts.delta)[0]] *= 0.5
+                else:
+                    draw_indices = numpy.where(vec!=SSetts.delta)[0]
+
+            if len(selected) > 0:
+                fc_dots[numpy.array(list(selected)), -1] *= selp
+
+            self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots}
+            if not pick and not self.drawPoly(): #### NO PICKER, FASTER PLOTTING.
+                self.axe.scatter(self.coords_proj[0][0,draw_indices,0],
+                                 self.coords_proj[0][1,draw_indices,0],
+                                 c=fc_dots[draw_indices,:], edgecolors=ec_dots[draw_indices,:],
+                                 s=5*sz_dots[draw_indices], marker=dsetts["shape"], zorder=10)
+            else:
+                for idp in draw_indices:
+                        self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
+                                                self.getPlotProp(idp, "sz"), dsetts, picker=pick)
+            # if mapper is not None:
+            #     self.MapfigMap.colorbar(mapper, ax=self.axe)
+
             self.axe.set_xlim(lims[0])
             self.axe.set_ylim(lims[1])
 
             #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
             self.updateEmphasize(self.COLHIGH, review=False)
-
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
-
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
-        draw_settings = self.getDrawSettings()
-        for lid in lids:
-            if lid in self.highl:
-                continue
-            pi = self.suppABCD[lid]
-            self.highl[lid] = []
-            dsetts = {"shape": draw_settings[pi]["shape"],
-                      "color_f": colhigh,
-                      "color_e": draw_settings[pi]["color_e"],
-                      "size": draw_settings[pi]["size"],
-                      "alpha": draw_settings[pi]["alpha"]}
-            self.highl[lid].extend(self.drawEntity(lid, dsetts, picker=self.suppABCD[lid] == SSetts.delta))
-
-            if len(lids) == 1:
-                tag = self.parent.dw.getData().getRName(lid)
-                self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=self.getCoordsM(lid),  xycoords='data',
-                                                     xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
-                                                     size=10, va="center", backgroundcolor="#FFFFFF",
-                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
-                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                     ))
-
+                
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         
@@ -265,8 +261,8 @@ class MapView(GView):
             return zip(*[self.coords_proj[0][0,:,0], self.coords_proj[0][1,:,0]])
         return []
 
-    def getCoordsM(self, id):
-        return self.coords_proj[0][:,id,0]
+    def getCoordsXY(self, id):
+        return self.coords_proj[0][(0,1),id,0]
 
     def getCoordsP(self, id):
         return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
@@ -303,23 +299,19 @@ class MapView(GView):
             mapoly = MapView.MAP_POLY
         return mapoly
 
-    
-    def drawEntity(self, idp, dsetts, picker=False, selv=1):
+    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
         if picker:
-            args = {"picker": dsetts["size"], "gid": "%d.%d" % (idp, 1)}
+            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
         else:
             args = {}
         if self.drawPoly():
             return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True,
-                                              fc=dsetts["color_f"], ec=dsetts["color_e"], alpha=dsetts["alpha"]*selv, **args))]
+                                              fc=fc, ec=ec, **args))]
                     
         else:
-            x, y = self.getCoordsM(idp)
-            return self.axe.plot(x, y,
-                                 mfc=dsetts["color_f"], mec=dsetts["color_e"],
-                                 marker=dsetts["shape"], markersize=dsetts["size"],
-                                 linestyle='None', alpha=dsetts["alpha"]*selv, **args)
-        
+            ## print idp, fc, ec
+            x, y = self.getCoordsXY(idp)
+            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
 
     def getBasemapProjSetts(self):
         proj = self.proj_def 

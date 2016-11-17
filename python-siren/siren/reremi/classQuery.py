@@ -1681,6 +1681,11 @@ class Query(object):
             evl(self.buk, lits, path)
         return lits
 
+    def isBasis(self, side, data):
+        if len(self) == 1:
+            ll = self.listLiterals()
+            return data.literalIsBasis(side, ll[0])
+        return False
         
     def __str__(self):
         return self.disp()    
