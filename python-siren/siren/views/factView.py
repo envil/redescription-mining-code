@@ -1,4 +1,5 @@
 import classGView
+import classTDView
 import classMapView
 import classParaView
 import classTreeView
@@ -36,7 +37,7 @@ class ViewFactory(object):
             return classEProjView.EProjView.defaultViewT
         elif geo:
             ### Test
-            return classEProjView.EProjView.defaultViewT
+            ## return classEProjView.EProjView.defaultViewT
             return classMapView.MapView.TID
         else:
             return classParaView.ParaView.TID

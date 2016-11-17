@@ -15,12 +15,12 @@ from matplotlib.patches import Ellipse, Polygon
 from ..reremi.classQuery import Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classGView import GView
+from classTDView import TDView
 from classInterObjects import MaskCreator
 
 import pdb
 
-class MapView(GView):
+class MapView(TDView):
 
     TID = "MAP"
     SDESC = "Map"
@@ -29,7 +29,7 @@ class MapView(GView):
     geo = True
     MAP_POLY = True #False
     typesI = ["Var", "Reds"]
-    
+
     marg_f = 100.0
     proj_def = "mill"
     proj_names = {"None": None,
@@ -88,6 +88,8 @@ class MapView(GView):
     def drawMap(self):
         """ Draws the map
         """
+        self.highl = {}
+        self.hight = {}
 
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
@@ -127,91 +129,7 @@ class MapView(GView):
             self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
             self.MapcanvasMap.draw()
             
-    def updateMap(self):
-        """ Redraws the map
-        """
-        
-        if self.suppABCD is not None and self.hasProjCoords() is not None:
-            self.highl = {}
-            self.hight = {}
-            self.hover_access = [i for (i, v) in enumerate(self.suppABCD) if v != SSetts.delta] 
-
-            self.axe.cla()
-            # for xx in self.MapfigMap.axes:
-            #     if xx == self.axe:
-            #         xx.cla()
-            #     else:
-            #         xx.cla()
-            #         self.MapfigMap.delaxes(xx)
             
-            self.makeBasemapBack(self.bm)
-            draw_settings = self.getDrawSettings()
-
-            ### SELECTED DATA
-            selected = self.getUnvizRows()
-            # selected = self.parent.dw.getData().selectedRows()
-            selp = 0.5
-            if self.sld_sel is not None:
-                selp = self.sld_sel.GetValue()/100.0
-            
-            lims = self.axe.get_xlim(), self.axe.get_ylim()
-            pick = self.getPickerOn()
-
-            dsetts = draw_settings["default"]
-            sz_dots = numpy.ones(len(self.suppABCD))*dsetts["size"]
-            draw_indices = range(len(self.suppABCD))
-
-            if self.isSingleVar():
-                ccs = self.getQCols()
-                ltid = self.getLitTypeId(ccs[0][0], ccs[0][1])
-                vals = self.getValVector(ccs[0][0], ccs[0][1])
-                cmap, vmin, vmax = (self.getCMap(ltid), numpy.min(vals), numpy.max(vals))
-                
-                norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-                mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-                ec_dots = numpy.array([mapper.to_rgba(v) for v in vals])
-                fc_dots = ec_dots.copy()
-                fc_dots[:,-1] = dsetts["alpha"]
-                mapper.set_array(vals)
-
-            else:
-                mapper = None
-                vec = numpy.array(self.suppABCD)
-                u, indices = numpy.unique(vec, return_inverse=True)
-                ec_clusts = numpy.array([draw_settings[i]["color_e"]+[1.] for i in u])
-                ec_dots = ec_clusts[indices]
-                fc_clusts = numpy.array([draw_settings[i]["color_f"]+[ draw_settings[i]["alpha"] ] for i in u])
-                fc_dots = fc_clusts[indices]
-
-                if self.getDeltaOn():
-                    sz_dots[numpy.where(vec==SSetts.delta)[0]] *= 0.5
-                else:
-                    draw_indices = numpy.where(vec!=SSetts.delta)[0]
-
-            if len(selected) > 0:
-                fc_dots[numpy.array(list(selected)), -1] *= selp
-
-            self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots}
-            if not pick and not self.drawPoly(): #### NO PICKER, FASTER PLOTTING.
-                self.axe.scatter(self.coords_proj[0][0,draw_indices,0],
-                                 self.coords_proj[0][1,draw_indices,0],
-                                 c=fc_dots[draw_indices,:], edgecolors=ec_dots[draw_indices,:],
-                                 s=5*sz_dots[draw_indices], marker=dsetts["shape"], zorder=10)
-            else:
-                for idp in draw_indices:
-                        self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
-                                                self.getPlotProp(idp, "sz"), dsetts, picker=pick)
-            # if mapper is not None:
-            #     self.MapfigMap.colorbar(mapper, ax=self.axe)
-
-            self.axe.set_xlim(lims[0])
-            self.axe.set_ylim(lims[1])
-
-            #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
-            self.updateEmphasize(self.COLHIGH, review=False)
-            self.MapcanvasMap.draw()
-            self.MapfigMap.canvas.SetFocus()
-                
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         
@@ -253,16 +171,38 @@ class MapView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-    def hasProjCoords(self):
-        return self.coords_proj is not None
+    def makeBackground(self):   
+        self.makeBasemapBack(self.bm)
+    def makeFinish(self, xylims, xybs):
+        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
+
+    def plotSimple(self):
+        return not self.getPickerOn() and not self.drawPoly()
+    def isReadyPlot(self):
+        return self.suppABCD is not None and self.getCoords() is not None    
+    def getAxisLims(self):
+        xx = self.axe.get_xlim()
+        yy = self.axe.get_ylim()
+        return (xx[0], xx[1], yy[0], yy[1])
 
     def getPCoords(self):
-        if self.hasProjCoords():
+        if self.coords_proj is not None:
             return zip(*[self.coords_proj[0][0,:,0], self.coords_proj[0][1,:,0]])
         return []
 
     def getCoordsXY(self, id):
-        return self.coords_proj[0][(0,1),id,0]
+	if self.coords_proj is None:
+            return (0,0)
+	else:
+            return self.coords_proj[0][:,id,0]
+    def getCoords(self, axi=None, ids=None):
+        if self.coords_proj is None:
+            return self.coords_proj
+        if axi is None:
+            self.coords_proj[0][:,:,0]
+        elif ids is None:
+            return self.coords_proj[0][axi,:,0]
+        return self.coords_proj[0][axi,ids,0]
 
     def getCoordsP(self, id):
         return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
@@ -426,26 +366,6 @@ class MapView(GView):
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
 
 
-    def hoverActive(self):
-        return GView.hoverActive(self) and not self.mc.isActive()
-
-    def on_motion(self, event):
-        if self.hoverActive():
-            lid = None
-            if event.inaxes == self.axe:
-                lid = self.getLidAt(event.xdata, event.ydata)
-                if lid is not None and lid != self.current_hover:
-                    if self.current_hover is not None:
-                        emph_off = set([self.current_hover])
-                    else:
-                        emph_off = set()
-                    self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
-                    self.current_hover = lid
-            if lid is None and lid != self.current_hover:
-                self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
-                self.current_hover = None
-            # if self.ri is not None:
-            #     self.drs[self.ri].do_motion(event)
 
     def getLidAt(self, x, y):
         d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, [(x,y)])

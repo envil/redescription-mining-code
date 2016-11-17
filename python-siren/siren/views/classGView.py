@@ -155,8 +155,10 @@ class GView(object):
         
     @classmethod
     def getViewsDetails(tcl):
-        return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
-
+        if tcl.TID is not None:
+            return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
+        return {}
+    
     @classmethod
     def suitableView(tcl, geo=False, queries=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
