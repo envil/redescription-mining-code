@@ -63,9 +63,7 @@ class EProjView(TDView):
         if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
         else:        
-            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+            self.mapFrame = self.initExtFrame()
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.binds()

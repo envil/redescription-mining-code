@@ -190,10 +190,8 @@ class GView(object):
         if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             # self.panel = self.parent.tabs["viz"]["tab"]
-        else:        
-            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+        else:
+            self.mapFrame = self.initExtFrame()
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.binds()
@@ -634,14 +632,18 @@ class GView(object):
     def OnSaveFig(self, event=None):
         self.MaptoolbarMap.save_figure(event)
 
+    def initExtFrame(self):
+        mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+        mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
+        mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+        return mapFrame
+        
     def OnPop(self, event=None):
         pos = self.getGPos()
         panel = self.popSizer()
         if self.isIntab():
             self.intab = False
-            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+            self.mapFrame = self.initExtFrame()
 
             self.boxPop.SetBitmap(self.icons["outin"])
             # self.boxPop.SetLabel(self.label_outin)
