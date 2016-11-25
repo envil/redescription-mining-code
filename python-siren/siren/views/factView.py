@@ -8,6 +8,7 @@ import classTreeView
 
 import classLView
 import classOverView
+import classInterView
 
 import pdb
 
@@ -34,8 +35,8 @@ class ViewFactory(object):
     def reloadCode(tcl):
         global classOverView
         classOverView = reload(classOverView)
-        tcl.details_views_typs['L']['OVE']['class'] = classOverView.OverView
-        print "Reloaded OverView", tcl.details_views_typs['L']['OVE']['class'].cversion
+        tcl.details_views_typs['L']['INT']['class'] = classInterView.InterView
+        print "Reloaded InterView", tcl.details_views_typs['L']['INT']['class'].cversion
         
     @classmethod
     def getClasses(tcl, typv="R"):

@@ -276,7 +276,7 @@ class EProjView(GView):
                 if pi in draw_settings and selv[idp] > 0:
                     if draw_settings[pi]["size"] > siz:
                         siz = draw_settings[pi]["size"]
-                    self.axe.plot(self.getProj().getCoords(0,idp), self.getProj().getCoords(1, idp), gid="%d.%d" % (idp, 1),
+                    self.axe.plot(self.getCoords(0,idp), self.getCoords(1, idp), gid="%d.%d" % (idp, 1),
                            mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
                            marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
                            linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
