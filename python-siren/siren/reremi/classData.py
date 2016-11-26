@@ -20,6 +20,8 @@ NA_num  = np.nan
 NA_bool  = -1
 NA_cat  = -1
 
+MODE_VALUE = 0
+
 class DataError(Exception):
     def __init__(self, value):
         self.value = value
@@ -291,6 +293,9 @@ class BoolColM(ColM):
     def getTerm(self):
         return BoolTerm(self.id)
 
+    def isBasis(self, term):
+        return False
+    
     def getInitTerms(self, minIn=0, minOut=0):
         if len(self.hold) >= minIn and self.N-(len(self.hold)+self.nbMissing()) >= minOut:
             return [(BoolTerm(self.id), len(self.hold))]
@@ -484,8 +489,12 @@ class CatColM(ColM):
         return 1
 
     def getTerm(self):
-        return CatTerm(self.id, self.modeCat())
+        return CatTerm(self.id, "c?")
+        ## return CatTerm(self.id, self.modeCat())
 
+    def isBasis(self, term):
+        return term.getCat() == "c?"
+        
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
         for cat in self.cats():
@@ -614,7 +623,8 @@ class NumColM(ColM):
     NA = NA_num
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
-    alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
+    # alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
+    alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]\d+)?$"
     def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
         if (matchMiss is not False and v == matchMiss) or v == str(NumColM.NA):
             miss.add(j)
@@ -628,9 +638,10 @@ class NumColM(ColM):
                         miss.add(j)
                     return v, prec
             else:
-                if len(tmatch.group("dec")) > prec:
-                    prec = len(tmatch.group("dec"))
-
+                pprec = len(re.match(NumColM.p_patt, str(float(v))).group("dec"))
+                if pprec > prec:
+                    prec = pprec
+                    
             val = float(v)
             if exclude is False or val != exclude:
                 vals.append((val, j))
@@ -678,7 +689,11 @@ class NumColM(ColM):
                 return [tmp.get(i, tmp[-1]) for i in range(self.nbRows())]
     
     def getTerm(self):
-        return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
+        return NumTerm(self.id, self.getMin(), self.getMax())
+        ## return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
+
+    def isBasis(self, term):
+        return  ( term.getUpb() == self.getMax() and term.getLowb() == self.getMin() )
 
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
@@ -739,6 +754,7 @@ class NumColM(ColM):
         if type(self.vect) is dict:
             return self.vect.get(rid, self.vect[-1])
         else:
+            self.getVector()
             return self.vect[rid]
 
     def valToStr(self, val):
@@ -778,17 +794,22 @@ class NumColM(ColM):
         if len(self.sVals) > 0:
             vals, ids = zip(*self.sVals)
             self.vect[list(ids)] = vals
-
+        ### mode rows HERE
+        
+            
     def getType(self, details=None):
         return "numerical"
 
     def getRange(self, details=None):
         return (self.getMin(details), self.getMax(details))
     def getMin(self, details=None):
-        return self.sVals[0][0]
+        if len(self.sVals) > 0:
+            return self.sVals[0][0]
+        return MODE_VALUE ### DEBUG
     def getMax(self, details=None):
-        return self.sVals[-1][0]
-
+        if len(self.sVals) > 0:
+            return self.sVals[-1][0]
+        return MODE_VALUE
     def getNbValues(self):
         return self.nbUniq
 
@@ -836,9 +857,16 @@ class NumColM(ColM):
     def setMode(self, force=False):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
-        if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
-            self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
-        if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
+        ## if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
+        ##     self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
+        ## if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
+        tmpV = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
+        # pdb.set_trace()
+        # if len([i for v,i in self.sVals if v == MODE_VALUE]) > 0.1*self.N compute vector
+        #     self.sVals = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
+        if force or ( len(self.sVals)+len(self.missing) > 0 and len(tmpV)+len(self.missing) != self.N \
+                          and len(self.sVals) - len(tmpV)  > 0.1*self.N):
+            self.sVals = tmpV    ## gather row ids for which
             ## gather row ids for which
             if len(self.sVals) > 0:
                 rids = set(zip(*self.sVals)[1])
@@ -857,9 +885,9 @@ class NumColM(ColM):
                 i = 0
                 while i < len(self.sVals) and self.sVals[i][0] < 0:
                     i+=1
-                self.sVals.insert(i, (0, -1))
-        else:
-            self.mode = (0, None)
+                self.sVals.insert(i, (MODE_VALUE, -1))
+        else: ### MODE unused
+            self.mode = (MODE_VALUE, None)
         self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
         
     def density(self):
@@ -1221,7 +1249,7 @@ class Data(object):
             if N == "multiple" and len(cols) >= 2:
                 try:         
                     data_filenames = [cols[0], cols[1]]
-                    if len(cols) >= 4 and cols[2] is not None or cols[3] is not None:
+                    if len(cols) >= 4 and (cols[2] is not None or cols[3] is not None):
                         names_filenames = [cols[2], cols[3]]
                     else:
                         names_filenames = None
@@ -1469,7 +1497,8 @@ class Data(object):
                 if re.search(pattern, col.getName()):
                     results.append((sito, ci))
         return results
-        
+
+    ### creating subsets split
     def rsubsets_split(self, nbsubs=10, split_vals=None, grain=10.):
         # uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
         # return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
@@ -1669,7 +1698,10 @@ class Data(object):
 
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            if len(header) == 0:
+                header.append("")
+            header[-1] += " # type=%s" % letter
+            # header.append("type=%s" % letter)
 
         if len(header) > 0:
             csv_reader.write_row(csvf, header)
@@ -1685,7 +1717,7 @@ class Data(object):
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
-            for col in self.cols[side]:
+            for cci, col in enumerate(self.cols[side]):
                 row.append(col.valToStr(col.getValue(n)))
             csv_reader.write_row(csvf, row)
 
@@ -1694,7 +1726,7 @@ class Data(object):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]]
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            header[-1] += " # type=%s" % letter
         csv_reader.write_row(csvf, header)
         if not inline:
             trids, tcids = {}, {}
@@ -1759,7 +1791,10 @@ class Data(object):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]]
         letter = self.getCommonType(side)
         if letter is not None:
-            header.append("type=%s" % letter)
+            if len(header) == 0:
+                header.append("")
+            header[-1] += " # type=%s" % letter
+            # header.append("type=%s" % letter)
         csv_reader.write_row(csvf, header)
         if not details:
             rids = {}
@@ -1815,7 +1850,10 @@ class Data(object):
 
     def literalSuppMiss(self, side, literal):
         return (self.supp(side, literal), self.miss(side,literal))
-            
+
+    def literalIsBasis(self, side, literal):
+        return self.col(side, literal).isBasis(literal.getTerm())
+    
     def usableIds(self, min_in=-1, min_out=-1):
         return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \
                 [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]
@@ -1890,8 +1928,23 @@ class Data(object):
         self.coords_points = None
         if coords is not None:
             if (len(coords)==2 and len(coords[0]) == self.nbRows()):
-                self.coords = coords
-                self.coords_points = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+                coords_tmp = coords
+                coords_points_tmp = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+                #### check for duplicates and randomize
+                ids_miss = np.where((coords_points_tmp[:,1]==-361) & (coords_points_tmp[:,0]==-361))[0]
+                ids_pres = list(set(range(self.nbRows())).difference(ids_miss))
+                # keys_cc = ["%s:%s" % (coords_points_tmp[v,0], coords_points_tmp[v,1]) for v in ids_pres]
+                # pdb.set_trace()
+                # if len(ids_pres) > len(set(keys_cc)):
+                #     print len(ids_pres), len(set(keys_cc))
+                miss_cc = (np.min(coords_points_tmp[ids_pres,0]), np.min(coords_points_tmp[ids_pres,1]))
+                coords_points_tmp[ids_miss,0] = miss_cc[0]
+                coords_points_tmp[ids_miss,1] = miss_cc[1]
+                for cci in ids_miss:
+                    coords_tmp[0][cci] = [miss_cc[0]]
+                    coords_tmp[1][cci] = [miss_cc[1]]
+                self.coords_points = coords_points_tmp
+                self.coords = coords_tmp
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
 

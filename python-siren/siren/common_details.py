@@ -50,7 +50,7 @@ def getExtLinks(cv):
 
 version, changes = getVersion()
 
-home_eg = "http://www.loria.fr/~egalbrun/"
+home_eg = "https://members.loria.fr/EGalbrun/"
 home_siren = "http://siren.gforge.inria.fr/"
 
 common_variables = {
@@ -63,15 +63,15 @@ common_variables = {
     "VERSION_MAC_UNDERSC": "",
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Tue, 19 Jan 2016 10:00:00 +0100",
+    "LAST_CHANGES_DATE": "Sat, 26 Nov 2016 10:00:00 +0100",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
     "MAINTAINER_LOGIN": "galbrun",
     "MAINTAINER_EMAIL": "esther.galbrun@inria.fr",
-    "PDFS_URL": home_eg+"pdfs/",
-    "DATA_URL": home_eg+"redescriptors/data/",
+    "PDFS_URL": home_eg+"resources/",
+    "DATA_URL": home_eg+"resources/",
     "PROJECT_URL": home_siren,
-    "CODE_URL": home_eg+"redescriptors/code/siren/",
+    "CODE_URL": home_siren+"/code/",
     "CODE_MAC_URL": "http://www.cs.helsinki.fi/u/pamietti/data/siren/",
     "DOWNLOAD_URL": home_siren+"php/download.php",
     "CODE_LOC": "1",

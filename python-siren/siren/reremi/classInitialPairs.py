@@ -127,7 +127,7 @@ class InitialPairs(object):
             self.sorted_ids = self.sort_meth(self.pairs_store, self.pairs_details, self.drop_set)
         
     def pop(self, cond=None):
-        if len(self.pairs_store) > 0 and (self.max_out == -1 or self.max_out > self.getNbOut()):
+        if len(self.pairs_store) > 0 and not self.exhausted():
             self._sort()
             if len(self.sorted_ids):
                 nid = self.sorted_ids.pop()
@@ -150,3 +150,5 @@ class InitialPairs(object):
         if pair is not None:
             return Redescription.fromInitialPair(pair, data)
 
+    def exhausted(self):
+        return (self.max_out > -1) and (self.getNbOut()  >= self.max_out)

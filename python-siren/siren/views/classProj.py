@@ -68,6 +68,9 @@ def applyF(f, parameters):
 
 class Proj(object):
 
+    xaxis_lbl = "x-axis var (side.id)"
+    yaxis_lbl = "y-axis var (side.id)"
+
     rint_max = 10000
     PID = "---"
     SDESC = "---"
@@ -259,12 +262,12 @@ class AxesProj(Proj):
     SDESC = "Scatter"
     whats = ["entities"]
     title_str = "Scatter Plot"
-    gen_parameters = {"Xaxis": -1.0, "Yaxis": -1.0}
+    gen_parameters = {Proj.xaxis_lbl: -1.0, Proj.yaxis_lbl: -1.0}
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
 
-    def addParamsRandrep(self):
-        if self.params.get("Yaxis", -1) == -1 or self.params.get("Xaxis", -1) == -1:
+    def addParamsRandrep(self, more={}):
+        if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
             self.params["random_state"] = random.randint(0, self.rint_max)
 
     def comp(self):
@@ -273,9 +276,17 @@ class AxesProj(Proj):
         if len(mm) == 0:
             return
         scs = random.sample(mm, 2)
+        if "vids" in self.params:
+            if len(self.params["vids"]) == 1:
+                scs[1] = self.params["vids"][0]
+
+            elif len(self.params["vids"]) > 1:
+                scs = random.sample(self.params["vids"], 2)
+                nn = [m for m in mm if m in self.params["vids"]]
+         
         side_lstr = {0:"LHS", 1:"RHS"}
         self.labels = ["", ""]
-        for ai, axis in enumerate(["Xaxis", "Yaxis"]):
+        for ai, axis in enumerate([Proj.xaxis_lbl, Proj.yaxis_lbl]):
             tmp = self.getParameter(axis)
             if tmp > 0:
                 sc = tuple(map(int, str(tmp).split(".")[:2]))
@@ -302,11 +313,11 @@ class VrsProj(Proj):
     whats = ["variables"]
     title_str = "Scatter Plot"
     gen_parameters = dict(Proj.gen_parameters)
-    gen_parameters.update({"Xaxis": -1, "Yaxis": -1})
+    gen_parameters.update({Proj.xaxis_lbl: -1, Proj.yaxis_lbl: -1})
     dyn_f = []
 
     def addParamsRandrep(self):
-        if self.params.get("Yaxis", -1) == -1 or self.params.get("Xaxis", -1) == -1:
+        if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
             self.params["random_state"] = random.randint(0, self.rint_max)
 
     def comp(self):
@@ -322,7 +333,7 @@ class VrsProj(Proj):
             
         scs = random.sample(rids, 2)
         self.labels = ["", ""]
-        for ai, axis in enumerate(["Xaxis", "Yaxis"]):
+        for ai, axis in enumerate([Proj.xaxis_lbl, Proj.yaxis_lbl]):
             tmp = self.getParameter(axis)
             if tmp > 0 and tmp in rids:
                 scs[ai] = tmp

@@ -353,12 +353,12 @@ class ParaView(GView):
             else:
                 bot = 0-self.margins_tb
 
-            #### fit window size
-            extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
-                      self.missing_yy-self.margins_tb, 0]
-            self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
-                          [extent[2], extent[2], extent[3], extent[3]],
-                          color='1', alpha=0.66, zorder=5, ec="1" )
+            # #### fit window size HERE FIT
+            # extent = [numpy.min(self.prepared_data["xticks"])-1, numpy.max(self.prepared_data["xticks"])+1,
+            #           self.missing_yy-self.margins_tb, 0]
+            # self.axe.fill([extent[0], extent[1], extent[1], extent[0]],
+            #               [extent[2], extent[2], extent[3], extent[3]],
+            #               color='1', alpha=0.66, zorder=5, ec="1" )
             
             ### Labels
             self.axe.set_xticks(self.prepared_data["xticks"])
@@ -390,7 +390,7 @@ class ParaView(GView):
             self.axe.set_xlim([numpy.min(self.prepared_data["xticks"])-1-self.margins_sides,
                                numpy.max(self.prepared_data["xticks"])+1+self.margins_sides])
             self.axe.set_ylim([bot,1+self.margins_tb])            
-
+            
             self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()

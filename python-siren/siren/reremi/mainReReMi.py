@@ -4,21 +4,19 @@ import sys, re, os.path, datetime
 import numpy
 import tempfile
 from toolLog import Log
-from classPackage import Package
+from classPackage import Package, saveAsPackage
 from classData import Data
-from classRedescription import Redescription, parseRedList
+from classRedescription import Redescription, parseRedList, printRedList
 from classBatch import Batch
 from classConstraints import Constraints
-from classPreferencesManager import PreferencesManager, PreferencesReader
+from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
 from classQuery import Query
 import pdb
 
 
 def loadAll(arguments=[]):
-    pref_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
-    pm = PreferencesManager(conf_defs)
+    pm = getPM()
 
     pack_filename = None
     config_filename = None
@@ -68,7 +66,8 @@ def loadAll(arguments=[]):
     if pack_filename is not None:
         filenames["package"] = os.path.abspath(pack_filename)
     print filenames
-    return params, data, logger, filenames, reds
+    return {"params": params, "data": data, "logger": logger,
+            "filenames": filenames, "reds": reds, "pm": pm}
 
 def trunToDict(params):
     params_l = {}
@@ -119,6 +118,7 @@ def prepareFilenames(params_l, tmp_dir=None):
             filenames["queries"] = "-"
     parts = filenames["queries"].split(".")
     basis = ".".join(parts[:-1])
+    filenames["basis"] = basis
 
     ### Make named queries file name
     if params_l["queries_named_file"] == "+" and filenames["queries"] != "-":
@@ -173,8 +173,8 @@ def outputResults(filenames, results_batch, data=None, header=None, header_named
         else:
             results_batch["batch"][pos].write(filesfp["queries"], filesfp["support"], filesfp["queries_named"], names)
 
-    for ffp in filesfp.values():
-        if ffp is not None:
+    for (ffi, ffp) in filesfp.items():
+        if ffp is not None and filenames.get(ffi, "") != "-":
             ffp.close()
 
 def loadPackage(filename, pm):
@@ -193,33 +193,10 @@ def loadPackage(filename, pm):
 
     return params, data
 
-
-# def run_filter(params, data, logger):
-#     # ta = do_filter(params)    
-#     miner = Miner(data, params, logger)
-
-#     tf = miner.filter_run(ta)
-#     for ti, t in enumerate(tf):
-#         print t.disp()
-
-# def do_filter(params):
-
-#     params_l = trunToDict(params)
-#     filenames = prepareFilenames(params_l)
-
-#     logger = Log(params_l['verbosity'], filenames["logfile"])
-#     data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
-#     logger.printL(2, data, "log")
-
-#     ta = parseRedList(open(filenames["queries"], "r"), data)
-#     for ti, t in enumerate(ta):
-#         print t.disp(names)
-        
-
-
 def run(args):
     
-    params, data, logger, filenames, _ = loadAll(args)
+    loaded = loadAll(args)
+    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
 
     ############################
     #### SPLITS
@@ -243,13 +220,16 @@ def run(args):
     logger.clockTac(0, None)
 
 def run_filter(args):
-
+    #### USED FOR TESTS
     #### on 100
     # [84, 1, 43, 85, 6, 5, 7, 66, 11, 44, 90, 14, 31, 86, 75, 39, 58, 52, 55, 33, 89, 93, 18, 77, 53, 91, 34, 68, 65, 92, 76, 74, 80, 20, 56, 22, 78, 82, 25]
     # [(8, False), (0, False), (2, False), (9, False), (27, False), (42, False), (61, False), (84, True), (19, False), (17, False), (3, False), (10, False), (4, False), (1, True), (62, False), (46, False), (28, False), (32, False), (43, True), (63, False), (13, False), (85, True), (6, True), (5, True), (7, True), (66, True), (11, True), (29, False), (15, False), (44, True), (90, True), (70, False), (87, False), (12, False), (14, True), (16, False), (23, False), (31, True), (38, False), (36, False), (37, False), (86, True), (88, False), (73, False), (83, False), (51, False), (75, True), (39, True), (57, False), (58, True), (97, False), (67, False), (52, True), (30, False), (95, False), (47, False), (55, True), (50, False), (35, False), (33, True), (89, True), (69, False), (45, False), (93, True), (18, True), (54, False), (77, True), (53, True), (91, True), (34, True), (64, False), (68, True), (96, False), (65, True), (98, False), (92, True), (48, False), (49, False), (26, False), (40, False), (76, True), (74, True), (72, False), (94, False), (71, False), (99, False), (80, True), (21, False), (20, True), (56, True), (22, True), (81, False), (78, True), (79, False), (82, True), (59, False), (41, False), (60, False), (25, True), (24, False)]
 ## [0, 2, 9, 27, 42, 61, 19, 17, 3, 10, 4, 62, 46, 28, 32, 63, 13, 29, 15, 70, 87, 12, 16, 23, 38, 36, 37, 88, 73, 83, 51, 57, 97, 67, 30, 95, 47, 50, 35, 69, 45, 54, 64, 96, 98, 48, 49, 26, 40, 72, 94, 71, 99, 21, 81, 79, 59, 41, 60, 24, 8]
 
-    params, data, logger, filenames, reds = loadAll(args)
+    loaded = loadAll(args)
+    params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
+                                             loaded["filenames"], loaded["reds"]) 
+
     constraints = Constraints(data, params)
     reds = []
     with open("/home/galbrun/current/redescriptions.csv") as fd:
@@ -286,10 +266,9 @@ def run_filter(args):
         tacc = datetime.datetime.now()
         print "Elapsed ", ri, tacc-ticc
         if tmp_ids != org_ids:
-            print "Not indentical"
+            print "Not identical"
         pdb.set_trace()
         print len(tmp_ids), len(org_ids)
-
         
     return [batch[i] for i in tmp_ids]
 
@@ -305,21 +284,42 @@ def run_filter(args):
     # data.assignLT(ids["learn"], ids["test"])
     ############################
 
-    miner = instMiner(data, params, logger)
-    try:
-        miner.full_run()
-    except KeyboardInterrupt:
-        logger.printL(1, 'Stopped...', "log")
+    ## miner = instMiner(data, params, logger)
+    ## try:
+    ##     miner.full_run()
+    ## except KeyboardInterrupt:
+    ##     logger.printL(1, 'Stopped...', "log")
+    ## 
+    ## outputResults(filenames, miner.final, data)
+    ## logger.clockTac(0, None)
 
-    outputResults(filenames, miner.final, data)
-    logger.clockTac(0, None)
 
+def run_splits(args, splt=""):
 
-def run_splits(args):
+    nb_splits = 5
+    tmp = re.match("splits(?P<nbs>[0-9]+)\s*", splt)
+    if tmp is not None:
+        nb_splits = int(tmp.group("nbs"))
+        
+    loaded = loadAll(args)
+    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
+    if "package" in filenames:
+        parts = filenames["package"].split("/")[-1].split(".")
+        pp = filenames["basis"].split("/")
+        pp[-1] = ".".join(parts[:-1])
+        filenames["basis"] = "/".join(pp)
+    splt_pckgf = filenames["basis"]+ ("_split-%d.siren" % nb_splits)
+    splt_statf = filenames["basis"]+ ("_split-%d.txt" % nb_splits)
+    fold_cols = data.findCandsFolds()
 
-    params, data, logger, filenames, _ = loadAll(args)    
-    #### TODO generic
-    data.extractFolds(1, 12)
+    if len(fold_cols) == 0:
+        logger.printL(2, "Data has no folds, generating...", "log")
+        sss = data.getSplit(nbsubs=nb_splits)
+        data.addFoldsCol()        
+        saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"])        
+    else:
+        logger.printL(2, "Using existing fold: side %s col %s" % fold_cols[0], "log")
+        sss = data.extractFolds(fold_cols[0][0], fold_cols[0][1])
     stM = StatsMiner(data, params, logger)
     reds_list, all_stats, header = stM.run_stats()
 
@@ -328,20 +328,38 @@ def run_splits(args):
     summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
 
     info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
-    numpy.savetxt("tmp_stats.txt", summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
-    # print header
-    # print summary_mat
+    numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
+    saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)        
+
     for red in reds_list:
-        print red
+        print red.disp()
 
 ##### MAIN
 ###########
     
 if __name__ == "__main__":
-        
-    if sys.argv[-1] == "splits":
-        run_splits(sys.argv[:-1])
+    
+    if re.match("splits", sys.argv[-1]):
+        run_splits(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":
         run_filter(sys.argv[:-1])
+    elif sys.argv[-1] == "filterRM":
+        run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)
+
+
+    # pm = getPM()
+    # package = Package(sys.argv[-1])
+    # elements_read = package.read(pm)        
+
+    # if elements_read.get("reds") is not None:
+    #     reds = elements_read.get("reds")
+    #     data = elements_read.get("data")
+    #     with open("test.txt", "w") as fp:
+    #         fp.write(printRedList(reds, [None, None], None, full_supp=True))
+    #     rrr = []
+    #     with open("test.txt") as fp:
+    #         parseRedList(fp, data, rrr)
+    #     print [r.disp() for r in rrr]
+

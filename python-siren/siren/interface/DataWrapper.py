@@ -295,7 +295,6 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-
     def importPreferencesFromFile(self, preferences_filename):
         """Imports mining preferences from file"""
         self._startMessage('importing', preferences_filename)
@@ -476,6 +475,7 @@ class DataWrapper(object):
         with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
         style = ""
         named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
+        full_supp = re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None
         if named:
             names = self.data.getNames()
         else:
@@ -488,7 +488,7 @@ class DataWrapper(object):
                 rshowids = self.rshowids
             if rshowids is None:
                 rshowids = range(len(reds))
-            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style)
+            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp)
         except Exception:
             self._stopMessage()
             raise

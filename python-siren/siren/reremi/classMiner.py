@@ -452,7 +452,11 @@ class Miner(object):
         return explore_list
 
     def getPairLoad(self, idL, idR):
-        return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
+        # pdb.set_trace()
+        # print idL, idR, eval("0b"+"".join(["%d" %(((idL+idR)%10)%i ==0) for i in [8,4,2]]))
+        ## + ((idL + idR)%10)/1000.0
+        return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50) + 1./(1+((idL + idR)%10))
+        ## return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
         # return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
 
 
@@ -476,6 +480,7 @@ class MinerDistrib(Miner):
         self.count = 0
         self.workers = {}
         self.rqueue = multiprocessing.Queue()
+        self.pstopqueue = multiprocessing.Queue()
         
         self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
 
@@ -536,7 +541,6 @@ class MinerDistrib(Miner):
                                                 self.charbon, self.constraints,
                                                 self.souvenirs, self.rqueue, [initial_red],
                                                 final=self.final, logger=self.shareLogger())
-
        
     def handlePairResult(self, m):
         scores, literalsL, literalsR, idL, idR, pload = m["scores"], m["lLs"], m["lRs"], m["idL"], m["idR"], m["pload"]
@@ -570,6 +574,10 @@ class MinerDistrib(Miner):
         self.logger.clockTac(self.id, "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
         self.logger.printL(1, {"final":self.final["batch"]}, 'result', self.id)
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.id)
+
+    def leftOverPairs(self):
+        # print "LEFTOVER", self.workers
+        return self.initial_pairs.exhausted() and len(self.workers) > 0 and len([(wi, ww) for (wi, ww) in self.workers.items() if ww.isExpand()]) == 0
         
     def keepWatchDispatch(self):
         while len(self.workers) > 0 and self.questionLive():
@@ -594,6 +602,10 @@ class MinerDistrib(Miner):
                 del self.workers[m["id"]]
                 self.initializeExpansions()
 
+            if self.leftOverPairs():
+                self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
+                break
+
     
 class PairsProcess(multiprocessing.Process):
     def __init__(self, sid, explore_list, charbon, data, rqueue):
@@ -605,6 +617,9 @@ class PairsProcess(multiprocessing.Process):
         self.data = data
         self.queue = rqueue
         self.start()
+
+    def isExpand(self): ### expand or init?
+        return False
 
     def run(self):
         for pairs, (idL, idR, pload) in enumerate(self.explore_list):
@@ -640,6 +655,9 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
         self.partial= partial
         self.final= final
         self.start()
+
+    def isExpand(self): ### expand or init?
+        return True
 
     def run(self):
         partial = self.expandRedescriptions(self.nextge, partial=self.partial, final=self.final)

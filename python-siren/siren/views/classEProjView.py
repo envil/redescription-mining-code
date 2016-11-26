@@ -12,13 +12,13 @@ from matplotlib.lines import Line2D
 from ..reremi.toolLog import Log
 from ..reremi.classQuery import Query
 from ..reremi.classRedescription import Redescription
-from classGView import GView
+from classTDView import TDView
 from classProj import ProjFactory
 from classInterObjects import MaskCreator
 
 import pdb
 
-class EProjView(GView):
+class EProjView(TDView):
 
     TID = "EPJ"
     SDESC = "E.Proj."
@@ -45,7 +45,8 @@ class EProjView(GView):
         self.suppABCD = None
 
     def lastStepInit(self):
-        self.runProject()
+        if not self.wasKilled() and self.getCoords() is None:
+            self.runProject()
 
     def getShortDesc(self):
         return "%s %s" % (self.getItemId(), self.getProj().SDESC)
@@ -156,8 +157,8 @@ class EProjView(GView):
 
 
     def additionalBinds(self):
-        self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        ## self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        ## self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
@@ -184,6 +185,7 @@ class EProjView(GView):
         if self.repbut is not None:
             self.repbut.Disable()
             self.repbut.SetLabel("Wait...")
+        self.getProj().addParamsRandrep({"vids": self.getQCols()})
         self.parent.project(self.getProj(), self.getId())
                       
     def readyProj(self, proj):
@@ -223,19 +225,17 @@ class EProjView(GView):
 
     def kill_wait(self):
         self.call_wait.Stop()
+        if self.wasKilled():
+            return
         self.axe.cla()
         self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
         self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
         self.axe.axis([0,1,0,1])
         self.MapcanvasMap.draw()
 
-    def plot_void(self):
-        self.axe.cla()
-        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5 for r in [0,2,4]], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-
     def plot_wait(self):
+        if self.wasKilled():
+            return
         self.axe.cla()
         self.axe.plot([r/10.0+0.3 for r in range(5)], [0.5 for r in range(5)], 'ks', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
         self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
@@ -244,87 +244,33 @@ class EProjView(GView):
         self.cp += 1
         self.call_wait.Restart(self.wait_delay)
             
-    def updateMap(self):
-        """ Redraws the map
-        """
+    def makeBackground(self):   
+        pass
+    def makeFinish(self, xylims, xybs):   
+        if self.getProj().getAxisLabel(0) is not None:
+            self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
+        if self.getProj().getAxisLabel(1) is not None:
+            self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
+        self.axe.axis([xylims[0]-xybs[0], xylims[1]+xybs[0], xylims[2]-xybs[1], xylims[3]+xybs[1]])
 
-        if self.suppABCD is not None and self.getCoords() is not None:
-            self.highl = {}
-            self.hight = {}
-            
-            self.axe.cla()
-            draw_settings = self.getDrawSettings()
+    def isReadyPlot(self):
+        return self.suppABCD is not None and self.getCoords() is not None    
+    def getAxisLims(self):
+        return self.getProj().getAxisLims()
 
-            ### SELECTED DATA
-            selected = self.getUnvizRows()
-            selp = 0.5
-            if self.sld_sel is not None:
-                selp = self.sld_sel.GetValue()/100.0
-            selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
-            if len(selected) > 0:
-                selv[numpy.array(list(selected))] = selp
-
-            # for pi in draw_settings["draw_pord"]:
-            #     part = [i for i,e in enumerate(self.suppABCD) if e == pi]
-            #     if len(part) > 0 and pi in draw_settings:
-            #         for idp in part:
-
-            x0, x1, y0, y1 = self.getProj().getAxisLims()
-            #siz = round(max(1, min((x1-x0)/20, (y1-y0)/20)))
-            siz = 0
-            for idp, pi in enumerate(self.suppABCD):
-                if pi in draw_settings and selv[idp] > 0:
-                    if draw_settings[pi]["size"] > siz:
-                        siz = draw_settings[pi]["size"]
-                    self.axe.plot(self.getCoords(0,idp), self.getCoords(1, idp), gid="%d.%d" % (idp, 1),
-                           mfc=draw_settings[pi]["color_f"], mec=draw_settings[pi]["color_e"],
-                           marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                           linestyle='None', alpha=draw_settings[pi]["alpha"]*selv[idp], picker=draw_settings[pi]["size"])
-
-            # if self.getProj().getTitle() is not None:
-            #     self.axe.set_title(self.getProj().getTitle(),fontsize=12)
-            if self.getProj().getAxisLabel(0) is not None:
-                self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
-            if self.getProj().getAxisLabel(1) is not None:
-                self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
-            bx, by = (x1-x0)/100.0, (y1-y0)/100.0
-            self.axe.axis([x0-bx, x1+bx, y0-by, y1+by])
-            self.updateEmphasize(review=False)
-            self.MapcanvasMap.draw()
-            self.MapfigMap.canvas.SetFocus()
+    def getCoordsXY(self, id):
+        if self.proj is None:
+            return (0,0)
         else:
-            self.plot_void()
-
+            return (self.proj.getCoords(0, ids=id), self.proj.getCoords(1, ids=id))
     def getCoords(self, axi=None, ids=None):
         if self.proj is None:
             return None
         else:
             return self.proj.getCoords(axi, ids)
 
-
     def getProj(self):
         return self.proj
-
-    def hoverActive(self):
-        return GView.hoverActive(self) and not self.mc.isActive()
-
-    def on_motion(self, event):
-        if self.hoverActive() and self.proj is not None and self.getCoords() is not None:            
-            lid = None
-            if event.inaxes == self.axe:
-                lid = self.getLidAt(event.xdata, event.ydata)
-                if lid is not None and lid != self.current_hover:
-                    if self.current_hover is not None:
-                        emph_off = set([self.current_hover])
-                    else:
-                        emph_off = set()
-                    self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
-                    self.current_hover = lid
-            if lid is None and lid != self.current_hover:
-                self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
-                self.current_hover = None
-            # if self.ri is not None:
-            #     self.drs[self.ri].do_motion(event)
 
     def getLidAt(self, x, y):
         coords = self.getCoords()

@@ -54,6 +54,7 @@ def write_row(csvf, row_data):
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     type_all = None
+    skipfirst = False
     if type(filename) is str or type(filename) is unicode:
         f = open(filename, 'rU')
         fcl = True
@@ -74,6 +75,17 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
         head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+
+        tmp = re.search('#*\s*"?type=(?P<type>\w)"?', head[-1])
+        if tmp is not None:
+            tt = head.pop().split("type=")[0].strip("# \"'")
+            if len(tt) > 0:
+                head.append(tt)
+            type_all = tmp.group('type')
+            if len(head) == 0:
+                head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+                skipfirst = True
+
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
@@ -98,6 +110,9 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         no_of_columns = len(head)
 
         for row in csvreader:
+            if skipfirst:
+                skipfirst = False
+                continue
             if len(row) != no_of_columns:
 #                pdb.set_trace()
                 raise ValueError('number of columns does not match (is '+
@@ -256,8 +271,8 @@ def has_coord(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = ( [map(float, p.strip(" :").split(":")) for p in D['data'][s]],
-                              [map(float, p.strip(" :").split(":")) for p in D['data'][t]])
+                    coord = ( [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][s]],
+                              [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][t]])
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -276,8 +291,8 @@ def has_coord_sparse(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = (dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
-                             dict([(k, map(float, v.strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
+                    coord = (dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
+                             dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)

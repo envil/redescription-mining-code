@@ -8,7 +8,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from matplotlib.path import Path
 
-from classBasisView import BasisView, CustToolbar
+from classBasisView import BasisView
 
 from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
@@ -200,7 +200,20 @@ class GView(BasisView):
             self.makeMenu()
             ## self.updateHist(red, init=True)
             return red
+        
+    def isSingleVar(self):
+        return (len(self.queries[0]) == 0 and self.queries[1].isBasis(1, self.parent.dw.getData())) or \
+          (len(self.queries[1]) == 0 and self.queries[0].isBasis(0, self.parent.dw.getData()))
 
+    def getQCols(self):
+        return [(0,c) for c in self.queries[0].invCols()]+[(1,c) for c in self.queries[1].invCols()]
+    
+    def getValVector(self, side, c):
+        return self.parent.dw.getData().col(side, c).getVector()
+
+    def getLitTypeId(self, side, c):
+        return self.parent.dw.getData().col(side, c).typeId()
+        
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
@@ -282,31 +295,23 @@ class GView(BasisView):
 
     def emphasizeOn(self, lids,  colhigh='#FFFF00'):
         draw_settings = self.getDrawSettings()
+        dsetts = draw_settings["default"]
+        pick = self.getPickerOn()
+        if len(self.dots_draws) == 0:
+            return
+
         for lid in lids:
             if lid in self.highl:
                 continue
-            pi = self.suppABCD[lid]
+
             self.highl[lid] = []
-            self.highl[lid].extend(self.axe.plot(self.getCoords(0,lid), self.getCoords(1,lid),
-                                          mfc=colhigh, mec=draw_settings[pi]["color_e"],
-                                          marker=draw_settings["shape"], markersize=draw_settings[pi]["size"],
-                                          markeredgewidth=1, linestyle='None'))
+            self.highl[lid].extend(self.drawEntity(lid, colhigh, self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), dsetts))
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=(self.getCoords(0,lid), self.getCoords(1,lid)),
-                                                         xycoords='data', xytext=(-10, 15), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_e"], size=10,
-                                                         va="center", backgroundcolor="#FFFFFF",
-                                                         bbox=dict(boxstyle="round", facecolor="#FFFFFF",
-                                                                   ec=draw_settings[pi]["color_e"]),
-                                                         arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                         patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                         ))
-
-            
+                self.hight[lid].append(self.drawAnnotation(lid, self.getCoordsXY(lid), self.getPlotColor(lid, "ec"), tag))
+        
     def emphasizeOff(self, lids = None):
         if lids is None:
             lids = self.highl.keys()

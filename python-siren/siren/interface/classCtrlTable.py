@@ -1080,6 +1080,11 @@ class StaticContent:
             return self.items.getElement(iid)
         except KeyError:
             return None
+    def getItemForIidCopy(self, iid): ### Unnecessary?
+        try:
+            return self.items.getElement(iid).copy()
+        except KeyError:
+            return None
     def getIidsForLid(self, lid):
         try:
             self.lists[lid].getIids()
@@ -1228,7 +1233,7 @@ class EditableContent(StaticContent):
         iids = self.lists[lid].deleteItems(sel)
         self.setBuffer(iids, 'cut')
         return iids
-    
+
     def copyLists(self, lids=[], sel=None):
         if len(lids) == 0 and sel is not None:
             lids = self.getVLidsAtPoss(sel)
@@ -1246,7 +1251,7 @@ class EditableContent(StaticContent):
         iids = []
         if "action" in self.buffer and lid in self.lists:
             if self.buffer["action"] == 'copy':
-                rcop = [self.getItemCopy(rid) for rid in self.buffer["iids"]]
+                rcop = [self.getItemForIidCopy(rid) for rid in self.buffer["iids"]]
                 iids = self.items.extend(rcop)
             elif self.buffer["action"] == 'cut':
                 iids = self.buffer["iids"]

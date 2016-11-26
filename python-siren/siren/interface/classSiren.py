@@ -857,6 +857,7 @@ class Siren():
             return False
         else:
             self.reloadAll()
+            self.resetConstraints()
             return True
 
     def expand(self, params={}):
@@ -1290,7 +1291,8 @@ class Siren():
         d = PreferencesDialog(self.toolFrame, self.dw)
         d.ShowModal()
         d.Destroy()
-
+        self.resetConstraints()
+        
     def OnConnectionDialog(self, event):
         d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
         d.ShowModal()

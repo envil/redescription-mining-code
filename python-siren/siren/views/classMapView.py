@@ -13,12 +13,12 @@ from matplotlib.patches import Ellipse, Polygon
 from ..reremi.classQuery import Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classGView import GView
+from classTDView import TDView
 from classInterObjects import MaskCreator
 
 import pdb
 
-class MapView(GView):
+class MapView(TDView):
 
     TID = "MAP"
     SDESC = "Map"
@@ -121,67 +121,7 @@ class MapView(GView):
             self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
             self.MapcanvasMap.draw()
             
-    def updateMap(self):
-        """ Redraws the map
-        """
-
-        if self.suppABCD is not None and self.hasProjCoords() is not None:
-            self.highl = {}
-            self.hight = {}
-            self.hover_access = [i for (i, v) in enumerate(self.suppABCD) if v != SSetts.delta] 
             
-            self.axe.cla()
-            self.makeBasemapBack(self.bm)
-            draw_settings = self.getDrawSettings()
-
-            ### SELECTED DATA
-            selected = self.getUnvizRows()
-            # selected = self.parent.dw.getData().selectedRows()
-            selp = 0.5
-            if self.sld_sel is not None:
-                selp = self.sld_sel.GetValue()/100.0
-            selv = numpy.ones((self.parent.dw.getData().nbRows(), 1))
-            if len(selected) > 0:
-                selv[numpy.array(list(selected))] = selp
-
-            lims = self.axe.get_xlim(), self.axe.get_ylim()
-            for idp, pi in enumerate(self.suppABCD):
-                if pi != SSetts.delta and pi in draw_settings and selv[idp] > 0:
-                    self.drawEntity(idp, draw_settings[pi], picker=True, selv=selv[idp])
-            self.axe.set_xlim(lims[0])
-            self.axe.set_ylim(lims[1])
-
-            #plt.legend(('Left query only', 'Right query only', 'Both queries'), 'upper left', shadow=True, fancybox=True)
-            self.updateEmphasize(self.COLHIGH, review=False)
-
-            self.MapcanvasMap.draw()
-            self.MapfigMap.canvas.SetFocus()
-
-    def emphasizeOn(self, lids):
-        draw_settings = self.getDrawSettings()
-        for lid in lids:
-            if lid in self.highl:
-                continue
-            pi = self.suppABCD[lid]
-            self.highl[lid] = []
-            dsetts = {"shape": draw_settings[pi]["shape"],
-                      "color_f": draw_settings["colhigh"],
-                      "color_e": draw_settings[pi]["color_e"],
-                      "size": draw_settings[pi]["size"],
-                      "alpha": draw_settings[pi]["alpha"]}
-            self.highl[lid].extend(self.drawEntity(lid, dsetts, picker=self.suppABCD[lid] == SSetts.delta))
-
-            if len(lids) == 1:
-                tag = self.parent.dw.getData().getRName(lid)
-                self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=self.getCoordsM(lid),  xycoords='data',
-                                                     xytext=(-10, 15), textcoords='offset points', color= draw_settings[pi]["color_e"],
-                                                     size=10, va="center", backgroundcolor="#FFFFFF",
-                                                     bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=draw_settings[pi]["color_e"]),
-                                                     arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=draw_settings[pi]["color_e"],
-                                                                     patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                     ))
-
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         
@@ -225,16 +165,38 @@ class MapView(GView):
     def OnSlide(self, event):
         self.updateMap()
 
-    def hasProjCoords(self):
-        return self.coords_proj is not None
+    def makeBackground(self):   
+        self.makeBasemapBack(self.bm)
+    def makeFinish(self, xylims, xybs):
+        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
+
+    def plotSimple(self):
+        return not self.getPickerOn() and not self.drawPoly()
+    def isReadyPlot(self):
+        return self.suppABCD is not None and self.getCoords() is not None    
+    def getAxisLims(self):
+        xx = self.axe.get_xlim()
+        yy = self.axe.get_ylim()
+        return (xx[0], xx[1], yy[0], yy[1])
 
     def getPCoords(self):
-        if self.hasProjCoords():
+        if self.coords_proj is not None:
             return zip(*[self.coords_proj[0][0,:,0], self.coords_proj[0][1,:,0]])
         return []
 
-    def getCoordsM(self, id):
-        return self.coords_proj[0][:,id,0]
+    def getCoordsXY(self, id):
+	if self.coords_proj is None:
+            return (0,0)
+	else:
+            return self.coords_proj[0][:,id,0]
+    def getCoords(self, axi=None, ids=None):
+        if self.coords_proj is None:
+            return self.coords_proj
+        if axi is None:
+            self.coords_proj[0][:,:,0]
+        elif ids is None:
+            return self.coords_proj[0][axi,:,0]
+        return self.coords_proj[0][axi,ids,0]
 
     def getCoordsP(self, id):
         return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
@@ -271,22 +233,19 @@ class MapView(GView):
             mapoly = MapView.MAP_POLY
         return mapoly
 
-    def drawEntity(self, idp, dsetts, picker=False, selv=1):
+    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
         if picker:
-            args = {"picker": dsetts["size"], "gid": "%d.%d" % (idp, 1)}
+            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
         else:
             args = {}
         if self.drawPoly():
             return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True,
-                                              fc=dsetts["color_f"], ec=dsetts["color_e"], alpha=dsetts["alpha"]*selv, **args))]
+                                              fc=fc, ec=ec, **args))]
                     
         else:
-            x, y = self.getCoordsM(idp)
-            return self.axe.plot(x, y,
-                                 mfc=dsetts["color_f"], mec=dsetts["color_e"],
-                                 marker=dsetts["shape"], markersize=dsetts["size"],
-                                 linestyle='None', alpha=dsetts["alpha"]*selv, **args)
-        
+            ## print idp, fc, ec
+            x, y = self.getCoordsXY(idp)
+            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
 
     def getBasemapProjSetts(self):
         proj = self.proj_def 
@@ -401,26 +360,6 @@ class MapView(GView):
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
 
 
-    def hoverActive(self):
-        return GView.hoverActive(self) and not self.mc.isActive()
-
-    def on_motion(self, event):
-        if self.hoverActive():
-            lid = None
-            if event.inaxes == self.axe:
-                lid = self.getLidAt(event.xdata, event.ydata)
-                if lid is not None and lid != self.current_hover:
-                    if self.current_hover is not None:
-                        emph_off = set([self.current_hover])
-                    else:
-                        emph_off = set()
-                    self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
-                    self.current_hover = lid
-            if lid is None and lid != self.current_hover:
-                self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
-                self.current_hover = None
-            # if self.ri is not None:
-            #     self.drs[self.ri].do_motion(event)
 
     def getLidAt(self, x, y):
         d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, [(x,y)])

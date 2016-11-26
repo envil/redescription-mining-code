@@ -14,6 +14,7 @@ class Redescription(object):
     print_queries_headers = ["query_LHS", "query_RHS"]
     print_queries_namedsuff = "_named"
     print_default_fields_stats = ["acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    print_default_fields_supp = ["alpha", "beta", "gamma"] #, "delta"]
 
     print_default_fields = print_queries_headers+print_default_fields_stats
     # ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
@@ -36,8 +37,10 @@ class Redescription(object):
         print_fields_details[pif] = (pif, " ", "%s" )
     for pit in print_info_tex:
         print_fields_details["Tex_"+pit[0]] = pit
-    print_fields_details["status_enabled"] = ("status_enabled", None, "%d")
 
+    print_fields_details["ratio_acc"] = ("ratio_acc", None, "%f")
+    print_fields_details["Tex_ratio_acc"] = ("ratio_acc", 3, "$%1.3f$")
+    print_fields_details["status_enabled"] = ("status_enabled", None, "%d")
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.resetRestrictedSuppSets()
@@ -141,6 +144,11 @@ class Redescription(object):
         return self.overlapAreaSide(redB, 1)
     def overlapAreaMax(self, redB):
         return max(self.overlapAreaSide(redB, 0), self.overlapAreaSide(redB, 1))
+
+    def overlapRows(self, redB):
+        if redB is not None:
+            return len(redB.getSuppI() & self.getSuppI())/float(min(redB.getLenI(), self.getLenI()))
+        return 0
     
     def oneSideIdentical(self, redescription):
         return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
@@ -525,6 +533,56 @@ class Redescription(object):
         return sep.join(list_fields)
     dispHeader = staticmethod(dispHeader)
 
+    def formatDetails(info_tmp, list_fields, with_fname=False):
+        details = []
+        for info_key in list_fields:
+            if type(info_key) is tuple:
+                if len(info_key) > 1:
+                    info_lbl = info_key[1]
+                else:
+                    info_lbl = None #info_key[0]
+                info_key = info_key[0]
+            else:
+                info_lbl = None #info_key
+            tmp = "-"
+            if info_key in Redescription.print_fields_details:
+                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
+                if info_lbl is None:
+                    info_lbl = info_name
+                try:
+                    if info_lbl in info_tmp:
+                        if type(info_round) is int:
+                            tmp = info_format % round(info_tmp[info_lbl], info_round)
+                        else:
+                            if type(info_tmp[info_lbl]) in [list, set]:
+                                tmp = info_format % (info_round.join(map(str, info_tmp[info_lbl])))
+                            else:
+                                tmp = info_format % info_tmp[info_lbl]
+                except Exception:
+                    tmp = "-"
+            if with_fname:
+                info_lbl = info_lbl+":"
+            else:
+                info_lbl = ""
+            details.append(info_lbl+tmp)
+        return details
+    formatDetails = staticmethod(formatDetails)
+    
+    def prepareQueries(self, list_fields, names=[None, None]):
+        info_tmp = {}
+        for side, query_f in enumerate(Redescription.print_queries_headers):
+            for style in ["", "U", "Tex"]:
+                if len(style) > 0:
+                    tmp_f = style +"_"+query_f
+                else:
+                    tmp_f = query_f
+                if tmp_f in list_fields:
+                    info_tmp[tmp_f] = self.queries[side].disp(style=style)
+                        
+                if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
+                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
+        return info_tmp
+    
 
     def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
         if list_fields is None:
@@ -807,7 +865,7 @@ def printTexRedList(red_list, names=[None, None], fields=None):
         "\\end{document}"
     return str_out
 
-def printRedList(red_list, names=[None, None], fields=None):
+def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
     all_fields = Redescription.print_default_fields
     if names[0] is not None or names[1] is not None:
         all_fields = Redescription.print_default_fields_named
@@ -816,7 +874,8 @@ def printRedList(red_list, names=[None, None], fields=None):
             all_fields.extend(fields[1:])
         else:
             all_fields = fields
-
+    if full_supp:
+        all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
         str_out += red.disp(list_fields=all_fields, names=names, sep="\t")  + "\n"

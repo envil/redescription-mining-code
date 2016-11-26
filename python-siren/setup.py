@@ -76,6 +76,14 @@ def get_svnrevision():
                 break
     return svn_revision
 
+def get_git_hash():
+    git_hash = '-1'
+    try:
+        git_hash = subprocess.check_output(['git', 'rev-parse HEAD'])
+    except (subprocess.CalledProcessError, OSError):
+        print "No GIT found, using default git revision (-1) instead"
+    return git_hash
+
 def load_help_files():
     try:
         subprocess.check_call('curl "'+HELP_PACKAGE_URL+'" -o"'+HELP_PACKAGE_FILENAME+'"', shell=True)
@@ -118,7 +126,7 @@ if sys.platform == 'darwin':
                                              LSItemContentTypes = ['public.comma-separated-values-text'])
                                                ],
                 CFBundleShortVersionString = VERSION,
-                CFBundleVersion = get_svnrevision(),
+                CFBundleVersion = get_git_hash(),
                 CFBundleName = SHORT_NAME,
                 CFBundleIdentifier = "fi.helsinki.cs.siren",
                 NSHumanReadableCopyright = COPYRIGHT

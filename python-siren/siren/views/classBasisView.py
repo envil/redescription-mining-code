@@ -23,7 +23,9 @@ import pdb
 
 class CustToolbar(NavigationToolbar):
     def __init__(self, plotCanvas, parent):
-        self.toolitems = [(None, None, None, None)] #  (('Save', 'Save the figure', 'filesave', 'save_figure'),)
+        self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'))
+        # , (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure')
+
         NavigationToolbar.__init__(self, plotCanvas)
         self.parent = parent
 
@@ -52,6 +54,9 @@ class BasisView(object):
 
     DOT_SHAPE = 's'
     DOT_SIZE = 3
+
+    DELTA_ON = False
+    PICKER_ON = True # False
     
     TID = "-"
     SDESC = "-"
@@ -94,10 +99,16 @@ class BasisView(object):
         self.pos = npos
         self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
 
+    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
+    def getCMap(self, ltid):
+        return plt.get_cmap(self.ltids_map.get(ltid, "jet"))
+        
     @classmethod
     def getViewsDetails(tcl):
-        return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
-
+        if tcl.TID is not None:
+            return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
+        return {}
+    
     @classmethod
     def suitableView(tcl, geo=False, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
@@ -123,17 +134,17 @@ class BasisView(object):
         self.act_butt = [1]
         self.highl = {}
         self.hight = {}
+        self.dots_draws = {}
         self.current_hover = None
         self.intab = self.parent.getVizm().showVizIntab()
+        self.store_size = None
 
     def initView(self):
         if self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             # self.panel = self.parent.tabs["viz"]["tab"]
-        else:        
-            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+        else:
+            self.mapFrame = self.initExtFrame()
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.doBinds()
@@ -459,6 +470,27 @@ class BasisView(object):
     #         elem.Refresh()
 
         
+    def getQueries(self):
+        ### the actual queries, not copies, to test, etc. not for modifications
+        return self.queries
+
+    def getCopyRed(self):
+        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.getData())
+        
+    def OnExpandAdv(self, event):
+        params = {"red": self.getCopyRed()}
+        if event.GetId() in self.menu_map_pro:
+            more = self.processes_map[self.menu_map_pro[event.GetId()]]["more"]
+            if more is not None:
+                params.update(more)
+            for k in self.processes_map[self.menu_map_pro[event.GetId()]]["more_dyn"]:
+                params = k(params)
+        self.parent.expandFV(params)
+
+    def OnExpandSimp(self, event):
+        params = {"red": self.getCopyRed()}
+        self.parent.expandFV(params)
+
     def initSizeRelative(self):
         ds = wx.DisplaySize()
         self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
@@ -477,6 +509,10 @@ class BasisView(object):
             pixels = tuple(self.mapFrame.GetClientSize() )
         else:
             pixels = initSize
+        ## print "Set Size", self.store_size, pixels
+        if self.store_size == pixels:
+            return
+        self.store_size = pixels
         boxsize = self.innerBox1.GetMinSize()
         min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
@@ -512,14 +548,18 @@ class BasisView(object):
     def OnSaveFig(self, event=None):
         self.MaptoolbarMap.save_figure(event)
 
+    def initExtFrame(self):
+        mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+        mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
+        mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+        return mapFrame
+        
     def OnPop(self, event=None):
         pos = self.getGPos()
         panel = self.popSizer()
         if self.isIntab():
             self.intab = False
-            self.mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-            self.mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-            self.mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
+            self.mapFrame = self.initExtFrame()
 
             self.boxPop.SetBitmap(self.icons["outin"])
             # self.boxPop.SetLabel(self.label_outin)
@@ -554,6 +594,9 @@ class BasisView(object):
         self.parent.viewsm.deleteView(self.getId(), freeing)
         self.parent.viewsm.unregisterView(vkey=self.getId(), upMenu=upMenu)
 
+    def wasKilled(self):
+        return self.MapcanvasMap is None
+        
     def refresh(self):
         pass
 
@@ -712,6 +755,24 @@ class BasisView(object):
     def updateText(self, red = None):
         pass
 
+
+    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
+        if picker:
+            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
+        else:
+            args = {}
+        x, y = self.getCoordsXY(idp)
+        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
+
+    def drawAnnotation(self, idp, xy, ec, tag):
+        return self.axe.annotate(tag, xy=xy,
+                                xycoords='data', xytext=(-10, 15), textcoords='offset points',
+                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
+                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
+                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
+                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))
+
+
     def updateEmphasize(self, review=True):
         lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
         self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
@@ -821,6 +882,27 @@ class BasisView(object):
             return True
         return False
 
+    def getPickerOn(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            pickon = t["use_picker"]["data"] == "yes"
+        except:
+            pickon = GView.PICKER_ON
+        return pickon
+
+    def getDeltaOn(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            deltaon = t["draw_delta"]["data"] == "yes"
+        except:
+            deltaon = GView.DELTA_ON
+        return deltaon
+
+    def getPlotColor(self, idp, prop):
+        return tuple(self.dots_draws[prop+"_dots"][idp])
+    def getPlotProp(self, idp, prop):
+        return self.dots_draws[prop+"_dots"][idp]
+    
     def getDrawSettings(self):
         colors = self.getColors()
         colhigh = self.getColorHigh()
@@ -889,8 +971,13 @@ class BasisView(object):
                              "color_f": basic_grey,
                              "color_l": light_grey,
                              "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1}
-                }
+                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
+                "default": {"color_e": basic_grey,
+                             "color_f": basic_grey,
+                             "color_l": light_grey,
+                             "shape": dot_shape,
+                             "alpha": self.DOT_ALPHA, "size": dot_size}
+                    }
         
 def HTMLColorToRGB(colorstring):
     """ convert #RRGGBB to an (R, G, B) tuple """

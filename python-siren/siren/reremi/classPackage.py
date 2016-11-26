@@ -11,7 +11,7 @@ import pdb
 from classRedescription import Redescription, printTexRedList, printRedList, parseRedList
 from classData import Data
 from classQuery import Query
-from classPreferencesManager import PreferencesReader
+from classPreferencesManager import PreferencesReader, getPM
 import toolRead as toolRead
 
 
@@ -28,7 +28,7 @@ class Package(object):
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
 
-    FILETYPE_VERSION = 4
+    FILETYPE_VERSION = 5
     XML_FILETYPE_VERSION = 3
 
     NA_str = "NA"
@@ -328,7 +328,7 @@ def readRedescriptionsXML(filep, data):
     return reds, rshowids
 
 
-def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style=""):
+def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False):
     if names is False:
         names = [None, None]
     if rshowids is None:
@@ -343,7 +343,7 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         if style == "tex":
             f.write(codecs.encode(printTexRedList(red_list, names, fields_supp), 'utf-8','replace'))
         else:
-            f.write(codecs.encode(printRedList(red_list, names, fields_supp), 'utf-8','replace'))
+            f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp), 'utf-8','replace'))
             
 def writePreferences(preferences, pm, filename, toPackage = False, inc_def=False):
     with open(filename, 'w') as f:
@@ -352,3 +352,20 @@ def writePreferences(preferences, pm, filename, toPackage = False, inc_def=False
 def writeData(data, filenames, toPackage = False):
     data.writeCSV(filenames)
 
+def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
+    package = Package(None, None, mode="w")
+
+    (filename, suffix) = os.path.splitext(filename)
+    contents = {}
+    if data is not None:
+        contents['data'] = data                                
+    if reds is not None and len(reds) > 0:
+        contents['redescriptions'] = reds
+        contents['rshowids'] = range(len(reds))
+    if preferences is not None:
+        if pm is None:
+            pm = getPM()
+        contents['preferences'] = preferences
+        contents['pm'] = pm
+
+    package.writeToFile(filename+suffix, contents)
