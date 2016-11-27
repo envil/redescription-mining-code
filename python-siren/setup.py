@@ -62,6 +62,20 @@ extra_options = dict(
     license=LICENSE,
     )
 
+def get_svnrevision():
+    svn_revision = '-1'
+    try:
+        p = subprocess.check_output(['svn', 'info'])
+    except (subprocess.CalledProcessError, OSError):
+        print "No SVN found, using default svn revision (-1) instead"
+    else:
+        for line in p.splitlines():
+            l = line.split()
+            if l[0] == 'Revision:':
+                svn_revision = l[1]
+                break
+    return svn_revision
+
 def get_git_hash():
     git_hash = '-1'
     try:
