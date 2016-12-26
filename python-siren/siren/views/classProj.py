@@ -236,7 +236,7 @@ class Proj(object):
         self.params.update(self.fix_parameters)
         self.params.update(params)
 
-    def addParamsRandrep(self):
+    def addParamsRandrep(self, more={}):
         pass
         
     def getParameters(self, params={}):
@@ -323,7 +323,7 @@ class VrsProj(Proj):
     gen_parameters.update({Proj.xaxis_lbl: -1, Proj.yaxis_lbl: -1})
     dyn_f = []
 
-    def addParamsRandrep(self):
+    def addParamsRandrep(self, more={}):
         if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
             self.params["random_state"] = random.randint(0, self.rint_max)
 
@@ -509,7 +509,7 @@ if sys.platform != 'win32':
         dyn_f = [random_projection.SparseRandomProjection]
         #### http://scikit-learn.org/stable/modules/random_projection.html
 
-        def addParamsRandrep(self):
+        def addParamsRandrep(self, more={}):
             self.params["random_state"] = random.randint(0, self.rint_max)
 
         # Random 2D projection using a random unitary matrix
@@ -530,7 +530,7 @@ if sys.platform != 'win32':
        dyn_f = [decomposition.RandomizedPCA]
        #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
 
-       def addParamsRandrep(self):
+       def addParamsRandrep(self, more={}):
            self.params["random_state"] = random.randint(0, self.rint_max)
  
        def getX(self, X):
