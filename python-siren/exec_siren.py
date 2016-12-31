@@ -72,12 +72,13 @@ class SirenApp(wx.App):
             tab = 1
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
-            self.frame.tabs[tab]["tab"].viewData("AXE", 3)
-            # self.frame.tabs[tab]["tab"].viewData("SKrand_entities", 1)
-            # self.frame.tabs[tab]["tab"].viewData("TR", 1)
-            # self.frame.tabs[tab]["tab"].viewData("PC", 1)
-            # self.frame.tabs[tab]["tab"].viewData("PC", 2)
-            # self.frame.tabs[tab]["tab"].viewData("SKrand_entities", 1)
+            # self.frame.tabs[tab]["tab"].viewData("TR", 3)
+            ## self.frame.tabs[tab]["tab"].viewData(2, "MAP")
+            self.frame.tabs[tab]["tab"].viewListData(1, "INT")
+            # self.frame.tabs[tab]["tab"].viewData(1, "TR")
+            # self.frame.tabs[tab]["tab"].viewData(1, "PC")
+            # self.frame.tabs[tab]["tab"].viewData(2, "PC")
+            # self.frame.tabs[tab]["tab"].viewData(1, "SKrand_entities")
             # mapV = self.frame.getViewX(None, "PC")
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
@@ -93,9 +94,10 @@ class SirenApp(wx.App):
             pass
 
     def OnActivate(self, event):
-        if event.GetActive():
-            self.BringWindowToFront()
-        event.Skip()
+        pass
+        # if event.GetActive():
+        #     self.BringWindowToFront()
+        # event.Skip()
 
     def MacOpenFile(self, filename):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""

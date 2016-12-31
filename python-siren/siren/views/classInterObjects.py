@@ -153,7 +153,7 @@ data"""
                 else:
                     b = y0+h0+dy
                     if self.pinf is not None:
-                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, 1),
+                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
                                                             xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
                     else:
                         self.annotation = self.rect.axes.annotate("%s" % b,

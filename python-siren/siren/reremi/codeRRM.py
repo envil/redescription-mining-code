@@ -142,9 +142,9 @@ class ProbDContinuous(ProbD):
     def __init__(self, lb, ub, prec=1):
         self.bounds = (lb, ub)
         self.l = float(ub-lb)
-        if numpy.isinf(self.l):
-            pdb.set_trace()
-            print self.l, ub, lb
+        ## if numpy.isinf(self.l):
+        ##    pdb.set_trace()
+        ##    print self.l, ub, lb
         self.prec = float(prec)
 
     def __str__(self):

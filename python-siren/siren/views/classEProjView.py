@@ -1,14 +1,15 @@
+import re
+
 import wx
 ### from wx import ALIGN_BOTTOM, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALL, HORIZONTAL, VERTICAL, ID_ANY, EXPAND, RAISED_BORDER, SL_HORIZONTAL
 ### from wx import EVT_BUTTON, EVT_SCROLL_THUMBRELEASE, FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
 ### from wx import BoxSizer, Button, CallLater, CheckBox, Choice, DefaultPosition, Font, NewId, Panel,  Slider, StaticText, TextCtrl
 
 import numpy
-import re
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
-import matplotlib
-matplotlib.use('WXAgg')
+# The recommended way to use wx with mpl is with the WXAgg backend. 
+# import matplotlib
+# matplotlib.use('WXAgg')
+
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 from matplotlib.patches import Ellipse
@@ -31,7 +32,7 @@ class EProjView(TDView):
     ordN = 10
     what = "entities"
     title_str = "Entities Projection"
-    typesI = ["Var", "Reds", "Row"]
+    typesI = "evr"
     defaultViewT = ProjFactory.defaultView.PID + "_" + what
     wait_delay = 300
 
@@ -44,39 +45,10 @@ class EProjView(TDView):
     
     def __init__(self, parent, vid, more=None):
         self.repbut = None
-        self.active_info = False
-        self.parent = parent
+        self.initVars(parent, vid, more)
         self.queries = [Query(), Query()]
-        self.source_list = None
-        self.pos = None
-        self.boxL = None
-        self.boxT = None
-        self.icons = self.parent.icons
-        self.rsets = None
-        self.vid = vid
-        self.buttons = []
-        self.act_butt = [1]
-        self.highl = {}
-        self.hight = {}
-        self.current_hover = None
-        self.intab = self.parent.showVizIntab()
         self.initProject(more)
-        self.store_size = None
-        
-        if self.isIntab():
-            self.mapFrame = self.parent.tabs["viz"]["tab"]
-        else:        
-            self.mapFrame = self.initExtFrame()
-        self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
-        self.drawFrame()
-        self.binds()
-        self.prepareActions()
-        self.setKeys()
-        self.prepareProcesses()
-        self.makeMenu()
-        self.initSizeRelative()
-        if not self.isIntab():
-            self.mapFrame.Show()
+        self.initView()
         self.suppABCD = None
 
     def lastStepInit(self):
@@ -84,10 +56,10 @@ class EProjView(TDView):
             self.runProject()
 
     def getShortDesc(self):
-        return "%s %s" % (self.getRedId(), self.getProj().SDESC)
+        return "%s %s" % (self.getItemId(), self.getProj().SDESC)
 
     def getTitleDesc(self):
-        return "%s %s" % (self.getRedId(), self.getProj().getTitle())
+        return "%s %s" % (self.getItemId(), self.getProj().getTitle())
 
     def getId(self):
         return (self.getProj().PID, self.vid)
@@ -192,6 +164,8 @@ class EProjView(TDView):
 
 
     def additionalBinds(self):
+        ## self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        ## self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
@@ -201,6 +175,7 @@ class EProjView(TDView):
 
     def OnReproject(self, rid=None):
         self.getProj().initParameters(self.boxes)
+        self.getProj().addParamsRandrep()
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
         #     self.initProject(tmp_id)
@@ -238,13 +213,8 @@ class EProjView(TDView):
         self.highl = {}
         self.hight = {}
 
-        # self.MapfigMap = plt.figure()
-        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        # self.MapfigMap.clear()
         if not hasattr( self, 'axe' ):
             self.axe = self.MapfigMap.add_subplot( 111 )
-        
 
         self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
 

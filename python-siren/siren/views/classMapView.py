@@ -9,8 +9,8 @@ import numpy
 import re
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
-import matplotlib
-matplotlib.use('WXAgg')
+# import matplotlib
+# matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 #from mpl_toolkits.basemap import Basemap
@@ -33,7 +33,7 @@ class MapView(TDView):
     ordN = 1
     geo = True
     MAP_POLY = True #False
-    typesI = ["Var", "Reds"]
+    typesI = "vr"
 
     marg_f = 100.0
     proj_def = "mill"
@@ -100,10 +100,6 @@ class MapView(TDView):
             self.coords_proj = None
             return
 
-        # self.MapfigMap = plt.figure()
-        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        # self.MapfigMap.clear()
         if not hasattr( self, 'axe' ):
             try:
                 self.bm, args_all = self.makeBasemapProj()
@@ -168,6 +164,8 @@ class MapView(TDView):
 
 
     def additionalBinds(self):
+        self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         for button in self.buttons:
             button["element"].Bind(wx.EVT_BUTTON, button["function"])
         self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)

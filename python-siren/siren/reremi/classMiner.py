@@ -457,6 +457,7 @@ class Miner(object):
         # print idL, idR, eval("0b"+"".join(["%d" %(((idL+idR)%10)%i ==0) for i in [8,4,2]]))
         ## + ((idL + idR)%10)/1000.0
         return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50) + 1./(1+((idL + idR)%10))
+        ## return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
         # return PAIR_LOADS[self.data.col(0, idL).type_id-1][self.data.col(1, idR).type_id-1]
 
 
@@ -541,7 +542,6 @@ class MinerDistrib(Miner):
                                                 self.charbon, self.constraints,
                                                 self.souvenirs, self.rqueue, [initial_red],
                                                 final=self.final, logger=self.shareLogger())
- 
        
     def handlePairResult(self, m):
         scores, literalsL, literalsR, idL, idR, pload = m["scores"], m["lLs"], m["lRs"], m["idL"], m["idR"], m["pload"]

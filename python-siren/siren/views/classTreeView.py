@@ -8,8 +8,9 @@ import wx
 import numpy
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
-import matplotlib
-matplotlib.use('WXAgg')
+# import matplotlib
+# matplotlib.use('WXAgg')
+
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster
@@ -32,7 +33,7 @@ class TreeView(GView):
     SDESC = "Tree"
     ordN = 5
     title_str = "Decision Tree"
-    typesI = ["Var", "Reds"]
+    typesI = "vr"
     
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
@@ -45,9 +46,9 @@ class TreeView(GView):
     missing_yy = -1./6
     
     @classmethod
-    def suitableView(tcl, geo=False, queries=None, tabT=None):
+    def suitableView(tcl, geo=False, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
-               ( queries is None or (queries[0].isTreeCompatible() and queries[1].isTreeCompatible()))
+               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
 
     def __init__(self, parent, vid, more=None):
         self.current_r = None
@@ -58,7 +59,7 @@ class TreeView(GView):
     def getId(self):
         return (self.TID, self.vid)
 
-    def setCurrent(self, qr=None, source_list=None):
+    def setCurrent(self, qr=None):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
@@ -71,10 +72,9 @@ class TreeView(GView):
             ## self.suppABCD = red.supports().getVectorABCD()
             self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
             self.current_r = red
-            self.source_list=source_list
             self.updateText(red)
             self.updateMap()
-            self.updateHist(red, init=True)
+            ## self.updateHist(red, init=True)
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
@@ -111,8 +111,8 @@ class TreeView(GView):
             if upAll:
                 self.updateText(red)
                 self.makeMenu()
-                self.updateOriginal(red)
-                self.updateHist(red)
+                self.sendEditBack(red)
+                ## self.updateHist(red)
             self.updateMap(update_trees)
             return red
         else: ### wrongly formatted query, revert
@@ -125,12 +125,12 @@ class TreeView(GView):
         """
         self.highl = {}
         self.hight = {}
-        # self.MapfigMap = plt.figure()
-        # self.MapcanvasMap = FigCanvas(self.mapFrame, -1, self.MapfigMap)
-        # self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-        # self.MapfigMap.clear()
+
         if not hasattr( self, 'axe' ):
             self.axe = self.MapfigMap.add_subplot( 111 )
+            # rect = 0.01,0.01,0.98,0.98
+            # self.axe = self.MapfigMap.add_axes(rect)
+            # self.axe.set_frame_on(False)
 
         self.el = Ellipse((2, -1), 0.5, 0.5)
         self.axe.add_patch(self.el)
@@ -402,11 +402,6 @@ class TreeView(GView):
         return [add_boxB]
 
 
-    def additionalBinds(self):
-        for button in self.buttons:
-            button["element"].Bind(wx.EVT_BUTTON, button["function"])
-
-
     def sendOtherPick(self, gid_parts):
         if gid_parts[-1] == "T":
             pp = gid_parts[0].split(":")
@@ -451,7 +446,7 @@ class TreeView(GView):
         self.updateQuery(side, query=qu, force=True)
 
 
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
+    def emphasizeOn(self, lids):
         draw_settings = self.getDrawSettings()
         for lid in lids:
             if lid in self.highl:
@@ -466,13 +461,13 @@ class TreeView(GView):
             self.highl[lid] = []
             for l in ppos[1:]:
                 ff = numpy.sign(l[0])*self.flat_space
-                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=colhigh, linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
+                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=draw_settings["colhigh"], linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
 
 
 
             if len(lids) <= self.max_emphlbl and not lid in self.hight:
                 self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_l"], linewidth=1, alpha=0.5))
-                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=colhigh, linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
+                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings["colhigh"], linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
                 tag = self.parent.dw.getData().getRName(lid)
                 self.hight[lid] = []
                 self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),

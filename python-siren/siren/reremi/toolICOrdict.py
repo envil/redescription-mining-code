@@ -1,6 +1,7 @@
 import collections
+import pdb
 
-class ICDict(collections.MutableMapping):
+class ICOrdict(collections.MutableMapping):
     """
     A dict like object that keeps track of the changes.
 
@@ -22,9 +23,16 @@ class ICDict(collections.MutableMapping):
     """
 
     def __init__(self, iterable=[], isChanged = False):
-        self.data = dict(iterable)
+        self._nkey = 0
+        self._isChanged = False
+        if type(iterable) is list:
+            self.data = {}
+            self.extend(iterable)
+        else:
+            self.data = dict(iterable)
         self._isChanged = bool(isChanged)
 
+        
     @property
     def isChanged(self):
         "The property for tracking if the ICDict has changed. Accepts only Boolean values"
@@ -39,8 +47,10 @@ class ICDict(collections.MutableMapping):
 
 
     def __getitem__(self, key):
-        return self.data.__getitem__(key)
-
+        if type(key) is slice:
+            return [self.data.__getitem__(k) for k in range((key.start or 0), (key.stop or len(self.data)), (key.step or 1))]
+        else:
+            return self.data.__getitem__(key)
     def __setitem__(self, key, value):
         try:
             self.data.__setitem__(key, value)
@@ -57,6 +67,51 @@ class ICDict(collections.MutableMapping):
         else:
             self._isChanged = True
 
+    def reset(self):
+        self.data.clear()
+        self._isChanged = True
+
+    def getComplementKeys(self, ids):
+        return set(self.data.keys()) - set(ids)
+    def getIntersectKeys(self, ids):
+        return set(self.data.keys()) & set(ids)
+
+    def getElement(self, i):
+        return self.data.get(i, None)
+    def deleteElement(self, i):
+        if i in self.data:
+            del self.data[i] 
+
+    def getIds(self):
+        return self.data.keys()
+
+    # Public methods for list
+    def append(self, val):
+        while self._nkey in self.data:
+            self._nkey += 1
+        self.data[self._nkey] = val
+        self._isChanged = True
+        return self._nkey
+    
+    def extend(self, L):
+        if issubclass(type(L), list):
+            return [self.append(i) for i in L]
+        else:
+            return [self.append(i) for k,i in L.items()]
+    def insert(self, i, x):
+        self.data[i] = x
+        self._isChanged = True
+
+    def substitute(self, i, x):
+        if i in self:
+            self[i] = x
+            return True
+        return False
+
+
+    # def remove(self, x):
+    #     #### TODO
+
 
     def __len__(self):
         return self.data.__len__()
@@ -67,21 +122,12 @@ class ICDict(collections.MutableMapping):
     def copy(self):
         new = ICDict(self.data)
         new.isChanged = self._isChanged
+        new._nkey = self._nkey
         return new
 
     def has_key(self, key):
         print "has_key() has been deprecated, use 'key in ICDict' instead"
         return key in self.data
-
-    def reset(self):
-        self.data.clear()
-        self._isChanged = True
-
-    def getElement(self, i):
-        return self.data.get(i, None)
-    def getIds(self):
-        return self.data.keys()
-
 
     @classmethod
     def fromkeys(cls, seq, value=None):
@@ -91,8 +137,8 @@ class ICDict(collections.MutableMapping):
         return new
 
     def __repr__(self):
-        return 'ICDict('+ self.data.__repr__() + ', isChanged=' + str(self._isChanged) + ')'
+        return 'ICOrdict('+ self.data.__repr__() + ', isChanged=' + str(self._isChanged) + ')'
 
     def __str__(self):
-        return 'ICDict: '+ str(self.data)+', isChanged = ' + str(self._isChanged)
+        return 'ICOrdict: '+ str(self.data)+', isChanged = ' + str(self._isChanged)
         

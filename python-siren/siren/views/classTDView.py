@@ -4,6 +4,7 @@ import re
 # backend. 
 import matplotlib
 matplotlib.use('WXAgg')
+
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 
@@ -43,7 +44,7 @@ class TDView(GView):
                 ax.cla()
                 if ax != self.axe:
                     self.MapfigMap.delaxes(ax)
-
+                self.axe.set_position([0.,0.,1.,1.])
             self.makeBackground()   
             draw_settings = self.getDrawSettings()
 
@@ -123,9 +124,15 @@ class TDView(GView):
                 self.axe.set_yticks(norm_bins)
                 self.axe.set_yticklabels(bins)
                 self.axe.yaxis.tick_right()
+                self.axe.tick_params(direction="inout")
+
+                ylbls_ext = self.axe.yaxis.get_ticklabel_extents(self.MapcanvasMap.get_renderer())[1].get_points()
+                ratio = ylbls_ext[0,0]/ ylbls_ext[1,0]
+                pos1 = self.axe.get_position() # get the original position
+                self.axe.set_position([pos1.x0, pos1.y0,  ratio*pos1.width, pos1.height]) # set a new position 
                 
             self.makeFinish((x0, x1, y0, y1), (bx, by))   
-            self.updateEmphasize(self.COLHIGH, review=False)
+            self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
         else:

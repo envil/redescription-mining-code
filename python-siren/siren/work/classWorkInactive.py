@@ -121,16 +121,17 @@ class WorkInactive:
                 tmp = []
                 for red in tap[worker_info["results_track"]:nb_tap]:
                     redc = red.copy()
+                    #### TRACKING HERE
                     redc.track.insert(0, (source, "W"))
                     tmp.append(redc)
                 worker_info["results_track"] = nb_tap
                 if parent is None:
-                    print "Ready reds %s %s" % (tmp, worker_info["results_tab"])
+                    print "Ready reds [%s] %s %s" % ((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
                 else:
-                    parent.readyReds(tmp, worker_info["results_tab"])
+                    parent.readyReds((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
         elif worker_info["wtyp"] in ["projector"]:
             if parent is None:
-                print "Ready proj %s %s" % (worker_info["vid"], message)
+                print "Ready proj %s %s %s" % ((source, worker_info["wtyp"]), worker_info["vid"], message)
             else:
-                parent.readyProj(worker_info["vid"], message)
+                parent.readyProj((source, worker_info["wtyp"]), worker_info["vid"], message)
 #### SHARED METHODS END

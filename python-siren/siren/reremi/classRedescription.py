@@ -426,6 +426,14 @@ class Redescription(object):
         else:
             return self.track
 
+    def getSortAble(self, details=None):
+        if details.get("aim") == "sort":
+            return (self.status, details.get("id", "?"))
+        return ""
+
+    def getShortRid(self, details=None):
+        return "R%s" % details.get("id", "?")
+
     def getEnabled(self, details=None):
         return 1*(self.status>0)
 
@@ -534,6 +542,52 @@ class Redescription(object):
                 else:
                     info_lbl = None #info_key[0]
                 info_key = info_key[0]
+            else:
+                info_lbl = None #info_key
+            tmp = "-"
+            if info_key in Redescription.print_fields_details:
+                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
+                if info_lbl is None:
+                    info_lbl = info_name
+                try:
+                    if info_lbl in info_tmp:
+                        if type(info_round) is int:
+                            tmp = info_format % round(info_tmp[info_lbl], info_round)
+                        else:
+                            if type(info_tmp[info_lbl]) in [list, set]:
+                                tmp = info_format % (info_round.join(map(str, info_tmp[info_lbl])))
+                            else:
+                                tmp = info_format % info_tmp[info_lbl]
+                except Exception:
+                    tmp = "-"
+            if with_fname:
+                info_lbl = info_lbl+":"
+            else:
+                info_lbl = ""
+            details.append(info_lbl+tmp)
+        return details
+    formatDetails = staticmethod(formatDetails)
+    
+    def prepareQueries(self, list_fields, names=[None, None]):
+        info_tmp = {}
+        for side, query_f in enumerate(Redescription.print_queries_headers):
+            for style in ["", "U", "Tex"]:
+                if len(style) > 0:
+                    tmp_f = style +"_"+query_f
+                else:
+                    tmp_f = query_f
+                if tmp_f in list_fields:
+                    info_tmp[tmp_f] = self.queries[side].disp(style=style)
+                        
+                if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
+                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
+        return info_tmp
+    
+
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
+        if list_fields is None:
+            if names[0] is not None or names[1] is not None:
+                list_fields = Redescription.print_default_fields_named
             else:
                 info_lbl = None #info_key
             tmp = "-"

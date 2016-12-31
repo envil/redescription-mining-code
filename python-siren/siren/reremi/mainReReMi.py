@@ -194,11 +194,22 @@ def loadPackage(filename, pm):
 
     return params, data
 
-
 def run(args):
-
+    
     loaded = loadAll(args)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
+
+    ############################
+    #### SPLITS
+    # data.extractFolds(1, 12)
+    # splits_info = data.getFoldsInfo()
+    # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+    # ids = {}
+    # checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
+    # for lt, bids in checked:
+    #     ids[lt] = [stored_splits_ids[bid] for bid in bids]
+    # data.assignLT(ids["learn"], ids["test"])
+    ############################
 
     miner = instMiner(data, params, logger)
     try:
@@ -208,6 +219,7 @@ def run(args):
 
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
+
 
 def run_filterRM(args):
     
@@ -242,7 +254,6 @@ def run_filterRM(args):
 
     numpy.savetxt('scores.txt', scores, fmt="%f")
 
-    
 def run_filter(args):
     #### USED FOR TESTS
     #### on 100
@@ -295,6 +306,16 @@ def run_filter(args):
         print len(tmp_ids), len(org_ids)
         
     return [batch[i] for i in tmp_ids]
+
+
+    ## miner = instMiner(data, params, logger)
+    ## try:
+    ##     miner.full_run()
+    ## except KeyboardInterrupt:
+    ##     logger.printL(1, 'Stopped...', "log")
+    ## 
+    ## outputResults(filenames, miner.final, data)
+    ## logger.clockTac(0, None)
 
 
 def run_splits(args, splt=""):

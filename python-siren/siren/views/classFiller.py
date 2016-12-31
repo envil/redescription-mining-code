@@ -14,7 +14,7 @@ class Filler(object):
 
 
     def getVizType(self):
-        if self.parent.isVizSplit():
+        if self.parent.getVizm().isVizSplit():
             return "s"
         return "t"
     def getFWidth(self):
@@ -43,15 +43,15 @@ class Filler(object):
         self.boxSel.Bind(wx.EVT_TOGGLEBUTTON, self.OnSelect)
 
     def OnSelect(self, event):
-        self.parent.setActiveViz(self.getGPos())
+        self.parent.getVizm().setActiveViz(self.getGPos())
 
     def _SetSize(self):
         pixels = tuple(self.mapFrame.GetClientSize())
         laybox = self.mapFrame.GetSizer()
         # sz = (laybox.GetCols(), laybox.GetRows())
-        sz = self.parent.getVizGridSize()
-        pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizBb())/float(sz[1])),
-                  max(self.getFHeight(), (pixels[1]-2*self.parent.getVizBb())/float(sz[0])))
+        sz = self.parent.getVizm().getVizGridSize()
+        pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1])),
+                  max(self.getFHeight(), (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0])))
         self.boxSel.SetMinSize(pixels)
         self.panel.SetMinSize(pixels)
         laybox.Layout()
