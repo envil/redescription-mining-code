@@ -1,11 +1,14 @@
-### TODO check which imports are needed 
 import wx
+### from wx import ALIGN_BOTTOM, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALL, HORIZONTAL, VERTICAL, ID_ANY, EXPAND, RAISED_BORDER, SL_HORIZONTAL
+### from wx import EVT_BUTTON, EVT_SCROLL_THUMBRELEASE, FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
+### from wx import BoxSizer, Button, CallLater, CheckBox, Choice, DefaultPosition, Font, NewId, Panel,  Slider, StaticText, TextCtrl
+
 import numpy
 import re
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-#matplotlib.use('WXAgg')
+matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 from matplotlib.patches import Ellipse

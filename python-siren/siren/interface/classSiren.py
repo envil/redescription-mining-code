@@ -1,9 +1,19 @@
 import os, os.path, random
-import wx
 import time, math
 import sys
 import pickle
+
+import wx
 # import wx.lib.agw.pybusyinfo as PBI
+
+### from wx import AboutBox, AboutDialogInfo, Bitmap, BoxSizer, BusyInfo, Button, CallLater, DefaultPosition, DisplaySize, FileDialog, Frame, Gauge, GridBagSizer, GridSizer, Icon
+### from wx import ALIGN_CENTER, BITMAP_TYPE_PNG, CANCEL, CHANGE_DIR, DEFAULT_FRAME_STYLE, VERTICAL, VSCROLL, YES_NO, EXPAND, GA_HORIZONTAL, GA_SMOOTH, HSCROLL
+### from wx import NB_TOP,  NO_BORDER, NO_DEFAULT, OK, OPEN, SAVE, STAY_ON_TOP, TE_MULTILINE, TE_READONLY, TE_RICH, TOP
+### from wx import EVT_BUTTON, EVT_CLOSE, EVT_ENTER_WINDOW, EVT_LEFT_UP, EVT_MENU, EVT_NOTEBOOK_PAGE_CHANGED, EVT_SIZE, EVT_SPLITTER_UNSPLIT
+### from wx import ICON_EXCLAMATION, ICON_INFORMATION
+### from wx import ID_ABOUT, ID_COPY, ID_CUT, ID_EXIT, ID_HELP, ID_NO, ID_OK, ID_OPEN, ID_PASTE, ID_PREFERENCES, ID_SAVE, ID_SAVEAS
+### from wx import Menu, MenuBar, MessageDialog, NewId, Notebook, NullBitmap, Panel, ScrolledWindow, SplitterWindow, StaticBitmap, TextCtrl, ToggleButton
+
 import wx.lib.dialogs
 
 from ..reremi.toolLog import Log
@@ -962,6 +972,9 @@ class Siren():
                 ID_SPLT = wx.NewId()
                 m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...\tCtrl+l", "Setup learn/test data splits.")
                 frame.Bind(wx.EVT_MENU, self.OnSplitDialog, m_spltdia)
+                if not self.hasDataLoaded():
+                        menuFile.Enable(ID_SPLT, False)
+
 
         menuFile.AppendSeparator()
         ## Quit

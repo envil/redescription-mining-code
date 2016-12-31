@@ -29,6 +29,7 @@ from matplotlib.lines import Line2D
 from matplotlib.transforms import Bbox
 from mpl_toolkits.basemap import pyproj
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.image import imread
 import sys, os, math
 from .proj import Proj
 import numpy as np
@@ -45,12 +46,19 @@ if 'BASEMAPDATA' in os.environ:
         raise RuntimeError('Path in environment BASEMAPDATA not a directory')
 else:
     basemap_datadir = os.sep.join([os.path.dirname(__file__), 'data'])
+    ###### modified to allow packaging  
+    #### START ADDED PACKAGING  
     import re
     if (basemap_datadir.find("library.zip") > -1):
        basemap_datadir=re.sub("library.zip","",basemap_datadir)
+    #### END ADDED PACKAGING
 
+__version__ = '1.0.7'
 
-__version__ = '1.0.5'
+# module variable that sets the default value for the 'latlon' kwarg.
+# can be set to True by user so plotting functions can take lons,lats
+# in degrees by default, instead of x,y (map projection coords in meters).
+latlon_default = False
 
 # supported map projections.
 _projnames = {'cyl'      : 'Cylindrical Equidistant',
@@ -59,6 +67,7 @@ _projnames = {'cyl'      : 'Cylindrical Equidistant',
              'omerc'    : 'Oblique Mercator',
              'mill'     : 'Miller Cylindrical',
              'gall'     : 'Gall Stereographic Cylindrical',
+             'cea'      : 'Cylindrical Equal Area',
              'lcc'      : 'Lambert Conformal',
              'laea'     : 'Lambert Azimuthal Equal Area',
              'nplaea'   : 'North-Polar Lambert Azimuthal',
@@ -85,14 +94,17 @@ _projnames = {'cyl'      : 'Cylindrical Equidistant',
              'vandg'    : 'van der Grinten',
              'mbtfpq'   : 'McBryde-Thomas Flat-Polar Quartic',
              'gnom'     : 'Gnomonic',
+             'rotpole'  : 'Rotated Pole',
              }
 supported_projections = []
 for _items in _projnames.items():
     supported_projections.append(" %-17s%-40s\n" % (_items))
 supported_projections = ''.join(supported_projections)
 
-_cylproj = ['cyl','merc','mill','gall']
+_cylproj = ['cyl','merc','mill','gall','cea']
 _pseudocyl = ['moll','robin','eck4','kav7','sinu','mbtfpq','vandg','hammer']
+_dg2rad = math.radians(1.)
+_rad2dg = math.degrees(1.)
 
 # projection specific parameters.
 projection_params = {'cyl'      : 'corners only (no width/height)',
@@ -101,6 +113,7 @@ projection_params = {'cyl'      : 'corners only (no width/height)',
              'omerc'    : 'lon_0,lat_0,lat_1,lat_2,lon_1,lon_2,no_rot,k_0',
              'mill'     : 'corners only (no width/height)',
              'gall'     : 'corners only (no width/height)',
+             'cea'      : 'corners only plus lat_ts (no width/height)',
              'lcc'      : 'lon_0,lat_0,lat_1,lat_2,k_0',
              'laea'     : 'lon_0,lat_0',
              'nplaea'   : 'bounding_lat,lon_0,lat_0,no corners or width/height',
@@ -127,7 +140,59 @@ projection_params = {'cyl'      : 'corners only (no width/height)',
              'vandg'    : 'lon_0,lat_0,no corners or width/height',
              'mbtfpq'   : 'lon_0,lat_0,no corners or width/height',
              'gnom'     : 'lon_0,lat_0',
+             'rotpole'  : 'lon_0,o_lat_p,o_lon_p,corner lat/lon or corner x,y (no width/height)'
              }
+
+# create dictionary that maps epsg codes to Basemap kwargs.
+epsgf = open(os.path.join(basemap_datadir,'epsg'))
+epsg_dict={}
+for line in epsgf:
+    if line.startswith("#"):
+        continue
+    l = line.split()
+    code = l[0].strip("<>")
+    parms = ' '.join(l[1:-1])
+    _kw_args={}
+    for s in l[1:-1]:
+        try:
+            k,v = s.split('=')
+        except:
+            pass
+        k = k.strip("+")
+        if k=='proj':
+            if v == 'longlat': v = 'cyl'
+            if v not in _projnames:
+                continue
+            k='projection'
+        if k=='k':
+            k='k_0'
+        if k in ['projection','lat_1','lat_2','lon_0','lat_0',\
+                 'a','b','k_0','lat_ts','ellps','datum']:
+            if k not in ['projection','ellps','datum']:
+                v = float(v)
+            _kw_args[k]=v
+    if 'projection' in _kw_args:
+        if 'a' in _kw_args:
+            if 'b' in _kw_args:
+                _kw_args['rsphere']=(_kw_args['a'],_kw_args['b'])
+                del _kw_args['b']
+            else:
+                _kw_args['rsphere']=_kw_args['a']
+            del _kw_args['a']
+        if 'datum' in _kw_args:
+            if _kw_args['datum'] == 'NAD83':
+                _kw_args['ellps'] = 'GRS80'
+            elif _kw_args['datum'] == 'NAD27':
+                _kw_args['ellps'] = 'clrk66'
+            elif _kw_args['datum'] == 'WGS84':
+                _kw_args['ellps'] = 'WGS84'
+            del _kw_args['datum']
+        # supported epsg projections.
+        # omerc not supported yet, since we can't handle
+        # alpha,gamma and lonc keywords.
+        if _kw_args['projection'] != 'omerc':
+            epsg_dict[code]=_kw_args
+epsgf.close()
 
 # The __init__ docstring is pulled out here because it is so long;
 # Having it in the usual place makes it hard to get from the
@@ -191,7 +256,7 @@ _Basemap_init_doc = """
  (because either they are computed internally, or entire globe is
  always plotted).
 
- For the cylindrical projections (``cyl``, ``merc``, ``mill`` and ``gall``),
+ For the cylindrical projections (``cyl``, ``merc``, ``mill``, ``cea``  and ``gall``),
  the default is to use
  llcrnrlon=-180,llcrnrlat=-90, urcrnrlon=180 and urcrnrlat=90). For all other
  projections except ``ortho``, ``geos`` and ``nsper``, either the lat/lon values of the
@@ -202,6 +267,11 @@ _Basemap_init_doc = """
  coordinate system of the global projection (with x=0,y=0 at the center
  of the global projection).  If the corners are not specified,
  the entire globe is plotted.
+
+ For ``rotpole``, the lat/lon values of the corners on the unrotated sphere
+ may be provided as llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat, or the lat/lon
+ values of the corners on the rotated sphere can be given as
+ llcrnrx,llcrnry,urcrnrx,urcrnry.
 
  Other keyword arguments:
 
@@ -236,6 +306,10 @@ _Basemap_init_doc = """
                   The minor axis (b) can be computed from the major
                   axis (a) and the inverse flattening parameter using
                   the formula if = a/(a-b).
+ ellps            string describing ellipsoid ('GRS80' or 'WGS84',
+                  for example). If both rsphere and ellps are given,
+                  rsphere is ignored. Default None. See pyproj.pj_ellps
+                  for allowed values.
  suppress_ticks   suppress automatic drawing of axis ticks and labels
                   in map projection coordinates.  Default False,
                   so parallels and meridians can be labelled instead.
@@ -283,10 +357,11 @@ _Basemap_init_doc = """
  ================ ====================================================
  Keyword          Description
  ================ ====================================================
- lat_ts           latitude of true scale. Optional for stereographic
-                  and mercator projections.
+ lat_ts           latitude of true scale. Optional for stereographic,
+                  cylindrical equal area and mercator projections.
                   default is lat_0 for stereographic projection.
-                  default is 0 for mercator projection.
+                  default is 0 for mercator and cylindrical equal area
+                  projections.
  lat_1            first standard parallel for lambert conformal,
                   albers equal area and equidistant conic.
                   Latitude of one of the two points on the projection
@@ -340,6 +415,9 @@ _Basemap_init_doc = """
  projection       map projection. Print the module variable
                   ``supported_projections`` to see a list of allowed
                   values.
+ epsg             EPSG code defining projection (see
+                  http://spatialreference.org for a list of
+                  EPSG codes and their definitions).
  aspect           map aspect ratio
                   (size of y dimension / size of x dimension).
  llcrnrlon        longitude of lower left hand corner of the
@@ -382,7 +460,7 @@ _Basemap_init_doc = """
  For non-cylindrical projections, the inverse transformation
  always returns longitudes between -180 and 180 degrees. For
  cylindrical projections (self.projection == ``cyl``, ``mill``,
- ``gall`` or ``merc``)
+ ``cea``, ``gall`` or ``merc``)
  the inverse transformation will return longitudes between
  self.llcrnrlon and self.llcrnrlat.
 
@@ -439,16 +517,35 @@ def _transform(plotfunc):
     @functools.wraps(plotfunc)
     def with_transform(self,x,y,data,*args,**kwargs):
         # input coordinates are latitude/longitude, not map projection coords.
-        if kwargs.get('latlon', False):
+        if kwargs.pop('latlon', latlon_default):
             # shift data to map projection region for
             # cylindrical and pseudo-cylindrical projections.
             if self.projection in _cylproj or self.projection in _pseudocyl:
                 x, data = self.shiftdata(x, data)
             # convert lat/lon coords to map projection coords.
             x, y = self(x,y)
-            # delete this keyword so it's not passed on to matplotlib.
-            del kwargs['latlon']
         return plotfunc(self,x,y,data,*args,**kwargs)
+    return with_transform
+
+def _transform1d(plotfunc):
+    # shift data and longitudes to map projection region, then compute
+    # transformation to map projection coordinates.
+    @functools.wraps(plotfunc)
+    def with_transform(self,x,y,*args,**kwargs):
+        x = np.asarray(x)
+        # input coordinates are latitude/longitude, not map projection coords.
+        if kwargs.pop('latlon', latlon_default):
+            # shift data to map projection region for
+            # cylindrical and pseudo-cylindrical projections.
+            if self.projection in _cylproj or self.projection in _pseudocyl:
+                if x.ndim == 1:
+                    x = self.shiftdata(x)
+                elif x.ndim == 0:
+                    if x > 180:
+                        x = x - 360.
+            # convert lat/lon coords to map projection coords.
+            x, y = self(x,y)
+        return plotfunc(self,x,y,*args,**kwargs)
     return with_transform
 
 def _transformuv(plotfunc):
@@ -458,7 +555,7 @@ def _transformuv(plotfunc):
     @functools.wraps(plotfunc)
     def with_transform(self,x,y,u,v,*args,**kwargs):
         # input coordinates are latitude/longitude, not map projection coords.
-        if kwargs.get('latlon', False):
+        if kwargs.pop('latlon', latlon_default):
             # shift data to map projection region for
             # cylindrical and pseudo-cylindrical projections.
             if self.projection in _cylproj or self.projection in _pseudocyl:
@@ -466,8 +563,6 @@ def _transformuv(plotfunc):
                 x, v = self.shiftdata(x, v)
             # convert lat/lon coords to map projection coords.
             x, y = self(x,y)
-            # delete this keyword so it's not passed on to matplotlib.
-            del kwargs['latlon']
         return plotfunc(self,x,y,u,v,*args,**kwargs)
     return with_transform
 
@@ -480,10 +575,11 @@ class Basemap(object):
                        width=None, height=None,
                        projection='cyl', resolution='c',
                        area_thresh=None, rsphere=6370997.0,
-                       lat_ts=None,
+                       ellps=None, lat_ts=None,
                        lat_1=None, lat_2=None,
                        lat_0=None, lon_0=None,
                        lon_1=None, lon_2=None,
+                       o_lon_p=None, o_lat_p=None,
                        k_0=None,
                        no_rot=False,
                        suppress_ticks=True,
@@ -493,8 +589,41 @@ class Basemap(object):
                        anchor='C',
                        celestial=False,
                        round=False,
+                       epsg=None,
                        ax=None):
         # docstring is added after __init__ method definition
+
+        # set epsg code if given, set to 4326 for projection='cyl':
+        if epsg is not None:
+            self.epsg = epsg
+        elif projection == 'cyl':
+            self.epsg = 4326
+        # replace kwarg values with those implied by epsg code,
+        # if given.
+        if hasattr(self,'epsg'):
+            if str(self.epsg) not in epsg_dict:
+                raise ValueError('%s is not a supported EPSG code' %
+                        self.epsg)
+            epsg_params = epsg_dict[str(self.epsg)]
+            for k in epsg_params:
+                if k == 'projection':
+                    projection = epsg_params[k]
+                elif k == 'rsphere':
+                    rsphere = epsg_params[k]
+                elif k == 'ellps':
+                    ellps = epsg_params[k]
+                elif k == 'lat_1':
+                    lat_1 = epsg_params[k]
+                elif k == 'lat_2':
+                    lat_2 = epsg_params[k]
+                elif k == 'lon_0':
+                    lon_0 = epsg_params[k]
+                elif k == 'lat_0':
+                    lat_0 = epsg_params[k]
+                elif k == 'lat_ts':
+                    lat_ts = epsg_params[k]
+                elif k == 'k_0':
+                    k_0 = epsg_params[k]
 
         # fix aspect to ratio to match aspect ratio of map projection
         # region
@@ -515,20 +644,34 @@ class Basemap(object):
         # set up projection parameter dict.
         projparams = {}
         projparams['proj'] = projection
-        try:
-            if rsphere[0] > rsphere[1]:
-                projparams['a'] = rsphere[0]
-                projparams['b'] = rsphere[1]
+        # if ellps keyword specified, it over-rides rsphere.
+        if ellps is not None:
+            try:
+                elldict = pyproj.pj_ellps[ellps]
+            except KeyError:
+                raise ValueError(
+                'illegal ellps definition, allowed values are %s' %
+                pyproj.pj_ellps.keys())
+            projparams['a'] = elldict['a']
+            if 'b' in elldict:
+                projparams['b'] = elldict['b']
             else:
-                projparams['a'] = rsphere[1]
-                projparams['b'] = rsphere[0]
-        except:
-            if projection == 'tmerc':
-            # use bR_a instead of R because of obscure bug
-            # in proj4 for tmerc projection.
-                projparams['bR_a'] = rsphere
-            else:
-                projparams['R'] = rsphere
+                projparams['b'] = projparams['a']*(1.0-(1.0/elldict['rf']))
+        else:
+            try:
+                if rsphere[0] > rsphere[1]:
+                    projparams['a'] = rsphere[0]
+                    projparams['b'] = rsphere[1]
+                else:
+                    projparams['a'] = rsphere[1]
+                    projparams['b'] = rsphere[0]
+            except:
+                if projection == 'tmerc':
+                # use bR_a instead of R because of obscure bug
+                # in proj4 for tmerc projection.
+                    projparams['bR_a'] = rsphere
+                else:
+                    projparams['R'] = rsphere
         # set units to meters.
         projparams['units']='m'
         # check for sane values of lon_0, lat_0, lat_ts, lat_1, lat_2
@@ -751,7 +894,7 @@ class Basemap(object):
                 self.llcrnrlon = llcrnrlon; self.llcrnrlat = llcrnrlat
                 self.urcrnrlon = urcrnrlon; self.urcrnrlat = urcrnrlat
         elif projection in _cylproj:
-            if projection == 'merc':
+            if projection == 'merc' or projection == 'cea':
                 if lat_ts is None:
                     lat_ts = 0.
                     projparams['lat_ts'] = lat_ts
@@ -765,7 +908,6 @@ class Basemap(object):
                     llcrnrlon = -180.
                     urcrnrlon = 180
                 if projection == 'merc':
-                    if lat_ts is None: lat_ts = 0.
                     # clip plot region to be within -89.99S to 89.99N
                     # (mercator is singular at poles)
                     if llcrnrlat < -89.99: llcrnrlat = -89.99
@@ -780,6 +922,27 @@ class Basemap(object):
                 projparams['lon_0'] = lon_0
             else:
                 projparams['lon_0']=0.5*(llcrnrlon+urcrnrlon)
+        elif projection == 'rotpole':
+            if lon_0 is None or o_lon_p is None or o_lat_p is None:
+                msg='must specify lon_0,o_lat_p,o_lon_p for rotated pole Basemap'
+                raise ValueError(msg)
+            if width is not None or height is not None:
+                sys.stdout.write('warning: width and height keywords ignored for %s projection' % _projnames[self.projection])
+            projparams['lon_0']=lon_0
+            projparams['o_lon_p']=o_lon_p
+            projparams['o_lat_p']=o_lat_p
+            projparams['o_proj']='longlat'
+            projparams['proj']='ob_tran'
+            if not using_corners and None in [llcrnrx,llcrnry,urcrnrx,urcrnry]:
+                raise ValueError('must specify lat/lon values of corners in degrees')
+            if None not in [llcrnrx,llcrnry,urcrnrx,urcrnry]:
+                p = pyproj.Proj(projparams)
+                llcrnrx = _dg2rad*llcrnrx; llcrnry = _dg2rad*llcrnry
+                urcrnrx = _dg2rad*urcrnrx; urcrnry = _dg2rad*urcrnry
+                llcrnrlon, llcrnrlat = p(llcrnrx,llcrnry,inverse=True)
+                urcrnrlon, urcrnrlat = p(urcrnrx,urcrnry,inverse=True)
+                self.llcrnrlon = llcrnrlon; self.llcrnrlat = llcrnrlat
+                self.urcrnrlon = urcrnrlon; self.urcrnrlat = urcrnrlat
         else:
             raise ValueError(_unsupported_projection % projection)
 
@@ -842,6 +1005,12 @@ class Basemap(object):
             self.urcrnrx = proj.urcrnrx
             self.urcrnry = proj.urcrnry
 
+        if self.projection == 'rotpole':
+            lon0,lat0 = self(0.5*(self.llcrnrx + self.urcrnrx),\
+                             0.5*(self.llcrnry + self.urcrnry),\
+                             inverse=True)
+            self.projparams['lat_0']=lat0
+
         # if ax == None, pyplot.gca may be used.
         self.ax = ax
         self.lsmask = None
@@ -884,6 +1053,8 @@ class Basemap(object):
             self.lonmax = self.urcrnrlon
         else:
             lons, lats = self.makegrid(1001,1001)
+            lats = ma.masked_where(lats > 1.e20,lats)
+            lons = ma.masked_where(lons > 1.e20,lons)
             self.latmin = lats.min()
             self.latmax = lats.max()
             self.lonmin = lons.min()
@@ -910,31 +1081,16 @@ class Basemap(object):
         # read in coastline polygons, only keeping those that
         # intersect map boundary polygon.
         if self.resolution is not None:
-            self.coastsegs, self.coastpolygontypes = self._readboundarydata('gshhs')
+            self.coastsegs, self.coastpolygontypes =\
+            self._readboundarydata('gshhs',as_polygons=True)
             # reformat for use in matplotlib.patches.Polygon.
             self.coastpolygons = []
-            # also, split coastline segments that jump across entire plot.
-            #coastsegs = []
             for seg in self.coastsegs:
                 x, y = list(zip(*seg))
                 self.coastpolygons.append((x,y))
-                #x = np.array(x,np.float64); y = np.array(y,np.float64)
-                #xd = (x[1:]-x[0:-1])**2
-                #yd = (y[1:]-y[0:-1])**2
-                #dist = np.sqrt(xd+yd)
-                #split = dist > 5000000.
-                #if np.sum(split) and self.projection not in _cylproj:
-                #    ind = (np.compress(split,np.squeeze(split*np.indices(xd.shape)))+1).tolist()
-                #    iprev = 0
-                #    ind.append(len(xd))
-                #    for i in ind:
-                #        # don't add empty lists.
-                #        if len(list(range(iprev,i))):
-                #            coastsegs.append(list(zip(x[iprev:i],y[iprev:i])))
-                #        iprev = i
-                #else:
-                #    coastsegs.append(seg)
-            #self.coastsegs = coastsegs
+            # replace coastsegs with line segments (instead of polygons)
+            self.coastsegs, types =\
+            self._readboundarydata('gshhs',as_polygons=False)
         # create geos Polygon structures for land areas.
         # currently only used in is_land method.
         self.landpolygons=[]
@@ -967,7 +1123,7 @@ class Basemap(object):
         For non-cylindrical projections, the inverse transformation
         always returns longitudes between -180 and 180 degrees. For
         cylindrical projections (self.projection == ``cyl``,
-        ``mill``, ``gall`` or ``merc``)
+        ``cea``, ``mill``, ``gall`` or ``merc``)
         the inverse transformation will return longitudes between
         self.llcrnrlon and self.llcrnrlat.
 
@@ -986,12 +1142,32 @@ class Basemap(object):
                 x = 2.*lon_0-x
             except TypeError:
                 x = [2*lon_0-xx for xx in x]
+        if self.projection == 'rotpole' and inverse:
+            try:
+                x = _dg2rad*x
+            except TypeError:
+                x = [_dg2rad*xx for xx in x]
+            try:
+                y = _dg2rad*y
+            except TypeError:
+                y = [_dg2rad*yy for yy in y]
         xout,yout = self.projtran(x,y,inverse=inverse)
         if self.celestial and inverse:
             try:
                 xout = -2.*lon_0-xout
             except:
                 xout = [-2.*lon_0-xx for xx in xout]
+        if self.projection == 'rotpole' and not inverse:
+            try:
+                xout = _rad2dg*xout
+                xout = np.where(xout < 0., xout+360, xout)
+            except TypeError:
+                xout = [_rad2dg*xx for xx in xout]
+                xout = [xx+360. if xx < 0 else xx for xx in xout]
+            try:
+                yout = _rad2dg*yout
+            except TypeError:
+                yout = [_rad2dg*yy for yy in yout]
         return xout,yout
 
     def makegrid(self,nx,ny,returnxy=False):
@@ -1003,7 +1179,7 @@ class Basemap(object):
         """
         return self.projtran.makegrid(nx,ny,returnxy=returnxy)
 
-    def _readboundarydata(self,name):
+    def _readboundarydata(self,name,as_polygons=False):
         """
         read boundary data, clip to map projection region.
         """
@@ -1013,6 +1189,8 @@ class Basemap(object):
         If you are requesting a 'full' resolution dataset, you may need to
         download and install those files separately
         (see the basemap README for details).""")
+        # only gshhs coastlines can be polygons.
+        if name != 'gshhs': as_polygons=False
         try:
             bdatfile = open(os.path.join(basemap_datadir,name+'_'+self.resolution+'.dat'),'rb')
             bdatmetafile = open(os.path.join(basemap_datadir,name+'meta_'+self.resolution+'.dat'),'r')
@@ -1042,7 +1220,8 @@ class Basemap(object):
         # coordinates, then transform back. This is
         # because these projections are only defined on a hemisphere, and
         # some boundary features (like Eurasia) would be undefined otherwise.
-        tostere = ['omerc','ortho','gnom','nsper','nplaea','npaeqd','splaea','spaeqd']
+        tostere =\
+        ['omerc','ortho','gnom','nsper','nplaea','npaeqd','splaea','spaeqd']
         if self.projection in tostere and name == 'gshhs':
             containsPole = True
             lon_0=self.projparams['lon_0']
@@ -1055,7 +1234,7 @@ class Basemap(object):
             if np.abs(int(lat0)) == 90: lon0=0.
             maptran = pyproj.Proj(proj='stere',lon_0=lon0,lat_0=lat0,R=re)
             # boundary polygon for ortho/gnom/nsper projection
-            # in stereographic coorindates.
+            # in stereographic coordinates.
             b = self._boundarypolyll.boundary
             blons = b[:,0]; blats = b[:,1]
             b[:,0], b[:,1] = maptran(blons, blats)
@@ -1150,7 +1329,12 @@ class Basemap(object):
                         # if polygon instersects map projection
                         # region, process it.
                         if poly.intersects(boundarypolyll):
-                            geoms = poly.intersection(boundarypolyll)
+                            if name != 'gshhs' or as_polygons:
+                                geoms = poly.intersection(boundarypolyll)
+                            else:
+                                # convert polygons to line segments
+                                poly = _geoslib.LineString(poly.boundary)
+                                geoms = poly.intersection(boundarypolyll)
                             # iterate over geometries in intersection.
                             for psub in geoms:
                                 b = psub.boundary
@@ -1169,24 +1353,26 @@ class Basemap(object):
                         polys = [poly1,poly,poly2]
                         for poly in polys:
                             # try to fix "non-noded intersection" errors.
-                            #if not poly.is_valid(): poly=poly.simplify(1.e-10)
                             if not poly.is_valid(): poly=poly.fix()
                             # if polygon instersects map projection
                             # region, process it.
                             if poly.intersects(boundarypolyll):
-                                geoms = poly.intersection(boundarypolyll)
+                                if name != 'gshhs' or as_polygons:
+                                    geoms = poly.intersection(boundarypolyll)
+                                else:
+                                    # convert polygons to line segments
+                                    # note: use fix method here or Eurasia
+                                    # line segments sometimes disappear.
+                                    poly = _geoslib.LineString(poly.fix().boundary)
+                                    geoms = poly.intersection(boundarypolyll)
                                 # iterate over geometries in intersection.
                                 for psub in geoms:
-                                    # only coastlines are polygons,
-                                    # which have a 'boundary' attribute.
-                                    # otherwise, use 'coords' attribute
-                                    # to extract coordinates.
                                     b = psub.boundary
                                     blons = b[:,0]; blats = b[:,1]
                                     # transformation from lat/lon to
                                     # map projection coordinates.
                                     bx, by = self(blons, blats)
-                                    if name != 'gshhs' or len(bx) > 4:
+                                    if not as_polygons or len(bx) > 4:
                                         polygons.append(list(zip(bx,by)))
                                         polygon_types.append(typ)
                 # if map boundary polygon is not valid in lat/lon
@@ -1198,7 +1384,7 @@ class Basemap(object):
                     # to map projection coordinates.
                     # special case for ortho/gnom/nsper, compute coastline polygon
                     # vertices in stereographic coords.
-                    if name == 'gshhs' and self.projection in tostere:
+                    if name == 'gshhs' and as_polygons and self.projection in tostere:
                         b[:,0], b[:,1] = maptran(b[:,0], b[:,1])
                     else:
                         b[:,0], b[:,1] = self(b[:,0], b[:,1])
@@ -1206,26 +1392,39 @@ class Basemap(object):
                     # if less than two points are valid in
                     # map proj coords, skip this geometry.
                     if np.sum(goodmask) <= 1: continue
-                    if name != 'gshhs':
+                    if name != 'gshhs' or (name == 'gshhs' and not as_polygons):
                         # if not a polygon,
                         # just remove parts of geometry that are undefined
                         # in this map projection.
                         bx = np.compress(goodmask, b[:,0])
                         by = np.compress(goodmask, b[:,1])
-                        # for ortho/gnom/nsper projection, all points
-                        # outside map projection region are eliminated
-                        # with the above step, so we're done.
-                        if name != 'gshhs' or\
-                           (self.projection in tostere and len(bx) > 4):
+                        # split coastline segments that jump across entire plot.
+                        xd = (bx[1:]-bx[0:-1])**2
+                        yd = (by[1:]-by[0:-1])**2
+                        dist = np.sqrt(xd+yd)
+                        split = dist > 0.5*(self.xmax-self.xmin)
+                        if np.sum(split) and self.projection not in _cylproj:
+                            ind = (np.compress(split,np.squeeze(split*np.indices(xd.shape)))+1).tolist()
+                            iprev = 0
+                            ind.append(len(xd))
+                            for i in ind:
+                                # don't add empty lists.
+                                if len(list(range(iprev,i))):
+                                    polygons.append(list(zip(bx[iprev:i],by[iprev:i])))
+                                iprev = i
+                        else:
                             polygons.append(list(zip(bx,by)))
-                            polygon_types.append(typ)
+                        polygon_types.append(typ)
                         continue
                     # create a GEOS geometry object.
-                    poly = Shape(b)
+                    if name == 'gshhs' and not as_polygons:
+                        # convert polygons to line segments
+                        poly = _geoslib.LineString(poly.boundary)
+                    else:
+                        poly = Shape(b)
                     # this is a workaround to avoid
                     # "GEOS_ERROR: TopologyException:
                     # found non-noded intersection between ..."
-                    #if not poly.is_valid(): poly=poly.simplify(1.e-10)
                     if not poly.is_valid(): poly=poly.fix()
                     # if geometry instersects map projection
                     # region, and doesn't have any invalid points, process it.
@@ -1256,7 +1455,7 @@ class Basemap(object):
                                 b[:,0], b[:,1] = maptran(b[:,0], b[:,1], inverse=True)
                                 # orthographic/gnomonic/nsper.
                                 b[:,0], b[:,1]= self(b[:,0], b[:,1])
-                            if name != 'gshhs' or b.shape[0] > 4:
+                            if not as_polygons or len(b) > 4:
                                 polygons.append(list(zip(b[:,0],b[:,1])))
                                 polygon_types.append(typ)
         return polygons, polygon_types
@@ -1266,8 +1465,6 @@ class Basemap(object):
         create map boundary polygon (in lat/lon and x/y coordinates)
         """
         nx = 100; ny = 100
-        if self.projection == 'vandg':
-            nx = 10*nx; ny = 10*ny
         maptran = self
         if self.projection in ['ortho','geos','nsper']:
             # circular region.
@@ -1308,6 +1505,7 @@ class Basemap(object):
             b[:,0]=x; b[:,1]=y
             boundaryxy = _geoslib.Polygon(b)
         elif self.projection in _pseudocyl:
+            nx = 10*nx; ny = 10*ny
             # quasi-elliptical region.
             lon_0 = self.projparams['lon_0']
             # left side
@@ -1329,6 +1527,7 @@ class Basemap(object):
             b[:,0]=x; b[:,1]=y
             boundaryxy = _geoslib.Polygon(b)
         else: # all other projections are rectangular.
+            nx = 100*nx; ny = 100*ny
             # left side (x = xmin, ymin <= y <= ymax)
             yy = np.linspace(self.ymin, self.ymax, ny)[:-1]
             x = len(yy)*[self.xmin]; y = yy.tolist()
@@ -1629,7 +1828,7 @@ class Basemap(object):
                 item.set_clip_path(c)
         return coll,c
 
-    def drawcoastlines(self,linewidth=1.,color='k',antialiased=1,ax=None,zorder=None):
+    def drawcoastlines(self,linewidth=1.,linestyle='solid',color='k',antialiased=1,ax=None,zorder=None):
         """
         Draw coastlines.
 
@@ -1639,6 +1838,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         linewidth        coastline width (default 1.)
+        linestyle        coastline linestyle (default solid)
         color            coastline color (default black)
         antialiased      antialiasing switch for coastlines (default True).
         ax               axes instance (overrides default axes instance)
@@ -1655,6 +1855,7 @@ class Basemap(object):
         ax = ax or self._check_ax()
         coastlines = LineCollection(self.coastsegs,antialiaseds=(antialiased,))
         coastlines.set_color(color)
+        coastlines.set_linestyle(linestyle)
         coastlines.set_linewidth(linewidth)
         coastlines.set_label('_nolabel_')
         if zorder is not None:
@@ -1666,7 +1867,7 @@ class Basemap(object):
         self.set_axes_limits(ax=ax)
         return coastlines
 
-    def drawcountries(self,linewidth=0.5,color='k',antialiased=1,ax=None,zorder=None):
+    def drawcountries(self,linewidth=0.5,linestyle='solid',color='k',antialiased=1,ax=None,zorder=None):
         """
         Draw country boundaries.
 
@@ -1676,6 +1877,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         linewidth        country boundary line width (default 0.5)
+        linestyle        coastline linestyle (default solid)
         color            country boundary line color (default black)
         antialiased      antialiasing switch for country boundaries (default
                          True).
@@ -1697,6 +1899,7 @@ class Basemap(object):
         ax = ax or self._check_ax()
         countries = LineCollection(self.cntrysegs,antialiaseds=(antialiased,))
         countries.set_color(color)
+        countries.set_linestyle(linestyle)
         countries.set_linewidth(linewidth)
         countries.set_label('_nolabel_')
         if zorder is not None:
@@ -1708,7 +1911,7 @@ class Basemap(object):
         self.set_axes_limits(ax=ax)
         return countries
 
-    def drawstates(self,linewidth=0.5,color='k',antialiased=1,ax=None,zorder=None):
+    def drawstates(self,linewidth=0.5,linestyle='solid',color='k',antialiased=1,ax=None,zorder=None):
         """
         Draw state boundaries in Americas.
 
@@ -1718,6 +1921,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         linewidth        state boundary line width (default 0.5)
+        linestyle        coastline linestyle (default solid)
         color            state boundary line color (default black)
         antialiased      antialiasing switch for state boundaries
                          (default True).
@@ -1739,6 +1943,7 @@ class Basemap(object):
         ax = ax or self._check_ax()
         states = LineCollection(self.statesegs,antialiaseds=(antialiased,))
         states.set_color(color)
+        states.set_linestyle(linestyle)
         states.set_linewidth(linewidth)
         states.set_label('_nolabel_')
         if zorder is not None:
@@ -1750,7 +1955,47 @@ class Basemap(object):
         self.set_axes_limits(ax=ax)
         return states
 
-    def drawrivers(self,linewidth=0.5,color='k',antialiased=1,ax=None,zorder=None):
+    def drawcounties(self,linewidth=0.1,linestyle='solid',color='k',antialiased=1,
+                     ax=None,zorder=None,drawbounds=False):
+        """
+        Draw county boundaries in US. The county boundary shapefile
+        originates with the NOAA Coastal Geospatial Data Project
+        (http://coastalgeospatial.noaa.gov/data_gis.html).
+
+        .. tabularcolumns:: |l|L|
+
+        ==============   ====================================================
+        Keyword          Description
+        ==============   ====================================================
+        linewidth        county boundary line width (default 0.1)
+        linestyle        coastline linestyle (default solid)
+        color            county boundary line color (default black)
+        antialiased      antialiasing switch for county boundaries
+                         (default True).
+        ax               axes instance (overrides default axes instance)
+        zorder           sets the zorder for the county boundaries (if not
+                         specified, uses default zorder for
+                         matplotlib.patches.LineCollections).
+        ==============   ====================================================
+
+        returns a matplotlib.patches.LineCollection object.
+        """
+        ax = ax or self._check_ax()
+        gis_file = os.path.join(basemap_datadir,'UScounties')
+        county_info = self.readshapefile(gis_file,'counties',\
+                      default_encoding='latin-1',drawbounds=drawbounds)
+        counties = [coords for coords in self.counties]
+        counties = LineCollection(counties)
+        counties.set_linestyle(linestyle)
+        counties.set_linewidth(linewidth)
+        counties.set_color(color)
+        counties.set_label('counties')
+        if zorder:
+            counties.set_zorder(zorder)
+        ax.add_collection(counties)
+        return counties
+
+    def drawrivers(self,linewidth=0.5,linestyle='solid',color='k',antialiased=1,ax=None,zorder=None):
         """
         Draw major rivers.
 
@@ -1760,6 +2005,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         linewidth        river boundary line width (default 0.5)
+        linestyle        coastline linestyle (default solid)
         color            river boundary line color (default black)
         antialiased      antialiasing switch for river boundaries (default
                          True).
@@ -1781,6 +2027,7 @@ class Basemap(object):
         ax = ax or self._check_ax()
         rivers = LineCollection(self.riversegs,antialiaseds=(antialiased,))
         rivers.set_color(color)
+        rivers.set_linestyle(linestyle)
         rivers.set_linewidth(linewidth)
         rivers.set_label('_nolabel_')
         if zorder is not None:
@@ -1811,7 +2058,8 @@ class Basemap(object):
         return landpt and not lakept
 
     def readshapefile(self,shapefile,name,drawbounds=True,zorder=None,
-                      linewidth=0.5,color='k',antialiased=1,ax=None):
+                      linewidth=0.5,color='k',antialiased=1,ax=None,
+                      default_encoding='utf-8'):
         """
         Read in shape file, optionally draw boundaries on map.
 
@@ -1875,7 +2123,9 @@ class Basemap(object):
         vertices. If ``drawbounds=True`` a
         matplotlib.patches.LineCollection object is appended to the tuple.
         """
+        import shapefile as shp
         from .shapefile import Reader
+        shp.default_encoding = default_encoding
         if not os.path.exists('%s.shp'%shapefile):
             raise IOError('cannot locate %s.shp'%shapefile)
         if not os.path.exists('%s.shx'%shapefile):
@@ -1909,8 +2159,10 @@ class Basemap(object):
             verts = shp.points
             if shptype in [1,8]: # a Point or MultiPoint shape.
                 lons, lats = list(zip(*verts))
-                if max(lons) > 721. or min(lons) < -721. or max(lats) > 91. or min(lats) < -91:
+                if max(lons) > 721. or min(lons) < -721. or max(lats) > 90.01 or min(lats) < -90.01:
                     raise ValueError(msg)
+                # if latitude is slightly greater than 90, truncate to 90
+                lats = [max(min(lat, 90.0), -90.0) for lat in lats]
                 if len(verts) > 1: # MultiPoint
                     x,y = self(lons, lats)
                     coords.append(list(zip(x,y)))
@@ -1927,8 +2179,10 @@ class Basemap(object):
                 for indx1,indx2 in zip(parts,parts[1:]+[len(verts)]):
                     ringnum = ringnum + 1
                     lons, lats = list(zip(*verts[indx1:indx2]))
-                    if max(lons) > 721. or min(lons) < -721. or max(lats) > 91. or min(lats) < -91:
+                    if max(lons) > 721. or min(lons) < -721. or max(lats) > 90.01 or min(lats) < -90.01:
                         raise ValueError(msg)
+                    # if latitude is slightly greater than 90, truncate to 90
+                    lats = [max(min(lat, 90.0), -90.0) for lat in lats]
                     x, y = self(lons, lats)
                     coords.append(list(zip(x,y)))
                     attdict={}
@@ -2031,14 +2285,14 @@ class Basemap(object):
             xoffset = (self.urcrnrx-self.llcrnrx)/100.
 
         if self.projection in _cylproj + _pseudocyl:
-            lons = np.arange(self.llcrnrlon,self.urcrnrlon+0.01,0.01)
+            lons = np.linspace(self.llcrnrlon, self.urcrnrlon, 10001)
         elif self.projection in ['tmerc']:
             lon_0 = self.projparams['lon_0']
             # tmerc only defined within +/- 90 degrees of lon_0
-            lons = np.arange(lon_0-90,lon_0+90.01,0.01)
+            lons = np.linspace(lon_0-90,lon_0+90,100001)
         else:
             lonmin = self.boundarylonmin; lonmax = self.boundarylonmax
-            lons = np.linspace(lonmin, lonmax, 1001)
+            lons = np.linspace(lonmin, lonmax, 10001)
         # make sure latmax degree parallel is drawn if projection not merc or cyl or miller
         try:
             circlesl = list(circles)
@@ -2072,9 +2326,10 @@ class Basemap(object):
                 xd = (x[1:]-x[0:-1])**2
                 yd = (y[1:]-y[0:-1])**2
                 dist = np.sqrt(xd+yd)
-                #split = dist > 500000.
-                # normalize by radius of sphere
-                split = dist > 5000000./6370997.0*self.rmajor
+                if self.projection not in ['cyl','rotpole']:
+                    split = dist > self.rmajor/10.
+                else:
+                    split = dist > 1.
                 if np.sum(split) and self.projection not in _cylproj:
                     ind = (np.compress(split,np.squeeze(split*np.indices(xd.shape)))+1).tolist()
                     xl = []
@@ -2328,10 +2583,11 @@ class Basemap(object):
         if xoffset is None:
             xoffset = (self.urcrnrx-self.llcrnrx)/100.
 
+        lats = np.linspace(self.latmin,self.latmax,10001)
         if self.projection not in _cylproj + _pseudocyl:
-            lats = np.arange(-latmax,latmax+0.01,0.01)
-        else:
-            lats = np.arange(-90,90.01,0.01)
+            testlat = np.logical_and(lats>-latmax,lats<latmax)
+            lats = np.compress(testlat,lats)
+
         xdelta = 0.01*(self.xmax-self.xmin)
         ydelta = 0.01*(self.ymax-self.ymin)
         linecolls = {}
@@ -2355,9 +2611,10 @@ class Basemap(object):
                 xd = (x[1:]-x[0:-1])**2
                 yd = (y[1:]-y[0:-1])**2
                 dist = np.sqrt(xd+yd)
-                #split = dist > 500000.
-                # normalize by radius of sphere
-                split = dist > 5000000./6370997.0*self.rmajor
+                if self.projection not in ['cyl','rotpole']:
+                    split = dist > self.rmajor/10.
+                else:
+                    split = dist > 1.
                 if np.sum(split) and self.projection not in _cylproj:
                     ind = (np.compress(split,np.squeeze(split*np.indices(xd.shape)))+1).tolist()
                     xl = []
@@ -2666,8 +2923,8 @@ class Basemap(object):
         lons, lats       rank-1 arrays containing longitudes and latitudes
                          (in degrees) of input data in increasing order.
                          For non-cylindrical projections (those other than
-                         ``cyl``, ``merc``, ``gall`` and ``mill``) lons must
-                         fit within range -180 to 180.
+                         ``cyl``, ``merc``, ``cea``, ``gall`` and ``mill``) lons
+                         must fit within range -180 to 180.
         nx, ny           The size of the output regular grid in map
                          projection coordinates
         ==============   ====================================================
@@ -2738,8 +2995,8 @@ class Basemap(object):
         lons, lats       rank-1 arrays containing longitudes and latitudes
                          (in degrees) of input data in increasing order.
                          For non-cylindrical projections (those other than
-                         ``cyl``, ``merc``, ``gall`` and ``mill``) lons must
-                         fit within range -180 to 180.
+                         ``cyl``, ``merc``, ``cea``, ``gall`` and ``mill``) lons
+                         must fit within range -180 to 180.
         nx, ny           The size of the output regular grid in map
                          projection coordinates
         ==============   ====================================================
@@ -2811,8 +3068,8 @@ class Basemap(object):
         lons, lats       Arrays containing longitudes and latitudes
                          (in degrees) of input data in increasing order.
                          For non-cylindrical projections (those other than
-                         ``cyl``, ``merc``, ``gall`` and ``mill``) lons must
-                         fit within range -180 to 180.
+                         ``cyl``, ``merc``, ``cyl``, ``gall`` and ``mill``) lons
+                         must fit within range -180 to 180.
         ==============   ====================================================
 
         Returns ``uout, vout`` (rotated vector field).
@@ -2949,10 +3206,18 @@ class Basemap(object):
             import matplotlib.pyplot as plt
             plt.draw_if_interactive()
 
+    @_transform1d
     def scatter(self, *args, **kwargs):
         """
         Plot points with markers on the map
         (see matplotlib.pyplot.scatter documentation).
+
+        If ``latlon`` keyword is set to True, x,y are intrepreted as
+        longitude and latitude in degrees.  Data and longitudes are
+        automatically shifted to match map projection region for cylindrical
+        and pseudocylindrical projections, and x,y are transformed to map
+        projection coordinates. If ``latlon`` is False (default), x and y
+        are assumed to be map projection coordinates.
 
         Extra keyword ``ax`` can be used to override the default axes instance.
 
@@ -2979,10 +3244,18 @@ class Basemap(object):
         self.set_axes_limits(ax=ax)
         return ret
 
+    @_transform1d
     def plot(self, *args, **kwargs):
         """
         Draw lines and/or markers on the map
         (see matplotlib.pyplot.plot documentation).
+
+        If ``latlon`` keyword is set to True, x,y are intrepreted as
+        longitude and latitude in degrees.  Data and longitudes are
+        automatically shifted to match map projection region for cylindrical
+        and pseudocylindrical projections, and x,y are transformed to map
+        projection coordinates. If ``latlon`` is False (default), x and y
+        are assumed to be map projection coordinates.
 
         Extra keyword ``ax`` can be used to override the default axis instance.
 
@@ -3077,7 +3350,7 @@ class Basemap(object):
         if h is not None:
             ax.hold(h)
         try:
-            if kwargs.get('tri', False):
+            if kwargs.pop('tri', False):
                 try:
                     import matplotlib.tri as tri
                 except:
@@ -3094,8 +3367,6 @@ class Basemap(object):
                 x = np.compress(mask,x)
                 y = np.compress(mask,y)
                 data = np.compress(mask,data)
-                # delete this keyword so it's not pass on to pcolor.
-                del kwargs['tri']
                 if masked:
                     triang = tri.Triangulation(x, y)
                     z = data[triang.triangles]
@@ -3242,7 +3513,7 @@ class Basemap(object):
         if h is not None:
             ax.hold(h)
         try:
-            if kwargs.get('tri', False):
+            if kwargs.pop('tri', False):
                 try:
                     import matplotlib.tri as tri
                 except:
@@ -3260,8 +3531,6 @@ class Basemap(object):
                 x = np.compress(mask,x)
                 y = np.compress(mask,y)
                 data = np.compress(mask,data)
-                # delete this keyword so it's not pass on to pcolor.
-                del kwargs['tri']
                 if masked:
                     triang = tri.Triangulation(x, y)
                     z = data[triang.triangles]
@@ -3289,11 +3558,15 @@ class Basemap(object):
                              (if your data is on a global lat/lon grid) use the shiftdata
                              method to adjust the data to be consistent with the map projection
                              region (see examples/shiftdata.py)."""))
-                # mask for points outside projection limb.
+                # mask for points more than one grid length outside projection limb.
+                xx = ma.masked_where(x > 1.e20, x)
+                yy = ma.masked_where(y > 1.e20, y)
+                epsx = np.abs(xx[:,1:]-xx[:,0:-1]).max()
+                epsy = np.abs(yy[1:,:]-yy[0:-1,:]).max()
                 xymask = \
-                np.logical_or(np.greater(x,self.xmax),np.greater(y,self.ymax))
+                np.logical_or(np.greater(x,self.xmax+epsx),np.greater(y,self.ymax+epsy))
                 xymask = xymask + \
-                np.logical_or(np.less(x,self.xmin),np.less(y,self.ymin))
+                np.logical_or(np.less(x,self.xmin-epsx),np.less(y,self.ymin-epsy))
                 data = ma.asarray(data)
                 # combine with data mask.
                 mask = np.logical_or(ma.getmaskarray(data),xymask)
@@ -3387,19 +3660,21 @@ class Basemap(object):
                              (if your data is on a global lat/lon grid) use the shiftgrid
                              function to adjust the data to be consistent with the map projection
                              region (see examples/contour_demo.py)."""))
-                # mask for points outside projection limb.
-                xymask = np.logical_or(np.greater(x,1.e20),np.greater(y,1.e20))
-                # mask outside projection region (workaround for contourf bug?)
-                epsx = 0.1*(self.xmax-self.xmin)
-                epsy = 0.1*(self.ymax-self.ymin)
-                outsidemask = np.logical_or(np.logical_or(x > self.xmax+epsx,\
-                                            x < self.xmin-epsy),\
-                                            np.logical_or(y > self.ymax+epsy,\
-                                            y < self.ymin-epsy))
+                # mask for points more than one grid length outside projection limb.
+                xx = ma.masked_where(x > 1.e20, x)
+                yy = ma.masked_where(y > 1.e20, y)
+                if self.projection != 'omerc':
+                    epsx = np.abs(xx[:,1:]-xx[:,0:-1]).max()
+                    epsy = np.abs(yy[1:,:]-yy[0:-1,:]).max()
+                else: # doesn't work for omerc (FIXME)
+                    epsx = 0.; epsy = 0
+                xymask = \
+                np.logical_or(np.greater(x,self.xmax+epsx),np.greater(y,self.ymax+epsy))
+                xymask = xymask + \
+                np.logical_or(np.less(x,self.xmin-epsx),np.less(y,self.ymin-epsy))
                 data = ma.asarray(data)
-                # combine masks.
-                mask = \
-                np.logical_or(outsidemask,np.logical_or(ma.getmaskarray(data),xymask))
+                # combine with data mask.
+                mask = np.logical_or(ma.getmaskarray(data),xymask)
                 data = ma.masked_array(data,mask=mask)
                 CS = ax.contourf(x,y,data,*args,**kwargs)
         except:
@@ -3487,8 +3762,8 @@ class Basemap(object):
             ax.hold(b)
             raise
         ax.hold(b)
-        if plt is not None and ret.get_array() is not None:
-            plt.sci(ret)
+        if plt is not None and ret.lines.get_array() is not None:
+            plt.sci(ret.lines)
         # clip for round polar plots.
         # streamplot arrows not returned in matplotlib 1.1.1, so clip all
         # FancyArrow patches attached to axes instance.
@@ -3776,6 +4051,9 @@ class Basemap(object):
         except ImportError:
             raise ImportError('warpimage method requires PIL (http://www.pythonware.com/products/pil)')
         from matplotlib.image import pil_to_array
+        if self.celestial:
+            msg='warpimage does not work in celestial coordinates'
+            raise ValueError(msg)
         ax = kwargs.pop('ax', None) or self._check_ax()
         # default image file is blue marble next generation
         # from NASA (http://visibleearth.nasa.gov).
@@ -3883,7 +4161,8 @@ class Basemap(object):
                     # make points outside projection limb transparent.
                     self._bm_rgba_warped = self._bm_rgba_warped.filled(0.)
                 # treat pseudo-cyl projections such as mollweide, robinson and sinusoidal.
-                elif self.projection in _pseudocyl:
+                elif self.projection in _pseudocyl and \
+                     self.projection != 'hammer':
                     lonsr,latsr = self(x,y,inverse=True)
                     mask = ma.zeros((ny,nx,4),np.int8)
                     lon_0 = self.projparams['lon_0']
@@ -3906,12 +4185,186 @@ class Basemap(object):
                     self._bm_rgba_warped = self._bm_rgba_warped.filled(0.)
             # plot warped rgba image.
             im = self.imshow(self._bm_rgba_warped,ax=ax,**kwargs)
+            # for hammer projection, use clip path defined by
+            # projection limb (patch created in drawmapboundary).
+            if self.projection == 'hammer':
+                if not self._mapboundarydrawn:
+                    self.drawmapboundary(color='none',linewidth=None)
+                im.set_clip_path(self._mapboundarydrawn)
         else:
             # bmproj True, no interpolation necessary.
             im = self.imshow(self._bm_rgba,ax=ax,**kwargs)
         # clip for round polar plots.
         if self.round: im,c = self._clipcircle(ax,im)
         return im
+
+    def arcgisimage(self,server='http://server.arcgisonline.com/ArcGIS',\
+                 service='ESRI_Imagery_World_2D',xpixels=400,ypixels=None,\
+                 dpi=96,verbose=False,**kwargs):
+        """
+        Retrieve an image using the ArcGIS Server REST API and display it on
+        the map. In order to use this method, the Basemap instance must be
+        created using the ``epsg`` keyword to define the map projection, unless
+        the ``cyl`` projection is used (in which case the epsg code 4326 is
+        assumed).
+
+        .. tabularcolumns:: |l|L|
+
+        ==============   ====================================================
+        Keywords         Description
+        ==============   ====================================================
+        server           web map server URL (default
+                         http://server.arcgisonline.com/ArcGIS).
+        service          service (image type) hosted on server (default
+                         ESRI_Imagery_World_2D, which is NASA 'Blue Marble'
+                         image).
+        xpixels          requested number of image pixels in x-direction
+                         (default 400).
+        ypixels          requested number of image pixels in y-direction.
+                         Default (None) is to infer the number from
+                         from xpixels and the aspect ratio of the
+                         map projection region.
+        dpi              The device resolution of the exported image (dots per
+                         inch, default 96).
+        verbose          if True, print URL used to retrieve image (default
+                         False).
+        ==============   ====================================================
+
+        Extra keyword ``ax`` can be used to override the default axis instance.
+
+        returns a matplotlib.image.AxesImage instance.
+        """
+        import urllib2
+        if not hasattr(self,'epsg'):
+            msg = dedent("""
+            Basemap instance must be creating using an EPSG code
+            (http://spatialreference.org) in order to use the wmsmap method""")
+            raise ValueError(msg)
+        # find the x,y values at the corner points.
+        p = pyproj.Proj(init="epsg:%s" % self.epsg, preserve_units=True)
+        xmin,ymin = p(self.llcrnrlon,self.llcrnrlat)
+        xmax,ymax = p(self.urcrnrlon,self.urcrnrlat)
+        if self.projection in _cylproj:
+            Dateline =\
+            _geoslib.Point(self(180.,0.5*(self.llcrnrlat+self.urcrnrlat)))
+            hasDateline = Dateline.within(self._boundarypolyxy)
+            if hasDateline:
+                msg=dedent("""
+                arcgisimage cannot handle images that cross
+                the dateline for cylindrical projections.""")
+                raise ValueError(msg)
+        if self.projection == 'cyl':
+            xmin = (180./np.pi)*xmin; xmax = (180./np.pi)*xmax
+            ymin = (180./np.pi)*ymin; ymax = (180./np.pi)*ymax
+        # ypixels not given, find by scaling xpixels by the map aspect ratio.
+        if ypixels is None:
+            ypixels = int(self.aspect*xpixels)
+        # construct a URL using the ArcGIS Server REST API.
+        basemap_url = \
+"%s/rest/services/%s/MapServer/export?\
+bbox=%s,%s,%s,%s&\
+bboxSR=%s&\
+imageSR=%s&\
+size=%s,%s&\
+dpi=%s&\
+format=png32&\
+f=image" %\
+(server,service,xmin,ymin,xmax,ymax,self.epsg,self.epsg,xpixels,ypixels,dpi)
+        # print URL?
+        if verbose: print basemap_url
+        # return AxesImage instance.
+        return self.imshow(imread(urllib2.urlopen(basemap_url)),origin='upper')
+
+    def wmsimage(self,server,\
+                 xpixels=400,ypixels=None,\
+                 format='png',verbose=False,**kwargs):
+        """
+        Retrieve an image using from a WMS server using the
+        Open Geospatial Consortium (OGC) standard interface
+        and display on the map. Requires OWSLib
+        (http://pypi.python.org/pypi/OWSLib).
+        In order to use this method, the Basemap instance must be
+        created using the ``epsg`` keyword to define the map projection, unless
+        the ``cyl`` projection is used (in which case the epsg code 4326 is
+        assumed).
+
+        .. tabularcolumns:: |l|L|
+
+        ==============   ====================================================
+        Keywords         Description
+        ==============   ====================================================
+        server           WMS server URL.
+        xpixels          requested number of image pixels in x-direction
+                         (default 400).
+        ypixels          requested number of image pixels in y-direction.
+                         Default (None) is to infer the number from
+                         from xpixels and the aspect ratio of the
+                         map projection region.
+        format           desired image format (default 'png')
+        verbose          if True, print WMS server info (default
+                         False).
+        \**kwargs        extra keyword arguments passed on to
+                         OWSLib.wms.WebMapService.getmap.
+        ==============   ====================================================
+
+        Extra keyword ``ax`` can be used to override the default axis instance.
+
+        returns a matplotlib.image.AxesImage instance.
+        """
+        try:
+            from owslib.wms import WebMapService
+        except ImportError:
+            raise ImportError('OWSLib required to use wmsimage method')
+        import urllib2, io
+        if not hasattr(self,'epsg'):
+            msg = dedent("""
+            Basemap instance must be creating using an EPSG code
+            (http://spatialreference.org) in order to use the wmsmap method""")
+            raise ValueError(msg)
+        if 'layers' not in kwargs:
+            raise ValueError('no layers specified')
+        # find the x,y values at the corner points.
+        p = pyproj.Proj(init="epsg:%s" % self.epsg, preserve_units=True)
+        xmin,ymin = p(self.llcrnrlon,self.llcrnrlat)
+        xmax,ymax = p(self.urcrnrlon,self.urcrnrlat)
+        if self.projection in _cylproj:
+            Dateline =\
+            _geoslib.Point(self(180.,0.5*(self.llcrnrlat+self.urcrnrlat)))
+            hasDateline = Dateline.within(self._boundarypolyxy)
+            if hasDateline:
+                msg=dedent("""
+                wmsimage cannot handle images that cross
+                the dateline for cylindrical projections.""")
+                raise ValueError(msg)
+        if self.projection == 'cyl':
+            xmin = (180./np.pi)*xmin; xmax = (180./np.pi)*xmax
+            ymin = (180./np.pi)*ymin; ymax = (180./np.pi)*ymax
+        # ypixels not given, find by scaling xpixels by the map aspect ratio.
+        if ypixels is None:
+            ypixels = int(self.aspect*xpixels)
+        if verbose: print server
+        wms = WebMapService(server)
+        if verbose:
+            print 'id: %s, version: %s' %\
+            (wms.identification.type,wms.identification.version)
+            print 'title: %s, abstract: %s' %\
+            (wms.identification.title,wms.identification.abstract)
+            print 'available layers:'
+            print list(wms.contents)
+            print 'projection options:'
+            print wms[kwargs['layers'][0]].crsOptions
+        # remove keys from kwargs that are over-ridden
+        for k in ['format','bbox','service','size','srs']:
+            if 'format' in kwargs: del kwargs['format']
+        img = wms.getmap(service='wms',bbox=(xmin,ymin,xmax,ymax),
+                         size=(xpixels,ypixels),format='image/%s'%format,
+                         srs='EPSG:%s' % self.epsg, **kwargs)
+        # return AxesImage instance.
+        # this works for png and jpeg.
+        return self.imshow(imread(io.BytesIO(urllib2.urlopen(img.url).read()),
+                           format=format),origin='upper')
+        # this works for png, but not jpeg
+        #return self.imshow(imread(urllib2.urlopen(img.url),format=format),origin='upper')
 
     def drawmapscale(self,lon,lat,lon0,lat0,length,barstyle='simple',\
                      units='km',fontsize=9,yoffset=None,labelstyle='simple',\
@@ -4300,13 +4753,8 @@ class Basemap(object):
                 lonsin = np.where(lonsin < lon_0-180, lonsin+360 ,lonsin)
                 lonsin = np.roll(lonsin,itemindex-1,axis=1)
                 if datain is not None:
-                    if ma.isMA(datain):
-                        mask = datain.mask
-                        fillval = datain.fill_value
-                        datain = np.roll(datain.filled(),itemindex-1,axis=1)
-                        datain = ma.array(datain,mask=mask,fill_value=fillval)
-                    else:
-                        datain = np.roll(datain,itemindex-1,axis=1)
+                    # np.roll works on ndarrays and on masked arrays
+                    datain = np.roll(datain,itemindex-1,axis=1)
                 # add cyclic point back at beginning.
                 if hascyclic:
                     lonsin_save[:,1:] = lonsin
@@ -4322,8 +4770,7 @@ class Basemap(object):
                 lonsin = np.where(mask,1.e30,lonsin)
                 if datain is not None and mask.any():
                     # superimpose on existing mask
-                    if ma.isMA(datain): mask = mask + datain.mask
-                    datain = ma.array(datain,mask=mask)
+                    datain = ma.masked_where(mask, datain)
         # 1-d data.
         elif lonsin.ndim == 1:
             nlons = len(lonsin)
@@ -4347,13 +4794,7 @@ class Basemap(object):
                     hascyclic = False
                 lonsin = np.roll(lonsin,itemindex-1)
                 if datain is not None:
-                    if ma.isMA(datain):
-                        mask = datain.mask
-                        fillval = datain.fill_value
-                        datain = np.roll(datain.filled(),itemindex-1)
-                        datain = ma.array(datain,mask=mask,fill_value=fillval)
-                    else:
-                        datain = np.roll(datain,itemindex-1)
+                    datain = np.roll(datain,itemindex-1)
                 # add cyclic point back at beginning.
                 if hascyclic:
                     lonsin_save[1:] = lonsin
@@ -4368,7 +4809,7 @@ class Basemap(object):
                 mask = np.logical_or(lonsin<lon_0-180,lonsin>lon_0+180)
                 lonsin = np.where(mask,1.e30,lonsin)
                 if datain is not None and mask.any():
-                    datain = ma.array(datain,mask=mask)
+                    datain = ma.masked_where(mask, datain)
         if datain is not None:
             return lonsin, datain
         else:
@@ -4557,7 +4998,8 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
     lon0             starting longitude for shifted grid
                      (ending longitude if start=False). lon0 must be on
                      input grid (within the range of lonsin).
-    datain           original data.
+    datain           original data with longitude the right-most
+                     dimension.
     lonsin           original longitudes.
     ==============   ====================================================
 
@@ -4596,35 +5038,29 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
         lonsout[0:i0_shift] = lonsin[i0:]
     else:
         lonsout[0:i0_shift] = lonsin[i0:]-cyclic
-    if datain.ndim == 2:
-        dataout[:,0:i0_shift] = datain[:,i0:]
-    elif datain.ndim == 1:
-        dataout[0:i0_shift] = datain[i0:]
-    else:
-        raise ValueError('data must be 1d or 2d with longitude as 2nd dim')
+    dataout[...,0:i0_shift] = datain[...,i0:]
     if start:
         lonsout[i0_shift:] = lonsin[start_idx:i0+start_idx]+cyclic
     else:
         lonsout[i0_shift:] = lonsin[start_idx:i0+start_idx]
-    if datain.ndim == 2:
-       dataout[:,i0_shift:] = datain[:,start_idx:i0+start_idx]
-    elif datain.ndim == 1:
-       dataout[i0_shift:] = datain[start_idx:i0+start_idx]
+    dataout[...,i0_shift:] = datain[...,start_idx:i0+start_idx]
     return dataout,lonsout
 
 def addcyclic(arrin,lonsin):
     """
     ``arrout, lonsout = addcyclic(arrin, lonsin)``
-    adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``.
+    adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``,
+    assumes longitude is the right-most dimension of ``arrin``.
     """
-    nlats = arrin.shape[0]
-    nlons = arrin.shape[1]
+    nlons = arrin.shape[-1]
+    newshape = list(arrin.shape)
+    newshape[-1] += 1
     if ma.isMA(arrin):
-        arrout  = ma.zeros((nlats,nlons+1),arrin.dtype)
+        arrout  = ma.zeros(newshape,arrin.dtype)
     else:
-        arrout  = np.zeros((nlats,nlons+1),arrin.dtype)
-    arrout[:,0:nlons] = arrin[:,:]
-    arrout[:,nlons] = arrin[:,0]
+        arrout  = np.zeros(newshape,arrin.dtype)
+    arrout[...,0:nlons] = arrin[:]
+    arrout[...,nlons] = arrin[...,0]
     if ma.isMA(lonsin):
         lonsout = ma.zeros(nlons+1,lonsin.dtype)
     else:

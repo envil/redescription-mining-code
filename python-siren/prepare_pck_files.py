@@ -137,7 +137,7 @@ files_dest["debian/control"]="""Source: __PACKAGE_NAME__
 Section: shells
 Priority: optional
 Maintainer: __MAINTAINER_NAME__ <__MAINTAINER_EMAIL__>
-Build-Depends: debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk2.8 (>= 2.8.10.1), python-scipy (>= 0.9.0), python-mpltoolkits.basemap (>= 1.0.2), python-matplotlib (>= 1.1.1~)
+Build-Depends: debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
 XS-Python-Version: >=2.6
 Standards-Version: 3.8.4
 
@@ -145,7 +145,7 @@ Package: __PACKAGE_NAME__
 Architecture: all
 Homepage: __PROJECT_URL__
 XB-Python-Version: ${python:Versions}
-Depends: ${misc:Depends}, ${python:Depends}, debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk2.8 (>= 2.8.10.1), python-scipy (>= 0.9.0), python-mpltoolkits.basemap (>= 1.0.2), python-matplotlib (>= 1.1.1~)
+Depends: ${misc:Depends}, ${python:Depends}, debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
 Description: __PROJECT_NAME__ __PROJECT_DESCRIPTION__
  __PROJECT_DESCRIPTION_LONG__
 """
@@ -179,6 +179,8 @@ files_dest["debian/rules"]="""#!/usr/bin/make -f
 
 %:
 	dh $@
+
+override_dh_usrlocal:
 """
 
 ######################### debian/changelog

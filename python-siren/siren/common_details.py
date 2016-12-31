@@ -17,7 +17,7 @@ def getVersion():
                 elif version is not None and len(line.strip("[\n\*\- ]")) > 0:
                     changes.append(line.strip("[\n\*\- ]"))
                     
-    return "0", []
+    return "", []
 
 def getExtLinks(cv):
 
@@ -63,10 +63,10 @@ common_variables = {
     "VERSION_MAC_UNDERSC": "",
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Sat, 26 Nov 2016 10:00:00 +0100",
+    "LAST_CHANGES_DATE": "Mon, 26 Dec 2016 10:00:00 +0100",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
-    "MAINTAINER_LOGIN": "galbrun",
+    "MAINTAINER_LOGIN": "egalbrun",
     "MAINTAINER_EMAIL": "esther.galbrun@inria.fr",
     "PDFS_URL": home_eg+"resources/",
     "DATA_URL": home_eg+"resources/",

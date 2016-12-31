@@ -1,4 +1,10 @@
-import wx, wx.grid, re, colorsys, random, datetime, math
+import wx
+import wx.grid
+### from wx import grid
+### from wx import Size, Brush, Colour, NullBrush, NullPen 
+### from wx import DC, EVT_KEY_UP, NORMAL_FONT, SOLID, TRANSPARENT_PEN
+
+import re, colorsys, random, datetime, math
 from ..reremi.toolICList import ICList
 from ..reremi.classQuery import SYM, Query, Literal
 from ..reremi.classRedescription import Redescription

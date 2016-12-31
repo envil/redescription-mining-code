@@ -1,5 +1,12 @@
 CHANGELOG for Siren
 ===================
+v3.1.1
+------
+* Projection of numerical variables with heatmap and histogram
+* Various minor fixes
+* Adding small features (caching projections, printing out support, drawing E00 on maps, etc.) 
+* Changed hosting
+
 v3.1.0
 ------
 * Visualization tab and splitted frame

@@ -1,4 +1,7 @@
 import wx
+### from wx import ALIGN_CENTER, EVT_TOGGLEBUTTON, EXPAND, RAISED_BORDER
+### from wx import FlexGridSizer, NewId, Panel, ToggleButton
+
 from classGView import GView
 
 import pdb

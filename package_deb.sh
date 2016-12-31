@@ -2,9 +2,12 @@
 
 # ./package_deb.sh ./python-siren ./sphinx pa
 
-SRC_REP=${1}
-SPH_REP=${2}
-PASS=${3}
+# SRC_REP=${1}
+# SPH_REP=${2}
+## PASS=${3}
+
+SRC_REP="./python-siren"
+SPH_REP="./sphinx"
 YAH=$(pwd) # YOU ARE HERE
 
 #PACK_REP=${YAH}/${3}

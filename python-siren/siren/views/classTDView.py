@@ -1,11 +1,9 @@
-### TODO check which imports are needed 
-import wx
 import numpy
 import re
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-#matplotlib.use('WXAgg')
+matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 

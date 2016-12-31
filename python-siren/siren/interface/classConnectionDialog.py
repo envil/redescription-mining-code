@@ -1,4 +1,7 @@
 import wx
+### from wx import ALIGN_BOTTOM, ALIGN_CENTER_HORIZONTAL, ALL, EXPAND, HORIZONTAL, VERTICAL
+### from wx import EVT_BUTTON, EVT_CHECKBOX, EVT_CHOICE, EVT_CLOSE, EVT_TEXT, ID_ANY
+### from wx import BoxSizer, Button, NewId, Panel, StaticText
 import pdb
 from classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
 

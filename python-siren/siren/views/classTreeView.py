@@ -1,11 +1,15 @@
-### TODO check which imports are needed 
 from __future__ import unicode_literals
 import wx
+### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL
+### from wx import FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
+### from wx import BoxSizer, Button, Font, NewId
+### from wx import EVT_BUTTON, EVT_LEFT_DCLICK
+
 import numpy
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-#matplotlib.use('WXAgg')
+matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import scipy.spatial.distance
 import scipy.cluster

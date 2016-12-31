@@ -1,5 +1,10 @@
 import sys
 import wx
+### from wx import ALIGN_RIGHT, ALL, CANCEL, CHANGE_DIR, EXPAND, HORIZONTAL, VERTICAL, OK, OPEN, TE_READONLY
+### from wx import BoxSizer, Button, Choice, Dialog, FileDialog, FlexGridSizer, GridSizer, NewId, TextCtrl, StaticText
+### from wx import EVT_BUTTON, EVT_CLOSE, EVT_KEY_UP
+### from wx import ID_ANY, ID_APPLY, ID_FIND, ID_OK
+
 import os.path, re
 from ..reremi.classData import DataError
 

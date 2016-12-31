@@ -1,4 +1,9 @@
 import wx
+### from wx import ALIGN_BOTTOM, ALIGN_CENTER, ALIGN_CENTER_HORIZONTAL, ALIGN_LEFT, ALIGN_RIGHT, ALL, BOTTOM, C2S_HTML_SYNTAX, CENTER, EXPAND, HORIZONTAL, RIGHT, TOP, VERTICAL, YES_DEFAULT, YES_NO
+### from wx import BoxSizer, Button,  CheckBox, Choice, Colour, ColourPickerCtrl, Dialog, GridSizer, MessageDialog, NewId, Notebook, Panel, StaticLine, StaticText, TextCtrl
+### from wx import EVT_BUTTON, EVT_CHECKBOX, EVT_CHOICE, EVT_NOTEBOOK_PAGE_CHANGED, EVT_NOTEBOOK_PAGE_CHANGING, EVT_TEXT
+### from wx import ID_ANY, ID_CANCEL, ID_NO
+
 import pdb
 
 ### USAGE this class provides a wx Modal dialog to modify a dictionary of preferences managed with the PreferenceManager

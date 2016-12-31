@@ -1,10 +1,13 @@
-### TODO check which imports are needed 
 import wx
+### from wx import ALIGN_BOTTOM, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALL, EXPAND, HORIZONTAL, RAISED_BORDER, TE_PROCESS_ENTER, VERTICAL
+### from wx import BoxSizer, DisplaySize, FlexGridSizer, Frame, Menu, MenuBar, NewId, Panel, Sizer, SizerItem, StaticBitmap, StaticText, TextCtrl, ToggleButton
+### from wx import EVT_BUTTON, EVT_CLOSE, EVT_ENTER_WINDOW, EVT_LEAVE_WINDOW, EVT_LEFT_UP, EVT_MENU, EVT_SIZE, EVT_TEXT_ENTER, EVT_TOGGLEBUTTON, EVT_TOOL
+
 import numpy
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 import matplotlib
-#matplotlib.use('WXAgg')
+matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \

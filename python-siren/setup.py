@@ -213,15 +213,29 @@ elif sys.platform == 'win32':
     WMORE = [('help', glob.glob('help\\*')),
              ('', ['LICENSE'])]
 
+## 
+    
     OPTIONS = {
+    'compressed': True,
     'packages': ST_PACKAGES,
-    'dll_excludes': ['MSVCP90.dll'],
-    'includes' : ['scipy.sparse.csgraph._validation','scipy.special._ufuncs_cxx','matplotlib.backends.backend_tkagg'],
-    'excludes': ['email', '_gtkagg', '_tkagg', '_ssl', 'nose', 'pygments', 'doctest'],
+    'dll_excludes': ['MSVCP90.dll','api-ms-win-core-string-l1-1-0.dll', 'api-ms-win-core-memory-l1-1-2.dll', 'api-ms-win-core-file-l1-2-1.dll', 'api-ms-win-core-libraryloader-l1-2-1.dll', 
+    'api-ms-win-core-string-l2-1-0.dll', 'api-ms-win-core-profile-l1-1-0.dll', 'api-ms-win-core-string-obsolete-l1-1-0.dll', 'api-ms-win-core-debug-l1-1-1.dll', 'api-ms-win-core-sidebyside-l1-1-0.dll', 
+    'api-ms-win-core-processthreads-l1-1-2.dll','api-ms-win-core-kernel32-legacy-l1-1-1.dll','api-ms-win-core-handle-l1-1-0.dll','api-ms-win-core-timezone-l1-1-0.dll','api-ms-win-core-processenvironment-l1-2-0.dll',
+    'api-ms-win-core-processenvironment-l1-2-0.dll', 'api-ms-win-core-registry-l1-1-0.dll', 'api-ms-win-core-util-l1-1-0.dll', 'api-ms-win-core-atoms-l1-1-0.dll', 'api-ms-win-core-winrt-error-l1-1-1.dll', 'api-ms-win-core-heap-l1-2-0.dll',
+    'api-ms-win-core-heap-l2-1-0.dll', 'api-ms-win-core-delayload-l1-1-1.dll', 'api-ms-win-core-rtlsupport-l1-2-0.dll', 'api-ms-win-core-libraryloader-l1-2-0.dll', 'api-ms-win-core-localization-l1-2-1.dll', 'api-ms-win-core-sysinfo-l1-2-1.dll',
+    'api-ms-win-core-synch-l1-2-0.dll', 'api-ms-win-core-errorhandling-l1-1-1.dll', 'api-ms-win-core-shlwapi-obsolete-l1-2-0.dll', 'api-ms-win-core-localization-obsolete-l1-3-0.dll', 'api-ms-win-security-base-l1-2-0.dll',
+    'QtCore4.dll','QGui4.dll','QtNetwork4.dll'],
+    'includes' : ['matplotlib.backends.backend_wx', 'scipy.special.*', 'scipy.linalg.*', 'scipy.sparse.csgraph._validation','scipy.special._ufuncs_cxx','matplotlib.backends.backend_tkagg'],
+    'excludes': ['matplotlib.backends.backend_qt4agg', 'PySide.QtSvg', 'PySide.QtNetwork', 'PySide.QtGui', 'PySide.QtCore', 'win32con', 'Tkinter', 'IPython', 'jupyter_core', '_sqlite3', 
+    'email', '_gtkagg', '_tkagg', '_ssl', 'nose', 'pygments', 'doctest', 'scipy.ndimage', 'pandas',  'win32clipboard',
+    'tornado', 'PIL', 'pydoc_data', 'curses', 'PySide', 'certifi'],
     }
+    ### 
     # Set extra options
     MPL = matplotlib.get_py2exe_datafiles()
-    MTK = [('mpl_toolkits\\basemap\\data', glob.glob('C:\\Python27\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*'))]
+    ## C:\\Python27\\
+    bsm_files = [f for f in glob.glob('C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*') if not re.search("_f.dat", f)] 
+    MTK = [('mpl_toolkits\\basemap\\data', bsm_files)]
     extra_options.update(dict(
         windows=[{"script": APP, "icon_resources": [(1, "icons\\siren_icon.ico")]}],
         data_files= WICONS + WLICENSES + WCONFIGS + WMORE + MPL + MTK,
