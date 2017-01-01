@@ -8,6 +8,8 @@ from classConstraints import Constraints
 from classInitialPairs import InitialPairs
 from classData import BoolColM, CatColM, NumColM
 
+import numpy
+
 import pdb
 
 from classCharbonGMiss import CharbonGMiss
@@ -326,7 +328,6 @@ class Miner(object):
             self.count += 1
             self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
-            # pdb.set_trace()
             partial = self.expandRedescriptions([initial_red])
             self.logger.updateProgress({"rcount": self.count}, 1, self.id)
             ## SOUVENIRS self.souvenirs.update(partial["batch"])
@@ -396,7 +397,10 @@ class Miner(object):
         
     def initializeRedescriptionsGreedy(self, ids=None):
         self.initial_pairs.reset()
-
+        
+        ## folds = numpy.array(self.data.cols[0][-1].getVector())
+        ## counts_folds = 1.*numpy.bincount(folds) 
+        ## nb_folds = len(counts_folds)
         ### Loading pairs from file if filename provided
         if not self.initial_pairs.loadFromFile():
 
@@ -424,7 +428,25 @@ class Miner(object):
                     if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
                         seen.append((literalsL[i], literalsR[i]))
                         self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
-                        self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+                        self.initial_pairs.add(literalsL[i], literalsR[i], {"score": score, 0: idL, 1: idR})
+                        # ########
+                        # ######## Filter pair candidates on folds distribution
+                        # rr = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
+                        # bcount = numpy.bincount(folds[list(rr.getSuppI())], minlength=nb_folds)
+                        # if len(numpy.where(bcount > 0)[0]) > 1:
+                        #     bb = bcount/counts_folds
+                        #     # bpr = bcount/float(numpy.sum(bcount))
+                        #     # entropS = -numpy.sum(numpy.log(bpr)*bpr)
+                        #     bpr = bb/numpy.max(bb)
+                        #     score = numpy.sum(bpr)
+                        #     # entropM = -numpy.sum(numpy.log(bpr)*bpr)
+                        #     if score > 1.5:
+                        #         self.logger.printL(6, '\tfolds count: %f, %d, %s' % (score, numpy.sum(bcount), bcount), "log", self.id)
+                        #         ####
+                        #         # self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+                        #         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": score, 0: idL, 1: idR})
+                        # # if pairs % 50 == 0 and pairs > 0:
+                        # #     exit()
             self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
             self.logger.updateProgress(level=1, id=self.id)
 
@@ -522,9 +544,9 @@ class MinerDistrib(Miner):
             pairs = 0
             K = self.max_processes
             for k in range(K-1):
-                # print "PAIRS P", k, len(explore_list[k*batch_size:(k+1)*batch_size])
+                # print k, len(explore_list[k*batch_size:(k+1)*batch_size])
                 self.workers[k] = PairsProcess(k, explore_list[k*batch_size:(k+1)*batch_size], self.charbon, self.data, self.rqueue)
-            # print "PAIRS P", K-1, len(explore_list[(K-1)*batch_size:])
+            # print K-1, len(explore_list[(K-1)*batch_size:])
             self.workers[K-1] = PairsProcess(K-1, explore_list[(K-1)*batch_size:], self.charbon, self.data, self.rqueue)
 
             self.pairWorkers = len(self.workers)
@@ -571,7 +593,7 @@ class MinerDistrib(Miner):
         # self.logger.clockTac(self.id, "select_%d-%d" % (m["count"], m["id"]))
 
         if not self.constraints.amnesic():
-            self.souvenirs.update(m["out"]["batch"])
+            self.souvenirs.update(m["out"]["batch"].values())
         self.logger.clockTac(self.id, "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
         self.logger.printL(1, {"final":self.final["batch"]}, 'result', self.id)
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.id)

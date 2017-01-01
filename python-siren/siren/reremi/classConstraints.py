@@ -1,4 +1,5 @@
 from classRedescription import  Redescription
+import numpy
 import pdb
 
 class Constraints(object):
@@ -8,10 +9,11 @@ class Constraints(object):
 
     def __init__(self, data, params):
         self.deps = []
+        self.folds = None
         self._pv = {}
         for k, v in params.items():
             self._pv[k] = v["data"]
-            
+
         if data is not None:
             self.N = data.nbRows()
             if data.hasMissing() is False:
@@ -54,6 +56,11 @@ class Constraints(object):
                                  "pval_query": self._pv["score.pval_query"],
                                  "pval_fact": self._pv["score.pval_fact"]}
 
+
+    def setFolds(self, data):
+        fcol = data.getColsByName("^folds_split_")
+        if len(fcol) == 1:
+            self.folds = data.getFoldsStats(fcol[0][0], fcol[0][1])
 
     def getSSetts(self):
         return self.ssetts
@@ -245,6 +252,34 @@ class Constraints(object):
     def actions_redundant(self):
        return [("filterpairs", self.parameters_filterredundant())]
 
+    def actions_folds(self):
+       return [("filtersingle", {"filter_funct": self.filter_folds})]
+
+    def filter_folds(self, red):
+       if self.folds is None:
+           return False
+
+       bcountI = numpy.bincount(self.folds["folds"][list(red.getSuppI())], minlength=self.folds["nb_folds"])
+       bcountU = numpy.bincount(self.folds["folds"][list(red.getSuppU())], minlength=self.folds["nb_folds"])
+       bcountU[bcountU == 0] = 1
+       accs = bcountI/(1.*bcountU)
+       print "--------------------"
+       print red.disp()
+       print accs
+       if len(numpy.where(accs >= red.getAcc())[0]) > 1:
+           return False
+           bb = accs # bcount/self.folds["counts_folds"]
+           # bpr = bcount/float(numpy.sum(bcount))
+           # entropS = -numpy.sum(numpy.log(bpr)*bpr)
+           bpr = bb/numpy.max(bb)
+           score = numpy.sum(bpr)
+           print score
+           # entropM = -numpy.sum(numpy.log(bpr)*bpr)
+           if score > 1.5:
+               return False
+       return True
+
+   
     def parameters_filterredundant(self):
        if self.max_overlaparea() < 0:
            return {"filter_funct": self.pair_filter_redundant_rows, "filter_thres": -self.max_overlaparea(), "filter_max":0}

@@ -1,7 +1,9 @@
+from classData import CatColM
 from classCharbon import CharbonGreedy
 from classExtension import Extension
 from classSParts import SParts
 from classQuery import  *
+import numpy
 import pdb
 
 class CharbonGMiss(CharbonGreedy):
@@ -361,7 +363,8 @@ class CharbonGMiss(CharbonGreedy):
 
     def subdo33Full(self, colL, colR, side):
         best = []
-        bUp=1
+        bUpE=1
+        bUpF=1
         interMat = []
         bucketsL = colL.buckets()
         bucketsR = colR.buckets()
@@ -373,15 +376,68 @@ class CharbonGMiss(CharbonGreedy):
             
         (scores, literalsF, literalsE) = ([], [], [])
         ## DOABLE
-
+        
         # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
-        if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.max_prodbuckets() ): 
-            if len(bucketsE[1])> self.constraints.max_sidebuckets():
-                bUp=3 ## in case of collapsed bucket the threshold is different
-                bucketsE = colE.collapsedBuckets(self.constraints.max_agg())
-                #pdb.set_trace()
-        if ( len(bucketsF[1]) * len(bucketsE[1]) <= self.constraints.max_prodbuckets() ): 
-        #if (True): ## Test
+        # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.max_prodbuckets() ): 
+        nbb = self.constraints.max_prodbuckets() / float(len(bucketsF[1]))
+        if len(bucketsE[1]) > nbb: ## self.constraints.max_sidebuckets():
+
+            if len(bucketsE[1])/nbb < self.constraints.max_agg():
+                ### collapsing buckets on the largest side is enough to get within the reasonable size
+                bucketsE = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
+                bUpE=3 ## in case of collapsed bucket the threshold is different
+
+            else:
+                ### collapsing buckets on the largest side is NOT enough to get within the reasonable size
+                bucketsE = None
+
+                #### try cats
+                bbs = [dict([(bi, es) for (bi, es) in enumerate(bucketsL[0]) \
+                                 if ( len(es) > self.constraints.min_itm_in() and \
+                                          colL.nbRows() - len(es) > self.constraints.min_itm_out())]),
+                       dict([(bi, es) for (bi, es) in enumerate(bucketsR[0]) \
+                                 if ( len(es) > self.constraints.min_itm_in() and \
+                                          colR.nbRows() - len(es) > self.constraints.min_itm_out())])]
+
+                ## if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or len(bbs[0])/float(len(bucketsL[0])) < len(bbs[1])/float(len(bucketsR[0]))):
+
+                nbes = [float(max(sum([len(v) for (k,v) in bbs[s].items()]), .5)) for s in [0,1]]
+                side = None
+                if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or nbes[0]/len(bbs[0]) > nbes[1]/len(bbs[1]) ):
+                    ccL, ccR, side = (CatColM(bbs[0], colL.nbRows(), colL.miss()), colR, 1) 
+                elif len(bbs[1]) > 0:
+                    ccL, ccR, side = (colL, CatColM(bbs[1], colR.nbRows(), colR.miss()), 0) 
+
+                if side is not None:
+                    #### working with on variable as categories is workable
+                    ## print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
+                    (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side)
+                    if side == 1:
+                        literalsL = []
+                        literalsR = literalsExt
+                        for ltc in literalsFix:
+                            val = bucketsL[1][ltc.getTerm().getCat()]
+                            literalsL.append( Literal(ltc.isNeg(), NumTerm(colL.getId(), val, val)) )
+                    else:
+                        literalsL = literalsExt                    
+                        literalsR = []
+                        for ltc in literalsFix:
+                            val = bucketsR[1][ltc.getTerm().getCat()]
+                            literalsR.append( Literal(ltc.isNeg(), NumTerm(colR.getId(), val, val)) )
+
+                    return (scores, literalsL, literalsR)
+
+                else:
+                    #### working with on variable as categories is NOT workable
+                    ### the only remaining solution is aggressive collapse of buckets on both sides
+                    nbb = numpy.sqrt(self.constraints.max_prodbuckets())
+                    bucketsE = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
+                    bUpE=3 ## in case of collapsed bucket the threshold is different
+                    bucketsF = colF.collapsedBuckets(self.constraints.max_agg(), nbb)
+                    bUpF=3 ## in case of collapsed bucket the threshold is different
+                    ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])                    
+
+        if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.max_prodbuckets() ):
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
             totInt = colE.nbRows() - len(colF.miss()) - len(colE.miss()) + missMubB
@@ -475,8 +531,8 @@ class CharbonGMiss(CharbonGreedy):
                 lowF+=1
 
         for b in best:
-            tF = colF.getLiteralBuk(False, bucketsF[1], b[-1][-1][0:2])
-            tE = colE.getLiteralBuk(False, bucketsE[1], b[-1][-1][2:], bucketsE[bUp])
+            tF = colF.getLiteralBuk(False, bucketsF[1], b[-1][-1][0:2], bucketsF[bUpF])
+            tE = colE.getLiteralBuk(False, bucketsE[1], b[-1][-1][2:], bucketsE[bUpE])
             if tF is not None and tE is not None:
                 literalsF.append(tF)
                 literalsE.append(tE)
@@ -536,14 +592,14 @@ class CharbonGMiss(CharbonGreedy):
 
         buckets = colE.buckets()
         bUp = 1
-        if len(buckets[1]) > self.constraints.max_sidebuckets():
+        nbb = self.constraints.max_prodbuckets() / float(len(colF.cats()))
+        if len(buckets[1]) > nbb: ## self.constraints.max_sidebuckets():
              bUp=3 ## in case of collapsed bucket the threshold is different
-             buckets = colE.collapsedBuckets(self.constraints.max_agg())
+             buckets = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
              #pdb.set_trace()
 
-
         ### TODO DOABLE
-        if True : # (colF.lenMode() >= self.constraints.min_itm_out() and colE.lenNonMode() >= self.constraints.min_itm_in()) or ( len(buckets) <= 100 ):
+        if buckets is not None and ( len(buckets[1]) * len(colF.cats()) <= self.constraints.max_prodbuckets()): 
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
             

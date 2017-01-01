@@ -2,12 +2,8 @@ import re, random, sys
 import numpy
 import inspect, signal
 # import tsne
-from ..reremi.classQuery import Query
-from ..reremi.classRedescription import Redescription
 from ..reremi.classData import BoolColM, CatColM, NumColM
 import os
-
-#import time
 
 import pdb
 
@@ -66,7 +62,6 @@ def argsF(f):
 def applyF(f, parameters):
     mtd_def = argsF(f)
     args = dict([(a, parameters.get(a, v)) for a,v in mtd_def.items()])
-    # print "applyF", f, mtd_def, args 
     return f(**args)
 
 class Proj(object):
@@ -132,9 +127,6 @@ class Proj(object):
 
     def do(self):
         self.pids_ex = set(get_children(os.getpid()))
-        # print "Proj going to sleep..."
-        # time.sleep(20)
-        # print "Proj waking from sleep..."
         self.comp()
         
     def getCode(self):
@@ -263,7 +255,7 @@ class Proj(object):
         return applyF(f, self.getParameters(parameters))
 
 class AxesProj(Proj):
-    
+
     PID = "AXE"
     SDESC = "Scatter"
     whats = ["entities"]
@@ -314,7 +306,7 @@ class AxesProj(Proj):
         return "%s" % self.labels[axi]
 
 class VrsProj(Proj):
-    
+
     PID = "VRS"
     SDESC = "Scatter"
     whats = ["variables"]
@@ -323,11 +315,11 @@ class VrsProj(Proj):
     gen_parameters.update({Proj.xaxis_lbl: -1, Proj.yaxis_lbl: -1})
     dyn_f = []
 
-
     def addParamsRandrep(self, more={}):
         if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
             self.params["random_state"] = random.randint(0, self.rint_max)
-
+        self.params.update(more)
+        
     def comp(self):
         mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
         if len(mcols) == 0:
@@ -401,7 +393,7 @@ class ProjFactory(object):
 
 #### COMMENT OUT FROM  HERE TO GET RID OF SKLEARN
 if sys.platform != 'win32':
-    from sklearn import (manifold, datasets, decomposition, ensemble, random_projection)
+    from sklearn import (manifold, decomposition, ensemble, random_projection)
 
     ### The various projections with sklearn
     #----------------------------------------------------------------------
@@ -477,7 +469,7 @@ if sys.platform != 'win32':
                 childp =  l.pop()
                 try:
                     os.kill(childp, signal.SIGTERM)
-                except OSError as e:
+                except OSError:
                     pass
             self.clearCoords()
 
@@ -510,9 +502,9 @@ if sys.platform != 'win32':
         dyn_f = [random_projection.SparseRandomProjection]
         #### http://scikit-learn.org/stable/modules/random_projection.html
 
-
         def addParamsRandrep(self, more={}):
             self.params["random_state"] = random.randint(0, self.rint_max)
+            self.params.update(more)
 
         # Random 2D projection using a random unitary matrix
         def getX(self, X):
@@ -532,10 +524,10 @@ if sys.platform != 'win32':
        dyn_f = [decomposition.RandomizedPCA]
        #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
 
-
        def addParamsRandrep(self, more={}):
            self.params["random_state"] = random.randint(0, self.rint_max)
- 
+           self.params.update(more)
+           
        def getX(self, X):
            X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
            return X_pca, 0
@@ -613,9 +605,9 @@ if sys.platform != 'win32':
         ### http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomTreesEmbedding.html
         ### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
 
-        def addParamsRandrep(self):
+        def addParamsRandrep(self, more={}):
             self.params["random_state"] = random.randint(0, self.rint_max)
-
+            self.params.update(more)
 
         def getX(self, X):
             X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 

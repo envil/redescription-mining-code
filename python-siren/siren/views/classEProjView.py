@@ -1,5 +1,3 @@
-import re
-
 import wx
 ### from wx import ALIGN_BOTTOM, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALL, HORIZONTAL, VERTICAL, ID_ANY, EXPAND, RAISED_BORDER, SL_HORIZONTAL
 ### from wx import EVT_BUTTON, EVT_SCROLL_THUMBRELEASE, FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
@@ -10,18 +8,10 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 
-import matplotlib.pyplot as plt
-import scipy.spatial.distance
-from matplotlib.patches import Ellipse
-from matplotlib.lines import Line2D
-
-from ..reremi.toolLog import Log
 from ..reremi.classQuery import Query
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
 from classTDView import TDView
 from classProj import ProjFactory
-from classInterObjects import MaskCreator
+
 
 import pdb
 
@@ -38,7 +28,7 @@ class EProjView(TDView):
 
     #info_band_height = 240
     margin_hov = 0.01
-    
+
     @classmethod
     def getViewsDetails(tcl):
         return ProjFactory.getViewsDetails(tcl, what=tcl.what)
@@ -127,7 +117,6 @@ class EProjView(TDView):
 
 
     def additionalElementsPlus(self):
-        t = self.parent.dw.getPreferences()
         
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
@@ -163,19 +152,9 @@ class EProjView(TDView):
         return [add_boxB]
 
 
-    def additionalBinds(self):
-        ## self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        ## self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        for button in self.buttons:
-            button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-
-    def OnSlide(self, event):
-        self.updateMap()
-
     def OnReproject(self, rid=None):
         self.getProj().initParameters(self.boxes)
-        self.getProj().addParamsRandrep()
+        # self.getProj().addParamsRandrep()
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
         # if (self.proj is None and len(tmp_id) > 0) or tmp_id != self.proj.getCode():
         #     self.initProject(tmp_id)
@@ -194,7 +173,7 @@ class EProjView(TDView):
             self.repbut.SetLabel("Wait...")
         self.getProj().addParamsRandrep({"vids": self.getQCols()})
         self.parent.project(self.getProj(), self.getId())
-                      
+        
     def readyProj(self, proj):
         if proj is not None:
             self.proj = proj
@@ -206,53 +185,7 @@ class EProjView(TDView):
             self.repbut.Enable()
             self.repbut.SetLabel("Reproject")
             
-        
-    def drawMap(self):
-        """ Draws the map
-        """
-        self.highl = {}
-        self.hight = {}
-
-        if not hasattr( self, 'axe' ):
-            self.axe = self.MapfigMap.add_subplot( 111 )
-
-        self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
-
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-        self.axe.add_patch(self.el)
-
-        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
-        self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        self.MapcanvasMap.draw()
-
-    def init_wait(self):
-        self.call_wait = wx.CallLater(1, self.plot_wait)
-        self.cp = 0
-
-    def kill_wait(self):
-        self.call_wait.Stop()
-        if self.wasKilled():
-            return
-        self.axe.cla()
-        self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-
-    def plot_wait(self):
-        if self.wasKilled():
-            return
-        self.axe.cla()
-        self.axe.plot([r/10.0+0.3 for r in range(5)], [0.5 for r in range(5)], 'ks', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-        self.cp += 1
-        self.call_wait.Restart(self.wait_delay)
             
-    def makeBackground(self):   
-        pass
     def makeFinish(self, xylims, xybs):   
         if self.getProj().getAxisLabel(0) is not None:
             self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
@@ -280,19 +213,14 @@ class EProjView(TDView):
         return self.proj
 
     def getLidAt(self, x, y):
+        size_dots = self.MapfigMap.get_dpi()*self.MapfigMap.get_size_inches()
+        xlims = self.axe.get_xlim()
+        ylims = self.axe.get_ylim()
+        res = ((xlims[1]-xlims[0])/size_dots[0], (ylims[1]-ylims[0])/size_dots[1])
+
         coords = self.getCoords()
-        d = scipy.spatial.distance.cdist(zip(*[coords[0], coords[1]]), [(x,y)])
-        lid = numpy.argmin(d)
-        mmd = scipy.spatial.distance.cdist([(min(coords[0]), min(coords[1]))], [(max(coords[0]), max(coords[1]))])[0,0]
-        if d[lid,0] < self.margin_hov * mmd:
-            return lid
+        tX = numpy.where((coords[0]-3*res[0] <= x) & (x <= coords[0]+3*res[0]) & (coords[1]-3*res[1] <= y) & (y <= coords[1]+3*res[1]))[0]
+        ## print tX
+        if len(tX) > 0:
+            return tX[0]
         return None
-        # d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, numpy.array([(x,y)]))
-        # cands = [self.hover_access[i] for i in numpy.argsort(d, axis=0)[:5]]
-        # i = 0
-        # while i < len(cands):
-        #     path = Polygon(self.getCoordsP(cands[i]), closed=True)
-        #     if path.contains_point((x,y), radius=0.0):
-        #         return cands[i]
-        #     i += 1
-        # return None

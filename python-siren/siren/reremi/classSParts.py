@@ -918,9 +918,9 @@ class SParts(object):
             self.sParts[self.ssetts.delta] = union - self.sParts[self.ssetts.gamma] - self.sParts[self.ssetts.beta] - self.sParts[self.ssetts.alpha]
         
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
-    def makeVectorABCD(self):
-        if self.vect is None:
-            if len(self.sParts) == 4:
+    def makeVectorABCD(self, force_list=False):
+        if self.vect is None or (force_list and type(self.vect) is not list):
+            if len(self.sParts) == 4 and not force_list:
                 # svect = {}
                 self.vect = {}
                 for partId in range(len(self.sParts)):
@@ -933,8 +933,8 @@ class SParts(object):
                         self.vect[i] = partId
                         
                         
-    def getVectorABCD(self):
-        self.makeVectorABCD()
+    def getVectorABCD(self, force_list=False):
+        self.makeVectorABCD(force_list)
         if type(self.vect) is dict:
             return None
         return list(self.vect)

@@ -11,8 +11,7 @@ import scipy.misc
 # import matplotlib
 # matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.patches import Ellipse, Polygon
+from matplotlib.patches import Polygon
 
 from classLView import LView
 
@@ -304,22 +303,8 @@ class InterView(LView):
     pick_sz = 5
     wait_delay = 300    
 
-    def drawMap(self):
-        """ Draws the map
-        """
-        if not hasattr( self, 'axe' ):
-            self.axe = self.MapfigMap.add_subplot( 111 )
-
-        # self.MapfigMap = plt.figure()
-        # self.MapcanvasMap = self.MapfigMap
-        # self.axe = self.MapfigMap.add_subplot( 111 )
-
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-        self.axe.add_patch(self.el)
-        self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_click)
-        self.MapcanvasMap.draw()
-        # self.updateMap()
-
+    def getCanvasConnections(self):
+        return [('button_release_event', self.on_click)]
         
     def prepareDrawingElements(self, etor, keep, dists, wedges_pos, neighbors):
         """ Generate the elements for the visualization
@@ -392,6 +377,8 @@ class InterView(LView):
         if increment > 0.02:
             increment /= 10
 
+        assv[etor.sum(axis=1)==0] = -1
+            
         return {"wedges_abs": wedges_abs, "wedges_xys": xys, "wedges_off": numpy.zeros((wedges_abs.shape[0],2)),
                 "Rs_abs": Rs_abs, "Rs_xys": xyRs, "Rs_off": numpy.zeros((Rs_abs.shape[0],2)),
                 "wedges_neighbors": neighbors, "wedges_stats": stats, "dots_wedges": assv,
@@ -400,15 +387,20 @@ class InterView(LView):
                 }
 
     def prepareDrawingRemains(self, etor, non_inter, elems):        
-        counts = sorted([(etor[:,i].sum(), i) for i in non_inter])+[(numpy.sum(etor.sum(axis=1)==0), -1)]
-
+        counts = sorted([(etor[:,i].sum(), i) for i in non_inter])
+        if self.getDeltaOn():
+            counts.append((numpy.sum(etor.sum(axis=1)==0), -1))
+            
+        if len(counts) == 0:
+            return elems
+        
         if len(elems) == 0:
             standard = (etor.shape[0], 9/10.)
             increment = 0.01
             margin = 1 - standard[1]
             nbW = 0
             nbR = 0
-            assv = numpy.zeros(etor.shape[0], dtype=int)
+            assv = -numpy.ones(etor.shape[0], dtype=int)
             stats = {}
             lRs = []
             process_order = []
@@ -526,17 +518,17 @@ class InterView(LView):
     def getRLbl(self, ri, rl, dupls):
         if rl == -1:
             return ""
-        dd = ["R%s" % r for r in dupls.get(rl, [])]
+        dd = ["R%s" % self.srids[r] for r in dupls.get(rl, [])]
         if len(dd) > 0:
-            return "R%s [%s]" % (rl, ",".join(dd))
-        return "R%s" % rl
+            return "R%s [%s]" % (self.srids[rl], ",".join(dd))
+        return "R%s" % self.srids[rl]
     
     def updateMap(self):
         """ Redraws the map
         """
 
         if hasattr( self, 'etor' ):
-            self.axe.cla()
+            self.clearPlot()
 
             etor = self.etor
             keep, dupls, non_inter, dists = self.filterRs(etor)
@@ -546,7 +538,11 @@ class InterView(LView):
             self.elems["Rs_lbls"] = [self.getRLbl(ri, rl, dupls) for (ri, rl) in enumerate(self.elems["Rs_process_order"])]
             self.artists = self.drawElements(self.elems)
             dots = self.makeDotsE(self.elems)
-            self.axe.plot(dots[0], dots[1], ".k")
+            if self.getDeltaOn():
+                self.axe.plot(dots[0], dots[1], ".k")
+            else:
+                ids_draw = numpy.where(self.elems["dots_wedges"] > -1)[0]
+                self.axe.plot(dots[0][ids_draw], dots[1][ids_draw], ".k")
             self.axe.axis([self.elems["boundaries"][0]-self.elems["boundaries"][-2],
                            self.elems["boundaries"][1]+self.elems["boundaries"][-2],
                            self.elems["boundaries"][2]-self.elems["boundaries"][-1],

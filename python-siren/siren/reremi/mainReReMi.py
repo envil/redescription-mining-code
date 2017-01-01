@@ -14,7 +14,7 @@ from classMiner import instMiner, StatsMiner
 from classQuery import Query
 import pdb
 
-from codeRRM import RedModel
+## from codeRRM import RedModel
 
 def loadAll(arguments=[]):
     pm = getPM()
@@ -220,39 +220,40 @@ def run(args):
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
 
-
-def run_filterRM(args):
+###############################
+ # def run_filterRM(args):
     
-    loaded = loadAll(args)
-    params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
-                                             loaded["filenames"], loaded["reds"]) 
+ #    loaded = loadAll(args)
+ #    params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
+ #                                             loaded["filenames"], loaded["reds"]) 
 
-    constraints = Constraints(data, params)
+ #    constraints = Constraints(data, params)
 
-    candidate_ids = range(len(reds))
-    scores = numpy.zeros((len(reds)+2, len(reds)))
-    keep_ids = []
-    rm = RedModel(data)
-    best = (0, -1)
-    while best[-1] is not None:
-        best = (0, None)
-        tic = datetime.datetime.now()
-        for rr, ri in enumerate(candidate_ids):
-            top = rm.getTopDeltaRed(reds[ri], data)
-            scores[ri, len(keep_ids)] = top[0]
-            if top[0] < best[0]:
-                best = (top[0], top[1], rr)
-                # print top, reds[ri].disp()
+ #    candidate_ids = range(len(reds))
+ #    scores = numpy.zeros((len(reds)+2, len(reds)))
+ #    keep_ids = []
+ #    rm = RedModel(data)
+ #    best = (0, -1)
+ #    while best[-1] is not None:
+ #        best = (0, None)
+ #        tic = datetime.datetime.now()
+ #        for rr, ri in enumerate(candidate_ids):
+ #            top = rm.getTopDeltaRed(reds[ri], data)
+ #            scores[ri, len(keep_ids)] = top[0]
+ #            if top[0] < best[0]:
+ #                best = (top[0], top[1], rr)
+ #                # print top, reds[ri].disp()
 
-        if best[-1] is not None:
-            ri = candidate_ids.pop(best[-1])
-            scores[-2, len(keep_ids)] = (datetime.datetime.now()-tic).total_seconds()
-            scores[-1, len(keep_ids)] = ri
-            keep_ids.append(ri)
-            rm.addRed(reds[ri], data, best[1])
-            print "%f\t%d\t%s" % (best[0], ri, reds[ri].disp())
+ #        if best[-1] is not None:
+ #            ri = candidate_ids.pop(best[-1])
+ #            scores[-2, len(keep_ids)] = (datetime.datetime.now()-tic).total_seconds()
+ #            scores[-1, len(keep_ids)] = ri
+ #            keep_ids.append(ri)
+ #            rm.addRed(reds[ri], data, best[1])
+ #            print "%f\t%d\t%s" % (best[0], ri, reds[ri].disp())
 
-    numpy.savetxt('scores.txt', scores, fmt="%f")
+ #    numpy.savetxt('scores.txt', scores, fmt="%f")
+###############################
 
 def run_filter(args):
     #### USED FOR TESTS

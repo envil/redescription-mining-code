@@ -565,11 +565,18 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             return self.getDataHdl().getItemForIid(iid)
         except KeyError:
             return None
-    def getItemForPos(self, pos):
-        try:
-            return self.getDataHdl().getItemForPos(pos) ### implement
-        except KeyError:
-            return None
+    ##def getItemForPos(self, pos):
+    ##    try:
+    ##        return self.getDataHdl().getItemForPos(pos) ### implement
+    ##    except KeyError:
+    ##        return None
+
+    def getIidItemForPos(self, pos):
+        iid = self.getIidAtPos(pos)
+        if iid is not None:
+            return (iid, self.getDataHdl().getItemForIid(iid))
+        return None
+
     def getItemData(self, iid, pos):
         return self.getDataHdl().getItemData(iid, pos)
 
@@ -1090,16 +1097,17 @@ class StaticContent:
             self.lists[lid].getIids()
         except KeyError:
             return None
-    def getItemsForLid(self, lid):
+    def getItemsForLid(self, lid, pos=None):
         try:
-            return [self.getItemForIid(iid) for iid in self.lists[lid].getIids()] 
+            return [self.getItemForIid(iid) for iid in self.lists[lid].getIidsAtPoss(poss=pos)] 
         except KeyError:
             return None
-    def getItemsMapForLid(self, lid):
-        try:
-            return [(iid, self.getItemForIid(iid)) for iid in self.lists[lid].getIids()] 
+    def getItemsMapForLid(self, lid, pos=None):
+        try: 
+            return [(iid, self.getItemForIid(iid)) for iid in self.lists[lid].getIidsAtPoss(poss=pos)] 
         except KeyError:
             return None
+
     def getItemData(self, iid, pos):
         details = {"aim": "list", "id": iid, "pos": pos} 
         dt = ["%s" % self.getItemFieldV(iid, field, details) for field in self.getFields()]
@@ -1414,8 +1422,10 @@ class RedsSet(EditableContent):
         self.items.applyFunctTo(".setDisabled()", disable_ids, changes= True)
 
     def processAll(self, compare_ids, parameters):
-        current_ids = [i for i in compare_ids if self.items.getItem(i).getEnabled()]
-        bottom_ids = [i for i in compare_ids if not self.items.getItem(i).getEnabled()]
+        # current_ids = [i for i in compare_ids if self.items.getItem(i).getEnabled()]
+        # bottom_ids = [i for i in compare_ids if not self.items.getItem(i).getEnabled()]
+        current_ids = [i for i in compare_ids if self.items[i].getEnabled()]
+        bottom_ids = [i for i in compare_ids if not self.items[i].getEnabled()]
         selected_ids = self.items.selected(parameters, current_ids)
         middle_ids = [i for i in current_ids if i not in selected_ids]
         self.items.applyFunctTo(".setDisabled()", middle_ids)
@@ -1451,6 +1461,10 @@ class ContentManager:
         return self.browsers[pid]
     def getSW(self, pid=0):
         return self.browsers[0].getSW()
+    def Show(self, pid=0):
+        return self.getSW(pid).Show()
+    def Hide(self, pid=0):
+        return self.getSW(pid).Hide()
 
     ################## CONTENT MANAGEMENT METHODS
     def addData(self, src=None, data=[], sord=None, focus=True):
@@ -1644,8 +1658,8 @@ class ContentManager:
         return self.getDataHdl().getIidsForLid(lid)
     def getItemsForLid(self, lid):
         return self.getDataHdl().getItemsForLid(lid)
-    def getItemsMapForLid(self, lid):
-        return self.getDataHdl().getItemsMapForLid(lid)
+    def getItemsMapForLid(self, lid, pos=None):
+        return self.getDataHdl().getItemsMapForLid(lid, pos)
     def getItemsForAction(self, down=True):
         return [self.getDataHdl().getItemForIid(iid) for iid in self.getIidsForAction(down)]
     def getNbItemsForAction(self, down=True):
@@ -1858,18 +1872,22 @@ class ContentManager:
     def viewData(self, rid=None, viewT=None):
         if rid is None:
             rid = self.getSelectedItemIid()
-        red = self.getDataHdl().getItemForIid(rid)
+        red = self.getDataHdl().getItemForIid(rid).copy()
         if viewT is None:
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
         self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
 
     def viewListData(self, lid=None, viewT=None):
-        if lid is None:
+        items_map = []
+        poss = None
+        if lid == -1 or lid is None:
             lc = self.getViewHdl().getFocusedL()
-            if lc.isContainersL():
-                lid = self.browsers[lc.getPid()].getLid()
+            lid = self.browsers[lc.getPid()].getLid()
+            if lc.isItemsL():
+                poss = lc.getSelection()
         if lid is not None:
-            items_map = self.getItemsMapForLid(lid)
+            items_map = self.getItemsMapForLid(lid, poss)
+        if len(items_map) > 0:
             if viewT is None:
                 viewT = self.parent.viewsm.getDefaultViewT("L", self.parent.tabs[self.tabId]["type"])
             self.parent.viewsm.viewData(viewT, items_map, lid, self.tabId)

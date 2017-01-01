@@ -9,20 +9,72 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.figure import Figure
-from matplotlib.lines import Line2D
-from matplotlib.text import Annotation
-from matplotlib.patches import Polygon
-from matplotlib.path import Path
-
-from ..reremi.classQuery import SYM, Query
+from matplotlib.text import Text
+from matplotlib.patches import Ellipse
+ 
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-
-### updateHist moved to CtrlTable
+from classInterObjects import MaskCreator
 
 import pdb
 
+def HTMLColorToRGB(colorstring):
+    """ convert #RRGGBB to an (R, G, B) tuple """
+    colorstring = colorstring.strip()
+    if colorstring[0] == '#': colorstring = colorstring[1:]
+    if len(colorstring) != 6:
+        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
+    r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
+    r, g, b = [int(n, 16) for n in (r, g, b)]
+    return (r, g, b)
+
+############ MODAL WINDOW TRICKS
+# class MyModalDialogHook(wx.ModalDialogHook):
+
+#     def __init__(self, parent):
+
+#         wx.ModalDialogHook.__init__(self, parent)
+
+
+#     def Enter(self, dialog):
+
+#         # Just for demonstration purposes, intercept all uses of
+#         # wx.FileDialog. Notice that self doesn't provide any real
+#         # sandboxing, of course, the program can still read and write
+#         # files by not using wx.FileDialog to ask the user for their
+#         # names.
+#         if isinstance(dialog, wx.MessageDialog):
+
+#             wx.LogError("Access to file system disallowed.")
+
+#             # Skip showing the file dialog entirely.
+#             return wx.ID_CANCEL
+
+
+#         self.lastEnter = wx.DateTime.Now()
+
+#         # Allow the dialog to be shown as usual.
+#         return wx.ID_NONE
+
+
+#     def Exit(self, dialog):
+
+#         # Again, just for demonstration purposes, show how long did
+#         # the user take to dismiss the dialog. Notice that we
+#         # shouldn't use wx.LogMessage() here as self would result in
+#         # another modal dialog call and hence infinite recursion. In
+#         # general, the hooks should be as unintrusive as possible.
+#         wx.LogDebug("%s dialog took %s to be dismissed",
+#                    dialog.GetClassInfo().GetClassName(),
+#                    (wx.DateTime.Now() - self.lastEnter).Format())
+####################
+
 class CustToolbar(NavigationToolbar):
+    """ 
+    Customized Toolbar for action on the plot including saving, attaching to main window, etc.
+    Sets the different mouse cursors depending on context. 
+    """
+    
     def __init__(self, plotCanvas, parent):
         self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'))
         # , (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure')
@@ -47,17 +99,20 @@ class CustToolbar(NavigationToolbar):
 
 
 class BasisView(object):
+    """
+    The parent class of all visualizations.
+    """
 
-    colors_def = [("color_l", (255,0,0)), ("color_r", (0,0,255)), ("color_i", (160,32,240))]
+    colors_ord = ["color_l", "color_r", "color_i"]
+    colors_def = {"color_l": (255,0,0), "color_r": (0,0,255), "color_i": (160,32,240),
+                  "grey_basic": (127,127,127), "grey_light": (153,153,153), "grey_light": (85,85,85),
+                  "color_h": (255, 255, 0), -1: (127, 127, 127)}
     DOT_ALPHA = 0.6
         
-    COLHIGH='#FFFF00'
-
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
     DELTA_ON = False
-    PICKER_ON = True # False
     
     TID = "-"
     SDESC = "-"
@@ -76,7 +131,8 @@ class BasisView(object):
     fwidth = {"i": 400, "t": 400, "s": 250}
     fheight = {"i": 400, "t": 300, "s": 200}
 
-
+    ann_xy = (-10, 15)
+    
     def getSpacerW(self):
         return self.spacer_w
     def getSpacerWn(self):
@@ -133,10 +189,8 @@ class BasisView(object):
         self.vid = vid
         self.buttons = []
         self.act_butt = [1]
-        self.highl = {}
-        self.hight = {}
-        self.dots_draws = {}
-        self.current_hover = None
+
+        self.initHighlighted()
         self.intab = self.parent.getVizm().showVizIntab()
         self.store_size = None
 
@@ -156,7 +210,40 @@ class BasisView(object):
         self.initSizeRelative()
         if not self.isIntab():
             self.mapFrame.Show()
+        
+    ############ MODAL WINDOW TRICKS         
+    #     self.mapFrame.MakeModal()
+    #     # self.myHook = MyModalDialogHook(None)
+    #     # self.myHook.Register()
+            
+    #     TIMER_ID = wx.NewId()
+    #     self.timer = wx.Timer(self.panel, TIMER_ID)
+    #     wx.EVT_TIMER(self.panel, TIMER_ID, self.onTimer)
+    #     self.timer.Start(5000)
+ 
+    #     # self.dlg = wx.MessageDialog(self.mapFrame, 'Picture will be shown', 'Info', wx.OK | wx.ICON_INFORMATION)
+    #     # # ## self.dlg.SetReturnCode(1)
+    #     # # print "-- (0) --"
+    #     # self.dlg.MakeModal(True)
+    #     # self.dlg.ShowModal()
+    #     # # print "-- (1) --"
+    #     # self.dlg.Destroy()
 
+
+    # def onTimer(self, event):
+    #     self.timer.Stop()
+    #     print "in onTimer"
+    #     self.mapFrame.MakeModal(False)
+    #     # print self.dlg, self.dlg.IsModal()
+    #     # # if self.dlg.IsModal():
+    #     #self.dlg.MakeModal(False)
+    #     # self.dlg.EndModal(0)
+    #     # self.dlg.Destroy()
+    ################
+
+    def getCanvasConnections(self):
+        return []
+            
     def lastStepInit(self):
         pass
 
@@ -209,20 +296,16 @@ class BasisView(object):
     def q_active_info(self):
         return self.active_info
 
+    def q_not_svar(self):
+        return not self.isSingleVar()
     def q_has_selected(self):
-        return len(self.getSelected()) > 0
+        return len(self.getHighlightedIds()) > 0
 
     def q_true(self):
         return True
 
-    def hoverActive(self):
-        return self.parent.dw.getPreferences()['hover_entities']['data'] == 'yes' 
-
-    def getSelected(self):
-        return self.highl.keys()
-
     def getWeightCover(self, params):
-        params["area"] = self.getSelected()
+        params["area"] = self.getHighlightedIds()
         return params
 
     def prepareProcesses(self):
@@ -280,6 +363,13 @@ class BasisView(object):
         return self.parent.dw.getData().getUnvizRows(self.getDetailsSplit())
 
     def makeMenu(self, frame=None):
+        """
+        Prepare the menu for this view.
+
+        @type  frame: wx.Frame
+        @param frame: The frame in which the menu resides
+        """
+        
         if self.isIntab():
             return
         
@@ -302,12 +392,26 @@ class BasisView(object):
         return self.parent.viewsm.getViewsItems(vkey=self.getId())
 
     def makeVizMenu(self, frame, menuViz=None):
+        """
+        Prepare the visualization sub-menu for this view.
+
+        @type  frame: wx.Frame
+        @param frame: The frame in which the menu resides
+        @type  menuViz: wx.Menu
+        @param menuViz: Existing menu, if any, where entries will be appended
+        @rtype:   wx.Menu
+        @return:  the sub-menu, menuViz extended
+        """
+
         if menuViz is None:
             menuViz = wx.Menu()
         for item in self.enumerateVizItems():
             ID_NEWV = wx.NewId()
             m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                    "Plot %s in new window." % item["title"])
+                                    "Plot %s." % item["title"])
+            if not item["suitable"]:
+                m_newv.Enable(False)
+
             frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
             self.ids_viewT[ID_NEWV] = item["viewT"]
         return menuViz
@@ -515,20 +619,20 @@ class BasisView(object):
             return
         self.store_size = pixels
         boxsize = self.innerBox1.GetMinSize()
-        min_size = (self.getFWidth(), self.getFHeight())
+        ## min_size = (self.getFWidth(), self.getFHeight())
         if self.isIntab():
             # sz = (laybox.GetCols(), laybox.GetRows())
             sz = self.parent.getVizm().getVizGridSize()
-            min_size = (self.getFWidth(), self.getFHeight())
-            max_size = ((pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1]),
-                        (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0]))
+            ## min_size = (self.getFWidth(), self.getFHeight())
+            ## max_size = ((pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1]),
+            ##             (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0]))
             pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1])),
                       max(self.getFHeight(), (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0])))
             ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
         else:
             pixels = (max(self.getFWidth(), pixels[0]),
                       max(self.getFHeight(), pixels[1]))  
-            max_size = (-1, -1)
+            ## max_size = (-1, -1)
         self.panel.SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-boxsize[1], 10))
         # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
@@ -557,7 +661,7 @@ class BasisView(object):
         
     def OnPop(self, event=None):
         pos = self.getGPos()
-        panel = self.popSizer()
+        self.popSizer()
         if self.isIntab():
             self.intab = False
             self.mapFrame = self.initExtFrame()
@@ -603,34 +707,74 @@ class BasisView(object):
 
     def setCurrent(self, data):
         pass
-            
+    def isSingleVar(self):
+        return False
+    def clearPlot(self):
+        if not hasattr( self, 'MapfigMap' ): return
+        axxs = self.MapfigMap.get_axes()
+        for ax in axxs:
+            ax.cla()
+            if ax != self.axe:
+                self.MapfigMap.delaxes(ax)
+        self.clearHighlighted()
+        
     def drawMap(self):
         """ Draws the map
         """
-        if not hasattr( self, 'subplot' ):
-            self.subplot = self.MapfigMap.add_subplot( 111 )
 
-        theta = numpy.arange( 0, 45*2*numpy.pi, 0.02 )
+        if not hasattr( self, 'axe' ):
+            self.axe = self.MapfigMap.add_subplot( 111 )
 
-        rad0 = (0.8*theta/(2*numpy.pi) + 1)
-        r0 = rad0*(8 + numpy.sin( theta*7 + rad0/1.8 ))
-        x0 = r0*numpy.cos( theta )
-        y0 = r0*numpy.sin( theta )
+        self.prepareInteractive()
 
-        rad1 = (0.8*theta/(2*numpy.pi) + 1)
-        r1 = rad1*(6 + numpy.sin( theta*7 + rad1/1.9 ))
-        x1 = r1*numpy.cos( theta )
-        y1 = r1*numpy.sin( theta )
+        ##self.plot_void()
+        self.MapcanvasMap.draw()
 
-        self.point_lists = [[(xi,yi) for xi,yi in zip( x0, y0 )],
-                            [(xi,yi) for xi,yi in zip( x1, y1 )]]
-        self.clr_list = [[225,200,160], [219,112,147]]
+    def prepareInteractive(self):
+        self.el = Ellipse((2, -1), 0.5, 0.5)
             
-        for i, pt_list in enumerate( self.point_lists ):
-            plot_pts = numpy.array( pt_list )
-            clr = [float( c )/255. for c in self.clr_list[i]]
-            self.subplot.plot( plot_pts[:,0], plot_pts[:,1], color=clr )
+        for act, meth in self.getCanvasConnections():
+            if act == "MASK":
+                self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
+            else:
+                self.MapfigMap.canvas.mpl_connect(act, meth)
 
+        
+    ##### FILL and WAIT PLOTTING
+    def plot_void(self):
+        if self.wasKilled():
+            return
+        self.clearPlot()
+        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5 for r in [0,2,4]], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+
+    def init_wait(self):
+        self.call_wait = wx.CallLater(1, self.plot_wait)
+        self.cp = 0
+
+    def kill_wait(self):
+        self.call_wait.Stop()
+        if self.wasKilled():
+            return
+        self.clearPlot()
+        self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
+        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+
+    def plot_wait(self):
+        if self.wasKilled():
+            return
+        self.clearPlot()
+        self.axe.plot([r/10.0+0.3 for r in range(5)], [0.5 for r in range(5)], 'ks', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
+        self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
+        self.axe.axis([0,1,0,1])
+        self.MapcanvasMap.draw()
+        self.cp += 1
+        self.call_wait.Restart(self.wait_delay)
+
+        
         
     def drawFrameSpecific(self):
         pass
@@ -741,14 +885,6 @@ class BasisView(object):
         """
         pass
 
-
-    # def updateHist(self, red = None, init=False):
-    #     ### if this is an history update on opening viz, only do if no other viz open for red
-    #     if red is not None:
-    #         if init and self.parent.viewsm.getItemViewCount(self.getId()) > 1:
-    #             return
-    #         self.parent.appendToHist(red)
-
     def sendEditBack(self, red = None):
         if red is not None:
             self.parent.viewsm.dispatchEdit(red, vkey=self.getId())
@@ -756,66 +892,7 @@ class BasisView(object):
     def updateText(self, red = None):
         pass
 
-
-    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
-        if picker:
-            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
-        else:
-            args = {}
-        x, y = self.getCoordsXY(idp)
-        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
-
-    def drawAnnotation(self, idp, xy, ec, tag):
-        return self.axe.annotate(tag, xy=xy,
-                                xycoords='data', xytext=(-10, 15), textcoords='offset points',
-                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
-                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
-                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
-                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))
-
-
-    def updateEmphasize(self, review=True):
-        lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
-        self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
-
-    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), review=True):
-        self.emphasizeOff(turn_off)
-        self.emphasizeOn(turn_on)
-        self.makeMenu()
-        # if review:
-        #     print "draw"
-        #     self.MapcanvasMap.draw()
-
-    def emphasizeOn(self, lids):
-        pass
-    
-    def emphasizeOff(self, lids = None):
-        pass
-
-    def sendEmphasize(self, lids):
-        return self.parent.viewsm.setEmphasizedR(vkey=self.getId(), lids=lids, show_info=self.q_active_info())
-
-    def sendFlipEmphasizedR(self):
-        return self.parent.viewsm.doFlipEmphasizedR(vkey=self.getId())
-
-    def OnPick(self, event):
-        if event.mouseevent.button in self.act_butt:
-            gid_parts = event.artist.get_gid().split(".")
-            if (isinstance(event.artist, Line2D) or isinstance(event.artist, Polygon)): 
-                if gid_parts[-1] == "1":
-                    self.sendEmphasize([int(gid_parts[0])])
-                else:
-                    self.sendOtherPick(gid_parts)
-    #         elif isinstance(event.artist, Annotation):
-    #             if gid_parts[-1] == "T":
-    #                 self.sendEntFocus([int(gid_parts[0])])
-
-    # def sendEntFocus(self, gid_parts):
-    #     pass
-
-    def sendOtherPick(self, gid_parts):
-        pass
-
+    ################ HANDLING ACTIONS
     def doActionForKey(self, key):
         if self.keys_map.get(key, None in self.actions_map):
             act = self.actions_map[self.keys_map[key]]
@@ -830,44 +907,162 @@ class BasisView(object):
     def mkey_press_callback(self, event):
         self.doActionForKey(chr(event.GetKeyCode()).lower())
 
-    def do_select_poly(self, more=None):
-        points = self.apply_mask(self.mc.get_path())
-        self.mc.clear()
-        if points != set():
-            self.sendEmphasize(points)
+    ################ HANDLING HIGHLIGHTS
+    def updateEmphasize(self, review=True):
+        lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
+        self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
 
-    def do_flip_emphasized(self, more=None):
-        self.sendFlipEmphasizedR()
-
-    def do_deselect_all(self, more=None):
-        points = None
-        self.sendEmphasize(points)
-
-    def do_set_select(self, setp):
-        pass
-            
-    def apply_mask(self, path, radius=0.0):
-        pass
-
-    def getColorHigh(self):        
-        t = self.parent.dw.getPreferences()
-        if "color_h" in t:
-            return [i/255.0 for i in t["color_h"]["data"]]
+    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
+        self.emphasizeOff(turn_off, hover)
+        self.emphasizeOn(turn_on, hover)
+        if hover:
+            self.MapcanvasMap.draw()
         else:
-            return self.COLHIGH
+            self.makeMenu()
+         
+    def emphasizeOn(self, lids, hover=False):
+        pass
+    
+    def emphasizeOff(self, lids=None, hover=False):
+        self.removeHighlighted(lids, hover)
 
-    def getColors(self):
+    def sendEmphasize(self, lids):
+        return self.parent.viewsm.setEmphasizedR(vkey=self.getId(), lids=lids, show_info=self.q_active_info())
+
+    def sendFlipEmphasizedR(self):
+        return self.parent.viewsm.doFlipEmphasizedR(vkey=self.getId())
+        
+    ################ HANDLING HIGHLIGHTS
+    def initHighlighted(self):
+        self.highl = {}
+        self.high_lbl = set()
+        self.current_hover = {}
+    def clearHighlighted(self):
+        self.initHighlighted()
+    def isHovered(self, iid):
+        return iid in self.current_hover
+    def isHighlighted(self, iid):
+        return iid in self.highl
+    def isHighLbl(self, iid):
+        return iid in self.high_lbl
+    def needingHighLbl(self, iids):
+        if len(iids) <= self.max_emphlbl:
+            return [iid for iid in iids if not self.isHighLbl(iid)]
+        return []
+    def needingHighlight(self, iids):
+        return [iid for iid in iids if not self.isHighlighted(iid)]
+    def getHighlightedIds(self):
+        return self.highl.keys()
+    def addHighlighted(self, hgs, hover=False):
+        where = self.highl
+        if hover:
+            where = self.current_hover
+
+        for iid, high in hgs.items():
+            if iid not in where:
+                where[iid] = []
+            if type(high) is list:
+                has_lbl = any([isinstance(t, Text) for t in high])
+                where[iid].extend(high)
+            else:
+                has_lbl = isinstance(high, Text)
+                where[iid].append(high)
+            if has_lbl and not hover:
+                self.high_lbl.add(iid)
+                
+    def removeHighlighted1(self, iid):
+        if iid in self.highl:
+            while len(self.highl[iid]) > 0:
+                t = self.highl[iid].pop()
+                t.remove()
+            del self.highl[iid]
+            self.high_lbl.discard(iid)
+    def removeHover1(self, iid):
+        if iid in self.current_hover:
+            while len(self.current_hover[iid]) > 0:
+                t = self.current_hover[iid].pop()
+                t.remove()
+            del self.current_hover[iid]
+    def removeHighlighted(self, iid=None, hover=False):
+        if iid is None:
+            if hover:
+                iids = self.current_hover.keys()
+            else:
+                iids = self.highl.keys()
+        elif type(iid) is list or type(iid) is set:
+            iids = iid
+        else:
+            iids = [iid]
+        for iid in iids:
+            if hover:
+                self.removeHover1(iid)
+            else:
+                self.removeHighlighted1(iid)
+    
+    ################ HANDLING SETTINGS
+    def hoverActive(self):
+        return self.parent.dw.getPreferences()['hover_entities']['data'] == 'yes' 
+    def clickActive(self):
+        return self.parent.dw.getPreferences()['click_entities']['data'] == 'yes' 
+    def inCapture(self, event):
+        return False
+    
+    def getMissDetails(self):
         t = self.parent.dw.getPreferences()
-        colors = []
-        for color_k, color in self.colors_def:
-            try:
-                color_t = t[color_k]["data"]
-            except:
-                color_t = color
-            colors.append(color_t)
-        return colors
+        if t["miss_details"]["data"] == "yes":
+            return True
+        return False
 
-    def getDot(self):
+    def getDeltaOn(self):
+        t = self.parent.dw.getPreferences()
+        try:
+            deltaon = t["draw_delta"]["data"] == "yes"
+        except:
+            deltaon = BasisView.DELTA_ON
+        return deltaon
+
+    def getColorKey1(self, key, dsetts=None):
+        if dsetts is None:
+            dsetts = self.parent.dw.getPreferences()
+        if key in dsetts:
+            tc = dsetts[key]["data"]
+        elif key in self.colors_def:
+            tc = self.colors_def[key]
+        else:
+            tc = self.colors_def[-1]
+        return [i/255.0 for i in tc]+[1.]
+    def getColorKey255(self, key, dsetts=None):
+        if dsetts is None:
+            dsetts = self.parent.dw.getPreferences()
+        if key in dsetts:
+            tc = dsetts[key]["data"]
+        elif key in self.colors_def:
+            tc = self.colors_def[key]
+        else:
+            tc = self.colors_def[-1]
+        return tc
+    
+    def getColorA(self, color, alpha=None):
+        if alpha is None:
+            alpha = self.DOT_ALPHA
+        elif alpha < -1 or alpha > 1:
+            alpha = numpy.sign(alpha)*(numpy.abs(alpha)%1)*self.DOT_ALPHA
+        if alpha < 0:
+            return tuple([color[0],color[1], color[2], -color[3]*alpha])
+        return tuple([color[0],color[1], color[2], alpha])
+    
+    def getColorHigh(self):
+        return self.getColorA(self.getColorKey1("color_h"))
+
+    def getColors255(self):
+        t = self.parent.dw.getPreferences()
+        return  [ self.getColorKey255(color_k) for color_k in self.colors_ord ]
+
+    def getColors1(self):
+        t = self.parent.dw.getPreferences()
+        return  [ self.getColorKey1(color_k) for color_k in self.colors_ord ]
+    
+    def getDrawSettDef(self):
         t = self.parent.dw.getPreferences()
         try:
             dot_shape = t["dot_shape"]["data"]
@@ -875,39 +1070,16 @@ class BasisView(object):
         except:
             dot_shape = self.DOT_SHAPE
             dot_size = self.DOT_SIZE
-        return (dot_shape, dot_size)
 
-    def getMissDetails(self):
-        t = self.parent.dw.getPreferences()
-        if t["miss_details"]["data"] == "yes":
-            return True
-        return False
+        return {"color_f": self.getColorA(self.getColorKey1("grey_basic")),
+                "color_e": self.getColorA(self.getColorKey1("grey_basic"), 1.),
+                "color_l": self.getColorA(self.getColorKey1("grey_light")),
+                "shape": dot_shape, "size": dot_size}
 
-    def getPickerOn(self):
-        t = self.parent.dw.getPreferences()
-        try:
-            pickon = t["use_picker"]["data"] == "yes"
-        except:
-            pickon = GView.PICKER_ON
-        return pickon
-
-    def getDeltaOn(self):
-        t = self.parent.dw.getPreferences()
-        try:
-            deltaon = t["draw_delta"]["data"] == "yes"
-        except:
-            deltaon = GView.DELTA_ON
-        return deltaon
-
-    def getPlotColor(self, idp, prop):
-        return tuple(self.dots_draws[prop+"_dots"][idp])
-    def getPlotProp(self, idp, prop):
-        return self.dots_draws[prop+"_dots"][idp]
-    
     def getDrawSettings(self):
-        colors = self.getColors()
+        colors = self.getColors1()
         colhigh = self.getColorHigh()
-        dot_shape, dot_size = self.getDot()
+        defaults = self.getDrawSettDef()
         draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub,
                                                         SSetts.muaB, SSetts.mubB,
                                                         SSetts.delta, SSetts.beta,
@@ -917,75 +1089,33 @@ class BasisView(object):
         for (p,v) in enumerate([SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma]):
             dd[v] = p
 
-        basic_grey = [0.5,0.5,0.5]
-        light_grey = [0.66,0.66,0.66]
-        return {"draw_pord": draw_pord,
-                "draw_ppos": dd,
-                "shape": dot_shape,
-                "colhigh": colhigh,
-                SSetts.alpha: {"color_e": [i/255.0 for i in colors[0]],
-                               "color_f": [i/255.0 for i in colors[0]],
-                               "color_l": [i/255.0 for i in colors[0]],
-                               "shape": dot_shape,
-                               "alpha": self.DOT_ALPHA, "size": dot_size},
-                SSetts.beta: {"color_e": [i/255.0 for i in colors[1]],
-                              "color_f": [i/255.0 for i in colors[1]],
-                              "color_l": [i/255.0 for i in colors[1]],
-                              "shape": dot_shape,
-                               "alpha": self.DOT_ALPHA, "size": dot_size},
-                SSetts.gamma: {"color_e": [i/255.0 for i in colors[2]],
-                               "color_f": [i/255.0 for i in colors[2]],
-                               "color_l": [i/255.0 for i in colors[2]],
-                               "shape": dot_shape,
-                               "alpha": self.DOT_ALPHA, "size": dot_size},
-                SSetts.mua: {"color_e": [i/255.0 for i in colors[0]],
-                             "color_f": basic_grey,
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.mub: {"color_e": [i/255.0 for i in colors[1]],
-                             "color_f": basic_grey,
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.muaB: {"color_e": basic_grey,
-                              "color_f": [i/255.0 for i in colors[1]],
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.mubB: {"color_e": basic_grey,
-                              "color_f": [i/255.0 for i in colors[0]],
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                              "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.mud: {"color_e": basic_grey,
-                             "color_f": basic_grey,
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                SSetts.delta: {"color_e": basic_grey,
-                               "color_f": basic_grey,
-                               "color_l": basic_grey,
-                               "shape": dot_shape,
-                               "alpha": self.DOT_ALPHA, "size": dot_size},
-                -1: {"color_e": basic_grey,
-                             "color_f": basic_grey,
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size-1},
-                "default": {"color_e": basic_grey,
-                             "color_f": basic_grey,
-                             "color_l": light_grey,
-                             "shape": dot_shape,
-                             "alpha": self.DOT_ALPHA, "size": dot_size}
-                    }
-        
-def HTMLColorToRGB(colorstring):
-    """ convert #RRGGBB to an (R, G, B) tuple """
-    colorstring = colorstring.strip()
-    if colorstring[0] == '#': colorstring = colorstring[1:]
-    if len(colorstring) != 6:
-        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
-    r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
-    r, g, b = [int(n, 16) for n in (r, g, b)]
-    return (r, g, b)
+        css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh}
+        for (p, iid) in enumerate([SSetts.alpha, SSetts.beta, SSetts.gamma]):
+            css[iid] = {"color_f": self.getColorA(colors[p]),
+                        "color_e": self.getColorA(colors[p], 1.),
+                        "color_l": self.getColorA(colors[p]), 
+                        "shape": defaults["shape"], "size": defaults["size"]}
+        for (p, iid) in enumerate([SSetts.mua, SSetts.mub]):
+            css[iid] = {"color_f": self.getColorA(defaults["color_f"], -.9),
+                        "color_e": self.getColorA(colors[p], .9),
+                        "color_l": self.getColorA(defaults["color_l"], -.9),
+                        "shape": defaults["shape"], "size": defaults["size"]-1}
+        for (p, iid) in enumerate([SSetts.mubB, SSetts.muaB]):
+            css[iid] = {"color_f": self.getColorA(colors[p], -.9),
+                        "color_e": self.getColorA(defaults["color_e"], .9),
+                        "color_l": self.getColorA(defaults["color_l"], -.9),
+                        "shape": defaults["shape"], "size": defaults["size"]-1}
+        css[SSetts.mud] = {"color_f": self.getColorA(defaults["color_f"], -.9),
+                           "color_e": self.getColorA(defaults["color_e"], .9),
+                            "color_l": self.getColorA(defaults["color_l"], -.9),
+                           "shape": defaults["shape"], "size": defaults["size"]-1}
+        css[SSetts.delta] = {"color_f": self.getColorA(defaults["color_f"]),
+                             "color_e": self.getColorA(defaults["color_e"], 1.),
+                             "color_l": self.getColorA(defaults["color_l"]),
+                             "shape": defaults["shape"], "size": defaults["size"]-1}
+        css[-1] = {"color_f": self.getColorA(defaults["color_f"], .5),
+                   "color_e": self.getColorA(defaults["color_e"], .5),
+                   "color_l": self.getColorA(defaults["color_l"], .5),
+                   "shape": defaults["shape"], "size": defaults["size"]-1}
+        css["default"] = defaults
+        return css

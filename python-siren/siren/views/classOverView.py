@@ -6,17 +6,13 @@ from scipy.sparse import lil_matrix
 # The recommended way to use wx with mpl is with the WXAgg backend. 
 # import matplotlib
 # matplotlib.use('WXAgg')
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.patches import Polygon
+
 from matplotlib.path import Path
-from matplotlib.patches import Ellipse, Polygon
 
 from lines_cust import CustLine2D
 
 from classLView import LView
 
-from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
 import pdb
@@ -52,7 +48,7 @@ class OverView(LView):
     def drawFrameSpecific(self):
 
         # self.info_red = [wx.StaticText(self.panel, label="qL"), wx.StaticText(self.panel, label="qR")]
-        # colors = self.getColors()
+        # colors = self.getColors255()
         # self.info_red[0].SetForegroundColour(colors[0])
         # self.info_red[1].SetForegroundColour(colors[1])
         # font = wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
@@ -149,20 +145,8 @@ class OverView(LView):
             self.changePos(self.getCurrentPos()-1)
         event.Skip()
 
-    def drawMap(self):
-        """ Draws the map
-        """
-        if not hasattr( self, 'axe' ):
-            self.axe = self.MapfigMap.add_subplot( 111 )
-
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-        self.axe.add_patch(self.el)
-
-
-        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        # self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
-        self.MapcanvasMap.draw()
-
+    def getCanvasConnections(self):
+        return [('motion_notify_event', self.on_motion)]
     
     def changePos(self, pos=None):
         if pos >= self.getNbReds():
@@ -242,7 +226,7 @@ class OverView(LView):
         if not hasattr( self, 'parts' ):
             return
 
-        self.axe.cla()
+        self.clearPlot()
         self.blocks = {}
         
         what_map = ["vars", "supp"]
@@ -254,7 +238,7 @@ class OverView(LView):
         self.block_size = {"vars": sizes["supp"]/sfactor, "supp": sizes["vars"]/sfactor}
         # self.block_size = {"vars": 1., "supp": 1.}
         nbreds = self.getNbReds()
-        colors = [tuple([cv/255. for cv in vv]) for vv in self.getColors()]
+        colors = self.getColors1()
         bsz = 0.4
         # unitmarker_points = numpy.array([[-bsz, -bsz], [bsz, -bsz], [bsz, bsz], [-bsz, bsz]]) ### centered
         unitmarker_points = numpy.array([[0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9]])

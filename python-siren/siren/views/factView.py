@@ -66,7 +66,7 @@ class ViewFactory(object):
     @classmethod
     def getDefaultViewT(tcl, typv="R", geo=False, type_tab="r"):
         if typv == "L":
-            return classListView.ListView.TID
+            return classLView.LView.TID
         elif typv == "R":
             if type_tab == "e":
                 return classEProjView.EProjView.defaultViewT

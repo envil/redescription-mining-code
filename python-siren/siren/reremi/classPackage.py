@@ -159,7 +159,11 @@ class Package(object):
                     fdRHS = self.package.open(self.plist['data_RHS_filename'], 'r')
                 else:
                     fdRHS = None
-                data = Data([fdLHS, fdRHS, {}, self.plist.get('NA_str', None)], "csv")
+                NA_str = self.plist.get('NA_str', None)
+                if NA_str is None and self.getFormatV() <= 4:
+                    NA_str = "nan"
+                # pdb.set_trace()    
+                data = Data([fdLHS, fdRHS, {}, NA_str], "csv")
             except Exception:
                 data = None
                 self.raiseMess()

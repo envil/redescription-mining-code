@@ -65,7 +65,6 @@ data"""
         self.dy = event.ydata - ypress
         #self.rect.set_x(x0+dx)
         #self.rect.set_y(y0+dy)
-
         self.update_rect()
 
         canvas = self.rect.figure.canvas
@@ -87,7 +86,10 @@ data"""
         #         print "Failed blit"
 
     def contains(self, event):
-        return self.rect.contains(event)
+        if event.button in self.buttons_t:
+            return self.rect.contains(event)
+        else:
+            return False, None
     
     def do_release(self, event):
         """on release we reset the press data"""
@@ -111,7 +113,7 @@ data"""
         self.annotation = None
         
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        dx, dy = self.dx, self.dy
+        dy = self.dy
         bt = self.border_tol
         if abs(y0-ypress)<bt*h0:
             if h0-dy > 0:
@@ -135,7 +137,6 @@ data"""
                     else:
                         self.annotation = self.rect.axes.annotate("%s" % b,
                                                             xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-                        
 
         elif abs(y0+h0-ypress)<bt*h0:
             if h0+dy > 0:
@@ -165,12 +166,14 @@ class DraggableRectangle(ResizeableRectangle):
     def update_rect(self):
         if self.press is None:
             return
+        self.annotation = None
+
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        dx, dy = self.dx, self.dy
+        dy = self.dy
         bt = 1
         if abs(y0-ypress)<bt*h0:
             self.rect.set_y(y0+dy)
-                
+
             if self.annotation is not None:
                 b = y0+dy+h0/2.0
                 if self.pinf is not None:
@@ -178,6 +181,14 @@ class DraggableRectangle(ResizeableRectangle):
                 else:
                     self.annotation.set_text("%s" % b)
                 self.annotation.xytext = (x0+0.25, b)
+            else:
+                b = y0+dy+h0/2.0
+                if self.pinf is not None:
+                    self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+                else:
+                    self.annotation = self.rect.axes.annotate("%s" % b,
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
 
         elif abs(y0+h0-ypress)<bt*h0:
             self.rect.set_y(y0+dy)
@@ -189,6 +200,14 @@ class DraggableRectangle(ResizeableRectangle):
                 else:
                     self.annotation.set_text("%s" % b)
                 self.annotation.xytext = (x0+0.25, b)
+            else:
+                b = y0+dy+h0/2.0
+                if self.pinf is not None:
+                    self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, 1),
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+                else:
+                    self.annotation = self.rect.axes.annotate("%s" % b,
+                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
 
 
 class MaskCreator(object):
@@ -453,7 +472,6 @@ class MaskCreator(object):
             else:
                 xpos, ypos, xdpos, ydpos = self.last_pos
         else:
-            xdpos, ydpos = (event.xdata, event.ydata)
             xpos, ypos = (event.x, event.y)
 
         if self.poly is None:

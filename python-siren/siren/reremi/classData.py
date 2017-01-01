@@ -33,6 +33,7 @@ class ColM(object):
     width = 0
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
     NA = NA_bool
+    NA_specimen_str = ["na", "nan", "-", "-1"]
 
     def initSums(N):
         return [0 for i in range(N)]
@@ -149,7 +150,7 @@ class ColM(object):
     def getMax(self, details=None):
         return "-"
     def getMissInfo(self, details=None):
-        return "%1.2f: %d"% (len(self.missing)/float(self.N), len(self.missing))
+        return "%1.2f%%: %d"% (len(self.missing)/float(self.N), len(self.missing))
     def getRange(self):
         return []
 
@@ -255,13 +256,21 @@ class BoolColM(ColM):
             ttt = set(listV.keys()).intersection(indices.keys())
         else:
             ttt = [i for i in indices.keys() if i < len(listV)]
+
+        val_nonbool = set([listV[i].lower() for i in ttt if listV[i] is not None]).difference(BoolColM.values.keys())
+        val_na = val_nonbool.intersection(BoolColM.NA_specimen_str)
+        na_v = BoolColM.NA
+        if len(val_na) == 1:
+            na_v = val_na.pop()
+        elif len(val_nonbool) > 0:
+            return None
+            
         for i in ttt:
             j = indices[i]
-            vt = listV[i]
-            if vt is None or vt == str(BoolColM.NA):
+            if listV[i] is None or listV[i].lower() == na_v:
                 miss.add(j)
             else:
-                v = vt.lower()
+                v = listV[i].lower()
                 if v not in BoolColM.values:
                     return None
                 elif BoolColM.values[v]:
@@ -409,7 +418,8 @@ class CatColM(ColM):
     letter = 'C'
     width = 1
     NA =  NA_cat
-
+    basis_cat = CatTerm.basis_cat
+    
     def getType(self, details=None):
         return "categorical"
 
@@ -469,7 +479,7 @@ class CatColM(ColM):
             self.vect[list(self.sCats[cat])] = v
 
     def getVector(self, bincats=False, nans=None):
-        if bincats:
+        if bincats: ### binarize the categories, i.e return a matrix rather than vector
             vect = np.zeros((self.N, self.nbCats()), dtype=np.int)
             for v, cat in enumerate(self.ord_cats):
                 vect[list(self.sCats[cat]), v] = 1
@@ -488,11 +498,14 @@ class CatColM(ColM):
         return 1
 
     def getTerm(self):
-        return CatTerm(self.id, "c?")
+        return CatTerm(self.id, self.basis_cat)
         ## return CatTerm(self.id, self.modeCat())
 
+    def isBasisCat(self, cat):
+        return cat == self.basis_cat
+
     def isBasis(self, term):
-        return term.getCat() == "c?"
+        return self.isBasisCat(term.getCat())
         
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
@@ -523,13 +536,19 @@ class CatColM(ColM):
     def sumCol(self):
         return dict(self.cards)
     
+    def getCatForVal(self, v, missing_str=None):
+        if v != self.NA:
+            try:
+                vint = int(v)
+                return self.ord_cats[vint]
+            except:
+                pass
+        if missing_str is not None:
+            return missing_str
+        return self.NA
+        
     def getValue(self, rid):
-        if self.vect is None:
-            self.getVector()
-        if rid < len(self.vect) and self.vect[rid] != self.NA:
-            return self.ord_cats[self.vect[rid]]
-        else:
-            return self.NA
+        return self.getCatForVal(self.getNumValue(rid))
 
     def getNumValue(self, rid):
         if self.vect is None:
@@ -540,6 +559,11 @@ class CatColM(ColM):
             return self.NA
 
     def numEquiv(self, v):
+        if v == "#LOW#":
+            return -0.5 # 0
+        if v == "#HIGH#":
+            return -0.5 # len(self.ord_cats)-1
+
         try:
             if type(v) is str and type(self.ord_cats[0]) is unicode:
                 v = codecs.decode(v, 'utf-8','replace')
@@ -582,6 +606,8 @@ class CatColM(ColM):
         return len(self.ord_cats)
     
     def suppCat(self, cat):
+        if self.isBasisCat(cat):
+            return self.rows() - self.miss()
         return self.sCats.get(cat, set())
             
     def suppTerm(self, term):
@@ -622,6 +648,7 @@ class NumColM(ColM):
     NA = NA_num
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
+    # alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
     alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]\d+)?$"
     def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
         if (matchMiss is not False and v == matchMiss) or v == str(NumColM.NA):
@@ -865,6 +892,7 @@ class NumColM(ColM):
         if force or ( len(self.sVals)+len(self.missing) > 0 and len(tmpV)+len(self.missing) != self.N \
                           and len(self.sVals) - len(tmpV)  > 0.1*self.N):
             self.sVals = tmpV    ## gather row ids for which
+            ## gather row ids for which
             if len(self.sVals) > 0:
                 rids = set(zip(*self.sVals)[1])
             else:
@@ -960,7 +988,9 @@ class NumColM(ColM):
         return (self.infofull["in"][1] or self.infofull["out"][1]) 
 
 
-    def collapsedBuckets(self, max_agg):
+    def collapsedBuckets(self, max_agg, nbb=None):
+        if nbb is not None:
+            max_agg = self.nbRows()/float(nbb)
         if self.colbuk is None or (max_agg is not None and self.max_agg != max_agg):
             self.max_agg = max_agg
             self.colbuk = self.collapseBuckets(self.max_agg)
@@ -968,7 +998,6 @@ class NumColM(ColM):
     
     def collapseBuckets(self, max_agg):
         tmp = self.buckets()
-
         tmp_supp=set([])
         bucket_min=tmp[1][0]
         colB_supp = []
@@ -1484,6 +1513,12 @@ class Data(object):
                           "splits": [splits[k] for k in skeys]}
         return splits
 
+    def getFoldsStats(self, side, colid):
+        folds = np.array(self.cols[side][colid].getVector())
+        counts_folds = 1.*np.bincount(folds) 
+        nb_folds = len(counts_folds)
+        return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
+    
     def findCandsFolds(self):
         return self.getColsByName("^folds_split_")
 
@@ -2399,16 +2434,11 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
 #####################################################
 
 def main():
-    rep = "/home/galbrun/"
-    # data = Data([rep+"short/Jena18Odata_soil2.csv", rep+"short/Jena18Odata_soil2.csv", {}, ""], "csv")
-    data = Data([rep+"short/teeth/agg_IUCN_NA.csv", rep+"short/teeth/bio_IUCN_NA.csv", {}, ""], "csv")
-    pdb.set_trace()
-    # data = Data([rep+"short/test/data_LHS.csv", rep+"short/test/data_RHS.csv", {}, ""], "csv")
+    rep = "/home/egalbrun/"
+    data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")
     print data
     # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
-    data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
-
-    dataRL = Data(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv", {}, ""], "csv")
+    # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
     # exit()
 
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",

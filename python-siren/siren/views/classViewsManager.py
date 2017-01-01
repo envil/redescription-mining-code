@@ -1,4 +1,5 @@
 import wx
+import numpy
 from factView import ViewFactory
 
 import pdb
@@ -102,9 +103,11 @@ class ViewsManager:
         # if what is None and lid is not None:
         #     if tabId in self.parent.tabs and self.parent.matchTabType("r", self.parent.tabs[tabId]):
         #         what = self.parent.tabs[tabId]["tab"].getItemsMapForLid(iid)
-
             
         vid = None
+        ## if iid == -1 and
+        if type(what) == list:
+            iid = -numpy.sum([2**k for (k,v) in what])
         ikey = (tabId, ViewFactory.getTypV(viewT), iid)
         if ikey in self.itov and viewT in self.itov[ikey]:
             vid = self.itov[ikey][viewT]
@@ -170,7 +173,7 @@ class ViewsManager:
 
         if self.getNbActiveViewsForMenu() == 0:
             ID_NOP = wx.NewId()
-            m_nop = menuViews.Append(ID_NOP, "No view opened", "There is no view currently opened.")
+            menuViews.Append(ID_NOP, "No view opened", "There is no view currently opened.")
             menuViews.Enable(ID_NOP, False)
         else:
             menuViews.AppendSeparator()
@@ -196,6 +199,7 @@ class ViewsManager:
             self.registerView(mapV.getId(), ikey, upMenu=False)
             self.parent.updateMenus()
             mapV.updateTitle()
+            mapV.lastStepInit()
 
     def recomputeAll(self):
         for vkey, view in self.view_map.items():
@@ -210,10 +214,7 @@ class ViewsManager:
             return len(self.itov[self.vtoi[vkey]])
         return 0
     def dispatchEdit(self, red, vkey=None, ikey=None):
-        ## print "Dispatch Red", vkey, ikey
-        if ikey is not None:
-            src_vkey = (None, None)
-        elif vkey in self.vtoi:
+        if ikey is None and vkey in self.vtoi:
             ikey = self.vtoi[vkey]
             
         if vkey != -1 and ikey[0] in self.parent.tabs:

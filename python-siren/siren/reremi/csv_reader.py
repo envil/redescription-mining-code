@@ -69,8 +69,6 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             dialect = csv.Sniffer().sniff(f.read(2048))
         except Exception:
             dialect = "excel"
-        # pdb.set_trace()
-        # print "Dialect", dialect
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
         #f.seek(0)
@@ -94,6 +92,10 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
         else:
+            tmp = re.match('type=(?P<type>\w)', head[-1])
+            if tmp is not None:
+                head.pop()
+                type_all = tmp.group('type')
             data = dict([(head[i].strip(),[]) for i in range(len(head))])
             if len(data) != len(head):
                 map_names = {}

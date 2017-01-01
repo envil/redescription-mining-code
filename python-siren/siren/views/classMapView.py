@@ -15,13 +15,13 @@ import matplotlib.pyplot as plt
 import scipy.spatial.distance
 #from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap
-from matplotlib.patches import Ellipse, Polygon
+from matplotlib.patches import Polygon
 
 from ..reremi.classQuery import Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 from classTDView import TDView
-from classInterObjects import MaskCreator
+
 
 import pdb
 
@@ -93,8 +93,6 @@ class MapView(TDView):
     def drawMap(self):
         """ Draws the map
         """
-        self.highl = {}
-        self.hight = {}
 
         if self.parent.dw.getCoords() is None:
             self.coords_proj = None
@@ -117,19 +115,12 @@ class MapView(TDView):
                 self.axe = self.MapfigMap.add_subplot(111,
                                                       xlim=[midlon-1.05*mside, midlon+1.05*mside],
                                                       ylim=[midlat-1.05*mside, midlat+1.05*mside])
-            self.MapcanvasMap.draw()
+            ## self.MapcanvasMap.draw()
             # self.axe = self.MapfigMap.add_axes([llon, llat, ulat-llat, ulon-llon])
 
-            self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
-
-            self.el = Ellipse((2, -1), 0.5, 0.5)
-            self.axe.add_patch(self.el)
-
-            self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
-            self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-            self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
+            self.prepareInteractive()
             self.MapcanvasMap.draw()
-            
+
             
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
@@ -162,25 +153,13 @@ class MapView(TDView):
         #return [add_boxbis, add_box]
         return [add_boxB]
 
-
-    def additionalBinds(self):
-        self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
-        for button in self.buttons:
-            button["element"].Bind(wx.EVT_BUTTON, button["function"])
-        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        ##self.sld_sel.Bind(wx.EVT_SCROLL_CHANGED, self.OnSlide)
-
-    def OnSlide(self, event):
-        self.updateMap()
-
     def makeBackground(self):   
         self.makeBasemapBack(self.bm)
     def makeFinish(self, xylims, xybs):
         self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
 
     def plotSimple(self):
-        return not self.getPickerOn() and not self.drawPoly()
+        return not self.drawPoly()
     def isReadyPlot(self):
         return self.suppABCD is not None and self.getCoords() is not None    
     def getAxisLims(self):
@@ -211,8 +190,8 @@ class MapView(TDView):
         return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
 
     def apply_mask(self, path, radius=0.0):
-        if path is not None and self.hasProjCoords():
-            return [i for i,point in enumerate(self.getPCoords()) if (path.contains_point(point, radius=radius)) and (self.suppABCD[i] != SSetts.delta)]
+        if path is not None and self.getCoords() is not None:
+            return [i for i, point in enumerate(self.getPCoords()) if (self.dots_draws["draw_dots"][i] and path.contains_point(point, radius=radius))]
         return []
 
     def mapCoords(self, coords, bm=None):
@@ -242,19 +221,14 @@ class MapView(TDView):
             mapoly = MapView.MAP_POLY
         return mapoly
 
-    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
-        if picker:
-            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
-        else:
-            args = {}
+    def drawEntity(self, idp, fc, ec, sz=1, dsetts={}):
         if self.drawPoly():
-            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True,
-                                              fc=fc, ec=ec, **args))]
+            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec))]
                     
         else:
             ## print idp, fc, ec
             x, y = self.getCoordsXY(idp)
-            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
+            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None')
 
     def getBasemapProjSetts(self):
         proj = self.proj_def 
@@ -371,8 +345,9 @@ class MapView(TDView):
 
 
     def getLidAt(self, x, y):
-        d = scipy.spatial.distance.cdist(self.coords_proj[0][:,self.hover_access,0].T, [(x,y)])
-        cands = [self.hover_access[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
+        ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
+        d = scipy.spatial.distance.cdist(self.coords_proj[0][:, ids_drawn, 0].T, [(x,y)])
+        cands = [ids_drawn[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
         i = 0
         while i < len(cands):
             path = Polygon(self.getCoordsP(cands[i]), closed=True)

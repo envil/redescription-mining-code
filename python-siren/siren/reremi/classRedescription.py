@@ -116,7 +116,7 @@ class Redescription(object):
             return Query.comparePair(self.queries[0], self.queries[1], y.queries[0], y.queries[1])
         else:
             return -Redescription.diff_score
-        
+
     def interArea(self, redB, side):
         if redB is not None:
             return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
@@ -332,8 +332,7 @@ class Redescription(object):
                                              "prs": [self.queries[0].proba(0, data, sset),
                                                      self.queries[1].proba(1, data, sset)],
                                              "rids": set(sset)}
-
-
+            
     def getNormalized(self, data=None, side=None):
         if side is not None:
             sides = [side]
@@ -589,33 +588,9 @@ class Redescription(object):
             if names[0] is not None or names[1] is not None:
                 list_fields = Redescription.print_default_fields_named
             else:
-                info_lbl = None #info_key
-            tmp = "-"
-            if info_key in Redescription.print_fields_details:
-                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
-                if info_lbl is None:
-                    info_lbl = info_name
-                try:
-                    if info_lbl in info_tmp:
-                        if type(info_round) is int:
-                            tmp = info_format % round(info_tmp[info_lbl], info_round)
-                        else:
-                            if type(info_tmp[info_lbl]) in [list, set]:
-                                tmp = info_format % (info_round.join(map(str, info_tmp[info_lbl])))
-                            else:
-                                tmp = info_format % info_tmp[info_lbl]
-                except Exception:
-                    tmp = "-"
-            if with_fname:
-                info_lbl = info_lbl+":"
-            else:
-                info_lbl = ""
-            details.append(info_lbl+tmp)
-        return details
-    formatDetails = staticmethod(formatDetails)
-    
-    def prepareQueries(self, list_fields, names=[None, None]):
-        info_tmp = {}
+                list_fields = Redescription.print_default_fields
+        info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
+        info_tmp["status_enabled"] = self.status
         for side, query_f in enumerate(Redescription.print_queries_headers):
             for style in ["", "U", "Tex"]:
                 if len(style) > 0:
@@ -627,21 +602,30 @@ class Redescription(object):
                         
                 if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
                     info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
-        return info_tmp
-    
 
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
-        if list_fields is None:
-            if names[0] is not None or names[1] is not None:
-                list_fields = Redescription.print_default_fields_named
+        details = []
+        for info_key in list_fields:
+            tmp = "-"
+            if info_key in Redescription.print_fields_details:
+                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
+                try:
+                    if info_name in info_tmp:
+                        if type(info_round) is int:
+                            tmp = info_format % round(info_tmp[info_name], info_round)
+                        else:
+                            if type(info_tmp[info_name]) in [list, set]:
+                                tmp = info_format % (info_round.join(map(str, info_tmp[info_name])))
+                            else:
+                                tmp = info_format % info_tmp[info_name]
+                except Exception:
+                    tmp = "-"
+            if with_fname:
+                info_name = info_name+":"
             else:
-                list_fields = Redescription.print_default_fields
-        info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
-        info_tmp["status_enabled"] = self.status
-        info_tmp.update(self.prepareQueries(list_fields, names))
-        details = Redescription.formatDetails(info_tmp, list_fields, with_fname)
+                info_name = ""
+            details.append(info_name+tmp)
         return sep.join(details)
-    
+
     def dispQueries(self, names=[None,None], sep='\t'):
         if names[0] is not None or names[1] is not None:
             list_fields = Redescription.print_default_fields_named

@@ -288,6 +288,8 @@ class Op(object):
                 self.val = -1
         elif nval in Op.ops:
             self.val = nval
+        elif isinstance(nval, Op):
+            self.val = nval.val
         else:
             raise Exception('Uninterpretable operator: %s !' % nval)
                 
@@ -515,6 +517,7 @@ class BoolTerm(Term):
     
 class CatTerm(Term):
     type_id = 2
+    basis_cat = "c?"
     
     def __init__(self, ncol, ncat):
         self.col = ncol
@@ -524,6 +527,8 @@ class CatTerm(Term):
         return self.cat
     
     def valRange(self):
+        if self.cat == self.basis_cat:
+            return ["#LOW#", "#HIGH#"]
         return [self.getCat(), self.getCat()]
 
     def setRange(self, cat):
@@ -933,7 +938,7 @@ class QTree(object):
 
     branchN, branchY  = (0, 1)
     
-    def __init__(self, root_id=None, branches=None, fill=False):
+    def __init__(self, root_id=None, branches=None, fill=False, broken=False):
         self.root_id = root_id
         self.tree = {root_id: {"children": [[],[]], "depth": 0}}
         self.leaves = set()
@@ -941,6 +946,7 @@ class QTree(object):
         self.Ys = None
         self.Xs = None
         self.max_depth = 0
+        self.broken = broken
         if branches is not None:
             self.build(branches)
             if fill:
@@ -959,7 +965,12 @@ class QTree(object):
     def __str__(self):
         return self.dispNode(self.root_id)
 
+    def isBroken(self):
+        return self.broken
+    
     def dispNode(self, nid):
+        if self.isBroken():
+            return "Broken Tree"
         strn = ""
         if "split" in self.tree[nid]:
             if self.supps is not None:
@@ -1342,7 +1353,7 @@ class Query(object):
         else: 
             return self.op.other()
 
-    def getBukElemAt(self, path, buk=None, i=None):
+    def getBukElemAtR(self, path, buk=None, i=None):
         if i is None:
             i = len(path)-1
         if buk is None:
@@ -1352,6 +1363,17 @@ class Query(object):
                 return buk[path[i]]
             else:
                 return self.getBukElemAt(path, buk[path[i]], i-1)
+        return None
+    def getBukElemAt(self, path, buk=None, i=None):
+        if i is None:
+            i = 0
+        if buk is None:
+            buk = self.buk
+        if type(buk) is list and path[i] < len(buk):
+            if i == len(path)-1:
+                return buk[path[i]]
+            else:
+                return self.getBukElemAt(path, buk[path[i]], i+1)
         return None
         
     def copy(self):
@@ -1479,7 +1501,60 @@ class Query(object):
     
     def invLiterals(self):
         return set(recurse_list(self.buk, function =lambda term: term))
+
+    def replace(self, depth_ind, replacement):
+        if len(depth_ind) == 0:
+            return replacement
+        inr = depth_ind.pop()
+        src = self.buk
+        for i in depth_ind:
+            src = src[i]
+        tmp = [l for l in src]
+        if replacement is None or (type(replacement) is list and len(replacement) == 0):
+            tmp.pop(inr)
+        else:
+            tmp[inr] = replacement
+        return self.replace(depth_ind, tmp)
+
+    def minusOneRec(self, depth_ind, current_el):
+        results = []
+        if type(current_el) is list:
+            for ni,next_el in enumerate(current_el):
+                results.extend(self.minusOneRec(depth_ind+[ni], next_el))
+        elif isinstance(current_el, Literal):
+            qq = Query(self.op.isOr(), self.replace(list(depth_ind), None))
+            qq.unfold()
+            results.append((tuple(depth_ind), qq))
+        return results
     
+    def minusOneLiteral(self):
+        return self.minusOneRec([], self.buk)
+
+    def unfoldRec(self, buk):
+        if isinstance(buk, Literal):
+            return buk, False
+        tmp = []
+        for bi, bb in enumerate(buk):
+            tpb, fl = self.unfoldRec(bb)
+            if fl:
+                tmp.extend(tpb)
+            else:
+                tmp.append(tpb)
+        if type(tmp) is list and len(tmp) == 1:
+            return tmp[0], not isinstance(tmp[0], Literal)
+        return tmp, False
+
+    def unfold(self):
+        new_buk, opflip = self.unfoldRec(self.buk)
+        if isinstance(new_buk, Literal):
+            self.buk = [new_buk]
+        else:
+            self.buk = new_buk 
+        if len(self.buk) < 2:
+            self.op = Op()
+        elif opflip:
+            self.op.flip()
+        
     def makeIndexesNew(self, format_str):
         if len(self) == 0:
             return ""
@@ -1501,6 +1576,7 @@ class Query(object):
                (len(self.buk) == 1 and isinstance(self.buk[0], Literal)) 
             
     def toTree(self, fill=False):
+        broken = False
         branches = []
         if self.max_depth() == 2 and self.op.isOr():
             for buk in self.buk:
@@ -1516,9 +1592,10 @@ class Query(object):
             branches.append(list(self.buk))
         else:
             print "Not a tree form!", self.disp(), self.buk
+            broken = True
             #raise Warning("Not tree form!")
 
-        return QTree(branches=branches, fill=True)
+        return QTree(branches=branches, fill=True, broken=broken)
 
     
     ## return the truth value associated to a configuration
@@ -1672,9 +1749,9 @@ class Query(object):
                             key = l.getTerm()
                             cpm = False 
                             lits[key] = []
-                    lits[key].append((tuple([bi]+path), cpm, not l.isNeg()))
+                    lits[key].append((tuple(path+[bi]), cpm, not l.isNeg()))
                 elif not isinstance(l, Neg):
-                    evl(l, lits, [bi]+path)
+                    evl(l, lits, path+[bi])
         lits = {}
         path = []
         if len(self) > 0:

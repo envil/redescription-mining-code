@@ -9,18 +9,11 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib.patches import Polygon
-from matplotlib.path import Path
-
 from classBasisView import BasisView
 
 from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-
-### updateHist moved to CtrlTable
 
 import pdb
 
@@ -69,7 +62,33 @@ class GView(BasisView):
         self.initVars(parent, vid, more)
         self.queries = [Query(), Query()]
         self.initView()
+        self.dots_draws = None
         self.suppABCD = None
+
+    def prepareEntitiesDots(self):
+        draw_settings = self.getDrawSettings()
+
+        vec = numpy.array(self.suppABCD)
+        u, indices = numpy.unique(vec, return_inverse=True)
+
+        fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
+        fc_dots = fc_clusts[indices]
+        ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
+        ec_dots = ec_clusts[indices]
+        lc_clusts = numpy.array([draw_settings[i]["color_l"] for i in u])
+        lc_dots = lc_clusts[indices]
+            
+        delta_dots = vec==SSetts.delta
+        
+        sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
+        sz_dots[~ delta_dots] *= 0.5
+
+        if self.getDeltaOn():
+            draw_dots = numpy.ones(vec.shape, dtype=bool)
+        else:
+            draw_dots = ~ delta_dots
+            
+        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots, "sz_dots": sz_dots, "draw_dots": draw_dots}
 
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
@@ -97,8 +116,8 @@ class GView(BasisView):
 
         for setk, setl, setp in self.map_select_supp:
             self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "(De)select "+setl,
-                                             "legend": "(De)select dots in "+setl, "more": setp, "type": "main",
-                                             "order":2, "active_q":self.q_true}
+                                                 "legend": "(De)select dots in "+setl, "more": setp, "type": "main",
+                                                 "order":2, "active_q":self.q_not_svar}
 
         if self.mc is not None:
             self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select &polygon",
@@ -143,9 +162,6 @@ class GView(BasisView):
         self.MapredMapQ[0].SetMinSize((1*figsize[0], -1))
         self.MapredMapQ[1].SetMinSize((1*figsize[0], -1))
 
-    def wasKilled(self):
-        return self.MapcanvasMap is None
-        
     def OnEditQuery(self, event):
         if event.GetId() in self.QIds:
             side = self.QIds.index(event.GetId())
@@ -184,7 +200,6 @@ class GView(BasisView):
             self.updateText(red)
             self.makeMenu()
             self.sendEditBack(red)
-            ## self.updateHist(red)
             self.updateMap()
         else: ### wrongly formatted query or not edits, revert
             for side in [0,1]:
@@ -204,10 +219,8 @@ class GView(BasisView):
             red.setRestrictedSupp(self.parent.dw.getData())
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
-            self.lastStepInit()
             self.updateMap()
             self.makeMenu()
-            ## self.updateHist(red, init=True)
             return red
         
     def isSingleVar(self):
@@ -217,11 +230,8 @@ class GView(BasisView):
     def getQCols(self):
         return [(0,c) for c in self.queries[0].invCols()]+[(1,c) for c in self.queries[1].invCols()]
     
-    def getValVector(self, side, c):
-        return self.parent.dw.getData().col(side, c).getVector()
-
-    def getLitTypeId(self, side, c):
-        return self.parent.dw.getData().col(side, c).typeId()
+    def getCol(self, side, c):
+        return self.parent.dw.getData().col(side, c)
         
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
@@ -240,7 +250,7 @@ class GView(BasisView):
                            wx.TextCtrl(self.panel, self.QIds[1], style=wx.TE_PROCESS_ENTER)]
         # self.MapredMapQ = [wx.TextCtrl(self.mapFrame, self.QIds[0]),
         #                    wx.TextCtrl(self.mapFrame, self.QIds[1])]
-        colors = self.getColors()
+        colors = self.getColors255()
         self.MapredMapQ[0].SetForegroundColour(colors[0])
         self.MapredMapQ[1].SetForegroundColour(colors[1])
 
@@ -301,71 +311,95 @@ class GView(BasisView):
             else:
                 self.info_items[det["id"]][1].SetLabel("XX")
 
-
-    def drawEntity(self, idp, fc, ec, sz, dsetts, picker=False):
-        if picker:
-            args = {"picker": sz, "gid": "%d.%d" % (idp, 1)}
-        else:
-            args = {}
-        x, y = self.getCoordsXY(idp)
-        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', **args)
-
-    def drawAnnotation(self, idp, xy, ec, tag):
-        return self.axe.annotate(tag, xy=xy,
-                                xycoords='data', xytext=(-10, 15), textcoords='offset points',
-                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
-                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
-                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
-                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))
-    
-    def emphasizeOn(self, lids,  colhigh='#FFFF00'):
-        draw_settings = self.getDrawSettings()
-        dsetts = draw_settings["default"]
-        pick = self.getPickerOn()
-        if len(self.dots_draws) == 0:
-            return
-
-        for lid in lids:
-            if lid in self.highl:
-                continue
-
-            self.highl[lid] = []
-            self.highl[lid].extend(self.drawEntity(lid, colhigh, self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), dsetts))
-
-            if len(lids) <= self.max_emphlbl and not lid in self.hight:
-                tag = self.parent.dw.getData().getRName(lid)
-                self.hight[lid] = []
-                self.hight[lid].append(self.drawAnnotation(lid, self.getCoordsXY(lid), self.getPlotColor(lid, "ec"), tag))
-        
-    def emphasizeOff(self, lids = None):
-        if lids is None:
-            lids = self.highl.keys()
-        for lid in lids:
-            if lid in self.hight:
-                while len(self.hight[lid]) > 0:
-                    t = self.hight[lid].pop()
-                    if t in self.axe.texts:
-                        self.axe.texts.remove(t)
-                del self.hight[lid]
-
-            if lid in self.highl:
-                while len(self.highl[lid]) > 0:
-                    t = self.highl[lid].pop()
-                    if isinstance(t, Line2D) and t in self.axe.lines:
-                        self.axe.lines.remove(t)
-                    elif isinstance(t, Polygon) and t in self.axe.patches:
-                        self.axe.patches.remove(t)
-                del self.highl[lid]
-
- 
-    def do_set_select(self, setp):
-        points = [i for (i,p) in enumerate(self.suppABCD) if p in setp]
-            
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:
             points = numpy.transpose((self.getCoords(0), self.getCoords(1)))
             return [i for i,point in enumerate(points) if path.contains_point(point, radius=radius)]
         return []
+                
+    def do_deselect_all(self, more=None):
+        self.sendEmphasize(None)
 
+    def do_set_select(self, setp):
+        points = [i for (i,p) in enumerate(self.suppABCD) if p in setp]
+        self.sendEmphasize(points)
+                
+    def do_select_poly(self, more=None):
+        points = self.apply_mask(self.mc.get_path())
+        self.mc.clear()
+        if points != set():
+            self.sendEmphasize(points)
+
+    def do_flip_emphasized(self, more=None):
+        self.sendFlipEmphasizedR()
+
+    
+    def getPlotColor(self, idp, prop):
+        return tuple(self.dots_draws[prop+"_dots"][idp])
+    def getPlotProp(self, idp, prop):
+        return self.dots_draws[prop+"_dots"][idp]
+    
+    def hasDotsReady(self):
+        return self.dots_draws is not None
+    
     def getCoords(axi=None, ids=None):
         return None
+    def getCoordsXY(self, id):
+        return (0,0)
+    def getCoordsXYA(self, id):
+        return self.getCoordsXY(id)
+
+    def getAnnXY(self):
+        return self.ann_xy
+
+    def drawEntity(self, idp, fc, ec, sz, dsetts={}):
+        x, y = self.getCoordsXY(idp)
+        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=4)
+    
+    def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+        return [self.axe.annotate(tag, xy=xy,
+                                xycoords='data', xytext=xytext, textcoords='offset points',
+                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
+                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
+                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
+                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))]
+    
+    def emphasizeOn(self, lids, hover=False):
+        dsetts = self.getDrawSettDef()
+        if not self.hasDotsReady():
+            return
+
+        hgs = {}
+        for lid in self.needingHighlight(lids):
+            hg = self.drawEntity(lid, self.getColorHigh(), self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), dsetts)
+            if lid not in hgs:
+                hgs[lid] = []
+            hgs[lid].extend(hg)
+            
+        for lid in self.needingHighLbl(lids):
+            tag = self.parent.dw.getData().getRName(lid)
+            hg = self.drawAnnotation(self.getCoordsXYA(lid), self.getPlotColor(lid, "ec"), tag, self.getAnnXY())
+            if lid not in hgs:
+                hgs[lid] = []
+            hgs[lid].extend(hg)
+
+        self.addHighlighted(hgs, hover)
+
+            
+    def inCapture(self, event):
+        return event.inaxes == self.axe and numpy.abs(numpy.around(event.xdata) - event.xdata) < self.flat_space \
+          and event.ydata >= self.missing_yy-.1 and event.ydata <= 1
+
+    def on_motion(self, event):
+        if self.hoverActive() and self.inCapture(event):
+            lid = self.getLidAt(event.xdata, event.ydata)
+            if lid is None:
+                self.emphasizeOnOff(turn_off=None, hover=True, review=True)
+            elif not self.isHovered(lid):
+                self.emphasizeOnOff(turn_on=[lid], turn_off=None, hover=True, review=True)
+                
+    def on_click(self, event):
+        if self.clickActive() and self.inCapture(event):
+            lid = self.getLidAt(event.xdata, event.ydata)
+            if lid is not None:
+                self.sendEmphasize([lid])        

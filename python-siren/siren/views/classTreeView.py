@@ -11,18 +11,8 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 
-import matplotlib.pyplot as plt
-import scipy.spatial.distance
-import scipy.cluster
-from matplotlib.patches import Ellipse
-from matplotlib.lines import Line2D
-from matplotlib.patches import Polygon
-
-import itertools
-
-from ..reremi.classQuery import Query, Literal, QTree
+from ..reremi.classQuery import QTree
 from ..reremi.classRedescription import Redescription
-from ..reremi.classData import BoolColM, CatColM, NumColM
 from classGView import GView
 
 import pdb
@@ -44,6 +34,8 @@ class TreeView(GView):
     margins_tb = 0.1
     margin_hov = min_space/2.
     missing_yy = -1./6
+
+    ann_xy = (10,0)
     
     @classmethod
     def suitableView(tcl, geo=False, what=None, tabT=None):
@@ -70,11 +62,10 @@ class TreeView(GView):
             self.queries = queries
             ## red.setRestrictedSupp(self.parent.dw.getData())
             ## self.suppABCD = red.supports().getVectorABCD()
-            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
+            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
             self.current_r = red
             self.updateText(red)
             self.updateMap()
-            ## self.updateHist(red, init=True)
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
@@ -106,13 +97,12 @@ class TreeView(GView):
         if red is not None:
             # red.setRestrictedSupp(self.parent.dw.getData())
             # self.suppABCD = red.supports().getVectorABCD()
-            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD()
+            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
             self.current_r = red
             if upAll:
                 self.updateText(red)
                 self.makeMenu()
                 self.sendEditBack(red)
-                ## self.updateHist(red)
             self.updateMap(update_trees)
             return red
         else: ### wrongly formatted query, revert
@@ -120,29 +110,12 @@ class TreeView(GView):
                 self.updateQueryText(self.queries[side], side)
         return None
         
-    def drawMap(self):
-        """ Draws the map
-        """
-        self.highl = {}
-        self.hight = {}
+    def getCanvasConnections(self):
+        return [('pick_event', self.OnPick),
+                ('button_release_event', self.on_click),
+                ('motion_notify_event', self.on_motion)]
 
-        if not hasattr( self, 'axe' ):
-            self.axe = self.MapfigMap.add_subplot( 111 )
-            # rect = 0.01,0.01,0.98,0.98
-            # self.axe = self.MapfigMap.add_axes(rect)
-            # self.axe.set_frame_on(False)
-
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-        self.axe.add_patch(self.el)
-
-        # self.MapcanvasMap.Bind(wx.EVT_LEFT_DCLICK, self.OnDoubleMouse) 
-        self.MapfigMap.canvas.mpl_connect('pick_event', self.OnPick)
-        # self.MapfigMap.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        # self.MapfigMap.canvas.mpl_connect('button_press_event', self.on_press)
-        self.MapfigMap.canvas.mpl_connect('button_release_event', self.on_click)
-        self.MapfigMap.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        self.MapcanvasMap.draw()
-
+        
     def plotTrees(self, trees):
         draw_settings = self.getDrawSettings()
         self.plotTreesT(trees, draw_settings)
@@ -183,7 +156,6 @@ class TreeView(GView):
         pmap = dict([(v,i) for (i,v) in enumerate(order_parts)])
         ## nbrows = numpy.sum(lparts)
         nbrows = self.parent.dw.getData().nbRows()
-        nbtot = .05*nbrows
         nbparts = len(lparts)
         for side in [0,1]:
             for k in trees[side].getLeaves():
@@ -248,7 +220,7 @@ class TreeView(GView):
                 self.axe.fill((0, ff, b, ff, 0, 0),
                               (pos[pi][0], pos[pi][0], keys[point-1][-1],
                                pos[pi][1], pos[pi][1], pos[pi][0]),
-                              color=draw_settings[part]["color_l"]) #, linewidth=nb/nbtot)
+                               color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
                 tmp_store_pos.append((b, keys[point-1][-1]))
             for side, hS in enumerate(hasBSides):
                 if not hS:
@@ -275,7 +247,6 @@ class TreeView(GView):
         
     def plotTree(self, side, tree, node, ds=None):
         
-        align = {0: 'left', 1: "right"}
         color_dot = {0: ds[0]["color_l"], 1: ds[1]["color_l"]}
         line_style = {QTree.branchY: "-", QTree.branchN: "--"}
         # rsym = {0: ">", 1: "<"}
@@ -319,22 +290,30 @@ class TreeView(GView):
                                   bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
                                   )
                 # self.axe.text(Xs[tree[node]["depth"]], Ys[node]-0.05, "%s" % (supps[node]), horizontalalignment='center')
-
+                
+    def okTrees(self):
+        return self.trees is not None \
+          and self.trees[0] is not None and self.trees[1] is not None \
+          and not self.trees[0].isBroken() and not self.trees[1].isBroken()
+                
 
     def updateMap(self, update_trees=True):
         """ Redraws the map
         """
 
         if self.current_r is not None:
-
-            self.highl = {}
-            self.hight = {}
             
             red = self.current_r
             if update_trees:
                 self.trees = [red.queries[0].toTree(), red.queries[1].toTree()]
+
+            for butt in self.buttons:
+                if not self.okTrees():
+                    butt["element"].Disable()
+                else:
+                    butt["element"].Enable()
                     
-            if self.trees[0] is not None and self.trees[1] is not None:
+            if self.okTrees():
                 ## rsupp = red.supports().parts4M()
                 rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
                 for side in [0,1]:
@@ -342,8 +321,9 @@ class TreeView(GView):
                     if update_trees:
                         self.trees[side].positionTree(side, all_width=self.all_width, height_inter=self.height_inter)
 
-                self.axe.cla()
-                    
+                self.clearPlot()
+
+                self.dots_draws = self.prepareEntitiesDots()     
                 # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
                 # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
 
@@ -361,7 +341,9 @@ class TreeView(GView):
 
                 self.MapcanvasMap.draw()
                 self.MapfigMap.canvas.SetFocus()
-
+            else:
+                self.plot_void()
+                
     def hasMissingPoints(self):
         return self.hasMissingPoint(0) or self.hasMissingPoint(1)
 
@@ -371,7 +353,6 @@ class TreeView(GView):
         return self.store_supp["has_miss_points"][side]
 
     def additionalElements(self):
-        t = self.parent.dw.getPreferences()
         
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
@@ -384,7 +365,6 @@ class TreeView(GView):
                              "function": self.OnSimplifyRHS}])
         for i in range(len(self.buttons)):
             self.buttons[i]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
         add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
@@ -402,24 +382,27 @@ class TreeView(GView):
         return [add_boxB]
 
 
-    def sendOtherPick(self, gid_parts):
-        if gid_parts[-1] == "T":
-            pp = gid_parts[0].split(":")
-            if len(pp) == 3:
-                side, node, onoff = map(int, pp)
-                if self.trees[side] is not None and self.trees[side].hasNode(node):
-                    if onoff == -1:
-                        self.removeBranchQ(side, node)
-                    else:
-                        self.addBranchQ(side, node)
-        elif gid_parts[-1] == "S":
-            self.simplify(int(gid_parts[0]))
+    def OnPick(self, event):
+        if event.mouseevent.button in self.act_butt:
+            gid_parts = event.artist.get_gid().split(".")
+    #def sendOtherPick(self, gid_parts):
+            if gid_parts[-1] == "T":
+                pp = gid_parts[0].split(":")
+                if len(pp) == 3:
+                    side, node, onoff = map(int, pp)
+                    if self.trees[side] is not None and self.trees[side].hasNode(node):
+                        if onoff == -1:
+                            self.removeBranchQ(side, node)
+                        else:
+                            self.addBranchQ(side, node)
+            elif gid_parts[-1] == "S":
+                self.simplify(int(gid_parts[0]))
 
     def removeBranchQ(self, side, node):
         if self.trees[side].isLeafInNode(node):
             bidd = self.trees[side].getNodeLeaf(node)
             qu = self.queries[side].copy()
-            bd = qu.buk.pop(bidd)                        
+            qu.buk.pop(bidd)                        
             if qu != self.queries[side]:
                 for n in self.trees[side].getLeaves():
                     if self.trees[side].getNodeLeaf(n) > bidd:
@@ -438,73 +421,57 @@ class TreeView(GView):
 
 
     def OnSimplifyLHS(self, event):
-        self.simplify(0)
+        if self.okTrees():
+            self.simplify(0)
     def OnSimplifyRHS(self, event):
-        self.simplify(1)
+        if self.okTrees():
+            self.simplify(1)
     def simplify(self, side):
         qu = self.trees[side].getSimpleQuery()
         self.updateQuery(side, query=qu, force=True)
 
+    def getCoordsXY(self, idp):
+        return []            
+    def getCoordsXYA(self, idp):
+        v = self.store_supp["mat"][idp]
+        pi = numpy.where(self.store_supp["parts"][idp,:])[0][0]
+        pl = numpy.sum(self.store_supp["parts"][:idp,pi]*(self.store_supp["mat"][:idp]==v))
+        _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
+        bott, top = ppos[0]
+        center = bott + (top-bott)*pl/float(nb)
 
-    def emphasizeOn(self, lids):
-        draw_settings = self.getDrawSettings()
-        for lid in lids:
-            if lid in self.highl:
-                continue
+        return (self.all_width+self.margins_sides, center)
+    
+    def drawEntity(self, idp, fc, ec, sz=1, dsetts={}):
+        v = self.store_supp["mat"][idp]
+        pi = numpy.where(self.store_supp["parts"][idp,:])[0][0]
+        pl = numpy.sum(self.store_supp["parts"][:idp,pi]*(self.store_supp["mat"][:idp]==v))
+        _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
+        bott, top = ppos[0]
+        center = bott + (top-bott)*pl/float(nb)
 
-            v = self.store_supp["mat"][lid]
-            pi = numpy.where(self.store_supp["parts"][lid,:])[0][0]
-            pl = numpy.sum(self.store_supp["parts"][:lid,pi]*(self.store_supp["mat"][:lid]==v))
-            _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
-            bott, top = ppos[0]
-            center = bott + (top-bott)*pl/float(nb)
-            self.highl[lid] = []
-            for l in ppos[1:]:
-                ff = numpy.sign(l[0])*self.flat_space
-                self.highl[lid].extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=draw_settings["colhigh"], linewidth=1, picker=2, gid="%d.%d" % (lid, 1), zorder=5))
+        lines = []
+        for l in ppos[1:]:
+            ff = numpy.sign(l[0])*self.flat_space
+            lines.extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=fc, linewidth=1, zorder=5))
+        return lines
 
+    def hasDotsReady(self):
+        return self.store_supp is not None
 
+    
+    def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+        lines = []
+        lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=ec, linewidth=1, alpha=0.5))
+        lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=self.getColorHigh(), linewidth=1, alpha=0.3))
+        
+        lines.append(GView.drawAnnotation(self, xy, ec, tag, xytext))
+        return lines
 
-            if len(lids) <= self.max_emphlbl and not lid in self.hight:
-                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings[pi]["color_l"], linewidth=1, alpha=0.5))
-                self.highl[lid].extend(self.axe.plot((self.flat_space, self.all_width+self.margins_sides), (center, center), color=draw_settings["colhigh"], linewidth=1, alpha=0.3, picker=2, gid="%d.%d" % (lid, 1)))
-                tag = self.parent.dw.getData().getRName(lid)
-                self.hight[lid] = []
-                self.hight[lid].append(self.axe.annotate(tag, xy=(self.all_width+self.margins_sides, center),
-                                                         xycoords='data', xytext=(10, 0), textcoords='offset points',
-                                                         color= draw_settings[pi]["color_l"], size=10,
-                                                         va="center", backgroundcolor="#FFFFFF",
-                                                         bbox=dict(boxstyle="round", facecolor="#FFFFFF",
-                                                                   ec=draw_settings[pi]["color_l"]),
-                                                         arrowprops=dict(arrowstyle="wedge,tail_width=1.",
-                                                                         fc="#FFFFFF", ec=draw_settings[pi]["color_l"],
-                                                                         patchA=None, patchB=self.el, relpos=(0.2, 0.5))
-                                                         ))
-
-    def on_click(self, event):
-        if event.inaxes != self.axe: return
-        if numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
-            lid = self.getLidAt(event.ydata)
-            if lid is not None: 
-                self.sendEmphasize([lid])
-                self.current_hover = None
-
-    def on_motion(self, event):
-        lid = None
-        if self.hoverActive() and event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]:
-            lid = self.getLidAt(event.ydata)
-            if lid is not None and lid != self.current_hover:
-                if self.current_hover is not None:
-                    emph_off = set([self.current_hover])
-                else:
-                    emph_off = set()
-                self.emphasizeOnOff(turn_on=set([lid]), turn_off=emph_off, review=True)
-                self.current_hover = lid
-        if lid is None and lid != self.current_hover:
-            self.emphasizeOnOff(turn_on=set(), turn_off=set([self.current_hover]), review=True)
-            self.current_hover = None
-
-    def getLidAt(self, y):
+    def inCapture(self, event):
+        return self.okTrees() and event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]
+               
+    def getLidAt(self, x, y):
         pp, rp = self.getRPPoint(y)
         if pp is not None:
             # print "LID", self.store_supp["lids"][pp][rp], pp, rp, len(self.store_supp["lids"][pp])

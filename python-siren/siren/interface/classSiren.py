@@ -141,15 +141,15 @@ class Siren():
                     #  "short": "RHS", "type":"v", "hide":False, "style":None},
         
         tmp_tabs = [{"id": self.getDefaultTabId("e"), "title":"Entities",
-                     "short": "Ent", "type":"e", "hide":False, "style":None},
+                     "short": "Ent", "type":"e", "style":None},
                     {"id": self.getDefaultTabId("v"), "title":"Variables",
-                     "short": "Vars", "type":"v", "hide":False, "style":None},
+                     "short": "Vars", "type":"v", "style":None},
                     {"id": self.getDefaultTabId("r"), "title":"Redescriptions",
-                     "short": "Reds", "type":"r", "hide":False, "style":None},
+                     "short": "Reds", "type":"r", "style":None},
                     {"id": self.getDefaultTabId("z"), "title":"Visualizations",
-                     "short": "Viz", "type":"z", "hide": False, "style":None},
+                     "short": "Viz", "type":"z", "style":None},
                     {"id": self.getDefaultTabId("t"), "title":"Log",
-                     "short": "Log", "type":"t", "hide": False, "style": wx.TE_READONLY|wx.TE_MULTILINE},
+                     "short": "Log", "type":"t", "style": wx.TE_READONLY|wx.TE_MULTILINE},
             ]
         
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
@@ -304,33 +304,23 @@ class Siren():
         for tab_id in tmp_keys:
             if self.tabs[tab_id]["type"] == "r":
                 self.tabs[tab_id]["tab"] = RedsManager(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSW(), self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "v":
                 self.tabs[tab_id]["tab"] = VarsManager(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].getSW(), self.tabs[tab_id]["title"])
 
             # elif self.tabs[tab_id]["type"] == "v":
             #     self.tabs[tab_id]["tab"] = VarTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
-            #     if self.tabs[tab_id]["hide"]:
-            #         self.tabs[tab_id]["tab"].grid.Hide()
             #     self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "e":
                 self.tabs[tab_id]["tab"] = RowTable(self, tab_id, self.tabbed, self.tabs[tab_id]["short"])
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].grid.Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"].grid, self.tabs[tab_id]["title"])
 
             elif self.tabs[tab_id]["type"] == "t":
                 self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
                 self.tabs[tab_id]["text"] = wx.TextCtrl(self.tabs[tab_id]["tab"], size=(-1,-1), style=self.tabs[tab_id]["style"])
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
                 boxS = wx.BoxSizer(wx.VERTICAL)
                 boxS.Add(self.tabs[tab_id]["text"], 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
@@ -340,11 +330,9 @@ class Siren():
                 self.vizm = VizManager(self, tab_id, self.tabbed, self.tabs[tab_id]["title"]) 
                 #self.tabs[tab_id]["tab"] = wx.Panel(self.tabbed, -1)
                 self.tabs[tab_id]["tab"] = self.vizm.getSW()
-                if self.tabs[tab_id]["hide"]:
-                    self.tabs[tab_id]["tab"].Hide()
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
 
-        self.tabbed.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)        
+        self.tabbed.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         ### splitter
         if self.hasSplit():
             self.splitter.Initialize(self.tabbed)
@@ -547,6 +535,10 @@ class Siren():
                 m_filter_all = menuRed.Append(ID_FILTER_ALL, "Filter red&undant all\tShift+Ctrl+R", "Disable redescriptions redundant to previous encountered.")
                 frame.Bind(wx.EVT_MENU, self.OnFilterAll, m_filter_all)
 
+                ID_FILTER_FLD = wx.NewId()
+                m_filter_fld = menuRed.Append(ID_FILTER_FLD, "Filter on folds cover", "Disable redescriptions that do not adequately cover several folds.")
+                frame.Bind(wx.EVT_MENU, self.OnFilterFolds, m_filter_fld)
+
                 ID_PROCESS = wx.NewId()
                 m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
                 frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
@@ -566,28 +558,24 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
 
         if menuRed.GetMenuItemCount() == 0:
-            ID_NOR = wx.NewId()
-            m_nor = menuRed.Append(ID_NOR, "No items", "There are no items to edit.")
-            menuRed.Enable(ID_NOR, False)
+            self.appendEmptyMenuEntry(menuRed, "No items", "There are no items to edit.")
 
         return menuRed
 
-
     def makeVizMenu(self, frame, menuViz=None):
-        popp = True
         if menuViz is None:
             countIts = 0
             menuViz = wx.Menu()
             
             #### not for popup menu
             if self.getVizm() is not None and self.getVizm().hasVizIntab():
-                popp = False
                 ID_CHECK = wx.NewId()
-                m_check = menuViz.AppendCheckItem(ID_CHECK, "Plot in tab", "Plot inside visualization tab.")
-                frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
-                if self.getVizm().intab:
+                m_check = menuViz.AppendCheckItem(ID_CHECK, "Plots in external windows", "Plot in external windows rather than the visualization tab.")
+                if not self.getVizm().showVizIntab():
                     m_check.Check()
-        # else:
+                frame.Bind(wx.EVT_MENU, self.OnVizCheck, m_check)
+                menuViz.AppendSeparator()
+
         countIts = menuViz.GetMenuItemCount()
             
         queries = None
@@ -598,7 +586,7 @@ class Siren():
             for item in self.viewsm.getViewsItems("R", "r", what=queries):
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                          "Plot %s in new window." % item["title"])
+                                          "Plot %s." % item["title"])
                 if not item["suitable"]:
                     m_newv.Enable(False)
                 frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
@@ -608,16 +596,25 @@ class Siren():
             for item in self.viewsm.getViewsItems("L", "r"):
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                          "Plot %s in new window." % item["title"])
+                                          "Plot %s." % item["title"])
                 if not item["suitable"]:
                     m_newv.Enable(False)
                 frame.Bind(wx.EVT_MENU, self.OnNewVList, m_newv)
                 self.ids_viewT[ID_NEWV] = item["viewT"]
 
+        if ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() > 1 ):
+            for item in self.viewsm.getViewsItems("L", "r"):
+                ID_NEWV = wx.NewId()
+                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
+                                          "Plot %s." % item["title"])
+                if not item["suitable"]:
+                    m_newv.Enable(False)
+                frame.Bind(wx.EVT_MENU, self.OnNewVItems, m_newv)
+                self.ids_viewT[ID_NEWV] = item["viewT"]
+
+                
         if menuViz.GetMenuItemCount() == countIts:
-            ID_NOR = wx.NewId()
-            m_nor = menuViz.Append(ID_NOR, "No visualization", "There are no visualizations.")
-            menuViz.Enable(ID_NOR, False)
+            self.appendEmptyMenuEntry(menuViz, "No visualization", "There are no visualizations.")
 
         return menuViz
 
@@ -663,8 +660,11 @@ class Siren():
         if menuViews is None:
             menuViews = wx.Menu()
 
-        menuViews.AppendMenu(wx.NewId(), "&Tabs",self.makeTabsMenu(frame))
-        
+        menuViews.AppendMenu(wx.NewId(), "&Tabs", self.makeTabsMenu(frame))
+        # self.makeTabsMenu(frame, menuViews)
+        # if menuViews.GetMenuItemCount() > 0:
+        #     menuViews.AppendSeparator()
+
         self.viewsm.makeViewsMenu(frame, menuViews) 
         return menuViews
 
@@ -676,12 +676,7 @@ class Siren():
             tab_prop = self.tabs[tab_id]
             ID_CHECK = wx.NewId()
             self.check_tab[ID_CHECK] = tab_id 
-            if self.sysTLin():
-                m_check = menuTabs.AppendCheckItem(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
-                if tab_prop["hide"] == False:
-                    m_check.Check()
-            else:
-                m_check = menuTabs.Append(ID_CHECK, "%s" % tab_prop["title"], "Show %s." % tab_prop["title"])
+            m_check = menuTabs.Append(ID_CHECK, "%s" % tab_prop["title"], "Switch to %s tab." % tab_prop["title"])
             frame.Bind(wx.EVT_MENU, self.OnTabW, m_check)
         return menuTabs
 
@@ -800,6 +795,16 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnLicense, m_license)
         return menuHelp
 
+
+    def appendEmptyMenuEntry(self, menu, entry_text, entry_leg=""):
+        ID_NOR = wx.NewId()
+        menu.Append(ID_NOR, entry_text, entry_leg)
+        menu.Enable(ID_NOR, False)
+    def makeMenuEmpty(self, menu_action):
+        menuEmpty = wx.Menu()
+        self.appendEmptyMenuEntry(menuEmpty, "Nothing to %s" % menu_action, "Nothing to %s." % menu_action)
+        return menuEmpty
+        
     def makeMenu(self, frame):
         menuBar = wx.MenuBar()
         menuBar.Append(self.makeFileMenu(frame), "&File")
@@ -807,8 +812,12 @@ class Siren():
             menuBar.Append(self.makeRedMenuEV(frame), "&Edit")
         elif self.matchTabType("r"):
             menuBar.Append(self.makeRedMenuR(frame), "&Edit")
-        if self.matchTabType("evr"):
-            menuBar.Append(self.makeVizMenu(frame), "&View")
+        else:
+            menuBar.Append(self.makeMenuEmpty("edit"), "&Edit")
+        ## if self.matchTabType("evr"):
+        menuBar.Append(self.makeVizMenu(frame), "&View")
+        ## else:
+        ##     menuBar.Append(self.makeMenuEmpty("visualize"), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
         menuBar.Append(self.makeViewsMenu(frame), "&Windows")
         menuBar.Append(self.makeHelpMenu(frame), "&Help")
@@ -832,9 +841,11 @@ class Siren():
 
     def OnSplitchange(self, event):
         if self.hasSplit():
-            if event.GetEventType() == 10022 or event.GetEventType() == 10029 or \
-                   event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId():
-                self.getVizm().OnSplitchange()
+            ## if event.GetEventType() == 10022 or event.GetEventType() == 10029 or \
+            ##        event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId():
+            if type(event) == wx.MouseEvent or \
+               ( type(event) == wx.SplitterEvent and event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId()):
+                 self.getVizm().OnSplitchange()
 
     def OnReload(self, event):
         ViewFactory.reloadCode()
@@ -1145,12 +1156,16 @@ class Siren():
         return self.tabbed.GetSelection()
 
     def changePage(self, tabn):
-        if tabn in self.tabs and not self.tabs[tabn]["hide"]:
-            self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))
+        if tabn in self.tabs: # and not self.tabs[tabn]["hide"]:
+            self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))            
             self.OnPageChanged(-1)
 
     def OnPageChanged(self, event):
         self.quitFind()
+        if not self.sysTLin() and type(event) == wx.BookCtrlEvent:
+            self.tabbed.ChangeSelection(event.GetSelection())
+            ## self.selectedTab["tab"].Show()
+        
         tsel = self.tabbed.GetSelection()
         if tsel >= 0 and tsel < len(self.tabs_keys): 
             self.selectedTab = self.tabs[self.tabs_keys[tsel]]
@@ -1161,6 +1176,9 @@ class Siren():
     def OnNewVList(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].viewListData(viewT=self.ids_viewT[event.GetId()])
+    def OnNewVItems(self, event):
+        if self.matchTabType("r"):
+            self.selectedTab["tab"].viewListData(lid=-1, viewT=self.ids_viewT[event.GetId()])
 
     def OnNewV(self, event):
         if self.matchTabType("evr"):
@@ -1199,6 +1217,12 @@ class Siren():
     def OnFilterAll(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].filterAll(self.constraints.parameters_filterredundant())
+
+    def OnFilterFolds(self, event):
+        if self.matchTabType("r"):
+            self.constraints.setFolds(self.dw.getData())
+            self.selectedTab["tab"].processAll(self.constraints.actions_folds(), True)
+            ## self.selectedTab["tab"].filterAll(self.constraints.parameters_filterredundant())
 
     def OnProcessAll(self, event):
         if self.matchTabType("r"):
@@ -1271,28 +1295,28 @@ class Siren():
         self.viewsm.recomputeAll()
 
     def OnVizCheck(self, event):
-        self.getVizm().setVizCheck(event.IsChecked())
+        self.getVizm().setVizCheck(not event.IsChecked())
             
     def OnTabW(self, event):
         if event.GetId() in self.check_tab:
             tab_id = self.check_tab[event.GetId()]
-            if self.toolFrame.FindFocus() is not None and self.toolFrame.FindFocus().GetGrandParent() is not None \
-                   and self.toolFrame.FindFocus().GetGrandParent().GetParent() == self.toolFrame:
-                if self.sysTLin():
-                    if not event.IsChecked():
-                        self.hideTab(tab_id)
-                        return
-            else: self.toTop()
+            # if self.toolFrame.FindFocus() is not None and self.toolFrame.FindFocus().GetGrandParent() is not None \
+            #        and self.toolFrame.FindFocus().GetGrandParent().GetParent() == self.toolFrame:
+            #     if self.sysTLin():
+            #         if not event.IsChecked():
+            #             self.hideTab(tab_id)
+            #             return
+            # else: self.toTop()
             self.showTab(tab_id)
 
     def showTab(self, tab_id):
-        self.tabs[tab_id]["hide"] = False
-        self.tabs[tab_id]["tab"].Show()
+        # self.tabs[tab_id]["hide"] = False
+        # self.tabs[tab_id]["tab"].Show()
         self.changePage(tab_id)
 
-    def hideTab(self, tab_id):
-        self.tabs[tab_id]["hide"] = True
-        self.tabs[tab_id]["tab"].Hide()
+    # def hideTab(self, tab_id):
+    #     self.tabs[tab_id]["hide"] = True
+    #     self.tabs[tab_id]["tab"].Hide()
 
     def toTop(self):
         self.toolFrame.Raise()

@@ -489,8 +489,6 @@ class LitFactory:
             method_col =  eval("LitD" + LitFactory.CT.get(data.cols[side][ci].typeId(), "-"))
         except AttributeError:
             raise Exception('No LitD for this type (%s)!'  %  data.cols[side][ci].typeId())
-        # if side == 1 and ci == 19:
-        #     pdb.set_trace()
         c = method_col(side, ci, data, supp, bkp, {rid:lit})
         return c
     getLit = staticmethod(getLit)

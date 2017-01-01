@@ -1,20 +1,4 @@
-import wx
-import numpy
-# The recommended way to use wx with mpl is with the WXAgg backend. 
-# import matplotlib
-# matplotlib.use('WXAgg')
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.lines import Line2D
-from matplotlib.patches import Polygon
-from matplotlib.path import Path
-
-from classBasisView import BasisView, CustToolbar
-
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
-
-### updateHist moved to CtrlTable
+from classBasisView import BasisView
 
 import pdb
 

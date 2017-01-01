@@ -8,6 +8,9 @@ import pdb
 ######################################################################
 
 class VizManager:
+    """ 
+    Manages the visualizations tab, selecting the next visualization slot, etc.
+    """
 
     viz_grid = [2,0]
     intab = False #True
@@ -39,7 +42,8 @@ class VizManager:
             self.addVizExts()
             self.setVizButtAble()
             self.updateVizcellSelected()
-            if not self.parent.tabs["viz"]["hide"] and self.parent.sysTLin():
+            # if not self.parent.tabs["viz"]["hide"] and self.parent.sysTLin():
+            if self.parent.sysTLin():
                 self.getSW().Show()
             if self.viz_postab >= len(self.parent.tabs_keys) or self.parent.tabs_keys[self.viz_postab] != "viz":
                 # print "In Viz"

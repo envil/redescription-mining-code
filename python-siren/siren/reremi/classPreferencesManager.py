@@ -1,5 +1,4 @@
-import glob, os.path, sys
-import getopt, re
+import getopt, re, os.path
 import toolRead
 import pdb
 
@@ -573,8 +572,8 @@ def getPM(conf_defs=None):
     return PreferencesManager(conf_defs)
 
 if __name__ == "__main__":
+	import glob, os.path, sys
 	pref_dir = os.path.dirname(os.path.abspath(__file__))
 	conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
 	params = getParams(sys.argv, conf_defs)
 	print params
-
