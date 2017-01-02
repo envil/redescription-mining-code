@@ -16,9 +16,9 @@ PACK_REP=${YAH}/packaging_current_$(date "+%Y%m%d%H%M%S")
 ROOT_REP=${PACK_REP}"/python-siren"
 SPHINX_REP=${PACK_REP}"/sphinx"
 HELP_SRC_REP=${SPHINX_REP}"/siren-help/_build/html"
-HELP_TRG_REP=${ROOT_REP}"/help"
-GUIDE_PDF_SRC=${SPHINX_REP}"/siren-help/_build/latex/Siren.pdf"
-GUIDE_PDF_TRG=${HELP_TRG_REP}"/Siren-UserGuide.pdf"
+HELP_TRG_REP=${ROOT_REP}"/siren/data/help"
+# GUIDE_PDF_SRC=${SPHINX_REP}"/siren-help/_build/latex/Siren.pdf"
+# GUIDE_PDF_TRG=${HELP_TRG_REP}"/Siren-UserGuide.pdf"
 
 # ### checkout the code itself
 mkdir $PACK_REP
@@ -46,23 +46,49 @@ cp ${ROOT_REP}/CHANGELOG ${SPHINX_REP}/_static/
 ### UPDATE THE IMPORT PATH FOR COMMON VARIABLES IN SPHINX CONF FILES
 sed -i -e s:__SIREN_PYTHON_PATH__:${ROOT_REP}/siren:g ${SPHINX_REP}/*/conf.py
 
-### prepare the help pages
-cd ${SPHINX_REP}"/siren-help/"
+# ################################
+# ### prepare the help pages
+# cd ${SPHINX_REP}"/siren-help/"
+# rm -rf _build
+# make html
+# make latexpdf
+
+# rm -rf ${HELP_TRG_REP}
+# cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}
+# cp ${GUIDE_PDF_SRC} ${GUIDE_PDF_TRG}
+# cd ${HELP_TRG_REP}
+# rm .buildinfo objects.inv
+# sed -i -e 's:\([^/]\)../_static/:\1:g' -e 's:\([^/]\)_static/:\1:g' -e 's:\([^/]\)_images/:\1:g' -e 's!../main/!http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/!g' *.html
+# mv _static/* .
+# mv _images/* .
+# rm -rf _static _images
+# rm -rf ${SPHINX_REP}
+# rm slides_*.html drawing_*.svg slidy*s
+
+################################
+# #### MAKE HELP
+cd ${SPHINX_REP}/siren-help/
 rm -rf _build
 make html
-make latexpdf
+## make latexpdf
 
 rm -rf ${HELP_TRG_REP}
 cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}
-cp ${GUIDE_PDF_SRC} ${GUIDE_PDF_TRG}
+## cp ${GUIDE_PDF_SRC} ${GUIDE_PDF_TRG}
 cd ${HELP_TRG_REP}
-rm .buildinfo objects.inv
-sed -i -e 's:\([^/]\)../_static/:\1:g' -e 's:\([^/]\)_static/:\1:g' -e 's:\([^/]\)_images/:\1:g' -e 's!../main/!http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/!g' *.html
-mv _static/* .
-mv _images/* .
+mv $( cat *.html | sed -n -e 's:^.*href="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*href="\([^"]*_images/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_images/[^"]*\)".*$:\1:p' | sed 's:\.\./::' | sort | uniq ) ./
+mv _static/*.css ./
+sed -i '/Main Siren webpage/d' *.html
+sed -i '/As a PDF/d' *.html
+sed -i 's:\([^/]\)_static/:\1:g' *.html
+sed -i 's:\([^/]\)_images/:\1:g' *.html
+sed -i 's:\.\./_static/::g' *.html
+sed -i 's:\.\./_images/::g' *.html
 rm -rf _static _images
+rm objects.inv
+################################
+
 rm -rf ${SPHINX_REP}
-rm slides_*.html drawing_*.svg slidy*s
 
 ### ... and make the package
 cd ${ROOT_REP}

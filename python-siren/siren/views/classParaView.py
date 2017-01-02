@@ -338,11 +338,13 @@ class ParaView(GView):
 
             self.dots_draws = self.prepareEntitiesDots()
 
-            #### 
-            #lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
-            #map_q = None
-            ##### EFFECT DISABLED
-            lits, map_q = self.literalsEffect(red)
+            #### Contribs of literals
+            if self.getLitContribOn():
+                lits, map_q = self.literalsEffect(red)
+            else:
+                lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
+                map_q = None
+
             
             self.prepared_data.update(self.prepareData(lits, draw_ppos = draw_settings["draw_ppos"]))
 

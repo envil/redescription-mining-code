@@ -40,19 +40,6 @@ import pdb
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
-def initIcons(icons_setts, path=[]):
-    icons = {}
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
-    for icon_name, icon_file in icons_setts.items():
-        tmp = findFile(icon_file+".png", path+['../../icons', root_dir + '/icons', './icons'])
-        if tmp is not None:    
-            icons[icon_name] = wx.Bitmap(tmp)
-        else:
-            icons[icon_name] = wx.NullBitmap
-    return icons
-
-
 class ProjCache():
 
     def __init__(self, capac=10):
@@ -90,11 +77,40 @@ class Siren():
     """
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
+
+
+    @classmethod
+    def searchData(tcl, filen, folder=None, path=[], pref="data/"):
+        ff = []
+        if folder is not None:
+            ff = ['../'+pref+folder, tcl.root_dir+'/siren/'+pref+folder, './']
+        return findFile(filen, path+ff)
+        # tmp = findFile(filen, path+ff)
+        # if tmp is None:
+        #     print "findFile %s %s\t-->\t%s" % (filen, path+ff, tmp)
+        # return tmp 
+    @classmethod
+    def initIcons(tcl, icons_setts, path=[]):
+        icons = {}
+        for icon_name, icon_file in icons_setts.items():
+            tmp = tcl.searchData(icon_file+".png", 'icons', path)
+            if tmp is not None:    
+                icons[icon_name] = wx.Bitmap(tmp)
+            else:
+                icons[icon_name] = wx.NullBitmap
+        return icons
+    @classmethod
+    def initConfs(tcl, cfiles):
+        conf_defs = []
+        for (filen, folder) in cfiles:
+            cf = tcl.searchData(filen, folder, path=['./confs'], pref="")
+            if cf is not None:
+                conf_defs.append(cf)
+        return conf_defs
     
     titleTool = common_variables["PROJECT_NAME"]+' :: tools'
     titlePref = common_variables["PROJECT_NAME"]+' :: '
     titleHelp = common_variables["PROJECT_NAME"]+' :: help'
-    helpURL = findFile('index.html', ['../../help', root_dir+'/help', './help'])
     helpInternetURL = common_variables["PROJECT_URL"]+'help'
     
     # For About dialog
@@ -119,10 +135,9 @@ class Siren():
 
     main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
-    icon_file = findFile('siren_icon32x32.png', ['../../icons', root_dir + '/icons', './icons'])
-    license_file = findFile('LICENSE', ['../../licenses', root_dir+ '/licenses', './licenses'])
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
-
+    cfiles = [('miner_confdef.xml', 'reremi'), ('ui_confdef.xml', 'interface')]
+    
     results_delay = 1000
          
     def __init__(self):
@@ -134,6 +149,11 @@ class Siren():
         self.vizm = None
         self.plant = WorkPlant()
         self.viewsm = ViewsManager(self)
+
+        self.conf_defs = Siren.initConfs(self.cfiles)
+        self.icon_file = Siren.searchData('siren_icon32x32.png', 'icons')
+        self.license_file = Siren.searchData('LICENSE', 'licenses')
+        self.helpURL = Siren.searchData('index.html', 'help')
 
                     # {"id": self.getDefaultTabId("v0"), "title":"LHS Variables",
                     #  "short": "LHS", "type":"v", "hide":False, "style":None},
@@ -162,7 +182,7 @@ class Siren():
         self.selectedTab = self.tabs[stn]
 
         self.logger = Log()
-        self.icons = initIcons(self.icons_setts)
+        self.icons = Siren.initIcons(self.icons_setts)
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, pos = wx.DefaultPosition,
                                   size=(tmp[0]*0.66,tmp[1]*0.9), style = wx.DEFAULT_FRAME_STYLE)
@@ -178,7 +198,7 @@ class Siren():
         self.create_tool_panel()
         self.changePage(stn)
         
-        self.dw = DataWrapper(self.logger)
+        self.dw = DataWrapper(self.logger, conf_defs=self.conf_defs)
 
         ### About dialog
         self.info =  wx.AboutDialogInfo()
@@ -1449,9 +1469,11 @@ class Siren():
         for ext in self.external_licenses:
             lic = 'LICENSE_'+ext
             try:
-                f = codecs.open(findFile(lic, ["../../licenses", self.root_dir+"/licenses", "./licenses"]), 'r', encoding='utf-8', errors='replace')
-                external_license_texts += '\n\n***********************************\n\n' + f.read()
-                f.close()
+                lfile = Siren.searchData(lic, 'licenses')
+                if lfile is not None:
+                    f = codecs.open(lfile, 'r', encoding='utf-8', errors='replace')
+                    external_license_texts += '\n\n***********************************\n\n' + f.read()
+                    f.close()
             except:
                 pass # We don't care about errors here
 

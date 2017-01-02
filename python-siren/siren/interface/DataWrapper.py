@@ -39,12 +39,8 @@ class DataWrapper(object):
     """Contains all the data
     """
 
-    pref_dir = os.path.dirname(__file__)
-    conf_defs = [findFile('miner_confdef.xml', ['../reremi', os.path.split(pref_dir)[0]+'/reremi', './confs']),
-                 findFile('ui_confdef.xml', [pref_dir, './confs'])]
-    #conf_defs = ['miner_confdef.xml', 'ui_confdef.xml']
 
-    def __init__(self, logger=None, package_filename = None):
+    def __init__(self, logger=None, package_filename = None, conf_defs=[]):
         """Inits the class. Either package_filename or the others should be given.
         """
 
@@ -53,7 +49,7 @@ class DataWrapper(object):
             self.logger = Log()
         else:
             self.logger = logger
-        self.pm = PreferencesManager(self.conf_defs)
+        self.pm = PreferencesManager(conf_defs)
         self.data = None
         self.polys = None
         self.pdp = None
@@ -538,7 +534,11 @@ class DataWrapper(object):
 # def main():
 #     # print "UNCOMMENT"
 #     # pdb.set_trace()
-#     dw = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja.siren")
+#     pref_dir = os.path.dirname(__file__)
+#     conf_defs = [findFile('miner_confdef.xml', ['../reremi', os.path.split(pref_dir)[0]+'/reremi', './confs']),
+#                  findFile('ui_confdef.xml', [pref_dir, './confs'])]
+
+#     dw = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja.siren", conf_defs)
 #     dw.savePackage()
 #     dw_new = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja_new.siren")
 #     for red in dw_new.reds:

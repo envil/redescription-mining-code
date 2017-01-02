@@ -1,5 +1,14 @@
 CHANGELOG for Siren
 ===================
+v4.0.0
+------
+* Support for the selection and manipulation of multiple redescriptions
+* Support for multiple lists of results
+* Showing the contribution of the literals in parallel coordinates plots
+* List views (preliminary version)
+* Filtering on support distribution over folds
+* Reorganizing folders, data folder in siren containing icons, licenses plus help files
+
 v3.1.1
 ------
 * Projection of numerical variables with heatmap and histogram

@@ -1013,6 +1013,15 @@ class BasisView(object):
             return True
         return False
 
+    def getLitContribOn(self):
+        t = self.parent.dw.getPreferences()
+        lcon = False
+        try:
+            lcon = t["literals_contrib"]["data"] == "yes"
+        except:
+            lcon = False
+        return lcon
+    
     def getDeltaOn(self):
         t = self.parent.dw.getPreferences()
         try:
@@ -1021,6 +1030,7 @@ class BasisView(object):
             deltaon = BasisView.DELTA_ON
         return deltaon
 
+    
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
             dsetts = self.parent.dw.getPreferences()

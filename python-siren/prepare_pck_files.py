@@ -34,6 +34,9 @@ variables = {}
 for entry, vals in common_variables.items():
     variables["__"+entry+"__"] = vals
 variables.update({"__PYTHON_SRC__": sys.executable})
+variables.update({"__MAIN_FILEPREFF__": re.sub(".py", "", variables["__MAIN_FILENAME__"])})
+
+
 
 def openMakeP(filename, mode="w"):
     d = os.path.dirname(filename)
@@ -83,6 +86,8 @@ BUILDIR=$(CURDIR)/debian/__PROJECT_NAMELOW__
 PROJECT=__PROJECT_NAME__
 VERSION=__VERSION__
 
+SIREN_DATA=siren/data
+
 all:
 	@echo "make source - Create source package"
 	@echo "make install - Install on local system"
@@ -97,7 +102,7 @@ install:
 	$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE)
 
 	mkdir -p $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/
-	cp icons/siren_icon32x32.png $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/siren.png
+	cp $(SIREN_DATA)/icons/siren_icon32x32.png $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/siren.png
 
 	mkdir -p $(DESTDIR)/usr/share/applications/
 	cp siren_desktop $(DESTDIR)/usr/share/applications/siren.desktop
@@ -134,18 +139,16 @@ files_dest["debian/compat"]="""7"""
 
 ######################### debian/control
 files_dest["debian/control"]="""Source: __PACKAGE_NAME__
-Section: shells
-Priority: optional
+Section: science
+Priority: extra
 Maintainer: __MAINTAINER_NAME__ <__MAINTAINER_EMAIL__>
-Build-Depends: debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
-XS-Python-Version: >=2.6
+Build-Depends: python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-sklearn (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
 Standards-Version: 3.8.4
 
 Package: __PACKAGE_NAME__
 Architecture: all
 Homepage: __PROJECT_URL__
-XB-Python-Version: ${python:Versions}
-Depends: ${misc:Depends}, ${python:Depends}, debhelper (>=7.0.50~), python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
+Depends: python (>= 2.7), python (<= 2.8), python-numpy (>= 1.3.0), python-wxgtk3.0 (>= 3.0.2.0), python-scipy (>= 0.17.0), python-sklearn (>= 0.17.0), python-mpltoolkits.basemap (>= 1.0.7), python-matplotlib (>= 1.5.1~)
 Description: __PROJECT_NAME__ __PROJECT_DESCRIPTION__
  __PROJECT_DESCRIPTION_LONG__
 """
@@ -240,7 +243,7 @@ files_dest["setup.nsi"]=""";NSIS Modern User Interface
 
 
   !define M_PRODUCT "__PROJECT_NAME__"
-  !define MUI_FILE "__MAIN_FILENAME__"
+  !define MUI_FILE "__MAIN_FILEPREFF__"
   !define M_VERSION "__VERSION__"
   !define py2exeOutputDirectory 'dist'
   !define MUI_ICON "icons\siren_icon.ico"
@@ -321,9 +324,6 @@ SectionEnd
 ;Uninstaller Section
 
 Section "Uninstall"
-
-;Remove the installation directory
-  RMDir "$INSTDIR"
  
 ;Delete Start Menu Shortcuts
   Delete "$SMPROGRAMS\${M_PRODUCT}\*.*"
@@ -333,7 +333,19 @@ Section "Uninstall"
   DeleteRegKey HKEY_LOCAL_MACHINE "SOFTWARE\${M_PRODUCT}"
   DeleteRegKey HKEY_LOCAL_MACHINE "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${M_PRODUCT}"  
   Delete "$INSTDIR\Uninstall.exe"
+  Delete "$INSTDIR\${MUI_FILE}.exe"
+  Delete "$INSTDIR\*.*"
 
+;Empty and remove the subdirectories
+  RMDir /r "$INSTDIR\help"
+  RMDir /r "$INSTDIR\confs"
+  RMDir /r "$INSTDIR\icons"
+  RMDir /r "$INSTDIR\licenses"
+  RMDir /r "$INSTDIR\mpl_toolkits"
+  RMDir /r "$INSTDIR\mpl-data"
+
+;Remove the installation directory
+  RMDir "$INSTDIR"
 SectionEnd
 
 """

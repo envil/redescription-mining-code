@@ -3,30 +3,9 @@
 <root>
   <info>Input/output preferences for the ReReMi algorithm.</info>
   <section>
-    <name>Input and Output</name>
+    <name>File Names</name>
     <section>
-      <name>Log</name>
-      <parameter>
-	<name>verbosity</name>
-	<label>Verbosity</label>
-	<parameter_type>range</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Verbosity of the algorithm output.</legend>
-	<range_min>0</range_min>
-	<range_max>10</range_max>
-	<default><value>4</value></default>
-      </parameter>
-      <parameter>
-	<name>logfile</name>
-	<label>Logfile</label>
-	<parameter_type>open</parameter_type>
-	<value_type>text</value_type>
-	<legend>File to log. + means generate filename from queries output file. - means stdout.</legend>
-	<default><value>-</value></default>
-      </parameter>
-    </section>
-    <section>
-      <name>Files</name>
+      <name>Data Input</name>
       <parameter>
 	<name>LHS_data</name>
 	<label>LHS data filename</label>
@@ -99,6 +78,9 @@
 	<length>10</length>
 	<default><value>nan</value></default>
       </parameter>
+    </section>
+    <section>
+      <name>Results Output</name>
       <parameter>
 	<name>result_rep</name>
 	<label>Results repertory</label>
@@ -116,15 +98,6 @@
 	<legend>Name of the file where to store the results.</legend>
 	<length>50</length>
 	<default><value>results</value></default>
-      </parameter>
-      <parameter>
-	<name>pairs_store</name>
-	<label>Pairs store filename</label>
-	<parameter_type>open</parameter_type>
-	<value_type>text</value_type>
-	<legend>Name of the file where to store initial pairs.</legend>
-	<length>250</length>
-	<default><value></value></default>
       </parameter>
       <parameter>
 	<name>ext_queries</name>
@@ -178,6 +151,26 @@
 	<value_type>text</value_type>
 	<legend>Complete filename for the support.</legend>
 	<length>310</length>
+	<default><value></value></default>
+      </parameter>
+    </section>
+    <section>
+      <name>Extra</name>
+      <parameter>
+	<name>logfile</name>
+	<label>Logfile</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>File to log. + means generate filename from queries output file. - means stdout.</legend>
+	<default><value>-</value></default>
+      </parameter>
+      <parameter>
+	<name>pairs_store</name>
+	<label>Pairs store filename</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Name of the file where to store initial pairs.</legend>
+	<length>250</length>
 	<default><value></value></default>
       </parameter>
     </section>

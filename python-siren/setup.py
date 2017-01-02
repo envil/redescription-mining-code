@@ -47,7 +47,6 @@ ST_RESOURCES=['help', 'LICENSE', 'CHANGELOG',
               'siren/interface/ui_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
 # N.B. You must include the icon files later
 ST_FILES = [common_variables["MAIN_FILENAME"]]
-
 ST_MORE_FILES=['ez_setup.py']
 ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
 MATPLOTLIB_BACKENDS = ['wxagg']
@@ -248,29 +247,12 @@ elif sys.platform == 'win32':
 else:
     ################ LINUX SETUP
     from distutils.core import setup
-    
-    patterns = [('siren.reremi.grako', []),
-                ('siren.reremi', ['siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']),
-                ('siren.interface', ['siren/interface/ui_confdef.xml']),
-                ('siren.work', []),
-                ('siren.views', []),
-                ('', ['LICENSE', 'CHANGELOG']),
-                ('help', ['help/*']),
-                ('icons', ['icons/*.png', 'icons/*.ico']),
-                ('licenses', ['licenses/LICENSE*'])]
-                  
-    
-    DU_FILES = [f[:-3] for f in ST_FILES]
-    PACKAGE_DATA = {'siren': []}
-    DU_PACKAGES = ['siren']
-    PREFF_DOT = ""
-    PREFF_SLASH = ""
-
-    for pack, pattern in patterns:
-        DU_PACKAGES.append(PREFF_DOT+pack)
-        PACKAGE_DATA[PREFF_DOT+pack] = []
-        for p in pattern:
-            PACKAGE_DATA[PREFF_DOT+pack].extend([f.split('/')[-1] for f in glob.glob(PREFF_SLASH+p) if os.path.isfile(f)])
+        
+    DU_FILES = [common_variables["MAIN_FILENAME"][:-3], "server_siren"]
+    DU_PACKAGES = ['siren', 'siren.reremi', 'siren.interface', 'siren.work', 'siren.views', 'siren.reremi.grako']
+    PACKAGE_DATA = {'siren.reremi': ['miner_confdef.xml', 'inout_confdef.xml'],
+                    'siren.interface': ['ui_confdef.xml'],
+                    'siren': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}
 
     extra_options.update(dict(
         platforms="UNIX",

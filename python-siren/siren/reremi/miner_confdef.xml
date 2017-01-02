@@ -24,6 +24,16 @@
 	<default><value>1</value></default>
 	<length>2</length>
       </parameter>
+      <parameter>
+	<name>verbosity</name>
+	<label>Log verbosity</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Verbosity of the algorithms output.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>4</value></default>
+      </parameter>
 </section>
 </section>
     <section>
