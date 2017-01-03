@@ -373,9 +373,9 @@ class CharbonTLayer(CharbonTree):
         more = {"involved": [vid], "supp": supp}
         trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more, cols_info=cols_info)
         trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,
-                                                      max_level=self.constraints.max_depth(),
-                                                      min_bucket=self.constraints.min_node_size(),
-                                                      split_criterion=self.constraints.split_criterion(),
+                                                      max_level=self.constraints.getCstr("max_depth"),
+                                                      min_bucket=self.constraints.getCstr("min_node_size"),
+                                                      split_criterion=self.constraints.getCstr("split_criterion"),
                                                       PID=PID, singleD=data.isSingleD(), cols_info=cols_info)
 
         redt = extract_reds(trees_pile, trees_store, data, cols_info)

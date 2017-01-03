@@ -32,12 +32,12 @@ class ViewFactory(object):
             viewsT_typs_map[vt] = typ
 
 
-    @classmethod
-    def reloadCode(tcl):
-        global classOverView
-        classOverView = reload(classOverView)
-        tcl.details_views_typs['L']['INT']['class'] = classInterView.InterView
-        print "Reloaded InterView", tcl.details_views_typs['L']['INT']['class'].cversion
+    # @classmethod
+    # def reloadCode(tcl):
+    #     global classOverView
+    #     classOverView = reload(classOverView)
+    #     tcl.details_views_typs['L']['INT']['class'] = classInterView.InterView
+    #     print "Reloaded InterView", tcl.details_views_typs['L']['INT']['class'].cversion
         
     @classmethod
     def getClasses(tcl, typv="R"):

@@ -6,7 +6,8 @@ class Constraints(object):
     
     #     self.cminPairsScore = setts_cust.param['min_score']        
     config_def = "miner_confdef.xml"
-
+    special_cstrs = {}
+    
     def __init__(self, data, params):
         self.deps = []
         self.folds = None
@@ -19,61 +20,71 @@ class Constraints(object):
             if data.hasMissing() is False:
                 self._pv["parts_type"] = "grounded"
 
-            data.getSSetts().reset(self.partsType(), self._pv["method_pval"])
+            data.getSSetts().reset(self.getCstr("parts_type"), self.getCstr("method_pval"))
             self.ssetts = data.getSSetts() 
         else:
             self.N = -1
             self.ssetts = None
 
-        if self._pv["amnesic"] == "yes":
+        if self.getCstr("amnesic") == "yes":
             self._pv["amnesic"] = True
         else:
             self._pv["amnesic"] = False
+
+        #### scaling support thresholds
+        self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self.getCstr("min_itm_c"), self.getCstr("min_itm_in"), self.getCstr("min_itm_out"))
+        _, self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(-1, self.getCstr("min_fin_in"), self.getCstr("min_fin_out"))
         
-        self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"])
-        _, self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(-1, self._pv["min_fin_in"], self._pv["min_fin_out"])
+        #### preparing query types
+        for side_id in [0, 1]:
+            for type_id in [1,2,3]:
+                kp = "neg_query_s%d_%d" % (side_id, type_id)
+                self._pv[kp] = []
+                for v in params.get(kp, {"value": []})["value"]:
+                    self._pv[kp].append(bool(v))
+                    
+            kp = "ops_query_s%d" % side_id
+            self._pv[kp] = []
+            for v in params.get(kp, {"value": []})["value"]:
+                self._pv[kp].append(bool(v))
+
+        #### preparing score coeffs
+        self._pv["score_coeffs"] = {"impacc": self.getCstr("score.impacc", default=0),
+                                 "rel_impacc": self.getCstr("score.rel_impacc", default=0),
+                                 "pval_red": self.getCstr("score.pval_red", default=0),
+                                 "pval_query": self.getCstr("score.pval_query", default=0),
+                                 "pval_fact": self.getCstr("score.pval_fact", default=0)}
+
+
+        #### preparing action registry
+        self._actions = {
+        "nextge": [("filtersingle", {"filter_funct": self.filter_nextge}),
+                   ("sort", {"sort_funct": self.sort_nextge, "sort_reverse": True }),
+                   ("cut", { "cutoff_nb": self.getCstr("batch_cap"), "cutoff_direct": 0})],
+        "partial":[("filtersingle", {"filter_funct": self.filter_partial}),
+                   ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
+                   ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0}),
+                   ("cut", { "cutoff_nb": self.getCstr("batch_out"), "cutoff_direct": 1, "equal_funct": self.sort_partial})],
+        "final":  [("filtersingle", {"filter_funct": self.filter_final}),
+                   ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
+                   ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})],
+        "redundant": [("filterpairs", self.getFilterParams("redundant"))],
+        "folds": [("filtersingle", {"filter_funct": self.filter_folds})]}
+
         
-        for type_id in [1,2,3]:
-            self._pv["lhs_neg_query_%d" % type_id] = []
-            for v in params["lhs_neg_query_%d" % type_id]["value"]:
-                self._pv["lhs_neg_query_%d" % type_id].append(bool(v))
-
-            self._pv["rhs_neg_query_%d" % type_id] = []
-            for v in params["rhs_neg_query_%d" % type_id]["value"]:
-                self._pv["rhs_neg_query_%d" % type_id].append(bool(v))
-
-        self._pv["lhs_ops_query"] = []
-        for v in params["lhs_ops_query"]["value"]:
-            self._pv["lhs_ops_query"].append(bool(v))
-
-        self._pv["rhs_ops_query"] = []
-        for v in params["rhs_ops_query"]["value"]:
-            self._pv["rhs_ops_query"].append(bool(v))
-
-        self._pv["score_coeffs"] = {"impacc": self._pv["score.impacc"],
-                                 "rel_impacc": self._pv["score.rel_impacc"],
-                                 "pval_red": self._pv["score.pval_red"],
-                                 "pval_query": self._pv["score.pval_query"],
-                                 "pval_fact": self._pv["score.pval_fact"]}
-
-
     def setFolds(self, data):
         fcol = data.getColsByName("^folds_split_")
         if len(fcol) == 1:
             self.folds = data.getFoldsStats(fcol[0][0], fcol[0][1])
-
-    def getSSetts(self):
-        return self.ssetts
         
     def scaleF(self, f):
-        if f == -1:
+        if f == -1 or f is None:
             return -1
         if f >= 1:
             return int(f)
         elif f >= 0 and f < 1 and self.N != 0:
             return  int(round(f*self.N))
         return 0
-    
     def scaleSuppParams(self, min_c, min_in=None, min_out=None):
         sc_min_c = self.scaleF(min_c)
         if min_in == -1:
@@ -87,87 +98,50 @@ class Constraints(object):
         return (sc_min_c, sc_min_in, sc_min_out)
 
 
-    def partsType(self):
-        return self._pv["parts_type"]
-    def amnesic(self):
-        return self._pv["amnesic"]
-    def batch_out(self):
-        return self._pv["batch_out"]
-    def batch_cap(self): 
-        return self._pv["batch_cap"]
-    def max_agg(self):
-        return self._pv["max_agg"]
-    def max_prodbuckets(self):
-        return self._pv["max_prodbuckets"]
-    def max_red(self):
-        return self._pv["max_red"]
-    def max_seg(self):
-        return self._pv["max_seg"]
-    def max_sidebuckets(self):
-        return self._pv["max_sidebuckets"]
-    def max_var(self, side=None):
-        if "lhs_max_var" in self._pv and "rhs_max_var" in self._pv:
-            return [self._pv["lhs_max_var"], self._pv["rhs_max_var"]]
-        elif "max_var" in self._pv:
-            return [self._pv["max_var"], self._pv["max_var"]]
-        return -1
-    def min_impr(self):
-        return self._pv["min_impr"]
-    def min_itm_c(self):
-        return self._pv["min_itm_c"]
-    def min_itm_in(self):
-        return self._pv["min_itm_in"]
-    def min_itm_out(self):
-        return self._pv["min_itm_out"]
-    def min_fin_c(self):
-        return self._pv["min_fin_c"]
-    def min_fin_in(self):
-        return self._pv["min_fin_in"]
-    def min_fin_out(self):
-        return self._pv["min_fin_out"]
-    def min_fin_var(self):
-        return self._pv["min_fin_var"]
-    def min_fin_acc(self):
-        return self._pv["min_fin_acc"]
-    def max_fin_pval(self):
-        return self._pv["max_fin_pval"]
-    def min_pairscore(self):
-        return self._pv["min_pairscore"]
-    def max_overlaparea(self):
-        return self._pv["max_overlaparea"]
-    def neg_query(self, side, type_id):
-        if side == 1:
-            return self._pv["rhs_neg_query_%d" % type_id]
+    def getSSetts(self):
+        return self.ssetts
+    def getCstr(self, k, **kargs):
+        if k in self.special_cstrs:
+            return eval("self.%s" % self.special_cstrs[k])(**kargs)
+            
+        k_bak = k 
+        if "side" in kargs:
+            k += "_s%d" % kargs["side"]
+        if "type_id" in kargs:
+            k += "_%d" % kargs["type_id"]
+
+        if k in self._pv:
+            return self._pv[k]
         else:
-            return self._pv["lhs_neg_query_%d" % type_id]
-    def ops_query(self, side, init=False):
+            return self._pv.get(k_bak, kargs.get("default"))
+
+    #### special constraints (not just lookup)    
+    def allw_ops(self, side, init=False):
         if init > 0:
             return [True]
         else:
-            if side == 1:
-                tmp = self._pv["rhs_ops_query"]
-            else:
-                tmp = self._pv["lhs_ops_query"]
+            tmp = self.getCstr("ops_query", side=side)
             if init < 0 and self._pv["single_side_or"]=="yes":
                 tmp = [o for o in tmp if not o]
             return tmp
-    def pair_sel(self):
-        return self._pv["pair_sel"]
-    def score_coeffs(self):
-        return self._pv["score_coeffs"]
-    def min_node_size(self):
-        return self._pv["min_node_size"]
-    def max_depth(self):
-        return self._pv["max_depth"]
-    def max_rounds(self):
-        return self._pv["max_rounds"]
-    def algo_family(self):
-        return self._pv["algo_family"]
-    def tree_mine_algo(self):
-        return self._pv["tree_mine_algo"]
-    def split_criterion(self):
-        return self._pv["split_criterion"]
+    special_cstrs["allw_ops"] = "allw_ops"
 
+    def getActions(self, k):
+        return self._actions.get(k, [])
+        
+    def getFilterParams(self, k):
+        if k == "redundant":                 
+            if self.getCstr("max_overlaparea") < 0:
+                return {"filter_funct": self.pair_filter_redundant_rows, "filter_thres": -(self.getCstr("max_overlaparea") or 1), "filter_max":0}
+            return {"filter_funct": self.pair_filter_redundant, "filter_thres": (self.getCstr("max_overlaparea") or 1), "filter_max":0}
+       # possibly useful functions for reds comparison:
+       # they should be symmetric
+       #     .oneSideIdentical(self.batch[compare])
+       #     .equivalent(self.batch[compare])
+       #     .redundantArea(self.batch[compare])
+
+        
+    ##### filtering and sorting primitives   
     def filter_nextge(self, red):
         ### could add check disabled
         return red.nbAvailableCols() == 0
@@ -177,20 +151,19 @@ class Constraints(object):
 
     def sort_partial(self, red):
         return (red.getAcc(), -(red.length(0) + red.length(1)), -abs(red.length(0) - red.length(1)))  
-
                  
     def filter_partial(self,red):
         # print "filter partial", red
-        # print {'min_itm_out': red.getLenO() >= self.min_itm_out(),
-        #        'min_itm_in': red.getLenI() >= self.min_itm_in(),
-        #        'max_fin_pval': red.getPVal() <= self.max_fin_pval()}
-        # print {'min_itm_out': (red.getLenO(), self.min_itm_out()),
-        #        'min_itm_in': (red.getLenI(), self.min_itm_in()),
-        #        'max_fin_pval': (red.getPVal(), self.max_fin_pval())}
+        # print {'min_itm_out': red.getLenO() >= self.getCstr("min_itm_out"),
+        #        'min_itm_in': red.getLenI() >= self.getCstr("min_itm_in"),
+        #        'max_fin_pval': red.getPVal() <= self.getCstr("max_fin_pval")}
+        # print {'min_itm_out': (red.getLenO(), self.getCstr("min_itm_out")),
+        #        'min_itm_in': (red.getLenI(), self.getCstr("min_itm_in")),
+        #        'max_fin_pval': (red.getPVal(), self.getCstr("max_fin_pval"))}
 
-        if red.getLenO() >= self.min_itm_out()\
-               and red.getLenI() >= self.min_itm_in() \
-               and red.getPVal() <= self.max_fin_pval():
+        if red.getLenO() >= self.getCstr("min_itm_out")\
+               and red.getLenI() >= self.getCstr("min_itm_in") \
+               and red.getPVal() <= self.getCstr("max_fin_pval"):
             # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
             # print "--------- RED KEEP"
             return False
@@ -200,23 +173,23 @@ class Constraints(object):
 
     def filter_final(self,red):
         # print "filter final", red
-        # print {'min_fin_var': red.length(0) + red.length(1) >= self.min_fin_var(),
-        #        'min_fin_out': red.getLenO() >= self.min_fin_out(),
-        #        'min_fin_in': red.getLenI() >= self.min_fin_in(),
-        #        'min_fin_acc': red.getAcc()  >= self.min_fin_acc(),
-        #        'max_fin_pval': red.getPVal() <= self.max_fin_pval()}
-        # print {'min_fin_var': (red.length(0) + red.length(1), self.min_fin_var()),
-        #        'min_fin_out': (red.getLenO(), self.min_fin_out()),
-        #        'min_fin_in': (red.getLenI(), self.min_fin_in()),
-        #        'min_fin_acc': (red.getAcc(), self.min_fin_acc()),
-        #        'max_fin_pval': (red.getPVal(), self.max_fin_pval())}
+        # print {'min_fin_var': red.length(0) + red.length(1) >= self.getCstr("min_fin_var"),
+        #        'min_fin_out': red.getLenO() >= self.getCstr("min_fin_out"),
+        #        'min_fin_in': red.getLenI() >= self.getCstr("min_fin_in"),
+        #        'min_fin_acc': red.getAcc()  >= self.getCstr("min_fin_acc"),
+        #        'max_fin_pval': red.getPVal() <= self.getCstr("max_fin_pval")}
+        # print {'min_fin_var': (red.length(0) + red.length(1), self.getCstr("min_fin_var")),
+        #        'min_fin_out': (red.getLenO(), self.getCstr("min_fin_out")),
+        #        'min_fin_in': (red.getLenI(), self.getCstr("min_fin_in")),
+        #        'min_fin_acc': (red.getAcc(), self.getCstr("min_fin_acc")),
+        #        'max_fin_pval': (red.getPVal(), self.getCstr("max_fin_pval"))}
 
 
-        if red.length(0) + red.length(1) >= self.min_fin_var() \
-                   and red.getLenO() >= self.min_fin_out()\
-                   and red.getLenI() >= self.min_fin_in() \
-                   and red.getAcc()  >= self.min_fin_acc() \
-                   and red.getPVal() <= self.max_fin_pval():
+        if red.length(0) + red.length(1) >= self.getCstr("min_fin_var") \
+                   and red.getLenO() >= self.getCstr("min_fin_out")\
+                   and red.getLenI() >= self.getCstr("min_fin_in") \
+                   and red.getAcc()  >= self.getCstr("min_fin_acc") \
+                   and red.getPVal() <= self.getCstr("max_fin_pval"):
             # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
             # print "--------- RED KEEP"
             return False
@@ -233,28 +206,7 @@ class Constraints(object):
     def pair_filter_redundant_rows(self, redA, redB):
         return redA.overlapRows(redB)
     
-    def actions_nextge(self):
-        return [("filtersingle", {"filter_funct": self.filter_nextge}),
-                ("sort", {"sort_funct": self.sort_nextge, "sort_reverse": True }),
-                ("cut", { "cutoff_nb": self.batch_cap(), "cutoff_direct": 0})]
-
-    def actions_partial(self):
-        return [("filtersingle", {"filter_funct": self.filter_partial}),
-                ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-                ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0}),
-                ("cut", { "cutoff_nb": self.batch_out(), "cutoff_direct": 1, "equal_funct": self.sort_partial})]
-
-    def actions_final(self):
-       return [("filtersingle", {"filter_funct": self.filter_final}),
-               ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-               ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})]
-
-    def actions_redundant(self):
-       return [("filterpairs", self.parameters_filterredundant())]
-
-    def actions_folds(self):
-       return [("filtersingle", {"filter_funct": self.filter_folds})]
-
+   
     def filter_folds(self, red):
        if self.folds is None:
            return False
@@ -280,11 +232,7 @@ class Constraints(object):
        return True
 
    
-    def parameters_filterredundant(self):
-       if self.max_overlaparea() < 0:
-           return {"filter_funct": self.pair_filter_redundant_rows, "filter_thres": -self.max_overlaparea(), "filter_max":0}
-       return {"filter_funct": self.pair_filter_redundant, "filter_thres": self.max_overlaparea(), "filter_max":0}
-
+    #### Dependencies between variables (ex, single dataset)
     def setDeps(self, deps=[]):
        self.deps = deps
 
@@ -297,10 +245,4 @@ class Constraints(object):
     def hasDeps(self):
         return len(self.deps) > 0
 
-
-        # possibly useful functions for reds comparison:
-        # they should be symmetric
-        #     .oneSideIdentical(self.batch[compare])
-        #     .equivalent(self.batch[compare])
-        #     .redundantArea(self.batch[compare])
-
+    

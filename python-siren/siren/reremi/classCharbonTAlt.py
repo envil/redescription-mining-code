@@ -22,7 +22,7 @@ class CharbonTCW(CharbonTree):
 
     def initializeTrg(self, side, data, red):
         if red is None or len(red.queries[0]) + len(red.queries[1]) == 0:
-            nsupp = np.random.randint(self.constraints.min_node_size(), data.nbRows()-self.constraints.min_node_size())
+            nsupp = np.random.randint(self.constraints.getCstr("min_node_size"), data.nbRows()-self.constraints.getCstr("min_node_size"))
             tmp = np.random.choice(range(data.nbRows()), nsupp, replace=False)
         elif side == -1: # and len(red.queries[0]) * len(red.queries[1]) != 0:
             side = 1
@@ -140,13 +140,13 @@ class CharbonTCW(CharbonTree):
         dtcs = [None, None]
         best = (0, suppvs, dtcs)
         current_side = 1-side
-        if sum(target) >= self.constraints.min_node_size() and len(target)-sum(target) >= self.constraints.min_node_size():
+        if sum(target) >= self.constraints.getCstr("min_node_size") and len(target)-sum(target) >= self.constraints.getCstr("min_node_size"):
             suppvs[side] = target
             rounds = 0
         else:
             rounds = -1
 
-        while rounds < self.constraints.max_rounds() and rounds >= 0:            
+        while rounds < self.constraints.getCstr("max_rounds") and rounds >= 0:            
             rounds += 1
             try:
                 ##### HERE
@@ -161,7 +161,7 @@ class CharbonTCW(CharbonTree):
                 else:
                     feed_data = in_data[current_side]
 
-                dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], self.constraints.max_depth(), self.constraints.min_node_size())
+                dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], self.constraints.getCstr("max_depth"), self.constraints.getCstr("min_node_size"))
             except IndexError:
                 pdb.set_trace()
                 print current_side
@@ -204,14 +204,14 @@ class CharbonTSprit(CharbonTCW):
         dtcs = [None, None]
         best = (0, suppvs, dtcs)
         current_side = 1-side
-        if sum(target) >= self.constraints.min_node_size() and len(target)-sum(target) >= self.constraints.min_node_size():
+        if sum(target) >= self.constraints.getCstr("min_node_size") and len(target)-sum(target) >= self.constraints.getCstr("min_node_size"):
             suppvs[side] = target
             rounds = 0
         else:
             rounds = -1
 
         depth = [2,2]
-        while depth[0] <= self.constraints.max_depth() or depth[1] <= self.constraints.max_depth():
+        while depth[0] <= self.constraints.getCstr("max_depth") or depth[1] <= self.constraints.getCstr("max_depth"):
         # while rounds < 30 and rounds >= 0:            
             rounds += 1
             ##### HERE
@@ -226,13 +226,13 @@ class CharbonTSprit(CharbonTCW):
             else:
                 feed_data = in_data[current_side]
 
-            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.min_node_size(), split_criterion=self.constraints.split_criterion())
+            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.getCstr("min_node_size"), split_criterion=self.constraints.getCstr("split_criterion"))
             if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
                                and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
                 rounds = -1
-                depth[current_side] = self.constraints.max_depth()+1
-                depth[1-current_side] = self.constraints.max_depth()+1
+                depth[current_side] = self.constraints.getCstr("max_depth")+1
+                depth[1-current_side] = self.constraints.getCstr("max_depth")+1
             else:
                 depth[current_side] += 1
                 suppvs[current_side] = suppv
@@ -251,7 +251,7 @@ class CharbonTSplit(CharbonTCW):
         in_data, cols_info = self.initializeData(side, data)
         target, side = self.initializeTrg(side, data, red)
 
-        current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.min_node_size(), data.isSingleD(), cols_info)
+        current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
         if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
             return self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
                                           [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
@@ -265,8 +265,8 @@ class CharbonTSplit(CharbonTCW):
             flag = True
             
             while flag:
-                if depth <= self.constraints.max_depth():
-                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result, split_criterion=self.constraints.split_criterion())
+                if depth <= self.constraints.getCstr("max_depth"):
+                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result, split_criterion=self.constraints.getCstr("split_criterion"))
                     # print "Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
                     #Check if we have both vectors (split was successful on the left and right matrix) 
                     if current_split_result['data_rpart_l'] is None or current_split_result['data_rpart_r'] is None:

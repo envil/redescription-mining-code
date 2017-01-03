@@ -75,18 +75,18 @@ class Miner(object):
 
         self.charbon = self.initCharbon()
         if souvenirs is None:
-            self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c()), self.constraints.amnesic())
+            self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
         else:
             self.souvenirs = souvenirs
 
-        self.initial_pairs = InitialPairs(self.constraints.pair_sel(), self.constraints.max_red(), params.get("pairs_store"))
+        self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), params.get("pairs_store"))
         
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
 
         self.progress_ss = {"total":0, "current":0}
         self.rm = None
-        if self.constraints.dl_score():
+        if self.constraints.getCstr("dl_score"):
             self.logger.printL(1,"Using DL for scoring...")
             self.rm = RedModel(data)
 
@@ -100,8 +100,8 @@ class Miner(object):
                     self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
 
     def initCharbon(self):
-        if self.constraints.algo_family() == "trees" and not self.data.hasMissing():
-            return TREE_CLASSES.get(self.constraints.tree_mine_algo(), TREE_DEF)(self.constraints)
+        if self.constraints.getCstr("algo_family") == "trees" and not self.data.hasMissing():
+            return TREE_CLASSES.get(self.constraints.getCstr("tree_mine_algo"), TREE_DEF)(self.constraints)
         else:
             if self.data.hasMissing():
                 return CharbonGMiss(self.constraints)
@@ -127,8 +127,8 @@ class Miner(object):
 
     def filter_run(self, redescs):
         batch = Batch(redescs)
-        tmp_ids = batch.selected(self.constraints.actions_redundant())
-        #tmp_ids = batch.selected(self.constraints.actions_final())
+        tmp_ids = batch.selected(self.constraints.getActions("redundant"))
+        #tmp_ids = batch.selected(self.constraints.getActions("final"))
         return [batch[i] for i in tmp_ids]
 
     def part_run(self, cust_params):
@@ -150,9 +150,9 @@ class Miner(object):
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
-        self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (self.constraints.max_var()[0]-min([self.constraints.max_var()[0]]+[len(r.queries[0]) for r in reds])+
-                                         self.constraints.max_var()[1]-min([self.constraints.max_var()[1]]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
+        self.progress_ss["generation"] = self.constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (self.constraints.getCstr("max_var", side=0)-min([self.constraints.getCstr("max_var", side=0)]+[len(r.queries[0]) for r in reds])+
+                                         self.constraints.getCstr("max_var", side=1)-min([self.constraints.getCstr("max_var", side=1)]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         
@@ -180,9 +180,9 @@ class Miner(object):
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [self.souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          self.souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
-        self.progress_ss["generation"] = self.constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (self.constraints.max_var()[0]+self.constraints.max_var()[0]-2)*2*self.progress_ss["generation"]
-        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.max_red()*self.progress_ss["expansion"]
+        self.progress_ss["generation"] = self.constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (self.constraints.getCstr("max_var", side=0)+self.constraints.getCstr("max_var", side=0)-2)*2*self.progress_ss["generation"]
+        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.getCstr("max_red")*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
@@ -208,7 +208,7 @@ class Miner(object):
             self.expandRedescriptions([initial_red])
             
             self.final["batch"].extend([self.partial["batch"][i] for i in self.partial["results"]])
-            self.final["results"] = self.final["batch"].selected(self.constraints.actions_final())
+            self.final["results"] = self.final["batch"].selected(self.constraints.getActions("final"))
             if self.rm is not None:
                 treds = [self.final["batch"][pos] for pos in self.final["results"]]
                 self.rm = self.rm.fillCopy(self.data, treds)
@@ -247,7 +247,7 @@ class Miner(object):
         self.init_progress_full()
         
         if ids is None:
-            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+            ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         sides = [0,1]
         if self.data.isSingleD(): sides = [0]
@@ -291,7 +291,7 @@ class Miner(object):
                 (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
                 for i in range(len(scores)):
                     nsc = None
-                    if scores[i] >= self.constraints.min_pairscore() and (literalsL[i], literalsR[i]) not in seen:
+                    if scores[i] >= self.constraints.getCstr("min_pairscore") and (literalsL[i], literalsR[i]) not in seen:
                         if self.rm is not None:
                         #### HERE DL
                             tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
@@ -309,7 +309,7 @@ class Miner(object):
                                 self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
 
                         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
-            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.max_red()), "log", self.id)
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
             self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
 
             ### Saving pairs to file if filename provided
@@ -329,7 +329,7 @@ class Miner(object):
     def getInitExploreList(self, ids):
         explore_list = []
         if ids is None:
-            ids = self.data.usableIds(self.constraints.min_itm_c(), self.constraints.min_itm_c())
+            ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         ### WARNING DANGEROUS few pairs for DEBUG!
         for idL in ids[0]:
@@ -378,7 +378,7 @@ class Miner(object):
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
         self.partial["results"] = []
-        if 1 in self.partial["batch"].selected(self.constraints.actions_partial()):
+        if 1 in self.partial["batch"].selected(self.constraints.getActions("partial")):
             addR = True
             ii = 0
             while addR and ii < len(self.final["batch"]):
@@ -412,7 +412,7 @@ class Miner(object):
                 # print "Adding ", len(self.partial["batch"]), red.queries[0], "\t", red.queries[1] 
                 # self.partial["batch"].append(red)
                 if red.nbAvailableCols() > 0:
-                    bests = ExtensionsBatch(self.data.nbRows(), self.constraints.score_coeffs(), red)
+                    bests = ExtensionsBatch(self.data.nbRows(), self.constraints.getCstr("score_coeffs"), red)
                     for side in [0,1]:
                     ##for side in [1]:
                         ### check whether we are extending a redescription with this side empty
@@ -451,9 +451,14 @@ class Miner(object):
                     try:
                         ### DL HERE
                         if self.rm is not None:
-                            kids = bests.improvingKidsDL(self.data, self.constraints.min_impr(), self.constraints.max_var(), self.rm)
+                            kids = bests.improvingKidsDL(self.data, self.constraints.getCstr("min_impr"),
+                                                         [self.constraints.getCstr("max_var", side=0),
+                                                          self.constraints.getCstr("max_var", side=1)],
+                                                            self.rm)
                         else:
-                            kids = bests.improvingKids(self.data, self.constraints.min_impr(), self.constraints.max_var())
+                            kids = bests.improvingKids(self.data, self.constraints.getCstr("min_impr"),
+                                                          [self.constraints.getCstr("max_var", side=0),
+                                                          self.constraints.getCstr("max_var", side=1)])
 
                     except ExtensionError as details:
                         self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.id)
@@ -469,7 +474,7 @@ class Miner(object):
                 self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.id)
 
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
-            nextge_keys = self.partial["batch"].selected(self.constraints.actions_nextge())
+            nextge_keys = self.partial["batch"].selected(self.constraints.getActions("nextge"))
             nextge = [self.partial["batch"][i] for i in nextge_keys]
 
             self.partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
@@ -477,7 +482,7 @@ class Miner(object):
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        self.partial["results"] = self.partial["batch"].selected(self.constraints.actions_partial())
+        self.partial["results"] = self.partial["batch"].selected(self.constraints.getActions("partial"))
         self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
         self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
         for red in self.partial["results"]:

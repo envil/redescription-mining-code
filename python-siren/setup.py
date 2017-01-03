@@ -40,16 +40,6 @@ HELP_PACKAGE_FILENAME = 'help.tar.gz'
 HELP_PACKAGE_URL = URL+HELP_PACKAGE_FILENAME
 HELP_UNPACK_CMD = 'tar xfz '+HELP_PACKAGE_FILENAME # command to unpack the help file to folder help/
 
-########## SETUPTOOLS FILES
-LICENSES = ['licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
-#ST_RESOURCES=['help', 'commons', 'screenshots', 'ABOUT', 'LICENSE',
-ST_RESOURCES=['help', 'LICENSE', 'CHANGELOG',
-              'siren/interface/ui_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
-# N.B. You must include the icon files later
-ST_FILES = [common_variables["MAIN_FILENAME"]]
-ST_MORE_FILES=['ez_setup.py']
-ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
-MATPLOTLIB_BACKENDS = ['wxagg']
 
 extra_options = dict(
     name=NAME,
@@ -61,6 +51,7 @@ extra_options = dict(
     license=LICENSE,
     )
 
+##### helpers
 def get_svnrevision():
     svn_revision = '-1'
     try:
@@ -99,6 +90,8 @@ def clean_help_files():
     subprocess.call('rm -rf help/', shell=True)
     subprocess.call('rm -rf '+HELP_PACKAGE_FILENAME, shell=True)
     
+
+#### platform specific
 if sys.platform == 'darwin':
 
     ################ MAC SETUP    
@@ -131,7 +124,13 @@ if sys.platform == 'darwin':
                 NSHumanReadableCopyright = COPYRIGHT
         )
 
-    ICONS = ['icons/siren_icon.icns', 'icons/siren_file_icon.icns', 'icons/siren_icon32x32.png', 'icons/siren_icon.ico', 'icons/usiren_icon.ico']
+    ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
+    ST_RESOURCES=['siren/data/help', 'LICENSE', 'CHANGELOG',
+                  'siren/interface/ui_confdef.xml','siren/views/views_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
+    ICONS = ['siren/data/icons/siren_icon.icns', 'siren/data/icons/siren_file_icon.icns', 'siren/data/icons/siren_icon32x32.png', 'siren/data/icons/siren_icon.ico', 'siren/data/icons/usiren_icon.ico']
+    LICENSES = ['siren/data/licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
+    
+    MATPLOTLIB_BACKENDS = ['wxagg']
     
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'icons/siren_icon.icns',
@@ -148,7 +147,7 @@ if sys.platform == 'darwin':
     # Set extra options
     extra_options.update(dict(
         app=['Siren.py'],
-        #data_files=ST_FILES,
+        #data_files=[APP],
         options={'py2app': OPTIONS},
         setup_requires=['py2app']
         ))
@@ -203,20 +202,18 @@ elif sys.platform == 'win32':
     import py2exe
     import matplotlib
 
+    ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
+    DU_PACKAGES = ['siren', 'siren.reremi', 'siren.interface', 'siren.work', 'siren.views', 'siren.reremi.grako']
+    PACKAGE_DATA = {'data\\conf': ['siren\\reremi\\miner_confdef.xml', 'siren\\reremi\\inout_confdef.xml', 'siren\\views\\views_confdef.xml', 'siren\\interface\\ui_confdef.xml',],
+                    'data\\icons': glob.glob('siren\\data\\icons\\*.png') + glob.glob('siren\\data\\icons\\*.ico'),
+                    'data\\help': glob.glob('siren\\data\\help\\*'),
+                    'data\\licenses': ['LICENSE']+glob.glob('siren\\data\\licenses\\LICENSE*'),
+	            '': ['LICENSE']}
 
-    WICONS = [('icons', glob.glob('icons\\*.ico') + glob.glob('icons\\*.png'))]
-    WLICENSES = [('licenses', ['LICENSE']+glob.glob('licenses\\LICENSE*'))]
-    #WCONFIGS = [('siren.interface', ['siren\\interface\\ui_confdef.xml']),
-    #            ('siren.reremi', ['siren\\reremi\\miner_confdef.xml', 'siren\\reremi\\inout_confdef.xml'])]
-    WCONFIGS = [('confs', ['siren\\interface\\ui_confdef.xml','siren\\reremi\\miner_confdef.xml', 'siren\\reremi\\inout_confdef.xml'])]
-    WMORE = [('help', glob.glob('help\\*')),
-             ('', ['LICENSE'])]
-
-## 
     
     OPTIONS = {
     'compressed': True,
-    'packages': ST_PACKAGES,
+    'packages': DU_PACKAGES+ST_PACKAGES,
     'dll_excludes': ['MSVCP90.dll','api-ms-win-core-string-l1-1-0.dll', 'api-ms-win-core-memory-l1-1-2.dll', 'api-ms-win-core-file-l1-2-1.dll', 'api-ms-win-core-libraryloader-l1-2-1.dll', 
     'api-ms-win-core-string-l2-1-0.dll', 'api-ms-win-core-profile-l1-1-0.dll', 'api-ms-win-core-string-obsolete-l1-1-0.dll', 'api-ms-win-core-debug-l1-1-1.dll', 'api-ms-win-core-sidebyside-l1-1-0.dll', 
     'api-ms-win-core-processthreads-l1-1-2.dll','api-ms-win-core-kernel32-legacy-l1-1-1.dll','api-ms-win-core-handle-l1-1-0.dll','api-ms-win-core-timezone-l1-1-0.dll','api-ms-win-core-processenvironment-l1-2-0.dll',
@@ -236,8 +233,8 @@ elif sys.platform == 'win32':
     bsm_files = [f for f in glob.glob('C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*') if not re.search("_f.dat", f)] 
     MTK = [('mpl_toolkits\\basemap\\data', bsm_files)]
     extra_options.update(dict(
-        windows=[{"script": APP, "icon_resources": [(1, "icons\\siren_icon.ico")]}],
-        data_files= WICONS + WLICENSES + WCONFIGS + WMORE + MPL + MTK,
+        windows=[{"script": APP, "icon_resources": [(1, "siren\\data\\icons\\siren_icon.ico")]}],
+        data_files= PACKAGE_DATA.items() + MPL + MTK,
         options={'py2exe': OPTIONS})
         )
     # Run setup
@@ -248,9 +245,10 @@ else:
     ################ LINUX SETUP
     from distutils.core import setup
         
-    DU_FILES = [common_variables["MAIN_FILENAME"][:-3], "server_siren"]
+    DU_FILES = [APP[:-3], "server_siren"]
     DU_PACKAGES = ['siren', 'siren.reremi', 'siren.interface', 'siren.work', 'siren.views', 'siren.reremi.grako']
     PACKAGE_DATA = {'siren.reremi': ['miner_confdef.xml', 'inout_confdef.xml'],
+                    'siren.views': ['views_confdef.xml'],
                     'siren.interface': ['ui_confdef.xml'],
                     'siren': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}
 

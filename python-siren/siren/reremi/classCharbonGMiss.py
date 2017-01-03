@@ -33,8 +33,8 @@ class CharbonGMiss(CharbonGreedy):
         lmiss = supports.lpartsInterX(col.missing)
         lin = supports.lpartsInterX(col.hold)
 
-        for op in self.constraints.ops_query(side, init):
-            for neg in self.constraints.neg_query(side, col.typeId()):
+        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if adv is not None :
                     cands.append(Extension(self.constraints.getSSetts(), adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
@@ -67,14 +67,14 @@ class CharbonGMiss(CharbonGreedy):
     def findCover1(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
         lin = supports.lpartsInterX(col.supp())
-        for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side, col.typeId()):        
+        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 tmp_adv, tmp_clp  = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if tmp_adv is not None:
                     cands.append((False, Extension(self.constraints.getSSetts(), tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
                 ### to negate the other side when looking for initial pairs
-                if init == 1 and True in self.constraints.neg_query(side, col.typeId()):
+                if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                     tmp_adv, tmp_clp  = self.getAC(side, op, neg, \
                                                        self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
                     if tmp_adv is not None:
@@ -85,8 +85,8 @@ class CharbonGMiss(CharbonGreedy):
     def findCover2(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
 
-        for op in self.constraints.ops_query(side, init):            
-            for neg in self.constraints.neg_query(side, col.typeId()):        
+        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
                 best = (None, None, None)
                 bestNeg = (None, None, None)
                 for (cat, supp) in col.sCats.iteritems():
@@ -94,7 +94,7 @@ class CharbonGMiss(CharbonGreedy):
                     best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
 
                     ### to negate the other side when looking for initial pairs
-                    if init ==1 and True in self.constraints.neg_query(side, col.typeId()):
+                    if init ==1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                         bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
                                               self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
 
@@ -107,17 +107,17 @@ class CharbonGMiss(CharbonGreedy):
     def findCover3(self, side, col, lparts, lmiss, supports, init=0):
         cands = []
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegments(self.constraints.getSSetts(), side, supports, self.constraints.ops_query(side, init))
+            segments = col.makeSegments(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, init=init))
             for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, init):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init == 1 and True in self.constraints.neg_query(side, col.typeId()):
+            if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
                 nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
 
                 if self.inSuppBounds(side, True, nlparts): ### DOABLE
-                    nsegments = col.makeSegments(self.constraints.getSSetts(), side, supports.negate(1-side), self.constraints.ops_query(side, init))
+                    nsegments = col.makeSegments(self.constraints.getSSetts(), side, supports.negate(1-side), self.constraints.getCstr("allw_ops", side=side, init=init))
                     ##H pdb.set_trace()
                     for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, init):
                         cands.append((True, cand))
@@ -125,13 +125,13 @@ class CharbonGMiss(CharbonGreedy):
         
     def findCoverSegments(self, side, col, segments, lparts, lmiss, init=0):
         cands = []
-        for op in self.constraints.ops_query(side, init):
-            if len(segments[op]) < self.constraints.max_seg():
+        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+            if len(segments[op]) < self.constraints.getCstr("max_seg"):
                 cands.extend(self.findCoverFullSearch(side, op, col, segments, lparts, lmiss))
             else:
-                if (False in self.constraints.neg_query(side, col.typeId())):
+                if False in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                     cands.extend(self.findPositiveCover(side, op, col, segments, lparts, lmiss))
-                if (True in self.constraints.neg_query(side, col.typeId())):
+                if True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                     cands.extend(self.findNegativeCover(side, op, col, segments, lparts, lmiss))
         return cands
 
@@ -143,10 +143,10 @@ class CharbonGMiss(CharbonGreedy):
             lin = self.constraints.getSSetts().makeLParts()
             for seg_e in range(seg_s,len(segments[op])):
                 lin = self.constraints.getSSetts().addition(lin, segments[op][seg_e][2])
-                for neg in self.constraints.neg_query(side, col.typeId()):
+                for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                     bests[neg] = self.updateACT(bests[neg], (seg_s, seg_e), side, op, neg, lparts, lmiss, lin)
 
-        for neg in self.constraints.neg_query(side, col.typeId()):
+        for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
@@ -324,7 +324,7 @@ class CharbonGMiss(CharbonGreedy):
 #                 return self.subdo33Full(colL, colR, side)
 #         else:
 #             return self.subdo33Heur(colL, colR, side)
-        if len(colL.interNonMode(colR.nonModeSupp())) >= self.constraints.min_itm_in() :
+        if len(colL.interNonMode(colR.nonModeSupp())) >= self.constraints.getCstr("min_itm_in") :
             return self.subdo33Full(colL, colR, side)
         else:
             return ([], [], [])
@@ -378,13 +378,13 @@ class CharbonGMiss(CharbonGreedy):
         ## DOABLE
         
         # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
-        # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.max_prodbuckets() ): 
-        nbb = self.constraints.max_prodbuckets() / float(len(bucketsF[1]))
-        if len(bucketsE[1]) > nbb: ## self.constraints.max_sidebuckets():
+        # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.getCstr("max_prodbuckets") ): 
+        nbb = self.constraints.getCstr("max_prodbuckets") / float(len(bucketsF[1]))
+        if len(bucketsE[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
 
-            if len(bucketsE[1])/nbb < self.constraints.max_agg():
+            if len(bucketsE[1])/nbb < self.constraints.getCstr("max_agg"):
                 ### collapsing buckets on the largest side is enough to get within the reasonable size
-                bucketsE = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
+                bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
                 bUpE=3 ## in case of collapsed bucket the threshold is different
 
             else:
@@ -393,11 +393,11 @@ class CharbonGMiss(CharbonGreedy):
 
                 #### try cats
                 bbs = [dict([(bi, es) for (bi, es) in enumerate(bucketsL[0]) \
-                                 if ( len(es) > self.constraints.min_itm_in() and \
-                                          colL.nbRows() - len(es) > self.constraints.min_itm_out())]),
+                                 if ( len(es) > self.constraints.getCstr("min_itm_in") and \
+                                          colL.nbRows() - len(es) > self.constraints.getCstr("min_itm_out"))]),
                        dict([(bi, es) for (bi, es) in enumerate(bucketsR[0]) \
-                                 if ( len(es) > self.constraints.min_itm_in() and \
-                                          colR.nbRows() - len(es) > self.constraints.min_itm_out())])]
+                                 if ( len(es) > self.constraints.getCstr("min_itm_in") and \
+                                          colR.nbRows() - len(es) > self.constraints.getCstr("min_itm_out"))])]
 
                 ## if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or len(bbs[0])/float(len(bucketsL[0])) < len(bbs[1])/float(len(bucketsR[0]))):
 
@@ -430,14 +430,14 @@ class CharbonGMiss(CharbonGreedy):
                 else:
                     #### working with on variable as categories is NOT workable
                     ### the only remaining solution is aggressive collapse of buckets on both sides
-                    nbb = numpy.sqrt(self.constraints.max_prodbuckets())
-                    bucketsE = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
+                    nbb = numpy.sqrt(self.constraints.getCstr("max_prodbuckets"))
+                    bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
                     bUpE=3 ## in case of collapsed bucket the threshold is different
-                    bucketsF = colF.collapsedBuckets(self.constraints.max_agg(), nbb)
+                    bucketsF = colF.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
                     bUpF=3 ## in case of collapsed bucket the threshold is different
                     ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])                    
 
-        if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.max_prodbuckets() ):
+        if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
             totInt = colE.nbRows() - len(colF.miss()) - len(colE.miss()) + missMubB
@@ -486,12 +486,12 @@ class CharbonGMiss(CharbonGreedy):
 
             belowF = 0
             lowF = 0
-            while lowF < len(interMat) and totInt - belowF >= self.constraints.min_itm_in():
+            while lowF < len(interMat) and totInt - belowF >= self.constraints.getCstr("min_itm_in"):
 
                 aboveF = 0
                 upF = len(interMat)-1
-                while upF >= lowF and totInt - belowF - aboveF >= self.constraints.min_itm_in():
-                    if belowF + aboveF  >= self.constraints.min_itm_out():
+                while upF >= lowF and totInt - belowF - aboveF >= self.constraints.getCstr("min_itm_in"):
+                    if belowF + aboveF  >= self.constraints.getCstr("min_itm_out"):
                         EinF = [sum([interMat[iF][iE] for iF in range(lowF,upF+1)]) for iE in range(len(interMat[lowF]))]
                         EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
                         lmissE = sum(lmissEinF[lowF:upF+1])
@@ -507,11 +507,11 @@ class CharbonGMiss(CharbonGreedy):
                         belowEF = 0
                         outBelowEF = 0
                         lowE = 0
-                        while lowE < len(interMat[lowF]) and totInt - belowF - aboveF - belowEF >= self.constraints.min_itm_in():
+                        while lowE < len(interMat[lowF]) and totInt - belowF - aboveF - belowEF >= self.constraints.getCstr("min_itm_in"):
                             aboveEF = 0
                             outAboveEF = 0
                             upE = len(interMat[lowF])-1
-                            while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.min_itm_in():
+                            while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.getCstr("min_itm_in"):
                                 
                                 lmissF = sum(lmissFinE[lowE:upE+1])
                                 lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
@@ -545,7 +545,7 @@ class CharbonGMiss(CharbonGreedy):
 
     def subdo22Full(self, colL, colR, side):
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if True not in self.constraints.neg_query(side, 2):
+        if True not in self.constraints.getCstr("neg_query", side=side, type_id=2):
             configs = configs[:1]
         best = [[] for c in configs]
         
@@ -586,20 +586,20 @@ class CharbonGMiss(CharbonGreedy):
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
-        if True not in self.constraints.neg_query(side, 2) or True not in self.constraints.neg_query(side, 3):
+        if True not in self.constraints.getCstr("neg_query", side=side, type_id=2) or True not in self.constraints.getCstr("neg_query", side=side, type_id=3):
             configs = configs[:1]
         best = [[] for c in configs]
 
         buckets = colE.buckets()
         bUp = 1
-        nbb = self.constraints.max_prodbuckets() / float(len(colF.cats()))
-        if len(buckets[1]) > nbb: ## self.constraints.max_sidebuckets():
+        nbb = self.constraints.getCstr("max_prodbuckets") / float(len(colF.cats()))
+        if len(buckets[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
              bUp=3 ## in case of collapsed bucket the threshold is different
-             buckets = colE.collapsedBuckets(self.constraints.max_agg(), nbb)
+             buckets = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
              #pdb.set_trace()
 
         ### TODO DOABLE
-        if buckets is not None and ( len(buckets[1]) * len(colF.cats()) <= self.constraints.max_prodbuckets()): 
+        if buckets is not None and ( len(buckets[1]) * len(colF.cats()) <= self.constraints.getCstr("max_prodbuckets")): 
             partsMubB = len(colF.miss())
             missMubB = len(colF.miss() & colE.miss())
             
@@ -623,12 +623,12 @@ class CharbonGMiss(CharbonGreedy):
                 missBelow = 0
                 low = 0
                 while low < len(interMat) and \
-                          (totIn - below >= self.constraints.min_itm_in() or totIn - below >= self.constraints.min_itm_out()):
+                          (totIn - below >= self.constraints.getCstr("min_itm_in") or totIn - below >= self.constraints.getCstr("min_itm_out")):
                     above = 0
                     missAbove = 0
                     up = len(interMat)-1
                     while up >= low and \
-                          (totIn - below - above >= self.constraints.min_itm_in() or totIn - below - above >= self.constraints.min_itm_out()):
+                          (totIn - below - above >= self.constraints.getCstr("min_itm_in") or totIn - below - above >= self.constraints.getCstr("min_itm_out")):
                         lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, totIn - below - above), (self.constraints.getSSetts().mubB, totMiss - missBelow - missAbove ), (self.constraints.getSSetts().delta, -sum(marg[low:up+1]))], 1-side)
                         for (i, nF, nE) in configs:
                             if nF:
@@ -672,12 +672,12 @@ class CharbonGMiss(CharbonGreedy):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
         contri = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[op], clp)
-        if contri >= self.constraints.min_itm_c():
+        if contri >= self.constraints.getCstr("min_itm_c"):
             varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[op], clp)
             fixBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixnum[op], clp)
-            if varBlue+fixBlue >= self.constraints.min_itm_in():
+            if varBlue+fixBlue >= self.constraints.getCstr("min_itm_in"):
                 sout = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_out[op], clp)
-                if sout >= self.constraints.min_itm_out():
+                if sout >= self.constraints.getCstr("min_itm_out"):
                     varRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[op], clp)
                     fixRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixden[op], clp)
                     if varRed + fixRed == 0:
@@ -740,5 +740,5 @@ class CharbonGMiss(CharbonGreedy):
 
 
     def inSuppBounds(self, side, op, lparts):
-        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.min_itm_in() \
-               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.min_itm_c()
+        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.getCstr("min_itm_in") \
+               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.getCstr("min_itm_c")

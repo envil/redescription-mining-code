@@ -272,10 +272,10 @@ def run_filter(args):
         parseRedList(fd, data, reds)
 
     # bbatch = Batch(reds)
-    # # org_ids = bbatch.selected(constraints.actions_final())
+    # # org_ids = bbatch.selected(constraints.getActions("final"))
     # # pdb.set_trace()
     
-    # cc = constraints.actions_final()
+    # cc = constraints.getActions("final")
     # ttt = [0, 2, 9, 27, 42, 61, 84, 19, 17, 3, 10, 4, 1, 62, 46, 28, 32, 43, 63, 13, 85, 6, 5, 7, 66, 11, 29, 15, 44, 90, 70, 87, 12, 14, 16, 23, 31, 38, 36, 37, 86, 88, 73, 83, 51, 75, 39, 57, 58, 97, 67, 52, 30, 95, 47, 55, 50, 35, 33, 89, 69, 45, 93, 18, 54, 77, 53, 91, 34, 64, 68, 96, 65, 98, 92, 48, 49, 26, 40, 76, 74, 72, 94, 71, 99, 80, 21, 20, 56, 22, 81, 78, 79, 82, 59, 41, 60, 25, 24, 8]
     # for i in range(len(ttt)):
     #     for j in range(i):
@@ -290,15 +290,15 @@ def run_filter(args):
         include_redids = [84, 77, 53, 29, 94]
 
         bbatch = Batch([reds[i] for i in include_redids]+[reds[i] for i in add_redids])
-        org_ids = bbatch.selected(constraints.actions_final())
+        org_ids = bbatch.selected(constraints.getActions("final"))
         
         batch = Batch([reds[i] for i in include_redids])
-        pids = batch.selected(constraints.actions_final())
+        pids = batch.selected(constraints.getActions("final"))
         batch.extend([reds[i] for i in add_redids])
-        # tmp_ids = batch.selected(self.constraints.actions_redundant())
+        # tmp_ids = batch.selected(self.constraints.getActions("redundant"))
         ticc = datetime.datetime.now()
         new_ids = range(len(include_redids), len(include_redids)+len(add_redids))
-        tmp_ids = batch.selected(constraints.actions_final(), ids= pids+new_ids, new_ids=new_ids)
+        tmp_ids = batch.selected(constraints.getActions("final"), ids= pids+new_ids, new_ids=new_ids)
         tacc = datetime.datetime.now()
         print "Elapsed ", ri, tacc-ticc
         if tmp_ids != org_ids:

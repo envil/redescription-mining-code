@@ -75,9 +75,9 @@ class Log(object):
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
-        self.progress_ss["generation"] = constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (constraints.max_var()[0]+constraints.max_var()[0]-2)*2*self.progress_ss["generation"]
-        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + constraints.max_red()*self.progress_ss["expansion"]
+        self.progress_ss["generation"] = constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (constraints.getCstr("max_var", side=0)+constraints.getCstr("max_var", side=0)-2)*2*self.progress_ss["generation"]
+        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + constraints.getCstr("max_red")*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         if level > -1:
             self.printL(level, self.getProgress(), 'progress', id)
@@ -86,9 +86,9 @@ class Log(object):
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [souvenirs.nbCols(0)*self.progress_ss["cand_var"],
                                          souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
-        self.progress_ss["generation"] = constraints.batch_cap()*sum(self.progress_ss["cand_side"])
-        self.progress_ss["expansion"] = (constraints.max_var()[0]-min([constraints.max_var()[0]]+[len(r.queries[0]) for r in reds])+
-                                         constraints.max_var()[1]-min([constraints.max_var()[1]]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
+        self.progress_ss["generation"] = constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
+        self.progress_ss["expansion"] = (constraints.getCstr("max_var", side=0)-min([constraints.getCstr("max_var", side=0)]+[len(r.queries[0]) for r in reds])+
+                                         constraints.getCstr("max_var", side=1)-min([constraints.getCstr("max_var", side=1)]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         if level > -1:

@@ -75,20 +75,21 @@ class ProjCache():
 class Siren():
     """ The main frame of the application
     """
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.split(os.path.split(curr_dir)[0])[0]
-
+    root_dir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
 
     @classmethod
     def searchData(tcl, filen, folder=None, path=[], pref="data/"):
         ff = []
         if folder is not None:
-            ff = ['../'+pref+folder, tcl.root_dir+'/siren/'+pref+folder, './']
+            ff = ['../'+pref+folder, './'+pref+folder, tcl.root_dir+'/'+pref+folder]
+        for fldr in path:
+            ff += ['../'+fldr, './'+fldr, tcl.root_dir+'/'+fldr]
         return findFile(filen, path+ff)
-        # tmp = findFile(filen, path+ff)
-        # if tmp is None:
-        #     print "findFile %s %s\t-->\t%s" % (filen, path+ff, tmp)
-        # return tmp 
+        #tmp = findFile(filen, path+ff)
+        #if tmp is None:
+        #    raise Exception("findFile %s %s\t-->\t%s" % (filen, path+ff, tmp))
+        #    print "findFile %s %s\t-->\t%s" % (filen, path+ff, tmp)
+        #return tmp 
     @classmethod
     def initIcons(tcl, icons_setts, path=[]):
         icons = {}
@@ -103,7 +104,7 @@ class Siren():
     def initConfs(tcl, cfiles):
         conf_defs = []
         for (filen, folder) in cfiles:
-            cf = tcl.searchData(filen, folder, path=['./confs'], pref="")
+            cf = tcl.searchData(filen, "conf", path=[folder])
             if cf is not None:
                 conf_defs.append(cf)
         return conf_defs
@@ -136,7 +137,7 @@ class Siren():
     main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
-    cfiles = [('miner_confdef.xml', 'reremi'), ('ui_confdef.xml', 'interface')]
+    cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface')]
     
     results_delay = 1000
          
@@ -703,10 +704,10 @@ class Siren():
     def makeFileMenu(self, frame, menuFile=None):
         if menuFile is None:
             menuFile = wx.Menu()
-        #### WARNING FOR DEBUG ONLY
-        ID_RELOAD = wx.NewId()
-        m_reload = menuFile.Append(ID_RELOAD, "&Reload\tShift+Ctrl+O", "Reload view code.")
-        frame.Bind(wx.EVT_MENU, self.OnReload, m_reload)
+        # #### WARNING FOR DEBUG ONLY
+        # ID_RELOAD = wx.NewId()
+        # m_reload = menuFile.Append(ID_RELOAD, "&Reload\tShift+Ctrl+O", "Reload view code.")
+        # frame.Bind(wx.EVT_MENU, self.OnReload, m_reload)
 
         m_open = menuFile.Append(wx.ID_OPEN, "&Open\tCtrl+O", "Open a project.")
         frame.Bind(wx.EVT_MENU, self.OnOpen, m_open)
@@ -867,8 +868,8 @@ class Siren():
                ( type(event) == wx.SplitterEvent and event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId()):
                  self.getVizm().OnSplitchange()
 
-    def OnReload(self, event):
-        ViewFactory.reloadCode()
+    # def OnReload(self, event):
+    #     ViewFactory.reloadCode()
         
     def OnOpen(self, event):
         if not self.checkAndProceedWithUnsavedChanges():
@@ -1232,21 +1233,21 @@ class Siren():
 
     def OnFilterToOne(self, event):
         if self.matchTabType("r"):
-            self.selectedTab["tab"].filterToOne(self.constraints.parameters_filterredundant())
+            self.selectedTab["tab"].filterToOne(self.constraints.getFilterParams("redundant"))
 
     def OnFilterAll(self, event):
         if self.matchTabType("r"):
-            self.selectedTab["tab"].filterAll(self.constraints.parameters_filterredundant())
+            self.selectedTab["tab"].filterAll(self.constraints.getFilterParams("redundant"))
 
     def OnFilterFolds(self, event):
         if self.matchTabType("r"):
             self.constraints.setFolds(self.dw.getData())
-            self.selectedTab["tab"].processAll(self.constraints.actions_folds(), True)
-            ## self.selectedTab["tab"].filterAll(self.constraints.parameters_filterredundant())
+            self.selectedTab["tab"].processAll(self.constraints.getActions("folds"), True)
+            ## self.selectedTab["tab"].filterAll(self.constraints.getFilterParams("redundant"))
 
     def OnProcessAll(self, event):
         if self.matchTabType("r"):
-            self.selectedTab["tab"].processAll(self.constraints.actions_final(), True)
+            self.selectedTab["tab"].processAll(self.constraints.getActions("final"), True)
 
     def OnFlipExCol(self, event):
         if self.matchTabType("e"):

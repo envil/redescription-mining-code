@@ -246,7 +246,7 @@ files_dest["setup.nsi"]=""";NSIS Modern User Interface
   !define MUI_FILE "__MAIN_FILEPREFF__"
   !define M_VERSION "__VERSION__"
   !define py2exeOutputDirectory 'dist'
-  !define MUI_ICON "icons\siren_icon.ico"
+  !define MUI_ICON "siren\data\icons\siren_icon.ico"
 
   ;Name and file
   Name "${M_PRODUCT}"
@@ -297,8 +297,8 @@ Section "Siren" SecSiren
 
 ;create start-menu items
   CreateDirectory "$SMPROGRAMS\${M_PRODUCT}"
-  CreateShortCut "$SMPROGRAMS\${M_PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\icons\usiren_icon.ico" 0
-  CreateShortCut "$SMPROGRAMS\${M_PRODUCT}\${M_PRODUCT}.lnk" "$INSTDIR\${MUI_FILE}.exe" "" "$INSTDIR\icons\siren_icon.ico" 0
+  CreateShortCut "$SMPROGRAMS\${M_PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\data\icons\usiren_icon.ico" 0
+  CreateShortCut "$SMPROGRAMS\${M_PRODUCT}\${M_PRODUCT}.lnk" "$INSTDIR\${MUI_FILE}.exe" "" "$INSTDIR\data\icons\siren_icon.ico" 0
  
 ;write uninstall information to the registry
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${M_PRODUCT}" "DisplayName" "${M_PRODUCT} (remove only)"
@@ -337,10 +337,7 @@ Section "Uninstall"
   Delete "$INSTDIR\*.*"
 
 ;Empty and remove the subdirectories
-  RMDir /r "$INSTDIR\help"
-  RMDir /r "$INSTDIR\confs"
-  RMDir /r "$INSTDIR\icons"
-  RMDir /r "$INSTDIR\licenses"
+  RMDir /r "$INSTDIR\data"
   RMDir /r "$INSTDIR\mpl_toolkits"
   RMDir /r "$INSTDIR\mpl-data"
 

@@ -30,7 +30,7 @@ cp -r ${SPH_REP} ${SPHINX_REP}
 # svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/ui_confdef.xml  _static/
 # svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/inout_confdef.xml  _static/
 # svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/miner_confdef.xml  _static/
-cp ${SRC_REP}/siren/interface/*confdef.xml ${SRC_REP}/siren/reremi/*confdef.xml ${SPHINX_REP}/_static/
+cp ${SRC_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
 sed -i 's:\./reremi/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/_static/
@@ -44,23 +44,26 @@ sed -i -e s:__SIREN_PYTHON_PATH__:${SPHINX_REP}/siren:g ${SPHINX_REP}/*/conf.py
 
 
 if [ $JUST_HELP -gt 0 ]; then
-    # #### MAKE HELP
+    # #### MAKE HELP ONLY
     cd ${SPHINX_REP}/siren-help/
     rm -rf _build
     make html
-    cp -r _build/html/* ${OUT_REP}
+    ## make latexpdf
 
+    cp -r _build/html/* ${OUT_REP}
     cd ${OUT_REP}
     mv $( cat *.html | sed -n -e 's:^.*href="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*href="\([^"]*_images/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_images/[^"]*\)".*$:\1:p' | sed 's:\.\./::' | sort | uniq ) ./
     mv _static/*.css ./
-    sed -i '/Main Siren webpage/d' *.html
+    mv _static/confdef.xsl _static/*_confdef.xml ./
+    #sed -i '/Main Siren webpage/d' *.html
+    sed -i 's!../main/!http://siren.gforge.inria.fr/!g' *.html
     sed -i '/As a PDF/d' *.html
     sed -i 's:\([^/]\)_static/:\1:g' *.html
     sed -i 's:\([^/]\)_images/:\1:g' *.html
     sed -i 's:\.\./_static/::g' *.html
     sed -i 's:\.\./_images/::g' *.html
     rm -rf _static _images
-    rm objects.inv
+    rm .buildinfo objects.inv slidy*s
     
 else    
     # #### MAKE HELP
@@ -97,7 +100,7 @@ else
         mv ${fold}/_images/* ./_images/
         rmdir ${fold}/_static ${fold}/_images
     done
-    rm */objects.inv
+    rm */objects.inv */.buildinfo
 fi
     
 # cd ${PACK_REP}

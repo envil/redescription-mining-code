@@ -38,7 +38,7 @@ cp -r ${SPH_REP}/_figs ${SPHINX_REP}/_figs
 cp -r ${SPH_REP}/_templates ${SPHINX_REP}/_templates
 
 ### COPY FILES FROM THE SOURCE CODE TO DOC
-cp ${ROOT_REP}/siren/interface/*confdef.xml ${ROOT_REP}/siren/reremi/*confdef.xml ${SPHINX_REP}/_static/
+cp ${ROOT_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
 sed -i 's:\./reremi/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${ROOT_REP}/CHANGELOG ${SPHINX_REP}/_static/
@@ -48,25 +48,6 @@ sed -i -e s:__SIREN_PYTHON_PATH__:${ROOT_REP}/siren:g ${SPHINX_REP}/*/conf.py
 
 # ################################
 # ### prepare the help pages
-# cd ${SPHINX_REP}"/siren-help/"
-# rm -rf _build
-# make html
-# make latexpdf
-
-# rm -rf ${HELP_TRG_REP}
-# cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}
-# cp ${GUIDE_PDF_SRC} ${GUIDE_PDF_TRG}
-# cd ${HELP_TRG_REP}
-# rm .buildinfo objects.inv
-# sed -i -e 's:\([^/]\)../_static/:\1:g' -e 's:\([^/]\)_static/:\1:g' -e 's:\([^/]\)_images/:\1:g' -e 's!../main/!http://www.cs.helsinki.fi/u/galbrun/redescriptors/siren/!g' *.html
-# mv _static/* .
-# mv _images/* .
-# rm -rf _static _images
-# rm -rf ${SPHINX_REP}
-# rm slides_*.html drawing_*.svg slidy*s
-
-################################
-# #### MAKE HELP
 cd ${SPHINX_REP}/siren-help/
 rm -rf _build
 make html
@@ -78,14 +59,16 @@ cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}
 cd ${HELP_TRG_REP}
 mv $( cat *.html | sed -n -e 's:^.*href="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*href="\([^"]*_images/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:^.*src="\([^"]*_images/[^"]*\)".*$:\1:p' | sed 's:\.\./::' | sort | uniq ) ./
 mv _static/*.css ./
-sed -i '/Main Siren webpage/d' *.html
+mv _static/confdef.xsl _static/*_confdef.xml ./
+#sed -i '/Main Siren webpage/d' *.html
+sed -i 's!../main/!http://siren.gforge.inria.fr/!g' *.html
 sed -i '/As a PDF/d' *.html
 sed -i 's:\([^/]\)_static/:\1:g' *.html
 sed -i 's:\([^/]\)_images/:\1:g' *.html
 sed -i 's:\.\./_static/::g' *.html
 sed -i 's:\.\./_images/::g' *.html
 rm -rf _static _images
-rm objects.inv
+rm .buildinfo objects.inv slidy*s
 ################################
 
 rm -rf ${SPHINX_REP}

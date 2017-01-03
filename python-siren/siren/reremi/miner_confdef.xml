@@ -134,7 +134,7 @@
 <section>
       <name>Types of queries</name>
       <parameter>
-	<name>lhs_max_var</name>
+	<name>max_var_s0</name>
 	<label>LHS max number of variables</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
@@ -143,7 +143,7 @@
 	<default><value>4</value></default>
       </parameter>
       <parameter>
-	<name>rhs_max_var</name>
+	<name>max_var_s1</name>
 	<label>RHS max number of variables</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
@@ -152,7 +152,7 @@
 	<default><value>4</value></default>
       </parameter>
       <parameter>
-	<name>lhs_neg_query_1</name>
+	<name>neg_query_s0_1</name>
 	<label>LHS Literals Bool</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -161,7 +161,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>lhs_neg_query_2</name>
+	<name>neg_query_s0_2</name>
 	<label>LHS Literals Cat</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -170,7 +170,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>lhs_neg_query_3</name>
+	<name>neg_query_s0_3</name>
 	<label>LHS Literals Num</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -179,7 +179,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>lhs_ops_query</name>
+	<name>ops_query_s0</name>
 	<label>LHS Operators</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -188,7 +188,7 @@
 	<options><value>Conjunction</value><value>Disjunction</value></options>
       </parameter>
       <parameter>
-	<name>rhs_neg_query_1</name>
+	<name>neg_query_s1_1</name>
 	<label>RHS Literals Bool</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -197,7 +197,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>rhs_neg_query_2</name>
+	<name>neg_query_s1_2</name>
 	<label>RHS Literals Cat</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -206,7 +206,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>rhs_neg_query_3</name>
+	<name>neg_query_s1_3</name>
 	<label>RHS Literals Num</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
@@ -215,7 +215,7 @@
 	<options><value>Positive</value><value>Negative</value></options>
       </parameter>
       <parameter>
-	<name>rhs_ops_query</name>
+	<name>ops_query_s1</name>
 	<label>RHS Operators</label>
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
