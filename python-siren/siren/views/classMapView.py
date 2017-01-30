@@ -99,10 +99,7 @@ class MapView(TDView):
             return
 
         if not hasattr( self, 'axe' ):
-            try:
-                self.bm, args_all = self.makeBasemapProj()
-            except ValueError:
-                self.bm = None
+            self.bm, self.bm_args = self.makeBasemapProj()
 
             self.coords_proj = self.mapCoords(self.parent.dw.getCoords(), self.bm)
             if self.bm is not None:
@@ -196,13 +193,15 @@ class MapView(TDView):
 
     def mapCoords(self, coords, bm=None):
         self.mapoly = self.getMapPoly() & (min([len(cs) for cs in coords[0]]) > 2)
-        if bm is None:
-            return coords
+
         nbc_max = max([len(c) for c in coords[0]])
         proj_coords = [numpy.zeros((2, len(coords[0]), nbc_max+1)), []]
 
         for i in range(len(coords[0])):
-            p0, p1 = bm(coords[0][i], coords[1][i])
+            if bm is None:
+                p0, p1 = (coords[0][i], coords[1][i])
+            else:
+                p0, p1 = bm(coords[0][i], coords[1][i])
             proj_coords[1].append(len(p0)+1)
             proj_coords[0][0,i,0] = numpy.mean(p0)
             proj_coords[0][0,i,1:proj_coords[1][-1]] = p0
@@ -265,45 +264,124 @@ class MapView(TDView):
                 colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, t[color_k]["data"])]) 
         return draws, colors, more
 
-    def getParallelsMeridiansRange(self, parallels=True, meridians=True):
-        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
-        if not meridians:
-            wmin = ulat-llat
-        elif not parallels:
-            wmin = ulon-llon
+    def getParallelsRange(self):
+        span = float(self.bm_args["urcrnrlat"] - self.bm_args["llcrnrlat"])
+        # if self.bm_args["llcrnrlat"] < self.bm_args["urcrnrlat"]:
+        #     span = float(self.bm_args["urcrnrlat"] - self.bm_args["llcrnrlat"])
+        # else:
+        #     span = (180. - self.bm_args["llcrnrlon"]) + (self.bm_args["urcrnrlon"] + 180.)
+        opts = [60, 30, 10, 5, 1]
+        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
+        step = opts[p]
+        # if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
+        return numpy.arange(int(self.bm_args["llcrnrlat"]/step)*step, (int(self.bm_args["urcrnrlat"]/step)+1)*step, step)
+        # else:
+        #     return numpy.concatenate([numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
+        #                                   numpy.arange(int(-180./step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)])
+
+        
+    def getMeridiansRange(self):
+        if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
+            span = float(self.bm_args["urcrnrlon"] - self.bm_args["llcrnrlon"])
         else:
-            wmin = min(ulat - llat, ulon - llon)
-        step = 100
-        while step > 0 and wmin / step < 2: 
-            step -= 10
-        if step == 0:
-            step = 1
-        return numpy.arange(int(llat/step)*step,(int(ulat/step)+1)*step,step), numpy.arange(int(llon/step)*step,(int(ulon/step)+1)*step,step)
+            span = (180. - self.bm_args["llcrnrlon"]) + (self.bm_args["urcrnrlon"] + 180.)
+        opts = [60, 30, 10, 5, 1]
+        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
+        step = opts[p]
+        if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
+            return numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)
+        else:
+            return numpy.concatenate([numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
+                                          numpy.arange(int(-180./step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)])
 
     def makeBasemapProj(self):
         proj, resolution = self.getBasemapProjSetts()
         if proj is None:
             return None, None
-        llon, ulon, llat, ulat = self.parent.dw.getCoordsExtrema()
+        coords = ["llon", "ulon", "llat", "ulat"]
+        mbounds = {}
+        allundef = True
+        ## try_bounds = {"llon": -30., "ulon": 30., "llat": 30., "ulat": 110.}
+        cust_bounds = {"llon": -180., "ulon": 180., "llat": -90., "ulat": 90.}
+        for c in coords:
+            mbounds["c"+c] = self.parent.dw.getPreferences()[c]["data"]
+            ## mbounds["c"+c] = try_bounds[c] #self.parent.dw.getPreferences()[c]["data"]
+            allundef &=  (mbounds["c"+c] == -1)
+        if allundef:
+            mbounds = cust_bounds
+        else:
+            mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"] = self.parent.dw.getCoordsExtrema()
+            for coord in ["llon", "ulon", "llat", "ulat"]:
+                if numpy.abs(mbounds["c"+coord]) <= 180: #numpy.abs(cust_bounds[coord]):
+                    mbounds[coord] = mbounds["c"+coord]
+            
+        llon, ulon, llat, ulat = (mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"])
+        ## print "Org", llon, ulon, llat, ulat
         blon, blat = (ulon-llon)/self.marg_f, (ulat-llat)/self.marg_f
-        rsphere=6370997.0
-        pi=3.1415926 
+        # blon, blat = 0.,0.
+        ## proj = "cass"
+        # circ_equ=2*numpy.pi*6378137.
+        # circ_pol=2*numpy.pi*6356752.
+        # circ_avg=2*numpy.pi*6371000.
+        circ_def=2*numpy.pi*6370997.
+
+        llcrnrlon = numpy.max([-180., llon-blon])
+        urcrnrlon = numpy.min([180., ulon+blon])
+        if urcrnrlon <= llcrnrlon:
+            if "width" in self.proj_pk[proj]:
+                span_lon = (360+urcrnrlon-llcrnrlon)
+            else:
+                urcrnrlon = cust_bounds["ulon"]
+                llcrnrlon = cust_bounds["llon"]
+                span_lon = (urcrnrlon-llcrnrlon)
+        else:
+            span_lon = (urcrnrlon-llcrnrlon)
+
+        lon_0 = llcrnrlon + span_lon/2.0
+        if lon_0 > 180:
+            lon_0 -= 360
+
+            
+        llcrnrlat = numpy.max([-90., llat-blat])
+        urcrnrlat = numpy.min([90., ulat+blat])
+        if urcrnrlat <= llcrnrlat:
+            urcrnrlat = cust_bounds["ulat"]
+            llcrnrlat = cust_bounds["llat"]
+        if "width" in self.proj_pk[proj]:
+            llcrnrlatT = numpy.max([-180., llat-blat])
+            urcrnrlatT = numpy.min([180., ulat+blat])
+        else:
+            llcrnrlatT = llcrnrlat
+            urcrnrlatT = urcrnrlat 
+        span_lat = (urcrnrlatT-llcrnrlatT)
+        lat_0 = llcrnrlatT + span_lat/2.0
+        if numpy.abs(lat_0) > 90:
+            lat_0 = numpy.sign(lat_0)*(180 - numpy.abs(lat_0))
         
-        width = 2*pi*rsphere*numpy.cos((min(abs(llon), abs(ulon))-blon)/180)*(ulat-llat+2*blat)/360
-        height = 2*pi*rsphere*(ulon-llon+2*blat)/360
-        lon_0 = llon + (ulon-llon)/2.0
-        lat_0 = llat + (ulat-llat)/2.0
-        args_all = {"width": width, "height":height,
+        height = span_lat/360.
+        if numpy.sign(urcrnrlat) == numpy.sign(llcrnrlat):
+            width = numpy.cos((numpy.pi/2.)*numpy.min([numpy.abs(urcrnrlat),numpy.abs(llcrnrlat)])/90.)*span_lon/360.
+        else: ### contains equator, the largest, factor 1
+            width = span_lon/360.
+        ## print "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat)
+        # print "H", height, "W", width
+        args_all = {"width": circ_def*width, "height": circ_def*height,
                     "lon_0": lon_0, "lat_0": lat_0,
                     "lon_1": lon_0-20, "lat_1": lat_0-5,
-                    "lon_2": lon_0+5, "lat_2": lat_0+5, 
-                    "llcrnrlon": llon-blon, "llcrnrlat": llat-blat,
-                    "urcrnrlon": ulon+blon, "urcrnrlat": ulat+blat,
-                    "boundinglat":llat-blat, 'satellite_height': 30*10**6}
+                    "lon_2": lon_0+5, "lat_2": lat_0+5,
+                    "llcrnrlon": llcrnrlon, "llcrnrlat": llcrnrlat,
+                    "urcrnrlon": urcrnrlon, "urcrnrlat": urcrnrlat,
+                    "boundinglat": llcrnrlat, 'satellite_height': 30*10**6}
         args_p = {"projection": proj, "resolution":resolution}
         for param_k in self.proj_pk[proj]:
             args_p[param_k] = args_all[param_k]
-        return mpl_toolkits.basemap.Basemap(**args_p), args_all
+        ## print args_all
+        try:
+            bm = mpl_toolkits.basemap.Basemap(**args_p)
+        except ValueError:
+            bm = None 
+        ### print "BM Corners", (bm.llcrnrlon, bm.llcrnrlat), (bm.urcrnrlon, bm.urcrnrlat)
+        return bm, args_all
         
     def makeBasemapBack(self, bm=None):
         if bm is None:
@@ -327,12 +405,15 @@ class MapView(TDView):
             sea_color = colors["sea_color"]
         if draws["lakes"]:
             lake_color = colors["sea_color"]
-
-        parallels, meridians = self.getParallelsMeridiansRange(draws["parallels"], draws["meridians"]) 
+            
         if draws["parallels"]:
-            bm.drawparallels(parallels, linewidth=0.5, labels=[1,0,0,1])
+            tt = self.getParallelsRange()
+            # print "parallels", tt
+            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1])
         if draws["meridians"]:
-            bm.drawmeridians(meridians, linewidth=0.5, labels=[1,0,0,1])
+            tt = self.getMeridiansRange()
+            # print "meridians", tt
+            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0])
 
         if more["bluemarble"] > 0:
             bm.bluemarble(alpha=more["bluemarble"])

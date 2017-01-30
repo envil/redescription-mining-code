@@ -398,10 +398,12 @@ class Miner(object):
         
     def initializeRedescriptionsGreedy(self, ids=None):
         self.initial_pairs.reset()
+
+        ##### SELECTION USING FOLDS
+        # folds = numpy.array(self.data.cols[0][-1].getVector())
+        # counts_folds = 1.*numpy.bincount(folds) 
+        # nb_folds = len(counts_folds)
         
-        ## folds = numpy.array(self.data.cols[0][-1].getVector())
-        ## counts_folds = 1.*numpy.bincount(folds) 
-        ## nb_folds = len(counts_folds)
         ### Loading pairs from file if filename provided
         if not self.initial_pairs.loadFromFile():
 
@@ -428,6 +430,7 @@ class Miner(object):
                 for i in range(len(scores)):
                     if scores[i] >= self.constraints.getCstr("min_pairscore") and (literalsL[i], literalsR[i]) not in seen:
                         seen.append((literalsL[i], literalsR[i]))
+                        # ########
                         self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
                         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
                         # ########

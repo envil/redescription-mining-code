@@ -11,6 +11,7 @@ from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
+## from classMinerFolds import instMiner, StatsMiner
 from classQuery import Query
 import pdb
 

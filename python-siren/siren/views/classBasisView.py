@@ -1000,35 +1000,29 @@ class BasisView(object):
                 self.removeHighlighted1(iid)
     
     ################ HANDLING SETTINGS
+    def getSettBoolV(self, key, default=False):
+        t = self.parent.dw.getPreferences()
+        try:
+            v = t[key]["data"] == "yes"
+        except:            
+            v = default
+        return v
+    
     def hoverActive(self):
-        return self.parent.dw.getPreferences()['hover_entities']['data'] == 'yes' 
+        return self.getSettBoolV('hover_entities')
     def clickActive(self):
-        return self.parent.dw.getPreferences()['click_entities']['data'] == 'yes' 
+        return self.getSettBoolV('click_entities')
     def inCapture(self, event):
         return False
     
     def getMissDetails(self):
-        t = self.parent.dw.getPreferences()
-        if t["miss_details"]["data"] == "yes":
-            return True
-        return False
+        return self.getSettBoolV('miss_details')
 
     def getLitContribOn(self):
-        t = self.parent.dw.getPreferences()
-        lcon = False
-        try:
-            lcon = t["literals_contrib"]["data"] == "yes"
-        except:
-            lcon = False
-        return lcon
+        return self.getSettBoolV('literals_contrib')
     
     def getDeltaOn(self):
-        t = self.parent.dw.getPreferences()
-        try:
-            deltaon = t["draw_delta"]["data"] == "yes"
-        except:
-            deltaon = BasisView.DELTA_ON
-        return deltaon
+        return self.getSettBoolV('draw_delta', self.DELTA_ON)
 
     
     def getColorKey1(self, key, dsetts=None):

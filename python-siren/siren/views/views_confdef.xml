@@ -65,7 +65,7 @@
 	<label>Dot size</label>
 	<parameter_type>range</parameter_type>
 	<value_type>integer</value_type>
-	<legend>Dot size on the map.</legend>
+	<legend>Size of the dots in points.</legend>
 	<range_min>0</range_min>
 	<range_max>10</range_max>
 	<default><value>3</value></default>
@@ -75,7 +75,7 @@
 	<label>Dot shape</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Shape of the map dots</legend>
+	<legend>Shape of the dots</legend>
 	<default><value>0</value></default>
 	<options><value>s</value><value>p</value><value>,</value><value>o</value></options>
       </parameter>
@@ -262,6 +262,46 @@
 	<range_min>0</range_min>
 	<range_max>100</range_max>
 	<default><value>100</value></default>
+      </parameter>
+      <parameter>
+	<name>llon</name>
+	<label>Min longitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary min longitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>ulon</name>
+	<label>Max longitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary max longitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>llat</name>
+	<label>Min latitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary min latitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>ulat</name>
+	<label>Max latitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary max latitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
       </parameter>
       <parameter>
 	<name>map_poly</name>
