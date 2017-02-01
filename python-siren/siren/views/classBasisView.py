@@ -78,7 +78,8 @@ class CustToolbar(NavigationToolbar):
     def __init__(self, plotCanvas, parent):
         self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'))
         # , (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure')
-
+        if not parent.hasParent():
+            self.toolitems = tuple(list(self.toolitems) +[('Save', 'Save the figure', 'filesave', 'save_figure')])
         NavigationToolbar.__init__(self, plotCanvas)
         self.parent = parent
 
@@ -170,6 +171,26 @@ class BasisView(object):
     def suitableView(tcl, geo=False, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
 
+    def hasParent(self):
+        return self.parent is not None
+    def GetRoundBitmap(self, w, h, r=10):
+        maskColour = wx.Colour(0,0,0)
+        shownColour = wx.Colour(5,5,5)
+        b = wx.EmptyBitmap(w,h)
+        dc = wx.MemoryDC(b)
+        dc.SetBrush(wx.Brush(maskColour))
+        dc.DrawRectangle(0,0,w,h)
+        dc.SetBrush(wx.Brush(shownColour))
+        dc.SetPen(wx.Pen(shownColour))
+        dc.DrawCircle(w/2,h/2,w/2)
+        dc.SelectObject(wx.NullBitmap)
+        b.SetMaskColour(maskColour)
+        return b
+    def getIcon(self, key):
+        if self.hasParent() and key in self.parent.icons:
+            return self.parent.icons[key]
+        return wx.NullBitmap
+    
     def __init__(self, parent, vid, more=None):
         self.initVars(parent, vid, more)
         self.initView()
@@ -183,7 +204,6 @@ class BasisView(object):
         self.savef = None
         self.boxL = None
         self.boxT = None
-        self.icons = self.parent.icons
         self.rsets = None
         self.rwhich = None
         self.vid = vid
@@ -191,11 +211,11 @@ class BasisView(object):
         self.act_butt = [1]
 
         self.initHighlighted()
-        self.intab = self.parent.getVizm().showVizIntab()
+        self.intab = (self.hasParent() and self.parent.getVizm().showVizIntab())
         self.store_size = None
 
     def initView(self):
-        if self.isIntab():
+        if self.hasParent() and self.isIntab():
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             # self.panel = self.parent.tabs["viz"]["tab"]
         else:
@@ -328,8 +348,10 @@ class BasisView(object):
                     self.keys_map[key] = action
                     
     def getItemId(self):
-        return self.parent.viewsm.getItemId(self.getId())
-
+        if self.hasParent():
+            return self.parent.viewsm.getItemId(self.getId())
+        return self.vid
+    
     def getShortDesc(self):
         return "%s %s" % (self.getItemId(), self.SDESC)
 
@@ -337,7 +359,7 @@ class BasisView(object):
         return "%s %s" % (self.getItemId(), self.title_str)
 
     def updateTitle(self):
-        if not self.isIntab():
+        if self.hasParent() and not self.isIntab():
             self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
         self.info_title.SetLabel(self.getTitleDesc())
 
@@ -358,10 +380,13 @@ class BasisView(object):
         return self.rsets
 
     def getVizRows(self):
-        return self.parent.dw.getData().getVizRows(self.getDetailsSplit())
+        if self.getParentData() is not None:
+            return self.getParentData().getVizRows(self.getDetailsSplit()) 
+        return set()
     def getUnvizRows(self):
-        return self.parent.dw.getData().getUnvizRows(self.getDetailsSplit())
-
+        if self.getParentData() is not None:
+            return self.getParentData().getUnvizRows(self.getDetailsSplit())
+        return set()
     def makeMenu(self, frame=None):
         """
         Prepare the menu for this view.
@@ -379,18 +404,21 @@ class BasisView(object):
         self.ids_viewT = {}
         self.menu_map_pro = {}
         menuBar = wx.MenuBar()
-        menuBar.Append(self.parent.makeFileMenu(frame), "&File")
+        if self.hasParent():
+            menuBar.Append(self.parent.makeFileMenu(frame), "&File")
         menuBar.Append(self.makeActionsMenu(frame), "&Edit")
         menuBar.Append(self.makeVizMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
-        menuBar.Append(self.parent.makeViewsMenu(frame), "&Windows")
-        menuBar.Append(self.parent.makeHelpMenu(frame), "&Help")
+        if self.hasParent():
+            menuBar.Append(self.parent.makeViewsMenu(frame), "&Windows")
+            menuBar.Append(self.parent.makeHelpMenu(frame), "&Help")
         frame.SetMenuBar(menuBar)
         frame.Layout()
 
     def enumerateVizItems(self):
-        return self.parent.viewsm.getViewsItems(vkey=self.getId())
-
+        if self.hasParent():
+            return self.parent.viewsm.getViewsItems(vkey=self.getId())
+        return []
     def makeVizMenu(self, frame, menuViz=None):
         """
         Prepare the visualization sub-menu for this view.
@@ -452,7 +480,8 @@ class BasisView(object):
             else:
                 menuPro.Enable(ID_PRO, False)
         ct = menuPro.GetMenuItemCount()
-        menuPro = self.parent.makeStoppersMenu(frame, menuPro)
+        if self.hasParent():
+            menuPro = self.parent.makeStoppersMenu(frame, menuPro)
         if ct < menuPro.GetMenuItemCount():
             menuPro.InsertSeparator(ct)
         return menuPro
@@ -483,14 +512,15 @@ class BasisView(object):
             self.mc.doActionForKey(self.menu_map_act[event.GetId()])
 
     def OnOtherV(self, event):
-        self.parent.viewsm.viewOther(viewT=self.ids_viewT[event.GetId()], vkey=self.getId())
+        if self.hasParent():
+            self.parent.viewsm.viewOther(viewT=self.ids_viewT[event.GetId()], vkey=self.getId())
 
     def showSplitsBoxes(self, show=True):
         self.boxL.Show(show)
         self.boxT.Show(show)
 
     def autoShowSplitsBoxes(self):
-        if self.parent.dw.getData().hasLT():
+        if self.getParentData() is not None and self.getParentData().hasLT():
             self.showSplitsBoxes(True)
         else:
             self.showSplitsBoxes(False)
@@ -498,9 +528,9 @@ class BasisView(object):
     def OnSplitsChange(self, event):
         new_rsets = None
         parts = [{"butt": self.boxL, "id": "learn",
-                  "act_icon": self.icons["learn_act"], "dis_icon": self.icons["learn_dis"]},
+                  "act_icon": self.getIcon("learn_act"), "dis_icon": self.getIcon("learn_dis")},
                  {"butt": self.boxT, "id": "test",
-                  "act_icon": self.icons["test_act"], "dis_icon": self.icons["test_dis"]}]
+                  "act_icon": self.getIcon("test_act"), "dis_icon": self.getIcon("test_dis")}]
         if event.GetId() == parts[0]["butt"].GetId():
             which = 0
         else:
@@ -574,13 +604,25 @@ class BasisView(object):
     #         elem.SetBackgroundColour((249, 249, 248))
     #         elem.Refresh()
 
+    def getParentCoords(self):
+        if not self.hasParent():
+            return [[[0]],[[0]]]
+        return self.parent.dw.getCoords()
+    def getParentCoordsExtrema(self):
+        if not self.hasParent():
+            return (-1., 1., -1., 1.)
+        return self.parent.dw.getCoordsExtrema()
+    def getParentData(self):
+        if not self.hasParent():
+            return None
+        return self.parent.dw.getData()
         
     def getQueries(self):
         ### the actual queries, not copies, to test, etc. not for modifications
         return self.queries
 
     def getCopyRed(self):
-        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.getData())
+        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.getParentData())
         
     def OnExpandAdv(self, event):
         params = {"red": self.getCopyRed()}
@@ -654,7 +696,10 @@ class BasisView(object):
         self.MaptoolbarMap.save_figure(event)
 
     def initExtFrame(self):
-        mapFrame = wx.Frame(None, -1, "%s%s" % (self.parent.titlePref, self.getTitleDesc()))
+        pref = "Standalone "
+        if self.hasParent():
+            pref = self.parent.titlePref
+        mapFrame = wx.Frame(None, -1, "%s%s" % (pref, self.getTitleDesc()))
         mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
         mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
         return mapFrame
@@ -666,7 +711,7 @@ class BasisView(object):
             self.intab = False
             self.mapFrame = self.initExtFrame()
 
-            self.boxPop.SetBitmap(self.icons["outin"])
+            self.boxPop.SetBitmap(self.getIcon("outin"))
             # self.boxPop.SetLabel(self.label_outin)
             # self.boxPop.SetValue(False)
             self.parent.getVizm().setVizcellFreeded(pos)
@@ -678,7 +723,7 @@ class BasisView(object):
             self.mapFrame.Destroy()
             self.mapFrame = self.parent.tabs["viz"]["tab"]
             
-            self.boxPop.SetBitmap(self.icons["inout"])
+            self.boxPop.SetBitmap(self.getIcon("inout"))
             # self.boxPop.SetLabel(self.label_inout)
             # self.boxPop.SetValue(False)
             self.panel.Reparent(self.mapFrame)
@@ -696,9 +741,12 @@ class BasisView(object):
         self.OnQuit()
 
     def OnQuit(self, event=None, upMenu=True, freeing=True):
-        self.parent.viewsm.deleteView(self.getId(), freeing)
-        self.parent.viewsm.unregisterView(vkey=self.getId(), upMenu=upMenu)
-
+        if self.hasParent():
+            self.parent.viewsm.deleteView(self.getId(), freeing)
+            self.parent.viewsm.unregisterView(vkey=self.getId(), upMenu=upMenu)
+        else:
+            self.mapFrame.Destroy()
+            
     def wasKilled(self):
         return self.MapcanvasMap is None
         
@@ -717,6 +765,10 @@ class BasisView(object):
             if ax != self.axe:
                 self.MapfigMap.delaxes(ax)
         self.clearHighlighted()
+
+    def savefig(self, fname):
+        self.MapfigMap.savefig(fname)
+
         
     def drawMap(self):
         """ Draws the map
@@ -799,21 +851,21 @@ class BasisView(object):
         adds = self.additionalElements()
 
         ### UTILITIES BUTTONS
-        self.savef = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["save"])
-        self.boxL = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["learn_dis"])
-        self.boxT = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["test_dis"])
+        self.savef = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("save"))
+        self.boxL = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("learn_dis"))
+        self.boxT = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("test_dis"))
         # self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=self.butt_shape)
         # self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=self.butt_shape)
 
         if self.isIntab():
             # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=self.butt_shape)
-            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["inout"])
+            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("inout"))
         else:
             # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=self.butt_shape)
-            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["outin"])
+            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("outin"))
         # self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
-        self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.icons["kil"])
-        if not self.parent.getVizm().hasVizIntab():
+        self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("kil"))
+        if not self.hasParent() or not self.parent.getVizm().hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()
 
@@ -909,8 +961,9 @@ class BasisView(object):
 
     ################ HANDLING HIGHLIGHTS
     def updateEmphasize(self, review=True):
-        lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
-        self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
+        if self.hasParent():
+            lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
+            self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
 
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
         self.emphasizeOff(turn_off, hover)
@@ -998,10 +1051,15 @@ class BasisView(object):
                 self.removeHover1(iid)
             else:
                 self.removeHighlighted1(iid)
-    
+                
     ################ HANDLING SETTINGS
+    def getParentPreferences(self):
+        if not self.hasParent():
+            return {}
+        return self.parent.dw.getPreferences()
+
     def getSettBoolV(self, key, default=False):
-        t = self.parent.dw.getPreferences()
+        t = self.getParentPreferences()
         try:
             v = t[key]["data"] == "yes"
         except:            
@@ -1027,7 +1085,7 @@ class BasisView(object):
     
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
-            dsetts = self.parent.dw.getPreferences()
+            dsetts = self.getParentPreferences()
         if key in dsetts:
             tc = dsetts[key]["data"]
         elif key in self.colors_def:
@@ -1037,7 +1095,7 @@ class BasisView(object):
         return [i/255.0 for i in tc]+[1.]
     def getColorKey255(self, key, dsetts=None):
         if dsetts is None:
-            dsetts = self.parent.dw.getPreferences()
+            dsetts = self.getParentPreferences()
         if key in dsetts:
             tc = dsetts[key]["data"]
         elif key in self.colors_def:
@@ -1059,15 +1117,13 @@ class BasisView(object):
         return self.getColorA(self.getColorKey1("color_h"))
 
     def getColors255(self):
-        t = self.parent.dw.getPreferences()
         return  [ self.getColorKey255(color_k) for color_k in self.colors_ord ]
 
     def getColors1(self):
-        t = self.parent.dw.getPreferences()
         return  [ self.getColorKey1(color_k) for color_k in self.colors_ord ]
     
     def getDrawSettDef(self):
-        t = self.parent.dw.getPreferences()
+        t = self.getParentPreferences()
         try:
             dot_shape = t["dot_shape"]["data"]
             dot_size = t["dot_size"]["data"]

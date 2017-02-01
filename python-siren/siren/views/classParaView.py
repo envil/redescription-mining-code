@@ -130,12 +130,12 @@ class ParaView(GView):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
-                red = Redescription.fromQueriesPair(qr, self.parent.dw.getData())
+                red = Redescription.fromQueriesPair(qr, self.getParentData())
             else:
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
-            red.setRestrictedSupp(self.parent.dw.getData())
+            red.setRestrictedSupp(self.getParentData())
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
             self.updateText(red)
@@ -163,13 +163,13 @@ class ParaView(GView):
         red = None
         if changed or force:
             try:
-                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+                red = Redescription.fromQueriesPair(self.queries, self.getParentData())
             except Exception:
                 ### Query could be parse but not recomputed
                 red = None
                 self.queries = old
         if red is not None:
-            red.setRestrictedSupp(self.parent.dw.getData())
+            red.setRestrictedSupp(self.getParentData())
             self.suppABCD = red.supports().getVectorABCD()
             self.current_r = red
             if upAll:
@@ -203,17 +203,17 @@ class ParaView(GView):
         for side in [0,1]:
             for l, dets in lits[side]:
                 side_cols.append((side, l.colId()))
-                lit_str.append(self.parent.dw.getData().getNames(side)[l.colId()])
+                lit_str.append(self.getParentData().getNames(side)[l.colId()])
                 # lit_str.append("v%d" % l.colId())
         side_cols.insert(pos_axis, None)
 
         if self.prepared_data.get("side_cols", None) != side_cols:
-            precisions = [10**numpy.floor(numpy.log10(self.parent.dw.getData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
+            precisions = [10**numpy.floor(numpy.log10(self.getParentData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
 
             precisions.insert(pos_axis, 1)
             precisions = numpy.array(precisions)
         
-            mat, details, mcols = self.parent.dw.getData().getMatrix(nans=numpy.nan)
+            mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan)
             mcols[None] = -1
             cids = [mcols[sc] for sc in side_cols]
             if draw_ppos is not None:
@@ -289,10 +289,10 @@ class ParaView(GView):
         for side in [0,1]:
             for l, dets in lits[side]:
                 if l.typeId() == BoolColM.type_id:                    
-                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r)
+                    ranges.append([self.getParentData().col(side, l.colId()).numEquiv(r)
                                    for r in [dets[0][-1], dets[0][-1]]])
                 else:
-                    ranges.append([self.parent.dw.getData().col(side, l.colId()).numEquiv(r)
+                    ranges.append([self.getParentData().col(side, l.colId()).numEquiv(r)
                                    for r in l.valRange()])
         ranges.insert(len(lits[0]), [None, None])
         return ranges
@@ -307,7 +307,7 @@ class ParaView(GView):
                 queries = [red.queries[0], red.queries[1]]
                 queries[side] = q
                 elem = red.queries[side].getBukElemAt(ls)
-                r = Redescription.fromQueriesPair(queries, self.parent.dw.getData())
+                r = Redescription.fromQueriesPair(queries, self.getParentData())
                 direct = 0
                 if len(r.supp(side)) > len(red.supp(side)):
                     direct = -1
@@ -359,7 +359,7 @@ class ParaView(GView):
 
             ### SELECTED DATA
             selected = self.getUnvizRows()
-            # selected = self.parent.dw.getData().selectedRows()
+            # selected = self.getParentData().selectedRows()
             if self.sld_sel is not None and len(selected) > 0:
                 selp = self.sld_sel.GetValue()/100.0
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
@@ -402,7 +402,7 @@ class ParaView(GView):
                                                   pinf=self.getPinvalue, annotation=None) #self.annotation)
                 self.drs.append(dr)
 
-            if self.parent.dw.getData().hasMissing():
+            if self.getParentData().hasMissing():
                 bot = self.missing_yy-self.margins_tb
             else:
                 bot = 0-self.margins_tb
@@ -566,7 +566,7 @@ class ParaView(GView):
             side = 0
             if self.prepared_data["pos_axis"] < rid:
                 side = 1
-            c = self.parent.dw.getData().col(side, self.prepared_data["qcols"][rid].colId())
+            c = self.getParentData().col(side, self.prepared_data["qcols"][rid].colId())
             if c is not None:
                 return c.getCatFromNum(v)
             
@@ -611,7 +611,7 @@ class ParaView(GView):
                             copied.getBukElemAt(path).flip()
                     alright = True
             if alright:
-                self.prepared_data["ranges"][rid] = [self.parent.dw.getData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
+                self.prepared_data["ranges"][rid] = [self.getParentData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
                 if upAll:
                     self.current_r = self.updateQuery(side, copied, force=True, upAll=upAll)
                 else:

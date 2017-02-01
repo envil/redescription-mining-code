@@ -164,7 +164,7 @@ class EProjView(TDView):
 
     def initProject(self, rid=None):
         ### print ProjFactory.dispProjsInfo()
-        self.proj = ProjFactory.getProj(self.parent.dw.getData(), rid)
+        self.proj = ProjFactory.getProj(self.getParentData(), rid)
         
     def runProject(self):
         self.init_wait()

@@ -68,7 +68,9 @@ class GView(BasisView):
     def prepareEntitiesDots(self):
         draw_settings = self.getDrawSettings()
 
-        vec = numpy.array(self.suppABCD)
+        vec = numpy.empty((0))
+        if self.suppABCD is not None:
+            vec = numpy.array(self.suppABCD)
         u, indices = numpy.unique(vec, return_inverse=True)
 
         fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
@@ -129,7 +131,9 @@ class GView(BasisView):
 
         
     def enumerateVizItems(self):
-        return self.parent.viewsm.getViewsItems(what=self.getQueries(), vkey=self.getId())
+        if self.hasParent():
+            return self.parent.viewsm.getViewsItems(what=self.getQueries(), vkey=self.getId())
+        return []
 
     def additionalBinds(self):
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
@@ -142,7 +146,7 @@ class GView(BasisView):
         return self.queries
 
     def getCopyRed(self):
-        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.parent.dw.getData())
+        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.getParentData())
         
     def OnExpandAdv(self, event):
         params = {"red": self.getCopyRed()}
@@ -169,8 +173,8 @@ class GView(BasisView):
 
     def refresh(self):
         self.autoShowSplitsBoxes()
-        red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
-        red.setRestrictedSupp(self.parent.dw.getData())
+        red = Redescription.fromQueriesPair(self.queries, self.getParentData())
+        red.setRestrictedSupp(self.getParentData())
         self.suppABCD = red.supports().getVectorABCD()
         self.updateText(red)
         self.updateMap()
@@ -194,8 +198,8 @@ class GView(BasisView):
                 changed = True
 
         if changed:
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
-            red.setRestrictedSupp(self.parent.dw.getData())
+            red = Redescription.fromQueriesPair(self.queries, self.getParentData())
+            red.setRestrictedSupp(self.getParentData())
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
             self.makeMenu()
@@ -204,19 +208,19 @@ class GView(BasisView):
         else: ### wrongly formatted query or not edits, revert
             for side in [0,1]:
                 self.updateQueryText(self.queries[side], side)
-            red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+            red = Redescription.fromQueriesPair(self.queries, self.getParentData())
         return red
 
     def setCurrent(self, qr=None):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
-                red = Redescription.fromQueriesPair(qr, self.parent.dw.getData())
+                red = Redescription.fromQueriesPair(qr, self.getParentData())
             else:
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
-            red.setRestrictedSupp(self.parent.dw.getData())
+            red.setRestrictedSupp(self.getParentData())
             self.suppABCD = red.supports().getVectorABCD()
             self.updateText(red)
             self.updateMap()
@@ -224,19 +228,19 @@ class GView(BasisView):
             return red
         
     def isSingleVar(self):
-        return (len(self.queries[0]) == 0 and self.queries[1].isBasis(1, self.parent.dw.getData())) or \
-          (len(self.queries[1]) == 0 and self.queries[0].isBasis(0, self.parent.dw.getData()))
+        return (len(self.queries[0]) == 0 and self.queries[1].isBasis(1, self.getParentData())) or \
+          (len(self.queries[1]) == 0 and self.queries[0].isBasis(0, self.getParentData()))
 
     def getQCols(self):
         return [(0,c) for c in self.queries[0].invCols()]+[(1,c) for c in self.queries[1].invCols()]
     
     def getCol(self, side, c):
-        return self.parent.dw.getData().col(side, c)
+        return self.getParentData().col(side, c)
         
     def parseQuery(self, side):
         stringQ = self.MapredMapQ[side].GetValue().strip()
         try:
-            query = Query.parse(stringQ, self.parent.dw.getData().getNames(side))
+            query = Query.parse(stringQ, self.getParentData().getNames(side))
         except:
             query = None
         if query is not None and (len(stringQ) > 0 and len(query) == 0):
@@ -288,7 +292,7 @@ class GView(BasisView):
  
 
     def updateQueryText(self, query, side):
-        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.parent.dw.getData().getNames(side)))
+        self.MapredMapQ[side].ChangeValue(query.disp(style="U", names=self.getParentData().getNames(side)))
         #self.MapredMapQ[side].ChangeValue(query.disp()) #, unicd=True), unicd=True))
 
     def updateText(self, red = None):
@@ -377,7 +381,7 @@ class GView(BasisView):
             hgs[lid].extend(hg)
             
         for lid in self.needingHighLbl(lids):
-            tag = self.parent.dw.getData().getRName(lid)
+            tag = self.getParentData().getRName(lid)
             hg = self.drawAnnotation(self.getCoordsXYA(lid), self.getPlotColor(lid, "ec"), tag, self.getAnnXY())
             if lid not in hgs:
                 hgs[lid] = []

@@ -71,7 +71,10 @@ class VizManager:
     def isReadyVizIntab(self):
         return self.hasVizIntab() and hasattr(self, 'vfiller_ids') and len(self.vfiller_ids) + len(self.vused_ids) + len(self.buttons) > 0
 
-
+    def getIcon(self, key):
+        if self.hasParent() and key in self.parent.icons:
+            return self.parent.icons[key]
+        return wx.NullBitmap
     def getVizBbsiz(self):
         return 9
     def getVizBb(self):
@@ -349,14 +352,14 @@ class VizManager:
         if self.hasVizIntab():
             if self.viz_postab < len(self.parent.tabs_keys) and self.parent.tabs_keys[self.viz_postab] == "viz":
                 self.vizTabToSplit()
-                self.parent.buttViz.SetBitmap(self.parent.icons["unsplit_frame"])
+                self.parent.buttViz.SetBitmap(self.getIcon("unsplit_frame"))
                 # self.parent.buttViz.SetValue(False)
                 # self.parent.buttViz.SetLabel("u")
                 # self.parent.buttViz.SetForegroundColour((255, 255, 255))
                 # self.parent.buttViz.SetBackgroundColour((0, 0, 0))
             else:
                 self.vizSplitToTab()
-                self.parent.buttViz.SetBitmap(self.parent.icons["split_frame"])
+                self.parent.buttViz.SetBitmap(self.getIcon("split_frame"))
                 # self.parent.buttViz.SetValue(False)
                 # self.parent.buttViz.SetLabel("s")
                 # self.parent.buttViz.SetForegroundColour((0,0,0))

@@ -103,7 +103,7 @@ class OverView(LView):
             cpos = self.getCurrentPos()
         # if red is not None:
         #     for side in [0, 1]:
-        #         self.info_red[side].SetLabel(red.queries[side].disp(style="U", names=self.parent.dw.getData().getNames(side)))
+        #         self.info_red[side].SetLabel(red.queries[side].disp(style="U", names=self.getParentData().getNames(side)))
             
         self.lineB.Clear()
         for e in self.info_rids:
@@ -169,12 +169,12 @@ class OverView(LView):
         reds_mats = {}
         parts = {"supp": [], "vars": []}
         lits_acc = {}
-        marg_acc = {"supp": numpy.zeros(self.parent.dw.getData().nbRows(), dtype=numpy.int),
-                    "vars": numpy.zeros(self.parent.dw.getData().nbCols(0)+self.parent.dw.getData().nbCols(1), dtype=numpy.int)}
+        marg_acc = {"supp": numpy.zeros(self.getParentData().nbRows(), dtype=numpy.int),
+                    "vars": numpy.zeros(self.getParentData().nbCols(0)+self.getParentData().nbCols(1), dtype=numpy.int)}
 
         for nn, rid in enumerate(self.srids):
-            cur_mat = lil_matrix((self.parent.dw.getData().nbCols(0)+self.parent.dw.getData().nbCols(1),
-                                  self.parent.dw.getData().nbRows()), dtype=numpy.bool)
+            cur_mat = lil_matrix((self.getParentData().nbCols(0)+self.getParentData().nbCols(1),
+                                  self.getParentData().nbRows()), dtype=numpy.bool)
             vsupp = list(self.reds[rid].getSuppI())
             vvars = set()
             off = 0
@@ -188,7 +188,7 @@ class OverView(LView):
                         lits_acc[c+off].append((nn, rid, lit))
                     else:
                         lits_acc[c+off]= [(nn, rid, lit)]
-                off += self.parent.dw.getData().nbCols(side)
+                off += self.getParentData().nbCols(side)
             marg_acc["supp"][vsupp]+=1
             reds_mats[rid] = cur_mat
 
@@ -230,8 +230,8 @@ class OverView(LView):
         self.blocks = {}
         
         what_map = ["vars", "supp"]
-        sizes = {"vars": self.parent.dw.getData().nbCols(0)+self.parent.dw.getData().nbCols(1),
-                 "supp": self.parent.dw.getData().nbRows()}
+        sizes = {"vars": self.getParentData().nbCols(0)+self.getParentData().nbCols(1),
+                 "supp": self.getParentData().nbRows()}
                  
         ### TODO figure out data size that produces 1 point or x% on display
         sfactor = 50.
@@ -272,8 +272,8 @@ class OverView(LView):
 
 
         # # pdb.set_trace()
-        ccs = [numpy.where(data_pos["vars"]["vids"] < self.parent.dw.getData().nbCols(0))[0],
-               numpy.where(data_pos["vars"]["vids"] >= self.parent.dw.getData().nbCols(0))[0]]
+        ccs = [numpy.where(data_pos["vars"]["vids"] < self.getParentData().nbCols(0))[0],
+               numpy.where(data_pos["vars"]["vids"] >= self.getParentData().nbCols(0))[0]]
         bh = sizes["supp"]/sfactor
 
         mks_tmp = unitmarker_points.copy()
@@ -386,20 +386,20 @@ class OverView(LView):
 
 
     def getVarIdForCol(self, col):
-        if col < self.parent.dw.getData().nbCols(0):
+        if col < self.getParentData().nbCols(0):
             return (0, col)
         else:
-            return (1, col-self.parent.dw.getData().nbCols(0))
+            return (1, col-self.getParentData().nbCols(0))
 
     def labelCol(self, x,y, side, col):
         print "Label col", x, y, side, col
         ds = self.getDrawSettings()
-        tb = self.axe.annotate(self.parent.dw.getData().col(side, col).getName(),
+        tb = self.axe.annotate(self.getParentData().col(side, col).getName(),
                                xy =(x, y), xytext =(x, y+0.02),
                                horizontalalignment='center', verticalalignment='bottom', color=ds[side]["color_l"],
                                bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                )        
-        tf = self.axe.annotate(self.parent.dw.getData().col(side, col).getName(),
+        tf = self.axe.annotate(self.getParentData().col(side, col).getName(),
                                xy =(x, y), xytext =(x, y+0.02),
                                horizontalalignment='center', verticalalignment='bottom', color=ds[side]["color_l"],
                                bbox=dict(boxstyle="round", fc=ds[side]["color_l"], ec="none", alpha=0.3),

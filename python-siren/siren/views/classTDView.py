@@ -7,13 +7,15 @@ import wx
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
-import matplotlib
-matplotlib.use('WXAgg')
-
-import matplotlib.pyplot as plt
 
 from ..reremi.classSParts import SSetts
 from classGView import GView
+
+import matplotlib
+# matplotlib.use('WXAgg')
+
+import matplotlib.pyplot as plt
+
 
 import pdb
 
@@ -37,7 +39,7 @@ class TDView(GView):
 
             ### SELECTED DATA
             selected = self.getUnvizRows()
-            # selected = self.parent.dw.getData().selectedRows()
+            # selected = self.getParentData().selectedRows()
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.0

@@ -55,12 +55,12 @@ class TreeView(GView):
         if qr is not None:
             if type(qr) in [list, tuple]:
                 queries = qr
-                red = Redescription.fromQueriesPair(qr, self.parent.dw.getData())
+                red = Redescription.fromQueriesPair(qr, self.getParentData())
             else:
                 red = qr
                 queries = [red.query(0), red.query(1)]
             self.queries = queries
-            ## red.setRestrictedSupp(self.parent.dw.getData())
+            ## red.setRestrictedSupp(self.getParentData())
             ## self.suppABCD = red.supports().getVectorABCD()
             self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
             self.current_r = red
@@ -89,13 +89,13 @@ class TreeView(GView):
         red = None
         if changed or force:
             try:
-                red = Redescription.fromQueriesPair(self.queries, self.parent.dw.getData())
+                red = Redescription.fromQueriesPair(self.queries, self.getParentData())
             except Exception:
                 ### Query could be parse but not recomputed
                 red = None
                 self.queries = old
         if red is not None:
-            # red.setRestrictedSupp(self.parent.dw.getData())
+            # red.setRestrictedSupp(self.getParentData())
             # self.suppABCD = red.supports().getVectorABCD()
             self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
             self.current_r = red
@@ -155,7 +155,7 @@ class TreeView(GView):
         order_parts = [r for r in range(len(lparts)) if r != 2][::-1]+[2]
         pmap = dict([(v,i) for (i,v) in enumerate(order_parts)])
         ## nbrows = numpy.sum(lparts)
-        nbrows = self.parent.dw.getData().nbRows()
+        nbrows = self.getParentData().nbRows()
         nbparts = len(lparts)
         for side in [0,1]:
             for k in trees[side].getLeaves():
@@ -277,14 +277,14 @@ class TreeView(GView):
 
             if tree.isSplitNode(node):
                 self.axe.plot(x, y, color=color_dot[side], marker='s')
-                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
-                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
+                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
+                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side)),
                                   xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                   )
-                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.parent.dw.getData().getNames(side)),
-                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.parent.dw.getData().getNames(side)),
+                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
+                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side)),
                                   xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
@@ -317,7 +317,7 @@ class TreeView(GView):
                 ## rsupp = red.supports().parts4M()
                 rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
                 for side in [0,1]:
-                    self.trees[side].computeSupps(side, self.parent.dw.getData(), rsupp)
+                    self.trees[side].computeSupps(side, self.getParentData(), rsupp)
                     if update_trees:
                         self.trees[side].positionTree(side, all_width=self.all_width, height_inter=self.height_inter)
 
