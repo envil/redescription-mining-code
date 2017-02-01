@@ -137,7 +137,106 @@
     </section>
   </section>
   <section>
-    <name>Maps</name>
+    <name>Maps Proj.</name>
+    <section>
+      <name>Projection</name>
+      <parameter>
+	<name>map_resolution</name>
+	<label>Resolution</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Resolution of the map elements.</legend>
+	<default><value>0</value></default>
+	<options><value>crude</value>
+	         <value>low</value>
+		 <value>intermediate</value>
+		 <value>high</value>
+		 <value>full</value>
+	</options>
+      </parameter>
+      <parameter>
+	<name>map_proj</name>
+	<label>Projection</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Projection to use for the map.</legend>
+	<default><value>17</value></default>
+	<options><value>None</value>
+	         <value>Albers Equal Area (L)</value>
+	         <value>Azimuthal Equidistant</value>
+		     <value>Cassini-Soldner</value>
+             <value>Cylindrical Equal Area (F)</value>
+		     <value>Cylindrical Equidistant (F)</value>
+             <value>Eckert IV (G)</value>
+		     <value>Equidistant Conic (L)</value>
+		     <value>Gall Stereographic Cylindrical (F)</value>
+		     <value>Geostationary (S)</value>
+		     <value>Gnomonic</value>
+		     <value>Hammer (G)</value>
+             <value>Kavrayskiy VII (G)</value>
+		     <value>Lambert Azimuthal Equal Area</value>
+		     <value>Lambert Conformal (L)</value>
+		     <value>McBryde-Thomas Flat-Polar Quartic (G)</value>
+		     <value>Mercator (F)</value>
+		     <value>Miller Cylindrical (F)</value>
+		     <value>Mollweide (G)</value>
+             <value>N/S-Polar Azimuthal Equidistant (P)</value>
+		     <value>N/S-Polar Lambert Azimuthal (P)</value>
+		     <value>N/S-Polar Stereographic (P)</value>
+             <value>Near-Sided Perspective (S)</value>
+		     <value>Oblique Mercator (L)</value>
+		     <value>Orthographic (S)</value>
+             <value>Polyconic</value>
+		     <value>Robinson (G)</value>
+		     <value>Sinusoidal (G)</value>
+		     <value>Stereographic</value>
+		     <value>van der Grinten (G)</value>
+	</options>
+      </parameter>
+      <parameter>
+	<name>llon</name>
+	<label>Left corner longitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary's left corner longitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>ulon</name>
+	<label>Right corner longitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary's right corner longitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>llat</name>
+	<label>Lower corner latitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary's lower corner latitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+      <parameter>
+	<name>ulat</name>
+	<label>Upper corner latitude</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Map boundary's upper corner latitude.</legend>
+	<range_min>-180</range_min>
+	<range_max>181</range_max>
+	<default><value>181</value></default>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>Maps Elems.</name>
     <section>
       <name>Elements</name>
       <parameter>
@@ -204,59 +303,6 @@
 	<options><value>parallels</value><value>meridians</value></options>
       </parameter>
       <parameter>
-	<name>map_resolution</name>
-	<label>Resolution</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Resolution of the map elements.</legend>
-	<default><value>0</value></default>
-	<options><value>crude</value>
-	         <value>low</value>
-		 <value>intermediate</value>
-		 <value>high</value>
-		 <value>full</value>
-	</options>
-      </parameter>
-      <parameter>
-	<name>map_proj</name>
-	<label>Projection</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
-	<legend>Projection to use for the map.</legend>
-	<default><value>17</value></default>
-	<options><value>None</value>
-	         <value>Albers Equal Area (L)</value>
-	         <value>Azimuthal Equidistant</value>
-		     <value>Cassini-Soldner</value>
-             <value>Cylindrical Equal Area (F)</value>
-		     <value>Cylindrical Equidistant (F)</value>
-             <value>Eckert IV (G)</value>
-		     <value>Equidistant Conic (L)</value>
-		     <value>Gall Stereographic Cylindrical (F)</value>
-		     <value>Geostationary (S)</value>
-		     <value>Gnomonic</value>
-		     <value>Hammer (G)</value>
-             <value>Kavrayskiy VII (G)</value>
-		     <value>Lambert Azimuthal Equal Area</value>
-		     <value>Lambert Conformal (L)</value>
-		     <value>McBryde-Thomas Flat-Polar Quartic (G)</value>
-		     <value>Mercator (F)</value>
-		     <value>Miller Cylindrical (F)</value>
-		     <value>Mollweide (G)</value>
-             <value>N/S-Polar Azimuthal Equidistant (P)</value>
-		     <value>N/S-Polar Lambert Azimuthal (P)</value>
-		     <value>N/S-Polar Stereographic (P)</value>
-             <value>Near-Sided Perspective (S)</value>
-		     <value>Oblique Mercator (L)</value>
-		     <value>Orthographic (S)</value>
-             <value>Polyconic</value>
-		     <value>Robinson (G)</value>
-		     <value>Sinusoidal (G)</value>
-		     <value>Stereographic</value>
-		     <value>van der Grinten (G)</value>
-	</options>
-      </parameter>
-      <parameter>
 	<name>map_back</name>
 	<label>Map background</label>
 	<parameter_type>single_options</parameter_type>
@@ -289,46 +335,6 @@
 	<range_max>100</range_max>
 	<default><value>100</value></default>
     </parameter>
-      <parameter>
-	<name>llon</name>
-	<label>Left corner longitude</label>
-	<parameter_type>range</parameter_type>
-	<value_type>float</value_type>
-	<legend>Map boundary's left corner longitude.</legend>
-	<range_min>-180</range_min>
-	<range_max>181</range_max>
-	<default><value>181</value></default>
-      </parameter>
-      <parameter>
-	<name>ulon</name>
-	<label>Right corner longitude</label>
-	<parameter_type>range</parameter_type>
-	<value_type>float</value_type>
-	<legend>Map boundary's right corner longitude.</legend>
-	<range_min>-180</range_min>
-	<range_max>181</range_max>
-	<default><value>181</value></default>
-      </parameter>
-      <parameter>
-	<name>llat</name>
-	<label>Lower corner latitude</label>
-	<parameter_type>range</parameter_type>
-	<value_type>float</value_type>
-	<legend>Map boundary's lower corner latitude.</legend>
-	<range_min>-180</range_min>
-	<range_max>181</range_max>
-	<default><value>181</value></default>
-      </parameter>
-      <parameter>
-	<name>ulat</name>
-	<label>Upper corner latitude</label>
-	<parameter_type>range</parameter_type>
-	<value_type>float</value_type>
-	<legend>Map boundary's upper corner latitude.</legend>
-	<range_min>-180</range_min>
-	<range_max>181</range_max>
-	<default><value>181</value></default>
-      </parameter>
       <parameter>
 	<name>map_poly</name>
 	<label>Polygons</label>
