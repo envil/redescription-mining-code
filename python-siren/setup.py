@@ -69,10 +69,10 @@ def get_svnrevision():
 def get_git_hash():
     git_hash = '-1'
     try:
-        git_hash = subprocess.check_output(['git', 'rev-parse HEAD'])
+        git_hash = subprocess.check_output('git rev-parse HEAD', shell=True)
     except (subprocess.CalledProcessError, OSError):
         print "No GIT found, using default git revision (-1) instead"
-    return git_hash
+    return git_hash.strip()
 
 def load_help_files():
     try:
@@ -85,9 +85,16 @@ def load_help_files():
     except CalledProcessError as e:
         sys.stderr.write('Unpacking the help package failed, aborting:\n'+str(e))
         sys.exit(e.returncode)
-
+    try:
+        subprocess.check_call('mv help/ siren/data/', shell=True);
+    except CalledProcessError as e:
+        sys.stderr.write('Moving the help files to siren/data/help/ failed:\n'+str(e))
+        sys.exit(e.returncode)
+        
+        
 def clean_help_files():
     subprocess.call('rm -rf help/', shell=True)
+    subprocess.call('rm -rf siren/data/help/', shell=True)
     subprocess.call('rm -rf '+HELP_PACKAGE_FILENAME, shell=True)
     
 
@@ -111,7 +118,7 @@ if sys.platform == 'darwin':
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
-                                               CFBundleTypeIconFile = 'siren_file_icon.icns'),
+                                               CFBundleTypeIconFile = 'siren/data/icons/siren_file_icon.icns'),
                                         dict(CFBundleTypeName   = 'fi.helsinki.cs.siren.csv',
                                              CFBundleTypeRole   = 'Viewer',
                                              LSHandlerRank      = 'Alternate',
@@ -133,7 +140,7 @@ if sys.platform == 'darwin':
     MATPLOTLIB_BACKENDS = ['wxagg']
     
     OPTIONS = {'argv_emulation': True,
-    'iconfile': 'icons/siren_icon.icns',
+    'iconfile': 'siren/data/icons/siren_icon.icns',
     'packages': ST_PACKAGES,
     #'matplotlib_backends': MATPLOTLIB_BACKENDS,
     #'includes': ['ui_confdef.xml'], 
@@ -165,7 +172,7 @@ if sys.platform == 'darwin':
     subprocess.call('cp CHANGELOG dist/CHANGELOG', shell=True)
     subprocess.call('cp help/Siren-UserGuide.pdf dist/UserGuide.pdf', shell=True)
     subprocess.call('ln -s /Applications dist/', shell=True)
-    subprocess.call('cp icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
+    subprocess.call('cp siren/data/icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
     # Set VolumeIcon's creator
     subprocess.call('SetFile -c icnC dist/.VolumeIcon.icns', shell=True)
     # Make read/write tmp disk image
