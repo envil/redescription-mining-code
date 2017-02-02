@@ -31,7 +31,7 @@
 	<value_type>color</value_type>
 	<legend>Color for plotting the LHS support.</legend>
 	<length>7</length>
-	<default><value>#FF0000</value></default>
+	<default><value>#FC5864</value></default>
       </parameter>
       <parameter>
 	<name>color_r</name>
@@ -40,7 +40,7 @@
 	<value_type>color</value_type>
 	<legend>Color for plotting the RHS support.</legend>
 	<length>7</length>
-	<default><value>#0000FF</value></default>
+	<default><value>#74A8F6</value></default>
       </parameter>
       <parameter>
 	<name>color_i</name>
@@ -49,7 +49,16 @@
 	<value_type>color</value_type>
 	<legend>Color for plotting the intersection support.</legend>
 	<length>7</length>
-	<default><value>#A020f0</value></default>
+	<default><value>#662A8D</value></default>
+      </parameter>
+            <parameter>
+	<name>color_o</name>
+	<label>Color Uncovered</label>
+	<parameter_type>color_pick</parameter_type>
+	<value_type>color</value_type>
+	<legend>Color for plotting the uncovered entities.</legend>
+	<length>7</length>
+	<default><value>#E6E6E6</value></default>
       </parameter>
       <parameter>
 	<name>color_h</name>
@@ -64,7 +73,7 @@
 	<name>dot_size</name>
 	<label>Dot size</label>
 	<parameter_type>range</parameter_type>
-	<value_type>integer</value_type>
+	<value_type>float</value_type>
 	<legend>Size of the dots in points.</legend>
 	<range_min>0</range_min>
 	<range_max>10</range_max>
@@ -77,7 +86,9 @@
 	<value_type>text</value_type>
 	<legend>Shape of the dots</legend>
 	<default><value>0</value></default>
-	<options><value>s</value><value>p</value><value>,</value><value>o</value></options>
+	<options><value>s</value><value>o</value><value>p</value><value>h</value><value>8</value>
+    <value>.</value><value>,</value><value>*</value><value>+</value><value>x</value>
+    </options>
       </parameter>
       <parameter>
 	<name>miss_details</name>
@@ -255,7 +266,7 @@
 	<value_type>color</value_type>
 	<legend>Color for filling water bodies in maps.</legend>
 	<length>7</length>
-	<default><value>#F0F8FF</value></default>
+	<default><value>#F9FCFF</value></default>
       </parameter>
       <parameter>
 	<name>land_color</name>

@@ -79,6 +79,8 @@ class GView(BasisView):
         ec_dots = ec_clusts[indices]
         lc_clusts = numpy.array([draw_settings[i]["color_l"] for i in u])
         lc_dots = lc_clusts[indices]
+        zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
+        zord_dots = zord_clusts[indices]
             
         delta_dots = vec==SSetts.delta
         
@@ -90,7 +92,7 @@ class GView(BasisView):
         else:
             draw_dots = ~ delta_dots
             
-        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots, "sz_dots": sz_dots, "draw_dots": draw_dots}
+        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
 
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
@@ -356,9 +358,9 @@ class GView(BasisView):
     def getAnnXY(self):
         return self.ann_xy
 
-    def drawEntity(self, idp, fc, ec, sz, dsetts={}):
+    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):        
         x, y = self.getCoordsXY(idp)
-        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=4)
+        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=zo)
     
     def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
         return [self.axe.annotate(tag, xy=xy,
@@ -375,7 +377,7 @@ class GView(BasisView):
 
         hgs = {}
         for lid in self.needingHighlight(lids):
-            hg = self.drawEntity(lid, self.getColorHigh(), self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), dsetts)
+            hg = self.drawEntity(lid, self.getColorHigh(), self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), self.getPlotProp(lid, "zord"), dsetts)
             if lid not in hgs:
                 hgs[lid] = []
             hgs[lid].extend(hg)

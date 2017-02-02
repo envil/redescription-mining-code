@@ -104,16 +104,17 @@ class BasisView(object):
     The parent class of all visualizations.
     """
 
-    colors_ord = ["color_l", "color_r", "color_i"]
-    colors_def = {"color_l": (255,0,0), "color_r": (0,0,255), "color_i": (160,32,240),
-                  "grey_basic": (127,127,127), "grey_light": (153,153,153), "grey_light": (85,85,85),
+    colors_ord = ["color_l", "color_r", "color_i", "color_o"]
+    colors_def = {"color_l": (255,0,0), "color_r": (0,0,255), "color_i": (160,32,240), "color_o": (153, 153, 153),
+                  "grey_basic": (127,127,127), "grey_light": (153,153,153), "grey_dark": (85,85,85),
                   "color_h": (255, 255, 0), -1: (127, 127, 127)}
     DOT_ALPHA = 0.6
-        
+    ## 153 -> 99, 237 -> ed
     DOT_SHAPE = 's'
     DOT_SIZE = 3
 
     DELTA_ON = False
+    DEF_ZORD = 3
     
     TID = "-"
     SDESC = "-"
@@ -641,6 +642,7 @@ class BasisView(object):
     def initSizeRelative(self):
         ds = wx.DisplaySize()
         self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
+        # self.mapFrame.SetClientSizeWH(2*ds[0], 2*ds[1])
         # print "Init size", (ds[0]/2.5, ds[1]/1.5)
         # self._SetSize((ds[0]/2.5, ds[1]/1.5))
 
@@ -1134,7 +1136,7 @@ class BasisView(object):
         return {"color_f": self.getColorA(self.getColorKey1("grey_basic")),
                 "color_e": self.getColorA(self.getColorKey1("grey_basic"), 1.),
                 "color_l": self.getColorA(self.getColorKey1("grey_light")),
-                "shape": dot_shape, "size": dot_size}
+                "shape": dot_shape, "size": dot_size, "zord": self.DEF_ZORD}
 
     def getDrawSettings(self):
         colors = self.getColors1()
@@ -1150,32 +1152,42 @@ class BasisView(object):
             dd[v] = p
 
         css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh}
-        for (p, iid) in enumerate([SSetts.alpha, SSetts.beta, SSetts.gamma]):
+        for (p, iid) in enumerate([SSetts.alpha, SSetts.beta, SSetts.gamma, SSetts.delta]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
                         "color_l": self.getColorA(colors[p]), 
-                        "shape": defaults["shape"], "size": defaults["size"]}
+                        "shape": defaults["shape"], "size": defaults["size"],
+                        "zord": self.DEF_ZORD}
         for (p, iid) in enumerate([SSetts.mua, SSetts.mub]):
             css[iid] = {"color_f": self.getColorA(defaults["color_f"], -.9),
                         "color_e": self.getColorA(colors[p], .9),
                         "color_l": self.getColorA(defaults["color_l"], -.9),
-                        "shape": defaults["shape"], "size": defaults["size"]-1}
+                        "shape": defaults["shape"], "size": defaults["size"]-1,
+                        "zord": self.DEF_ZORD}
         for (p, iid) in enumerate([SSetts.mubB, SSetts.muaB]):
             css[iid] = {"color_f": self.getColorA(colors[p], -.9),
                         "color_e": self.getColorA(defaults["color_e"], .9),
                         "color_l": self.getColorA(defaults["color_l"], -.9),
-                        "shape": defaults["shape"], "size": defaults["size"]-1}
+                        "shape": defaults["shape"], "size": defaults["size"]-1,
+                        "zord": self.DEF_ZORD}
         css[SSetts.mud] = {"color_f": self.getColorA(defaults["color_f"], -.9),
                            "color_e": self.getColorA(defaults["color_e"], .9),
-                            "color_l": self.getColorA(defaults["color_l"], -.9),
-                           "shape": defaults["shape"], "size": defaults["size"]-1}
-        css[SSetts.delta] = {"color_f": self.getColorA(defaults["color_f"]),
-                             "color_e": self.getColorA(defaults["color_e"], 1.),
-                             "color_l": self.getColorA(defaults["color_l"]),
-                             "shape": defaults["shape"], "size": defaults["size"]-1}
+                           "color_l": self.getColorA(defaults["color_l"], -.9),
+                           "shape": defaults["shape"], "size": defaults["size"]-1,
+                           "zord": self.DEF_ZORD}
+        # css[SSetts.delta] = {"color_f": self.getColorA(defaults["color_f"]),
+        #                      "color_e": self.getColorA(defaults["color_e"], 1.),
+        #                      "color_l": self.getColorA(defaults["color_l"]),
+        #                      "shape": defaults["shape"], "size": defaults["size"]-1,
+        #                      "zord": self.DEF_ZORD}
         css[-1] = {"color_f": self.getColorA(defaults["color_f"], .5),
                    "color_e": self.getColorA(defaults["color_e"], .5),
                    "color_l": self.getColorA(defaults["color_l"], .5),
-                   "shape": defaults["shape"], "size": defaults["size"]-1}
+                   "shape": defaults["shape"], "size": defaults["size"]-1,
+                   "zord": self.DEF_ZORD}
         css["default"] = defaults
+        css[SSetts.alpha]["zord"] += 1
+        css[SSetts.beta]["zord"] += 1
+        css[SSetts.gamma]["zord"] += 2
+        css[SSetts.delta]["zord"] -= 1
         return css

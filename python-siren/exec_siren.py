@@ -14,7 +14,9 @@ import pdb
 
 from siren.interface.classSiren import Siren
 from siren.interface.classGridTable import CustRenderer
-             
+
+import time
+
 ## MAIN APP CLASS ###
 class SirenApp(wx.App):
     def __init__(self, *args, **kwargs):
@@ -69,6 +71,12 @@ class SirenApp(wx.App):
             # self.frame.recomputeAll()
 
             tab = "reds"
+            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+            #     mapV.mapFrame.SetClientSizeWH(1064, 744)
+            #     mapV.savefig("/home/egalbrun/R%d_map.pdf" % i)
+            #     mapV.OnKil()
+
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")

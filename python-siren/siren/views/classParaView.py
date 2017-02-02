@@ -371,7 +371,7 @@ class ParaView(GView):
             for r in self.reps:
                 # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
                 if self.dots_draws["lc_dots"][r,-1] > 0:
-                    self.drawEntity(r, fc=self.getPlotColor(r, "lc"))
+                    self.drawEntity(r, fc=self.getPlotColor(r, "lc")) #, zo=self.getPlotProp(r, "zord"))
 
             ### Bars slidable/draggable rectangles
             rects_drag = {}
@@ -622,9 +622,9 @@ class ParaView(GView):
     def getCoordsXYA(self, idp):
         return (self.prepared_data["xs"][-1]+self.margins_sides, self.prepared_data["pos_lids"][self.prepared_data["ycols"][-1],idp])
             
-    def drawEntity(self, idp, fc, ec=None, sz=1, dsetts={}):
+    def drawEntity(self, idp, fc, ec=None, sz=1, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
-        return self.axe.plot(x, y, color=fc, linewidth=1)
+        return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)
         
     def additionalElements(self):
         t = self.parent.dw.getPreferences()

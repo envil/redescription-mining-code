@@ -3,10 +3,13 @@
 import sys, re, os.path, datetime
 import numpy
 import tempfile
+
+import codecs
+
 from toolLog import Log
 from classPackage import Package, saveAsPackage
 from classData import Data
-from classRedescription import Redescription, parseRedList, printRedList
+from classRedescription import Redescription, parseRedList, printRedList, printTexRedList
 from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
@@ -378,10 +381,14 @@ if __name__ == "__main__":
     # pm = getPM()
     # package = Package(sys.argv[-1])
     # elements_read = package.read(pm)        
-
     # if elements_read.get("reds") is not None:
     #     reds = elements_read.get("reds")
     #     data = elements_read.get("data")
+    #     names = data.getNames()
+    #     with open("/home/egalbrun/queries.tex", mode='w') as f:
+    #         f.write(codecs.encode(printTexRedList(reds, names), 'utf-8','replace'))
+    #         ## f.write(codecs.encode(printRedList(reds, names), 'utf-8','replace'))
+        
     #     with open("test.txt", "w") as fp:
     #         fp.write(printRedList(reds, [None, None], None, full_supp=True))
     #     rrr = []

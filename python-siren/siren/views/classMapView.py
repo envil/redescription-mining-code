@@ -254,14 +254,14 @@ class MapView(TDView):
             mapoly = MapView.MAP_POLY
         return mapoly
 
-    def drawEntity(self, idp, fc, ec, sz=1, dsetts={}):
+    def drawEntity(self, idp, fc, ec, sz=1, zo=4, dsetts={}):
         if self.drawPoly():
-            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec))]
+            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec, zorder=zo))]
                     
         else:
             ## print idp, fc, ec
             x, y = self.getCoordsXY(idp)
-            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None')
+            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
 
     def getBasemapProjSetts(self):
         proj = self.proj_def 

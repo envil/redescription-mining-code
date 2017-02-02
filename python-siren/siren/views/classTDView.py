@@ -60,6 +60,7 @@ class TDView(GView):
                 lc_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_l"][-1]) for v in vec])
                 self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots,
                                    "sz_dots": numpy.ones(vec.shape)*dsetts["size"],
+                                   "zord_dots": numpy.ones(vec.shape)*self.DEF_ZORD,
                                    "draw_dots": numpy.ones(vec.shape, dtype=bool)}
                 mapper.set_array(vec)
 
@@ -74,15 +75,19 @@ class TDView(GView):
             draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
             
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
-                self.axe.scatter(self.getCoords(0,draw_indices),
-                                 self.getCoords(1,draw_indices),
-                                 c=self.dots_draws["fc_dots"][draw_indices,:],
-                                 edgecolors=self.dots_draws["ec_dots"][draw_indices,:],
-                                 s=5*self.dots_draws["sz_dots"][draw_indices], marker=dsetts["shape"], zorder=3)
+                ku, kindices = numpy.unique(self.dots_draws["zord_dots"][draw_indices], return_inverse=True)
+                ## pdb.set_trace()
+                for vi, vv in enumerate(ku):
+                    self.axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
+                                    self.getCoords(1,draw_indices[kindices==vi]),
+                                    c=self.dots_draws["fc_dots"][draw_indices[kindices==vi],:],
+                                    edgecolors=self.dots_draws["ec_dots"][draw_indices[kindices==vi],:],
+                                    s=5*self.dots_draws["sz_dots"][draw_indices[kindices==vi]], marker=dsetts["shape"],
+                                    zorder=vv)
             else:
                 for idp in draw_indices:
                         self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
-                                                self.getPlotProp(idp, "sz"), dsetts)
+                                                self.getPlotProp(idp, "sz"), self.getPlotProp(idp, "zord"), dsetts)
             if mapper is not None:
                 ax2 = self.axe #.twinx()
                 nb = self.NBBINS

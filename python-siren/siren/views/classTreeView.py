@@ -442,7 +442,7 @@ class TreeView(GView):
 
         return (self.all_width+self.margins_sides, center)
     
-    def drawEntity(self, idp, fc, ec, sz=1, dsetts={}):
+    def drawEntity(self, idp, fc, ec, sz=1, zo=5, dsetts={}):
         v = self.store_supp["mat"][idp]
         pi = numpy.where(self.store_supp["parts"][idp,:])[0][0]
         pl = numpy.sum(self.store_supp["parts"][:idp,pi]*(self.store_supp["mat"][:idp]==v))
@@ -453,7 +453,7 @@ class TreeView(GView):
         lines = []
         for l in ppos[1:]:
             ff = numpy.sign(l[0])*self.flat_space
-            lines.extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=fc, linewidth=1, zorder=5))
+            lines.extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=fc, linewidth=1, zorder=zo))
         return lines
 
     def hasDotsReady(self):

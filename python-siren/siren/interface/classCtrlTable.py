@@ -1092,6 +1092,8 @@ class StaticContent:
             return self.items.getElement(iid).copy()
         except KeyError:
             return None
+    def getAllIids(self):
+        return self.items.keys()
     def getIidsForLid(self, lid):
         try:
             self.lists[lid].getIids()
@@ -1875,7 +1877,7 @@ class ContentManager:
         red = self.getDataHdl().getItemForIid(rid).copy()
         if viewT is None:
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
-        self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
+        return self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
 
     def viewListData(self, lid=None, viewT=None):
         items_map = []

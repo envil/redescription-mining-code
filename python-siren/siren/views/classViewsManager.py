@@ -119,6 +119,7 @@ class ViewsManager:
             mapV.updateTitle()
             mapV.lastStepInit()
             self.parent.updateMenus()
+        return mapV
             
     def registerView(self, vkey, ikey, upMenu=True):
         ## print "Register", vkey, ikey

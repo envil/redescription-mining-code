@@ -6,6 +6,21 @@ import toolRead
 import pdb
 
 ACTIVE_RSET_ID = "S0"
+SIDE_CHARS = {0:"L", 1:"R"}
+NUM_CHARS = dict([(numpy.base_repr(ii, base=26), "%s" % chr(ii+ord("a"))) for ii in range(26)])
+
+def digit_to_char(n):
+    tmp = "".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=26)])
+    # print "%s -> %s" % (n, tmp)
+    return tmp
+
+def var_ltx_cmd(sid, vid):
+    if sid in SIDE_CHARS:
+        schar = SIDE_CHARS[sid]
+    else:
+        schar = digit_to_char(sid)
+    vchar = digit_to_char(vid)
+    return "\\v%sHS%s" % (schar.upper(), vchar.lower())
 
 class Redescription(object):
 
@@ -707,7 +722,10 @@ class Redescription(object):
                     key_info = None
             else:
                 str_top = part.strip()
-                key_info = poplist_fields[0]
+                if len(poplist_fields) > 0:
+                    key_info = poplist_fields[0]
+                else:
+                    key_info = None ### or raise Error number of fields mismatch?
 
             if key_info in Redescription.print_fields_details:
                 fname, info_round, info_format = Redescription.print_fields_details[key_info]
@@ -823,6 +841,7 @@ class Redescription(object):
 def printTexRedList(red_list, names=[None, None], fields=None):
     tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
     tex_headers = ["$q_\\iLHS$","$q_\\iRHS$","$\\jacc(R)$","$\\supp(R)$", "\\pValue"]
+
     if type(fields) is list and len(fields) > 0:
         if fields[0] == -1:
             tex_fields.extend(fields[1:])
@@ -830,6 +849,20 @@ def printTexRedList(red_list, names=[None, None], fields=None):
         else:
             tex_fields = fields
             tex_headers = list(fields)
+    names_alts = []
+    names_commands = ""
+    numvs_commands = ""
+    for i, ns in enumerate(names):
+        if ns is not None:
+            names_alts.append([])
+            for ni, n in enumerate(ns):
+                vlc = var_ltx_cmd(i, ni) 
+                names_alts[i].append(vlc+"{}")
+                names_commands += "\\newcommand{%s}{%s}\n" % (vlc, n)
+                numvs_commands += "%% \\newcommand{%s}{v%d}\n" % (vlc, ni)
+        else:
+            names_alts.append(None)
+                
     str_out = "" + \
               "\\documentclass{article}\n"+ \
               "\\usepackage{amsmath}\n"+ \
@@ -843,19 +876,21 @@ def printTexRedList(red_list, names=[None, None], fields=None):
               "\\newcommand{\\pValue}{$p$\\nobreakdash-\\hspace{0pt}value}\n"+ \
               "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
               "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
+              names_commands+ \
+              numvs_commands+ \
               "\\begin{document}\n"+ \
               "\\begin{table}[h]\n"+ \
               "\\scriptsize\n" + \
               "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
               "\\toprule\n"
-
+    
     str_out += " & " + Redescription.dispHeader(tex_headers, " & ") + " \\\\\n"
     str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
     str_out += "\\midrule\n"
     for ri, red in enumerate(red_list):
 
         str_out += '(%i) & ' % ri
-        str_out += red.disp(names, list_fields=tex_fields, sep=" & ") + " \\\\\n"
+        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ") + " \\\\\n"
 
     str_out += "" + \
         "\\bottomrule\n"+ \
@@ -890,7 +925,7 @@ def parseRedList(fp, data, reds=None):
         if not re.match("^[ \t]*#", line):
             if list_fields is None:
                 list_fields = Redescription.parseHeader(line)
-            else:
+            else:                    
                 r = Redescription.parse(line, data=data, list_fields=list_fields)
                 if r is not None:
                     reds.append(r)
