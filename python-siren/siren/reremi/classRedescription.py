@@ -56,6 +56,7 @@ class Redescription(object):
     print_fields_details["ratio_acc"] = ("ratio_acc", None, "%f")
     print_fields_details["Tex_ratio_acc"] = ("ratio_acc", 3, "$%1.3f$")
     print_fields_details["status_enabled"] = ("status_enabled", None, "%d")
+    print_fields_details["track"] = ("track", ",", "%s")
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.resetRestrictedSuppSets()
@@ -116,6 +117,7 @@ class Redescription(object):
             else:
                 self.dict_supp_info = self.sParts.toDict(with_delta)
         if self.dict_supp_info is not None:
+            self.dict_supp_info["track"] = self.track
             return self.dict_supp_info
         return {}
 
@@ -909,7 +911,7 @@ def printTexRedList(red_list, names=[None, None], fields=None):
     return str_out
 
 def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
-    all_fields = Redescription.print_default_fields
+    all_fields = list(Redescription.print_default_fields)
     if names[0] is not None or names[1] is not None:
         all_fields = Redescription.print_default_fields_named
     if type(fields) is list and len(fields) > 0:

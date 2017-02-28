@@ -799,6 +799,7 @@ class StatsMiner:
     def run_stats(self):
         splits_info = self.data.getFoldsInfo()
         stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+        pdb.set_trace()
         summaries = {}
         nbfolds = len(stored_splits_ids)
         for kfold in range(nbfolds):
@@ -828,6 +829,7 @@ class StatsMiner:
                               red.getPVal(), red.getPVal({"rset_id": "learn"}), red.getPVal({"rset_id": "test"})])
                 reds.append(red)
             summaries[kfold] = {"reds": reds, "stats": stats}
+
         reds_map = []
         stack_stats = []
         all_stats = {}
@@ -854,4 +856,4 @@ class StatsMiner:
         header = ["J ratio", "J all", "J learn", "J test",
                   "E11/E all", "E11/E learn", "E11/E test",
                   "pV all", "pV learn", "pV test"]
-        return reds_list, all_stats, header
+        return reds_list, all_stats, header, summaries

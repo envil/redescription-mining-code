@@ -205,7 +205,11 @@ def run(args):
 
     ############################
     #### SPLITS
-    # data.extractFolds(1, 12)
+    #### create (random)
+    data.getSplit(nbsubs=5, coo_dim=0, grain=1)
+    data.addFoldsCol()
+    #### setup for mining
+    ### data.extractFolds(1, 12)
     # splits_info = data.getFoldsInfo()
     # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
     # ids = {}
@@ -339,31 +343,59 @@ def run_splits(args, splt=""):
         pp = filenames["basis"].split("/")
         pp[-1] = ".".join(parts[:-1])
         filenames["basis"] = "/".join(pp)
-    splt_pckgf = filenames["basis"]+ ("_split-%d.siren" % nb_splits)
-    splt_statf = filenames["basis"]+ ("_split-%d.txt" % nb_splits)
     fold_cols = data.findCandsFolds()
 
     if len(fold_cols) == 0:
-        logger.printL(2, "Data has no folds, generating...", "log")
-        sss = data.getSplit(nbsubs=nb_splits)
-        data.addFoldsCol()        
-        saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"])        
+        fold_cols = [None]
     else:
-        logger.printL(2, "Using existing fold: side %s col %s" % fold_cols[0], "log")
-        sss = data.extractFolds(fold_cols[0][0], fold_cols[0][1])
-    stM = StatsMiner(data, params, logger)
-    reds_list, all_stats, header = stM.run_stats()
+        for fci in fold_cols:
+            data.cols[fci[0]][fci[1]].setDisabled()
 
-    nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
-    tot = numpy.array(all_stats[-1])
-    summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
+    for fci in fold_cols:
+        if fci is None:
+            logger.printL(2, "Data has no folds, generating...", "log")
+            sss = data.getSplit(nbsubs=nb_splits)
+            data.addFoldsCol()
+            suff = "rand"
+            splt_pckgf = filenames["basis"]+ ("_split-%d:%s_empty.siren" % (nb_splits, suff))
+            saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"])        
+        else:
+            logger.printL(2, "Using existing fold: side %s col %s" % fci, "log")
+            sss = data.extractFolds(fci[0], fci[1])
+            nb_splits = len(sss)
+            suff = data.cols[fci[0]][fci[1]].getName()
+        print "SIDS", suff, sorted(data.getFoldsInfo()["split_ids"].items(), key=lambda x: x[1])
+        print data
+        splt_pckgf = filenames["basis"]+ ("_split-%d:%s.siren" % (nb_splits, suff))
+        splt_statf = filenames["basis"]+ ("_split-%d:%s.txt" % (nb_splits, suff))            
 
-    info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
-    numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
-    saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)        
+        stM = StatsMiner(data, params, logger)
+        reds_list, all_stats, header, summaries = stM.run_stats()
 
-    for red in reds_list:
-        print red.disp()
+        splt_fk = filenames["basis"]+ ("_split-%d:%s-kall.txt" % (nb_splits, suff))            
+        with open(splt_fk, "w") as f:
+            f.write(printRedList(reds_list, fields=[-1, "track"]))
+
+        all_fields = Redescription.print_default_fields
+        for fk, dt in summaries.items():
+            splt_fk = filenames["basis"]+ ("_split-%d:%s-k%d.txt" % (nb_splits, suff, fk))            
+            with open(splt_fk, "w") as f:
+                f.write(Redescription.dispHeader(all_fields, "\t") + "\t")
+                f.write("\t".join(header) + "\n")
+                for ri, red in enumerate(dt["reds"]):
+                    f.write(red.disp(list_fields=all_fields, sep="\t")+ "\t")
+                    f.write("\t".join(["%f" % st for st in dt["stats"][ri]])+ "\n")
+        
+        nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
+        tot = numpy.array(all_stats[-1])
+        summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
+
+        info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
+        numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
+        saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)        
+
+        # for red in reds_list:
+        #     print red.disp()
 
 ##### MAIN
 ###########
