@@ -747,17 +747,27 @@ class NumTerm(Term):
         else:
             return strneg+lb+(Term.pattVName % self.col) + ub
 
-    def dispTex(self, neg, names = None):            
-        prec = "0.4"
+    def dispTex(self, neg, names = None, prec=None):            
+        # prec = "0.4"
+        trimm = False
+        if prec is None:
+            trimm = True
+            prec = ""
         if type(neg) == bool:
             neg = Neg(neg)
             ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
-            lb = ('$[%'+prec+'f\\leq{}') % float(self.lowb)
+            val = ('%'+prec+'f') % float(self.lowb)
+            if trimm:
+                val = val.rstrip("0").rstrip(".")
+            lb = '$['+val+'\\leq{}'
         else:
             lb = '$['
         if self.upb < float('Inf'):
-            ub = ('\\leq{}%'+prec+'f]$') % float(self.upb)
+            val = ('%'+prec+'f') % float(self.upb)
+            if trimm:
+                val = val.rstrip("0").rstrip(".")
+            ub = '\\leq{}'+val+']$'
         else:
             ub = ']$'
         negstr = ' %s' % neg.dispTex()
@@ -1797,11 +1807,19 @@ class Query(object):
                     return vs[0]
                 else:
                     jstr = " %s " % op.__getattribute__("disp"+style)()
-                    pref = "( "
-                    suff = " )"
+                    if style == "Tex":
+                        if re.search("[\(\)]", "".join(vs)):
+                            pref = "$\\big($ "
+                            suff = " $\\big)$"
+                        else:
+                            pref = "$($ "
+                            suff = " $)$"
+                    else:
+                        pref = "( "
+                        suff = " )"
                     if "!NEG!" in vs:
                         vs.remove("!NEG!")
-                        pref = Neg(True).__getattribute__("disp"+style)() + "( "
+                        pref = Neg(True).__getattribute__("disp"+style)() + pref
                     return pref + jstr.join(vs) + suff
 
         if len(self) == 0 :
@@ -1821,7 +1839,10 @@ class Query(object):
                     vs.remove("!NEG!")
                     pref = Neg(True).__getattribute__("disp"+style)() + "( "
                     suff = " )"
-                return pref + jstr.join(vs) + suff
+                tmp = pref + jstr.join(vs) + suff
+                if style == "Tex":
+                    tmp = re.sub("\$\s+\$", " ", tmp)
+                return tmp
             #### old code to write the query justified in length lenField
             #### string.ljust(qstr, lenField)[:lenField]
 

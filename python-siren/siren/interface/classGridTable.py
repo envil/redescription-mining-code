@@ -554,7 +554,7 @@ class VarTable(GridTable):
 
 
 class RowTable(GridTable):     
-
+    ## (#NBROWS)
     fields_def = [('','self.data[x].getEnabled'),
                   ('id', 'self.data[x].getId')]
     name_m = 'self.data[x].getRName'
@@ -576,7 +576,10 @@ class RowTable(GridTable):
         if dw is not None:
             self.cols_map = {}
             self.fields = []
-            self.fields.extend(self.fields_def)
+            for f in self.fields_def:
+                f = (re.sub("NBROWS", "%d" % dw.getData().nbRows(), f[0]), f[1])
+                self.fields.append(f)
+            ## self.fields.extend(self.fields_def)
             if dw.getData().hasRNames():
                 self.fields.append(('name', 'self.data[x].getRName'))
                 name_m = 'self.data[x].getRName'

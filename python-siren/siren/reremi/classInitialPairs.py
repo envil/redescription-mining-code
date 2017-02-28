@@ -1,6 +1,6 @@
-import re, string, itertools
+import re, string, itertools, os.path
 from classRedescription import  Redescription
-from classQuery import  Literal, Query
+from classQuery import  Query
 
 import pdb
 
@@ -50,40 +50,56 @@ class InitialPairs(object):
         self.pairs_details = {}
         self.sorted_ids = None
         self.next_id = 0
+        self.setExploreList()
         self.sort_meth = SORT_METHODS.get(sort_meth, DEFAULT_METHOD)
         self.setSaveFilename(save_filename)
 
     def setSaveFilename(self, save_filename):
         self.save_filename = None
+        self.saved = True
         if type(save_filename) is str and len(save_filename) > 0:
             self.save_filename = save_filename 
-
+            self.saved = False
+            
     def getSaveFilename(self):
         return self.save_filename
 
     def saveToFile(self):
-        if self.save_filename is not None:
+        if self.save_filename is not None and not self.saved:
             try:
                 with open(self.save_filename, "w") as f:
-                    for p in self.pairs_store:
+                    for pi, p in self.pairs_store.items():
                         f.write("%s\t%s\n" % (p[0], p[1]))
+                    done =  self.getExploredDone()
+                    if done is None:
+                        self.saved = True
+                    else:
+                        f.write("DONE: %s\n" % " ".join(["%d-%d" % d for d in done]))
                 return True
             except IOError:
                 pass
         return False
 
     def loadFromFile(self):
+        loaded = False
+        done = set()
         if self.save_filename is not None and os.path.isfile(self.save_filename):
             with open(self.save_filename) as f:
+                done = None
                 for line in f:
-                    parts = line.strip().split("\t")
-                    if len(parts) == 3:
-                        try:
-                            self.add(Literal.parse(parts[0]), Literal.parse(parts[1]))
-                        except:
-                            pass
-            return True
-        return False
+                    if re.match("DONE:", line):
+                        done = set([tuple(map(int, d.split("-"))) for d in line.strip().split(" ")[1:]])
+                    else:
+                        parts = line.strip().split("\t")
+                        if len(parts) == 2:
+                            q0 = Query.parse(parts[0])
+                            q1 = Query.parse(parts[1])
+                            if len(q0) == 1 and len(q1) == 1:
+                                l0 = q0.getBukElemAt([0])
+                                l1 = q1.getBukElemAt([0])                            
+                                self.add(l0, l1, {"score": -1, 0: l0.colId(), 1: l1.colId()})
+            loaded = True
+        return loaded, done
     
     def reset(self):
         self.list_out = []
@@ -91,6 +107,8 @@ class InitialPairs(object):
         self.pairs_store.clear()
         self.pairs_details.clear()
         self.sorted_ids = None
+        self.setExploreList()
+        self.saved = False
 
     def __len__(self):
         return len(self.pairs_store)
@@ -109,11 +127,12 @@ class InitialPairs(object):
             return self.max_out
         else:
             return self.max_out - self.getNbOut()
-
+        
     def __str__(self):
         return "Initial Pairs %d" % len(self.pairs_store)
 
     def add(self, literalL, literalR, details=None):
+        self.saved = False
         self.pairs_store[self.next_id] = (literalL, literalR)
         if details is not None:
             self.pairs_details[self.next_id] = details
@@ -152,3 +171,30 @@ class InitialPairs(object):
 
     def exhausted(self):
         return (self.max_out > -1) and (self.getNbOut()  >= self.max_out)
+
+    def setExploreList(self, explore_list=[], pointer=-1, batch_size=0, done=set()):
+        if done is None:
+            done = set()
+        self.explore_pairs = {"list": explore_list, "pointer": pointer, "batch_size": batch_size, "done": done}
+    def addExploredPair(self, pair):
+        if self.explore_pairs["done"] is not None:
+            self.explore_pairs["done"].add(pair)
+    def getExploreList(self):
+        return self.explore_pairs["list"]
+    def getExploredDone(self):
+        return self.explore_pairs["done"]
+    def setExploredDone(self):
+        self.explore_pairs["done"] = None
+        self.explore_pairs["pointer"] = -1
+    def getExplorePointer(self):
+        return self.explore_pairs["pointer"]
+    def setExplorePointer(self, pointer=-1):
+        self.explore_pairs["pointer"] = pointer
+    def incrementExplorePointer(self):
+        self.explore_pairs["pointer"] += 1
+    def getExploreNextBatch(self, pointer=None, bsize=None):
+        if pointer is None:
+            pointer = self.explore_pairs["pointer"]
+        if bsize is None:
+            bsize = self.explore_pairs["batch_size"]
+        return self.explore_pairs["list"][pointer*bsize:(pointer+1)*bsize]

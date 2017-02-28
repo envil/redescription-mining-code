@@ -187,6 +187,7 @@ class Miner(object):
         self.data = data
 
         self.max_processes = params["nb_processes"]["data"]
+        self.pe_balance = params["pe_balance"]["data"]
 
         #### SETTING UP DATA
         row_ids = None
@@ -232,7 +233,10 @@ class Miner(object):
         else:
             self.souvenirs = souvenirs
 
-        self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), params.get("pairs_store"))
+        pairs_store = None
+        if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
+            pairs_store = params["pairs_store"]["data"]
+        self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
         
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
@@ -405,15 +409,18 @@ class Miner(object):
         # nb_folds = len(counts_folds)
         
         ### Loading pairs from file if filename provided
-        if not self.initial_pairs.loadFromFile():
+        loaded, done = self.initial_pairs.loadFromFile()
+        if not loaded or done is not None:
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
-            explore_list = self.getInitExploreList(ids)
+            explore_list = self.getInitExploreList(ids, done)
             self.logger.initProgressFull(self.constraints, self.souvenirs, explore_list, 1, self.id)
 
+            self.initial_pairs.setExploreList(explore_list, done=done)
             total_pairs = len(explore_list)
             for pairs, (idL, idR, pload) in enumerate(explore_list):
                 if not self.questionLive():
+                    self.initial_pairs.saveToFile()
                     return
 
                 self.logger.updateProgress({"rcount": self.count, "pair": pairs, "pload": pload})
@@ -451,20 +458,25 @@ class Miner(object):
                         #         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": score, 0: idL, 1: idR})
                         # # if pairs % 50 == 0 and pairs > 0:
                         # #     exit()
+                self.initial_pairs.addExploredPair((idL, idR))
+
             self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
             self.logger.updateProgress(level=1, id=self.id)
 
             ### Saving pairs to file if filename provided
+            self.initial_pairs.setExploredDone()
             self.initial_pairs.saveToFile()
-
+        else:
+            self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.id)
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
         return self.initial_pairs
-
+    
     def testIni(self, pair):
         if pair is None:
             return False
         return True
     
-    def getInitExploreList(self, ids):
+    def getInitExploreList(self, ids, done=set()):
         explore_list = []
         if ids is None:
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
@@ -474,8 +486,11 @@ class Miner(object):
             for idR in ids[1]:
                 if ( not self.constraints.hasDeps() or \
                        len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
-                       ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]): 
-                    explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
+                       ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]):
+                    if done is None or (idL, idR) not in done:
+                        explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
+                    else:
+                        self.logger.printL(3, 'Loaded pair (%i <=> %i) ...' %(idL, idR), 'log', self.id)
         return explore_list
 
     def getPairLoad(self, idL, idR):
@@ -505,6 +520,7 @@ class MinerDistrib(Miner):
         self.final["results"] = []
         self.final["batch"].reset()
         self.count = 0
+        self.reinitOnNew = False
         self.workers = {}
         self.rqueue = multiprocessing.Queue()
         self.pstopqueue = multiprocessing.Queue()
@@ -516,8 +532,9 @@ class MinerDistrib(Miner):
         self.initializeRedescriptions()
 
         self.logger.clockTic(self.id, "full run")
-        if self.charbon.isTreeBased():
-            self.initializeExpansions()
+        # if self.charbon.isTreeBased():
+        self.initializeExpansions()
+
         self.keepWatchDispatch()
         self.logger.clockTac(self.id, "full run", "%s" % self.questionLive())        
         if not self.questionLive():
@@ -536,38 +553,82 @@ class MinerDistrib(Miner):
         self.initial_pairs.reset()
         self.pairs = 0
         ### Loading pairs from file if filename provided
-        if not self.initial_pairs.loadFromFile():
+        loaded, done = self.initial_pairs.loadFromFile()
+        if not loaded or done is not None:
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
-            explore_list = self.getInitExploreList(ids)
+            explore_list = self.getInitExploreList(ids, done)
             self.logger.initProgressFull(self.constraints, self.souvenirs, explore_list, 1, self.id)
-            
             self.total_pairs = len(explore_list)
-            explore_list.sort(key=lambda x:x[-1], reverse =True)
-            batch_size = (self.total_pairs-10) / (self.max_processes-1) 
-            pairs = 0
-            K = self.max_processes
-            for k in range(K-1):
-                # print k, len(explore_list[k*batch_size:(k+1)*batch_size])
-                self.workers[k] = PairsProcess(k, explore_list[k*batch_size:(k+1)*batch_size], self.charbon, self.data, self.rqueue)
-            # print K-1, len(explore_list[(K-1)*batch_size:])
-            self.workers[K-1] = PairsProcess(K-1, explore_list[(K-1)*batch_size:], self.charbon, self.data, self.rqueue)
 
+            min_bsize = 25
+            if self.pe_balance == 0:
+                #### Finish all pairs before exhausting,
+                #### split in fixed sized batches, not sorted by cost
+                K = self.max_processes
+                batch_size = max(self.total_pairs/(5*K), min_bsize) #self.total_pairs / (self.max_processes-1)
+                ## print "Batch size=", batch_size
+                pointer = 0
+            else:
+                #### Sort from easiest to most expensive
+                tot_cost = sum([c[-1] for c in explore_list])
+                explore_list.sort(key=lambda x:x[-1], reverse =True)
+                thres_cost = (tot_cost/self.max_processes)*(1-self.pe_balance/10.)
+
+                cost = 0
+                off = 0
+                while off < len(explore_list)-1  and cost < thres_cost:
+                    off += 1
+                    cost += explore_list[-off][-1]
+                if len(self.initial_pairs) > off:
+                    off = 0
+                ## print "OFF", off
+                K = self.max_processes-1
+                batch_size = max((self.total_pairs-off) / K, min_bsize)
+
+                ### Launch last worker
+                if K*batch_size < len(explore_list):
+                    ## print "Init PairsProcess ", K, len(explore_list[K*batch_size:])
+                    self.workers[K] = PairsProcess(K, explore_list[K*batch_size:], self.charbon, self.data, self.rqueue)
+                pointer = -1
+                
+            self.initial_pairs.setExploreList(explore_list, pointer, batch_size, done)
+            ### Launch other workers
+            for k in range(K):
+                ll = self.initial_pairs.getExploreNextBatch(pointer=k)
+                if len(ll) > 0:
+                    ## print "Init PairsProcess ", k, len(ll)
+                    self.workers[k] = PairsProcess(k, ll, self.charbon, self.data, self.rqueue)
+                else:
+                    pointer = -1
+                    
             self.pairWorkers = len(self.workers)
+            if pointer == 0:
+                pointer = self.pairWorkers
+            self.initial_pairs.setExplorePointer(pointer)
+        else:
+            self.initial_pairs.setExploredDone()
+            self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.id)
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
         return self.initial_pairs
 
 
     def initializeExpansions(self):
+        self.reinitOnNew = False
         for k in set(range(self.max_processes)).difference(self.workers.keys()):
             initial_red = self.initial_pairs.get(self.data, self.testIni)
-            if initial_red is not None and self.questionLive():
-                self.count += 1
-                self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
-                self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,k))
-                self.workers[k] = ExpandProcess(k, self.id, self.count, self.data,
-                                                self.charbon, self.constraints,
-                                                self.souvenirs, self.rqueue, [initial_red],
-                                                final=self.final, logger=self.shareLogger())
+            if self.questionLive():
+                if initial_red is None:
+                    self.reinitOnNew = True
+                else:
+                    self.count += 1
+                    self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
+                    self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,k))
+                    ## print "Init ExpandProcess ", k, self.count
+                    self.workers[k] = ExpandProcess(k, self.id, self.count, self.data,
+                                                    self.charbon, self.constraints,
+                                                    self.souvenirs, self.rqueue, [initial_red],
+                                                    final=self.final, logger=self.shareLogger())
        
     def handlePairResult(self, m):
         scores, literalsL, literalsR, idL, idR, pload = m["scores"], m["lLs"], m["lRs"], m["idL"], m["idR"], m["pload"]
@@ -582,10 +643,15 @@ class MinerDistrib(Miner):
             self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(self.pairs, self.total_pairs, idL, idR), 'status', self.id)
             self.logger.updateProgress(level=7, id=self.id)
 
+        added = 0
         for i in range(len(scores)):
             if scores[i] >= self.constraints.getCstr("min_pairscore"):
+                added += 1
                 self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
                 self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+        self.initial_pairs.addExploredPair((idL, idR))
+        if added > 0 and self.reinitOnNew:
+            self.initializeExpansions()
 
     def handleExpandResult(self, m):
         added = [len(self.final["batch"])+ i for i in range(len(m["out"]["results"]))]
@@ -610,16 +676,36 @@ class MinerDistrib(Miner):
         while len(self.workers) > 0 and self.questionLive():
             m = self.rqueue.get()
             if m["what"] == "done":
+                ## print "Worker done", m["id"]
                 del self.workers[m["id"]]
-                self.pairWorkers -= 1
-                self.initializeExpansions()
+
+                if self.initial_pairs.getExplorePointer() >= 0:
+                    ll = self.initial_pairs.getExploreNextBatch()
+                    if len(ll) > 0:
+                        ## print "Init Additional PairsProcess ", m["id"], self.explore_pairs["pointer"], len(ll)
+                        self.workers[m["id"]] = PairsProcess(m["id"], ll, self.charbon, self.data, self.rqueue)
+                        self.initial_pairs.incrementExplorePointer()
+                    else:
+                        self.initial_pairs.setExplorePointer(-1)
+
+                if self.initial_pairs.getExplorePointer() == -1:
+                    self.pairWorkers -= 1
+                    if self.pe_balance > 0:
+                        self.initializeExpansions()
+                    # else:
+                    #     print "Waiting for all pairs to complete..."
 
                 if self.pairWorkers == 0:
                     self.logger.updateProgress({"rcount": 0}, 1, self.id)
                     self.logger.clockTac(self.id, "pairs")
                     self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
                     self.logger.updateProgress(level=1, id=self.id)
+                    self.initial_pairs.setExploredDone()
                     self.initial_pairs.saveToFile()
+                    if self.pe_balance == 0:
+                        self.initializeExpansions()
+                        ## print "All pairs complete, launching expansion..."
+
                 
             elif m["what"] == "pairs":
                 self.handlePairResult(m)
@@ -631,6 +717,7 @@ class MinerDistrib(Miner):
 
             if self.leftOverPairs():
                 self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
+                self.initial_pairs.saveToFile()
                 break
 
     

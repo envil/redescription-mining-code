@@ -768,8 +768,8 @@ class BasisView(object):
                 self.MapfigMap.delaxes(ax)
         self.clearHighlighted()
 
-    def savefig(self, fname):
-        self.MapfigMap.savefig(fname)
+    def savefig(self, fname, **kwargs):
+        self.MapfigMap.savefig(fname, **kwargs)
 
         
     def drawMap(self):

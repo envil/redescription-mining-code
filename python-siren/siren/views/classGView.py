@@ -73,7 +73,16 @@ class GView(BasisView):
             vec = numpy.array(self.suppABCD)
         u, indices = numpy.unique(vec, return_inverse=True)
 
-        fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
+        styles = []
+        for i in u:
+            if draw_settings[i]["shape"] in [".",",","*","+","x"]:
+                #### point-wise shape -> same color face and edge
+                styles.append(draw_settings[i]["color_e"])
+            else:
+                #### otherwise -> possibly different colors face and edge
+                styles.append(draw_settings[i]["color_f"])
+        fc_clusts = numpy.array(styles)
+        # fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
         fc_dots = fc_clusts[indices]
         ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
         ec_dots = ec_clusts[indices]
@@ -91,7 +100,7 @@ class GView(BasisView):
             draw_dots = numpy.ones(vec.shape, dtype=bool)
         else:
             draw_dots = ~ delta_dots
-            
+
         return {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
 
     def prepareProcesses(self):

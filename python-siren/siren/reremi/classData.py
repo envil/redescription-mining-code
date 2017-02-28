@@ -194,7 +194,10 @@ class ColM(object):
         self.enabled = 0
 
     def __str__(self):
-        return "%s variable %i %s, %d missing values" %(self.getType(), self.getId(), self.getName().encode('ascii', 'replace'), self.lMiss())
+        act = ""
+        if not self.getEnabled():
+            act = " (OFF)"
+        return "%s variable %i %s%s, %d missing values" %(self.getType(), self.getId(), self.getName().encode('ascii', 'replace'), act, self.lMiss())
 
     def suppInBounds(self, min_in=-1, min_out=-1):
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
@@ -1632,7 +1635,14 @@ class Data(object):
         return [RowE(i, self) for i in range(self.nbRows())]
 
     def __str__(self):
-        return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
+        if self.nbRowsEnabled() == self.nbRows() and \
+          self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
+            return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
+        return "%i(+%i) x %i(+%i)+%i(+%i) data" \
+          % ( self.nbRowsEnabled(), self.nbRowsDisabled(),
+              self.nbColsEnabled(0), self.nbColsDisabled(0),
+              self.nbColsEnabled(1), self.nbColsDisabled(1))
+
         
     def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
         #### FIGURE OUT HOW TO WRITE, WHERE TO PUT COORDS, WHAT METHOD TO USE
@@ -1849,9 +1859,17 @@ class Data(object):
 
     def nbRows(self):
         return self.N
+    def nbRowsEnabled(self):
+        return self.N-len(self.selected_rows)
+    def nbRowsDisabled(self):
+        return len(self.selected_rows)
 
     def nbCols(self, side):
         return len(self.cols[side])
+    def nbColsEnabled(self, side):
+        return len([c for c in self.cols[side] if c.getEnabled()])
+    def nbColsDisabled(self, side):
+        return len([c for c in self.cols[side] if not c.getEnabled()])
 
     def colsSide(self, side): 
         return self.cols[side]
@@ -2434,9 +2452,14 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
 #####################################################
 
 def main():
-    rep = "/home/egalbrun/"
-    data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")
+    rep = "/home/egalbrun/TKTL/data/redmin/EthnoAtlas/vPauli/"
+    ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
     print data
+
+    # rep = "/home/egalbrun/"
+    # data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")
+    # print data
     # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
     # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
     # exit()

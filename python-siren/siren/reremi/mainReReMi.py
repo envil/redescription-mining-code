@@ -219,7 +219,9 @@ def run(args):
     try:
         miner.full_run()
     except KeyboardInterrupt:
+        miner.initial_pairs.saveToFile()
         logger.printL(1, 'Stopped...', "log")
+
 
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
@@ -382,12 +384,17 @@ if __name__ == "__main__":
     # package = Package(sys.argv[-1])
     # elements_read = package.read(pm)        
     # if elements_read.get("reds") is not None:
-    #     reds = elements_read.get("reds")
     #     data = elements_read.get("data")
     #     names = data.getNames()
+
+    #     ## reds = elements_read.get("reds")
+    #     reds = []
+    #     with open("/home/egalbrun/queries.txt") as fp:
+    #         parseRedList(fp, data, reds)
+        
     #     with open("/home/egalbrun/queries.tex", mode='w') as f:
     #         f.write(codecs.encode(printTexRedList(reds, names), 'utf-8','replace'))
-    #         ## f.write(codecs.encode(printRedList(reds, names), 'utf-8','replace'))
+            ## f.write(codecs.encode(printRedList(reds, names), 'utf-8','replace'))
         
     #     with open("test.txt", "w") as fp:
     #         fp.write(printRedList(reds, [None, None], None, full_supp=True))

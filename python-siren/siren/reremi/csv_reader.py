@@ -113,6 +113,8 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if skipfirst:
                 skipfirst = False
                 continue
+            if re.match("\s*#", row[0]):
+                continue
             if len(row) != no_of_columns:
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
@@ -251,7 +253,9 @@ def parse_sparse(D, coord, ids, varcol, valcol):
     return nD, ncoord, nids, hasc, row_named
 
 def has_disabled_rows(D):
+    #### This is taken care of in the Data class
     hasDis = False
+    dis = []
     for s in ENABLED_ROWS:
         if s in D['headers']:
             hasDis = True
@@ -441,8 +445,8 @@ def row_order(L, R):
         except Exception as arg:
             raise CSVRError('Error while trying to get the ids of data: %s' % arg)
 
-        # (LhasDis, LDis) = has_disabled_rows(L) 
-        # (RhasDis, RDis) = has_disabled_rows(R)
+        # LDis = has_disabled_rows(L) 
+        # RDis = has_disabled_rows(R)
 
         return (L, R, Lorder, Rorder, coord, ids)
 
@@ -483,8 +487,8 @@ def row_order(L, R):
         if nbrowsR != nbrowsL:
             raise CSVRError('The two data sets are not of same size')
 
-        # (LhasDis, LDis) = has_disabled_rows(L) 
-        # (RhasDis, RDis) = has_disabled_rows(R)
+        # LDis = has_disabled_rows(L) 
+        # RDis = has_disabled_rows(R)
 
         return (L, R, range(nbrowsL), range(nbrowsR), coord, ids)
 
@@ -539,8 +543,7 @@ def row_order_single(L):
         else:
             ids = None
 
-        # (LhasDis, LDis) = has_disabled_rows(L) 
-        # (RhasDis, RDis) = has_disabled_rows(R)
+        ## LDis = has_disabled_rows(L) 
 
         return (L, range(nbrowsL), coord, ids)
 
@@ -629,7 +632,6 @@ def main(argv=[]):
     # rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
     rep = "/home/galbrun/Desktop/A.siren_FILES/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    pdb.set_trace()
     res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
     pdb.set_trace()
     # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
