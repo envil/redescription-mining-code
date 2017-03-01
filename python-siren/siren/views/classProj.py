@@ -300,8 +300,7 @@ class AxesProj(Proj):
         self.mcols = mcols
         for side in [0,1]:
             if details[mcols[scs[side]]]["type"] != NumColM.type_id:
-                self.coords_proj[side] += 0.33*numpy.random.rand(len(self.coords_proj[side])) 
-
+                self.coords_proj[side] = 1.*self.coords_proj[side] + 0.33*numpy.random.rand(len(self.coords_proj[side])) 
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
 
@@ -404,7 +403,6 @@ if sys.platform != 'win32':
         title_str = "Projection"
 
         def getData(self):
-
             if type(self.data) is numpy.array or type(self.data) is numpy.ndarray:
                 if self.transpose:
                     mat = self.data.T

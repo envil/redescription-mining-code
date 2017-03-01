@@ -744,16 +744,16 @@ class Siren():
         #m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
+        ID_IMPORT_PREFERENCES = wx.NewId()
+        m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
+        frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
+        
         ID_IMPORT_REDESCRIPTIONS = wx.NewId()
         m_impRedescriptions = submenuImport.Append(ID_IMPORT_REDESCRIPTIONS, "Import &Redescriptions", "Import redescriptions into the project.")
         if self.getData() is not None:
             frame.Bind(wx.EVT_MENU, self.OnImportRedescriptions, m_impRedescriptions)
         else:
             submenuImport.Enable(ID_IMPORT_REDESCRIPTIONS, False)
-
-        ID_IMPORT_PREFERENCES = wx.NewId()
-        m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
-        frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
 
         ID_IMPORT = wx.NewId()
         m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuImport)
@@ -1094,7 +1094,7 @@ class Siren():
         if self.dw.getData() is not None:
             if not self.checkAndProceedWithUnsavedChanges():
                 return
-        if self.dw.reds is not None and len(self.dw.reds) > 0:
+        if self.dw.reds is not None and (self.dw.reds.isChanged or self.dw.rshowids.isChanged): ## len(self.dw.reds) > 0:
             sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
             if sure_dlg.ShowModal() != wx.ID_OK:
                 return

@@ -1403,6 +1403,7 @@ class Data(object):
         mcols = {}
         details = []
         off = 0
+        mat = None
         for side, col in side_cols:
             if col is None:
                 tcols = [c for c in range(len(self.cols[side]))]
@@ -1419,7 +1420,8 @@ class Data(object):
                         mcols[(side, col, bid)] = off
                         off += 1
                     details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
-        mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
+
+                mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
         if store:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
@@ -2198,7 +2200,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     col.flipEnabled()
                 addCol(cols, col, sito, det.get("name", name))
             else:
-                pdb.set_trace()
+                # pdb.set_trace()
                 raise DataError('Unrecognized variable type!')            
     return (cols, N, coords, rnames, disabled_rows)
 
