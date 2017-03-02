@@ -799,7 +799,6 @@ class StatsMiner:
     def run_stats(self):
         splits_info = self.data.getFoldsInfo()
         stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
-        pdb.set_trace()
         summaries = {}
         nbfolds = len(stored_splits_ids)
         for kfold in range(nbfolds):
