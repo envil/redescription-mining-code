@@ -700,8 +700,16 @@ class Redescription(object):
             self.status = tmp_en
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
-    def parseHeader(string, sep="\t"):
-        return [s.strip() for s in string.split(sep)]
+    def parseHeader(string, sep=None):
+        if sep is None:
+            seps = ["\t", ",", ";"]
+        else:
+            seps = [sep]
+        for ss in seps:
+            fields = [s.strip() for s in string.split(ss)]
+            if all([len([f for f in fields if re.match("%s(%s)?" % (h, Redescription.print_queries_namedsuff), f)]) > 0 for h in Redescription.print_queries_headers]):
+                return fields, ss
+        return None, None
     parseHeader = staticmethod(parseHeader)    
 
     def parseQueries(string, list_fields=None, sep="\t", names=[None, None]):
@@ -928,6 +936,7 @@ def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
 
 def parseRedList(fp, data, reds=None):
     list_fields = None
+    more = []
     if reds is None:
         reds = []
     lid = 0
@@ -935,12 +944,13 @@ def parseRedList(fp, data, reds=None):
         lid += 1
         if len(line.strip()) > 0 and not re.match("^[ \t]*#", line):
             if list_fields is None:
-                list_fields = Redescription.parseHeader(line)
+                list_fields, sep = Redescription.parseHeader(line)
             else:                    
-                r = Redescription.parse(line, data=data, list_fields=list_fields)
+                r = Redescription.parse(line, data=data, list_fields=list_fields, sep=sep)
                 if r is not None:
                     reds.append(r)
-    return reds
+                    more.append(line)
+    return reds, {"fields": list_fields, "sep": sep, "lines": more}
 
 if __name__ == '__main__':
     from classData import Data
@@ -978,7 +988,7 @@ if __name__ == '__main__':
         f.write(printRedList(reds))
 
     with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='r') as f:
-        reds = parseRedList(f, data)
+        reds, _ = parseRedList(f, data)
 
     for red in reds:
         print red.disp()

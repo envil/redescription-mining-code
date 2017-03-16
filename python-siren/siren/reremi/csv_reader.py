@@ -126,6 +126,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                         tmp = codecs.decode(tmp, 'utf-8','replace')
                     data[head[i]].append(tmp)
                 else:
+                    print "Turned to None (in csv_reader)", tmp
                     data[head[i]].append(None)        
     if fcl:
         f.close()

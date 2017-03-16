@@ -1980,10 +1980,10 @@ class Query(object):
     parseApd = staticmethod(parseApd)
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
-    def parse(part, names = None):
+    def parse(part, names = None, ids_map=None):
         if len(part.strip()) == 0:
             return Query()
-        qs = QuerySemantics(names)
+        qs = QuerySemantics(names, ids_map)
         parser = RedQueryParser(parseinfo=False, variable_mark=VARIABLE_MARK)
         try:
             tmp = parser.parse(part, "query", semantics=qs)
@@ -1999,8 +1999,9 @@ class Query(object):
 #     python redquery_parser.py queries.txt QUERIES
 class QuerySemantics(object):
 
-    def __init__(self, names=None):
+    def __init__(self, names=None, ids_map=None):
         self.names = names
+        self.ids_map = ids_map
 
     def query(self, ast):
         buk = []
@@ -2068,7 +2069,10 @@ class QuerySemantics(object):
     def parse_vname(self, vname):
         tmp = re.match(VARIABLE_MARK+"(?P<id>\d+)$", vname)
         if tmp is not None:
-            return int(tmp.group("id"))
+            vv = int(tmp.group("id"))
+            if self.ids_map is not None:
+                return self.ids_map.get(vv, vv)
+            return vv
         elif self.names is not None:
             if type(vname) is str and type(self.names[0]) is unicode:
                 vname = codecs.decode(v, 'utf-8','replace')

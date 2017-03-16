@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, re, os.path, datetime
+import sys, re, os.path, datetime, glob
 import numpy
 import tempfile
 
@@ -206,8 +206,8 @@ def run(args):
     ############################
     #### SPLITS
     #### create (random)
-    data.getSplit(nbsubs=5, coo_dim=0, grain=1)
-    data.addFoldsCol()
+    # data.getSplit(nbsubs=5, coo_dim=0, grain=1)
+    # data.addFoldsCol()
     #### setup for mining
     ### data.extractFolds(1, 12)
     # splits_info = data.getFoldsInfo()
@@ -266,11 +266,6 @@ def run(args):
 ###############################
 
 def run_filter(args):
-    #### USED FOR TESTS
-    #### on 100
-    # [84, 1, 43, 85, 6, 5, 7, 66, 11, 44, 90, 14, 31, 86, 75, 39, 58, 52, 55, 33, 89, 93, 18, 77, 53, 91, 34, 68, 65, 92, 76, 74, 80, 20, 56, 22, 78, 82, 25]
-    # [(8, False), (0, False), (2, False), (9, False), (27, False), (42, False), (61, False), (84, True), (19, False), (17, False), (3, False), (10, False), (4, False), (1, True), (62, False), (46, False), (28, False), (32, False), (43, True), (63, False), (13, False), (85, True), (6, True), (5, True), (7, True), (66, True), (11, True), (29, False), (15, False), (44, True), (90, True), (70, False), (87, False), (12, False), (14, True), (16, False), (23, False), (31, True), (38, False), (36, False), (37, False), (86, True), (88, False), (73, False), (83, False), (51, False), (75, True), (39, True), (57, False), (58, True), (97, False), (67, False), (52, True), (30, False), (95, False), (47, False), (55, True), (50, False), (35, False), (33, True), (89, True), (69, False), (45, False), (93, True), (18, True), (54, False), (77, True), (53, True), (91, True), (34, True), (64, False), (68, True), (96, False), (65, True), (98, False), (92, True), (48, False), (49, False), (26, False), (40, False), (76, True), (74, True), (72, False), (94, False), (71, False), (99, False), (80, True), (21, False), (20, True), (56, True), (22, True), (81, False), (78, True), (79, False), (82, True), (59, False), (41, False), (60, False), (25, True), (24, False)]
-## [0, 2, 9, 27, 42, 61, 19, 17, 3, 10, 4, 62, 46, 28, 32, 63, 13, 29, 15, 70, 87, 12, 16, 23, 38, 36, 37, 88, 73, 83, 51, 57, 97, 67, 30, 95, 47, 50, 35, 69, 45, 54, 64, 96, 98, 48, 49, 26, 40, 72, 94, 71, 99, 21, 81, 79, 59, 41, 60, 24, 8]
 
     loaded = loadAll(args)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
@@ -280,18 +275,6 @@ def run_filter(args):
     reds = []
     with open("/home/galbrun/current/redescriptions.csv") as fd:
         parseRedList(fd, data, reds)
-
-    # bbatch = Batch(reds)
-    # # org_ids = bbatch.selected(constraints.getActions("final"))
-    # # pdb.set_trace()
-    
-    # cc = constraints.getActions("final")
-    # ttt = [0, 2, 9, 27, 42, 61, 84, 19, 17, 3, 10, 4, 1, 62, 46, 28, 32, 43, 63, 13, 85, 6, 5, 7, 66, 11, 29, 15, 44, 90, 70, 87, 12, 14, 16, 23, 31, 38, 36, 37, 86, 88, 73, 83, 51, 75, 39, 57, 58, 97, 67, 52, 30, 95, 47, 55, 50, 35, 33, 89, 69, 45, 93, 18, 54, 77, 53, 91, 34, 64, 68, 96, 65, 98, 92, 48, 49, 26, 40, 76, 74, 72, 94, 71, 99, 80, 21, 20, 56, 22, 81, 78, 79, 82, 59, 41, 60, 25, 24, 8]
-    # for i in range(len(ttt)):
-    #     for j in range(i):
-    #         if bbatch.filterLast([ttt[j],ttt[i]], cc[-1][1]):
-    #             print j, i, ttt[j], ttt[i]
-    # pdb.set_trace()
 
     rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
     rr_tests = [[73]] ## [2]
@@ -399,6 +382,25 @@ def run_splits(args, splt=""):
 
 ##### MAIN
 ###########
+
+def generate_rank(reds, nb_rows, r0=None):
+    incidence = numpy.zeros((nb_rows, len(reds)))
+    for ri, red in enumerate(reds):
+        incidence[list(red.getSuppI()), ri] = 1.
+
+    if r0 is None:
+        r0 = numpy.argmax(numpy.sum(incidence > 0, axis=0))
+    ranking = [r0]
+    incidence[list(reds[ranking[-1]].getSuppI()), :] = -1.
+    candidates = range(len(reds))
+    candidates.remove(r0)
+
+    while len(candidates) > 0:        
+        pri = numpy.argmax(numpy.sum(incidence[:, candidates] > 0, axis=0))
+        ranking.append(candidates.pop(pri))
+        incidence[list(reds[ranking[-1]].getSuppI()), :] = -1.
+    return ranking
+        
     
 if __name__ == "__main__":
     
@@ -410,28 +412,3 @@ if __name__ == "__main__":
         run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)
-
-
-    # pm = getPM()
-    # package = Package(sys.argv[-1])
-    # elements_read = package.read(pm)        
-    # if elements_read.get("reds") is not None:
-    #     data = elements_read.get("data")
-    #     names = data.getNames()
-
-    #     ## reds = elements_read.get("reds")
-    #     reds = []
-    #     with open("/home/egalbrun/queries.txt") as fp:
-    #         parseRedList(fp, data, reds)
-        
-    #     with open("/home/egalbrun/queries.tex", mode='w') as f:
-    #         f.write(codecs.encode(printTexRedList(reds, names), 'utf-8','replace'))
-            ## f.write(codecs.encode(printRedList(reds, names), 'utf-8','replace'))
-        
-    #     with open("test.txt", "w") as fp:
-    #         fp.write(printRedList(reds, [None, None], None, full_supp=True))
-    #     rrr = []
-    #     with open("test.txt") as fp:
-    #         parseRedList(fp, data, rrr)
-    #     print [r.disp() for r in rrr]
-

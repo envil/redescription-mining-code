@@ -224,10 +224,13 @@ class BoolColM(ColM):
     values_eq = {True:1, False:0}
     NA = NA_bool
 
-    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '0.0': False, '1': True, 0:False, 1:True}
+    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '0.0': False, '1': True, 0:False, 1:True, None: None}
     def parseList(listV, indices=None, force=False):
+        ## print listV
+        miss = set()
         if force:
             if type(listV) is list:
+                miss = set([i for (i, v) in enumerate(listV) if v is None])
                 listV = set([i for (i, v) in enumerate(listV) if BoolColM.values.get(v, True)])
             elif type(listV) is not set:
                 tt = set()
@@ -250,7 +253,7 @@ class BoolColM(ColM):
                 N = max(indices.values())+1
             else:
                 raise ValueError('Sparse requires indices')
-            return BoolColM(trues, N, set())
+            return BoolColM(trues, N, miss)
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
         trues = set()
@@ -438,6 +441,7 @@ class CatColM(ColM):
 
     n_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None, force=False):
+        ## print listV
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
@@ -677,6 +681,7 @@ class NumColM(ColM):
     parseVal = staticmethod(parseVal)
                 
     def parseList(listV, indices=None, force=False):
+        ## print listV
         prec = None
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
@@ -1693,7 +1698,8 @@ class Data(object):
                         styles[side]["meth"] = "triples"
                         styles[side]["inline"] = inline
 
-        meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
+        ## meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
+        meths = {"pairs": self.writeCSVDense, "triples": self.writeCSVDense, "dense": self.writeCSVDense}
         sides = [0,1]
         if self.isSingleD() and (len(outputs) == 1 or outputs[0] == outputs[1] or outputs[1] is None):
             sides = [0]
@@ -1712,7 +1718,7 @@ class Data(object):
                 csvf = csv_reader.start_out(fp)
                 meth(side, csvf, rids=rids, cids=cids, **styles[side])
 
-    def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True, single_dataset=False):
+    def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         discol = []
         if self.hasDisabledCols(side) or (single_dataset and self.hasDisabledCols()):
             discol.append(csv_reader.ENABLED_COLS[0])
@@ -1755,7 +1761,7 @@ class Data(object):
         for n in range(self.N):
             row = []
             if (details and len(rids) > 0) or len(discol) > 0:
-                row.append(rids.get(n,n))
+                row.append(rids.get(ni,ni))
             if details and self.hasSelectedRows():
                 row.append(Data.enabled_codes[n not in self.selectedRows()])
             if details and self.isGeospatial():
@@ -2454,10 +2460,19 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
 #####################################################
 
 def main():
-    rep = "/home/egalbrun/TKTL/data/redmin/EthnoAtlas/vPauli/"
-    ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    print data
+    # rep = "/home/egalbrun/TKTL/redescriptors/current/dblp_miss/miss/"
+    # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
+    # print data
+
+    rep = "/home/egalbrun/short/testNA/"
+    for dt in ["dblp_densBB"]: #, "EA_ethno-bio", "EA_ethnoN-bio"]:
+        ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
+        data = Data([rep+dt+"/data_LHS.csv", rep+dt+"/data_RHS.csv", {}, "nan"], "csv")
+        print dt, data
+        print "---------------"
+        for side in [0,1]:
+            for col in data.cols[side]:
+                print col
 
     # rep = "/home/egalbrun/"
     # data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")

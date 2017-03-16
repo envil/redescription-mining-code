@@ -1134,7 +1134,7 @@ class Siren():
                 reds, sortids = self.dw.loadRedescriptionsFromFile(path)
             except:
                 pass
-        open_dlg.Destroy()
+        open_dlg.Destroy()        
         self.loadReds(reds, sortids, path=path)
         self.changePage(self.getDefaultTabId("r"))
         
