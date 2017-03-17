@@ -1123,6 +1123,7 @@ class Siren():
         if self.dw.reds is not None:
             if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
                 return
+        reds, sortids, path  = (None, None, "")
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
         dir_name = os.path.expanduser('~/')
 
@@ -1562,7 +1563,9 @@ class Siren():
         self.viewsm.deleteAllViews()
         self.doUpdates({"menu":True})
 
-    def loadReds(self, reds, sortids=None, path=None):
+    def loadReds(self, reds=None, sortids=None, path=None):
+        if reds is None:
+            return
         ## Initialize red lists data
         tab = None
         if self.matchTabType("r"):

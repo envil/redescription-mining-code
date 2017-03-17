@@ -1981,7 +1981,7 @@ class Query(object):
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
     def parse(part, names = None, ids_map=None):
-        if len(part.strip()) == 0:
+        if len(part.strip()) == 0 or part.strip() == "[]":
             return Query()
         qs = QuerySemantics(names, ids_map)
         parser = RedQueryParser(parseinfo=False, variable_mark=VARIABLE_MARK)

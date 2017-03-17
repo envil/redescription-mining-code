@@ -1761,7 +1761,7 @@ class Data(object):
         for n in range(self.N):
             row = []
             if (details and len(rids) > 0) or len(discol) > 0:
-                row.append(rids.get(ni,ni))
+                row.append(rids.get(n,n))
             if details and self.hasSelectedRows():
                 row.append(Data.enabled_codes[n not in self.selectedRows()])
             if details and self.isGeospatial():

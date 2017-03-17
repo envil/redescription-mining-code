@@ -642,7 +642,8 @@ class Redescription(object):
                 info_name = ""
             details.append(info_name+tmp)
             
-        ex_str = sep.join(details) 
+        ex_str = sep.join(details)
+        #### SPREAD ON TWO LINES 
         # ex_str = "%s & & %s & %s \\\\ %% & %s\n & \\multicolumn{2}{r}{ %s } \\\\ [.3em]" % (details[0], details[2], details[3], details[4], details[1])
         return ex_str
 
@@ -869,10 +870,10 @@ def printTexRedList(red_list, names=[None, None], fields=None):
         if ns is not None:
             names_alts.append([])
             for ni, n in enumerate(ns):
-                vlc = var_ltx_cmd(i, ni) 
-                names_alts[i].append(vlc+"{}")
-                names_commands += "\\newcommand{%s}{%s}\n" % (vlc, n)
-                numvs_commands += "%% \\newcommand{%s}{v%d}\n" % (vlc, ni)
+                vlc = var_ltx_cmd(i, ni)
+                names_alts[i].append("$"+vlc+"{}$")
+                names_commands += "\\newcommand{%s}{\\text{%s}}\n" % (vlc, re.sub("_", "\\_", n))
+                numvs_commands += "%% \\newcommand{%s}{\\text{v%d}}\n" % (vlc, ni)
         else:
             names_alts.append(None)
                 
@@ -896,13 +897,13 @@ def printTexRedList(red_list, names=[None, None], fields=None):
               "\\scriptsize\n" + \
               "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
               "\\toprule\n"
-
+              #### SPREAD ON TWO LINES 
               # "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.75\\textwidth}@{}r@{\\hspace*{4ex}}r@{\\hspace*{2ex}}r@{\\hspace*{1ex}}}\n" + \
 
-              
+            
     str_out += " & " + Redescription.dispHeader(tex_headers, " & ") + " \\\\\n"
     str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
-    
+    #### SPREAD ON TWO LINES 
     # str_out += " & " + Redescription.dispHeader(tex_headers[:-1], " & ") + " \\\\ %% &"+ tex_headers[-1] +" \n"
     # str_out += "%%% & " + Redescription.dispHeader(tex_fields[:-1], " & ") + " \\\\ %% &"+ tex_fields[-1] +" \n"
     str_out += "\\midrule\n"

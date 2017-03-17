@@ -70,14 +70,15 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
             # self.frame.recomputeAll()
 
-            tab = "reds"
+            # tab = "reds"
             # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
             #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
             #     mapV.mapFrame.SetClientSizeWH(1920, 1190)
             #     # mapV.mapFrame.SetClientSizeWH(1064, 744)
             #     # mapV.mapFrame.SetClientSizeWH(551, 375)
             #     # mapV.savefig("/home/egalbrun/R%d_map_2K-d100.pdf" % i, dpi=100, format="pdf")
-            #     mapV.savefig("/home/egalbrun/R%d_map_2K-d100.eps" % i, dpi=100, format="eps")
+            #     # mapV.savefig("/home/egalbrun/R%d_map_2K-d100.eps" % i, dpi=100, format="eps")
+            #     mapV.savefig("/home/egalbrun/R%d_map_2K-d100.png" % i, format="png")
             #     mapV.OnKil()
 
             # self.frame.dw.getData().getMatrix()
