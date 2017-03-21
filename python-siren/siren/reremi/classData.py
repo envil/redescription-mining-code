@@ -1642,13 +1642,24 @@ class Data(object):
         return [RowE(i, self) for i in range(self.nbRows())]
 
     def __str__(self):
-        if self.nbRowsEnabled() == self.nbRows() and \
-          self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
-            return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
-        return "%i(+%i) x %i(+%i)+%i(+%i) data" \
-          % ( self.nbRowsEnabled(), self.nbRowsDisabled(),
-              self.nbColsEnabled(0), self.nbColsDisabled(0),
+        return "%s x %s data" % (self.rowsInfo(), self.colsInfo())
+        # if self.nbRowsEnabled() == self.nbRows() and \
+        #   self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
+        #     return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
+        # return "%i(+%i) x %i(+%i)+%i(+%i) data" \
+        #   % ( self.nbRowsEnabled(), self.nbRowsDisabled(),
+        #       self.nbColsEnabled(0), self.nbColsDisabled(0),
+        #       self.nbColsEnabled(1), self.nbColsDisabled(1))
+    def colsInfo(self):
+        if self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
+            return "%i+%i" % (self.nbCols(0), self.nbCols(1))
+        return "%i(+%i)+%i(+%i)" \
+          % ( self.nbColsEnabled(0), self.nbColsDisabled(0),
               self.nbColsEnabled(1), self.nbColsDisabled(1))
+    def rowsInfo(self):
+        if self.nbRowsEnabled() == self.nbRows():
+            return "%i" % self.nbRows()
+        return "%i(+%i)" % ( self.nbRowsEnabled(), self.nbRowsDisabled())
 
         
     def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):

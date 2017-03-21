@@ -594,6 +594,7 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             lid = self.getAssociated("lid")
             self.getDataHdl().checkItem(lid, index, flag)
             self.setBckColor(index, flag)
+            self.getDataHdl().notify_change()
 
     def upItem(self, i, rdt):
         for (cid, cv) in enumerate(rdt["cols"]):
@@ -799,6 +800,8 @@ class SplitBrowser:
 
     def refresh(self, cascade=True):
         self.lcc.loadData(self.active_lid, cascade)
+        if len(self.getDataHdl().getOrdLists()) == 0:
+            self.lci.loadData(None)
 
     def updateLid(self, lid):
         if lid != self.active_lid: # check validity lid 
@@ -1030,7 +1033,10 @@ class StaticContent:
         self.nlid = 0
         self.lists = {}
         self.lists_ord = []
-
+        
+    def notify_change(self):
+        print "Changed"
+        
     #### ACCESSING LISTS
     def getListPosForId(self, idx):
         try:
@@ -1204,9 +1210,9 @@ class EditableContent(StaticContent):
         if len(lids) == 0 and sel is not None:
             lids = self.getVLidsAtPoss(sel)
         for lid in lids:
-            self.lists_ord.remove(lid)
             self.deleteItems(self.lists[lid].getIids())
             del self.lists[lid]
+            self.lists_ord.remove(lid)
         def_lid = None
         if len(self.lists_ord) > 0:
             def_lid = self.lists_ord[0]
@@ -1330,6 +1336,9 @@ class VarsSet(StaticContent):
         self.lists_ord = []
         self.parent = parent
         self.resetFields()
+
+    def notify_change(self):
+        self.parent.updateDataInfo()
         
     def resetFields(self, side=None):
         self.resetAllSorts()
@@ -1505,8 +1514,8 @@ class ContentManager:
                 self.onDeleteLists(sel)        
     def onDeleteLists(self, sel):
         def_lid = self.getDataHdl().deleteLists(sel=sel)
-        if len(def_lid) > 0:
-            self.refreshAll()
+        for bi, brs in self.browsers.items():
+            brs.updateLid(def_lid)
     def onDeleteItems(self, pid, sel):
         lid = self.browsers[pid].getLid()
         self.getDataHdl().deleteItemsLid(lid, sel)

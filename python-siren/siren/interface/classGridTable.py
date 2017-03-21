@@ -532,6 +532,12 @@ class VarTable(GridTable):
                      ('max', 'self.data[x].getMax', None, GridTable.width_colinfo)]}
     name_m = 'self.data[x].getName'
 
+    def notify_change(self):
+        self.parent.updateDataInfo()
+        if type(self.data) == ICList:
+            self.data.isChanged = True
+
+    
     def viewData(self, pos=None, viewT=None):
         if viewT is None:
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
@@ -657,6 +663,7 @@ class RowTable(GridTable):
         return name + direct
 
     def notify_change(self):
+        self.parent.updateDataInfo()
         self.parent.recomputeAll()
         
     def resetData(self, data=None, srids=None):

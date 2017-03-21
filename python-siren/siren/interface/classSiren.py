@@ -367,11 +367,10 @@ class Siren():
     def makeStatus(self, frame):
         ### status bar
         self.statusbar = frame.CreateStatusBar()
-        self.statusbar.SetFieldsCount(4)
-        self.statusbar.SetStatusWidths([25, 300, 150, -1])
-
+        self.statusbar.SetFieldsCount(5)
+        self.statusbar.SetStatusWidths([25, 300, 150, -1, 200])
+        self.updateDataInfo()
         rect = self.statusbar.GetFieldRect(0)
-        
         self.buttViz = wx.StaticBitmap(self.statusbar, wx.NewId(), self.icons["split_frame"], size=(rect.height+4, rect.height+4))
         # self.buttViz.SetMargins(0, 0)
         # self.buttViz = wx.ToggleButton(self.statusbar, wx.NewId(), "s", style=wx.ALIGN_CENTER|wx.TE_RICH, size=(rect.height+4, rect.height+4))
@@ -510,7 +509,6 @@ class Siren():
                 if not self.selectedTab["tab"].hasFocusCLFile():
                     menuRed.Enable(ID_SV, False)
 
-
                 ID_SVA = wx.NewId()
                 m_svla = menuRed.Append(ID_SVA, "Save List As...", "Save List as...")
                 frame.Bind(wx.EVT_MENU, self.OnSaveListAs, m_svla)
@@ -521,6 +519,22 @@ class Siren():
                 m_details = menuRed.Append(ID_DETAILS, "View details", "View variable values.")
                 frame.Bind(wx.EVT_MENU, self.OnShowCol, m_details)
 
+            ID_DEL = wx.NewId()
+            m_del = menuRed.Append(ID_DEL, "De&lete", "Delete current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnDelete, m_del)                            
+            m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
+            m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
+            m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
+            frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
+
+            if self.selectedTab["tab"].nbItems() == 0:
+                menuRed.Enable(wx.ID_CUT, False)
+                menuRed.Enable(wx.ID_COPY, False)
+            if self.selectedTab["tab"].isEmptyBuffer():
+                menuRed.Enable(wx.ID_PASTE, False)
+                
             if self.selectedTab["tab"].nbItems() > 0:
                 ID_FIND = wx.NewId()
                 m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
@@ -563,20 +577,6 @@ class Siren():
                 ID_PROCESS = wx.NewId()
                 m_process = menuRed.Append(ID_PROCESS, "&Process redescriptions\tCtrl+P", "Sort and filter current redescription list.")
                 frame.Bind(wx.EVT_MENU, self.OnProcessAll, m_process)
-
-                ID_DEL = wx.NewId()
-                m_del = menuRed.Append(ID_DEL, "De&lete", "Delete current redescription.")
-                frame.Bind(wx.EVT_MENU, self.OnDelete, m_del)
-
-                m_cut = menuRed.Append(wx.ID_CUT, "Cu&t", "Cut current redescription.")
-                frame.Bind(wx.EVT_MENU, self.OnCut, m_cut)
-
-                m_copy = menuRed.Append(wx.ID_COPY, "&Copy", "Copy current redescription.")
-                frame.Bind(wx.EVT_MENU, self.OnCopy, m_copy)
-
-            if not self.selectedTab["tab"].isEmptyBuffer():
-                m_paste = menuRed.Append(wx.ID_PASTE, "&Paste", "Paste current redescription.")
-                frame.Bind(wx.EVT_MENU, self.OnPaste, m_paste)
 
         if menuRed.GetMenuItemCount() == 0:
             self.appendEmptyMenuEntry(menuRed, "No items", "There are no items to edit.")
@@ -821,20 +821,23 @@ class Siren():
         ID_NOR = wx.NewId()
         menu.Append(ID_NOR, entry_text, entry_leg)
         menu.Enable(ID_NOR, False)
-    def makeMenuEmpty(self, menu_action):
-        menuEmpty = wx.Menu()
+    def makeMenuEmpty(self, menu_action, menuEmpty=None):
+        if menuEmpty is None:
+            menuEmpty = wx.Menu()
         self.appendEmptyMenuEntry(menuEmpty, "Nothing to %s" % menu_action, "Nothing to %s." % menu_action)
         return menuEmpty
         
     def makeMenu(self, frame):
         menuBar = wx.MenuBar()
         menuBar.Append(self.makeFileMenu(frame), "&File")
+        me = None
         if self.matchTabType("ev"):
-            menuBar.Append(self.makeRedMenuEV(frame), "&Edit")
+            me = self.makeRedMenuEV(frame)
         elif self.matchTabType("r"):
-            menuBar.Append(self.makeRedMenuR(frame), "&Edit")
-        else:
-            menuBar.Append(self.makeMenuEmpty("edit"), "&Edit")
+            me = self.makeRedMenuR(frame)
+        if me is None or me.GetMenuItemCount() == 0:
+            me = self.makeMenuEmpty("edit", menuEmpty=me)
+        menuBar.Append(me, "&Edit")
         ## if self.matchTabType("evr"):
         menuBar.Append(self.makeVizMenu(frame), "&View")
         ## else:
@@ -1176,7 +1179,15 @@ class Siren():
 
     def getSelectionTab(self):
         return self.tabbed.GetSelection()
+    
+    def updateDataInfo(self):
+        if self.hasDataLoaded():            
+            # self.statusbar.SetStatusText("%s data rows" % self.dw.getData().rowsInfo(), 4)
+            self.statusbar.SetStatusText("%s" % self.dw.getData(), 4)
+        else:
+            self.statusbar.SetStatusText("No data loaded", 4)
 
+    
     def changePage(self, tabn):
         if tabn in self.tabs: # and not self.tabs[tabn]["hide"]:
             self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))            
@@ -1531,6 +1542,7 @@ class Siren():
         self.reloadVars(review=False)
         self.reloadRows()
         self.reloadReds()
+        self.updateDataInfo()
         
     def reloadVars(self, review=True):
         ## Initialize variable lists data

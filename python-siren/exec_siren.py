@@ -54,7 +54,7 @@ class SirenApp(wx.App):
                 sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
                 
 
-        if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+        # if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # DEBUG
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
@@ -95,7 +95,7 @@ class SirenApp(wx.App):
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
             # mapV.setCurrent(self.frame.tabs[tab]["tab"].getSelectedItem(), self.frame.tabs["reds"]["tab"].tabId)
-
+            
         return True
 
     def BringWindowToFront(self):
