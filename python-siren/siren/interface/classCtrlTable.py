@@ -308,7 +308,6 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         listmix.ListCtrlAutoWidthMixin.__init__(self)
         self.parent = parent
         self.cm = None
-        self.pid = None
         self.upOn = True
         self.InsertColumn(0, '')
         dt = ListDrop(self._dd)
@@ -332,9 +331,8 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
     def isContainersL(self):
         return False
 
-    def setCManager(self, cm, pid=None):
+    def setCM(self, cm):
         self.cm = cm
-        self.pid = pid
     def getCManager(self):
         return self.cm
     def getDataHdl(self):
@@ -346,8 +344,6 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
     def hasCManager(self):
         return self.cm is not None
-    def getPid(self):
-        return self.pid
 
     def turnUp(self, val):
         self.upOn = val
@@ -356,7 +352,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
 
     def getAssociated(self, which):
         if self.hasCManager():
-            return self.getCManager().getAssociated(self.getPid(), which)
+            return self.getCManager().getAssociated(which)
         return None
 
     # def OnKeyDown(self, event):
@@ -384,7 +380,6 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         # this call to onStripe catches any addition to the list; drag or not
         if self.hasCManager():
             self._onStripe()
-            # self.getCManager().setIndices(self.getPid(), "drag", -1)
             event.Skip()
 
     def _onDelete(self, event):
@@ -493,8 +488,8 @@ class ListCtrlContainers(ListCtrlBasis, MyTextEditMixin):
     def isContainersL(self):
         return True
 
-    def setCManager(self, cm, pid=None):
-        ListCtrlBasis.setCManager(self, cm, pid)
+    def setCM(self, cm):
+        ListCtrlBasis.setCM(self, cm)
 
     def RefreshItem(self, row):
         llid = self.getDataHdl().getLidAtPos(row)        
@@ -507,7 +502,7 @@ class ListCtrlContainers(ListCtrlBasis, MyTextEditMixin):
     def loadData(self, lid=None, cascade=True):
         if self.GetItemCount() > 0:
             self.DeleteAllItems()
-        if self.getPid() is not None:
+        if self.hasCManager():
             for (i, llid) in enumerate(self.getDataHdl().getOrdLists()):
                 self.InsertStringItem(i, "")
                 self.upItem(i, llid)
@@ -524,7 +519,9 @@ class ListCtrlContainers(ListCtrlBasis, MyTextEditMixin):
 
     def _onSelect(self, event):
         if self.isUp():
-            self.getViewHdl().setLid(self.getPid(), lid=None, pos=event.GetIndex())
+            pos = event.GetIndex()
+            lid = self.getDataHdl().getListIdAtPos(pos)
+            self.getViewHdl().setLid(lid)
         event.Skip()
 
     def _onStripe(self):
@@ -580,9 +577,8 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
     def getItemData(self, iid, pos):
         return self.getDataHdl().getItemData(iid, pos)
 
-    def setCManager(self, cm, pid=None):
+    def setCM(self, cm):
         self.cm = cm
-        self.pid = pid
 
     def RefreshItem(self, row):
         ll = self.getDataHdl().getList(self.getViewHdl().getLid())
@@ -659,13 +655,11 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
                 for pos in new_poss:
                     self.Select(pos)
 
-class SplitBrowser:
+class SplitView:
 
-    def __init__(self, parent, pid, frame):
+    def __init__(self, parent, frame):
         self.parent = parent
-        self.pid = pid
         self.active_lid = None
-        self.cm = None
         self.last_foc = None
 
         self.sw = wx.SplitterWindow(frame, -1, style=wx.SP_LIVE_UPDATE) #|wx.SP_NOBORDER)
@@ -700,28 +694,24 @@ class SplitBrowser:
 
     def getSW(self):
         return self.sw
-    def getCM(self):
-        return self.cm
-    def getDataHdl(self):
-        if self.cm is not None:
-            return self.cm.getDataHdl()
-        return None
+    # def getCM(self):
+    #     return self.cm
+    # def getDataHdl(self):
+    #     if self.cm is not None:
+    #         return self.cm.getDataHdl()
+    #     return None
     def getLid(self):
         return self.active_lid
     def getLCC(self):
         return self.lcc
     def getLCI(self):
         return self.lci
-    def getPid(self):
-        return self.pid
 
     def getWhich(self, which):
         if which == "items":
             return self.lci
         if which == "containers":
             return self.lcc
-        if which == "pid":
-            return self.pid
         if which == "lid":
             return self.active_lid
     def getFocused(self):
@@ -783,44 +773,37 @@ class SplitBrowser:
     def nbSelected(self):
         return self.nbSelectedFocused()
 
-    def Hide(self):
-        self.getSW().Hide()
+    # def Hide(self):
+    #     self.sw.Hide()
 
-    def Show(self):
-        self.getSW().Show()
+    # def Show(self):
+    #     self.sw.Show()
 
     def resetCM(self, cm=None):
-        self.cm = cm
         if cm is not None:
-            self.lcc.setCManager(cm, self.pid)
-            self.lci.setCManager(cm, self.pid)
-            if len(self.getDataHdl().getOrdLists()) > 0:
-                self.active_lid = self.getDataHdl().getOrdLists()[0]
-                self.lcc.loadData(self.active_lid)
+            self.lcc.setCM(cm)
+            self.lci.setCM(cm)
+            if len(cm.getDataHdl().getOrdLists()) > 0:
+                self.active_lid = cm.getDataHdl().getOrdLists()[0]
+            else:
+                self.active_lid = None
+            self.refresh()
+            # if len(self.getDataHdl().getOrdLists()) > 0:
+            #     self.active_lid = self.getDataHdl().getOrdLists()[0]
+            #     self.lcc.loadData(self.active_lid)
 
     def refresh(self, cascade=True):
         self.lcc.loadData(self.active_lid, cascade)
-        if len(self.getDataHdl().getOrdLists()) == 0:
+        if self.active_lid is None and not cascade: # len(self.getDataHdl().getOrdLists()) == 0:
             self.lci.loadData(None)
 
     def updateLid(self, lid):
         if lid != self.active_lid: # check validity lid 
             self.active_lid = lid
             self.refresh()
-
-    def setLid(self, pid=0, lid=None, pos=None):
-        if lid is not None:
-            self.active_lid = lid
-            self.lcc.setFocusRow(self.getDataHdl().getListPosForId(lid))
-        elif pos is not None:
-            lid = self.getDataHdl().getListIdAtPos(pos)
-            self.active_lid = lid
-            self.lci.loadData(lid)
-
-    def setSelectedItem(self, iid):
-        pos = self.getDataHdl().getList(self.getLid()).getPosForIid(iid)
-        self.lci.setFocusRow(pos)
-
+    def setLid(self, lid):
+        self.active_lid = lid
+        self.lci.loadData(lid)
 
         
 class RefsList:
@@ -1452,30 +1435,34 @@ class ContentManager:
         self.curr_match = None
         self.prev_sels = None
         self.initData(parent)
-        self.initBrowsers(frame)
+        self.initView(frame)
 
     def initData(self, parent):
         self.data = EditableContent()
-    def initBrowsers(self, frame):
-        self.browsers = {0: SplitBrowser(self, 0, frame)}
-        self.browsers[0].resetCM(self)
-
-    def getAssociated(self, pid, which):
-        if pid in self.browsers:
-            return self.browsers[pid].getWhich(which)
-        return None
-
+    def initView(self, frame):
+        self.view = SplitView(self, frame)
+        self.view.resetCM(self)
 
     def getDataHdl(self):
         return self.data
-    def getViewHdl(self, pid=0):
-        return self.browsers[pid]
-    def getSW(self, pid=0):
-        return self.browsers[0].getSW()
-    def Show(self, pid=0):
-        return self.getSW(pid).Show()
-    def Hide(self, pid=0):
-        return self.getSW(pid).Hide()
+    def getViewHdl(self):
+        return self.view
+
+    def getViewFL(self):
+        return self.getViewHdl().getFocusedL()
+    def getViewLid(self):
+        return self.getViewHdl().getLid()
+
+    def getSW(self):
+        return self.getViewHdl().getSW()
+    def getAssociated(self, which):
+        return self.getViewHdl().getWhich(which)
+
+
+    # def Show(self):
+    #     return self.getViewHdl().Show()
+    # def Hide(self):
+    #     return self.getViewHdl().Hide()
 
     ################## CONTENT MANAGEMENT METHODS
     def addData(self, src=None, data=[], sord=None, focus=True):
@@ -1493,70 +1480,68 @@ class ContentManager:
     def resetDetails(self, details={}, review=True):
         self.getDataHdl().resetDetails(details)
         if review:
-            self.refreshAll()
+            self.refresh()
 
-    def refreshAll(self):
-        for bi, brs in self.browsers.items():
-            brs.refresh()
+    def refresh(self):
+        self.getViewHdl().refresh()
 
     def onNewList(self):
         self.addData(data=[], focus=False)
-        self.refreshAll()
+        self.refresh()
         
     def onDeleteAny(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
             if lc.isItemsL():
                 sel = lc.getSelection()
-                self.onDeleteItems(lc.getPid(), sel)
+                self.onDeleteItems(sel)
             elif lc.isContainersL():
                 sel = lc.getSelection()
                 self.onDeleteLists(sel)        
     def onDeleteLists(self, sel):
         def_lid = self.getDataHdl().deleteLists(sel=sel)
-        for bi, brs in self.browsers.items():
-            brs.updateLid(def_lid)
-    def onDeleteItems(self, pid, sel):
-        lid = self.browsers[pid].getLid()
+        self.getViewHdl().updateLid(def_lid)
+    def onDeleteItems(self, sel):
+        lid = self.getViewLid()
         self.getDataHdl().deleteItemsLid(lid, sel)
-        self.refreshAll()
+        self.refresh()
 
     def onCutAny(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
             if lc.isItemsL():
                 sel = lc.getSelection()
-                self.onCutItems(lc.getPid(), sel)
+                self.onCutItems(sel)
             elif lc.isContainersL():
                 sel = lc.getSelection()
                 self.onCutLists(sel)        
     def onCutLists(self, sel):
         iids = self.getDataHdl().cutLists(sel=sel)
-        self.refreshAll()
-    def onCutItems(self, pid, sel=None):
-        lid = self.browsers[pid].getLid()
+        self.refresh()
+    def onCutItems(self, sel=None):
+        lid = self.getViewLid()
         iids = self.getDataHdl().cutItemsLid(lid, sel)
-        self.refreshAll()
+        self.refresh()
 
     def onCopyAny(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
             if lc.isItemsL():
                 sel = lc.getSelection()
-                self.onCopyItems(lc.getPid(), sel)
+                self.onCopyItems(sel)
             elif lc.isContainersL():
                 sel = lc.getSelection()
                 self.onCopyLists(sel)
     def onCopyLists(self, sel):
         iids = self.getDataHdl().copyLists(sel=sel)
-    def onCopyItems(self, pid, sel=None):
-        lid = self.browsers[pid].getLid()
+    def onCopyItems(self, sel=None):
+        lid = self.getViewLid()
         iids = self.getDataHdl().copyItemsLid(lid, sel)
 
     def onPasteAny(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             pos = -1
             if lc.isItemsL():
                 sel = lc.getSelection()
@@ -1564,7 +1549,7 @@ class ContentManager:
                     pos = sel[-1]
             iids = self.getDataHdl().pasteItems(lid, pos)
             if len(iids) > 0:
-                self.refreshAll()
+                self.refresh()
 
     def insertItem(self, src=None, item=None, iid=None, pos=-1, rfrsh=True):
         src = RefsList.makeSrc(src)
@@ -1574,7 +1559,7 @@ class ContentManager:
                 lid = self.getDataHdl().addList(src)
             iid = self.getDataHdl().insertItem(lid, item, iid, pos)
         if iid is not None and rfrsh:
-            self.refreshAll()
+            self.refresh()
         return iid
     def insertItems(self, src=None, items=[], rfrsh=True):
         lid = self.getDataHdl().getLidForSrc(src)
@@ -1582,7 +1567,7 @@ class ContentManager:
             lid = self.getDataHdl().addList(src)
         iids = self.getDataHdl().insertItems(lid, items)
         if len(iids) > 0 and rfrsh:
-            self.refreshAll()
+            self.refresh()
         return iids
 
     #### TODO HANDLING HIST
@@ -1615,11 +1600,11 @@ class ContentManager:
                 self.getDataHdl().getList(lid).setSrc('file', path)
             pos = self.getDataHdl().getListPosForId(lid)
             self.getViewHdl().getLCC().RefreshItem(pos)
-            self.refreshAll()
+            self.refresh()
 
     
     def manageDrag(self, ctrl, trg_where, text):
-        lid = self.getAssociated(ctrl.getPid(),"lid")
+        lid = self.getAssociated("lid")
         sel = map(int, text.split(','))
         pos = None
         if ctrl.type_lc == "containers":
@@ -1640,9 +1625,9 @@ class ContentManager:
     def getIidsForAction(self, down=True):
         sel = []
         iids = []
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             if lc.isItemsL():
                 sel = lc.getSelection()
                 if len(sel) == 1 and down:
@@ -1655,9 +1640,9 @@ class ContentManager:
     def getIidsForActionDown(self):
         sel = []
         iids = []
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             if lc.isItemsL():
                 sel = lc.getSelection()
                 iids = self.getDataHdl().getList(lid).getIidsAtPoss(sel)
@@ -1677,9 +1662,9 @@ class ContentManager:
         return len(self.getIidsForAction(down))
     def getSaveListInfo(self, lid=None):
         if lid is None:
-            lc = self.getViewHdl().getFocusedL()
+            lc = self.getViewFL()
             if lc is not None:
-                lid = self.browsers[lc.getPid()].getLid()
+                lid = self.getViewLid()
 
         if self.getDataHdl().getList(lid) is not None:
             reds = [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
@@ -1690,27 +1675,27 @@ class ContentManager:
     def flipEnabled(self, iids):
         for iid in iids:
             self.getDataHdl().getItemForIid(iid).flipEnabled()
-        self.refreshAll()
+        self.refresh()
     def setAllEnabled(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             iids = self.getDataHdl().getList(lid).getIids()
             for iid in iids:
                 self.getDataHdl().getItemForIid(iid).setEnabled()
-        self.refreshAll()
+        self.refresh()
     def setAllDisabled(self):
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             iids = self.getDataHdl().getList(lid).getIids()
             for iid in iids:
                 self.getDataHdl().getItemForIid(iid).setDisabled()
-        self.refreshAll()
+        self.refresh()
 
     #### FIND FUNCTIONS
     def getNamesList(self):
-        lid = self.getViewHdl().getLid()
+        lid = self.getViewLid()
         return self.getDataHdl().getNamesList(lid)
 
     def updateFind(self, matching=None, non_matching=None, cid=None):
@@ -1789,15 +1774,15 @@ class ContentManager:
     def isEmptyBuffer(self):
         return self.getDataHdl().isEmptyBuffer()
     def hasFocusContainersL(self):
-        return self.getViewHdl().getFocusedL() is not None and self.getViewHdl().getFocusedL().isContainersL()
+        return self.getViewFL() is not None and self.getViewFL().isContainersL()
     def hasFocusCLFile(self):
-        ll = self.getDataHdl().getList(self.getViewHdl().getLid())
+        ll = self.getDataHdl().getList(self.getViewLid())
         return ll is not None and ll.hasSrcPath()
     def hasFocusItemsL(self):
-        return self.getViewHdl().getFocusedL() is not None and self.getViewHdl().getFocusedL().isItemsL()
+        return self.getViewFL() is not None and self.getViewFL().isItemsL()
     def getNbSelected(self):
-        if self.getViewHdl().getFocusedL() is not None:
-            return len(self.getViewHdl().getFocusedL().getSelection())
+        if self.getViewFL() is not None:
+            return len(self.getViewFL().getSelection())
         return 0
     def getItemForIid(self, iid):
         return self.getDataHdl().getItemForIid(iid)
@@ -1810,7 +1795,7 @@ class ContentManager:
     def getSelectedItemIid(self):
         pos = self.getSelectedItemPos()
         if pos > -1:
-            return self.getDataHdl().getList(self.getViewHdl().getLid()).getIidAtPos(pos)
+            return self.getDataHdl().getList(self.getViewLid()).getIidAtPos(pos)
         return None
     def getSelectedItem(self):
         iid = self.getSelectedItemIid()
@@ -1821,7 +1806,7 @@ class ContentManager:
     def substituteItem(self, iid, item, rfrsh=True):
         ### just substitute, if absent from data does nothing
         lids = self.getDataHdl().getListsReferIid(iid)
-        lid_active = self.getViewHdl().getLid()
+        lid_active = self.getViewLid()
         ch = self.getDataHdl().substituteItem(iid, item)
         if not ch:
             return
@@ -1831,7 +1816,7 @@ class ContentManager:
             if lid_active == lid:
                 pos = lcc.getPosForIid(iid)
         if rfrsh:
-            self.refreshAll()
+            self.refresh()
         # if pos is not None:
         #     self.getViewHdl().getLCI().RefreshItem(pos)
     def applyEditToData(self, iid, item, rfrsh=True):
@@ -1850,16 +1835,16 @@ class ContentManager:
         if old_item != item:
             ## print "APPLY CHANGE -- Adding to hist..."
             self.appendItemToHist(old_item, rfrsh=False)
-            self.refreshAll()
+            self.refresh()
     def updateEdit(self, item, row):
-        ll = self.getDataHdl().getList(self.getViewHdl().getLid())
+        ll = self.getDataHdl().getList(self.getViewLid())
         iid = ll.getIidAtPos(row)
         self.getDataHdl().substituteItem(iid, item)
         ll.isChanged = True
         self.getViewHdl().getLCI().RefreshItem(row)
 
     # def getSelectedRow(self): ### legacy no s
-    #     lc = self.getViewHdl().getFocusedL()
+    #     lc = self.getViewFL()
     #     if lc is not None:
     #         return lc.getSelection()
     #     return []
@@ -1892,8 +1877,8 @@ class ContentManager:
         items_map = []
         poss = None
         if lid == -1 or lid is None:
-            lc = self.getViewHdl().getFocusedL()
-            lid = self.browsers[lc.getPid()].getLid()
+            lc = self.getViewFL()
+            lid = self.getViewLid()
             if lc.isItemsL():
                 poss = lc.getSelection()
         if lid is not None:
@@ -1951,19 +1936,19 @@ class RedsManager(ContentManager):
     def filterToOne(self, parameters):
         compare_ids = self.getIidsForAction(down=True) 
         self.getDataHdl().filterToOne(compare_ids, parameters)
-        self.refreshAll()
+        self.refresh()
         
     def filterAll(self, parameters):
         compare_ids = self.getIidsForAction(down=True) 
         self.getDataHdl().filterAll(compare_ids, parameters)
-        self.refreshAll()
+        self.refresh()
 
     def processAll(self, parameters, init_current=True):
         iids = {"before": [], "after": [], "compare": []}
         ll = None
-        lc = self.getViewHdl().getFocusedL()
+        lc = self.getViewFL()
         if lc is not None:
-            lid = self.browsers[lc.getPid()].getLid()
+            lid = self.getViewLid()
             ll = self.getDataHdl().getList(lid)
             if lc.isContainersL():
                 iids["compare"] = ll.getIids()
@@ -1986,7 +1971,7 @@ class RedsManager(ContentManager):
             ll.setIids(iids["before"]+top+middle+bottom+iids["after"])
             # print "IIDS", iids["before"],top,middle,bottom,iids["after"]
             # print len(iids["before"]), len(iids["before"])+len(top)+len(middle)+len(bottom), len(ll), llafter, len(ll)-llafter
-            self.refreshAll()
+            self.refresh()
             if lc.isItemsL():
                 for li in range(len(iids["before"]), len(ll)-llafter):
                     lc.Select(li)
@@ -2000,4 +1985,4 @@ class RedsManager(ContentManager):
             #     mc = self.parent.accessViewX(k)
             #     if mc is not None:
             #         mc.refresh()
-            self.refreshAll()
+            self.refresh()
