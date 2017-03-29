@@ -168,6 +168,11 @@ class Constraints(object):
             # print "--------- RED KEEP"
             return False
         else:
+            # if red.getLenI() > 0:
+            #     print "---------- filter_partial"
+            #     print red.disp()
+            #     print ( red.getLenO(), ">=", self.getCstr("min_itm_out") ), (red.getLenI(), ">=",  self.getCstr("min_itm_in")), (red.getPVal(), "<=", self.getCstr("max_fin_pval"))
+
             # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
             return True
 

@@ -743,6 +743,21 @@ class NumColM(ColM):
             if hi_idx < len(self.sVals) and (len(self.sVals)-hi_idx) >= minIn \
                    and ( self.nbRows() - (len(self.sVals)-hi_idx) ) >= minOut :
                 terms.append((NumTerm(self.id, self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
+        else:            
+            max_agg = 2*minIn #max(2*min(minIn, minOut), max(minIn, minOut)/2)
+            tt = self.collapseBuckets(max_agg)
+            for i in range(len(tt[0])):
+                count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-1][i])
+                if count >= minIn and ( self.nbRows() - count ) >= minOut :
+                    if i == 0:
+                        lowb = float("-Inf")
+                    elif i == len(tt[0])-1:
+                        upb = float("Inf")
+                    terms.append((NumTerm(self.id, lowb, upb), i))
+                    # print "Found term\t", terms[-1][0], terms[-1][1], count 
+
+        # if len(terms) == 0:
+        #     print "Nothing found %s" % self
         return terms
 
     def getRoundThres(self, thres, which):
@@ -844,6 +859,8 @@ class NumColM(ColM):
             return self.sVals[-1][0]
         return MODE_VALUE
     def getNbValues(self):
+        if self.nbUniq is None:
+            self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
         return self.nbUniq
 
     def compPrec(self, details=None):
@@ -856,32 +873,54 @@ class NumColM(ColM):
             self.compPrec()
         return self.prec
 
-    def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None, force=False):
+    def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None, force=False, mode=None):
         ColM.__init__(self, N, nmiss)
+        self.nbUniq = None
         self.prec = prec
         self.sVals = ncolSupp
-        self.sVals.sort()
-        self.mode = {}
         self.buk = None
         self.colbuk = None
         self.max_agg = None
-        self.setMode(force)
+        if mode is None:
+            self.sVals.sort()
+            self.mode = {}
+            self.setMode(force)
+        else: ### especially for subsetCol
+            self.mode = mode
 
     def subsetCol(self, row_ids=None):
+        mode_rids = None
+        hasMode = False
         if row_ids is None:
             svals = [(v,i) for (v,i) in self.sVals]
             miss = set(self.missing)
             N = self.nbRows()
+            if self.mode[1] is not None:
+                mode_rids = set(self.mode[1]) 
         else:
             miss = set()
             svals = []
             N = sum([len(news) for news in row_ids.values()])
             for old in self.missing.intersection(row_ids.keys()):
                 miss.update(row_ids[old])
+                
+            if self.mode[1] is not None:
+                mode_rids = set()
+                hasMode = True
+                for old in self.mode[1].intersection(row_ids.keys()):
+                    mode_rids.update(row_ids[old])
+                    
             for v, old in self.sVals:
-                svals.extend([(v,new) for new in row_ids.get(old, [])])
+                if hasMode and old == -1:
+                    svals.append((MODE_VALUE, -1))
+                else:
+                    svals.extend([(v,new) for new in row_ids.get(old, [])])
 
-        tmp = NumColM(svals, N, miss, self.prec)
+        mode = (MODE_VALUE, None)
+        if hasMode:
+            mode = (self.mode[0], mode_rids)
+
+        tmp = NumColM(svals, N, miss, self.prec, mode=mode)
         tmp.name = self.name
         tmp.enabled = self.enabled
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
@@ -921,7 +960,6 @@ class NumColM(ColM):
                 self.sVals.insert(i, (MODE_VALUE, -1))
         else: ### MODE unused
             self.mode = (MODE_VALUE, None)
-        self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
         
     def density(self):
         if self.mode[0] != 0:
@@ -1001,10 +1039,11 @@ class NumColM(ColM):
             max_agg = self.nbRows()/float(nbb)
         if self.colbuk is None or (max_agg is not None and self.max_agg != max_agg):
             self.max_agg = max_agg
-            self.colbuk = self.collapseBuckets(self.max_agg)
+            self.colbuk = self.collapseBuckets(self.max_agg, checknext=True)
         return self.colbuk
     
-    def collapseBuckets(self, max_agg):
+    def collapseBuckets(self, max_agg, checknext=False):
+        #### collapsing from low to up, could do reverse...
         tmp = self.buckets()
         tmp_supp=set([])
         bucket_min=tmp[1][0]
@@ -1013,7 +1052,9 @@ class NumColM(ColM):
         colB_max= []
         # colB_max= [None]
         for i in range(len(tmp[1])):
-            if len(tmp_supp) > max_agg:
+            # if len(tmp[0][i]) > max_agg:
+            #     print "POTENTIAL DIFF", self
+            if len(tmp_supp) > max_agg or (checknext and i > 0 and len(tmp[0][i]) > max_agg):
                 colB_supp.append(tmp_supp)
                 colB_min.append(bucket_min)
                 colB_max.append(tmp[1][i-1])
@@ -1024,7 +1065,7 @@ class NumColM(ColM):
         colB_min.append(bucket_min)
         colB_max.append(tmp[1][-1])
         # colB_max[0] = colB_max[1]
-        return (colB_supp, colB_min, 0, colB_max)
+        return (colB_supp, colB_min, 0, colB_max)    
 
     def buckets(self):
         if self.buk is None:

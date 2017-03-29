@@ -371,36 +371,20 @@ def run_splits(args, splt=""):
         
         nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
         tot = numpy.array(all_stats[-1])
-        summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
+        if nbreds.sum() > 0:
+            summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
 
-        info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
-        numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
-        saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)        
-
+            info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
+            numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
+            # saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)
+        else:
+            with open(splt_statf, "w") as fo:
+                fo.write("No redescriptions found")
         # for red in reds_list:
         #     print red.disp()
 
 ##### MAIN
 ###########
-
-def generate_rank(reds, nb_rows, r0=None):
-    incidence = numpy.zeros((nb_rows, len(reds)))
-    for ri, red in enumerate(reds):
-        incidence[list(red.getSuppI()), ri] = 1.
-
-    if r0 is None:
-        r0 = numpy.argmax(numpy.sum(incidence > 0, axis=0))
-    ranking = [r0]
-    incidence[list(reds[ranking[-1]].getSuppI()), :] = -1.
-    candidates = range(len(reds))
-    candidates.remove(r0)
-
-    while len(candidates) > 0:        
-        pri = numpy.argmax(numpy.sum(incidence[:, candidates] > 0, axis=0))
-        ranking.append(candidates.pop(pri))
-        incidence[list(reds[ranking[-1]].getSuppI()), :] = -1.
-    return ranking
-        
     
 if __name__ == "__main__":
     

@@ -34,8 +34,7 @@ class CharbonTree(Charbon):
 
     def computeInitTerm(self, colL):
         tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))]
-        # tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.)]
+        ## tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.)]
         # if len(tmp) > 0:
-        #     pdb.set_trace()
-        #     print colL.getId(), len(tmp), "\t", self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.
+        #     print "--", colL.getId(), colL
         return tmp

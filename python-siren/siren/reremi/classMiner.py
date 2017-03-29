@@ -69,11 +69,12 @@ class ExpMiner(object):
                 return self.expandRedescriptionsGreedy(nextge, partial, final)
 
     def expandRedescriptionsTree(self, nextge, partial, final=None):
+        new_red, new_rid = (None, None)
         for redi, red in enumerate(nextge):
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             new_red = self.charbon.getTreeCandidates(-1, self.data, red.copy())
             if new_red is not None:
-                partial["batch"].append(new_red)
+                new_rid = partial["batch"].append(new_red)
 
             # self.logger.updateProgress({"rcount": self.count, "redi": redi}, 4, self.ppid)
             self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.ppid)
@@ -83,7 +84,8 @@ class ExpMiner(object):
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        if 1 in partial["batch"].selected(self.constraints.getActions("partial")):
+        sel = partial["batch"].selected(self.constraints.getActions("partial"))
+        if new_rid in sel:
             addR = True
             ii = 0
             if final is not None:
@@ -329,6 +331,7 @@ class Miner(object):
         self.logger.clockTac(self.id, "pairs")
         self.logger.clockTic(self.id, "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
+        # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
         while initial_red is not None and self.questionLive():
             self.count += 1
             self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
@@ -389,6 +392,7 @@ class Miner(object):
         if self.data.isSingleD(): sides = [0]
         for side in sides:
             for idl in ids[side]:
+                # pdb.set_trace()
                 for (l,v) in self.charbon.computeInitTerm(self.data.col(side, idl)):
                     if side == 0:
                         self.initial_pairs.add(l, None, {"score":v, side: idl, 1-side: -1})
@@ -482,8 +486,8 @@ class Miner(object):
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         ### WARNING DANGEROUS few pairs for DEBUG!
-        for idL in ids[0]:
-            for idR in ids[1]:
+        for idL in [0]: ## ids[0]:
+            for idR in [0,1,2]: #ids[1]:
                 if ( not self.constraints.hasDeps() or \
                        len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
                        ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]):
@@ -845,7 +849,7 @@ class StatsMiner:
                 if found is None:
                     reds_map.append({"red": r, "pos": [(k, ri)]})
                 else:
-                    reds_map[i]["pos"].append((k,ri))
+                    reds_map[found]["pos"].append((k,ri))
         reds_map.sort(key=lambda x: x["red"].getAcc(), reverse=True)
         reds_list = []
         for rr in reds_map:

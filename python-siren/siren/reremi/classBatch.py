@@ -195,7 +195,9 @@ class Batch(ICOrdict):
                     method_compute =  eval(method_string)
                 except AttributeError:
                     raise Exception('Oups action method does not exist (%s)!'  % action)
+                # ids_bef = list(ids)
                 ids = method_compute(ids, parameters, new_ids=new_ids)
+                # print "FILTER\t%s\t%s->%s" % (method_string, ids_bef, ids), parameters
                 # if new_ids is not None:
                 #     comp_ids = method_compute(ids, parameters)
                 #     if ids != comp_ids:

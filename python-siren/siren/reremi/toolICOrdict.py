@@ -69,6 +69,7 @@ class ICOrdict(collections.MutableMapping):
 
     def reset(self):
         self.data.clear()
+        self._nkey = 0
         self._isChanged = True
 
     def getComplementKeys(self, ids):
@@ -84,7 +85,7 @@ class ICOrdict(collections.MutableMapping):
 
     def getIds(self):
         return self.data.keys()
-
+    
     # Public methods for list
     def append(self, val):
         while self._nkey in self.data:

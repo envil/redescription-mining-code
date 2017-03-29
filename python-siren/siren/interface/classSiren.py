@@ -24,7 +24,8 @@ from ..reremi.toolICList import ICList
 
 from DataWrapper import DataWrapper, findFile
 from classGridTable import VarTable, RowTable
-from classCtrlTable import RedsManager, VarsManager
+## from classCtrlTable import RedsManager, VarsManager ### TRIMMING
+from classCtrlTableA import RedsManager, VarsManager
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog

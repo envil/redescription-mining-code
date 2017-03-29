@@ -12,8 +12,8 @@ class CharbonTCW(CharbonTree):
     name = "TreeCartWheel"
 
     def initializeData(self, side, data):
-        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], bincats=True)
-        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], bincats=True)
+        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], only_able=True, bincats=True)
+        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], only_able=True, bincats=True)
 
         in_data = [in_data_l.T, in_data_r.T]
         cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
@@ -49,14 +49,15 @@ class CharbonTCW(CharbonTree):
             jj, suppvs, dtcs = self.getSplit(side, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
 
         if dtcs[0] is not None and dtcs[1] is not None:
-            red = self.get_redescription(dtcs, suppvs, data, cols_info)
+            redex = self.get_redescription(dtcs, suppvs, data, cols_info)
             # if True: ## check
             #     sL = set(np.where(np.array(suppvs[0]))[0])
             #     sR = set(np.where(np.array(suppvs[1]))[0])
             #     if sL != red.supp(0) or sR != red.supp(1):
             #         print "OUPS!"
             #         pdb.set_trace()
-            return red
+            # print red.queries[side], "-->\t", redex.disp()
+            return redex
         return None
 
     def get_redescription(self, dtcs, suppvs, data, cols_info):
@@ -188,7 +189,7 @@ class CharbonTCW(CharbonTree):
     def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket,  split_criterion="gini"):
         dtc = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         dtc = dtc.fit(in_data, in_target)
-        
+        ## print "FIT D", in_data.shape, in_target.sum()
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets
         suppv = dtc.predict(in_data) #Binary vector of the left tree for Jaccard
     
@@ -253,9 +254,12 @@ class CharbonTSplit(CharbonTCW):
 
         current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
         if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
-            return self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
+            redex = self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
                                           [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
                                           data, cols_info)
+            ## print red.queries[side], "-->\t", redex.disp()
+            return redex
+
         return None
 
 
@@ -316,7 +320,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
     
     data_rpart_l = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
     data_rpart_l = data_rpart_l.fit(feed_data, in_target)
-    
+    ## print "FIT DBa", feed_data.shape, in_target.sum()
     #Form Vectors for computing Jaccard. The same vectors are used to form new targets
     split_vector_l = data_rpart_l.predict(in_data_l) #Binary vector of the left tree for Jaccard
     
@@ -340,7 +344,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
     
         data_rpart_r = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         data_rpart_r = data_rpart_r.fit(feed_data, target)
-        
+        ## print "FIT DBb", feed_data.shape, in_target.sum()
         #Form Vectors for computing Jaccard. The same vectors are used to form new targets
         split_vector_r = data_rpart_r.predict(in_data_r) #Binary vector of the left tree for Jaccard
     

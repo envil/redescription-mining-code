@@ -127,6 +127,7 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3, split
         return {"root": None}
 
     data_rpart = tree.DecisionTreeClassifier(criterion=split_criterion, max_depth = 1, min_samples_leaf = min_bucket, random_state=0).fit(in_data, in_target)
+    ## print "FIT ", in_data.shape, in_target.sum()
     # split_vector = data_rpart.predict(in_data) #Binary vectoFile "/home/r/NetBeansProjects/RedescriptionTrees/src/redescriptiontrees_method2.py", line 201, in <module>r of the tree for Jaccard
     split_tree = get_tree(data_rpart.tree_, candidates)
     # print "SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]]
@@ -349,13 +350,13 @@ class CharbonTLayer(CharbonTree):
         if len(red.queries[side]) != 1:
             return None
 
-        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], bincats=True)
-        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], bincats=True)
+        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], only_able=True, bincats=True)
+        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], only_able=True, bincats=True)
 
         cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
                      dict([(i,d) for (d,i) in tcols_r.items() if len(d) == 3])]
 
-        llt = red.queries[side].listLiterals()[0]
+        llt = red.queries[side].listLiterals()[0].copy()
         ss = data.supp(side, llt)
         data_tt = [in_data_l.T, in_data_r.T]
 
@@ -380,10 +381,11 @@ class CharbonTLayer(CharbonTree):
 
         redt = extract_reds(trees_pile, trees_store, data, cols_info)
         if redt is not None:
-            red = Redescription.fromQueriesPair(redt[0], data)
+            redex = Redescription.fromQueriesPair(redt[0], data)
             # if np.sum(redt[1][0]*redt[1][1]) != red.sParts.lenI():
             #     print np.sum(redt[1][0]*redt[1][1])
             #     pdb.set_trace()
-            return red
+            ## print red.queries[side], "-->\t", redex.disp()
+            return redex
         return None
 
