@@ -591,9 +591,11 @@ class SParts(object):
         for i in range(len(self.sParts)):
                  sdict[self.ssetts.getLabel(i)] = self.part(i)
                  sdict["card_" + self.ssetts.getLabel(i)] = self.lpart(i)
+                 sdict["perc_" + self.ssetts.getLabel(i)] = self.lpart(i) * 100. / self.N
         if with_delta:
                  sdict[self.ssetts.getLabel(SSetts.delta)] = self.part(SSetts.delta)
                  sdict["card_" + self.ssetts.getLabel(SSetts.delta)] = self.lpart(SSetts.delta)
+                 sdict["perc_" + self.ssetts.getLabel(SSetts.delta)] = self.lpart(SSetts.delta) * 100. / self.N
         for side in [0, 1]:
                  if self.prs[side] != -1:
                      sdict["pr_" + str(side)] = self.prs[side]

@@ -1363,6 +1363,10 @@ class Data(object):
             self.cols = [ICList(),ICList()]
         self.ssetts = SSetts(self.hasMissing())
 
+    def keys(self):
+        return [(0, i) for i in range(len(self.cols[0]))]+[(1, i) for i in range(len(self.cols[1]))]
+
+        
     def addCol(self, col, sito=0, name=None):
         addCol(self.cols, col, sito, name)
 

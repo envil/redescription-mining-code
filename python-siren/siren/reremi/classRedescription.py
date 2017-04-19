@@ -35,7 +35,8 @@ class Redescription(object):
     # ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
     print_default_fields_named = [p+print_queries_namedsuff for p in print_queries_headers]+print_default_fields_stats
     #["query_LHS_named", "query_RHS_named", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
-    print_info_tex = [("acc", 3, "$%1.3f$"), ("card_gamma", 0, "$%i$"), ("pval", 3, "$%1.3f$")]
+    # print_info_tex = [("acc", 3, "%1.3f"), ("card_gamma", 0, "%i"), ("perc_gamma", 3, "%.3f"), ("pval", 3, "%1.3f")]
+    print_info_tex = [("acc", 2, "%1.2f"), ("card_gamma", 0, "%i"), ("perc_gamma", 2, "%.2f"), ("pval", 3, "%1.3f")]
 
     print_fields_details = {}
     for sideq in print_queries_headers:
@@ -600,7 +601,7 @@ class Redescription(object):
         return info_tmp
     
 
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False):
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1):
         if list_fields is None:
             if names[0] is not None or names[1] is not None:
                 list_fields = Redescription.print_default_fields_named
@@ -641,10 +642,23 @@ class Redescription(object):
             else:
                 info_name = ""
             details.append(info_name+tmp)
-            
+
         ex_str = sep.join(details)
-        #### SPREAD ON TWO LINES 
-        # ex_str = "%s & & %s & %s \\\\ %% & %s\n & \\multicolumn{2}{r}{ %s } \\\\ [.3em]" % (details[0], details[2], details[3], details[4], details[1])
+        if style == "Tex" and headers is not None:
+            if nblines == 3:
+                #### SPREAD ON THREE LINES
+                ex_str = "%s & & & %s & \\\\ [.2em]\n" % (rid, sep.join(["$%s=%s$" % (headers[i], details[i]) for i in range(2, len(headers))]))
+                ex_str += "& \\multicolumn{%d}{l}{ $%s=%s$ } \\\\ \n" % (len(headers)+1, headers[0], details[0].strip(" $"))
+                ex_str += "& \\multicolumn{%d}{l}{ $%s=%s$ } \\\\ [.32em] \cline{3-%d} \\\\ [-.88em]" % (len(headers)+1, headers[1], details[1].strip(" $"), len(headers)+1)
+
+            elif nblines == 2:
+                ex_str = "%s &%s & & %s \\\\ \n" % (rid, details[0], sep.join(["$%s$" % details[i] for i in range(2, len(headers))]))
+                ex_str += " & \\multicolumn{2}{r}{%s } \\\\ [.3em]" % details[1]
+
+            elif nblines == 1:
+                ex_str = "%s &%s \\\\" % (rid, sep.join(details))
+
+        ex_str += "\n"
         return ex_str
 
     def dispQueries(self, names=[None,None], sep='\t'):
@@ -852,9 +866,11 @@ class Redescription(object):
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
 
-def printTexRedList(red_list, names=[None, None], fields=None):
-    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
-    tex_headers = ["$q_\\iLHS$","$q_\\iRHS$","$\\jacc(R)$","$\\supp(R)$", "\\pValue"]
+def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
+    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_perc_gamma"]
+    tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\supp\%"]
+    # tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
+    # tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\pValue"]
 
     if type(fields) is list and len(fields) > 0:
         if fields[0] == -1:
@@ -887,35 +903,72 @@ def printTexRedList(red_list, names=[None, None], fields=None):
               "\\usepackage[utf8x]{inputenc}\n"+ \
               "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
               "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-              "\\newcommand{\\pValue}{$p$\\nobreakdash-\\hspace{0pt}value}\n"+ \
+              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % index for right hand side\n"+ \
+              "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
               "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
               "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
               names_commands+ \
               numvs_commands+ \
               "\\begin{document}\n"+ \
               "\\begin{table}[h]\n"+ \
-              "\\scriptsize\n" + \
-              "\\begin{tabular}{@{\\hspace*{1ex}}p{0.027\\textwidth}@{}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.4\\textwidth}@{\\hspace*{1em}}rrr@{\\hspace*{0.5ex}}}\n" + \
-              "\\toprule\n"
-              #### SPREAD ON TWO LINES 
-              # "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.75\\textwidth}@{}r@{\\hspace*{4ex}}r@{\\hspace*{2ex}}r@{\\hspace*{1ex}}}\n" + \
+              "\\scriptsize\n"
+              
+    # str_out = ""        
+    if nblines == 3:
+        #### SPREAD ON THREE LINES
+        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{1ex}}p{0.12\\textwidth}@{\\hspace*{1ex}}p{1cm}"
+        for i in range(len(tex_fields)-2):
+            str_out += "@{\\hspace*{1ex}}p{0.15\\textwidth}"
+        str_out += "@{\\hspace*{1cm}}p{0.17\\textwidth}@{\\hspace*{1ex}}}\n"
+        str_out += "\\toprule\n"
 
-            
-    str_out += " & " + Redescription.dispHeader(tex_headers, " & ") + " \\\\\n"
-    str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
-    #### SPREAD ON TWO LINES 
-    # str_out += " & " + Redescription.dispHeader(tex_headers[:-1], " & ") + " \\\\ %% &"+ tex_headers[-1] +" \n"
-    # str_out += "%%% & " + Redescription.dispHeader(tex_fields[:-1], " & ") + " \\\\ %% &"+ tex_fields[-1] +" \n"
-    str_out += "\\midrule\n"
+    elif nblines == 2:
+        #### SPREAD ON TWO LINES 
+        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.67\\textwidth}@{}r"
+        for i in range(len(tex_fields)-2):
+            str_out += "@{\\hspace*{2ex}}r"
+        str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
+
+        str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
+        str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
+        str_out += "\\midrule\n"
+        
+    else:
+        #### SINGLE LINE
+        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.35\\textwidth}"
+        for i in range(len(tex_fields)-2):
+            str_out += "@{\\hspace*{2ex}}r"
+        str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
+
+        str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
+        str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
+        str_out += "\\midrule\n"
+
+    # ##### CUSTOM IDS AND ORDER FOR PRINTING
+    # llids = [("%d" % (i+1),"") for i in range(10)] + \
+    #   [("1", "%s" % chr(ii+ord("a"))) for ii in range(5)] + \
+    #   [("2","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
+    #   [("5","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
+    #   [("43", "")]+[("43","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
+    #   [("69","")]+[("69","%s" % chr(ii+ord("a"))) for ii in range(2)] + [("74", "")]
+
+    # map_ids = dict(enumerate(llids))
+    # pos = range(len(red_list))
+    # pos.insert(17,4)
+    # pos.insert(15,1)
+    # pos.insert(10,0)
+    # for ri in pos:
+    #     red = red_list[ri]
+    #     rid = '\\RName{%s}{%s}' % map_ids[ri]
+    #     str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=rid, nblines=nblines) # 
+
     for ri, red in enumerate(red_list):
-
-        str_out += '(%i) & ' % ri
-        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ") + " \\\\\n" # 
+        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ri, nblines=nblines) # 
 
     str_out += "" + \
         "\\bottomrule\n"+ \
-        "\\end{tabular}\n"+ \
-        "\\end{table}\n"+ \
+        "\\end{tabular}\n"
+    str_out += "\\end{table}\n"+ \
         "\\end{document}"
     return str_out
 
@@ -932,7 +985,7 @@ def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
         all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
-        str_out += red.disp(list_fields=all_fields, names=names, sep="\t")  + "\n"
+        str_out += red.disp(list_fields=all_fields, names=names, sep="\t")
     return str_out
 
 def parseRedList(fp, data, reds=None):

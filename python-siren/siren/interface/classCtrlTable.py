@@ -1863,7 +1863,7 @@ class ContentManager:
     def viewItem(self, red=None, rid=None, viewT=None):
         if viewT is None:
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
-        self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
+        return self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
 
     def viewData(self, rid=None, viewT=None):
         if rid is None:
@@ -1886,7 +1886,7 @@ class ContentManager:
         if len(items_map) > 0:
             if viewT is None:
                 viewT = self.parent.viewsm.getDefaultViewT("L", self.parent.tabs[self.tabId]["type"])
-            self.parent.viewsm.viewData(viewT, items_map, lid, self.tabId)
+            return self.parent.viewsm.viewData(viewT, items_map, lid, self.tabId)
 
 class VarsManager(ContentManager):
 
@@ -1905,7 +1905,7 @@ class VarsManager(ContentManager):
             datVar = self.getDataHdl().getItemForIid(rid)
         queries = [Query(), Query()]
         queries[datVar.getSide()].extend(-1, Literal(False, datVar.getTerm()))
-        self.parent.viewsm.newRedVHist(queries, viewT)
+        return self.parent.viewsm.newRedVHist(queries, viewT)
 
     def viewData(self, rid=None, viewT=None):
         if rid is None:
@@ -1915,7 +1915,7 @@ class VarsManager(ContentManager):
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
         queries = [Query(), Query()]
         queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
-        self.parent.viewsm.newRedVHist(queries, viewT)
+        return self.parent.viewsm.newRedVHist(queries, viewT)
 
 
     

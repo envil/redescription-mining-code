@@ -201,6 +201,7 @@ class ViewsManager:
             self.parent.updateMenus()
             mapV.updateTitle()
             mapV.lastStepInit()
+        return mapV
 
     def recomputeAll(self):
         for vkey, view in self.view_map.items():

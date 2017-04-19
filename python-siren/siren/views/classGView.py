@@ -372,7 +372,7 @@ class GView(BasisView):
         return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=zo)
     
     def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
-        return [self.axe.annotate(tag, xy=xy,
+        return [self.axe.annotate(tag, xy=xy, zorder=8,
                                 xycoords='data', xytext=xytext, textcoords='offset points',
                                 color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
                                 bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),

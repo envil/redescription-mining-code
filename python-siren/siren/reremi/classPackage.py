@@ -332,7 +332,7 @@ def readRedescriptionsXML(filep, data):
     return reds, rshowids
 
 
-def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False):
+def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1):
     if names is False:
         names = [None, None]
     if rshowids is None:
@@ -345,7 +345,7 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         # with codecs.open(filename, encoding='utf-8', mode='w') as f:
     with open(filename, mode='w') as f:
         if style == "tex":
-            f.write(codecs.encode(printTexRedList(red_list, names, fields_supp), 'utf-8','replace'))
+            f.write(codecs.encode(printTexRedList(red_list, names, fields_supp, nblines=nblines), 'utf-8','replace'))
         else:
             f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp), 'utf-8','replace'))
             

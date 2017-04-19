@@ -54,7 +54,7 @@ class SirenApp(wx.App):
                 sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
                 
 
-        # if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+        if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # DEBUG
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
@@ -70,16 +70,19 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
             # self.frame.recomputeAll()
 
-            # tab = "reds"
-            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
-            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
-            #     mapV.mapFrame.SetClientSizeWH(1920, 1190)
-            #     # mapV.mapFrame.SetClientSizeWH(1064, 744)
-            #     # mapV.mapFrame.SetClientSizeWH(551, 375)
-            #     # mapV.savefig("/home/egalbrun/R%d_map_2K-d100.pdf" % i, dpi=100, format="pdf")
-            #     # mapV.savefig("/home/egalbrun/R%d_map_2K-d100.eps" % i, dpi=100, format="eps")
-            #     mapV.savefig("/home/egalbrun/R%d_map_2K-d100.png" % i, format="png")
-            #     mapV.OnKil()
+            fmts = ["png", "eps"]
+            # (1641, 670), (1064, 744), (551, 375)
+            tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
+            for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+                mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+                for fmt in fmts:
+                    if fmt == "png":
+                        mapV.savefig((fname % i)+fmt, format=fmt)
+                    else:
+                        mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
+                mapV.OnKil()
 
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))

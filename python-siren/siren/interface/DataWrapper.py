@@ -470,13 +470,17 @@ class DataWrapper(object):
         self._startMessage('exporting', filename)
         with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
         style = ""
+        nblines = 1
         named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
         full_supp = re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None
         if named:
             names = self.data.getNames()
         else:
             names = [None, None]
-        if re.search("\.tex$", filename):
+        ext = filename.split(".")[-1]
+        if re.match("[1-3]*tex$", ext):
+            if re.match("[1-3]", ext):
+                nblines = int(ext[0])
             style = "tex"
         try:
             if reds is None:
@@ -484,7 +488,7 @@ class DataWrapper(object):
                 rshowids = self.rshowids
             if rshowids is None:
                 rshowids = range(len(reds))
-            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp)
+            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp, nblines=nblines)
         except Exception:
             self._stopMessage()
             raise
