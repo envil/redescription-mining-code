@@ -801,9 +801,11 @@ class SplitView:
         if lid != self.active_lid: # check validity lid 
             self.active_lid = lid
             self.refresh()
+            self.parent.notify_change_list("update_%d" % lid)
     def setLid(self, lid):
         self.active_lid = lid
         self.lci.loadData(lid)
+        self.parent.notify_change_list("set_%d" % lid)
 
         
 class RefsList:
@@ -1018,7 +1020,7 @@ class StaticContent:
         self.lists_ord = []
         
     def notify_change(self):
-        print "Changed"
+        print "Change Item"
         
     #### ACCESSING LISTS
     def getListPosForId(self, idx):
@@ -1443,6 +1445,9 @@ class ContentManager:
         self.view = SplitView(self, frame)
         self.view.resetCM(self)
 
+    def notify_change_list(self, event_str):
+        self.parent.OnListChanged(event_str)
+        
     def getDataHdl(self):
         return self.data
     def getViewHdl(self):

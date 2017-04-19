@@ -217,11 +217,10 @@ class ImportDataCSVDialog(object):
 
 class FindDialog(object):
     """Helper class to show the dialog for finding items"""
-    def __init__(self, parent, list_values={}, callback=None):        
+    def __init__(self, parent, page):        
         self.parent = parent
         self.dlg = wx.Dialog(self.parent.toolFrame, title="Find")
-        self.list_values = list_values
-        self.callback = callback
+        self.resetFind(page)
         
         self.findTxt = wx.TextCtrl(self.dlg, value='', size=(500,30))
         self.findTxt.Bind(wx.EVT_KEY_UP, self.OnKey)
@@ -244,6 +243,14 @@ class FindDialog(object):
         self.dlg.SetSizer(topSizer)
         self.dlg.Fit()
 
+    def resetValues(self, list_values):
+        self.list_values = list_values
+    def resetCallback(self, callback):
+        self.callback = callback
+    def resetFind(self, page):
+        self.resetValues(page.getNamesList())
+        self.resetCallback(page.updateFind)
+        
     def showDialog(self):
         self.dlg.Show()
         # if self.dlg.ShowModal() == wx.ID_OK:
@@ -276,6 +283,7 @@ class FindDialog(object):
                 non_matching.append(x)
         if self.callback is not None:
             self.callback(matching, non_matching, -1)
+            ## print self.callback, matching, non_matching
 
     def doNext(self):
         if self.callback is not None:

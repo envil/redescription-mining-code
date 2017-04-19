@@ -1069,7 +1069,7 @@ class Siren():
     def OnFind(self, event):
         """Shows a custom dialog to open the three data files"""
         if self.findDlg is None:
-            self.findDlg = FindDialog(self, self.selectedTab["tab"].getNamesList(), self.selectedTab["tab"].updateFind)
+            self.findDlg = FindDialog(self, self.selectedTab["tab"])
             self.findDlg.showDialog()
         else:
             self.findDlg.doNext()
@@ -1193,8 +1193,11 @@ class Siren():
             self.tabbed.ChangeSelection(self.tabs_keys.index(tabn))            
             self.OnPageChanged(-1)
 
+    def OnListChanged(self, event):
+        if self.findDlg is not None:
+            self.findDlg.resetFind(self.selectedTab["tab"])
+            
     def OnPageChanged(self, event):
-        self.quitFind()
         if not self.sysTLin() and type(event) == wx.BookCtrlEvent:
             self.tabbed.ChangeSelection(event.GetSelection())
             ## self.selectedTab["tab"].Show()
@@ -1205,6 +1208,8 @@ class Siren():
             # print "Do updates", self.selectedTab, event
             self.doUpdates()
             # print "Done updates"
+            
+        self.OnListChanged(event)
 
     def OnNewVList(self, event):
         if self.matchTabType("r"):
