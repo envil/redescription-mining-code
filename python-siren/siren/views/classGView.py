@@ -64,6 +64,7 @@ class GView(BasisView):
         self.initView()
         self.dots_draws = None
         self.suppABCD = None
+        self.redStamp = None
 
     def prepareEntitiesDots(self):
         draw_settings = self.getDrawSettings()
@@ -417,4 +418,48 @@ class GView(BasisView):
         if self.clickActive() and self.inCapture(event):
             lid = self.getLidAt(event.xdata, event.ydata)
             if lid is not None:
-                self.sendEmphasize([lid])        
+                self.sendEmphasize([lid])
+
+
+    def OnStamp(self, event=None):
+        if self.redStamp is not None:
+            self.delStamp()
+        else:
+            self.addStamp()
+            
+    def delStamp(self):
+        if self.redStamp is not None:
+            # pos1 = self.axe.get_position()
+            # print "PosC", pos1
+            self.axe.set_position(self.redStamp["old_pos"])
+            # pos1 = self.axe.get_position()
+            # print "PosD", pos1
+
+            self.redStamp["text"].remove()
+            self.redStamp = None
+            self.MapcanvasMap.draw()
+            
+    def addStamp(self):
+        if self.redStamp is None:
+            old_pos = self.axe.get_position()
+            # print "PosA", old_pos
+            new_pos = [old_pos.x0, old_pos.y0,  old_pos.width, 7./8*old_pos.height]
+            # # pos2 = [0., 0.,  1., 1.0]
+            self.axe.set_position(new_pos)
+            # pos1 = self.axe.get_position()
+            # print "PosB", pos1
+
+        qrs = self.getQueries()
+
+        red = Redescription.fromQueriesPair(qrs, self.getParentData())
+        tex_fields = ["U_query_LHS_named", "U_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
+        headers = ["qL", "qR", "J", "|E11|", "pV"]
+        rr = "(%s)   " % self.getItemId()
+        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, sep=" ", headers=headers, delim="", nblines=3, styleX="T", rid=rr)
+        if self.redStamp is None:
+            self.redStamp = {"old_pos": old_pos}
+            self.redStamp["text"] = self.MapfigMap.text(0.5, 1-1./(8*2), tex_str, ha="center", va="center")
+        else:
+            self.redStamp["text"].set_text(tex_str)
+        self.MapcanvasMap.draw()
+

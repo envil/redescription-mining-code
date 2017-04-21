@@ -766,3 +766,5 @@ class ParaView(GView):
                 self.MapfigMap.subplots_adjust(left=1.1*(self.MapfigMap.subplotpars.left-lcbbox.extents[0]))
             elif self.MapfigMap.subplotpars.left != 0.1:
                 self.MapfigMap.subplots_adjust(left=0.1)
+
+                

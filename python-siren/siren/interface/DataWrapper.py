@@ -477,11 +477,13 @@ class DataWrapper(object):
             names = self.data.getNames()
         else:
             names = [None, None]
-        ext = filename.split(".")[-1]
-        if re.match("[1-3]*tex$", ext):
-            if re.match("[1-3]", ext):
-                nblines = int(ext[0])
+
+        if re.search(".tex$", filename):
             style = "tex"
+            tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).tex$", filename)
+            if tmp is not None:
+                nblines = int(tmp.group("nbl"))
+
         try:
             if reds is None:
                 reds = self.reds

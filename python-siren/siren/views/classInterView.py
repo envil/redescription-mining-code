@@ -578,6 +578,8 @@ class InterView(LView):
         etor = numpy.zeros((nbE, len(self.srids)), dtype=bool)
         for r, rid in enumerate(self.srids):
             etor[list(self.reds[rid].getSuppI()), r] = True
+            ### CHANGE SPart plotted
+            # etor[list(self.reds[rid].getSuppU()), r] = True
         return etor
 
     def setCurrent(self, reds_map):

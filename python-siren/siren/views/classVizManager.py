@@ -31,6 +31,9 @@ class VizManager:
         
         self.drawSW(frame)
         self.initialize()
+
+    def hasParent(self):
+        return self.parent is not None
         
     def initialize(self):
         if self.parent.dw is not None:

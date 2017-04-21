@@ -17,9 +17,7 @@ import scipy.spatial.distance
 import mpl_toolkits.basemap
 from matplotlib.patches import Polygon
 
-from ..reremi.classQuery import Query
 from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
 from classTDView import TDView
 
 

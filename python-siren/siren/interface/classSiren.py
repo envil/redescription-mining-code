@@ -130,6 +130,7 @@ class Siren():
                    "learn_dis": "learn_dis",
                    "test_dis": "test_dis",
                    "kil": "cross",
+                   "stamp": "stamp",
                    "inout": "up_right",
                    "outin": "down_right",
                    "save": "savefig"}

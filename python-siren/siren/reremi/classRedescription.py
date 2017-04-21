@@ -601,7 +601,7 @@ class Redescription(object):
         return info_tmp
     
 
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1):
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX=""):
         if list_fields is None:
             if names[0] is not None or names[1] is not None:
                 list_fields = Redescription.print_default_fields_named
@@ -616,10 +616,10 @@ class Redescription(object):
                 else:
                     tmp_f = query_f
                 if tmp_f in list_fields:
-                    info_tmp[tmp_f] = self.queries[side].disp(style=style)
+                    info_tmp[tmp_f] = self.queries[side].disp(style=style+styleX)
                         
                 if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
-                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
+                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style+styleX)
 
         details = []
         for info_key in list_fields:
@@ -643,22 +643,43 @@ class Redescription(object):
                 info_name = ""
             details.append(info_name+tmp)
 
-        ex_str = sep.join(details)
-        if style == "Tex" and headers is not None:
-            if nblines == 3:
-                #### SPREAD ON THREE LINES
-                ex_str = "%s & & & %s & \\\\ [.2em]\n" % (rid, sep.join(["$%s=%s$" % (headers[i], details[i]) for i in range(2, len(headers))]))
-                ex_str += "& \\multicolumn{%d}{l}{ $%s=%s$ } \\\\ \n" % (len(headers)+1, headers[0], details[0].strip(" $"))
-                ex_str += "& \\multicolumn{%d}{l}{ $%s=%s$ } \\\\ [.32em] \cline{3-%d} \\\\ [-.88em]" % (len(headers)+1, headers[1], details[1].strip(" $"), len(headers)+1)
+        if headers is not None and len(details) == len(headers):
+            fields = [(delim+"%s=%s"+delim) % (headers[i], details[i].strip(delim)) for i in range(len(details))]
+        else:
+            fields = [(delim+"%s"+delim) % d.strip(delim) for d in details]
+        
+        entries = {"rid": rid, "stats":sep.join(fields[2:]), "q0": fields[0], "q1": fields[1], "all": sep.join(fields)}
 
-            elif nblines == 2:
-                ex_str = "%s &%s & & %s \\\\ \n" % (rid, details[0], sep.join(["$%s$" % details[i] for i in range(2, len(headers))]))
-                ex_str += " & \\multicolumn{2}{r}{%s } \\\\ [.3em]" % details[1]
-
-            elif nblines == 1:
-                ex_str = "%s &%s \\\\" % (rid, sep.join(details))
-
-        ex_str += "\n"
+        nbc = "%d" % (len(details)+1)
+        # frmts = {}
+        # frmts["3a"] = "%(rid)s & & & %(stats)s & \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{l}{ %(q0)s } \\\\ \n" + \
+        #   "& \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\ [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
+        # frmts["3b"] = "(%(rid)s) %(stats)s\n%(q0)s\n%(q1)s"
+        # frmts["2a"] = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\ [.3em]"      
+        # frmts["2b"] = "(%(rid)s) %(q0)s\t%(q1)s\n%(stats)s"
+        # frmts["1a"] = "%(rid)s & %(all)s \\\\"        
+        # frmts["1b"] = "%(rid)s %(all)s"
+        # for k,v in frmts.items():
+        #     print k, "---\t", v % entries
+               
+        if nblines == 3:
+            #### SPREAD ON THREE LINES            
+            if "&" in sep:
+                frmts = "%(rid)s & & & %(stats)s & \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{l}{ %(q0)s } \\\\ \n" + \
+                        " & \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\ [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
+            else:
+                frmts = "%(rid)s%(stats)s\n%(q0)s\n%(q1)s"
+        elif nblines == 2:
+            if "&" in sep:
+                frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\ [.3em]"
+            else:
+                frmts = "%(rid)s%(q0)s\t%(q1)s\n%(stats)s"
+        else:
+            if "&" in sep:
+                frmts = "%(rid)s & %(all)s \\\\"
+            else:
+                frmts = "%(rid)s%(all)s"
+        ex_str = frmts % entries
         return ex_str
 
     def dispQueries(self, names=[None,None], sep='\t'):
@@ -932,7 +953,8 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
         str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
         str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
         str_out += "\\midrule\n"
-        
+        tex_headers = None
+    
     else:
         #### SINGLE LINE
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.35\\textwidth}"
@@ -943,7 +965,8 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
         str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
         str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
         str_out += "\\midrule\n"
-
+        tex_headers = None
+        
     # ##### CUSTOM IDS AND ORDER FOR PRINTING
     # llids = [("%d" % (i+1),"") for i in range(10)] + \
     #   [("1", "%s" % chr(ii+ord("a"))) for ii in range(5)] + \
@@ -963,7 +986,7 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
     #     str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=rid, nblines=nblines) # 
 
     for ri, red in enumerate(red_list):
-        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ri, nblines=nblines) # 
+        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ri, nblines=nblines, delim="$") + "\n" 
 
     str_out += "" + \
         "\\bottomrule\n"+ \
@@ -985,7 +1008,7 @@ def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
         all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
-        str_out += red.disp(list_fields=all_fields, names=names, sep="\t")
+        str_out += red.disp(list_fields=all_fields, names=names, sep="\t") + "\n"
     return str_out
 
 def parseRedList(fp, data, reds=None):

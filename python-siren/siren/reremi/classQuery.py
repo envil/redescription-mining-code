@@ -279,7 +279,8 @@ class Op(object):
     ops = {0: 'X', 1: '|', -1: '&'}
     opsTex = {0: 'X', 1: '$\lor$', -1: '$\land$'}
     opsU = {0: 'X', 1: SYM.SYM_OR, -1: SYM.SYM_AND}
-
+    opsTxt = {0: 'X', 1: 'or', -1: 'and'}
+    
     def __init__(self, nval=0):
         if type(nval) == bool :
             if nval:
@@ -319,13 +320,23 @@ class Op(object):
 
     def disp(self):
         return Op.ops[self.val]
-
     def dispTex(self):
         return Op.opsTex[self.val]
-
     def dispU(self):
         return Op.opsU[self.val]
+    def dispTxt(self):
+        return Op.opsTxt[self.val]
 
+    def styledDisp(self, style=""):
+        if len(style) > 0 and style[-1] == "T":
+            return Op.opsTxt[self.val]
+        elif style == "Tex":
+            return Op.opsTex[self.val]
+        elif style == "U":
+            return Op.opsU[self.val]
+        return Op.ops[self.val]
+
+    
     def __cmp__(self, other):
         if other is None:
             return 1
@@ -339,6 +350,7 @@ class Neg(object):
     symb = ['', '! ']
     symbTex = ['', '$\\neg$ ']
     symbU = ['', SYM.SYM_NOT]
+    symbTxt = ['', "not "]
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = '(?P<neg>'+symb[1].strip()+')'
@@ -376,13 +388,22 @@ class Neg(object):
 
     def disp(self):
         return Neg.symb[self.boolVal()]
-
     def dispTex(self):
         return Neg.symbTex[self.boolVal()]
-
     def dispU(self):
         return Neg.symbU[self.boolVal()]
+    def dispTxt(self):
+        return Neg.symbTxt[self.boolVal()]
 
+    def styledDisp(self, style=""):
+        if len(style) > 0 and style[-1] == "T":
+            return Neg.symbTxt[self.boolVal()]
+        elif style == "Tex":
+            return Neg.symbTex[self.boolVal()]
+        elif style == "U":
+            return Neg.symbU[self.boolVal()]
+        return Neg.symb[self.boolVal()]
+    
 class Term(object):
     
     pattVName = VARIABLE_MARK+"%d"
@@ -459,43 +480,60 @@ class BoolTerm(Term):
         return variableV
 
     def disp(self, neg=None, names = None, lenIndex=0):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.disp()
 
-        if neg is None:
-            strneg = ''
-        else:
-            strneg = neg.disp()
         if lenIndex > 0 :
             lenIndex = max(lenIndex-1,3)
             slenIndex = str(lenIndex)
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%s%'+slenIndex+'s') % (strneg, names[self.col])
+            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
             return lab + ' '
         else:
-            return ('%s'+Term.pattVName) % (strneg, self.col)
+            return ('%s'+Term.pattVName) % (neg, self.col)
 
-    def dispTex(self, neg, names = None):
+    def dispTex(self, neg=None, names = None):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.dispTex()
 
         if type(names) == list  and len(names) > 0:
-            return '%s%s' % ( neg.dispTex(), names[self.col])
+            return '%s%s' % ( neg, names[self.col])
         else:
-            return ('%s$'+Term.pattVName+'$') % ( neg.dispTex(), self.col)
+            return ('%s$'+Term.pattVName+'$') % ( neg, self.col)
 
-    def dispU(self, neg, names = None):
+    def dispU(self, neg=None, names = None):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.dispU()
 
         if type(names) == list  and len(names) > 0:
-            return u'%s%s' % ( neg.dispU(), names[self.col])
+            return u'%s%s' % ( neg, names[self.col])
         else:
-            return (u'%s'+Term.pattVName) % ( neg.dispU(), self.col)
+            return (u'%s'+Term.pattVName) % ( neg, self.col)
+        
+    def styledDisp(self, style=""):
+        if len(style) > 0 and style[-1] == "T":
+            return Op.opsTxt[self.val]
+        elif style == "Tex":
+            return Op.opsTex[self.val]
+        elif style == "U":
+            return Op.opsU[self.val]
+        return Op.ops[self.val]
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
@@ -556,13 +594,13 @@ class CatTerm(Term):
         return self.disp()
     
     def disp(self, neg=None, names = None, lenIndex=0):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
-
-        if neg is None:
-            strneg = ''
-        else:
-            strneg = neg.disp()
+        if type(neg) is Neg:
+            neg = neg.disp()
+            
         strcat = '=%s' % self.cat
         if lenIndex > 0 :
             lenIndex = max(lenIndex-len(strcat),3)
@@ -570,42 +608,52 @@ class CatTerm(Term):
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%s%'+slenIndex+'s') % (strneg, names[self.col])
+            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
             return lab + strcat
         else:
-            return (('%s'+Term.pattVName) % (strneg, self.col)) + strcat
+            return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
 
     def dispTex(self, neg, names = None):
+        symbIn = '\\in'
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
-        if neg.boolVal():
-            symbIn = '\\in'
-        else:
-            symbIn = '\\not\\in'
+        if type(neg) is Neg:
+            if not neg.boolVal():
+                symbIn = '\\not\\in'
+                
+            if type(names) == list  and len(names) > 0:
+                return '%s $%s$ %s' % (names[self.col], symbIn, self.cat)
+            else:
+                return ('$'+Term.pattVName+' %s$ %s') % (self.col, symbIn, self.cat)
         
         if type(names) == list  and len(names) > 0:
-            return '%s $%s$ %s' % (names[self.col], symbIn, self.cat)
+            return '%s%s $%s$ %s' % (neg, names[self.col], symbIn, self.cat)
         else:
-            return ('$'+Term.pattVName+' %s$ %s') % (self.col, symbIn, self.cat)
+            return ('%s$'+Term.pattVName+' %s$ %s') % (neg, self.col, symbIn, self.cat)
 
     def dispU(self, neg, names = None):
+        symbIn = '='
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
+        if type(neg) is Neg:
+            if not neg.boolVal():
+                symbIn = SYM.SYM_NEQ
 
-        if neg.boolVal():
-            symbIn = SYM.SYM_NEQ
-        else:
-            symbIn = '='
-        if type(names) == list  and len(names) > 0:
-            try:
+            if type(names) == list  and len(names) > 0:
                 return ('[%s '+symbIn+' %s]') % (names[self.col], self.getCat())
-            except UnicodeDecodeError:
-                pdb.set_trace()
-                self.getCat()
+            else:
+                return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.getCat())
+
+        if type(names) == list  and len(names) > 0:
+            return ('%s[%s '+symbIn+' %s]') % (neg, names[self.col], self.getCat())
         else:
-            return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.getCat())
+            return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, self.getCat())
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
@@ -718,14 +766,14 @@ class NumTerm(Term):
         return self.disp()
 
     def disp(self, neg=None, names = None, lenIndex=0):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.disp()
 
-        if neg is None:
-            strneg = ''
-        else:
-            strneg = neg.disp()
-            ### force float to make sure we have dots in the output
+        ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
             lb = '%s<' % float(self.lowb)
         else:
@@ -743,19 +791,25 @@ class NumTerm(Term):
             lab = ('%'+slenIndex+'s') % names[self.col]
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
-            return lb + lab + ub
+            return neg+lb + lab + ub
         else:
-            return strneg+lb+(Term.pattVName % self.col) + ub
+            return neg+lb+(Term.pattVName % self.col) + ub
 
-    def dispTex(self, neg, names = None, prec=None):            
+    def dispTex(self, neg, names = None, prec=None):
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.dispTex()
+
         # prec = "0.4"
         trimm = False
         if prec is None:
             trimm = True
             prec = ""
-        if type(neg) == bool:
-            neg = Neg(neg)
-            ### force float to make sure we have dots in the output
+            
+        ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
             val = ('%'+prec+'f') % float(self.lowb)
             if trimm:
@@ -770,17 +824,21 @@ class NumTerm(Term):
             ub = '\\leq{}'+val+']$'
         else:
             ub = ']$'
-        negstr = ' %s' % neg.dispTex()
         if type(names) == list  and len(names) > 0:
             idcol = '$ %s $' % names[self.col]
         else:
             idcol = Term.pattVName % self.col
-        return ''+negstr+lb+idcol+ub+''
+        return ''+neg+lb+idcol+ub+''
 
     def dispU(self, neg, names = None):
+        if neg is None:
+            neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
-            ### force float to make sure we have dots in the output
+        if type(neg) is Neg:
+            neg = neg.dispU()
+            
+        ### force float to make sure we have dots in the output
         if self.lowb > float('-Inf'):
             lb = ('[%s '+ SYM.SYM_LEQ +' ') % float(self.lowb)
         else:
@@ -789,15 +847,14 @@ class NumTerm(Term):
             ub = (' '+ SYM.SYM_LEQ +' %s]') % float(self.upb)
         else:
             ub = ']'
-        negstr = '%s' % neg.dispU()
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]
         else:
             idcol = Term.pattVName % self.col
         try:
-            return negstr+lb+idcol+ub
+            return neg+lb+idcol+ub
         except UnicodeDecodeError:
-            return negstr+lb+"v"+str(self.col)+ub
+            return neg+lb+"v"+str(self.col)+ub
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     num_patt = '-?\d+\.\d+'
@@ -873,6 +930,14 @@ class Literal(object):
     
     def dispU(self, names = None):
         return self.getTerm().dispU(self.neg, names)
+
+    def styledDisp(self, names=None, style=""):
+        neg = self.neg.styledDisp(style)
+        if re.match("Tex", style):
+            return self.getTerm().dispTex(neg, names)
+        elif re.match("U", style):
+            return self.getTerm().dispU(neg, names)
+        return self.getTerm().disp(neg, names)
 
     def tInfo(self, names = None):
         return self.getTerm().tInfo(names)
@@ -1798,7 +1863,7 @@ class Query(object):
     def disp(self, names = None, lenIndex=0, style=""):
         def evl(b, op, names, lenIndex, style):
             if isinstance(b, Literal):
-                return b.__getattribute__("disp"+style)(names)
+                return b.styledDisp(names, style)
             if isinstance(b, Neg):
                 return "!NEG!"
             else:
@@ -1806,9 +1871,9 @@ class Query(object):
                 if len(vs) == 1:
                     return vs[0]
                 else:
-                    jstr = " %s " % op.__getattribute__("disp"+style)()
-                    if style == "Tex":
-                        if re.search("[\(\)]", "".join(vs)):
+                    jstr = " %s " % op.styledDisp(style)
+                    if re.match("Tex", style):
+                        if re.search("[\(\)]", "".join(vs)) and style[-1] != "T":
                             pref = "$\\big($ "
                             suff = " $\\big)$"
                         else:
@@ -1819,7 +1884,7 @@ class Query(object):
                         suff = " )"
                     if "!NEG!" in vs:
                         vs.remove("!NEG!")
-                        pref = Neg(True).__getattribute__("disp"+style)() + pref
+                        pref = Neg(True).styledDisp(style) + pref
                     return pref + jstr.join(vs) + suff
 
         if len(self) == 0 :
@@ -1827,20 +1892,20 @@ class Query(object):
                 return '[]'
             else:
                 return ""
-        else:
+        else:                
             vs = [evl(bb, self.op.other(), names, lenIndex, style) for bb in self.buk]
             if len(vs) == 1:
                 return vs[0]
             else:
-                jstr = " %s " % self.op.__getattribute__("disp"+style)()
+                jstr = " %s " % self.op.styledDisp(style)
                 pref = ""
                 suff = ""
                 if "!NEG!" in vs:
                     vs.remove("!NEG!")
-                    pref = Neg(True).__getattribute__("disp"+style)() + "( "
+                    pref = Neg(True).styledDisp(style) + "( "
                     suff = " )"
                 tmp = pref + jstr.join(vs) + suff
-                if style == "Tex":
+                if re.match("Tex", style):
                     tmp = re.sub("\$\s+\$", " ", tmp)
                 return tmp
             #### old code to write the query justified in length lenField

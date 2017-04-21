@@ -70,24 +70,25 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
             # self.frame.recomputeAll()
 
-            fmts = ["png", "eps"]
-            # (1641, 670), (1064, 744), (551, 375)
-            tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
-            for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
-                mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
-                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
-                for fmt in fmts:
-                    if fmt == "png":
-                        mapV.savefig((fname % i)+fmt, format=fmt)
-                    else:
-                        mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
-                mapV.OnKil()
+            # fmts = ["png", "eps"]
+            # # (1641, 670), (1064, 744), (551, 375)
+            # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
+            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+            #     mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+            #     for fmt in fmts:
+            #         if fmt == "png":
+            #             mapV.savefig((fname % i)+fmt, format=fmt)
+            #         else:
+            #             mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
+            #     mapV.OnKil()
 
+            tab ="reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")
-            # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
+            self.frame.tabs[tab]["tab"].viewData(2, "MAP")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
             # self.frame.tabs[tab]["tab"].viewListData(1, "INT")
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")
