@@ -111,7 +111,7 @@ if sys.platform == 'darwin':
     from setuptools import setup
 
     # Get help files
-    # load_help_files()
+    load_help_files()
 
     # Rename exec_siren.py as Siren.py
     subprocess.call('cp '+APP+' Siren.py', shell=True)
@@ -136,7 +136,7 @@ if sys.platform == 'darwin':
     ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
     ST_RESOURCES=['siren/data/help', 'LICENSE', 'CHANGELOG',
                   'siren/interface/ui_confdef.xml','siren/views/views_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
-    ICONS = ['siren/data/icons/siren_icon.icns', 'siren/data/icons/siren_file_icon.icns', 'siren/data/icons/siren_icon32x32.png', 'siren/data/icons/siren_icon.ico', 'siren/data/icons/usiren_icon.ico']
+    ICONS = ['siren/data/icons/siren_icon.icns', 'siren/data/icons/siren_file_icon.icns', 'siren/data/icons/siren_icon32x32.png', 'siren/data/icons/siren_icon.ico', 'siren/data/icons/usiren_icon.ico']+ glob.glob('siren/data/icons/*.png')
     LICENSES = ['siren/data/licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
     
     MATPLOTLIB_BACKENDS = ['wxagg']

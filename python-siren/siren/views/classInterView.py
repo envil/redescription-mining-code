@@ -312,7 +312,7 @@ class InterView(LView):
         elements = {}
         if len(keep) == 0:
             return elements
-        
+
         ### decide ordering of the redescription around the circle
         order_seq = list(wedges_pos[[2**j for j in range(len(keep))],1])
         candidates = range(len(keep))
@@ -578,8 +578,6 @@ class InterView(LView):
         etor = numpy.zeros((nbE, len(self.srids)), dtype=bool)
         for r, rid in enumerate(self.srids):
             etor[list(self.reds[rid].getSuppI()), r] = True
-            ### CHANGE SPart plotted
-            # etor[list(self.reds[rid].getSuppU()), r] = True
         return etor
 
     def setCurrent(self, reds_map):

@@ -1,4 +1,3 @@
-import re
 import numpy
 import wx
 ### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL
@@ -10,9 +9,7 @@ import wx
 # backend. 
 
 from ..reremi.classSParts import SSetts
-from ..reremi.classQuery import SYM, Query
 from classGView import GView
-from ..reremi.classRedescription import Redescription
 
 import matplotlib
 # matplotlib.use('WXAgg')
@@ -130,7 +127,7 @@ class TDView(GView):
                 # pos1 = self.axe.get_position() # get the original position
                 # print "New position", [pos1.x0, pos1.y0,  ratio*pos1.width, pos1.height]
                 # self.axe.set_position([pos1.x0, pos1.y0,  ratio*pos1.width, pos1.height]) # set a new position
-                
+
             self.makeFinish((x0, x1, y0, y1), (bx, by))   
             self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
