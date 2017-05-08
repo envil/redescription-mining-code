@@ -69,7 +69,7 @@ common_variables = {
     "MAINTAINER_LOGIN": "egalbrun",
     "MAINTAINER_EMAIL": "esther.galbrun@inria.fr",
     "PDFS_URL": home_eg+"resources/",
-    "DATA_URL": home_eg+"resources/",
+    "DATA_URL": home_siren+"/data/",
     "PROJECT_URL": home_siren,
     "CODE_URL": home_siren+"/code/",
     "CODE_MAC_URL": "http://www.cs.helsinki.fi/u/pamietti/data/siren/",

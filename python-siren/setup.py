@@ -20,6 +20,8 @@ import pdb
 import glob
 import time
 
+import pdb
+
 from siren.common_details import common_variables
 
 # Common info
@@ -109,7 +111,7 @@ if sys.platform == 'darwin':
     from setuptools import setup
 
     # Get help files
-    load_help_files()
+    # load_help_files()
 
     # Rename exec_siren.py as Siren.py
     subprocess.call('cp '+APP+' Siren.py', shell=True)
