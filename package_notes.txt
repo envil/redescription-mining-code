@@ -23,4 +23,5 @@ For OS X:
 Had to remove SIP (System Integrity Protection) to allow updating matplotlib package (pyparsing) -> http://anadoxin.org/blog/disabling-system-integrity-protection-from-guest-el-capitan-under-virtualbox-5.html
 In shutils commented out line "copystat" in copy2, some flags setting not allowed
 Finally, added pyproj to packages in setup.py
+
 #scp python-siren-2.0.3.tar.gz  python-siren_2.0.3_all.deb  install_siren.exe CHANGELOG melkki.cs.helsinki.fi:~/public_html/redescriptors/code/siren/

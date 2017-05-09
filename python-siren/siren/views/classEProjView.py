@@ -213,14 +213,22 @@ class EProjView(TDView):
         return self.proj
 
     def getLidAt(self, x, y):
+        sz = self.getPlotProp(0, "sz")
         size_dots = self.MapfigMap.get_dpi()*self.MapfigMap.get_size_inches()
         xlims = self.axe.get_xlim()
         ylims = self.axe.get_ylim()
+        ### resolution: value delta per figure dot
         res = ((xlims[1]-xlims[0])/size_dots[0], (ylims[1]-ylims[0])/size_dots[1])
 
         coords = self.getCoords()
-        tX = numpy.where((coords[0]-3*res[0] <= x) & (x <= coords[0]+3*res[0]) & (coords[1]-3*res[1] <= y) & (y <= coords[1]+3*res[1]))[0]
-        ## print tX
-        if len(tX) > 0:
-            return tX[0]
+        for ss in range(3):
+            sc = sz*(ss+1)
+            tX = numpy.where((coords[0]-sc*res[0] <= x) & (x <= coords[0]+sc*res[0]) & (coords[1]-sc*res[1] <= y) & (y <= coords[1]+sc*res[1]))[0]
+            # print ss, sc, "-->", tX
+            # pdb.set_trace()
+            ## print tX
+            if len(tX) > 0:
+                # print "FOUND", (coords[0][tX[0]], coords[1][tX[0]]), (x, y), res
+                return tX[0]
+        # print "NOT FOUND", "---", (x, y), res
         return None

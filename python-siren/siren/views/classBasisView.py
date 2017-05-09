@@ -88,6 +88,8 @@ class CustToolbar(NavigationToolbar):
     def set_history_buttons(self):
         pass
 
+    def has_active_button(self):
+        return self._active is not None
     def mouse_move(self, event=None):
         if event is not None:
             NavigationToolbar.mouse_move(self, event)
@@ -1076,9 +1078,9 @@ class BasisView(object):
         return v
     
     def hoverActive(self):
-        return self.getSettBoolV('hover_entities')
+        return self.getSettBoolV('hover_entities') and not self.MaptoolbarMap.has_active_button()
     def clickActive(self):
-        return self.getSettBoolV('click_entities')
+        return self.getSettBoolV('click_entities') and not self.MaptoolbarMap.has_active_button()
     def inCapture(self, event):
         return False
     
