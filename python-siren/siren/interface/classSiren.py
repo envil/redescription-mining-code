@@ -75,21 +75,33 @@ class ProjCache():
 class Siren():
     """ The main frame of the application
     """
-    root_dir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+    
+    siren_srcdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if 'SIRENDATA' in os.environ:
+        siren_datadir = os.environ['SIRENDATA']
+        if not os.path.isdir(siren_datadir):
+            raise RuntimeError('Path in environment SIRENDATA not a directory')
+    else:
+        siren_datadir = os.path.join(siren_srcdir, 'data')
+        if not os.path.isdir(siren_datadir):
+            siren_datadir = siren_srcdir    
 
+
+        
     @classmethod
-    def searchData(tcl, filen, folder=None, path=[], pref="data/"):
+    def searchData(tcl, filen, folder=None, path=[], pref='data/'):
         ff = []
-        if folder is not None:
-            ff = ['../'+pref+folder, './'+pref+folder, tcl.root_dir+'/'+pref+folder]
         for fldr in path:
-            ff += ['../'+fldr, './'+fldr, tcl.root_dir+'/'+fldr]
+            ff += ['../'+fldr, tcl.siren_srcdir+'/'+fldr]
+        if folder is not None:
+            ff += ['../'+pref+folder, tcl.siren_datadir+'/'+folder]
         return findFile(filen, path+ff)
-        #tmp = findFile(filen, path+ff)
-        #if tmp is None:
+        # tmp = findFile(filen, ff)
+        # if tmp is None:
         #    raise Exception("findFile %s %s\t-->\t%s" % (filen, path+ff, tmp))
-        #    print "findFile %s %s\t-->\t%s" % (filen, path+ff, tmp)
-        #return tmp 
+        #    print "findFile %s %s\t-->\t%s" % (filen, ff, tmp)
+        # return tmp
+    
     @classmethod
     def initIcons(tcl, icons_setts, path=[]):
         icons = {}

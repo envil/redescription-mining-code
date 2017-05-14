@@ -601,7 +601,7 @@ class Redescription(object):
         return info_tmp
     
 
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX=""):
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX="", supp_names=None):
         if list_fields is None:
             if names[0] is not None or names[1] is not None:
                 list_fields = Redescription.print_default_fields_named
@@ -609,6 +609,12 @@ class Redescription(object):
                 list_fields = Redescription.print_default_fields
         info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
         info_tmp["status_enabled"] = self.status
+
+        if supp_names is not None:
+            for field in Redescription.print_default_fields_supp:
+                if field in info_tmp:
+                    info_tmp[field] = [supp_names[i] for i in info_tmp[field]] 
+
         for side, query_f in enumerate(Redescription.print_queries_headers):
             for style in ["", "U", "Tex"]:
                 if len(style) > 0:
@@ -995,7 +1001,7 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
         "\\end{document}"
     return str_out
 
-def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
+def printRedList(red_list, names=[None, None], fields=None, full_supp=False, supp_names=None):
     all_fields = list(Redescription.print_default_fields)
     if names[0] is not None or names[1] is not None:
         all_fields = Redescription.print_default_fields_named
@@ -1008,7 +1014,7 @@ def printRedList(red_list, names=[None, None], fields=None, full_supp=False):
         all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
-        str_out += red.disp(list_fields=all_fields, names=names, sep="\t") + "\n"
+        str_out += red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names) + "\n"
     return str_out
 
 def parseRedList(fp, data, reds=None):

@@ -260,7 +260,7 @@ class AxesProj(Proj):
     SDESC = "Scatter"
     whats = ["entities"]
     title_str = "Scatter Plot"
-    gen_parameters = {Proj.xaxis_lbl: -1.0, Proj.yaxis_lbl: -1.0}
+    gen_parameters = {Proj.xaxis_lbl: "-1.0", Proj.yaxis_lbl: "-1.0"}
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
     dyn_f = []
 

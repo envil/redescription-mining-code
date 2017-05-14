@@ -60,7 +60,7 @@ class EProjView(TDView):
             label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
             ctrls = []
             value = proj.getParameter(kp)
-            if type(value) in [int, float]:
+            if type(value) in [int, float, str]:
                 type_ctrl = "text"
                 ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
             elif type(value) is bool:

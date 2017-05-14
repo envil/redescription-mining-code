@@ -1,0 +1,8 @@
+Changes made to the py2app package
+in /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python
+
+- new recipe for mpl_toolkits as mpltk.py (recipes/mpltk.py, recipes/mpltk_prescript.py, recipes/__init__.py)
+- new command to add to boot to set siren data path (bootstrap/custom_defs.py)
+- skip some data files when copying, etc (build_app.py) 
+
+Also changed shutils copy function to prevent flag setting (not allowed)

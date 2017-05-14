@@ -18,14 +18,14 @@ from ..reremi.classPackage import Package, writePreferences, writeRedescriptions
 
 #from findFiles import findFile
 
-def findFile(fname, path=[]):
+def findFile(fname, path=['']):
     """Finds file from path (always including the current working directory) and returns
     its path or 'None' if the file does not exist.
     If path is not given or an empty list, only checks if the file is present locally.
 
-    On Windows, this also chagnges forward slashes to backward slashes in the path."""
-    if os.path.exists(fname):
-        return fname
+    On Windows, this also changes forward slashes to backward slashes in the path."""
+    # if os.path.exists(fname):
+    #     return fname
 
     for p in path:
         testpath = os.path.join(os.path.normpath(p), fname)
@@ -174,7 +174,7 @@ class DataWrapper(object):
         if self.rshowids is not None:
             isChanged |= self.rshowids.isChanged
         if self.preferences is not None:
-            isChanged |= self.preferences.isChanged 
+            isChanged |= self.preferences.isChanged
         return isChanged
     
     @isChanged.setter
@@ -377,7 +377,7 @@ class DataWrapper(object):
         if elements_read.get("preferences"):
             self.preferences = ICDict(elements_read.get("preferences"))
         else:
-            self.preferences = self.pm.getDefaultTriplets()
+            self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.package = package
         self._isChanged = False
         self._isFromPackage = True
@@ -472,12 +472,17 @@ class DataWrapper(object):
         style = ""
         nblines = 1
         named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
-        full_supp = re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None
+        supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
+        full_supp = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
         if named:
             names = self.data.getNames()
         else:
             names = [None, None]
-
+        if supp_names:
+            supp_names = self.data.getRNames()
+        else:
+            supp_names = None
+            
         if re.search(".tex$", filename):
             style = "tex"
             tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).tex$", filename)
@@ -490,7 +495,7 @@ class DataWrapper(object):
                 rshowids = self.rshowids
             if rshowids is None:
                 rshowids = range(len(reds))
-            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp, nblines=nblines)
+            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp, nblines=nblines, supp_names=supp_names)
         except Exception:
             self._stopMessage()
             raise

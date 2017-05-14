@@ -1413,7 +1413,12 @@ class Data(object):
         if self.rnames is not None and rid < len(self.rnames):
             return self.rnames[rid]
         return "#%d" % rid
+    def getRNames(self):
+        if self.rnames is not None:
+            return list(self.rnames)
+        return ["#%d" % rid for rid in self.rows()]
 
+    
     def getStats(self, group=None):
         if group is None:
             ### Group all columns from both side together

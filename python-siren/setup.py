@@ -111,17 +111,20 @@ if sys.platform == 'darwin':
     from setuptools import setup
 
     # Get help files
-    load_help_files()
+    # load_help_files()
+
 
     # Rename exec_siren.py as Siren.py
     subprocess.call('cp '+APP+' Siren.py', shell=True)
-    
+    subprocess.check_call('mkdir -p siren/data/conf/', shell=True)
+    subprocess.check_call('cp siren/*/*.xml siren/data/conf/', shell=True)
+
     # A custom plist to associate with .siren -files
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
                                                CFBundleTypeIconFile = 'siren/data/icons/siren_file_icon.icns'),
-                                        dict(CFBundleTypeName   = 'fi.helsinki.cs.siren.csv',
+                                        dict(CFBundleTypeName   = 'fr.inria.siren.csv',
                                              CFBundleTypeRole   = 'Viewer',
                                              LSHandlerRank      = 'Alternate',
                                              LSItemContentTypes = ['public.comma-separated-values-text'])
@@ -129,27 +132,28 @@ if sys.platform == 'darwin':
                 CFBundleShortVersionString = VERSION,
                 CFBundleVersion = get_git_hash(),
                 CFBundleName = SHORT_NAME,
-                CFBundleIdentifier = "fi.helsinki.cs.siren",
+                CFBundleIdentifier = "fr.inria.siren",
                 NSHumanReadableCopyright = COPYRIGHT
         )
 
-    ST_PACKAGES = ['wx',  'sklearn', 'mpl_toolkits']
-    ST_RESOURCES=['siren/data/help', 'LICENSE', 'CHANGELOG',
-                  'siren/interface/ui_confdef.xml','siren/views/views_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
-    ICONS = ['siren/data/icons/siren_icon.icns', 'siren/data/icons/siren_file_icon.icns', 'siren/data/icons/siren_icon32x32.png', 'siren/data/icons/siren_icon.ico', 'siren/data/icons/usiren_icon.ico']+ glob.glob('siren/data/icons/*.png')
+    ST_PACKAGES = ['pyproj', 'sklearn'] #'wx',  'sklearn', 'pyproj', 'mpl_toolkits']
+    # ST_RESOURCES=['siren/data/help', 'LICENSE', 'CHANGELOG',
+    # 'siren/interface/ui_confdef.xml','siren/views/views_confdef.xml', 'siren/reremi/miner_confdef.xml', 'siren/reremi/inout_confdef.xml']
+    ST_RESOURCES=['siren/data', 'CHANGELOG']
+    ICONS = ['siren/data/icons/siren_icon.icns', 'siren/data/icons/siren_file_icon.icns', 'siren/data/icons/siren_icon32x32.png', 'siren/data/icons/siren_icon.ico', 'siren/data/icons/usiren_icon.ico'] + glob.glob('siren/data/icons/*.png')
     LICENSES = ['siren/data/licenses'] #'LICENSE_basemap', 'LICENSE_matplotlib', 'LICENSE_python', 'LICENSE_wx', 'LICENSE_grako']
-    
-    MATPLOTLIB_BACKENDS = ['wxagg']
-    
+    # MATPLOTLIB_BACKENDS = ['wxagg']
+
     OPTIONS = {'argv_emulation': True,
     'iconfile': 'siren/data/icons/siren_icon.icns',
     'packages': ST_PACKAGES,
     #'matplotlib_backends': MATPLOTLIB_BACKENDS,
     #'includes': ['ui_confdef.xml'], 
     #'includes': ['reremi'],
-    'resources': ST_RESOURCES+ICONS+LICENSES,
-    'site_packages': True,
-    'includes': ['server_siren.py'],
+    'resources': ST_RESOURCES, #+ICONS+LICENSES, #+bsm_files,
+    'site_packages': False,
+    'includes': ['server_siren'],
+    'excludes' : ['email', 'pytz'],
     #'semi-standalone': True, # depends on local Python
     'plist': Plist,
     }
@@ -166,13 +170,16 @@ if sys.platform == 'darwin':
     # Post setup
     # Copy files
     print "Copying files..."
-    subprocess.call('cp LICENSE dist/', shell=True)
-    subprocess.call('mkdir dist/third-party-licenses/', shell=True)
-    for f in LICENSES:
-        subprocess.call('cp '+f+'/LICENSE* dist/third-party-licenses/', shell=True)
-    subprocess.call('cp licenses/README_mac.rtf dist/README.rtf', shell=True)
+    ## subprocess.call("sed -i 's///'", shell=True)
+    # subprocess.call('mkdir dist/third-party-licenses/', shell=True)
+    # for f in LICENSES:
+    #     subprocess.call('cp '+f+'/LICENSE* dist/third-party-licenses/', shell=True)
+    subprocess.call('cp LICENSE dist/LICENSE', shell=True)
+    subprocess.call('cp siren/data/licenses/README_mac.rtf dist/README.rtf', shell=True)
     subprocess.call('cp CHANGELOG dist/CHANGELOG', shell=True)
-    subprocess.call('cp help/Siren-UserGuide.pdf dist/UserGuide.pdf', shell=True)
+    subprocess.call('cp siren/data/help/Siren-UserGuide.pdf dist/UserGuide.pdf', shell=True)
+    subprocess.call('rm dist/Siren.app/Contents/Resources/data/*_f.dat', shell=True)
+
     subprocess.call('ln -s /Applications dist/', shell=True)
     subprocess.call('cp siren/data/icons/siren_dmg_icon.icns dist/.VolumeIcon.icns', shell=True)
     # Set VolumeIcon's creator
@@ -200,8 +207,8 @@ if sys.platform == 'darwin':
     subprocess.call('rm -f raw-'+SHORT_NAME+'.dmg', shell=True)
 
     # Clean help files
-    print "Cleaning help files"
-    clean_help_files()
+    # print "Cleaning help files"
+    # clean_help_files()
 
     
 elif sys.platform == 'win32':
