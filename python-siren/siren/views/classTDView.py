@@ -15,7 +15,7 @@ import matplotlib
 # matplotlib.use('WXAgg')
 
 import matplotlib.pyplot as plt
-
+import matplotlib.colors
 
 import pdb
 
@@ -51,13 +51,22 @@ class TDView(GView):
                 ccs = self.getQCols()
                 col = self.getCol(ccs[0][0], ccs[0][1])
                 vec = col.getVector()
-                cmap, vmin, vmax = (self.getCMap(col.typeId()), numpy.min(vec), numpy.max(vec))
-                
+                cmap, vmin, vmax = (self.getCMap(col.typeId()), numpy.nanmin(vec), numpy.nanmax(vec))
+                                
                 norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
                 mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-                ec_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_e"][-1]) for v in vec])
-                fc_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_f"][-1]) for v in vec])
-                lc_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_l"][-1]) for v in vec])
+
+                if col.typeId() == 3 or vmin !=0:
+                    ec_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_e"][-1]) for v in vec])
+                else:
+                    mmp = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_e"][-1]) for v in numpy.arange(vmax+1)])
+                    ec_dots = mmp[vec]
+                    
+                fc_dots = numpy.copy(ec_dots)
+                fc_dots[:,-1] = dsetts["color_f"][-1]
+                lc_dots = numpy.copy(ec_dots)
+                lc_dots[:,-1] = dsetts["color_l"][-1]
+                                
                 self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots,
                                    "sz_dots": numpy.ones(vec.shape)*dsetts["size"],
                                    "zord_dots": numpy.ones(vec.shape)*self.DEF_ZORD,
@@ -96,7 +105,10 @@ class TDView(GView):
                     nb.append(nb[-1]+1)
                     bins_ticks = numpy.unique(vec)
                     bins_lbl = [col.getCatForVal(b, "NA") for b in bins_ticks]
-                n, bins, patches = plt.hist(vec, bins=nb)
+
+                idsan = numpy.where(~numpy.isnan(vec))[0]
+                n, bins, patches = plt.hist(vec[idsan], bins=nb)
+
                 sum_h = numpy.max(n)
                 norm_h = [ni*0.1*float(x1-x0)/sum_h+0.03*float(x1-x0) for ni in n]
                 norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins]
@@ -119,14 +131,6 @@ class TDView(GView):
                 # self.axe.yaxis.tick_right()
                 self.axe.tick_params(direction="inout", left="off", right="on",
                                          labelleft="off", labelright="on")
-
-                # ylbls_ext = self.axe.yaxis.get_ticklabel_extents(self.MapcanvasMap.get_renderer())[1].get_points()
-                # print "Win ext", self.axe.get_window_extent() # get the original position
-                # print ylbls_ext 
-                # ratio = ylbls_ext[0,0]/ ylbls_ext[1,0]
-                # pos1 = self.axe.get_position() # get the original position
-                # print "New position", [pos1.x0, pos1.y0,  ratio*pos1.width, pos1.height]
-                # self.axe.set_position([pos1.x0, pos1.y0,  ratio*pos1.width, pos1.height]) # set a new position
 
             self.makeFinish((x0, x1, y0, y1), (bx, by))   
             self.updateEmphasize(review=False)

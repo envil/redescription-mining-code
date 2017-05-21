@@ -51,11 +51,15 @@ def all_subclasses(cls):
 def argsF(f):
     if inspect.isclass(f):
         args, varargs, keywords, defaults = inspect.getargspec(f.__init__)
-        args.pop(0)
+        if len(args) > 0:
+            args.pop(0)
+        else: return {}
     elif inspect.ismethod(f) or inspect.isfunction(f):
         args, varargs, keywords, defaults = inspect.getargspec(f)
+        if len(args) == 0: return {}
     else:
-        return
+        return {}
+    if defaults is None: defaults = []
     defaults = [None for i in range(len(args)-len(defaults))] + list(defaults)
     return dict(zip(args, defaults))
 
@@ -391,7 +395,7 @@ class ProjFactory(object):
         return str_info
 
 #### COMMENT OUT FROM  HERE TO GET RID OF SKLEARN
-if sys.platform != 'win32':
+if True: #sys.platform != 'win32':
     from sklearn import (manifold, decomposition, ensemble, random_projection)
 
     ### The various projections with sklearn
@@ -608,8 +612,8 @@ if sys.platform != 'win32':
             self.params.update(more)
 
         def getX(self, X):
-            X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X) 
-            X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed)
+            X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X)
+            X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed.toarray())
             return X_reduced, 0
 
     class SKspecProj(DynProj):

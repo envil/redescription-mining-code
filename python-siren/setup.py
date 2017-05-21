@@ -248,9 +248,15 @@ elif sys.platform == 'win32':
     ## C:\\Python27\\
     bsm_files = [f for f in glob.glob('C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Lib\\site-packages\\mpl_toolkits\\basemap\\data\\*') if not re.search("_f.dat", f)] 
     MTK = [('mpl_toolkits\\basemap\\data', bsm_files)]
+    mkl_files = ['C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2_core.dll',
+                 'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2_intel_thread.dll',
+                 'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2ifcoremd.dll',
+                 'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2iomp5md.dll',
+                 'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2mmd.dll'] 
+    MKL = [('', mkl_files)]
     extra_options.update(dict(
         windows=[{"script": APP, "icon_resources": [(1, "siren\\data\\icons\\siren_icon.ico")]}],
-        data_files= PACKAGE_DATA.items() + MPL + MTK,
+        data_files= PACKAGE_DATA.items() + MPL + MTK + MKL,
         options={'py2exe': OPTIONS})
         )
     # Run setup

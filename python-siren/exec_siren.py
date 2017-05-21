@@ -72,9 +72,10 @@ class SirenApp(wx.App):
 
             # fmts = ["png", "eps"]
             # # (1641, 670), (1064, 744), (551, 375)
-            # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
             # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
-            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # for i in [self.frame.tabs[tab]["tab"].getDataHdl().getAllIids()[-1]]:
             #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
             #     mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
             #     for fmt in fmts:
@@ -89,7 +90,7 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().selected_rows = set(range(400))
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")
             # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
-            self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
+            # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
             # self.frame.tabs[tab]["tab"].viewListData(1, "INT")
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")

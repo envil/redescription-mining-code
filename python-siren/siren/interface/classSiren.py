@@ -1391,17 +1391,18 @@ class Siren():
 
 
     def OnHelp(self, event):
-        wxVer = map(int, wx.__version__.split('.'))
-        new_ver = wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3)
-        if new_ver:
-            try:                                                      
-                self._onHelpHTML2()
-            except NotImplementedError:
-                new_ver = False
-        if not new_ver:
-            self._onHelpOldSystem()
+        self._onHelpOutside()
+        # wxVer = map(int, wx.__version__.split('.'))
+        # new_ver = wxVer[0] > 2 or (wxVer[0] == 2 and wxVer[1] > 9) or (wxVer[0] == 2 and wxVer[1] == 9 and wxVer[2] >= 3)
+        # if new_ver:
+        #     try:                                                      
+        #         self._onHelpInside()
+        #     except NotImplementedError:
+        #         new_ver = False
+        # if not new_ver:
+        #    self._onHelpOutside()
 
-    def _onHelpHTML2(self):
+    def _onHelpInside(self):
         import wx.html2
         import urllib
         import platform
@@ -1409,11 +1410,11 @@ class Siren():
         #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_ERROR, lambda evt: wx.MessageDialog(self.toolFrame, str(evt), style=wx.OK, caption='WebView Error').ShowModal())
         #self.toolFrame.Bind(wx.html2.EVT_WEBVIEW_LOADED, lambda evt: wx.MessageDialog(self.toolFrame, 'Help files loaded from '+evt.GetURL(), style=wx.OK, caption='Help files loaded!').ShowModal())
         if self.helpURL is None:
-            self._onHelpOldSystem()
+            self._onHelpOutside()
             return
         if self.helpFrame is None:
             self.helpFrame = wx.Frame(self.toolFrame, -1, self.titleHelp)
-            self.helpFrame.Bind(wx.EVT_CLOSE, self._helpHTML2Close)
+            self.helpFrame.Bind(wx.EVT_CLOSE, self._helpInsideClose)
             sizer = wx.BoxSizer(wx.VERTICAL)
             url = 'file://'+os.path.abspath(self.helpURL)
             if sys.platform == "darwin":
@@ -1430,11 +1431,11 @@ class Siren():
         self.helpFrame.Show()
         self.helpFrame.Raise()
 
-    def _helpHTML2Close(self, event):
+    def _helpInsideClose(self, event):
         self.helpFrame.Destroy()
         self.helpFrame = None
 
-    def _onHelpOldSystem(self):
+    def _onHelpOutside(self):
         import webbrowser
         try:
             ##webbrowser.open("file://"+ self.helpURL, new=1, autoraise=True)

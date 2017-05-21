@@ -1854,7 +1854,7 @@ class ContentManager:
     #         return lc.getSelection()
     #     return []
     def getSelectedRow(self): ### legacy no s
-        return self.getIidsForAction()
+        return self.getIidsForAction(down=False)
 
     def onItemActivated(self, ll=None, pos=None):
         if ll is None or pos is None:
