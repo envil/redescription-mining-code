@@ -51,7 +51,8 @@ sed -i -e s:__SIREN_PYTHON_PATH__:${ROOT_REP}/siren:g ${SPHINX_REP}/*/conf.py
 cd ${SPHINX_REP}/siren-help/
 rm -rf _build
 make html
-## make latexpdf
+#make latexpdf
+#exit
 
 rm -rf ${HELP_TRG_REP}
 cp -R ${HELP_SRC_REP} ${HELP_TRG_REP}

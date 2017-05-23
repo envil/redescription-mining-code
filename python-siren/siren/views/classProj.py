@@ -519,6 +519,7 @@ if True: #sys.platform != 'win32':
        # Projection on to the first 2 principal components
 
        PID =  "SKpca"
+       if sys.platform == 'darwin': PID =  "-"+ PID
        SDESC = "PCA"
        title_str = "Randomized PCA Projection"
        gen_parameters = dict(Proj.gen_parameters)
@@ -539,6 +540,7 @@ if True: #sys.platform != 'win32':
         # Isomap projection
 
         PID =  "SKiso"
+        if sys.platform == 'darwin': PID =  "-"+ PID
         SDESC = "Isomap"
         title_str = "Isomap Embedding"
         gen_parameters = dict(DynProj.gen_parameters)
@@ -578,6 +580,7 @@ if True: #sys.platform != 'win32':
         # MDS  embedding
 
         PID =  "SKmds"
+        if sys.platform == 'darwin': PID =  "-SKpca"
         SDESC = "MDS"
         title_str = "Multidimensional Scaling"
         gen_parameters = dict(DynProj.gen_parameters)
@@ -598,6 +601,7 @@ if True: #sys.platform != 'win32':
         # Random Trees embedding
 
         PID =  "SKtree"
+        if sys.platform == 'darwin': PID =  "-SKpca"
         SDESC = "Rand.Trees"
         title_str = "Totally Random Trees Rep."
         gen_parameters = dict(DynProj.gen_parameters)

@@ -36,6 +36,7 @@ class EProjView(TDView):
     def __init__(self, parent, vid, more=None):
         self.repbut = None
         self.redStamp = None
+        self.dots_draws = None
         self.initVars(parent, vid, more)
         self.queries = [Query(), Query()]
         self.initProject(more)

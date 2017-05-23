@@ -1,4 +1,4 @@
-import os, os.path, random
+import os, os.path, random, re
 import time, math
 import sys
 import pickle
@@ -77,6 +77,8 @@ class Siren():
     """
     
     siren_srcdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if sys.platform == 'win32' and siren_srcdir.find("library.zip") > -1:
+        siren_srcdir = re.sub("library.zip.*", "", siren_srcdir)
     if 'SIRENDATA' in os.environ:
         siren_datadir = os.environ['SIRENDATA']
         if not os.path.isdir(siren_datadir):

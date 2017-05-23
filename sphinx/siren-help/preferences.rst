@@ -28,10 +28,19 @@ Interface parameters are specified `here <../_static/ui_confdef.xml>`_  and can 
 
 .. image:: ../_figs/screenshots/PrefsInterface2.png
 
+Views parameters
+=========================
 
+Views parameters are specified `here <../_static/views_confdef.xml>`_  and can be set through the interface.
 For instance, this allows to modify the appearance of the maps.
 
 .. image:: ../_figs/screenshots/MapVariants.png
+
+Input/output parameters
+=========================
+
+Input/output parameters, useful when running *ReReMi* from the command line, are specified `here. <../_static/inout_confdef.xml>`_ 
+
 
 .. _preferences_file:
 

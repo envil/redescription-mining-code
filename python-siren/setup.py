@@ -253,6 +253,7 @@ elif sys.platform == 'win32':
                  'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2ifcoremd.dll',
                  'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2iomp5md.dll',
                  'C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk2mmd.dll'] 
+    mkl_files = glob.glob('C:\\Users\\pc-perso\\AppData\\Local\\Enthought\\Canopy\\User\\Scripts\\mk*.dll')
     MKL = [('', mkl_files)]
     extra_options.update(dict(
         windows=[{"script": APP, "icon_resources": [(1, "siren\\data\\icons\\siren_icon.ico")]}],
