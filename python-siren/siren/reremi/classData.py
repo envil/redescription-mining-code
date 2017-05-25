@@ -226,7 +226,6 @@ class BoolColM(ColM):
 
     values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '0.0': False, '1': True, 0:False, 1:True, None: None}
     def parseList(listV, indices=None, force=False):
-        ## print listV
         miss = set()
         if force:
             if type(listV) is list:
@@ -250,6 +249,8 @@ class BoolColM(ColM):
             elif type(indices) is dict:
                 trues = set([indices.get(i,None) for i in listV])
                 trues.discard(None)
+                miss = set([indices.get(i,None) for i in miss])
+                miss.discard(None)
                 N = max(indices.values())+1
             else:
                 raise ValueError('Sparse requires indices')
@@ -383,7 +384,7 @@ class BoolColM(ColM):
                 return self.NA
             return rid in self.hold
         else:
-            return self.vect[rid]
+            return BoolColM.values.get(self.vect[rid], self.NA)
 
     def getNumValue(self, rid):
         return int(self.getValue(rid))
@@ -441,7 +442,6 @@ class CatColM(ColM):
 
     n_patt = "^-?\d+(\.\d+)?$"
     def parseList(listV, indices=None, force=False):
-        ## print listV
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
@@ -681,7 +681,6 @@ class NumColM(ColM):
     parseVal = staticmethod(parseVal)
                 
     def parseList(listV, indices=None, force=False):
-        ## print listV
         prec = None
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
@@ -2247,7 +2246,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             col = None
 
             if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
-                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
+                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)                
                 if col is None:
                     print "DID NOT MANAGE FORCE PARSING..."
             if col is None:
@@ -2525,10 +2524,12 @@ def main():
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data
 
-    rep = "/home/egalbrun/short/testNA/"
-    for dt in ["dblp_densBB"]: #, "EA_ethno-bio", "EA_ethnoN-bio"]:
+    rep = "/home/egalbrun/short/test_petit/"
+    ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
+    for dt in ["a"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
         ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
-        data = Data([rep+dt+"/data_LHS.csv", rep+dt+"/data_RHS.csv", {}, "nan"], "csv")
+        # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
+        data = Data([rep+"data_LHS%s.csv" % dt, rep+"data_RHS%s.csv" % dt, {}, "NA"], "csv")
         print dt, data
         print "---------------"
         for side in [0,1]:

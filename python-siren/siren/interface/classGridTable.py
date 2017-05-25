@@ -614,6 +614,7 @@ class RowTable(GridTable):
                 if tmp == "-" or (math.isnan(tmp) and math.isnan(self.fields[col][2]["NA"])) \
                        or (tmp == self.fields[col][2]["NA"]):
                     l = 255
+                    labl = "NA"
                 else:
                     rangeV = self.fields[col][2]["range"]
                     lr = row/(1.0*self.nbItems())
