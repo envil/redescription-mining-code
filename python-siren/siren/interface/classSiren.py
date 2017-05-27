@@ -28,7 +28,7 @@ from classCtrlTable import RedsManager, VarsManager
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
-from miscDialogs import ImportDataCSVDialog, FindDialog
+from miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog
 from ..views.factView import ViewFactory
 from ..views.classVizManager import VizManager
 from ..views.classViewsManager import ViewsManager
@@ -267,8 +267,10 @@ class Siren():
         if self.dw is not None:
             return self.dw.getNbReds()
         return -1
-    def getSaveListRedsInfo(self):
-        if self.matchTabType("r"):
+    def getSaveListInfo(self):
+        if self.matchTabType("vr"):
+            tmp = self.selectedTab["tab"].getSaveListInfo()
+            return tmp
             return self.selectedTab["tab"].getSaveListInfo()
     def getToExportReds(self):
         if self.matchTabType("r"):
@@ -488,6 +490,12 @@ class Siren():
                         menuRed.Enable(ID_HIGH, False)
                     frame.Bind(wx.EVT_MENU, self.OnHigh, m_high)
 
+                if self.matchTabType("v") and self.selectedTab["tab"].nbItems() > 0:
+                    ID_SVA = wx.NewId()
+                    m_svla = menuRed.Append(ID_SVA, "Save Plots As...", "Save Plots as...")
+                    frame.Bind(wx.EVT_MENU, self.OnExportListFigs, m_svla)
+
+
                 if self.matchTabType("e") or ( self.matchTabType("v") and self.selectedTab["tab"].nbItems() > 0):
                     ID_FIND = wx.NewId()
                     m_find = menuRed.Append(ID_FIND, "Find\tCtrl+F", "Find by name.")
@@ -511,7 +519,7 @@ class Siren():
     def makeRedMenuR(self, frame, menuRed=None):
         if menuRed is None:
             menuRed = wx.Menu()
-
+            
         if self.matchTabType("r"):
             if self.selectedTab["tab"].hasFocusContainersL():
                 ID_NN = wx.NewId()
@@ -527,7 +535,11 @@ class Siren():
                 ID_SVA = wx.NewId()
                 m_svla = menuRed.Append(ID_SVA, "Save List As...", "Save List as...")
                 frame.Bind(wx.EVT_MENU, self.OnSaveListAs, m_svla)
-
+                
+                ID_SVA = wx.NewId()
+                m_svla = menuRed.Append(ID_SVA, "Save Plots As...", "Save Plots as...")
+                frame.Bind(wx.EVT_MENU, self.OnExportListFigs, m_svla)
+                
 
             if  self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1:
                 ID_DETAILS = wx.NewId()
@@ -1033,9 +1045,9 @@ class Siren():
         save_dlg.Destroy()
 
     def OnSaveList(self, event):
-        info = self.getSaveListRedsInfo()
+        info = self.getSaveListInfo()
         if info is not None:
-            if info.get("nb_reds", 0) < 1:
+            if info.get("nb_items", 0) < 1:
                 wx.MessageDialog(self.toolFrame, 'Cannot save list: no redescriptions loaded',
                                  style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
                 return
@@ -1045,16 +1057,16 @@ class Siren():
                 return
 
             try:
-                self.dw.exportRedescriptions(info["path"], info["reds"])
+                self.dw.exportRedescriptions(info["path"], info["items"])
                 self.selectedTab["tab"].markSavedSrc(lid=info["lid"])
             except:
                 pass
 
 
     def OnSaveListAs(self, event):
-        info = self.getSaveListRedsInfo()
+        info = self.getSaveListInfo()
         ## print "Save List As", info
-        if info is not None and info.get("nb_reds", 0) < 1:
+        if info is not None and info.get("nb_items", 0) < 1:
             wx.MessageDialog(self.toolFrame, 'Cannot export redescriptions: no redescriptions loaded',
                              style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
             return
@@ -1070,11 +1082,28 @@ class Siren():
         if save_dlg.ShowModal() == wx.ID_OK:
             new_path = save_dlg.GetPath()
             try:
-                self.dw.exportRedescriptions(new_path, info["reds"])
+                self.dw.exportRedescriptions(new_path, info["items"])
                 self.selectedTab["tab"].markSavedSrc(lid=info["lid"], path=new_path)
             except:
                 pass
         save_dlg.Destroy()
+
+    def OnExportListFigs(self, event):     
+        """Shows a custom dialog to open the export files"""
+        info = self.getSaveListInfo()
+        if info.get("path") is not None:
+            dir_name = os.path.dirname(info["path"])
+        elif self.dw.getPackageSaveFilename() is not None:
+            dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
+        else:
+            dir_name = os.path.expanduser('~/')        
+        if info is not None and info.get("nb_items", 0) < 1:
+            wx.MessageDialog(self.toolFrame, 'Cannot export items: no items active',
+                             style=wx.OK|wx.ICON_EXCLAMATION, caption='Error').ShowModal()
+            return
+        dlg = ExportFigsDialog(self, self.viewsm, info["items"], dir_name)
+        dlg.showDialog()
+        
 
     def quitFind(self):
         if self.findDlg is not None:
@@ -1226,6 +1255,13 @@ class Siren():
             
         self.OnListChanged(event)
 
+    def OnSaveSuppAsVar(self, suppVect, name):
+        self.dw.getData().addSuppCol(suppVect, name)
+        self.reloadVars()
+    def OnSaveSelAsVar(self, lids, name):
+        self.dw.getData().addSelCol(lids, name)
+        self.reloadVars()
+        
     def OnNewVList(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].viewListData(viewT=self.ids_viewT[event.GetId()])

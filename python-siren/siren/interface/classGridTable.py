@@ -578,6 +578,7 @@ class RowTable(GridTable):
  
     def resetFields(self, dw=None, review=True):
         self.sortP = (None, False)
+        self.sc = set() # show column (for collapsed/expanded columns)
         self.fix_col = 2
         if dw is not None:
             self.cols_map = {}
@@ -595,6 +596,8 @@ class RowTable(GridTable):
                 for ci, col in enumerate(dw.getDataCols(side)):
                     self.cols_map[(side, col.getId())] = len(self.fields)
                     self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "NA": col.NA, "r":ci/nb}))
+            if len(self.cols_map) <= 20:
+                self.sc = set(self.cols_map.values())
             if review:
                 self.ResetView()
 

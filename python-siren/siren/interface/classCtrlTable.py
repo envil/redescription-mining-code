@@ -1020,7 +1020,8 @@ class StaticContent:
         self.lists_ord = []
         
     def notify_change(self):
-        print "Change Item"
+        pass
+        # print "Change Item"
         
     #### ACCESSING LISTS
     def getListPosForId(self, idx):
@@ -1672,8 +1673,8 @@ class ContentManager:
                 lid = self.getViewLid()
 
         if self.getDataHdl().getList(lid) is not None:
-            reds = [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
-            return {"lid": lid, "reds": reds, "nb_reds": len(reds), "path": self.getDataHdl().getList(lid).getSrcPath()}
+            items = [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
+            return {"lid": lid, "items": items, "nb_items": len(items), "path": self.getDataHdl().getList(lid).getSrcPath()}
         return None
 
     

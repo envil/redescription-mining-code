@@ -43,9 +43,9 @@ class EProjView(TDView):
         self.initView()
         self.suppABCD = None
 
-    def lastStepInit(self):
+    def lastStepInit(self, blocking=False):
         if not self.wasKilled() and self.getCoords() is None:
-            self.runProject()
+            self.runProject(blocking)
 
     def getShortDesc(self):
         return "%s %s" % (self.getItemId(), self.getProj().SDESC)
@@ -154,7 +154,7 @@ class EProjView(TDView):
         return [add_boxB]
 
 
-    def OnReproject(self, rid=None):
+    def OnReproject(self, rid=None, blocking=False):
         self.getProj().initParameters(self.boxes)
         # self.getProj().addParamsRandrep()
         # tmp_id = self.projkeyf.GetValue().strip(":, ")
@@ -162,19 +162,26 @@ class EProjView(TDView):
         #     self.initProject(tmp_id)
         # else:
         #     self.initProject()
-        self.runProject()
+        self.runProject(blocking)
 
     def initProject(self, rid=None):
         ### print ProjFactory.dispProjsInfo()
         self.proj = ProjFactory.getProj(self.getParentData(), rid)
         
-    def runProject(self):
+    def runProject(self, blocking=False):
         self.init_wait()
         if self.repbut is not None:
             self.repbut.Disable()
             self.repbut.SetLabel("Wait...")
         self.getProj().addParamsRandrep({"vids": self.getQCols()})
-        self.parent.project(self.getProj(), self.getId())
+        if blocking:
+            try:
+                self.proj.do()
+            except ValueError as e: #Exception as e:
+                self.proj.clearCoords()
+            self.readyProj(self.proj)
+        else:
+            self.parent.project(self.getProj(), self.getId())
         
     def readyProj(self, proj):
         if proj is not None:

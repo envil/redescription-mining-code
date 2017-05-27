@@ -64,10 +64,8 @@ class TDView(GView):
                     
                 fc_dots = numpy.copy(ec_dots)
                 fc_dots[:,-1] = dsetts["color_f"][-1]
-                lc_dots = numpy.copy(ec_dots)
-                lc_dots[:,-1] = dsetts["color_l"][-1]
                                 
-                self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots,
+                self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
                                    "sz_dots": numpy.ones(vec.shape)*dsetts["size"],
                                    "zord_dots": numpy.ones(vec.shape)*self.DEF_ZORD,
                                    "draw_dots": numpy.ones(vec.shape, dtype=bool)}
@@ -81,6 +79,7 @@ class TDView(GView):
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["lc_dots"][numpy.array(list(selected)), -1] *= selp
+
             draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
             
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.

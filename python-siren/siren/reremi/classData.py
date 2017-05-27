@@ -157,28 +157,32 @@ class ColM(object):
 
     def typeId(self):
         return self.type_id
-
     def miss(self):
         return self.missing
+    def negSuppTerm(self, term):
+        return self.rows() - self.suppTerm(term) - self.miss()
 
     def suppLiteral(self, literal):
-        if isinstance(literal, Term): ### It's a literal, not a term
+        if isinstance(literal, Term): ### It's a term, not a literal
             return self.suppTerm(literal)
         elif isinstance(literal, Literal):
             if literal.isNeg():
-                return self.rows() - self.suppTerm(literal.getTerm()) - self.miss()
+                return self.negSuppTerm(literal.getTerm())
             else:
                 return self.suppTerm(literal.getTerm())
 
     def lMiss(self):
         return len(self.miss())
+    
+    def lNegSuppTerm(self, term):
+        return self.nbRows() - len(self.suppTerm(term)) - self.lMiss()
 
     def lSuppLiteral(self, literal):
         if isinstance(literal, Term): ### It's a literal, not a term
             return len(self.suppTerm(literal))
         elif isinstance(literal, Literal):
             if literal.isNeg():
-                return self.nbRows() - len(self.suppTerm(literal.getTerm())) - self.lMiss()
+                return self.lNegSuppTerm(literal.getTerm())
             else:
                 return len(self.suppTerm(literal.getTerm()))
 
@@ -230,7 +234,7 @@ class BoolColM(ColM):
         if force:
             if type(listV) is list:
                 miss = set([i for (i, v) in enumerate(listV) if v is None])
-                listV = set([i for (i, v) in enumerate(listV) if BoolColM.values.get(v, True)])
+                listV = set([i for (i, v) in enumerate(listV) if v is not None and BoolColM.values.get(v.lower(), True)])
             elif type(listV) is not set:
                 tt = set()
                 ok = True
@@ -378,12 +382,17 @@ class BoolColM(ColM):
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
     
-    def getValue(self, rid):
+    def getValue(self, rid, pref=None):
         if self.vect is None:
             if rid in self.missing:
                 return self.NA
+
+            if pref == "bnum":
+                return int(rid in self.hold)
             return rid in self.hold
         else:
+            if pref == "bnum":
+                return self.vect[rid]
             return BoolColM.values.get(self.vect[rid], self.NA)
 
     def getNumValue(self, rid):
@@ -554,7 +563,9 @@ class CatColM(ColM):
             return missing_str
         return self.NA
         
-    def getValue(self, rid):
+    def getValue(self, rid, pref=None):
+        if pref == "cnum":
+            return self.getNumValue(rid)
         return self.getCatForVal(self.getNumValue(rid))
 
     def getNumValue(self, rid):
@@ -795,7 +806,7 @@ class NumColM(ColM):
             tt += (len(self.mode[1]) -1)*self.sVals[-1]
         return tt
 
-    def getValue(self, rid):
+    def getValue(self, rid, pref=None):
         if self.vect is None:
             self.getVector()
         if type(self.vect) is dict:
@@ -1480,6 +1491,9 @@ class Data(object):
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
 
+    
+    ############ SPLITS
+    #######################
     def getSplit(self, nbsubs=10, coo_dim=None, grain=10., force=False):
         if coo_dim is not None and \
                not (( self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords())) or \
@@ -1544,23 +1558,10 @@ class Data(object):
         else:
             return {}
 
-
     def getFoldsInfo(self):
         return self.split
 
-    def addFoldsCol(self, subsets=None, sito=1):
-        suff = "cust"
-        if subsets is None and self.split is not None:
-            if self.split["source"] == "auto":
-                subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
-                suff = "%d%sg%s" % (len(self.cols[sito]), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
-        if type(subsets) is list:
-            subsets = dict(enumerate(subsets))
-        if subsets is not None and type(subsets) is dict:
-            col = CatColM(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), self.nbRows())
-            self.addCol(col, sito, "folds_split_"+suff)
-
-    def extractFolds(self, side, colid):
+    def extractFolds(self, side, colid):        
         splits = None
         if type(self.cols[side][colid]) is CatColM:
             self.cols[side][colid].setDisabled()
@@ -1570,6 +1571,17 @@ class Data(object):
                           "parameters": {"side": side, "colid": colid, "colname": self.cols[side][colid].getName()},
                           "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
                           "splits": [splits[k] for k in skeys]}
+        elif type(self.cols[side][colid]) is BoolColM:
+            self.cols[side][colid].setDisabled()
+            ### HERE
+            col = self.cols[side][colid]
+            splits = {"True": set(col.supp()), "False": set(col.negSuppTerm(None))}
+            skeys = sorted(splits.keys())
+            self.split = {"source": "data",
+                          "parameters": {"side": side, "colid": colid, "colname": self.cols[side][colid].getName()},
+                          "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
+                          "splits": [splits[k] for k in skeys]}
+
         return splits
 
     def getFoldsStats(self, side, colid):
@@ -1579,13 +1591,24 @@ class Data(object):
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
     
     def findCandsFolds(self):
-        return self.getColsByName("^folds_split_")
+        folds = self.getColsByName("^folds_split_")
+        more = self.getColsMoreFolds(folds)
+        return folds + more
 
     def getColsByName(self, pattern):
         results = []
         for (sito, cols) in enumerate(self.cols):
             for (ci, col) in enumerate(cols):
                 if re.search(pattern, col.getName()):
+                    results.append((sito, ci))
+        return results
+    def getColsMoreFolds(self, folds=[], nbcats = [1,6], inclB=True):
+        results = []
+        for (sito, cols) in enumerate(self.cols):
+            for (ci, col) in enumerate(cols):
+                if ( (sito, ci) not in folds ) and ( \
+                        ( col.typeId() == CatColM.type_id and col.nbCats() > nbcats[0] and col.nbCats() < nbcats[1])
+                        or ( col.typeId() == BoolColM.type_id and inclB) ):  
                     results.append((sito, ci))
         return results
 
@@ -1614,14 +1637,46 @@ class Data(object):
             for i in range(nbsubs):
                 subsets_ids[i].update(np.where(maps_to==i)[0])
         return subsets_ids
-        
-
+    
     #### old version for reremi run subsplits
     def get_LTsplit(self, row_idsT):
         row_idsL = set(range(self.nbRows()))
         row_idsT = row_idsL.intersection(row_idsT)
         row_idsL.difference_update(row_idsT)
         return self.subset(row_idsL), self.subset(row_idsT)
+
+    def addFoldsCol(self, subsets=None, sito=1):
+        suff = "cust"
+        if subsets is None and self.split is not None:
+            if self.split["source"] == "auto":
+                subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
+                suff = "%d%sg%s" % (len(self.cols[sito]), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
+        if type(subsets) is list:
+            subsets = dict(enumerate(subsets))
+        if subsets is not None and type(subsets) is dict:
+            col = CatColM(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), self.nbRows())
+            self.addCol(col, sito, "folds_split_"+suff)    
+    #######################
+
+    def addSuppCol(self, suppVect, name=None, sito=1):
+        preff = "v%d_" % self.nbCols(sito)
+        if name is None:
+            name = "Rx"
+        ks = np.unique(suppVect)
+        lbl = SSetts.labels_alt
+        if np.max(ks) > len(lbl):
+            lbl = ["S%d" % i for i in range(np.max(ks)+1)]
+        parts = {}
+        for k in ks:
+            parts[lbl[k]] = set(np.where(suppVect == k)[0])
+        col = CatColM(parts, self.nbRows())
+        self.addCol(col, sito, preff+name)
+    def addSelCol(self, lids, name=None, sito=1):
+        preff = "v%d_" % self.nbCols(sito)
+        if name is None:
+            name = "Sx"
+        col = BoolColM(set(lids), self.nbRows())
+        self.addCol(col, sito, preff+name)
 
     def subset(self, row_ids=None):
         coords = None
@@ -1711,7 +1766,7 @@ class Data(object):
         return "%i(+%i)" % ( self.nbRowsEnabled(), self.nbRowsDisabled())
 
         
-    def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
+    def writeCSV(self, outputs, thres=0.3, full_details=False, inline=False):
         #### FIGURE OUT HOW TO WRITE, WHERE TO PUT COORDS, WHAT METHOD TO USE
         #### check whether some row name is worth storing
         rids = {}
@@ -1727,7 +1782,7 @@ class Data(object):
         if mean_denses[1-argmaxd] > thres: ## BOTH SIDES ARE DENSE
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": "dense", "details": full_details}}
-        elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE
+        elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE            
             methot = "triples"
             if not self.hasDisabledCols(1-argmaxd) and sum([not col.simpleBool() for col in self.cols[1-argmaxd]])==0:
                 methot = "pairs"
@@ -1736,7 +1791,6 @@ class Data(object):
         else:  ## BOTH SIDES ARE SPARSE
             simpleBool = [sum([not col.simpleBool() for col in self.cols[0]]) == 0,
                           sum([not col.simpleBool() for col in self.cols[1]]) == 0]
-
             if self.isGeospatial() or len(rids) > 0:
                 if not simpleBool[1-argmaxd]: ### is not only boolean so can have names and coords
                     methot = "pairs"
@@ -1758,8 +1812,8 @@ class Data(object):
                         styles[side]["meth"] = "triples"
                         styles[side]["inline"] = inline
 
-        ## meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
-        meths = {"pairs": self.writeCSVDense, "triples": self.writeCSVDense, "dense": self.writeCSVDense}
+        meths = {"pairs": self.writeCSVSparsePairs, "triples": self.writeCSVSparseTriples, "dense": self.writeCSVDense}
+        ## meths = {"pairs": self.writeCSVDense, "triples": self.writeCSVDense, "dense": self.writeCSVDense}
         sides = [0,1]
         if self.isSingleD() and (len(outputs) == 1 or outputs[0] == outputs[1] or outputs[1] is None):
             sides = [0]
@@ -1828,7 +1882,7 @@ class Data(object):
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
             for cci, col in enumerate(self.cols[side]):
-                row.append(col.valToStr(col.getValue(n)))
+                row.append(col.valToStr(col.getValue(n, pref="bnum")))
             csv_reader.write_row(csvf, row)
 
 
@@ -1900,11 +1954,11 @@ class Data(object):
     def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]]
         letter = self.getCommonType(side)
-        if letter is not None:
-            if len(header) == 0:
-                header.append("")
-            header[-1] += " # type=%s" % letter
-            # header.append("type=%s" % letter)
+        # if letter is not None: ### THIS CAN ONLY BE FULLY BOOLEAN...
+        #     if len(header) == 0:
+        #         header.append("")
+        #     header[-1] += " # type=%s" % letter
+        #     # header.append("type=%s" % letter)
         csv_reader.write_row(csvf, header)
         if not details:
             rids = {}
@@ -1962,6 +2016,11 @@ class Data(object):
         
     def supp(self, side, literal): 
         return self.col(side, literal).suppLiteral(literal)
+    
+    def OutSupp(self, side, literal): 
+        return set(range(self.nbRows())) - self.supp(side, literal) - self.miss(side,literal)
+    def miss(self, side, literal):
+        return self.col(side, literal).miss()
 
     def miss(self, side, literal):
         return self.col(side, literal).miss()
@@ -2524,13 +2583,13 @@ def main():
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data
 
-    rep = "/home/egalbrun/short/test_petit/"
+    rep = "/home/egalbrun/short/test_petit/data_fz/"
     ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
-    for dt in ["a"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
+    for (dL, dR) in [("", ""), ("", "F"), ("F", ""), ("F", "F")]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
         ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
         # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
-        data = Data([rep+"data_LHS%s.csv" % dt, rep+"data_RHS%s.csv" % dt, {}, "NA"], "csv")
-        print dt, data
+        data = Data([rep+"data_LHS%s.csv" % dL, rep+"data_RHS%s.csv" % dR, {}, "NA"], "csv")
+        print dL, dR, data
         print "---------------"
         for side in [0,1]:
             for col in data.cols[side]:

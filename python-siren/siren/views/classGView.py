@@ -87,8 +87,6 @@ class GView(BasisView):
         fc_dots = fc_clusts[indices]
         ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
         ec_dots = ec_clusts[indices]
-        lc_clusts = numpy.array([draw_settings[i]["color_l"] for i in u])
-        lc_dots = lc_clusts[indices]
         zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
         zord_dots = zord_clusts[indices]
             
@@ -102,7 +100,7 @@ class GView(BasisView):
         else:
             draw_dots = ~ delta_dots
 
-        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "lc_dots": lc_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
+        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
 
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
@@ -117,6 +115,7 @@ class GView(BasisView):
                                      "more": {"side":1, "in_weight":10}, "more_dyn":[self.getWeightCover], "order":4} }
         
     def prepareActions(self):
+        ### First letter of action is the key, should be unique
         self.actions_map = {"deselect_all": {"method": self.do_deselect_all, "label": "&Deselect all",
                                              "legend": "Deselect all dots", "more": None, "type": "main",
                                              "order":1, "active_q":self.q_has_selected},
@@ -125,7 +124,15 @@ class GView(BasisView):
                                              "order":0, "active_q":self.q_has_selected},
                             "noggle_info": {"method": self.do_toggle_info, "label": "Toggle i&nfo",
                                                "legend": "Toggle info", "more": None,  "type": "check",
-                                               "order":101, "active_q":self.q_active_info}
+                                               "order":101, "active_q":self.q_active_info},
+                            "vave_sel_var": {"method": self.save_sel_var, "label": "Save selection as variable",
+                                               "legend": "Save the selection as a new data variable",
+                                               "more": None,  "type": "main",
+                                               "order":10, "active_q":self.q_has_selected},
+                            "save_supp_var": {"method": self.save_supp_var, "label": "Save supp as variable",
+                                                "legend": "Save the support as a new data variable",
+                                                "more": None,  "type": "main",
+                                                "order":11, "active_q":self.q_not_svar}
                             }
 
         for setk, setl, setp in self.map_select_supp:
@@ -348,7 +355,13 @@ class GView(BasisView):
 
     def do_flip_emphasized(self, more=None):
         self.sendFlipEmphasizedR()
-
+    def save_supp_var(self, more=None):
+        if self.hasParent():
+            self.parent.OnSaveSuppAsVar(self.suppABCD, "%s" % self.parent.viewsm.getItemId(self.getId()))
+    def save_sel_var(self, more=None):
+        if self.hasParent():
+            lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
+            self.parent.OnSaveSelAsVar(lids, "S%s" % self.parent.viewsm.getItemId(self.getId()))
     
     def getPlotColor(self, idp, prop):
         return tuple(self.dots_draws[prop+"_dots"][idp])
@@ -439,7 +452,7 @@ class GView(BasisView):
             self.redStamp = None
             self.MapcanvasMap.draw()
             
-    def addStamp(self):
+    def addStamp(self, pref=""):
         if self.redStamp is None:
             old_pos = self.axe.get_position()
             # print "PosA", old_pos
@@ -454,8 +467,9 @@ class GView(BasisView):
         red = Redescription.fromQueriesPair(qrs, self.getParentData())
         tex_fields = ["U_query_LHS_named", "U_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
         headers = ["qL", "qR", "J", "|E11|", "pV"]
-        rr = "(%s)   " % self.getItemId()
-        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, sep=" ", headers=headers, delim="", nblines=3, styleX="T", rid=rr)
+        # rr = "(%s)   " % self.getItemId()
+        rr = pref
+        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, sep=" ", headers=headers, delim="", nblines=3, styleX="T") #, rid=rr)
         if self.redStamp is None:
             self.redStamp = {"old_pos": old_pos}
             self.redStamp["text"] = self.MapfigMap.text(0.5, 1-1./(8*2), tex_str, ha="center", va="center")

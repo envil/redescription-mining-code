@@ -364,14 +364,13 @@ class ParaView(GView):
                 selp = self.sld_sel.GetValue()/100.0
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
-                self.dots_draws["lc_dots"][numpy.array(list(selected)), -1] *= selp
 
             ### PLOTTING
             ### Lines
             for r in self.reps:
                 # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
-                if self.dots_draws["lc_dots"][r,-1] > 0:
-                    self.drawEntity(r, fc=self.getPlotColor(r, "lc")) #, zo=self.getPlotProp(r, "zord"))
+                if self.dots_draws["ec_dots"][r,-1] > 0: ## , ec=self.getPlotColor(r, "ec")
+                    self.drawEntity(r, fc=self.getPlotColor(r, "ec")) #, zo=self.getPlotProp(r, "zord"))
 
             ### Bars slidable/draggable rectangles
             rects_drag = {}
@@ -432,7 +431,7 @@ class ParaView(GView):
                     tt = self.axe.annotate(lbl,
                                            xy =(self.prepared_data["xticks"][lbi], bot),
                                            xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
-                                           horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_l"],
+                                           horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_e"],
                                            bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7), zorder=15
                                            )
                     self.ticks_ann.append(tt)
@@ -440,8 +439,8 @@ class ParaView(GView):
                     self.axe.annotate(lbl,
                                       xy =(self.prepared_data["xticks"][lbi], bot),
                                       xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
-                                      horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_l"],
-                                      bbox=dict(boxstyle="round", fc=draw_settings[side]["color_l"], ec="none", alpha=0.3), zorder=15
+                                      horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_e"],
+                                      bbox=dict(boxstyle="round", fc=draw_settings[side]["color_e"], ec="none", alpha=0.3), zorder=15
                                       )
 
             # borders_draw = [numpy.min(self.prepared_data["xticks"])-1-self.margins_sides, bot,
@@ -480,7 +479,7 @@ class ParaView(GView):
             
 
         for i in arrow[0]+arrow[1]:
-            self.axe.plot(corners[i,0], corners[i,1], color=draw_settings[i]["color_l"], marker="o")
+            self.axe.plot(corners[i,0], corners[i,1], color=draw_settings[i]["color_e"], marker="o")
 
         a_xy = numpy.mean(corners[arrow[0],:], axis=0)
         a_dxy = numpy.mean(corners[arrow[1],:], axis=0) - numpy.mean(corners[arrow[0],:], axis=0)
@@ -624,7 +623,13 @@ class ParaView(GView):
             
     def drawEntity(self, idp, fc, ec=None, sz=1, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
-        return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)
+        if self.suppABCD[idp] == SSetts.mud and zo >= 4:
+            return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dotted", zorder=zo)
+        elif self.suppABCD[idp] > SSetts.delta and zo >= 4:
+            return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dashed", zorder=zo)
+        else:
+            return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)
+            
         
     def additionalElements(self):
         t = self.parent.dw.getPreferences()

@@ -213,6 +213,118 @@ class ImportDataCSVDialog(object):
                 self.RHSfileTxt.ChangeValue(path)
                 self.RHSfile = path
 
+class ExportFigsDialog(object):
+    """Helper class to show the dialog for importing data file csv pairs"""
+    def __init__(self, parent, vm, items, ddir=None):
+        self.parent = parent
+        self.vm = vm
+        self.items = items
+        self.dlg = wx.Dialog(self.parent.toolFrame, title="Export figures")
+
+        Extext = wx.StaticText(self.dlg, label='Export file pattern:')
+        self.exfile = None
+        self.exfileTxt = wx.TextCtrl(self.dlg, value='', size=(500,10), style=wx.TE_READONLY)
+
+        self.format_options = {'format': {"label": "Format", "order":1, "opts": [(None, ""), ('png', 'png'), ('eps', 'eps'), ('pdf', 'pdf')]},
+                               'stamp': {"label": "Stamp", "order":2, "opts": [(False, 'No'), (True, 'Yes')]},
+                               'with_disabled': {"label": "Disabled", "order":3, "opts": [(False, 'Exclude'), (True, 'Include')]},
+                               'viewT': {"label": "View type", "order":4, "opts": []}}
+
+        viewTdef = vm.getDefaultViewT(typv="R")
+        for v in vm.getViewsItems(typv="R"):
+            self.format_options["viewT"]["opts"].append((v["viewT"], v["short_title"]))
+            if v["viewT"] == viewTdef:
+                self.format_options["viewT"]["opts"].insert(0, (v["viewT"], v["short_title"]))
+        
+        so_sizer = wx.FlexGridSizer(rows=2, cols=(2+len(self.format_options)), hgap=1, vgap=1)
+
+        ctrl_id = wx.NewId()
+        label = wx.StaticText(self.dlg, wx.ID_ANY, "Height:")
+        self.height_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "600")
+        so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+        so_sizer.Add(self.height_ctrl, 0)
+        label = wx.StaticText(self.dlg, wx.ID_ANY, "Width:")
+        self.width_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "600")
+        so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+        so_sizer.Add(self.width_ctrl, 0)
+
+        self.format_ctrl = {}
+        iks = sorted(self.format_options.keys(), key= lambda x: self.format_options[x].get("order", 1))
+        for item in iks:
+            details = self.format_options[item]
+            ctrl_id = wx.NewId()
+            label = wx.StaticText(self.dlg, wx.ID_ANY, details['label']+":")
+            self.format_ctrl[item] = wx.Choice(self.dlg, ctrl_id)
+            self.format_ctrl[item].AppendItems(strings=[v[1] for v in details['opts']])
+            self.format_ctrl[item].SetSelection(0)
+            so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+            so_sizer.Add(self.format_ctrl[item], 0)
+                        
+
+        Filebtn = wx.Button(self.dlg, label='Choose', name='ExFile')
+        Filebtn.Bind(wx.EVT_BUTTON, self.onButton)
+
+        gridSizer = wx.FlexGridSizer(rows = 1, cols = 3, hgap = 5, vgap = 5)
+        gridSizer.AddGrowableCol(1, proportion=1)
+        gridSizer.SetFlexibleDirection(wx.HORIZONTAL)
+        gridSizer.AddMany([(Extext, 0, wx.ALIGN_RIGHT), (self.exfileTxt, 1, wx.EXPAND), (Filebtn, 0)])
+
+        btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
+        topSizer = wx.BoxSizer(wx.VERTICAL)
+        topSizer.Add(gridSizer, flag=wx.ALL, border=5)
+        topSizer.Add(so_sizer, flag=wx.EXPAND|wx.ALL, border=5)
+        topSizer.Add(btnSizer, flag=wx.ALL, border=5)
+
+        self.dlg.SetSizer(topSizer)
+        self.dlg.Fit()
+
+        if ddir is None:
+            self.open_dir = os.path.expanduser('~/')
+        else:
+            self.open_dir = ddir
+        self.wcd = 'All files|*'
+
+
+    def showDialog(self):
+        format_dict = {}
+        if self.dlg.ShowModal() == wx.ID_OK:
+            try:
+                height = int(self.height_ctrl.GetValue())
+            except:
+                height = -1
+            try:
+                width = int(self.width_ctrl.GetValue())
+            except:
+                width = -1
+                
+            for item, ctrl_single in self.format_ctrl.items():
+                tmp = self.format_options[item]['opts'][ctrl_single.GetCurrentSelection()][0]
+                if tmp is not None:
+                    format_dict[item] = tmp
+            try:
+                self.parent.dw.exportItemsFigs(self.vm, self.exfile, self.items, (height, width), format_dict)
+            except:
+                pass
+                raise
+            finally:
+                self.dlg.Destroy()
+            return True
+        else:
+            return False
+                
+    def onButton(self, e):
+        button = e.GetEventObject()
+        btnName = button.GetName()
+        wcd = self.wcd
+        open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
+                                 defaultDir=self.open_dir, wildcard=wcd,
+                                 style=wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            self.open_dir = os.path.dirname(path)
+            if btnName == 'ExFile':
+                self.exfileTxt.ChangeValue(path)
+                self.exfile = path
 
 
 class FindDialog(object):

@@ -124,7 +124,7 @@ class TreeView(GView):
             self.plotTree(side, trees[side], None, draw_settings)
             if self.hasMissingPoint(side):
                 b = trees[side].getBottomX()
-                self.axe.plot(b, self.height_inter[0]+self.missing_yy, 'o', mec='k', mfc=draw_settings[-1]["color_l"], zorder=10)
+                self.axe.plot(b, self.height_inter[0]+self.missing_yy, 'o', mec='k', mfc=draw_settings[-1]["color_e"], zorder=10)
 
     def plotTreesBasic(self, trees, draw_settings):
         ##### DRAW each line
@@ -146,7 +146,8 @@ class TreeView(GView):
         for li, k in zip(*numpy.where(mat[:, :-1]> 0)):
             x,y = trees[keys[k][0]].getNodeXY(keys[k][1])
             b = trees[keys[k][0]].getBottomX()
-            self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_l"])
+            self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
+            ## self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
 
     def plotTreesT(self, trees, draw_settings):
         ##### DRAW polygons
@@ -168,6 +169,8 @@ class TreeView(GView):
             for si, supp_part in enumerate(trees[side].getNodeSuppSets(k)):
                 mat[list(supp_part)] += 2**(ki+1)
                 parts[list(supp_part), si] = True
+
+        pdb.set_trace()
         connects = []
         map_p = {}
         store_lids = {}
@@ -210,6 +213,7 @@ class TreeView(GView):
         has_miss_points = [False, False]
         # pos = numpy.linspace(1., 2., len(connects))
         for pi, (part, points, nb) in enumerate(connects):
+            print "CONNECT", pi, part, points, nb
             tmp_store_pos = [(pos[pi][0], pos[pi][1])]
             hasBSides = [False, False]
             for point in points:
@@ -217,7 +221,12 @@ class TreeView(GView):
                 hasBSides[keys[point-1][0]] = True
                 b = trees[keys[point-1][0]].getBottomX()
                 ff = numpy.sign(b)*self.flat_space
+                #### HERE
                 self.axe.fill((0, ff, b, ff, 0, 0),
+                              (pos[pi][0], pos[pi][0], keys[point-1][-1],
+                               pos[pi][1], pos[pi][1], pos[pi][0]),
+                               color=draw_settings[part]["color_f"]) #, linewidth=nb/nbtot)
+                self.axe.plot((0, ff, b, ff, 0, 0),            
                               (pos[pi][0], pos[pi][0], keys[point-1][-1],
                                pos[pi][1], pos[pi][1], pos[pi][0]),
                                color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
@@ -229,7 +238,12 @@ class TreeView(GView):
                     self.axe.fill((0, ff, b, ff, 0, 0),
                                   (pos[pi][0], pos[pi][0], self.height_inter[0]+self.missing_yy,
                                    pos[pi][1], pos[pi][1], pos[pi][0]),
-                                  color=draw_settings[part]["color_l"]) #, linewidth=nb/nbtot)
+                                  color=draw_settings[part]["color_f"]) #, linewidth=nb/nbtot)
+                    self.axe.plot((0, ff, b, ff, 0, 0),
+                                  (pos[pi][0], pos[pi][0], self.height_inter[0]+self.missing_yy,
+                                   pos[pi][1], pos[pi][1], pos[pi][0]),
+                                  color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+
                     tmp_store_pos.append((b, self.height_inter[0]+self.missing_yy))
                     has_miss_points[side] = True
             # if (part, points, nb) == (0, (4,16), 1173):
@@ -247,7 +261,7 @@ class TreeView(GView):
         
     def plotTree(self, side, tree, node, ds=None):
         
-        color_dot = {0: ds[0]["color_l"], 1: ds[1]["color_l"]}
+        color_dot = {0: ds[0]["color_e"], 1: ds[1]["color_e"]}
         line_style = {QTree.branchY: "-", QTree.branchN: "--"}
         # rsym = {0: ">", 1: "<"}
         x, y = tree.getNodeXY(node)

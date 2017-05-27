@@ -216,7 +216,7 @@ class BasisView(object):
         self.savef = None
         self.boxL = None
         self.boxT = None
-        self.stamp = None
+        ## self.stamp = None
         self.rsets = None
         self.rwhich = None
         self.vid = vid
@@ -277,9 +277,12 @@ class BasisView(object):
     def getCanvasConnections(self):
         return []
             
-    def lastStepInit(self):
+    def lastStepInit(self, blocking=False):
         pass
 
+    def isReadyPlot(self):
+        return True    
+    
     def isIntab(self):
         return self.intab
 
@@ -586,7 +589,7 @@ class BasisView(object):
         self.boxL.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
         self.boxT.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
         self.boxPop.Bind(wx.EVT_LEFT_UP, self.OnPop)
-        self.stamp.Bind(wx.EVT_LEFT_UP, self.OnStamp)
+        # self.stamp.Bind(wx.EVT_LEFT_UP, self.OnStamp)
         self.boxKil.Bind(wx.EVT_LEFT_UP, self.OnKil)
 
         # self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
@@ -753,7 +756,7 @@ class BasisView(object):
         self._SetSize()
         
     def OnStamp(self, event=None):
-        print "stamp"
+        pass
         
     def OnKil(self, event=None):
         self.OnQuit()
@@ -883,7 +886,7 @@ class BasisView(object):
             self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("outin"))
         # self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
         self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("kil"))
-        self.stamp = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("stamp"))
+        # self.stamp = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("stamp"))
         if not self.hasParent() or not self.parent.getVizm().hasVizIntab():
             self.boxPop.Hide()
             self.boxKil.Hide()
@@ -908,7 +911,7 @@ class BasisView(object):
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
 
         add_boxB.Add(self.savef, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(self.stamp, 0, border=0, flag=flags, userData={"where": "*"})
+        ## add_boxB.Add(self.stamp, 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
 
         self.masterBox =  wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
@@ -1153,7 +1156,6 @@ class BasisView(object):
 
         return {"color_f": self.getColorA(self.getColorKey1("grey_basic")),
                 "color_e": self.getColorA(self.getColorKey1("grey_basic"), 1.),
-                "color_l": self.getColorA(self.getColorKey1("grey_light")),
                 "shape": dot_shape, "size": dot_size, "zord": self.DEF_ZORD}
 
     def getDrawSettings(self):
@@ -1173,24 +1175,21 @@ class BasisView(object):
         for (p, iid) in enumerate([SSetts.alpha, SSetts.beta, SSetts.gamma, SSetts.delta]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
-                        "color_l": self.getColorA(colors[p]), 
                         "shape": defaults["shape"], "size": defaults["size"],
                         "zord": self.DEF_ZORD}
         for (p, iid) in enumerate([SSetts.mua, SSetts.mub]):
-            css[iid] = {"color_f": self.getColorA(defaults["color_f"], -.9),
+            css[iid] = {"color_f": self.getColorA(colors[SSetts.delta], -.9),
                         "color_e": self.getColorA(colors[p], .9),
-                        "color_l": self.getColorA(defaults["color_l"], -.9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": self.DEF_ZORD}
         for (p, iid) in enumerate([SSetts.mubB, SSetts.muaB]):
             css[iid] = {"color_f": self.getColorA(colors[p], -.9),
-                        "color_e": self.getColorA(defaults["color_e"], .9),
-                        "color_l": self.getColorA(defaults["color_l"], -.9),
+                        "color_e": self.getColorA(colors[SSetts.delta], .9),
+                        ## "color_e": self.getColorA(defaults["color_e"], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": self.DEF_ZORD}
-        css[SSetts.mud] = {"color_f": self.getColorA(defaults["color_f"], -.9),
-                           "color_e": self.getColorA(defaults["color_e"], .9),
-                           "color_l": self.getColorA(defaults["color_l"], -.9),
+        css[SSetts.mud] = {"color_f": self.getColorA(colors[SSetts.delta], -.9),
+                           "color_e": self.getColorA(colors[SSetts.delta], .9),
                            "shape": defaults["shape"], "size": defaults["size"]-1,
                            "zord": self.DEF_ZORD}
         # css[SSetts.delta] = {"color_f": self.getColorA(defaults["color_f"]),
@@ -1200,7 +1199,6 @@ class BasisView(object):
         #                      "zord": self.DEF_ZORD}
         css[-1] = {"color_f": self.getColorA(defaults["color_f"], .5),
                    "color_e": self.getColorA(defaults["color_e"], .5),
-                   "color_l": self.getColorA(defaults["color_l"], .5),
                    "shape": defaults["shape"], "size": defaults["size"]-1,
                    "zord": self.DEF_ZORD}
         css["default"] = defaults
@@ -1208,4 +1206,10 @@ class BasisView(object):
         css[SSetts.beta]["zord"] += 1
         css[SSetts.gamma]["zord"] += 2
         css[SSetts.delta]["zord"] -= 1
+        # print "---- COLOR SETTINGS"
+        # for k,v in css.items():
+        #     if type(k) is int:
+        #         print "* %s" % k
+        #         for kk,vv in v.items():
+        #             print "\t%s\t%s" % (kk,vv)
         return css

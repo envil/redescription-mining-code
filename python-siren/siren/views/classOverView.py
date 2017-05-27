@@ -402,7 +402,7 @@ class OverView(LView):
         tf = self.axe.annotate(self.getParentData().col(side, col).getName(),
                                xy =(x, y), xytext =(x, y+0.02),
                                horizontalalignment='center', verticalalignment='bottom', color=ds[side]["color_l"],
-                               bbox=dict(boxstyle="round", fc=ds[side]["color_l"], ec="none", alpha=0.3),
+                               bbox=dict(boxstyle="round", fc=ds[side]["color_e"], ec="none", alpha=0.3),
                                )
         return [tb, tf]
 
@@ -410,12 +410,12 @@ class OverView(LView):
         ds = self.getDrawSettings()
         tb = self.axe.annotate(lits_str,
                                xy =(x, y), xytext =(x, y+0.02),
-                               horizontalalignment='left', verticalalignment='bottom', color=ds[side]["color_l"],
+                               horizontalalignment='left', verticalalignment='bottom', color=ds[side]["color_e"],
                                bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                )        
         tf = self.axe.annotate(lits_str,
                                xy =(x, y), xytext =(x, y+0.02),
-                               horizontalalignment='left', verticalalignment='bottom', color=ds[side]["color_l"],
+                               horizontalalignment='left', verticalalignment='bottom', color=ds[side]["color_e"],
                                bbox=dict(boxstyle="round", fc=ds[side]["color_l"], ec="none", alpha=0.3),
                                )
         return [tb, tf]

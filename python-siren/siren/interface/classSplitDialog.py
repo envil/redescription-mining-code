@@ -8,10 +8,8 @@ from classPreferencesDialog import PreferencesDialog
 
 class SplitDialog(PreferencesDialog):
     """
-    Creates a preferences dialog to setup a worker connection
+    Creates a preferences dialog to setup a data split
     """
-    SUCCESS_FC = "DARKGREEN"
-    FAIL_FC = "RED"
     DEACTIVATED_LBL = "Deactivated"
     AUTOMATIC_LBL = "Automatic"
     

@@ -133,7 +133,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
     ## HERE DEBUG UTF-8
     return head, data, type_all
 
-def parse_sparse(D, coord, ids, varcol, valcol):
+def parse_sparse(D, coord, ids, varcol, valcol, off=None):
     nids = None
     if varcol is None:
         ## this is no sparse data...
@@ -148,6 +148,9 @@ def parse_sparse(D, coord, ids, varcol, valcol):
         col_names = None
         row_named = False
         col_enabled = None
+        sub = 1
+        if off is not None:
+            sub = off           
         
         if valcol is not None and "-1" in nll:
             ### contains indexed column names
@@ -157,7 +160,7 @@ def parse_sparse(D, coord, ids, varcol, valcol):
             ### in general if numerical ids are provided that should be the row number
             ### we expect rows to start at one ...
             try:
-                dictLL[i] = int(i)-1
+                dictLL[i] = int(i)-sub
             except ValueError as e:
                 if col_names is not None and i in ENABLED_COLS:
                     col_enabled = {}
@@ -165,9 +168,9 @@ def parse_sparse(D, coord, ids, varcol, valcol):
                     numerical_ids = False
                     break
         if numerical_ids:
-            if (-1 in dictLL.values()):
+            if off is None and (-sub in dictLL.values()):
                 ### ... unless there was a zero
-                dictLL = dict([(k,v+1) for (k, v) in dictLL.items()])
+                dictLL = dict([(k,v+sub) for (k, v) in dictLL.items()])
             if max(dictLL.values()) > 2*len(dictLL):
                 print "Too large ids compared to number of rows (>2x)!..."
                 numerical_ids = False
@@ -348,6 +351,54 @@ def is_sparse(D):
             colv = []
     return varcol, valcol
 
+def get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol):
+    rtn = None
+    if Lvarcol is None:
+        nb_rowsL = len(L["data"].values()[0])
+        if Rvarcol is None:
+            nb_rowsR = len(R["data"].values()[0])
+            if nb_rowsL == nb_rowsR:
+                rtn = (nb_rowsL, 0, 0)
+            else:
+                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nb_rowsL, nb_rowsR))
+        else:
+            tt = map(int, set(Rids) - set(["-1"]))
+            nrMinR, nrMaxR = min(tt), max(tt)
+            if nb_rowsL == nrMaxR+1:
+                rtn = (nb_rowsL, 0, 0)
+            elif nb_rowsL == nrMaxR and nrMinR > 0:
+                rtn = (nb_rowsL, 0, 1)
+            else:
+                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nb_rowsL, nrMaxR))
+    else:
+        tt = map(int, set(Lids) - set(["-1"]))
+        nrMinL, nrMaxL = min(tt), max(tt)
+
+        if Rvarcol is None:
+            nb_rowsR = len(R["data"].values()[0])            
+            if nb_rowsR == nrMaxL+1:
+                rtn = (nb_rowsR, 0, 0)
+            elif nb_rowsR == nrMaxL and nrMinL > 0:
+                rtn = (nb_rowsR, 1, 0)
+            else:
+                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nrMaxL, nb_rowsR))
+
+        else:
+            tt = map(int, set(Rids) - set(["-1"]))
+            nrMinR, nrMaxR = min(tt), max(tt)
+            if nrMaxR == nrMaxL:
+                if nrMinR == 1 and nrMinL == 1:
+                    rtn = (nrMaxR, 1, 1)
+                else:
+                    rtn = (nrMaxR+1, 0, 0)
+            elif nrMaxR == nrMaxL+1 and nrMinR == 1:
+                rtn = (nrMaxR, 0, 1)
+            elif nrMaxR+1 == nrMaxL and nrMinL == 1:
+                rtn = (nrMaxL, 1, 0)
+            else:
+                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nrMaxL, nrMaxR))
+    return rtn
+    
 def row_order(L, R):
     ### TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
@@ -363,22 +414,23 @@ def row_order(L, R):
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
 
-
+    nbr, offL, offR = get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol)
+    #### UNDER WORK Sparse pairs storing with empty first row on sparse side 
     if LhasIds and Lvarcol is not None: 
-        if True:
-#        try:
-            L, Lcoord, Lids, LhasCoord_sp, LhasIds = parse_sparse(L, Lcoord, Lids, Lvarcol, Lvalcol)
+        #if True:
+        try:
+            L, Lcoord, Lids, LhasCoord_sp, LhasIds = parse_sparse(L, Lcoord, Lids, Lvarcol, Lvalcol, offL)
             LhasCoord |= LhasCoord_sp
-        # except Exception as arg:
-        #     raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
+        except Exception as arg:
+            raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
     if RhasIds and Rvarcol is not None:
         try:
-            R, Rcoord, Rids, RhasCoord_sp, RhasIds = parse_sparse(R, Rcoord, Rids, Rvarcol, Rvalcol)
+            R, Rcoord, Rids, RhasCoord_sp, RhasIds = parse_sparse(R, Rcoord, Rids, Rvarcol, Rvalcol, offR)
             RhasCoord |= RhasCoord_sp
         except Exception as arg:
             raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
-        
+
     order_keys = [[],[]]
     # pdb.set_trace()
     if (LhasIds and RhasIds):

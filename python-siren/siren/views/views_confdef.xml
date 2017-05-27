@@ -357,4 +357,37 @@
       </parameter>
     </section>
   </section>
+    <section>
+    <name>Export</name>
+    <section>
+      <name>Format figures</name>
+      <parameter>
+	<name>efig_height</name>
+	<label>Heigth</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Height of exported figures.</legend>
+	<length>4</length>
+	<default><value>600</value></default>
+      </parameter>
+      <parameter>
+	<name>efig_width</name>
+	<label>Width</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Width of exported figures.</legend>
+	<length>4</length>
+	<default><value>600</value></default>
+      </parameter>
+      <parameter>
+	<name>efig_stamp</name>
+	<label>Stamp</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Write the queries and stats above the figures.</legend>
+	<default><value>0</value></default>
+	<options><value>No</value><value>Yes</value></options>
+      </parameter>
+    </section>
+  </section>
 </root>

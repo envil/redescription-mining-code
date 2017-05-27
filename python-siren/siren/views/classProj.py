@@ -360,7 +360,10 @@ class ProjFactory(object):
         details = {}
         for cls in all_subclasses(Proj):
             if (re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None) and (what in cls.whats):
-                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
+                short_title = re.sub("Multidimensional", "Mul.Dim.", re.sub("Projection", "Proj.", re.sub("Embedding", "Embd.", cls.title_str)))
+                short_title = re.sub("Random", "Rand.", re.sub("Randomized", "Rand.", short_title))
+                # details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
+                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "short_title": short_title, "class": bc, "more": cls.PID, "ord": bc.ordN}
         return details
 
     @classmethod

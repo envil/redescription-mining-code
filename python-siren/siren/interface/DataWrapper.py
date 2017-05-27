@@ -3,11 +3,13 @@ import collections
 import sys
 import re
 
+import time
+
 import pdb
 
 from ..reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
-from ..reremi.classData import Data, DataError
-from ..reremi.classQuery import Query
+from ..reremi.classData import Data, DataError, ColM
+from ..reremi.classQuery import Query, Literal
 from ..reremi.toolICList import ICList
 from ..reremi.toolICDict import ICDict
 from ..reremi.toolLog import Log
@@ -500,7 +502,45 @@ class DataWrapper(object):
             self._stopMessage()
             raise
         self._stopMessage('exporting')
-            
+
+    def exportItemsFigs(self, vm, filename, items=None, dims=(600,600), fmt_details={}):        
+        self._startMessage('saving figures', filename)
+        if items is None:
+            items = self.reds
+        with_disabled = fmt_details.get("with_disabled", False)
+        viewT = fmt_details.get("viewT", vm.getDefaultViewT(typv="R"))
+        fmt = fmt_details.get("format", None)
+        stamp = fmt_details.get("stamp", False)
+        
+        if not re.search("%s", filename):
+            parts = filename.split(".")
+            if len(parts) > 1:
+                filename = ".".join(parts[:-1])+"_%s."+parts[-1]
+            else:
+                filename += "_%s"
+        try:
+            for iid, item in enumerate(items):
+                if not with_disabled and not item.getEnabled():
+                    continue
+                if type(item) in ColM.__subclasses__():
+                    queries = [Query(), Query()]
+                    queries[item.getSide()].extend(-1, Literal(False, item.getTerm()))
+                    mapV = vm.newRedVHist(queries, viewT, -1)
+
+                elif type(item) is Redescription:
+                    mapV = vm.viewData(viewT, item, iid, -1)
+                mapV.lastStepInit(blocking=True)
+                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+                if stamp:
+                    mapV.addStamp(viewT)
+                mapV.savefig(filename % iid, format=fmt)
+                mapV.OnKil()
+                
+        except Exception:
+            self._stopMessage()
+            raise
+        self._stopMessage('saving figures')
+        
 
     def _startMessage(self, action, filenames):
         "Shows the message if needed"

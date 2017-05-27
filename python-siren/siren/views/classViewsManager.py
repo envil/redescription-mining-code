@@ -114,14 +114,16 @@ class ViewsManager:
             
         mapV = self.getViewX(viewT, vid)
         if vid is None and mapV is not None:
-            self.registerView(mapV.getId(), ikey, upMenu=False)
+            if ikey[0] != -1:
+                self.registerView(mapV.getId(), ikey, upMenu=False)
             mapV.setCurrent(what)
-            mapV.updateTitle()
-            mapV.lastStepInit()
-            self.parent.updateMenus()
+            if ikey[0] != -1:
+                mapV.updateTitle()
+                mapV.lastStepInit()
+                self.parent.updateMenus()
         return mapV
             
-    def registerView(self, vkey, ikey, upMenu=True):
+    def registerView(self, vkey, ikey, upMenu=True):        
         ## print "Register", vkey, ikey
         self.vtoi[vkey] = ikey
         if ikey not in self.itov:
@@ -193,7 +195,7 @@ class ViewsManager:
         if listsHdl is None:
             listsHdl = self.parent.getDefaultTab("r")
         iid = -1
-        if listsHdl is not None:
+        if listsHdl is not None and listsHdl != -1:
             iid = listsHdl.insertItem('hist', red)
 
             ikey = (listsHdl.tabId, ViewFactory.getTypV(viewT), iid)
@@ -206,7 +208,6 @@ class ViewsManager:
     def recomputeAll(self):
         for vkey, view in self.view_map.items():
             view.refresh()
-
     def getItemId(self, vkey):
         if vkey in self.vtoi:
             return "%s%d" % (self.vtoi[vkey][1], self.vtoi[vkey][2])

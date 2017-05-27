@@ -25,6 +25,7 @@ class SSetts(object):
     # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
     labels = ['alpha', 'beta', 'gamma', 'delta', 'mua', 'mub', 'muaB', 'mubB', 'mud' ]
+    labels_alt = ['E10', 'E01', 'E11', 'E00', 'E1?', 'E?1', 'E0?', 'E?0', 'E??']
     for i, l in enumerate(labels):
         exec("%s = %d" % (l,i))
 

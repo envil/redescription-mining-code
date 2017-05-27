@@ -406,6 +406,8 @@ class Redescription(object):
 
     def getStatus(self):
         return self.status
+    def getEnabled(self):
+        return self.status
 
     def flipEnabled(self):
         self.status = -self.status

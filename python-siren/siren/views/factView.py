@@ -51,8 +51,8 @@ class ViewFactory(object):
 
     @classmethod
     def getViewsInfo(tcl, typv="R", tabT=None, geo=False, what=None, excludeT=None):
-        infos = [{"viewT": viewT, "title": details["title"], "ord": details["ord"], \
-                  "suitable":details["class"].suitableView(geo, what, tabT)} \
+        infos = [{"viewT": viewT, "title": details["title"], "short_title": details.get("short_title", details["title"]),
+                  "ord": details["ord"], "suitable":details["class"].suitableView(geo, what, tabT)} \
                  for viewT, details in tcl.getClasses(typv).items() if (excludeT is None or viewT not in excludeT)]
         infos.sort(key=lambda x: (x["ord"], x["title"]))
         return infos

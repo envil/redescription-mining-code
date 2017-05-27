@@ -88,7 +88,7 @@ class SirenApp(wx.App):
             tab ="reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
-            # self.frame.tabs[tab]["tab"].viewData(1, "TR")
+            self.frame.tabs[tab]["tab"].viewData(0, "TR")
             # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
