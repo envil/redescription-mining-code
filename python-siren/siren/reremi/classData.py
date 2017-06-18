@@ -943,11 +943,11 @@ class NumColM(ColM):
         ##     self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
         ## if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
         tmpV = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
-        # pdb.set_trace()
         # if len([i for v,i in self.sVals if v == MODE_VALUE]) > 0.1*self.N compute vector
         #     self.sVals = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
         if force or ( len(self.sVals)+len(self.missing) > 0 and len(tmpV)+len(self.missing) != self.N \
-                          and len(self.sVals) - len(tmpV)  > 0.1*self.N):
+           and ( len(self.sVals)+len(self.missing) < self.N  or len(self.sVals) - len(tmpV)  > 0.1*self.N)):
+           ### THIS CONDITION LAST CONDITION: either is already sparse or turning to sparse would bring gain
             self.sVals = tmpV    ## gather row ids for which
             ## gather row ids for which
             if len(self.sVals) > 0:
@@ -1663,7 +1663,7 @@ class Data(object):
         if name is None:
             name = "Rx"
         ks = np.unique(suppVect)
-        lbl = SSetts.labels_alt
+        lbl = SSetts.labels_sparts
         if np.max(ks) > len(lbl):
             lbl = ["S%d" % i for i in range(np.max(ks)+1)]
         parts = {}
@@ -2583,12 +2583,12 @@ def main():
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data
 
-    rep = "/home/egalbrun/short/test_petit/data_fz/"
+    rep = "/home/egalbrun/TKTL/misc/Hedde/"
     ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
-    for (dL, dR) in [("", ""), ("", "F"), ("F", ""), ("F", "F")]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
+    for (dL, dR) in [("THS", "RHS"), ("LHS", "RHS")]:
         ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
         # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
-        data = Data([rep+"data_LHS%s.csv" % dL, rep+"data_RHS%s.csv" % dR, {}, "NA"], "csv")
+        data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ";"}, "NA"], "csv")
         print dL, dR, data
         print "---------------"
         for side in [0,1]:

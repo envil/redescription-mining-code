@@ -1,4 +1,4 @@
-import sys, os.path
+import sys, os.path, re
 import wx
 import wx.lib.mixins.listctrl  as  listmix
 from ..reremi.classQuery import SYM, Literal, Query
@@ -800,8 +800,8 @@ class SplitView:
     def updateLid(self, lid):
         if lid != self.active_lid: # check validity lid 
             self.active_lid = lid
-            self.refresh()
-            self.parent.notify_change_list("update_%d" % lid)
+            self.refresh(cascade=(lid is not None))
+            self.parent.notify_change_list("update_%d" % (lid or -1))
     def setLid(self, lid):
         self.active_lid = lid
         self.lci.loadData(lid)
@@ -854,7 +854,32 @@ class RefsList:
         else:
             self.name = name
         self.isChanged = False
-        
+
+    def matches(self, what={}):
+        match = True
+        if "namepIn" in what:
+            match &= (re.match(what["namepIn"], self.getName()) is not None)
+        if "namepOut" in what:
+            match &= not (re.match(what["namepOut"], self.getName()) is not None)
+
+        if "srcTypIn" in what:
+            srcTyp = what["srcTypIn"]
+            if type(srcTyp) is list: 
+                match &= ( self.getSrcTyp() in srcTyp )
+            elif type(srcTyp) is int:
+                match &= ( self.getSrcTyp() == LIST_TYPES_NAMES[srcTyp] )
+            else:
+                match &= ( self.getSrcTyp() == srcTyp )
+        if "srcTypOut" in what:
+            srcTyp = what["srcTypOut"]
+            if type(srcTyp) is list: 
+                match &= not ( self.getSrcTyp() in srcTyp )
+            elif type(srcTyp) is int:
+                match &= not ( self.getSrcTyp() == LIST_TYPES_NAMES[srcTyp] )
+            else:
+                match &= not ( self.getSrcTyp() == srcTyp )
+        return match
+                
     def getSrc(self):
         return self.src
     def getSrcTyp(self):
@@ -1178,6 +1203,13 @@ class EditableContent(StaticContent):
         nlid = self.addList(src, items, sord)
         return nlid
 
+    def getChangedLists(self, what={}):
+        changed = []
+        for lid, ll in self.lists.items():            
+            if ll.isChanged and ll.matches(what):
+                changed.append(lid)
+        return changed 
+
     def addList(self, src=None, items=[], sord=None, name=None):
         src = RefsList.makeSrc(src)
         nlid = self.nlid
@@ -1341,6 +1373,9 @@ class VarsSet(StaticContent):
         self.resetFields()
 
         src = RefsList.makeSrc(src)
+        
+        self.lists.clear()
+        del self.lists_ord[:]
         for side in self.items.getSides():
             self.lists[side] = RefsList(self, side, src, "Vars %s" % side, iids=self.items.getIids(side)) 
             self.lists_ord.append(side)
@@ -1361,7 +1396,7 @@ class RedsSet(EditableContent):
                           ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
                           ('J', str_red+'.getRoundAcc', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
                           ('p-value', str_red+'.getRoundPVal', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                          ('|E'+SYM.SYM_GAMMA+'|', str_red+'.getLenI', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
+                          ('|supp|', str_red+'.getLenI', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
                           ('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
 
     fields_def_splits = [('', str_red+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT),
@@ -1378,9 +1413,9 @@ class RedsSet(EditableContent):
                           StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
                          (SYM.SYM_TEST+'pV', str_red+'.getRoundPVal', {"rset_id": "test"},
                           StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_LEARN+'|E'+SYM.SYM_GAMMA+'|', str_red+'.getLenI', {"rset_id": "learn"},
+                         (SYM.SYM_LEARN+'|supp|', str_red+'.getLenI', {"rset_id": "learn"},
                           StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_TEST+'|E'+SYM.SYM_GAMMA+'|', str_red+'.getLenI', {"rset_id": "test"},
+                         (SYM.SYM_TEST+'|supp|', str_red+'.getLenI', {"rset_id": "test"},
                           StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
                          ('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
 
@@ -1481,6 +1516,7 @@ class ContentManager:
         self.getDataHdl().clearLists()
         if len(data) > 0 or src is not None:
             return self.addData(src, data, sord)
+        self.getViewHdl().updateLid(None)
         return None
 
     def resetDetails(self, details={}, review=True):
@@ -1982,8 +2018,7 @@ class RedsManager(ContentManager):
                 for li in range(len(iids["before"]), len(ll)-llafter):
                     lc.Select(li)
 
-
-    def recomputeAll(self, restrict):
+    def recomputeAll(self, restrict=None):
         if self.parent.hasDataLoaded():
             self.uptodate = False
             self.refreshComp(self.parent.dw.getData())
@@ -1992,3 +2027,7 @@ class RedsManager(ContentManager):
             #     if mc is not None:
             #         mc.refresh()
             self.refresh()
+
+    def hasRedsChanged(self, what={}):
+        lls =  self.getDataHdl().getChangedLists(what)
+        return len(lls) > 0

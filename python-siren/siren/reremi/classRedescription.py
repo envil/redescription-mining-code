@@ -7,19 +7,26 @@ import pdb
 
 ACTIVE_RSET_ID = "S0"
 SIDE_CHARS = {0:"L", 1:"R"}
-NUM_CHARS = dict([(numpy.base_repr(ii, base=26), "%s" % chr(ii+ord("a"))) for ii in range(26)])
+NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
-def digit_to_char(n):
-    tmp = "".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=26)])
+def digit_to_char(n, pad=None):
+    if pad is None:
+        tmp = "".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=25)])
+    else:
+        tmp = ("z"*pad+"".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=25)]))[-pad:]
     # print "%s -> %s" % (n, tmp)
     return tmp
 
-def var_ltx_cmd(sid, vid):
+def side_ltx_cmd(sid, padss=None):
     if sid in SIDE_CHARS:
         schar = SIDE_CHARS[sid]
     else:
-        schar = digit_to_char(sid)
-    vchar = digit_to_char(vid)
+        schar = digit_to_char(sid, padss)
+    return schar
+
+def var_ltx_cmd(sid, vid, padsv=None, padss=None):
+    schar = side_ltx_cmd(sid, padss)
+    vchar = digit_to_char(vid, padsv)
     return "\\v%sHS%s" % (schar.upper(), vchar.lower())
 
 class Redescription(object):
@@ -456,6 +463,11 @@ class Redescription(object):
     def getEnabled(self, details=None):
         return 1*(self.status>0)
 
+    def getTypeParts(self, details=None):
+        return self.sParts.getTypeParts()
+    def getMethodPVal(self, details=None):
+        return self.sParts.getMethodPVal()    
+    
     def getRSet(self, details=None):
         if details is not None and details.get("rset_id") in self.restricted_sets:
             return self.restricted_sets[details.get("rset_id")]
@@ -498,6 +510,10 @@ class Redescription(object):
     def getRoundAccRatio(self, details=None):
         return round(self.getAccRatio(details), 3)
 
+    def getLenP(self, details=None):
+        if "part_id" in details:
+            return self.getRSetParts(details).lenP(details["part_id"])
+        return -1
 
     def getLenI(self, details=None):
         return self.getRSetParts(details).lenI()
@@ -603,7 +619,7 @@ class Redescription(object):
         return info_tmp
     
 
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX="", supp_names=None):
+    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX="", supp_names=None, last_one=False):
         if list_fields is None:
             if names[0] is not None or names[1] is not None:
                 list_fields = Redescription.print_default_fields_named
@@ -650,12 +666,10 @@ class Redescription(object):
             else:
                 info_name = ""
             details.append(info_name+tmp)
-
         if headers is not None and len(details) == len(headers):
             fields = [(delim+"%s=%s"+delim) % (headers[i], details[i].strip(delim)) for i in range(len(details))]
         else:
             fields = [(delim+"%s"+delim) % d.strip(delim) for d in details]
-        
         entries = {"rid": rid, "stats":sep.join(fields[2:]), "q0": fields[0], "q1": fields[1], "all": sep.join(fields)}
 
         nbc = "%d" % (len(details)+1)
@@ -669,17 +683,21 @@ class Redescription(object):
         # frmts["1b"] = "%(rid)s %(all)s"
         # for k,v in frmts.items():
         #     print k, "---\t", v % entries
-               
         if nblines == 3:
             #### SPREAD ON THREE LINES            
             if "&" in sep:
                 frmts = "%(rid)s & & & %(stats)s & \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{l}{ %(q0)s } \\\\ \n" + \
-                        " & \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\ [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
+                        " & \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\"
+                if not last_one:
+                    frmts +=  " [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
             else:
                 frmts = "%(rid)s%(stats)s\n%(q0)s\n%(q1)s"
         elif nblines == 2:
             if "&" in sep:
-                frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\ [.3em]"
+                frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\"
+                if not last_one:
+                    frmts +=  " [.3em]"
+
             else:
                 frmts = "%(rid)s%(q0)s\t%(q1)s\n%(stats)s"
         else:
@@ -911,14 +929,20 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
     names_alts = []
     names_commands = ""
     numvs_commands = ""
+    macvs_commands = ""
+    padss = len(digit_to_char(len(names)-1))
     for i, ns in enumerate(names):
         if ns is not None:
             names_alts.append([])
+            padsv = len(digit_to_char(len(ns)-1))
+            sltx = side_ltx_cmd(i, padss)
+            macvs_commands += "\\newcommand{\\varname%s}[1]{\\text{\\textcolor{%sHSclr}{#1}}} \n" % (sltx, sltx)
             for ni, n in enumerate(ns):
-                vlc = var_ltx_cmd(i, ni)
+                vlc = var_ltx_cmd(i, ni, padsv, padss)
                 names_alts[i].append("$"+vlc+"{}$")
-                names_commands += "\\newcommand{%s}{\\text{%s}}\n" % (vlc, re.sub("_", "\\_", n))
-                numvs_commands += "%% \\newcommand{%s}{\\text{v%d}}\n" % (vlc, ni)
+                tmp = re.sub("#", "\#", re.sub("_", "\\_", re.sub("\\\\", "\\\\textbackslash{}", n)))
+                names_commands += "\\newcommand{%s}{\\varname%s{%s}}\n" % (vlc, sltx, tmp)
+                numvs_commands += "%% \\newcommand{%s}{\\varname%s{v%d}}\n" % (vlc, sltx, ni)
         else:
             names_alts.append(None)
                 
@@ -932,7 +956,20 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
               "\\usepackage[utf8x]{inputenc}\n"+ \
               "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
               "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % index for right hand side\n"+ \
+              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n\n"+ \
+              "\\usepackage{color}\n"+ \
+              "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
+              "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
+              "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
+              "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
+              "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
+              "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
+              "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
+              "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"+ \
+              macvs_commands + \
+              "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
+              "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
+              "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
               "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
               "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
               "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
@@ -947,8 +984,8 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
         #### SPREAD ON THREE LINES
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{1ex}}p{0.12\\textwidth}@{\\hspace*{1ex}}p{1cm}"
         for i in range(len(tex_fields)-2):
-            str_out += "@{\\hspace*{1ex}}p{0.15\\textwidth}"
-        str_out += "@{\\hspace*{1cm}}p{0.17\\textwidth}@{\\hspace*{1ex}}}\n"
+            str_out += "@{\\hspace*{1ex}}p{0.17\\textwidth}"
+        str_out += "@{\\hspace*{1cm}}p{0.12\\textwidth}@{\\hspace*{1ex}}}\n"
         str_out += "\\toprule\n"
 
     elif nblines == 2:
@@ -994,16 +1031,23 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
     #     str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=rid, nblines=nblines) # 
 
     for ri, red in enumerate(red_list):
-        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ri, nblines=nblines, delim="$") + "\n" 
+        ridstr = "\RName{%s}" %ri
+        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ridstr, nblines=nblines, delim="$", last_one=(ri+1 == len(red_list))) + "\n" 
 
     str_out += "" + \
         "\\bottomrule\n"+ \
         "\\end{tabular}\n"
     str_out += "\\end{table}\n"+ \
         "\\end{document}"
+    ### auctex vars
+    str_out += "\n%%%%%% Local Variables:\n"+ \
+        "%%%%%% mode: latex\n"+ \
+        "%%%%%% TeX-master: t\n"+ \
+        "%%%%%% End:\n"
+
     return str_out
 
-def printRedList(red_list, names=[None, None], fields=None, full_supp=False, supp_names=None):
+def printRedList(red_list, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1):
     all_fields = list(Redescription.print_default_fields)
     if names[0] is not None or names[1] is not None:
         all_fields = Redescription.print_default_fields_named
@@ -1016,11 +1060,12 @@ def printRedList(red_list, names=[None, None], fields=None, full_supp=False, sup
         all_fields.extend(Redescription.print_default_fields_supp)
     str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
     for ri, red in enumerate(red_list):
-        str_out += red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names) + "\n"
+        str_out += red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names, nblines=nblines) + "\n"
     return str_out
 
 def parseRedList(fp, data, reds=None):
     list_fields = None
+    sep = None
     more = []
     if reds is None:
         reds = []

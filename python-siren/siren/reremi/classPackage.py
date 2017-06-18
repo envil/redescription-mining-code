@@ -347,7 +347,7 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         if style == "tex":
             f.write(codecs.encode(printTexRedList(red_list, names, fields_supp, nblines=nblines), 'utf-8','replace'))
         else:
-            f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names), 'utf-8','replace'))
+            f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines), 'utf-8','replace'))
             
 def writePreferences(preferences, pm, filename, toPackage = False, inc_def=False):
     with open(filename, 'w') as f:
@@ -373,3 +373,28 @@ def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
         contents['pm'] = pm
 
     package.writeToFile(filename+suffix, contents)
+
+    
+def getPrintParams(filename, data=None):
+    params = {"with_disabled": False, "style": "", "full_supp":False, "nblines":1,
+              "names": [None, None], "supp_names": None}
+
+    named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
+    supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or \
+                 ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
+
+    params["with_disabled"] = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
+    params["full_supp"] = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
+            
+    if re.search(".tex$", filename):
+        params["style"] = "tex"
+
+    tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).[a-z]*$", filename)
+    if tmp is not None:
+        params["nblines"] = int(tmp.group("nbl"))
+
+    if named and data is not None:
+        params["names"] = data.getNames()            
+    if supp_names:
+        params["supp_names"] = data.getRNames()            
+    return params

@@ -25,7 +25,20 @@ class SSetts(object):
     # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
     labels = ['alpha', 'beta', 'gamma', 'delta', 'mua', 'mub', 'muaB', 'mubB', 'mud' ]
-    labels_alt = ['E10', 'E01', 'E11', 'E00', 'E1?', 'E?1', 'E0?', 'E?0', 'E??']
+    status = [(True, False), (False, True), (True, True), (False, False),
+              (True, None), (None, True), (False, None), (None, False), (None, None)]
+    labels_status = {True:"1", False:"0", None:"?"}
+    labelsu_status = {True:u"\u2081", False:u"\u2080", None:u"\u2098"}
+    labels_sparts = ["E%s%s" % (labels_status[slhs], labels_status[srhs]) for (slhs, srhs) in status]
+    ## WITH UNICODE
+    sym_status = labelsu_status
+    # ## WITHOUT UNICODE
+    # sym_status = labels_status
+    
+    sym_sparts = [sym_status[slhs]+sym_status[srhs] for (slhs, srhs) in status]
+
+    
+    ### define the numerical values for the parts
     for i, l in enumerate(labels):
         exec("%s = %d" % (l,i))
 
@@ -33,6 +46,16 @@ class SSetts(object):
     for i, l in enumerate(io_labels):
         exec("%s = %d" % (l,i))
 
+    map_status_part = dict([(s,p) for (p,s) in enumerate(status)])
+    @classmethod
+    def mapStatusToSPart(tcl, status):
+        return tcl.map_status_part.get(status, -1)
+
+    @classmethod
+    def mapStatusToSPart(tcl, status):
+        return tcl.map_status_part.get(status, -1)
+
+        
     # # indexes of the parts
     # (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = range(9)
     # (into, out, tot, imiss) = range(4)
@@ -68,6 +91,11 @@ class SSetts(object):
         self.type_parts = None
         self.resetPartsIds(type_parts)
         self.setMethodPVal(methodpVal)
+
+    def getTypeParts(self):
+        return self.type_parts
+    def getMethodPVal(self):
+        return self.methodpVal
 
     def reset(self, type_parts=None, methodpVal=None):
         if type_parts is not None:
@@ -472,7 +500,7 @@ class SParts(object):
     print_finfo = infos.keys()
     print_iinfo = ["card_"+ label for label in SSetts.labels]
     print_sinfo = list(SSetts.labels)
-
+    
     def __init__(self, ssetts, N, supports, prs = [1,1]):
         #### init from dict_info
         self.ssetts = ssetts
@@ -575,6 +603,11 @@ class SParts(object):
             return cmp(lps, lpo)
         return -1
 
+    def getTypeParts(self):
+        return self.ssetts.getTypeParts()
+    def getMethodPVal(self):
+        return self.ssetts.getMethodPVal()
+    
     def pVal(self):
         try:
             return eval('self.pVal%s()' % (self.ssetts.methodpVal))
@@ -783,6 +816,10 @@ class SParts(object):
     def lenB(self, side=0):
         return self.lparts_union(self.ssetts.IDS_dR, side)
 
+    def lenP(self, i, side=0):
+        return self.lpart(i, side)
+    def esetP(self, i, side=0):
+        return self.part(i, side)
 
     ## corresponding lengths
     def lenD(self, side=0):

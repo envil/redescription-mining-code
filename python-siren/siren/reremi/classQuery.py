@@ -1,5 +1,5 @@
 import re, random, operator, itertools, codecs, numpy, copy
-from classSParts import  SParts
+from classSParts import  SParts, SSetts
 from redquery_parser import RedQueryParser
 import scipy.spatial.distance
 from grako.exceptions import * # @UnusedWildImport
@@ -177,11 +177,7 @@ class SYM(object):
     SYMU_EIN = ur'\u2208'
     SYMU_NIN = ur'\u2209'
     SYMU_NEQ = ur'\u2260'
-
-    SYMU_ALPHA=u"\u2081\u2080"
-    SYMU_BETA=u"\u2080\u2081"
-    SYMU_GAMMA=u"\u2081\u2081"
-    SYMU_DELTA=u"\u2080\u2080"
+    
     SYMU_SETMIN=u"\u2216"
 
     SYMU_ARRTOP=u"\u2191"
@@ -209,10 +205,6 @@ class SYM(object):
     SYMO_NIN = 'NOT IN'
     SYMO_NEQ = '~'
 
-    SYMO_ALPHA="_10"
-    SYMO_BETA="_01"
-    SYMO_GAMMA="_11"
-    SYMO_DELTA="_00"
     SYMO_SETMIN="\\"
 
     SYMO_ARRTOP="^"
@@ -224,7 +216,6 @@ class SYM(object):
     SYMO_INOUT = '>>'
     SYMO_OUTIN = '<<'
 
-
     ## WITH UNICODE
     SYM_OR = SYMU_OR
     SYM_AND = SYMU_AND
@@ -234,21 +225,17 @@ class SYM(object):
     SYM_NIN = SYMU_NIN
     SYM_NEQ = SYMU_NEQ
 
-    SYM_ALPHA=SYMU_ALPHA
-    SYM_BETA=SYMU_BETA
-    SYM_GAMMA=SYMU_GAMMA
-    SYM_DELTA=SYMU_DELTA
-    SYM_SETMIN=SYMU_SETMIN
+    SYM_SETMIN = SYMU_SETMIN
 
-    SYM_ARRTOP=SYMU_ARRTOP
-    SYM_ARRBOT=SYMU_ARRBOT
+    SYM_ARRTOP = SYMU_ARRTOP
+    SYM_ARRBOT = SYMU_ARRBOT
     SYM_LEARN = SYMU_LEARN
     SYM_TEST = SYMU_TEST
     SYM_RATIO = SYMU_RATIO
     SYM_CROSS = SYMU_CROSS
     SYM_INOUT = SYMU_INOUT
     SYM_OUTIN = SYMU_OUTIN
-
+    
     ## WITHOUT UNICODE
     # SYM_OR = SYMO_OR
     # SYM_AND = SYMO_AND
@@ -257,15 +244,11 @@ class SYM(object):
     # SYM_EIN = SYMO_EIN
     # SYM_NIN = SYMO_NIN
     # SYM_NEQ = SYMO_NEQ
+    
+    # SYM_SETMIN = SYMO_SETMIN
 
-    # SYM_ALPHA=SYMO_ALPHA
-    # SYM_BETA=SYMO_BETA
-    # SYM_GAMMA=SYMO_GAMMA
-    # SYM_DELTA=SYMO_DELTA
-    # SYM_SETMIN=SYMO_SETMIN
-
-    # SYM_ARRTOP=SYMO_ARRTOP
-    # SYM_ARRBOT=SYMO_ARRBOT
+    # SYM_ARRTOP = SYMO_ARRTOP
+    # SYM_ARRBOT = SYMO_ARRBOT
     # SYM_LEARN = SYMO_LEARN
     # SYM_TEST = SYMO_TEST
     # SYM_RATIO = SYMO_RATIO
@@ -616,6 +599,7 @@ class CatTerm(Term):
             return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
 
     def dispTex(self, neg, names = None):
+        # neg = False
         symbIn = '\\in'
         if neg is None:
             neg = ""
@@ -626,14 +610,22 @@ class CatTerm(Term):
                 symbIn = '\\not\\in'
                 
             if type(names) == list  and len(names) > 0:
-                return '%s $%s$ %s' % (names[self.col], symbIn, self.cat)
+                if re.match("\$", names[self.col]):
+                    xx = '%s $%s \\text{%s}$' % (names[self.col], symbIn, self.cat)
+                else:
+                    xx = '$\\text{%s} %s \\text{%s}$' % (names[self.col], symbIn, self.cat)
             else:
-                return ('$'+Term.pattVName+' %s$ %s') % (self.col, symbIn, self.cat)
-        
+                xx = ('$'+Term.pattVName+' %s \\text{%s}$') % (self.col, symbIn, self.cat)
+            return xx 
+
         if type(names) == list  and len(names) > 0:
-            return '%s%s $%s$ %s' % (neg, names[self.col], symbIn, self.cat)
+            if re.match("\$", names[self.col]):
+                xx = '%s%s $%s \\text{%s}$' % (neg, names[self.col], symbIn, self.cat)
+            else:
+                xx = '%s$\\text{%s} %s \\text{%s}$' % (neg, names[self.col], symbIn, self.cat)
         else:
-            return ('%s$'+Term.pattVName+' %s$ %s') % (neg, self.col, symbIn, self.cat)
+            xx = ('%s$'+Term.pattVName+' %s \\text{%s}$') % (neg, self.col, symbIn, self.cat)
+        return xx 
 
     def dispU(self, neg, names = None):
         symbIn = '='
@@ -1905,6 +1897,7 @@ class Query(object):
                     pref = Neg(True).styledDisp(style) + "( "
                     suff = " )"
                 tmp = pref + jstr.join(vs) + suff
+                tt = tmp
                 if re.match("Tex", style):
                     tmp = re.sub("\$\s+\$", " ", tmp)
                 return tmp

@@ -16,9 +16,11 @@ from ..reremi.toolLog import Log
 from ..reremi.classBatch import Batch
 from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 from ..reremi import toolRead
-from ..reremi.classPackage import Package, writePreferences, writeRedescriptions
+from ..reremi.classPackage import Package, writePreferences, writeRedescriptions, getPrintParams
 
 #from findFiles import findFile
+
+SSETTS_PARAMS = set(["parts_type", "method_pval"])
 
 def findFile(fname, path=['']):
     """Finds file from path (always including the current working directory) and returns
@@ -60,6 +62,7 @@ class DataWrapper(object):
         self.package = None
         self._isChanged = False
         self._isFromPackage = False
+        self._needsReload = False
 
         # (possible) function pointers to tell we've started and stopped reading
         # If these are not None, they have to be triples (fnc, *args, **kwargs)
@@ -206,12 +209,17 @@ class DataWrapper(object):
             self._isFromPackage = value
         else:
             raise TypeError("The isFromPackage property accepts only Boolean attributes")
+
+    def getDiffPrefs(self, vdict):
+        return [item_id for (item_id, trip) in vdict.items() if trip["data"] != self.getPreference(item_id)]
         
     def updatePreferencesDict(self, params):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
+            dtv = self.getDiffPrefs(params)
             self.preferences.update(params)
-            self.resetSSetts()
+            if len(SSETTS_PARAMS.intersection(dtv)) > 0:
+                self.resetSSetts()
             #self.isChanged = True
 
     def setData(self, data):
@@ -226,7 +234,12 @@ class DataWrapper(object):
                 parts_type = self.preferences.get("parts_type", {"data": None})["data"]
             pval_meth = self.preferences.get("method_pval", {"data": None})["data"]
             self.getData().getSSetts().reset(parts_type, pval_meth)
-
+            self._needsReload = True
+            
+    def needsReload(self):
+        return self._needsReload
+    def reloaded(self):
+        self._needsReload = False
 
 ################################################################
     def loadRedescriptionsFromFile(self, redescriptions_filename):
@@ -470,34 +483,14 @@ class DataWrapper(object):
 
     def exportRedescriptions(self, filename, reds=None, rshowids=None):
         self._startMessage('exporting', filename)
-        with_disabled = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
-        style = ""
-        nblines = 1
-        named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
-        supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
-        full_supp = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
-        if named:
-            names = self.data.getNames()
-        else:
-            names = [None, None]
-        if supp_names:
-            supp_names = self.data.getRNames()
-        else:
-            supp_names = None
-            
-        if re.search(".tex$", filename):
-            style = "tex"
-            tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).tex$", filename)
-            if tmp is not None:
-                nblines = int(tmp.group("nbl"))
-
+        params = getPrintParams(filename, self.data)
         try:
             if reds is None:
                 reds = self.reds
                 rshowids = self.rshowids
             if rshowids is None:
                 rshowids = range(len(reds))
-            writeRedescriptions(reds, filename, rshowids, names=names, with_disabled=with_disabled, style=style, full_supp=full_supp, nblines=nblines, supp_names=supp_names)
+            writeRedescriptions(reds, filename, rshowids, **params)
         except Exception:
             self._stopMessage()
             raise

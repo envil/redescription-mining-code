@@ -52,7 +52,6 @@ class SirenApp(wx.App):
                 self.frame.reloadAll()
             else:
                 sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
-                
 
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # DEBUG
@@ -88,7 +87,8 @@ class SirenApp(wx.App):
             tab ="reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
-            self.frame.tabs[tab]["tab"].viewData(0, "TR")
+            for i in [3]: #range(4):
+                self.frame.tabs[tab]["tab"].viewData(i, "TR")
             # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
@@ -117,10 +117,10 @@ class SirenApp(wx.App):
         #     self.BringWindowToFront()
         # event.Skip()
 
-    def MacOpenFile(self, filename):
+    def MacOpenFiles(self, filenames):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""
         import sys, os.path
-        sys.stderr.write('In MacOpenFile with filename '+filename)
+        filename = filenames[0]
         # When start from command line, this gets called with the script file's name
         if filename != sys.argv[0]:
             if self.frame.dw.getData() is not None:

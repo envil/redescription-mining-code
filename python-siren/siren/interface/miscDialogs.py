@@ -189,7 +189,7 @@ class ImportDataCSVDialog(object):
                 pass
                 raise
             else:
-                self.parent.reloadAll()
+                self.parent.loadAll()
             finally:
                 self.dlg.Destroy()
             return True

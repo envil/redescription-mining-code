@@ -123,7 +123,7 @@ if sys.platform == 'darwin':
     Plist = dict(CFBundleDocumentTypes = [dict(CFBundleTypeExtensions=['siren'],
                                                CFBundleTypeName='Siren data file',
                                                CFBundleTypeRole = 'Viewer',
-                                               CFBundleTypeIconFile = 'siren/data/icons/siren_file_icon.icns'),
+                                               CFBundleTypeIconFile = 'data/icons/siren_file_icon.icns'),
                                         dict(CFBundleTypeName   = 'fr.inria.siren.csv',
                                              CFBundleTypeRole   = 'Viewer',
                                              LSHandlerRank      = 'Alternate',

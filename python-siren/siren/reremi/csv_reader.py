@@ -351,16 +351,16 @@ def is_sparse(D):
             colv = []
     return varcol, valcol
 
-def get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol):
+def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
     rtn = None
-    if Lvarcol is None:
+    if Lfull:
         nb_rowsL = len(L["data"].values()[0])
-        if Rvarcol is None:
+        if Rfull:
             nb_rowsR = len(R["data"].values()[0])
             if nb_rowsL == nb_rowsR:
                 rtn = (nb_rowsL, 0, 0)
             else:
-                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nb_rowsL, nb_rowsR))
+                rtn = (None, nb_rowsL, nb_rowsR)
         else:
             tt = map(int, set(Rids) - set(["-1"]))
             nrMinR, nrMaxR = min(tt), max(tt)
@@ -369,19 +369,20 @@ def get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol):
             elif nb_rowsL == nrMaxR and nrMinR > 0:
                 rtn = (nb_rowsL, 0, 1)
             else:
-                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nb_rowsL, nrMaxR))
+                rtn = (None, nb_rowsL, nrMaxR)
+                
     else:
         tt = map(int, set(Lids) - set(["-1"]))
         nrMinL, nrMaxL = min(tt), max(tt)
 
-        if Rvarcol is None:
+        if Rfull:
             nb_rowsR = len(R["data"].values()[0])            
             if nb_rowsR == nrMaxL+1:
                 rtn = (nb_rowsR, 0, 0)
             elif nb_rowsR == nrMaxL and nrMinL > 0:
                 rtn = (nb_rowsR, 1, 0)
             else:
-                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nrMaxL, nb_rowsR))
+                rtn = (None, nrMaxL, nb_rowsR)
 
         else:
             tt = map(int, set(Rids) - set(["-1"]))
@@ -396,7 +397,7 @@ def get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol):
             elif nrMaxR+1 == nrMaxL and nrMinL == 1:
                 rtn = (nrMaxL, 1, 0)
             else:
-                raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (nrMaxL, nrMaxR))
+                rtn = (None, nrMaxL, nrMaxR)
     return rtn
     
 def row_order(L, R):
@@ -414,7 +415,43 @@ def row_order(L, R):
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
 
-    nbr, offL, offR = get_size_int(L, Lids, Lvarcol, R, Rids, Rvarcol)
+    nbr, offL, offR = get_size_hint(L, Lids, Lvarcol is None, R, Rids, Rvarcol is None)
+    #### if sizes don't match and either file had not header and could be sparse, try it...
+    if nbr is None and not (LhasIds and RhasIds):
+        sLids, sRids = (None, None)
+        nbr_SF, nbr_FS, nbr_SS = (None, None, None)
+        if not LhasIds and Lvarcol is None and len(L["headers"]) in [2,3]:
+            sLids = L["data"][L["headers"][0]]
+            nbr_SF, offL_SF, offR_SF = get_size_hint(L, sLids, False, R, Rids, Rvarcol is None)
+            
+        if not RhasIds and Rvarcol is None and len(R["headers"]) in [2,3]:
+            sRids = R["data"][R["headers"][0]]
+            nbr_FS, offL_FS, offR_FS = get_size_hint(L, Lids, Lvarcol is None, R, sRids, False)
+
+            if sLids is not None:
+                nbr_SS, offL_SS, offR_SS = get_size_hint(L, sLids, False, R, sRids, False)
+            
+        if (nbr_SF or nbr_SS) is not None:
+            idsv = L["headers"].pop(0)
+            LhasIds = True
+            Lids = L["data"].pop(idsv)
+            Lvarcol = L["headers"][0]
+            if len(L["headers"]) == 2:
+                Lvalcol = L["headers"][1]
+        if (nbr_FS or nbr_SS) is not None:
+            idsv = R["headers"].pop(0)
+            RhasIds = True
+            Rids = R["data"].pop(idsv)
+            Rvarcol = R["headers"][0]
+            if len(R["headers"]) == 2:
+                Rvalcol = R["headers"][1]
+                
+        nbrTT, offLTT, offRTT = get_size_hint(L, Lids, Lvarcol is None, R, Rids, Rvarcol is None)
+        if nbrTT is None and not (LhasIds and RhasIds):
+            raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (offL, offR))            
+        else:
+            nbr, offL, offR = (nbrTT, offLTT, offRTT)
+
     #### UNDER WORK Sparse pairs storing with empty first row on sparse side 
     if LhasIds and Lvarcol is not None: 
         #if True:

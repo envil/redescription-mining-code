@@ -903,8 +903,7 @@ class Siren():
         
     def OnOpen(self, event):
         if not self.checkAndProceedWithUnsavedChanges():
-                return
-
+            return
         wcd = 'All files|*|Siren packages (*.siren)|*.siren'
 
         if self.dw.getPackageSaveFilename() is not None:
@@ -929,8 +928,8 @@ class Siren():
             raise
             return False
         else:
-            self.reloadAll()
             self.resetConstraints()
+            self.loadAll()
             return True
 
     def expand(self, params={}):
@@ -1138,14 +1137,13 @@ class Siren():
 
     def OnImportDataCSV(self, event):
         """Shows a custom dialog to open the two data files"""
-        if self.dw.getData() is not None:
-            if not self.checkAndProceedWithUnsavedChanges():
-                return
-        if self.dw.reds is not None and (self.dw.reds.isChanged or self.dw.rshowids.isChanged): ## len(self.dw.reds) > 0:
-            sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
-            if sure_dlg.ShowModal() != wx.ID_OK:
-                return
-            sure_dlg.Destroy()
+        if not self.checkAndProceedWithUnsavedChanges():
+            return 
+        # if self.dw.reds is not None and (self.dw.reds.isChanged or self.dw.rshowids.isChanged): ## len(self.dw.reds) > 0:
+        #     sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
+        #     if sure_dlg.ShowModal() != wx.ID_OK:
+        #         return
+        #     sure_dlg.Destroy()
 
         dlg = ImportDataCSVDialog(self)
         dlg.showDialog()
@@ -1164,12 +1162,14 @@ class Siren():
             except:
                 pass
         open_dlg.Destroy()
-        self.resetConstraints()
+        self.resetConstraints()        
+        if self.dw.needsReload():
+            self.reloadReds()
+
         
     def OnImportRedescriptions(self, event):
-        if self.dw.reds is not None:
-            if not self.checkAndProceedWithUnsavedChanges(self.dw.reds.isChanged or self.dw.rshowids.isChanged):
-                return
+        if not self.checkAndProceedWithUnsavedChanges():
+            return
         reds, sortids, path  = (None, None, "")
         wcd = 'All files|*|Query files (*.queries)|*.queries|'
         dir_name = os.path.expanduser('~/')
@@ -1416,6 +1416,9 @@ class Siren():
         d.ShowModal()
         d.Destroy()
         self.resetConstraints()
+        if self.dw.needsReload():
+            self.reloadReds()
+
         
     def OnConnectionDialog(self, event):
         d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
@@ -1518,7 +1521,7 @@ class Siren():
         if self.plant.getWP().isActive():
             self.plant.getWP().closeDown(self)
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
-                return
+            return
         self.viewsm.deleteAllViews()
         if self.vizm is not None:
             self.vizm.OnQuit()
@@ -1564,9 +1567,10 @@ class Siren():
     def checkAndProceedWithUnsavedChanges(self, test=None, what="continue"):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue
         and True if there are no unsaved changes or user wants to proceed in any case.
-
         If additional parameter 'test' is given, asks the question if it is true."""
-        if (test is not None and test) or (test is None and self.dw.isChanged):
+        if test is None:
+            test = self.hasRedsChanged({"srcTypOut": 'history'}) | self.dw.isChanged
+        if test:
             dlg = wx.MessageDialog(self.toolFrame, 'Unsaved changes might be lost.\nAre you sure you want to %s?' % what, style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Unsaved changes!')
             if dlg.ShowModal() == wx.ID_NO:
                 return False
@@ -1591,6 +1595,17 @@ class Siren():
         self.logger.addOut({"error":1, "dw_error":1}, "stderr")
         self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
+    def loadAll(self):
+        if self.getVizm() is not None:
+            self.getVizm().reloadVizTab()
+        if self.plant is not None:
+            self.plant.getWP().closeDown(self)
+        self.reloadVars(review=False)
+        self.reloadRows()
+        self.clearReds()
+        self.loadReds()
+        self.updateDataInfo()
+        
     def reloadAll(self):
         if self.getVizm() is not None:
             self.getVizm().reloadVizTab()
@@ -1621,20 +1636,20 @@ class Siren():
             else:
                 tab["tab"].resetData()
 
+    def clearReds(self):
+        for ti, tab in self.getTabsMatchType("r"):
+            tab["tab"].resetData()
             
     def reloadReds(self, all=True):
         ## Initialize red lists data
-        for ti, tab in self.getTabsMatchType("r"):
-            if ti == self.getDefaultTabId("r"):
-                tab["tab"].resetData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
-            else:
-                tab["tab"].resetData()
+        if self.dw.getData() is not None:
+            for ti, tab in self.getTabsMatchType("r"):
+                tab["tab"].recomputeAll() #resetData()
         self.viewsm.deleteAllViews()
         self.doUpdates({"menu":True})
-
+        self.dw.reloaded()
+        
     def loadReds(self, reds=None, sortids=None, path=None):
-        if reds is None:
-            return
         ## Initialize red lists data
         tab = None
         if self.matchTabType("r"):
@@ -1642,9 +1657,19 @@ class Siren():
         elif self.getDefaultTabId("r") in self.tabs:
             tab = self.tabs[self.getDefaultTabId("r")]
         if tab is not None:
-            tab["tab"].addData(src=('file', path), data=reds)
-            self.doUpdates({"menu":True})
+            if reds is None:
+                if len(self.dw.getReds()) > 0:
+                    tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
+                else:
+                    return
+            else:
+                tab["tab"].addData(src=('file', path), data=reds)
+                # tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
+                self.doUpdates({"menu":True})
+        self.dw.reloaded()
 
+    def hasRedsChanged(self, patts):
+        return any([tab["tab"].hasRedsChanged(patts) for ti, tab in self.getTabsMatchType("r")])            
 
     def startFileActionMsg(self, msg, short_msg=''):
         """Shows a dialog that we're reading a file"""

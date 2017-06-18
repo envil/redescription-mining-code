@@ -136,7 +136,7 @@ class Log(object):
                 tmp_dest = sys.stderr
             else:
                 try:
-                    tmp_dest = open(output, 'w')
+                    tmp_dest = open(output, 'a')
                 except IOError:
                     return
         else:

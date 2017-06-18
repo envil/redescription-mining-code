@@ -12,6 +12,7 @@ import numpy
 # matplotlib.use('WXAgg')
 
 from ..reremi.classQuery import QTree
+from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 from classGView import GView
 
@@ -132,7 +133,7 @@ class TreeView(GView):
         for side in [0,1]:
             for k in trees[side].getLeaves():
                 keys.append((side, k, trees[side].getNodeXY(k)[1]))
-                    
+
         mat = numpy.zeros((self.parent.dw.data.nbRows(), len(keys)+1))
         for ki, (side, k, pos) in enumerate(keys):
             for si, supp_part in enumerate(trees[side].getNodeSuppSets(k)):
@@ -148,116 +149,89 @@ class TreeView(GView):
             b = trees[keys[k][0]].getBottomX()
             self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
             ## self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
-
+            
     def plotTreesT(self, trees, draw_settings):
         ##### DRAW polygons
-        keys = []
-        lparts = trees[0].getNodeSupps(None)
-        order_parts = [r for r in range(len(lparts)) if r != 2][::-1]+[2]
-        pmap = dict([(v,i) for (i,v) in enumerate(order_parts)])
-        ## nbrows = numpy.sum(lparts)
         nbrows = self.getParentData().nbRows()
-        nbparts = len(lparts)
-        for side in [0,1]:
-            for k in trees[side].getLeaves():
-                keys.append((side, k, trees[side].getNodeXY(k)[1]))
-
-        ## pdb.set_trace()
         mat = numpy.zeros(nbrows, dtype=int)
-        parts = numpy.zeros((nbrows, nbparts), dtype=bool)
-        for ki, (side, k, pos) in enumerate(keys):
-            for si, supp_part in enumerate(trees[side].getNodeSuppSets(k)):
-                mat[list(supp_part)] += 2**(ki+1)
-                parts[list(supp_part), si] = True
+        tdata = []
+        for side in [0,1]:
+            for leaf in trees[side].getLeaves():
+                for pid, supp_part in enumerate(trees[side].getNodeSuppSets(leaf)):
+                    if len(supp_part) > 0:
+                        tdata.append((side, leaf, pid))
+                        #### ASSIGN ROWS TO LEAVES GROUPS
+                        mat[list(supp_part)] += 2**(len(tdata))        
 
-        pdb.set_trace()
-        connects = []
-        map_p = {}
-        store_lids = {}
-        for v in numpy.unique(mat):
-            idxs = tuple([i for (i,vb) in enumerate(bin(v)[::-1]) if vb == '1'])
-            for i in range(parts.shape[1]):
-                c = numpy.sum((mat == v)*parts[:,i])
-                if c > 0:
-                    map_p[(i, idxs, c)] = (v, i)
-                    connects.append((i, idxs, c))
-                    store_lids[(v,i)] = numpy.where((mat == v)*parts[:,i])[0]
-
-        tot_height = self.height_inter[1]-self.height_inter[0]
-        scores = {}
-        for x in connects:
-            sctmp = [pmap[x[0]], -1, -1]
-            for side in [0,1]:
-                nps = [keys[xx-1][-1] for xx in x[1] if keys[xx-1][0]==side]
-                if len(nps) > 0:
-                    sctmp[1+side] = numpy.mean(nps)
-            scores[x] = tuple(sctmp)
-
-        connects.sort(key=lambda x: scores[x])
-        counts = [[] for i in lparts]
-        for (i, idx, c) in connects:
-            counts[pmap[i]].append(c)
-        bb = (1-(len(lparts)-1)*self.maj_space)*numpy.cumsum([0]+[lparts[p] for p in order_parts])/(1.*numpy.sum(lparts))
-        
-        pos = []
-        for i in range(len(counts)):
-            if len(counts[i]) > 0 and numpy.sum(counts[i]) > 0:
-                bot, top = bb[i] + i*self.maj_space, bb[i+1] + i*self.maj_space
-                span = top-bot - (len(counts[i])-1)*self.min_space
-                sbb = span*numpy.cumsum([0]+counts[i])/(1.0*numpy.sum(counts[i]))
-                for j in range(len(sbb)-1): 
-                    pos.append((self.height_inter[0]+tot_height*(bot+j*self.min_space+sbb[j]),
-                                self.height_inter[0]+tot_height*(bot+j*self.min_space+sbb[j+1])))
-
-        store_pos = {}
+        ### gather data for the blocks
+        blocks = {}
+        map_v_to_bid = {}
+        scores_pos = []
         has_miss_points = [False, False]
-        # pos = numpy.linspace(1., 2., len(connects))
-        for pi, (part, points, nb) in enumerate(connects):
-            print "CONNECT", pi, part, points, nb
-            tmp_store_pos = [(pos[pi][0], pos[pi][1])]
-            hasBSides = [False, False]
-            for point in points:
-                #self.axe.plot((0, Xss[keys[point-1][0]][-1], 0, 0),
-                hasBSides[keys[point-1][0]] = True
-                b = trees[keys[point-1][0]].getBottomX()
-                ff = numpy.sign(b)*self.flat_space
-                #### HERE
-                self.axe.fill((0, ff, b, ff, 0, 0),
-                              (pos[pi][0], pos[pi][0], keys[point-1][-1],
-                               pos[pi][1], pos[pi][1], pos[pi][0]),
-                               color=draw_settings[part]["color_f"]) #, linewidth=nb/nbtot)
-                self.axe.plot((0, ff, b, ff, 0, 0),            
-                              (pos[pi][0], pos[pi][0], keys[point-1][-1],
-                               pos[pi][1], pos[pi][1], pos[pi][0]),
-                               color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
-                tmp_store_pos.append((b, keys[point-1][-1]))
-            for side, hS in enumerate(hasBSides):
-                if not hS:
-                    b = trees[side].getBottomX()
-                    ff = -numpy.sign(0.5-side)*self.flat_space
-                    self.axe.fill((0, ff, b, ff, 0, 0),
-                                  (pos[pi][0], pos[pi][0], self.height_inter[0]+self.missing_yy,
-                                   pos[pi][1], pos[pi][1], pos[pi][0]),
-                                  color=draw_settings[part]["color_f"]) #, linewidth=nb/nbtot)
-                    self.axe.plot((0, ff, b, ff, 0, 0),
-                                  (pos[pi][0], pos[pi][0], self.height_inter[0]+self.missing_yy,
-                                   pos[pi][1], pos[pi][1], pos[pi][0]),
-                                  color=draw_settings[part]["color_e"]) #, linewidth=nb/nbtot)
+        for v in numpy.unique(mat):
+            sidesb = [-1,-1]
+            leaves = []
+            pstatus = [None, None]
+            vert_pos = 0.
+            idxs = tuple([i-1 for (i,vb) in enumerate(bin(v)[::-1]) if vb == '1'])
+            for idx in idxs:                
+                (side, leaf, pid) = tdata[idx]
+                sidesb[side] = idx
+                if pstatus[side] is not None:
+                    pstatus[side] |= trees[side].isLeafInNode(leaf)
+                else:
+                    pstatus[side] = trees[side].isLeafInNode(leaf)
+                y_leaf = trees[side].getNodeXY(leaf)[1]
+                leaves.append({"y": y_leaf, "id": leaf, "part": pid, "side": side})
+                
+                vert_pos += y_leaf                
 
-                    tmp_store_pos.append((b, self.height_inter[0]+self.missing_yy))
+            for side in [0,1]:
+                if sidesb[side] == -1:
                     has_miss_points[side] = True
-            # if (part, points, nb) == (0, (4,16), 1173):
-            #     print "THIS:", map_p[(part, points, nb)], tmp_store_pos
-            # store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
-            store_pos[map_p[(part, points, nb)]] = (part, points, nb, tmp_store_pos)
-        self.store_supp = {"pos": store_pos, "mat": mat, "parts": parts, "lids": store_lids, "has_miss_points": has_miss_points}
-        self.makePMapping()
+                    leaves.append({"y": self.height_inter[0]+self.missing_yy, "id": -1, "part": -1, "side": side})
+                
+            eids = numpy.where((mat == v))[0]
+            bid = tuple(sidesb)
+            scores_pos.append((vert_pos/len(leaves), bid))
+            map_v_to_bid[v] = bid
 
-    def makePMapping(self):
-        tmp = []
-        for bnds, p in sorted([(v[-1][0], k) for (k,v) in self.store_supp["pos"].items()]):
-            tmp.extend([(bnds[0], p, -1), (bnds[1], p, 1)])
-        self.store_supp["pmap"] = tmp
+            part = SSetts.mapStatusToSPart(tuple(pstatus))
+            blocks[bid] = {"eids": eids, "part": part,
+                           "pstatus": tuple(pstatus), "leaves": leaves}
+        
+        #### compute block sizes and positions
+        scores_pos.sort()
+        bids = [s[1] for s in scores_pos]
+        sizes = [len(blocks[bid]["eids"]) for bid in bids]
+        tot_spaces = (len(sizes)-1)*self.maj_space
+        scale_h = numpy.sum(sizes)/(1-tot_spaces)
+        tot_height = self.height_inter[1]-self.height_inter[0]
+        for i in range(len(sizes)):
+            blocks[bids[i]]["y_bot"] = (i*self.maj_space+numpy.sum(sizes[:i])/scale_h)*tot_height+self.height_inter[0]
+            blocks[bids[i]]["y_top"] = (i*self.maj_space+numpy.sum(sizes[:i+1])/scale_h)*tot_height+self.height_inter[0]
+            blocks[bids[i]]["x_mid"] = 0.
+            for side in [0,1]:
+                blocks[bids[i]]["x_leaf%d" %side] = trees[side].getBottomX()
+                blocks[bids[i]]["x_flt%d" %side] = -numpy.sign(0.5-side)*self.flat_space
+
+        ### actual plotting
+        for bi, bid in enumerate(bids):
+            block = blocks[bid]
+            # print "BLOCK", bid,block["part"], block["y_leaf0"], block["y_leaf1"]
+            for li, leaf in enumerate(block["leaves"]):
+                coords_poly = ((block["x_mid"], block["x_flt%d" % leaf["side"]], block["x_leaf%d" % leaf["side"]],
+                                block["x_flt%d" % leaf["side"]], block["x_mid"], block["x_mid"]),
+                               (block["y_bot"], block["y_bot"], leaf["y"],
+                                block["y_top"], block["y_top"], block["y_bot"]))
+
+                self.axe.fill(coords_poly[0], coords_poly[1],
+                               color=draw_settings[block["part"]]["color_f"], linewidth=0) #, linewidth=nb/nbtot)
+                # coords_poly[0][:-1], coords_poly[1][:-1], color=draw_settings[block["part"]]["color_e"], linewidth=1
+                # if None in block["pstatus"]: ### if group involves missing values 
+                #     self.axe.fill(coords_poly[0], coords_poly[1],
+                #                color=draw_settings[block["part"]]["color_e"], linewidth=0, alpha=.5) #, linewidth=nb/nbtot)
+        self.store_supp = {"has_miss_points": has_miss_points, "blocks": blocks, "mat": mat,  "map_v_to_bid": map_v_to_bid}
         
     def plotTree(self, side, tree, node, ds=None):
         
@@ -443,31 +417,22 @@ class TreeView(GView):
     def simplify(self, side):
         qu = self.trees[side].getSimpleQuery()
         self.updateQuery(side, query=qu, force=True)
-
+    
     def getCoordsXY(self, idp):
         return []            
     def getCoordsXYA(self, idp):
-        v = self.store_supp["mat"][idp]
-        pi = numpy.where(self.store_supp["parts"][idp,:])[0][0]
-        pl = numpy.sum(self.store_supp["parts"][:idp,pi]*(self.store_supp["mat"][:idp]==v))
-        _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
-        bott, top = ppos[0]
-        center = bott + (top-bott)*pl/float(nb)
-
+        center, bid = self.getCenterForId(idp)
         return (self.all_width+self.margins_sides, center)
     
     def drawEntity(self, idp, fc, ec, sz=1, zo=5, dsetts={}):
-        v = self.store_supp["mat"][idp]
-        pi = numpy.where(self.store_supp["parts"][idp,:])[0][0]
-        pl = numpy.sum(self.store_supp["parts"][:idp,pi]*(self.store_supp["mat"][:idp]==v))
-        _, points, nb, ppos = self.store_supp["pos"][(v, pi)]
-        bott, top = ppos[0]
-        center = bott + (top-bott)*pl/float(nb)
-
+        ## print "DRAW", idp
+        center, bid = self.getCenterForId(idp)
+        block = self.store_supp["blocks"][bid]
         lines = []
-        for l in ppos[1:]:
-            ff = numpy.sign(l[0])*self.flat_space
-            lines.extend(self.axe.plot((l[0], ff, 0), (l[1], center, center), color=fc, linewidth=1, zorder=zo))
+        for leaf in block["leaves"]:
+            coords_poly = ((block["x_mid"], block["x_flt%d" % leaf["side"]], block["x_leaf%d" % leaf["side"]]),
+                           (center, center, leaf["y"]))
+            lines.extend(self.axe.plot(coords_poly[0], coords_poly[1], color=fc, linewidth=1, zorder=zo))
         return lines
 
     def hasDotsReady(self):
@@ -478,37 +443,47 @@ class TreeView(GView):
         lines = []
         lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=ec, linewidth=1, alpha=0.5))
         lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=self.getColorHigh(), linewidth=1, alpha=0.3))
-        
-        lines.append(GView.drawAnnotation(self, xy, ec, tag, xytext))
+
+        lines.extend(GView.drawAnnotation(self, xy, ec, tag, xytext))
         return lines
 
     def inCapture(self, event):
         return self.okTrees() and event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]
                
     def getLidAt(self, x, y):
-        pp, rp = self.getRPPoint(y)
-        if pp is not None:
-            # print "LID", self.store_supp["lids"][pp][rp], pp, rp, len(self.store_supp["lids"][pp])
-            return self.store_supp["lids"][pp][rp]
+        bid, rp = self.getRPPoint(y)
+        if bid is not None:
+            return self.store_supp["blocks"][bid]["eids"][rp]
 
 
     def getRPPoint(self, y):
         ### Get the code part and line rank for position y
-        if self.store_supp is not None and "pmap" in self.store_supp:
-            pmap = self.store_supp["pmap"]
+        if self.store_supp is not None and "blocks" in self.store_supp:
+            bounds = sorted([(bb["y_bot"], bb["y_top"], bid) for bid, bb in self.store_supp["blocks"].items()])
             i = 0
-            while i < len(pmap) and y > pmap[i][0]:
+            while i < len(bounds) and y > bounds[i][1]:
                 i += 1
-            if i < len(pmap) and pmap[i][-1] == 1:
-                pp = pmap[i][1]
-                return pp, min(int(self.store_supp["pos"][pp][2]*(y - self.store_supp["pos"][pp][3][0][0])/(self.store_supp["pos"][pp][3][0][1] - self.store_supp["pos"][pp][3][0][0])), self.store_supp["pos"][pp][2]-1)
-            else:
-                if i < len(pmap)-1 and y + self.margin_hov > pmap[i][0] and pmap[i+1][-1] == 1:
-                    return pmap[i+1][1], 0
+            if i < len(bounds) and y > bounds[i][0]:
+                bid = bounds[i][-1]
+                nbr = len(self.store_supp["blocks"][bid]["eids"])
+                return bid, min(int(nbr*(y - bounds[i][0])/(bounds[i][1] - bounds[i][0])), nbr-1)
+            # else:
+            #     if i < len(pmap)-1 and y + self.margin_hov > pmap[i][0] and pmap[i+1][-1] == 1:
+            #         return pmap[i+1][1], 0
 
-                elif i > 0 and y - self.margin_hov <= pmap[i-1][0] and pmap[i-1][-1] == 1:
-                    pp = pmap[i-1][1]
-                    return pp, self.store_supp["pos"][pp][2]-1
+            #     elif i > 0 and y - self.margin_hov <= pmap[i-1][0] and pmap[i-1][-1] == 1:
+            #         pp = pmap[i-1][1]
+            #         return pp, self.store_supp["pos"][pp][2]-1
         return None, 0
 
+    def getCenterForId(self, idp):
+        v = self.store_supp["mat"][idp]
+        bid = self.store_supp["map_v_to_bid"][v]
+        block = self.store_supp["blocks"][bid]
+        pls = numpy.where(block["eids"] == idp)[0]
+        if len(pls) == 1:
+            pl = pls[0]
+            center = block["y_bot"] + (block["y_top"]-block["y_bot"])*(pl+.5)/(len(block["eids"])+1.)
+            return center, bid
+        return block["y_bot"], None
 

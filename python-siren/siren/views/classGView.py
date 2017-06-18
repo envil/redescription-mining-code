@@ -22,13 +22,18 @@ class GView(BasisView):
 
     label_jacc="J ="
     label_pval="p-value ="
-    label_cardAlpha="|E"+SYM.SYM_ALPHA+"| ="
-    label_cardBeta="|E"+SYM.SYM_BETA+"| ="
-    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SYM.SYM_DELTA+"| ="
-    label_cardI="|E"+SYM.SYM_GAMMA+"| ="
-    label_cardO="|E"+SYM.SYM_DELTA+"| ="
-    label_cardT="|E| ="
+    label_typeP="J-type ="
 
+    label_cardT="|E| ="
+    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.delta]+"| ="    
+
+    label_cardP="|E%s| ="
+    
+    label_cardAlpha="|E"+SSetts.sym_sparts[SSetts.alpha]+"| ="
+    label_cardBeta="|E"+SSetts.sym_sparts[SSetts.beta]+"| ="
+    label_cardI="|E"+SSetts.sym_sparts[SSetts.gamma]+"| ="
+    label_cardO="|E"+SSetts.sym_sparts[SSetts.delta]+"| ="
+    
     label_learn = SYM.SYM_LEARN #+":"
     label_test = SYM.SYM_TEST #+":"
     label_ratio = SYM.SYM_RATIO #+":"
@@ -37,17 +42,38 @@ class GView(BasisView):
     label_outin = SYM.SYM_OUTIN 
     label_cross = SYM.SYM_CROSS
 
-    map_select_supp = [("l", "|E"+SYM.SYM_ALPHA+"|", [SSetts.alpha]), ("r", "|E"+SYM.SYM_BETA+"|", [SSetts.beta]),
-                       ("i", "|E"+SYM.SYM_GAMMA+"|", [SSetts.gamma]), ("o", "|E"+SYM.SYM_DELTA+"|", [SSetts.delta])]
+    map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.alpha]+"|", [SSetts.alpha]),
+                       ("r", "|E"+SSetts.sym_sparts[SSetts.beta]+"|", [SSetts.beta]),
+                       ("i", "|E"+SSetts.sym_sparts[SSetts.gamma]+"|", [SSetts.gamma]),
+                       ("o", "|E"+SSetts.sym_sparts[SSetts.delta]+"|", [SSetts.delta])]
 
-    infos_details = [{"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"},
-                     {"id": "lenI", "label": label_cardI, "meth": "getLenI", "format": "%i", "color":2},
-                     {"id": "lenA", "label": label_cardAlpha, "meth": "getLenA", "format": "%i", "color":0},
-                     {"id": "lenT", "label": label_cardT, "meth": "getLenT", "format": "%i"},
-                     {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"},
-                     {"id": "lenO", "label": label_cardO, "meth": "getLenO", "format": "%i"},
-                     {"id": "lenB", "label": label_cardBeta, "meth": "getLenB", "format": "%i", "color":1},
-                     {"id": "lenU", "label": label_cardU, "meth": "getLenU", "format": "%i"},]
+    infos_details = [] # {"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"},
+                     # {"id": "lenI", "label": label_cardI, "meth": "getLenI", "format": "%i", "color":2},
+                     # {"id": "lenA", "label": label_cardAlpha, "meth": "getLenA", "format": "%i", "color":0},
+                     # {"id": "lenT", "label": label_cardT, "meth": "getLenT", "format": "%i"},
+                     # {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"},
+                     # {"id": "lenO", "label": label_cardO, "meth": "getLenO", "format": "%i"},
+                     # {"id": "lenB", "label": label_cardBeta, "meth": "getLenB", "format": "%i", "color":1},
+                     # {"id": "lenU", "label": label_cardU, "meth": "getLenU", "format": "%i"},
+                     # {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True},]
+                     #####################################################################
+    for status in [(True, True), (False, False), (True, False), (False, True)]:
+        i = SSetts.mapStatusToSPart(status)
+        infos_details.append( {"id": "x%s" % SSetts.labels_sparts[i],
+                               "label": label_cardP % SSetts.sym_sparts[i],
+                               "meth": "getLenP", "format": "%i", "details": {"part_id": i}})
+                
+    for status in [(None, None), (False, None), (True, None), (None, True), (None, False)]:
+        i = SSetts.mapStatusToSPart(status)
+        infos_details.append( {"id": "x%s" % SSetts.labels_sparts[i],
+                               "label": label_cardP % SSetts.sym_sparts[i],
+                               "meth": "getLenP", "format": "%i", "miss": True, "details": {"part_id": i}})
+
+    infos_details.insert(0, {"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"})
+    infos_details.insert(3, {"id": "lenT", "label": label_cardT, "meth": "getLenT", "format": "%i"})
+    infos_details.insert(4, {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"})
+    # infos_details.insert(8, {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True})
+    
     max_emphlbl = 5
     
     TID = "G"
@@ -279,14 +305,15 @@ class GView(BasisView):
 
         self.info_items = {}
         for info_item in self.infos_details:
-            # self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"], style=styL, size=sizz),
-            #                                     wx.StaticText(self.panel, label="--", style=styV, size=sizz))
-            self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"]),
-                                                wx.StaticText(self.panel, label="XXX"))
+            if not info_item.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                # self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"], style=styL, size=sizz),
+                #                                     wx.StaticText(self.panel, label="--", style=styV, size=sizz))
+                self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"]),
+                                                    wx.StaticText(self.panel, label="XXX"))
 
 
-            if info_item.get("color") is not None:
-                self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item.get("color")])
+                if info_item.get("details", {}).get("part_id", SSetts.delta) < SSetts.delta:
+                    self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["details"]["part_id"]])
 
     def addFrameSpecific(self):
         self.innerBox1.Add(self.MapredMapQ[0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
@@ -296,9 +323,10 @@ class GView(BasisView):
         
         cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
         for pi, elem in enumerate(self.infos_details):
-            ci = 2*(pi % self.nb_cols)
-            cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
-            cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+            if not elem.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                ci = 2*(pi % self.nb_cols)
+                cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+                cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
         # self.opt_hide.extend(cols)
 
         lineB = wx.BoxSizer(wx.HORIZONTAL)
@@ -324,15 +352,22 @@ class GView(BasisView):
 
     def setMapredInfo(self, red = None, details=None):
         for det in self.infos_details:
-            if red is not None:
-                meth = getattr(red,det["meth"], None)
-            else:
-                meth = None
+            if not det.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                if red is not None:
+                    meth = getattr(red,det["meth"], None)
+                else:
+                    meth = None
                 
-            if meth is not None:
-                self.info_items[det["id"]][1].SetLabel(det["format"] % meth(self.getDetailsSplit()))
-            else:
-                self.info_items[det["id"]][1].SetLabel("XX")
+                if meth is not None:
+                    params = self.getDetailsSplit()
+                    if params is None:
+                        params = {}
+                    if "details" in det:
+                        params.update(det["details"])
+                    self.info_items[det["id"]][1].SetLabel(det["format"] % meth(params))
+                else:
+                    self.info_items[det["id"]][1].SetLabel("XX")
+ 
 
     def apply_mask(self, path, radius=0.0):
         if path is not None and self.getCoords() is not None:

@@ -426,6 +426,7 @@ class CharbonGStd(CharbonGreedy):
 
     def subdo33Full(self, colL, colR, side):
         ## print "SUBDO 33 FULL", colL.getId(), colR.getId()
+        org_side = side
         best = []
         bUpE=1
         bUpF=1
@@ -499,6 +500,7 @@ class CharbonGStd(CharbonGreedy):
                     bUpE=3 ## in case of collapsed bucket the threshold is different
                     bucketsF = colF.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
                     bUpF=3 ## in case of collapsed bucket the threshold is different
+                    side = org_side
                     ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])
                     
         ## print "buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.id, len(bucketsL[1]), colR.id, len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1]))

@@ -78,6 +78,16 @@
 	<length>10</length>
 	<default><value>nan</value></default>
       </parameter>
+      <parameter>
+    <name>delim_in</name>
+	<label>Delimiter</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+    <legend>Field delimiter (CSV format).</legend>
+	<default><value>0</value></default>
+    <options><value>(auto)</value><value>TAB</value><value>;</value>
+        <value>,</value><value>SPC</value></options>
+      </parameter>
     </section>
     <section>
       <name>Results Output</name>

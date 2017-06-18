@@ -362,6 +362,7 @@ class CharbonGMiss(CharbonGreedy):
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
+        org_side = side
         best = []
         bUpE=1
         bUpF=1
@@ -400,7 +401,7 @@ class CharbonGMiss(CharbonGreedy):
                                           colR.nbRows() - len(es) > self.constraints.getCstr("min_itm_out"))])]
 
                 ## if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or len(bbs[0])/float(len(bucketsL[0])) < len(bbs[1])/float(len(bucketsR[0]))):
-
+                
                 nbes = [float(max(sum([len(v) for (k,v) in bbs[s].items()]), .5)) for s in [0,1]]
                 side = None
                 if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or nbes[0]/len(bbs[0]) > nbes[1]/len(bbs[1]) ):
@@ -435,6 +436,7 @@ class CharbonGMiss(CharbonGreedy):
                     bUpE=3 ## in case of collapsed bucket the threshold is different
                     bucketsF = colF.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
                     bUpF=3 ## in case of collapsed bucket the threshold is different
+                    side = org_side
                     ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])                    
 
         if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
@@ -496,7 +498,6 @@ class CharbonGMiss(CharbonGreedy):
                         EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
                         lmissE = sum(lmissEinF[lowF:upF+1])
                         #totEinF = sum(EinF)
-                        
                         lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - aboveF - belowF + lmissE), \
                                                     (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), partsMubB ), \
                                                     (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)

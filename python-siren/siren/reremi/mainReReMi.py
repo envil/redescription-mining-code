@@ -7,7 +7,7 @@ import tempfile
 import codecs
 
 from toolLog import Log
-from classPackage import Package, saveAsPackage
+from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
 from classData import Data
 from classRedescription import Redescription, parseRedList, printRedList, printTexRedList
 from classBatch import Batch
@@ -19,6 +19,10 @@ from classQuery import Query
 import pdb
 
 ## from codeRRM import RedModel
+
+delims_dict = {"(auto)": None,
+               "TAB": '\t',
+               "SPC": ' '}
 
 def loadAll(arguments=[]):
     pm = getPM()
@@ -85,6 +89,11 @@ def prepareFilenames(params_l, tmp_dir=None):
                  "style_data": "csv",
                  "add_info": [{}, params_l['NA_str']]
                  }
+
+    if 'delim_in' in params_l:
+        dl = delims_dict.get(params_l['delim_in'], params_l['delim_in'])
+        if dl is not None:
+            filenames["add_info"][0]["delimiter"] = dl
     
     for p in ['result_rep', 'data_rep']:
         if params_l[p] == "__TMP_DIR__":
@@ -383,12 +392,46 @@ def run_splits(args, splt=""):
         # for red in reds_list:
         #     print red.disp()
 
+
+def run_printout(args):
+
+    suff = args[-1].strip("printout")
+    if len(suff) == 0:
+        suff = "_reprint"
+    loaded = loadAll(args[:-1])
+    params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
+                                             loaded["filenames"], loaded["reds"]) 
+
+    constraints = Constraints(data, params)
+    if loaded["reds"] is not None:
+        reds = loaded["reds"]
+    else:
+        reds = []
+    with open(filenames["queries"]) as fd:
+        parseRedList(fd, data, reds)
+
+    #### OUT
+    parts = filenames["queries"].split(".")
+    if len(parts) > 1:
+        if "." in suff:
+            filename = ".".join(parts[:-2] + [parts[-2]+ suff])
+        else:
+            filename = ".".join(parts[:-2] + [parts[-2]+ suff, parts[-1]])
+    else:
+        filename = filenames["queries"] + suff
+    print "FILENAME", filename
+    params = getPrintParams(filename, data)
+    writeRedescriptions(reds, filename, **params)
+                
+
 ##### MAIN
 ###########
     
 if __name__ == "__main__":
-    
-    if re.match("splits", sys.argv[-1]):
+
+    if re.match("printout", sys.argv[-1]):
+        run_printout(sys.argv)
+    elif re.match("splits", sys.argv[-1]):
         run_splits(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":
         run_filter(sys.argv[:-1])
