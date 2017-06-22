@@ -36,14 +36,17 @@ class PreferencesDialog(wx.Dialog):
         """
         wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Preferences') #, size=(550, 300))
         self.nb = wx.Notebook(self, wx.ID_ANY)
-
+        nb_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.SetSizer(nb_sizer)
+        nb_sizer.Add(self.nb, 0, wx.EXPAND|wx.ALL, 5)
+        
         self.pref_handle = pref_handle
         self.controls_map = {}
         self.objects_map = {}
         self.tabs = []
 
         self.cancel_change = False # Tracks if we should cancel a page change
-        
+
         for section in self.pref_handle.getPreferencesManager().subsections:
             if section.get("name") in ["Network", "Split"]:
                 continue
@@ -57,7 +60,6 @@ class PreferencesDialog(wx.Dialog):
             self.dispGUI(section, sec_id, conf, top_sizer)
             self.makeButtons(sec_id, conf, top_sizer)
             conf.SetSizer(top_sizer)
-            top_sizer.Fit(conf)
 
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
             self.controls_map[sec_id]["button"]["reset"].Disable()
@@ -74,12 +76,12 @@ class PreferencesDialog(wx.Dialog):
                     self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
 
             self.nb.AddPage(conf, section.get("name"))
+            top_sizer.Fit(conf)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.onPageChanging)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChanged)
         
         self.Centre()
-        self.SetSize((700, 700))
-
+        nb_sizer.Fit(self)
     
     def dispGUI(self, parameters, sec_id, frame, top_sizer):
 
@@ -325,12 +327,12 @@ class ApplyResetCancelDialog(wx.Dialog):
     """Shows a dialog with three buttons: Apply, Reset, and Cancel.
     Returns 1 for apply, 2 for reset, and -1 for cancel"""
     def __init__(self, parent, title="", msg=""):
-        super(ApplyResetCancelDialog, self).__init__(parent=parent, title=title, size=(300, 150))
+        super(ApplyResetCancelDialog, self).__init__(parent=parent, title=title) #, size=(300, 150))
 
         top_sizer = wx.BoxSizer(wx.VERTICAL)
 
         txt = wx.StaticText(self, label=msg)
-        txt.Wrap(180)
+        txt.Wrap(300)
         #txt = self.CreateTextSizer(msg)
 
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -347,7 +349,8 @@ class ApplyResetCancelDialog(wx.Dialog):
         top_sizer.Add(btn_sizer, flag=wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, border=5)
 
         self.SetSizer(top_sizer)
-
+        top_sizer.Fit(self)
+        
         applyBtn.Bind(wx.EVT_BUTTON, self.onApply)
         resetBtn.Bind(wx.EVT_BUTTON, self.onReset)
         cancelBtn.Bind(wx.EVT_BUTTON, self.onCancel)

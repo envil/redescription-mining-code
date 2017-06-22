@@ -1164,7 +1164,8 @@ class Siren():
         open_dlg.Destroy()
         self.resetConstraints()        
         if self.dw.needsReload():
-            self.reloadReds()
+            self.recomputeAll()
+            # self.reloadReds()
 
         
     def OnImportRedescriptions(self, event):
@@ -1417,7 +1418,8 @@ class Siren():
         d.Destroy()
         self.resetConstraints()
         if self.dw.needsReload():
-            self.reloadReds()
+            self.recomputeAll()
+            # self.reloadReds()
 
         
     def OnConnectionDialog(self, event):
@@ -1639,13 +1641,13 @@ class Siren():
     def clearReds(self):
         for ti, tab in self.getTabsMatchType("r"):
             tab["tab"].resetData()
-            
+                        
     def reloadReds(self, all=True):
         ## Initialize red lists data
         if self.dw.getData() is not None:
             for ti, tab in self.getTabsMatchType("r"):
                 tab["tab"].recomputeAll() #resetData()
-        self.viewsm.deleteAllViews()
+        ## self.viewsm.deleteAllViews()
         self.doUpdates({"menu":True})
         self.dw.reloaded()
         
@@ -1660,8 +1662,6 @@ class Siren():
             if reds is None:
                 if len(self.dw.getReds()) > 0:
                     tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
-                else:
-                    return
             else:
                 tab["tab"].addData(src=('file', path), data=reds)
                 # tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())

@@ -127,7 +127,7 @@ class WorkInactive:
                 worker_info["results_track"] = nb_tap
                 if parent is None:
                     print "Ready reds [%s] %s %s" % ((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
-                else:
+                else:                    
                     parent.readyReds((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
         elif worker_info["wtyp"] in ["projector"]:
             if parent is None:

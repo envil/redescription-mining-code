@@ -24,6 +24,12 @@ from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
 
+def sliderPos_to_ENumber(N, td=None):
+    t = 0.1
+    if td is not None:
+        t = (5*(td/100.0)**8+1*(td/100.0)**2)/6
+    return int(t*N)
+
 def shuffle_ids(inl, i, cc):
     ii = (7*cc+8*i+1) % len(inl)
     if cc % 2:
@@ -349,11 +355,11 @@ class ParaView(GView):
             self.prepared_data.update(self.prepareData(lits, draw_ppos = draw_settings["draw_ppos"]))
 
             ### SAMPLING ENTITIES
-            t = 0.1
+            t = None
             if self.sld is not None:
-                td = self.sld.GetValue()
-                t = (5*(td/100.0)**8+1*(td/100.0)**2)/6
-            self.reps = list(self.prepared_data["sampling_ord"][:int(t*self.prepared_data["N"])])
+                t = self.sld.GetValue()
+            ind = sliderPos_to_ENumber(self.prepared_data["N"], t)
+            self.reps = list(self.prepared_data["sampling_ord"][:ind])
             self.reps.sort(key=lambda x: draw_settings["draw_pord"][self.suppABCD[x]])
             #self.reps = set(self.prepared_data["sampling_ord"])
 
@@ -633,6 +639,12 @@ class ParaView(GView):
         
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
+        nb_def = t["details_level"]["data"]
+        tds = [td for td in range(0, 105,5) if sliderPos_to_ENumber(self.parent.dw.getNbRows(), td) > nb_def]
+        if len(tds) > 0:
+            td_def = tds[0]
+        else:
+            td_def = 100
         
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
@@ -641,7 +653,7 @@ class ParaView(GView):
                              "function": self.OnExpandSimp})
         self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         
-        self.sld = wx.Slider(self.panel, -1, t["details_level"]["data"], 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
+        self.sld = wx.Slider(self.panel, -1, td_def, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
 
         ##############################################
