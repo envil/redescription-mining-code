@@ -477,9 +477,9 @@ class ParaView(GView):
         corners = numpy.vstack([tx*numpy.array([-1., 1., 0., 0.])+pos, ty*numpy.array([0., 0., 1., -1.])+1.25]).T        
         dets = map_q[(side, lits[side][idx][1][0][0])]
         if side == 0:
-            arrow = [(SSetts.alpha, SSetts.gamma), (SSetts.delta, SSetts.beta)]
+            arrow = [(SSetts.E_xo, SSetts.E_xx), (SSetts.E_oo, SSetts.E_ox)]
         else:
-            arrow = [(SSetts.beta, SSetts.gamma), (SSetts.delta, SSetts.alpha)]
+            arrow = [(SSetts.E_ox, SSetts.E_xx), (SSetts.E_oo, SSetts.E_xo)]
         if dets["direct"] > 0:
             arrow = [arrow[1], arrow[0]]
             
@@ -503,7 +503,7 @@ class ParaView(GView):
                 
             self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center")
                 #pdb.set_trace()
-        self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.gamma,0], corners[SSetts.gamma,1]+0.05), ha="center", va="bottom")
+        self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.E_xx,0], corners[SSetts.E_xx,1]+0.05), ha="center", va="bottom")
 
             
     def on_press(self, event):
@@ -629,9 +629,9 @@ class ParaView(GView):
             
     def drawEntity(self, idp, fc, ec=None, sz=1, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
-        if self.suppABCD[idp] == SSetts.mud and zo >= 4:
+        if self.suppABCD[idp] == SSetts.E_mm and zo >= 4:
             return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dotted", zorder=zo)
-        elif self.suppABCD[idp] > SSetts.delta and zo >= 4:
+        elif self.suppABCD[idp] > SSetts.E_oo and zo >= 4:
             return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dashed", zorder=zo)
         else:
             return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)

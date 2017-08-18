@@ -28,7 +28,7 @@ class TreeView(GView):
     
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
-    maj_space = 0.05
+    maj_space = 0.02
     min_space = 0.01
     flat_space = 0.03
     margins_sides = 0.5
@@ -224,7 +224,7 @@ class TreeView(GView):
                                 block["x_flt%d" % leaf["side"]], block["x_mid"], block["x_mid"]),
                                (block["y_bot"], block["y_bot"], leaf["y"],
                                 block["y_top"], block["y_top"], block["y_bot"]))
-
+                # (r,g,b,a) = draw_settings[block["part"]]["color_f"]
                 self.axe.fill(coords_poly[0], coords_poly[1],
                                color=draw_settings[block["part"]]["color_f"], linewidth=0) #, linewidth=nb/nbtot)
                 # coords_poly[0][:-1], coords_poly[1][:-1], color=draw_settings[block["part"]]["color_e"], linewidth=1
@@ -293,7 +293,9 @@ class TreeView(GView):
             
             red = self.current_r
             if update_trees:
-                self.trees = [red.queries[0].toTree(), red.queries[1].toTree()]
+                red.queries[0].side = 0
+                red.queries[1].side = 1
+                self.trees = [red.queries[0].toTree(self.getParentData()), red.queries[1].toTree(self.getParentData())]
 
             for butt in self.buttons:
                 if not self.okTrees():

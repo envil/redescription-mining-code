@@ -1,3 +1,10 @@
+##### RENAMED PARTS
+## grep -E "gamma|beta|alpha|delta|mua|mub|muaB|mubB|mud" ../reremi/*.py
+## sed -i -e 's/alpha/E_xo/g' -e 's/beta/E_ox/g' -e 's/gamma/E_xx/g' -e 's/delta/E_oo/g' -e 's/mua/E_xm/g' -e 's/mub/E_mx/g' -e 's/muaB/E_om/g' -e 's/mubB/E_mo/g' -e 's/mud/E_mm/g' ../reremi/*.py
+## grep -E "SSetts.gamma|SSetts.beta|SSetts.alpha|SSetts.delta|SSetts.mua|SSetts.mub|SSetts.muaB|SSetts.mubB|SSetts.mud" ../views/*.py
+## sed -i -e 's/SSetts.alpha/SSetts.E_xo/g' -e 's/SSetts.beta/SSetts.E_ox/g' -e 's/SSetts.gamma/SSetts.E_xx/g' -e 's/SSetts.delta/SSetts.E_oo/g' -e 's/SSetts.mua/SSetts.E_xm/g' -e 's/SSetts.mub/SSetts.E_mx/g' -e 's/SSetts.muaB/SSetts.E_om/g' -e 's/SSetts.mubB/SSetts.E_mo/g' -e 's/SSetts.mud/SSetts.E_mm/g' ../views/*.py
+## sed -i -e 's/E_xmB/E_om/g' -e 's/E_mxB/E_mo/g' ../*/*.py
+
 from scipy.special import gammaln
 from scipy.stats import binom
 import numpy, random
@@ -17,14 +24,14 @@ def tool_pValOver(kInter, nbRows, suppL, suppR):
     return sum([ tool_hypergeomPMF(k, nbRows, suppL, suppR) for k in range(kInter, min(suppL, suppR)+1)])
 
 def tool_pValSupp(nbRows, supp, pr):
-    ## probability that an termset with marginal probability pr has support equal or larger than supp
+    ## probability that an itemset with marginal probability pr has support equal or larger than supp
     return 1-binom.cdf(supp-1, nbRows, pr) 
 
 class SSetts(object):
 
     # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
-    labels = ['alpha', 'beta', 'gamma', 'delta', 'mua', 'mub', 'muaB', 'mubB', 'mud' ]
+    labels = ['E_xo', 'E_ox', 'E_xx', 'E_oo', 'E_xm', 'E_mx', 'E_om', 'E_mo', 'E_mm' ]
     status = [(True, False), (False, True), (True, True), (False, False),
               (True, None), (None, True), (False, None), (None, False), (None, None)]
     labels_status = {True:"1", False:"0", None:"?"}
@@ -57,10 +64,10 @@ class SSetts(object):
 
         
     # # indexes of the parts
-    # (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = range(9)
+    # (E_xo, E_ox, E_xx, E_oo, E_xm, E_mx, E_om, E_mo, E_mm) = range(9)
     # (into, out, tot, imiss) = range(4)
 
-    # (self.alpha, self.beta, self.gamma, self.delta, self.mua, self.mub, self.muaB, self.mubB, self.mud) = range(9)
+    # (self.E_xo, self.E_ox, self.E_xx, self.E_oo, self.E_xm, self.E_mx, self.E_om, self.E_mo, self.E_mm) = range(9)
     # (self.into, self.out, self.tot, self.imiss) = range(4)
 
 
@@ -74,18 +81,33 @@ class SSetts(object):
     ## M M    M     M
 
     ## PARTS:
-    ##         A  |  B
+    ##        A  |  B
     ## ----------------
-    ## alpha   T  |  F
-    ## beta    F  |  T
-    ## gamma   T  |  T
-    ## delta   F  |  F
-    ## mu_a    T  |  M
-    ## mu_b    M  |  T
-    ## mu_aB   F  |  M
-    ## mu_bB   M  |  F
-    ## mu_d    M  |  M
+    ## E_xo   T  |  F
+    ## E_ox   F  |  T
+    ## E_xx   T  |  T
+    ## E_oo   F  |  F
+    ## E_xm   T  |  M
+    ## E_mx   M  |  T
+    ## E_om   F  |  M
+    ## E_mo   M  |  F
+    ## E_mm   M  |  M
 
+    ## EXTENDING: A op X
+    ##        |     op = AND   |     op = AND   |
+    ##        |   x    o    m  |   x    o    m  |
+    ## ------------------------------------------
+    ## E_xo   |  ---- xo ----  |  xo   oo   mo  |
+    ## E_ox   |  xx   ox   mx  |  ---- ox ----  |
+    ## E_xx   |  ---- xx ----  |  xx   ox   mx  |
+    ## E_oo   |  xo   oo   mo  |  ---- oo ----  |
+    ## E_xm   |  ---- xm ----  |  xm   om   mm  |
+    ## E_mx   |  xx   mx   mx  |  mx   ox   mx  |
+    ## E_om   |  xm   om   mm  |  ---- om ----  |
+    ## E_mo   |  xo   mo   mo  |  mo   oo   mo  |
+    ## E_mm   |  xm   mm   mm  |  mm   om   mm  |
+
+    
 
     def __init__(self, type_parts="none", methodpVal="Marg"):
         self.type_parts = None
@@ -105,7 +127,7 @@ class SSetts(object):
         
     def resetPartsIds(self, type_parts):
         if type_parts is True:
-            type_parts = "grounded"
+            type_parts = "rejective"
         if type_parts is False:
             type_parts = "none"
             
@@ -130,7 +152,7 @@ class SSetts(object):
         for i, l in enumerate(self.io_labels):
             exec("%s = %d" % (l,i))
 
-        # (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud) = range(9)
+        # (E_xo, E_ox, E_xx, E_oo, E_xm, E_mx, E_om, E_mo, E_mm) = range(9)
 
         if type_parts == "none":
 
@@ -138,44 +160,45 @@ class SSetts(object):
             ###############             WITHOUT MISSING VALUES                      #############
             #####################################################################################
 
-            self.bottom = alpha
-            self.top = delta
+            self.bottom = E_xo
+            self.top = E_oo
             ##############################################################
-            #### BASIC
+            ####         J=       |E_xx| /
+            ####              |E_xx|+|E_xo|+|E_ox|
             ##############################################################
 
             ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
             # Parts in numerator (BLUE), independent of X 
-            self.IDS_fixnum = [[], [(tot, gamma)]]
+            self.IDS_fixnum = [[], [(tot, E_xx)]]
             # Parts in numerator (BLUE), dependent of X: toBlue
-            self.IDS_varnum = [[(into, gamma)] ,[(into, beta)]]
+            self.IDS_varnum = [[(into, E_xx)] ,[(into, E_ox)]]
             # Parts in denominator (RED), independent of X
-            self.IDS_fixden = [[(tot, gamma), (tot, beta)], [(tot, gamma), (tot, alpha), (tot, beta)]]
+            self.IDS_fixden = [[(tot, E_ox), (tot, E_xx)], [(tot, E_xx), (tot, E_xo), (tot, E_ox)]]
             # Parts in denominator (RED), dependent of X: toRed
-            self.IDS_varden = [[(into, alpha)], [(into, delta)]]
+            self.IDS_varden = [[(into, E_xo)], [(into, E_oo)]]
             # Parts left uncovered (OUT), (always dependent of X)
-            self.IDS_out = [[(out, alpha), (tot, delta)], [(out, delta)]]
+            self.IDS_out = [[(out, E_xo), (tot, E_oo)], [(out, E_oo)]]
             # Parts in contribution (CONT), (always dependent of X)
-            # Contribution: AND entities removed from alpha, OR: entities added to gamma
-            self.IDS_cont = [[(out, alpha)], [(into, beta)]]
+            # Contribution: AND entities removed from E_xo, OR: entities added to E_xx
+            self.IDS_cont = [[(out, E_xo)], [(into, E_ox)]]
             # Parts in the new support of the extended query
-            self.IDS_nsupp = [[(into, alpha), (into, gamma)], [(tot, alpha), (tot, gamma), (into, beta), (into, delta)]]
+            self.IDS_nsupp = [[(into, E_xo), (into, E_xx)], [(tot, E_xo), (tot, E_xx), (into, E_ox), (into, E_oo)]]
 
             #### TO COMPUTE ACCURACY after building
-            self.IDS_diff = [alpha, beta]
-            self.IDS_dL = [alpha]
-            self.IDS_dR = [beta]
-            self.IDS_inter = [gamma]
-            self.IDS_uncovered = [delta]
+            self.IDS_diff = [E_xo, E_ox]
+            self.IDS_dL = [E_xo]
+            self.IDS_dR = [E_ox]
+            self.IDS_inter = [E_xx]
+            self.IDS_uncovered = [E_oo]
 
             ##############################################################
 
             #### TO COMPUTE SUPPORTS, no index
-            self.IDS_supp = (gamma, alpha)
+            self.IDS_supp = (E_xx, E_xo)
             self.IDS_miss = ()
             # indexes swaping when negating one side (0: negating A, 1: negating B)
-            self.IDS_negated = [(delta, gamma, beta, alpha), \
-                           (gamma, delta, alpha, beta)]
+            self.IDS_negated = [(E_oo, E_xx, E_ox, E_xo), \
+                                (E_xx, E_oo, E_xo, E_ox)]
 
             #### END NO MISSING VALUES
             #####################################################################################
@@ -186,116 +209,150 @@ class SSetts(object):
             #####################################################################################
             ###############                WITH MISSING VALUES                      #############
             #####################################################################################
-            self.bottom = alpha
-            self.top = mud
+            self.bottom = E_xo
+            self.top = E_mm
             ##############################################################
-            #### GROUNDED
+            #### REJECTIVE  J=       |E_xx| /
+            ####              |E_xx|+|E_xo|+|E_ox|
             ##############################################################
 
-            if type_parts == "grounded":
+            if type_parts == "rejective" or type_parts == "grounded":
 
                 ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
                 # Parts in numerator (BLUE), independent of X 
                 self.IDS_fixnum = [[],
-                              [(tot, gamma)]]
+                              [(tot, E_xx)]]
                 # Parts in numerator (BLUE), dependent of X: toBlue
-                self.IDS_varnum = [[(into, gamma)] ,
-                              [(into, beta), (into, mub)]]
+                self.IDS_varnum = [[(into, E_xx)] ,
+                              [(into, E_ox), (into, E_mx)]]
                 # Parts in denominator (RED), independent of X
-                self.IDS_fixden = [[(tot, beta)],
-                              [(tot, gamma), (tot, alpha)]]
+                self.IDS_fixden = [[(tot, E_ox)],
+                              [(tot, E_xx), (tot, E_xo)]]
                 # Parts in denominator (RED), dependent of X: toRed
-                self.IDS_varden = [[(into, alpha), (into, gamma), (out, gamma), (out, mub)],
-                              [(into, mub), (into, mubB), (into, delta), (into, beta), (out, beta)]]
+                self.IDS_varden = [[(into, E_xo), (into, E_xx), (out, E_xx), (out, E_mx)],
+                              [(into, E_mx), (into, E_mo), (into, E_oo), (into, E_ox), (out, E_ox)]]
 
                 # Parts left uncovered (OUT), (always dependent of X)
-                self.IDS_out = [[(out, alpha), (out, mubB), (tot, delta)],
-                           [(out, delta)]]
+                self.IDS_out = [[(out, E_xo), (out, E_mo), (tot, E_oo)],
+                           [(out, E_oo)]]
                 # Parts in contribution (CONT), (always dependent of X)
-                # Contribution: AND entities removed from alpha, OR: entities added to gamma
-                self.IDS_cont = [[(out, alpha)],
-                            [(into, beta), (into, mub)]]
+                # Contribution: AND entities removed from E_xo, OR: entities added to E_xx
+                self.IDS_cont = [[(out, E_xo)],
+                            [(into, E_ox), (into, E_mx)]]
                 # Parts in the new support of the extended query
-                self.IDS_nsupp = [[(into, alpha), (into, gamma)],
-                             [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, muaB), (into, mud)]]
+                self.IDS_nsupp = [[(into, E_xo), (into, E_xx)],
+                             [(tot, E_xo), (tot, E_xx), (tot, E_xm), (into, E_mx),
+                                  (into, E_ox), (into, E_oo), (into, E_mo), (into, E_om), (into, E_mm)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [alpha, beta]
-                self.IDS_dL = [alpha]
-                self.IDS_dR = [beta]
-                self.IDS_inter = [gamma]
-                self.IDS_uncovered = [delta]
+                self.IDS_diff = [E_xo, E_ox]
+                self.IDS_dL = [E_xo]
+                self.IDS_dR = [E_ox]
+                self.IDS_inter = [E_xx]
+                self.IDS_uncovered = [E_oo]
 
 
             ##############################################################
-            #### OPTIMISTIC
+            #### OPTIMISTIC    J= |E_xx|+|E_xm|+|E_mx|+|E_mm| /
+            ####            |E_xo|+|E_ox|+|E_xx|+|E_xm|+|E_mx|+|E_mm|
             ##############################################################
 
             elif type_parts == "optimistic":
 
                 ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
-                self.IDS_fixnum = [[(imiss, mua), (imiss, mub), (imiss, mud), (imiss, gamma)],
-                                     [(tot, mua), (tot, gamma), (tot, mud), (tot, mub), (imiss, muaB), (imiss, beta)]]
-                self.IDS_varnum = [[(into, mua), (into, gamma), (into, mub), (into, mud)],
-                                     [(into, muaB), (into, beta), (imiss, muaB), (imiss, beta)]]
-                self.IDS_fixden = [[(tot, gamma), (tot, mub), (tot, beta)],
-                                     [(tot, mua), (tot, gamma), (tot, mub), (tot,  mud), (imiss, muaB), (tot, beta), (tot, alpha)]]
-                self.IDS_varden = [[(into, alpha), (into, mua), (into, mud), (imiss, mua), (imiss, mud)],
-                                     [(into, delta), (into, mubB), (into, muaB)]]
+                self.IDS_fixnum = [[(imiss, E_xm), (imiss, E_mx), (imiss, E_mm), (imiss, E_xx)],
+                                     [(tot, E_xm), (tot, E_xx), (tot, E_mm), (tot, E_mx), (imiss, E_om), (imiss, E_ox)]]
+                self.IDS_varnum = [[(into, E_xm), (into, E_xx), (into, E_mx), (into, E_mm)],
+                                     [(into, E_om), (into, E_ox), (imiss, E_om), (imiss, E_ox)]]
+                self.IDS_fixden = [[(tot, E_xx), (tot, E_mx), (tot, E_ox)],
+                                     [(tot, E_xm), (tot, E_xx), (tot, E_mx), (tot,  E_mm), (imiss, E_om), (tot, E_ox), (tot, E_xo)]]
+                self.IDS_varden = [[(into, E_xo), (into, E_xm), (into, E_mm), (imiss, E_xm), (imiss, E_mm)],
+                                     [(into, E_oo), (into, E_mo), (into, E_om)]]
 
-                self.IDS_out = [[(out, alpha), (imiss, alpha), (out, mua), (tot, delta), (tot, mubB), (out, mud), (tot, muaB)],
-                                  [(out, delta), (imiss, delta), (out, mubB), (imiss,mubB), (out,muaB)]]
-                self.IDS_cont = [[(out, alpha)],
-                                   [(into, beta), (into, mub)]]
-                self.IDS_nsupp = [[(into, alpha), (into, mua), (into, gamma), (into, mub), (into, mud)],
-                                    [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud), (into, muaB)]]
+                self.IDS_out = [[(out, E_xo), (imiss, E_xo), (out, E_xm), (tot, E_oo), (tot, E_mo), (out, E_mm), (tot, E_om)],
+                                  [(out, E_oo), (imiss, E_oo), (out, E_mo), (imiss,E_mo), (out,E_om)]]
+                self.IDS_cont = [[(out, E_xo)],
+                                   [(into, E_ox), (into, E_mx)]]
+                self.IDS_nsupp = [[(into, E_xo), (into, E_xm), (into, E_xx), (into, E_mx), (into, E_mm)],
+                                    [(tot, E_xo), (tot, E_xx), (tot, E_xm), (into, E_mx), (into, E_ox), (into, E_oo), (into, E_mo), (into, E_mm), (into, E_om)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [alpha, beta]
-                self.IDS_dL = [alpha]
-                self.IDS_dR = [beta]
-                self.IDS_inter = [gamma, mub, mua, mud]
-                self.IDS_uncovered = [delta, mubB, muaB]
+                self.IDS_diff = [E_xo, E_ox]
+                self.IDS_dL = [E_xo]
+                self.IDS_dR = [E_ox]
+                self.IDS_inter = [E_xx, E_mx, E_xm, E_mm]
+                self.IDS_uncovered = [E_oo, E_mo, E_om]
 
 
             ##############################################################
-            #### PESSIMISTIC
+            #### PESSIMISTIC    J=          |E_xx|   /
+            ####            |E_xo|+|E_ox|+|E_xx|+|E_om|+|E_mo|+|E_mm|
             ##############################################################
 
             elif type_parts == "pessimistic":
 
                 ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
                 self.IDS_fixnum = [[],
-                                     [(tot, gamma)]]
-                self.IDS_varnum = [[(into, gamma)] ,
-                                     [(into, beta), (into, mub)]]
-                self.IDS_fixden = [[(imiss, alpha), (tot, mua), (tot, gamma), (tot, mub), (tot, beta), (imiss, mubB), (tot, mud), (tot, muaB)],
-                                     [(tot, gamma), (tot, alpha), (tot, beta), (tot, mua), (tot, muaB), (tot, mub), (tot, mubB), (tot, mud)]]
-                self.IDS_varden = [[(into, alpha), (into, mubB)],
-                                     [(into, delta), (imiss, delta)]]
+                                     [(tot, E_xx)]]
+                self.IDS_varnum = [[(into, E_xx)] ,
+                                     [(into, E_ox), (into, E_mx)]]
+                self.IDS_fixden = [[(imiss, E_xo), (tot, E_xm), (tot, E_xx), (tot, E_mx), (tot, E_ox), (imiss, E_mo), (tot, E_mm), (tot, E_om)],
+                                     [(tot, E_xx), (tot, E_xo), (tot, E_ox), (tot, E_xm), (tot, E_om), (tot, E_mx), (tot, E_mo), (tot, E_mm)]]
+                self.IDS_varden = [[(into, E_xo), (into, E_mo)],
+                                     [(into, E_oo), (imiss, E_oo)]]
 
-                self.IDS_out = [[(out, alpha), (out, mubB), (tot, delta)],
-                                  [(out, delta)]]
-                self.IDS_cont = [[(out, alpha)],
-                                   [(into, beta), (into, mub)]]
-                self.IDS_nsupp = [[(into, alpha), (into, gamma), (into, mua)],
-                                    [(tot, alpha), (tot, gamma), (tot, mua), (into, mub), (into, beta), (into, delta), (into, mubB), (into, mud)]]
+                self.IDS_out = [[(out, E_xo), (out, E_mo), (tot, E_oo)],
+                                  [(out, E_oo)]]
+                self.IDS_cont = [[(out, E_xo)],
+                                   [(into, E_ox), (into, E_mx)]]
+                self.IDS_nsupp = [[(into, E_xo), (into, E_xx), (into, E_xm)],
+                                    [(tot, E_xo), (tot, E_xx), (tot, E_xm), (into, E_mx), (into, E_ox), (into, E_oo), (into, E_mo), (into, E_mm)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [alpha, beta, mub, mua, mubB, muaB, mud]
-                self.IDS_dL = [alpha, mua, mubB]
-                self.IDS_dR = [beta, mub, muaB, mud]
-                self.IDS_inter =  [gamma]
-                self.IDS_uncovered = [delta]
+                self.IDS_diff = [E_xo, E_ox, E_mx, E_xm, E_mo, E_om, E_mm]
+                self.IDS_dL = [E_xo, E_xm, E_mo]
+                self.IDS_dR = [E_ox, E_mx, E_om, E_mm]
+                self.IDS_inter =  [E_xx]
+                self.IDS_uncovered = [E_oo]
+
+            ##############################################################
+            #### BASIC     J=              |E_xx|  /
+            ####               |E_xo|+|E_ox|+|E_xx|+|E_xm|+|E_mx|
+            ##############################################################
+
+            elif type_parts == "basic":
+
+                ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+                self.IDS_fixnum = [[], [(tot, E_xx)]]
+                self.IDS_varnum = [[(into, E_xx)] ,
+                                   [(into, E_ox), (into, E_mx)]]
+                self.IDS_fixden = [[(tot, E_xx), (tot, E_mx), (tot, E_ox)],
+                                   [(tot, E_xo), (tot, E_ox), (tot, E_xx), (tot, E_xm), (tot, E_mx)]]
+                self.IDS_varden = [[(into, E_xo), (into, E_xm)],
+                                   [(into, E_oo), (into, E_mo), (into, E_om)]]
+
+                self.IDS_out = [[(out, E_xo), (imiss, E_xo), (tot, E_oo), (out, E_xm), (imiss, E_xm), (tot, E_om), (tot, E_mo), (out, E_mm)],
+                                [(out, E_oo), (imiss, E_oo), (out, E_mo), (imiss, E_mo), (out, E_om), (imiss, E_om), (out, E_mm), (imiss, E_mm)]]
+                self.IDS_cont = [[(out, E_xo)],
+                                 [(into, E_ox), (into, E_mx)]]
+                self.IDS_nsupp = [[(into, E_xo), (into, E_xx), (into, E_xm)],
+                                  [(tot, E_xo), (tot, E_xx), (tot, E_xm), (into, E_ox), (into, E_oo), (into, E_mx), (into, E_mo), (into, E_om), (into, E_mm)]]
+
+                #### TO COMPUTE ACCURACY after building
+                self.IDS_diff = [E_xo, E_ox, E_xm, E_mx]
+                self.IDS_dL = [E_xo, E_xm]
+                self.IDS_dR = [E_ox, E_mx]
+                self.IDS_inter = [E_xx]
+                self.IDS_uncovered = [E_oo, E_mo, E_om, E_mm]
 
             ##############################################################
 
             ### TO COMPUTE SUPPORTS, no index
-            self.IDS_supp = (gamma, alpha, mua)
-            self.IDS_miss = (mub, mubB, mud)
+            self.IDS_supp = (E_xx, E_xo, E_xm)
+            self.IDS_miss = (E_mx, E_mo, E_mm)
             ### indexes swaping when negating one side (0: negating A, 1: negating B)
-            self.IDS_negated = [(delta, gamma, beta, alpha, muaB, mub, mua, mubB, mud), \
-                           (gamma, delta, alpha, beta, mua, mubB, muaB, mub, mud)]
+            self.IDS_negated = [(E_oo, E_xx, E_ox, E_xo, E_om, E_mx, E_xm, E_mo, E_mm), \
+                           (E_xx, E_oo, E_xo, E_ox, E_xm, E_mo, E_om, E_mx, E_mm)]
 
          #### END WITH MISSING VALUES
          ############################################################################
@@ -496,7 +553,7 @@ class SSetts(object):
 class SParts(object):
 
     infos = {"acc": "self.acc()", "pval": "self.pVal()"}
-    print_delta_fields = [ "delta", "card_delta"]
+    print_E_oo_fields = [ "E_oo", "card_E_oo"]
     print_finfo = infos.keys()
     print_iinfo = ["card_"+ label for label in SSetts.labels]
     print_sinfo = list(SSetts.labels)
@@ -539,7 +596,7 @@ class SParts(object):
             elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0 :
                 supports = supports[0:3]
 
-            ### sParts is a partition of the rows (delta is not explicitely stored when there are no missing values)
+            ### sParts is a partition of the rows (E_oo is not explicitely stored when there are no missing values)
             ## two supports: interpreted as (suppL, suppR)
             if type(supports) == list and len(supports) == 2 :
                 (suppL, suppR) = supports
@@ -547,7 +604,7 @@ class SParts(object):
                 self.sParts = [ set(suppL - suppR), \
                            set(suppR - suppL), \
                            set(suppL & suppR)]
-            ## three supports: interpreted as (alpha, beta, gamma)
+            ## three supports: interpreted as (E_xo, E_ox, E_xx)
             elif type(supports) == list and len(supports) == 3:
                 self.missing = False
                 self.sParts = [ set(supports[0]), set(supports[1]), set(supports[2])]
@@ -564,7 +621,7 @@ class SParts(object):
                            set(missR - suppL - missL), \
                            set(missL - suppR - missR), \
                            set(missL & missR) ]
-            ## nine supports: interpreted as (alpha, beta, gamma, delta, mua, mub, muaB, mubB, mud)
+            ## nine supports: interpreted as (E_xo, E_ox, E_xx, E_oo, E_xm, E_mx, E_om, E_mo, E_mm)
             elif type(supports) == list and len(supports) == 9:
                 self.missing = True
                 self.sParts = [set(support) for support in supports]
@@ -577,10 +634,10 @@ class SParts(object):
                 if len(self.sParts) == 3:
                     self.sParts.append(set(bk))
                 else:
-                    self.sParts[self.ssetts.delta] = set(bk)
+                    self.sParts[self.ssetts.E_oo] = set(bk)
                 for si, sp in enumerate(self.sParts):
-                    if si != self.ssetts.delta:
-                        self.sParts[self.ssetts.delta] -= sp
+                    if si != self.ssetts.E_oo:
+                        self.sParts[self.ssetts.E_oo] -= sp
 
     # def __eq__(self, other):
     #     print "Calling EQ"
@@ -620,16 +677,16 @@ class SParts(object):
     def nbRows(self):
         return self.N
 
-    def toDict(self, with_delta=False):
+    def toDict(self, with_E_oo=False):
         sdict = {}
         for i in range(len(self.sParts)):
                  sdict[self.ssetts.getLabel(i)] = self.part(i)
                  sdict["card_" + self.ssetts.getLabel(i)] = self.lpart(i)
                  sdict["perc_" + self.ssetts.getLabel(i)] = self.lpart(i) * 100. / self.N
-        if with_delta:
-                 sdict[self.ssetts.getLabel(SSetts.delta)] = self.part(SSetts.delta)
-                 sdict["card_" + self.ssetts.getLabel(SSetts.delta)] = self.lpart(SSetts.delta)
-                 sdict["perc_" + self.ssetts.getLabel(SSetts.delta)] = self.lpart(SSetts.delta) * 100. / self.N
+        if with_E_oo:
+                 sdict[self.ssetts.getLabel(SSetts.E_oo)] = self.part(SSetts.E_oo)
+                 sdict["card_" + self.ssetts.getLabel(SSetts.E_oo)] = self.lpart(SSetts.E_oo)
+                 sdict["perc_" + self.ssetts.getLabel(SSetts.E_oo)] = self.lpart(SSetts.E_oo) * 100. / self.N
         for side in [0, 1]:
                  if self.prs[side] != -1:
                      sdict["pr_" + str(side)] = self.prs[side]
@@ -655,7 +712,7 @@ class SParts(object):
         if self.missing:
             return SParts(self.ssetts, self.N, self.ssetts.negateParts(side, self.sParts))
         else:
-            self.sParts.append(self.part(self.ssetts.delta))
+            self.sParts.append(self.part(self.ssetts.E_oo))
             n = self.ssetts.negateParts(side, self.sParts)
             return SParts(self.ssetts, self.N, n[0:-1])
 
@@ -663,7 +720,7 @@ class SParts(object):
         pid = self.ssetts.partId(part_id, side)
         if pid < len(self.sParts):
             return self.sParts[pid]
-        elif part_id == self.ssetts.delta:
+        elif part_id == self.ssetts.E_oo:
             return set(range(self.N)) - self.sParts[0] - self.sParts[1] - self.sParts[2]
         else:
             return set()
@@ -672,7 +729,7 @@ class SParts(object):
         pid = self.ssetts.partId(part_id, side)
         if pid < len(self.sParts):
             return len(self.sParts[pid])
-        elif part_id == self.ssetts.delta:
+        elif part_id == self.ssetts.E_oo:
             return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
         else:
             return 0
@@ -682,7 +739,7 @@ class SParts(object):
 
     def parts4M(self, side=0):
         if self.missing:
-            return [self.part(i, side) for i in range(self.ssetts.delta+1)]+[set().union(*[self.part(i, side) for i in range(self.ssetts.delta+1, self.ssetts.top+1)])]
+            return [self.part(i, side) for i in range(self.ssetts.E_oo+1)]+[set().union(*[self.part(i, side) for i in range(self.ssetts.E_oo+1, self.ssetts.top+1)])]
         else:
             return self.parts(side)
             
@@ -693,7 +750,7 @@ class SParts(object):
         pid = self.ssetts.partId(part_id, side)
         if pid < len(self.sParts):
             return set(suppX & self.sParts[pid])
-        elif part_id == self.ssetts.delta:
+        elif part_id == self.ssetts.E_oo:
             return set(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
         else:
             return set()
@@ -702,7 +759,7 @@ class SParts(object):
         pid = self.ssetts.partId(part_id, side)
         if pid < len(self.sParts):
             return len(suppX & self.sParts[pid])
-        elif part_id == self.ssetts.delta:
+        elif part_id == self.ssetts.E_oo:
             return len(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
         else:
             return 0
@@ -714,9 +771,9 @@ class SParts(object):
         if self.missing:
             return [self.lpartInterX(suppX, i, side) for i in range(self.ssetts.top+1)]
         else:
-            la = self.lpartInterX(suppX, self.ssetts.alpha, side)
-            lb = self.lpartInterX(suppX, self.ssetts.beta, side)
-            lc = self.lpartInterX(suppX, self.ssetts.gamma, side)
+            la = self.lpartInterX(suppX, self.ssetts.E_xo, side)
+            lb = self.lpartInterX(suppX, self.ssetts.E_ox, side)
+            lc = self.lpartInterX(suppX, self.ssetts.E_xx, side)
             tmp = [la, lb, lc, len(suppX) - la - lb - lc]
             for i in range(len(tmp), self.ssetts.top+1):
                 tmp.append(0)
@@ -782,9 +839,9 @@ class SParts(object):
         else:
             return set(range(self.N))
     def suppA(self, side=0):
-        return self.part_union(self.ssetts.IDS_dL, side)
+        return self.part_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
     def suppB(self, side=0):
-        return self.part_union(self.ssetts.IDS_dR, side)
+        return self.part_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
 
     ### LENGHTS
     def lenSide(self, side):
@@ -812,9 +869,9 @@ class SParts(object):
         else:
             return self.N
     def lenA(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dL, side)
+        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
     def lenB(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dR, side)
+        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
 
     def lenP(self, i, side=0):
         return self.lpart(i, side)
@@ -831,9 +888,9 @@ class SParts(object):
     def lenU(self, side=0):
         return self.lenD(side)+self.lenI(side)
     def lenL(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dL, side)
+        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
     def lenR(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dR, side)
+        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
 
     # accuracy
     def acc(self, side=0):
@@ -909,17 +966,17 @@ class SParts(object):
                 union = set(self.sParts[0] | self.sParts[1] | self.sParts[2] | self.sParts[3])
             self.sParts.extend( [set(), set(), set(), set(), set() ])
             
-        if self.missing and self.ssetts.top > self.ssetts.delta:
+        if self.missing and self.ssetts.top > self.ssetts.E_oo:
             if OR : ## OR
-                ids_from_to_supp = [(self.ssetts.beta, self.ssetts.gamma ), (self.ssetts.delta, self.ssetts.alpha ),
-                                    (self.ssetts.mub, self.ssetts.gamma ), (self.ssetts.mubB, self.ssetts.alpha ),
-                                    (self.ssetts.muaB, self.ssetts.mua ), (self.ssetts.mud, self.ssetts.mua )]
+                ids_from_to_supp = [(self.ssetts.E_ox, self.ssetts.E_xx ), (self.ssetts.E_oo, self.ssetts.E_xo ),
+                                    (self.ssetts.E_mx, self.ssetts.E_xx ), (self.ssetts.E_mo, self.ssetts.E_xo ),
+                                    (self.ssetts.E_om, self.ssetts.E_xm ), (self.ssetts.E_mm, self.ssetts.E_xm )]
                 for (id_from, id_to) in ids_from_to_supp:
                     self.moveInter(side, id_from, id_to, suppX)
 
                 if (type(missX) == set and len(missX) > 0):
-                    ids_from_to_miss = [(self.ssetts.beta, self.ssetts.mub ), (self.ssetts.delta, self.ssetts.mubB ),
-                                        (self.ssetts.muaB, self.ssetts.mud )]
+                    ids_from_to_miss = [(self.ssetts.E_ox, self.ssetts.E_mx ), (self.ssetts.E_oo, self.ssetts.E_mo ),
+                                        (self.ssetts.E_om, self.ssetts.E_mm )]
                     for (id_from, id_to) in ids_from_to_miss:
                         self.moveInter(side, id_from, id_to, missX)
             
@@ -928,34 +985,34 @@ class SParts(object):
                     suppXB  = set(range(self.N)) - suppX - missX
                 else:
                     suppXB  = set(range(self.N)) - suppX
-                ids_from_to_suppB = [(self.ssetts.alpha, self.ssetts.delta ), (self.ssetts.gamma, self.ssetts.beta ),
-                                    (self.ssetts.mua, self.ssetts.muaB ), (self.ssetts.mub, self.ssetts.beta ),
-                                    (self.ssetts.mubB, self.ssetts.delta ), (self.ssetts.mud, self.ssetts.muaB )]
+                ids_from_to_suppB = [(self.ssetts.E_xo, self.ssetts.E_oo ), (self.ssetts.E_xx, self.ssetts.E_ox ),
+                                    (self.ssetts.E_xm, self.ssetts.E_om ), (self.ssetts.E_mx, self.ssetts.E_ox ),
+                                    (self.ssetts.E_mo, self.ssetts.E_oo ), (self.ssetts.E_mm, self.ssetts.E_om )]
                 for (id_from, id_to) in ids_from_to_suppB:
                     self.moveInter(side, id_from, id_to, suppXB)
                 
                 if (type(missX) == set and len(missX) > 0):
-                    ids_from_to_miss = [(self.ssetts.alpha, self.ssetts.mubB ), (self.ssetts.gamma, self.ssetts.mub ),
-                                        (self.ssetts.mua, self.ssetts.mud )]
+                    ids_from_to_miss = [(self.ssetts.E_xo, self.ssetts.E_mo ), (self.ssetts.E_xx, self.ssetts.E_mx ),
+                                        (self.ssetts.E_xm, self.ssetts.E_mm )]
                     for (id_from, id_to) in ids_from_to_miss:
                         self.moveInter(side, id_from, id_to, missX)
                 
         else :
             if OR : ## OR
-                self.sParts[self.ssetts.partId(self.ssetts.alpha,side)] |= (suppX
-                                                                       - self.sParts[self.ssetts.partId(self.ssetts.beta, side)]
-                                                                       - self.sParts[self.ssetts.partId(self.ssetts.gamma, side)])
-                self.sParts[self.ssetts.partId(self.ssetts.gamma,side)] |= (suppX
-                                                                       & self.sParts[self.ssetts.partId(self.ssetts.beta, side)])
-                self.sParts[self.ssetts.partId(self.ssetts.beta,side)] -= suppX
+                self.sParts[self.ssetts.partId(self.ssetts.E_xo,side)] |= (suppX
+                                                                       - self.sParts[self.ssetts.partId(self.ssetts.E_ox, side)]
+                                                                       - self.sParts[self.ssetts.partId(self.ssetts.E_xx, side)])
+                self.sParts[self.ssetts.partId(self.ssetts.E_xx,side)] |= (suppX
+                                                                       & self.sParts[self.ssetts.partId(self.ssetts.E_ox, side)])
+                self.sParts[self.ssetts.partId(self.ssetts.E_ox,side)] -= suppX
             
             else: ## AND
-                self.sParts[self.ssetts.partId(self.ssetts.beta,side)] |= (self.sParts[self.ssetts.partId(self.ssetts.gamma, side)]
+                self.sParts[self.ssetts.partId(self.ssetts.E_ox,side)] |= (self.sParts[self.ssetts.partId(self.ssetts.E_xx, side)]
                                                                        - suppX )
-                self.sParts[self.ssetts.partId(self.ssetts.gamma,side)] &= suppX
-                self.sParts[self.ssetts.partId(self.ssetts.alpha,side)] &= suppX
+                self.sParts[self.ssetts.partId(self.ssetts.E_xx,side)] &= suppX
+                self.sParts[self.ssetts.partId(self.ssetts.E_xo,side)] &= suppX
         if union is not None:
-            self.sParts[self.ssetts.delta] = union - self.sParts[self.ssetts.gamma] - self.sParts[self.ssetts.beta] - self.sParts[self.ssetts.alpha]
+            self.sParts[self.ssetts.E_oo] = union - self.sParts[self.ssetts.E_xx] - self.sParts[self.ssetts.E_ox] - self.sParts[self.ssetts.E_xo]
         
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
     def makeVectorABCD(self, force_list=False):
@@ -967,7 +1024,7 @@ class SParts(object):
                     for i in self.sParts[partId]:
                         self.vect[i] = partId
             else:
-                self.vect = [self.ssetts.delta for i in range(self.N)]
+                self.vect = [self.ssetts.E_oo for i in range(self.N)]
                 for partId in range(len(self.sParts)):
                     for i in self.sParts[partId]:
                         self.vect[i] = partId
@@ -1005,8 +1062,8 @@ class SParts(object):
     # def __str__(self):
 #         s = '|'
 #         r = '||\n|'
-#         if self.missing: up_to = self.ssetts.mud
-#         else: up_to = self.ssetts.delta
+#         if self.missing: up_to = self.ssetts.E_mm
+#         else: up_to = self.ssetts.E_oo
 #         for i in range(up_to+1):
 #             s += '|%s' % (3*self.ssetts.getLabel(i))
 #             r += '| % 4i ' % self.lpart(i,0)

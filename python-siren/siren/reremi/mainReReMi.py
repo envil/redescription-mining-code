@@ -27,6 +27,9 @@ delims_dict = {"(auto)": None,
 def loadAll(arguments=[]):
     pm = getPM()
 
+    exec_folder = os.path.dirname(os.path.abspath(__file__))
+    src_folder = exec_folder
+    
     pack_filename = None
     config_filename = None
     tmp_dir = None
@@ -51,13 +54,18 @@ def loadAll(arguments=[]):
                 options_args = arguments[2:]
 
     if pack_filename is not None:
+        src_folder = os.path.dirname(os.path.abspath(pack_filename))
+
         package = Package(pack_filename)
         elements_read = package.read(pm)        
         data = elements_read.get("data", None)
         reds = elements_read.get("reds", None)
         params = elements_read.get("preferences", None)
         tmp_dir = package.getTmpDir()
-
+        
+    elif config_filename is not None:
+        src_folder = os.path.dirname(os.path.abspath(config_filename))
+        
     params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
@@ -65,7 +73,7 @@ def loadAll(arguments=[]):
         sys.exit(2)
 
     params_l = trunToDict(params)
-    filenames = prepareFilenames(params_l, tmp_dir) 
+    filenames = prepareFilenames(params_l, tmp_dir, src_folder)
     logger = Log(params_l['verbosity'], filenames["logfile"])
 
     if pack_filename is None:
@@ -84,7 +92,7 @@ def trunToDict(params):
         params_l[k] = v["data"]
     return params_l
 
-def prepareFilenames(params_l, tmp_dir=None):
+def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     filenames = {"queries": "-",
                  "style_data": "csv",
                  "add_info": [{}, params_l['NA_str']]
@@ -96,7 +104,11 @@ def prepareFilenames(params_l, tmp_dir=None):
             filenames["add_info"][0]["delimiter"] = dl
     
     for p in ['result_rep', 'data_rep']:
-        if params_l[p] == "__TMP_DIR__":
+        if src_folder is not None and re.match("./", params_l[p]):
+            print "BEFORE", params_l[p]
+            params_l[p] = src_folder+params_l[p][1:]
+            print "AFTER", params_l[p]
+        elif params_l[p] == "__TMP_DIR__":
             if tmp_dir is None:
                 tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
             params_l[p] = tmp_dir + "/"
@@ -151,6 +163,11 @@ def prepareFilenames(params_l, tmp_dir=None):
         filenames["logfile"] = basis+params_l['ext_log']
     elif len(params_l['logfile']) > 0:
         filenames["logfile"] = params_l['logfile']
+
+    if len(params_l["series_id"]) > 0:
+        for k in filenames.keys():
+            if type(filenames[k]) is str:
+                filenames[k] = filenames[k].replace("__SID__", params_l["series_id"])
 
     return filenames
 
@@ -400,8 +417,27 @@ def run_printout(args):
         suff = "_reprint"
     loaded = loadAll(args[:-1])
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
-                                             loaded["filenames"], loaded["reds"]) 
+                                             loaded["filenames"], loaded["reds"])
 
+    for red in reds:        
+        print "\n==================="
+        print red.dispQueries()
+        print red.sParts
+
+        for typeS in ["marg", "over"]:
+            red.sParts.ssetts.reset(methodpVal=typeS)                       
+            print "%s=%s\t" % (typeS, red.sParts.pVal()),
+        
+        # for typeS in ["basic", "rejective", "optimistic", "pessimistic"]:
+        #     red.sParts.ssetts.reset(typeS)
+        #     # print red.sParts.ssetts.type_parts
+        #     # print "IDS_diff", red.sParts.ssetts.IDS_diff
+        #     # print "IDS_inter", red.sParts.ssetts.IDS_inter
+        #     # print "IDS_uncovered", red.sParts.ssetts.IDS_uncovered
+                       
+        #     print "%s=%s\t" % (typeS, red.sParts.acc()),
+    print "\n==================="
+    exit()
     constraints = Constraints(data, params)
     if loaded["reds"] is not None:
         reds = loaded["reds"]

@@ -557,7 +557,7 @@ class CatTerm(Term):
             
     def copy(self):
         return CatTerm(self.col, self.cat)
-            
+    
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
             if self.cmpType(other) == 0:
@@ -750,7 +750,7 @@ class NumTerm(Term):
                 return cmp(self.lowb, other.lowb)
         else:
             return cmp(self.col, other.col)
-        
+
     def __hash__(self):
         return int(self.col+hash(self.lowb)+hash(self.upb))
     
@@ -1990,7 +1990,13 @@ class Query(object):
                 qt = QTree(branches=branches)
                 tmp = qt.getQuery()
                 tto, tmapo = tmp.truthTable()
-                idsc = [tmap[l] for l in tmapo.keys()]
+                try:
+                    idsc = [tmap[l] for l in tmapo.keys()]
+                except KeyError:
+                    print "--- OUPS"
+                    print "---", ["%s" % s for s in tmap.keys()]
+                    print "---", ["%s" % s for s in tmapo.keys()]
+                    pdb.set_trace()
                 dropC = [i for (l,i) in tmap.items() if l not in tmapo]
                 ctt = tt
                 if len(dropC) > 0:

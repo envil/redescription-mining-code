@@ -167,6 +167,14 @@
     <section>
       <name>Extra</name>
       <parameter>
+        <name>series_id</name>
+        <label>Series ID</label>
+        <parameter_type>open</parameter_type>
+        <value_type>text</value_type>
+        <legend>Series ID to replace __SID__ in filenames.</legend>
+        <default><value></value></default>
+      </parameter>      
+      <parameter>
 	<name>logfile</name>
 	<label>Logfile</label>
 	<parameter_type>open</parameter_type>

@@ -498,12 +498,12 @@ class CharbonGMiss(CharbonGreedy):
                         EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
                         lmissE = sum(lmissEinF[lowF:upF+1])
                         #totEinF = sum(EinF)
-                        lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - aboveF - belowF + lmissE), \
-                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), partsMubB ), \
-                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
-                        lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), lmissE ), \
-                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), missMubB ), \
-                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), totMissEinF - lmissE )], 0)
+                        lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().E_xo, 1-side), totInt - aboveF - belowF + lmissE), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_mo, 1-side), partsMubB ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_oo, 1-side), aboveF + belowF + totMissEinF - lmissE)], 0)
+                        lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().E_xo, 1-side), lmissE ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_mo, 1-side), missMubB ), \
+                                                    (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_oo, 1-side), totMissEinF - lmissE )], 0)
 
                         belowEF = 0
                         outBelowEF = 0
@@ -515,9 +515,9 @@ class CharbonGMiss(CharbonGreedy):
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.getCstr("min_itm_in"):
                                 
                                 lmissF = sum(lmissFinE[lowE:upE+1])
-                                lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().alpha, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
-                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().mubB, 1-side), lmissF ), \
-                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().delta, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
+                                lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().partId(self.constraints.getSSetts().E_xo, 1-side), totInt - belowF - aboveF - belowEF - aboveEF), \
+                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_mo, 1-side), lmissF ), \
+                                                         (self.constraints.getSSetts().partId(self.constraints.getSSetts().E_oo, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
                                 best = self.updateACTP33(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
@@ -612,8 +612,8 @@ class CharbonGMiss(CharbonGreedy):
                 marg[buckets[2]] += colE.lenMode()
 
             for cat in colF.cats():
-                lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, len(colF.suppCat(cat)) ), (self.constraints.getSSetts().mubB, partsMubB ), (self.constraints.getSSetts().delta, - colF.nbRows())], 1-side)
-                lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, len(colF.suppCat(cat) & colE.miss()) ), (self.constraints.getSSetts().mubB, missMubB ), (self.constraints.getSSetts().delta, -len(colE.miss()) )], 1-side)
+                lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().E_xo, len(colF.suppCat(cat)) ), (self.constraints.getSSetts().E_mo, partsMubB ), (self.constraints.getSSetts().E_oo, - colF.nbRows())], 1-side)
+                lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().E_xo, len(colF.suppCat(cat) & colE.miss()) ), (self.constraints.getSSetts().E_mo, missMubB ), (self.constraints.getSSetts().E_oo, -len(colE.miss()) )], 1-side)
                 
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
                 if buckets[2] is not None :
@@ -630,7 +630,7 @@ class CharbonGMiss(CharbonGreedy):
                     up = len(interMat)-1
                     while up >= low and \
                           (totIn - below - above >= self.constraints.getCstr("min_itm_in") or totIn - below - above >= self.constraints.getCstr("min_itm_out")):
-                        lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().alpha, totIn - below - above), (self.constraints.getSSetts().mubB, totMiss - missBelow - missAbove ), (self.constraints.getSSetts().delta, -sum(marg[low:up+1]))], 1-side)
+                        lin = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().E_xo, totIn - below - above), (self.constraints.getSSetts().E_mo, totMiss - missBelow - missAbove ), (self.constraints.getSSetts().E_oo, -sum(marg[low:up+1]))], 1-side)
                         for (i, nF, nE) in configs:
                             if nF:
                                 tmp_lparts = self.constraints.getSSetts().negateParts(1-side, lparts)

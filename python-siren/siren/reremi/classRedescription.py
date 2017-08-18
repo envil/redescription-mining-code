@@ -32,18 +32,18 @@ def var_ltx_cmd(sid, vid, padsv=None, padss=None):
 class Redescription(object):
 
     diff_score = Query.diff_length + 1
-    print_delta_fields = set(SParts.print_delta_fields+["Tex_"+s for s in SParts.print_delta_fields])
+    print_E_oo_fields = set(SParts.print_E_oo_fields+["Tex_"+s for s in SParts.print_E_oo_fields])
     print_queries_headers = ["query_LHS", "query_RHS"]
     print_queries_namedsuff = "_named"
-    print_default_fields_stats = ["acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
-    print_default_fields_supp = ["alpha", "beta", "gamma"] #, "delta"]
+    print_default_fields_stats = ["acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
+    print_default_fields_supp = ["E_xo", "E_ox", "E_xx"] #, "E_oo"]
 
     print_default_fields = print_queries_headers+print_default_fields_stats
-    # ["query_LHS", "query_RHS", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
+    # ["query_LHS", "query_RHS", "acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
     print_default_fields_named = [p+print_queries_namedsuff for p in print_queries_headers]+print_default_fields_stats
-    #["query_LHS_named", "query_RHS_named", "acc", "pval", "card_alpha", "card_beta", "card_gamma", "card_delta"]
-    # print_info_tex = [("acc", 3, "%1.3f"), ("card_gamma", 0, "%i"), ("perc_gamma", 3, "%.3f"), ("pval", 3, "%1.3f")]
-    print_info_tex = [("acc", 2, "%1.2f"), ("card_gamma", 0, "%i"), ("perc_gamma", 2, "%.2f"), ("pval", 3, "%1.3f")]
+    #["query_LHS_named", "query_RHS_named", "acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
+    # print_info_tex = [("acc", 3, "%1.3f"), ("card_E_xx", 0, "%i"), ("perc_E_xx", 3, "%.3f"), ("pval", 3, "%1.3f")]
+    print_info_tex = [("acc", 2, "%1.2f"), ("card_E_xx", 0, "%i"), ("perc_E_xx", 2, "%.2f"), ("pval", 3, "%1.3f")]
 
     print_fields_details = {}
     for sideq in print_queries_headers:
@@ -111,7 +111,7 @@ class Redescription(object):
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
-    def getInfoDict(self, with_delta=False, rset_id=None):
+    def getInfoDict(self, with_E_oo=False, rset_id=None):
         if self.dict_supp_info is not None and self.sParts is not None:
             if (rset_id is not None and "rset_id" not in self.dict_supp_info) or \
                    (rset_id is None and "rset_id" in self.dict_supp_info):
@@ -120,10 +120,10 @@ class Redescription(object):
         
         if self.dict_supp_info is None and self.sParts is not None:
             if rset_id in self.restricted_sets and self.restricted_sets[rset_id]["sParts"] is not None:
-                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_delta)
+                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_E_oo)
                 self.dict_supp_info["rset_id"] = rset_id
             else:
-                self.dict_supp_info = self.sParts.toDict(with_delta)
+                self.dict_supp_info = self.sParts.toDict(with_E_oo)
         if self.dict_supp_info is not None:
             self.dict_supp_info["track"] = self.track
             return self.dict_supp_info
@@ -557,7 +557,7 @@ class Redescription(object):
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=["acc", "card_gamma", "pval"], sep=" "), self.getTrack({"format":"str"})))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=["acc", "card_E_xx", "pval"], sep=" "), self.getTrack({"format":"str"})))
 
     def dispHeader(list_fields=None, sep="\t", named=False):
         if list_fields is None:
@@ -625,7 +625,7 @@ class Redescription(object):
                 list_fields = Redescription.print_default_fields_named
             else:
                 list_fields = Redescription.print_default_fields
-        info_tmp = self.getInfoDict(with_delta = len(Redescription.print_delta_fields.intersection(list_fields)) > 0)
+        info_tmp = self.getInfoDict(with_E_oo = len(Redescription.print_E_oo_fields.intersection(list_fields)) > 0)
         info_tmp["status_enabled"] = self.status
 
         if supp_names is not None:
@@ -914,9 +914,9 @@ class Redescription(object):
     load = staticmethod(load)
 
 def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
-    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_perc_gamma"]
+    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_E_xx", "Tex_perc_E_xx"]
     tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\supp\%"]
-    # tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
+    # tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_E_xx", "Tex_pval"]
     # tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\pValue"]
 
     if type(fields) is list and len(fields) > 0:

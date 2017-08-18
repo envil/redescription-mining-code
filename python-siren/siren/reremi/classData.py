@@ -54,7 +54,7 @@ class ColM(object):
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
         self.vect = None
-
+        
     def simpleBool(self):
         return False
                 
@@ -79,7 +79,9 @@ class ColM(object):
         if val == self.NA:
             return Data.NA_str 
         return val
-
+    
+    def areDataEquiv(self, vA, vB):
+        return vA == vB
     def getPrec(self, details=None):
         return 0
 
@@ -824,7 +826,40 @@ class NumColM(ColM):
 
     def getNumValue(self, rid):
         return self.getValue(rid)
-        
+
+    def areDataEquiv(self, vA, vB):
+        if self.uniqvs is None:
+            self.uniqvs = sorted(set([self.sVals[x][0] for x in range(len(self.sVals))]))
+        # print "DataEquiv? %s vs. %s [%s]" % (vA, vB, list(enumerate(self.uniqvs[:10])))
+        if vA == vB:
+            return True
+        icurrent, iAe, iBe, iAg, iBg = (0, None, None, None, None)
+        while icurrent < len(self.uniqvs) and ( iAg is None or iBg is None):
+            if iAg is None and self.uniqvs[icurrent] > vA:
+                iAg = icurrent
+            if iBg is None and self.uniqvs[icurrent] > vB:
+                iBg = icurrent
+            if iAe is None and self.uniqvs[icurrent] >= vA:
+                iAe = icurrent
+            if iBe is None and self.uniqvs[icurrent] >= vB:
+                iBe = icurrent
+            icurrent += 1
+        # print "iAe=%s iBe=%s iAg=%s iBg=%s" % (iAe, iBe, iAg, iBg)
+        ans = (False, False)
+        if iAe!=iAg and iBe!=iBg: # if both values are in the data
+            if iAe == iBe and iAg == iBg: # if they are equal
+                # This should not happen, as we tested for equality of values at the start
+                ans = (True, True)
+        elif iAe==iAg and iBe==iBg: # if neither value is in the data
+            if iAe == iBe: ## and iAg == iBg: # if they are in the same bin
+                ans = (True, True)
+        elif iAe==iAg: # and iBe!=iBg: # if B is in the data but not A
+            ans = ((iAe == iBg), (iAe == iBe))
+        elif iBe==iBg: # and iAe!=iAg: # if A is in the data but not B
+            ans = ((iBe == iAg), (iBe == iAe))
+        # print "A in data %s\tB in data %s\tA ~ B %s" % (iAe!=iAg, iBe!=iBg, ans)
+        return ans[0], ans[1], iAe!=iAg, iBe!=iBg
+    
     def numEquiv(self, v):
         try:
             tmp = float(v)
@@ -886,6 +921,7 @@ class NumColM(ColM):
     def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None, force=False, mode=None):
         ColM.__init__(self, N, nmiss)
         self.nbUniq = None
+        self.uniqvs = None
         self.prec = prec
         self.sVals = ncolSupp
         self.buk = None
@@ -1141,8 +1177,8 @@ class NumColM(ColM):
     def makeSegmentsColors(self, ssetts, side, supports, ops =[False, True]):
         supports.makeVectorABCD()
 
-        partids = [[ssetts.partId(ssetts.gamma, side), ssetts.partId(ssetts.alpha, side)], \
-                   [ssetts.partId(ssetts.beta, side), ssetts.partId(ssetts.delta, side)]]
+        partids = [[ssetts.partId(ssetts.E_xx, side), ssetts.partId(ssetts.E_xo, side)], \
+                   [ssetts.partId(ssetts.E_ox, side), ssetts.partId(ssetts.E_oo, side)]]
         
         segments = [[[self.sVals[0][0], None, [0, 0]]], [[self.sVals[0][0], None, [0, 0]]]]
         current_valseg = [[self.sVals[0][0], self.sVals[0][0], [0, 0]], [self.sVals[0][0], self.sVals[0][0], [0, 0]]]
@@ -1573,7 +1609,6 @@ class Data(object):
                           "splits": [splits[k] for k in skeys]}
         elif type(self.cols[side][colid]) is BoolColM:
             self.cols[side][colid].setDisabled()
-            ### HERE
             col = self.cols[side][colid]
             splits = {"True": set(col.supp()), "False": set(col.negSuppTerm(None))}
             skeys = sorted(splits.keys())
@@ -1678,7 +1713,7 @@ class Data(object):
         col = BoolColM(set(lids), self.nbRows())
         self.addCol(col, sito, preff+name)
 
-    def subset(self, row_ids=None):
+    def subset(self, row_ids=None, shuff_side=None):
         coords = None
         rnames = None
         if row_ids is None:
@@ -1709,12 +1744,22 @@ class Data(object):
         cols = [[],[]]
         for side in [0,1]:
             for col in self.cols[side]:
-                tmp = col.subsetCol(row_ids)
+                if shuff_side is None or (side in shuff_side): 
+                    tmp = col.subsetCol(row_ids)
+                else: ### just copy
+                    tmp = col.subsetCol()
                 tmp.side = side
                 tmp.id = len(cols[side])
                 cols[side].append(tmp)
         return Data(cols, N, coords, rnames, self.isSingleD())
 
+    def shuffle_sides(self, shuff_sides):
+        ### HERE
+        shuffled_rids = range(self.nbRows())
+        np.random.shuffle(shuffled_rids)
+        shuffled_d = dict([(v,[i]) for i,v in enumerate(shuffled_rids)])
+        return self.subset(shuffled_d, shuff_sides), shuffled_d
+    
     def hasSelectedRows(self):
         return len(self.selected_rows) > 0
 
@@ -1767,7 +1812,6 @@ class Data(object):
 
         
     def writeCSV(self, outputs, thres=0.3, full_details=False, inline=False):
-        #### FIGURE OUT HOW TO WRITE, WHERE TO PUT COORDS, WHAT METHOD TO USE
         #### check whether some row name is worth storing
         rids = {}
         if self.rnames is not None:
@@ -2583,17 +2627,28 @@ def main():
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data
 
-    rep = "/home/egalbrun/TKTL/misc/Hedde/"
+    # rep = "/home/egalbrun/TKTL/misc/Hedde/"
+    rep = "/home/egalbrun/short/rpr/"
     ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
-    for (dL, dR) in [("THS", "RHS"), ("LHS", "RHS")]:
+    for (dL, dR) in [("LHS_50", "RHS_50"), ("RHS_50", "LHS_50")]: # ("THS", "RHS"), 
         ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
         # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
-        data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ";"}, "NA"], "csv")
-        print dL, dR, data
-        print "---------------"
-        for side in [0,1]:
-            for col in data.cols[side]:
-                print col
+        data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ","}, "NA"], "csv")
+        rdt, sd = data.shuffle_sides([0])
+        pdb.set_trace()
+        # print dL, dR, data
+        ### [(-23.6, 1694), (-23.0, 1697), (-22.7, 1696), (-22.1, 2503), (-21.9, 2499), (-21.8, 2196), (-21.8, 2500), (-21.6, 2504), (-21.5, 1681), (-21.5, 2502)]
+        # print data.cols[1][1].areDataEquiv(-21.88,-21.8)
+        # print data.cols[1][1].areDataEquiv(-21.8,-21.7)
+        # print data.cols[1][1].areDataEquiv(-21.8,-21.55)
+        # print data.cols[1][1].areDataEquiv(-24.8,-24.55)
+        # print data.cols[1][1].areDataEquiv(-24.8,-23.6)
+        # print data.cols[1][1].areDataEquiv(13.4,11.3)
+        # print data.cols[1][1].areDataEquiv(11.267,11.3)
+        # print "---------------"
+        # for side in [0,1]:
+        #     for col in data.cols[side]:
+        #         print col
 
     # rep = "/home/egalbrun/"
     # data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")

@@ -334,7 +334,7 @@
 	<value_type>text</value_type>
 	<legend>What to expect from missing values</legend>
 	<default><value>0</value></default>
-	<options><value>grounded</value><value>optimistic</value><value>pessimistic</value></options>
+	<options><value>rejective</value><value>optimistic</value><value>pessimistic</value><value>basic</value></options>
       </parameter>
     </section>
   </section>

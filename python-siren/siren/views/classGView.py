@@ -25,14 +25,14 @@ class GView(BasisView):
     label_typeP="J-type ="
 
     label_cardT="|E| ="
-    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.delta]+"| ="    
+    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.E_oo]+"| ="    
 
     label_cardP="|E%s| ="
     
-    label_cardAlpha="|E"+SSetts.sym_sparts[SSetts.alpha]+"| ="
-    label_cardBeta="|E"+SSetts.sym_sparts[SSetts.beta]+"| ="
-    label_cardI="|E"+SSetts.sym_sparts[SSetts.gamma]+"| ="
-    label_cardO="|E"+SSetts.sym_sparts[SSetts.delta]+"| ="
+    label_cardAlpha="|E"+SSetts.sym_sparts[SSetts.E_xo]+"| ="
+    label_cardBeta="|E"+SSetts.sym_sparts[SSetts.E_ox]+"| ="
+    label_cardI="|E"+SSetts.sym_sparts[SSetts.E_xx]+"| ="
+    label_cardO="|E"+SSetts.sym_sparts[SSetts.E_oo]+"| ="
     
     label_learn = SYM.SYM_LEARN #+":"
     label_test = SYM.SYM_TEST #+":"
@@ -42,10 +42,10 @@ class GView(BasisView):
     label_outin = SYM.SYM_OUTIN 
     label_cross = SYM.SYM_CROSS
 
-    map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.alpha]+"|", [SSetts.alpha]),
-                       ("r", "|E"+SSetts.sym_sparts[SSetts.beta]+"|", [SSetts.beta]),
-                       ("i", "|E"+SSetts.sym_sparts[SSetts.gamma]+"|", [SSetts.gamma]),
-                       ("o", "|E"+SSetts.sym_sparts[SSetts.delta]+"|", [SSetts.delta])]
+    map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.E_xo]+"|", [SSetts.E_xo]),
+                       ("r", "|E"+SSetts.sym_sparts[SSetts.E_ox]+"|", [SSetts.E_ox]),
+                       ("i", "|E"+SSetts.sym_sparts[SSetts.E_xx]+"|", [SSetts.E_xx]),
+                       ("o", "|E"+SSetts.sym_sparts[SSetts.E_oo]+"|", [SSetts.E_oo])]
 
     infos_details = [] # {"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"},
                      # {"id": "lenI", "label": label_cardI, "meth": "getLenI", "format": "%i", "color":2},
@@ -116,7 +116,7 @@ class GView(BasisView):
         zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
         zord_dots = zord_clusts[indices]
             
-        delta_dots = vec==SSetts.delta
+        delta_dots = vec==SSetts.E_oo
         
         sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
         sz_dots[~ delta_dots] *= 0.5
@@ -312,7 +312,7 @@ class GView(BasisView):
                                                     wx.StaticText(self.panel, label="XXX"))
 
 
-                if info_item.get("details", {}).get("part_id", SSetts.delta) < SSetts.delta:
+                if info_item.get("details", {}).get("part_id", SSetts.E_oo) < SSetts.E_oo:
                     self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["details"]["part_id"]])
 
     def addFrameSpecific(self):

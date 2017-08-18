@@ -1162,37 +1162,37 @@ class BasisView(object):
         colors = self.getColors1()
         colhigh = self.getColorHigh()
         defaults = self.getDrawSettDef()
-        draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.mud, SSetts.mua, SSetts.mub,
-                                                        SSetts.muaB, SSetts.mubB,
-                                                        SSetts.delta, SSetts.beta,
-                                                        SSetts.alpha, SSetts.gamma])])
+        draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.E_mm, SSetts.E_xm, SSetts.E_mx,
+                                                        SSetts.E_om, SSetts.E_mo,
+                                                        SSetts.E_oo, SSetts.E_ox,
+                                                        SSetts.E_xo, SSetts.E_xx])])
             
         dd = numpy.nan*numpy.ones(numpy.max(draw_pord.keys())+1)
-        for (p,v) in enumerate([SSetts.delta, SSetts.beta, SSetts.alpha, SSetts.gamma]):
+        for (p,v) in enumerate([SSetts.E_oo, SSetts.E_ox, SSetts.E_xo, SSetts.E_xx]):
             dd[v] = p
 
         css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh}
-        for (p, iid) in enumerate([SSetts.alpha, SSetts.beta, SSetts.gamma, SSetts.delta]):
+        for (p, iid) in enumerate([SSetts.E_xo, SSetts.E_ox, SSetts.E_xx, SSetts.E_oo]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
                         "shape": defaults["shape"], "size": defaults["size"],
                         "zord": self.DEF_ZORD}
-        for (p, iid) in enumerate([SSetts.mua, SSetts.mub]):
-            css[iid] = {"color_f": self.getColorA(colors[SSetts.delta], -.9),
+        for (p, iid) in enumerate([SSetts.E_xm, SSetts.E_mx]):
+            css[iid] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
                         "color_e": self.getColorA(colors[p], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": self.DEF_ZORD}
-        for (p, iid) in enumerate([SSetts.mubB, SSetts.muaB]):
+        for (p, iid) in enumerate([SSetts.E_mo, SSetts.E_om]):
             css[iid] = {"color_f": self.getColorA(colors[p], -.9),
-                        "color_e": self.getColorA(colors[SSetts.delta], .9),
+                        "color_e": self.getColorA(colors[SSetts.E_oo], .9),
                         ## "color_e": self.getColorA(defaults["color_e"], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": self.DEF_ZORD}
-        css[SSetts.mud] = {"color_f": self.getColorA(colors[SSetts.delta], -.9),
-                           "color_e": self.getColorA(colors[SSetts.delta], .9),
+        css[SSetts.E_mm] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
+                           "color_e": self.getColorA(colors[SSetts.E_oo], .9),
                            "shape": defaults["shape"], "size": defaults["size"]-1,
                            "zord": self.DEF_ZORD}
-        # css[SSetts.delta] = {"color_f": self.getColorA(defaults["color_f"]),
+        # css[SSetts.E_oo] = {"color_f": self.getColorA(defaults["color_f"]),
         #                      "color_e": self.getColorA(defaults["color_e"], 1.),
         #                      "color_l": self.getColorA(defaults["color_l"]),
         #                      "shape": defaults["shape"], "size": defaults["size"]-1,
@@ -1202,10 +1202,10 @@ class BasisView(object):
                    "shape": defaults["shape"], "size": defaults["size"]-1,
                    "zord": self.DEF_ZORD}
         css["default"] = defaults
-        css[SSetts.alpha]["zord"] += 1
-        css[SSetts.beta]["zord"] += 1
-        css[SSetts.gamma]["zord"] += 2
-        css[SSetts.delta]["zord"] -= 1
+        css[SSetts.E_xo]["zord"] += 1
+        css[SSetts.E_ox]["zord"] += 1
+        css[SSetts.E_xx]["zord"] += 2
+        css[SSetts.E_oo]["zord"] -= 1
         # print "---- COLOR SETTINGS"
         # for k,v in css.items():
         #     if type(k) is int:
