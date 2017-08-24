@@ -105,9 +105,7 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     
     for p in ['result_rep', 'data_rep']:
         if src_folder is not None and re.match("./", params_l[p]):
-            print "BEFORE", params_l[p]
             params_l[p] = src_folder+params_l[p][1:]
-            print "AFTER", params_l[p]
         elif params_l[p] == "__TMP_DIR__":
             if tmp_dir is None:
                 tmp_dir = tempfile.mkdtemp(prefix='ReReMi')

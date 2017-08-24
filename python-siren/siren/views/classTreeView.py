@@ -266,18 +266,18 @@ class TreeView(GView):
             if tree.isSplitNode(node):
                 self.axe.plot(x, y, color=color_dot[side], marker='s')
                 # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
-                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side)),
-                                  xy =(x, y), xytext =(x, y+0.02),
+                ant = tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side))
+                ant = ant.replace("<", "$\leq$").replace(">", "$\geq$")
+                self.axe.annotate(ant, xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
                                   )
-                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
-                self.axe.annotate(tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side)),
-                                  xy =(x, y), xytext =(x, y+0.02),
+                # # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
+                self.axe.annotate(ant, xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
                                   bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
                                   )
-                # self.axe.text(Xs[tree[node]["depth"]], Ys[node]-0.05, "%s" % (supps[node]), horizontalalignment='center')
+                #self.axe.text(Xs[tree[node]["depth"]], Ys[node]-0.05, "%s" % (supps[node]), horizontalalignment='center')
                 
     def okTrees(self):
         return self.trees is not None \

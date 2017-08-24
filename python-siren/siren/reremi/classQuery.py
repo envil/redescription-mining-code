@@ -598,7 +598,7 @@ class CatTerm(Term):
         else:
             return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
 
-    def dispTex(self, neg, names = None):
+    def dispTex(self, neg=None, names = None):
         # neg = False
         symbIn = '\\in'
         if neg is None:
@@ -787,7 +787,7 @@ class NumTerm(Term):
         else:
             return neg+lb+(Term.pattVName % self.col) + ub
 
-    def dispTex(self, neg, names = None, prec=None):
+    def dispTex(self, neg=None, names = None, prec=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:

@@ -325,11 +325,18 @@ def make_literal(side, node, data, cols_info):
         elif data.cols[side][cid].typeId() == CatTerm.type_id:
             lit = Literal(direct > 0, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
         elif data.cols[side][cid].typeId() == NumTerm.type_id:
-            if direct > 0:
-                rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold, "high"))
-            else:
-                rng = (data.col(side,cid).getRoundThres(threshold, "low"), float("inf")) 
-            lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+            # ###################################
+            # if direct > 0:
+            #     #rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold, "high"))
+            #     rng = (float("-inf"), threshold)
+            # else:
+            #     # rng = (data.col(side,cid).getRoundThres(threshold, "low"), float("inf"))
+            #     rng = (threshold, float("inf")) 
+            # lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+            # ###################################            
+            rng = (data.col(side,cid).getRoundThres(threshold, "low"), float("inf"))
+            lit = Literal(direct > 0, NumTerm(cid, rng[0], rng[1]))
+
         else:
             raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())
     return lit

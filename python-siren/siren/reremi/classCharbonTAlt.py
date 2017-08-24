@@ -87,11 +87,18 @@ class CharbonTCW(CharbonTree):
                     elif data.cols[side][cid].typeId() == CatTerm.type_id:
                         lit = Literal(neg, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
                     elif data.cols[side][cid].typeId() == NumTerm.type_id:
-                        if neg:
-                            rng = (float("-inf"), data.cols[side][cid].getRoundThres(threshold[parent], "high"))
-                        else:
-                            rng = (data.cols[side][cid].getRoundThres(threshold[parent], "low"), float("inf")) 
-                        lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+                        # ###################################
+                        # if neg:
+                        #     # rng = (float("-inf"), data.cols[side][cid].getRoundThres(threshold[parent], "high"))
+                        #     rng = (float("-inf"), threshold[parent])
+                        # else:
+                        #     # rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+                        #     rng = (threshold[parent], float("inf")) 
+                        # lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+                        # ###################################
+                        rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+                        lit = Literal(neg, NumTerm(cid, rng[0], rng[1]))
+
                     else:
                         raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())
                     branch.append(lit)
@@ -254,6 +261,7 @@ class CharbonTSplit(CharbonTCW):
 
         current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
         if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
+            # pdb.set_trace()
             redex = self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
                                           [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
                                           data, cols_info)

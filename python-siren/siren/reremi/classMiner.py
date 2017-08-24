@@ -71,6 +71,7 @@ class ExpMiner(object):
     def expandRedescriptionsTree(self, nextge, partial, final=None):
         new_red, new_rid = (None, None)
         for redi, red in enumerate(nextge):
+            print redi, red
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             new_red = self.charbon.getTreeCandidates(-1, self.data, red.copy())
             if new_red is not None:
@@ -392,7 +393,6 @@ class Miner(object):
         if self.data.isSingleD(): sides = [0]
         for side in sides:
             for idl in ids[side]:
-                # pdb.set_trace()
                 for (l,v) in self.charbon.computeInitTerm(self.data.col(side, idl)):
                     if side == 0:
                         self.initial_pairs.add(l, None, {"score":v, side: idl, 1-side: -1})
