@@ -195,7 +195,8 @@ class ParaView(GView):
                 ('button_release_event', self.on_release),
                 ('motion_notify_event', self.on_motion_all),
                 ('axes_leave_event', self.on_axes_out),
-                ('draw_event', self.on_draw)]
+                ('draw_event', self.on_draw),
+                ('pick_event', self.onpick)]
 
 
     def prepareData(self, lits, draw_ppos=None):
@@ -495,14 +496,18 @@ class ParaView(GView):
         else:
             self.axe.plot([a_xy[0], a_xy[0]+a_dxy[0]], [a_xy[1], a_xy[1]+a_dxy[1]], '-k')
 
+        if "pos_hids" not in self.prepared_data:
+            self.prepared_data["pos_hids"] = {}
         for si, ss in enumerate([(arrow[0][0],arrow[1][0]), (arrow[0][1],arrow[1][1])]):
             xy = (numpy.mean(corners[ss,0]), numpy.mean(corners[ss,1]))
             ha = "left"
             if si == side:
                 ha = "right"
-                
-            self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center")
-                #pdb.set_trace()
+            self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center", picker=60)
+            lids = dets["subsets"].get(ss)
+            if lids is not None:
+                self.prepared_data["pos_hids"][(pos, xy[1] < 1.2)] = lids
+        #pdb.set_trace()
         self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.E_xx,0], corners[SSetts.E_xx,1]+0.05), ha="center", va="bottom")
 
             
@@ -764,7 +769,15 @@ class ParaView(GView):
         pos_lids = numpy.vstack(pos_lids)
         return pos_lids
 
-        
+    ## LL
+    ###event when we click on label
+    def onpick(self, event):
+        artist = event.artist
+        pos = round(artist.xy[0])
+        updown = artist.xy[1] < 1.2
+        if "pos_hids" in self.prepared_data and (pos, updown) in self.prepared_data["pos_hids"]:
+            self.sendEmphasize(self.prepared_data["pos_hids"][(pos, updown)])
+             
     def on_draw(self, event):
 
         renderer1 = self.MapcanvasMap.get_renderer()
