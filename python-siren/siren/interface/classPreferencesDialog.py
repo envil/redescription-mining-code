@@ -26,7 +26,7 @@ class PreferencesDialog(wx.Dialog):
 
     button_types = [{"name":"cancel", "label":"Cancel", "funct": "self.onCancel"},
              {"name":"reset", "label":"Reset", "funct": "self.onReset"},
-             {"name":"rtod", "label":"ResetToDefaults", "funct": "self.onResetToDefaults"},
+             {"name":"rtod", "label":"ResetToDefault", "funct": "self.onResetToDefault"},
              {"name":"apply", "label":"Apply", "funct": "self.onApply"},
              {"name":"ok", "label":"OK", "funct": "self.onOK"}]
      
@@ -222,7 +222,7 @@ class PreferencesDialog(wx.Dialog):
         self.controls_map[sec_id]["button"]["reset"].Disable()
         self.controls_map[sec_id]["button"]["apply"].Disable()
 
-    def onResetToDefaults(self, event):
+    def onResetToDefault(self, event):
         if event.GetId() in self.objects_map.keys():
             sec_id = self.objects_map[event.GetId()][0]
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferencesManager().getDefaultTriplets())

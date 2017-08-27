@@ -19,17 +19,15 @@ class WorkPlant(object):
     def getWP(self):
         return self.wp
 
-    def setupWorkPlant(self, ip=None, numport=None, authkey=None):
-        if self.wp is None or (ip, numport, authkey) != self.wp.getParameters():
+    def setupWorkPlant(self, ip=None, numport=None, authkey=None, numclient=None):
+        if self.wp is None or (ip, numport, authkey, numclient) != self.wp.getParameters():
             # wp = WorkInactive()
-            
             # if ip is None:
             #     return wp
             # elif ip == "local":
-
             if ip is not None and ip != "local":
                 try:
-                    wp = WorkClient(ip, numport, authkey)
+                    wp = WorkClient(ip, numport, authkey, numclient)
                 except Exception as e:
                     wp = WorkInactive()
                     raise e

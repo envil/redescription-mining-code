@@ -27,11 +27,18 @@ class WorkerProcess(multiprocessing.Process):
 
 class MinerProcess(WorkerProcess):
     def run(self):
+        ### time sleep
+        #time.sleep(40)
         self.miner.full_run(self.cust_params)
 
 class ExpanderProcess(WorkerProcess):
     def run(self):
         self.miner.part_run(self.cust_params)
+
+class IntervalProcess(WorkerProcess):
+     def run(self):
+	pass
+        # self.miner.interval_run(self.cust_params)
 
 class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, proj={}):
@@ -61,12 +68,14 @@ class ProjectorProcess(multiprocessing.Process):
 def make_server_manager(port, authkey):
     job_q = multiprocessing.Queue()
     ids_d = dict()
-    
+    reconnect_q = multiprocessing.Queue()
+
     class JobQueueManager(SyncManager):
         pass
 
     JobQueueManager.register('get_job_q', callable=lambda: job_q)
     JobQueueManager.register('get_ids_d', callable=lambda: ids_d)
+    JobQueueManager.register('get_reconnect_q', callable=lambda: reconnect_q)
 
     manager = JobQueueManager(address=("", port), authkey=authkey)
     manager.start()
@@ -78,8 +87,10 @@ class WorkServer(object):
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
         print "PID", os.getpid()
         self.manager = make_server_manager(portnum, authkey)
-        self.shared_job_q = self.manager.get_job_q()
-        self.shared_ids_d = self.manager.get_ids_d()
+        self.shared_job_q = self.manager.get_job_q() #queue
+        self.shared_ids_d = self.manager.get_ids_d() #queue
+        self.shared_reconnect_q = self.manager.get_reconnect_q()
+
         self.authkey = authkey
         self.nextHandlerId = 0
         self.handlers = {}
@@ -98,19 +109,28 @@ class WorkServer(object):
                         self.handlers[hid] = WorkHandler(self, hid, self.authkey)
                         self.shared_ids_d.update({job.get("cid"): hid})
                         print "new HID %s -> %s" % (job.get("cid"), hid) 
-
-                    if job.get("task") == "info":
+                    
+                    elif job.get("task") == "info":
                         ## create new handler
                         hid = portnum + self.nextHandlerId
                         self.shared_ids_d.update({job.get("cid"): self.getLoadStr()})
                         print "sent INFO %s" % job.get("cid") 
 
-                    ## if retire: move from working to retired 
+                    elif job.get("task") == "reconnect":
+                        if job.get("hid") in self.handlers:
+                            wids = [(k, v.get("task"), "pending") for (k,v) in self.handlers[job.get("hid")].pending.items()]
+                            wids += [(k,v.get("task"), "working") for (k,v) in self.handlers[job.get("hid")].working.items()]
+                            wids += [(k,v.get("task"), "retired") for (k,v) in self.handlers[job.get("hid")].retired.items()]
+                            rwids = [w for w in wids if w[1] in WorkHandler.types_reconnect]
+                            nwids = [w for w in wids if w[1] not in WorkHandler.types_reconnect]
+                            #### TODO: laying off nwids
+                            print "reconnection HID %s -> %s\t%s" % (job.get("cid"), hid, rwids)
+                            self.shared_ids_d.update({job.get("cid"): hid})
+                            self.shared_reconnect_q.put(rwids, False)     
+
+                     ## if retire: move from working to retired 
                     elif job.get("hid") in self.handlers:
                         self.handlers[job.get("hid")].handleJob(job)
-        # except:
-        #     print "Central stop..."
-        #     return
 
     def getLoadStr(self):
         return " ".join([hd.getLoadStr() for (hdid, hd) in self.handlers.items()])
@@ -135,6 +155,7 @@ class WorkServer(object):
 def make_hs_manager(port, authkey):
     job_q = multiprocessing.Queue()
     result_q = multiprocessing.Queue()
+    reconnect_q = multiprocessing.Queue()
 
     class HSQueueManager(SyncManager):
         pass
@@ -153,10 +174,12 @@ class WorkHandler(object):
     type_workers = {"expander": {"launch": ExpanderProcess, "stop": "message"},
                     "miner": {"launch": MinerProcess, "stop": "message"},
                     "projector": {"launch": ProjectorProcess, "stop": "terminate"}}
-
+                    # "interval": {"launch": IntervalProcess, "stop": "message"}}
+    types_reconnect = ["expander", "miner"]
+        
     def __init__(self, parent_ws, portnum, authkey, max_k=MAXK):
         self.manager = make_hs_manager(portnum, authkey)
-        self.shared_result_q = self.manager.get_result_q()
+        self.shared_result_q = self.manager.get_result_q() #queue
         self.parent = parent_ws
         self.id = portnum
         self.max_K = max_k
@@ -168,14 +191,13 @@ class WorkHandler(object):
         return self.shared_result_q
 
     def getLoadStr(self):
-        return "%d:%d+%d" % (self.id, len(self.working), len(self.pending))
-
+        return "%d:w%d+p%d+r%d" % (self.id, len(self.working), len(self.pending), len(self.retired))
 
     def handleJob(self, job):
         print "HANDLING JOB", job.get("task")
+        
         ### if acceptable task: launch work if there are free processes, else add job to pending 
-        if job.get("task") in self.type_workers and job.get("wid") not in self.pending \
-               and job.get("wid") not in self.working:
+        if job.get("task") in self.type_workers and job.get("wid") not in self.pending and job.get("wid") not in self.working:
             if len(self.working) < self.max_K:
                 tmp = self.launchJob(job)
                 if tmp is not None:
@@ -196,7 +218,11 @@ class WorkHandler(object):
                 self.retired[job.get("wid")] = self.working.pop(job.get("wid"))
                 self.launchPending()
 
-        if job.get("task") == "shutdown":
+            ##close one handler
+        elif job.get("task") == "shutdownClient":
+            self.shutDownClient()
+            ##close the server
+        elif job.get("task") == "shutdown":
             self.shutDown()
 
     def launchPending(self):
@@ -216,7 +242,7 @@ class WorkHandler(object):
             else:
                 queue = None
             p = self.type_workers[job.get("task")]["launch"](job.get("wid"), job.get("data"), job.get("preferences"), queue, self.getResultsQueue(), job.get("more"))
-            return {"process":p, "queue": queue}
+            return {"process":p, "queue": queue, "task": job.get("task")}
 
     def stopJob(self, wid):
         if self.working[wid]["queue"] is not None:
@@ -226,6 +252,12 @@ class WorkHandler(object):
             # self.working[wid]["process"].terminate()
 
     def shutDown(self):
+        self.shutDownClient()
+        print "Work server shutting down..."
+        sys.exit()
+
+    ##close this handler
+    def shutDownClient(self):
         del self.pending
         del self.retired
         workers = self.working.keys()
@@ -236,8 +268,6 @@ class WorkHandler(object):
         del self.working
         self.manager.shutdown()
         self.parent.unregister(self.id)
-        print "Worker server stoping..."
-        sys.exit()
 
 if __name__ == '__main__':
     args = {}

@@ -1,7 +1,8 @@
+import pdb
 class WorkInactive:
 
     def __init__(self):
-        self.work_server = (None, None, None)
+        self.work_server = (None, None, None, None)
         self.workers = {}
         self.off = {}
         self.retired = {}
@@ -17,7 +18,7 @@ class WorkInactive:
         return {"workserver_ip": ""}
 
     def getDetailedInfos(self):
-        return "KO"
+        return "KO", "", []
     def infoStr(self):
         return "Inactive"
     
@@ -29,9 +30,7 @@ class WorkInactive:
         pass
     def layOff(self, wid):
         pass
-    def closeDown(self, parent):
-        pass
-    def closeDown(self, parent):
+    def closeDown(self, parent, collectLater = False):
         pass
     def addWorker(self, wtype, boss, more=None, details={}):
         pass
@@ -114,7 +113,7 @@ class WorkInactive:
             return
         
         worker_info = self.workers[source]
-        if worker_info["wtyp"] in ["expander", "miner"] and  worker_info["batch_type"] in message:
+        if worker_info["wtyp"] in ["expander", "miner","interval"] and worker_info["batch_type"] in message:
             tap = message[worker_info["batch_type"]]
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:
@@ -127,7 +126,7 @@ class WorkInactive:
                 worker_info["results_track"] = nb_tap
                 if parent is None:
                     print "Ready reds [%s] %s %s" % ((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
-                else:                    
+                else:
                     parent.readyReds((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
         elif worker_info["wtyp"] in ["projector"]:
             if parent is None:

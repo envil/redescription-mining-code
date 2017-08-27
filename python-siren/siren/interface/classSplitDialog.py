@@ -14,7 +14,7 @@ class SplitDialog(PreferencesDialog):
     AUTOMATIC_LBL = "Automatic"
     
     button_types = [{"name":"cancel", "label":"Cancel", "funct": "self.onCancel"},
-            {"name":"rtod", "label":"ResetToDefaults", "funct": "self.onResetToDefaults"},
+            {"name":"rtod", "label":"ResetToDefault", "funct": "self.onResetToDefault"},
             {"name":"prepare", "label":"Prepare", "funct": "self.onPrepare"},
             {"name":"save_col", "label":"SaveToColumn", "funct": "self.onSaveToC"},
             {"name":"apply", "label":"Apply", "funct": "self.onApply"}]

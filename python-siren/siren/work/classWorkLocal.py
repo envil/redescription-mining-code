@@ -10,8 +10,8 @@ import pdb
 # ##### WITHOUT MULTIPROCESSING --> for debugging
 # ###############################################
 
-# class WorkerProcess:
-#     def __init__(self, id, boss, queue_in, cust_params={}):
+#class WorkerProcess:
+#    def __init__(self, id, boss, queue_in, cust_params={}):
 #         # print "WProcess logs to:", boss.getLogger().disp()
 #         self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
 #         self.cust_params = cust_params
@@ -21,16 +21,19 @@ import pdb
 #         self.run()
 #     def run(self):
 #         pass
-
-# class MinerProcess(WorkerProcess):
+#
+#class MinerProcess(WorkerProcess):
 #     def run(self):
 #         self.miner.full_run(self.cust_params)
-
-# class ExpanderProcess(WorkerProcess):
+#
+#class ExpanderProcess(WorkerProcess):
 #     def run(self):
 #         self.miner.part_run(self.cust_params)
-
-# class ProjectorProcess:
+#class IntervalProcess(WorkerProcess):
+#     def run(self):
+#        pass
+#        # self.miner.interval_run(self.cust_params)
+#class ProjectorProcess:
 #     def __init__(self, pid, boss, queue_in, proj=None):
 #         self.id = pid
 #         self.logger = boss.getLogger()
@@ -82,6 +85,11 @@ class ExpanderProcess(WorkerProcess):
     def run(self):
         self.miner.part_run(self.cust_params)
 
+class IntervalProcess(WorkerProcess):
+     def run(self):
+	pass
+        # self.miner.interval_run(self.cust_params)
+
 class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, boss, queue_in, proj=None):
         multiprocessing.Process.__init__(self)
@@ -114,7 +122,7 @@ class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
     #cqueue = multiprocessing.queues.SimpleQueue
-    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
+    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess,"interval": IntervalProcess}
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
 
@@ -125,7 +133,7 @@ class WorkLocal(WorkInactive):
 
     def __init__(self):
         self.next_workerid = 0
-        self.work_server = ("local", None, None)
+        self.work_server = ("local", None, None, None)
         self.workers = {}
         self.off = {}
         self.retired = {}
@@ -138,7 +146,7 @@ class WorkLocal(WorkInactive):
         return {"workserver_ip": self.work_server[0]}
 
     def getDetailedInfos(self):
-        return "OK\t" + self.getLoadStr()
+        return "OK", self.getLoadStr()+"\n", []
     def infoStr(self):
         return "Local"
     def getLoadStr(self):
@@ -167,11 +175,11 @@ class WorkLocal(WorkInactive):
             self.workers[self.next_workerid] = {"worker": self.type_workers[wtype](self.next_workerid, boss, self.comm_queues[self.next_workerid], more),
                                                 "wtyp": wtype,
                                                 "work_progress":0,
-                                                "work_estimate":0}
-            self.workers[self.next_workerid].update(details)
+                                                "work_estimate":0}          
+        self.workers[self.next_workerid].update(details)
             
 
-    def closeDown(self, parent):
+    def closeDown(self, parent, collectLater = False):
         for wid in self.workers.keys():
             self.layOff(wid)
         self.checkResults(parent)

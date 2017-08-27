@@ -28,31 +28,47 @@ class SirenApp(wx.App):
         # Set the app name here to *hard coded* Siren
         self.SetAppName("Siren")
         self.frame = Siren()
-
-        import sys, os.path, platform
+        series = "org"
+        reds_info = None
+        import sys, os, platform, re
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
             # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
             # DEBUG
             #print "Loading file", sys.argv[-1]
-            filename = sys.argv[1]
-            (p, ext) = os.path.splitext(filename)
-            if ext == '.siren':
-                self.frame.LoadFile(filename)
-            elif ext == ".conf":
-                self.frame.dw.importPreferencesFromFile(filename)
-            elif ext == '.csv':
-                # If the first file is .csv, check if we've got two files and use them as left and right files
-                LHfile = filename
-                RHfile = filename
-                if len(sys.argv) > 2:
-                    (f, ext2) = os.path.splitext(sys.argv[2])
-                    if ext2 == '.csv':
-                        RHfile = sys.argv[2]
-                self.frame.dw.importDataFromCSVFiles([LHfile, RHfile, {}, 'NA'])
+            pos_fn = 1
+            while pos_fn > 0 and pos_fn < len(sys.argv):
+                filename = sys.argv[pos_fn]
+                (p, ext) = os.path.splitext(filename)
+                if ext == '.siren':
+                    self.frame.LoadFile(filename)
+                    pos_fn += 1
+                elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
+                    reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filename)
+                    reds_info = (reds, sortids, filename)
+                    pos_fn += 1
+                elif ext in [".conf", ".xml"]:
+                    self.frame.dw.importPreferencesFromFile(filename)
+                    pos_fn += 1
+                elif ext == '.csv':
+                    # If the first file is .csv, check if we've got two files and use them as left and right files
+                    series = filename.split("_")[-1].split(".")[0]
+                    LHfile = filename
+                    RHfile = filename
+                    if len(sys.argv) > pos_fn+1:
+                        (f, ext2) = os.path.splitext(sys.argv[pos_fn+1])
+                        if ext2 == '.csv':
+                            pos_fn += 1
+                            RHfile = sys.argv[pos_fn]
+                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile, {}, 'NA'])
+                    pos_fn += 1
+                else:
+                    pos_fn *= -1
+                    #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
+            if pos_fn < -1 or pos_fn > 1:
+                if reds_info is not None:
+                    self.frame.loadReds(reds_info[0], reds_info[1], path=reds_info[2])
                 self.frame.reloadAll()
-            else:
-                sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
-
+        
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # DEBUG
             # print "Loading file", sys.argv[-1]
@@ -69,26 +85,30 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
             # self.frame.recomputeAll()
 
-            # fmts = ["png", "eps"]
-            # # (1641, 670), (1064, 744), (551, 375)
-            # # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
-            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            # for i in [self.frame.tabs[tab]["tab"].getDataHdl().getAllIids()[-1]]:
-            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
-            #     mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
-            #     for fmt in fmts:
-            #         if fmt == "png":
-            #             mapV.savefig((fname % i)+fmt, format=fmt)
-            #         else:
-            #             mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
-            #     mapV.OnKil()
 
-            tab ="reds"
+            fmts = ["png"] #, "eps"]
+            # (1641, 670), (1064, 744), (551, 375)
+            # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
+            folder = "/home/egalbrun/maps/"+series
+            tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            os.mkdir(folder)
+            for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+                if i[0] != 0: continue
+                mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+                for fmt in fmts:
+                    if fmt == "png":
+                        mapV.savefig((fname % i)+fmt, format=fmt)
+                    else:
+                        mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
+                mapV.OnKil()
+
+            # tab ="reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
-            for i in [5]: #range(4):
-                self.frame.tabs[tab]["tab"].viewData(i, "TR")
+            # for i in [5]: #range(4):
+            #     self.frame.tabs[tab]["tab"].viewData(i, "TR")
             # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")

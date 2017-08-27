@@ -33,6 +33,7 @@ from ..views.factView import ViewFactory
 from ..views.classVizManager import VizManager
 from ..views.classViewsManager import ViewsManager
 from ..work.toolWP import WorkPlant
+from ..work.classWorkClient import WorkClient
 from ..common_details import common_variables
 
 import pdb
@@ -931,7 +932,7 @@ class Siren():
             self.resetConstraints()
             self.loadAll()
             return True
-
+        
     def expand(self, params={}):
         if params is None:
             params = {}
@@ -965,17 +966,22 @@ class Siren():
             # else:
             #     print "Waiting previous proj"
 
-    def checkResults(self, menu=False):
+    def checkResults(self, menu=False, once=False):
+        # print "Check results\tnb working", self.plant.getWP().infoStr(), self.plant.getWP().nbWorking()
         updates = self.plant.getWP().checkResults(self)
         if menu:
             updates["menu"] = True
-        if self.plant.getWP().nbWorking() > 0:
-            if self.call_check is None:
-                self.call_check = wx.CallLater(Siren.results_delay, self.checkResults)
+        if not once: 
+            if self.plant.getWP().nbWorking() > 0:
+                if self.call_check is None:
+                    self.call_check = wx.CallLater(Siren.results_delay, self.checkResults)
+                else:
+                    self.call_check.Restart(Siren.results_delay)
             else:
-                self.call_check.Restart(Siren.results_delay)
-        else:
-            self.call_check = None
+                self.call_check = None
+
+        if once or not self.plant.getWP().isActive():
+            updates["progress"] = True
         self.doUpdates(updates) ## To update the worker stoppers
 
     def doUpdates(self, updates=None):
@@ -1423,8 +1429,8 @@ class Siren():
 
         
     def OnConnectionDialog(self, event):
-        d = ConnectionDialog(self.toolFrame, self.dw, self.plant)
-        d.ShowModal()
+        d = ConnectionDialog(self.toolFrame, self.dw, self.plant, self)
+        tt = d.ShowModal()
         d.Destroy()
 
     def OnSplitDialog(self, event):
@@ -1520,8 +1526,14 @@ class Siren():
         event.Skip()
                 
     def OnQuit(self, event):
-        if self.plant.getWP().isActive():
-            self.plant.getWP().closeDown(self)
+        if self.plant.getWP().isActive():  
+            if isinstance(self.plant.getWP(), WorkClient) and self.plant.getWP().nbWorking()>0:
+                collectLater = self.returnLater(what=self.plant.getWP().hid)
+                if collectLater == 0:
+                    return
+                self.plant.getWP().closeDown(self, collectLater > 0)   
+            else :
+                self.plant.getWP().closeDown(self)        
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
             return
         self.viewsm.deleteAllViews()
@@ -1565,6 +1577,15 @@ class Siren():
             dlg.ShowModal()
             dlg.Destroy()
          
+    def returnLater(self, test=None, what="continue"):
+        reponse = -1
+        dlg = wx.MessageDialog(self.toolFrame,'Some computations are underway (client id %s).\nDo you intend to collect the results later on?' % what, style=wx.YES_NO|wx.CANCEL|wx.NO_DEFAULT|wx.ICON_EXCLAMATION, caption='Computations in progress')
+        tt = dlg.ShowModal()
+        if tt == wx.ID_CANCEL: 
+            reponse = 0
+        if tt == wx.ID_YES: 
+            reponse = 1
+        return reponse
 
     def checkAndProceedWithUnsavedChanges(self, test=None, what="continue"):
         """Checks for unsaved changes and returns False if they exist and user doesn't want to continue
@@ -1707,7 +1728,7 @@ class Siren():
     #     dlg.ShowModal()
     #     dlg.Destroy()
 
-    ##### recieving results
+    ##### receiving results
     def readyReds(self, wid, reds, tab):
         if len(reds) > 0 and self.getDefaultTabId("r") in self.tabs:
             for red in reds:
