@@ -30,12 +30,17 @@ def getExtLinks(cv):
                             cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
             'deb_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PACKAGE_NAME"]+"_"+cv["SPEC_RELEASE"]+"_all%s",
                             cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
-            'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_MAC_LOC"]+"&file="+cv["PROJECT_NAME"]+"%s",
+            'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.12_"+cv["SPEC_RELEASE"]+"%s",
+                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
+            'mac_cap_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.11_"+cv["SPEC_RELEASE"]+"%s",
                             cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
             'win_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file=install_"+cv["PROJECT_NAMELOW"]+"_"+cv["SPEC_RELEASE"]+"%s",
                             cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") ")
             }
 
+
+            # 'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_MAC_LOC"]+"&file="+cv["PROJECT_NAME"]+"%s",
+            #                 cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
 
             # 'src_release': (cv["CODE_URL"]+cv["PACKAGE_NAME"]+"-"+cv["SPEC_RELEASE"]+"%s",
             #                 cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
@@ -59,11 +64,11 @@ common_variables = {
     "PACKAGE_NAME": "python-siren",
     "MAIN_FILENAME": "exec_siren.py",
     "VERSION": version,
-    "VERSION_MAC": "4.0.1",
-    "VERSION_MAC_UNDERSC": "",
+    "VERSION_MAC": version,
+    "VERSION_MAC_UNDERSC": version,
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Tue, 23 May 2017 10:00:00 +0100",
+    "LAST_CHANGES_DATE": "Mon, 28 Aug 2017 10:00:00 +0100",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
     "MAINTAINER_LOGIN": "egalbrun",
@@ -84,3 +89,10 @@ common_variables = {
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 
+cv = common_variables
+version = '.'.join(cv["VERSION"].split('.')[:-1])
+# The full version, including alpha/beta/rc tags.
+release = cv["VERSION"]
+
+cv["SPEC_RELEASE"] = release
+print getExtLinks(cv)

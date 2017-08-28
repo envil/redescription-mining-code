@@ -1,5 +1,13 @@
 CHANGELOG for Siren
 ===================
+v4.2.0
+------
+* Adding reconnection capability to work server
+* Better support of data reset/reload
+* More flexible printing of reds / reading of data
+* Improved reporting of support with missing values
+* Fixed various bugs (icons and drag and drop in OSX, bucketing of numerical variable for initial pairs, sparse storing of numerical variables, support sets with missing values in tree diagrams, reordering row indices when parsing list to Boolean variable)
+
 v4.0.1
 ------
 * Various bug fixes

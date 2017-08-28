@@ -39,7 +39,9 @@ You can find help under *Siren*'s Help menu or :project_url:`online <help/>`.
 For OS X
 ============== 
 
-:mac_release:`.dmg`
+:mac_cap_release:`.dmg` (OS X 10.11, El Capitan)
+
+:mac_release:`.dmg` (macOS 10.12, Sierra)
 
 To *install*, download the above disk image and copy the file Siren to your Applications folder (or anywhere else outside the disk image). Once that is done you only have to double-click the program icon to run *Siren*.
 
