@@ -28,7 +28,7 @@ class SirenApp(wx.App):
         # Set the app name here to *hard coded* Siren
         self.SetAppName("Siren")
         self.frame = Siren()
-        series = "org"
+        series = ""
         reds_info = None
         import sys, os, platform, re
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
@@ -74,6 +74,8 @@ class SirenApp(wx.App):
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
 
+            self.frame.OnRunTest(None)
+            
             # ### SPLITS
             # self.frame.dw.getData().extractFolds(1, 12)
             # splits_info = self.frame.dw.getData().getFoldsInfo()
@@ -86,23 +88,27 @@ class SirenApp(wx.App):
             # self.frame.recomputeAll()
 
 
-            fmts = ["png"] #, "eps"]
-            # (1641, 670), (1064, 744), (551, 375)
-            # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
-            folder = "/home/egalbrun/maps/"+series
-            tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            os.mkdir(folder)
-            for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
-                if i[0] != 0: continue
-                mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
-                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
-                for fmt in fmts:
-                    if fmt == "png":
-                        mapV.savefig((fname % i)+fmt, format=fmt)
-                    else:
-                        mapV.savefig((fname % i)+fmt, dpi=100, format=fmt)
-                mapV.OnKil()
+            # # fmts = ["tiff"] #, "png"] #, "eps"]
+            # fmts = ["eps"] #, "eps"]
+            # # (1641, 670), (1064, 744), (551, 375)
+            # # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
+            # folder = "/home/egalbrun/maps"
+            # if len(series) > 0:                
+            #     folder += "/"+series
+            # #tab, fname, dims = ("reds", folder+"/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
+            # tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (2500, 1190)) ### MAP VAR
+            # if not os.path.exists(folder):
+            #     os.mkdir(folder)
+            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+            #     mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+            #     for fmt in fmts:
+            #         if fmt in ["png", "svg"]:
+            #             mapV.savefig((fname % i)+fmt, format=fmt)
+            #         else:
+            #             mapV.savefig((fname % i)+fmt, dpi=30, format=fmt)
+            #     mapV.OnKil()
 
             # tab ="reds"
             # self.frame.dw.getData().getMatrix()

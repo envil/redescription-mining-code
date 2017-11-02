@@ -63,7 +63,7 @@ class TDView(GView):
                     ec_dots = mmp[vec]
                     
                 fc_dots = numpy.copy(ec_dots)
-                fc_dots[:,-1] = dsetts["color_f"][-1]
+                # fc_dots[:,-1] = dsetts["color_f"][-1]
                                 
                 self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
                                    "sz_dots": numpy.ones(vec.shape)*dsetts["size"],
@@ -80,13 +80,19 @@ class TDView(GView):
                 self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["lc_dots"][numpy.array(list(selected)), -1] *= selp
 
+
             draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
-            
+            # print draw_indices.shape[0], "to", draw_indices.shape[0]/4
+            # draw_indices = numpy.random.choice(draw_indices, draw_indices.shape[0]/4)
+
+            ###########################
+            ###########################
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
                 ku, kindices = numpy.unique(self.dots_draws["zord_dots"][draw_indices], return_inverse=True)
                 ## pdb.set_trace()
                 for vi, vv in enumerate(ku):
-                    self.axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
+                    if vv != -1: 
+                        self.axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
                                     self.getCoords(1,draw_indices[kindices==vi]),
                                     c=self.dots_draws["fc_dots"][draw_indices[kindices==vi],:],
                                     edgecolors=self.dots_draws["ec_dots"][draw_indices[kindices==vi],:],
@@ -94,8 +100,10 @@ class TDView(GView):
                                     zorder=vv)
             else:
                 for idp in draw_indices:
-                        self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
-                                                self.getPlotProp(idp, "sz"), self.getPlotProp(idp, "zord"), dsetts)
+                        vv = self.getPlotProp(idp, "zord")
+                        if vv != 1:
+                                self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
+                                                self.getPlotProp(idp, "sz"), vv, dsetts)
             if mapper is not None:
                 ax2 = self.axe #.twinx()
                 nb = self.NBBINS
@@ -126,11 +134,12 @@ class TDView(GView):
                 ax2.plot([x1+2*bx+0.1*(x1-x0), x1+2*bx+0.1*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
                 x1 += 0.13*(x1-x0)+2*bx
                 self.axe.set_yticks(norm_bins_ticks)
-                self.axe.set_yticklabels(bins_lbl)
+                self.axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
                 # self.axe.yaxis.tick_right()
                 self.axe.tick_params(direction="inout", left="off", right="on",
                                          labelleft="off", labelright="on")
-
+            ###########################
+            ###########################
             self.makeFinish((x0, x1, y0, y1), (bx, by))   
             self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()

@@ -91,12 +91,21 @@
     </options>
       </parameter>
       <parameter>
+	<name>alpha_off</name>
+	<label>Transparency off</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Turn transparency off.</legend>
+	<default><value>1</value></default>
+	<options><value>yes</value><value>no</value></options>
+      </parameter>
+      <parameter>
 	<name>miss_details</name>
 	<label>Detailed missing</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Show details of different missing values.</legend>
-	<default><value>1</value></default>
+	<default><value>0</value></default>
 	<options><value>yes</value><value>no</value></options>
       </parameter>
     <parameter>

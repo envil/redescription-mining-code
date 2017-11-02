@@ -89,10 +89,10 @@ common_variables = {
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 
-cv = common_variables
-version = '.'.join(cv["VERSION"].split('.')[:-1])
-# The full version, including alpha/beta/rc tags.
-release = cv["VERSION"]
+# cv = common_variables
+# version = '.'.join(cv["VERSION"].split('.')[:-1])
+# # The full version, including alpha/beta/rc tags.
+# release = cv["VERSION"]
 
-cv["SPEC_RELEASE"] = release
-print getExtLinks(cv)
+# cv["SPEC_RELEASE"] = release
+# print getExtLinks(cv)

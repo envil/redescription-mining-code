@@ -125,7 +125,6 @@ class GView(BasisView):
             draw_dots = numpy.ones(vec.shape, dtype=bool)
         else:
             draw_dots = ~ delta_dots
-
         return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
 
     def prepareProcesses(self):
@@ -416,7 +415,7 @@ class GView(BasisView):
     def getAnnXY(self):
         return self.ann_xy
 
-    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):        
+    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
         return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=zo)
     

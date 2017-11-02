@@ -470,7 +470,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         return self.GetColumnCount()
         
 
-class ListCtrlContainers(ListCtrlBasis, MyTextEditMixin):
+class ListCtrlContainers(ListCtrlBasis): #, MyTextEditMixin):
     type_lc = "containers" 
     list_width = 150
     
@@ -478,7 +478,7 @@ class ListCtrlContainers(ListCtrlBasis, MyTextEditMixin):
                  size=wx.DefaultSize):
         ListCtrlBasis.__init__(self, parent, ID, pos, size,
                                style=wx.LC_REPORT | wx.LC_HRULES | wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
-        MyTextEditMixin.__init__(self)
+        # MyTextEditMixin.__init__(self)
         self.InsertColumn(0, '')
         self.SetColumnWidth(0, self.list_width)
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self._onSelect)
@@ -813,13 +813,13 @@ class RefsList:
 
     @classmethod
     def getDefaultSrc(tcl):
-        return ('manual', None)
+        return ('manual', None, 0)
     @classmethod
     def getHistSrc(tcl):
-        return ('history', None)
+        return ('history', None, 0)
     @classmethod
     def getPackSrc(tcl):
-        return ('file', 0)
+        return ('file', "Package", 1)
     @classmethod
     def makeSrc(tcl, src=None):
         if src is None:
@@ -837,12 +837,16 @@ class RefsList:
         elif self.src[0] == 'history':
             self.name = "Hist"
         elif self.src[0] == 'file':
-            self.name = "//"
-            if self.src[1] == 0:
-                self.name += "Package"
-            elif self.src[1] is not None and os.path.exists(self.src[1]):
-                self.name += os.path.basename(self.src[1])
-
+            if self.inPack():
+                self.name = "::"
+            else:
+                self.name = "//"
+            if self.src[1] is not None:
+                if os.path.exists(self.src[1]):
+                    self.name += os.path.basename(self.src[1])
+                else:
+                    self.name += self.src[1]
+                    
     def __init__(self, parent, id, src=None, name=None, iids=[]):        
         self.id = id
         self.src = RefsList.makeSrc(src)
@@ -889,15 +893,24 @@ class RefsList:
     def getSrcInfo(self):
         return self.src[1]
     def getSrcPath(self):
-        if self.src[0] == 'file' and not type(self.src[1]) is int and os.path.exists(self.src[1]):
+        if self.hasSrcPath():
+            return self.src[1]
+        else:
+            return None
+    def getPackPath(self):
+        if self.hasSrcPath():
             return self.src[1]
         else:
             return None
     def hasSrcPath(self):
         return self.src[0] == 'file' and not type(self.src[1]) is int and os.path.exists(self.src[1])
-
-    def setSrc(self, src_typ, src_info=None):
-        self.src = (src_typ, src_info)
+    def inPack(self):
+        return self.src[0] == 'file' and self.src[2] == 1
+    def isHist(self):
+        return self.src[0] == 'history'
+    
+    def setSrc(self, src_typ, src_info=None, inpck=False):
+        self.src = (src_typ, src_info, inpck)
         self.makeName()
 
     def getSortInfo(self):
@@ -935,6 +948,10 @@ class RefsList:
                 new_poss = [pos for (pos, idx) in enumerate(self.sortids) if idx in idxs] 
             return new_poss
         return None
+
+    def getInfoToSave(self, lid, data_hdl):
+        items = [data_hdl.getItemForIid(iid) for iid in self.getIids()]
+        return {"lid": lid, "items": items, "nb_items": len(items), "src": self.getSrc()}
     
     def setIids(self, iids):
         self.sortids = list(iids)    
@@ -1493,7 +1510,13 @@ class ContentManager:
         return self.getViewHdl().getFocusedL()
     def getViewLid(self):
         return self.getViewHdl().getLid()
-
+    def getFLLid(self):
+        lid = None
+        lc = self.getViewFL()            
+        if lc is not None:
+            lid = self.getViewLid()
+        return lid
+    
     def getSW(self):
         return self.getViewHdl().getSW()
     def getAssociated(self, which):
@@ -1507,15 +1530,18 @@ class ContentManager:
 
     ################## CONTENT MANAGEMENT METHODS
     def addData(self, src=None, data=[], sord=None, focus=True):
-        nlid = self.getDataHdl().addList(src=src, items=data, sord=sord)
+        if src is not None and type(src) is dict:
+            nlid = self.getDataHdl().addList(src=src.get("src"), items=src.get("items", []), sord=src.get("rshowids"))
+        else:
+            nlid = self.getDataHdl().addList(src=src, items=data, sord=sord)
         if focus:
             self.getViewHdl().updateLid(nlid)
         return nlid
 
-    def resetData(self, src=None, data=[], sord=None):
+    def resetData(self, src=None, data=[], sord=None, focus=True):
         self.getDataHdl().clearLists()
         if len(data) > 0 or src is not None:
-            return self.addData(src, data, sord)
+            return self.addData(src, data, sord, focus)
         self.getViewHdl().updateLid(None)
         return None
 
@@ -1530,7 +1556,27 @@ class ContentManager:
     def onNewList(self):
         self.addData(data=[], focus=False)
         self.refresh()
-        
+
+    def OnAddDelListToPack(self, lid):
+        ll = self.getDataHdl().getList(lid)
+        if ll is not None and not ll.isHist():
+            ll.isChanged = True
+            src = ll.getSrc()
+            if ll.inPack():
+                if os.path.exists(src[1]):
+                    ll.setSrc('file', src[1], 0)
+                else:
+                    ll.setSrc('manual', None, 0)
+            else:
+                if src[0] == "file": # and os.path.exists(src[1]):
+                    ll.setSrc('file', src[1], 1)
+                else:
+                    ll.setSrc('file', "%s.csv" % ll.name, 1)
+                # print "Add list to pack, not implemented", src, nn
+            pos = self.getDataHdl().getListPosForId(lid)
+            self.getViewHdl().getLCC().RefreshItem(pos)                
+            self.refresh()
+            
     def onDeleteAny(self):
         lc = self.getViewFL()
         if lc is not None:
@@ -1632,6 +1678,15 @@ class ContentManager:
         if lid is not None:
             return [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
         return None
+
+    def getLidsToPack(self):
+        return [lid for lid in self.getDataHdl().getOrdLists() if self.getDataHdl().getList(lid).inPack()]
+    def getListsToPack(self):
+        return [self.getDataHdl().getList(lid).getInfoToSave(lid, self.getDataHdl()) for lid in self.getLidsToPack()]
+
+    def markSavedPack(self, src=None, lid=None, path=None):
+        for lid in self.getLidsToPack():
+            self.markSavedSrc(lid=lid)
     def markSavedSrc(self, src=None, lid=None, path=None):
         if lid is None:
             src = RefsList.makeSrc(src)
@@ -1702,15 +1757,12 @@ class ContentManager:
         return [self.getDataHdl().getItemForIid(iid) for iid in self.getIidsForAction(down)]
     def getNbItemsForAction(self, down=True):
         return len(self.getIidsForAction(down))
+    
     def getSaveListInfo(self, lid=None):
         if lid is None:
-            lc = self.getViewFL()
-            if lc is not None:
-                lid = self.getViewLid()
-
+            lid = self.getFLLid()
         if self.getDataHdl().getList(lid) is not None:
-            items = [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
-            return {"lid": lid, "items": items, "nb_items": len(items), "path": self.getDataHdl().getList(lid).getSrcPath()}
+            return self.getDataHdl().getList(lid).getInfoToSave(lid, self.getDataHdl())
         return None
 
     
@@ -1820,6 +1872,13 @@ class ContentManager:
     def hasFocusCLFile(self):
         ll = self.getDataHdl().getList(self.getViewLid())
         return ll is not None and ll.hasSrcPath()
+    def hasFocusCLInPack(self):
+        ll = self.getDataHdl().getList(self.getViewLid())
+        return ll is not None and ll.inPack()
+    def hasFocusCLIsHist(self):
+        ll = self.getDataHdl().getList(self.getViewLid())
+        return ll is not None and ll.isHist()
+
     def hasFocusItemsL(self):
         return self.getViewFL() is not None and self.getViewFL().isItemsL()
     def getNbSelected(self):

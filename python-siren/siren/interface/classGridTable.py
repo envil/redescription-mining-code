@@ -176,7 +176,6 @@ class GridTable(wx.grid.PyGridTableBase):
         # attr.SetRenderer(wx.grid.GridCellBoolRenderer())
         # self.grid.SetColAttr(0,attr)
 
-        ########## HERE
         self.grid.Bind(wx.EVT_KEY_UP, self.OnKU)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_LEFT_CLICK, self.setSort)
         self.grid.Bind(wx.grid.EVT_GRID_LABEL_RIGHT_CLICK, self.setFocus)

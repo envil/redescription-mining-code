@@ -43,7 +43,8 @@ def test_all_numbers(strgs):
     return True
 
 def start_out(fp):
-    return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
+    return csv.writer(fp, quoting=csv.QUOTE_MINIMAL) #, delimiter=';', quotechar='"'
+    # return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
 def write_row(csvf, row_data):
     for i in range(len(row_data)):
         if type(row_data[i]) is unicode:

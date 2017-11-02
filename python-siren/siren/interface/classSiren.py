@@ -36,8 +36,15 @@ from ..work.toolWP import WorkPlant
 from ..work.classWorkClient import WorkClient
 from ..common_details import common_variables
 
+
 import pdb
 
+try:
+    import test_code
+except ImportError:
+    test_code = None
+
+  
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
@@ -300,14 +307,14 @@ class Siren():
     def getData(self):
         if self.dw is not None:
             return self.dw.getData()
+
     def updatePackReds(self):
         if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
-            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getItemsForSrc('pack')
-            if rr is not None:
-                self.dw.resetRedescriptions(rr)
+            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getListsToPack()
+            self.dw.resetRedescriptions(rr)
     def markPackRedsWritten(self):
         if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
-            self.tabs[self.getDefaultTabId("r")]["tab"].markSavedSrc('pack')
+            self.tabs[self.getDefaultTabId("r")]["tab"].markSavedPack()
 
     def getPreferences(self):
         if self.dw is not None:
@@ -527,6 +534,15 @@ class Siren():
                 m_newl = menuRed.Append(ID_NN, "New List\tCtrl+N", "New List.")
                 frame.Bind(wx.EVT_MENU, self.OnNewList, m_newl)
 
+                ID_ADP = wx.NewId()
+                m_adp = menuRed.Append(ID_ADP, "Add to package", "Add/remove package list.")
+                if self.getData() is not None and self.dw.isFromPackage and self.dw.getPackageSaveFilename() is not None and not self.selectedTab["tab"].hasFocusCLIsHist():
+                    frame.Bind(wx.EVT_MENU, self.OnAddDelListToPack, m_adp)
+                    if self.selectedTab["tab"].hasFocusCLInPack():
+                        m_adp.SetText("Remove from package")
+                else:
+                    menuRed.Enable(ID_ADP, False)
+                
                 ID_SV = wx.NewId()
                 m_svl = menuRed.Append(ID_SV, "Save List", "Save List.")
                 frame.Bind(wx.EVT_MENU, self.OnSaveList, m_svl)
@@ -803,6 +819,11 @@ class Siren():
 
         ID_EXPORT = wx.NewId()
         m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
+
+        if test_code:
+            ID_RUN_TEST = wx.NewId()
+            m_runTest = menuFile.Append(ID_RUN_TEST, "&Run test feature", "Trying a new feature.")
+            frame.Bind(wx.EVT_MENU, self.OnRunTest, m_runTest)
         
         ## Preferences
         menuFile.AppendSeparator()
@@ -1049,6 +1070,13 @@ class Siren():
                 pass
         save_dlg.Destroy()
 
+    def OnAddDelListToPack(self, event):
+        if self.matchTabType("r"):
+            lid = self.selectedTab["tab"].getFLLid()
+            if lid is not None:
+                self.selectedTab["tab"].OnAddDelListToPack(lid)
+
+        
     def OnSaveList(self, event):
         info = self.getSaveListInfo()
         if info is not None:
@@ -1145,11 +1173,6 @@ class Siren():
         """Shows a custom dialog to open the two data files"""
         if not self.checkAndProceedWithUnsavedChanges():
             return 
-        # if self.dw.reds is not None and (self.dw.reds.isChanged or self.dw.rshowids.isChanged): ## len(self.dw.reds) > 0:
-        #     sure_dlg = wx.MessageDialog(self.toolFrame, 'Importing new data erases old redescriptions.\nDo you want to continue?', caption="Warning!", style=wx.OK|wx.CANCEL)
-        #     if sure_dlg.ShowModal() != wx.ID_OK:
-        #         return
-        #     sure_dlg.Destroy()
 
         dlg = ImportDataCSVDialog(self)
         dlg.showDialog()
@@ -1347,7 +1370,7 @@ class Siren():
     def OnNewList(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].onNewList()
-
+            
     def OnCut(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].onCutAny()
@@ -1520,6 +1543,11 @@ class Siren():
                 dets += ("\t%s=\t%s\n" % (self.dw.getData().col(side,lit.colId()).getName(), self.dw.getData().getValue(side, lit.colId(), rid)))
         return dets
 
+
+    def OnRunTest(self, event):
+        if test_code is not None:
+            test_code.test_run(self)    
+    
     def OnSize(self, event):
         if self.getVizm() is not None:
             self.getVizm().resizeViz()
@@ -1681,10 +1709,10 @@ class Siren():
             tab = self.tabs[self.getDefaultTabId("r")]
         if tab is not None:
             if reds is None:
-                if len(self.dw.getReds()) > 0:
-                    tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
+                for ri, rs in enumerate(self.dw.getReds()):
+                    tab["tab"].addData(rs)
             else:
-                tab["tab"].addData(src=('file', path), data=reds)
+                tab["tab"].addData(src=('file', path, 0), data=reds)
                 # tab["tab"].addData(src='pack', data=self.dw.getReds(), sord=self.dw.getShowIds())
                 self.doUpdates({"menu":True})
         self.dw.reloaded()

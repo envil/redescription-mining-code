@@ -376,7 +376,7 @@ class ParaView(GView):
             ### Lines
             for r in self.reps:
                 # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
-                if self.dots_draws["ec_dots"][r,-1] > 0: ## , ec=self.getPlotColor(r, "ec")
+                if self.dots_draws["ec_dots"][r,-1] > 0 and self.dots_draws["zord_dots"][r] != -1: ## , ec=self.getPlotColor(r, "ec")
                     self.drawEntity(r, fc=self.getPlotColor(r, "ec")) #, zo=self.getPlotProp(r, "zord"))
 
             ### Bars slidable/draggable rectangles

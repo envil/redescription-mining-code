@@ -74,8 +74,7 @@ class DataWrapper(object):
             self.openPackage(package_filename)
         
     def resetRedescriptions(self, reds=[]):
-        self.reds = Batch(reds)
-        self.rshowids = ICList(range(len(reds)), True)
+        self.reds = reds
 
     def getColNames(self):
         if self.data is not None:
@@ -113,7 +112,10 @@ class DataWrapper(object):
 
     def getCoords(self):
         if self.data is not None and self.data.isGeospatial():
-            return self.data.coords
+            return self.data.getCoords()
+    def getCoordPoints(self):
+        if self.data is not None and self.data.isGeospatial():
+            return self.data.getCoordPoints()
         
     def getCoordsExtrema(self):
         if self.data is not None and self.data.isGeospatial():
@@ -128,11 +130,6 @@ class DataWrapper(object):
         if self.reds is not None:
             return len(self.reds)
         return 0
-
-    def getShowIds(self):
-        if self.rshowids is not None:
-            return self.rshowids
-        return []
 
     def getPreferencesManager(self):
         return self.pm
@@ -162,22 +159,22 @@ class DataWrapper(object):
     def __str__(self):
         return "coords = " + str(self.getCoords()) + "; " \
             + "data = " + str(self.data) + "; " \
-            + "#reds = " + str(len(self.reds)) + "; " \
-            + "rshowids = " + str(self.rshowids) + "; " \
             + "preferences = " + str(self.preferences) + "; " \
             + "package_name = " + str(self.package_name) + "; " \
             + "isChanged = " + str(self.isChanged) + "; " \
             + "isFromPackage = " + str(self.isFromPackage)
+            # + "#reds = " + str(len(self.reds)) + "; " \
+            # + "rshowids = " + str(self.rshowids) + "; " \
 
     ## Setters
     @property
     def isChanged(self):
-        """The property tracking if dw (incl. reds and rshowids) has changed"""
+        """The property tracking if dw has changed"""
         isChanged = self._isChanged
-        if self.reds is not None:
-            isChanged |= self.reds.isChanged
-        if self.rshowids is not None:
-            isChanged |= self.rshowids.isChanged
+        # if self.reds is not None:
+        #     isChanged |= self.reds.isChanged
+        # if self.rshowids is not None:
+        #     isChanged |= self.rshowids.isChanged
         if self.preferences is not None:
             isChanged |= self.preferences.isChanged
         return isChanged
@@ -186,10 +183,10 @@ class DataWrapper(object):
     def isChanged(self, value):
         if isinstance(value, bool):
             if value is False:
-                if self.reds is not None:
-                    self.reds.isChanged = value
-                if self.rshowids is not None:
-                    self.rshowids.isChanged = value
+                # if self.reds is not None:
+                #     self.reds.isChanged = value
+                # if self.rshowids is not None:
+                #     self.rshowids.isChanged = value
                 if self.preferences is not None:
                     self.preferences.isChanged = value
             self._isChanged = value
@@ -287,24 +284,24 @@ class DataWrapper(object):
         finally:
             self._stopMessage('importing')
 
-    def importRedescriptionsFromFile(self, redescriptions_filename):
-        """Loads new redescriptions from file"""
-        self._startMessage('importing', redescriptions_filename)
-        try:
-            tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
-        except IOError as arg:
-            self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
-            self._stopMessage()
-            raise
-        except Exception:
-            self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "dw_error", "DW")
-            self._stopMessage()
-            raise
-        else:
-            self.reds = tmp_reds
-            self.rshowids = tmp_rshowids
-        finally:
-            self._stopMessage('importing')
+    # def importRedescriptionsFromFile(self, redescriptions_filename):
+    #     """Loads new redescriptions from file"""
+    #     self._startMessage('importing', redescriptions_filename)
+    #     try:
+    #         tmp_reds, tmp_rshowids = self._readRedescriptionsFromFile(redescriptions_filename)
+    #     except IOError as arg:
+    #         self.logger.printL(1,"Cannot open: %s" % arg, "dw_error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     except Exception:
+    #         self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "dw_error", "DW")
+    #         self._stopMessage()
+    #         raise
+    #     else:
+    #         self.reds = tmp_reds
+    #         self.rshowids = tmp_rshowids
+    #     finally:
+    #         self._stopMessage('importing')
 
     def importPreferencesFromFile(self, preferences_filename):
         """Imports mining preferences from file"""
@@ -384,11 +381,9 @@ class DataWrapper(object):
         else:
             self.data = None
         if elements_read.get("reds") is not None:
-            self.reds = Batch(elements_read.get("reds"))
-            self.rshowids = ICList(elements_read.get("rshowids"), False)
+            self.reds = elements_read.get("reds")
         else:
-            self.reds = Batch([])
-            self.rshowids = ICList([], False)
+            self.reds = []
         if elements_read.get("preferences"):
             self.preferences = ICDict(elements_read.get("preferences"))
         else:
@@ -404,7 +399,6 @@ class DataWrapper(object):
             contents['data'] = self.data                                
         if self.reds is not None and len(self.reds) > 0:
             contents['redescriptions'] = self.reds
-            contents['rshowids'] = self.rshowids
         if self.preferences is not None:
             contents['preferences'] = self.preferences
             contents['pm'] = self.pm
@@ -534,35 +528,40 @@ class DataWrapper(object):
             raise
         self._stopMessage('saving figures')
         
+#### WARNING HERE DISABLED FILE LOAD MESSAGES 
+    # def _startMessage(self, action, filenames):
+    #     "Shows the message if needed"
+    #     if self.startReadingFileCallback is not None:
+    #         (fnc, args, kwargs) = self.startReadingFileCallback
+    #         msg = 'Please wait. ' + action.capitalize() + ' file'
+    #         short_msg = action.capitalize() + ' file'
+    #         if len(filenames) <= 1:
+    #             msg += ' '
+    #         else:
+    #             msg += 's '
+    #             short_msg += 's'
+
+    #         if isinstance(filenames, basestring):
+    #             # In Python 3, test has to be isinstance(filenames, str)
+    #             filenames = [filenames]
+    #         msg += ' '.join(map(os.path.basename, filenames))
+    #         # filename can be a list of filenames with full paths, hence map()
+    #         fnc(msg, short_msg, *args, **kwargs)
+
+    # def _stopMessage(self, action=None):
+    #     "Removes the message if needed"
+    #     if self.stopReadingFileCallback is not None:
+    #         (fnc, args, kwargs) = self.stopReadingFileCallback
+    #         if action is None:
+    #             mess = "An error occurred"
+    #         else:
+    #             mess = action.capitalize()+' done'
+    #         fnc(mess, *args, **kwargs)
 
     def _startMessage(self, action, filenames):
-        "Shows the message if needed"
-        if self.startReadingFileCallback is not None:
-            (fnc, args, kwargs) = self.startReadingFileCallback
-            msg = 'Please wait. ' + action.capitalize() + ' file'
-            short_msg = action.capitalize() + ' file'
-            if len(filenames) <= 1:
-                msg += ' '
-            else:
-                msg += 's '
-                short_msg += 's'
-
-            if isinstance(filenames, basestring):
-                # In Python 3, test has to be isinstance(filenames, str)
-                filenames = [filenames]
-            msg += ' '.join(map(os.path.basename, filenames))
-            # filename can be a list of filenames with full paths, hence map()
-            fnc(msg, short_msg, *args, **kwargs)
-
+        pass
     def _stopMessage(self, action=None):
-        "Removes the message if needed"
-        if self.stopReadingFileCallback is not None:
-            (fnc, args, kwargs) = self.stopReadingFileCallback
-            if action is None:
-                mess = "An error occurred"
-            else:
-                mess = action.capitalize()+' done'
-            fnc(mess, *args, **kwargs)
+        pass
 
     # def getPolys(self, pdp, boundaries):
     #     if pdp is not None and self.pdp != pdp:

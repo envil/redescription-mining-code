@@ -286,8 +286,11 @@ class SSetts(object):
 
             ##############################################################
             #### PESSIMISTIC    J=          |E_xx|   /
-            ####            |E_xo|+|E_ox|+|E_xx|+|E_om|+|E_mo|+|E_mm|
+            ####            |E_xo|+|E_ox|+|E_xx|+|E_xm|+|E_mx|+|E_om|+|E_mo|+|E_mm|
             ##############################################################
+            #--- corrected (oct.17) from    J=          |E_xx|   /
+            #---            |E_xo|+|E_ox|+|E_xx|+|E_om|+|E_mo|+|E_mm|
+            #--- the varibles below were right, the formula above wasn't, and didn't match...
 
             elif type_parts == "pessimistic":
 

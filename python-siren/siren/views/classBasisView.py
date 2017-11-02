@@ -208,6 +208,7 @@ class BasisView(object):
         self.initView()
 
     def initVars(self, parent, vid, more=None):
+        self.alpha_off = False
         self.active_info = False
         self.parent = parent
         self.mc = None
@@ -1126,14 +1127,21 @@ class BasisView(object):
         else:
             tc = self.colors_def[-1]
         return tc
+
+    def getAlpha(self, alpha=None, color=None):
+        if self.alpha_off:
+            alpha = 1.
+        else:
+            if alpha is None:
+                 alpha = self.DOT_ALPHA
+            elif alpha < -1 or alpha > 1:
+                alpha = numpy.sign(alpha)*(numpy.abs(alpha)%1)*self.DOT_ALPHA
+            if alpha < 0:
+                alpha = -color[3]*alpha
+        return alpha
     
     def getColorA(self, color, alpha=None):
-        if alpha is None:
-            alpha = self.DOT_ALPHA
-        elif alpha < -1 or alpha > 1:
-            alpha = numpy.sign(alpha)*(numpy.abs(alpha)%1)*self.DOT_ALPHA
-        if alpha < 0:
-            return tuple([color[0],color[1], color[2], -color[3]*alpha])
+        alpha = self.getAlpha(alpha, color)
         return tuple([color[0],color[1], color[2], alpha])
     
     def getColorHigh(self):
@@ -1158,10 +1166,22 @@ class BasisView(object):
                 "color_e": self.getColorA(self.getColorKey1("grey_basic"), 1.),
                 "shape": dot_shape, "size": dot_size, "zord": self.DEF_ZORD}
 
+    def setAlphaOnOff(self):
+        t = self.getParentPreferences()
+        if t["alpha_off"]["data"] == 'yes':
+            self.alpha_off = True
+        else:
+            self.alpha_off = False
+            
     def getDrawSettings(self):
+        self.setAlphaOnOff()
         colors = self.getColors1()
         colhigh = self.getColorHigh()
         defaults = self.getDrawSettDef()
+        if self.getMissDetails():
+            zord_miss = self.DEF_ZORD
+        else:
+            zord_miss = -1
         draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.E_mm, SSetts.E_xm, SSetts.E_mx,
                                                         SSetts.E_om, SSetts.E_mo,
                                                         SSetts.E_oo, SSetts.E_ox,
@@ -1181,17 +1201,17 @@ class BasisView(object):
             css[iid] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
                         "color_e": self.getColorA(colors[p], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
-                        "zord": self.DEF_ZORD}
+                        "zord": zord_miss}
         for (p, iid) in enumerate([SSetts.E_mo, SSetts.E_om]):
             css[iid] = {"color_f": self.getColorA(colors[p], -.9),
                         "color_e": self.getColorA(colors[SSetts.E_oo], .9),
                         ## "color_e": self.getColorA(defaults["color_e"], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
-                        "zord": self.DEF_ZORD}
+                        "zord": zord_miss}
         css[SSetts.E_mm] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
                            "color_e": self.getColorA(colors[SSetts.E_oo], .9),
                            "shape": defaults["shape"], "size": defaults["size"]-1,
-                           "zord": self.DEF_ZORD}
+                           "zord": zord_miss}
         # css[SSetts.E_oo] = {"color_f": self.getColorA(defaults["color_f"]),
         #                      "color_e": self.getColorA(defaults["color_e"], 1.),
         #                      "color_l": self.getColorA(defaults["color_l"]),

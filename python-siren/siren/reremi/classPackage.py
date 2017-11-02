@@ -32,6 +32,7 @@ class Package(object):
     XML_FILETYPE_VERSION = 3
 
     NA_str = "NA"
+    RED_FN_SEP = ";"
 
     CREATOR = "ReReMi/Siren Package"
     DEFAULT_EXT = ".siren"
@@ -113,10 +114,9 @@ class Package(object):
             data = self.readData()
             if data is not None:
                 elements_read["data"] = data
-                reds, rshowids = self.readRedescriptions(data)
-                if reds is not None:
+                reds = self.readRedescriptions(data)
+                if reds is not None and len(reds) > 0:
                     elements_read["reds"] = reds
-                    elements_read["rshowids"] = rshowids
         finally:
             self.closePack()
         return elements_read
@@ -125,6 +125,7 @@ class Package(object):
         # Load preferences
         preferences = None
         if 'preferences_filename' in self.plist:
+            fd = None
             try:
                 fd = self.package.open(self.plist['preferences_filename'], 'r')
                 preferences = PreferencesReader(pm).getParameters(fd, options_args)
@@ -132,7 +133,8 @@ class Package(object):
                 self.raiseMess()
                 raise
             finally:
-                fd.close()
+                if fd is not None:
+                    fd.close()
         return preferences
 
 
@@ -175,24 +177,25 @@ class Package(object):
         return data
 
     def readRedescriptions(self, data):
-        reds = None
-        rshowids = None
+        reds = []
         # Load redescriptions
         if 'redescriptions_filename' in self.plist:
-            try:
-                fd = self.package.open(self.plist['redescriptions_filename'], 'r')
-                if self.isOldXMLFormat():
-                    reds, rshowids = readRedescriptionsXML(fd, data)
-                else:
-                    reds = []
-                    parseRedList(fd, data, reds)
-                    rshowids = range(len(reds))
-            except Exception:
-                self.raiseMess()
-                raise
-            finally:
-                fd.close()
-        return reds, rshowids
+            for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):            
+                try:
+                    fd = self.package.open(file_red, 'r')
+                    if self.isOldXMLFormat():
+                        rs, rshowids = readRedescriptionsXML(fd, data)
+                    else:
+                        rs = []
+                        parseRedList(fd, data, rs)
+                        rshowids = range(len(rs))
+                except Exception:
+                    self.raiseMess()
+                    raise
+                finally:
+                    fd.close()
+                reds.append({"items": rs, "src": ('file', file_red, 1), "rshowids": rshowids})
+        return reds
 
 ######### WRITING ELEMENTS
 ##########################
@@ -234,14 +237,15 @@ class Package(object):
 
         # Write redescriptions
         if "redescriptions" in contents:
-            try:
-                writeRedescriptions(contents["redescriptions"], os.path.join(tmp_dir, plist['redescriptions_filename']),
-                                    contents["rshowids"], names=False, with_disabled=True, toPackage = True)
-            except IOError:
-                shutil.rmtree(tmp_dir)
-                self.filename = old_package_filename
-                self.raiseMess()
-                raise
+            for rs in contents["redescriptions"]:            
+                try:
+                    writeRedescriptions(rs.get("items", []), os.path.join(tmp_dir, os.path.basename(rs["src"][1])),
+                                        rs.get("rshowids"), names=False, with_disabled=True, toPackage = True)
+                except IOError:
+                    shutil.rmtree(tmp_dir)
+                    self.filename = old_package_filename
+                    self.raiseMess()
+                    raise
 
         # Write preferences
         if "preferences" in contents:
@@ -259,7 +263,7 @@ class Package(object):
             package = zipfile.ZipFile(self.filename, 'w')
             package.write(os.path.join(tmp_dir, self.PLIST_FILE),
                           arcname = os.path.join('.', self.PLIST_FILE))
-            for eln, element in filens.items():
+            for eln, element in filens.items():                
                 package.write(os.path.join(tmp_dir, element),
                               arcname = os.path.join('.', element),
                               compress_type = zipfile.ZIP_DEFLATED)
@@ -296,12 +300,15 @@ class Package(object):
             if not contents["data"].isSingleD():
                 fns['data_RHS_filename'] = self.DATA_FILENAMES[1]
                                 
-        if "redescriptions" in contents and len(contents["redescriptions"]) > 0:
-            fns['redescriptions_filename'] = self.REDESCRIPTIONS_FILENAME
-
         if "preferences" in contents:
             fns['preferences_filename'] = self.PREFERENCES_FILENAME
         d.update(fns)
+        
+        if "redescriptions" in contents and len(contents["redescriptions"]) > 0:
+            base_names = [os.path.basename(c["src"][1]) for c in contents["redescriptions"]]
+            d['redescriptions_filename'] = self.RED_FN_SEP.join(base_names)
+            for ci, c in enumerate(base_names):
+                fns['redescriptions_filename_%d' %ci] = c
         return d, fns
 
 
@@ -364,8 +371,7 @@ def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
     if data is not None:
         contents['data'] = data                                
     if reds is not None and len(reds) > 0:
-        contents['redescriptions'] = reds
-        contents['rshowids'] = range(len(reds))
+        contents['redescriptions'] = (self.REDESCRIPTIONS_FILENAME, reds, range(len(reds)))
     if preferences is not None:
         if pm is None:
             pm = getPM()

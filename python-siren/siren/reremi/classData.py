@@ -1754,7 +1754,6 @@ class Data(object):
         return Data(cols, N, coords, rnames, self.isSingleD())
 
     def shuffle_sides(self, shuff_sides):
-        ### HERE
         shuffled_rids = range(self.nbRows())
         np.random.shuffle(shuffled_rids)
         shuffled_d = dict([(v,[i]) for i,v in enumerate(shuffled_rids)])
@@ -1926,7 +1925,8 @@ class Data(object):
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
             for cci, col in enumerate(self.cols[side]):
-                row.append(col.valToStr(col.getValue(n, pref="bnum")))
+                row.append("%s" % col.valToStr(col.getValue(n, pref="bnum")))
+                ## row.append(col.valToStr(col.getValue(n, pref="bnum")))
             csv_reader.write_row(csvf, row)
 
 
@@ -2627,15 +2627,15 @@ def main():
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data
 
-    # rep = "/home/egalbrun/TKTL/misc/Hedde/"
-    rep = "/home/egalbrun/short/rpr/"
-    ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
-    for (dL, dR) in [("LHS_50", "RHS_50"), ("RHS_50", "LHS_50")]: # ("THS", "RHS"), 
-        ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
-        # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
-        data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ","}, "NA"], "csv")
-        rdt, sd = data.shuffle_sides([0])
-        pdb.set_trace()
+    # # rep = "/home/egalbrun/TKTL/misc/Hedde/"
+    # rep = "/home/egalbrun/short/rpr/"
+    # ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
+    # for (dL, dR) in [("LHS_50", "RHS_50"), ("RHS_50", "LHS_50")]: # ("THS", "RHS"), 
+    #     ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
+    #     # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
+    #     data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ","}, "NA"], "csv")
+    #     rdt, sd = data.shuffle_sides([0])
+    #     pdb.set_trace()
         # print dL, dR, data
         ### [(-23.6, 1694), (-23.0, 1697), (-22.7, 1696), (-22.1, 2503), (-21.9, 2499), (-21.8, 2196), (-21.8, 2500), (-21.6, 2504), (-21.5, 1681), (-21.5, 2502)]
         # print data.cols[1][1].areDataEquiv(-21.88,-21.8)
@@ -2650,12 +2650,12 @@ def main():
         #     for col in data.cols[side]:
         #         print col
 
-    # rep = "/home/egalbrun/"
-    # data = Data([rep+"vaalikone/data_LHS.csv", rep+"vaalikone/data_RHS.csv", {}, ""], "csv")
-    # print data
-    # data = Data([rep+"coauthor_filtered0_numA.csv", rep+"conference_filtered0_numA.csv", {}, ""], "csv")
-    # data.writeCSV(["/home/galbrun/testoutL.csv", "/home/galbrun/testoutR.csv"])
-    # exit()
+    rep = "/home/egalbrun/Desktop/DataReReMi/"
+    data = Data([rep+"input1Mammals.csv", rep+"input2Weather.csv", {"delimiter": ";"}, ""], "csv")
+    print data.cols[1][1].getVector()
+    data.writeCSV(["/home/egalbrun/testoutL.csv", "/home/egalbrun/testoutR.csv"])
+    dataX = Data(["/home/egalbrun/testoutL.csv", "/home/egalbrun/testoutR.csv", {}, ""], "csv")
+    print dataX.cols[1][1].getVector()
 
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.datnum",

@@ -23,15 +23,13 @@ from classTDView import TDView
 
 import pdb
 
-class MapView(TDView):
 
-    TID = "MAP"
-    SDESC = "Map"
-    title_str = "Map"
-    ordN = 1
-    geo = True
-    MAP_POLY = True #False
-    typesI = "vr"
+class MapBase:
+
+    # circ_equ=2*numpy.pi*6378137.
+    # circ_pol=2*numpy.pi*6356752.
+    # circ_avg=2*numpy.pi*6371000.
+    circ_def=2*numpy.pi*6370997.
 
     marg_f = 100.0
     proj_def = "mill"
@@ -113,6 +111,285 @@ class MapView(TDView):
     bounds_def = {"llon": -180., "ulon": 180., "llat": -90., "ulat": 90.}
     # bounds_try = {"llon": -180., "ulon": 180., "llat": -90., "ulat": 90.}
 
+    @classmethod    
+    def getBasemapProjSetts(tcl, prefs):
+        proj = tcl.proj_def 
+        if "map_proj" in prefs:
+            tpro = re.sub(" *\(.*\)$", "", prefs["map_proj"]["data"])
+            if tpro in tcl.proj_names:
+                proj = tcl.proj_names[tpro]
+        resolution = "c"
+        if "map_resolution" in prefs:
+            resolution = prefs["map_resolution"]["data"][0]
+
+        return proj, resolution
+
+    @classmethod
+    def getBasemapBackSetts(tcl, prefs):
+        draws = {"rivers": False, "coasts": False, "countries": False,
+                 "states": False, "parallels": False, "meridians": False,
+                 "continents":False, "lakes": False, "seas": False}
+        ### DEBUG
+        draws = {"rivers": False, "coasts": True, "countries": False,
+                 "states": False, "parallels": False, "meridians": False,
+                 "continents":False, "lakes": False, "seas": False}
+
+        colors = {"line_color": "gray", "sea_color": "#F0F8FF", "land_color": "white", "none":"white"}
+        more = {}
+        
+        for typ_elem in ["map_elem_area", "map_elem_natural", "map_elem_geop", "map_elem_circ"]:
+            if typ_elem in prefs:
+                for elem in prefs[typ_elem]["data"]:                    
+                    draws[elem] = True
+                    
+        for k in ["map_back_alpha", "map_back_scale"]:
+            if k in prefs:
+                more[k] = prefs[k]["data"]/100.0
+            else:
+                more[k] = 1.
+        for k in ["map_back"]:
+            if k in prefs:
+                more[k] = prefs[k]["value"]
+            else:
+                more[k] = 0
+            
+        for color_k in colors.keys():
+            if color_k in prefs:
+                colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, prefs[color_k]["data"])]) 
+        return draws, colors, more
+
+    @classmethod
+    def getParallelsRange(tcl, bm_args):
+        span = float(bm_args["urcrnrlat"] - bm_args["llcrnrlat"])
+        # if bm_args["llcrnrlat"] < bm_args["urcrnrlat"]:
+        #     span = float(bm_args["urcrnrlat"] - bm_args["llcrnrlat"])
+        # else:
+        #     span = (180. - bm_args["llcrnrlon"]) + (bm_args["urcrnrlon"] + 180.)
+        opts = [60, 30, 10, 5, 1]
+        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
+        step = opts[p]
+        # if bm_args["llcrnrlon"] < bm_args["urcrnrlon"]:
+        return numpy.arange(int(bm_args["llcrnrlat"]/step)*step, (int(bm_args["urcrnrlat"]/step)+1)*step, step)
+        # else:
+        #     return numpy.concatenate([numpy.arange(int(bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
+        #                                   numpy.arange(int(-180./step)*step, (int(bm_args["urcrnrlon"]/step)+1)*step, step)])
+
+    @classmethod
+    def getMeridiansRange(tcl, bm_args):
+        if bm_args["llcrnrlon"] < bm_args["urcrnrlon"]:
+            span = float(bm_args["urcrnrlon"] - bm_args["llcrnrlon"])
+        else:
+            span = (180. - bm_args["llcrnrlon"]) + (bm_args["urcrnrlon"] + 180.)
+        opts = [60, 30, 10, 5, 1]
+        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
+        step = opts[p]
+        if bm_args["llcrnrlon"] < bm_args["urcrnrlon"]:
+            return numpy.arange(int(bm_args["llcrnrlon"]/step)*step, (int(bm_args["urcrnrlon"]/step)+1)*step, step)
+        else:
+            return numpy.concatenate([numpy.arange(int(bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
+                                          numpy.arange(int(-180./step)*step, (int(bm_args["urcrnrlon"]/step)+1)*step, step)])
+        
+    @classmethod
+    def getBasemapCorners(tcl, prefs, cextrema):
+        coords = ["llon", "ulon", "llat", "ulat"]
+        allundef = True
+        ## try_bounds = {"llon": -30., "ulon": 30., "llat": 30., "ulat": 110.}
+
+        mbounds = dict([("c_"+c, v) for (c,v) in tcl.bounds_def.items()])
+        mbounds.update(dict([("margc_"+c, 1./tcl.marg_f) for (c,v) in tcl.bounds_def.items()]))
+        for c in coords:
+            ### get corners from settings
+            if c in prefs:
+                mbounds["c_"+c] = prefs[c]["data"]
+            allundef &=  (mbounds["c_"+c] == -1)
+        if allundef:
+            ### if all equal -1, set corners to def, globe wide
+            mbounds.update(tcl.bounds_def)
+        else:
+            ### get corners from data
+            mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"] = cextrema #self.getParentCoordsExtrema()
+            for coord in coords:
+                ### if corners coords from settings lower than 180,
+                ### replace that from data, and drop margin
+                if numpy.abs(mbounds["c_"+coord]) <= 180: #numpy.abs(tcl.bounds_def[coord]):
+                    mbounds[coord] = mbounds["c_"+coord]                    
+                    mbounds["margc_"+coord] = 0.
+
+        for coord in ["lon", "lat"]:
+            mbounds["marg_l"+coord] = mbounds["margc_l"+coord] * (mbounds["u"+coord]-mbounds["l"+coord]) 
+            mbounds["marg_u"+coord] = mbounds["margc_u"+coord] * (mbounds["u"+coord]-mbounds["l"+coord]) 
+        return mbounds
+
+    @classmethod
+    def greatCircleAngle(tcl, x0, x1):
+        ### compute great circle distance for degree coordinates (lat, long)
+        rd0 = numpy.radians(x0)
+        rd1 = numpy.radians(x1)
+        return numpy.arccos(numpy.sin(rd0[0]) * numpy.sin(rd1[0]) \
+            + numpy.cos(rd0[0]) * numpy.cos(rd1[0]) * numpy.cos(rd0[1] - rd1[1]))
+    @classmethod
+    def greatCircleAngleXY(tcl, x0, x1):
+        ### compute great circle distance for degree coordinates (x,y)
+        rd0 = numpy.radians(x0)
+        rd1 = numpy.radians(x1)
+        return numpy.arccos(numpy.sin(rd0[1]) * numpy.sin(rd1[1]) \
+            + numpy.cos(rd0[1]) * numpy.cos(rd1[1]) * numpy.cos(rd0[0] - rd1[0]))
+
+    @classmethod
+    def greatCircleDist(tcl, x0, x1):
+        ### compute great circle distance for degree coordinates (lat, long)
+        return tcl.circ_def * tcl.greatCircleAngle(x0, x1)
+    @classmethod
+    def greatCircleDistXY(tcl, x0, x1):
+        ### compute great circle distance for degree coordinates (x,y)
+        return tcl.circ_def * tcl.greatCircleAngleXY(x0, x1)
+    
+    @classmethod
+    def makeBasemapProj(tcl, prefs, cextrema):
+        proj, resolution = tcl.getBasemapProjSetts(prefs)
+        if proj is None:
+            return None, None
+        mbounds = tcl.getBasemapCorners(prefs, cextrema)
+        ## print "MBOUNDS", "\n".join(["%s:%s" % (k,v) for (k,v) in mbounds.items()])
+
+        llcrnrlon = numpy.max([-180., mbounds["llon"]-mbounds["marg_llon"]])
+        urcrnrlon = numpy.min([180., mbounds["ulon"]+mbounds["marg_ulon"]])
+        if urcrnrlon <= llcrnrlon:
+            if "lon_0" in tcl.proj_pk[proj]:
+                span_lon = (360+urcrnrlon-llcrnrlon)
+            else:
+                urcrnrlon = tcl.bounds_def["ulon"]
+                llcrnrlon = tcl.bounds_def["llon"]
+                span_lon = (urcrnrlon-llcrnrlon)
+        else:
+            span_lon = (urcrnrlon-llcrnrlon)
+
+        lon_0 = llcrnrlon + span_lon/2.0
+        if lon_0 > 180:
+            lon_0 -= 360
+            
+        llcrnrlat = numpy.max([-90., mbounds["llat"]-mbounds["marg_llat"]])
+        urcrnrlat = numpy.min([90., mbounds["ulat"]+mbounds["marg_ulat"]])
+        if urcrnrlat <= llcrnrlat:
+            urcrnrlat = tcl.bounds_def["ulat"]
+            llcrnrlat = tcl.bounds_def["llat"]
+        if "lat_0" in tcl.proj_pk[proj]:
+            llcrnrlatT = numpy.max([-180., mbounds["llat"]-mbounds["marg_llat"]])
+            urcrnrlatT = numpy.min([180., mbounds["ulat"]+mbounds["marg_ulat"]])
+        else:
+            llcrnrlatT = llcrnrlat
+            urcrnrlatT = urcrnrlat 
+        span_lat = (urcrnrlatT-llcrnrlatT)
+        lat_0 = llcrnrlatT + span_lat/2.0
+        if numpy.abs(lat_0) > 90:
+            lat_0 = numpy.sign(lat_0)*(180 - numpy.abs(lat_0))
+
+        boundinglat = 0
+        height = span_lat/360.
+        if numpy.sign(urcrnrlat) == numpy.sign(llcrnrlat):
+            width = numpy.cos((numpy.pi/2.)*numpy.min([numpy.abs(urcrnrlat),numpy.abs(llcrnrlat)])/90.)*span_lon/360.
+            if urcrnrlat > 0:
+                boundinglat = llcrnrlat
+            else:
+                boundinglat = urcrnrlat
+        else: ### contains equator, the largest, factor 1
+            width = span_lon/360.
+        height = numpy.min([height, 0.5])
+        width = numpy.min([width, 1.])
+        args_all = {"width": tcl.circ_def*width, "height": tcl.circ_def*height,
+                    "lon_0": lon_0, "lat_0": lat_0,
+                    "lon_1": lon_0, "lat_1": lat_0,
+                    "lon_2": lon_0+5, "lat_2": lat_0-5, 
+                    "llcrnrlon": llcrnrlon, "llcrnrlat": llcrnrlat,
+                    "urcrnrlon": urcrnrlon, "urcrnrlat": urcrnrlat,
+                    "boundinglat": boundinglat, "satellite_height": 30*10**6}
+        if args_all["lat_1"] == -args_all["lat_2"]:
+            args_all["lat_2"] = +4
+
+        args_p = {"projection": proj, "resolution":resolution}
+        if proj in ["npaeqd", "nplaea", "npstere"]:
+            if boundinglat > 0:                
+                args_p["projection"] = "np"+proj[2:]
+            elif boundinglat < 0:
+                args_p["projection"] = "sp"+proj[2:]
+            else:
+                args_p["projection"] = proj[2:]
+        for param_k in tcl.proj_pk[args_p["projection"]]:
+            args_p[param_k] = args_all[param_k]
+        # print "Proj", args_p["projection"], "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat) #, "args", args_all
+        # print "--- ARGS ALL\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_all.items()])
+        # print "--- ARGS P\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_p.items()])
+        try:
+            bm = mpl_toolkits.basemap.Basemap(**args_p)
+            # print "<< Basemap init succeded!", args_p
+        except ValueError:
+            # print ">> Basemap init failed!", args_p
+            # print "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat), "args", args_all
+            bm = None 
+        ### print "BM Corners", (bm.llcrnrlon, bm.llcrnrlat), (bm.urcrnrlon, bm.urcrnrlat)
+        return bm, args_all
+
+    @classmethod
+    def makeBasemapBack(tcl, prefs, bm_args, bm=None):
+        if bm is None:
+            return
+        draws, colors, more = tcl.getBasemapBackSetts(prefs)
+        bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
+        if draws["rivers"]:
+            bm.drawrivers(color=colors["sea_color"])
+        if draws["coasts"]:
+            bounds_color = colors["line_color"]
+            bm.drawcoastlines(color=colors["line_color"])
+        if draws["countries"]:
+            bounds_color = colors["line_color"]
+            bm.drawcountries(color=colors["line_color"])
+        if draws["states"]:
+            bounds_color = colors["line_color"]
+            bm.drawstates(color=colors["line_color"])
+        if draws["continents"]:
+            contin_color = colors["land_color"]
+        if draws["seas"]:
+            sea_color = colors["sea_color"]
+        if draws["lakes"]:
+            lake_color = colors["sea_color"]
+            
+        if draws["parallels"]:
+            tt = tcl.getParallelsRange(bm_args)
+            # print "parallels", tt
+            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1])
+        if draws["meridians"]:
+            tt = tcl.getMeridiansRange(bm_args)
+            # print "meridians", tt
+            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0])
+
+        func_map = {1: bm.shadedrelief, 2: bm.etopo, 3: bm.bluemarble}
+        bd = False
+        if more.get("map_back") in func_map:
+            ### HERE http://matplotlib.org/basemap/users/geography.html
+            try:
+                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"])
+                bd = True
+            except IndexError:
+                bd = False
+                print "Impossible to draw the image map background!"
+        if not bd:
+            if bounds_color != colors["none"] or sea_color != colors["none"]:
+                bm.drawmapboundary(color=bounds_color, fill_color=sea_color)
+            if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
+                bm.fillcontinents(color=contin_color, lake_color=lake_color)
+            # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
+
+
+class MapView(TDView):
+
+    TID = "MAP"
+    SDESC = "Map"
+    title_str = "Map"
+    ordN = 1
+    geo = True
+    MAP_POLY = True #False
+    typesI = "vr"
+
     def drawMap(self):
         """ Draws the map
         """
@@ -121,7 +398,7 @@ class MapView(TDView):
         #     self.coords_proj = None
         #     return
         if not hasattr( self, 'axe' ):
-            self.bm, self.bm_args = self.makeBasemapProj()
+            self.bm, self.bm_args = MapBase.makeBasemapProj(self.getParentPreferences(), self.getParentCoordsExtrema())
 
             self.coords_proj = self.mapCoords(self.getParentCoords(), self.bm)
             if self.bm is not None:
@@ -170,8 +447,8 @@ class MapView(TDView):
         #return [add_boxbis, add_box]
         return [add_boxB]
 
-    def makeBackground(self):   
-        self.makeBasemapBack(self.bm)
+    def makeBackground(self):
+        MapBase.makeBasemapBack(self.getParentPreferences(), self.bm_args, self.bm)
     def makeFinish(self, xylims, xybs):
         self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
 
@@ -253,6 +530,7 @@ class MapView(TDView):
         return mapoly
 
     def drawEntity(self, idp, fc, ec, sz=1, zo=4, dsetts={}):
+        ### HERE SAMPLE ###
         if self.drawPoly():
             return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec, zorder=zo))]
                     
@@ -261,253 +539,7 @@ class MapView(TDView):
             x, y = self.getCoordsXY(idp)
             return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
 
-    def getBasemapProjSetts(self):
-        proj = self.proj_def 
-        t = self.getParentPreferences()
-        if "map_proj" in t:
-            tpro = re.sub(" *\(.*\)$", "", t["map_proj"]["data"])
-            if tpro in self.proj_names:
-                proj = self.proj_names[tpro]
-        resolution = "c"
-        if "map_resolution" in t:
-            resolution = t["map_resolution"]["data"][0]
-
-        return proj, resolution
-            
-    def getBasemapBackSetts(self):
-        t = self.getParentPreferences()
-        draws = {"rivers": False, "coasts": False, "countries": False,
-                 "states": False, "parallels": False, "meridians": False,
-                 "continents":False, "lakes": False, "seas": False}
-        ### DEBUG
-        draws = {"rivers": False, "coasts": True, "countries": False,
-                 "states": False, "parallels": False, "meridians": False,
-                 "continents":False, "lakes": False, "seas": False}
-
-        colors = {"line_color": "gray", "sea_color": "#F0F8FF", "land_color": "white", "none":"white"}
-        more = {}
-        
-        for typ_elem in ["map_elem_area", "map_elem_natural", "map_elem_geop", "map_elem_circ"]:
-            if typ_elem in t:
-                for elem in t[typ_elem]["data"]:                    
-                    draws[elem] = True
-                    
-        for k in ["map_back_alpha", "map_back_scale"]:
-            if k in t:
-                more[k] = t[k]["data"]/100.0
-            else:
-                more[k] = 1.
-        for k in ["map_back"]:
-            if k in t:
-                more[k] = t[k]["value"]
-            else:
-                more[k] = 0
-            
-        for color_k in colors.keys():
-            if color_k in t:
-                colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, t[color_k]["data"])]) 
-        return draws, colors, more
-
-    def getParallelsRange(self):
-        span = float(self.bm_args["urcrnrlat"] - self.bm_args["llcrnrlat"])
-        # if self.bm_args["llcrnrlat"] < self.bm_args["urcrnrlat"]:
-        #     span = float(self.bm_args["urcrnrlat"] - self.bm_args["llcrnrlat"])
-        # else:
-        #     span = (180. - self.bm_args["llcrnrlon"]) + (self.bm_args["urcrnrlon"] + 180.)
-        opts = [60, 30, 10, 5, 1]
-        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
-        step = opts[p]
-        # if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
-        return numpy.arange(int(self.bm_args["llcrnrlat"]/step)*step, (int(self.bm_args["urcrnrlat"]/step)+1)*step, step)
-        # else:
-        #     return numpy.concatenate([numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
-        #                                   numpy.arange(int(-180./step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)])
-
-        
-    def getMeridiansRange(self):
-        if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
-            span = float(self.bm_args["urcrnrlon"] - self.bm_args["llcrnrlon"])
-        else:
-            span = (180. - self.bm_args["llcrnrlon"]) + (self.bm_args["urcrnrlon"] + 180.)
-        opts = [60, 30, 10, 5, 1]
-        p = numpy.argmin(numpy.array([((span/k)-5.)**2 for k in opts]))
-        step = opts[p]
-        if self.bm_args["llcrnrlon"] < self.bm_args["urcrnrlon"]:
-            return numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)
-        else:
-            return numpy.concatenate([numpy.arange(int(self.bm_args["llcrnrlon"]/step)*step, (int(180./step)+1)*step, step),
-                                          numpy.arange(int(-180./step)*step, (int(self.bm_args["urcrnrlon"]/step)+1)*step, step)])
-
-    def getBasemapCorners(self):
-        coords = ["llon", "ulon", "llat", "ulat"]
-        allundef = True
-        ## try_bounds = {"llon": -30., "ulon": 30., "llat": 30., "ulat": 110.}
-
-        mbounds = dict([("c_"+c, v) for (c,v) in self.bounds_def.items()])
-        mbounds.update(dict([("margc_"+c, 1./self.marg_f) for (c,v) in self.bounds_def.items()]))
-        t = self.getParentPreferences()
-        for c in coords:
-            ### get corners from settings
-            if c in t:
-                mbounds["c_"+c] = t[c]["data"]
-                ## mbounds["c"+c] = try_bounds[c] #self.getParentPreferences()[c]["data"]
-            allundef &=  (mbounds["c_"+c] == -1)
-        if allundef:
-            ### if all equal -1, set corners to def, globe wide
-            mbounds.update(self.bounds_def)
-        else:
-            ### get corners from data
-            mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"] = self.getParentCoordsExtrema()
-            for coord in coords:
-                ### if corners coords from settings lower than 180,
-                ### replace that from data, and drop margin
-                if numpy.abs(mbounds["c_"+coord]) <= 180: #numpy.abs(self.bounds_def[coord]):
-                    mbounds[coord] = mbounds["c_"+coord]                    
-                    mbounds["margc_"+coord] = 0.
-
-        for coord in ["lon", "lat"]:
-            mbounds["marg_l"+coord] = mbounds["margc_l"+coord] * (mbounds["u"+coord]-mbounds["l"+coord]) 
-            mbounds["marg_u"+coord] = mbounds["margc_u"+coord] * (mbounds["u"+coord]-mbounds["l"+coord]) 
-        return mbounds
-    
-    def makeBasemapProj(self):
-        proj, resolution = self.getBasemapProjSetts()
-        if proj is None:
-            return None, None
-        mbounds = self.getBasemapCorners()
-        ## print "MBOUNDS", "\n".join(["%s:%s" % (k,v) for (k,v) in mbounds.items()])
-
-        # circ_equ=2*numpy.pi*6378137.
-        # circ_pol=2*numpy.pi*6356752.
-        # circ_avg=2*numpy.pi*6371000.
-        circ_def=2*numpy.pi*6370997.
-
-        llcrnrlon = numpy.max([-180., mbounds["llon"]-mbounds["marg_llon"]])
-        urcrnrlon = numpy.min([180., mbounds["ulon"]+mbounds["marg_ulon"]])
-        if urcrnrlon <= llcrnrlon:
-            if "lon_0" in self.proj_pk[proj]:
-                span_lon = (360+urcrnrlon-llcrnrlon)
-            else:
-                urcrnrlon = self.bounds_def["ulon"]
-                llcrnrlon = self.bounds_def["llon"]
-                span_lon = (urcrnrlon-llcrnrlon)
-        else:
-            span_lon = (urcrnrlon-llcrnrlon)
-
-        lon_0 = llcrnrlon + span_lon/2.0
-        if lon_0 > 180:
-            lon_0 -= 360
-            
-        llcrnrlat = numpy.max([-90., mbounds["llat"]-mbounds["marg_llat"]])
-        urcrnrlat = numpy.min([90., mbounds["ulat"]+mbounds["marg_ulat"]])
-        if urcrnrlat <= llcrnrlat:
-            urcrnrlat = self.bounds_def["ulat"]
-            llcrnrlat = self.bounds_def["llat"]
-        if "lat_0" in self.proj_pk[proj]:
-            llcrnrlatT = numpy.max([-180., mbounds["llat"]-mbounds["marg_llat"]])
-            urcrnrlatT = numpy.min([180., mbounds["ulat"]+mbounds["marg_ulat"]])
-        else:
-            llcrnrlatT = llcrnrlat
-            urcrnrlatT = urcrnrlat 
-        span_lat = (urcrnrlatT-llcrnrlatT)
-        lat_0 = llcrnrlatT + span_lat/2.0
-        if numpy.abs(lat_0) > 90:
-            lat_0 = numpy.sign(lat_0)*(180 - numpy.abs(lat_0))
-
-        boundinglat = 0
-        height = span_lat/360.
-        if numpy.sign(urcrnrlat) == numpy.sign(llcrnrlat):
-            width = numpy.cos((numpy.pi/2.)*numpy.min([numpy.abs(urcrnrlat),numpy.abs(llcrnrlat)])/90.)*span_lon/360.
-            if urcrnrlat > 0:
-                boundinglat = llcrnrlat
-            else:
-                boundinglat = urcrnrlat
-        else: ### contains equator, the largest, factor 1
-            width = span_lon/360.
-        height = numpy.min([height, 0.5])
-        width = numpy.min([width, 1.])
-        args_all = {"width": circ_def*width, "height": circ_def*height,
-                    "lon_0": lon_0, "lat_0": lat_0,
-                    "lon_1": lon_0, "lat_1": lat_0,
-                    "lon_2": lon_0+5, "lat_2": lat_0-5, 
-                    "llcrnrlon": llcrnrlon, "llcrnrlat": llcrnrlat,
-                    "urcrnrlon": urcrnrlon, "urcrnrlat": urcrnrlat,
-                    "boundinglat": boundinglat, "satellite_height": 30*10**6}
-        if args_all["lat_1"] == -args_all["lat_2"]:
-            args_all["lat_2"] = +4
-
-        args_p = {"projection": proj, "resolution":resolution}
-        if proj in ["npaeqd", "nplaea", "npstere"]:
-            if boundinglat > 0:                
-                args_p["projection"] = "np"+proj[2:]
-            elif boundinglat < 0:
-                args_p["projection"] = "sp"+proj[2:]
-            else:
-                args_p["projection"] = proj[2:]
-        for param_k in self.proj_pk[args_p["projection"]]:
-            args_p[param_k] = args_all[param_k]
-        # print "Proj", args_p["projection"], "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat) #, "args", args_all
-        # print "--- ARGS ALL\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_all.items()])
-        # print "--- ARGS P\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_p.items()])
-        try:
-            bm = mpl_toolkits.basemap.Basemap(**args_p)
-            # print "<< Basemap init succeded!", args_p
-        except ValueError:
-            # print ">> Basemap init failed!", args_p
-            # print "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat), "args", args_all
-            bm = None 
-        ### print "BM Corners", (bm.llcrnrlon, bm.llcrnrlat), (bm.urcrnrlon, bm.urcrnrlat)
-        return bm, args_all
-        
-    def makeBasemapBack(self, bm=None):
-        if bm is None:
-            return
-        draws, colors, more = self.getBasemapBackSetts()
-        bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
-        if draws["rivers"]:
-            bm.drawrivers(color=colors["sea_color"])
-        if draws["coasts"]:
-            bounds_color = colors["line_color"]
-            bm.drawcoastlines(color=colors["line_color"])
-        if draws["countries"]:
-            bounds_color = colors["line_color"]
-            bm.drawcountries(color=colors["line_color"])
-        if draws["states"]:
-            bounds_color = colors["line_color"]
-            bm.drawstates(color=colors["line_color"])
-        if draws["continents"]:
-            contin_color = colors["land_color"]
-        if draws["seas"]:
-            sea_color = colors["sea_color"]
-        if draws["lakes"]:
-            lake_color = colors["sea_color"]
-            
-        if draws["parallels"]:
-            tt = self.getParallelsRange()
-            # print "parallels", tt
-            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1])
-        if draws["meridians"]:
-            tt = self.getMeridiansRange()
-            # print "meridians", tt
-            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0])
-
-        func_map = {1: bm.shadedrelief, 2: bm.etopo, 3: bm.bluemarble}
-        bd = False
-        if more.get("map_back") in func_map:
-            ### HERE http://matplotlib.org/basemap/users/geography.html
-            try:
-                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"])
-                bd = True
-            except IndexError:
-                bd = False
-                print "Impossible to draw the image map background!"
-        if not bd:
-            if bounds_color != colors["none"] or sea_color != colors["none"]:
-                bm.drawmapboundary(color=bounds_color, fill_color=sea_color)
-            if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
-                bm.fillcontinents(color=contin_color, lake_color=lake_color)
-            # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
-            
+    #### BM            
     def getLidAt(self, x, y):
         ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
         if self.drawPoly():

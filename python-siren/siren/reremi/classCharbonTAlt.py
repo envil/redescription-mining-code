@@ -157,7 +157,6 @@ class CharbonTCW(CharbonTree):
         while rounds < self.constraints.getCstr("max_rounds") and rounds >= 0:            
             rounds += 1
             try:
-                ##### HERE
                 if dtcs[1-current_side] is not None and singleD:
                     if cols_info is None:
                         tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]
@@ -222,7 +221,6 @@ class CharbonTSprit(CharbonTCW):
         while depth[0] <= self.constraints.getCstr("max_depth") or depth[1] <= self.constraints.getCstr("max_depth"):
         # while rounds < 30 and rounds >= 0:            
             rounds += 1
-            ##### HERE
             if dtcs[1-current_side] is not None and singleD:
                 if cols_info is None:
                     tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]

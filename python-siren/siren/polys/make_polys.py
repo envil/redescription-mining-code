@@ -14,39 +14,82 @@ def makePolys(pdp, boundaries):
     D=scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(np.array([sx,sy]).T, metric="euclidean"))
     nnvs = []
     nds = []
+
     for i in range(D.shape[0]):
         nnvs.append(np.argsort(D[:,i])[1:3])
     for i in range(D.shape[0]):
         nds.append(min([D[i,j] for j in nnvs[i]]+[D[nnvs[j][0],j] for j in nnvs[i]]+[D[nnvs[j][1],j] for j in nnvs[i]]))
 
-
     vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=boundaries)
-    # margin = 1
-    # vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+margin, min(sx)-margin, min(sy)-margin, max(sx)+margin])
-
+    orgs = {}
     ready = {}
+    ready[None] = []
     for s, obj in vl.items():
         pos = obj["info"]
         dst = nds[pos]
         fact = 1.41
         ready[pos] = []
-
+        orgs[pos] = []
         tmc = getContours(obj['obj_polygon'])
+        if pos in [622, 1509]:
+            plt.figure()
+            plt.plot([boundaries[tp] for tp in [2,1,1,2]], [boundaries[tp] for tp in [0,0,3,3]], 'g-')
+            for edge in obj['obj_polygon']:
+                xx,yy=zip(*edge)
+                plt.plot(xx,yy, 'r+:')
+            for dd in tmc:
+                xc,yc=zip(*dd)
+                plt.plot(xc,yc, 'bo--')
+            plt.text(xc[0],yc[0], '%d' % pos)
+            plt.show(block=False)
+        
         for data_ct in tmc:
+            orgs[pos].append(data_ct)
+            inter_p = None
             data_poly = geometry.Polygon(data_ct)
-            rst = [(obj["coordinate"][0]+x*dst*fact/2, obj["coordinate"][1]+y*dst*fact/2)
-                   for (x,y) in [(-1,-1), (-1,1), (1,1), (1,-1), (-1,-1)]]
-            restrict_poly = geometry.Polygon(rst)
-            try:
-                inter_p = restrict_poly.intersection(data_poly)
-                ready[pos].append(list(inter_p.exterior.coords))
-            except TopologicalError:
+            lfact = fact*(1+obj["coordinate"][1]/90.)**2
+            iterf = 1.
+            while inter_p is None:
+                rst = [(obj["coordinate"][0]+x*dst*lfact*iterf/2, obj["coordinate"][1]+y*dst*fact*iterf/2) for (x,y) in [(-1,-1), (-1,1), (1,1), (1,-1), (-1,-1)]]
+                # if iterf == 1:
+                #     print "----", iterf, rst, dst
+                restrict_poly = geometry.Polygon(rst)
+                if pos in [622, 1509]:
+                    xx,yy=zip(*data_ct)
+                    xc,yc=zip(*rst)
+                    plt.figure()
+                    plt.plot(xx,yy, 'r')
+                    plt.plot(xc,yc, 'b')
+                    plt.text(xc[0],yc[0], '%d' % pos)
+                    plt.show(block=False)
+                try:
+                    inter_p = restrict_poly.intersection(data_poly)
+                except TopologicalError as e:
+                    print "TOP ERROR", pos, obj["coordinate"]
+                    # inter_p = None
+                    inter_p = -1
+                    # iterf += .5
+                    # if iterf > 6.:
+                    #     inter_p = -1
+
+            if inter_p == -1:
                 mdi = np.max(scipy.spatial.distance.cdist(np.array([obj["coordinate"]]), data_ct, metric="euclidean"))
                 if mdi > fact*dst:
+                    rst = [(obj["coordinate"][0]+x*dst*lfact/2, obj["coordinate"][1]+y*dst*fact/2) for (x,y) in [(-1,-1), (-1,1), (1,1), (1,-1), (-1,-1)]]                
                     ready[pos].append(rst)
                 else:
                     ready[pos].append(data_ct)
-    return ready
+
+            else:
+                ready[pos].append(list(inter_p.exterior.coords))
+
+                out_p = data_poly.difference(restrict_poly)
+                if type(out_p) in [geometry.multipolygon.MultiPolygon, geometry.collection.GeometryCollection]:
+                    for op in out_p:
+                        ready[None].append((pos, list(op.exterior.coords)))
+                else:
+                    ready[None].append((pos, list(out_p.exterior.coords)))
+    return ready, orgs
 
 
 
