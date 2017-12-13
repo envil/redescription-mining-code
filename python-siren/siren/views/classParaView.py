@@ -341,10 +341,11 @@ class ParaView(GView):
             self.clearPlot()
             
             red = self.current_r
+            
             draw_settings = self.getDrawSettings()
-
-            self.dots_draws = self.prepareEntitiesDots()
-
+            vec, vec_dets = self.getValVec()
+            self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
+            
             #### Contribs of literals
             if self.getLitContribOn():
                 lits, map_q = self.literalsEffect(red)

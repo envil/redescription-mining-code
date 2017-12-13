@@ -92,41 +92,22 @@ class GView(BasisView):
         self.suppABCD = None
         self.redStamp = None
 
-    def prepareEntitiesDots(self):
-        draw_settings = self.getDrawSettings()
-
-        vec = numpy.empty((0))
-        if self.suppABCD is not None:
+    def getValVec(self):
+        vec = numpy.empty((0)) 
+        vec_dets = {"typeId": 2, "binLbls": None, "binVals": None, "single": False} ### HERE bin lbls
+        if self.isSingleVar():
+            ccs = self.getQCols()
+            col = self.getCol(ccs[0][0], ccs[0][1])
+            vec = col.getVector()
+            vec_dets["typeId"] = col.typeId()
+            if vec_dets["typeId"] == 2:
+                vec_dets["binVals"] = numpy.unique(vec)
+                vec_dets["binLbls"] = [col.getCatForVal(b, "NA") for b in vec_dets["binVals"]]
+            vec_dets["single"] = True
+        elif self.suppABCD is not None:
             vec = numpy.array(self.suppABCD)
-        u, indices = numpy.unique(vec, return_inverse=True)
-
-        styles = []
-        for i in u:
-            if draw_settings[i]["shape"] in [".",",","*","+","x"]:
-                #### point-wise shape -> same color face and edge
-                styles.append(draw_settings[i]["color_e"])
-            else:
-                #### otherwise -> possibly different colors face and edge
-                styles.append(draw_settings[i]["color_f"])
-        fc_clusts = numpy.array(styles)
-        # fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
-        fc_dots = fc_clusts[indices]
-        ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
-        ec_dots = ec_clusts[indices]
-        zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
-        zord_dots = zord_clusts[indices]
-            
-        delta_dots = vec==SSetts.E_oo
+        return vec, vec_dets
         
-        sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
-        sz_dots[~ delta_dots] *= 0.5
-
-        if self.getDeltaOn():
-            draw_dots = numpy.ones(vec.shape, dtype=bool)
-        else:
-            draw_dots = ~ delta_dots
-        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
-
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
                                      "more": None, "more_dyn":[], "order": 0},
@@ -396,11 +377,6 @@ class GView(BasisView):
         if self.hasParent():
             lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
             self.parent.OnSaveSelAsVar(lids, "S%s" % self.parent.viewsm.getItemId(self.getId()))
-    
-    def getPlotColor(self, idp, prop):
-        return tuple(self.dots_draws[prop+"_dots"][idp])
-    def getPlotProp(self, idp, prop):
-        return self.dots_draws[prop+"_dots"][idp]
     
     def hasDotsReady(self):
         return self.dots_draws is not None

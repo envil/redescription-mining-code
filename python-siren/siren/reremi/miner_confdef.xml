@@ -11,7 +11,7 @@
 	<label>Algo family</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
-	<legend>Type of mining algorithm to use.</legend>
+	<legend>CORE Type of mining algorithm to use.</legend>
 	<default><value>0</value></default>
 	<options><value>greedy</value><value>trees</value></options>
       </parameter>
@@ -39,7 +39,7 @@
 	<label>Log verbosity</label>
 	<parameter_type>range</parameter_type>
 	<value_type>integer</value_type>
-	<legend>Verbosity of the algorithms output.</legend>
+	<legend>CORE Verbosity of the algorithms output.</legend>
 	<range_min>0</range_min>
 	<range_max>10</range_max>
 	<default><value>4</value></default>
@@ -64,7 +64,7 @@
 	<label>Min support</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
-	<legend>Minimum number of supporting entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<legend>CORE Minimum number of supporting entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
 	<length>5</length>
 	<default><value>0.05</value></default>
       </parameter>
@@ -73,7 +73,7 @@
 	<label>Min uncovered</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
-	<legend>Minimum number of uncovered entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+	<legend>CORE Minimum number of uncovered entities. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
 	<length>5</length>
 	<default><value>0.05</value></default>
       </parameter>

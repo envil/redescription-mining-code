@@ -356,9 +356,15 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         else:
             f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines), 'utf-8','replace'))
             
-def writePreferences(preferences, pm, filename, toPackage = False, inc_def=False):
+def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, core=False):
+    sections = True
+    helps = False
+    if toPackage:
+        sections = False
+    if preferences is None or inc_def:
+        helps = True
     with open(filename, 'w') as f:
-        f.write(PreferencesReader(pm).dispParameters(preferences, True, defaults=inc_def))
+        f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
 
 def writeData(data, filenames, toPackage = False):
     data.writeCSV(filenames)

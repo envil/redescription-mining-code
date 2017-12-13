@@ -2649,7 +2649,7 @@ def main():
         # for side in [0,1]:
         #     for col in data.cols[side]:
         #         print col
-
+    
     rep = "/home/egalbrun/Desktop/DataReReMi/"
     data = Data([rep+"input1Mammals.csv", rep+"input2Weather.csv", {"delimiter": ";"}, ""], "csv")
     print data.cols[1][1].getVector()

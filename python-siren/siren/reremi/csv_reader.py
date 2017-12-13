@@ -172,8 +172,9 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
             if off is None and (-sub in dictLL.values()):
                 ### ... unless there was a zero
                 dictLL = dict([(k,v+sub) for (k, v) in dictLL.items()])
-            if max(dictLL.values()) > 2*len(dictLL):
-                print "Too large ids compared to number of rows (>2x)!..."
+            # if max(dictLL.values()) > 2*len(dictLL):
+            if max(dictLL.values()) > 10*len(dictLL):
+                print "Too large ids compared to number of rows (>10x)!..."
                 numerical_ids = False
         if numerical_ids:        
             nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
@@ -453,7 +454,7 @@ def row_order(L, R):
         else:
             nbr, offL, offR = (nbrTT, offLTT, offRTT)
 
-    #### UNDER WORK Sparse pairs storing with empty first row on sparse side 
+    #### UNDER WORK Sparse pairs storing with empty first row on sparse side
     if LhasIds and Lvarcol is not None: 
         #if True:
         try:
@@ -723,6 +724,7 @@ def main(argv=[]):
     # rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
     rep = "/home/galbrun/Desktop/A.siren_FILES/"
     # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
+    rep = "/home/egalbrun/worldwide_flipped.siren_FILES/"        
     res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
     pdb.set_trace()
     # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')

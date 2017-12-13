@@ -168,10 +168,6 @@ class BasisView(object):
         self.mapFrame.GetSizer().Detach(self.panel)
         self.pos = npos
         self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
-
-    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
-    def getCMap(self, ltid):
-        return plt.get_cmap(self.ltids_map.get(ltid, "jet"))
         
     @classmethod
     def getViewsDetails(tcl):
@@ -283,7 +279,10 @@ class BasisView(object):
 
     def isReadyPlot(self):
         return True    
-    
+
+    def getAxisLims(self):
+        return (0,1,0,1)
+
     def isIntab(self):
         return self.intab
 
@@ -848,7 +847,159 @@ class BasisView(object):
         self.cp += 1
         self.call_wait.Restart(self.wait_delay)
 
+    def plotSimple(self):
+        return True
+    def makeBackground(self):   
+        pass
+    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
+        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
+
+    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
+    def getCMap(self, ltid):
+        return plt.get_cmap(self.ltids_map.get(ltid, "jet"))
+
+    def getPlotColor(self, idp, prop):
+        return tuple(self.dots_draws[prop+"_dots"][idp])
+    def getPlotProp(self, idp, prop):
+        return self.dots_draws[prop+"_dots"][idp]
+    
+    def prepareEntitiesDots(self,  vec, vec_dets, draw_settings, delta_on=True):
+        u, indices = numpy.unique(vec, return_inverse=True)
+
+        styles = []
+        for i in u:
+            if draw_settings[i]["shape"] in [".",",","*","+","x"]:
+                #### point-wise shape -> same color face and edge
+                styles.append(draw_settings[i]["color_e"])
+            else:
+                #### otherwise -> possibly different colors face and edge
+                styles.append(draw_settings[i]["color_f"])
+        fc_clusts = numpy.array(styles)
+        # fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
+        fc_dots = fc_clusts[indices]
+        ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
+        ec_dots = ec_clusts[indices]
+        zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
+        zord_dots = zord_clusts[indices]
+            
+        delta_dots = vec==SSetts.E_oo
         
+        sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
+        sz_dots[~ delta_dots] *= 0.5
+
+        if delta_on:
+            draw_dots = numpy.ones(vec.shape, dtype=bool)
+        else:
+            draw_dots = ~ delta_dots
+        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
+
+    
+    def prepareSingleVarDots(self, vec, vec_dets, draw_settings, delta_on=True, min_max=None):
+        cmap, vmin, vmax = (self.getCMap(vec_dets["typeId"]), numpy.nanmin(vec), numpy.nanmax(vec))
+        if min_max is not None:
+            vmin, vmax = min_max
+
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+        mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+        if min_max is not None:
+            mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
+            ec_dots = numpy.array([mmp[v] for v in vec])
+
+        elif vec_dets["typeId"] == 3 or (vmin !=0 and min_max is None):
+            ec_dots = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in vec])
+        else:
+            mmp = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in numpy.arange(vmin, vmax+1)])
+            ec_dots = mmp[vec]
+        
+        fc_dots = numpy.copy(ec_dots)
+        # fc_dots[:,-1] = dsetts["color_f"][-1]
+                                
+        dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
+                      "sz_dots": numpy.ones(vec.shape)*draw_settings["default"]["size"],
+                      "zord_dots": numpy.ones(vec.shape)*draw_settings["default"]["zord"],
+                      "draw_dots": numpy.ones(vec.shape, dtype=bool)}
+        mapper.set_array(vec)
+        return dots_draws, mapper
+
+    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners):
+        x0, x1, y0, y1, bx, by = corners
+        nb = nb_bins
+        idsan = numpy.where(~numpy.isnan(vec))[0]
+        if vec_dets["binLbls"] is not None:
+            if vec_dets.get("binHist") is not None:
+                nb = vec_dets["binHist"]
+            else:
+                df = max(numpy.diff(vec_dets["binVals"]))
+                nb = [vec_dets["binVals"][0]]+[(vec_dets["binVals"][i]+vec_dets["binVals"][i+1])/2. for i in range(len(vec_dets["binVals"])-1)]+[vec_dets["binVals"][-1]]
+                nb[0] -= df/2.
+                nb[-1] += df/2.
+            
+        # else: vec_dets["typeId"] == 2: ### Categorical
+        #     nb = [b-0.5 for b in numpy.unique(vec[idsan])]
+        #     nb.append(nb[-1]+1)
+        #     bins_ticks = numpy.unique(vec[idsan])
+        #     bins_lbl = vec_dets["binLbls"]
+
+        n, bins, patches = plt.hist(vec[idsan], bins=nb)
+        
+        sum_h = numpy.max(n)
+        norm_h = [ni*0.1*float(x1-x0)/sum_h+0.03*float(x1-x0) for ni in n]
+        if vec_dets["binLbls"] is not None:            
+            bins_ticks = numpy.arange(len(vec_dets["binLbls"]))
+            tmpb = [b-0.5 for b in bins_ticks]
+            tmpb.append(tmpb[-1]+1)
+
+            norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
+            norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
+            
+            bins_lbl = vec_dets["binLbls"]
+            colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]
+        else:
+
+            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins]            
+            norm_bins_ticks = norm_bins
+            bins_lbl = bins
+            colors = [mapper.to_rgba(numpy.mean(bins[i:i+2])) for i in range(len(n))]
+        left = [norm_bins[i] for i in range(len(n))]
+        width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]
+        
+        
+        bckc = "white" 
+        axe.barh(y0, -(0.13*(x1-x0)+bx), y1-y0, x1+0.13*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
+        axe.barh(left, -numpy.array(norm_h), width, x1+0.13*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
+        axe.plot([x1+2*bx+0.1*(x1-x0), x1+2*bx+0.1*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
+        x1 += 0.13*(x1-x0)+2*bx
+        axe.set_yticks(norm_bins_ticks)
+        axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
+        # self.axe.yaxis.tick_right()
+        axe.tick_params(direction="inout", left="off", right="on",
+                            labelleft="off", labelright="on")
+        return (x0, x1, y0, y1, bx, by)
+        
+    def plotDotsSimple(self, axe, dots_draws, draw_indices, draw_settings):
+        ku, kindices = numpy.unique(dots_draws["zord_dots"][draw_indices], return_inverse=True)
+        ## pdb.set_trace()
+        for vi, vv in enumerate(ku):
+            if vv != -1: 
+                axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
+                            self.getCoords(1,draw_indices[kindices==vi]),
+                            c=dots_draws["fc_dots"][draw_indices[kindices==vi],:],
+                            edgecolors=dots_draws["ec_dots"][draw_indices[kindices==vi],:],
+                            s=5*dots_draws["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"], #### HERE
+                            zorder=vv)
+                
+    def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
+        for idp in draw_indices:
+            vv = self.getPlotProp(idp, "zord")
+            if vv != 1:
+                self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
+                              self.getPlotProp(idp, "sz"), vv, draw_settings["default"])
+
+    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):
+        return []
+    def getCoords(self, axi=None, ids=None):
+        return None
         
     def drawFrameSpecific(self):
         pass

@@ -10,6 +10,7 @@ import classTreeView
 import classLView
 import classOverView
 import classInterView
+import classSimView
 
 import pdb
 

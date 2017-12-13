@@ -313,7 +313,9 @@ class TreeView(GView):
 
                 self.clearPlot()
 
-                self.dots_draws = self.prepareEntitiesDots()     
+                draw_settings = self.getDrawSettings()
+                vec, vec_dets = self.getValVec()
+                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
                 # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
                 # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
 

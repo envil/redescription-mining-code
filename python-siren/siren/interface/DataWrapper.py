@@ -466,10 +466,19 @@ class DataWrapper(object):
         else:
             self.savePackageToFile(self.package.getSaveFilename(), None)
 
-    def exportPreferences(self, filename, inc_def=False):
+    def exportPreferences(self, filename, inc_def=False, conf_def=None):
+        pm = self.pm
+        prefs = self.preferences
+        core = False
+        ## prefs = pm.getDefaultTriplets()
+        if conf_def is not None:
+            pm = PreferencesManager(conf_def)
+            inc_def=False
+            core = True
+
         self._startMessage('exporting prefs', filename)
         try:
-            writePreferences(self.preferences, self.pm, filename, False, inc_def)
+            writePreferences(prefs, pm, filename, False, inc_def, core)
         except Exception:
             self._stopMessage()
             raise

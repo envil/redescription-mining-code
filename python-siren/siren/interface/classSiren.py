@@ -161,6 +161,7 @@ class Siren():
 
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
     cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface')]
+    cfiles_io = [('inout_confdef.xml', 'reremi')]
     
     results_delay = 1000
          
@@ -175,6 +176,7 @@ class Siren():
         self.viewsm = ViewsManager(self)
 
         self.conf_defs = Siren.initConfs(self.cfiles)
+        self.conf_defs_io = Siren.initConfs(self.cfiles_io)
         self.icon_file = Siren.searchData('siren_icon32x32.png', 'icons')
         self.license_file = Siren.searchData('LICENSE', 'licenses')
         self.helpURL = Siren.searchData('index.html', 'help')
@@ -815,8 +817,15 @@ class Siren():
 
         ID_EXPORT_PREF = wx.NewId()
         m_exportPref = submenuExport.Append(ID_EXPORT_PREF, "&Export Preferences", "Export preferences.")
-        frame.Bind(wx.EVT_MENU, self.OnExportPreferences, m_exportPref)
+        frame.Bind(wx.EVT_MENU, self.OnPrintoutPreferences, m_exportPref)
 
+        ID_TMPL_PREF = wx.NewId()
+        m_tmplPref = submenuExport.Append(ID_TMPL_PREF, "Export Prefs Template", "Print out preferences template.")
+        frame.Bind(wx.EVT_MENU, self.OnPrintoutPreferencesTmpl, m_tmplPref)
+        ID_DEF_PREF = wx.NewId()
+        m_defPref = submenuExport.Append(ID_DEF_PREF, "Export Prefs Default", "Print out default preferences.")
+        frame.Bind(wx.EVT_MENU, self.OnPrintoutPreferencesDef, m_defPref)
+        
         ID_EXPORT = wx.NewId()
         m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
 
@@ -1236,21 +1245,29 @@ class Siren():
                 pass
         save_dlg.Destroy()
 
-    def OnExportPreferences(self, event):
+    def OnPrintoutPreferences(self, event):
+        self.OnExportPreferences(mess="preferences")
+    def OnPrintoutPreferencesTmpl(self, event):
+        self.OnExportPreferences(mess="preferences template", conf_def=self.conf_defs+self.conf_defs_io)
+    def OnPrintoutPreferencesDef(self, event):
+        self.OnExportPreferences(mess="default preferences", inc_def=True)
+        
+    def OnExportPreferences(self, mess="preferences", inc_def=False, conf_def=None):
         if self.dw.getPackageSaveFilename() is not None:
             dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
             dir_name = os.path.expanduser('~/')
 
-        save_dlg = wx.FileDialog(self.toolFrame, message='Export preferences to:', defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        save_dlg = wx.FileDialog(self.toolFrame, message='Save %s template to:' % mess, defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
-                self.dw.exportPreferences(path, inc_def=True)
-            except:
+                self.dw.exportPreferences(path, inc_def, conf_def)
+            except Exception: 
                 pass
         save_dlg.Destroy()
 
+        
     def getSelectionTab(self):
         return self.tabbed.GetSelection()
     

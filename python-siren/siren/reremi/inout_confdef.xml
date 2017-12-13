@@ -11,7 +11,7 @@
 	<label>LHS data filename</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Complete filename for the left hand side data.</legend>
+	<legend>CORE Complete filename for the left hand side data.</legend>
 	<length>310</length>
 	<default><value></value></default>
       </parameter>
@@ -20,7 +20,7 @@
 	<label>RHS data filename</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Complete filename for the right hand side data.</legend>
+	<legend>CORE Complete filename for the right hand side data.</legend>
 	<length>310</length>
 	<default><value></value></default>
       </parameter>
@@ -74,7 +74,7 @@
 	<label>NA representation</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>String representation for missing values (CSV format).</legend>
+	<legend>CORE String representation for missing values (CSV format).</legend>
 	<length>10</length>
 	<default><value>nan</value></default>
       </parameter>
@@ -83,7 +83,7 @@
 	<label>Delimiter</label>
 	<parameter_type>single_options</parameter_type>
 	<value_type>text</value_type>
-    <legend>Field delimiter (CSV format).</legend>
+    <legend>CORE Field delimiter (CSV format).</legend>
 	<default><value>0</value></default>
     <options><value>(auto)</value><value>TAB</value><value>;</value>
         <value>,</value><value>SPC</value></options>
@@ -96,7 +96,7 @@
 	<label>Results repertory</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Repertory where to save the results.</legend>
+	<legend>CORE Repertory where to save the results.</legend>
 	<length>250</length>
 	<default><value>__TMP_DIR__</value></default>
       </parameter>
@@ -105,7 +105,7 @@
 	<label>Results data filename</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>Name of the file where to store the results.</legend>
+	<legend>CORE Name of the file where to store the results.</legend>
 	<length>50</length>
 	<default><value>results</value></default>
       </parameter>
@@ -134,7 +134,7 @@
 	<value_type>text</value_type>
 	<legend>Extension of the file where to save log traces.</legend>
 	<length>10</length>
-	<default><value>.csv</value></default>
+	<default><value>.txt</value></default>
       </parameter>
       <parameter>
 	<name>queries_file</name>
@@ -179,7 +179,7 @@
 	<label>Logfile</label>
 	<parameter_type>open</parameter_type>
 	<value_type>text</value_type>
-	<legend>File to log. + means generate filename from queries output file. - means stdout.</legend>
+	<legend>CORE File to log. + means generate filename from queries output file. - means stdout.</legend>
 	<default><value>-</value></default>
       </parameter>
       <parameter>

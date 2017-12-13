@@ -23,7 +23,7 @@ class TDView(GView):
 
     TID = None
     NBBINS = 20
-        
+    
     def updateMap(self):
         """ Redraws the map
         """
@@ -35,7 +35,7 @@ class TDView(GView):
             self.clearPlot()
 
             self.makeBackground()   
-            dsetts = self.getDrawSettDef()
+            draw_settings = self.getDrawSettings()
 
             ### SELECTED DATA
             selected = self.getUnvizRows()
@@ -46,39 +46,20 @@ class TDView(GView):
 
             x0, x1, y0, y1 = self.getAxisLims()
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
-
+            corners = (x0, x1, y0, y1, bx, by)
+            
+            vec, vec_dets = self.getValVec()
+            
             if self.isSingleVar():
-                ccs = self.getQCols()
-                col = self.getCol(ccs[0][0], ccs[0][1])
-                vec = col.getVector()
-                cmap, vmin, vmax = (self.getCMap(col.typeId()), numpy.nanmin(vec), numpy.nanmax(vec))
-                                
-                norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-                mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-
-                if col.typeId() == 3 or vmin !=0:
-                    ec_dots = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_e"][-1]) for v in vec])
-                else:
-                    mmp = numpy.array([mapper.to_rgba(v, alpha=dsetts["color_e"][-1]) for v in numpy.arange(vmax+1)])
-                    ec_dots = mmp[vec]
-                    
-                fc_dots = numpy.copy(ec_dots)
-                # fc_dots[:,-1] = dsetts["color_f"][-1]
-                                
-                self.dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
-                                   "sz_dots": numpy.ones(vec.shape)*dsetts["size"],
-                                   "zord_dots": numpy.ones(vec.shape)*self.DEF_ZORD,
-                                   "draw_dots": numpy.ones(vec.shape, dtype=bool)}
-                mapper.set_array(vec)
+                self.dots_draws, mapper = self.prepareSingleVarDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
 
             else:
-                self.dots_draws = self.prepareEntitiesDots()
+                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
                 mapper = None
                 
             if len(selected) > 0:
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
-                self.dots_draws["lc_dots"][numpy.array(list(selected)), -1] *= selp
 
 
             draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
@@ -88,59 +69,16 @@ class TDView(GView):
             ###########################
             ###########################
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
-                ku, kindices = numpy.unique(self.dots_draws["zord_dots"][draw_indices], return_inverse=True)
-                ## pdb.set_trace()
-                for vi, vv in enumerate(ku):
-                    if vv != -1: 
-                        self.axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
-                                    self.getCoords(1,draw_indices[kindices==vi]),
-                                    c=self.dots_draws["fc_dots"][draw_indices[kindices==vi],:],
-                                    edgecolors=self.dots_draws["ec_dots"][draw_indices[kindices==vi],:],
-                                    s=5*self.dots_draws["sz_dots"][draw_indices[kindices==vi]], marker=dsetts["shape"],
-                                    zorder=vv)
+                self.plotDotsSimple(self.axe, self.dots_draws, draw_indices, draw_settings)
             else:
-                for idp in draw_indices:
-                        vv = self.getPlotProp(idp, "zord")
-                        if vv != 1:
-                                self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
-                                                self.getPlotProp(idp, "sz"), vv, dsetts)
+                self.plotDotsPoly(self.axe, self.dots_draws, draw_indices, draw_settings)
+
             if mapper is not None:
-                ax2 = self.axe #.twinx()
-                nb = self.NBBINS
-                if col.typeId() == 2: ### Categorical
-                    nb = [b-0.5 for b in numpy.unique(vec)]
-                    nb.append(nb[-1]+1)
-                    bins_ticks = numpy.unique(vec)
-                    bins_lbl = [col.getCatForVal(b, "NA") for b in bins_ticks]
-
-                idsan = numpy.where(~numpy.isnan(vec))[0]
-                n, bins, patches = plt.hist(vec[idsan], bins=nb)
-
-                sum_h = numpy.max(n)
-                norm_h = [ni*0.1*float(x1-x0)/sum_h+0.03*float(x1-x0) for ni in n]
-                norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins]
-                if col.typeId() == 2: ### Categorical
-                    norm_bins_ticks = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
-                else:
-                    norm_bins_ticks = norm_bins
-                    bins_lbl = bins
-                left = [norm_bins[i] for i in range(len(n))]
-                width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]
-
-                colors = [mapper.to_rgba(numpy.mean(bins[i:i+2])) for i in range(len(n))]
-                bckc = "white" 
-                ax2.barh(y0, -(0.13*(x1-x0)+bx), y1-y0, x1+0.13*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
-                ax2.barh(left, -numpy.array(norm_h), width, x1+0.13*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
-                ax2.plot([x1+2*bx+0.1*(x1-x0), x1+2*bx+0.1*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
-                x1 += 0.13*(x1-x0)+2*bx
-                self.axe.set_yticks(norm_bins_ticks)
-                self.axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
-                # self.axe.yaxis.tick_right()
-                self.axe.tick_params(direction="inout", left="off", right="on",
-                                         labelleft="off", labelright="on")
+                corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners)
+                
             ###########################
             ###########################
-            self.makeFinish((x0, x1, y0, y1), (bx, by))   
+            self.makeFinish(corners[:4], corners[4:])   
             self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
@@ -153,11 +91,6 @@ class TDView(GView):
                 ("button_release_event", self.on_click),
                 ("motion_notify_event", self.on_motion)]
             
-    def makeBackground(self):   
-        pass
-    def makeFinish(self, xylims, xybs):
-        pass
-
     def additionalBinds(self):
         self.MapredMapQ[0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.MapredMapQ[1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
@@ -169,13 +102,9 @@ class TDView(GView):
     def OnSlide(self, event):
         self.updateMap()
     
-    def plotSimple(self):
-        return True
     def isReadyPlot(self):
-        return False    
-    def getAxisLims(self):
-        return (0,1,0,1)
-
+        return False
+    
     def hoverActive(self):
         return GView.hoverActive(self) and not self.mc.isActive()
     def inCapture(self, event):

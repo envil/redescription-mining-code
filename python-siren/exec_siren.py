@@ -70,11 +70,12 @@ class SirenApp(wx.App):
                 self.frame.reloadAll()
         
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+            # print "No debug action..."
             # DEBUG
             # print "Loading file", sys.argv[-1]
             # self.frame.expand()
 
-            self.frame.OnRunTest(None)
+            # self.frame.OnRunTest(None)
             
             # ### SPLITS
             # self.frame.dw.getData().extractFolds(1, 12)
@@ -90,27 +91,29 @@ class SirenApp(wx.App):
 
             # # fmts = ["tiff"] #, "png"] #, "eps"]
             # fmts = ["eps"] #, "eps"]
+            # fmts = ["svg", "eps"]
             # # (1641, 670), (1064, 744), (551, 375)
             # # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
             # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
-            # folder = "/home/egalbrun/maps"
+            # folder = "/home/egalbrun/figs"
             # if len(series) > 0:                
             #     folder += "/"+series
-            # #tab, fname, dims = ("reds", folder+"/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
-            # tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (2500, 1190)) ### MAP VAR
+            # tab, fname, dims = ("reds", folder+"/R%d_%s_2K-d100.", (1920, 1190)) ### MAP RED
+            # #tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (2500, 1190)) ### MAP VAR
             # if not os.path.exists(folder):
             #     os.mkdir(folder)
-            # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
-            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, "MAP")
+            # # for i in self.frame.tabs[tab]["tab"].getDataHdl().getAllIids():
+            # for (i,what) in [(0, "MAP"), (0, "PC"), (1, "PC"), (1, "TR"), (2, "TR")]:
+            #     mapV = self.frame.tabs[tab]["tab"].viewData(i, what)
             #     mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
             #     for fmt in fmts:
             #         if fmt in ["png", "svg"]:
-            #             mapV.savefig((fname % i)+fmt, format=fmt)
+            #             mapV.savefig((fname % (i, what))+fmt, format=fmt)
             #         else:
-            #             mapV.savefig((fname % i)+fmt, dpi=30, format=fmt)
+            #             mapV.savefig((fname % (i, what))+fmt, dpi=30, format=fmt)
             #     mapV.OnKil()
 
-            # tab ="reds"
+            tab ="reds"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
             # for i in [5]: #range(4):
@@ -118,7 +121,7 @@ class SirenApp(wx.App):
             # self.frame.tabs[tab]["tab"].viewData(2, "MAP")
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
-            # self.frame.tabs[tab]["tab"].viewListData(1, "INT")
+            self.frame.tabs[tab]["tab"].viewListData(0, "SIM")
             # self.frame.tabs[tab]["tab"].viewData(1, "TR")
             # self.frame.tabs[tab]["tab"].viewData(7, "PC")
             # self.frame.tabs[tab]["tab"].viewData(2, "PC")
