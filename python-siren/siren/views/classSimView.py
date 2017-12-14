@@ -41,12 +41,12 @@ class SimView(LView):
                    'add_light': (1,1,0.25)}
     pick_sz = 5
     wait_delay = 300    
-    nbc = 15
-    grow_nbc = 1.6
+    distc = 2
 
     def initVars(self, parent, vid, more=None):
         LView.initVars(self, parent, vid)
         self.clusters = None
+        self.choice_dist = None
             
     def computeClusters(self):
         vb = {}
@@ -141,15 +141,13 @@ class SimView(LView):
         # mpids = numpy.zeros(xx.shape[0])
         # mpids[numpy.argsort(numpy.bincount(xx.flatten()))[::-1]] = numpy.arange(xx.shape[0])
         ### assigns = mpids[xx] 
-
         return {"rprt": numpy.array(rprt), "map_nis": map_nis, "assigns": numpy.vstack(assigns).T,
-                    "pickeds": pickeds, "non_unique": non_unique}
+                    "pickeds": pickeds, "non_unique": non_unique}    
     
     def getValVec(self):
         vec = numpy.empty((0))
         if self.clusters is not None:
-            nb = int((len(self.clusters["pickeds"])-1)*(1.-self.nbc_ratio))
-            ## print "NBC>>", self.nbc_ratio, nb, len(self.clusters["pickeds"])
+            nb = min(self.distc, len(self.clusters["pickeds"])-1)
             ######
             assign_rprt = self.clusters["assigns"][:,nb]
             if self.clusters["map_nis"] is not None:
@@ -190,6 +188,12 @@ class SimView(LView):
         
         return vec, vec_dets
 
+    def getCoordsXY(self, id):
+        if self.coords_proj is None:
+            return (0,0)
+        else:
+            return self.coords_proj[0][:,id,0]
+
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:
             return self.coords_proj
@@ -221,7 +225,7 @@ class SimView(LView):
                                                       ylim=[midlat-1.05*mside, midlat+1.05*mside])
             ## self.MapcanvasMap.draw()
             # self.axe = self.MapfigMap.add_axes([llon, llat, ulat-llat, ulon-llon])
-
+            self.prepareInteractive()
             self.MapcanvasMap.draw()
             
     def makeBackground(self):
@@ -262,16 +266,16 @@ class SimView(LView):
             selected = self.getUnvizRows()
             # selected = self.getParentData().selectedRows()
             selp = 0.5
+            self.distc = 2
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.
-            if self.sld is not None:
-                rnbc = self.sld.GetValue()/10.
-
+            if self.choice_dist is not None:
+                 self.distc = self.choice_dist.GetSelection()
+            
             # nbrows = self.getParentData().nbRows()
             # if selp == 0:
             #     nbrows -= len(selected)
             # self.nbc = int(2+(self.grow_nbc**(rnbc))/(self.grow_nbc**10)*(nbrows/2.))
-            self.nbc_ratio = rnbc/10.
             
             x0, x1, y0, y1 = self.getAxisLims()
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
@@ -339,8 +343,18 @@ class SimView(LView):
         self.srids = [rid for (rid, red) in reds_map]
         self.etor = self.getEtoR()
         self.clusters = self.computeClusters()
+        if self.choice_dist is not None:
+            self.choice_dist.SetItems(self.getDistOpts())
+            self.choice_dist.SetSelection(2)
         self.updateMap()
 
+    def getDistOpts(self):
+        if self.clusters is not None:
+            nb = min(self.distc, len(self.clusters["pickeds"])-1)
+            return ["%d" % d for d in range(len(self.clusters["pickeds"]))]
+        else:
+            return ["%d" % d for d in range(3)]
+        
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
         td_def = 50
@@ -348,8 +362,9 @@ class SimView(LView):
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
         self.buttons = []
-
-        self.sld = wx.Slider(self.panel, -1, td_def, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
+        self.choice_dist = wx.Choice(self.panel, -1)
+        self.choice_dist.SetItems(self.getDistOpts())
+        self.choice_dist.SetSelection(2)
         self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
 
         ##############################################
@@ -365,11 +380,13 @@ class SimView(LView):
         add_boxB.AddSpacer((self.getSpacerWn(),-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.panel, wx.ID_ANY, "-        clusters       +")
+        label = wx.StaticText(self.panel, wx.ID_ANY, "distance")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
-        v_box.Add(self.sld, 0, border=1, flag=flags) #, userData={"where": "*"})
-        add_boxB.Add(v_box, 0, border=1, flag=flags)   
+        # v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
+        # v_box.Add(self.sld, 0, border=1, flag=flags) #, userData={"where": "*"})
+        # add_boxB.Add(v_box, 0, border=1, flag=flags)
+        add_boxB.Add(label, 0, border=1, flag=flags)
+        add_boxB.Add(self.choice_dist, 0, border=1, flag=flags)   
 
         add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
         
@@ -377,8 +394,53 @@ class SimView(LView):
         return [add_boxB]
 
     def additionalBinds(self):
-        self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
-        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        self.choice_dist.Bind(wx.EVT_CHOICE, self.OnUpd)
+        #self.sld.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnSlide)
+        self.sld_sel.Bind(wx.EVT_SCROLL_THUMBRELEASE, self.OnUpd)
         
-    def OnSlide(self, event):
+    def OnUpd(self, event):
         self.updateMap()
+        
+    def getCanvasConnections(self):
+        return [('button_release_event', self.on_click)]
+    def inCapture(self, event):
+        return self.getCoords() is not None and event.inaxes == self.axe
+    def on_click(self, event):
+        if self.clickActive() and self.inCapture(event):
+            lid = self.getLidAt(event.xdata, event.ydata)
+            print "LID: ", lid, 1*self.etor[lid]
+            # if lid is not None:
+            #     self.sendEmphasize([lid])
+    #### BM            
+    def getLidAt(self, x, y):
+        ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
+        if False: #self.drawPoly():
+            d = scipy.spatial.distance.cdist(self.getCoordsXY(ids_drawn).T, [(x,y)])
+            cands = [ids_drawn[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
+            i = 0
+            while i < len(cands):
+                path = Polygon(self.getCoordsP(cands[i]), closed=True)
+                if path.contains_point((x,y), radius=0.0):
+                    return cands[i]
+                i += 1
+        else:
+            sz = self.getPlotProp(0, "sz")
+            size_dots = self.MapfigMap.get_dpi()*self.MapfigMap.get_size_inches()
+            xlims = self.axe.get_xlim()
+            ylims = self.axe.get_ylim()
+            ### resolution: value delta per figure dot
+            res = ((xlims[1]-xlims[0])/size_dots[0], (ylims[1]-ylims[0])/size_dots[1])
+
+            coords = self.getCoordsXY(ids_drawn)
+            for ss in range(3):
+                sc = sz*(ss+1)
+                tX = numpy.where((coords[0]-sc*res[0] <= x) & (x <= coords[0]+sc*res[0]) & (coords[1]-sc*res[1] <= y) & (y <= coords[1]+sc*res[1]))[0]
+                # print ss, sc, "-->", tX
+                # pdb.set_trace()
+                ## print tX
+                if len(tX) > 0:
+                    # print "FOUND", (coords[0][tX[0]], coords[1][tX[0]]), (x, y), res
+                    return ids_drawn[tX[0]]
+            # print "NOT FOUND", "---", (x, y), res
+
+        return None
