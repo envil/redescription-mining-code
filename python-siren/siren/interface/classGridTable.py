@@ -513,7 +513,7 @@ class GridTable(wx.grid.PyGridTableBase):
             self.setSelectedRow(self.grid.GetGridCursorRow(), self.grid.GetGridCursorCol())
         event.Skip()
 
-    def OnViewData(self, event):
+    def OnViewData(self, event):        
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
             self.viewData()

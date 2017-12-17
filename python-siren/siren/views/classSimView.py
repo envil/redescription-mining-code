@@ -21,6 +21,34 @@ from classLView import LView
 
 import pdb
 
+def get_cover_far(dists, nb):
+    order = -numpy.ones(dists.shape[0])
+    nodesc = numpy.zeros(dists.shape[0], dtype=int)
+    if dists.shape[0] == 1:
+        nodesc[0] = 1
+        order[0] = 0
+        return nodesc, order
+    x,y = numpy.unravel_index(numpy.argmax(dists), dists.shape)
+    nodesc[x] = 1
+    nodesc[y] = 2
+    order[x] = 0.
+    order[y] = 1.
+    i = 2
+    while numpy.sum(nodesc==0) > 0 and i < nb:
+        i+=1
+        # z = numpy.argmax(numpy.sum(dists[nodesc>0,:], axis=0))
+        z = numpy.argmax(numpy.min(dists[nodesc>0,:], axis=0))
+        if nodesc[z] > 0:
+            print "OUPS! Already picked", z, numpy.where(nodesc>0)
+            pdb.set_trace()
+        else:
+            ww = numpy.max(dists[z, nodesc>0])+1 - dists[z, nodesc>0]
+            order[z] = numpy.dot(order[nodesc>0], ww)/numpy.sum(ww)
+            nodesc[z] = i
+    o = numpy.zeros(numpy.sum(nodesc>0)+1)
+    o[nodesc[nodesc>0][numpy.argsort(order[nodesc>0])]-1] = numpy.arange(numpy.sum(nodesc>0))
+    return nodesc, o
+
 
 class SimView(LView):
 
@@ -41,128 +69,71 @@ class SimView(LView):
                    'add_light': (1,1,0.25)}
     pick_sz = 5
     wait_delay = 300    
-    distc = 2
-
+    distc = 5
+    NBC = 30
+    
     def initVars(self, parent, vid, more=None):
         LView.initVars(self, parent, vid)
         self.clusters = None
         self.choice_dist = None
             
     def computeClusters(self):
-        vb = {}
-        etor = self.etor
-        mx = etor.shape[1]
-        c01 = mx-(numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.))
+        #### HERE: DO BETTER THAN ZIP DIST 0
+        rb = {}        
+        for x,y in zip(*numpy.where(numpy.triu(numpy.dot(1.-self.etor.T, 1.-self.etor) + numpy.dot(self.etor.T*1., self.etor*1.),1)>=self.etor.shape[0])):
+            rb[x] = y
+        keep_rs = [i for i in range(self.etor.shape[1]) if i not in rb]
 
-        non_unique = 0
-        map_nis = None
-        nb_rprt = []
-        rprt = []
-        if numpy.min(numpy.triu(c01, 1)) == 0: ### there are entities satisfying the same combination of reds
-            map_nis = -numpy.ones(c01.shape[0], dtype=int)
-            seen = set()
-            i = 0
-            while i < c01.shape[0]:
-                ids = numpy.where(c01[i,:] == 0)[0] ### find entities satisfying the same comb of red as i
-                if numpy.sum(etor[i,:]) > 0: ### if this is actually satisfying some
-                    map_nis[ids] = len(rprt)
-                    nb_rprt.append(len(ids))
-                    if len(ids) > 1:
-                        non_unique += 1
-                    rprt.append(i)
-                seen.update(ids)
-                while i in seen:
-                    i+= 1
-            c01_rprt = c01[rprt,:][:,rprt]
-        else:
-            rprt = range(c01.shape[0])
-            nb_rprt = [1 for i in rprt]
-            c01_rprt = c01
+        etor = self.etor[:,keep_rs]
+        c01 = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
+        nbr = etor.shape[1]
+        eb = {}
+        for x,y in zip(*numpy.where(numpy.triu(c01,1)>=nbr)):
+            eb[x] = y            
+        keep_es = numpy.array([i for i in range(etor.shape[0]) if i not in eb and numpy.sum(etor[i,:])>0])
+        nb_keep_es = len(keep_es)
+        e_to_rep = -numpy.ones(self.etor.shape[0])
+        e_to_rep[keep_es] = numpy.arange(len(keep_es))
+        efrm, ett = zip(*eb.items())
+        e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
 
-        minmax_dist = numpy.min(numpy.max(c01_rprt, axis=1))
-        c01_rprt += (mx+1)*numpy.eye(c01_rprt.shape[0])
+        dists = nbr - c01[keep_es,:][:,keep_es]
+        nodesc, order = get_cover_far(dists, self.NBC)
 
-        tot_nodes = float(etor.shape[0])        
-        candidates = dict(enumerate(nb_rprt))
-
-        # blk0 = numpy.zeros(len(candidates))
-        # blk0[sorted(range(len(nb_rprt)), key=lambda x: -nb_rprt[x])] = numpy.arange(len(candidates), dtype=int)
-        blk0 = numpy.arange(len(candidates), dtype=int)
-        assigns = [blk0]
-        pickeds = [range(len(candidates))]
-
-        thres = 0
-        while thres >= 0 and thres < minmax_dist:
-        #for thres in range(int(minmax_dist)):
-            thres += 1
-            nodesc = candidates.keys()
-            uncovered = candidates.keys()
-            picked, cov_newly, cov_all, scores = ([], [], [], [])
-            weights = 1/(1.+numpy.sum(c01_rprt<=thres, axis=1))
-            #weights = numpy.ones(c01_rprt.shape[0])
-            sss = numpy.dot(c01_rprt[:,uncovered]<=thres, weights[uncovered])
-            while len(uncovered) > 0:
-                p = max(nodesc, key=lambda i: (sss[i], candidates[i]))
-                ## p = max(nodesc, key=lambda i: (numpy.sum(c01_rprt[i,uncovered]<=thres), candidates[i]))
-                picked.append(p)
-                scores.append(sss[p])
-                cov_newly.append([n for n in uncovered if c01_rprt[picked[-1],n]<=thres or n == picked[-1]])
-                cov_all.append(set(numpy.where(c01_rprt[picked[-1],:]<=thres)[0]))
-                cov_all[-1].add(p)
-                uncovered = [n for n in uncovered if c01_rprt[picked[-1],n]>thres and n!= picked[-1]]
-                sss = numpy.dot(c01_rprt[:,uncovered]<=thres, weights[uncovered])
-                nodesc = [n for n in nodesc if n in uncovered or sss[n] > 0]
-
-            # singletons = [enumerate(picked) if len(cov_newly) <= 1]
-            ## print "Thres", thres, len(picked)
-            blk0 = numpy.zeros(len(candidates), dtype=int)
-            seen_bids = set()
-            for ti in range(len(picked))[::-1]:
-                bid = assigns[-1][picked[ti]]
-                if bid in seen_bids:
-                    unseen = set(assigns[-1][cov_newly[ti]]).difference(seen_bids)
-                    if len(unseen) > 0:
-                        bid = min(unseen)
-                    else:
-                        print "NO AVAILABLE ID"
-                        bid = max(seen_bids)+1
-                blk0[cov_newly[ti]] = bid
-                seen_bids.add(bid)
-
-            assigns.append(blk0)
-            pickeds.append(picked)
-            ## blcks.append({"picked": picked, "cov_newly": cov_newly, "cov_all": cov_all, "scores": scores, "assign": blk0})
-            if len(picked) == 2:
-                thres = -1
-
-        #### sorting ids
-        # xx = numpy.vstack(assigns).T
-        # # ws = numpy.vstack([nb_rprt for i in assigns]).T
-        # mpids = numpy.zeros(xx.shape[0])
-        # mpids[numpy.argsort(numpy.bincount(xx.flatten()))[::-1]] = numpy.arange(xx.shape[0])
-        ### assigns = mpids[xx] 
-        return {"rprt": numpy.array(rprt), "map_nis": map_nis, "assigns": numpy.vstack(assigns).T,
-                    "pickeds": pickeds, "non_unique": non_unique}    
+        return {"e_rprt": keep_es, "r_to_rep": rb, "e_to_rep": e_to_rep,
+                "nodesc": nodesc, "dists": dists, "order": order, "nbc_max": numpy.sum(nodesc>0)}    
     
     def getValVec(self):
         vec = numpy.empty((0))
+        max_ds = []
         if self.clusters is not None:
-            nb = min(self.distc, len(self.clusters["pickeds"])-1)
+            v_out = -10
+            if self.clusters["nbc_max"] > 10 and self.clusters["nbc_max"] < 20:
+                v_out = -1
+            nb = self.distc
             ######
-            assign_rprt = self.clusters["assigns"][:,nb]
-            if self.clusters["map_nis"] is not None:
-                vec = -10*numpy.ones(self.clusters["map_nis"].shape, dtype=int)
+            nn = sorted(numpy.where((self.clusters["nodesc"]>0) & (self.clusters["nodesc"]<nb+2))[0], key=lambda x: self.clusters["nodesc"][x])
+            # print "NBC", v_out, nb, len(nn), nn
+            assign_rprt = numpy.argmin(self.clusters["dists"][:, nn], axis=1)
+            for i in range(numpy.max(assign_rprt)+1):
+                nodes = numpy.where(assign_rprt==i)[0]
+                center_n = numpy.argmin(numpy.max(self.clusters["dists"][nodes,:][:,nodes], axis=0))
+                max_ds.append(numpy.max(self.clusters["dists"][nodes[center_n],nodes]))
+                # print i, max_d, nodes[center_n]
+            
+            if self.clusters["e_to_rep"] is not None:
+                vec = v_out*numpy.ones(self.clusters["e_to_rep"].shape, dtype=int)
                 for i,v in enumerate(assign_rprt):
-                    if numpy.sum(self.clusters["map_nis"] == i) == 0:
+                    if numpy.sum(self.clusters["e_to_rep"] == i) == 0:
                         pdb.set_trace()
-                    elif numpy.sum(self.clusters["map_nis"] == i) == 1:
-                        vec[self.clusters["map_nis"] == i] = -2
+                    # elif numpy.sum(self.clusters["e_to_rep"] == i) == 1:
+                    #     vec[self.clusters["e_to_rep"] == i] = -2
                     else:
-                        vec[self.clusters["map_nis"] == i] = v
+                        vec[self.clusters["e_to_rep"] == i] = self.clusters["order"][v]
             else:
-                vec = assign_rprt
+                vec = self.clusters["order"][assign_rprt]
 
-        vec[vec==-2] = len(self.clusters["rprt"])+1
+            ## vec[vec==-2] = self.clusters["matrix_ass"].shape[0]
         # if numpy.min(vec) == -1:
         #     vec += 1 
 
@@ -177,8 +148,8 @@ class SimView(LView):
         # bins_ticks = numpy.unique(vec)
         # bins_ticks = numpy.arange(-2, numpy.max(vec)+1)
         vec_dets["binVals"] = numpy.unique(vec[vec>=0])
-        if len(vec_dets["binVals"]) < 15:
-            vec_dets["binLbls"] = ["C.%s" % b for b in vec_dets["binVals"]]
+        if len(vec_dets["binVals"]) < 50:
+            vec_dets["binLbls"] = ["c%d (d=%d)" % (b, max_ds[ii]) for (ii,b) in enumerate(vec_dets["binVals"])]
         else:
             vec_dets["binLbls"] = ["" for b in vec_dets["binVals"]]
 
@@ -266,12 +237,10 @@ class SimView(LView):
             selected = self.getUnvizRows()
             # selected = self.getParentData().selectedRows()
             selp = 0.5
-            self.distc = 2
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.
             if self.choice_dist is not None:
-                 self.distc = self.choice_dist.GetSelection()
-            
+                self.distc = self.choice_dist.GetSelection()
             # nbrows = self.getParentData().nbRows()
             # if selp == 0:
             #     nbrows -= len(selected)
@@ -290,7 +259,8 @@ class SimView(LView):
 
             # vvmax = len(self.clusters["rprt"])+1
             # vvmax = self.clusters["non_unique"]
-            vvmax = numpy.max(vec)
+            # vvmax = numpy.max(vec)
+            vvmax = numpy.max(self.clusters["order"])
             vvmin = numpy.min(vec)
 
             self.dots_draws, mapper = self.prepareSingleVarDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn(), min_max=(vvmin, vvmax))
@@ -344,16 +314,17 @@ class SimView(LView):
         self.etor = self.getEtoR()
         self.clusters = self.computeClusters()
         if self.choice_dist is not None:
-            self.choice_dist.SetItems(self.getDistOpts())
-            self.choice_dist.SetSelection(2)
+            opts = self.getDistOpts()
+            self.choice_dist.SetItems(opts)
+            self.choice_dist.SetSelection(numpy.min([len(opts)-1, self.distc]))
         self.updateMap()
 
     def getDistOpts(self):
         if self.clusters is not None:
-            nb = min(self.distc, len(self.clusters["pickeds"])-1)
-            return ["%d" % d for d in range(len(self.clusters["pickeds"]))]
+            nb = numpy.max(self.clusters["nodesc"])+1
+            return ["%d" % d for d in range(1,nb)]
         else:
-            return ["%d" % d for d in range(3)]
+            return ["%d" % d for d in range(1,3)]
         
     def additionalElements(self):
         t = self.parent.dw.getPreferences()
@@ -406,9 +377,10 @@ class SimView(LView):
     def inCapture(self, event):
         return self.getCoords() is not None and event.inaxes == self.axe
     def on_click(self, event):
-        if self.clickActive() and self.inCapture(event):
-            lid = self.getLidAt(event.xdata, event.ydata)
-            print "LID: ", lid, 1*self.etor[lid]
+        pass
+        # if self.clickActive() and self.inCapture(event):
+        #     lid = self.getLidAt(event.xdata, event.ydata)
+        #     print "LID: ", lid, 1*self.etor[lid]
             # if lid is not None:
             #     self.sendEmphasize([lid])
     #### BM            
