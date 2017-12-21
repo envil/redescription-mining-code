@@ -1,3 +1,4 @@
+import numpy
 from classBasisView import BasisView
 
 import pdb
@@ -22,6 +23,8 @@ class LView(BasisView):
         self.initVars(parent, vid, more)
         self.reds = {}
         self.srids = []
+        self.etor = None
+        self.ddER = None
         self.initView()
         
     def getReds(self):
@@ -37,5 +40,13 @@ class LView(BasisView):
     def setCurrent(self, reds_map):
         self.reds = dict(reds_map)
         self.srids = [rid for (rid, red) in reds_map]
-        pass
-     
+            
+    def getEtoR(self):
+        if self.etor is None:
+            self.etor = self.parent.getERCache().getEtoR(self.srids)
+        return self.etor
+
+    def getDeduplicateER(self):
+        if self.ddER is None:
+            self.ddER = self.parent.getERCache().getDeduplicateER(self.srids)
+        return self.ddER

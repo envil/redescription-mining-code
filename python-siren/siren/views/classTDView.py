@@ -74,7 +74,7 @@ class TDView(GView):
                 self.plotDotsPoly(self.axe, self.dots_draws, draw_indices, draw_settings)
 
             if mapper is not None:
-                corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners)
+                corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners, draw_settings)
                 
             ###########################
             ###########################

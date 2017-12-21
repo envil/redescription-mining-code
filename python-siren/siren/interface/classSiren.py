@@ -1,4 +1,4 @@
-import os, os.path, random, re
+import os, os.path, random, re, numpy
 import time, math
 import sys
 import pickle
@@ -47,6 +47,144 @@ except ImportError:
   
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+
+class ERCache():
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.rids = []
+        self.etor = None
+        self.ddER = None
+
+    def getRids(self):
+        return self.rids
+
+    def gatherReds(self):
+        reds_map = self.parent.getRTab().getAllReds()
+        self.setReds(reds_map)
+        
+    def setReds(self, reds_map):
+        self.etor = None
+        self.ddER = None
+        reds = dict(reds_map)
+        self.rids = [rid for (rid, red) in reds_map]
+        
+        nbE = 0
+        if len(self.rids) > 0:
+            nbE = reds[self.rids[0]].sParts.nbRows()
+        self.etor = numpy.zeros((nbE, len(self.rids)), dtype=bool)
+        for r, rid in enumerate(self.rids):
+            self.etor[list(reds[rid].getSuppI()), r] = True
+
+    def getRPos(self, rids):
+        r_to_p = dict([(r,p) for (p,r) in enumerate(self.rids)])
+        return [r_to_p[rid] for rid in rids if rid in r_to_p]
+            
+    def getEtoR(self, rids=None, eids=None):
+        if self.etor is None:
+            self.gatherReds()
+            
+        sub_etor = self.etor
+        if eids is not None:
+            sub_etor = sub_etor[eids,:]
+        if rids is not None:
+            ps = self.getRPos(rids)
+            return sub_etor[:,ps]
+        return sub_etor
+    
+    def computeDeduplicateER(self, etor=None):
+        if etor is None:
+            if self.etor is None:
+                self.gatherReds()
+            etor = self.etor
+            
+        #### DE-DUPLICATE REDS
+        rb = {}
+        for x,y in zip(*numpy.where(numpy.triu(numpy.dot(1.-etor.T, 1.-etor) + numpy.dot(etor.T*1., etor*1.),1)>=etor.shape[0])):
+            rb[x] = y
+        keep_rs = numpy.array([i for i in range(etor.shape[1]) if i not in rb], dtype=int)
+
+        r_to_rep = -numpy.ones(etor.shape[1], dtype=int)
+        r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
+        if len(rb) > 0:
+            rfrm, rtt = zip(*rb.items())
+            r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
+
+        #### DE-DUPLICATE ENTITIES
+        etor = etor[:,keep_rs]
+        c01 = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
+        nbr = etor.shape[1]
+        eb = {}
+        for x,y in zip(*numpy.where(numpy.triu(c01,1)>=nbr)):
+            eb[x] = y            
+        keep_es = numpy.array([i for i in range(etor.shape[0]) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
+
+        e_to_rep = -numpy.ones(etor.shape[0], dtype=int)
+        e_to_rep[keep_es] = numpy.arange(len(keep_es))
+        if len(eb) > 0:
+            efrm, ett = zip(*eb.items())
+            e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
+
+        dists = nbr - c01[keep_es,:][:,keep_es]
+        return {"e_rprt": keep_es, "r_rprt": keep_rs, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": dists,
+                    "has_dup_r": len(rb) > 0, "has_dup_e": len(eb) > 0}
+
+    def getDeduplicateER(self, rids=None, eids=None):
+        if self.ddER is None:
+            if self.etor is None:
+                self.gatherReds()
+            if eids is None or len(eids) > .5*self.etor.shape[0] or \
+                rids is None or len(rids) > .5*self.etor.shape[1]:
+                self.ddER = self.computeDeduplicateER()
+            else:
+                if eids is None:
+                    eids = numpy.arange(self.etor.shape[0])
+
+                ps = self.getRPos(rids)
+                return self.computeDeduplicateER(self.etor[eids,:][:,ps])
+
+        # print "Get subset"            
+        if eids is None:
+            e_to_rep = self.ddER["e_to_rep"].copy()
+            e_new_keep = self.ddER["e_rprt"].copy()
+            e_old_keep = self.ddER["e_rprt"]
+        else:
+            e_old_keep = self.ddER["e_to_rep"][eids]
+            e_to_rep = -(self.ddER["e_to_rep"][eids]+2)
+            e_new_keep = []
+            for i in numpy.unique(e_old_keep):
+                if i >= 0:
+                    kp = numpy.where(e_old_keep==i)[0][0]
+                    e_to_rep[e_to_rep==-(i+2)] = len(e_new_keep)
+                    e_new_keep.append(kp)
+            e_new_keep = numpy.array(e_new_keep)
+            
+        if (rids is None or rids == self.rids):
+            r_to_rep = self.ddER["r_to_rep"].copy()
+            r_new_keep = self.ddER["r_rprt"].copy()
+            r_old_keep = self.ddER["r_rprt"]
+        else:
+            rps = self.getRPos(rids)        
+            r_old_keep = self.ddER["r_to_rep"][rps]
+            r_to_rep = -(self.ddER["r_to_rep"][rps]+2)
+            r_new_keep = []
+            for i in numpy.unique(r_old_keep):
+                kp = numpy.where(r_old_keep==i)[0][0]
+                r_to_rep[r_to_rep==-(i+2)] = len(r_new_keep)
+                r_new_keep.append(kp)
+            r_new_keep = numpy.array(r_new_keep)
+            
+        cc = self.computeDeduplicateER(self.etor[e_old_keep,:][:,r_old_keep])
+        if cc["has_dup_r"]:
+            r_new_keep = r_new_keep[cc["r_rprt"]]
+            r_to_rep = numpy.concatenate([cc["r_to_rep"],[-1]])[r_to_rep]
+
+        if cc["has_dup_e"]:
+            e_new_keep = e_new_keep[cc["e_rprt"]]
+            e_to_rep = numpy.concatenate([cc["e_to_rep"],[-1]])[e_to_rep]
+
+        return {"e_rprt": e_new_keep, "r_rprt": r_new_keep, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": cc["dists"]}
+
 
 class ProjCache():
 
@@ -170,6 +308,7 @@ class Siren():
         self.busyDlg = None
         self.findDlg = None
         self.proj_cache = ProjCache()
+        self.er_cache = ERCache(self)
         self.dw = None
         self.vizm = None
         self.plant = WorkPlant()
@@ -257,6 +396,10 @@ class Siren():
         self.resetLogger()
 
         self.initialized = True
+
+    def getRTab(self):
+        stn = self.getDefaultTabId("r")
+        return self.tabs[stn]["tab"]
 
     def sysTLin(self):
         return sys.platform not in ["darwin", 'win32']
@@ -1802,3 +1945,6 @@ class Siren():
     #     for (avid, aproj) in adjunct_vps:
     #         if avid in self.view_ids:
     #             self.view_ids[avid].readyProj(aproj)
+
+    def getERCache(self):
+        return self.er_cache

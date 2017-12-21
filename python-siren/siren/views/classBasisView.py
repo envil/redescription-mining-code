@@ -134,6 +134,7 @@ class BasisView(object):
     geo = False
     typesI = ""
 
+    max_emphlbl = 5
     nb_cols = 4
     spacer_w = 15
     spacer_h = 10
@@ -481,6 +482,9 @@ class BasisView(object):
                     self.menu_map_act[ID_ACT] = action["key"]
                 else:
                     menuAct.Enable(ID_ACT, False)
+        if menuAct.GetMenuItemCount() == 0:
+            self.parent.appendEmptyMenuEntry(menuAct, "No Actions", "There are no edit actions.")
+
         return menuAct
 
     def makeProcessMenu(self, frame, menuPro=None):
@@ -896,20 +900,20 @@ class BasisView(object):
     
     def prepareSingleVarDots(self, vec, vec_dets, draw_settings, delta_on=True, min_max=None):
         cmap, vmin, vmax = (self.getCMap(vec_dets["typeId"]), numpy.nanmin(vec), numpy.nanmax(vec))
-        if min_max is not None:
-            vmin, vmax = min_max
+        if vec_dets.get("min_max") is not None:
+            vmin, vmax = vec_dets["min_max"]
 
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
         mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
 
-        if min_max is not None:
-            mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
-            ec_dots = numpy.array([mmp[v] for v in vec])
-
-        elif vec_dets["typeId"] == 3 or (vmin !=0 and min_max is None):
+        # if min_max is not None:
+        #     mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
+        #     ec_dots = numpy.array([mmp[v] for v in vec])
+        # elif vec_dets["typeId"] == 3 or (vmin !=0 and min_max is None):
+        if vec_dets["typeId"] == 3 or (vmin !=0 and vec_dets.get("min_max") is None):
             ec_dots = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in vec])
         else:
-            mmp = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in numpy.arange(vmin, vmax+1)])
+            mmp = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in numpy.arange(vmin, vmax+1)]+[draw_settings["default"]["color_f"]])
             ec_dots = mmp[vec]
         
         fc_dots = numpy.copy(ec_dots)
@@ -922,8 +926,9 @@ class BasisView(object):
         mapper.set_array(vec)
         return dots_draws, mapper
 
-    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners):
+    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
         x0, x1, y0, y1, bx, by = corners
+        fracts = [.1, .03] ## ratio bars adjusted/fixed
         nb = nb_bins
         idsan = numpy.where(~numpy.isnan(vec))[0]
         if vec_dets["binLbls"] is not None:
@@ -944,7 +949,7 @@ class BasisView(object):
         n, bins, patches = plt.hist(vec[idsan], bins=nb)
         
         sum_h = numpy.max(n)
-        norm_h = [ni*0.1*float(x1-x0)/sum_h+0.03*float(x1-x0) for ni in n]
+        norm_h = [ni*fracts[0]*float(x1-x0)/sum_h+fracts[1]*float(x1-x0) for ni in n]
         if vec_dets["binLbls"] is not None:            
             bins_ticks = numpy.arange(len(vec_dets["binLbls"]))
             tmpb = [b-0.5 for b in bins_ticks]
@@ -966,10 +971,10 @@ class BasisView(object):
         
         
         bckc = "white" 
-        axe.barh(y0, -(0.13*(x1-x0)+bx), y1-y0, x1+0.13*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
-        axe.barh(left, -numpy.array(norm_h), width, x1+0.13*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
-        axe.plot([x1+2*bx+0.1*(x1-x0), x1+2*bx+0.1*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
-        x1 += 0.13*(x1-x0)+2*bx
+        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
+        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
+        axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
+        x1 += (fracts[0]+fracts[1])*(x1-x0)+2*bx
         axe.set_yticks(norm_bins_ticks)
         axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
         # self.axe.yaxis.tick_right()
@@ -1153,7 +1158,7 @@ class BasisView(object):
     
     def emphasizeOff(self, lids=None, hover=False):
         self.removeHighlighted(lids, hover)
-
+        
     def sendEmphasize(self, lids):
         return self.parent.viewsm.setEmphasizedR(vkey=self.getId(), lids=lids, show_info=self.q_active_info())
 

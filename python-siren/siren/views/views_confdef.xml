@@ -156,6 +156,21 @@
       </parameter>
     </section>
   </section>
+      <section>
+    <name>List views</name>
+    <section>
+      <name>Vizualizations</name>
+      <parameter>
+	<name>max_clus</name>
+	<label>Max nb. clusters</label>
+	<parameter_type>open</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Maximum number of clusters in similarity list view.</legend>
+	<length>3</length>
+	<default><value>20</value></default>
+      </parameter>
+    </section>
+  </section>
   <section>
     <name>Maps Proj.</name>
     <section>

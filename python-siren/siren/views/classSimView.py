@@ -1,6 +1,8 @@
 import re
 import wx
 import numpy
+import matplotlib
+matplotlib.use('WXAgg')
 
 import os.path, glob
 
@@ -21,23 +23,52 @@ from classLView import LView
 
 import pdb
 
+# def deduplicate_rows(M, ids_sets=None, i=0):
+#     if ids_sets is None:
+#         ids_sets = [numpy.ones(M.shape[0], dtype=bool)]
+
+#     collect = []
+#     for v in numpy.unique(M[:,i]):
+#         for ids in ids_sets:
+#             iiA = M[:,i]==v
+#             if numpy.sum(ids & iiA) > 0:
+#                 collect.append(ids & iiA)
+#     if M.shape[1] == i+1:
+#         return collect
+#     else:
+#         return deduplicate_rows(M, collect, i+1)
+#         pdb.set_trace()
+#         MM = numpy.packbits(etor, axis=1)
+#         collect = deduplicate_rows(MM)
+#         pdb.set_trace()
+
+    
 def get_cover_far(dists, nb):
     order = -numpy.ones(dists.shape[0])
     nodesc = numpy.zeros(dists.shape[0], dtype=int)
+    dds = numpy.zeros(dists.shape[0], dtype=int)
+    uniq_dds = []
     if dists.shape[0] == 1:
         nodesc[0] = 1
         order[0] = 0
-        return nodesc, order
+        return nodesc, order, dds, uniq_dds
     x,y = numpy.unravel_index(numpy.argmax(dists), dists.shape)
     nodesc[x] = 1
     nodesc[y] = 2
+    dds[x] = dists[x,y]
+    dds[y] = dists[x,y]
     order[x] = 0.
     order[y] = 1.
+    uniq_dds.append(dds[x])
     i = 2
-    while numpy.sum(nodesc==0) > 0 and i < nb:
+    while numpy.sum(nodesc==0) > 0 and (len(uniq_dds) < nb or nb == 0):
         i+=1
         # z = numpy.argmax(numpy.sum(dists[nodesc>0,:], axis=0))
         z = numpy.argmax(numpy.min(dists[nodesc>0,:], axis=0))
+        dds[z] = numpy.min(dists[nodesc>0,z])
+        if dds[z] < uniq_dds[-1]:
+            uniq_dds.append(dds[z])
+        ## print "ASSIGNED", numpy.sum(nodesc==0), z, numpy.min(dists[nodesc>0,z])
         if nodesc[z] > 0:
             print "OUPS! Already picked", z, numpy.where(nodesc>0)
             pdb.set_trace()
@@ -47,7 +78,7 @@ def get_cover_far(dists, nb):
             nodesc[z] = i
     o = numpy.zeros(numpy.sum(nodesc>0)+1)
     o[nodesc[nodesc>0][numpy.argsort(order[nodesc>0])]-1] = numpy.arange(numpy.sum(nodesc>0))
-    return nodesc, o
+    return nodesc, o, dds, uniq_dds
 
 
 class SimView(LView):
@@ -67,95 +98,80 @@ class SimView(LView):
                    'before_light': (0.2,0.2,0.2),
                    'add': (1,1,0.25),
                    'add_light': (1,1,0.25)}
-    pick_sz = 5
-    wait_delay = 300    
-    distc = 5
-    NBC = 30
+        
+    max_emphlbl = 5
+    distc = 1 #5
+    NBC = 15
     
     def initVars(self, parent, vid, more=None):
         LView.initVars(self, parent, vid)
         self.clusters = None
         self.choice_dist = None
-            
+        self.hist_click_info = {}
+        self.vals = None
+
+    def getClusters(self):
+        if self.clusters is None:
+            self.clusters = self.computeClusters()
+        return self.clusters
+        
     def computeClusters(self):
-        #### HERE: DO BETTER THAN ZIP DIST 0
-        rb = {}        
-        for x,y in zip(*numpy.where(numpy.triu(numpy.dot(1.-self.etor.T, 1.-self.etor) + numpy.dot(self.etor.T*1., self.etor*1.),1)>=self.etor.shape[0])):
-            rb[x] = y
-        keep_rs = [i for i in range(self.etor.shape[1]) if i not in rb]
+        ddER = self.getDeduplicateER()
+        nodesc, order, dds, uniq_dds = get_cover_far(ddER["dists"], self.getSettMaxClust())
+        return {"nodesc": nodesc, "order": order, "dds": dds, "uniq_dds": uniq_dds, "nbc_max": numpy.sum(nodesc>0)}    
 
-        etor = self.etor[:,keep_rs]
-        c01 = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
-        nbr = etor.shape[1]
-        eb = {}
-        for x,y in zip(*numpy.where(numpy.triu(c01,1)>=nbr)):
-            eb[x] = y            
-        keep_es = numpy.array([i for i in range(etor.shape[0]) if i not in eb and numpy.sum(etor[i,:])>0])
-        nb_keep_es = len(keep_es)
-        e_to_rep = -numpy.ones(self.etor.shape[0])
-        e_to_rep[keep_es] = numpy.arange(len(keep_es))
-        efrm, ett = zip(*eb.items())
-        e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
-
-        dists = nbr - c01[keep_es,:][:,keep_es]
-        nodesc, order = get_cover_far(dists, self.NBC)
-
-        return {"e_rprt": keep_es, "r_to_rep": rb, "e_to_rep": e_to_rep,
-                "nodesc": nodesc, "dists": dists, "order": order, "nbc_max": numpy.sum(nodesc>0)}    
-    
+    def getCNb(self):
+        if self.choice_dist is not None:
+           return self.choice_dist.GetSelection()
+        return self.distc
+        
     def getValVec(self):
         vec = numpy.empty((0))
-        max_ds = []
-        if self.clusters is not None:
-            v_out = -10
-            if self.clusters["nbc_max"] > 10 and self.clusters["nbc_max"] < 20:
-                v_out = -1
-            nb = self.distc
+        details = {}
+        etor = self.getEtoR()
+        ddER = self.getDeduplicateER()
+        clusters = self.getClusters()
+
+        if clusters is not None:
+            # v_out = -10
+            # if self.clusters["nbc_max"] > 10 and self.clusters["nbc_max"] < 20:
+            v_out = -1           
             ######
-            nn = sorted(numpy.where((self.clusters["nodesc"]>0) & (self.clusters["nodesc"]<nb+2))[0], key=lambda x: self.clusters["nodesc"][x])
+            max_dist = clusters["uniq_dds"][self.getCNb()]
+            nn = sorted(numpy.where(clusters["dds"]>=max_dist)[0], key=lambda x: clusters["nodesc"][x])
+            ## nn = sorted(numpy.where((self.clusters["nodesc"]>0) & (self.clusters["nodesc"]<nb+2))[0], key=lambda x: self.clusters["nodesc"][x])
+            orids = sorted(range(len(nn)), key=lambda x: clusters["order"][x])
+            details["orids"] = orids
             # print "NBC", v_out, nb, len(nn), nn
-            assign_rprt = numpy.argmin(self.clusters["dists"][:, nn], axis=1)
+            assign_rprt = numpy.argmin(ddER["dists"][:, nn], axis=1)
+            ## for i, v in enumerate(assign_rprt):
             for i in range(numpy.max(assign_rprt)+1):
                 nodes = numpy.where(assign_rprt==i)[0]
-                center_n = numpy.argmin(numpy.max(self.clusters["dists"][nodes,:][:,nodes], axis=0))
-                max_ds.append(numpy.max(self.clusters["dists"][nodes[center_n],nodes]))
+                normm = 1+len(nodes)*numpy.max(ddER["dists"][nodes,:][:,nodes])
+                center = numpy.argmin(numpy.max(ddER["dists"][nodes,:][:,nodes], axis=0)+numpy.sum(ddER["dists"][nodes,:][:,nodes], axis=0)/normm)
+                max_d = numpy.max(ddER["dists"][nodes[center],nodes])
+                occ_avg = numpy.mean(1*etor[ddER["e_rprt"][nodes],:], axis=0)
+                occ_cnt = 1*etor[ddER["e_rprt"][nodes[center]],:]
+                details[i] = {"center": center, "max_d": max_d, "occ_avg": occ_avg, "occ_cnt": occ_cnt}
                 # print i, max_d, nodes[center_n]
-            
-            if self.clusters["e_to_rep"] is not None:
-                vec = v_out*numpy.ones(self.clusters["e_to_rep"].shape, dtype=int)
+                
+            if ddER["e_to_rep"] is not None:
+                vec = v_out*numpy.ones(ddER["e_to_rep"].shape, dtype=int)
                 for i,v in enumerate(assign_rprt):
-                    if numpy.sum(self.clusters["e_to_rep"] == i) == 0:
-                        pdb.set_trace()
-                    # elif numpy.sum(self.clusters["e_to_rep"] == i) == 1:
-                    #     vec[self.clusters["e_to_rep"] == i] = -2
-                    else:
-                        vec[self.clusters["e_to_rep"] == i] = self.clusters["order"][v]
+                    vec[ddER["e_to_rep"] == i] = clusters["order"][v]
             else:
-                vec = self.clusters["order"][assign_rprt]
-
-            ## vec[vec==-2] = self.clusters["matrix_ass"].shape[0]
-        # if numpy.min(vec) == -1:
-        #     vec += 1 
-
-        # adj = numpy.dot(self.etor*1., self.etor.T*1.)
-        # clus = sklearn.cluster.AgglomerativeClustering(n_clusters=self.nbc)
-        # clus.fit(adj)
-        # vec = clus.fit_predict(adj)
-        # G=nx.from_numpy_matrix(adj)
-        # nx.draw_spring(G, ax=self.axe)
+                vec = clusters["order"][assign_rprt]
 
         vec_dets = {"typeId": 2, "single": True} ### HERE bin lbls        
-        # bins_ticks = numpy.unique(vec)
-        # bins_ticks = numpy.arange(-2, numpy.max(vec)+1)
-        vec_dets["binVals"] = numpy.unique(vec[vec>=0])
-        if len(vec_dets["binVals"]) < 50:
-            vec_dets["binLbls"] = ["c%d (d=%d)" % (b, max_ds[ii]) for (ii,b) in enumerate(vec_dets["binVals"])]
-        else:
-            vec_dets["binLbls"] = ["" for b in vec_dets["binVals"]]
-
+        vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
+        vec_dets["binLbls"] = ["c%d %d" % (b,numpy.sum(vec==b)) for b in vec_dets["binVals"]]
+        
         nb = [v-0.5 for v in vec_dets["binVals"]]
-        nb.append(nb[-1]+1)        
-        vec_dets["binHist"] = nb  
+        nb.append(nb[-1]+1)
+        
+        vec_dets["binHist"] = nb        
+        vec_dets["more"] = details
+        vec_dets["min_max"] = (0, numpy.max(clusters["order"])) 
         
         return vec, vec_dets
 
@@ -164,7 +180,9 @@ class SimView(LView):
             return (0,0)
         else:
             return self.coords_proj[0][:,id,0]
-
+    def getCoordsXYA(self, id):
+        return self.getCoordsXY(id)
+        
     def getCoords(self, axi=None, ids=None):
         if self.coords_proj is None:
             return self.coords_proj
@@ -221,6 +239,9 @@ class SimView(LView):
         return proj_coords
 
 
+    def getCMap(self, ltid):
+        return plt.get_cmap("rainbow")
+
     def isReadyPlot(self):
         return self.clusters is not None
 
@@ -239,8 +260,6 @@ class SimView(LView):
             selp = 0.5
             if self.sld_sel is not None:
                 selp = self.sld_sel.GetValue()/100.
-            if self.choice_dist is not None:
-                self.distc = self.choice_dist.GetSelection()
             # nbrows = self.getParentData().nbRows()
             # if selp == 0:
             #     nbrows -= len(selected)
@@ -250,20 +269,8 @@ class SimView(LView):
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
             corners = (x0, x1, y0, y1, bx, by)
             vec, vec_dets = self.getValVec()
-
-            ## print "------------------", len(numpy.unique(vec))
-            # for vv in numpy.unique(vec):
-            #     nbl = numpy.sum(vec==vv)
-            #     # self.clusters["dp"]
-            #     print "Reds C.%d: %d %s" % (vv, nbl, numpy.sum(self.etor[vec==vv], axis=0)) #, numpy.sum(~self.etor[vec==vv], axis=0))
-
-            # vvmax = len(self.clusters["rprt"])+1
-            # vvmax = self.clusters["non_unique"]
-            # vvmax = numpy.max(vec)
-            vvmax = numpy.max(self.clusters["order"])
-            vvmin = numpy.min(vec)
-
-            self.dots_draws, mapper = self.prepareSingleVarDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn(), min_max=(vvmin, vvmax))
+            self.vals = {"vec": vec, "vec_dets": vec_dets}
+            self.dots_draws, mapper = self.prepareSingleVarDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
                 
             if len(selected) > 0:
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
@@ -281,48 +288,109 @@ class SimView(LView):
                 self.plotDotsPoly(self.axe, self.dots_draws, draw_indices, draw_settings)
 
             if mapper is not None:
-                vv = vec
-                # vv = 1.*vec                
-                # vv[numpy.where(vec==0)[0][1:]] = numpy.nan
-                corners = self.plotMapperHist(self.axe, vv, vec_dets, mapper, -1, corners)
-                
+                corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, -1, corners, draw_settings)
+
+            # self.plotOccs(self.axe, vec, vec_dets, mapper, corners)
             ###########################
             ###########################
-            self.makeFinish(corners[:4], corners[4:])   
+            self.makeFinish(corners[:4], corners[4:])
+            self.updateEmphasize(review=False)
             self.MapcanvasMap.draw()
             self.MapfigMap.canvas.SetFocus()
         else:
             self.plot_void()      
 
+
+    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
+
+        norm = matplotlib.colors.Normalize(vmin=0, vmax=1, clip=True)
+        mappers = [matplotlib.cm.ScalarMappable(norm=norm, cmap="Purples"),
+                   matplotlib.cm.ScalarMappable(norm=norm, cmap="binary")]
+
+        x0, x1, y0, y1, bx, by = corners
+        fracts = [.25, .05] ## ratio bars occ/fixed
+        nbc = len(vec_dets["binLbls"])        
+        bins_ticks = numpy.arange(nbc)
+        tmpb = [b-0.5 for b in bins_ticks]
+        tmpb.append(tmpb[-1]+1)
+
+        # norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
+        # norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
+        norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in bins_ticks]
+        norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in tmpb]
+        left = [norm_bins[i] for i in range(nbc)]
+        width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
+
+
+        nbr = vec_dets["more"][0]["occ_cnt"].shape[0]
+        h_occ = (fracts[0]*(x1-x0))/nbr
+        h_hist = fracts[1]*(x1-x0)+2*bx
+        bottom_occ = x1
+        bottom_hist = bottom_occ+nbr*h_occ
+        top_hist = bottom_hist+h_hist
+        btms = [bottom_occ+i*h_occ for i in range(nbr)]
+        
+        bckc = "white"        
+        bins_lbl = vec_dets["binLbls"]
+        #vvmax = int(numpy.max(vec))
+        colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
+        # colors[-1] = draw_settings["default"]["color_f"]
+        
+        axe.barh(y0, nbr*h_occ+h_hist, y1-y0, x1, color=bckc, edgecolor=bckc)
+        # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
+        # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
+        # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2)
+        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        
+
+        for pi, i in enumerate(vec_dets["more"]["orids"]):
+            clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j,v in enumerate(vec_dets["more"][i]["occ_avg"])]
+            axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckc, linewidth=0)
+        
+        x1 += nbr*h_occ+h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
+
+        self.hist_click_info = {"left_edge_map": x0, "right_edge_map": bottom_occ, "right_edge_occ": bottom_hist, "right_edge_hist": x1,
+                                 "hedges_hist": norm_bins, "vedges_occ": btms}
+        
+        axe.set_yticks(norm_bins_ticks)
+        axe.set_yticklabels(bins_lbl) #, size=25) # "xx-large")
+        # self.axe.yaxis.tick_right()
+        axe.tick_params(direction="inout", left="off", right="on",
+                            labelleft="off", labelright="on")
+        return (x0, x1, y0, y1, bx, by)
+            
     def getAxisLims(self):
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
-            
-    def getEtoR(self):
-        nbE = 0
-        if len(self.srids) > 0:
-            nbE = self.reds[self.srids[0]].sParts.nbRows()
-        etor = numpy.zeros((nbE, len(self.srids)), dtype=bool)
-        for r, rid in enumerate(self.srids):
-            etor[list(self.reds[rid].getSuppI()), r] = True
-        return etor
 
     def setCurrent(self, reds_map):
         self.reds = dict(reds_map)
         self.srids = [rid for (rid, red) in reds_map]
-        self.etor = self.getEtoR()
-        self.clusters = self.computeClusters()
+        self.getEtoR()
+        self.getClusters()
         if self.choice_dist is not None:
             opts = self.getDistOpts()
             self.choice_dist.SetItems(opts)
             self.choice_dist.SetSelection(numpy.min([len(opts)-1, self.distc]))
         self.updateMap()
 
+    def getSettMaxClust(self):
+        t = self.getParentPreferences()
+        try:
+            v = t["max_clus"]["data"]
+        except:            
+            v = self.NBC
+        return v
+
+        
     def getDistOpts(self):
         if self.clusters is not None:
             nb = numpy.max(self.clusters["nodesc"])+1
-            return ["%d" % d for d in range(1,nb)]
+            # return ["%d" % d for d in range(1,nb)]
+            return ["%d" % d for d in self.clusters["uniq_dds"]]
         else:
             return ["%d" % d for d in range(1,3)]
         
@@ -351,7 +419,7 @@ class SimView(LView):
         add_boxB.AddSpacer((self.getSpacerWn(),-1))
 
         v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.panel, wx.ID_ANY, "distance")
+        label = wx.StaticText(self.panel, wx.ID_ANY, "dist. inter c")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         # v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
         # v_box.Add(self.sld, 0, border=1, flag=flags) #, userData={"where": "*"})
@@ -375,14 +443,49 @@ class SimView(LView):
     def getCanvasConnections(self):
         return [('button_release_event', self.on_click)]
     def inCapture(self, event):
-        return self.getCoords() is not None and event.inaxes == self.axe
+        return self.getCoords() is not None and self.vals is not None and event.inaxes == self.axe
+   
     def on_click(self, event):
-        pass
-        # if self.clickActive() and self.inCapture(event):
-        #     lid = self.getLidAt(event.xdata, event.ydata)
-        #     print "LID: ", lid, 1*self.etor[lid]
-            # if lid is not None:
-            #     self.sendEmphasize([lid])
+        # print "Event location:", event.xdata, event.ydata
+        if self.clickActive() and self.inCapture(event):
+            if event.xdata > self.hist_click_info['right_edge_occ'] and event.xdata < self.hist_click_info['right_edge_hist'] and \
+              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+                self.on_click_hist(event)
+            elif event.xdata > self.hist_click_info['right_edge_map'] and event.xdata < self.hist_click_info['right_edge_occ'] and \
+              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+                self.on_click_occ(event)
+            elif event.xdata > self.hist_click_info['left_edge_map'] and event.xdata < self.hist_click_info['right_edge_map'] and \
+              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+                lid = self.getLidAt(event.xdata, event.ydata)
+                if lid is not None:
+                    print "LID: ", lid, 1*self.etor[lid]
+                    self.sendEmphasize([lid])
+
+    def on_click_hist(self, event):
+        bini = 0
+        while event.ydata > self.hist_click_info['hedges_hist'][bini]:
+            bini += 1
+        bval = self.vals["vec_dets"]["binVals"][bini-1]
+        lids = numpy.where(self.vals["vec"] == bval)[0]
+        if len(lids) > 0:
+            self.sendEmphasize(lids)
+
+    def on_click_occ(self, event):
+        bini = 0
+        while bini < len(self.hist_click_info['hedges_hist']) and event.ydata > self.hist_click_info['hedges_hist'][bini]:
+            bini += 1
+        ri = 0
+        while ri < len(self.hist_click_info['vedges_occ']) and event.xdata > self.hist_click_info['vedges_occ'][ri]:
+            ri += 1
+        # status = 1
+        # if event.ydata < (self.hist_click_info['hedges_hist'][bini]+self.hist_click_info['hedges_hist'][bini-1])/2.:
+        #     status = 0
+        bval = self.vals["vec_dets"]["binVals"][bini-1]
+        etor = self.getEtoR()
+        lids = numpy.where(etor[:,ri-1] & (self.vals["vec"] == bval))[0]
+        if len(lids) > 0:
+            self.sendEmphasize(lids)
+
     #### BM            
     def getLidAt(self, x, y):
         ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
@@ -416,3 +519,45 @@ class SimView(LView):
             # print "NOT FOUND", "---", (x, y), res
 
         return None
+
+    def hasDotsReady(self):
+        return self.dots_draws is not None
+
+    def getAnnXY(self):
+        return self.ann_xy
+
+    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):
+        x, y = self.getCoordsXY(idp)
+        return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts.get("shape"), markersize=sz, linestyle=dsetts.get("linestyle", 'None'), zorder=zo)
+    
+    def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+        return [self.axe.annotate(tag, xy=xy, zorder=8,
+                                xycoords='data', xytext=xytext, textcoords='offset points',
+                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
+                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
+                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
+                                                    patchA=None, patchB=self.el, relpos=(0.2, 0.5)))]
+    
+    def emphasizeOn(self, lids, hover=False):
+        dsetts = self.getDrawSettDef()
+        if not self.hasDotsReady():
+            return
+
+        hgs = {}
+        for lid in self.needingHighlight(lids):
+            hg = self.drawEntity(lid, self.getColorHigh(), self.getPlotColor(lid, "ec"), self.getPlotProp(lid, "sz"), self.getPlotProp(lid, "zord"), dsetts)
+            if lid not in hgs:
+                hgs[lid] = []
+            hgs[lid].extend(hg)
+            
+        for lid in self.needingHighLbl(lids):
+            if self.vals["vec"][lid] >= 0:
+                tag = "%s: c%s" % (self.getParentData().getRName(lid), self.vals["vec"][lid])
+            else:
+                tag = self.getParentData().getRName(lid)
+            hg = self.drawAnnotation(self.getCoordsXYA(lid), self.getPlotColor(lid, "ec"), tag, self.getAnnXY())
+            if lid not in hgs:
+                hgs[lid] = []
+            hgs[lid].extend(hg)
+
+        self.addHighlighted(hgs, hover)

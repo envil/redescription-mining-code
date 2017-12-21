@@ -527,10 +527,10 @@ class InterView(LView):
         """ Redraws the map
         """
 
-        if hasattr( self, 'etor' ):
+        if self.etor is not None:
             self.clearPlot()
 
-            etor = self.etor
+            etor = self.getEtoR()
             keep, dupls, non_inter, dists = self.filterRs(etor)
             keep, surplus, wedges_pos, neighbors = makeMapWedges(keep)
             elems = self.prepareDrawingElements(etor, keep, dists, wedges_pos, neighbors)
@@ -570,20 +570,10 @@ class InterView(LView):
         y += elems["wedges_off"][ass,1]
         return (x,y)
         
-
-    def getEtoR(self):
-        nbE = 0
-        if len(self.srids) > 0:
-            nbE = self.reds[self.srids[0]].sParts.nbRows()
-        etor = numpy.zeros((nbE, len(self.srids)), dtype=bool)
-        for r, rid in enumerate(self.srids):
-            etor[list(self.reds[rid].getSuppI()), r] = True
-        return etor
-
     def setCurrent(self, reds_map):
         self.reds = dict(reds_map)
         self.srids = [rid for (rid, red) in reds_map]
-        self.etor = self.getEtoR()
+        self.getEtoR()
         self.updateMap()
 
     def filterRs(self, etor):

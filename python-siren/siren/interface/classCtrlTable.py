@@ -1064,7 +1064,10 @@ class StaticContent:
     def notify_change(self):
         pass
         # print "Change Item"
-        
+
+    def getAllItems(self):
+        return self.items.items()
+    
     #### ACCESSING LISTS
     def getListPosForId(self, idx):
         try:
@@ -2021,6 +2024,9 @@ class VarsManager(ContentManager):
 
     
 class RedsManager(ContentManager):
+
+    def getAllReds(self):
+        return self.data.getAllItems()
 
     def initData(self, parent):
         self.data = RedsSet(parent)

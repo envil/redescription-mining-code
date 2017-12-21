@@ -74,7 +74,6 @@ class GView(BasisView):
     infos_details.insert(4, {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"})
     # infos_details.insert(8, {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True})
     
-    max_emphlbl = 5
     
     TID = "G"
     SDESC = "Viz"
