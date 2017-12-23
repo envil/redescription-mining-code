@@ -67,7 +67,7 @@ class ViewsManager:
         if vkey in self.view_map:
             self.parent.plant.getWP().layOff(self.parent.plant.getWP().findWid([("wtyp", "project"), ("vid", vkey)]))
             if not self.view_map[vkey].isIntab():
-                self.view_map[vkey].mapFrame.Destroy()
+                self.view_map[vkey].Destroy()
             else:
                 pos = self.view_map[vkey].getGPos()
                 panel = self.view_map[vkey].popSizer()
@@ -165,7 +165,7 @@ class ViewsManager:
     def closeViews(self):
         vkeys = self.view_map.keys()
         for vkey in vkeys:
-            if self.view_map[vkey].isIntab():
+            if not self.view_map[vkey].isIntab():
                 self.view_map[vkey].OnQuit()
 
     def makeViewsMenu(self, frame, menuViews):

@@ -397,6 +397,9 @@ class Siren():
 
         self.initialized = True
 
+    def getTab(self, which):
+        if which in self.tabs:
+            return self.tabs[which]["tab"]
     def getRTab(self):
         stn = self.getDefaultTabId("r")
         return self.tabs[stn]["tab"]
@@ -468,6 +471,8 @@ class Siren():
         return self.logger
     def getVizm(self):
         return self.vizm
+    def getViewsm(self):
+        return self.viewsm
 
         
 ######################################################################

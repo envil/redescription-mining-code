@@ -14,17 +14,11 @@ import numpy
 from ..reremi.classQuery import QTree
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classGView import GView
+from classDrawerBasis import DrawerEntitiesTD
 
 import pdb
-            
-class TreeView(GView):
 
-    TID = "TR"
-    SDESC = "Tree"
-    ordN = 5
-    title_str = "Decision Tree"
-    typesI = "vr"
+class DrawerEntitiesTree(DrawerEntitiesTD):
     
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..
@@ -38,78 +32,15 @@ class TreeView(GView):
 
     ann_xy = (10,0)
     
-    @classmethod
-    def suitableView(tcl, geo=False, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
-               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
-
-    def __init__(self, parent, vid, more=None):
-        self.current_r = None
+    def __init__(self, view):
+        self.view = view
         self.trees = None
         self.store_supp = None
-        GView.__init__(self, parent, vid)
-    
-    def getId(self):
-        return (self.TID, self.vid)
-
-    def setCurrent(self, qr=None):
-        if qr is not None:
-            if type(qr) in [list, tuple]:
-                queries = qr
-                red = Redescription.fromQueriesPair(qr, self.getParentData())
-            else:
-                red = qr
-                queries = [red.query(0), red.query(1)]
-            self.queries = queries
-            ## red.setRestrictedSupp(self.getParentData())
-            ## self.suppABCD = red.supports().getVectorABCD()
-            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
-            self.current_r = red
-            self.updateText(red)
-            self.updateMap()
-            return red
-
-    def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
-        if sd is None:
-            queries = [self.parseQuery(0),self.parseQuery(1)]
-        else:
-            queries = [None, None]
-            if query is None:
-                queries[sd] = self.parseQuery(sd)
-            else:
-                queries[sd] = query
-
-        changed = False
-        old = [None, None]
-        for side in [0,1]:
-            old[side] = self.queries[side]
-            if queries[side] != None and queries[side] != self.queries[side]:
-                self.queries[side] = queries[side]
-                changed = True
-
-        red = None
-        if changed or force:
-            try:
-                red = Redescription.fromQueriesPair(self.queries, self.getParentData())
-            except Exception:
-                ### Query could be parse but not recomputed
-                red = None
-                self.queries = old
-        if red is not None:
-            # red.setRestrictedSupp(self.getParentData())
-            # self.suppABCD = red.supports().getVectorABCD()
-            self.suppABCD = red.getRSetParts(self.getDetailsSplit()).getVectorABCD(force_list=True)
-            self.current_r = red
-            if upAll:
-                self.updateText(red)
-                self.makeMenu()
-                self.sendEditBack(red)
-            self.updateMap(update_trees)
-            return red
-        else: ### wrongly formatted query, revert
-            for side in [0,1]:
-                self.updateQueryText(self.queries[side], side)
-        return None
+        self.elements = {"active_info": False, "act_butt": [1]}
+        self.initPlot()
+        self.prepareInteractive()
+        self.plot_void()
+        ## self.draw()
         
     def getCanvasConnections(self):
         return [('pick_event', self.OnPick),
@@ -134,7 +65,7 @@ class TreeView(GView):
             for k in trees[side].getLeaves():
                 keys.append((side, k, trees[side].getNodeXY(k)[1]))
 
-        mat = numpy.zeros((self.parent.dw.data.nbRows(), len(keys)+1))
+        mat = numpy.zeros((self.view.getParentData().nbRows(), len(keys)+1))
         for ki, (side, k, pos) in enumerate(keys):
             for si, supp_part in enumerate(trees[side].getNodeSuppSets(k)):
                 mat[list(supp_part), ki] = pos
@@ -152,7 +83,7 @@ class TreeView(GView):
             
     def plotTreesT(self, trees, draw_settings):
         ##### DRAW polygons
-        nbrows = self.getParentData().nbRows()
+        nbrows = self.view.getParentData().nbRows()
         mat = numpy.zeros(nbrows, dtype=int)
         tdata = []
         for side in [0,1]:
@@ -283,29 +214,35 @@ class TreeView(GView):
         return self.trees is not None \
           and self.trees[0] is not None and self.trees[1] is not None \
           and not self.trees[0].isBroken() and not self.trees[1].isBroken()
-                
 
-    def updateMap(self, update_trees=True):
-        """ Redraws the map
-        """
+    def getVecAndDets(self, inter_params=None):
+        vec = self.getPltDtH().getSuppABCD()
+        vec_dets = self.getPltDtH().getVecDets()
+        return vec, vec_dets
 
-        if self.current_r is not None:
-            
-            red = self.current_r
+    def update(self, update_trees=True):
+        if self.view.wasKilled():
+            return
+
+        if self.isReadyPlot():
+            #### WARNING: COPY DROP RESTRICTED SUPPORT SETS
+            red = self.getPltDtH().getRed().copy()
+
             if update_trees:
                 red.queries[0].side = 0
                 red.queries[1].side = 1
                 self.trees = [red.queries[0].toTree(self.getParentData()), red.queries[1].toTree(self.getParentData())]
 
-            for butt in self.buttons:
+            for butt in self.getElement("buttons"):
                 if not self.okTrees():
                     butt["element"].Disable()
                 else:
                     butt["element"].Enable()
                     
             if self.okTrees():
+                #### WARNING: CONFUSION RESTRICTED SUPPORT <> MISSING VALUES
                 ## rsupp = red.supports().parts4M()
-                rsupp = red.getRSetParts(self.getDetailsSplit()).parts4M()
+                rsupp = red.getRSetParts(self.getPltDtH().getDetailsSplit()).parts4M()
                 for side in [0,1]:
                     self.trees[side].computeSupps(side, self.getParentData(), rsupp)
                     if update_trees:
@@ -313,9 +250,11 @@ class TreeView(GView):
 
                 self.clearPlot()
 
+                inter_params = self.getParamsInter()
+                vec, vec_dets = self.getVecAndDets(inter_params)
                 draw_settings = self.getDrawSettings()
-                vec, vec_dets = self.getValVec()
-                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings, delta_on=self.getDeltaOn())
+                ### for highlights
+                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
                 # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
                 # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
 
@@ -331,8 +270,8 @@ class TreeView(GView):
                 self.axe.set_xticks([])
                 self.axe.set_yticks([])
 
-                self.MapcanvasMap.draw()
-                self.MapfigMap.canvas.SetFocus()
+                self.draw()
+                self.setFocus()
             else:
                 self.plot_void()
                 
@@ -344,38 +283,38 @@ class TreeView(GView):
             return False
         return self.store_supp["has_miss_points"][side]
 
-    def additionalElements(self):
-        
+    def makeAdditionalElements(self, panel=None):
+        if panel is None:
+            panel = self.getLayH().getPanel()
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
 
-        self.buttons = []
-        self.buttons.extend([{"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Expand"),
-                             "function": self.OnExpandSimp},
-                            {"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Simplify LHS"),
-                             "function": self.OnSimplifyLHS},
-                            {"element": wx.Button(self.panel, wx.NewId(), size=(self.butt_w,-1), label="Simplify RHS"),
-                             "function": self.OnSimplifyRHS}])
-        for i in range(len(self.buttons)):
-            self.buttons[i]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        buttons = []
+        buttons.extend([{"element": wx.Button(panel, wx.NewId(), size=(self.getLayH().butt_w,-1), label="Expand"),
+                         "function": self.view.OnExpandSimp},
+                        {"element": wx.Button(panel, wx.NewId(), size=(self.getLayH().butt_w,-1), label="Simplify LHS"),
+                         "function": self.OnSimplifyLHS},
+                        {"element": wx.Button(panel, wx.NewId(), size=(self.getLayH().butt_w,-1), label="Simplify RHS"),
+                         "function": self.OnSimplifyRHS}])
+        for i in range(len(buttons)):
+            buttons[i]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
-
-        add_boxB.Add(self.buttons[1]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
+        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.Add(buttons[1]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.Add(buttons[2]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
         
-        add_boxB.Add(self.buttons[2]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
-        
-        add_boxB.Add(self.buttons[0]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
-
-        #return [add_boxbis, add_box]
+        self.setElement("buttons", buttons)
+        self.setElement("inter_elems", {})
         return [add_boxB]
 
 
     def OnPick(self, event):
-        if event.mouseevent.button in self.act_butt:
+        if event.mouseevent.button in self.getElement("act_butt"):
             gid_parts = event.artist.get_gid().split(".")
     #def sendOtherPick(self, gid_parts):
             if gid_parts[-1] == "T":
@@ -393,23 +332,23 @@ class TreeView(GView):
     def removeBranchQ(self, side, node):
         if self.trees[side].isLeafInNode(node):
             bidd = self.trees[side].getNodeLeaf(node)
-            qu = self.queries[side].copy()
+            qu = self.getPltDtH().getQuery(side).copy()
             qu.buk.pop(bidd)                        
-            if qu != self.queries[side]:
+            if qu != self.getPltDtH().getQuery(side):
                 for n in self.trees[side].getLeaves():
                     if self.trees[side].getNodeLeaf(n) > bidd:
                         self.trees[side].setNodeLeaf(n, self.trees[side].getNodeLeaf(n)-1)
                 self.trees[side].setNodeLeaf(node, -1)
-                self.updateQuery(side, query=qu, update_trees=False)
+                self.getPltDtH().updateQuery(side, query=qu, update_trees=False)
 
     def addBranchQ(self, side, node):
         if self.trees[side].isLeafOutNode(node):
             buk = self.trees[side].getBranchQuery(node)
-            qu = self.queries[side].copy()
+            qu = self.getPltDtH().getQuery(side).copy()
             bid = qu.appendBuk(buk)
-            if qu != self.queries[side]:
+            if qu != self.getPltDtH().getQuery(side):
                 self.trees[side].setNodeLeaf(node, bid)
-                self.updateQuery(side, query=qu, update_trees=False)
+                self.getPltDtH().updateQuery(side, query=qu, update_trees=False)
 
 
     def OnSimplifyLHS(self, event):
@@ -420,7 +359,7 @@ class TreeView(GView):
             self.simplify(1)
     def simplify(self, side):
         qu = self.trees[side].getSimpleQuery()
-        self.updateQuery(side, query=qu, force=True)
+        self.getPltDtH().updateQuery(side, query=qu, force=True)
     
     def getCoordsXY(self, idp):
         return []            
@@ -444,15 +383,16 @@ class TreeView(GView):
 
     
     def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+        dsetts = self.getDrawSettings()
         lines = []
         lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=ec, linewidth=1, alpha=0.5))
-        lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=self.getColorHigh(), linewidth=1, alpha=0.3))
+        lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=dsetts["colhigh"], linewidth=1, alpha=0.3))
 
-        lines.extend(GView.drawAnnotation(self, xy, ec, tag, xytext))
+        lines.extend(DrawerEntitiesTD.drawAnnotation(self, xy, ec, tag, xytext))
         return lines
 
     def inCapture(self, event):
-        return self.okTrees() and event.inaxes == self.axe and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]
+        return self.okTrees() and event.inaxes == self.getAxe() and numpy.abs(event.xdata) < self.flat_space and event.ydata > self.height_inter[0] and event.ydata < self.height_inter[1]
                
     def getLidAt(self, x, y):
         bid, rp = self.getRPPoint(y)

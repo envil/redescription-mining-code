@@ -2,7 +2,8 @@ import wx
 ### from wx import ALIGN_CENTER, EVT_TOGGLEBUTTON, EXPAND, RAISED_BORDER
 ### from wx import FlexGridSizer, NewId, Panel, ToggleButton
 
-from classGView import GView
+# from classGView import GView
+from classLayoutHandler import LayoutHandlerBasis
 
 import pdb
 
@@ -18,9 +19,9 @@ class Filler(object):
             return "s"
         return "t"
     def getFWidth(self):
-        return GView.fwidth[self.getVizType()]    
+        return LayoutHandlerBasis.fwidth[self.getVizType()]    
     def getFHeight(self):
-        return GView.fheight[self.getVizType()]
+        return LayoutHandlerBasis.fheight[self.getVizType()]
 
     def __init__(self, parent, pos):
         self.parent = parent

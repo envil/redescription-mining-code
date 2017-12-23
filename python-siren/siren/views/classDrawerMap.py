@@ -1,25 +1,13 @@
-import wx
-### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL, ID_ANY, SL_HORIZONTAL, VERTICAL
-### from wx import FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
-### from wx import EVT_BUTTON, EVT_SCROLL_CHANGED, EVT_SCROLL_THUMBRELEASE
-### from wx import BoxSizer, Button, DefaultPosition, Font, Slider, StaticText
+import wx, numpy, re
+# The recommended way to use wx with mpl is with the WXAgg backend. 
+import matplotlib
+matplotlib.use('WXAgg')
 
-
-import numpy
-import re
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
-# import matplotlib
-# matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
-import scipy.spatial.distance
-#from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap
-from matplotlib.patches import Polygon
 
-from ..reremi.classSParts import SSetts
-from classTDView import TDView
-
+from classDrawerBasis import DrawerEntitiesTD
+from classDrawerLClust import DrawerLClustTD
 
 import pdb
 
@@ -379,203 +367,57 @@ class MapBase:
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
             # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
 
-
-class MapView(TDView):
-
-    TID = "MAP"
-    SDESC = "Map"
-    title_str = "Map"
-    ordN = 1
-    geo = True
-    MAP_POLY = True #False
-    typesI = "vr"
-
-    def drawMap(self):
-        """ Draws the map
-        """
-
-        # if self.getParentCoords() is None:
-        #     self.coords_proj = None
-        #     return
-        if not hasattr( self, 'axe' ):
-            self.bm, self.bm_args = MapBase.makeBasemapProj(self.getParentPreferences(), self.getParentCoordsExtrema())
-
-            self.coords_proj = self.mapCoords(self.getParentCoords(), self.bm)
-            if self.bm is not None:
-                self.axe = self.MapfigMap.add_axes([0, 0, 1, 1])
-                self.bm.ax = self.axe
-            else:
-                llon, ulon, llat, ulat = self.getParentCoordsExtrema()
-                midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
-                mside = max(abs(llon-midlon), abs(llat-midlat))
-                self.axe = self.MapfigMap.add_subplot(111,
-                                                      xlim=[midlon-1.05*mside, midlon+1.05*mside],
-                                                      ylim=[midlat-1.05*mside, midlat+1.05*mside])
-            ## self.MapcanvasMap.draw()
-            # self.axe = self.MapfigMap.add_axes([llon, llat, ulat-llat, ulon-llon])
-
-            self.prepareInteractive()
-            self.MapcanvasMap.draw()
-
-            
-    def additionalElements(self):        
-        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
-
-        self.buttons = []
-        self.buttons.append({"element": wx.Button(self.panel, size=(self.butt_w,-1), label="Expand"),
-                             "function": self.OnExpandSimp})
-        self.buttons[-1]["element"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+class DrawerEntitiesMap(DrawerEntitiesTD):
+    
+    MAP_POLY = True
+    def initPlot(self):
+        self.bm, self.bm_args = MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
         
-        self.sld_sel = wx.Slider(self.panel, -1, 10, 0, 100, wx.DefaultPosition, (self.sld_w, -1), wx.SL_HORIZONTAL)
+        if self.bm is not None:
+            self.getPltDtH().setBM(self.bm)
+            self.setAxe(self.getFigure().add_axes([0, 0, 1, 1]))
+            self.bm.ax = self.getAxe()
+        else:
+            llon, ulon, llat, ulat = self.getPltDtH().getParentCoordsExtrema()
+            midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
+            mside = max(abs(llon-midlon), abs(llat-midlat))
+            self.setAxe(self.getFigure().add_subplot(111,
+              xlim=[midlon-1.05*mside, midlon+1.05*mside],
+              ylim=[midlat-1.05*mside, midlat+1.05*mside]))
 
-        ##############################################
-        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
-
-        v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(self.panel, wx.ID_ANY,u"- opac. disabled +")
-        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
-        v_box.Add(self.sld_sel, 0, border=1, flag=flags) #, userData={"where":"*"})
-        add_boxB.Add(v_box, 0, border=1, flag=flags)
-
-        add_boxB.AddSpacer((self.getSpacerWn(),-1))
-        add_boxB.Add(self.buttons[-1]["element"], 0, border=1, flag=flags)
-
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1))
-
-        #return [add_boxbis, add_box]
-        return [add_boxB]
-
-    def makeBackground(self):
-        MapBase.makeBasemapBack(self.getParentPreferences(), self.bm_args, self.bm)
-    def makeFinish(self, xylims, xybs):
-        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
-
-    def plotSimple(self):
-        return not self.drawPoly()
-    def isReadyPlot(self):
-        return self.suppABCD is not None and self.getCoords() is not None    
     def getAxisLims(self):
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
 
-    def getPCoords(self):
-        if self.coords_proj is not None:
-            return zip(*[self.coords_proj[0][0,:,0], self.coords_proj[0][1,:,0]])
-        return []
+    def makeBackground(self):
+        MapBase.makeBasemapBack(self.view.getParentPreferences(), self.bm_args, self.bm)
 
-    def getCoordsXY(self, id):
-	if self.coords_proj is None:
-            return (0,0)
-	else:
-            return self.coords_proj[0][:,id,0]
-    def getCoords(self, axi=None, ids=None):
-        if self.coords_proj is None:
-            return self.coords_proj
-        if axi is None:
-            self.coords_proj[0][:,:,0]
-        elif ids is None:
-            return self.coords_proj[0][axi,:,0]
-        return self.coords_proj[0][axi,ids,0]
-
-    def getCoordsP(self, id):
-        return self.coords_proj[0][:,id,1:self.coords_proj[1][id]].T
-
-    def apply_mask(self, path, radius=0.0):
-        if path is not None and self.getCoords() is not None:
-            return [i for i, point in enumerate(self.getPCoords()) if (self.dots_draws["draw_dots"][i] and path.contains_point(point, radius=radius))]
-        return []
-
-    def getParentCoords(self):
-        if not self.hasParent():
-            #self.suppABCD = [0,0,0,0]
-            return [[[self.bounds_def[k]] for k in ["llon", "llon", "ulon", "ulon"]],
-                    [[self.bounds_def[k]] for k in ["llat", "ulat", "ulat", "llat"]]]
-        return self.parent.dw.getCoords()
-    def getParentCoordsExtrema(self):
-        if not self.hasParent():
-            return (-180., 180., -90., 90.)
-        return self.parent.dw.getCoordsExtrema()
-
+class DrawerLClustMap(DrawerLClustTD):
     
-    def mapCoords(self, coords, bm=None):
-        self.mapoly = self.getMapPoly() & (min([len(cs) for cs in coords[0]]) > 2)
+    MAP_POLY = True
+    def initPlot(self):
+        self.bm, self.bm_args = MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
+        
+        if self.bm is not None:
+            self.getPltDtH().setBM(self.bm)
+            self.setAxe(self.getFigure().add_axes([0, 0, 1, 1]))
+            self.bm.ax = self.getAxe()
+        else:
+            llon, ulon, llat, ulat = self.getPltDtH().getParentCoordsExtrema()
+            midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
+            mside = max(abs(llon-midlon), abs(llat-midlat))
+            self.setAxe(self.getFigure().add_subplot(111,
+              xlim=[midlon-1.05*mside, midlon+1.05*mside],
+              ylim=[midlat-1.05*mside, midlat+1.05*mside]))
 
-        nbc_max = max([len(c) for c in coords[0]])
-        proj_coords = [numpy.zeros((2, len(coords[0]), nbc_max+1)), []]
+    def getAxisLims(self):
+        xx = self.axe.get_xlim()
+        yy = self.axe.get_ylim()
+        return (xx[0], xx[1], yy[0], yy[1])
 
-        for i in range(len(coords[0])):
-            if bm is None:
-                p0, p1 = (coords[0][i], coords[1][i])
-            else:
-                p0, p1 = bm(coords[0][i], coords[1][i])
-            proj_coords[1].append(len(p0)+1)
-            proj_coords[0][0,i,0] = numpy.mean(p0)
-            proj_coords[0][0,i,1:proj_coords[1][-1]] = p0
-            proj_coords[0][1,i,0] = numpy.mean(p1)
-            proj_coords[0][1,i,1:proj_coords[1][-1]] = p1
-        return proj_coords
+    def makeBackground(self):
+        MapBase.makeBasemapBack(self.view.getParentPreferences(), self.bm_args, self.bm)
 
     def drawPoly(self):
-        return self.mapoly 
-
-    def getMapPoly(self):
-        t = self.getParentPreferences()
-        try:
-            mapoly = t["map_poly"]["data"] == "yes"
-        except:
-            mapoly = MapView.MAP_POLY
-        return mapoly
-
-    def drawEntity(self, idp, fc, ec, sz=1, zo=4, dsetts={}):
-        ### HERE SAMPLE ###
-        if self.drawPoly():
-            return [self.axe.add_patch(Polygon(self.getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec, zorder=zo))]
-                    
-        else:
-            ## print idp, fc, ec
-            x, y = self.getCoordsXY(idp)
-            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
-
-    #### BM            
-    def getLidAt(self, x, y):
-        ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
-        if self.drawPoly():
-            d = scipy.spatial.distance.cdist(self.getCoordsXY(ids_drawn).T, [(x,y)])
-            cands = [ids_drawn[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
-            i = 0
-            while i < len(cands):
-                path = Polygon(self.getCoordsP(cands[i]), closed=True)
-                if path.contains_point((x,y), radius=0.0):
-                    return cands[i]
-                i += 1
-        else:
-            sz = self.getPlotProp(0, "sz")
-            size_dots = self.MapfigMap.get_dpi()*self.MapfigMap.get_size_inches()
-            xlims = self.axe.get_xlim()
-            ylims = self.axe.get_ylim()
-            ### resolution: value delta per figure dot
-            res = ((xlims[1]-xlims[0])/size_dots[0], (ylims[1]-ylims[0])/size_dots[1])
-
-            coords = self.getCoordsXY(ids_drawn)
-            for ss in range(3):
-                sc = sz*(ss+1)
-                tX = numpy.where((coords[0]-sc*res[0] <= x) & (x <= coords[0]+sc*res[0]) & (coords[1]-sc*res[1] <= y) & (y <= coords[1]+sc*res[1]))[0]
-                # print ss, sc, "-->", tX
-                # pdb.set_trace()
-                ## print tX
-                if len(tX) > 0:
-                    # print "FOUND", (coords[0][tX[0]], coords[1][tX[0]]), (x, y), res
-                    return ids_drawn[tX[0]]
-            # print "NOT FOUND", "---", (x, y), res
-
-        return None
-
-
-
-        # coords = self.getCoords()
-        # for ss in range(3):
-        #     sc = sz*(ss+1)
-        #     tX = numpy.where((coords[0]-sc*res[0] <= x) & (x <= coords[0]+sc*res[0]) & (coords[1]-sc*res[1] <= y) & (y <= coords[1]+sc*res[1]))[0]
+        return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)

@@ -1,114 +1,24 @@
 import wx
 import numpy
-# The recommended way to use wx with mpl is with the WXAgg backend. 
-import matplotlib
-matplotlib.use('WXAgg')
-
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
-from matplotlib.figure import Figure
-from matplotlib.text import Text
-from matplotlib.patches import Ellipse
  
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classInterObjects import MaskCreator
+from ..reremi.classQuery import Query
+
+from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
+
+from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
+from classDrawerMap import DrawerEntitiesMap, DrawerLClustMap
+from classDrawerPara import DrawerEntitiesPara
+from classDrawerTree import DrawerEntitiesTree
+from classDrawerEProj import DrawerEProj
+from classDrawerLClust import DrawerLClustTD
+
+from classPltDtHandler import BasisPltDtHandler, RedPltDtHandler, RedPltDtHandlerWithCoords #, TreePltDtHandler
+from classPltDtHList import ListClustPltDtHandler
+from classProj import ProjFactory
 
 import pdb
-
-def HTMLColorToRGB(colorstring):
-    """ convert #RRGGBB to an (R, G, B) tuple """
-    colorstring = colorstring.strip()
-    if colorstring[0] == '#': colorstring = colorstring[1:]
-    if len(colorstring) != 6:
-        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
-    r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
-    r, g, b = [int(n, 16) for n in (r, g, b)]
-    return (r, g, b)
-def HTMLColorToRGBu(colorstring):
-    """ convert #RRGGBB to an (R, G, B) tuple """
-    colorstring = colorstring.strip()
-    if colorstring[0] == '#': colorstring = colorstring[1:]
-    if len(colorstring) != 6:
-        raise ValueError, "input #%s is not in #RRGGBB format" % colorstring
-    r, g, b = colorstring[:2], colorstring[2:4], colorstring[4:]
-    r, g, b = [int(n, 16)/255. for n in (r, g, b)]
-    return (r, g, b)
-
-############ MODAL WINDOW TRICKS
-# class MyModalDialogHook(wx.ModalDialogHook):
-
-#     def __init__(self, parent):
-
-#         wx.ModalDialogHook.__init__(self, parent)
-
-
-#     def Enter(self, dialog):
-
-#         # Just for demonstration purposes, intercept all uses of
-#         # wx.FileDialog. Notice that self doesn't provide any real
-#         # sandboxing, of course, the program can still read and write
-#         # files by not using wx.FileDialog to ask the user for their
-#         # names.
-#         if isinstance(dialog, wx.MessageDialog):
-
-#             wx.LogError("Access to file system disallowed.")
-
-#             # Skip showing the file dialog entirely.
-#             return wx.ID_CANCEL
-
-
-#         self.lastEnter = wx.DateTime.Now()
-
-#         # Allow the dialog to be shown as usual.
-#         return wx.ID_NONE
-
-
-#     def Exit(self, dialog):
-
-#         # Again, just for demonstration purposes, show how long did
-#         # the user take to dismiss the dialog. Notice that we
-#         # shouldn't use wx.LogMessage() here as self would result in
-#         # another modal dialog call and hence infinite recursion. In
-#         # general, the hooks should be as unintrusive as possible.
-#         wx.LogDebug("%s dialog took %s to be dismissed",
-#                    dialog.GetClassInfo().GetClassName(),
-#                    (wx.DateTime.Now() - self.lastEnter).Format())
-####################
-
-class CustToolbar(NavigationToolbar):
-    """ 
-    Customized Toolbar for action on the plot including saving, attaching to main window, etc.
-    Sets the different mouse cursors depending on context. 
-    """
-    
-    def __init__(self, plotCanvas, parent):
-        self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'))
-        # , (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure')
-        if not parent.hasParent():
-            self.toolitems = tuple(list(self.toolitems) +[('Save', 'Save the figure', 'filesave', 'save_figure')])
-        NavigationToolbar.__init__(self, plotCanvas)
-        self.parent = parent
-
-        # self.toolitems = (('Home', 'Reset original view', 'home', 'home'), ('Back', 'Back to  previous view', 'back', 'back'), ('Forward', 'Forward to next view', 'forward', 'forward'), (None, None, None, None), ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'), ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'), (None, None, None, None), ('Subplots', 'Configure subplots', 'subplots', 'configure_subplots'), ('Save', 'Save the figure', 'filesave', 'save_figure'))
-
-    def set_history_buttons(self):
-        pass
-
-    def has_active_button(self):
-        return self._active is not None
-    def mouse_move(self, event=None):
-        if event is not None:
-            NavigationToolbar.mouse_move(self, event)
-        if self.parent.q_active_poly():
-            self.set_cursor(2)
-        elif self.parent.q_active_info():
-            self.set_cursor(0)
-        else:
-            self.set_cursor(1)
-
 
 class BasisView(object):
     """
@@ -126,6 +36,10 @@ class BasisView(object):
 
     DELTA_ON = False
     DEF_ZORD = 3
+
+    subcl_layh = LayoutHandlerBasis
+    subcl_drawer = DrawerBasis
+    subcl_pltdt = BasisPltDtHandler
     
     TID = "-"
     SDESC = "-"
@@ -133,43 +47,31 @@ class BasisView(object):
     title_str = "Basis View"
     geo = False
     typesI = ""
-
-    max_emphlbl = 5
-    nb_cols = 4
-    spacer_w = 15
-    spacer_h = 10
-    nbadd_boxes = 0 
-    butt_w = 90
-    sld_w = 115
-    butt_shape = (27, 27)
-    fwidth = {"i": 400, "t": 400, "s": 250}
-    fheight = {"i": 400, "t": 300, "s": 200}
-
-    ann_xy = (-10, 15)
     
-    def getSpacerW(self):
-        return self.spacer_w
-    def getSpacerWn(self):
-        return self.spacer_w/4.
-    def getSpacerH(self):
-        return self.spacer_h
-    def getVizType(self):
-        if self.isIntab():
-            if self.parent.getVizm().isVizSplit():
-                return "s"
-            return "t"
-        return "i"
-    def getFWidth(self):
-        return self.fwidth[self.getVizType()]    
-    def getFHeight(self):
-        return self.fheight[self.getVizType()]
-    def getGPos(self):
-        return self.pos
-    def resetGPos(self, npos):
-        self.mapFrame.GetSizer().Detach(self.panel)
-        self.pos = npos
-        self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+    def __init__(self, parent, vid, more=None):
+        self.parent = parent
+        self.vid = vid
+        self.data = {}
+        self.layH = self.subcl_layh(self)
+        self.pltdtH = self.subcl_pltdt(self)
+        self.drawer = self.subcl_drawer(self)
+        self.layH.setToolbarDrawer(self.drawer)
+        boxes = self.drawer.prepareInteractive(self.layH.getPanel())
+        self.layH.finalize_init(boxes)
         
+    def getLayH(self):
+        return self.layH
+    def getDrawer(self):
+        return self.drawer
+    def getPltDtH(self):
+        return self.pltdtH
+    def getParent(self):
+        return self.parent
+
+    
+    #### SEC: VIEW IDENTIFICATION
+    ###########################################
+
     @classmethod
     def getViewsDetails(tcl):
         if tcl.TID is not None:
@@ -179,194 +81,10 @@ class BasisView(object):
     @classmethod
     def suitableView(tcl, geo=False, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
-
-    def hasParent(self):
-        return self.parent is not None
-    def GetRoundBitmap(self, w, h, r=10):
-        maskColour = wx.Colour(0,0,0)
-        shownColour = wx.Colour(5,5,5)
-        b = wx.EmptyBitmap(w,h)
-        dc = wx.MemoryDC(b)
-        dc.SetBrush(wx.Brush(maskColour))
-        dc.DrawRectangle(0,0,w,h)
-        dc.SetBrush(wx.Brush(shownColour))
-        dc.SetPen(wx.Pen(shownColour))
-        dc.DrawCircle(w/2,h/2,w/2)
-        dc.SelectObject(wx.NullBitmap)
-        b.SetMaskColour(maskColour)
-        return b
-    def getIcon(self, key):
-        if self.hasParent() and key in self.parent.icons:
-            return self.parent.icons[key]
-        return wx.NullBitmap
     
-    def __init__(self, parent, vid, more=None):
-        self.initVars(parent, vid, more)
-        self.initView()
-
-    def initVars(self, parent, vid, more=None):
-        self.alpha_off = False
-        self.active_info = False
-        self.parent = parent
-        self.mc = None
-        self.pos = None
-        self.sld_sel = None
-        self.savef = None
-        self.boxL = None
-        self.boxT = None
-        ## self.stamp = None
-        self.rsets = None
-        self.rwhich = None
-        self.vid = vid
-        self.buttons = []
-        self.act_butt = [1]
-
-        self.initHighlighted()
-        self.intab = (self.hasParent() and self.parent.getVizm().showVizIntab())
-        self.store_size = None
-
-    def initView(self):
-        if self.hasParent() and self.isIntab():
-            self.mapFrame = self.parent.tabs["viz"]["tab"]
-            # self.panel = self.parent.tabs["viz"]["tab"]
-        else:
-            self.mapFrame = self.initExtFrame()
-        self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
-        self.drawFrame()
-        self.doBinds()
-        self.prepareActions()
-        self.setKeys()
-        self.prepareProcesses()
-        self.makeMenu()
-        self.initSizeRelative()
-        if not self.isIntab():
-            self.mapFrame.Show()
-        
-    ############ MODAL WINDOW TRICKS         
-    #     self.mapFrame.MakeModal()
-    #     # self.myHook = MyModalDialogHook(None)
-    #     # self.myHook.Register()
-            
-    #     TIMER_ID = wx.NewId()
-    #     self.timer = wx.Timer(self.panel, TIMER_ID)
-    #     wx.EVT_TIMER(self.panel, TIMER_ID, self.onTimer)
-    #     self.timer.Start(5000)
- 
-    #     # self.dlg = wx.MessageDialog(self.mapFrame, 'Picture will be shown', 'Info', wx.OK | wx.ICON_INFORMATION)
-    #     # # ## self.dlg.SetReturnCode(1)
-    #     # # print "-- (0) --"
-    #     # self.dlg.MakeModal(True)
-    #     # self.dlg.ShowModal()
-    #     # # print "-- (1) --"
-    #     # self.dlg.Destroy()
-
-
-    # def onTimer(self, event):
-    #     self.timer.Stop()
-    #     print "in onTimer"
-    #     self.mapFrame.MakeModal(False)
-    #     # print self.dlg, self.dlg.IsModal()
-    #     # # if self.dlg.IsModal():
-    #     #self.dlg.MakeModal(False)
-    #     # self.dlg.EndModal(0)
-    #     # self.dlg.Destroy()
-    ################
-
-    def getCanvasConnections(self):
-        return []
-            
-    def lastStepInit(self, blocking=False):
-        pass
-
-    def isReadyPlot(self):
-        return True    
-
-    def getAxisLims(self):
-        return (0,1,0,1)
-
-    def isIntab(self):
-        return self.intab
-
-    def hideShowOptRec(self, box, where):
-        if isinstance(box, wx.SizerItem) and box.IsSizer():
-            box = box.GetSizer()
-        if isinstance(box, wx.Sizer) or box.IsSizer():
-            for child in box.GetChildren():
-                self.hideShowOptRec(child, where)
-        else:
-            ww = (box.GetUserData() or {"where": "i"}).get("where")
-            if where in ww or ww == "*":
-                box.Show(True)
-            else:
-                box.Show(False)
-
-    def hideShowOpt(self):
-        self.hideShowOptRec(self.innerBox1, self.getVizType())
-        self.autoShowSplitsBoxes()
-
-    def getActionsDetails(self):
-        details = []
-        for action, dtl in self.actions_map.items():
-            details.append({"label": "%s[%s]" % (dtl["label"].ljust(30), dtl["key"]),
-                            "legend": dtl["legend"], "active": dtl["active_q"](),
-                            "key": dtl["key"], "order": dtl["order"], "type": dtl["type"]})
-        if self.mc is not None:
-            details.extend(self.mc.getActionsDetails(6))
-        return details
-
-    def q_expand(self, more):
-        if more is None:
-            return True
-        res = True
-        if "side" in more:
-            res &= len(self.queries[1-more["side"]]) > 0
-        if "in_weight" in more or "out_weight" in more:
-            res &= self.q_has_selected()
-        return res
-            
-    def q_has_poly(self):
-        return self.mc is not None and self.mc.q_has_poly()
-
-    def q_active_poly(self):
-        return self.mc is not None and self.mc.isActive()
-
-    def q_active_info(self):
-        return self.active_info
-
-    def q_not_svar(self):
-        return not self.isSingleVar()
-    def q_has_selected(self):
-        return len(self.getHighlightedIds()) > 0
-
-    def q_true(self):
-        return True
-
-    def getWeightCover(self, params):
-        params["area"] = self.getHighlightedIds()
-        return params
-
-    def prepareProcesses(self):
-        self.processes_map = {}
-    def prepareActions(self):
-        self.actions_map = {}
-
-    def setKeys(self, keys=None):
-        self.keys_map = {}
-        if keys is None:
-            for action, details in self.actions_map.items():
-                details["key"] = action[0]
-                self.keys_map[details["key"]] = action
-        else:
-            for action, details in self.actions_map.items():
-                details["key"] = None
-            for key, action in keys.items():
-                if action in self.actions_map:
-                    self.actions_map[action]["key"] = key
-                    self.keys_map[key] = action
-                    
     def getItemId(self):
         if self.hasParent():
-            return self.parent.viewsm.getItemId(self.getId())
+            return self.getParentViewsm().getItemId(self.getId())
         return self.vid
     
     def getShortDesc(self):
@@ -375,35 +93,75 @@ class BasisView(object):
     def getTitleDesc(self):
         return "%s %s" % (self.getItemId(), self.title_str)
 
-    def updateTitle(self):
-        if self.hasParent() and not self.isIntab():
-            self.mapFrame.SetTitle("%s%s" % (self.parent.titlePref, self.getTitleDesc()))
-        self.info_title.SetLabel(self.getTitleDesc())
-
     def getId(self):
         return (self.TID, self.vid)
 
     def getVId(self):
         return self.vid
 
+    
+    #### SEC: PARENT ACCESS
+    ###########################################
+
+    def hasParent(self):
+        return self.parent is not None
+    def getParentVizm(self):
+        if self.hasParent():
+            return self.parent.getVizm()
+    def getParentViewsm(self):
+        if self.hasParent():
+            return self.parent.getViewsm()
+    def getParentTab(self, which):
+        if self.hasParent():
+            return self.parent.getTab(which)
+    def getParentData(self):
+        if self.hasParent():
+            return self.parent.dw.getData()
+    def getParentPreferences(self):
+        if self.hasParent():
+            return self.parent.dw.getPreferences()
+        return {}
+    def getParentIcon(self, key=None):
+        if self.hasParent():
+            return self.parent.icons.get(key)
+    def getParentTitlePref(self):
+        if self.hasParent():
+            return self.parent.titlePref
+        return "Standalone "
+
+    def isIntab(self):
+        return self.getLayH().isInTab
     def toTop(self):
-        self.mapFrame.Raise()
-        try:
-            self.MapfigMap.canvas.SetFocus()
-        except AttributeError:
-            self.mapFrame.SetFocus()
-
-    def getDetailsSplit(self):
-        return self.rsets
-
-    def getVizRows(self):
-        if self.getParentData() is not None:
-            return self.getParentData().getVizRows(self.getDetailsSplit()) 
-        return set()
-    def getUnvizRows(self):
-        if self.getParentData() is not None:
-            return self.getParentData().getUnvizRows(self.getDetailsSplit())
-        return set()
+        self.getLayH().toTop()
+    def _SetSize(self):
+        self.getLayH()._SetSize()
+    def updateTitle(self):
+        self.getLayH().updateTitle()
+    def getGPos(self):
+        return self.getLayH().getGPos()
+    def popSizer(self):
+        return self.getLayH().popSizer()
+    def Destroy(self):
+        self.getLayH().Destroy()
+    def wasKilled(self):
+        return self.getLayH().wasKilled()
+    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
+        self.getDrawer().emphasizeOnOff(turn_on, turn_off, hover, review)
+    def updateRSets(self, new_rsets=None):
+        self.getPltDtH().updateRSets(new_rsets)
+        
+        
+    def lastStepInit(self, blocking=False):
+        pass
+    def OnQuit(self, event=None, upMenu=True, freeing=True):
+        if self.hasParent():
+            self.getParentViewsm().deleteView(self.getId(), freeing)
+            self.getParentViewsm().unregisterView(vkey=self.getId(), upMenu=upMenu)
+        else:
+            self.getLayH().Destroy()
+            
+    #### SEC: MENU
+    ######################################
     def makeMenu(self, frame=None):
         """
         Prepare the menu for this view.
@@ -416,16 +174,15 @@ class BasisView(object):
             return
         
         if frame is None:
-            frame = self.mapFrame
-        self.menu_map_act = {}
-        self.ids_viewT = {}
-        self.menu_map_pro = {}
+            frame = self.getLayH().frame
+
         menuBar = wx.MenuBar()
         if self.hasParent():
             menuBar.Append(self.parent.makeFileMenu(frame), "&File")
-        menuBar.Append(self.makeActionsMenu(frame), "&Edit")
+        menuBar.Append(self.getDrawer().makeActionsMenu(frame), "&Edit")
         menuBar.Append(self.makeVizMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
+        
         if self.hasParent():
             menuBar.Append(self.parent.makeViewsMenu(frame), "&Windows")
             menuBar.Append(self.parent.makeHelpMenu(frame), "&Help")
@@ -434,7 +191,7 @@ class BasisView(object):
 
     def enumerateVizItems(self):
         if self.hasParent():
-            return self.parent.viewsm.getViewsItems(vkey=self.getId())
+            return self.getParentViewsm().getViewsItems(vkey=self.getId())
         return []
     def makeVizMenu(self, frame, menuViz=None):
         """
@@ -448,6 +205,7 @@ class BasisView(object):
         @return:  the sub-menu, menuViz extended
         """
 
+        self.ids_viewT = {}
         if menuViz is None:
             menuViz = wx.Menu()
         for item in self.enumerateVizItems():
@@ -459,39 +217,19 @@ class BasisView(object):
 
             frame.Bind(wx.EVT_MENU, self.OnOtherV, m_newv)
             self.ids_viewT[ID_NEWV] = item["viewT"]
-        return menuViz
-
-    def makeActionsMenu(self, frame, menuAct=None):
-        if menuAct is None:
-            menuAct = wx.Menu()
-        for action in sorted(self.getActionsDetails(), key=lambda x:(x["order"],x["key"])):
-            ID_ACT = wx.NewId()
-            if action["type"] == "check":
-                m_act = menuAct.AppendCheckItem(ID_ACT, action["label"], action["legend"])
-                frame.Bind(wx.EVT_MENU, self.OnMenuAction, m_act)
-                self.menu_map_act[ID_ACT] = action["key"]
-                if action["active"]:
-                    m_act.Check()
-            else:
-                m_act = menuAct.Append(ID_ACT, action["label"], action["legend"])
-                if action["active"]:
-                    if action["type"] == "mc":
-                        frame.Bind(wx.EVT_MENU, self.OnMenuMCAction, m_act)
-                    else:
-                        frame.Bind(wx.EVT_MENU, self.OnMenuAction, m_act)
-                    self.menu_map_act[ID_ACT] = action["key"]
-                else:
-                    menuAct.Enable(ID_ACT, False)
-        if menuAct.GetMenuItemCount() == 0:
-            self.parent.appendEmptyMenuEntry(menuAct, "No Actions", "There are no edit actions.")
-
-        return menuAct
+        if menuViz.GetMenuItemCount() == 0:
+            self.getParent().appendEmptyMenuEntry(menuViz, "No Views", "There are no other views.")
+        return menuViz       
+    def OnOtherV(self, event):
+        if self.hasParent():
+            self.getParentViewsm().viewOther(viewT=self.ids_viewT[event.GetId()], vkey=self.getId())
 
     def makeProcessMenu(self, frame, menuPro=None):
+        self.menu_map_pro = {}
         if menuPro is None:
             menuPro = wx.Menu()
 
-        for process, details in sorted(self.processes_map.items(), key=lambda x: (x[1]["order"], x[1]["label"])):
+        for process, details in self.getLayH().getProcesses():
             ID_PRO = wx.NewId()
             m_pro = menuPro.Append(ID_PRO, details["label"], details["legend"])
             if self.q_expand(details["more"]):
@@ -506,738 +244,34 @@ class BasisView(object):
             menuPro.InsertSeparator(ct)
         return menuPro
 
-    def do_toggle_info(self, event):
-        self.active_info = not self.active_info
-
-    def do_toggle_poly(self, event):
-        self.togglePoly()
-
-    def togglePoly(self):
-        if self.mc is not None:
-             if self.mc.isActive():
-                 self.mc.setButtons([])
-                 self.act_butt = [1]
-             else:
-                 self.mc.setButtons([1])
-                 self.act_butt = []
-             self.makeMenu()
-             self.MaptoolbarMap.mouse_move()
-        
-    def OnMenuAction(self, event):
-        if event.GetId() in self.menu_map_act:
-            self.doActionForKey(self.menu_map_act[event.GetId()])
-
-    def OnMenuMCAction(self, event):
-        if self.mc is not None and event.GetId() in self.menu_map_act:
-            self.mc.doActionForKey(self.menu_map_act[event.GetId()])
-
-    def OnOtherV(self, event):
-        if self.hasParent():
-            self.parent.viewsm.viewOther(viewT=self.ids_viewT[event.GetId()], vkey=self.getId())
-
-    def showSplitsBoxes(self, show=True):
-        self.boxL.Show(show)
-        self.boxT.Show(show)
-
-    def autoShowSplitsBoxes(self):
-        if self.getParentData() is not None and self.getParentData().hasLT():
-            self.showSplitsBoxes(True)
-        else:
-            self.showSplitsBoxes(False)
-        
-    def OnSplitsChange(self, event):
-        new_rsets = None
-        parts = [{"butt": self.boxL, "id": "learn",
-                  "act_icon": self.getIcon("learn_act"), "dis_icon": self.getIcon("learn_dis")},
-                 {"butt": self.boxT, "id": "test",
-                  "act_icon": self.getIcon("test_act"), "dis_icon": self.getIcon("test_dis")}]
-        if event.GetId() == parts[0]["butt"].GetId():
-            which = 0
-        else:
-            which = 1
-        if self.rwhich is None: ### None active
-            self.rwhich = which
-            new_rsets = {"rset_id": parts[which]["id"]}
-            parts[which]["butt"].SetBitmap(parts[which]["act_icon"])
-            
-        elif self.rwhich == which:  ### Current active
-            self.rwhich = None
-            new_rsets =None
-            parts[which]["butt"].SetBitmap(parts[which]["dis_icon"])
-            
-        else:  ### Other active
-            self.rwhich = which
-            new_rsets = {"rset_id": parts[which]["id"]}
-            parts[which]["butt"].SetBitmap(parts[which]["act_icon"])
-            parts[1-which]["butt"].SetBitmap(parts[1-which]["dis_icon"])
-
-        if self.rsets != new_rsets:
-            self.rsets = new_rsets
-            self.refresh()
-
-        
-    def additionalElements(self):
-        return []
-
-    def additionalBinds(self):
-        for button in self.buttons:
-            button["element"].Bind(wx.EVT_BUTTON, button["function"])
-
-    def bindsToFrame(self):
-        if not self.isIntab():
-            self.mapFrame.Bind(wx.EVT_CLOSE, self.OnQuit)
-            self.mapFrame.Bind(wx.EVT_SIZE, self._onSize)
-
-    def bindsOther(self):
-        self.savef.Bind(wx.EVT_LEFT_UP, self.OnSaveFig)
-        self.boxL.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
-        self.boxT.Bind(wx.EVT_LEFT_UP, self.OnSplitsChange)
-        self.boxPop.Bind(wx.EVT_LEFT_UP, self.OnPop)
-        # self.stamp.Bind(wx.EVT_LEFT_UP, self.OnStamp)
-        self.boxKil.Bind(wx.EVT_LEFT_UP, self.OnKil)
-
-        # self.boxL.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        # self.boxT.Bind(wx.EVT_TOGGLEBUTTON, self.OnSplitsChange)
-        # self.boxPop.Bind(wx.EVT_TOGGLEBUTTON, self.OnPop)
-        # self.boxKil.Bind(wx.EVT_TOGGLEBUTTON, self.OnKil)
-
-        # self.panel.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver)
-        # self.panel.Bind(wx.EVT_LEAVE_WINDOW, self.onMouseLeave)
-
-
-    def doBinds(self):
-        self.bindsToFrame()
-        self.bindsOther()
-
-        self.additionalBinds()
-        self.autoShowSplitsBoxes()
-
-
-    # def onMouseOver(self, event):
-    #     print "Entering", self.vid, self.panel.GetBackgroundColour()
-    #     for elem in [self.panel, self.MapcanvasMap, self.MaptoolbarMap]:
-    #         elem.SetBackgroundColour((230, 230, 230))
-    #         elem.Refresh()
-
-    # def onMouseLeave(self, event):
-    #     print "Exiting", self.vid, self.panel.GetBackgroundColour()
-    #     for elem in [self.panel, self.MapcanvasMap, self.MaptoolbarMap]:
-    #         elem.SetBackgroundColour((249, 249, 248))
-    #         elem.Refresh()
-
-    def getParentCoords(self):
-        if not self.hasParent():
-            return [[[0]],[[0]]]
-        return self.parent.dw.getCoords()
-    def getParentCoordsExtrema(self):
-        if not self.hasParent():
-            return (-1., 1., -1., 1.)
-        return self.parent.dw.getCoordsExtrema()
-    def getParentData(self):
-        if not self.hasParent():
-            return None
-        return self.parent.dw.getData()
-        
-    def getQueries(self):
-        ### the actual queries, not copies, to test, etc. not for modifications
-        return self.queries
-
-    def getCopyRed(self):
-        return Redescription.fromQueriesPair([self.queries[0].copy(), self.queries[1].copy()], self.getParentData())
-        
     def OnExpandAdv(self, event):
-        params = {"red": self.getCopyRed()}
-        if event.GetId() in self.menu_map_pro:
-            more = self.processes_map[self.menu_map_pro[event.GetId()]]["more"]
-            if more is not None:
-                params.update(more)
-            for k in self.processes_map[self.menu_map_pro[event.GetId()]]["more_dyn"]:
-                params = k(params)
-        self.parent.expandFV(params)
+        if self.getPltDtH().hasQueries():
+            params = {"red": self.getPltDtH().getCopyRed()}
+            if event.GetId() in self.menu_map_pro:
+                params = self.getLayH().getProcessesParams(self.menu_map_pro[event.GetId()], params)
+            self.getParent().expandFromView(params)
 
     def OnExpandSimp(self, event):
-        params = {"red": self.getCopyRed()}
-        self.parent.expandFV(params)
-
-    def initSizeRelative(self):
-        ds = wx.DisplaySize()
-        self.mapFrame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
-        # self.mapFrame.SetClientSizeWH(2*ds[0], 2*ds[1])
-        # print "Init size", (ds[0]/2.5, ds[1]/1.5)
-        # self._SetSize((ds[0]/2.5, ds[1]/1.5))
-
-    def _onSize(self, event=None):
-        self._SetSize()
-
-
-    def setSizeSpec(self, figsize):
-        pass
-
-    def _SetSize(self, initSize=None): 
-        if initSize is None:
-            pixels = tuple(self.mapFrame.GetClientSize() )
-        else:
-            pixels = initSize
-        ## print "Set Size", self.store_size, pixels
-        if self.store_size == pixels:
-            return
-        self.store_size = pixels
-        boxsize = self.innerBox1.GetMinSize()
-        ## min_size = (self.getFWidth(), self.getFHeight())
-        if self.isIntab():
-            # sz = (laybox.GetCols(), laybox.GetRows())
-            sz = self.parent.getVizm().getVizGridSize()
-            ## min_size = (self.getFWidth(), self.getFHeight())
-            ## max_size = ((pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1]),
-            ##             (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0]))
-            pixels = (max(self.getFWidth(), (pixels[0]-2*self.parent.getVizm().getVizBb())/float(sz[1])),
-                      max(self.getFHeight(), (pixels[1]-2*self.parent.getVizm().getVizBb())/float(sz[0])))
-            ## print "Redraw", pixels, tuple(self.mapFrame.GetClientSize())
-        else:
-            pixels = (max(self.getFWidth(), pixels[0]),
-                      max(self.getFHeight(), pixels[1]))  
-            ## max_size = (-1, -1)
-        self.panel.SetSize( pixels )
-        figsize = (pixels[0], max(pixels[1]-boxsize[1], 10))
-        # self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
-        #                                 float( figsize[1] )/(self.MapfigMap.get_dpi() ))
-        self.MapcanvasMap.SetMinSize(figsize)
-        # #self.fillBox.SetMinSize((figsize[0], figsize[1]))
-        self.innerBox1.SetMinSize((1*figsize[0], -1)) #boxsize[1]))
-        ## print "\tMapcanvasMap:", figsize, "\tinnerBox1:", (1*figsize[0], curr[1])
-        self.setSizeSpec(figsize)
-        self.mapFrame.GetSizer().Layout()
-        self.MapfigMap.set_size_inches( float( figsize[0] )/(self.MapfigMap.get_dpi()),
-                                        float( figsize[1] )/(self.MapfigMap.get_dpi() ))
-        ### The line below is primarily for Windows, works fine without in Linux...
-        self.panel.SetClientSizeWH(pixels[0], pixels[1])
-        # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
-        # self.MapfigMap.set_size_inches(1, 1)
-
-    def OnSaveFig(self, event=None):
-        self.MaptoolbarMap.save_figure(event)
-
-    def initExtFrame(self):
-        pref = "Standalone "
-        if self.hasParent():
-            pref = self.parent.titlePref
-        mapFrame = wx.Frame(None, -1, "%s%s" % (pref, self.getTitleDesc()))
-        mapFrame.SetMinSize((self.getFWidth(), self.getFHeight()))
-        mapFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
-        return mapFrame
-        
-    def OnPop(self, event=None):
-        pos = self.getGPos()
-        self.popSizer()
-        if self.isIntab():
-            self.intab = False
-            self.mapFrame = self.initExtFrame()
-
-            self.boxPop.SetBitmap(self.getIcon("outin"))
-            # self.boxPop.SetLabel(self.label_outin)
-            # self.boxPop.SetValue(False)
-            self.parent.getVizm().setVizcellFreeded(pos)
-            self.panel.Reparent(self.mapFrame)
-            self.mapFrame.GetSizer().Add(self.panel)
-
-        else:
-            self.intab = True
-            self.mapFrame.Destroy()
-            self.mapFrame = self.parent.tabs["viz"]["tab"]
+        if self.getPltDtH().hasQueries():
+            params = {"red": self.getPltDtH().getCopyRed()}
+            self.getParent().expandFromView(params)
+    def getWeightCover(self, params):
+        params["area"] = self.getDrawer().getHighlightedIds()
+        return params
+    def q_expand(self, more):
+        if not self.getPltDtH().hasQueries():
+            return False
+        if more is None:
+            return True
+        res = True
+        if "side" in more:
+            res &= len(self.getPltDtH().getQuery(1-more["side"])) > 0
+        if "in_weight" in more or "out_weight" in more:
+            res &= self.getDrawer().q_has_selected()
+        return res
             
-            self.boxPop.SetBitmap(self.getIcon("inout"))
-            # self.boxPop.SetLabel(self.label_inout)
-            # self.boxPop.SetValue(False)
-            self.panel.Reparent(self.mapFrame)
-            self.pos = self.parent.getVizm().getVizPlotPos(self.getId())
-            self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
-            
-        self.bindsToFrame()
-        self.makeMenu()
-        if not self.isIntab():
-            self.mapFrame.Show()
-        self.hideShowOpt()
-        self._SetSize()
-        
-    def OnStamp(self, event=None):
-        pass
-        
-    def OnKil(self, event=None):
-        self.OnQuit()
-
-    def OnQuit(self, event=None, upMenu=True, freeing=True):
-        if self.hasParent():
-            self.parent.viewsm.deleteView(self.getId(), freeing)
-            self.parent.viewsm.unregisterView(vkey=self.getId(), upMenu=upMenu)
-        else:
-            self.mapFrame.Destroy()
-            
-    def wasKilled(self):
-        return self.MapcanvasMap is None
-        
-    def refresh(self):
-        pass
-
-    def setCurrent(self, data):
-        pass
-    def isSingleVar(self):
-        return False
-    def clearPlot(self):
-        if not hasattr( self, 'MapfigMap' ): return
-        axxs = self.MapfigMap.get_axes()
-        for ax in axxs:
-            ax.cla()
-            if ax != self.axe:
-                self.MapfigMap.delaxes(ax)
-        self.clearHighlighted()
-
-    def savefig(self, fname, **kwargs):
-        self.MapfigMap.savefig(fname, **kwargs)
-
-        
-    def drawMap(self):
-        """ Draws the map
-        """
-
-        if not hasattr( self, 'axe' ):
-            self.axe = self.MapfigMap.add_subplot( 111 )
-
-        self.prepareInteractive()
-
-        ##self.plot_void()
-        self.MapcanvasMap.draw()
-
-    def prepareInteractive(self):
-        self.el = Ellipse((2, -1), 0.5, 0.5)
-            
-        for act, meth in self.getCanvasConnections():
-            if act == "MASK":
-                self.mc = MaskCreator(self.axe, None, buttons_t=[], callback_change=self.makeMenu)
-            else:
-                self.MapfigMap.canvas.mpl_connect(act, meth)
-
-        
-    ##### FILL and WAIT PLOTTING
-    def plot_void(self):
-        if self.wasKilled():
-            return
-        self.clearPlot()
-        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5 for r in [0,2,4]], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-
-    def init_wait(self):
-        self.call_wait = wx.CallLater(1, self.plot_wait)
-        self.cp = 0
-
-    def kill_wait(self):
-        self.call_wait.Stop()
-        if self.wasKilled():
-            return
-        self.clearPlot()
-        self.axe.plot([r/10.0+0.3 for r in [1,3]], [0.5, 0.5], 's', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.plot([r/10.0+0.3 for r in [0,2,4]], [0.5, 0.5, 0.5], 'ks', markersize=10)
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-
-    def plot_wait(self):
-        if self.wasKilled():
-            return
-        self.clearPlot()
-        self.axe.plot([r/10.0+0.3 for r in range(5)], [0.5 for r in range(5)], 'ks', markersize=10, mfc="#DDDDDD", mec="#DDDDDD")
-        self.axe.plot(((self.cp)%5)/10.0+0.3, 0.5, 'ks', markersize=10)
-        self.axe.axis([0,1,0,1])
-        self.MapcanvasMap.draw()
-        self.cp += 1
-        self.call_wait.Restart(self.wait_delay)
-
-    def plotSimple(self):
-        return True
-    def makeBackground(self):   
-        pass
-    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
-        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
-
-    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
-    def getCMap(self, ltid):
-        return plt.get_cmap(self.ltids_map.get(ltid, "jet"))
-
-    def getPlotColor(self, idp, prop):
-        return tuple(self.dots_draws[prop+"_dots"][idp])
-    def getPlotProp(self, idp, prop):
-        return self.dots_draws[prop+"_dots"][idp]
-    
-    def prepareEntitiesDots(self,  vec, vec_dets, draw_settings, delta_on=True):
-        u, indices = numpy.unique(vec, return_inverse=True)
-
-        styles = []
-        for i in u:
-            if draw_settings[i]["shape"] in [".",",","*","+","x"]:
-                #### point-wise shape -> same color face and edge
-                styles.append(draw_settings[i]["color_e"])
-            else:
-                #### otherwise -> possibly different colors face and edge
-                styles.append(draw_settings[i]["color_f"])
-        fc_clusts = numpy.array(styles)
-        # fc_clusts = numpy.array([draw_settings[i]["color_f"] for i in u])
-        fc_dots = fc_clusts[indices]
-        ec_clusts = numpy.array([draw_settings[i]["color_e"] for i in u])
-        ec_dots = ec_clusts[indices]
-        zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
-        zord_dots = zord_clusts[indices]
-            
-        delta_dots = vec==SSetts.E_oo
-        
-        sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
-        sz_dots[~ delta_dots] *= 0.5
-
-        if delta_on:
-            draw_dots = numpy.ones(vec.shape, dtype=bool)
-        else:
-            draw_dots = ~ delta_dots
-        return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
-
-    
-    def prepareSingleVarDots(self, vec, vec_dets, draw_settings, delta_on=True, min_max=None):
-        cmap, vmin, vmax = (self.getCMap(vec_dets["typeId"]), numpy.nanmin(vec), numpy.nanmax(vec))
-        if vec_dets.get("min_max") is not None:
-            vmin, vmax = vec_dets["min_max"]
-
-        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-        mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-
-        # if min_max is not None:
-        #     mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
-        #     ec_dots = numpy.array([mmp[v] for v in vec])
-        # elif vec_dets["typeId"] == 3 or (vmin !=0 and min_max is None):
-        if vec_dets["typeId"] == 3 or (vmin !=0 and vec_dets.get("min_max") is None):
-            ec_dots = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in vec])
-        else:
-            mmp = numpy.array([mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1]) for v in numpy.arange(vmin, vmax+1)]+[draw_settings["default"]["color_f"]])
-            ec_dots = mmp[vec]
-        
-        fc_dots = numpy.copy(ec_dots)
-        # fc_dots[:,-1] = dsetts["color_f"][-1]
-                                
-        dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
-                      "sz_dots": numpy.ones(vec.shape)*draw_settings["default"]["size"],
-                      "zord_dots": numpy.ones(vec.shape)*draw_settings["default"]["zord"],
-                      "draw_dots": numpy.ones(vec.shape, dtype=bool)}
-        mapper.set_array(vec)
-        return dots_draws, mapper
-
-    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
-        x0, x1, y0, y1, bx, by = corners
-        fracts = [.1, .03] ## ratio bars adjusted/fixed
-        nb = nb_bins
-        idsan = numpy.where(~numpy.isnan(vec))[0]
-        if vec_dets["binLbls"] is not None:
-            if vec_dets.get("binHist") is not None:
-                nb = vec_dets["binHist"]
-            else:
-                df = max(numpy.diff(vec_dets["binVals"]))
-                nb = [vec_dets["binVals"][0]]+[(vec_dets["binVals"][i]+vec_dets["binVals"][i+1])/2. for i in range(len(vec_dets["binVals"])-1)]+[vec_dets["binVals"][-1]]
-                nb[0] -= df/2.
-                nb[-1] += df/2.
-            
-        # else: vec_dets["typeId"] == 2: ### Categorical
-        #     nb = [b-0.5 for b in numpy.unique(vec[idsan])]
-        #     nb.append(nb[-1]+1)
-        #     bins_ticks = numpy.unique(vec[idsan])
-        #     bins_lbl = vec_dets["binLbls"]
-
-        n, bins, patches = plt.hist(vec[idsan], bins=nb)
-        
-        sum_h = numpy.max(n)
-        norm_h = [ni*fracts[0]*float(x1-x0)/sum_h+fracts[1]*float(x1-x0) for ni in n]
-        if vec_dets["binLbls"] is not None:            
-            bins_ticks = numpy.arange(len(vec_dets["binLbls"]))
-            tmpb = [b-0.5 for b in bins_ticks]
-            tmpb.append(tmpb[-1]+1)
-
-            norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
-            norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
-            
-            bins_lbl = vec_dets["binLbls"]
-            colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]
-        else:
-
-            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins]            
-            norm_bins_ticks = norm_bins
-            bins_lbl = bins
-            colors = [mapper.to_rgba(numpy.mean(bins[i:i+2])) for i in range(len(n))]
-        left = [norm_bins[i] for i in range(len(n))]
-        width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]
-        
-        
-        bckc = "white" 
-        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
-        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
-        axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
-        x1 += (fracts[0]+fracts[1])*(x1-x0)+2*bx
-        axe.set_yticks(norm_bins_ticks)
-        axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
-        # self.axe.yaxis.tick_right()
-        axe.tick_params(direction="inout", left="off", right="on",
-                            labelleft="off", labelright="on")
-        return (x0, x1, y0, y1, bx, by)
-        
-    def plotDotsSimple(self, axe, dots_draws, draw_indices, draw_settings):
-        ku, kindices = numpy.unique(dots_draws["zord_dots"][draw_indices], return_inverse=True)
-        ## pdb.set_trace()
-        for vi, vv in enumerate(ku):
-            if vv != -1: 
-                axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
-                            self.getCoords(1,draw_indices[kindices==vi]),
-                            c=dots_draws["fc_dots"][draw_indices[kindices==vi],:],
-                            edgecolors=dots_draws["ec_dots"][draw_indices[kindices==vi],:],
-                            s=5*dots_draws["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"], #### HERE
-                            zorder=vv)
-                
-    def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
-        for idp in draw_indices:
-            vv = self.getPlotProp(idp, "zord")
-            if vv != 1:
-                self.drawEntity(idp, self.getPlotColor(idp, "fc"), self.getPlotColor(idp, "ec"),
-                              self.getPlotProp(idp, "sz"), vv, draw_settings["default"])
-
-    def drawEntity(self, idp, fc, ec, sz, zo=4, dsetts={}):
-        return []
-    def getCoords(self, axi=None, ids=None):
-        return None
-        
-    def drawFrameSpecific(self):
-        pass
-
-    def addFrameSpecific(self):
-        pass
-
-    def drawFrame(self):
-        # initialize matplotlib stuff
-        self.opt_hide = []
-        self.MapfigMap = Figure(None) #, facecolor='white')
-        self.MapcanvasMap = FigCanvas(self.panel, -1, self.MapfigMap)
-        self.MaptoolbarMap = CustToolbar(self.MapcanvasMap, self)
-
-        # styL = wx.ALIGN_RIGHT | wx.EXPAND
-        # styV = wx.ALIGN_LEFT | wx.EXPAND
-        # sizz = (70,-1)
-
-        self.info_title = wx.StaticText(self.panel, label="? ?")
-        self.drawFrameSpecific()
-
-        adds = self.additionalElements()
-
-        ### UTILITIES BUTTONS
-        self.savef = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("save"))
-        self.boxL = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("learn_dis"))
-        self.boxT = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("test_dis"))
-        # self.boxL = wx.ToggleButton(self.panel, wx.NewId(), self.label_learn, style=wx.ALIGN_CENTER, size=self.butt_shape)
-        # self.boxT = wx.ToggleButton(self.panel, wx.NewId(), self.label_test, style=wx.ALIGN_CENTER, size=self.butt_shape)
-
-        if self.isIntab():
-            # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_inout, style=wx.ALIGN_CENTER, size=self.butt_shape)
-            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("inout"))
-        else:
-            # self.boxPop = wx.ToggleButton(self.panel, wx.NewId(), self.label_outin, style=wx.ALIGN_CENTER, size=self.butt_shape)
-            self.boxPop = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("outin"))
-        # self.boxKil = wx.ToggleButton(self.panel, wx.NewId(), self.label_cross, style=wx.ALIGN_CENTER, size=self.butt_shape)
-        self.boxKil = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("kil"))
-        # self.stamp = wx.StaticBitmap(self.panel, wx.NewId(), self.getIcon("stamp"))
-        if not self.hasParent() or not self.parent.getVizm().hasVizIntab():
-            self.boxPop.Hide()
-            self.boxKil.Hide()
-
-        self.drawMap()
-
-        ### PUTTING EVERYTHING IN SIZERS
-        flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
-        add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
-        
-        add_boxB.Add(self.info_title, 0, border=1, flag=flags, userData={"where": "ts"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
-
-        add_boxB.Add(self.MaptoolbarMap, 0, border=0, userData={"where": "*"})
-        add_boxB.Add(self.boxL, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(self.boxT, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
-
-        add_boxB.Add(self.boxPop, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.Add(self.boxKil, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
-
-        add_boxB.Add(self.savef, 0, border=0, flag=flags, userData={"where": "*"})
-        ## add_boxB.Add(self.stamp, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
-
-        self.masterBox =  wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
-        #self.masterBox = wx.BoxSizer(wx.VERTICAL)
-
-        #self.fillBox = wx.BoxSizer(wx.HORIZONTAL)
-        self.innerBox = wx.BoxSizer(wx.HORIZONTAL)
-        self.innerBox1 = wx.BoxSizer(wx.VERTICAL)
-        self.masterBox.Add(self.MapcanvasMap, 0, border=1,  flag= wx.EXPAND)
-        #self.masterBox.Add(self.fillBox, 0, border=1,  flag= wx.EXPAND)
-
-        self.addFrameSpecific()
-        
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
-        for add in adds:
-            self.innerBox1.Add(add, 0, border=1,  flag= wx.ALIGN_CENTER)
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "it"})
-        self.innerBox1.Add(add_boxB, 0, border=1,  flag= wx.ALIGN_CENTER)
-        self.innerBox1.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "*"})
-            
-        self.innerBox.Add(self.innerBox1, 0, border=1,  flag= wx.ALIGN_CENTER)
-        self.masterBox.Add(self.innerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
-        self.panel.SetSizer(self.masterBox)
-        if self.isIntab():
-            self.pos = self.parent.getVizm().getVizPlotPos(self.getId())
-            self.mapFrame.GetSizer().Add(self.panel, pos=self.pos, flag=wx.ALL, border=0)
-        else:
-            self.mapFrame.GetSizer().Add(self.panel)
-            # self.panel.GetSizer().Fit(self.panel)
-            # self.mapFrame.GetSizer().Add(self.masterBox, pos=pos, flag=wx.ALL, border=2)
-
-        self.hideShowOpt()
-        self._SetSize()
-
-
-    def popSizer(self):
-        if self.isIntab():
-            self.pos = None
-            self.mapFrame.GetSizer().Detach(self.panel)
-            self.mapFrame.GetSizer().Layout()
-        return self.panel
-
-            
-    def updateMap(self):
-        """ Redraws the map
-        """
-        pass
-
-    def sendEditBack(self, red = None):
-        if red is not None:
-            self.parent.viewsm.dispatchEdit(red, vkey=self.getId())
-
-    def updateText(self, red = None):
-        pass
-
-    ################ HANDLING ACTIONS
-    def doActionForKey(self, key):
-        if self.keys_map.get(key, None in self.actions_map):
-            act = self.actions_map[self.keys_map[key]]
-            if act["type"] == "check" or act["active_q"]():
-                self.actions_map[self.keys_map[key]]["method"](self.actions_map[self.keys_map[key]]["more"])
-                return True
-        return False
-
-    def key_press_callback(self, event):
-        self.doActionForKey(event.key)
-
-    def mkey_press_callback(self, event):
-        self.doActionForKey(chr(event.GetKeyCode()).lower())
-
-    ################ HANDLING HIGHLIGHTS
-    def updateEmphasize(self, review=True):
-        if self.hasParent():
-            lids = self.parent.viewsm.getEmphasizedR(vkey=self.getId())
-            self.emphasizeOnOff(turn_on=lids, turn_off=None, review=review)
-
-    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
-        self.emphasizeOff(turn_off, hover)
-        self.emphasizeOn(turn_on, hover)
-        # if hover:
-        self.MapcanvasMap.draw()
-        if not hover:
-            self.makeMenu()
-         
-    def emphasizeOn(self, lids, hover=False):
-        pass
-    
-    def emphasizeOff(self, lids=None, hover=False):
-        self.removeHighlighted(lids, hover)
-        
-    def sendEmphasize(self, lids):
-        return self.parent.viewsm.setEmphasizedR(vkey=self.getId(), lids=lids, show_info=self.q_active_info())
-
-    def sendFlipEmphasizedR(self):
-        return self.parent.viewsm.doFlipEmphasizedR(vkey=self.getId())
-        
-    ################ HANDLING HIGHLIGHTS
-    def initHighlighted(self):
-        self.highl = {}
-        self.high_lbl = set()
-        self.current_hover = {}
-    def clearHighlighted(self):
-        self.initHighlighted()
-    def isHovered(self, iid):
-        return iid in self.current_hover
-    def isHighlighted(self, iid):
-        return iid in self.highl
-    def isHighLbl(self, iid):
-        return iid in self.high_lbl
-    def needingHighLbl(self, iids):
-        if len(iids) <= self.max_emphlbl:
-            return [iid for iid in iids if not self.isHighLbl(iid)]
-        return []
-    def needingHighlight(self, iids):
-        return [iid for iid in iids if not self.isHighlighted(iid)]
-    def getHighlightedIds(self):
-        return self.highl.keys()
-    def addHighlighted(self, hgs, hover=False):
-        where = self.highl
-        if hover:
-            where = self.current_hover
-
-        for iid, high in hgs.items():
-            if iid not in where:
-                where[iid] = []
-            if type(high) is list:
-                has_lbl = any([isinstance(t, Text) for t in high])
-                where[iid].extend(high)
-            else:
-                has_lbl = isinstance(high, Text)
-                where[iid].append(high)
-            if has_lbl and not hover:
-                self.high_lbl.add(iid)
-                
-    def removeHighlighted1(self, iid):
-        if iid in self.highl:
-            while len(self.highl[iid]) > 0:
-                t = self.highl[iid].pop()
-                t.remove()
-            del self.highl[iid]
-            self.high_lbl.discard(iid)
-    def removeHover1(self, iid):
-        if iid in self.current_hover:
-            while len(self.current_hover[iid]) > 0:
-                t = self.current_hover[iid].pop()
-                t.remove()
-            del self.current_hover[iid]
-    def removeHighlighted(self, iid=None, hover=False):
-        if iid is None:
-            if hover:
-                iids = self.current_hover.keys()
-            else:
-                iids = self.highl.keys()
-        elif type(iid) is list or type(iid) is set:
-            iids = iid
-        else:
-            iids = [iid]
-        for iid in iids:
-            if hover:
-                self.removeHover1(iid)
-            else:
-                self.removeHighlighted1(iid)
-                
-    ################ HANDLING SETTINGS
-    def getParentPreferences(self):
-        if not self.hasParent():
-            return {}
-        return self.parent.dw.getPreferences()
-
+    #### SEC: HANDLING SETTINGS
+    ###########################################
     def getSettBoolV(self, key, default=False):
         t = self.getParentPreferences()
         try:
@@ -1245,24 +279,15 @@ class BasisView(object):
         except:            
             v = default
         return v
-    
-    def hoverActive(self):
-        return self.getSettBoolV('hover_entities') and not self.MaptoolbarMap.has_active_button()
-    def clickActive(self):
-        return self.getSettBoolV('click_entities') and not self.MaptoolbarMap.has_active_button()
-    def inCapture(self, event):
-        return False
-    
-    def getMissDetails(self):
-        return self.getSettBoolV('miss_details')
+    def getSettV(self, key, default=False):
+        t = self.getParentPreferences()
+        try:
+            v = t[key]["data"]
+        except:            
+            v = default
+        return v
 
-    def getLitContribOn(self):
-        return self.getSettBoolV('literals_contrib')
-    
-    def getDeltaOn(self):
-        return self.getSettBoolV('draw_delta', self.DELTA_ON)
-
-    
+        
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
             dsetts = self.getParentPreferences()
@@ -1334,10 +359,10 @@ class BasisView(object):
         colors = self.getColors1()
         colhigh = self.getColorHigh()
         defaults = self.getDrawSettDef()
-        if self.getMissDetails():
+        if self.getSettBoolV('miss_details'):
             zord_miss = self.DEF_ZORD
         else:
-            zord_miss = -1
+            zord_miss = -1       
         draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.E_mm, SSetts.E_xm, SSetts.E_mx,
                                                         SSetts.E_om, SSetts.E_mo,
                                                         SSetts.E_oo, SSetts.E_ox,
@@ -1347,7 +372,8 @@ class BasisView(object):
         for (p,v) in enumerate([SSetts.E_oo, SSetts.E_ox, SSetts.E_xo, SSetts.E_xx]):
             dd[v] = p
 
-        css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh}
+        css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
+               "delta_on": self.getSettBoolV('draw_delta', self.DELTA_ON)}
         for (p, iid) in enumerate([SSetts.E_xo, SSetts.E_ox, SSetts.E_xx, SSetts.E_oo]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
@@ -1389,3 +415,271 @@ class BasisView(object):
         #         for kk,vv in v.items():
         #             print "\t%s\t%s" % (kk,vv)
         return css
+
+    #### SEC: DATA HANDLING
+    ###########################################   
+    def setCurrent(self, qr=None):
+        return self.getPltDtH().setCurrent(qr)
+
+    def isSingleVar(self):
+        return False
+        
+    def refresh(self):
+        self.getLayH().autoShowSplitsBoxes()
+        if self.isIntab():
+            self.getLayH()._SetSize()
+
+
+class RedView(BasisView):
+
+    TID = None
+    SDESC = "-"
+    title_str = "2D"
+    ordN = 1
+    geo = True
+    typesI = "vr"
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesTD
+    subcl_pltdt = RedPltDtHandler
+    
+    def updateQuery(self, sd=None, query=None):
+        return self.getPltDtH().updateQuery(sd, query)
+            
+    def isSingleVar(self):
+        return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
+          (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
+    
+
+class RedMapView(RedView):
+
+    TID = "MAP"
+    SDESC = "Map"
+    title_str = "Map"
+    ordN = 1
+    geo = True
+    typesI = "vr"
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesMap
+    subcl_pltdt = RedPltDtHandlerWithCoords
+ 
+class RedParaView(RedView):
+    
+    TID = "PC"
+    SDESC = "Pa.Co."
+    ordN = 2
+    title_str = "Parallel Coordinates"
+    typesI = "vr"
+    geo = False
+
+    subcl_drawer = DrawerEntitiesPara
+
+class TreeView(RedView):
+
+    TID = "TR"
+    SDESC = "Tree"
+    ordN = 5
+    title_str = "Decision Tree"
+    typesI = "vr"
+    geo = False
+    
+    subcl_drawer = DrawerEntitiesTree
+    subcl_pltdt = RedPltDtHandler
+    
+    @classmethod
+    def suitableView(tcl, geo=False, what=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
+               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
+
+class EProjView(RedView):
+    
+    TID = "EPJ"
+    SDESC = "E.Proj."
+    ordN = 10
+    what = "entities"
+    title_str = "Entities Projection"
+    typesI = "evr"
+    defaultViewT = ProjFactory.defaultView.PID + "_" + what
+
+    subcl_drawer = DrawerEProj
+    
+    @classmethod
+    def getViewsDetails(tcl):
+        return ProjFactory.getViewsDetails(tcl, what=tcl.what)
+    
+    def __init__(self, parent, vid, more=None):
+        self.parent = parent
+        self.vid = vid
+        self.data = {}
+        self.initProject(more)
+        self.layH = self.subcl_layh(self)
+        self.pltdtH = self.subcl_pltdt(self)
+        self.drawer = self.subcl_drawer(self)
+        self.layH.setToolbarDrawer(self.drawer)
+        boxes = self.additionalElements()
+        boxes.extend(self.drawer.prepareInteractive(self.layH.getPanel()))
+        self.layH.finalize_init(boxes)
+
+    def getShortDesc(self):
+        return "%s %s" % (self.getItemId(), self.getProj().SDESC)
+
+    def getTitleDesc(self):
+        return "%s %s" % (self.getItemId(), self.getProj().getTitle())
+
+    def getId(self):
+        return (self.getProj().PID, self.vid)
+            
+    def lastStepInit(self, blocking=False):
+        if not self.wasKilled():
+            if self.getProj().getCoords() is None:
+                self.runProject(blocking)
+            else:
+                self.readyProj(self.proj)
+
+    def getProj(self):
+        return self.proj
+            
+    def OnReproject(self, rid=None, blocking=False):
+        self.getProj().initParameters(self.boxes)
+        # self.getProj().addParamsRandrep()
+        # tmpp_id = self.projkeyf.GetValue().strip(":, ")
+        # if (self.proj is None and len(tmpp_id) > 0) or tmpp_id != self.proj.getCode():
+        #     self.initProject(tmpp_id)
+        # else:
+        #     self.initProject()
+        self.runProject(blocking)
+
+    def initProject(self, rid=None):
+        ### print ProjFactory.dispProjsInfo()
+        self.proj = ProjFactory.getProj(self.getParentData(), rid)
+        
+    def runProject(self, blocking=False):
+        self.drawer.init_wait()
+        if self.drawer.hasElement("rep_butt"):
+            self.drawer.getElement("rep_butt").Disable()
+            self.drawer.getElement("rep_butt").SetLabel("Wait...")
+        self.getProj().addParamsRandrep({"vids": self.getPltDtH().getQCols()})
+        if blocking:
+            try:
+                self.proj.do()
+            except ValueError as e: #Exception as e:
+                self.proj.clearCoords()
+            self.readyProj(self.proj)
+        else:
+            self.parent.project(self.getProj(), self.getId())
+        
+    def readyProj(self, proj):
+        if proj is not None:
+            self.proj = proj
+        elif self.proj is not None:
+            self.proj.clearCoords()
+        self.drawer.kill_wait()
+        self.drawer.update()
+        if self.drawer.hasElement("rep_butt"):
+            self.drawer.getElement("rep_butt").Enable()
+            self.drawer.getElement("rep_butt").SetLabel("Reproject")
+            
+    def makeBoxes(self, frame, proj):
+        boxes = []
+        for kp in proj.getTunableParamsK():
+            label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
+            ctrls = []
+            value = proj.getParameter(kp)
+            if type(value) in [int, float, str]:
+                type_ctrl = "text"
+                ctrls.append(wx.TextCtrl(frame, wx.NewId(), str(value)))
+            elif type(value) is bool:
+                type_ctrl = "checkbox" 
+                ctrls.append(wx.CheckBox(frame, wx.NewId(), "", style=wx.ALIGN_RIGHT))
+                ctrls[-1].SetValue(value)
+            elif type(value) is list and kp in proj.options_parameters:
+                type_ctrl = "checkbox"
+                for k,v in proj.options_parameters[kp]:
+                    ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
+                    ctrls[-1].SetValue(v in value)
+            elif kp in proj.options_parameters:
+                type_ctrl = "choice" 
+                ctrls.append(wx.Choice(frame, wx.NewId()))
+                strs = [k for k,v in proj.options_parameters[kp]]
+                ctrls[-1].AppendItems(strings=strs)
+                try:
+                    ind = strs.index(value)
+                    ctrls[-1].SetSelection(ind)
+                except ValueError:
+                    pass
+            boxes.append({"key": kp, "label": label, "type_ctrl": type_ctrl, "ctrls":ctrls, "value":value})
+        return boxes
+    
+    def additionalElements(self):
+        setts_boxes = []
+        max_w = self.getLayH().getFWidth()-50
+        current_w = 1000
+        flags = wx.ALIGN_CENTER | wx.ALL
+
+        self.boxes = self.makeBoxes(self.getLayH().getPanel(), self.getProj())
+        # self.boxes = self.getProj().makeBoxes(self.panel)
+        self.boxes.sort(key=lambda x : x["type_ctrl"])
+        for box in self.boxes:
+            block_w = box["label"].GetBestSize()[0] + sum([c.GetBestSize()[0] for c in box["ctrls"]])
+            if current_w + block_w + 10 > max_w:
+                setts_boxes.append(wx.BoxSizer(wx.HORIZONTAL))
+                setts_boxes[-1].AddSpacer((10,-1))
+                current_w = 10
+            current_w += block_w + 10
+            box["label"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            setts_boxes[-1].Add(box["label"], 0, border=0, flag=flags | wx.ALIGN_RIGHT)
+            for c in box["ctrls"]:
+                c.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+                setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
+            setts_boxes[-1].AddSpacer((10,-1))
+
+        self.nbadd_boxes = len(setts_boxes) 
+        return setts_boxes
+
+class LView(BasisView):
+    
+    TID = "L"
+    SDESC = "LViz"
+    ordN = 0
+    title_str = "List View"
+    geo = False
+    typesI = "r"
+
+    
+    @classmethod
+    def suitableView(tcl, geo=False, what=None, tabT=None):
+        return tabT is None or tabT in tcl.typesI
+
+    
+class ClustTDView(LView):
+    
+    TID = "CLU"
+    SDESC = "CluLViz"
+    ordN = 0
+    title_str = "Cluster View"
+    typesI = "r"
+    geo = True
+    
+    subcl_drawer = DrawerLClustTD
+    subcl_pltdt = ListClustPltDtHandler
+    subcl_layh = LayoutHandlerBasis
+
+class ClustMapView(LView):
+    
+    TID = "CLM"
+    SDESC = "CluMapLViz"
+    ordN = 0
+    title_str = "CluMap View"
+    typesI = "r"
+    geo = True
+    
+    subcl_drawer = DrawerLClustMap
+    subcl_pltdt = ListClustPltDtHandler
+    subcl_layh = LayoutHandlerBasis
+
+    
+    # def __init__(self, parent, vid, more=None):
+    #     LView.__init__(self, parent, vid, more)
+    # def setCurrent(self, qr=None):
+    #     return self.getPltDtH().setCurrent(qr)

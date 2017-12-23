@@ -1645,7 +1645,9 @@ class Query(object):
     def toTree(self, fill=False):
         broken = False
         branches = []
-        if self.max_depth() == 2 and self.op.isOr():
+        if len(self) == 0:
+            pass
+        elif self.max_depth() == 2 and self.op.isOr():
             for buk in self.buk:
                 if type(buk) is list:
                     branches.append(list(buk))

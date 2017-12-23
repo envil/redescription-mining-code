@@ -1018,7 +1018,7 @@ class SParts(object):
             self.sParts[self.ssetts.E_oo] = union - self.sParts[self.ssetts.E_xx] - self.sParts[self.ssetts.E_ox] - self.sParts[self.ssetts.E_xo]
         
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
-    def makeVectorABCD(self, force_list=False):
+    def makeVectorABCD(self, force_list=False, rest_ids=None):
         if self.vect is None or (force_list and type(self.vect) is not list):
             if len(self.sParts) == 4 and not force_list:
                 # svect = {}
@@ -1028,13 +1028,16 @@ class SParts(object):
                         self.vect[i] = partId
             else:
                 self.vect = [self.ssetts.E_oo for i in range(self.N)]
+                map_rest = {}
+                if rest_ids is not None:
+                    map_rest = dict([(vvv, vvi) for (vvi,vvv) in enumerate(sorted(rest_ids))])
                 for partId in range(len(self.sParts)):
                     for i in self.sParts[partId]:
-                        self.vect[i] = partId
+                        self.vect[map_rest.get(i, i)] = partId
                         
                         
-    def getVectorABCD(self, force_list=False):
-        self.makeVectorABCD(force_list)
+    def getVectorABCD(self, force_list=False, rest_ids=None):
+        self.makeVectorABCD(force_list, rest_ids)
         if type(self.vect) is dict:
             return None
         return list(self.vect)

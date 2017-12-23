@@ -329,7 +329,7 @@ class Redescription(object):
     def setRestrictedSupp(self, data):
         ### USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
         self.setRestrictedSuppSets(data, supp_sets=None)
-
+        
     def resetRestrictedSuppSets(self):
         self.restricted_sets = {}
 
@@ -483,6 +483,16 @@ class Redescription(object):
             return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
         else:
             return self.sParts
+
+    def getRSetABCD(self, details=None):
+        if details is not None and details.get("rset_id") in self.restricted_sets:
+            rest_ids = self.restricted_sets[details.get("rset_id")]["rids"]
+            return self.restricted_sets[details.get("rset_id")]["sParts"].getVectorABCD(force_list=True, rest_ids=rest_ids)
+        elif ACTIVE_RSET_ID in self.restricted_sets:
+            rest_ids = self.restricted_sets[ACTIVE_RSET_ID]["rids"]
+            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"].getVectorABCD(force_list=True, rest_ids=rest_ids)
+        else:
+            return self.sParts.getVectorABCD(force_list=True)
 
 
     def getAccRatio(self, details=None):
