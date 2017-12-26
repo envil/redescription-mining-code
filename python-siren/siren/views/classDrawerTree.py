@@ -18,7 +18,7 @@ from classDrawerBasis import DrawerEntitiesTD
 
 import pdb
 
-class DrawerEntitiesTree(DrawerEntitiesTD):
+class DrawerRedTree(DrawerEntitiesTD):
     
     all_width = 1.
     height_inter = [2., 3.] ### starting at zero creates troubles with supp drawing, since it's masking non zero values..

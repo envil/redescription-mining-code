@@ -93,7 +93,7 @@ def getSamplingOrd(scaled_m, pos_axis, nb_clusters, max_group):
     sampling_ord = numpy.argsort(sorting_samples)
     return sampling_ord
 
-class DrawerEntitiesPara(DrawerEntitiesTD):
+class DrawerRedPara(DrawerEntitiesTD):
 
     rect_halfwidth = 0.05
     rect_alpha = 0.7

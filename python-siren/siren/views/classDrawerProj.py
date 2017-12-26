@@ -8,13 +8,12 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
-from classDrawerLClust import DrawerLClustTD
+from classDrawerClust import DrawerClustTD
 
 import pdb
 
 class DrawerProj(DrawerBasis):
 
-    wait_delay = 300
     #info_band_height = 240
     margin_hov = 0.01
 
@@ -89,9 +88,9 @@ class DrawerProj(DrawerBasis):
     def getCoordsXYA(self, idp):
         return self.getCoordsXY(idp)
 
-class DrawerEProj(DrawerProj, DrawerEntitiesTD): pass
+class DrawerEntitiesProj(DrawerProj, DrawerEntitiesTD): pass
 
-class DrawerLClustProj(DrawerProj, DrawerLClustTD):
+class DrawerClustProj(DrawerProj, DrawerClustTD):
     
     def makeAdditionalElements(self, panel=None):
         if panel is None:

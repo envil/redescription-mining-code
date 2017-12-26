@@ -2,7 +2,7 @@ import wx, numpy
  
 from ..reremi.classSParts import SSetts
 
-from classPltDtHandler import BasisPltDtHandler, PltDtHandlerWithCoords
+from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords
 
 import pdb
 
@@ -43,7 +43,7 @@ def get_cover_far(dists, nb):
     o[nodesc[nodesc>0][numpy.argsort(order[nodesc>0])]-1] = numpy.arange(numpy.sum(nodesc>0))
     return nodesc, o, dds, uniq_dds
 
-class ListPltDtHandler(BasisPltDtHandler):
+class PltDtHandlerList(PltDtHandlerBasis):
     
     def hasQueries(self):
         return False
@@ -70,7 +70,7 @@ class ListPltDtHandler(BasisPltDtHandler):
 
         
 
-class ListClustPltDtHandler(PltDtHandlerWithCoords, ListPltDtHandler):
+class PltDtHandlerListClust(PltDtHandlerWithCoords, PltDtHandlerList):
 
     NBC_DEF = 2
     MAXC_DEF = 12
@@ -177,7 +177,7 @@ class ListClustPltDtHandler(PltDtHandlerWithCoords, ListPltDtHandler):
             ielems["choice_nbc"].SetSelection(sel)
         
     def setCurrent(self, reds_map):
-        ListPltDtHandler.setCurrent(self, reds_map)
+        PltDtHandlerList.setCurrent(self, reds_map)
         self.reds = dict(reds_map)
         self.srids = [rid for (rid, red) in reds_map]
         self.getEtoR()

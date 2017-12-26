@@ -1,14 +1,14 @@
-import classBasisView
-# import classBasisView
+import classViewBasis
+# import classViewBasis
 # import classGView
 # import classTDView
 # import classMapView
 # import classParaView
-# import classEProjView
-# import classTreeView
+# import classViewEntitiesProj
+# import classViewRedTree
 #from classVProjView import VProjView
 
-# import classLView
+# import classViewList
 # import classOverView
 # import classInterView
 # import classSimView
@@ -22,9 +22,9 @@ def all_subclasses(cls):
 class ViewFactory(object):
 
     # typ_views = {"R": classGView.GView,
-    #              "L": classLView.LView}
-    typ_views = {"R": classBasisView.RedView,
-                 "L": classBasisView.LView}
+    #              "L": classViewList.ViewList}
+    typ_views = {"R": classViewBasis.ViewRed,
+                 "L": classViewBasis.ViewList}
 
         
     details_views_typs = {}
@@ -71,11 +71,11 @@ class ViewFactory(object):
     @classmethod
     def getDefaultViewT(tcl, typv="R", geo=False, type_tab="r"):
         if typv == "L":
-            return classBasisView.ClustMapView.TID
+            return classViewBasis.ViewClustMap.TID
         elif typv == "R":
             if type_tab == "e":
-                return classBasisView.EProjView.defaultViewT
+                return classViewBasis.ViewEntitiesProj.defaultViewT
             elif geo:
-                return classBasisView.RedMapView.TID
+                return classViewBasis.ViewRedMap.TID
             else:
-                return classBasisView.RedParaView.TID
+                return classViewBasis.ViewRedPara.TID

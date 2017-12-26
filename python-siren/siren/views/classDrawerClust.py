@@ -10,7 +10,7 @@ from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 import pdb
 
     
-class DrawerLClustTD(DrawerEntitiesTD):
+class DrawerClustTD(DrawerEntitiesTD):
         
     @classmethod
     def getCMap(tcl, ltid):

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.basemap
 
 from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
-from classDrawerLClust import DrawerLClustTD
+from classDrawerClust import DrawerClustTD
 
 import pdb
 
@@ -398,4 +398,4 @@ class DrawerMap(DrawerBasis):
         
 class DrawerEntitiesMap(DrawerMap, DrawerEntitiesTD): pass
     
-class DrawerLClustMap(DrawerMap, DrawerLClustTD): pass
+class DrawerClustMap(DrawerMap, DrawerClustTD): pass

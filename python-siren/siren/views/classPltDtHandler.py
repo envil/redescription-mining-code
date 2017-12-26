@@ -7,7 +7,7 @@ from ..reremi.classQuery import Query
 
 import pdb
 
-class BasisPltDtHandler(object):
+class PltDtHandlerBasis(object):
 
     def __init__(self, view):
         self.view = view
@@ -101,10 +101,10 @@ class BasisPltDtHandler(object):
     def setCurrent(self, data):
         pass
 
-class PltDtHandlerWithCoords(BasisPltDtHandler):
+class PltDtHandlerWithCoords(PltDtHandlerBasis):
 
     def __init__(self, view):
-        BasisPltDtHandler.__init__(self, view)
+        PltDtHandlerBasis.__init__(self, view)
         self.pltdt["coords_org"] = self.getParentCoords()
         self.pltdt["coords"] = self.mapCoords(self.getParentCoords())
     
@@ -166,7 +166,7 @@ class PltDtHandlerWithCoords(BasisPltDtHandler):
         return proj_coords
     
 
-class RedPltDtHandler(BasisPltDtHandler):
+class PltDtHandlerRed(PltDtHandlerBasis):
      
     def hasQueries(self):
         return True
@@ -290,77 +290,8 @@ class RedPltDtHandler(BasisPltDtHandler):
         # return red
         return None
 
-class RedPltDtHandlerWithCoords(PltDtHandlerWithCoords, RedPltDtHandler):
+class PltDtHandlerRedWithCoords(PltDtHandlerWithCoords, PltDtHandlerRed):
 
     def __init__(self, view):
         PltDtHandlerWithCoords.__init__(self, view)
-
     
-# class TreePltDtHandler(RedPltDtHandler):
-
-#     def setCurrent(self, qr=None):
-#         if qr is not None:
-#             if type(qr) in [list, tuple]:
-#                 queries = qr
-#                 red = Redescription.fromQueriesPair(qr, self.getParentData())
-#             else:
-#                 red = qr
-#                 queries = [red.query(0), red.query(1)]
-#             red.setRestrictedSupp(self.getParentData())
-#             self.pltdt["queries"] = queries
-#             
-#             # self.pltdt["suppABCD"] = red.supports().getVectorABCD()
-#             self.pltdt["red"] = red
-#             self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()
-#             self.pltdt["coords"] = self.getParentCoords()
-#             self.pltdt["coords_proj"] = self.mapCoords(self.pltdt["coords"], self.getBM())
-#             self.getLayH().updateText(red)
-#             self.getDrawer().update()
-#             self.view.makeMenu()
-#             return red
-
-    
-#     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
-#         if sd is None:
-#             queries = [self.parseQuery(0),self.parseQuery(1)]
-#         else:
-#             queries = [None, None]
-#             if query is None:
-#                 queries[sd] = self.parseQuery(sd)
-#             else:
-#                 queries[sd] = query
-
-#         changed = False
-#         old = [None, None]
-#         for side in [0,1]:
-#             old[side] = self.pltdt["queries"][side]
-#             if queries[side] != None and queries[side] != self.pltdt["queries"][side]:
-#                 self.pltdt["queries"][side] = queries[side]
-#                 changed = True
-
-#         red = None
-#         if changed or force:
-#             try:
-#                 red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
-#             except Exception:
-#                 ### Query could be parse but not recomputed
-#                 red = None
-#                 self.pltdt["queries"] = old
-#         if red is not None:
-#             red.setRestrictedSupp(self.getParentData())
-#             self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
-#             #self.pltdt["suppABCD"] = red.supports().getVectorABCD()
-#             self.pltdt["red"] = red
-#             self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()
-#             self.getDrawer().update(update_trees)
-#             if upAll:
-#                 self.getLayH().updateText(red)
-#                 self.view.makeMenu()
-#                 self.sendEditBack(red)
-#             return red
-#         else: ### wrongly formatted query or not edits, revert
-#             for side in [0,1]:
-#                 self.getLayH().updateQueryText(self.pltdt["queries"][side], side)
-#         #     red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
-#         # return red
-#         return None
