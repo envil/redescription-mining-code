@@ -90,6 +90,8 @@ class BasisPltDtHandler(object):
         pass
     def getVec(self, more=None):
         pass
+    def getVecDets(self):
+        pass
     def getRed(self):
         pass
 

@@ -11,9 +11,7 @@ import pdb
 
     
 class DrawerLClustTD(DrawerEntitiesTD):
-    
-    max_emphlbl = 1
-    
+        
     @classmethod
     def getCMap(tcl, ltid):
         return plt.get_cmap("rainbow")

@@ -8,11 +8,10 @@ from ..reremi.classQuery import Query
 from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
 
 from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
-from classDrawerMap import DrawerEntitiesMap, DrawerLClustMap
 from classDrawerPara import DrawerEntitiesPara
 from classDrawerTree import DrawerEntitiesTree
-from classDrawerEProj import DrawerEProj
-from classDrawerLClust import DrawerLClustTD
+from classDrawerMap import DrawerEntitiesMap, DrawerLClustMap
+from classDrawerEProj import DrawerEProj, DrawerLClustProj
 
 from classPltDtHandler import BasisPltDtHandler, RedPltDtHandler, RedPltDtHandlerWithCoords #, TreePltDtHandler
 from classPltDtHList import ListClustPltDtHandler
@@ -429,74 +428,11 @@ class BasisView(object):
         if self.isIntab():
             self.getLayH()._SetSize()
 
-
-class RedView(BasisView):
-
-    TID = None
+class EProjView(BasisView):
+    
+    TID = "-"
     SDESC = "-"
-    title_str = "2D"
-    ordN = 1
-    geo = True
-    typesI = "vr"
-
-    subcl_layh = LayoutHandlerQueries
-    subcl_drawer = DrawerEntitiesTD
-    subcl_pltdt = RedPltDtHandler
-    
-    def updateQuery(self, sd=None, query=None):
-        return self.getPltDtH().updateQuery(sd, query)
-            
-    def isSingleVar(self):
-        return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
-          (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
-    
-
-class RedMapView(RedView):
-
-    TID = "MAP"
-    SDESC = "Map"
-    title_str = "Map"
-    ordN = 1
-    geo = True
-    typesI = "vr"
-
-    subcl_layh = LayoutHandlerQueries
-    subcl_drawer = DrawerEntitiesMap
-    subcl_pltdt = RedPltDtHandlerWithCoords
- 
-class RedParaView(RedView):
-    
-    TID = "PC"
-    SDESC = "Pa.Co."
-    ordN = 2
-    title_str = "Parallel Coordinates"
-    typesI = "vr"
-    geo = False
-
-    subcl_drawer = DrawerEntitiesPara
-
-class TreeView(RedView):
-
-    TID = "TR"
-    SDESC = "Tree"
-    ordN = 5
-    title_str = "Decision Tree"
-    typesI = "vr"
-    geo = False
-    
-    subcl_drawer = DrawerEntitiesTree
-    subcl_pltdt = RedPltDtHandler
-    
-    @classmethod
-    def suitableView(tcl, geo=False, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
-               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
-
-class EProjView(RedView):
-    
-    TID = "EPJ"
-    SDESC = "E.Proj."
-    ordN = 10
+    ordN = 0
     what = "entities"
     title_str = "Entities Projection"
     typesI = "evr"
@@ -559,7 +495,8 @@ class EProjView(RedView):
         if self.drawer.hasElement("rep_butt"):
             self.drawer.getElement("rep_butt").Disable()
             self.drawer.getElement("rep_butt").SetLabel("Wait...")
-        self.getProj().addParamsRandrep({"vids": self.getPltDtH().getQCols()})
+        if self.getPltDtH().hasQueries():
+            self.getProj().addParamsRandrep({"vids": self.getPltDtH().getQCols()})
         if blocking:
             try:
                 self.proj.do()
@@ -636,7 +573,83 @@ class EProjView(RedView):
 
         self.nbadd_boxes = len(setts_boxes) 
         return setts_boxes
+            
+class RedView(BasisView):
 
+    TID = None
+    SDESC = "-"
+    title_str = "2D"
+    ordN = 1
+    geo = True
+    typesI = "vr"
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesTD
+    subcl_pltdt = RedPltDtHandler
+    
+    def updateQuery(self, sd=None, query=None):
+        return self.getPltDtH().updateQuery(sd, query)
+            
+    def isSingleVar(self):
+        return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
+          (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
+    
+
+class RedMapView(RedView):
+
+    TID = "MAP"
+    SDESC = "Map"
+    title_str = "Map"
+    ordN = 1
+    geo = True
+    typesI = "vr"
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesMap
+    subcl_pltdt = RedPltDtHandlerWithCoords
+ 
+class RedParaView(RedView):
+    
+    TID = "PC"
+    SDESC = "Pa.Co."
+    ordN = 2
+    title_str = "Parallel Coordinates"
+    typesI = "vr"
+    geo = False
+
+    subcl_drawer = DrawerEntitiesPara
+
+class TreeView(RedView):
+
+    TID = "TR"
+    SDESC = "Tree"
+    ordN = 5
+    title_str = "Decision Tree"
+    typesI = "vr"
+    geo = False
+    
+    subcl_drawer = DrawerEntitiesTree
+    subcl_pltdt = RedPltDtHandler
+    
+    @classmethod
+    def suitableView(tcl, geo=False, what=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
+               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
+
+
+class RedProjView(EProjView, RedView):
+
+    TID = "EPJ"
+    SDESC = "E.Proj."
+    what = "entities"
+    title_str = "Entities Projection"
+    ordN = 10
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_pltdt = RedPltDtHandlerWithCoords
+    subcl_drawer = DrawerEProj
+    
+               
 class LView(BasisView):
     
     TID = "L"
@@ -652,18 +665,17 @@ class LView(BasisView):
         return tabT is None or tabT in tcl.typesI
 
     
-class ClustTDView(LView):
+# class ClustTDView(LView):
     
-    TID = "CLU"
-    SDESC = "CluLViz"
-    ordN = 0
-    title_str = "Cluster View"
-    typesI = "r"
-    geo = True
+#     TID = "CLU"
+#     SDESC = "CluLViz"
+#     ordN = 0
+#     title_str = "Cluster View"
+#     geo = True
     
-    subcl_drawer = DrawerLClustTD
-    subcl_pltdt = ListClustPltDtHandler
-    subcl_layh = LayoutHandlerBasis
+#     subcl_drawer = DrawerLClustTD
+#     subcl_pltdt = ListClustPltDtHandler
+#     subcl_layh = LayoutHandlerBasis
 
 class ClustMapView(LView):
     
@@ -683,3 +695,19 @@ class ClustMapView(LView):
     #     LView.__init__(self, parent, vid, more)
     # def setCurrent(self, qr=None):
     #     return self.getPltDtH().setCurrent(qr)
+
+class CLProjView(EProjView, LView):
+
+
+    TID = "CLP"
+    SDESC = "CluProjLViz"
+    ordN = 10
+    what = "cluster"
+    title_str = "CluProj View"
+    typesI = "r"
+    geo = False
+
+    subcl_drawer = DrawerLClustProj
+    subcl_pltdt = ListClustPltDtHandler
+    subcl_layh = LayoutHandlerBasis
+

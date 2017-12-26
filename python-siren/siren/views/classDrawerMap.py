@@ -6,7 +6,7 @@ matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import mpl_toolkits.basemap
 
-from classDrawerBasis import DrawerEntitiesTD
+from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
 from classDrawerLClust import DrawerLClustTD
 
 import pdb
@@ -367,33 +367,7 @@ class MapBase:
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
             # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
 
-class DrawerEntitiesMap(DrawerEntitiesTD):
-    
-    MAP_POLY = True
-    def initPlot(self):
-        self.bm, self.bm_args = MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
-        
-        if self.bm is not None:
-            self.getPltDtH().setBM(self.bm)
-            self.setAxe(self.getFigure().add_axes([0, 0, 1, 1]))
-            self.bm.ax = self.getAxe()
-        else:
-            llon, ulon, llat, ulat = self.getPltDtH().getParentCoordsExtrema()
-            midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
-            mside = max(abs(llon-midlon), abs(llat-midlat))
-            self.setAxe(self.getFigure().add_subplot(111,
-              xlim=[midlon-1.05*mside, midlon+1.05*mside],
-              ylim=[midlat-1.05*mside, midlat+1.05*mside]))
-
-    def getAxisLims(self):
-        xx = self.axe.get_xlim()
-        yy = self.axe.get_ylim()
-        return (xx[0], xx[1], yy[0], yy[1])
-
-    def makeBackground(self):
-        MapBase.makeBasemapBack(self.view.getParentPreferences(), self.bm_args, self.bm)
-
-class DrawerLClustMap(DrawerLClustTD):
+class DrawerMap(DrawerBasis):
     
     MAP_POLY = True
     def initPlot(self):
@@ -421,3 +395,7 @@ class DrawerLClustMap(DrawerLClustTD):
 
     def drawPoly(self):
         return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)
+        
+class DrawerEntitiesMap(DrawerMap, DrawerEntitiesTD): pass
+    
+class DrawerLClustMap(DrawerMap, DrawerLClustTD): pass

@@ -19,6 +19,7 @@ import pdb
 
 class DrawerBasis(object):
 
+    wait_delay = 300
     max_emphlbl = 5
     ann_xy = (-10, 15)
 
@@ -57,7 +58,6 @@ class DrawerBasis(object):
 
             self.clearPlot()
             self.makeBackground()
-
             inter_params = self.getParamsInter()
             vec, vec_dets = self.getVecAndDets(inter_params)
             draw_settings = self.getDrawSettings()

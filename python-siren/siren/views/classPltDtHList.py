@@ -97,8 +97,17 @@ class ListClustPltDtHandler(PltDtHandlerWithCoords, ListPltDtHandler):
         return {"nodesc": nodesc, "order": order, "dds": dds, "uniq_dds": uniq_dds, "nbc_max": numpy.sum(nodesc>0)}    
 
     def getVec(self, nbc=None):
-        vec, dets = self.getVecAndDets(nbc)
-        return vec
+        if "vec" not in self.pltdt:
+            vec, dets = self.getVecAndDets(nbc)        
+            return vec
+        return self.pltdt["vec"]
+
+    def getVecDets(self, nbc=None):
+        if "vec_dets" not in self.pltdt:
+            vec, dets = self.getVecAndDets(nbc)        
+            return dets
+        return self.pltdt["vec_dets"]
+
     
     def getVecAndDets(self, nbc=None):
         if nbc is None:
@@ -151,7 +160,9 @@ class ListClustPltDtHandler(PltDtHandlerWithCoords, ListPltDtHandler):
         vec_dets["binHist"] = nb        
         vec_dets["more"] = details
         vec_dets["min_max"] = (0, numpy.max(clusters["order"])) 
-        
+
+        self.pltdt["vec"] = vec
+        self.pltdt["vec_dets"] = vec_dets        
         return vec, vec_dets
 
     def isSingleVar(self):

@@ -76,7 +76,7 @@ class Proj(object):
     rint_max = 10000
     PID = "---"
     SDESC = "---"
-    whats = ["variables", "entities"]
+    whats = ["variables", "entities", "cluster"]
     title_str = "Projection"
     gen_parameters = {"types":[NumColM.type_id], "only_able":True}
     fix_parameters = {}
@@ -262,7 +262,7 @@ class AxesProj(Proj):
 
     PID = "AXE"
     SDESC = "Scatter"
-    whats = ["entities"]
+    whats = ["entities", "cluster"]
     title_str = "Scatter Plot"
     gen_parameters = {Proj.xaxis_lbl: "-1.0", Proj.yaxis_lbl: "-1.0"}
     fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
