@@ -309,6 +309,12 @@ class Redescription(object):
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
         r.status = self.status
         r.track = list(self.track)
+        r.restricted_sets = {}
+        for sid, rst in self.restricted_sets.items():
+            r.restricted_sets[sid] = {"sParts": rst["sParts"],
+                                         "prs": [rst["prs"][0], rst["prs"][1]],
+                                         "rids": set(rst["rids"])}
+
         return r
 
     def recomputeQuery(self, side, data= None, restrict=None):
@@ -483,7 +489,15 @@ class Redescription(object):
             return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
         else:
             return self.sParts
+    def getRSetIds(self, details=None):
+        if details is not None and details.get("rset_id") in self.restricted_sets:
+            return sorted(self.restricted_sets[details.get("rset_id")]["rids"])
+        elif ACTIVE_RSET_ID in self.restricted_sets:
+            return sorted(self.restricted_sets[ACTIVE_RSET_ID]["rids"])
+        else:
+            return None
 
+        
     def getRSetABCD(self, details=None):
         if details is not None and details.get("rset_id") in self.restricted_sets:
             rest_ids = self.restricted_sets[details.get("rset_id")]["rids"]

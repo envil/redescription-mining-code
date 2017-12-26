@@ -48,9 +48,10 @@ class DrawerRedTree(DrawerEntitiesTD):
                 ('motion_notify_event', self.on_motion)]
 
         
-    def plotTrees(self, trees):
+    def plotTrees(self, trees, rids=None):        
         draw_settings = self.getDrawSettings()
-        self.plotTreesT(trees, draw_settings)
+        
+        self.plotTreesT(trees, draw_settings, rids)
         # self.plotTreesBasic(trees, draw_settings)
         for side in [0,1]:
             self.plotTree(side, trees[side], None, draw_settings)
@@ -81,9 +82,14 @@ class DrawerRedTree(DrawerEntitiesTD):
             self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
             ## self.axe.plot((b, 0), (y, mat[li,-1]), color=draw_settings[parts[li]]["color_e"])
             
-    def plotTreesT(self, trees, draw_settings):
+    def plotTreesT(self, trees, draw_settings, rids=None):
         ##### DRAW polygons
-        nbrows = self.view.getParentData().nbRows()
+        map_ids = None
+        if rids is None:
+            nbrows = self.view.getParentData().nbRows()
+        else:
+            nbrows = len(rids)
+            map_ids = dict([(v,k) for (k,v) in enumerate(rids)])
         mat = numpy.zeros(nbrows, dtype=int)
         tdata = []
         for side in [0,1]:
@@ -92,8 +98,12 @@ class DrawerRedTree(DrawerEntitiesTD):
                     if len(supp_part) > 0:
                         tdata.append((side, leaf, pid))
                         #### ASSIGN ROWS TO LEAVES GROUPS
-                        mat[list(supp_part)] += 2**(len(tdata))        
-
+                        if map_ids is None: 
+                            mat[list(supp_part)] += 2**(len(tdata))        
+                        else:
+                            mat[[map_ids[ii] for ii in supp_part]] += 2**(len(tdata))
+                       
+                            
         ### gather data for the blocks
         blocks = {}
         map_v_to_bid = {}
@@ -162,7 +172,7 @@ class DrawerRedTree(DrawerEntitiesTD):
                 # if None in block["pstatus"]: ### if group involves missing values 
                 #     self.axe.fill(coords_poly[0], coords_poly[1],
                 #                color=draw_settings[block["part"]]["color_e"], linewidth=0, alpha=.5) #, linewidth=nb/nbtot)
-        self.store_supp = {"has_miss_points": has_miss_points, "blocks": blocks, "mat": mat,  "map_v_to_bid": map_v_to_bid}
+        self.store_supp = {"has_miss_points": has_miss_points, "blocks": blocks, "mat": mat,  "map_v_to_bid": map_v_to_bid, "map_ids": map_ids, "rids": rids}
         
     def plotTree(self, side, tree, node, ds=None):
         
@@ -225,8 +235,7 @@ class DrawerRedTree(DrawerEntitiesTD):
             return
 
         if self.isReadyPlot():
-            #### WARNING: COPY DROP RESTRICTED SUPPORT SETS
-            red = self.getPltDtH().getRed().copy()
+            red = self.getPltDtH().getRed()
 
             if update_trees:
                 red.queries[0].side = 0
@@ -242,6 +251,8 @@ class DrawerRedTree(DrawerEntitiesTD):
             if self.okTrees():
                 #### WARNING: CONFUSION RESTRICTED SUPPORT <> MISSING VALUES
                 ## rsupp = red.supports().parts4M()
+                rids = red.getRSetIds(self.getPltDtH().getDetailsSplit())                
+
                 rsupp = red.getRSetParts(self.getPltDtH().getDetailsSplit()).parts4M()
                 for side in [0,1]:
                     self.trees[side].computeSupps(side, self.getParentData(), rsupp)
@@ -257,8 +268,7 @@ class DrawerRedTree(DrawerEntitiesTD):
                 self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
                 # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
                 # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
-
-                self.plotTrees(self.trees)
+                self.plotTrees(self.trees, rids)
 
                 self.axe.set_xlim([-self.all_width-self.margins_sides, self.all_width+self.margins_sides])
                 if self.hasMissingPoints():
@@ -397,7 +407,10 @@ class DrawerRedTree(DrawerEntitiesTD):
     def getLidAt(self, x, y):
         bid, rp = self.getRPPoint(y)
         if bid is not None:
-            return self.store_supp["blocks"][bid]["eids"][rp]
+            if self.store_supp.get("rids") is None:
+                return self.store_supp["blocks"][bid]["eids"][rp]
+            else:
+                return self.store_supp["rids"][self.store_supp["blocks"][bid]["eids"][rp]]
 
 
     def getRPPoint(self, y):
@@ -421,10 +434,14 @@ class DrawerRedTree(DrawerEntitiesTD):
         return None, 0
 
     def getCenterForId(self, idp):
-        v = self.store_supp["mat"][idp]
+        ## pdb.set_trace()
+        idpm = idp
+        if self.store_supp.get("map_ids") is not None:
+            idpm =  self.store_supp["map_ids"][idp]
+        v = self.store_supp["mat"][idpm]
         bid = self.store_supp["map_v_to_bid"][v]
         block = self.store_supp["blocks"][bid]
-        pls = numpy.where(block["eids"] == idp)[0]
+        pls = numpy.where(block["eids"] == idpm)[0]
         if len(pls) == 1:
             pl = pls[0]
             center = block["y_bot"] + (block["y_top"]-block["y_bot"])*(pl+.5)/(len(block["eids"])+1.)
