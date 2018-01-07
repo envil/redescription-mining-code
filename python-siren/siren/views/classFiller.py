@@ -71,6 +71,10 @@ class Filler(object):
         self.mapFrame.GetSizer().Remove(self.panel)
         self.mapFrame.GetSizer().Layout()
         return self.panel
+    def destroy(self):
+        self.popSizer()
+        self.panel.Destroy()
+        self.panel = None
 
     def setActive(self):
         self.boxSel.SetValue(True)

@@ -138,8 +138,8 @@ class ViewBasis(object):
         return self.getLayH().getGPos()
     def popSizer(self):
         return self.getLayH().popSizer()
-    def Destroy(self):
-        self.getLayH().Destroy()
+    def destroy(self):
+        self.getLayH().destroy()
     def wasKilled(self):
         return self.getLayH().wasKilled()
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):

@@ -121,7 +121,6 @@ class DrawerRedPara(DrawerEntitiesTD):
         self.elements = {"active_info": False, "act_butt": [1],
                          "reps": set(), "ticks_ann": []}
         self.initPlot()
-        self.prepareInteractive()
         self.plot_void()
         ## self.draw()
 

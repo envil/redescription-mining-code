@@ -1,5 +1,12 @@
 CHANGELOG for Siren
 ===================
+v4.3.0
+------
+* Adding view for list of redescriptions (with clustering by support differences)
+* Handling several redescriptions lists to a package
+* Some bugs fixes, especially support subsets in tree diagrams, and bug on closing intab fig (Mac)
+* Not yet fixed documentation, which is getting very outdated
+
 v4.2.0
 ------
 * Adding reconnection capability to work server

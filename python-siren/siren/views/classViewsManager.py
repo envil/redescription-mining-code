@@ -66,14 +66,12 @@ class ViewsManager:
     def deleteView(self, vkey, freeing=True):
         if vkey in self.view_map:
             self.parent.plant.getWP().layOff(self.parent.plant.getWP().findWid([("wtyp", "project"), ("vid", vkey)]))
-            if not self.view_map[vkey].isIntab():
-                self.view_map[vkey].Destroy()
-            else:
-                pos = self.view_map[vkey].getGPos()
-                panel = self.view_map[vkey].popSizer()
-                panel.Destroy()
-                if freeing:
-                    self.parent.vizm.setVizcellFreeded(pos)
+            pos = self.view_map[vkey].getGPos()
+            intab = self.view_map[vkey].isIntab()
+            self.view_map[vkey].destroy()
+
+            if intab and freeing:
+                self.parent.vizm.setVizcellFreeded(pos)
             del self.view_map[vkey]
 
     def deleteAllViews(self):

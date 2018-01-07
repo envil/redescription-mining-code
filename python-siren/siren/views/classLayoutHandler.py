@@ -74,7 +74,7 @@ class LayoutHandlerBasis(object):
             self.setFrame(self.getParentTab("viz"))
         else:
             self.setFrame(self.initExtFrame())
-        self.panel = wx.Panel(self.frame, -1, style=wx.RAISED_BORDER)
+        self.panel = wx.Panel(self.getFrame(), -1, style=wx.RAISED_BORDER)
 
         self.figure = Figure(None) #, facecolor='white')
         self._canvas = FigCanvas(self.panel, -1, self.figure)
@@ -86,6 +86,10 @@ class LayoutHandlerBasis(object):
         self.makeFrameSpecific(innerBox)
         self.arrangeAll(innerBox, utilityBox, addBoxes)
         self.layout_elements["innerBox"] = innerBox
+	self.getFrame().Layout()
+	self.initSizeRelative()
+	if not self.isInTab:
+	    self.getFrame().Show()
         self.prepareProcesses()
         self.hideShowOpt()
         self._SetSize()
@@ -357,9 +361,10 @@ class LayoutHandlerBasis(object):
             self.pos = self.getParentVizm().getVizPlotPos(self.getId())
             self.frame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
             
-        self.view.refreshBindsAndMenu()
         if not self.isInTab:
-            self.frame.Show()
+	    self.getFrame().Layout()
+	    self.initSizeRelative()
+            self.getFrame().Show()
         self.hideShowOpt()
         self._SetSize()
 
@@ -408,9 +413,18 @@ class LayoutHandlerBasis(object):
     def OnQuit(self, event=None, upMenu=True, freeing=True):
         self.view.OnQuit(event, upMenu, freeing)
 
-    def Destroy(self):
-        self.frame.Destroy()        
-
+    def destroyFrame(self):
+        self.frame.Destroy()
+        
+    def destroy(self):
+        if self.isInTab:
+            self.popSizer()
+            self.isInTab = False
+            frame = wx.Frame(None, -1, "X")            
+            self.setFrame(frame)
+            self.panel.Reparent(self.frame)
+        self.frame.Destroy()
+        
     def popSizer(self):
         if self.isInTab:
             self.pos = None

@@ -38,7 +38,6 @@ class DrawerRedTree(DrawerEntitiesTD):
         self.store_supp = None
         self.elements = {"active_info": False, "act_butt": [1]}
         self.initPlot()
-        self.prepareInteractive()
         self.plot_void()
         ## self.draw()
         

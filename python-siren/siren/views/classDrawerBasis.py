@@ -33,9 +33,7 @@ class DrawerBasis(object):
         self.call_wait = None
         self.elements = {"active_info": False, "act_butt": [1]}
         self.initPlot()
-        self.prepareInteractive()
         self.plot_void()
-        ## self.draw()
         
     def initPlot(self):
         self.setAxe(self.getFigure().add_subplot( 111 ))

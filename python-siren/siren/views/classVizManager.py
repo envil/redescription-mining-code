@@ -97,8 +97,7 @@ class VizManager:
 
     def clearVizTab(self):
         for sel in self.vfiller_ids:
-            panel = self.vfiller_ids[sel].popSizer()
-            panel.Destroy()
+            self.vfiller_ids[sel].destroy()
         for sel in self.vused_ids:
             ### Free another view            
             self.parent.viewsm.accessViewX(self.vused_ids[sel][0]).OnQuit(upMenu=False, freeing=False)
@@ -135,8 +134,7 @@ class VizManager:
         sel = self.getVizcellSelected()
         if sel in self.vfiller_ids:
             pv = self.vfiller_ids.pop(sel)
-            panel = pv.popSizer()
-            panel.Destroy()
+            pv.destroy()
         else:
             ### Free another view            
             self.parent.viewsm.accessViewX(self.vused_ids[sel][0]).OnQuit(upMenu=False, freeing=False)
@@ -207,8 +205,7 @@ class VizManager:
             sel = tuple(ssel)
             if sel in self.vfiller_ids:
                 pv = self.vfiller_ids.pop(sel)
-                panel = pv.popSizer()
-                panel.Destroy()
+                pv.destroy()
             else:
                 # ## Free another view
                 self.parent.viewsm.accessViewX(self.vused_ids[sel][0]).OnQuit(upMenu=False, freeing=False)
