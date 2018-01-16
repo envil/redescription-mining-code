@@ -71,7 +71,6 @@ class ExpMiner(object):
     def expandRedescriptionsTree(self, nextge, partial, final=None):
         new_red, new_rid = (None, None)
         for redi, red in enumerate(nextge):
-            print redi, red
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             new_red = self.charbon.getTreeCandidates(-1, self.data, red.copy())
             if new_red is not None:

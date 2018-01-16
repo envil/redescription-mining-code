@@ -143,13 +143,15 @@ def init_tree(data, side, vid=None, more={}, cols_info=None):
     #### TEST INIT
     parent_tree = {"id": None,
                    "branch": None,
-                   "candidates": range(data[side].shape[1])}
+                   "candidates": range(data[side].shape[1]),
+                   "involv": []}
     if vid is not None:
         invol = more.get("involved", [vid])
         if cols_info is not None:
             ttm = [cols_info[side][c][1] for c in invol]
             invol = [kk for (kk,vv) in cols_info[side].items() if vv[1] in ttm]
 
+        parent_tree["involv"] = invol
         for vv in invol:
             parent_tree["candidates"].remove(vv)
         if "supp" in more:
@@ -229,8 +231,6 @@ def piece_together(trees_store, trees_pile_side):
     return out
 
 def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucket, split_criterion="gini", PID=0, singleD=False, cols_info=None):
-    if singleD:
-        candidates = list(trees_store[1]["candidates"])
 
     current_side = side_ini
     #### account for dummy tree on other side when counting levels
@@ -240,12 +240,15 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
         # print "TARGET", current_side, sum(target)
         current_side = 1-current_side
         trees_pile[current_side].append([])
-        
+
         for gpid in trees_pile[current_side][-2]:
             gp_tree = trees_store[gpid]
-            if not singleD:
-                candidates = gp_tree["candidates"]
-            
+            candidates = gp_tree["candidates"]
+            if singleD:
+                for ggid in trees_pile[1-current_side][-1]:
+                    for vv in trees_store[ggid]["involv"]:
+                        candidates.remove(vv)
+
             dt = data[current_side][:, candidates]
             for leaf in gp_tree["leaves"]:            
                 mask = gp_tree["nodes"][leaf]["support"]
@@ -261,14 +264,18 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     
                     split_tree["branch"] = (gp_tree["id"], leaf)
                     vrs = get_variables(split_tree["nodes"], split_tree["root"])
-                    
+
                     if cols_info is None:
                         ncandidates = [vvi for vvi in candidates if vvi not in vrs]
+                        ninvolved = list(vrs)
                     else:
                         ttm = [cols_info[current_side][c][1] for c in vrs]
                         ncandidates = [vvi for vvi in candidates if cols_info[current_side][vvi][1] not in ttm]
+                        ninvolved = [vvi for (vvi, vv) in cols_info[current_side].items() if vv[1] in ttm]
 
+                    # print "involved", ninvolved, "ncands", ncandidates
                     split_tree["candidates"] = list(ncandidates)
+                    split_tree["involv"] = list(ninvolved)
                     # print "CANDIDATES", current_side, vrs
                     split_tree["id"] = PID
                     trees_pile[current_side][-1].append(PID)
