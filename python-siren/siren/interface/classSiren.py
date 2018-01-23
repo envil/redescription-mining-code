@@ -62,6 +62,14 @@ class ERCache():
     def gatherReds(self):
         reds_map = self.parent.getRTab().getAllReds()
         self.setReds(reds_map)
+
+    def needsRecompute(self):
+        if self.etor is None:
+            return True
+        reds_map = self.parent.getRTab().getAllReds()
+        rids = [rid for (rid, red) in reds_map]
+        return rids != self.getRids()
+        
         
     def setReds(self, reds_map):
         self.etor = None
@@ -81,7 +89,7 @@ class ERCache():
         return [r_to_p[rid] for rid in rids if rid in r_to_p]
             
     def getEtoR(self, rids=None, eids=None):
-        if self.etor is None:
+        if self.needsRecompute():
             self.gatherReds()
             
         sub_etor = self.etor
@@ -130,60 +138,85 @@ class ERCache():
                     "has_dup_r": len(rb) > 0, "has_dup_e": len(eb) > 0}
 
     def getDeduplicateER(self, rids=None, eids=None):
-        if self.ddER is None:
-            if self.etor is None:
-                self.gatherReds()
-            if eids is None or len(eids) > .5*self.etor.shape[0] or \
-                rids is None or len(rids) > .5*self.etor.shape[1]:
-                self.ddER = self.computeDeduplicateER()
-            else:
-                if eids is None:
-                    eids = numpy.arange(self.etor.shape[0])
+        if self.etor is None:
+            self.gatherReds()
 
-                ps = self.getRPos(rids)
-                return self.computeDeduplicateER(self.etor[eids,:][:,ps])
-
-        # print "Get subset"            
         if eids is None:
-            e_to_rep = self.ddER["e_to_rep"].copy()
-            e_new_keep = self.ddER["e_rprt"].copy()
-            e_old_keep = self.ddER["e_rprt"]
-        else:
-            e_old_keep = self.ddER["e_to_rep"][eids]
-            e_to_rep = -(self.ddER["e_to_rep"][eids]+2)
-            e_new_keep = []
-            for i in numpy.unique(e_old_keep):
-                if i >= 0:
-                    kp = numpy.where(e_old_keep==i)[0][0]
-                    e_to_rep[e_to_rep==-(i+2)] = len(e_new_keep)
-                    e_new_keep.append(kp)
-            e_new_keep = numpy.array(e_new_keep)
-            
-        if (rids is None or rids == self.rids):
-            r_to_rep = self.ddER["r_to_rep"].copy()
-            r_new_keep = self.ddER["r_rprt"].copy()
-            r_old_keep = self.ddER["r_rprt"]
-        else:
-            rps = self.getRPos(rids)        
-            r_old_keep = self.ddER["r_to_rep"][rps]
-            r_to_rep = -(self.ddER["r_to_rep"][rps]+2)
-            r_new_keep = []
-            for i in numpy.unique(r_old_keep):
-                kp = numpy.where(r_old_keep==i)[0][0]
-                r_to_rep[r_to_rep==-(i+2)] = len(r_new_keep)
-                r_new_keep.append(kp)
-            r_new_keep = numpy.array(r_new_keep)
-            
-        cc = self.computeDeduplicateER(self.etor[e_old_keep,:][:,r_old_keep])
-        if cc["has_dup_r"]:
-            r_new_keep = r_new_keep[cc["r_rprt"]]
-            r_to_rep = numpy.concatenate([cc["r_to_rep"],[-1]])[r_to_rep]
+            eids = numpy.arange(self.etor.shape[0])
+        if rids is None:
+            rids = numpy.arange(self.etor.shape[1])
+        ps = self.getRPos(rids)
+        return self.computeDeduplicateER(self.etor[eids,:][:,ps])
 
-        if cc["has_dup_e"]:
-            e_new_keep = e_new_keep[cc["e_rprt"]]
-            e_to_rep = numpy.concatenate([cc["e_to_rep"],[-1]])[e_to_rep]
+        ### # BELOW BUGGY CODE INTENDED TO SAVE ON DEDUPLICATION COMPUTATION
+        # if self.ddER is None or self.needsRecompute():
+        #     print "Need recompute dder"
+        #     if self.etor is None:
+        #         self.gatherReds()
+        #     if eids is None or len(eids) > .5*self.etor.shape[0] or \
+        #         rids is None or len(rids) > .5*self.etor.shape[1]:
+        #         self.ddER = self.computeDeduplicateER()
+        #     else:
+        #         if eids is None:
+        #             eids = numpy.arange(self.etor.shape[0])
 
-        return {"e_rprt": e_new_keep, "r_rprt": r_new_keep, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": cc["dists"]}
+        #         ps = self.getRPos(rids)
+        #         return self.computeDeduplicateER(self.etor[eids,:][:,ps])
+        # else:
+        #     print "No need recompute dder"
+        # # print "Get subset"            
+        # if eids is None:
+        #     e_to_rep = self.ddER["e_to_rep"].copy()
+        #     e_new_keep = self.ddER["e_rprt"].copy()
+        #     e_old_keep = self.ddER["e_rprt"]
+        # else:
+        #     e_old_keep = self.ddER["e_to_rep"][eids]
+        #     e_to_rep = -(self.ddER["e_to_rep"][eids]+2)
+        #     e_new_keep = []
+        #     for i in numpy.unique(e_old_keep):
+        #         if i >= 0:
+        #             kp = numpy.where(e_old_keep==i)[0][0]
+        #             e_to_rep[e_to_rep==-(i+2)] = len(e_new_keep)
+        #             e_new_keep.append(kp)
+        #     e_new_keep = numpy.array(e_new_keep)
+            
+        # if (rids is None or rids == self.rids):
+        #     r_to_rep = self.ddER["r_to_rep"].copy()
+        #     r_new_keep = self.ddER["r_rprt"].copy()
+        #     r_old_keep = self.ddER["r_rprt"]
+        # else:
+        #     rps = self.getRPos(rids)        
+        #     r_old_keep = self.ddER["r_to_rep"][rps]
+        #     r_to_rep = -(self.ddER["r_to_rep"][rps]+2)
+        #     r_new_keep = []
+        #     if len(numpy.unique(r_old_keep)) < len(r_old_keep):
+        #         pdb.set_trace()
+        #     for i in numpy.unique(r_old_keep):
+        #         kp = numpy.where(r_old_keep==i)[0][0]
+        #         r_to_rep[r_to_rep==-(i+2)] = len(r_new_keep)
+        #         r_new_keep.append(kp)
+        #     r_new_keep = numpy.array(r_new_keep)
+            
+        # cc = self.computeDeduplicateER(self.etor[e_old_keep,:][:,r_old_keep])
+        # if cc["has_dup_r"]:
+        #     try:
+        #         r_new_keep = r_new_keep[cc["r_rprt"]]
+        #     except IndexError:
+        #         print "IndexError r dup"
+        #         pdb.set_trace()
+                
+        #     r_to_rep = numpy.concatenate([cc["r_to_rep"],[-1]])[r_to_rep]
+
+        # if cc["has_dup_e"]:
+        #     try:
+        #         e_new_keep = e_new_keep[cc["e_rprt"]]
+        #     except IndexError:
+        #         print "IndexError e dup"
+        #         pdb.set_trace()
+            
+        #     e_to_rep = numpy.concatenate([cc["e_to_rep"],[-1]])[e_to_rep]
+
+        # return {"e_rprt": e_new_keep, "r_rprt": r_new_keep, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": cc["dists"]}
 
 
 class ProjCache():
