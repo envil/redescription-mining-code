@@ -29,42 +29,169 @@ def var_ltx_cmd(sid, vid, padsv=None, padss=None):
     vchar = digit_to_char(vid, padsv)
     return "\\v%sHS%s" % (schar.upper(), vchar.lower())
 
+def cust_eval(exp, loc):
+    try:
+        return eval(exp, {}, loc)
+    except ZeroDivisionError:
+        return float("Inf")
+    except TypeError:
+        return None
+
+def prepareFmtString(nblines, nbstats, last_one, tex=False):
+    nbc = "%d" % (nbstats+1)
+    if nblines == 3:
+        #### SPREAD ON THREE LINES            
+        if tex:
+            frmts = "%(rid)s & & %(stats)s \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{p{.9\\textwidth}}{ %(q0)s } \\\\ \n" + \
+                    " & \\multicolumn{"+ nbc +"}{p{.9\\textwidth}}{ %(q1)s } \\\\"
+            if not last_one:
+                frmts +=  " [.32em] \cline{2-"+ nbc +"} \\\\ [-.88em]"
+        else:
+            frmts = "%(rid)s%(stats)s\n%(q0)s\n%(q1)s"
+    elif nblines == 2:
+        if tex:
+            frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\"
+            if not last_one:
+                frmts +=  " [.3em]"
+        else:
+            frmts = "%(rid)s%(q0)s\t%(q1)s\n%(stats)s"
+    else:
+        if tex:
+            frmts = "%(rid)s & %(all)s \\\\"
+        else:
+            frmts = "%(rid)s%(all)s"
+    return frmts
+
+    
 class Redescription(object):
-
     diff_score = Query.diff_length + 1
-    print_E_oo_fields = set(SParts.print_E_oo_fields+["Tex_"+s for s in SParts.print_E_oo_fields])
-    print_queries_headers = ["query_LHS", "query_RHS"]
-    print_queries_namedsuff = "_named"
-    print_default_fields_stats = ["acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
-    print_default_fields_supp = ["E_xo", "E_ox", "E_xx"] #, "E_oo"]
+    qry_infos = {"queryLHS": "self.prepareQueryLHS", "queryLHS_named": "self.prepareQueryLHSNamed",
+                 "queryRHS": "self.prepareQueryRHS", "queryRHS_named": "self.prepareQueryRHSNamed"}
+    infos = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
+    match_prop = "(?P<prop>((?P<rset_id>(learn|test|all)))?:(?P<what>\w+):(?P<which>\w+)?)"
+    
+    ###################### FIELDS REDS
+    which_dets = {"I": "supp"}
+    for lbl in SSetts.labels:
+        which_dets[lbl] = re.sub("_", "", lbl)
+    what_dets = {"acc": "J", "pval": "pV"}
+    which_dets_tex = {"I": "\\supp"}
+    what_dets_tex = {"pr0": "prLHS", "pr1": "prRHS"}
+    rset_dets = {"all" : {"name": "", "exp": "all", "lbl_gui": "", "lbl_txt": "", "lbl_tex": "\\RSetAll"},
+                 "learn" : {"name": "_learn", "exp": "learn", "lbl_gui": SYM.SYM_LEARN, "lbl_txt": "_learn", "lbl_tex": "_{\\RSetLearn}"},
+                 "test" : {"name": "_test", "exp": "test", "lbl_gui": SYM.SYM_TEST, "lbl_txt": "_test", "lbl_tex": "_{\\RSetTest}"}}
 
-    print_default_fields = print_queries_headers+print_default_fields_stats
-    # ["query_LHS", "query_RHS", "acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
-    print_default_fields_named = [p+print_queries_namedsuff for p in print_queries_headers]+print_default_fields_stats
-    #["query_LHS_named", "query_RHS_named", "acc", "pval", "card_E_xo", "card_E_ox", "card_E_xx", "card_E_oo"]
-    # print_info_tex = [("acc", 3, "%1.3f"), ("card_E_xx", 0, "%i"), ("perc_E_xx", 3, "%.3f"), ("pval", 3, "%1.3f")]
-    print_info_tex = [("acc", 2, "%1.2f"), ("card_E_xx", 0, "%i"), ("perc_E_xx", 2, "%.2f"), ("pval", 3, "%1.3f")]
+    tex_fld_stat = {"acc": "\\newcommand{\\PPacc}[1]{\\jacc#1} % Jacc\n",
+                    "pval": "\\newcommand{\\PPpval}[1]{\\pValue#1} % pvalue\n",
+                    "pr0": "\\newcommand{\\PPprLHS}[1]{\\pr(\\iLHS#1)} % proba\n",
+                    "pr1": "\\newcommand{\\PPprRHS}[1]{\\pr(\\iRHS#1)} % proba\n"}
 
-    print_fields_details = {}
-    for sideq in print_queries_headers:
-        print_fields_details[sideq] = (sideq, "", "%s" )
-        print_fields_details[sideq+print_queries_namedsuff] = (sideq+print_queries_namedsuff, "", "%s" )
-        for style in ["U", "Tex"]:
-            print_fields_details[style+"_"+sideq] = (style+"_"+sideq, style, "%s" )
-            print_fields_details[style+"_"+sideq+print_queries_namedsuff] = (style+"_"+sideq+print_queries_namedsuff, style, "%s" )
-    for pif in SParts.print_iinfo:
-        print_fields_details[pif] = (pif, None, "%d" )
-    for pif in SParts.print_finfo:
-        print_fields_details[pif] = (pif, None, "%f" )
-    for pif in SParts.print_sinfo:
-        print_fields_details[pif] = (pif, " ", "%s" )
-    for pit in print_info_tex:
-        print_fields_details["Tex_"+pit[0]] = pit
+        
+    tex_fld_defs = {}
+    exp_details = {}
+    for rset_id in ["all", "learn", "test"]:
+        for which in SSetts.labels+list(SParts.sets_letters):
+            whl = re.sub("_", "", which)
+            ### len
+            name = "len%s%s" % (whl, rset_dets[rset_id]["name"])
+            exp_details[name] =  {"exp": "%s:len:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "d", 
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("|%s|" % which_dets.get(whl, whl)),
+                                  "lbl_txt": "card_%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PPcard{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+            tex_fld_defs[name] = "\\newcommand{\\PPcard}[1]{\\abs{#1}} % support size\n"
+            ### supp
+            name = "%s%s" % (whl, rset_dets[rset_id]["name"])
+            exp_details[name] =  {"exp": "%s:supp:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "s", "supp_set": True, "sep": ",",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(whl, whl)),
+                                  "lbl_txt": "%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+            exp_details[name+"_named"] =  {"exp": "%s:supp:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "s", "supp_set": True, "sep": ",",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(whl, whl)),
+                                  "lbl_txt": "%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+            tex_fld_defs[name] = "\\newcommand{\\PPsupp}[1]{#1} % support\n"
+            tex_fld_defs[name+"_named"] = "\\newcommand{\\PPsupp}[1]{#1} % support\n"
 
-    print_fields_details["ratio_acc"] = ("ratio_acc", None, "%f")
-    print_fields_details["Tex_ratio_acc"] = ("ratio_acc", 3, "$%1.3f$")
-    print_fields_details["status_enabled"] = ("status_enabled", None, "%d")
-    print_fields_details["track"] = ("track", ",", "%s")
+            ### prc
+            name = "prc%s%s" % (whl, rset_dets[rset_id]["name"])
+            exp_details[name] =  {"exp": "%s:prc:%s" % (rset_dets[rset_id]["exp"], which), "fmt": ".2f",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%%%s" % which_dets.get(whl, whl)),
+                                  "lbl_txt": "prc_%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PPprc{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+            tex_fld_defs[name] = "\\newcommand{\\PPprc}[1]{\\%#1} % support percent\n"
+            
+        for what in ["acc", "pval", "pr0", "pr1"]:
+            name = "%s%s" % (what, rset_dets[rset_id]["name"])
+            exp_details[name] =  {"exp": "%s:%s:" % (rset_dets[rset_id]["exp"], what), "fmt": ".3f",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what_dets.get(what, what),
+                                  "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PP%s{%s}" % (what_dets_tex.get(what, what), rset_dets[rset_id]["lbl_tex"])}
+            tex_fld_defs[name] = tex_fld_stat[what]
+    
+    exp_details["acc_ratioTL"] = {"exp": "test:acc:/learn:acc:", "fmt": ".3f",
+                                  "lbl_gui": SYM.SYM_RATIO+what_dets.get("acc", "acc"),
+                                  "lbl_txt": "acc_ratioTL", "lbl_tex": "\\PPaccRatioTL"}
+    tex_fld_defs["acc_ratioTL"] = "\\newcommand{\\PPaccRatioTL}{\\jacc_{\\RSetTest/\\RSetLearn}} % support\n"
+    exp_details["lenI_ratioTA"] = {"exp": "test:len:I/(1.*all:len:I)", "fmt": ".3f",
+                                  "lbl_gui": SYM.SYM_RATIO+which_dets.get("I", "I"),
+                                  "lbl_txt": "E_xx_ratioTL", "lbl_tex": "\\PPlenIRatioTA"}
+    tex_fld_defs["lenI_ratioTA"] = "\\newcommand{\\PPlenIRatioTA}{\\supp_{\\RSetTest/\\mathcal{A}}} % support\n"
+    for what in qry_infos.keys():
+        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
+                             "lbl_gui": what.split("_")[0], "lbl_txt": what.split("_")[0], "lbl_tex": "\\PP"+what.split("_")[0]}
+        if re.search("LHS", what):
+            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iLHS} %% other\n" % what.split("_")[0]
+        else:
+            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iRHS} %% other\n" % what.split("_")[0]
+    for what in infos.keys():
+        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
+                             "lbl_gui": what, "lbl_txt": what, "lbl_tex": "\\PP"+what}
+        tex_fld_defs[what] = "\\newcommand{\\PP%s}{%s} %% other\n" % (what, what)
+    for fk in exp_details.keys():
+        mtc = re.search("\.(?P<rnd>[0-9]+)f", exp_details[fk].get("fmt", ""))
+        if mtc is not None:
+            exp_details[fk]["rnd"] = int(mtc.group("rnd"))
+        
+    default_fields_stats = ["acc", "pval"]
+
+    default_fields_len = []
+    miss_fields_len = []
+    default_fields_supp = []
+    miss_fields_supp = []
+
+    for splbl in SSetts.labels:
+        nname = re.sub("_", "", splbl)
+        if "m" in nname:
+            miss_fields_len.append("len%s" % nname)
+            miss_fields_supp.append("%s" % nname)
+        elif "xx" in nname:
+            default_fields_len.append("len%s" % nname)
+            miss_fields_len.append("len%s" % nname)
+            miss_fields_supp.append("%s" % nname)
+        else:
+            default_fields_len.append("len%s" % nname)
+            default_fields_supp.append("%s" % nname)
+            miss_fields_len.append("len%s" % nname)
+            miss_fields_supp.append("%s" % nname)
+
+            
+    default_fields_tostr = ["acc", "lenI", "pval"]
+    default_fields_totex = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
+    width_mid = .5
+    default_queries_fields = ["queryLHS", "queryRHS"]
+    namedsuff = "_named"
+    named_queries_fields = ["%s%s" % (f, namedsuff) for f in default_queries_fields]
+
+    @classmethod
+    def map_field_name(tcl, fld):
+        fldtmp = fld
+        for (sf, st) in [("query_", "query"), ("card_", "len"), ("E_", "E"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo")]:
+            fld = fld.replace(sf, st)
+        return fld
+        
+    @classmethod
+    def getExpDict(tcl, list_fields):
+        return dict([(fk, tcl.exp_details.get(fk, {}).get("exp", "")) for fk in list_fields])
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.resetRestrictedSuppSets()
@@ -79,6 +206,7 @@ class Redescription(object):
         self.vectorABCD = None
         self.status = 1
         self.track = []
+        self.cache_evals = {}
 
     def fromInitialPair(initialPair, data):
         if initialPair[0] is None and initialPair[1] is None:
@@ -473,66 +601,62 @@ class Redescription(object):
         return self.sParts.getTypeParts()
     def getMethodPVal(self, details=None):
         return self.sParts.getMethodPVal()    
-    
+        
     def getRSet(self, details=None):
-        if details is not None and details.get("rset_id") in self.restricted_sets:
-            return self.restricted_sets[details.get("rset_id")]
+        if type(details) is dict:
+            rset_id = details.get("rset_id")
+        else:
+            rset_id = details
+        if rset_id is not None:
+            if rset_id == "all":
+                return {"sParts": self.sParts}
+            elif rset_id in self.restricted_sets:
+                return self.restricted_sets[rset_id]
+            return None
         elif ACTIVE_RSET_ID in self.restricted_sets:
             return self.restricted_sets[ACTIVE_RSET_ID]
-        else:
-            return None
-
+        else:            
+            return {"sParts": self.sParts}
     def getRSetParts(self, details=None):
-        if details is not None and details.get("rset_id") in self.restricted_sets:
-            return self.restricted_sets[details.get("rset_id")]["sParts"]
-        elif ACTIVE_RSET_ID in self.restricted_sets:
-            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"]
-        else:
-            return self.sParts
+        rset = self.getRSet(details)
+        if rset is not None:
+            return rset.get("sParts")
     def getRSetIds(self, details=None):
-        if details is not None and details.get("rset_id") in self.restricted_sets:
-            return sorted(self.restricted_sets[details.get("rset_id")]["rids"])
-        elif ACTIVE_RSET_ID in self.restricted_sets:
-            return sorted(self.restricted_sets[ACTIVE_RSET_ID]["rids"])
-        else:
-            return None
-
-        
+        rset = self.getRSet(details)
+        if rset is not None and "rids" in rset:
+            return sorted(rset["rids"])
+        return None
+       
     def getRSetABCD(self, details=None):
-        if details is not None and details.get("rset_id") in self.restricted_sets:
-            rest_ids = self.restricted_sets[details.get("rset_id")]["rids"]
-            return self.restricted_sets[details.get("rset_id")]["sParts"].getVectorABCD(force_list=True, rest_ids=rest_ids)
-        elif ACTIVE_RSET_ID in self.restricted_sets:
-            rest_ids = self.restricted_sets[ACTIVE_RSET_ID]["rids"]
-            return self.restricted_sets[ACTIVE_RSET_ID]["sParts"].getVectorABCD(force_list=True, rest_ids=rest_ids)
-        else:
-            return self.sParts.getVectorABCD(force_list=True)
-
-
+        ssp = self.getRSetParts(details)
+        if ssp is not None:
+            return ssp.get("sParts").getVectorABCD(force_list=True, rest_ids=ssp.get("rids"))
+        
     def getAccRatio(self, details=None):
-        if details is not None and details.get("rset_id_num") in self.restricted_sets \
-               and details.get("rset_id_den") in self.restricted_sets:
-            acc_num = self.restricted_sets[details.get("rset_id_num")]["sParts"].acc()
-            acc_den = self.restricted_sets[details.get("rset_id_den")]["sParts"].acc()
+        if details is not None and (details.get("rset_id_num") in self.restricted_sets \
+               or details.get("rset_id_den") in self.restricted_sets):
+            acc_num = self.getRSetParts(details.get("rset_id_num")).acc()
+            acc_den = self.getRSetParts(details.get("rset_id_den")).acc()
             if acc_den == 0:
                 return float('Inf')
             return acc_num/acc_den
         return 1.
 
+    def getLenRatio(self, details=None):
+        if details is not None and (details.get("rset_id_num") in self.restricted_sets \
+               or details.get("rset_id_den") in self.restricted_sets):
+            len_num = self.getRSetParts(details.get("rset_id_num")).lenI()
+            len_den = self.getRSetParts(details.get("rset_id_den")).lenI()
+            if len_den == 0:
+                return float('Inf')
+            return len_num/float(len_den)
+        return 1.
+
+    
     def getAcc(self, details=None):
         return self.getRSetParts(details).acc()
-
     def getPVal(self, details=None):
         return self.getRSetParts(details).pVal()
-
-    def getRoundAcc(self, details=None):
-        return round(self.getAcc(details), 3)
-
-    def getRoundPVal(self, details=None):
-        return round(self.getPVal(details), 3)
-
-    def getRoundAccRatio(self, details=None):
-        return round(self.getAccRatio(details), 3)
 
     def getLenP(self, details=None):
         if "part_id" in details:
@@ -549,8 +673,8 @@ class Redescription(object):
         return self.getRSetParts(details).lenR()
     def getLenO(self, details=None):
         return self.getRSetParts(details).lenO()
-    def getLenT(self, details=None):
-        return self.getRSetParts(details).lenT()
+    def getLenN(self, details=None):
+        return self.getRSetParts(details).lenN()
     def getLenA(self, details=None):
         return self.getRSetParts(details).lenA()
     def getLenB(self, details=None):
@@ -566,13 +690,80 @@ class Redescription(object):
         return self.getRSetParts(details).suppR()
     def getSuppO(self, details=None):
         return self.getRSetParts(details).suppO()
-    def getSuppT(self, details=None):
-        return self.getRSetParts(details).suppT()
+    def getSuppN(self, details=None):
+        return self.getRSetParts(details).suppN()
     def getSuppA(self, details=None):
         return self.getRSetParts(details).suppA()
     def getSuppB(self, details=None):
         return self.getRSetParts(details).suppB()
 
+    def getProp(self, what, which=None, rset_id=None, details=None):
+        if rset_id is not None and which == "rids": ### ids details for split sets
+            rset_ids = self.getRSetIds(rset_id)
+            if rset_ids is None:
+                return None
+            if what == "len":
+                return len(rset_ids)
+            elif what == "supp":
+                return rset_ids
+            elif what == "prc":
+                return (100.*len(rset_ids))/self.sParts.nbRows()
+        if what in SParts.props_what or what in SParts.infos: ### info from supp parts
+            rset_parts = self.getRSetParts(rset_id)
+            if rset_parts is None:
+                return None
+            return self.getRSetParts(rset_id).getProp(what, which)
+        elif what in Redescription.qry_infos: ### other redescription info
+            methode = eval(Redescription.qry_infos[what])
+            if callable(methode):
+                return methode(details)
+        elif what in Redescriptions.infos: ### other redescription info
+            return eval(Redescriptions.infos[what])
+
+    def refreshEVals(self, exps, details=None):
+        self.cache_evals = self.compEvals(exps, details)        
+    def compEVal(self, exp, details=None):
+        texp = exp
+        Rd = {} 
+        for mtch in list(re.finditer(Redescription.match_prop, exp))[::-1]:
+            Rd[mtch.group("prop")] = self.getProp(mtch.group("what"), mtch.group("which"), mtch.group("rset_id"), details)
+            texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
+        return cust_eval(texp, loc={"R": Rd})        
+    def compEVals(self, exps, details=None):
+        props_collect = set()
+        trans_exps = {}
+        for eid, exp in exps.items():
+            texp = exp
+            for mtch in list(re.finditer(Redescription.match_prop, exp))[::-1]:
+                props_collect.add(mtch)
+                texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
+            trans_exps[eid] = texp        
+        Rd = {}
+        for prop in props_collect:
+            Rd[prop.group("prop")] = self.getProp(prop.group("what"), prop.group("which"), prop.group("rset_id"), details)
+        props = {}
+        for eid, exp in trans_exps.items():
+            props[eid] = cust_eval(exp, loc={"R": Rd})
+        return props
+    def getEVal(self, k, exp=None, fresh=False, default=None, details=None):
+        if (exp is not None) and (k not in self.cache_evals or fresh):
+            self.cache_evals[k] = self.compEVal(exp, details)
+        return self.cache_evals.get(k, default)
+    def getEVals(self, exps, fresh=False, details=None):
+        if fresh:
+            revals = exps
+        else:
+            revals = dict([(k,v) for (k,v) in exps.items() if k not in self.cache_evals])
+        if len(revals) > 0:            
+            self.cache_evals.update(self.compEVals(revals, details))
+        return dict([(k,self.cache_evals[k]) for k in exps.keys()])
+    def getEValGUI(self, details):
+        if "k" in details:
+            tmp = self.getEVal(details["k"], details.get("exp"), details=details)
+        ## print "getEValGUI", details["k"], details.get("exp"), details.get("rnd"), "->", tmp
+        if details.get("rnd") is not None:
+            return round(tmp, details.get("rnd"))
+        return tmp
 
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
@@ -581,166 +772,126 @@ class Redescription(object):
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=["acc", "card_E_xx", "pval"], sep=" "), self.getTrack({"format":"str"})))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.default_fields_tostr, sep=" "), self.getTrack({"format":"str"})))
 
-    def dispHeader(list_fields=None, sep="\t", named=False):
+    def dispHeader(list_fields=None, style="", named=False, sep = None, missing=False):
         if list_fields is None:
             if named:
-                list_fields = Redescription.print_default_fields_named
+                list_fields = Redescription.named_queries_fields+Redescription.default_fields_stats
             else:
-                list_fields = Redescription.print_default_fields
-        return sep.join(list_fields)
+                list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
+            if missing:
+                list_fields += Redescription.miss_fields_len
+            else:
+                list_fields += Redescription.default_fields_len
+                
+        if style == "Tex":
+            sepc = " & "
+            lbls = ["$%s$" % Redescription.exp_details[fk]["lbl_tex"] for fk in list_fields]
+        else:
+            sepc = "\t"
+            lbls = [Redescription.exp_details[fk]["lbl_txt"] for fk in list_fields]
+        if sep is not None:
+            sepc = sep
+        return sepc.join(lbls)
     dispHeader = staticmethod(dispHeader)
 
-    def formatDetails(info_tmp, list_fields, with_fname=False):
-        details = []
-        for info_key in list_fields:
-            if type(info_key) is tuple:
-                if len(info_key) > 1:
-                    info_lbl = info_key[1]
-                else:
-                    info_lbl = None #info_key[0]
-                info_key = info_key[0]
-            else:
-                info_lbl = None #info_key
-            tmp = "-"
-            if info_key in Redescription.print_fields_details:
-                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
-                if info_lbl is None:
-                    info_lbl = info_name
-                try:
-                    if info_lbl in info_tmp:
-                        if type(info_round) is int:
-                            tmp = info_format % round(info_tmp[info_lbl], info_round)
-                        else:
-                            if type(info_tmp[info_lbl]) in [list, set]:
-                                tmp = info_format % (info_round.join(map(str, info_tmp[info_lbl])))
-                            else:
-                                tmp = info_format % info_tmp[info_lbl]
-                except Exception:
-                    tmp = "-"
-            if with_fname:
-                info_lbl = info_lbl+":"
-            else:
-                info_lbl = ""
-            details.append(info_lbl+tmp)
-        return details
-    formatDetails = staticmethod(formatDetails)
+    def prepareQuery(self, side, details={}, named=False):
+        style=details.get("style", "")
+        if named and "names" in details:
+            return self.queries[side].disp(names=details["names"][side], style=style)
+        return self.queries[side].disp(style=style)        
+    def prepareQueryRHS(self, details):
+        return self.prepareQuery(1, details)
+    def prepareQueryLHS(self, details):
+        return self.prepareQuery(0, details)
+    def prepareQueryRHSNamed(self, details):
+        return self.prepareQuery(1, details, named=True)
+    def prepareQueryLHSNamed(self, details):
+        return self.prepareQuery(0, details, named=True)
     
-    def prepareQueries(self, list_fields, names=[None, None]):
-        info_tmp = {}
-        for side, query_f in enumerate(Redescription.print_queries_headers):
-            for style in ["", "U", "Tex"]:
-                if len(style) > 0:
-                    tmp_f = style +"_"+query_f
-                else:
-                    tmp_f = query_f
-                if tmp_f in list_fields:
-                    info_tmp[tmp_f] = self.queries[side].disp(style=style)
-                        
-                if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
-                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style)
-        return info_tmp
-    
-
-    def disp(self, names= [None, None], lenIndex=0, list_fields=None, sep="\t", with_fname=False, headers=None, rid="", nblines=1, delim="", styleX="", supp_names=None, last_one=False):
+    def disp(self, names= [None, None], list_fields=None, sep="\t", with_fname=False, rid="", nblines=1, delim="", style="", supp_names=None, last_one=False, missing=False):
+        tex = False
+        if style == "Tex":            
+            tex = True
+            sep = " & "
+        details = {"style": style}
+        if names[0] is not None or names[1] is not None:
+            details["names"] = names
         if list_fields is None:
-            if names[0] is not None or names[1] is not None:
-                list_fields = Redescription.print_default_fields_named
+            if "names" in details:
+                list_fields = Redescription.named_queries_fields+Redescription.default_fields_stats
             else:
-                list_fields = Redescription.print_default_fields
-        info_tmp = self.getInfoDict(with_E_oo = len(Redescription.print_E_oo_fields.intersection(list_fields)) > 0)
-        info_tmp["status_enabled"] = self.status
+                list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
+            if missing:
+                list_fields += Redescription.miss_fields_len
+            else:
+                list_fields += Redescription.default_fields_len
 
-        if supp_names is not None:
-            for field in Redescription.print_default_fields_supp:
-                if field in info_tmp:
-                    info_tmp[field] = [supp_names[i] for i in info_tmp[field]] 
+        exp_dict = Redescription.getExpDict(list_fields)
+        evals_dict = self.compEVals(exp_dict, details)
 
-        for side, query_f in enumerate(Redescription.print_queries_headers):
-            for style in ["", "U", "Tex"]:
-                if len(style) > 0:
-                    tmp_f = style +"_"+query_f
-                else:
-                    tmp_f = query_f
-                if tmp_f in list_fields:
-                    info_tmp[tmp_f] = self.queries[side].disp(style=style+styleX)
+        if type(with_fname) == list and len(with_fname) == len(list_fields):
+            lbls = with_fname
+            with_fname = True
+        elif with_fname:
+            if tex:
+                lbls = [Redescription.exp_details[field]["lbl_tex"]+"=" for field in list_fields]
+            else:
+                lbls = [Redescription.exp_details[field]["lbl_txt"]+"=" for field in list_fields]
+
+            
+        dts = {}
+        entries = {"stats": [], "all": [], "q0": "", "q1": "", "rid": rid}
+        for fid, field in enumerate(list_fields):
+            entry = evals_dict[field]
+            fmt = Redescription.exp_details[field]["fmt"]
+            if entry is None:
+                entry = "-"
+                fmt = "s"
+            else:
+                if supp_names is not None and Redescription.exp_details[field].get("supp_set", False) and re.search("_named$", field):
+                    entry = [supp_names[i] for i in entry]
+                if type(entry) in [list, set]:
+                    entry = Redescription.exp_details[field].get("sep", ",").join(map(str, entry))
+                elif "rnd" in Redescription.exp_details[field]:
+                    if style == "":
+                        fmt = "f"
+                    else:
+                        entry = round(entry, Redescription.exp_details[field]["rnd"])
+                    
                         
-                if (tmp_f + Redescription.print_queries_namedsuff ) in list_fields and ( names[side] is not None or tmp_f not in list_fields):
-                    info_tmp[tmp_f + Redescription.print_queries_namedsuff] = self.queries[side].disp(names=names[side], style=style+styleX)
-
-        details = []
-        for info_key in list_fields:
-            tmp = "-"
-            if info_key in Redescription.print_fields_details:
-                info_name, info_round, info_format = Redescription.print_fields_details[info_key]
-                try:
-                    if info_name in info_tmp:
-                        if type(info_round) is int:
-                            tmp = info_format % round(info_tmp[info_name], info_round)
-                        else:
-                            if type(info_tmp[info_name]) in [list, set]:
-                                tmp = info_format % (info_round.join(map(str, info_tmp[info_name])))
-                            else:
-                                tmp = info_format % info_tmp[info_name]
-                except Exception:
-                    tmp = "-"
+            delim, lbl = ("", "")
+            if tex and re.search("[df]$", Redescription.exp_details[field]["fmt"]):
+                delim = "$"
             if with_fname:
-                info_name = info_name+":"
+                lbl = lbls[fid]
+                if tex and not re.search("[df]$", Redescription.exp_details[field]["fmt"]):
+                    lbl = "$"+lbl+"$"
+            dts[field] = (delim+lbl+"%"+fmt+delim) % entry
+            if re.search("queryLHS", field):
+                entries["q0"] = dts[field]
+            elif re.search("queryRHS", field):
+                entries["q1"] = dts[field]
             else:
-                info_name = ""
-            details.append(info_name+tmp)
-        if headers is not None and len(details) == len(headers):
-            fields = [(delim+"%s=%s"+delim) % (headers[i], details[i].strip(delim)) for i in range(len(details))]
-        else:
-            fields = [(delim+"%s"+delim) % d.strip(delim) for d in details]
-        entries = {"rid": rid, "stats":sep.join(fields[2:]), "q0": fields[0], "q1": fields[1], "all": sep.join(fields)}
-
-        nbc = "%d" % (len(details)+1)
-        # frmts = {}
-        # frmts["3a"] = "%(rid)s & & & %(stats)s & \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{l}{ %(q0)s } \\\\ \n" + \
-        #   "& \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\ [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
-        # frmts["3b"] = "(%(rid)s) %(stats)s\n%(q0)s\n%(q1)s"
-        # frmts["2a"] = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\ [.3em]"      
-        # frmts["2b"] = "(%(rid)s) %(q0)s\t%(q1)s\n%(stats)s"
-        # frmts["1a"] = "%(rid)s & %(all)s \\\\"        
-        # frmts["1b"] = "%(rid)s %(all)s"
-        # for k,v in frmts.items():
-        #     print k, "---\t", v % entries
-        if nblines == 3:
-            #### SPREAD ON THREE LINES            
-            if "&" in sep:
-                frmts = "%(rid)s & & & %(stats)s & \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{l}{ %(q0)s } \\\\ \n" + \
-                        " & \\multicolumn{"+ nbc +"}{l}{ %(q1)s } \\\\"
-                if not last_one:
-                    frmts +=  " [.32em] \cline{3-"+ nbc +"} \\\\ [-.88em]"
-            else:
-                frmts = "%(rid)s%(stats)s\n%(q0)s\n%(q1)s"
-        elif nblines == 2:
-            if "&" in sep:
-                frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\"
-                if not last_one:
-                    frmts +=  " [.3em]"
-
-            else:
-                frmts = "%(rid)s%(q0)s\t%(q1)s\n%(stats)s"
-        else:
-            if "&" in sep:
-                frmts = "%(rid)s & %(all)s \\\\"
-            else:
-                frmts = "%(rid)s%(all)s"
-        ex_str = frmts % entries
-        return ex_str
-
+                entries["stats"].append(dts[field])
+            entries["all"].append(dts[field])
+        nbstats = len(entries["stats"])
+        nball = len(entries["all"])
+        entries["all"] = sep.join(entries["all"])
+        entries["stats"] = sep.join(entries["stats"])
+        frmts = prepareFmtString(nblines, nbstats, last_one, tex)
+        return frmts % entries
+    
     def dispQueries(self, names=[None,None], sep='\t'):
         if names[0] is not None or names[1] is not None:
-            list_fields = Redescription.print_default_fields_named
+            list_fields = Redescription.named_queries_fields
         else:
-            list_fields = Redescription.print_default_fields
+            list_fields = Redescription.default_queries_fields
         return self.disp(list_fields=list_fields, sep=sep, names=names)
 
     def dispStats(self, sep='\t'):
-        return self.disp(list_fields=Redescription.print_default_fields_stats, sep=sep)
+        return self.disp(list_fields=Redescription.default_fields_stats+Redescription.default_fields_stats, sep=sep)
         
     def dispSupp(self):
         return self.sParts.dispSupp()
@@ -792,8 +943,8 @@ class Redescription(object):
         else:
             seps = [sep]
         for ss in seps:
-            fields = [s.strip() for s in string.split(ss)]
-            if all([len([f for f in fields if re.match("%s(%s)?" % (h, Redescription.print_queries_namedsuff), f)]) > 0 for h in Redescription.print_queries_headers]):
+            fields = [Redescription.map_field_name(s.strip()) for s in string.split(ss)]
+            if all([len([f for f in fields if re.match("%s(%s)?" % (h, Redescription.namedsuff), f)]) > 0 for h in Redescription.default_queries_fields]):
                 return fields, ss
         return None, None
     parseHeader = staticmethod(parseHeader)    
@@ -803,86 +954,58 @@ class Redescription(object):
             string = codecs.decode(string, 'utf-8','replace')
             
         if list_fields is None:
-            list_fields = Redescription.print_default_fields
+            list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats+Redescription.miss_fields_stats
         poplist_fields = list(list_fields) ### to pop out the query fields...
-
+        map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
+        
         queries = [None, None]
         lpartsList = {}
-        
+
         parts = string.rsplit(sep)
-        for part in parts:
-            str_top = None
-            tmp = part.split(":")
-            if len(tmp) == 2:
-                if tmp[0] in poplist_fields:
-                    key_info =  tmp[0].strip()
-                    str_top =  tmp[1].strip()
-                else:
-                    key_info = None
-            else:
-                str_top = part.strip()
-                if len(poplist_fields) > 0:
-                    key_info = poplist_fields[0]
-                else:
-                    key_info = None ### or raise Error number of fields mismatch?
-
-            if key_info in Redescription.print_fields_details:
-                fname, info_round, info_format = Redescription.print_fields_details[key_info]
-                poplist_fields.remove(key_info) ### consume the token
-            else:
-                continue
-                
-            if fname in [k+Redescription.print_queries_namedsuff for k in Redescription.print_queries_headers]:
-                side = 1
-                if fname == Redescription.print_queries_headers[0]+Redescription.print_queries_namedsuff:
-                    side = 0
-                #### named query, try to parse if no alternative
-                print names[side], str_top, type(str_top)
-                if Redescription.print_queries_headers[side] not in list_fields and names[side] is not None: 
-                    try:
-                        query = Query.parse(str_top, names[side])
-                    except Exception as e:
-                         raise Warning("Failed parsing named query %d, %s !:\n\t%s" % (side, str_top, e) )
-                    # except UnicodeDecodeError:
-                    #      pdb.set_trace()
-
-                    if query is not None:
-                        queries[side] = query
-
-            elif fname in Redescription.print_queries_headers:
-                side = 1
-                if fname == Redescription.print_queries_headers[0]:
-                    side = 0
-                try:
-                    query = Query.parse(str_top)
-                    if query is not None:
-                        queries[side] = query
-                except Exception as e:
-                    raise Warning("Failed parsing query %d, %s !:\n\t%s" % (side, str_top, e) )
-
-            else:
-                if type(info_round) is str:
-                    if len(str_top.strip()) == 0:
-                        lpartsList[fname] = []
+        for side, fldu in enumerate(Redescription.default_queries_fields):
+            try_parse = True
+            flds = [(fldu, False)]
+            if names[side] is not None:
+                fldn = "%s%s" % (fldu, Redescription.namedsuff)
+                if fldn in map_fields:
+                    flds.append((fldn, True))
+            for (fld, named) in flds:
+                poplist_fields[map_fields[fld]] = None
+                if try_parse:
+                    if map_fields[fld] >= len(parts):
+                        raise Warning("Did not find expected query field for side %d (field %s expected at %d, found only %d fields)!" % (side, fld, map_fields[fld], len(parts)))
                     else:
-                        lpartsList[fname] = map(int, str_top.strip().split(info_round))
-                else:
-                    try:
-                        lpartsList[fname] = int(str_top)
-                    except ValueError:
                         try:
-                            lpartsList[fname] = float(str_top)
-                        except ValueError:
-                            lpartsList[fname] = str_top
+                            if named:
+                                query = Query.parse(parts[map_fields[fld]], names[side])
+                            else:
+                                query = Query.parse(parts[map_fields[fld]])
+                            if query is not None:
+                                queries[side] = query
+                                try_parse = False
+                        except Exception as e:
+                            raise Warning("Failed parsing query for side %d (field %s, string %s)!\n\t%s" % (side, fld, parts[map_fields[fld]], e))
+
+        for pi, fk in enumerate(poplist_fields):
+            if fk is not None and fk in Redescription.exp_details:
+                vs = parts[pi]
+                if Redescription.exp_details[fk].get("supp_set", False):
+                    sep = Redescription.exp_details[field].get("sep", ",")
+                    vs = vs.strip().split(sep)
+                    if not re.search("_named$", fk):
+                        vs = map(int, vs)
+                if re.search("f$", Redescription.exp_details[fk]["fmt"]):
+                    vs =float(vs)
+                elif re.search("d$", Redescription.exp_details[fk]["fmt"]):
+                    vs =int(vs)
+                lpartsList[fk] = vs
                     
         for side in [0, 1]:
             if queries[side] is None:
                 queries[side] =  Query()
-        if len(lpartsList) == 0:
-            lpartsList = None
         return (queries[0], queries[1], lpartsList)
     parseQueries = staticmethod(parseQueries)
-
+    
     def parse(stringQueries, stringSupport = None, data = None, list_fields=None, sep="\t"):
         if data is not None and data.hasNames():
             names = data.getNames()
@@ -898,18 +1021,18 @@ class Redescription(object):
             if supportsS is not None:
                 r = Redescription(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)], data.getSSetts())
 
-                tmp = r.getInfoDict()
-                for key in lpartsList.keys():
-                    if tmp.get(key, None) != lpartsList[key]:
+                for key, v in lpartsList.items():
+                    tv = r.getEVal(key)
+                    if tv != v:
                         raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" \
-                                  % (key, tmp.get(key, None), lpartsList[key]))
+                                  % (key, v, tv))
 
         if r is None:
             r = Redescription(queryL, queryR)
             if data is not None:
                 r.recompute(data)
             else:
-                r.supp_info = lpartsList
+                r.cache_evals = lpartsList
         if r is not None and status_enabled is not None:
             r.status = status_enabled
         return r
@@ -937,19 +1060,21 @@ class Redescription(object):
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
 
-def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
-    tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_E_xx", "Tex_perc_E_xx"]
-    tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\supp\%"]
-    # tex_fields = ["Tex_query_LHS_named", "Tex_query_RHS_named", "Tex_acc", "Tex_card_E_xx", "Tex_pval"]
-    # tex_headers = ["q_\\iLHS", "q_\\iRHS", "\\jacc", "\\abs{\\supp}", "\\pValue"]
-
-    if type(fields) is list and len(fields) > 0:
-        if fields[0] == -1:
-            tex_fields.extend(fields[1:])
-            tex_headers.extend(fields[1:])
+def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1):
+    try:
+        red_list = sorted(reds.items())
+        last_ri = red_list[-1][0]
+    except AttributeError:
+        red_list = enumerate(reds)
+        last_ri = len(reds)-1
+    if list_fields is None:
+        if names[0] is not None or names[1] is not None:
+            list_fields = Redescription.named_queries_fields+Redescription.default_fields_tostr
         else:
-            tex_fields = fields
-            tex_headers = list(fields)
+            list_fields = Redescription.default_queries_fields+Redescription.default_fields_tostr
+    list_fields = Redescription.named_queries_fields+Redescription.default_fields_totex
+    macfld_commands = "".join(sorted(set([Redescription.tex_fld_defs[fk] for fk in list_fields])))
+    ####### prepare variable names    
     names_alts = []
     names_commands = ""
     numvs_commands = ""
@@ -970,121 +1095,122 @@ def printTexRedList(red_list, names=[None, None], fields=None, nblines=1):
         else:
             names_alts.append(None)
                 
-    str_out = "" + \
-              "\\documentclass{article}\n"+ \
-              "\\usepackage{amsmath}\n"+ \
-              "\\usepackage{amsfonts}\n"+ \
-              "\\usepackage{amssymb}\n"+ \
-              "\\usepackage{booktabs}\n"+ \
-              "\\usepackage[mathletters]{ucs}\n"+ \
-              "\\usepackage[utf8x]{inputenc}\n"+ \
-              "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
-              "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n\n"+ \
-              "\\usepackage{color}\n"+ \
-              "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
-              "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
-              "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
-              "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
-              "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
-              "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
-              "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
-              "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"+ \
-              macvs_commands + \
-              "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
-              "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
-              "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
-              "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
-              "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
-              "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
-              names_commands+ \
-              numvs_commands+ \
-              "\\begin{document}\n"+ \
-              "\\begin{table}[h]\n"+ \
-              "\\scriptsize\n"
-              
-    # str_out = ""        
+    # str_out = "" + \
+    #           "\\documentclass{article}\n"+ \
+    #           "\\usepackage{amsmath}\n"+ \
+    #           "\\usepackage{amsfonts}\n"+ \
+    #           "\\usepackage{amssymb}\n"+ \
+    #           "\\usepackage{booktabs}\n"+ \
+    #           "\\usepackage[mathletters]{ucs}\n"+ \
+    #           "\\usepackage[utf8x]{inputenc}\n"+ \
+    #           "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
+    #           "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
+    #           "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
+    #           "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
+    #           "\\newcommand{\\RSetAll}{} % index for test subset\n"+ \
+    #           "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n\n"+ \
+    #           "\\usepackage{color}\n"+ \
+    #           "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
+    #           "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
+    #           "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
+    #           "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
+    #           "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
+    #           "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
+    #           "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
+    #           "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"+ \
+    #           macvs_commands + \
+    #           "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
+    #           "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
+    #           "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
+    #           "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
+    #           "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
+    #           "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
+    #           "\\DeclareMathOperator*{\\pr}{p}\n"+ \
+    #           names_commands+ \
+    #           numvs_commands+ \
+    #           macfld_commands+ \
+    #           "\\begin{document}\n"+ \
+    #           "\\begin{table}[h]\n"+ \
+    #           "\\scriptsize\n"
+
+    str_out = "\\scriptsize\n"
+    
+    # str_out = ""
+    with_fname=False
     if nblines == 3:
         #### SPREAD ON THREE LINES
-        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{1ex}}p{0.12\\textwidth}@{\\hspace*{1ex}}p{1cm}"
-        for i in range(len(tex_fields)-2):
-            str_out += "@{\\hspace*{1ex}}p{0.17\\textwidth}"
-        str_out += "@{\\hspace*{1cm}}p{0.12\\textwidth}@{\\hspace*{1ex}}}\n"
+        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{3ex}}"+ ("p{%.3f\\textwidth}" % Redescription.width_mid)
+        for i in range(len(list_fields)-2):
+            str_out += "@{\\hspace*{2ex}}l"
+        str_out += "@{\\hspace*{1ex}}}\n"
         str_out += "\\toprule\n"
-
+        with_fname=True
+        
     elif nblines == 2:
         #### SPREAD ON TWO LINES 
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.67\\textwidth}@{}r"
-        for i in range(len(tex_fields)-2):
+        for i in range(len(list_fields)-2):
             str_out += "@{\\hspace*{2ex}}r"
         str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
 
-        str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
-        str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
+        str_out += " & " + Redescription.dispHeader(list_fields, style="Tex") + " \\\\\n"
+        str_out += "%%% & " + Redescription.dispHeader(list_fields) + " \\\\\n"
         str_out += "\\midrule\n"
-        tex_headers = None
-    
+
     else:
         #### SINGLE LINE
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.35\\textwidth}"
-        for i in range(len(tex_fields)-2):
+        for i in range(len(list_fields)-2):
             str_out += "@{\\hspace*{2ex}}r"
         str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
 
-        str_out += " & $" + Redescription.dispHeader(tex_headers, "$ & $") + "$ \\\\\n"
-        str_out += "%%% & " + Redescription.dispHeader(tex_fields, " & ") + " \\\\\n"
+        str_out += " & " + Redescription.dispHeader(list_fields, style="Tex") + " \\\\\n"
+        str_out += "%%% & " + Redescription.dispHeader(list_fields) + " \\\\\n"
         str_out += "\\midrule\n"
-        tex_headers = None
-        
-    # ##### CUSTOM IDS AND ORDER FOR PRINTING
-    # llids = [("%d" % (i+1),"") for i in range(10)] + \
-    #   [("1", "%s" % chr(ii+ord("a"))) for ii in range(5)] + \
-    #   [("2","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
-    #   [("5","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
-    #   [("43", "")]+[("43","%s" % chr(ii+ord("a"))) for ii in range(2)] + \
-    #   [("69","")]+[("69","%s" % chr(ii+ord("a"))) for ii in range(2)] + [("74", "")]
 
-    # map_ids = dict(enumerate(llids))
-    # pos = range(len(red_list))
-    # pos.insert(17,4)
-    # pos.insert(15,1)
-    # pos.insert(10,0)
-    # for ri in pos:
-    #     red = red_list[ri]
-    #     rid = '\\RName{%s}{%s}' % map_ids[ri]
-    #     str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=rid, nblines=nblines) # 
-
-    for ri, red in enumerate(red_list):
+    for ri, red in red_list:
         ridstr = "\RName{%s}" %ri
-        str_out += red.disp(names_alts, list_fields=tex_fields, sep=" & ", headers=tex_headers, rid=ridstr, nblines=nblines, delim="$", last_one=(ri+1 == len(red_list))) + "\n" 
+        str_out += red.disp(names_alts, list_fields, style="Tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri)) + "\n" 
 
     str_out += "" + \
         "\\bottomrule\n"+ \
         "\\end{tabular}\n"
-    str_out += "\\end{table}\n"+ \
-        "\\end{document}"
-    ### auctex vars
-    str_out += "\n%%%%%% Local Variables:\n"+ \
-        "%%%%%% mode: latex\n"+ \
-        "%%%%%% TeX-master: t\n"+ \
-        "%%%%%% End:\n"
-
+    # str_out += "\\end{table}\n"+ \
+    #     "\\end{document}"
+    # ### auctex vars
+    # str_out += "\n%%%%%% Local Variables:\n"+ \
+    #     "%%%%%% mode: latex\n"+ \
+    #     "%%%%%% TeX-master: t\n"+ \
+    #     "%%%%%% End:\n"
     return str_out
 
-def printRedList(red_list, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1):
-    all_fields = list(Redescription.print_default_fields)
+def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, missing=False):
+    try:
+        red_list = sorted(reds.items())
+    except AttributeError:
+        red_list = enumerate(reds)
+
+    all_fields = list(Redescription.default_queries_fields + Redescription.default_fields_stats)
     if names[0] is not None or names[1] is not None:
-        all_fields = Redescription.print_default_fields_named
+        all_fields = list(Redescription.named_queries_fields + Redescription.default_fields_stats)
+    if missing:
+        all_fields += Redescription.miss_fields_len
+    else:
+        all_fields += Redescription.default_fields_len
+
     if type(fields) is list and len(fields) > 0:
         if fields[0] == -1:
             all_fields.extend(fields[1:])
         else:
             all_fields = fields
     if full_supp:
-        all_fields.extend(Redescription.print_default_fields_supp)
-    str_out = Redescription.dispHeader(all_fields, "\t") + "\n"
-    for ri, red in enumerate(red_list):
-        str_out += red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names, nblines=nblines) + "\n"
+        if missing:
+            all_fields.extend(Redescription.miss_fields_supp)
+        else:
+            all_fields.extend(Redescription.default_fields_supp)
+    str_out = Redescription.dispHeader(all_fields, sep="\t") 
+    for ri, red in red_list:
+        str_out += "\n" +red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names, nblines=nblines)
     return str_out
 
 def parseRedList(fp, data, reds=None):
@@ -1107,42 +1233,43 @@ def parseRedList(fp, data, reds=None):
     return reds, {"fields": list_fields, "sep": sep, "lines": more}
 
 if __name__ == '__main__':
+    # print Redescription.exp_details.keys()
     from classData import Data
     from classQuery import Query
     import sys
 
-    rep = "/home/galbrun/TKTL/redescriptors/data/37billionmiles/"
-    data = Data([rep+"vehicules_out.csv", rep+"grid250m_attributes_out.csv", {}, "NA"], "csv")
+    rep = "/home/egalbrun/short/vaalikone_FILES/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "NA"], "csv")
 
-    filename = "/home/galbrun/TKTL/redescriptors/sandbox/runs/37billionmiles/37billionmiles_1.queries"
+    filename = rep+"redescriptions.csv"
     filep = open(filename, mode='r')
-
     reds = Batch([])
     parseRedList(filep, data, reds)
-    for red in reds:
-        print red.disp()
-
+    with open("/home/egalbrun/short/tmp_queries.tex", mode='w') as fp:
+        # fp.write(printRedList(reds, missing=True))
+        fp.write(printTexRedList(reds, names = [data.getNames(0), data.getNames(1)], nblines=3))
+    
     exit()
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
+    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
+    # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
 
-    reds = []
-    with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
-        for line in f:
-            if len(line.strip().split("\t")) >= 2:
-                try:
-                    tmpLHS = Query.parse(line.strip().split("\t")[0], data.getNames(0))
-                    tmpRHS = Query.parse(line.strip().split("\t")[1], data.getNames(1))
-                except:
-                    continue
-                r = Redescription.fromQueriesPair([tmpLHS, tmpRHS], data)
-                reds.append(r)
+    # reds = []
+    # with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
+    #     for line in f:
+    #         if len(line.strip().split("\t")) >= 2:
+    #             try:
+    #                 tmpLHS = Query.parse(line.strip().split("\t")[0], data.getNames(0))
+    #                 tmpRHS = Query.parse(line.strip().split("\t")[1], data.getNames(1))
+    #             except:
+    #                 continue
+    #             r = Redescription.fromQueriesPair([tmpLHS, tmpRHS], data)
+    #             reds.append(r)
 
-    with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='w') as f:
-        f.write(printRedList(reds))
+    # with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='w') as f:
+    #     f.write(printRedList(reds))
 
-    with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='r') as f:
-        reds, _ = parseRedList(f, data)
+    # with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='r') as f:
+    #     reds, _ = parseRedList(f, data)
 
-    for red in reds:
-        print red.disp()
+    # for red in reds:
+    #     print red.disp()

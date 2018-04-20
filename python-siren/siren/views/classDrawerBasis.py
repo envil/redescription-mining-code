@@ -12,6 +12,7 @@ from matplotlib.patches import Ellipse
 from matplotlib.patches import Polygon
 
 from ..reremi.classQuery import SYM, Query
+from ..reremi.classRedescription import Redescription
 from ..reremi.classSParts import SSetts
 from classInterObjects import MaskCreator
 
@@ -351,7 +352,7 @@ class DrawerBasis(object):
             self.sendFlipEmphasizedR()
     def save_supp_var(self, more=None):
         if self.hasParent():
-            self.parent.OnSaveSuppAsVar(self.getVec(), "%s" % self.getParentViewsm().getItemId(self.getId()))
+            self.getParent().OnSaveSuppAsVar(self.getVec(), "%s" % self.getParentViewsm().getItemId(self.getId()))
     def save_sel_var(self, more=None):
         if self.hasParent() and self.isEntitiesPlt():
             lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
@@ -394,6 +395,38 @@ class DrawerBasis(object):
         self.cp += 1
         self.call_wait.Restart(self.wait_delay)
 
+    def addStamp(self, pref=""):
+        if not self.getPltDtH().hasQueries():
+            return
+        
+        if not self.hasElement("red_stamp"):
+            old_pos = self.getAxe().get_position()
+            # print "PosA", old_pos
+            new_pos = [old_pos.x0, old_pos.y0,  old_pos.width, 7./8*old_pos.height]
+            # # pos2 = [0., 0.,  1., 1.0]
+            self.getAxe().set_position(new_pos)
+            # pos1 = self.axe.get_position()
+            # print "PosB", pos1
+
+        qrs = self.getPltDtH().getQueries()
+
+        red = Redescription.fromQueriesPair(qrs, self.getParentData())
+        tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "lenExx", "pval"]
+        headers = ["qL=", "qR=", "J=", "|E11|=", "pV="]
+        # rr = "(%s)   " % self.getItemId()
+        rr = pref
+        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="U") #, rid=rr)
+        if not self.hasElement("red_stamp"):
+            red_stamp = {"old_pos": old_pos}
+            old_pos = self.getAxe().get_position()
+            red_stamp["text"] = self.getAxe().text(0.5*self.getAxe().get_xlim()[1], self.getAxe().get_ylim()[1], tex_str, ha="center", va="bottom")
+            ## red_stamp["text"] = self.getAxe().text(0.5, 1./(8*2), tex_str, ha="center", va="center")
+            self.setElement("red_stamp", red_stamp)
+        else:
+            self.getElement("red_stamp").set_text(tex_str)
+        self.draw()       
+
+        
 
 # class DrawerRed(DrawerBasis):
 
@@ -606,6 +639,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return self.getPltDtH().getCoords(axi, ids)
 
     def makeEmphTag(self, lid):
+        # print self.getParentData().getRName(lid), ">", self.getPltDtH().pltdt.get("coords")[0][:,lid,0]
         return self.getParentData().getRName(lid)
     
     def emphasizeOn(self, lids, hover=False):

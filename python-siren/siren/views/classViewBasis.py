@@ -426,6 +426,9 @@ class ViewBasis(object):
         if self.isIntab():
             self.getLayH()._SetSize()
 
+    def addStamp(self, pref=""):
+        pass
+            
 class ViewEntitiesProj(ViewBasis):
     
     TID = "-"
@@ -591,7 +594,9 @@ class ViewRed(ViewBasis):
     def isSingleVar(self):
         return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
           (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
-    
+
+    def addStamp(self, pref=""):
+        self.getDrawer().addStamp(pref)
 
 class ViewRedMap(ViewRed):
 

@@ -7,7 +7,7 @@ import time
 
 import pdb
 
-from ..reremi.classRedescription import Redescription, printTexRedList, printRedList, parseRedList
+from ..reremi.classRedescription import Redescription, parseRedList
 from ..reremi.classData import Data, DataError, ColM
 from ..reremi.classQuery import Query, Literal
 from ..reremi.toolICList import ICList
@@ -526,11 +526,11 @@ class DataWrapper(object):
                 elif type(item) is Redescription:
                     mapV = vm.viewData(viewT, item, iid, -1)
                 mapV.lastStepInit(blocking=True)
-                mapV.mapFrame.SetClientSizeWH(dims[0], dims[1])
+                mapV.getLayH().getFrame().SetClientSizeWH(dims[0], dims[1])
                 if stamp:
                     mapV.addStamp(viewT)
-                mapV.savefig(filename % iid, format=fmt)
-                mapV.OnKil()
+                mapV.getLayH().savefig(filename % iid, format=fmt)
+                mapV.getLayH().OnKil()
                 
         except Exception:
             self._stopMessage()

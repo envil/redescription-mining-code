@@ -779,6 +779,11 @@ class Siren():
                 m_disabledall = menuRed.Append(ID_DISABLEDALL, "&Disable All", "Disable all items.")
                 frame.Bind(wx.EVT_MENU, self.OnDisabledAll, m_disabledall)
 
+                ID_DELETEDALL = wx.NewId()
+                m_deletedall = menuRed.Append(ID_DELETEDALL, "Delete Disabled", "Delete all disabled items.")
+                frame.Bind(wx.EVT_MENU, self.OnDeleteDisAll, m_deletedall)
+
+
             if self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1:
                 ID_NOR = wx.NewId()
                 m_nor = menuRed.Append(ID_NOR, "&Normalize", "Normalize current redescription.")
@@ -1564,7 +1569,10 @@ class Siren():
     def OnDelete(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].onDeleteAny()
-
+    def OnDeleteDisAll(self, event):
+        if self.matchTabType("r"):
+            self.selectedTab["tab"].onDeleteDisAll()
+            
     def OnNewList(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].onNewList()

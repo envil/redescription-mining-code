@@ -190,7 +190,34 @@
 	<legend>Name of the file where to store initial pairs.</legend>
 	<length>250</length>
 	<default><value></value></default>
-      </parameter>
+    </parameter>
+    <parameter>
+	<name>mask_vars_LHS</name>
+	<label>Mask for LHS variables</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Mask for enabling or disabling LHS variables, overriding any info in the data file.</legend>
+	<length>10000</length>
+	<default><value></value></default>
+    </parameter>
+    <parameter>
+	<name>mask_vars_RHS</name>
+	<label>Mask for RHS variables</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Mask for enabling or disabling RHS variables, overriding any info in the data file.</legend>
+	<length>10000</length>
+	<default><value></value></default>
+    </parameter>
+    <parameter>
+	<name>mask_rows</name>
+	<label>Mask for rows</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Mask for enabling or disabling rows, overriding any info in the data file.</legend>
+	<length>100000</length>
+	<default><value></value></default>
+    </parameter>
     </section>
   </section>
 </root>

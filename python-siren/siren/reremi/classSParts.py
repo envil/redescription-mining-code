@@ -554,12 +554,9 @@ class SSetts(object):
         return lp
 
 class SParts(object):
-
-    infos = {"acc": "self.acc()", "pval": "self.pVal()"}
-    print_E_oo_fields = [ "E_oo", "card_E_oo"]
-    print_finfo = infos.keys()
-    print_iinfo = ["card_"+ label for label in SSetts.labels]
-    print_sinfo = list(SSetts.labels)
+    sets_letters = "PIULROABN"
+    infos = {"acc": "self.acc()", "pval": "self.pVal()", "pr0": "self.proba(0)", "pr1": "self.proba(1)"}
+    props_what = ["len", "supp", "prc"]
     
     def __init__(self, ssetts, N, supports, prs = [1,1]):
         #### init from dict_info
@@ -667,7 +664,10 @@ class SParts(object):
         return self.ssetts.getTypeParts()
     def getMethodPVal(self):
         return self.ssetts.getMethodPVal()
-    
+
+    def proba(self, side):
+        return self.prs[side]
+
     def pVal(self):
         try:
             return eval('self.pVal%s()' % (self.ssetts.methodpVal))
@@ -823,9 +823,10 @@ class SParts(object):
             return self.part_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, 0)
         else:
             return self.part_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, 0)
+    def suppP(self, i, side=0):
+        return self.part(i, side)
     def suppD(self, side=0):
-        return self.part_union(self.ssetts.IDS_diff, side)
-    
+        return self.part_union(self.ssetts.IDS_diff, side)    
     def suppI(self, side=0):
         return self.part_union(self.ssetts.IDS_inter, side)
     def suppU(self, side=0):
@@ -836,25 +837,49 @@ class SParts(object):
         return self.suppSide(1)
     def suppO(self, side=0):
         return self.part_union(self.ssetts.IDS_uncovered, side)
-    def suppT(self, side=0):
-        if len(self.sParts) == 4:
-            return self.part_union(range(4), side)
-        else:
-            return set(range(self.N))
     def suppA(self, side=0):
         return self.part_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
     def suppB(self, side=0):
         return self.part_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
+    def suppN(self, side=0):
+        if len(self.sParts) == 4:
+            return self.part_union(range(4), side)
+        else:
+            return set(range(self.N))
 
     ### LENGHTS
+    ## corresponding lengths
     def lenSide(self, side):
         if side == 0:
             return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, 0)
         else:
             return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, 0)
-    # def lenD(self, side=0):
-    #     return self.lparts_union(self.ssetts.IDS_diff, side)
+    def lenP(self, i, side=0):
+        return self.lpart(i, side)
+    def lenD(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_diff, side)
+    def lenI(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_inter, side)
+    def lenU(self, side=0):
+        return self.lenD(side)+self.lenI(side)
+    def lenL(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
+    def lenR(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
+    def lenO(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_uncovered, side)    
+    def lenA(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
+    def lenB(self, side=0):
+        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
+    def lenN(self, side=0):
+        if len(self.sParts) == 4:
+            return self.lparts_union(range(4), side)
+        else:
+            return self.N
     
+    # def lenD(self, side=0):
+    #     return self.lparts_union(self.ssetts.IDS_diff, side)    
     # def lenI(self, side=0):
     #     return self.lparts_union(self.ssetts.IDS_inter, side)
     # def lenU(self, side=0):
@@ -866,35 +891,29 @@ class SParts(object):
     #     return self.lenSide(1)
     # def lenO(self, side=0):
     #     return self.lparts_union(self.ssetts.IDS_uncovered, side)
-    def lenT(self, side=0):
-        if len(self.sParts) == 4:
-            return self.lparts_union(range(4), side)
-        else:
-            return self.N
-    def lenA(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
-    def lenB(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
 
-    def lenP(self, i, side=0):
-        return self.lpart(i, side)
-    def esetP(self, i, side=0):
-        return self.part(i, side)
-
-    ## corresponding lengths
-    def lenD(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_diff, side)
-    def lenI(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_inter, side)
-    def lenO(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_uncovered, side)
-    def lenU(self, side=0):
-        return self.lenD(side)+self.lenI(side)
-    def lenL(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dL+self.ssetts.IDS_inter, side)
-    def lenR(self, side=0):
-        return self.lparts_union(self.ssetts.IDS_dR+self.ssetts.IDS_inter, side)
-
+    def getProp(self, what, which=None):
+        tmp = None
+        wt = what
+        if what == "prc":
+            wt = "len"
+        if what in SParts.props_what:   
+            if which in SSetts.labels:
+                tmp = eval("self.%sP(SSetts.%s)" % (wt, which))
+            elif which in SParts.sets_letters:
+                tmp = eval("self.%s%s()" % (wt, which))
+            if what == "prc" and tmp is not None:
+                tmp = (100.0*tmp)/self.nbRows()
+        elif what in SParts.infos:
+            tmp = eval(SParts.infos[what])
+        return tmp
+    
+    def perc(self, which="I", side=0):
+        methode = eval("self.len%s" % which)
+        if callable(methode):
+            return (100.0*methode(side))/self.nbRows()
+        return -1
+    
     # accuracy
     def acc(self, side=0):
         lenI = self.lenI(side)

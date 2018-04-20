@@ -1409,36 +1409,24 @@ class VarsSet(StaticContent):
 
 class RedsSet(EditableContent):
     str_red = 'item'
-    ###################### FIELDS REDS
-    fields_def_nosplit = [('', str_red+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT),
-                          ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
-                          ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                          ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                          ('J', str_red+'.getRoundAcc', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                          ('p-value', str_red+'.getRoundPVal', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                          ('|supp|', str_red+'.getLenI', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                          ('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
 
-    fields_def_splits = [('', str_red+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT),
-                         ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
-                         ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                         ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                         (SYM.SYM_RATIO+'J', str_red+'.getRoundAccRatio', {"rset_id_num": "test", "rset_id_den": "learn"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_LEARN+'J', str_red+'.getRoundAcc', {"rset_id": "learn"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_TEST+'J', str_red+'.getRoundAcc', {"rset_id": "test"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_LEARN+'pV', str_red+'.getRoundPVal', {"rset_id": "learn"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_TEST+'pV', str_red+'.getRoundPVal', {"rset_id": "test"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_LEARN+'|supp|', str_red+'.getLenI', {"rset_id": "learn"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         (SYM.SYM_TEST+'|supp|', str_red+'.getLenI', {"rset_id": "test"},
-                          StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                         ('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
+    FIRST_FIELDS = [('', str_red+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT),
+                    ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
+                    ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
+                    ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
+    LAST_FIELDS = [('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
 
+    INTER_FIELDS = {"splits": [], "nosplits": []}
+    for sp, fks in [("nosplits", ["acc", "lenI", "prcI", "pval"]),
+                    ("splits", ["acc_ratioTL", "lenI_ratioTA", "acc_learn", "acc_test", "lenI_learn", "lenI_test", "prcI_learn", "prcI_test", "pval_learn","pval_test"])]:
+        for fk in fks:
+            if fk in Redescription.exp_details:
+                dt = Redescription.exp_details[fk]
+                INTER_FIELDS[sp].append((dt["lbl_gui"], str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT))
+            
+    fields_def_nosplit = FIRST_FIELDS + INTER_FIELDS["nosplits"] + LAST_FIELDS
+    fields_def_splits = FIRST_FIELDS + INTER_FIELDS["splits"] + LAST_FIELDS
+        
     fields_def = fields_def_nosplit
     #fields_def = fields_def_splits
     name_m = str_red+'.getQueriesU'
@@ -1790,6 +1778,18 @@ class ContentManager:
                 self.getDataHdl().getItemForIid(iid).setDisabled()
         self.refresh()
 
+    def onDeleteDisAll(self):
+        lc = self.getViewFL()
+        if lc is not None:
+            lid = self.getViewLid()
+            iids = self.getDataHdl().getList(lid).getIids()            
+            dids = [ii for ii, iid in enumerate(iids) if not self.getDataHdl().getItemForIid(iid).getEnabled()]
+            self.getDataHdl().deleteItemsLid(lid, dids)
+            # pdb.set_trace()
+            # self.getDataHdl().deleteItems(diids)
+        self.refresh()
+
+        
     #### FIND FUNCTIONS
     def getNamesList(self):
         lid = self.getViewLid()

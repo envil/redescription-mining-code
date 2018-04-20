@@ -1,4 +1,4 @@
-import wx, numpy
+import wx, numpy, re
 # The recommended way to use wx with mpl is with the WXAgg backend. 
 import matplotlib
 matplotlib.use('WXAgg')
@@ -476,7 +476,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
     label_pval="p-value ="
     label_typeP="J-type ="
 
-    label_cardT="|E| ="
+    label_cardN="|E| ="
     label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.E_oo]+"| ="    
 
     label_cardP="|E%s| ="
@@ -498,20 +498,40 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
 
     for status in [(True, True), (False, False), (True, False), (False, True)]:
         i = SSetts.mapStatusToSPart(status)
-        infos_details.append( {"id": "x%s" % SSetts.labels_sparts[i],
-                               "label": label_cardP % SSetts.sym_sparts[i],
-                               "meth": "getLenP", "format": "%i", "details": {"part_id": i}})
+        whl = re.sub("_", "", SSetts.labels[i])
+        infos_details.append({"id": "x%s" % SSetts.labels_sparts[i], "part_id": i,
+                              "label": label_cardP % SSetts.sym_sparts[i],
+                              "fk": "len%s" % whl})
                 
     for status in [(None, None), (False, None), (True, None), (None, True), (None, False)]:
         i = SSetts.mapStatusToSPart(status)
-        infos_details.append( {"id": "x%s" % SSetts.labels_sparts[i],
-                               "label": label_cardP % SSetts.sym_sparts[i],
-                               "meth": "getLenP", "format": "%i", "miss": True, "details": {"part_id": i}})
+        whl = re.sub("_", "", SSetts.labels[i])
+        infos_details.append({"id": "x%s" % SSetts.labels_sparts[i], "part_id": i, "miss": True,
+                              "label": label_cardP % SSetts.sym_sparts[i],
+                              "fk": "len%s" % whl})
 
-    infos_details.insert(0, {"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"})
-    infos_details.insert(3, {"id": "lenT", "label": label_cardT, "meth": "getLenT", "format": "%i"})
-    infos_details.insert(4, {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"})
-    # infos_details.insert(8, {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True})
+    infos_details.insert(0, {"id": "jacc", "label": label_jacc, "fk": "acc"})
+    infos_details.insert(3, {"id": "lenN", "label": label_cardN, "fk": "lenN"})
+    infos_details.insert(4, {"id": "pval", "label": label_pval, "fk": "pval"})
+
+    
+    # for status in [(True, True), (False, False), (True, False), (False, True)]:
+    #     i = SSetts.mapStatusToSPart(status)
+    #     pdb.set_trace()
+    #     infos_details.append({"id": "x%s" % SSetts.labels_sparts[i],
+    #                            "label": label_cardP % SSetts.sym_sparts[i],
+    #                            "meth": "getLenP", "format": "%i", "details": {"part_id": i}})
+                
+    # for status in [(None, None), (False, None), (True, None), (None, True), (None, False)]:
+    #     i = SSetts.mapStatusToSPart(status)
+    #     infos_details.append( {"id": "x%s" % SSetts.labels_sparts[i],
+    #                            "label": label_cardP % SSetts.sym_sparts[i],
+    #                            "meth": "getLenP", "format": "%i", "miss": True, "details": {"part_id": i}})
+
+    # infos_details.insert(0, {"id": "jacc", "label": label_jacc, "meth": "getRoundAcc", "format": "%1.3f"})
+    # infos_details.insert(3, {"id": "lenN", "label": label_cardN, "meth": "getLenN", "format": "%i"})
+    # infos_details.insert(4, {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"})
+    # # infos_details.insert(8, {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True})
 
     def setSizeSpec(self, figsize):
         self.layout_elements["queries_text"][0].SetMinSize((1*figsize[0], -1))
@@ -534,8 +554,8 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                                                     wx.StaticText(self.panel, label="XXX"))
 
 
-                if info_item.get("details", {}).get("part_id", SSetts.E_oo) < SSetts.E_oo:
-                    self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["details"]["part_id"]])
+                if info_item.get("part_id", SSetts.E_oo) < SSetts.E_oo:
+                    self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["part_id"]])
 
         innerBox.Add(self.layout_elements["queries_text"][0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
         innerBox.Add(self.layout_elements["queries_text"][1], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
@@ -585,18 +605,16 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
     def setMapredInfo(self, red = None, details=None):
         for det in self.infos_details:
             if not det.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                v = None
                 if red is not None:
-                    meth = getattr(red,det["meth"], None)
-                else:
-                    meth = None
-                
-                if meth is not None:
+                    fk = det.get("fk")
                     params = self.getPltDtH().getDetailsSplit()
-                    if params is None:
-                        params = {}
-                    if "details" in det:
-                        params.update(det["details"])
-                    self.info_items[det["id"]][1].SetLabel(det["format"] % meth(params))
+                    if params is not None:
+                        fk = "%s_%s" % (fk, params["rset_id"])
+                    dt = Redescription.exp_details[fk]
+                    v = red.getEValGUI({"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk})
+                if v is not None:
+                    self.info_items[det["id"]][1].SetLabel(("%"+dt["fmt"]) % v)
                 else:
                     self.info_items[det["id"]][1].SetLabel("XX")
         

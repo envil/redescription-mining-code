@@ -302,7 +302,7 @@ class ExportFigsDialog(object):
                 if tmp is not None:
                     format_dict[item] = tmp
             try:
-                self.parent.dw.exportItemsFigs(self.vm, self.exfile, self.items, (height, width), format_dict)
+                self.parent.dw.exportItemsFigs(self.vm, self.exfile, self.items, (width, height), format_dict)
             except:
                 pass
                 raise

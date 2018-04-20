@@ -222,6 +222,10 @@ def loadPackage(filename, pm):
 
     return params, data
 
+def applyVarsMask(data, params):
+    params_l = trunToDict(params)
+    return data.applyDisableMasks(params_l.get("mask_vars_LHS"), params_l.get("mask_vars_RHS"), params_l.get("mask_rows"))
+
 def run(args):
     
     loaded = loadAll(args)
@@ -383,11 +387,11 @@ def run_splits(args, splt=""):
         with open(splt_fk, "w") as f:
             f.write(printRedList(reds_list, fields=[-1, "track"]))
 
-        all_fields = Redescription.print_default_fields
+        all_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
         for fk, dt in summaries.items():
             splt_fk = filenames["basis"]+ ("_split-%d:%s-k%d.txt" % (nb_splits, suff, fk))            
             with open(splt_fk, "w") as f:
-                f.write(Redescription.dispHeader(all_fields, "\t") + "\t")
+                f.write(Redescription.dispHeader(all_fields, sep="\t") + "\t")
                 f.write("\t".join(header) + "\n")
                 for ri, red in enumerate(dt["reds"]):
                     f.write(red.disp(list_fields=all_fields, sep="\t")+ "\t")

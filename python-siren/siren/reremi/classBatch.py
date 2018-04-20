@@ -98,7 +98,7 @@ class Batch(ICOrdict):
         parameters = { "filter_funct": None,
                        "filter_thres": 0}
         parameters.update(custom_parameters)
-
+        ## print "Batch filtertofirst", parameters
         comp_ids = []
         if callable(parameters["filter_funct"]) and len(ids) >= 2:
             ## start from where the condition might be broken
@@ -122,7 +122,7 @@ class Batch(ICOrdict):
         # if new_ids is not None:
         #     pdb.set_trace()
         #     print new_ids
-
+        ## print "Batch filterpairs", parameters
         comp_ids = []
         if callable(parameters["filter_funct"]) and len(ids) >= parameters["filter_max"]+2:
             ## start from where the condition might be broken
@@ -184,6 +184,7 @@ class Batch(ICOrdict):
         return ids
     
     def selected(self, actions_parameters =[], ids=None, complement=False, new_ids=None):
+        ## print "Batch Selected", actions_parameters
         ### applies a sequence of action to select a sequence of elements from the batch
         if ids is None:
             ids = self.getIds()

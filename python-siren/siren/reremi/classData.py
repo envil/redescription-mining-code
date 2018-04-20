@@ -2036,7 +2036,7 @@ class Data(object):
         return len([c for c in self.cols[side] if c.getEnabled()])
     def nbColsDisabled(self, side):
         return len([c for c in self.cols[side] if not c.getEnabled()])
-
+        
     def colsSide(self, side): 
         return self.cols[side]
 
@@ -2168,7 +2168,89 @@ class Data(object):
                 self.coords = coords_tmp
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
-
+            
+    def enableAll(self):
+        for side in [0,1]:
+            for i in range(self.nbCols(side)): self.col(side, i).setEnabled() ### reset all to active
+        self.selected_rows = set() ### reset all to active
+        
+    def applyDisableMasks(self, mask_vars_LHS=None, mask_vars_RHS=None, mask_rows=None):
+        m0 = self.applyDisableMaskCols(0, mask_vars_LHS)
+        m1 = self.applyDisableMaskCols(1, mask_vars_RHS)
+        mR = self.applyDisableMaskRows(mask_rows)
+        return (m0, m1, mR)
+        
+    def applyDisableMaskCols(self, side, mask_vars=None):
+        on, off = (set(), set())
+        if mask_vars is not None and len(mask_vars) > 0:
+            mask_parts = mask_vars.strip().split(",")
+            if len(mask_parts) > 0:                
+                if all([re.match("^[0-9]*:[TF]$", p) for p in mask_parts]):
+                    for p in mask_parts:
+                        pps = p.split(":")
+                        which, what = (int(pps[0]), self.enabled_codes_rev_simple.get(pps[1]))
+                        if which < self.nbCols(side):
+                            if what:
+                                self.col(side, which).setEnabled()
+                                on.add(which)
+                            else:
+                                self.col(side, which).setDisabled()
+                                off.add(which)
+                elif all([re.match("^[TF]$", p) for p in mask_parts]):                        
+                    for which, p in enumerate(mask_parts):
+                        what = self.enabled_codes_rev_simple.get(p)
+                        if which < self.nbCols(side):
+                            if what:
+                                self.col(side, which).setEnabled()
+                                on.add(which)
+                            else:
+                                self.col(side, which).setDisabled()
+                                off.add(which)
+                elif all([re.match("^[0-9]*$", p) for p in mask_parts]):
+                    for i in range(self.nbCols(side)): self.col(side, i).setEnabled() ### reset all to active
+                    for pp in mask_parts:
+                        which = int(pp)
+                        if which < self.nbCols(side):
+                            self.col(side, which).setDisabled()
+                            off.add(which)
+                    on = set(range(self.nbCols(side)).difference(off))
+        return on, off
+    def applyDisableMaskRows(self, mask_rows=None):
+        on, off = (set(), set())
+        if mask_rows is not None and len(mask_rows) > 0:
+            mask_parts = mask_rows.strip().split(",")
+            if len(mask_parts) > 0:                
+                if all([re.match("^[0-9]*:[TF]$", p) for p in mask_parts]):
+                    for p in mask_parts:
+                        pps = p.split(":")
+                        which, what = (int(pps[0]), self.enabled_codes_rev_simple.get(pps[1]))
+                        if which < self.nbRows():
+                            if what:
+                                self.removeSelectedRow(which)
+                                on.add(which)
+                            else:
+                                self.addSelectedRow(which)
+                                off.add(which)
+                elif all([re.match("^[TF]$", p) for p in mask_parts]):                        
+                    for which, p in enumerate(mask_parts):
+                        what = self.enabled_codes_rev_simple.get(p)
+                        if which < self.nbRows():
+                            if what:
+                                self.removeSelectedRow(which)
+                                on.add(which)
+                            else:
+                                self.addSelectedRow(which)
+                                off.add(which)
+                elif all([re.match("^[0-9]*$", p) for p in mask_parts]):
+                    self.selected_rows = set() ### reset all to active
+                    for pp in mask_parts:
+                        which = int(pp)
+                        if which < self.nbRows():
+                            self.addSelectedRow(which)
+                            off.add(which)
+                    on = set(range(self.nbRows()).difference(off))
+        return on, off
+    
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def readDataFromXMLFile(filename):
         (cols, N, coord, rnames) = ([[],[]], 0, None, None)
@@ -2649,7 +2731,7 @@ def main():
         # for side in [0,1]:
         #     for col in data.cols[side]:
         #         print col
-    
+
     rep = "/home/egalbrun/Desktop/DataReReMi/"
     data = Data([rep+"input1Mammals.csv", rep+"input2Weather.csv", {"delimiter": ";"}, ""], "csv")
     print data.cols[1][1].getVector()

@@ -1420,7 +1420,7 @@ class Query(object):
         else: 
             return self.op.other()
 
-    def getBukElemAtR(self, path, buk=None, i=None):
+    def getBukElemAtR(self, path, buk=None, i=None): ## starting pos from end of path
         if i is None:
             i = len(path)-1
         if buk is None:
@@ -1431,7 +1431,7 @@ class Query(object):
             else:
                 return self.getBukElemAt(path, buk[path[i]], i-1)
         return None
-    def getBukElemAt(self, path, buk=None, i=None):
+    def getBukElemAt(self, path, buk=None, i=None): ## starting pos from start of path
         if i is None:
             i = 0
         if buk is None:
@@ -1490,7 +1490,7 @@ class Query(object):
         self.push_negation()
         # self.op.flip()
         # recurse_list(self.buk, function =lambda x: x.flip())
-            
+        
     def __cmp__(self, y):
         return self.compare(y)
             
@@ -1568,6 +1568,25 @@ class Query(object):
     
     def invLiterals(self):
         return set(recurse_list(self.buk, function =lambda term: term))
+
+    def distInner(self, preff):
+        len(preff)
+    
+    def posLiterals(self, buk=None, op=None, preff=[], mdepth=None):
+        if buk is None:
+            buk = self.buk
+            op = self.op.copy()
+            mdepth = self.max_depth()
+        if isinstance(buk, Literal):
+            return [{"pth": tuple(preff), "mdepth": mdepth, "cid": buk.colId(), "op": op, "lit": buk}]
+        elif isinstance(buk, Neg):
+            return [{"pth": tuple(preff), "mdepth": mdepth, "cid": -1, "op": op, "lit": buk.boolVal()}]
+        tmp = []
+        for i in range(len(buk)):
+            opp = op.copy()
+            opp.flip()
+            tmp.extend(self.posLiterals(buk[i], opp, [i]+preff, mdepth))
+        return tmp
 
     def replace(self, depth_ind, replacement):
         if len(depth_ind) == 0:
