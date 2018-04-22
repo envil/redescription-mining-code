@@ -23,6 +23,7 @@ class DrawerBasis(object):
     wait_delay = 300
     max_emphlbl = 5
     ann_xy = (-10, 15)
+    info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
 
     ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
     @classmethod
@@ -109,6 +110,8 @@ class DrawerBasis(object):
         return False
     def plotSimple(self):
         return not self.drawPoly()
+    def adjust(self):
+        pass
 
     def makeBackground(self):   
         pass
@@ -160,6 +163,8 @@ class DrawerBasis(object):
     def setAxe(self, value):
         self.axe = value
 
+    def delElement(self, key):
+        del self.elements[key]
     def setElement(self, key, value):
         self.elements[key] = value
     def getElement(self, key):
@@ -395,6 +400,31 @@ class DrawerBasis(object):
         self.cp += 1
         self.call_wait.Restart(self.wait_delay)
 
+    def setInfoText(self, text_str):
+        if not self.hasElement("info_text"):
+            info_text = {}
+            ax = self.getAxe()
+            dets = self.getInfoDets()
+            xlims = ax.get_xlim()
+            lx = xlims[0] + dets["px"]*(xlims[1]-xlims[0])
+            ylims = ax.get_ylim()
+            ly = ylims[0] + dets["py"]*(ylims[1]-ylims[0])
+            info_text["text"] = ax.annotate(text_str, xy=(lx, ly), 
+                                       xycoords='data', xytext=(dets["dx"], dets["dy"]), textcoords='offset points',
+                                       color=dets["ec"], va=dets["va"], ha=dets["ha"], backgroundcolor="#FFFFFF",
+                                       bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=dets["ec"], alpha=dets["alpha"]),
+                                       zorder=8, **self.view.getFontProps())
+            self.setElement("info_text", info_text)
+        else:
+            self.getElement("info_text")["text"].set_text(text_str)
+        self.draw()
+
+    def delInfoText(self):
+        if self.hasElement("info_text"):
+            self.getElement("info_text")["text"].remove()
+            self.delElement("info_text")
+        self.draw()
+            
     def addStamp(self, pref=""):
         if not self.getPltDtH().hasQueries():
             return
@@ -413,65 +443,26 @@ class DrawerBasis(object):
         red = Redescription.fromQueriesPair(qrs, self.getParentData())
         tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "lenExx", "pval"]
         headers = ["qL=", "qR=", "J=", "|E11|=", "pV="]
-        # rr = "(%s)   " % self.getItemId()
         rr = pref
         tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="U") #, rid=rr)
         if not self.hasElement("red_stamp"):
             red_stamp = {"old_pos": old_pos}
             old_pos = self.getAxe().get_position()
-            red_stamp["text"] = self.getAxe().text(0.5*self.getAxe().get_xlim()[1], self.getAxe().get_ylim()[1], tex_str, ha="center", va="bottom")
-            ## red_stamp["text"] = self.getAxe().text(0.5, 1./(8*2), tex_str, ha="center", va="center")
+            red_stamp["text"] = self.getAxe().text(0.5*self.getAxe().get_xlim()[1], self.getAxe().get_ylim()[1], tex_str, ha="center", va="bottom", **self.view.getFontProps())
             self.setElement("red_stamp", red_stamp)
         else:
-            self.getElement("red_stamp").set_text(tex_str)
+            self.getElement("red_stamp")["text"].set_text(tex_str, **self.view.getFontProps())
         self.draw()       
 
-        
 
-# class DrawerRed(DrawerBasis):
+    def delStamp(self):
+        if self.hasElement("red_stamp"):
+            red_stamp = self.getElement("red_stamp")
+            self.axe.set_position(red_stamp["old_pos"])
+            red_stamp["text"].remove()
+            self.delElement("red_stamp")
+            self.draw()
 
-#     def OnStamp(self, event=None):
-#         if self.redStamp is not None:
-#             self.delStamp()
-#         else:
-#             self.addStamp()
-            
-#     def delStamp(self):
-#         if self.redStamp is not None:
-#             # pos1 = self.axe.get_position()
-#             # print "PosC", pos1
-#             self.axe.set_position(self.redStamp["old_pos"])
-#             # pos1 = self.axe.get_position()
-#             # print "PosD", pos1
-
-#             self.redStamp["text"].remove()
-#             self.redStamp = None
-#             self.MapcanvasMap.draw()
-            
-#     def addStamp(self, pref=""):
-#         if self.redStamp is None:
-#             old_pos = self.axe.get_position()
-#             # print "PosA", old_pos
-#             new_pos = [old_pos.x0, old_pos.y0,  old_pos.width, 7./8*old_pos.height]
-#             # # pos2 = [0., 0.,  1., 1.0]
-#             self.axe.set_position(new_pos)
-#             # pos1 = self.axe.get_position()
-#             # print "PosB", pos1
-
-#         qrs = self.getQueries()
-
-#         red = Redescription.fromQueriesPair(qrs, self.getParentData())
-#         tex_fields = ["U_query_LHS_named", "U_query_RHS_named", "Tex_acc", "Tex_card_gamma", "Tex_pval"]
-#         headers = ["qL", "qR", "J", "|E11|", "pV"]
-#         # rr = "(%s)   " % self.getItemId()
-#         rr = pref
-#         tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, sep=" ", headers=headers, delim="", nblines=3, styleX="T") #, rid=rr)
-#         if self.redStamp is None:
-#             self.redStamp = {"old_pos": old_pos}
-#             self.redStamp["text"] = self.MapfigMap.text(0.5, 1-1./(8*2), tex_str, ha="center", va="center")
-#         else:
-#             self.redStamp["text"].set_text(tex_str)
-#         self.MapcanvasMap.draw()
 
     
 class DrawerEntitiesTD(DrawerBasis):
@@ -479,10 +470,10 @@ class DrawerEntitiesTD(DrawerBasis):
     NBBINS = 20
     MAP_POLY = False
     max_emphlbl = 5
-    map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.E_xo]+"|", [SSetts.E_xo]),
-                       ("r", "|E"+SSetts.sym_sparts[SSetts.E_ox]+"|", [SSetts.E_ox]),
-                       ("i", "|E"+SSetts.sym_sparts[SSetts.E_xx]+"|", [SSetts.E_xx]),
-                       ("o", "|E"+SSetts.sym_sparts[SSetts.E_oo]+"|", [SSetts.E_oo])]
+    map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.Exo]+"|", [SSetts.Exo]),
+                       ("r", "|E"+SSetts.sym_sparts[SSetts.Eox]+"|", [SSetts.Eox]),
+                       ("i", "|E"+SSetts.sym_sparts[SSetts.Exx]+"|", [SSetts.Exx]),
+                       ("o", "|E"+SSetts.sym_sparts[SSetts.Eoo]+"|", [SSetts.Eoo])]
 
     
     def __init__(self, view):
@@ -542,6 +533,8 @@ class DrawerEntitiesTD(DrawerBasis):
         
     def hoverActive(self):
         return self.getSettBoolV('hover_entities') and not self.hasToolbActive()
+    def hoverCoordsActive(self):
+        return self.getSettBoolV('hover_coords') and not self.hasToolbActive()    
     def clickActive(self):
         return self.getSettBoolV('click_entities') and not self.hasToolbActive()
 
@@ -579,13 +572,28 @@ class DrawerEntitiesTD(DrawerBasis):
         return None
     
     def on_motion(self, event):
-        if self.hoverActive() and self.inCapture(event):
-            lid = self.getLidAt(event.xdata, event.ydata)
-            if lid is None:
-                self.emphasizeOnOff(turn_off=None, hover=True, review=True)
-            elif not self.isHovered(lid):
-                self.emphasizeOnOff(turn_on=[lid], turn_off=None, hover=True, review=True)
-                
+        if self.inCapture(event):
+            if self.hoverActive():
+                lid = self.getLidAt(event.xdata, event.ydata)
+                if lid is None:
+                    self.emphasizeOnOff(turn_off=None, hover=True, review=True)
+                elif not self.isHovered(lid):
+                    self.emphasizeOnOff(turn_on=[lid], turn_off=None, hover=True, review=True)
+            elif self.hoverCoordsActive():
+                txt = self.getPosInfoTxt(event)
+                if txt is not None:
+                    self.setInfoText(txt)
+                else:
+                    self.delInfoText()
+        elif self.hoverCoordsActive():
+            self.delInfoText()
+
+    def getPosInfo(self, event):
+        return (event.xdata, event.ydata)
+    def getPosInfoTxt(self, event):
+        return "x=% 8.4f, y=% 8.4f" % self.getPosInfo(event)
+
+    
     def on_click(self, event):        
         if self.clickActive() and self.inCapture(event):
             lid = self.getLidAt(event.xdata, event.ydata)
@@ -779,7 +787,7 @@ class DrawerEntitiesTD(DrawerBasis):
         zord_clusts = numpy.array([draw_settings[i]["zord"] for i in u])
         zord_dots = zord_clusts[indices]
             
-        delta_dots = vec==SSetts.E_oo
+        delta_dots = vec==SSetts.Eoo
         
         sz_dots = numpy.ones(vec.shape)*draw_settings["default"]["size"]
         sz_dots[~ delta_dots] *= 0.5
@@ -869,11 +877,11 @@ class DrawerEntitiesTD(DrawerBasis):
         axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
         axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
         x1 += (fracts[0]+fracts[1])*(x1-x0)+2*bx
-        axe.set_yticks(norm_bins_ticks)
-        axe.set_yticklabels(bins_lbl, size=25) # "xx-large")
+        axe.set_yticks(norm_bins_ticks)        
+        axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
-                            labelleft="off", labelright="on")
+                            labelleft="off", labelright="on", labelsize=self.view.getFontProps().get("size"))
         return (x0, x1, y0, y1, bx, by)
         
     def plotDotsSimple(self, axe, dots_draws, draw_indices, draw_settings):
@@ -906,12 +914,16 @@ class DrawerEntitiesTD(DrawerBasis):
 
     def getAnnXY(self):
         return self.ann_xy
+    def getInfoDets(self):
+        return self.info_dets
     
-    def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+    def drawAnnotation(self, xy, ec, tag, xytext=None):
+        if xytext is None:
+            xytext = self.getAnnXY()
         return [self.axe.annotate(tag, xy=xy, zorder=8,
                                 xycoords='data', xytext=xytext, textcoords='offset points',
-                                color=ec, size=10, va="center", backgroundcolor="#FFFFFF",
+                                color=ec, va="center", backgroundcolor="#FFFFFF",
                                 bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
                                 arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
-                                                    patchA=None, patchB=self.getElement("ellipse"), relpos=(0.2, 0.5)))]
+                                                    patchA=None, patchB=self.getElement("ellipse"), relpos=(0.2, 0.5)),**self.view.getFontProps())]
 

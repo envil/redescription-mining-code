@@ -337,8 +337,10 @@ class LayoutHandlerBasis(object):
         extFrame.SetSizer(wx.BoxSizer(wx.HORIZONTAL))
         return extFrame
             
-    def OnSize(self, event=None):
+    def OnSize(self, event=None):        
         self._SetSize()
+        if self.getDrawer() is not None:
+            self.getDrawer().adjust()
 
     def OnPop(self, event=None):
         pos = self.getGPos()
@@ -477,14 +479,14 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
     label_typeP="J-type ="
 
     label_cardN="|E| ="
-    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.E_oo]+"| ="    
+    label_cardU="|E"+SYM.SYM_SETMIN+"E"+SSetts.sym_sparts[SSetts.Eoo]+"| ="    
 
     label_cardP="|E%s| ="
     
-    label_cardAlpha="|E"+SSetts.sym_sparts[SSetts.E_xo]+"| ="
-    label_cardBeta="|E"+SSetts.sym_sparts[SSetts.E_ox]+"| ="
-    label_cardI="|E"+SSetts.sym_sparts[SSetts.E_xx]+"| ="
-    label_cardO="|E"+SSetts.sym_sparts[SSetts.E_oo]+"| ="
+    label_cardAlpha="|E"+SSetts.sym_sparts[SSetts.Exo]+"| ="
+    label_cardBeta="|E"+SSetts.sym_sparts[SSetts.Eox]+"| ="
+    label_cardI="|E"+SSetts.sym_sparts[SSetts.Exx]+"| ="
+    label_cardO="|E"+SSetts.sym_sparts[SSetts.Eoo]+"| ="
     
     label_learn = SYM.SYM_LEARN #+":"
     label_test = SYM.SYM_TEST #+":"
@@ -554,7 +556,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                                                     wx.StaticText(self.panel, label="XXX"))
 
 
-                if info_item.get("part_id", SSetts.E_oo) < SSetts.E_oo:
+                if info_item.get("part_id", SSetts.Eoo) < SSetts.Eoo:
                     self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["part_id"]])
 
         innerBox.Add(self.layout_elements["queries_text"][0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})

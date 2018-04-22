@@ -1177,8 +1177,8 @@ class NumColM(ColM):
     def makeSegmentsColors(self, ssetts, side, supports, ops =[False, True]):
         supports.makeVectorABCD()
 
-        partids = [[ssetts.partId(ssetts.E_xx, side), ssetts.partId(ssetts.E_xo, side)], \
-                   [ssetts.partId(ssetts.E_ox, side), ssetts.partId(ssetts.E_oo, side)]]
+        partids = [[ssetts.partId(ssetts.Exx, side), ssetts.partId(ssetts.Exo, side)], \
+                   [ssetts.partId(ssetts.Eox, side), ssetts.partId(ssetts.Eoo, side)]]
         
         segments = [[[self.sVals[0][0], None, [0, 0]]], [[self.sVals[0][0], None, [0, 0]]]]
         current_valseg = [[self.sVals[0][0], self.sVals[0][0], [0, 0]], [self.sVals[0][0], self.sVals[0][0], [0, 0]]]

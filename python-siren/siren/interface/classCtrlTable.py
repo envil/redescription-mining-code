@@ -1422,6 +1422,9 @@ class RedsSet(EditableContent):
         for fk in fks:
             if fk in Redescription.exp_details:
                 dt = Redescription.exp_details[fk]
+                # if re.search("f$", dt.get("fmt", "")):
+                #     INTER_FIELDS[sp].append((dt["lbl_gui"], str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT))
+                # else:
                 INTER_FIELDS[sp].append((dt["lbl_gui"], str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT))
             
     fields_def_nosplit = FIRST_FIELDS + INTER_FIELDS["nosplits"] + LAST_FIELDS

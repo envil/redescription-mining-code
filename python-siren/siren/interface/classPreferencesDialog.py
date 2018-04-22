@@ -34,8 +34,8 @@ class PreferencesDialog(wx.Dialog):
         """
         Initialize the config dialog
         """
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Preferences') #, size=(550, 300))
-        self.nb = wx.Notebook(self, wx.ID_ANY)
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Preferences', style=wx.RESIZE_BORDER|wx.DEFAULT_DIALOG_STYLE) #, size=(550, 300))
+        self.nb = wx.Notebook(self, wx.ID_ANY, style=wx.NB_TOP)
         nb_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(nb_sizer)
         nb_sizer.Add(self.nb, 0, wx.EXPAND|wx.ALL, 5)

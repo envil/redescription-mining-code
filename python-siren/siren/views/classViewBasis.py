@@ -284,7 +284,8 @@ class ViewBasis(object):
             v = default
         return v
 
-        
+    def getFontProps(self):
+        return {"size": self.getSettV("plot_fontsize")}
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
             dsetts = self.getParentPreferences()
@@ -355,43 +356,44 @@ class ViewBasis(object):
         self.setAlphaOnOff()
         colors = self.getColors1()
         colhigh = self.getColorHigh()
+        fontprops = self.getFontProps()
         defaults = self.getDrawSettDef()
         if self.getSettBoolV('miss_details'):
             zord_miss = self.DEF_ZORD
         else:
             zord_miss = -1       
-        draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.E_mm, SSetts.E_xm, SSetts.E_mx,
-                                                        SSetts.E_om, SSetts.E_mo,
-                                                        SSetts.E_oo, SSetts.E_ox,
-                                                        SSetts.E_xo, SSetts.E_xx])])
+        draw_pord = dict([(v,p) for (p,v) in enumerate([SSetts.Emm, SSetts.Exm, SSetts.Emx,
+                                                        SSetts.Eom, SSetts.Emo,
+                                                        SSetts.Eoo, SSetts.Eox,
+                                                        SSetts.Exo, SSetts.Exx])])
             
         dd = numpy.nan*numpy.ones(numpy.max(draw_pord.keys())+1)
-        for (p,v) in enumerate([SSetts.E_oo, SSetts.E_ox, SSetts.E_xo, SSetts.E_xx]):
+        for (p,v) in enumerate([SSetts.Eoo, SSetts.Eox, SSetts.Exo, SSetts.Exx]):
             dd[v] = p
 
-        css = {"draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
+        css = {"fontprops": fontprops, "draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
                "delta_on": self.getSettBoolV('draw_delta', self.DELTA_ON)}
-        for (p, iid) in enumerate([SSetts.E_xo, SSetts.E_ox, SSetts.E_xx, SSetts.E_oo]):
+        for (p, iid) in enumerate([SSetts.Exo, SSetts.Eox, SSetts.Exx, SSetts.Eoo]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
                         "shape": defaults["shape"], "size": defaults["size"],
                         "zord": self.DEF_ZORD}
-        for (p, iid) in enumerate([SSetts.E_xm, SSetts.E_mx]):
-            css[iid] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
+        for (p, iid) in enumerate([SSetts.Exm, SSetts.Emx]):
+            css[iid] = {"color_f": self.getColorA(colors[SSetts.Eoo], -.9),
                         "color_e": self.getColorA(colors[p], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": zord_miss}
-        for (p, iid) in enumerate([SSetts.E_mo, SSetts.E_om]):
+        for (p, iid) in enumerate([SSetts.Emo, SSetts.Eom]):
             css[iid] = {"color_f": self.getColorA(colors[p], -.9),
-                        "color_e": self.getColorA(colors[SSetts.E_oo], .9),
+                        "color_e": self.getColorA(colors[SSetts.Eoo], .9),
                         ## "color_e": self.getColorA(defaults["color_e"], .9),
                         "shape": defaults["shape"], "size": defaults["size"]-1,
                         "zord": zord_miss}
-        css[SSetts.E_mm] = {"color_f": self.getColorA(colors[SSetts.E_oo], -.9),
-                           "color_e": self.getColorA(colors[SSetts.E_oo], .9),
+        css[SSetts.Emm] = {"color_f": self.getColorA(colors[SSetts.Eoo], -.9),
+                           "color_e": self.getColorA(colors[SSetts.Eoo], .9),
                            "shape": defaults["shape"], "size": defaults["size"]-1,
                            "zord": zord_miss}
-        # css[SSetts.E_oo] = {"color_f": self.getColorA(defaults["color_f"]),
+        # css[SSetts.Eoo] = {"color_f": self.getColorA(defaults["color_f"]),
         #                      "color_e": self.getColorA(defaults["color_e"], 1.),
         #                      "color_l": self.getColorA(defaults["color_l"]),
         #                      "shape": defaults["shape"], "size": defaults["size"]-1,
@@ -401,10 +403,10 @@ class ViewBasis(object):
                    "shape": defaults["shape"], "size": defaults["size"]-1,
                    "zord": self.DEF_ZORD}
         css["default"] = defaults
-        css[SSetts.E_xo]["zord"] += 1
-        css[SSetts.E_ox]["zord"] += 1
-        css[SSetts.E_xx]["zord"] += 2
-        css[SSetts.E_oo]["zord"] -= 1
+        css[SSetts.Exo]["zord"] += 1
+        css[SSetts.Eox]["zord"] += 1
+        css[SSetts.Exx]["zord"] += 2
+        css[SSetts.Eoo]["zord"] -= 1
         # print "---- COLOR SETTINGS"
         # for k,v in css.items():
         #     if type(k) is int:

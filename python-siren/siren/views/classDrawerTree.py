@@ -180,10 +180,6 @@ class DrawerRedTree(DrawerEntitiesTD):
         # rsym = {0: ">", 1: "<"}
         x, y = tree.getNodeXY(node)
 
-        # if node is not None:
-        #     self.axe.annotate("#%d" % node,
-        #                       xy =(x, y), xytext =(x, y-0.05))
-
         if tree.isLeafNode(node):
             b = tree.getBottomX()
             self.axe.plot((x, b), (y, y), 'k:')
@@ -194,8 +190,6 @@ class DrawerRedTree(DrawerEntitiesTD):
                 self.axe.plot(b, y, 'wo', picker=5, gid="%d:%d:+1.T" % (side, node), zorder=10)
                 
         else:
-            # if tree.isRootNode(node):
-            #     self.axe.plot(x, y, 'k'+rsym[side], picker=5, gid="%d.S" % side)
             if tree.isParentNode(node):
                 for ynb in [0,1]:                        
                     for ci, child in enumerate(tree.getNodeChildren(node, ynb)):
@@ -205,19 +199,17 @@ class DrawerRedTree(DrawerEntitiesTD):
 
             if tree.isSplitNode(node):
                 self.axe.plot(x, y, color=color_dot[side], marker='s')
-                # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
                 ant = tree.getNodeSplit(node).disp(names=self.getParentData().getNames(side))
                 ant = ant.replace("<", "$\leq$").replace(">", "$\geq$")
                 self.axe.annotate(ant, xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
-                                  bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),
+                                  bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7),**self.view.getFontProps()
                                   )
-                # # self.axe.annotate(tree.getNodeSplit(node).disp(), # NO NAMES names=self.getParentData().getNames(side)),
                 self.axe.annotate(ant, xy =(x, y), xytext =(x, y+0.02),
                                   horizontalalignment='center', color=color_dot[side],
-                                  bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),
+                                  bbox=dict(boxstyle="round", fc=color_dot[side], ec="none", alpha=0.3),**self.view.getFontProps()
                                   )
-                #self.axe.text(Xs[tree[node]["depth"]], Ys[node]-0.05, "%s" % (supps[node]), horizontalalignment='center')
+
                 
     def okTrees(self):
         return self.trees is not None \
@@ -391,7 +383,9 @@ class DrawerRedTree(DrawerEntitiesTD):
         return self.store_supp is not None
 
     
-    def drawAnnotation(self, xy, ec, tag, xytext=(-10, 15)):
+    def drawAnnotation(self, xy, ec, tag, xytext=None):
+        if xytext is None:
+            xytext = self.getAnnXY()
         dsetts = self.getDrawSettings()
         lines = []
         lines.extend(self.axe.plot((self.flat_space, xy[0]), (xy[1], xy[1]), color=ec, linewidth=1, alpha=0.5))

@@ -129,13 +129,14 @@ class DrawerRedPara(DrawerEntitiesTD):
         return self.getPltDtH().getRed() is not None
         
     def getCanvasConnections(self):
-        return [('key_press_event', self.key_press_callback),
+        return [ ('draw_event', self.on_draw),
+                ('key_press_event', self.key_press_callback),
                 ('button_press_event', self.on_press),
                 ('button_release_event', self.on_release),
                 ('motion_notify_event', self.on_motion_all),
                 ('axes_leave_event', self.on_axes_out),
-                ('draw_event', self.on_draw),
                 ('pick_event', self.onpick)]
+
 
 
     def prepareData(self, lits, draw_ppos=None):
@@ -341,7 +342,6 @@ class DrawerRedPara(DrawerEntitiesTD):
                                  self.prepared_data["qcols"][i].typeId() == BoolColM.type_id:   
                             rects_drag[i] = rects[0]
 
-            # self.annotation = self.axe.annotate("", xy=(0.5, 0.5), xytext=(0.5,0.5), backgroundcolor="w")
             self.drs = []
             self.ri = None
             for rid, rect in rects_rez.items():
@@ -374,7 +374,9 @@ class DrawerRedPara(DrawerEntitiesTD):
 
             ### Labels
             self.axe.set_xticks(self.prepared_data["xticks"])
-            self.axe.set_xticklabels(["" for i in self.prepared_data["xlabels"]]) #, rotation=20, ha="right")
+            self.axe.set_xticklabels(["" for i in self.prepared_data["xlabels"]])
+            self.axe.tick_params(labelsize=self.view.getFontProps().get("size"))
+
             side = 0
             ticks_ann = []
             for lbi, lbl in enumerate(self.prepared_data["xlabels"]):
@@ -385,7 +387,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                                            xy =(self.prepared_data["xticks"][lbi], bot),
                                            xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
                                            horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_e"],
-                                           bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7), zorder=15
+                                           bbox=dict(boxstyle="round", fc="w", ec="none", alpha=0.7), zorder=15, **self.view.getFontProps()
                                            )
                     ticks_ann.append(tt)
                     
@@ -393,7 +395,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                                       xy =(self.prepared_data["xticks"][lbi], bot),
                                       xytext =(self.prepared_data["xticks"][lbi]+0.2, bot-0.5*self.margins_tb), rotation=25,
                                       horizontalalignment='right', verticalalignment='top', color=draw_settings[side]["color_e"],
-                                      bbox=dict(boxstyle="round", fc=draw_settings[side]["color_e"], ec="none", alpha=0.3), zorder=15
+                                      bbox=dict(boxstyle="round", fc=draw_settings[side]["color_e"], ec="none", alpha=0.3), zorder=15, **self.view.getFontProps()
                                       )
             self.setElement("ticks_ann", ticks_ann)
             # borders_draw = [numpy.min(self.prepared_data["xticks"])-1-self.margins_sides, bot,
@@ -405,6 +407,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             
             self.updateEmphasize(review=False)
             self.draw()
+            self.adjust()
             self.setFocus()
 
     def makeEffPlot(self, pos, lits, map_q, draw_settings):
@@ -424,9 +427,9 @@ class DrawerRedPara(DrawerEntitiesTD):
         corners = numpy.vstack([tx*numpy.array([-1., 1., 0., 0.])+pos, ty*numpy.array([0., 0., 1., -1.])+1.25]).T        
         dets = map_q[(side, lits[side][idx][1][0][0])]
         if side == 0:
-            arrow = [(SSetts.E_xo, SSetts.E_xx), (SSetts.E_oo, SSetts.E_ox)]
+            arrow = [(SSetts.Exo, SSetts.Exx), (SSetts.Eoo, SSetts.Eox)]
         else:
-            arrow = [(SSetts.E_ox, SSetts.E_xx), (SSetts.E_oo, SSetts.E_xo)]
+            arrow = [(SSetts.Eox, SSetts.Exx), (SSetts.Eoo, SSetts.Exo)]
         if dets["direct"] > 0:
             arrow = [arrow[1], arrow[0]]
             
@@ -449,12 +452,12 @@ class DrawerRedPara(DrawerEntitiesTD):
             ha = "left"
             if si == side:
                 ha = "right"
-            self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center", picker=60)
+            self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center", picker=60,**self.view.getFontProps())
             lids = dets["subsets"].get(ss)
             if lids is not None:
                 self.prepared_data["pos_hids"][(pos, xy[1] < 1.2)] = lids
         #pdb.set_trace()
-        self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.E_xx,0], corners[SSetts.E_xx,1]+0.05), ha="center", va="bottom")
+        self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.Exx,0], corners[SSetts.Exx,1]+0.05), ha="center", va="bottom", **self.view.getFontProps())
 
             
     def on_press(self, event):
@@ -466,6 +469,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                     self.ri = i
                 i+=1
             if self.ri is not None:
+                self.delInfoText()
                 self.drs[self.ri].do_press(event)
 
     def on_release(self, event):
@@ -499,7 +503,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             return 0
         elif self.prepared_data["qcols"][rid].typeId() == NumColM.type_id:
             v = self.getVforY(rid, b)
-            prec = -numpy.log10(self.prepared_data["limits"][2, rid])
+            prec = int(-numpy.log10(self.prepared_data["limits"][2, rid]))
             #tmp = 10**-prec*numpy.around(v*10**prec)
             if direc < 0:
                 tmp = 10**-prec*numpy.ceil(v*10**prec)
@@ -525,6 +529,17 @@ class DrawerRedPara(DrawerEntitiesTD):
             c = self.getParentData().col(side, self.prepared_data["qcols"][rid].colId())
             if c is not None:
                 return c.getCatFromNum(v)
+
+    def getPosInfo(self, event):
+        rid = int(numpy.rint(event.xdata))
+        if "qcols" in self.prepared_data and rid >= 0 and rid < len(self.prepared_data["qcols"]) and self.prepared_data["qcols"][rid] is not None:
+            return self.prepared_data["xlabels"][rid], self.getPinvalue(rid, event.ydata)
+        return rid, None
+    def getPosInfoTxt(self, event):
+        k,v = self.getPosInfo(event)
+        if v is not None:
+            return "%s=%s" % (k,v)
+
             
     def receive_release(self, rid, rect):
         if self.isReadyPlot() and "pos_axis" in self.prepared_data:
@@ -581,9 +596,9 @@ class DrawerRedPara(DrawerEntitiesTD):
     def drawEntity(self, idp, fc, ec=None, sz=1, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
         suppABCD = self.getPltDtH().getSuppABCD()
-        if suppABCD[idp] == SSetts.E_mm and zo >= 4:
+        if suppABCD[idp] == SSetts.Emm and zo >= 4:
             return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dotted", zorder=zo)
-        elif suppABCD[idp] > SSetts.E_oo and zo >= 4:
+        elif suppABCD[idp] > SSetts.Eoo and zo >= 4:
             return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dashed", zorder=zo)
         else:
             return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)
@@ -715,7 +730,9 @@ class DrawerRedPara(DrawerEntitiesTD):
             self.sendEmphasize(self.prepared_data["pos_hids"][(pos, updown)])
              
     def on_draw(self, event):
-
+        pass
+    
+    def adjust(self):
         renderer1 = self.getLayH().getCanvas().get_renderer()
         llboxes = []
         for ll in self.getElement("ticks_ann"):

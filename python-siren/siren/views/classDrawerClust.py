@@ -125,7 +125,7 @@ class DrawerClustTD(DrawerEntitiesTD):
                                  "hedges_hist": norm_bins, "vedges_occ": btms}
         
         axe.set_yticks(norm_bins_ticks)
-        axe.set_yticklabels(bins_lbl) #, size=25) # "xx-large")
+        axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
                             labelleft="off", labelright="on")

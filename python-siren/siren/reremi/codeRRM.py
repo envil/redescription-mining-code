@@ -822,7 +822,7 @@ class RedModel:
         self.subs = tmp_subs
         del self.reds[rid]
 
-    def E_ooDLRed(self, red, data):
+    def EooDLRed(self, red, data):
         suppn = red.getSuppI()
         cFallB = [0,0]
         totS = [0,0]
@@ -939,7 +939,7 @@ class RedModel:
 
 
     def getDeltaRed(self, red, data):
-        totDelta, nFB = self.E_ooDLRed(red, data)
+        totDelta, nFB = self.EooDLRed(red, data)
         ql = self.getQLRed(red)
         sl = self.getSLRed(red)
         tot = []
@@ -949,7 +949,7 @@ class RedModel:
         return tot
 
     def getDeltaRed(self, red, data):
-        totDelta, nFB = self.E_ooDLRed(red, data)
+        totDelta, nFB = self.EooDLRed(red, data)
         ql = self.getQLRed(red)
         sl = self.getSLRed(red)
         tot = []

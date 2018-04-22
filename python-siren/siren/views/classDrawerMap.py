@@ -395,7 +395,14 @@ class DrawerMap(DrawerBasis):
 
     def drawPoly(self):
         return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)
-        
+
+    def getPosInfo(self, event):
+        if self.bm is None:
+            return (event.xdata, event.ydata)
+        else:
+            return self.bm(event.xdata, event.ydata, inverse=True)
+            
+    
 class DrawerEntitiesMap(DrawerMap, DrawerEntitiesTD): pass
     
 class DrawerClustMap(DrawerMap, DrawerClustTD): pass

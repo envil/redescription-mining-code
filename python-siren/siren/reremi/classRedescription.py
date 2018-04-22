@@ -65,15 +65,15 @@ def prepareFmtString(nblines, nbstats, last_one, tex=False):
     
 class Redescription(object):
     diff_score = Query.diff_length + 1
-    qry_infos = {"queryLHS": "self.prepareQueryLHS", "queryLHS_named": "self.prepareQueryLHSNamed",
-                 "queryRHS": "self.prepareQueryRHS", "queryRHS_named": "self.prepareQueryRHSNamed"}
+    namedsuff = "_named"
+    
+    qry_infos = {"queryLHS": "self.prepareQueryLHS", "queryLHS"+namedsuff: "self.prepareQueryLHSNamed",
+                 "queryRHS": "self.prepareQueryRHS", "queryRHS"+namedsuff: "self.prepareQueryRHSNamed"}
     infos = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     match_prop = "(?P<prop>((?P<rset_id>(learn|test|all)))?:(?P<what>\w+):(?P<which>\w+)?)"
     
     ###################### FIELDS REDS
     which_dets = {"I": "supp"}
-    for lbl in SSetts.labels:
-        which_dets[lbl] = re.sub("_", "", lbl)
     what_dets = {"acc": "J", "pval": "pV"}
     which_dets_tex = {"I": "\\supp"}
     what_dets_tex = {"pr0": "prLHS", "pr1": "prRHS"}
@@ -91,33 +91,32 @@ class Redescription(object):
     exp_details = {}
     for rset_id in ["all", "learn", "test"]:
         for which in SSetts.labels+list(SParts.sets_letters):
-            whl = re.sub("_", "", which)
             ### len
-            name = "len%s%s" % (whl, rset_dets[rset_id]["name"])
+            name = "len%s%s" % (which, rset_dets[rset_id]["name"])
             exp_details[name] =  {"exp": "%s:len:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "d", 
-                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("|%s|" % which_dets.get(whl, whl)),
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("|%s|" % which_dets.get(which, which)),
                                   "lbl_txt": "card_%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
-                                  "lbl_tex": "\\PPcard{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+                                  "lbl_tex": "\\PPcard{%s%s}" % (which_dets_tex.get(which, which), rset_dets[rset_id]["lbl_tex"])}
             tex_fld_defs[name] = "\\newcommand{\\PPcard}[1]{\\abs{#1}} % support size\n"
             ### supp
-            name = "%s%s" % (whl, rset_dets[rset_id]["name"])
+            name = "%s%s" % (which, rset_dets[rset_id]["name"])
             exp_details[name] =  {"exp": "%s:supp:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "s", "supp_set": True, "sep": ",",
-                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(whl, whl)),
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(which, which)),
                                   "lbl_txt": "%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
-                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
-            exp_details[name+"_named"] =  {"exp": "%s:supp:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "s", "supp_set": True, "sep": ",",
-                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(whl, whl)),
+                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, which), rset_dets[rset_id]["lbl_tex"])}
+            exp_details[name+namedsuff] =  {"exp": "%s:supp:%s" % (rset_dets[rset_id]["exp"], which), "fmt": "s", "supp_set": True, "sep": ",",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%s" % which_dets.get(which, which)),
                                   "lbl_txt": "%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
-                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+                                  "lbl_tex": "\\PPsupp{%s%s}" % (which_dets_tex.get(which, which), rset_dets[rset_id]["lbl_tex"])}
             tex_fld_defs[name] = "\\newcommand{\\PPsupp}[1]{#1} % support\n"
-            tex_fld_defs[name+"_named"] = "\\newcommand{\\PPsupp}[1]{#1} % support\n"
+            tex_fld_defs[name+namedsuff] = "\\newcommand{\\PPsupp}[1]{#1} % support\n"
 
             ### prc
-            name = "prc%s%s" % (whl, rset_dets[rset_id]["name"])
+            name = "prc%s%s" % (which, rset_dets[rset_id]["name"])
             exp_details[name] =  {"exp": "%s:prc:%s" % (rset_dets[rset_id]["exp"], which), "fmt": ".2f",
-                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%%%s" % which_dets.get(whl, whl)),
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+("%%%s" % which_dets.get(which, which)),
                                   "lbl_txt": "prc_%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
-                                  "lbl_tex": "\\PPprc{%s%s}" % (which_dets_tex.get(which, whl), rset_dets[rset_id]["lbl_tex"])}
+                                  "lbl_tex": "\\PPprc{%s%s}" % (which_dets_tex.get(which, which), rset_dets[rset_id]["lbl_tex"])}
             tex_fld_defs[name] = "\\newcommand{\\PPprc}[1]{\\%#1} % support percent\n"
             
         for what in ["acc", "pval", "pr0", "pr1"]:
@@ -134,7 +133,7 @@ class Redescription(object):
     tex_fld_defs["acc_ratioTL"] = "\\newcommand{\\PPaccRatioTL}{\\jacc_{\\RSetTest/\\RSetLearn}} % support\n"
     exp_details["lenI_ratioTA"] = {"exp": "test:len:I/(1.*all:len:I)", "fmt": ".3f",
                                   "lbl_gui": SYM.SYM_RATIO+which_dets.get("I", "I"),
-                                  "lbl_txt": "E_xx_ratioTL", "lbl_tex": "\\PPlenIRatioTA"}
+                                  "lbl_txt": "Exx_ratioTL", "lbl_tex": "\\PPlenIRatioTA"}
     tex_fld_defs["lenI_ratioTA"] = "\\newcommand{\\PPlenIRatioTA}{\\supp_{\\RSetTest/\\mathcal{A}}} % support\n"
     for what in qry_infos.keys():
         exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
@@ -159,8 +158,7 @@ class Redescription(object):
     default_fields_supp = []
     miss_fields_supp = []
 
-    for splbl in SSetts.labels:
-        nname = re.sub("_", "", splbl)
+    for nname in SSetts.labels:
         if "m" in nname:
             miss_fields_len.append("len%s" % nname)
             miss_fields_supp.append("%s" % nname)
@@ -179,13 +177,12 @@ class Redescription(object):
     default_fields_totex = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
     width_mid = .5
     default_queries_fields = ["queryLHS", "queryRHS"]
-    namedsuff = "_named"
     named_queries_fields = ["%s%s" % (f, namedsuff) for f in default_queries_fields]
 
     @classmethod
     def map_field_name(tcl, fld):
-        fldtmp = fld
-        for (sf, st) in [("query_", "query"), ("card_", "len"), ("E_", "E"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo")]:
+        fldtmp = fld        
+        for (sf, st) in [("query_", "query"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm")]:
             fld = fld.replace(sf, st)
         return fld
         
@@ -239,7 +236,7 @@ class Redescription(object):
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
-    def getInfoDict(self, with_E_oo=False, rset_id=None):
+    def getInfoDict(self, with_Eoo=False, rset_id=None):
         if self.dict_supp_info is not None and self.sParts is not None:
             if (rset_id is not None and "rset_id" not in self.dict_supp_info) or \
                    (rset_id is None and "rset_id" in self.dict_supp_info):
@@ -248,10 +245,10 @@ class Redescription(object):
         
         if self.dict_supp_info is None and self.sParts is not None:
             if rset_id in self.restricted_sets and self.restricted_sets[rset_id]["sParts"] is not None:
-                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_E_oo)
+                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_Eoo)
                 self.dict_supp_info["rset_id"] = rset_id
             else:
-                self.dict_supp_info = self.sParts.toDict(with_E_oo)
+                self.dict_supp_info = self.sParts.toDict(with_Eoo)
         if self.dict_supp_info is not None:
             self.dict_supp_info["track"] = self.track
             return self.dict_supp_info
@@ -850,7 +847,7 @@ class Redescription(object):
                 entry = "-"
                 fmt = "s"
             else:
-                if supp_names is not None and Redescription.exp_details[field].get("supp_set", False) and re.search("_named$", field):
+                if supp_names is not None and Redescription.exp_details[field].get("supp_set", False) and re.search(namedsuff+"$", field):
                     entry = [supp_names[i] for i in entry]
                 if type(entry) in [list, set]:
                     entry = Redescription.exp_details[field].get("sep", ",").join(map(str, entry))
@@ -992,7 +989,7 @@ class Redescription(object):
                 if Redescription.exp_details[fk].get("supp_set", False):
                     sep = Redescription.exp_details[field].get("sep", ",")
                     vs = vs.strip().split(sep)
-                    if not re.search("_named$", fk):
+                    if not re.search(namedsuff+"$", fk):
                         vs = map(int, vs)
                 if re.search("f$", Redescription.exp_details[fk]["fmt"]):
                     vs =float(vs)
