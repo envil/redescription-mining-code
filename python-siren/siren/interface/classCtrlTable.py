@@ -1415,23 +1415,7 @@ class RedsSet(EditableContent):
                     ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
                     ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
     LAST_FIELDS = [('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
-
-    INTER_FIELDS = {"splits": [], "nosplits": []}
-    for sp, fks in [("nosplits", ["acc", "lenI", "prcI", "pval"]),
-                    ("splits", ["acc_ratioTL", "lenI_ratioTA", "acc_learn", "acc_test", "lenI_learn", "lenI_test", "prcI_learn", "prcI_test", "pval_learn","pval_test"])]:
-        for fk in fks:
-            if fk in Redescription.exp_details:
-                dt = Redescription.exp_details[fk]
-                # if re.search("f$", dt.get("fmt", "")):
-                #     INTER_FIELDS[sp].append((dt["lbl_gui"], str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT))
-                # else:
-                INTER_FIELDS[sp].append((dt["lbl_gui"], str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT))
-            
-    fields_def_nosplit = FIRST_FIELDS + INTER_FIELDS["nosplits"] + LAST_FIELDS
-    fields_def_splits = FIRST_FIELDS + INTER_FIELDS["splits"] + LAST_FIELDS
         
-    fields_def = fields_def_nosplit
-    #fields_def = fields_def_splits
     name_m = str_red+'.getQueriesU'
     check_m = str_red+'.getEnabled'
 
@@ -1439,21 +1423,35 @@ class RedsSet(EditableContent):
         EditableContent.__init__(self)
         self.parent = parent
         self.resetFields()
+
+    def getFieldsList(self, splits=False):
+        tmp = []
+        flk = "gui_nosplits"
+        if splits:
+            flk = "gui_splits"
+        for fk in Redescription.getFieldsList(flk):
+            if fk in Redescription.exp_details:
+                dt = Redescription.exp_details[fk]
+                if re.search("s$", dt.get("fmt", "")):
+                    tmp.append((dt["lbl_gui"], self.str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT))
+                else:
+                    tmp.append((dt["lbl_gui"], self.str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT))
+        return self.FIRST_FIELDS + tmp + self.LAST_FIELDS        
         
     def resetFields(self):
         self.resetAllSorts()
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
-            self.fields = self.fields_def_splits
+            self.fields = self.getFieldsList(True)
         else:
-            self.fields = self.fields_def_nosplit
+            self.fields = self.getFieldsList(False)
 
     def recomputeAll(self, data):
         for ri, red in self.items.items():
             red.recompute(data)
         if data.hasLT():
-            self.fields = self.fields_def_splits
+            self.fields = self.getFieldsList(True)
         else:
-            self.fields = self.fields_def_nosplit
+            self.fields = self.getFieldsList(False)
 
 
     def filterToOne(self, compare_ids, parameters):

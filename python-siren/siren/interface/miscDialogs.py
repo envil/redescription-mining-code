@@ -404,3 +404,160 @@ class FindDialog(object):
     def OnQuit(self, event):
         self.parent.quitFind()
         self.dlg.Destroy()
+
+
+
+########################################################################
+class ChoiceElement:
+    """"""
+
+    #----------------------------------------------------------------------
+    def __init__(self, id, lbl):
+        """Constructor"""
+        self.id = id
+        self.lbl = lbl
+    def getLabel(self):
+        return self.lbl
+    def getId(self):
+        return self.id
+
+    
+########################################################################
+class MultiSelectorDialog(object):
+
+    #----------------------------------------------------------------------
+    def __init__(self, parent, choice_list, selected_ids=[]):
+
+        self.parent = parent
+        self.dlg = wx.Dialog(self.parent.toolFrame, title="Fields selection", style=wx.RESIZE_BORDER|wx.DEFAULT_DIALOG_STYLE)
+        self.default_choice_list = choice_list
+        self.default_selected_ids = selected_ids
+        
+        self.lists = {}
+        self.options = {}
+        
+        for ll in ["LHS", "RHS"]:
+            self.lists[ll] = wx.ListBox(self.dlg, size=(200, 150), choices=[], style=wx.LB_MULTIPLE)
+        self.buttons = {"up": wx.Button(self.dlg,-1, "^", pos=(110, 180)),
+                        "down": wx.Button(self.dlg,-1, "v", pos=(110, 180)),
+                        "add": wx.Button(self.dlg,-1, ">", pos=(110, 180)),
+                        "rm": wx.Button(self.dlg,-1, "<", pos=(110, 180)),
+                        "reset": wx.Button(self.dlg,-1, "Reset", pos=(110, 180))}
+
+        self.buttons["up"].Bind(wx.EVT_BUTTON, self.onBtnUp)
+        self.buttons["down"].Bind(wx.EVT_BUTTON, self.onBtnDown)
+        self.buttons["add"].Bind(wx.EVT_BUTTON, self.onBtnAdd)
+        self.buttons["rm"].Bind(wx.EVT_BUTTON, self.onBtnRm)
+        self.buttons["reset"].Bind(wx.EVT_BUTTON, self.onBtnReset)        
+
+        self.lists["LHS"].Bind(wx.EVT_LISTBOX_DCLICK, self.onLstAdd)
+        self.lists["RHS"].Bind(wx.EVT_LISTBOX_DCLICK, self.onLstRm)
+
+        self.populate(choice_list, selected_ids)
+
+        sizer_btns = wx.BoxSizer(wx.VERTICAL)
+        sizer_btns.AddStretchSpacer()
+        for btn in ["up", "add", "rm", "down", "reset"]:
+            sizer_btns.Add(self.buttons[btn], 0, wx.ALL, 5)
+        sizer_btns.AddStretchSpacer()
+            
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.lists["LHS"], 2, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(sizer_btns, 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(self.lists["RHS"], 2, wx.EXPAND|wx.ALL, 5)
+
+        btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
+        topSizer = wx.BoxSizer(wx.VERTICAL)
+        topSizer.Add(sizer, 2, wx.EXPAND|wx.ALL, 5)
+        topSizer.Add(btnSizer, 0, wx.EXPAND|wx.ALL, 5)
+        
+        self.dlg.SetSizer(topSizer)
+        self.dlg.Fit()
+
+
+    def populate(self, choice_list, selected_ids=[]):
+        self.options = dict(choice_list)
+        lhs_ids = [cid for cid, name in choice_list if cid not in selected_ids]
+        self.setElemsList("LHS", lhs_ids)
+        self.setElemsList("RHS", selected_ids)
+
+    def resetLists(self):
+        self.populate(self.default_choice_list, self.default_selected_ids)
+        
+    def getOrdSelect(self):
+        which = "RHS"
+        return [self.lists[which].GetClientData(p)["id"] for p in range(self.lists[which].GetCount())]        
+        
+    def setElemsList(self, which, eids=[]):
+        self.lists[which].Clear()
+        self.appendElemsList(which, eids)
+    def appendElemsList(self, which, eids=[]):
+        for eid in eids:
+            self.lists[which].Append(self.options[eid].getLabel(), {"id": eid})
+    def removeElemsList(self, which, poss=[]):
+        for r in sorted(poss, reverse=True):
+            self.lists[which].Delete(r)
+
+    def onBtnReset(self, event):
+        self.resetLists()
+    def onBtnUp(self, event):
+        self.doUp()
+    def onBtnDown(self, event):
+        self.doDown()
+    def onBtnAdd(self, event):
+        self.doAdd()
+    def onBtnRm(self, event):
+        self.doRm()
+    def onLstAdd(self, event):
+        self.doAdd()
+    def onLstRm(self, event):
+        self.doRm()
+    def doAdd(self):
+        self.doSwap("LHS", "RHS")
+    def doRm(self):
+        self.doSwap("RHS", "LHS")
+
+    def insert(self, which, insert_pos, selids, select=False):
+        reselect = []
+        for ii, eid in enumerate(selids):
+            self.lists[which].Insert(self.options[eid].getLabel(), insert_pos, {"id": eid})
+            reselect.append(insert_pos+ii)
+        if select:
+            for ii in reselect:
+                self.lists[which].SetSelection(ii)
+        
+    def doUp(self):
+        which = "RHS"
+        selposs = self.lists[which].GetSelections()        
+        if len(selposs) > 0:
+            dd = sorted(selposs, reverse=True)
+            if dd[-1] > 0:
+                insert_pos = dd[-1]-1
+                selids = [self.lists[which].GetClientData(p)["id"] for p in dd]
+                self.removeElemsList(which, dd)
+                self.insert(which, insert_pos, selids, select=True)
+                    
+    def doDown(self):
+        which = "RHS"
+        selposs = self.lists[which].GetSelections()
+        if len(selposs) > 0:
+            dd = sorted(selposs, reverse=True)
+            if dd[-1] + len(dd) < self.lists[which].GetCount():
+                insert_pos = dd[-1]+1
+                selids = [self.lists[which].GetClientData(p)["id"] for p in dd]
+                self.removeElemsList(which, dd)
+                self.insert(which, insert_pos, selids, select=True)
+        
+    def doSwap(self, LFrom, LTo):        
+        selposs = self.lists[LFrom].GetSelections()
+        if len(selposs) > 0:
+            selids = [self.lists[LFrom].GetClientData(p)["id"] for p in selposs]
+            self.appendElemsList(LTo, selids)
+            self.removeElemsList(LFrom, selposs)
+
+    def showDialog(self):
+        fields = None
+        if self.dlg.ShowModal() == wx.ID_OK:
+            fields = self.getOrdSelect()
+        self.dlg.Destroy()
+        return fields

@@ -71,8 +71,10 @@ class Redescription(object):
                  "queryRHS": "self.prepareQueryRHS", "queryRHS"+namedsuff: "self.prepareQueryRHSNamed"}
     infos = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     match_prop = "(?P<prop>((?P<rset_id>(learn|test|all)))?:(?P<what>\w+):(?P<which>\w+)?)"
-    
-    ###################### FIELDS REDS
+
+    ######################################
+    ###   DEFINITIONS OF FIELDS REDS
+    ######################################
     which_dets = {"I": "supp"}
     what_dets = {"acc": "J", "pval": "pV"}
     which_dets_tex = {"I": "\\supp"}
@@ -81,15 +83,38 @@ class Redescription(object):
                  "learn" : {"name": "_learn", "exp": "learn", "lbl_gui": SYM.SYM_LEARN, "lbl_txt": "_learn", "lbl_tex": "_{\\RSetLearn}"},
                  "test" : {"name": "_test", "exp": "test", "lbl_gui": SYM.SYM_TEST, "lbl_txt": "_test", "lbl_tex": "_{\\RSetTest}"}}
 
+
+    tex_fld_defs = {} ### to contain tex command definitions
+    exp_details = {} ### to contain actual fields infos
+    ### QUERY FIELDS
+    ###################################
+    for what in qry_infos.keys():
+        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
+                             "lbl_gui": what.split("_")[0], "lbl_txt": what.split("_")[0], "lbl_tex": "\\PP"+what.split("_")[0]}
+        if re.search("LHS", what):
+            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iLHS} %% LHS query\n" % what.split("_")[0]
+        else:
+            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iRHS} %% RHS query\n" % what.split("_")[0]
+
+    ### SUPP FIELDS, SPLITS SPECIFIC
+    ###################################
+    ### SHARED TEX COMMAND DEFS
     tex_fld_stat = {"acc": "\\newcommand{\\PPacc}[1]{\\jacc#1} % Jacc\n",
                     "pval": "\\newcommand{\\PPpval}[1]{\\pValue#1} % pvalue\n",
                     "pr0": "\\newcommand{\\PPprLHS}[1]{\\pr(\\iLHS#1)} % proba\n",
                     "pr1": "\\newcommand{\\PPprRHS}[1]{\\pr(\\iRHS#1)} % proba\n"}
 
-        
-    tex_fld_defs = {}
-    exp_details = {}
     for rset_id in ["all", "learn", "test"]:
+        ### COMMON STATS
+        for what in ["acc", "pval", "pr0", "pr1"]:
+            name = "%s%s" % (what, rset_dets[rset_id]["name"])
+            exp_details[name] =  {"exp": "%s:%s:" % (rset_dets[rset_id]["exp"], what), "fmt": ".3f",
+                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what_dets.get(what, what),
+                                  "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+                                  "lbl_tex": "\\PP%s{%s}" % (what_dets_tex.get(what, what), rset_dets[rset_id]["lbl_tex"])}
+            tex_fld_defs[name] = tex_fld_stat[what]
+        
+        ### SUPP LEN, SUPP SET, SUPP PERCENTAGE 
         for which in SSetts.labels+list(SParts.sets_letters):
             ### len
             name = "len%s%s" % (which, rset_dets[rset_id]["name"])
@@ -118,15 +143,15 @@ class Redescription(object):
                                   "lbl_txt": "prc_%s%s" % (which, rset_dets[rset_id]["lbl_txt"]),
                                   "lbl_tex": "\\PPprc{%s%s}" % (which_dets_tex.get(which, which), rset_dets[rset_id]["lbl_tex"])}
             tex_fld_defs[name] = "\\newcommand{\\PPprc}[1]{\\%#1} % support percent\n"
-            
-        for what in ["acc", "pval", "pr0", "pr1"]:
-            name = "%s%s" % (what, rset_dets[rset_id]["name"])
-            exp_details[name] =  {"exp": "%s:%s:" % (rset_dets[rset_id]["exp"], what), "fmt": ".3f",
-                                  "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what_dets.get(what, what),
-                                  "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
-                                  "lbl_tex": "\\PP%s{%s}" % (what_dets_tex.get(what, what), rset_dets[rset_id]["lbl_tex"])}
-            tex_fld_defs[name] = tex_fld_stat[what]
-    
+
+
+    ### FURTHER FIELDS
+    ###################################
+    for what in infos.keys():
+        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
+                             "lbl_gui": what, "lbl_txt": what, "lbl_tex": "\\PP"+what}
+        tex_fld_defs[what] = "\\newcommand{\\PP%s}{%s} %% other\n" % (what, what)
+        
     exp_details["acc_ratioTL"] = {"exp": "test:acc:/learn:acc:", "fmt": ".3f",
                                   "lbl_gui": SYM.SYM_RATIO+what_dets.get("acc", "acc"),
                                   "lbl_txt": "acc_ratioTL", "lbl_tex": "\\PPaccRatioTL"}
@@ -135,29 +160,29 @@ class Redescription(object):
                                   "lbl_gui": SYM.SYM_RATIO+which_dets.get("I", "I"),
                                   "lbl_txt": "Exx_ratioTL", "lbl_tex": "\\PPlenIRatioTA"}
     tex_fld_defs["lenI_ratioTA"] = "\\newcommand{\\PPlenIRatioTA}{\\supp_{\\RSetTest/\\mathcal{A}}} % support\n"
-    for what in qry_infos.keys():
-        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
-                             "lbl_gui": what.split("_")[0], "lbl_txt": what.split("_")[0], "lbl_tex": "\\PP"+what.split("_")[0]}
-        if re.search("LHS", what):
-            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iLHS} %% other\n" % what.split("_")[0]
-        else:
-            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iRHS} %% other\n" % what.split("_")[0]
-    for what in infos.keys():
-        exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
-                             "lbl_gui": what, "lbl_txt": what, "lbl_tex": "\\PP"+what}
-        tex_fld_defs[what] = "\\newcommand{\\PP%s}{%s} %% other\n" % (what, what)
+
+        
+    ### set rounding info where relevant
     for fk in exp_details.keys():
         mtc = re.search("\.(?P<rnd>[0-9]+)f", exp_details[fk].get("fmt", ""))
         if mtc is not None:
             exp_details[fk]["rnd"] = int(mtc.group("rnd"))
-        
-    default_fields_stats = ["acc", "pval"]
 
+            
+    ### FIELD LISTS FOR DIFFERENT PURPOSES
+    ##########################################
+    default_queries_fields = ["queryLHS", "queryRHS"]
+    named_queries_fields = ["%s%s" % (f, namedsuff) for f in default_queries_fields]
+
+    default_fields_stats = ["acc", "pval"]
+    default_fields_tostr = ["acc", "lenI", "pval"]
+    default_fields_totex = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
+    width_mid = .5
+    
     default_fields_len = []
     miss_fields_len = []
     default_fields_supp = []
     miss_fields_supp = []
-
     for nname in SSetts.labels:
         if "m" in nname:
             miss_fields_len.append("len%s" % nname)
@@ -171,14 +196,21 @@ class Redescription(object):
             default_fields_supp.append("%s" % nname)
             miss_fields_len.append("len%s" % nname)
             miss_fields_supp.append("%s" % nname)
-
+    ######################################
+    ######################################            
+    field_lists = {"gui_nosplits": ["acc", "lenI", "prcI", "pval"],
+                   "gui_splits": ["acc_ratioTL", "lenI_ratioTA", "acc_learn", "acc_test", "lenI_learn", "lenI_test", "prcI_learn", "prcI_test", "pval_learn","pval_test"],
+                   "out_txt": list(default_queries_fields + default_fields_stats)
+                   }
+    
+    @classmethod
+    def getFieldsList(tcl, k):
+        return tcl.field_lists.get(k, [])
+    @classmethod
+    def setFieldsList(tcl, k, fields):
+        tcl.field_lists[k] = fields
+    
             
-    default_fields_tostr = ["acc", "lenI", "pval"]
-    default_fields_totex = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
-    width_mid = .5
-    default_queries_fields = ["queryLHS", "queryRHS"]
-    named_queries_fields = ["%s%s" % (f, namedsuff) for f in default_queries_fields]
-
     @classmethod
     def map_field_name(tcl, fld):
         fldtmp = fld        

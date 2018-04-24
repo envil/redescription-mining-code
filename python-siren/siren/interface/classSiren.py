@@ -17,6 +17,7 @@ import wx
 import wx.lib.dialogs
 
 from ..reremi.toolLog import Log
+from ..reremi.classRedescription import Redescription
 from ..reremi.classData import Data, DataError
 from ..reremi.classConstraints import Constraints
 from ..reremi.classBatch import Batch
@@ -28,7 +29,7 @@ from classCtrlTable import RedsManager, VarsManager
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
-from miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog
+from miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog, MultiSelectorDialog, ChoiceElement
 from ..views.factView import ViewFactory
 from ..views.classVizManager import VizManager
 from ..views.classViewsManager import ViewsManager
@@ -1019,7 +1020,7 @@ class Siren():
             ID_RUN_TEST = wx.NewId()
             m_runTest = menuFile.Append(ID_RUN_TEST, "&Run test feature", "Trying a new feature.")
             frame.Bind(wx.EVT_MENU, self.OnRunTest, m_runTest)
-        
+            
         ## Preferences
         menuFile.AppendSeparator()
         m_preferencesdia = menuFile.Append(wx.ID_PREFERENCES, "P&references...\tCtrl+,", "Set preferences.")
@@ -1039,6 +1040,22 @@ class Siren():
                 if not self.hasDataLoaded():
                         menuFile.Enable(ID_SPLT, False)
 
+        ## Export submenu
+        submenuFields = wx.Menu() # Submenu for exporting
+        
+        ID_FLD_TXT = wx.NewId()
+        m_fldtxt = submenuFields.Append(ID_FLD_TXT, "Text export", "Fields for text export.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTxt, m_fldtxt)
+        ID_FLD_GUI = wx.NewId()
+        m_fldgui = submenuFields.Append(ID_FLD_GUI, "GUI", "Fields for GUI.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsGUI, m_fldgui)
+        ID_FLD_GUIS = wx.NewId()
+        m_fldguis = submenuFields.Append(ID_FLD_GUIS, "GUI with splits", "Fields for GUI with splits.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsGUISplits, m_fldguis)
+
+        
+        ID_FLD = wx.NewId()
+        m_fld = menuFile.AppendMenu(ID_FLD, "Fields setup", submenuFields)
 
         menuFile.AppendSeparator()
         ## Quit
@@ -1331,8 +1348,34 @@ class Siren():
             return
         dlg = ExportFigsDialog(self, self.viewsm, info["items"], dir_name)
         dlg.showDialog()
-        
 
+    def OnDefRedsFieldsOutTxt(self, event):
+        self.OnDefRedsFields("out_txt")
+    def OnDefRedsFieldsGUISplits(self, event):
+        tt = self.OnDefRedsFields("gui_splits")
+        if tt is not None and self.dw.getData().hasLT():
+            self.recomputeAll()
+    def OnDefRedsFieldsGUI(self, event):
+        tt = self.OnDefRedsFields("gui_nosplits")
+        if tt is not None and not self.dw.getData().hasLT():
+            self.recomputeAll()
+            
+
+        
+    def OnDefRedsFields(self, flk):
+        choice_list = []
+        selected_ids = []
+        for k, dts in Redescription.exp_details.items():
+            choice_list.append((k, ChoiceElement(k, "%s (%s)" % (k, dts["exp"]))))
+        choice_list.sort(key=lambda x: Redescription.exp_details[x[0]]["exp"])
+        selected_ids.extend(Redescription.getFieldsList(flk))
+
+        dlg = MultiSelectorDialog(self, choice_list, selected_ids)
+        fields = dlg.showDialog()
+        if fields is not None:
+            Redescription.setFieldsList(flk, fields)
+        return fields
+    
     def quitFind(self):
         if self.findDlg is not None:
             self.selectedTab["tab"].quitFind()
