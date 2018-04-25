@@ -1388,6 +1388,23 @@ class QTree(object):
 class Query(object):
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
     side = 0
+    elem_letters = {"L": "Literals", "T": "Terms", "C": "Cols"}
+    info_what = {"len": "len(self)", "containsOR": "self.usesOr()", "containsAND": "self.usesAnd()" , "depth": "self.max_depth()"}
+    for ei, el in elem_letters.items():
+        info_what[ei+"set"] = "self.inv%s()" % el
+        info_what[ei+"nb"] = "len(self.inv%s())" % el
+    mtch_contain = "contains(?P<typ>["+"".join(elem_letters.keys())+"])"
+    mtch_what = [mtch_contain]
+
+    @classmethod
+    def testContainsWhich(tcl, which, eset, typ):
+        if typ == "C":
+            try:
+                return int(which) in eset
+            except TypeError:
+                pass
+        return False
+    
     def __init__(self, OR=True, buk=None):
         self.op = Op(OR)
         if buk is not None:
@@ -1405,6 +1422,22 @@ class Query(object):
             return 0
         return hash(self.op) + recurse_numeric(self.buk, function =lambda x, trace: hash(t)+sum(trace), args = {"trace": []})
 
+    @classmethod
+    def hasProp(tcl, what):
+        return what in tcl.info_what or any([re.match(mtch, what) for mtch in tcl.mtch_what])
+    def getProp(self, what, which=None, details=None):        
+        if what in self.info_what:
+            return eval(self.info_what[what])
+        tc = re.match(self.mtch_contain, what)
+        if tc is not None and which is not None:
+            typ = tc.group("typ")
+            el = Query.elem_letters.get(typ)
+            if el is not None:
+                eset = eval("self.inv%s()" % el)
+                return Query.testContainsWhich(which, eset, typ)
+        return None
+
+    
     def max_depth(self): # Does the query involve some disjunction?
         if len(self) == 0:
             return 0
@@ -1413,6 +1446,9 @@ class Query(object):
     def usesOr(self): # Does the query involve some disjunction?
         max_d = self.max_depth()
         return max_d > 1 or ( len(self) > 1  and self.op.isOr() )
+    def usesAnd(self): # Does the query involve some disjunction?
+        max_d = self.max_depth()
+        return max_d > 1 or ( len(self) > 1  and not self.op.isOr() )
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
         if nb % 2 == 0: # even bucket: query operator, else other
@@ -1564,13 +1600,13 @@ class Query(object):
     comparePair = staticmethod(comparePair)
     
     def invCols(self):
-        return set(recurse_list(self.buk, function =lambda term: term.colId()))
-    
-    def invLiterals(self):
-        return set(recurse_list(self.buk, function =lambda term: term))
+        return set(recurse_list(self.buk, function =lambda lit: lit.colId()))
 
-    def distInner(self, preff):
-        len(preff)
+    def invLiterals(self):
+        return set(recurse_list(self.buk, function =lambda lit: lit))
+
+    def invTerms(self):
+        return set(recurse_list(self.buk, function =lambda lit: lit.getTerm()))
     
     def posLiterals(self, buk=None, op=None, preff=[], mdepth=None):
         if buk is None:

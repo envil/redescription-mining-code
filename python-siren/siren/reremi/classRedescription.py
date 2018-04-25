@@ -7,6 +7,7 @@ import pdb
 
 ACTIVE_RSET_ID = "S0"
 SIDE_CHARS = {0:"L", 1:"R"}
+HAND_SIDE = {"qLHS": 0, "qRHS": 1, "q0": 0, "q1": 1}
 NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
 def digit_to_char(n, pad=None):
@@ -66,12 +67,15 @@ def prepareFmtString(nblines, nbstats, last_one, tex=False):
 class Redescription(object):
     diff_score = Query.diff_length + 1
     namedsuff = "_named"
+    splitssuff = "_splits"
+    misssuff = "_missing"
     
     qry_infos = {"queryLHS": "self.prepareQueryLHS", "queryLHS"+namedsuff: "self.prepareQueryLHSNamed",
                  "queryRHS": "self.prepareQueryRHS", "queryRHS"+namedsuff: "self.prepareQueryRHSNamed"}
     infos = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
-    match_prop = "(?P<prop>((?P<rset_id>(learn|test|all)))?:(?P<what>\w+):(?P<which>\w+)?)"
-
+    match_prop = "(?P<prop>((?P<rset_id>(learn|test|all|qLHS|qRHS|q0|q1)))?:(?P<what>\w+):(?P<which>\w+)?)"
+    match_cust_prop = "CUST:(?P<name>[^=]+)=(?P<exp>.*)"
+    
     ######################################
     ###   DEFINITIONS OF FIELDS REDS
     ######################################
@@ -88,6 +92,17 @@ class Redescription(object):
     exp_details = {} ### to contain actual fields infos
     ### QUERY FIELDS
     ###################################
+            
+    ### SHARED TEX COMMAND DEFS
+    tex_fld_stat = {"acc": "\\newcommand{\\PPacc}[1]{\\jacc#1} % Jacc\n",
+                    "pval": "\\newcommand{\\PPpval}[1]{\\pValue#1} % pvalue\n",
+                    "pr0": "\\newcommand{\\PPprLHS}[1]{\\pr(\\iLHS#1)} % proba\n",
+                    "pr1": "\\newcommand{\\PPprRHS}[1]{\\pr(\\iRHS#1)} % proba\n",
+                    "qlen": "\\newcommand{\\PPQlen}[1]{\\abs{#1}} % Nb. vars\n"}
+
+    ### QUERY FIELDS, SIDE SPECIFIC
+    ###################################
+    #### QUERY 
     for what in qry_infos.keys():
         exp_details[what] = {"exp": ":%s:" % what, "fmt": "s",
                              "lbl_gui": what.split("_")[0], "lbl_txt": what.split("_")[0], "lbl_tex": "\\PP"+what.split("_")[0]}
@@ -96,14 +111,23 @@ class Redescription(object):
         else:
             tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iRHS} %% RHS query\n" % what.split("_")[0]
 
+    #### QUERY STATS        
+    for what in Query.info_what.keys():
+        for si, side in enumerate(["LHS", "RHS"]):
+            fmt = "d"
+            if re.search("set", what): fmt = "s"
+            name = "%s_query%s" % (what, side)
+            exp_details[name] =  {"exp": "q%d:%s:" % (si, what), "fmt": fmt,
+                                  "lbl_gui": "%s query %s" % (what, side),
+                                  "lbl_txt": name,
+                                  "lbl_tex": "\\PPQ%s{q_\\i%s}" % (what, side)}
+            if ("q"+what) in tex_fld_stat: 
+                tex_fld_defs[name] = tex_fld_stat[("q"+what)]
+            else:
+                tex_fld_defs[name] = "\\newcommand{\\PPQ%s}[1]{\\text{%s} #1}\n" % (what, what)
+
     ### SUPP FIELDS, SPLITS SPECIFIC
     ###################################
-    ### SHARED TEX COMMAND DEFS
-    tex_fld_stat = {"acc": "\\newcommand{\\PPacc}[1]{\\jacc#1} % Jacc\n",
-                    "pval": "\\newcommand{\\PPpval}[1]{\\pValue#1} % pvalue\n",
-                    "pr0": "\\newcommand{\\PPprLHS}[1]{\\pr(\\iLHS#1)} % proba\n",
-                    "pr1": "\\newcommand{\\PPprRHS}[1]{\\pr(\\iRHS#1)} % proba\n"}
-
     for rset_id in ["all", "learn", "test"]:
         ### COMMON STATS
         for what in ["acc", "pval", "pr0", "pr1"]:
@@ -171,45 +195,115 @@ class Redescription(object):
             
     ### FIELD LISTS FOR DIFFERENT PURPOSES
     ##########################################
-    default_queries_fields = ["queryLHS", "queryRHS"]
-    named_queries_fields = ["%s%s" % (f, namedsuff) for f in default_queries_fields]
-
-    default_fields_stats = ["acc", "pval"]
-    default_fields_tostr = ["acc", "lenI", "pval"]
-    default_fields_totex = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
-    width_mid = .5
+    default_fields_parts = {}
     
-    default_fields_len = []
-    miss_fields_len = []
-    default_fields_supp = []
-    miss_fields_supp = []
+    default_fields_parts["q"] = ["queryLHS", "queryRHS"]
+    default_fields_parts["q"+namedsuff] = ["%s%s" % (f, namedsuff) for f in default_fields_parts["q"]]
+
+    default_fields_parts["stats_basic"] = ["acc", "pval"]
+    default_fields_parts["stats_gui"] = ["acc", "lenI", "prcI", "pval"]
+    default_fields_parts["stats_txt"] = ["acc", "lenI", "pval"]
+    default_fields_parts["stats_tex"] = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
+    width_mid = .5
+
+    default_fields_parts.update({"lens":[], "supps": [], "lens"+misssuff: [], "supps"+misssuff: []}) 
     for nname in SSetts.labels:
         if "m" in nname:
-            miss_fields_len.append("len%s" % nname)
-            miss_fields_supp.append("%s" % nname)
+            default_fields_parts["lens"+misssuff].append("len%s" % nname)
+            default_fields_parts["supps"+misssuff].append("%s" % nname)
         elif "xx" in nname:
-            default_fields_len.append("len%s" % nname)
-            miss_fields_len.append("len%s" % nname)
-            miss_fields_supp.append("%s" % nname)
+            default_fields_parts["lens"].append("len%s" % nname)
+            default_fields_parts["lens"+misssuff].append("len%s" % nname)
+            default_fields_parts["supps"+misssuff].append("%s" % nname)
         else:
-            default_fields_len.append("len%s" % nname)
-            default_fields_supp.append("%s" % nname)
-            miss_fields_len.append("len%s" % nname)
-            miss_fields_supp.append("%s" % nname)
+            default_fields_parts["lens"].append("len%s" % nname)
+            default_fields_parts["supps"].append("%s" % nname)
+            default_fields_parts["lens"+misssuff].append("len%s" % nname)
+            default_fields_parts["supps"+misssuff].append("%s" % nname)
+            
     ######################################
     ######################################            
-    field_lists = {"gui_nosplits": ["acc", "lenI", "prcI", "pval"],
-                   "gui_splits": ["acc_ratioTL", "lenI_ratioTA", "acc_learn", "acc_test", "lenI_learn", "lenI_test", "prcI_learn", "prcI_test", "pval_learn","pval_test"],
-                   "out_txt": list(default_queries_fields + default_fields_stats)
-                   }
-    
+    field_lists = {"basic": default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"],
+                   "basic"+misssuff: default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"+misssuff],
+                   "supp": default_fields_parts["supps"],
+                   "supp"+misssuff: default_fields_parts["supps"+misssuff],
+                   "q": default_fields_parts["q"],
+                   "q"+namedsuff: default_fields_parts["q"+namedsuff],
+                   "stats": default_fields_parts["stats_basic"]}
+
+    for basis in ["gui"]:
+        for wsplits, ssuff in [(False, ""), (True, splitssuff)]:
+            nf = "%s%s" % (basis, ssuff)
+            field_lists[nf] = [] #list(default_fields_parts["q"])
+            if wsplits:
+                field_lists[nf].extend(["acc_ratioTL", "lenI_ratioTA"])
+                for ff in default_fields_parts["stats_%s" % basis]:            
+                    field_lists[nf].extend(["%s_%s" % (ff, split) for split in ["test", "learn"]])
+            else:
+                field_lists[nf].extend(default_fields_parts["stats_%s" % basis])
+                
+    for basis in ["txt", "tex"]:
+        for named, nsuff in [(False, ""), (True, namedsuff)]:
+            for wsplits, ssuff in [(False, ""), (True, splitssuff)]:
+                nf = "%s%s%s" % (basis, nsuff, ssuff)
+                field_lists[nf] = list(default_fields_parts["q%s" % nsuff])
+                field_lists[nf].extend(default_fields_parts["stats_%s" % basis])
+                if wsplits:
+                    field_lists[nf].extend(["acc_ratioTL", "lenI_ratioTA"])
+                    for split in ["test", "learn"]:
+                        field_lists[nf].extend(["%s_%s" % (ff, split) for ff in default_fields_parts["stats_%s" % basis]])
+
     @classmethod
-    def getFieldsList(tcl, k):
+    def getFSuff(tcl, named=False, wsplits=False, wmissing=False):
+        kk = ""
+        if named: kk += tcl.namedsuff
+        if wsplits: kk += tcl.splitssuff
+        if wmissing: kk += tcl.misssuff
+        return kk
+    @classmethod
+    def hasFieldsList(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+        return (k+tcl.getFSuff(named, wsplits, wmissing)) in tcl.field_lists
+
+    @classmethod
+    def getFieldsListCust(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+        kk = k+tcl.getFSuff(named, wsplits, wmissing)
+        if Redescription.hasFieldsList("custom-"+kk):
+            return Redescription.getFieldsList("custom-"+kk)
+        else:
+            return Redescription.getFieldsList(k, named, wsplits, wmissing)
+        
+    @classmethod
+    def getFieldsList(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+        kk = k+tcl.getFSuff(named, wsplits)
+        if wmissing and kk+tcl.misssuff in tcl.field_lists:
+            return tcl.field_lists[kk+tcl.misssuff]   
+        if kk in tcl.field_lists:
+            return tcl.field_lists[kk]
         return tcl.field_lists.get(k, [])
     @classmethod
     def setFieldsList(tcl, k, fields):
         tcl.field_lists[k] = fields
+
+    @classmethod
+    def getFieldsDet(tcl, fk, det, default=None):
+        if fk in tcl.exp_details:
+            if det == "name": return fk
+            return tcl.exp_details[fk].get(det, default)
+        else:
+            m = re.match(tcl.match_cust_prop, fk)
+            if m is not None:
+                if re.match("lbl_", det) or det == "name":
+                    return m.group("name")
+                elif det == "exp":
+                    return m.group("exp")            
+        return default 
+    @classmethod
+    def getFieldsKeys(tcl):
+        return tcl.exp_details.keys()
     
+    @classmethod
+    def collectTexCommands(tcl, list_fields):
+        return sorted(set([tcl.tex_fld_defs[fk] for fk in list_fields]))
             
     @classmethod
     def map_field_name(tcl, fld):
@@ -220,7 +314,15 @@ class Redescription(object):
         
     @classmethod
     def getExpDict(tcl, list_fields):
-        return dict([(fk, tcl.exp_details.get(fk, {}).get("exp", "")) for fk in list_fields])
+        tmp = []
+        for fk in list_fields:
+            if fk in tcl.getFieldsKeys():
+                tmp.append((fk, tcl.getFieldsDet(fk, "exp", "")))
+            else:
+                m = re.match(tcl.match_cust_prop, fk)
+                if m is not None:
+                    tmp.append((m.group("name"), m.group("exp")))
+        return dict(tmp)
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         self.resetRestrictedSuppSets()
@@ -727,6 +829,9 @@ class Redescription(object):
         return self.getRSetParts(details).suppB()
 
     def getProp(self, what, which=None, rset_id=None, details=None):
+        if Query.hasProp(what) and rset_id in HAND_SIDE:
+            return self.queries[HAND_SIDE[rset_id]].getProp(what, which, details)
+
         if rset_id is not None and which == "rids": ### ids details for split sets
             rset_ids = self.getRSetIds(rset_id)
             if rset_ids is None:
@@ -746,9 +851,9 @@ class Redescription(object):
             methode = eval(Redescription.qry_infos[what])
             if callable(methode):
                 return methode(details)
-        elif what in Redescriptions.infos: ### other redescription info
-            return eval(Redescriptions.infos[what])
-
+        elif what in Redescription.infos: ### other redescription info
+            return eval(Redescription.infos[what])
+        
     def refreshEVals(self, exps, details=None):
         self.cache_evals = self.compEvals(exps, details)        
     def compEVal(self, exp, details=None):
@@ -801,25 +906,21 @@ class Redescription(object):
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.default_fields_tostr, sep=" "), self.getTrack({"format":"str"})))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.getFieldsList(), sep=" "), self.getTrack({"format":"str"})))
 
     def dispHeader(list_fields=None, style="", named=False, sep = None, missing=False):
         if list_fields is None:
-            if named:
-                list_fields = Redescription.named_queries_fields+Redescription.default_fields_stats
-            else:
-                list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
-            if missing:
-                list_fields += Redescription.miss_fields_len
-            else:
-                list_fields += Redescription.default_fields_len
+            fstyle = "txt"
+            if style == "Tex":
+                fstyle = "tex"
+            list_fields = Redescription.getFieldsListCust(fstyle, named=named, wmissing=missing)
                 
         if style == "Tex":
             sepc = " & "
-            lbls = ["$%s$" % Redescription.exp_details[fk]["lbl_tex"] for fk in list_fields]
+            lbls = ["$%s$" % Redescription.getFieldsDet(fk, "lbl_tex") for fk in list_fields]
         else:
             sepc = "\t"
-            lbls = [Redescription.exp_details[fk]["lbl_txt"] for fk in list_fields]
+            lbls = [Redescription.getFieldsDet(fk,"lbl_txt") for fk in list_fields]
         if sep is not None:
             sepc = sep
         return sepc.join(lbls)
@@ -848,14 +949,13 @@ class Redescription(object):
         if names[0] is not None or names[1] is not None:
             details["names"] = names
         if list_fields is None:
+            fstyle = "txt"
+            if style == "Tex":
+                fstyle = "tex"
+            named = False
             if "names" in details:
-                list_fields = Redescription.named_queries_fields+Redescription.default_fields_stats
-            else:
-                list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
-            if missing:
-                list_fields += Redescription.miss_fields_len
-            else:
-                list_fields += Redescription.default_fields_len
+                named = True
+            list_fields = Redescription.getFieldsListCust(fstyle, named=named, wmissing=missing)
 
         exp_dict = Redescription.getExpDict(list_fields)
         evals_dict = self.compEVals(exp_dict, details)
@@ -864,38 +964,37 @@ class Redescription(object):
             lbls = with_fname
             with_fname = True
         elif with_fname:
+            det = "lbl_txt"
             if tex:
-                lbls = [Redescription.exp_details[field]["lbl_tex"]+"=" for field in list_fields]
-            else:
-                lbls = [Redescription.exp_details[field]["lbl_txt"]+"=" for field in list_fields]
-
+                det = "lbl_tex"
+            lbls = ["%s=" % Redescription.getFieldsDet(field,det) for field in list_fields]
             
         dts = {}
         entries = {"stats": [], "all": [], "q0": "", "q1": "", "rid": rid}
         for fid, field in enumerate(list_fields):
-            entry = evals_dict[field]
-            fmt = Redescription.exp_details[field]["fmt"]
+            entry = evals_dict[Redescription.getFieldsDet(field, "name", field)]
+            fmt = Redescription.getFieldsDet(field, "fmt", "s")
             if entry is None:
                 entry = "-"
                 fmt = "s"
             else:
-                if supp_names is not None and Redescription.exp_details[field].get("supp_set", False) and re.search(namedsuff+"$", field):
+                if supp_names is not None and Redescription.getFieldsDet(field, "supp_set", False) and re.search(Redescription.getFSuff(named=True)+"$", field):
                     entry = [supp_names[i] for i in entry]
                 if type(entry) in [list, set]:
-                    entry = Redescription.exp_details[field].get("sep", ",").join(map(str, entry))
-                elif "rnd" in Redescription.exp_details[field]:
+                    entry = Redescription.getFieldsDet(field, "sep", ",").join(map(str, entry))
+                elif Redescription.getFieldsDet(field, "rnd") is not None:
                     if style == "":
                         fmt = "f"
                     else:
-                        entry = round(entry, Redescription.exp_details[field]["rnd"])
+                        entry = round(entry, Redescription.getFieldsDet(field, "rnd"))
                     
                         
             delim, lbl = ("", "")
-            if tex and re.search("[df]$", Redescription.exp_details[field]["fmt"]):
+            if tex and re.search("[df]$", Redescription.getFieldsDet(field, "fmt", "")):
                 delim = "$"
             if with_fname:
                 lbl = lbls[fid]
-                if tex and not re.search("[df]$", Redescription.exp_details[field]["fmt"]):
+                if tex and not re.search("[df]$", Redescription.getFieldsDet(field, "fmt", "")):
                     lbl = "$"+lbl+"$"
             dts[field] = (delim+lbl+"%"+fmt+delim) % entry
             if re.search("queryLHS", field):
@@ -913,14 +1012,14 @@ class Redescription(object):
         return frmts % entries
     
     def dispQueries(self, names=[None,None], sep='\t'):
+        named = False
         if names[0] is not None or names[1] is not None:
-            list_fields = Redescription.named_queries_fields
-        else:
-            list_fields = Redescription.default_queries_fields
+            named = True
+        list_fields = Redescription.getFieldsList("q", named)
         return self.disp(list_fields=list_fields, sep=sep, names=names)
 
     def dispStats(self, sep='\t'):
-        return self.disp(list_fields=Redescription.default_fields_stats+Redescription.default_fields_stats, sep=sep)
+        return self.disp(list_fields=Redescription.getFieldsList("stats"), sep=sep)
         
     def dispSupp(self):
         return self.sParts.dispSupp()
@@ -965,15 +1064,16 @@ class Redescription(object):
         if tmp_en is not None:
             self.status = tmp_en
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
-
+            
     def parseHeader(string, sep=None):
+        default_queries_fields = Redescription.getFieldsList("q")
         if sep is None:
             seps = ["\t", ",", ";"]
         else:
             seps = [sep]
         for ss in seps:
             fields = [Redescription.map_field_name(s.strip()) for s in string.split(ss)]
-            if all([len([f for f in fields if re.match("%s(%s)?" % (h, Redescription.namedsuff), f)]) > 0 for h in Redescription.default_queries_fields]):
+            if all([len([f for f in fields if re.match("%s(%s)?" % (h, Redescription.getFSuff(named=True)), f)]) > 0 for h in default_queries_fields]):
                 return fields, ss
         return None, None
     parseHeader = staticmethod(parseHeader)    
@@ -981,9 +1081,10 @@ class Redescription(object):
     def parseQueries(string, list_fields=None, sep="\t", names=[None, None]):
         if type(string) is str:
             string = codecs.decode(string, 'utf-8','replace')
-            
+
+        default_queries_fields = Redescription.getFieldsList("q")
         if list_fields is None:
-            list_fields = Redescription.default_queries_fields+Redescription.default_fields_stats+Redescription.miss_fields_stats
+            list_fields = Redescription.getFieldsList("basic"+Redescription.getFSuff(wmissing=True))
         poplist_fields = list(list_fields) ### to pop out the query fields...
         map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
         
@@ -991,11 +1092,11 @@ class Redescription(object):
         lpartsList = {}
 
         parts = string.rsplit(sep)
-        for side, fldu in enumerate(Redescription.default_queries_fields):
+        for side, fldu in enumerate(default_queries_fields):
             try_parse = True
             flds = [(fldu, False)]
             if names[side] is not None:
-                fldn = "%s%s" % (fldu, Redescription.namedsuff)
+                fldn = "%s%s" % (fldu, Redescription.getFSuff(named=True))
                 if fldn in map_fields:
                     flds.append((fldn, True))
             for (fld, named) in flds:
@@ -1016,16 +1117,16 @@ class Redescription(object):
                             raise Warning("Failed parsing query for side %d (field %s, string %s)!\n\t%s" % (side, fld, parts[map_fields[fld]], e))
 
         for pi, fk in enumerate(poplist_fields):
-            if fk is not None and fk in Redescription.exp_details:
+            if fk is not None and fk in Redescription.getFieldsKeys():
                 vs = parts[pi]
-                if Redescription.exp_details[fk].get("supp_set", False):
-                    sep = Redescription.exp_details[field].get("sep", ",")
+                if Redescription.getFieldsDet(fk, "supp_set", False):
+                    sep = Redescription.getFieldsDet(fk, "sep", ",")
                     vs = vs.strip().split(sep)
-                    if not re.search(namedsuff+"$", fk):
+                    if not re.search(Redescription.getFSuff(named=True)+"$", fk):
                         vs = map(int, vs)
-                if re.search("f$", Redescription.exp_details[fk]["fmt"]):
+                if re.search("f$", Redescription.getFieldsDet(fk, "fmt", "")):
                     vs =float(vs)
-                elif re.search("d$", Redescription.exp_details[fk]["fmt"]):
+                elif re.search("d$", Redescription.getFieldsDet(fk, "fmt", "")):
                     vs =int(vs)
                 lpartsList[fk] = vs
                     
@@ -1089,7 +1190,7 @@ class Redescription(object):
         return (Redescription.parse(stringQueries, stringSupp, data), comment, commentSupp)
     load = staticmethod(load)
 
-def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1):
+def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1, standalone=False):
     try:
         red_list = sorted(reds.items())
         last_ri = red_list[-1][0]
@@ -1097,12 +1198,13 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1):
         red_list = enumerate(reds)
         last_ri = len(reds)-1
     if list_fields is None:
+        fstyle = "tex"
+        named = False        
         if names[0] is not None or names[1] is not None:
-            list_fields = Redescription.named_queries_fields+Redescription.default_fields_tostr
-        else:
-            list_fields = Redescription.default_queries_fields+Redescription.default_fields_tostr
-    list_fields = Redescription.named_queries_fields+Redescription.default_fields_totex
-    macfld_commands = "".join(sorted(set([Redescription.tex_fld_defs[fk] for fk in list_fields])))
+            named = True
+        list_fields = Redescription.getFieldsListCust(fstyle, named=named)
+
+    macfld_commands = "".join(Redescription.collectTexCommands(list_fields))
     ####### prepare variable names    
     names_alts = []
     names_commands = ""
@@ -1123,46 +1225,46 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1):
                 numvs_commands += "%% \\newcommand{%s}{\\varname%s{v%d}}\n" % (vlc, sltx, ni)
         else:
             names_alts.append(None)
-                
-    # str_out = "" + \
-    #           "\\documentclass{article}\n"+ \
-    #           "\\usepackage{amsmath}\n"+ \
-    #           "\\usepackage{amsfonts}\n"+ \
-    #           "\\usepackage{amssymb}\n"+ \
-    #           "\\usepackage{booktabs}\n"+ \
-    #           "\\usepackage[mathletters]{ucs}\n"+ \
-    #           "\\usepackage[utf8x]{inputenc}\n"+ \
-    #           "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
-    #           "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-    #           "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
-    #           "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
-    #           "\\newcommand{\\RSetAll}{} % index for test subset\n"+ \
-    #           "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n\n"+ \
-    #           "\\usepackage{color}\n"+ \
-    #           "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
-    #           "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
-    #           "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
-    #           "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
-    #           "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
-    #           "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
-    #           "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
-    #           "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"+ \
-    #           macvs_commands + \
-    #           "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
-    #           "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
-    #           "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
-    #           "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
-    #           "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
-    #           "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
-    #           "\\DeclareMathOperator*{\\pr}{p}\n"+ \
-    #           names_commands+ \
-    #           numvs_commands+ \
-    #           macfld_commands+ \
-    #           "\\begin{document}\n"+ \
-    #           "\\begin{table}[h]\n"+ \
-    #           "\\scriptsize\n"
-
-    str_out = "\\scriptsize\n"
+    if standalone:
+        str_out = "" + \
+              "\\documentclass{article}\n"+ \
+              "\\usepackage{amsmath}\n"+ \
+              "\\usepackage{amsfonts}\n"+ \
+              "\\usepackage{amssymb}\n"+ \
+              "\\usepackage{booktabs}\n"+ \
+              "\\usepackage[mathletters]{ucs}\n"+ \
+              "\\usepackage[utf8x]{inputenc}\n"+ \
+              "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
+              "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
+              "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
+              "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
+              "\\newcommand{\\RSetAll}{} % index for test subset\n"+ \
+              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n\n"+ \
+              "\\usepackage{color}\n"+ \
+              "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
+              "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
+              "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
+              "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
+              "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
+              "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
+              "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
+              "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"+ \
+              macvs_commands + \
+              "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
+              "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
+              "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
+              "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
+              "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
+              "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
+              "\\DeclareMathOperator*{\\pr}{p}\n"+ \
+              names_commands+ \
+              numvs_commands+ \
+              macfld_commands+ \
+              "\\begin{document}\n"+ \
+              "\\begin{table}[h]\n"+ \
+              "\\scriptsize\n"
+    else:
+        str_out = "\\scriptsize\n"
     
     # str_out = ""
     with_fname=False
@@ -1204,13 +1306,14 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1):
     str_out += "" + \
         "\\bottomrule\n"+ \
         "\\end{tabular}\n"
-    # str_out += "\\end{table}\n"+ \
-    #     "\\end{document}"
-    # ### auctex vars
-    # str_out += "\n%%%%%% Local Variables:\n"+ \
-    #     "%%%%%% mode: latex\n"+ \
-    #     "%%%%%% TeX-master: t\n"+ \
-    #     "%%%%%% End:\n"
+    if standalone:
+        str_out += "\\end{table}\n"+ \
+          "\\end{document}"
+        ### auctex vars
+        str_out += "\n%%%%%% Local Variables:\n"+ \
+          "%%%%%% mode: latex\n"+ \
+          "%%%%%% TeX-master: t\n"+ \
+          "%%%%%% End:\n"
     return str_out
 
 def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, missing=False):
@@ -1219,13 +1322,11 @@ def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_na
     except AttributeError:
         red_list = enumerate(reds)
 
-    all_fields = list(Redescription.default_queries_fields + Redescription.default_fields_stats)
+    fstyle = "basic"
+    named = False
     if names[0] is not None or names[1] is not None:
-        all_fields = list(Redescription.named_queries_fields + Redescription.default_fields_stats)
-    if missing:
-        all_fields += Redescription.miss_fields_len
-    else:
-        all_fields += Redescription.default_fields_len
+        named = True
+    all_fields = Redescription.getFieldsListCust(fstyle, named=named, wmissing=missing)
 
     if type(fields) is list and len(fields) > 0:
         if fields[0] == -1:
@@ -1233,10 +1334,7 @@ def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_na
         else:
             all_fields = fields
     if full_supp:
-        if missing:
-            all_fields.extend(Redescription.miss_fields_supp)
-        else:
-            all_fields.extend(Redescription.default_fields_supp)
+        all_fields.extend(Redescription.getFieldsList("supp", wmissing=missing))
     str_out = Redescription.dispHeader(all_fields, sep="\t") 
     for ri, red in red_list:
         str_out += "\n" +red.disp(list_fields=all_fields, names=names, sep="\t", supp_names=supp_names, nblines=nblines)
@@ -1274,10 +1372,11 @@ if __name__ == '__main__':
     filep = open(filename, mode='r')
     reds = Batch([])
     parseRedList(filep, data, reds)
-    with open("/home/egalbrun/short/tmp_queries.tex", mode='w') as fp:
-        # fp.write(printRedList(reds, missing=True))
-        fp.write(printTexRedList(reds, names = [data.getNames(0), data.getNames(1)], nblines=3))
-    
+    with open("/home/egalbrun/short/tmp_queries.txt", mode='w') as fp:
+        # pdb.set_trace()
+        fp.write(printRedList(reds, missing=True))
+        ## fp.write(printTexRedList(reds, names = [data.getNames(0), data.getNames(1)], nblines=3, standalone=True))
+        ## fields=[-1, "CUST:XX=q0:containsC:0", "Lnb_queryLHS", "Lset_queryLHS", "Lnb_queryRHS", "Lset_queryRHS", "containsAND_queryRHS", "containsOR_queryRHS"]
     exit()
     # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
     # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")

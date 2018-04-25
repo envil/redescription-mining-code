@@ -1043,15 +1043,15 @@ class Siren():
         ## Export submenu
         submenuFields = wx.Menu() # Submenu for exporting
         
-        ID_FLD_TXT = wx.NewId()
-        m_fldtxt = submenuFields.Append(ID_FLD_TXT, "Text export", "Fields for text export.")
-        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTxt, m_fldtxt)
         ID_FLD_GUI = wx.NewId()
         m_fldgui = submenuFields.Append(ID_FLD_GUI, "GUI", "Fields for GUI.")
         frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsGUI, m_fldgui)
-        ID_FLD_GUIS = wx.NewId()
-        m_fldguis = submenuFields.Append(ID_FLD_GUIS, "GUI with splits", "Fields for GUI with splits.")
-        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsGUISplits, m_fldguis)
+        ID_FLD_TXT = wx.NewId()
+        m_fldtxt = submenuFields.Append(ID_FLD_TXT, "Text export", "Fields for text export.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTxt, m_fldtxt)
+        ID_FLD_TEX = wx.NewId()
+        m_fldtex = submenuFields.Append(ID_FLD_TEX, "LaTeX export", "Fields for LaTeX export.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTex, m_fldtex)
 
         
         ID_FLD = wx.NewId()
@@ -1349,31 +1349,38 @@ class Siren():
         dlg = ExportFigsDialog(self, self.viewsm, info["items"], dir_name)
         dlg.showDialog()
 
+    def OnDefRedsFieldsOutTex(self, event):
+        self.OnDefRedsFields("tex")
     def OnDefRedsFieldsOutTxt(self, event):
-        self.OnDefRedsFields("out_txt")
-    def OnDefRedsFieldsGUISplits(self, event):
-        tt = self.OnDefRedsFields("gui_splits")
-        if tt is not None and self.dw.getData().hasLT():
-            self.recomputeAll()
+        self.OnDefRedsFields("txt")        
     def OnDefRedsFieldsGUI(self, event):
-        tt = self.OnDefRedsFields("gui_nosplits")
-        if tt is not None and not self.dw.getData().hasLT():
-            self.recomputeAll()
-            
-
+        flk = "gui"
+        tt = self.OnDefRedsFields(flk)
+        if tt is not None:
+            self.resetFields()            
         
     def OnDefRedsFields(self, flk):
+        wsplits=False
+        if self.dw.getData().hasLT():
+            wsplits=True
+            flk += Redescription.getFSuff(wsplits=wsplits)
+
         choice_list = []
         selected_ids = []
-        for k, dts in Redescription.exp_details.items():
-            choice_list.append((k, ChoiceElement(k, "%s (%s)" % (k, dts["exp"]))))
-        choice_list.sort(key=lambda x: Redescription.exp_details[x[0]]["exp"])
+        for k in Redescription.getFieldsKeys():
+            if wsplits or not re.match("(test|learn)", Redescription.getFieldsDet(k, "exp")):
+                choice_list.append((k, ChoiceElement(k, "%s (%s)" % (Redescription.getFieldsDet(k, "name"), Redescription.getFieldsDet(k, "exp")))))
+        choice_list.sort(key=lambda x: Redescription.getFieldsDet(x[0], "exp"))
+        
+        cflk = "custom-"+flk
+        if Redescription.hasFieldsList("custom-"+flk):
+            flk = "custom-"+flk
         selected_ids.extend(Redescription.getFieldsList(flk))
 
         dlg = MultiSelectorDialog(self, choice_list, selected_ids)
         fields = dlg.showDialog()
         if fields is not None:
-            Redescription.setFieldsList(flk, fields)
+            Redescription.setFieldsList(cflk, fields)
         return fields
     
     def quitFind(self):
@@ -1655,6 +1662,10 @@ class Siren():
     def flipRowsEnabled(self, rids):
         if self.getDefaultTabId("e") in self.tabs and len(rids)> 0:
             self.tabs[self.getDefaultTabId("e")]["tab"].flipAllEnabled(rids)
+
+    def resetFields(self):
+        for ti, tab in self.getTabsMatchType("r"):
+            tab["tab"].resetFields()
 
     def recomputeAll(self):
         restrict = self.dw.getData().nonselectedRows()

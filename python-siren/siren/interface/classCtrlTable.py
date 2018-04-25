@@ -1414,7 +1414,7 @@ class RedsSet(EditableContent):
                     ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
                     ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
                     ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
-    LAST_FIELDS = [('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
+    LAST_FIELDS = [] #('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
         
     name_m = str_red+'.getQueriesU'
     check_m = str_red+'.getEnabled'
@@ -1425,17 +1425,18 @@ class RedsSet(EditableContent):
         self.resetFields()
 
     def getFieldsList(self, splits=False):
-        tmp = []
-        flk = "gui_nosplits"
-        if splits:
-            flk = "gui_splits"
-        for fk in Redescription.getFieldsList(flk):
-            if fk in Redescription.exp_details:
-                dt = Redescription.exp_details[fk]
-                if re.search("s$", dt.get("fmt", "")):
-                    tmp.append((dt["lbl_gui"], self.str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT))
-                else:
-                    tmp.append((dt["lbl_gui"], self.str_red+".getEValGUI", {"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk}, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT))
+        tmp = []        
+        flk = "gui"
+        if Redescription.hasFieldsList("custom-"+flk, wsplits=splits):
+            flk = "custom-"+flk        
+        for fk in Redescription.getFieldsList(flk, wsplits=splits):
+            dets = {"exp": Redescription.getFieldsDet(fk, "exp", ""), "rnd": Redescription.getFieldsDet(fk, "rnd"), "k": Redescription.getFieldsDet(fk, "name")}
+            align = wx.LIST_FORMAT_RIGHT
+            if re.search("s$", Redescription.getFieldsDet(fk, "fmt", "")):
+                align = wx.LIST_FORMAT_LEFT                
+            tmp.append((Redescription.getFieldsDet(fk, "lbl_gui", "-"),
+                        self.str_red+".getEValGUI", dets, StaticContent.width_colinfo, align))
+        ### print "GET FIELDS GUI", flk, splits, "NB", len(tmp)
         return self.FIRST_FIELDS + tmp + self.LAST_FIELDS        
         
     def resetFields(self):
@@ -2093,6 +2094,10 @@ class RedsManager(ContentManager):
             #     if mc is not None:
             #         mc.refresh()
             self.refresh()
+
+    def resetFields(self):
+        self.getDataHdl().resetFields()
+        self.refresh()
 
     def hasRedsChanged(self, what={}):
         lls =  self.getDataHdl().getChangedLists(what)
