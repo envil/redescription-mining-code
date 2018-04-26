@@ -628,7 +628,10 @@ class CatColM(ColM):
     def suppCat(self, cat):
         if self.isBasisCat(cat):
             return self.rows() - self.miss()
-        return self.sCats.get(cat, set())
+        supp = set()
+        for c in cat:
+            supp.update(self.sCats.get(c, set()))
+        return supp
             
     def suppTerm(self, term):
         return self.suppCat(term.cat)

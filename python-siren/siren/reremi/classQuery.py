@@ -536,7 +536,7 @@ class BoolTerm(Term):
     parse = staticmethod(parse)
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
     
-class CatTerm(Term):
+class CatTermONE(Term):
     type_id = 2
     basis_cat = "c?"
     
@@ -669,6 +669,154 @@ class CatTerm(Term):
         return (None, None)
     parse = staticmethod(parse)
     ################# END FOR BACKWARD COMPATIBILITY WITH XML
+
+class CatTerm(Term):
+    type_id = 2
+    basis_cat = "c?"
+    
+    def __init__(self, ncol, ncat):
+        self.col = ncol
+        self.cat = ncat
+
+    def getCat(self):
+        return self.cat
+    
+    def valRange(self):
+        if self.cat == self.basis_cat:
+            return ["#LOW#", "#HIGH#"]
+        return sorted(self.getCat())
+
+    def setRange(self, cat):
+        self.cat = cat #codecs.encode(cat, 'utf-8','replace')
+            
+    def copy(self):
+        return CatTerm(self.col, self.cat)
+    
+    def __cmp__(self, other):
+        if self.cmpCol(other) == 0:
+            if self.cmpType(other) == 0:
+                return cmp(self.hashCat(), other.hashCat())
+            else:
+                return self.cmpType(other)
+        else:
+            return self.cmpCol(other)
+
+    def truthEval(self, variableV):
+        return variableV in self.cat
+
+    def hashCat(self):
+        return numpy.sum(map(hash,self.cat))
+        
+    
+    def __hash__(self):
+        hcat = self.hashCat()
+        return self.col*hcat+(self.col-1)*(hcat+1)
+
+    def __str__(self):
+        return self.disp()
+    
+    def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
+        strcat = op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
+        if len(self.cat) == 1:
+            strcat = op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
+        return strcat
+        
+    def disp(self, neg=None, names = None, lenIndex=0):
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.disp()
+
+        strcat = '=' + self.getCatsStr()  
+        if lenIndex > 0 :
+            lenIndex = max(lenIndex-len(strcat),3)
+            slenIndex = str(lenIndex)
+        else:
+            slenIndex = ''
+        if type(names) == list  and len(names) > 0:
+            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
+            if len(lab) > lenIndex & lenIndex > 0:
+                lab = lab[:lenIndex]
+            return lab + strcat
+        else:
+            return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
+
+    def dispTex(self, neg=None, names = None):
+        # neg = False
+        cat_str = self.getCatsStr(op_curl="\\{", cl_curl="\\}", op_any="\\text{", cl_any="}")
+        symbIn = '\\in'
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            if not neg.boolVal():
+                symbIn = '\\not\\in'
+                
+            if type(names) == list  and len(names) > 0:
+                if re.match("\$", names[self.col]):
+                    xx = '%s $%s %s$' % (names[self.col], symbIn, cat_str)
+                else:
+                    xx = '$\\text{%s} %s %s$' % (names[self.col], symbIn, cat_str)
+            else:
+                xx = ('$'+Term.pattVName+' %s %s$') % (self.col, symbIn, cat_str)
+            return xx 
+
+        if type(names) == list  and len(names) > 0:
+            if re.match("\$", names[self.col]):
+                xx = '%s%s $%s %s$' % (neg, names[self.col], symbIn, cat_str)
+            else:
+                xx = '%s$\\text{%s} %s %s$' % (neg, names[self.col], symbIn, cat_str)
+        else:
+            xx = ('%s$'+Term.pattVName+' %s %s$') % (neg, self.col, symbIn, cat_str)
+        return xx 
+
+    def dispU(self, neg, names = None):
+        cat_str = self.getCatsStr()
+        symbIn = '='
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            if not neg.boolVal():
+                symbIn = SYM.SYM_NEQ
+
+            if type(names) == list  and len(names) > 0:
+                return ('[%s '+symbIn+' %s]') % (names[self.col], cat_str)
+            else:
+                return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, cat_str)
+
+        if type(names) == list  and len(names) > 0:
+            return ('%s[%s '+symbIn+' %s]') % (neg, names[self.col], cat_str)
+        else:
+            return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, cat_str)
+
+    ################# START FOR BACKWARD COMPATIBILITY WITH XML
+    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
+    def parse(partsU):
+        ncol = None
+        if partsU is not None:
+            neg = (partsU.group('neg') is not None)
+            tmpcol = partsU.group('col').strip()
+            try:
+                ncol = int(tmpcol)
+            except ValueError, detail:
+                ncol = None
+                raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
+            try:
+                cat = partsU.group('cat')
+            except ValueError, detail:
+                ncol = None
+                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
+        if ncol is not None :
+            return (neg, CatTerm(ncol, set([cat])))
+        return (None, None)
+    parse = staticmethod(parse)
+    ################# END FOR BACKWARD COMPATIBILITY WITH XML
+
     
 class NumTerm(Term):
     type_id = 3
@@ -1743,7 +1891,7 @@ class Query(object):
     def recompute(self, side, data=None, restrict=None):
         def evl(b, op, side, data):
             if isinstance(b, Literal):
-                return data.literalSuppMiss(side, b)
+                return data.literalSuppMiss(side, b)                    
             else:
                 vs = [evl(bb, op.other(), side, data) for bb in b]
                 return SParts.partsSuppMissMass(op.isOr(), vs) 
@@ -2171,7 +2319,7 @@ class QuerySemantics(object):
 
     def categorical_literal(self, ast):
         return [Literal(("neg" in ast) ^ ("cat_false" in ast.get("cat_test", {})),
-                        CatTerm(self.parse_vname(ast.get("variable_name")), ast.get("category")))]
+                        CatTerm(self.parse_vname(ast.get("variable_name")), self.parse_categories(ast.get("categories"))))]
 
     def realvalued_literal(self, ast):
         return [Literal("neg" in ast, NumTerm(self.parse_vname(ast.get("variable_name")),
@@ -2184,8 +2332,15 @@ class QuerySemantics(object):
     def variable_name(self, ast):
         return ast
 
-    def category(self, ast):
+    def categories(self, ast):
         return ast
+    
+    def parse_categories(self, ast):
+        if "category" in ast:
+            return set([ast["category"]])
+        elif "catlist" in ast:
+            return set(ast["catlist"])
+        return set()
 
     def parse_vname(self, vname):
         tmp = re.match(VARIABLE_MARK+"(?P<id>\d+)$", vname)
@@ -2209,14 +2364,15 @@ class QuerySemantics(object):
 if __name__ == '__main__':
     import codecs
     from classData import Data
+    from classQuery import QuerySemantics ## import for Literal instance type test
     import sys
-    rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/"
-    data = Data([rep+"vaalikone_profiles_all.csv", rep+"vaalikone_questions_all.csv", {}, "Na"], "csv")
+    rep = "/home/egalbrun/short/vaalikone_FILES/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     qsLHS = QuerySemantics(data.getNames(0))
     qsRHS = QuerySemantics(data.getNames(1))
     parser = RedQueryParser(parseinfo=False)
 
-    with open("../../runs/vaalikone_new/vaali_named.csv") as f:
+    with open(rep+"redescriptions.csv") as f:
         header = None
         for line in f:
             if header is None:
@@ -2224,7 +2380,6 @@ if __name__ == '__main__':
             elif len(line.strip().split("\t")) >= 2:
                 resLHS = parser.parse(line.strip().split("\t")[0], "query", semantics=qsLHS)
                 resRHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsRHS)
-                pdb.set_trace()
                 print "----------"
                 print line.strip()
                 print "ORG   :", resLHS, "---", resRHS

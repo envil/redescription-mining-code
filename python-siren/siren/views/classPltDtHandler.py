@@ -148,6 +148,9 @@ class PltDtHandlerWithCoords(PltDtHandlerBasis):
         return self.pltdt.get("has_poly", False)
 
     def mapCoords(self, coords, bm=None):
+        self.pltdt["has_poly"] = False
+        if coords is None:
+            return None
         self.pltdt["has_poly"] = (min([len(cs) for cs in coords[0]]) > 2)
 
         nbc_max = max([len(c) for c in coords[0]])

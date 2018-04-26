@@ -496,8 +496,9 @@ class DrawerRedPara(DrawerEntitiesTD):
     def getYforV(self, rid, v, direc=0):
         return (v-self.prepared_data["limits"][0,rid]+direc*0.5*self.prepared_data["limits"][-1,rid])/(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid])
     def getYsforRange(self, rid, range):
-        return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[1], direc=1)]
-
+        ### HERE fix CAT
+        return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[-1], direc=1)]
+        
     def getPinvalue(self, rid, b, direc=0):
         if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
             return 0
@@ -571,7 +572,8 @@ class DrawerRedPara(DrawerEntitiesTD):
                     upAll = (l.getCat() != cat)
                     if upAll:
                         for path, comp, neg in dets:
-                            copied.getBukElemAt(path).getTerm().setRange(cat)
+                            ### HERE CAT FIX
+                            copied.getBukElemAt(path).getTerm().setRange(set([cat]))
                     alright = True
             elif l.typeId() == BoolColM.type_id:
                 bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)

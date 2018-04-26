@@ -115,7 +115,7 @@ class CharbonGStd(CharbonGreedy):
                 nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
             else:
                 nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-
+                
         for op in self.constraints.getCstr("allw_ops", side=side, init=init):            
             for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
                 best = (None, None, None)

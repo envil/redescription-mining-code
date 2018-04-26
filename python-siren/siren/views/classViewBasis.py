@@ -583,7 +583,7 @@ class ViewRed(ViewBasis):
     SDESC = "-"
     title_str = "2D"
     ordN = 1
-    geo = True
+    geo = False #True
     typesI = "vr"
 
     subcl_layh = LayoutHandlerQueries

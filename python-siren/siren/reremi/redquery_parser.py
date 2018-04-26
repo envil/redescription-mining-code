@@ -12,8 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '14.153.18.10.21'
-
+__version__ = '18.116.14.09.26'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, variable_mark='v', **kwargs):
@@ -146,8 +145,8 @@ class RedQueryParser(Parser):
                     self._cat_test_()
                     self.ast['cat_test'] = self.last_node
                     self._cut()
-                    self._category_()
-                    self.ast['category'] = self.last_node
+                    self._categories_()
+                    self.ast['categories'] = self.last_node
                     self._cl_braket_()
             with self._option():
                 with self._group():
@@ -156,8 +155,8 @@ class RedQueryParser(Parser):
                     self._cat_test_()
                     self.ast['cat_test'] = self.last_node
                     self._cut()
-                    self._category_()
-                    self.ast['category'] = self.last_node
+                    self._categories_()
+                    self.ast['categories'] = self.last_node
             with self._option():
                 self._neg_()
                 self.ast['neg'] = self.last_node
@@ -167,8 +166,8 @@ class RedQueryParser(Parser):
                     self.ast['variable_name'] = self.last_node
                     self._cat_true_()
                     self._cut()
-                    self._category_()
-                    self.ast['category'] = self.last_node
+                    self._categories_()
+                    self.ast['categories'] = self.last_node
                     self._cl_braket_()
             with self._option():
                 self._neg_()
@@ -178,8 +177,8 @@ class RedQueryParser(Parser):
                     self.ast['variable_name'] = self.last_node
                     self._cat_true_()
                     self._cut()
-                    self._category_()
-                    self.ast['category'] = self.last_node
+                    self._categories_()
+                    self.ast['categories'] = self.last_node
             self._error('no available options')
 
     @rule_def
@@ -320,6 +319,31 @@ class RedQueryParser(Parser):
                 self._error('expecting one of: '+self.variable_mark+'\\d+')
 
     @rule_def
+    def _categories_(self):
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._category_()
+                    self.ast['category'] = self.last_node
+                with self._option():
+                    self._op_curl_()
+                    self._catlist_()
+                    self.ast['catlist'] = self.last_node
+                    self._cl_curl_()
+                self._error('no available options')
+
+    @rule_def
+    def _catlist_(self):
+        self._category_()
+        self.ast.add_list('@', self.last_node)
+        def block1():
+            self._list_sep_()
+            self._cut()
+            self._category_()
+            self.ast.add_list('@', self.last_node)
+        self._closure(block1)
+
+    @rule_def
     def _category_(self):
         with self._group():
             with self._choice():
@@ -339,7 +363,7 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _STRING_(self):
-        self._pattern(r'[^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac \d]+([^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)&|\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
+        self._pattern(r'[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac \d]+([^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
 
     @rule_def
     def _op_parenthesis_(self):
@@ -356,6 +380,18 @@ class RedQueryParser(Parser):
     @rule_def
     def _cl_braket_(self):
         self._token(']')
+
+    @rule_def
+    def _op_curl_(self):
+        self._token('{')
+
+    @rule_def
+    def _cl_curl_(self):
+        self._token('}')
+
+    @rule_def
+    def _list_sep_(self):
+        self._token(',')
 
     @rule_def
     def _conj_op_(self):
@@ -504,6 +540,12 @@ class RedQuerySemantics(object):
     def variable_name(self, ast):
         return ast
 
+    def categories(self, ast):
+        return ast
+
+    def catlist(self, ast):
+        return ast
+
     def category(self, ast):
         return ast
 
@@ -526,6 +568,15 @@ class RedQuerySemantics(object):
         return ast
 
     def cl_braket(self, ast):
+        return ast
+
+    def op_curl(self, ast):
+        return ast
+
+    def cl_curl(self, ast):
+        return ast
+
+    def list_sep(self, ast):
         return ast
 
     def conj_op(self, ast):
