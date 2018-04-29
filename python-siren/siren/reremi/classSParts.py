@@ -154,7 +154,8 @@ class SSetts(object):
             exec("%s = %d" % (l,i))
 
         # (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm) = range(9)
-
+        self.last_nonmiss = Eoo
+        
         if type_parts == "none":
 
             #####################################################################################
@@ -401,7 +402,10 @@ class SSetts(object):
 
     def suppPartRange(self):
         return range(self.bottom, self.top+1)
+    def suppPartRangeNoMiss(self):
+        return range(self.bottom, self.last_nonmiss+1)
 
+    
     # sums the values in parts that correspond to inout and part_id indexes given in parts_id
     ## parts_id must be
     ##  * a list of pairs (inout, part_id)
@@ -554,6 +558,19 @@ class SSetts(object):
                 lp[lpartsY] += 1
         return lp
 
+    def additionOtherSide(self, lpartsX, lpartsY, neg=False):
+        lp = [lpartsX[i] for i in range(len(lpartsX))]
+        if neg:
+            XX = self.Exo
+        else:
+            XX = self.Eoo
+        for x in range(self.last_nonmiss+1):
+            if x != XX:
+                lp[x] += lpartsY[x]
+                lp[XX] -= lpartsY[x]
+        return lp
+
+    
 class SParts(object):
     sets_letters = "PIULROABN"
     infos = {"acc": "self.acc()", "pval": "self.pVal()", "pr0": "self.proba(0)", "pr1": "self.proba(1)"}

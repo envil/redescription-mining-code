@@ -225,6 +225,8 @@ class Redescription(object):
     ######################################            
     field_lists = {"basic": default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"],
                    "basic"+misssuff: default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"+misssuff],
+                   "basic"+namedsuff: default_fields_parts["q"+namedsuff]+default_fields_parts["stats_basic"]+default_fields_parts["lens"],
+                   "basic"+namedsuff+misssuff: default_fields_parts["q"+namedsuff]+default_fields_parts["stats_basic"]+default_fields_parts["lens"+misssuff],
                    "supp": default_fields_parts["supps"],
                    "supp"+misssuff: default_fields_parts["supps"+misssuff],
                    "q": default_fields_parts["q"],
@@ -369,24 +371,6 @@ class Redescription(object):
         r.track = [tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))]
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
-
-    def getInfoDict(self, with_Eoo=False, rset_id=None):
-        if self.dict_supp_info is not None and self.sParts is not None:
-            if (rset_id is not None and "rset_id" not in self.dict_supp_info) or \
-                   (rset_id is None and "rset_id" in self.dict_supp_info):
-                #### if there is a dict_supp_info but it does not correspond to the one requested, erase
-                self.dict_supp_info = None
-        
-        if self.dict_supp_info is None and self.sParts is not None:
-            if rset_id in self.restricted_sets and self.restricted_sets[rset_id]["sParts"] is not None:
-                self.dict_supp_info = self.restricted_sets[rset_id]["sParts"].toDict(with_Eoo)
-                self.dict_supp_info["rset_id"] = rset_id
-            else:
-                self.dict_supp_info = self.sParts.toDict(with_Eoo)
-        if self.dict_supp_info is not None:
-            self.dict_supp_info["track"] = self.track
-            return self.dict_supp_info
-        return {}
 
     def dropSupport(self):
         if self.sParts is not None:
@@ -906,7 +890,7 @@ class Redescription(object):
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.getFieldsList(), sep=" "), self.getTrack({"format":"str"})))
+        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.getFieldsList("stats"), sep=" "), self.getTrack({"format":"str"})))
 
     def dispHeader(list_fields=None, style="", named=False, sep = None, missing=False):
         if list_fields is None:
@@ -1024,16 +1008,6 @@ class Redescription(object):
     def dispSupp(self):
         return self.sParts.dispSupp()
     
-    def write(self, output, suppOutput, namesOutput=None, names=None, addto=''):
-        output.write(self.disp()+addto+'\n')
-        output.flush()
-        if namesOutput is not None and names is not None:
-            namesOutput.write(self.disp(names)+addto+'\n')
-            namesOutput.flush()
-        if suppOutput is not None:
-            suppOutput.write(self.sParts.dispSupp()+'\n')
-            suppOutput.flush()
-            
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def fromXML(self, node):
         self.queries = [None, None]

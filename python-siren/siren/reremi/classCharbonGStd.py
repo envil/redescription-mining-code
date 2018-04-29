@@ -1,4 +1,5 @@
 from classData import CatColM
+from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
 from classSParts import SParts
@@ -9,21 +10,29 @@ import pdb
 class CharbonGStd(CharbonGreedy):
 
     name = "GreedyStd"
-    def getCandidates(self, side, col, supports, init=0):
+    def getCandidates(self, side, col, supports, red):
+        currentRStatus = Constraints.getStatusRed(red, side)
+
         method_string = 'self.getCandidates%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
-        cands = method_compute(side, col, supports, init)
-        for cand in cands:
+        cands = method_compute(side, col, supports, currentRStatus)
+        # print "======STD==========="
+        for cand in cands:            
             supp = col.suppLiteral(cand.getLiteral())
+            # pdb.set_trace()
             lparts = supports.lparts()
             lin = supports.lpartsInterX(supp)
+            # print cand.getLiteral(), cand.isNeg()
+            # print lparts, lin, len(supp)
             cand.setClp([lin, lparts], cand.isNeg())
+            # print cand
+        # print "================="
         return cands
             
-    def getCandidates1(self, side, col, supports, init=0):
+    def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
 
         lparts = supports.lparts()
@@ -35,7 +44,7 @@ class CharbonGStd(CharbonGreedy):
             fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
             var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 try:
                     adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
@@ -46,30 +55,30 @@ class CharbonGStd(CharbonGreedy):
                     cands.append(Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
-    def getCandidates2(self, side, col, supports, init=0):
-        return self.getCandidatesNonBool(side, col, supports, init)
+    def getCandidates2(self, side, col, supports, currentRStatus=0):
+        return self.getCandidatesNonBool(side, col, supports, currentRStatus)
 
-    def getCandidates3(self, side, col, supports, init=0):
-        return self.getCandidatesNonBool(side, col, supports, init)
+    def getCandidates3(self, side, col, supports, currentRStatus=0):
+        return self.getCandidatesNonBool(side, col, supports, currentRStatus)
 
-    def getCandidatesNonBool(self, side, col, supports, init=0):
+    def getCandidatesNonBool(self, side, col, supports, currentRStatus=0):
         cands = []
         lparts = supports.lparts()
 
-        for cand in self.findCover(side, col, lparts, supports, init):
+        for cand in self.findCover(side, col, lparts, supports, currentRStatus):
             cands.append(cand[1])
         return cands
 
 ####################### COVER METHODS
-    def findCover(self, side, col, lparts, supports, init=0):
+    def findCover(self, side, col, lparts, supports, currentRStatus=0):
         method_string = 'self.findCover%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No covering method for this type of data (%i)!'  % col.typeId())
-        return method_compute(side, col, lparts, supports, init)
+        return method_compute(side, col, lparts, supports, currentRStatus)
 
-    def findCover1(self, side, col, lparts, supports, init=0):
+    def findCover1(self, side, col, lparts, supports, currentRStatus=0):
         cands = []
         lin = supports.lpartsInterX(col.hold)
         if side:
@@ -79,7 +88,7 @@ class CharbonGStd(CharbonGreedy):
             fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
             var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-        if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+        if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
             if side:
                 nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
                 nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
@@ -87,14 +96,14 @@ class CharbonGStd(CharbonGreedy):
                 nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
                 nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
 
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):            
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):            
             for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
                 adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 if adv is not None :
                     cands.append((False, Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
 
                 ### to negate the other side when looking for initial pairs
-                if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+                if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
                     adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
                     if adv is not None :
                         cand = Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
@@ -102,24 +111,30 @@ class CharbonGStd(CharbonGreedy):
 
         return cands
 
-    def findCover2(self, side, col, lparts, supports, init=0):
+    def findCover2(self, side, col, lparts, supports, currentRStatus=0):
         cands = []
+        allw_neg = True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
+        negs = self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
+        if self.constraints.getCstr("multi_cats"): ## redundant negation
+            negs = [False]
 
         if side:
             fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
         else:
             fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
 
-        if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+        if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
             if side:
                 nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
             else:
                 nfixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
                 
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):            
-            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):            
+            for neg in negs:
                 best = (None, None, None)
                 bestNeg = (None, None, None)
+                collect_goods = []
+                collect_goodsNeg = []
                 for (cat, supp) in col.sCats.iteritems():
                     lin = supports.lpartsInterX(supp)
                     if side:
@@ -127,38 +142,102 @@ class CharbonGStd(CharbonGreedy):
                     else:
                         var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-                    best = self.updateACTColors(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, fixed_colors, var_colors[op])
-
+                    # best = self.updateACTColors(best, , side, op, neg, fixed_colors, var_colors[op])
+                    ######################
+                    tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
+                    if best[0] < tmp_adv:
+                        best = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
+                    if tmp_adv is not None:
+                        collect_goods.append((tmp_adv, cat, fixed_colors, var_colors[op]))
+                    ######################
+                    
                     ### to negate the other side when looking for initial pairs
-                    if init ==1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+                    if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
                         if side:
                             nvar_colors = [[lin[1], lin[2]], [lin[3], lin[0]]]
                         else:
                             nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
 
-                        bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
-
+                        # bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
+                        ######################
+                        tmp_adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
+                        if bestNeg[0] < tmp_adv:
+                            bestNeg = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
+                        if tmp_adv is not None:
+                            collect_goodsNeg.append((tmp_adv, cat, nfixed_colors, nvar_colors[op]))
+                        ######################
+                        
                 if best[0] is not None:
-                    cands.append((False, Extension(self.constraints.getSSetts(), best)))
+                    bb = self.combCats(best, allw_neg, side, op, neg, col, collect_goods)
+                    cands.append((False, Extension(self.constraints.getSSetts(), bb)))
+                    ## cands.append((False, Extension(self.constraints.getSSetts(), best)))
                 if bestNeg[0] is not None:
-                    cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
+                    bb = self.combCats(best, allw_neg, side, op, neg, col, collect_goodsNeg)
+                    cands.append((True, Extension(self.constraints.getSSetts(), bb)))
+                    # cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
         return cands
 
-    def findCover3(self, side, col, lparts, supports, init=0):
+    def additionsLParts(self, lparts, lin, nextc, other_side=0):
+        if other_side ==  0:
+            ccum_lparts = lparts
+            ccum_lin = [lin[0]+nextc[-1][0], lin[1]+nextc[-1][1]]
+        elif other_side == 1:
+            ccum_lparts = [[lparts[0][0]+nextc[-2][0][0], lparts[0][1]+nextc[-2][0][1]],
+                           [lparts[1][0]+nextc[-2][1][0], lparts[1][1]-(nextc[-2][0][0]+nextc[-2][0][1]+nextc[-2][1][0])]]
+            ccum_lin = [lin[0]+nextc[-1][0], lin[1]-nextc[-1][0]]
+        else:
+            ccum_lparts = [[lparts[0][0]+nextc[-2][0][0], lparts[0][1]+nextc[-2][0][1]],
+                           [lparts[1][0]-(nextc[-2][0][0]+nextc[-2][0][1]+nextc[-2][1][1]), lparts[1][1]+nextc[-2][1][1]]]
+            ccum_lin = [lin[0]-nextc[-1][1], lin[1]+nextc[-1][1]]
+            
+        # print "--- SUM", other_side
+        # print lparts, lin
+        # print nextc[-2], nextc[-1]
+        # print ">>"
+        # print ccum_lparts, ccum_lin
+        return ccum_lparts, ccum_lin
+    
+    def combCats(self, best, allw_neg, side, op, neg, col, collected, other_side=0):
+        if not self.constraints.getCstr("multi_cats"):
+            return best
+        collected.sort()
+        nextc = collected.pop()
+        best_cat = [nextc[1]]
+        best_score = nextc[0]
+        cum_lparts, cum_lin = (list(nextc[-2]), list(nextc[-1]))
+        while len(collected) > 0:
+            nextc = collected.pop()
+            ccum_lparts, ccum_lin = self.additionsLParts(cum_lparts, cum_lin, nextc, other_side)
+            tmp_adv = self.getAdv(side, op, neg, ccum_lparts, ccum_lin)
+            if best_score < tmp_adv:
+                best_cat.append(nextc[1])
+                cum_lparts = ccum_lparts
+                cum_lin = ccum_lin
+                best_score = tmp_adv
+        if len(best_cat) > 1:
+            if col is None:
+                best = (best_score, None, [side, op, neg, set(best_cat)])
+            else:
+                lit = col.makeCatLit(best_cat, neg, allw_neg)
+                best = (best_score, None, [side, op, lit.isNeg(), lit])
+        return best
+
+    
+    def findCover3(self, side, col, lparts, supports, currentRStatus=0):
         cands = []
 
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegmentsColors(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, init=init))
+            segments = col.makeSegmentsColors(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus))
             if side:
                 fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
             else:
                 fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
  
-            for cand in self.findCoverSegments(side, col, segments, fixed_colors, init):
+            for cand in self.findCoverSegments(side, col, segments, fixed_colors, currentRStatus):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+            if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
                 if side:
                     nfixed_colors = [[lparts[1], lparts[2]], [lparts[3], lparts[0]]]
                 else:
@@ -167,13 +246,13 @@ class CharbonGStd(CharbonGreedy):
                 if self.inSuppBounds(side, True, lparts[-1::-1]): ### DOABLE
                     nsegments = [[[i, j, [k[1], k[0]]] for (i,j,k) in segments[0]], [[i, j, [k[1], k[0]]] for (i,j,k) in segments[1]]]
                     ##pdb.set_trace()
-                    for cand in self.findCoverSegments(side, col, nsegments, nfixed_colors, init):
+                    for cand in self.findCoverSegments(side, col, nsegments, nfixed_colors, currentRStatus):
                         cands.append((True, cand))
         return cands
         
-    def findCoverSegments(self, side, col, segments, fixed_colors, init=0):
+    def findCoverSegments(self, side, col, segments, fixed_colors, currentRStatus=0):
         cands = []
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             if len(segments[op]) < self.constraints.getCstr("max_seg"):
                 cands.extend(self.findCoverFullSearch(side, op, col, segments, fixed_colors))
             else:
@@ -203,20 +282,21 @@ class CharbonGStd(CharbonGreedy):
         return cands
 
     def findNegativeCover(self, side, op, col, segments, fixed_colors):
-
+        
         cands = []
         var_colors_f = [0, 0]
-        bests_f = [(0, 0, [0, 0])] 
+        # bests_f = [(0, 0, [0, 0])]
+        bests_f = [(self.advAcc(side, op, False, fixed_colors, var_colors_f), 0, [0, 0])]
         best_track_f = [0]
         var_colors_b = [0, 0]
-        bests_b = [(0, 0, [0, 0])]
+        # bests_b = [(0, 0, [0, 0])]
+        bests_b = [(self.advAcc(side, op, False, fixed_colors, var_colors_b), 0, [0, 0])]
         best_track_b = [0]
-        ##pdb.set_trace()
-        for  i in range(len(segments[op])):
+
+        for i in range(len(segments[op])):
             # FORWARD
             var_colors_f[0] += segments[op][i][2][0]
             var_colors_f[1] += segments[op][i][2][1]
-
             if self.advRatioVar(var_colors_f) > bests_f[-1][0]:
                 var_colors_f[0] += bests_f[-1][2][0]
                 var_colors_f[1] += bests_f[-1][2][1]
@@ -275,7 +355,7 @@ class CharbonGStd(CharbonGreedy):
         nb_seg_b = 0
         best_b = (None, None, None)
 
-        for  i in range(len(segments[op])-1):
+        for i in range(len(segments[op])-1):
             # FORWARD
             if i > 0 and self.advAcc(side, op, False, fixed_colors, segments[op][i][2]) < self.advRatioVar(var_colors_f):
                 var_colors_f[0] += segments[op][i][2][0]
@@ -356,7 +436,8 @@ class CharbonGStd(CharbonGreedy):
     def fit(self, col, supports, side, termX):
         (scores, literalsFix, literalsExt) = ([], [], [])   
         lparts = supports.lparts()
-        cands = self.findCover(side, col, lparts, supports, init=1)
+        currentRStatus = Constraints.getStatusPair(col, side, termX)
+        cands = self.findCover(side, col, lparts, supports, currentRStatus=currentRStatus)
         for cand in cands:
             scores.append(cand[1].getAcc())
             literalsFix.append(Literal(cand[0], termX))
@@ -476,18 +557,18 @@ class CharbonGStd(CharbonGreedy):
                 if side is not None:
                     #### working with on variable as categories is workable
                     ## print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
-                    (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side)
+                    (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side, try_comb=False)
                     if side == 1:
                         literalsL = []
                         literalsR = literalsExt
                         for ltc in literalsFix:
-                            val = bucketsL[1][ltc.getTerm().getCat()]
+                            val = bucketsL[1][ltc.getTerm().getCat().pop()]
                             literalsL.append( Literal(ltc.isNeg(), NumTerm(colL.getId(), val, val)) )
                     else:
                         literalsL = literalsExt                    
                         literalsR = []
                         for ltc in literalsFix:
-                            val = bucketsR[1][ltc.getTerm().getCat()]
+                            val = bucketsR[1][ltc.getTerm().getCat().pop()]
                             literalsR.append( Literal(ltc.isNeg(), NumTerm(colR.getId(), val, val)) )
 
                     return (scores, literalsL, literalsR)
@@ -590,7 +671,7 @@ class CharbonGStd(CharbonGreedy):
                 literalsF.append(tF)
                 literalsE.append(tE)
                 scores.append(b[0][0])
-
+        
         if flip_side:
             return (scores, literalsE, literalsF)
         else:
@@ -599,10 +680,12 @@ class CharbonGStd(CharbonGreedy):
     def subdo22Full(self, colL, colR, side):
         ##### THIS NEEDS CHANGE PARTS
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
+        allw_neg = True
         if True not in self.constraints.getCstr("neg_query", side=side, type_id=2):
             configs = configs[:1]
+            allw_neg = False
         best = [[] for c in configs]
-        tot = colL.nbRows()
+        tot = colL.nbRows()        
         for catL in colL.cats():
             totL = len(colL.suppCat(catL))
             lparts = [0, totL, 0, colL.nbRows()-totL]
@@ -613,22 +696,23 @@ class CharbonGStd(CharbonGreedy):
                 lin = [0, interLR, 0, totR - interLR]
  
                 for (i, nL, nR) in configs:
-                    if nL and nR:
-                        fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                        var_colors = [lin[0], lin[2]]                            
-                    elif nL:
-                        fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                        var_colors = [lin[2], lin[0]]
-                    elif nR:
+                    if nL:
                         fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
                         var_colors = [lin[3], lin[1]]                            
                     else:
                         fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
                         var_colors = [lin[1], lin[3]]                            
-
-                    best[i] = self.updateACTColorsP22(best[i], (catL, catR), 0, True, nR, fixed_colors, var_colors)
                     
+                    best[i] = self.updateACTColorsP22(best[i], (catL, catR), 0, True, nR, fixed_colors, var_colors)
+
         (scores, literalsFix, literalsExt) = ([], [], [])
+        if self.constraints.getCstr("multi_cats"):
+            (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
+            # if len(scores) > 0:
+            #     print "---- Multi cats:"
+            #     for ii in range(len(scores)):
+            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+
         for (i, nL, nR) in configs:
             for b in best[i]:
                 scores.append(b[0][0])
@@ -636,8 +720,40 @@ class CharbonGStd(CharbonGreedy):
                 literalsExt.append(Literal(nR, CatTerm(colR.getId(), b[-1][-1][1])))
         return (scores, literalsFix, literalsExt)
 
+    def combPairsCats(self, best, cols, configs, allw_neg):
+        (scores, literalsFix, literalsExt) = ([], [], [])
+        for (i, nL, nR) in configs:
+            map_cat = [{}, {}]
+            for b in best[i]:
+                for ss in [0,1]:
+                    if b[-1][-1][ss] not in map_cat[ss]:
+                        map_cat[ss][b[-1][-1][ss]] = []
+                    map_cat[ss][b[-1][-1][ss]].append((b[0][0], b[-1][-1][1-ss], b[1][0], b[1][1]))
 
-    def subdo23Full(self, colL, colR, side):
+            for ss in [0,1]:
+                cats_loc = [None, None]
+                kk = map_cat[ss].keys()
+                for k in kk:
+                    tmp_cats = [] #(c[0], c[1]) for c in map_cat[ss][k]] 
+                    if len(map_cat[ss][k]) > 1:
+                        other_side = 0
+                        if (ss==1):
+                            other_side = 1
+                            if nL: other_side = -1
+                        bb = self.combCats(None, allw_neg, 1, True, nR, None, map_cat[ss][k], other_side=other_side)
+                        if bb is not None:
+                            tmp_cats = [tmp_cat for tmp_cat in tmp_cats if tmp_cat[1] not in bb[-1][-1]]
+                            tmp_cats.append((bb[0][0], bb[-1][-1]))
+                        for tmp_cat in tmp_cats:
+                            cats_loc[ss] = k
+                            cats_loc[1-ss] = tmp_cat[1]
+                            scores.append(tmp_cat[0])                            
+                            literalsFix.append(cols[0].makeCatLit(cats_loc[0], nL, allw_neg))
+                            literalsExt.append(cols[1].makeCatLit(cats_loc[1], nR, allw_neg))                        
+        return (scores, literalsFix, literalsExt)
+        
+    
+    def subdo23Full(self, colL, colR, side, try_comb=True):
         ##### THIS NEEDS CHANGE PARTS
         if side == 0:
             (colF, colE) = (colR, colL)
@@ -645,8 +761,10 @@ class CharbonGStd(CharbonGreedy):
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
+        allw_neg = True
         if True not in self.constraints.getCstr("neg_query", side=side, type_id=3):
             configs = configs[:1]
+            allw_neg = False
         best = [[] for c in configs]
 
         buckets = colE.buckets()
@@ -686,36 +804,81 @@ class CharbonGStd(CharbonGreedy):
 
                         lin = [0, pin, 0, sum(marg[low:up+1]) - pin]
                         for (i, nF, nE) in configs:
-                            if nF and nE:
-                                fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                                var_colors = [lin[0], lin[2]]                            
-                            elif nE:
-                                fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                                var_colors = [lin[2], lin[0]]
-                            elif nF:
+                            if nF:
                                 fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
                                 var_colors = [lin[3], lin[1]]                            
                             else:
                                 fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
                                 var_colors = [lin[1], lin[3]]                            
 
-                            best[i] = self.updateACTColorsP23(best[i], (cat, low, up), 0, True, nE, fixed_colors, var_colors)
+                        # for (i, nF, nE) in configs:
+                        #     if nF and nE:
+                        #         fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
+                        #         var_colors = [lin[0], lin[2]]                            
+                        #     elif nE:
+                        #         fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
+                        #         var_colors = [lin[2], lin[0]]
+                        #     elif nF:
+                        #         fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
+                        #         var_colors = [lin[3], lin[1]]                            
+                        #     else:
+                        #         fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
+                        #         var_colors = [lin[1], lin[3]]                            
 
+                            best[i] = self.updateACTColorsP23(best[i], (cat, low, up), side, True, nE, fixed_colors, var_colors)
+                            
                         above+=interMat[up]
                         up-=1
                     below+=interMat[low]
                     low+=1
         
         (scores, literalsFix, literalsExt) = ([], [], [])
+        if try_comb and self.constraints.getCstr("multi_cats"):
+            (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
+            # if len(scores) > 0:
+            #     print "---- Multi cats:"
+            #     for ii in range(len(scores)):
+            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+
         for (i, nF, nE) in configs:
             for b in best[i]:
                 tE = colE.getLiteralBuk(nE, buckets[1], b[-1][-1][1:], buckets[bUp])
                 if tE is not None:
-                    literalsExt.append(tE)
-                    literalsFix.append(Literal(nF, CatTerm(colF.getId(), b[-1][-1][0])))
+                    literalsExt.append(tE)                    
+                    literalsFix.append(colF.makeCatLit(b[-1][-1][0], nF))
                     scores.append(b[0][0])
         return (scores, literalsFix, literalsExt)
 
+
+    def combNumCats(self, best, cols, configs, allw_neg, side, buckets, bUp):
+        (scores, literalsFix, literalsExt) = ([], [], [])
+        for (i, nF, nE) in configs:
+            map_cat = {}
+            for b in best[i]:
+                buk = b[-1][-1][1:]
+                if buk not in map_cat:
+                    map_cat[buk] = []
+                map_cat[buk].append((b[0][0], b[-1][-1][0], b[1][0], b[1][1]))
+
+            kk = map_cat.keys()
+            for k in kk:
+                tmp_cats = [] #(c[0], c[1]) for c in map_cat[k]] 
+                if len(map_cat[k]) > 1:
+                    other_side = 1
+                    if nE: other_side = -1
+                    bb = self.combCats(None, allw_neg, side, True, nF, None, map_cat[k], other_side=other_side)
+                    if bb is not None:
+                        tmp_cats = [tmp_cat for tmp_cat in tmp_cats if tmp_cat[1] not in bb[-1][-1]]
+                        tmp_cats.append((bb[0][0], bb[-1][-1]))
+                    for tmp_cat in tmp_cats:
+                        tE = cols[1].getLiteralBuk(nE, buckets[1], k, buckets[bUp])
+                        if tE is not None:
+                            literalsExt.append(tE)                            
+                            literalsFix.append(cols[0].makeCatLit(tmp_cat[1], nF, allw_neg))
+                            scores.append(tmp_cat[0])                                                    
+        return (scores, literalsFix, literalsExt)
+
+    
 ##### TOOLS METHODS
     # compute the advance resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)
@@ -766,6 +929,8 @@ class CharbonGStd(CharbonGreedy):
                 var_den = tmp_var[1]
                 num = fix_num + var_num
                 den = fix_den + var_den
+                # sout = fixed_colors[op][1] - tmp_var[1]
+                # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
         else:
             if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
                and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
@@ -777,7 +942,9 @@ class CharbonGStd(CharbonGreedy):
                 var_den = tmp_var[1]
                 num = var_num
                 den = fix_den + var_den
-
+                # sout = fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1]
+                # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
+                
         if num is not None:
             if den == 0:
                 if num > 0:
@@ -820,28 +987,35 @@ class CharbonGStd(CharbonGreedy):
         inserted = False
         i = 0
         while i < len(best):
-            if best[i][0] > tmp_adv:
+            if best[i][0] < tmp_adv:
                 if conflictF(best[i][-1][-1], lit):  ## found conflicting of better quality 
                     return best
             else:
                 if not inserted: 
-                    best.insert(i,(tmp_adv, None, [side, op, neg, lit]))
+                    #best.insert(i,(tmp_adv, None, [side, op, neg, lit]))
+                    best.insert(i,(tmp_adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
                     inserted = True
                 elif conflictF(best[i][-1][-1], lit): ## found conflicting of lesser quality, remove
                     best.pop(i)
                     i -=1
             i+=1
         if not inserted:
-            best.append((tmp_adv, None, [side, op, neg, lit]))
+            best.append((tmp_adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
+            #best.append((tmp_adv, None, [side, op, neg, lit]))
         return best
 
     def conflictP22(self, litA, litB):
         # return True
-        # pdb.set_trace()
-        return (litA[0] == litB[0]) and (litA[1] != litB[1])
+        if self.constraints.getCstr("multi_cats"):
+            return (litA[0] == litB[0]) and (litA[1] == litB[1])
+        else:
+            return (litA[0] == litB[0]) or (litA[1] == litB[1])
     def conflictP23(self, litA, litB):
         # return True
-        return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
+        if self.constraints.getCstr("multi_cats"):
+            return (litA[0] == litB[0]) and not (litA[1] > litB[2] or litB[1] > litA[2])
+        else:
+            return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
     def conflictP33(self, litA, litB):
         # return True
         return not ((litA[0] > litB[1] or litB[0] > litA[1]) and (litA[2] > litB[3] or litB[2] > litA[3]))

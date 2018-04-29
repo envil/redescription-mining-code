@@ -23,6 +23,8 @@ TREE_CLASSES = { "layeredtrees": CharbonTLayer,
                  "sprit": CharbonTSprit}
 TREE_DEF = CharbonTLayer
 
+CHARBON_MISS_FORCE = False
+
 # PAIR_LOADS = [[1,2,3],
 #               [2,4,6],
 #               [3,6,10]]
@@ -120,19 +122,15 @@ class ExpMiner(object):
 
                 if red.nbAvailableCols() > 0:
                     bests = ExtensionsBatch(self.data.nbRows(), self.constraints.getCstr("score_coeffs"), red)
+                    ### WARNING DANGEROUS few extensions for DEBUG!
                     for side in [0,1]:
-                    ##for side in [1]:
                         ### check whether we are extending a redescription with this side empty
-                        if red.length(side) == 0:
-                            init = 1
-                        else:
-                            init = red.usesOr(1-side)*-1 
                         for v in red.availableColsSide(side, self.constraints.getDeps(), self.data.single_dataset):
                             if not self.questionLive():
-                                nextge = []
-                        
+                                nextge = []                        
                             else:
-                                bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                                ## self.charbon_alt.getCandidates(side, self.data.col(side, v), red.supports(), red)
+                                bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red))
 
                     if self.logger.verbosity >= 4:
                         self.logger.printL(4, bests, "log", self.ppid)
@@ -239,7 +237,6 @@ class Miner(object):
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
         self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
-        
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
 
@@ -261,7 +258,9 @@ class Miner(object):
                 return TREE_CLASSES.get(self.constraints.getCstr("tree_mine_algo"), TREE_DEF)(self.constraints)
 
         else:
-            if self.data.hasMissing():
+            ## self.charbon_alt = CharbonGMiss(self.constraints)
+            ### CHARBON
+            if CHARBON_MISS_FORCE or self.data.hasMissing():
                 return CharbonGMiss(self.constraints)
             else:
                 return CharbonGStd(self.constraints)
@@ -334,6 +333,12 @@ class Miner(object):
         # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
         while initial_red is not None and self.questionLive():
             self.count += 1
+
+            ir_dets = self.initial_pairs.getLatestDetails()
+            if (initial_red.score() - ir_dets["score"])**2 > 0.0001:           
+                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.id)
+
+            
             self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
             partial = self.expandRedescriptions([initial_red])
@@ -431,10 +436,11 @@ class Miner(object):
                     self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                     self.logger.updateProgress(level=3, id=self.id)
                 if pairs % 10 == 5:
-
                     self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                     self.logger.updateProgress(level=7, id=self.id)
-
+                else:
+                    self.logger.printL(10, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
+                    
                 seen = []
                 (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
                 for i in range(len(scores)):
@@ -510,7 +516,12 @@ class Miner(object):
 ####################################################
     def expandRedescriptions(self, nextge):
         return ExpMiner(self.id, self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).expandRedescriptions(nextge, self.partial, self.final)
-
+        # print "########## EXPAND"
+        # tmp = ExpMiner(self.id, self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive)
+        # tmp.charbon_alt = self.charbon_alt
+        # return tmp.expandRedescriptions(nextge, self.partial, self.final)
+        
+        
 #######################################################################
 ########### MULTIPROCESSING MINER
 #######################################################################
@@ -625,6 +636,11 @@ class MinerDistrib(Miner):
                     self.reinitOnNew = True
                 else:
                     self.count += 1
+
+                    ir_dets = self.initial_pairs.getLatestDetails()
+                    if (initial_red.score() - ir_dets["score"])**2 > 0.0001:           
+                        self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.id)
+                    
                     self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
                     self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,k))
                     ## print "Init ExpandProcess ", k, self.count
@@ -800,6 +816,10 @@ class StatsMiner:
         self.cust_params = cust_params
         
     def run_stats(self):
+        list_fields = Redescription.getFieldsList(k="txt", named=False, wsplits=True, wmissing=self.data.hasMissing())
+        exp_dict = Redescription.getExpDict(list_fields)
+        stats_fields = [f for f in list_fields if not re.search("query", f)]
+
         splits_info = self.data.getFoldsInfo()
         stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
         summaries = {}
@@ -822,13 +842,9 @@ class StatsMiner:
             reds = []
             for pos in miner.final["results"]:
                 red = miner.final["batch"][pos]
-                red.recompute(self.data)
-                stats.append([red.getAccRatio({"rset_id_num": "test", "rset_id_den": "learn"}),
-                              red.getAcc(), red.getAcc({"rset_id": "learn"}), red.getAcc({"rset_id": "test"}),
-                              red.getLenI()/float(red.getLenT()),
-                              red.getLenI({"rset_id": "learn"})/float(red.getLenT({"rset_id": "learn"})),
-                              red.getLenI({"rset_id": "test"})/float(red.getLenT({"rset_id": "test"})),
-                              red.getPVal(), red.getPVal({"rset_id": "learn"}), red.getPVal({"rset_id": "test"})])
+                red.recompute(self.data) ### to set the rsets
+                evals_dict = red.compEVals(exp_dict, details={})
+                stats.append([evals_dict[f] for f in stats_fields])
                 reds.append(red)
             summaries[kfold] = {"reds": reds, "stats": stats}
 
@@ -855,7 +871,4 @@ class StatsMiner:
             rr["red"].track = rr["pos"]
             reds_list.append(rr["red"])
         all_stats[-1] =  stack_stats
-        header = ["J ratio", "J all", "J learn", "J test",
-                  "E11/E all", "E11/E learn", "E11/E test",
-                  "pV all", "pV learn", "pV test"]
-        return reds_list, all_stats, header, summaries
+        return reds_list, all_stats, summaries, list_fields, stats_fields

@@ -203,6 +203,11 @@ class Miner(object):
 
         while initial_red is not None and self.questionLive():
             self.count += 1
+
+            ir_dets = self.initial_pairs.getLatestDetails()
+            if (initial_red.score() - ir_dets["score"])**2 > 0.0001:           
+                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.id)
+            
             self.logger.clockTic(self.id, "expansion")
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
             self.expandRedescriptions([initial_red])
@@ -416,15 +421,11 @@ class Miner(object):
                     for side in [0,1]:
                     ##for side in [1]:
                         ### check whether we are extending a redescription with this side empty
-                        if red.length(side) == 0:
-                            init = 1
-                        else:
-                            init = red.usesOr(1-side)*-1 
                         for v in red.availableColsSide(side, self.deps, self.data.single_dataset):
                             if not self.questionLive(): return
 
                             if self.double_check:
-                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init)
+                                tmp = self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red)
                                 for cand in tmp: ### TODO remove, only for debugging
                                     kid = cand.kid(red, self.data)
                                     if kid.getAcc() != cand.getAcc():
@@ -438,9 +439,9 @@ class Miner(object):
                             else:
                                 #### HERE DL
                                 if self.rm is not None:
-                                    bests.updateDL(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init), self.rm, self.data)
+                                    bests.updateDL(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red), self.rm, self.data)
                                 else:
-                                    bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), init))
+                                    bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red))
 
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
                         self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)

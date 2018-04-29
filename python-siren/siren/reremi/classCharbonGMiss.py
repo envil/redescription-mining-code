@@ -1,4 +1,5 @@
 from classData import CatColM
+from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
 from classSParts import SParts
@@ -12,69 +13,76 @@ class CharbonGMiss(CharbonGreedy):
     def handlesMiss(self):
         return False
 
-    def getCandidates(self, side, col, supports, init=0):
+    def getCandidates(self, side, col, supports, red):
+        currentRStatus = Constraints.getStatusRed(red, side)
         method_string = 'self.getCandidates%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
-        cands = method_compute(side, col, supports, init)
-        # for cand in cands:
-        #     supp = col.suppLiteral(cand.getLiteral())
-        #     lparts = supports.lparts()
-        #     lin = supports.lpartsInterX(supp)
-        #     print "CLP \tB: %s\tA:%s" % (cand.clp, [lin, lparts])
-        #     cand.setClp([lin, lparts], cand.isNeg())
+        cands = method_compute(side, col, supports, currentRStatus)
+        # print "=======MISS=========="
+        for cand in cands:            
+            supp = col.suppLiteral(cand.getLiteral())
+            lparts = supports.lparts()
+            lin = supports.lpartsInterX(supp)
+            # print cand.getLiteral(), cand.isNeg()
+            # print lparts, lin, len(supp)
+            # print "Before", cand
+            # # print "CLP \tB: %s\tA:%s" % (cand.clp, [lin, lparts])
+            cand.setClp([lin, lparts], cand.isNeg())
+            # print cand
+        # print "================="            
         return cands
 
-    def getCandidates1(self, side, col, supports, init=0):
+    def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(col.missing)
         lin = supports.lpartsInterX(col.hold)
 
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 adv, clp = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if adv is not None :
                     cands.append(Extension(self.constraints.getSSetts(), adv, clp, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
 
-    def getCandidates2(self, side, col, supports, init=0):
-        return self.getCandidatesNonBool(side, col, supports, init)
+    def getCandidates2(self, side, col, supports, currentRStatus=0):
+        return self.getCandidatesNonBool(side, col, supports, currentRStatus)
 
-    def getCandidates3(self, side, col, supports, init=0):
-        return self.getCandidatesNonBool(side, col, supports, init)
+    def getCandidates3(self, side, col, supports, currentRStatus=0):
+        return self.getCandidatesNonBool(side, col, supports, currentRStatus)
 
-    def getCandidatesNonBool(self, side, col, supports, init=0):
+    def getCandidatesNonBool(self, side, col, supports, currentRStatus=0):
         cands = []
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(col.miss())
 
-        for cand in self.findCover(side, col, lparts, lmiss, supports, init):
+        for cand in self.findCover(side, col, lparts, lmiss, supports, currentRStatus):
             cands.append(cand[1])
         return cands
 
 ####################### COVER METHODS
-    def findCover(self, side, col, lparts, lmiss, supports, init=0):
+    def findCover(self, side, col, lparts, lmiss, supports, currentRStatus=0):
         method_string = 'self.findCover%i' % col.typeId()
         try:
             method_compute =  eval(method_string)
         except AttributeError:
               raise Exception('Oups No covering method for this type of data (%i)!'  % col.typeId())
-        return method_compute(side, col, lparts, lmiss, supports, init)
+        return method_compute(side, col, lparts, lmiss, supports, currentRStatus)
 
-    def findCover1(self, side, col, lparts, lmiss, supports, init=0):
+    def findCover1(self, side, col, lparts, lmiss, supports, currentRStatus=0):
         cands = []
         lin = supports.lpartsInterX(col.supp())
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
                 tmp_adv, tmp_clp  = self.getAC(side, op, neg, lparts, lmiss, lin)
                 if tmp_adv is not None:
                     cands.append((False, Extension(self.constraints.getSSetts(), tmp_adv, tmp_clp, [side, op, neg, Literal(neg, BoolTerm(col.getId()))])))
 
                 ### to negate the other side when looking for initial pairs
-                if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+                if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
                     tmp_adv, tmp_clp  = self.getAC(side, op, neg, \
                                                        self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
                     if tmp_adv is not None:
@@ -82,50 +90,120 @@ class CharbonGMiss(CharbonGreedy):
 
         return cands
 
-    def findCover2(self, side, col, lparts, lmiss, supports, init=0):
+    def findCover2(self, side, col, lparts, lmiss, supports, currentRStatus=0):
         cands = []
-
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
-            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
+        allw_neg = True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
+        negs = self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
+        if self.constraints.getCstr("multi_cats"): ## redundant negation
+            negs = [False]
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
+            for neg in negs:
+                collect_goods = []
+                collect_goodsNeg = []
                 best = (None, None, None)
                 bestNeg = (None, None, None)
                 for (cat, supp) in col.sCats.iteritems():
                     lin = supports.lpartsInterX(supp)
-                    best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
-
+                    ## best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
+                    ######################
+                    tmp_adv = self.getAC(side, op, neg, lparts, lmiss, lin)
+                    if best[0] < tmp_adv[0]:
+                        best = (tmp_adv[0], tmp_adv[1], [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))])
+                    if tmp_adv[0] is not None:
+                        collect_goods.append((tmp_adv[0], cat, lparts, lmiss, lin))
+                    ######################
+                    
                     ### to negate the other side when looking for initial pairs
-                    if init ==1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
-                        bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
-                                              self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
-
+                    if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
+                        # bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
+                        #                       self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
+                        ######################
+                        Nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
+                        Nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
+                        Nlin = self.constraints.getSSetts().negateParts(1-side, lin)
+                        tmp_adv = self.getAC(side, op, neg, Nlparts, Nlmiss, Nlin)
+                        if bestNeg[0] < tmp_adv[0]:
+                            bestNeg = (tmp_adv[0], tmp_adv[1], [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))])
+                        if tmp_adv[0] is not None:
+                            collect_goodsNeg.append((tmp_adv[0], cat, Nlparts, Nlmiss, Nlin))
+                        ######################
+                    
+                #### HERE CATS
                 if best[0] is not None:
-                    cands.append((False, Extension(self.constraints.getSSetts(), best)))
+                    bb = self.combCats(best, allw_neg, side, op, neg, col, collect_goods)
+                    cands.append((False, Extension(self.constraints.getSSetts(), bb)))
+                    # cands.append((False, Extension(self.constraints.getSSetts(), best)))
                 if bestNeg[0] is not None:
-                    cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
+                    bb = self.combCats(best, allw_neg, side, op, neg, col, collect_goodsNeg)
+                    cands.append((True, Extension(self.constraints.getSSetts(), bb)))
+                    # cands.append((True, Extension(self.constraints.getSSetts(), bestNeg)))
         return cands
 
-    def findCover3(self, side, col, lparts, lmiss, supports, init=0):
+    def additionsLParts(self, lparts, lmiss, lin, nextc, other_side=0):
+        if other_side == 0:
+            ccum_lparts = lparts
+            ccum_lmiss = lmiss
+            ccum_lin = self.constraints.getSSetts().addition(lin, nextc[-1])
+        else:
+            ccum_lparts = self.constraints.getSSetts().additionOtherSide(lparts, nextc[-3], other_side < 0)
+            ccum_lmiss = self.constraints.getSSetts().additionOtherSide(lmiss, nextc[-2], other_side < 0)       
+            ccum_lin = self.constraints.getSSetts().additionOtherSide(lin, nextc[-1], other_side < 0)
+            
+        # print "--- SUM", other_side
+        # print lparts, lmiss, lin
+        # print nextc[-3], nextc[-2], nextc[-1]
+        # print ">>"
+        # print ccum_lparts, ccum_lmiss, ccum_lin
+        return ccum_lparts, ccum_lmiss, ccum_lin
+            
+    def combCats(self, best, allw_neg, side, op, neg, col, collected, other_side=0):
+        if not self.constraints.getCstr("multi_cats"):
+            return best
+        collected.sort()
+        nextc = collected.pop()
+        best_cat = [nextc[1]]
+        best_score = (nextc[0], None)
+        cum_lparts, cum_lmiss, cum_lin = (list(nextc[-3]), list(nextc[-2]), list(nextc[-1]))
+        while len(collected) > 0:
+            nextc = collected.pop()
+            ccum_lparts, ccum_lmiss, ccum_lin = self.additionsLParts(cum_lparts, cum_lmiss, cum_lin, nextc, other_side)
+            tmp_adv = self.getAC(side, op, neg, ccum_lparts, ccum_lmiss, ccum_lin)
+            if best_score[0] < tmp_adv[0]:
+                best_cat.append(nextc[1])
+                cum_lparts = ccum_lparts
+                cum_lmiss = ccum_lmiss
+                cum_lin = ccum_lin                    
+                best_score = tmp_adv                
+        if len(best_cat) > 1:
+            if col is None:
+                best = (best_score[0], best_score[1], [side, op, neg, set(best_cat)])
+            else:
+                lit = col.makeCatLit(best_cat, neg, allw_neg)
+                best = (best_score[0], best_score[1], [side, op, lit.isNeg(), lit])
+        return best
+        
+    def findCover3(self, side, col, lparts, lmiss, supports, currentRStatus=0):
         cands = []
         if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
-            segments = col.makeSegments(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, init=init))
-            for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, init):
+            segments = col.makeSegments(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus))
+            for cand in self.findCoverSegments(side, col, segments, lparts, lmiss, currentRStatus):
                 cands.append((False, cand))
 
             ### to negate the other side when looking for initial pairs
-            if init == 1 and True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+            if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
                 nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
                 nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
 
                 if self.inSuppBounds(side, True, nlparts): ### DOABLE
-                    nsegments = col.makeSegments(self.constraints.getSSetts(), side, supports.negate(1-side), self.constraints.getCstr("allw_ops", side=side, init=init))
+                    nsegments = col.makeSegments(self.constraints.getSSetts(), side, supports.negate(1-side), self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus))
                     ##H pdb.set_trace()
-                    for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, init):
+                    for cand in self.findCoverSegments(side, col, nsegments, nlparts, nlmiss, currentRStatus):
                         cands.append((True, cand))
         return cands
         
-    def findCoverSegments(self, side, col, segments, lparts, lmiss, init=0):
+    def findCoverSegments(self, side, col, segments, lparts, lmiss, currentRStatus=0):
         cands = []
-        for op in self.constraints.getCstr("allw_ops", side=side, init=init):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             if len(segments[op]) < self.constraints.getCstr("max_seg"):
                 cands.extend(self.findCoverFullSearch(side, op, col, segments, lparts, lmiss))
             else:
@@ -156,12 +234,14 @@ class CharbonGMiss(CharbonGreedy):
     def findNegativeCover(self, side, op, col, segments, lparts, lmiss):
         cands = []
         lin_f = self.constraints.getSSetts().makeLParts()
+        # bests_f = [(0, 0, self.constraints.getSSetts().makeLParts())]
         bests_f = [(self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_f), 0, lin_f)] 
         best_track_f = [0]
         lin_b = self.constraints.getSSetts().makeLParts()
+        # bests_b = [(0, 0, self.constraints.getSSetts().makeLParts())]
         bests_b = [(self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, lin_b), 0, lin_b)]
         best_track_b = [0]
-        #pdb.set_trace()
+
         for  i in range(len(segments[op])):
             # FORWARD
             lin_f = self.constraints.getSSetts().addition(lin_f, segments[op][i][2])
@@ -217,7 +297,7 @@ class CharbonGMiss(CharbonGreedy):
         nb_seg_b = 0
         best_b = (None, None, None)
 
-        for  i in range(len(segments[op])-1):
+        for i in range(len(segments[op])-1):
             # FORWARD
             if i > 0 and \
                    self.constraints.getSSetts().advAcc(side, op, False, lparts, lmiss, segments[op][i][2]) < self.constraints.getSSetts().advRatioVar(side, op, lin_f):
@@ -293,7 +373,8 @@ class CharbonGMiss(CharbonGreedy):
         (scores, literalsFix, literalsExt) = ([], [], [])   
         lparts = supports.lparts()
         lmiss = supports.lpartsInterX(col.miss())
-        cands = self.findCover(side, col, lparts, lmiss, supports, init=1)
+        currentRStatus = Constraints.getStatusPair(col, side, termX)
+        cands = self.findCover(side, col, lparts, lmiss, supports, currentRStatus=currentRStatus)
         for cand in cands:
             scores.append(cand[1].getAcc())
             literalsFix.append(Literal(cand[0], termX))
@@ -412,7 +493,7 @@ class CharbonGMiss(CharbonGreedy):
                 if side is not None:
                     #### working with on variable as categories is workable
                     ## print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
-                    (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side)
+                    (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side, try_comb=False)
                     if side == 1:
                         literalsL = []
                         literalsR = literalsExt
@@ -546,9 +627,18 @@ class CharbonGMiss(CharbonGreedy):
 
     def subdo22Full(self, colL, colR, side):
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
+        allw_neg = True
         if True not in self.constraints.getCstr("neg_query", side=side, type_id=2):
             configs = configs[:1]
+            allw_neg = False
         best = [[] for c in configs]
+
+        # print "--------------------------------------"
+        # print "\t".join(["", ""]+[catR for catR in colR.cats()])
+        # print "\t".join(["", ""]+["%d" % len(colR.suppCat(catR)) for catR in colR.cats()])
+        # for catL in colL.cats():
+        #     print "\t".join([catL, "%d" % len(colL.suppCat(catL))]+["%d" % len(colL.suppCat(catL).intersection(colR.suppCat(catR))) for catR in colR.cats()])
+        # print "--------------------------------------"
         
         for catL in colL.cats():
             ### TODO DOABLE
@@ -558,7 +648,6 @@ class CharbonGMiss(CharbonGreedy):
             
             for catR in colR.cats():
                 lin = supports.lpartsInterX(colR.suppCat(catR))
-
                 for (i, nL, nR) in configs:
                     if nL:
                         tmp_lparts = self.constraints.getSSetts().negateParts(0, lparts)
@@ -569,9 +658,19 @@ class CharbonGMiss(CharbonGreedy):
                         tmp_lmiss = lmiss
                         tmp_lin = lin
 
+                    # print "--", catL, catR, nL, nR
+                    # print tmp_lparts, tmp_lmiss, tmp_lin
                     best[i] = self.updateACTP22(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
-                    
+
         (scores, literalsFix, literalsExt) = ([], [], [])
+        if self.constraints.getCstr("multi_cats"):
+            # print "PAIR ----", colL, colR
+            (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
+            # if len(scores) > 0:
+            #     print "---- Multi cats:"
+            #     for ii in range(len(scores)):
+            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+            
         for (i, nL, nR) in configs:
             for b in best[i]:
                 scores.append(b[0][0])
@@ -579,16 +678,53 @@ class CharbonGMiss(CharbonGreedy):
                 literalsExt.append(Literal(nR, CatTerm(colR.getId(), b[-1][-1][1])))
         return (scores, literalsFix, literalsExt)
 
+    def combPairsCats(self, best, cols, configs, allw_neg):
+        (scores, literalsFix, literalsExt) = ([], [], [])
+        for (i, nL, nR) in configs:
+            map_cat = [{}, {}]
+            for b in best[i]:                
+                for ss in [0,1]:
+                    if b[-1][-1][ss] not in map_cat[ss]:
+                        map_cat[ss][b[-1][-1][ss]] = []
+                    map_cat[ss][b[-1][-1][ss]].append((b[0][0], b[-1][-1][1-ss], b[1][2], b[1][3], b[1][0]))
+                        
+            for ss in [0,1]:
+                cats_loc = [None, None]
+                kk = map_cat[ss].keys()
+                for k in kk:
+                    tmp_cats = [] #(c[0], c[1]) for c in map_cat[ss][k]] 
+                    if len(map_cat[ss][k]) > 1:
+                        other_side = 0
+                        if (ss==1):
+                            other_side = 1
+                            if nL: other_side = -1
+                        # print "==============="
+                        # print "GO", k, nR, nL, other_side, "\n*".join([""]+[str(mm) for mm in map_cat[ss][k]])
+                        bb = self.combCats(None, allw_neg, 1, True, nR, None, map_cat[ss][k], other_side=other_side)
+                        if bb is not None:
+                            tmp_cats = [tmp_cat for tmp_cat in tmp_cats if tmp_cat[1] not in bb[-1][-1]]
+                            tmp_cats.append((bb[0][0], bb[-1][-1]))
+                        for tmp_cat in tmp_cats:
+                            cats_loc[ss] = k
+                            cats_loc[1-ss] = tmp_cat[1]
+                            scores.append(tmp_cat[0])
+                            literalsFix.append(cols[0].makeCatLit(cats_loc[0], nL, allw_neg))
+                            literalsExt.append(cols[1].makeCatLit(cats_loc[1], nR, allw_neg))                        
+        return (scores, literalsFix, literalsExt)
 
-    def subdo23Full(self, colL, colR, side):
+    
+
+    def subdo23Full(self, colL, colR, side, try_comb=True):
         if side == 0:
             (colF, colE) = (colR, colL)
         else:
             (colF, colE) = (colL, colR)
 
         configs = [(0, False, False), (1, False, True), (2, True, False), (3, True, True)]
+        allw_neg = True
         if True not in self.constraints.getCstr("neg_query", side=side, type_id=2) or True not in self.constraints.getCstr("neg_query", side=side, type_id=3):
             configs = configs[:1]
+            allw_neg = False
         best = [[] for c in configs]
 
         buckets = colE.buckets()
@@ -614,7 +750,7 @@ class CharbonGMiss(CharbonGreedy):
             for cat in colF.cats():
                 lparts = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().Exo, len(colF.suppCat(cat)) ), (self.constraints.getSSetts().Emo, partsMubB ), (self.constraints.getSSetts().Eoo, - colF.nbRows())], 1-side)
                 lmiss  = self.constraints.getSSetts().makeLParts([(self.constraints.getSSetts().Exo, len(colF.suppCat(cat) & colE.miss()) ), (self.constraints.getSSetts().Emo, missMubB ), (self.constraints.getSSetts().Eoo, -len(colE.miss()) )], 1-side)
-                
+
                 interMat = [len(colF.suppCat(cat) & buk) for buk in buckets[0]]
                 if buckets[2] is not None :
                     interMat[buckets[2]] += len(colE.interMode(colF.suppCat(cat)))        
@@ -642,7 +778,7 @@ class CharbonGMiss(CharbonGreedy):
                                 tmp_lin = lin
 
                             best[i] = self.updateACTP23(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
-
+                            
                         above+=interMat[up]
                         missAbove+=missMat[up]
                         up-=1
@@ -652,8 +788,14 @@ class CharbonGMiss(CharbonGreedy):
 
         
         (scores, literalsFix, literalsExt) = ([], [], [])
-        for (i, nF, nE) in configs:
+        if try_comb and self.constraints.getCstr("multi_cats"):
+            (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
+            # if len(scores) > 0:
+            #     print "---- Multi cats:"
+            #     for ii in range(len(scores)):
+            #         print scores[ii], literalsFix[ii], literalsExt[ii]
 
+        for (i, nF, nE) in configs:
             for b in best[i]:
                 tE = colE.getLiteralBuk(nE, buckets[1], b[-1][-1][1:], buckets[bUp])
                 #tE = colE.getLiteralBuk(nE, buckets[1], idE, b[-1][-1][1:])
@@ -663,6 +805,36 @@ class CharbonGMiss(CharbonGreedy):
                     scores.append(b[0][0])
         return (scores, literalsFix, literalsExt)
 
+
+    def combNumCats(self, best, cols, configs, allw_neg, side, buckets, bUp):
+        (scores, literalsFix, literalsExt) = ([], [], [])
+        for (i, nF, nE) in configs:
+            map_cat = {}
+            for b in best[i]:
+                buk = b[-1][-1][1:]
+                if buk not in map_cat:
+                    map_cat[buk] = []
+                map_cat[buk].append((b[0][0], b[-1][-1][0], b[1][2], b[1][3], b[1][0]))
+
+            kk = map_cat.keys()
+            for k in kk:
+                tmp_cats = [] #(c[0], c[1]) for c in map_cat[k]] 
+                if len(map_cat[k]) > 1:
+                    other_side = 1
+                    if nE: other_side = -1
+                    bb = self.combCats(None, allw_neg, side, True, nF, None, map_cat[k], other_side=other_side)
+                    if bb is not None:
+                        tmp_cats = [tmp_cat for tmp_cat in tmp_cats if tmp_cat[1] not in bb[-1][-1]]
+                        tmp_cats.append((bb[0][0], bb[-1][-1]))
+                    for tmp_cat in tmp_cats:
+                        tE = cols[1].getLiteralBuk(nE, buckets[1], k, buckets[bUp])
+                        if tE is not None:
+                            literalsExt.append(tE)
+                            literalsFix.append(cols[0].makeCatLit(tmp_cat[1], nF, allw_neg))
+                            scores.append(tmp_cat[0])                                                    
+        return (scores, literalsFix, literalsExt)
+
+    
 ##### TOOLS METHODS
     # compute the advance resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)            
@@ -673,6 +845,7 @@ class CharbonGMiss(CharbonGreedy):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
         contri = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[op], clp)
+        
         if contri >= self.constraints.getCstr("min_itm_c"):
             varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[op], clp)
             fixBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixnum[op], clp)
@@ -688,6 +861,7 @@ class CharbonGMiss(CharbonGreedy):
                             acc = 0
                     else:
                         acc = float(varBlue + fixBlue)/ (varRed + fixRed)
+                    # print "PIECES", sout, varBlue, varRed, contri, fixBlue, fixRed
                     return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp
 
@@ -724,10 +898,16 @@ class CharbonGMiss(CharbonGreedy):
 
     def conflictP22(self, litA, litB):
         # return True
-        return (litA[0] == litB[0]) and (litA[1] != litB[1])
+        if self.constraints.getCstr("multi_cats"):
+            return (litA[0] == litB[0]) and (litA[1] == litB[1])
+        else:
+            return (litA[0] == litB[0]) or (litA[1] == litB[1])
     def conflictP23(self, litA, litB):
         # return True
-        return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
+        if self.constraints.getCstr("multi_cats"):
+            return (litA[0] == litB[0]) and not (litA[1] > litB[2] or litB[1] > litA[2])
+        else:
+            return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
     def conflictP33(self, litA, litB):
         # return True
         return not ((litA[0] > litB[1] or litB[0] > litA[1]) and (litA[2] > litB[3] or litB[2] > litA[3]))

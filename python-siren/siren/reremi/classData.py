@@ -441,6 +441,15 @@ class CatColM(ColM):
     def getType(self, details=None):
         return "categorical"
 
+    def makeCatLit(self, best_cat, neg, allw_neg=True):
+        if type(best_cat) in [list, set]:
+            dc = set(self.cats()).difference(best_cat)                
+            if allw_neg and (len(dc) < len(best_cat)):
+                return Literal(not neg, CatTerm(self.getId(), dc))
+            else:
+                return Literal(neg, CatTerm(self.getId(), set(best_cat)))
+        return Literal(neg, CatTerm(self.getId(), best_cat))
+            
     def __init__(self, ncolSupp={}, N=-1, nmiss= set()):
         ColM.__init__(self, N, nmiss)
         self.sCats = ncolSupp
@@ -629,7 +638,11 @@ class CatColM(ColM):
         if self.isBasisCat(cat):
             return self.rows() - self.miss()
         supp = set()
-        for c in cat:
+        if type(cat) in [list, set]:
+            cc = cat
+        else:
+            cc = [cat]
+        for c in cc:
             supp.update(self.sCats.get(c, set()))
         return supp
             
@@ -638,9 +651,9 @@ class CatColM(ColM):
 
     def suppInBounds(self, min_in=-1, min_out=-1):
         if self.infofull["in"][0] != min_in:
-            self.infofull["in"]= (min_in, self.cards[-1][1] >= min_in)
+            self.infofull["in"]= (min_in, (self.cards[-1][1] >= min_in or (self.nbRows() - self.cards[0][1]) >= min_in))
         if self.infofull["out"][0] != min_out:
-            self.infofull["out"]= (min_out, self.nbRows() - self.cards[0][1] >= min_out)
+            self.infofull["out"]= (min_out, (self.cards[-1][1] >= min_out or (self.nbRows() - self.cards[0][1]) >= min_out))
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
 
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
@@ -1628,8 +1641,10 @@ class Data(object):
         nb_folds = len(counts_folds)
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
     
-    def findCandsFolds(self):
+    def findCandsFolds(self, strict=False):
         folds = self.getColsByName("^folds_split_")
+        if strict:
+            return folds
         more = self.getColsMoreFolds(folds)
         return folds + more
 

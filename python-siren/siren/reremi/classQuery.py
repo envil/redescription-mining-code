@@ -547,8 +547,11 @@ class CatTermONE(Term):
     def getCat(self):
         return self.cat
     
+    def isBasisCat(self):
+        return self.cat == self.basis_cat
+    
     def valRange(self):
-        if self.cat == self.basis_cat:
+        if self.isBasisCat():
             return ["#LOW#", "#HIGH#"]
         return [self.getCat(), self.getCat()]
 
@@ -676,18 +679,27 @@ class CatTerm(Term):
     
     def __init__(self, ncol, ncat):
         self.col = ncol
-        self.cat = ncat
+        if type(ncat) in [list, set]:
+            self.cat = ncat
+        else:
+            self.cat = set([ncat])            
 
     def getCat(self):
         return self.cat
-    
+    def isBasisCat(self):
+        return self.cat == self.basis_cat
+
     def valRange(self):
-        if self.cat == self.basis_cat:
+        if self.isBasisCat():
             return ["#LOW#", "#HIGH#"]
         return sorted(self.getCat())
 
     def setRange(self, cat):
-        self.cat = cat #codecs.encode(cat, 'utf-8','replace')
+        if type(cat) in [list, set]:
+            self.cat = cat
+        else:
+            self.cat = set([cat])            
+            #codecs.encode(cat, 'utf-8','replace')
             
     def copy(self):
         return CatTerm(self.col, self.cat)
@@ -702,10 +714,14 @@ class CatTerm(Term):
             return self.cmpCol(other)
 
     def truthEval(self, variableV):
+        if self.isBasisCat():
+            return False
         return variableV in self.cat
 
     def hashCat(self):
-        return numpy.sum(map(hash,self.cat))
+        if self.isBasisCat():
+            return hash(self.cat)
+        return hash(self.getCatsStr())
         
     
     def __hash__(self):
@@ -716,6 +732,8 @@ class CatTerm(Term):
         return self.disp()
     
     def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
+        if self.isBasisCat():
+            return self.cat
         strcat = op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
         if len(self.cat) == 1:
             strcat = op_any + sep.join(["%s" % c for c in self.cat]) + cl_any

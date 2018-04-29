@@ -322,6 +322,7 @@ class PreferencesManager(object):
                "single_options": SingleOptionsCParameter,
                "multiple_options": MultipleOptionsCParameter,
                "color_pick": ColorCParameter}
+    MTCH_ST = "^(?P<basis>[^0-9]*)((_s(?P<side>[01])_(?P<typ>[0-9]))|(_s(?P<oside>[01]))|(_(?P<otyp>[0-9])))$"
 
     def __init__(self, filenames):
         self.subsections = []
@@ -371,6 +372,22 @@ class PreferencesManager(object):
     def getItem(self, item_id):
         return self.pdict.get(item_id, None)
 
+    def getNameSidesTypes(self, name):
+        tmp = re.match(self.MTCH_ST, name)
+        if tmp is not None:
+           return (tmp.group("basis"),
+                       int(tmp.group("side") or tmp.group("oside") or -1),
+                       int(tmp.group("typ") or tmp.group("otyp") or -1))
+        return (name, -1, -1)
+       
+    def getItemsSidesTypes(self):
+        dd = {}
+        for k in self.pdict.keys():
+            tmp = self.getNameSidesTypes(k)
+            if tmp[1] != -1 or tmp[2] != -1:
+                dd[k] = tmp
+        return dd
+    
     def getDefaultTriplets(self):
         return dict([(item_id, item.getDefaultTriplet())
                  for (item_id, item) in self.pdict.items()])
@@ -454,39 +471,70 @@ class PreferencesReader(object):
                     values = toolRead.getValues(current)
                     tmp[name] = values
         return tmp
- 
+
+
+    
     def readParametersDict(self, params_dict):
         pv = {}
+        non_matched = {}
+        tt = self.pm.getItemsSidesTypes()
+        bb_matched = {}
+        for tk, t in tt.items():
+            if not t[0] in bb_matched:
+                bb_matched[t[0]] = []
+            bb_matched[t[0]].append((tk, t[1], t[2]))
+
         for name, values in params_dict.items():
             item = self.pm.getItem(name)
             if item is not None:
-                if len(values) == 1 and item.getCardinality()=="unique":
-                    value = item.getParamTriplet(values[0])
-                    if value is not None:
-                        pv[name] = value
-                elif item.getCardinality()=="multiple":
-                    tmp_opts = []
-                    tmp_ok = True
-                    for tmp_s in values:
-                        tmp = item.getParamTriplet(tmp_s)
-                        if tmp is not None:
-                            tmp_opts.append(tmp)
-                        else:
-                            tmp_ok = False
-                    if tmp_ok:
-                        # if name == 'map_elem_circ' or name == 'rhs_neg_query_2':
-                        #     pdb.set_trace()
-                
-                        values = {}
-                        if len(tmp_opts) > 0:
-                            for k in tmp_opts[0].keys():
-                                values[k] = []
-                                for t in tmp_opts:
-                                    values[k].append(t[k])
-                        else:
-                            values = {'text': [], 'data': [], 'value': []}
-                        pv[name] = values
+                self.prepareItemVal(pv, item, name, values)
+            else:
+                tmp = self.pm.getNameSidesTypes(name)
+                if tmp[0] in bb_matched:
+                    non_matched[name] = tmp
+        if len(non_matched):
+            fill_matched = {}
+            kk = sorted(non_matched.keys())
+            for k in kk:
+                cbasis, cside, ctyp = non_matched[k]
+                for elem in bb_matched[cbasis]:
+                    if (elem[1] == cside or elem[1] == -1 or -1 == cside) and (elem[2] == ctyp or elem[2] == -1 or -1 == ctyp):
+                        fill_matched[elem[0]] = k
+            # print "fill_matched", fill_matched
+            for name, nn in fill_matched.items():
+                values = params_dict[nn]
+                item = self.pm.getItem(name)
+                if item is not None:
+                    self.prepareItemVal(pv, item, name, values)
         return pv
+
+    def prepareItemVal(self, pv, item, name, values):
+        if len(values) == 1 and item.getCardinality()=="unique":
+            value = item.getParamTriplet(values[0])
+            if value is not None:
+                pv[name] = value
+        elif item.getCardinality()=="multiple":
+            tmp_opts = []
+            tmp_ok = True
+            for tmp_s in values:
+                tmp = item.getParamTriplet(tmp_s)
+                if tmp is not None:
+                    tmp_opts.append(tmp)
+                else:
+                    tmp_ok = False
+            if tmp_ok:
+                # if name == 'map_elem_circ' or name == 'rhs_neg_query_2':
+                #     pdb.set_trace()
+        
+                values = {}
+                if len(tmp_opts) > 0:
+                    for k in tmp_opts[0].keys():
+                        values[k] = []
+                        for t in tmp_opts:
+                            values[k].append(t[k])
+                else:
+                    values = {'text': [], 'data': [], 'value': []}
+                pv[name] = values
 
     def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False, core=False):
         indents = ""

@@ -65,13 +65,13 @@ def loadAll(arguments=[]):
         
     elif config_filename is not None:
         src_folder = os.path.dirname(os.path.abspath(config_filename))
-        
+
     params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
-
+    
     params_l = trunToDict(params)
     filenames = prepareFilenames(params_l, tmp_dir, src_folder)
     logger = Log(params_l['verbosity'], filenames["logfile"])
@@ -169,38 +169,55 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
 
     return filenames
 
-def outputResults(filenames, results_batch, data=None, header=None, header_named=None, mode="w", data_recompute=None):
-    header = Redescription.dispHeader()
-    header_named = Redescription.dispHeader(named=True)
+def outputResults(filenames, results_batch, data=None, with_headers=True, mode="w", data_recompute=None):
+    wmissing = False
+    if data.hasMissing() or (data_recompute is not None and data_recompute.hasMissing()):
+        wmissing = True
+    fstyle = "basic"
     
+    header_recompute = ""
+    if data_recompute is not None:
+        fields_recompute = Redescription.getFieldsListCust("stats", wmissing=wmissing)
+        header_recompute = Redescription.dispHeader(fields_recompute) + "\tacc_diff"
+        
     filesfp = {"queries": None, "queries_named": None, "support": None}
     if filenames["queries"] == "-":
         filesfp["queries"] = sys.stdout
     else:
-        filesfp["queries"] = open(filenames["queries"], mode)
+        filesfp["queries"] = open(filenames["queries"], mode)        
+    all_fields = Redescription.getFieldsListCust(fstyle, named=False, wmissing=wmissing)
+    if with_headers:
+        filesfp["queries"].write(Redescription.dispHeader(all_fields)+"\t"+header_recompute+"\n")
 
-    if "support" in filenames:
-        filesfp["support"] = open(filenames["support"], mode)
-
-    filesfp["queries"].write(header+"\n")
     names = None
+    all_fields_named = None
     if data is not None and data.hasNames() and "queries_named" in filenames:
         names = data.getNames()
+        all_fields_named = Redescription.getFieldsListCust(fstyle, named=True, wmissing=wmissing)
         filesfp["queries_named"] = open(filenames["queries_named"], mode)
-        filesfp["queries_named"].write(header_named+"\n")
-
+        if with_headers:
+            filesfp["queries_named"].write(Redescription.dispHeader(all_fields_named)+"\t"+header_recompute+"\n")
+    
+    if "support" in filenames:
+        filesfp["support"] = open(filenames["support"], mode)
+        
     #### TO DEBUG: output all shown in siren, i.e. no filtering
     ## for pos in range(len(results_batch["batch"])):
-
+    addto = ""
     for pos in results_batch["results"]:
+        org = results_batch["batch"][pos]
+        
         if data_recompute is not None:
-            org = results_batch["batch"][pos]
             red = org.copy()
             red.recompute(data_recompute)
             acc_diff = (red.getAcc()-org.getAcc())/org.getAcc()
-            miner.final["batch"][pos].write(filesfp["queries"], filesfp["support"], filesfp["queries_named"], names, "\t"+red.dispStats()+"\t%f" % acc_diff)
-        else:
-            results_batch["batch"][pos].write(filesfp["queries"], filesfp["support"], filesfp["queries_named"], names)
+            addto = "\t"+red.disp(fields_recompute)+"\t%f" % acc_diff
+
+        filesfp["queries"].write(org.disp(list_fields=all_fields)+addto+'\n')
+        if filesfp["queries_named"] is not None:
+            filesfp["queries_named"].write(org.disp(names, list_fields=all_fields_named)+addto+'\n')
+        if filesfp["support"] is not None:
+            filesfp["support"].write(org.dispSupp()+'\n')
 
     for (ffi, ffp) in filesfp.items():
         if ffp is not None and filenames.get(ffi, "") != "-":
@@ -230,30 +247,12 @@ def run(args):
     
     loaded = loadAll(args)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
-
-    ############################
-    #### SPLITS
-    #### create (random)
-    # data.getSplit(nbsubs=5, coo_dim=0, grain=1)
-    # data.addFoldsCol()
-    #### setup for mining
-    ### data.extractFolds(1, 12)
-    # splits_info = data.getFoldsInfo()
-    # stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
-    # ids = {}
-    # checked = [("learn", range(1,len(stored_splits_ids))), ("test", [0])]
-    # for lt, bids in checked:
-    #     ids[lt] = [stored_splits_ids[bid] for bid in bids]
-    # data.assignLT(ids["learn"], ids["test"])
-    ############################
-
     miner = instMiner(data, params, logger)
     try:
         miner.full_run()
     except KeyboardInterrupt:
         miner.initial_pairs.saveToFile()
         logger.printL(1, 'Stopped...', "log")
-
 
     outputResults(filenames, miner.final, data)
     logger.clockTac(0, None)
@@ -329,7 +328,6 @@ def run_filter(args):
         
     return [batch[i] for i in tmp_ids]
 
-
     ## miner = instMiner(data, params, logger)
     ## try:
     ##     miner.full_run()
@@ -341,7 +339,6 @@ def run_filter(args):
 
 
 def run_splits(args, splt=""):
-
     nb_splits = 5
     tmp = re.match("splits(?P<nbs>[0-9]+)\s*", splt)
     if tmp is not None:
@@ -354,7 +351,7 @@ def run_splits(args, splt=""):
         pp = filenames["basis"].split("/")
         pp[-1] = ".".join(parts[:-1])
         filenames["basis"] = "/".join(pp)
-    fold_cols = data.findCandsFolds()
+    fold_cols = data.findCandsFolds(strict=True)
 
     if len(fold_cols) == 0:
         fold_cols = [None]
@@ -381,29 +378,24 @@ def run_splits(args, splt=""):
         splt_statf = filenames["basis"]+ ("_split-%d:%s.txt" % (nb_splits, suff))            
 
         stM = StatsMiner(data, params, logger)
-        reds_list, all_stats, header, summaries = stM.run_stats()
-
+        reds_list, all_stats, summaries, list_fields, stats_fields = stM.run_stats()
+        
         splt_fk = filenames["basis"]+ ("_split-%d:%s-kall.txt" % (nb_splits, suff))            
         with open(splt_fk, "w") as f:
-            f.write(printRedList(reds_list, fields=[-1, "track"]))
-
-        all_fields = Redescription.default_queries_fields+Redescription.default_fields_stats
+            f.write(printRedList(reds_list, fields=list_fields+["track"]))
+            
         for fk, dt in summaries.items():
             splt_fk = filenames["basis"]+ ("_split-%d:%s-k%d.txt" % (nb_splits, suff, fk))            
             with open(splt_fk, "w") as f:
-                f.write(Redescription.dispHeader(all_fields, sep="\t") + "\t")
-                f.write("\t".join(header) + "\n")
-                for ri, red in enumerate(dt["reds"]):
-                    f.write(red.disp(list_fields=all_fields, sep="\t")+ "\t")
-                    f.write("\t".join(["%f" % st for st in dt["stats"][ri]])+ "\n")
-        
+                f.write(printRedList(dt["reds"], fields=list_fields+["track"]))
+                
         nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
         tot = numpy.array(all_stats[-1])
         if nbreds.sum() > 0:
             summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
 
             info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
-            numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(header+["nb reds"])+info_plus)
+            numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(stats_fields+["nb reds"])+info_plus)
             # saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)
         else:
             with open(splt_statf, "w") as fo:
@@ -413,40 +405,20 @@ def run_splits(args, splt=""):
 
 
 def run_printout(args):
-
     suff = args[-1].strip("printout")
     if len(suff) == 0:
         suff = "_reprint"
     loaded = loadAll(args[:-1])
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
-
-    for red in reds:        
-        print "\n==================="
-        print red.dispQueries()
-        print red.sParts
-
-        for typeS in ["marg", "over"]:
-            red.sParts.ssetts.reset(methodpVal=typeS)                       
-            print "%s=%s\t" % (typeS, red.sParts.pVal()),
-        
-        # for typeS in ["basic", "rejective", "optimistic", "pessimistic"]:
-        #     red.sParts.ssetts.reset(typeS)
-        #     # print red.sParts.ssetts.type_parts
-        #     # print "IDS_diff", red.sParts.ssetts.IDS_diff
-        #     # print "IDS_inter", red.sParts.ssetts.IDS_inter
-        #     # print "IDS_uncovered", red.sParts.ssetts.IDS_uncovered
-                       
-        #     print "%s=%s\t" % (typeS, red.sParts.acc()),
-    print "\n==================="
-    exit()
-    constraints = Constraints(data, params)
-    if loaded["reds"] is not None:
-        reds = loaded["reds"]
-    else:
+    if reds is None:
         reds = []
-    with open(filenames["queries"]) as fd:
-        parseRedList(fd, data, reds)
+        if "queries" in filenames:
+            try:
+                with open(filenames["queries"]) as fd:
+                    parseRedList(fd, data, reds)
+            except IOError:
+                reds = []
 
     #### OUT
     parts = filenames["queries"].split(".")

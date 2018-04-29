@@ -12,7 +12,7 @@ class Constraints(object):
         self.deps = []
         self.folds = None
         self._pv = {}
-        for k, v in params.items():
+        for k, v in params.items():            
             self._pv[k] = v["data"]
 
         if data is not None:
@@ -30,7 +30,12 @@ class Constraints(object):
             self._pv["amnesic"] = True
         else:
             self._pv["amnesic"] = False
+        if self.getCstr("multi_cats") == "yes":
+            self._pv["multi_cats"] = True
+        else:
+            self._pv["multi_cats"] = False
 
+            
         #### scaling support thresholds
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self.getCstr("min_itm_c"), self.getCstr("min_itm_in"), self.getCstr("min_itm_out"))
         _, self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(-1, self.getCstr("min_fin_in"), self.getCstr("min_fin_out"))
@@ -115,17 +120,66 @@ class Constraints(object):
         else:
             return self._pv.get(k_bak, kargs.get("default"))
 
+
+    #### STATUS TEST TO KNOW WHAT IS ALLOWED
+    @classmethod
+    def expandDefStatus(tcl):
+        return {"init": False, "other_contains_OR": False, "contains_OR": False, "other_type_id": 0, "type_id": 0}
+    @classmethod
+    def getExpandedStatus(tcl, status=0):
+        if type(status) is dict:
+            return status
+        xpd = tcl.expandDefStatus()
+        if status < 0:
+            xpd["init"] = True
+        return xpd
+    @classmethod
+    def isStatusInitStage(tcl, status):
+        if type(status) is dict:
+            return status.get("init", False)
+        return status < 0
+    
+    @classmethod
+    def getStatusPair(tcl, col, side, fixTerm):
+        status = tcl.expandDefStatus()
+        status["init"] = True
+        status["type_id"] = col.typeId()
+        status["other_type_id"] = fixTerm.typeId()
+    
+    @classmethod
+    def getStatusRed(tcl, red=None, side=None):
+        if red is not None and side is not None:
+            status = tcl.expandDefStatus()
+            status["init"] = (red.length(side) == 0)
+            status["contains_OR"] = red.usesOr(side)
+            status["other_contains_OR"] = red.usesOr(1-side)
+            if red.length(1-side) == 1:
+                status["other_type_id"] = red.query(1-side).invTerms().pop().typeId()
+            if red.length(side) == 1:
+                status["type_id"] = red.query(side).invTerms().pop().typeId()
+            return status
+        return 0
+        
     #### special constraints (not just lookup)    
-    def allw_ops(self, side, init=False):
-        if init > 0:
+    def allw_ops(self, side, currentRStatus=0):
+        if self.isStatusInitStage(currentRStatus):
             return [True]
         else:
+            xpd = self.getExpandedStatus(currentRStatus)
             tmp = self.getCstr("ops_query", side=side)
-            if init < 0 and self._pv["single_side_or"]=="yes":
+            if xpd["other_contains_OR"] and self._pv["single_side_or"]=="yes":
                 tmp = [o for o in tmp if not o]
             return tmp
     special_cstrs["allw_ops"] = "allw_ops"
+    def neg_query_init(self, side, currentRStatus=0):
+        if self.isStatusInitStage(currentRStatus):
+            xpd = self.getExpandedStatus(currentRStatus)
+            if xpd["other_type_id"] > 0:
+                return True in self.constraints.getCstr("neg_query", side=(1-side), type_id=xpd["other_type_id"])
+        return False
+    special_cstrs["neg_query_init"] = "neg_query_init"
 
+    
     def getActions(self, k):
         return self._actions.get(k, [])
         

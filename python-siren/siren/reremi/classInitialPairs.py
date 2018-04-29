@@ -160,15 +160,26 @@ class InitialPairs(object):
                         dt = self.pairs_details[nid]
                         self.drop_set.add(nid)
                     if not cond(tt) and len(self.pairs_store) == 0:
-                        return
+                        return 
                 self.list_out.append(nid)
                 return tt
-
+            
     def get(self, data, cond=None):
         pair = self.pop(cond)
         if pair is not None:
-            return Redescription.fromInitialPair(pair, data)
-
+            red = Redescription.fromInitialPair(pair, data)
+            nid = self.list_out[-1]
+            dt = self.pairs_details[nid]
+            if (red.score()- dt["score"])**2 > 0.0001:
+                print (red.score()- dt["score"])**2, red.score(), dt["score"]
+                print red
+                pdb.set_trace()
+            return red 
+    def getLatestDetails(self):
+        nid = self.list_out[-1]
+        dt = self.pairs_details[nid]
+        return dt
+        
     def exhausted(self):
         return (self.max_out > -1) and (self.getNbOut()  >= self.max_out)
 

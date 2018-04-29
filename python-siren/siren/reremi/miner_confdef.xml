@@ -241,6 +241,15 @@
 	<legend>Restrict use of disjunction to only one side.</legend>
 	<default><value>1</value></default>
 	<options><value>no</value><value>yes</value></options>
+    </parameter>
+    <parameter>
+	<name>multi_cats</name>
+	<label>Multi categories</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Allow combining multiple categories of a categorical variable.</legend>
+	<default><value>0</value></default>
+	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
 </section>
