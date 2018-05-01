@@ -580,6 +580,7 @@ class SParts(object):
         #### init from dict_info
         self.ssetts = ssetts
         if type(N) == dict:
+            sdict = N
             self.missing = False
             self.sParts = [set() for i in range(len(self.ssetts.getLabels()))]
             self.prs = [-1, -1]
@@ -656,7 +657,10 @@ class SParts(object):
                 for si, sp in enumerate(self.sParts):
                     if si != self.ssetts.Eoo:
                         self.sParts[self.ssetts.Eoo] -= sp
-
+                        
+    def copy(self):        
+        return SParts(self.ssetts, self.N, self.sParts, prs = list(self.prs))
+        
     # def __eq__(self, other):
     #     print "Calling EQ"
     #     if isinstance(other, SParts) and len(other.sParts) == len(self.sParts):
@@ -993,7 +997,7 @@ class SParts(object):
     updateProbaMass = staticmethod(updateProbaMass)
 
     # update supports and probabilities resulting from appending X to given side with given operator
-    def update(self, side, OR, suppX, missX):
+    def update(self, side, OR, suppX, missX=None):
         self.vect = None
         union = None
         self.prs[side] = SParts.updateProba(self.prs[side], len(suppX)/float(self.N), OR)

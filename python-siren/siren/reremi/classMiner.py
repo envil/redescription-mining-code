@@ -129,8 +129,8 @@ class ExpMiner(object):
                             if not self.questionLive():
                                 nextge = []                        
                             else:
-                                ## self.charbon_alt.getCandidates(side, self.data.col(side, v), red.supports(), red)
-                                bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red))
+                                tmp_cands = self.charbon.getCandidates(side, self.data.col(side,v), red.supports(), red, self.data.getColC())
+                                bests.update(tmp_cands)
 
                     if self.logger.verbosity >= 4:
                         self.logger.printL(4, bests, "log", self.ppid)
@@ -329,15 +329,14 @@ class Miner(object):
         self.initializeRedescriptions()
         self.logger.clockTac(self.id, "pairs")
         self.logger.clockTic(self.id, "full run")
-        initial_red = self.initial_pairs.get(self.data, self.testIni)
+        initial_red = None
+        try:
+            initial_red = self.initial_pairs.get(self.data, self.testIni)
+        except ExtensionError as details:
+            self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.id)
         # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
         while initial_red is not None and self.questionLive():
             self.count += 1
-
-            ir_dets = self.initial_pairs.getLatestDetails()
-            if (initial_red.score() - ir_dets["score"])**2 > 0.0001:           
-                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.id)
-
             
             self.logger.clockTic(self.id, "expansion_%d-%d" % (self.count,0))
             self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
@@ -361,7 +360,10 @@ class Miner(object):
 
             self.logger.clockTac(self.id, "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
             self.logger.printL(1, {"final": self.final["batch"]}, 'result', self.id)
-            initial_red = self.initial_pairs.get(self.data, self.testIni)
+            try:
+                initial_red = self.initial_pairs.get(self.data, self.testIni)
+            except ExtensionError as details:
+                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.id)
 
         self.logger.clockTac(self.id, "full run", "%s" % self.questionLive())        
         if not self.questionLive():
@@ -442,13 +444,13 @@ class Miner(object):
                     self.logger.printL(10, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                     
                 seen = []
-                (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
-                for i in range(len(scores)):
-                    if scores[i] >= self.constraints.getCstr("min_pairscore") and (literalsL[i], literalsR[i]) not in seen:
-                        seen.append((literalsL[i], literalsR[i]))
-                        # ########
-                        self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
-                        self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+                pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColC())
+                for i, pair in enumerate(pairs):
+                    if pair["score"] >= self.constraints.getCstr("min_pairscore") and (pair["litL"], pair["litR"]) not in seen:
+                        seen.append((pair["litL"], pair["litR"]))
+                        self.logger.printL(6, 'Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], pair.get("litC", "-")), "log", self.id)
+                        pair.update({0: idL, 1: idR})
+                        self.initial_pairs.add(pair["litL"], pair["litR"], pair)
                         # ########
                         # ######## Filter pair candidates on folds distribution
                         # rr = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
@@ -650,7 +652,7 @@ class MinerDistrib(Miner):
                                                     final=self.final, logger=self.shareLogger())
        
     def handlePairResult(self, m):
-        scores, literalsL, literalsR, idL, idR, pload = m["scores"], m["lLs"], m["lRs"], m["idL"], m["idR"], m["pload"]
+        pairs, idL, idR, pload = m["pairs"], m["idL"], m["idR"], m["pload"]
         self.pairs += 1
         self.logger.updateProgress({"rcount": 0, "pair": self.pairs, "pload": pload})
         if self.pairs % 100 == 0:
@@ -663,11 +665,12 @@ class MinerDistrib(Miner):
             self.logger.updateProgress(level=7, id=self.id)
 
         added = 0
-        for i in range(len(scores)):
-            if scores[i] >= self.constraints.getCstr("min_pairscore"):
+        for i, pair in enumerate(pairs):
+            if pair["score"] >= self.constraints.getCstr("min_pairscore"):
                 added += 1
-                self.logger.printL(6, 'Score:%f %s <=> %s' % (scores[i], literalsL[i], literalsR[i]), "log", self.id)
-                self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
+                self.logger.printL(6, 'Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], pair.get("litC", "-")), "log", self.id)
+                pair.update({0: idL, 1: idR})
+                self.initial_pairs.add(pair["litL"], pair["litR"], pair)
         self.initial_pairs.addExploredPair((idL, idR))
         if added > 0 and self.reinitOnNew:
             self.initializeExpansions()
@@ -756,8 +759,8 @@ class PairsProcess(multiprocessing.Process):
 
     def run(self):
         for pairs, (idL, idR, pload) in enumerate(self.explore_list):
-            (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
-            self.queue.put({"id": self.id, "what": "pairs", "lLs": literalsL, "lRs": literalsR, "idL": idL, "idR": idR, "scores": scores, "pload": pload})
+            pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColC())
+            self.queue.put({"id": self.id, "what": "pairs", "pairs": pairs, "idL": idL, "idR": idR, "pload": pload})
         self.queue.put({"id": self.id, "what": "done"})
 
 class ExpandProcess(multiprocessing.Process, ExpMiner):

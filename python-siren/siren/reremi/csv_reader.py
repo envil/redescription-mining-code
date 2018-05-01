@@ -3,10 +3,15 @@ import sys, codecs, re
 import pdb
 from StringIO import StringIO
 from classQuery import Term
+from dateutil import parser
+import time
+import numpy as np
 
 LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
 LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
 IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
+COND_COL = ('cond_var', 'cond_col', 'cond_time')
+
 
 ENABLED_ROWS = ('enabled_row', 'enabled_rows')
 ENABLED_COLS = ('enabled_col', 'enabled_cols')
@@ -325,6 +330,27 @@ def has_ids(D):
             break
     return (hasIds, ids)
 
+def has_condition(D):
+    col = None
+    condIds = None
+    isTime = False
+    for s in COND_COL:
+        if s in D['headers']:
+            if col is None:
+                col = D['data'][s]
+                if len(set(col)):
+                    condIds = np.copy(col)
+                if re.search("time", s):
+                    try:
+                        col = ["%d" % time.mktime(parser.parse(v, dayfirst=True).timetuple()) for v in col]
+                        isTime = True
+                    except TypeError:
+                        col = D['data'][s]
+            del D['data'][s]
+            D['headers'].remove(s)
+            break
+    return (col, condIds, isTime)
+
 def get_discol(D, ids):
     discol = {}
     for s in ENABLED_COLS:
@@ -409,6 +435,17 @@ def row_order(L, R):
     (Lvarcol, Lvalcol) = is_sparse(L)
     (Rvarcol, Rvalcol) = is_sparse(R)
 
+    (Lcond_col, LcondIds, LisTime) = has_condition(L)
+    (Rcond_col, RcondIds, RisTime) = has_condition(R)
+
+    if not LhasIds and not RhasIds:
+        if LcondIds is not None:
+            LhasIds = True
+            Lids = LcondIds
+        if RcondIds is not None:
+            RhasIds = True
+            Rids = RcondIds
+
     if LhasIds and Lvarcol is None:
         L[ENABLED_COLS[0]] = get_discol(L, Lids)
     if RhasIds and Rvarcol is None:
@@ -475,6 +512,9 @@ def row_order(L, R):
     if (LhasIds and RhasIds):
         order_keys[0].append(Lids)
         order_keys[1].append(Rids)
+    if (LisTime and RisTime):
+        order_keys[0].append(Lcond_col)
+        order_keys[1].append(Rcond_col)
     if (LhasCoord and RhasCoord):
         # order_keys = [list(Lcoord), list(Rcoord)]
         order_keys[0].extend(Lcoord)
@@ -516,20 +556,19 @@ def row_order(L, R):
                 del Rorder[i]
             else:
                 i += 1
-
+                
+        coord = None
         try:
             # Order Lcoord according to Lorder
             if LhasCoord:
                 coord = [(Lcoord[0][Lorder[i]], Lcoord[1][Lorder[i]]) for i in range(len(Lorder))]
             elif RhasCoord:
                 coord = [(Rcoord[0][Rorder[i]], Rcoord[1][Rorder[i]]) for i in range(len(Rorder))]
-            else:
-                coord = None
         except Exception as arg:
             raise CSVRError('Error while trying to get the coordinates of data: %s' % arg)
 
+        ids = None
         try:
-            ids = None
             if LhasIds:
                 ids = [Lids[Lorder[i]] for i in range(len(Lorder))]
             elif RhasIds:
@@ -540,7 +579,20 @@ def row_order(L, R):
         # LDis = has_disabled_rows(L) 
         # RDis = has_disabled_rows(R)
 
-        return (L, R, Lorder, Rorder, coord, ids)
+        cond_col = None
+        CisTime = False
+        try:
+            # Order Lcoord according to Lorder
+            if Lcond_col is not None:
+                cond_col = [Lcond_col[Lorder[i]] for i in range(len(Lorder))]
+                CisTime = LisTime
+            elif Rcond_col is not None:
+                cond_col = [Rcond_col[Rorder[i]] for i in range(len(Rorder))]
+                CisTime = RisTime
+        except Exception as arg:
+            raise CSVRError('Error while trying to get the condition column of data: %s' % arg)
+
+        return (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime)
 
     else:
     # if not (LhasCoord or RhasCoord):
@@ -569,6 +621,16 @@ def row_order(L, R):
         else:
             coord = None
 
+        if Lcond_col is not None:
+            cond_col = Lcond_col
+            CisTime = LisTime
+        elif Rcond_col is not None:
+            cond_col = Rcond_col
+            CisTime = RisTime
+        else:
+            cond_col = None
+            CisTime = False
+
         ids = None
         if LhasIds: # and len(L["data"].values()[0]) == len(Lids):
             ids = Lids
@@ -582,12 +644,17 @@ def row_order(L, R):
         # LDis = has_disabled_rows(L) 
         # RDis = has_disabled_rows(R)
 
-        return (L, R, range(nbrowsL), range(nbrowsR), coord, ids)
+        return (L, R, range(nbrowsL), range(nbrowsR), coord, ids, cond_col, CisTime)
 
 def row_order_single(L):
     ### TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
     (Lvarcol, Lvalcol) = is_sparse(L)
+
+    (Lcond_col, LcondIds, LisTime) = has_condition(L)
+    if LcondIds is not None and not LhasIds:
+        LhasIds = True
+        Lids = LcondIds
 
     if LhasIds and Lvarcol is None:
         L[ENABLED_COLS[0]] = get_discol(L, Lids)
@@ -608,7 +675,14 @@ def row_order_single(L):
             coord = None
         ids = Lids
 
-        return (L, range(len(ids)), coord, ids)
+        if Lcond_col is not None:
+            cond_col = Lcond_col
+            CisTime = LisTime
+        else:
+            cond_col = None
+            CisTime = False
+
+        return (L, range(len(ids)), coord, ids, cond_col, CisTime)
 
     else:
     # if not (LhasCoord or RhasCoord):
@@ -635,9 +709,16 @@ def row_order_single(L):
         else:
             ids = None
 
+        if Lcond_col is not None:
+            cond_col = Lcond_col
+            CisTime = LisTime
+        else:
+            cond_col = None
+            CisTime = False
+
         ## LDis = has_disabled_rows(L) 
 
-        return (L, range(nbrowsL), coord, ids)
+        return (L, range(nbrowsL), coord, ids, cond_col, CisTime)
 
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
@@ -651,7 +732,7 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
     L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None}
 
     if single_dataset:
-        (L, Lorder, coord, ids) = row_order_single(L)
+        (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L)
         L['order'] = Lorder
         L["type_all"]= Ltype
         R = None
@@ -663,13 +744,13 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
         except csv.Error as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
         R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None}
-        (L, R, Lorder, Rorder, coord, ids) = row_order(L, R)
+        (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R)
         L['order'] = Lorder
         R['order'] = Rorder
         L["type_all"]= Ltype
         R["type_all"]= Rtype
 
-    return {'data': (L,R), 'coord': coord, "ids": ids}, single_dataset
+    return {'data': (L,R), 'coord': coord, "ids": ids, 'cond_col': cond_col, "c_time": CisTime}, single_dataset
 
 def print_out(data):
     keysL = sorted(data['data'][0]['headers'])
@@ -680,6 +761,12 @@ def print_out(data):
         line += "ID; "
     if data['coord'] is not None:
         line += "coord0; coord1; "
+    if data['cond_col'] is not None:
+        tstr = ""
+        if data['c_time']:
+            tstr = "(T)"
+        line += "cond_col%s; " % tstr
+
     line += " | "
     line += "; ".join(["%s" % k for k in keysL])
     line += " || "
@@ -693,6 +780,9 @@ def print_out(data):
             line += "%s; " % data['ids'][row]
         if data['coord'] is not None:
             line += "%s; %s; " % (data['coord'][row][0], data['coord'][row][1])
+        if data['cond_col'] is not None:
+            line += "%s; " % data['cond_col'][row]
+
         line += " | "
         if data["data"][0]["sparse"]:
             if data["data"][0]["bool"]:
@@ -721,11 +811,10 @@ def main(argv=[]):
     # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
     # res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
     
-    # rep = "/home/galbrun/TKTL/redescriptors/sandbox/runs/test/v2015_test.siren_FILES/"
-    rep = "/home/galbrun/Desktop/A.siren_FILES/"
-    # res = importCSV(rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    rep = "/home/egalbrun/worldwide_flipped.siren_FILES/"        
-    res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
+    rep = "/home/egalbrun/short/raja_time/"
+    res, single = importCSV(rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv")
+
+    # res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
     pdb.set_trace()
     # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
     # # res = importCSV(rep+"vaalikone_profiles_test_list.csv", rep+"vaalikone_profiles_test_listopo.csv", unknown_string='NA')

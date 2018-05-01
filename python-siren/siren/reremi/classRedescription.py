@@ -6,8 +6,8 @@ import toolRead
 import pdb
 
 ACTIVE_RSET_ID = "S0"
-SIDE_CHARS = {0:"L", 1:"R"}
-HAND_SIDE = {"qLHS": 0, "qRHS": 1, "q0": 0, "q1": 1}
+SIDE_CHARS = {0:"L", 1:"R", -1: "C"}
+HAND_SIDE = {"qLHS": 0, "qRHS": 1, "q0": 0, "q1": 1, "qCOND": -1, "q-1": -1}
 NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
 def digit_to_char(n, pad=None):
@@ -69,11 +69,13 @@ class Redescription(object):
     namedsuff = "_named"
     splitssuff = "_splits"
     misssuff = "_missing"
+    condsuff = "_cond"
     
     qry_infos = {"queryLHS": "self.prepareQueryLHS", "queryLHS"+namedsuff: "self.prepareQueryLHSNamed",
-                 "queryRHS": "self.prepareQueryRHS", "queryRHS"+namedsuff: "self.prepareQueryRHSNamed"}
+                 "queryRHS": "self.prepareQueryRHS", "queryRHS"+namedsuff: "self.prepareQueryRHSNamed",
+                 "queryCOND": "self.prepareQueryCOND", "queryCOND"+namedsuff: "self.prepareQueryCONDNamed"}
     infos = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
-    match_prop = "(?P<prop>((?P<rset_id>(learn|test|all|qLHS|qRHS|q0|q1)))?:(?P<what>\w+):(?P<which>\w+)?)"
+    match_prop = "(?P<prop>((?P<rset_id>(cond|learn|test|all|qLHS|qRHS|q0|q1)))?:(?P<what>\w+):(?P<which>\w+)?)"
     match_cust_prop = "CUST:(?P<name>[^=]+)=(?P<exp>.*)"
     
     ######################################
@@ -84,6 +86,7 @@ class Redescription(object):
     which_dets_tex = {"I": "\\supp"}
     what_dets_tex = {"pr0": "prLHS", "pr1": "prRHS"}
     rset_dets = {"all" : {"name": "", "exp": "all", "lbl_gui": "", "lbl_txt": "", "lbl_tex": "\\RSetAll"},
+                 "cond" : {"name": "_cond", "exp": "cond", "lbl_gui": "C", "lbl_txt": "_cond", "lbl_tex": "\\SubCond"},
                  "learn" : {"name": "_learn", "exp": "learn", "lbl_gui": SYM.SYM_LEARN, "lbl_txt": "_learn", "lbl_tex": "_{\\RSetLearn}"},
                  "test" : {"name": "_test", "exp": "test", "lbl_gui": SYM.SYM_TEST, "lbl_txt": "_test", "lbl_tex": "_{\\RSetTest}"}}
 
@@ -108,12 +111,14 @@ class Redescription(object):
                              "lbl_gui": what.split("_")[0], "lbl_txt": what.split("_")[0], "lbl_tex": "\\PP"+what.split("_")[0]}
         if re.search("LHS", what):
             tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iLHS} %% LHS query\n" % what.split("_")[0]
+        if re.search("COND", what):
+            tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iCOND} %% COND query\n" % what.split("_")[0]
         else:
             tex_fld_defs[what] = "\\newcommand{\\PP%s}{q_\\iRHS} %% RHS query\n" % what.split("_")[0]
 
     #### QUERY STATS        
     for what in Query.info_what.keys():
-        for si, side in enumerate(["LHS", "RHS"]):
+        for si, side in enumerate(["LHS", "RHS", "COND"]):
             fmt = "d"
             if re.search("set", what): fmt = "s"
             name = "%s_query%s" % (what, side)
@@ -128,9 +133,12 @@ class Redescription(object):
 
     ### SUPP FIELDS, SPLITS SPECIFIC
     ###################################
-    for rset_id in ["all", "learn", "test"]:
+    for rset_id in ["all", "learn", "test", "cond"]:
         ### COMMON STATS
-        for what in ["acc", "pval", "pr0", "pr1"]:
+        whts = ["acc", "pval"]
+        if rset_id != "cond":
+            whts.extend(["pr0", "pr1"])
+        for what in whts:
             name = "%s%s" % (what, rset_dets[rset_id]["name"])
             exp_details[name] =  {"exp": "%s:%s:" % (rset_dets[rset_id]["exp"], what), "fmt": ".3f",
                                   "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what_dets.get(what, what),
@@ -199,45 +207,62 @@ class Redescription(object):
     
     default_fields_parts["q"] = ["queryLHS", "queryRHS"]
     default_fields_parts["q"+namedsuff] = ["%s%s" % (f, namedsuff) for f in default_fields_parts["q"]]
+    default_fields_parts["qCOND"] = ["queryCOND"]
+    default_fields_parts["qCOND"+namedsuff] = ["%s%s" % (f, namedsuff) for f in default_fields_parts["qCOND"]]
 
     default_fields_parts["stats_basic"] = ["acc", "pval"]
+    default_fields_parts["statsCOND_basic"] = ["lenI_cond", "acc_cond", "pval_cond"]
     default_fields_parts["stats_gui"] = ["acc", "lenI", "prcI", "pval"]
     default_fields_parts["stats_txt"] = ["acc", "lenI", "pval"]
     default_fields_parts["stats_tex"] = ["acc", "lenI", "prcI"] #, "acc_test", "prcI_test", "lenI_ratioTA"]
     width_mid = .5
 
-    default_fields_parts.update({"lens":[], "supps": [], "lens"+misssuff: [], "supps"+misssuff: []}) 
-    for nname in SSetts.labels:
-        if "m" in nname:
-            default_fields_parts["lens"+misssuff].append("len%s" % nname)
-            default_fields_parts["supps"+misssuff].append("%s" % nname)
-        elif "xx" in nname:
-            default_fields_parts["lens"].append("len%s" % nname)
-            default_fields_parts["lens"+misssuff].append("len%s" % nname)
-            default_fields_parts["supps"+misssuff].append("%s" % nname)
-        else:
-            default_fields_parts["lens"].append("len%s" % nname)
-            default_fields_parts["supps"].append("%s" % nname)
-            default_fields_parts["lens"+misssuff].append("len%s" % nname)
-            default_fields_parts["supps"+misssuff].append("%s" % nname)
+    for ss in ["", condsuff]:
+        default_fields_parts.update({"lens"+ss:[], "supps"+ss: [], "lens"+ss+misssuff: [], "supps"+ss+misssuff: []})
+        for nname in SSetts.labels:
+            if "m" in nname:
+                default_fields_parts["lens"+ss+misssuff].append("len%s%s" % (nname, ss))
+                default_fields_parts["supps"+ss+misssuff].append("%s%s" % (nname, ss))
+            elif "xx" in nname:
+                default_fields_parts["lens"+ss].append("len%s%s" % (nname, ss))
+                default_fields_parts["lens"+ss+misssuff].append("len%s%s" % (nname, ss))
+                default_fields_parts["supps"+ss+misssuff].append("%s%s" % (nname, ss))
+            else:
+                default_fields_parts["lens"+ss].append("len%s%s" % (nname, ss))
+                default_fields_parts["supps"+ss].append("%s%s" % (nname, ss))
+                default_fields_parts["lens"+ss+misssuff].append("len%s%s" % (nname, ss))
+                default_fields_parts["supps"+ss+misssuff].append("%s%s" % (nname, ss))
             
     ######################################
     ######################################            
-    field_lists = {"basic": default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"],
-                   "basic"+misssuff: default_fields_parts["q"]+default_fields_parts["stats_basic"]+default_fields_parts["lens"+misssuff],
-                   "basic"+namedsuff: default_fields_parts["q"+namedsuff]+default_fields_parts["stats_basic"]+default_fields_parts["lens"],
-                   "basic"+namedsuff+misssuff: default_fields_parts["q"+namedsuff]+default_fields_parts["stats_basic"]+default_fields_parts["lens"+misssuff],
-                   "supp": default_fields_parts["supps"],
-                   "supp"+misssuff: default_fields_parts["supps"+misssuff],
-                   "q": default_fields_parts["q"],
-                   "q"+namedsuff: default_fields_parts["q"+namedsuff],
-                   "stats": default_fields_parts["stats_basic"]}
+    field_lists = {}
+    for named, nsuff in [(False, ""), (True, namedsuff)]:
+        for wcond, csuff in [(False, ""), (True, condsuff)]:
+            for wmiss, msuff in [(False, ""), (True, misssuff)]:
+                bname = "basic"+nsuff+csuff+msuff
+                qname = "q"+nsuff+csuff
+                tname = "stats"+csuff
+                sname = "supp"+msuff
+                field_lists[qname] = list(default_fields_parts["q"+nsuff])
+                field_lists[bname] = list(default_fields_parts["q"+nsuff])
+                field_lists[tname] = []
+                if wcond:
+                    field_lists[qname].extend(default_fields_parts["qCOND"+nsuff])
+                    field_lists[bname].extend(default_fields_parts["qCOND"+nsuff])
+                    field_lists[bname].extend(default_fields_parts["statsCOND_basic"])
+                    field_lists[tname].extend(default_fields_parts["statsCOND_basic"])
+                field_lists[bname].extend(default_fields_parts["stats_basic"])
+                field_lists[tname].extend(default_fields_parts["stats_basic"])
+                field_lists[bname].extend(default_fields_parts["lens"+msuff])
+                field_lists[sname] = list(default_fields_parts["supps"+msuff])
 
     for basis in ["gui"]:
-        for wsplits, ssuff in [(False, ""), (True, splitssuff)]:
+        for wsplits, ssuff in [(0, ""), (1, splitssuff), (-1, condsuff)]:
             nf = "%s%s" % (basis, ssuff)
             field_lists[nf] = [] #list(default_fields_parts["q"])
-            if wsplits:
+            if wsplits == -1:
+                field_lists[nf].extend(["queryCOND_named", "acc_cond"])
+            if wsplits == 1:
                 field_lists[nf].extend(["acc_ratioTL", "lenI_ratioTA"])
                 for ff in default_fields_parts["stats_%s" % basis]:            
                     field_lists[nf].extend(["%s_%s" % (ff, split) for split in ["test", "learn"]])
@@ -246,28 +271,34 @@ class Redescription(object):
                 
     for basis in ["txt", "tex"]:
         for named, nsuff in [(False, ""), (True, namedsuff)]:
-            for wsplits, ssuff in [(False, ""), (True, splitssuff)]:
+            for wsplits, ssuff in [(0, ""), (1, splitssuff), (-1, condsuff)]:
                 nf = "%s%s%s" % (basis, nsuff, ssuff)
                 field_lists[nf] = list(default_fields_parts["q%s" % nsuff])
                 field_lists[nf].extend(default_fields_parts["stats_%s" % basis])
-                if wsplits:
+                if wsplits == 1:
                     field_lists[nf].extend(["acc_ratioTL", "lenI_ratioTA"])
                     for split in ["test", "learn"]:
                         field_lists[nf].extend(["%s_%s" % (ff, split) for ff in default_fields_parts["stats_%s" % basis]])
+                if wsplits == -1:
+                    field_lists[nf].extend(["", "lenI_ratioTA"])
+                    for split in ["cond"]:
+                        field_lists[nf].extend(["%s_%s" % (ff, split) for ff in default_fields_parts["stats_%s" % basis]])
+
 
     @classmethod
-    def getFSuff(tcl, named=False, wsplits=False, wmissing=False):
+    def getFSuff(tcl, named=False, wsplits=0, wmissing=False):
         kk = ""
         if named: kk += tcl.namedsuff
-        if wsplits: kk += tcl.splitssuff
+        if wsplits > 0: kk += tcl.splitssuff
+        elif wsplits < 0: kk += tcl.condsuff            
         if wmissing: kk += tcl.misssuff
         return kk
     @classmethod
-    def hasFieldsList(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+    def hasFieldsList(tcl, k="basic", named=False, wsplits=0, wmissing=False):
         return (k+tcl.getFSuff(named, wsplits, wmissing)) in tcl.field_lists
 
     @classmethod
-    def getFieldsListCust(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+    def getFieldsListCust(tcl, k="basic", named=False, wsplits=0, wmissing=False):
         kk = k+tcl.getFSuff(named, wsplits, wmissing)
         if Redescription.hasFieldsList("custom-"+kk):
             return Redescription.getFieldsList("custom-"+kk)
@@ -275,7 +306,7 @@ class Redescription(object):
             return Redescription.getFieldsList(k, named, wsplits, wmissing)
         
     @classmethod
-    def getFieldsList(tcl, k="basic", named=False, wsplits=False, wmissing=False):
+    def getFieldsList(tcl, k="basic", named=False, wsplits=0, wmissing=False):
         kk = k+tcl.getFSuff(named, wsplits)
         if wmissing and kk+tcl.misssuff in tcl.field_lists:
             return tcl.field_lists[kk+tcl.misssuff]   
@@ -340,8 +371,9 @@ class Redescription(object):
         self.status = 1
         self.track = []
         self.cache_evals = {}
+        self.condition = None
 
-    def fromInitialPair(initialPair, data):
+    def fromInitialPair(initialPair, data, dt={}):
         if initialPair[0] is None and initialPair[1] is None:
             return None
         supps_miss = [set(), set(), set(), set()]
@@ -358,8 +390,14 @@ class Redescription(object):
                     suppS, missS = data.literalSuppMiss(side, initialPair[side])
             supps_miss[side] = suppS
             supps_miss[side+2] = missS
+
         r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
         r.track = [(-1, -1)]
+
+        if dt.get("litC") is not None:            
+            litC = dt["litC"]
+            supp_cond = data.supp(-1, litC)
+            r.setCondition(litC, supp_cond)
         if data.hasLT():
             r.setRestrictedSupp(data)
         return r
@@ -438,57 +476,83 @@ class Redescription(object):
         return self.queries[0].usesOr() or self.queries[1].usesOr()
 
     def supp(self, side):
-        return self.sParts.supp(side)
+        return self.supports().supp(side)
 
     def miss(self, side):
-        return self.sParts.miss(side)
+        return self.supports().miss(side)
             
     def score(self):
         return self.getAcc()
 
     def supports(self):
         return self.sParts
-
+    
     def partsAll(self):
-        return self.sParts.sParts
+        return self.supports().sParts
 
     def partsFour(self):
-        return [self.sParts.suppA(), self.sParts.suppB(), self.sParts.suppI(), self.sParts.suppO()]
+        return [self.supports().suppA(), self.supports().suppB(), self.supports().suppI(), self.supports().suppO()]
 
     def partsThree(self):
-        return [self.sParts.suppA(), self.sParts.suppB(), self.sParts.suppI()]
+        return [self.supports().suppA(), self.supports().suppB(), self.supports().suppI()]
     
     def partsNoMiss(self):
-        return self.sParts.sParts[:4]
+        return self.supports().sParts[:4]
     
     def query(self, side=None):
+        if side == -1:
+            return self.getQueryC()
         return self.queries[side]
 
     def getQueries(self):
         return self.queries
 
+    def getQueryC(self):
+        if self.condition is not None:
+            return self.condition.get("q")
+    def getSupportsC(self):
+        if self.condition is not None:
+            return self.condition.get("sparts")
+    def getSuppC(self):
+        if self.condition is not None:
+            return self.condition.get("supp")
+
+    def hasCondition(self):
+        return self.condition is not None
+    def setCondition(self, litC=None, supp_cond=None): ### here
+        self.condition = None
+        if litC is not None:
+            sparts = self.supports().copy()
+            sparts.update(0, False, supp_cond)
+            sparts.update(1, False, supp_cond)
+            if type(litC) is Query:
+                qC = litC
+            else:
+                qC = Query(buk=[litC])
+            self.condition = {"q": qC, "supp": supp_cond, "sparts": sparts}
+    
     def probas(self):
-        return self.sParts.probas()
+        return self.supports().probas()
 
     def probasME(self, dbPrs, epsilon=0):
         return [self.queries[side].probaME(dbPrs, side, epsilon) for side in [0,1]]
 
     def surpriseME(self, dbPrs, epsilon=0):
-        #return [-numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.sParts.nbRows(), self.sParts.suppSide(side), 0) - self.queries[side].probaME(dbPrs, side)))) for side in [0,1]]
-        return -numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.sParts.nbRows(), self.sParts.suppI(), 0) - self.queries[0].probaME(dbPrs, 0)*self.queries[1].probaME(dbPrs, 1))))
+        #return [-numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.supports().nbRows(), self.supports().suppSide(side), 0) - self.queries[side].probaME(dbPrs, side)))) for side in [0,1]]
+        return -numpy.sum(numpy.log(numpy.absolute(SParts.suppVect(self.supports().nbRows(), self.supports().suppI(), 0) - self.queries[0].probaME(dbPrs, 0)*self.queries[1].probaME(dbPrs, 1))))
 
     def exME(self, dbPrs, epsilon=0):
         prs = [self.queries[side].probaME(dbPrs, side, epsilon) for side in [0,1]]
         surprises = []
-        tmp = [i for i in self.sParts.suppI() if prs[0][i]*prs[1][i] == 0]
-        surprises.append(-numpy.sum(numpy.log([prs[0][i]*prs[1][i] for i in self.sParts.suppI()])))
-        surprises.extend([-numpy.sum(numpy.log([prs[side][i] for i in self.sParts.suppSide(side)])) for side in [0,1]])
+        tmp = [i for i in self.supports().suppI() if prs[0][i]*prs[1][i] == 0]
+        surprises.append(-numpy.sum(numpy.log([prs[0][i]*prs[1][i] for i in self.supports().suppI()])))
+        surprises.extend([-numpy.sum(numpy.log([prs[side][i] for i in self.supports().suppSide(side)])) for side in [0,1]])
 
         return surprises + [len(tmp) > 0]
 
-        N = self.sParts.nbRows()
-        margsPr = [numpy.sum([prs[side][i] for i in self.sParts.suppSide(side)]) for side in [0,1]]
-        pvals = [tool_pValOver(self.sParts.lenI(), N, int(margsPr[0]), int(margsPr[1])), tool_pValSupp(N, self.sParts.lenI(), margsPr[0]*margsPr[1]/N**2)]
+        N = self.supports().nbRows()
+        margsPr = [numpy.sum([prs[side][i] for i in self.supports().suppSide(side)]) for side in [0,1]]
+        pvals = [tool_pValOver(self.supports().lenI(), N, int(margsPr[0]), int(margsPr[1])), tool_pValSupp(N, self.supports().lenI(), margsPr[0]*margsPr[1]/N**2)]
         return surprises, pvals
     
     def length(self, side):
@@ -520,14 +584,14 @@ class Redescription(object):
         return nb_extensions
     def removeAvailables(self):
         self.lAvailableCols = [set(),set()]
-
+            
     def update(self, data=None, side= -1, opBool = None, literal= None, suppX=None, missX=None):
         if side == -1 :
             self.removeAvailables()
         else:
             op = Op(opBool)
             self.queries[side].extend(op, literal)
-            self.sParts.update(side, op.isOr(), suppX, missX)
+            self.supports().update(side, op.isOr(), suppX, missX)
             self.dict_supp_info = None
             if self.lAvailableCols[side] is not None:
                 self.lAvailableCols[side].remove(literal.colId())
@@ -540,13 +604,13 @@ class Redescription(object):
                     self.lAvailableCols[side] = set()
                 
     def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):
-        kid = self.copy()
+        kid = self.copy()        
         kid.update(data, side, op, literal, suppX, missX)
         return kid
             
     def copy(self):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.sParts.supparts(), self.sParts.nbRows(), self.probas(), self.sParts.getSSetts())
+                             self.supports().supparts(), self.supports().nbRows(), self.probas(), self.supports().getSSetts())
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -635,7 +699,7 @@ class Redescription(object):
         if len(missL) + len(missR) > 0:
             self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR, missL, missR])
         else:
-            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR])
+            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR]) #TODO: recompute
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         if data.hasLT():
             self.setRestrictedSupp(data)
@@ -644,21 +708,21 @@ class Redescription(object):
     def check(self, data):
         result = 0
         details = None
-        if self.sParts is not None:
+        if self.supports() is not None: #TODO: sparts
             (nsuppL, missL) = self.recomputeQuery(0, data)
             (nsuppR, missR) = self.recomputeQuery(1, data)
             
-            details = ( len(nsuppL.symmetric_difference(self.sParts.supp(0))) == 0, \
-                     len(nsuppR.symmetric_difference(self.sParts.supp(1))) == 0, \
-                     len(missL.symmetric_difference(self.sParts.miss(0))) == 0, \
-                     len(missR.symmetric_difference(self.sParts.miss(1))) == 0 )        
+            details = ( len(nsuppL.symmetric_difference(self.supports().supp(0))) == 0, \
+                     len(nsuppR.symmetric_difference(self.supports().supp(1))) == 0, \
+                     len(missL.symmetric_difference(self.supports().miss(0))) == 0, \
+                     len(missR.symmetric_difference(self.supports().miss(1))) == 0 )        
             result = 1
             for detail in details:
                 result*=detail
         return (result, details)
 
     def hasMissing(self):
-        return self.sParts.hasMissing()
+        return self.supports().hasMissing()
 
     def getStatus(self):
         return self.status
@@ -713,9 +777,9 @@ class Redescription(object):
         return 1*(self.status>0)
 
     def getTypeParts(self, details=None):
-        return self.sParts.getTypeParts()
+        return self.supports().getTypeParts()
     def getMethodPVal(self, details=None):
-        return self.sParts.getMethodPVal()    
+        return self.supports().getMethodPVal()    
         
     def getRSet(self, details=None):
         if type(details) is dict:
@@ -724,14 +788,16 @@ class Redescription(object):
             rset_id = details
         if rset_id is not None:
             if rset_id == "all":
-                return {"sParts": self.sParts}
+                return {"sParts": self.supports()}
+            elif rset_id == "cond" and self.hasCondition():
+                return {"sParts": self.getSupportsC()}
             elif rset_id in self.restricted_sets:
                 return self.restricted_sets[rset_id]
             return None
         elif ACTIVE_RSET_ID in self.restricted_sets:
             return self.restricted_sets[ACTIVE_RSET_ID]
         else:            
-            return {"sParts": self.sParts}
+            return {"sParts": self.supports()}
     def getRSetParts(self, details=None):
         rset = self.getRSet(details)
         if rset is not None:
@@ -766,7 +832,6 @@ class Redescription(object):
                 return float('Inf')
             return len_num/float(len_den)
         return 1.
-
     
     def getAcc(self, details=None):
         return self.getRSetParts(details).acc()
@@ -814,7 +879,10 @@ class Redescription(object):
 
     def getProp(self, what, which=None, rset_id=None, details=None):
         if Query.hasProp(what) and rset_id in HAND_SIDE:
-            return self.queries[HAND_SIDE[rset_id]].getProp(what, which, details)
+            q = self.query(HAND_SIDE[rset_id])            
+            if q is not None:
+                return q.getProp(what, which, details)
+            return None
 
         if rset_id is not None and which == "rids": ### ids details for split sets
             rset_ids = self.getRSetIds(rset_id)
@@ -825,7 +893,7 @@ class Redescription(object):
             elif what == "supp":
                 return rset_ids
             elif what == "prc":
-                return (100.*len(rset_ids))/self.sParts.nbRows()
+                return (100.*len(rset_ids))/self.supports().nbRows()
         if what in SParts.props_what or what in SParts.infos: ### info from supp parts
             rset_parts = self.getRSetParts(rset_id)
             if rset_parts is None:
@@ -890,8 +958,12 @@ class Redescription(object):
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
-        return ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.queries[0].disp(), self.queries[1].disp(), self.disp(list_fields=Redescription.getFieldsList("stats"), sep=" "), self.getTrack({"format":"str"})))
-
+        supps_cond = "-"
+        if self.hasCondition():
+            supps_cond = "COND"+str(self.getSupportsC())
+        tmp = ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s\t%s' % (len(self), self.dispQueries(with_fname=True), self.dispStats(sep=" ", with_fname=True), str(self.supports()), supps_cond, self.getTrack({"format":"str"})))
+        return tmp
+        
     def dispHeader(list_fields=None, style="", named=False, sep = None, missing=False):
         if list_fields is None:
             fstyle = "txt"
@@ -912,17 +984,23 @@ class Redescription(object):
 
     def prepareQuery(self, side, details={}, named=False):
         style=details.get("style", "")
+        q = self.query(side)
+        if q is None: return ""
         if named and "names" in details:
-            return self.queries[side].disp(names=details["names"][side], style=style)
-        return self.queries[side].disp(style=style)        
+            return q.disp(names=details["names"][side], style=style)
+        return q.disp(style=style)        
     def prepareQueryRHS(self, details):
         return self.prepareQuery(1, details)
     def prepareQueryLHS(self, details):
         return self.prepareQuery(0, details)
+    def prepareQueryCOND(self, details):
+        return self.prepareQuery(-1, details)
     def prepareQueryRHSNamed(self, details):
         return self.prepareQuery(1, details, named=True)
     def prepareQueryLHSNamed(self, details):
         return self.prepareQuery(0, details, named=True)
+    def prepareQueryCONDNamed(self, details):
+        return self.prepareQuery(-1, details, named=True)
     
     def disp(self, names= [None, None], list_fields=None, sep="\t", with_fname=False, rid="", nblines=1, delim="", style="", supp_names=None, last_one=False, missing=False):
         tex = False
@@ -995,18 +1073,27 @@ class Redescription(object):
         frmts = prepareFmtString(nblines, nbstats, last_one, tex)
         return frmts % entries
     
-    def dispQueries(self, names=[None,None], sep='\t'):
+    def dispQueries(self, names=[None,None], sep='\t', with_fname=False):
         named = False
+        wcond = 0
         if names[0] is not None or names[1] is not None:
             named = True
-        list_fields = Redescription.getFieldsList("q", named)
-        return self.disp(list_fields=list_fields, sep=sep, names=names)
+        if self.hasCondition():
+            wcond = -1
+        list_fields = Redescription.getFieldsList("q", wsplits=wcond, named=named)
+        return self.disp(list_fields=list_fields, sep=sep, names=names, with_fname=with_fname)
 
-    def dispStats(self, sep='\t'):
-        return self.disp(list_fields=Redescription.getFieldsList("stats"), sep=sep)
+    def dispStats(self, sep='\t', with_fname=False):
+        wcond = 0
+        if self.hasCondition():
+            wcond = -1
+        list_fields = Redescription.getFieldsList("stats", wsplits=wcond)
+        return self.disp(list_fields=list_fields, sep=sep, with_fname=with_fname)
         
     def dispSupp(self):
-        return self.sParts.dispSupp()
+        if self.hasCondition():
+            return self.getSupportsC().dispSupp()+self.supports().dispSupp()
+        return self.supports().dispSupp()
     
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     def fromXML(self, node):
@@ -1056,13 +1143,13 @@ class Redescription(object):
         if type(string) is str:
             string = codecs.decode(string, 'utf-8','replace')
 
-        default_queries_fields = Redescription.getFieldsList("q")
+        default_queries_fields = Redescription.getFieldsList("q_cond")
         if list_fields is None:
             list_fields = Redescription.getFieldsList("basic"+Redescription.getFSuff(wmissing=True))
         poplist_fields = list(list_fields) ### to pop out the query fields...
         map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
         
-        queries = [None, None]
+        queries = [None, None, None]
         lpartsList = {}
 
         parts = string.rsplit(sep)
@@ -1107,6 +1194,8 @@ class Redescription(object):
         for side in [0, 1]:
             if queries[side] is None:
                 queries[side] =  Query()
+        if queries[-1] is not None:
+            lpartsList["queryCOND"] = queries[-1]
         return (queries[0], queries[1], lpartsList)
     parseQueries = staticmethod(parseQueries)
     
@@ -1137,6 +1226,13 @@ class Redescription(object):
                 r.recompute(data)
             else:
                 r.cache_evals = lpartsList
+
+        if "queryCOND" in lpartsList:
+            qC = lpartsList["queryCOND"]
+            supp_cond = None
+            if data is not None:
+                supp_cond, miss_cond = qC.recompute(-1, data)
+            r.setCondition(qC, supp_cond)
         if r is not None and status_enabled is not None:
             r.status = status_enabled
         return r
@@ -1210,6 +1306,8 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1, stand
               "\\usepackage[utf8x]{inputenc}\n"+ \
               "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
               "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
+              "\\newcommand{\\iCOND}{\\mathbf{C}} % index for right hand side\n"+ \
+              "\\newcommand{\\SubCond}{C} % index for learn subset\n"+ \
               "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
               "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
               "\\newcommand{\\RSetAll}{} % index for test subset\n"+ \
@@ -1296,11 +1394,14 @@ def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_na
     except AttributeError:
         red_list = enumerate(reds)
 
+    wcond = 0
+    if any([red[1].hasCondition() for red in red_list]):
+        wcond = -1
     fstyle = "basic"
     named = False
     if names[0] is not None or names[1] is not None:
         named = True
-    all_fields = Redescription.getFieldsListCust(fstyle, named=named, wmissing=missing)
+    all_fields = Redescription.getFieldsListCust(fstyle, named=named, wsplits=wcond, wmissing=missing)
 
     if type(fields) is list and len(fields) > 0:
         if fields[0] == -1:
@@ -1340,9 +1441,11 @@ if __name__ == '__main__':
     import sys
 
     rep = "/home/egalbrun/short/vaalikone_FILES/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "NA"], "csv")
+    rep = "/home/egalbrun/short/raja_time/"
+    data = Data([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv", {}, "NA"], "csv")
 
-    filename = rep+"redescriptions.csv"
+    # filename = rep+"redescriptions.csv"
+    filename = rep+"tid_test.queries"
     filep = open(filename, mode='r')
     reds = Batch([])
     parseRedList(filep, data, reds)

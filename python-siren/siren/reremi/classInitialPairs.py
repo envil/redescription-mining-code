@@ -1,5 +1,6 @@
 import re, string, itertools, os.path
 from classRedescription import  Redescription
+from classExtension import ExtensionError
 from classQuery import  Query
 
 import pdb
@@ -64,7 +65,7 @@ class InitialPairs(object):
     def getSaveFilename(self):
         return self.save_filename
 
-    def saveToFile(self):
+    def saveToFile(self): # TODO: also save condition
         if self.save_filename is not None and not self.saved:
             try:
                 with open(self.save_filename, "w") as f:
@@ -131,7 +132,7 @@ class InitialPairs(object):
     def __str__(self):
         return "Initial Pairs %d" % len(self.pairs_store)
 
-    def add(self, literalL, literalR, details=None):
+    def add(self, literalL, literalR, details=None):       
         self.saved = False
         self.pairs_store[self.next_id] = (literalL, literalR)
         if details is not None:
@@ -160,26 +161,27 @@ class InitialPairs(object):
                         dt = self.pairs_details[nid]
                         self.drop_set.add(nid)
                     if not cond(tt) and len(self.pairs_store) == 0:
-                        return 
+                        return None, None
                 self.list_out.append(nid)
-                return tt
+                return tt, dt
+        return None, None
             
     def get(self, data, cond=None):
-        pair = self.pop(cond)
+        pair, dt = self.pop(cond)
         if pair is not None:
-            red = Redescription.fromInitialPair(pair, data)
-            nid = self.list_out[-1]
-            dt = self.pairs_details[nid]
-            if (red.score()- dt["score"])**2 > 0.0001:
-                print (red.score()- dt["score"])**2, red.score(), dt["score"]
-                print red
-                pdb.set_trace()
-            return red 
+            red = Redescription.fromInitialPair(pair, data, dt)
+            if (red.score() - dt["score"])**2 > 0.0001:
+                raise ExtensionError("[in InitialPairs.get]\nexpected score=%s\t~> %s" % (dt["score"], red))
+            if red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
+                raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
+
+            return red
+        
     def getLatestDetails(self):
         nid = self.list_out[-1]
         dt = self.pairs_details[nid]
         return dt
-        
+
     def exhausted(self):
         return (self.max_out > -1) and (self.getNbOut()  >= self.max_out)
 

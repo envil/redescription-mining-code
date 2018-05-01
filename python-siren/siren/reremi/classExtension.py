@@ -13,11 +13,11 @@ class Extension(object):
     def __init__(self, ssetts, adv=None, clp=None, sol=None):
         ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
         self.ssetts = ssetts
+        self.condition = None
         if adv is not None and len(adv) == 3 and len(adv[2]) == 4 and clp==None and sol==None:
             self.adv = adv[0]
             self.clp = adv[1]
             self.side, self.op, tmp_neg, self.literal = adv[2]
-
         else:
             self.adv = adv
             self.clp = clp
@@ -39,7 +39,14 @@ class Extension(object):
                 else:
                     self.clp = [lin, lout, lparts]
 
+    def setCondition(self, condition):
+        self.condition = condition
 
+    def getCondition(self):
+        return self.condition
+    def hasCondition(self):
+        return self.condition is not None
+    
     def getLiteral(self):
         if self.isValid():
             return self.literal
@@ -71,7 +78,12 @@ class Extension(object):
     def kid(self, red, data):
         supp = data.supp(self.getSide(), self.getLiteral())
         miss = data.miss(self.getSide(), self.getLiteral())
-        return red.kid(data, self.getSide(), self.getOp(), self.getLiteral(), supp, miss)
+        tmp = red.kid(data, self.getSide(), self.getOp(), self.getLiteral(), supp, miss)
+        if self.hasCondition():
+            litC = self.getCondition().getLiteral() 
+            supp_cond = data.supp(-1, litC)
+            tmp.setCondition(litC, supp_cond)
+        return tmp
 
     def isValid(self):
         return self.adv is not None and len(self.adv) > 2
@@ -81,32 +93,44 @@ class Extension(object):
             return self.getLiteral().isNeg()
 
     def __str__(self):
+        tmp = "Empty extension"
         if self.isValid():
-            return ("Extension:\t (%d, %s, %s) -> %f" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc())) + str(self.clp) + str(self.adv)
-        else:
-            return "Empty extension"
+            tmp = ("Extension:\t (%d, %s, %s) -> %f CLP:%s ADV:%s" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc(), str(self.clp), str(self.adv)))
+            if self.hasCondition():
+                tmp += "\nCOND_%s" % self.getCondition()
+        return tmp 
 
     def disp(self, base_acc=None, N=0, prs=None, coeffs=None):
-        strPieces = ["", "", ""]
+        strPieces = ["", "", "", ""]
+        score_of = self
         if self.isValid():
             strPieces[self.getSide()] = "%s %s" % (Op(self.getOp()), self.getLiteral()) 
+            if self.hasCondition():
+                # score_of = self.getCondition()
+                strPieces[2] = score_of.getLiteral().disp()
+
             if base_acc is None:
                 strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
-                                % (self.getAcc(), self.getVarBlue(), self.getVarRed())
+                                % (score_of.getAcc(), score_of.getVarBlue(), score_of.getVarRed())
             else:
                 strPieces[-1] = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
-                                % (self.score(base_acc, N, prs, coeffs), self.getAcc(), \
-                                   self.pValQuery(N, prs), self.pValRed(N, prs) , self.getVarBlue(), self.getVarRed())
+                                % (score_of.score(base_acc, N, prs, coeffs), score_of.getAcc(), \
+                                   score_of.pValQuery(N, prs), score_of.pValRed(N, prs) , score_of.getVarBlue(), score_of.getVarRed())
 
-        return '* %20s <==> * %20s %s' % tuple(strPieces) # + "\n\tCLP:%s" % str(self.clp)
+        return '* %20s <==> * %20s %20s %s' % tuple(strPieces) # + "\n\tCLP:%s" % str(self.clp)
             
     def score(self, base_acc, N, prs, coeffs):
+        ### HERE: HOW TO SCORE WITH CONDITION?
         if self.isValid():
-            return coeffs["impacc"]*self.impacc(base_acc) \
+            sc = coeffs["impacc"]*self.impacc(base_acc) \
                    + coeffs["rel_impacc"]*self.relImpacc(base_acc) \
                    + self.pValRedScore(N, prs, coeffs) \
                    + self.pValQueryScore(N, prs, coeffs)
+            if self.hasCondition():
+                sc += self.getCondition().score(base_acc, N, prs, coeffs)
+            return sc
 
+                   
     def relImpacc(self, base_acc=0):
         if self.isValid():
             if base_acc != 0:
@@ -142,7 +166,12 @@ class Extension(object):
 
     def pValRed(self, N=0, prs=None):
         if self.isValid():
-            return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
+            try:
+                return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
+            except IndexError:                
+                pdb.set_trace()
+                return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
+                print self
 
     def __cmp__(self, other):
         return self.compare(other)
@@ -212,16 +241,15 @@ class ExtensionsBatch(object):
                      if self.scoreCand(cand) >= min_impr])
 
     def improvingKids(self, data, min_impr=0, max_var=[-1,-1]):
-
         kids = []
         for (pos, cand) in self.bests.items():
             if self.scoreCand(cand) >= min_impr:
-
                 kid = cand.kid(self.current, data)
                 kid.setFull(max_var)
                 if kid.getAcc() != cand.getAcc():
                     raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
-            
+                if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
+                    raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
                 kids.append(kid)
         return kids
     
@@ -245,8 +273,8 @@ class ExtensionsBatch(object):
     def __str__(self):
         dsp  = 'Extensions Batch:\n' 
         dsp += 'Redescription: %s' % self.current
-        dsp += '\n\t  %20s        %20s' \
-                  % ('LHS extension', 'RHS extension')
+        dsp += '\n\t  %20s        %20s        %20s' \
+                  % ('LHS extension', 'RHS extension', 'Condition')
             
         dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
                       % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')

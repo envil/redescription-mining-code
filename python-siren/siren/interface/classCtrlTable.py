@@ -1424,11 +1424,11 @@ class RedsSet(EditableContent):
         self.parent = parent
         self.resetFields()
 
-    def getFieldsList(self, splits=False):
+    def getFieldsList(self, splits=0):
         tmp = []        
         flk = "gui"
         if Redescription.hasFieldsList("custom-"+flk, wsplits=splits):
-            flk = "custom-"+flk        
+            flk = "custom-"+flk
         for fk in Redescription.getFieldsList(flk, wsplits=splits):
             dets = {"exp": Redescription.getFieldsDet(fk, "exp", ""), "rnd": Redescription.getFieldsDet(fk, "rnd"), "k": Redescription.getFieldsDet(fk, "name")}
             align = wx.LIST_FORMAT_RIGHT
@@ -1436,23 +1436,26 @@ class RedsSet(EditableContent):
                 align = wx.LIST_FORMAT_LEFT                
             tmp.append((Redescription.getFieldsDet(fk, "lbl_gui", "-"),
                         self.str_red+".getEValGUI", dets, StaticContent.width_colinfo, align))
-        ### print "GET FIELDS GUI", flk, splits, "NB", len(tmp)
         return self.FIRST_FIELDS + tmp + self.LAST_FIELDS        
         
     def resetFields(self):
         self.resetAllSorts()
         if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
-            self.fields = self.getFieldsList(True)
+            self.fields = self.getFieldsList(1)
+        elif self.parent.hasDataLoaded() and self.parent.dw.getData().isConditional():
+            self.fields = self.getFieldsList(-1)
         else:
-            self.fields = self.getFieldsList(False)
+            self.fields = self.getFieldsList(0)
 
     def recomputeAll(self, data):
         for ri, red in self.items.items():
             red.recompute(data)
         if data.hasLT():
-            self.fields = self.getFieldsList(True)
+            self.fields = self.getFieldsList(1)
+        if data.isConditional():
+            self.fields = self.getFieldsList(-1)
         else:
-            self.fields = self.getFieldsList(False)
+            self.fields = self.getFieldsList(0)
 
 
     def filterToOne(self, compare_ids, parameters):

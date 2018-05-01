@@ -130,6 +130,9 @@
 	<options><value>no</value><value>yes</value></options>
       </parameter>
    </section>
+   </section>
+     <section>
+<name>Colors</name>
      <section>
       <name>Colors</name>
       <parameter>

@@ -2,6 +2,7 @@ from classData import CatColM
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
+from classRedescription import Redescription
 from classSParts import SParts
 from classQuery import  *
 import numpy
@@ -10,7 +11,11 @@ import pdb
 class CharbonGStd(CharbonGreedy):
 
     name = "GreedyStd"
-    def getCandidates(self, side, col, supports, red):
+
+    def isCond(self, currentRStatus=0):
+        return self.constraints.isStatusCond(currentRStatus)
+    
+    def getCandidates(self, side, col, supports, red, colC=None):
         currentRStatus = Constraints.getStatusRed(red, side)
 
         method_string = 'self.getCandidates%i' % col.typeId()
@@ -20,7 +25,7 @@ class CharbonGStd(CharbonGreedy):
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
         cands = method_compute(side, col, supports, currentRStatus)
         # print "======STD==========="
-        for cand in cands:            
+        for cand in cands:
             supp = col.suppLiteral(cand.getLiteral())
             # pdb.set_trace()
             lparts = supports.lparts()
@@ -29,9 +34,24 @@ class CharbonGStd(CharbonGreedy):
             # print lparts, lin, len(supp)
             cand.setClp([lin, lparts], cand.isNeg())
             # print cand
+            if colC is not None:
+                ss = supports.copy()
+                ss.update(side, cand.getOp(), supp)
+                cand.setCondition(self.getCondition(colC, ss))
         # print "================="
         return cands
-            
+
+    def getCondition(self, colC, supports):
+        cond_sparts = SParts(self.constraints.getSSetts(), colC.nbRows(), [supports.suppI(), supports.suppU()])
+        lparts = cond_sparts.lparts()
+        cond_cands = self.findCover(1, colC, lparts, cond_sparts, Constraints.getStatusCond())
+        if len(cond_cands) == 1:
+            cond_cand = cond_cands[0][1]
+            supp = colC.suppLiteral(cond_cand.getLiteral())
+            lin = cond_sparts.lpartsInterX(supp)
+            cond_cand.setClp([lin, lparts], False)
+            return cond_cand
+    
     def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
 
@@ -45,7 +65,7 @@ class CharbonGStd(CharbonGreedy):
             var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
         for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
-            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+            for neg in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus):
                 try:
                     adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
                 except TypeError:
@@ -97,14 +117,14 @@ class CharbonGStd(CharbonGreedy):
                 nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
 
         for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):            
-            for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):        
-                adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
+            for neg in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus):        
+                adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                 if adv is not None :
                     cands.append((False, Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))))
 
                 ### to negate the other side when looking for initial pairs
                 if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
-                    adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
+                    adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op], self.isCond(currentRStatus))
                     if adv is not None :
                         cand = Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId()))))
                         cands.append((True, cand))  
@@ -113,8 +133,8 @@ class CharbonGStd(CharbonGreedy):
 
     def findCover2(self, side, col, lparts, supports, currentRStatus=0):
         cands = []
-        allw_neg = True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
-        negs = self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())
+        allw_neg = True in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus)
+        negs = self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus)
         if self.constraints.getCstr("multi_cats"): ## redundant negation
             negs = [False]
 
@@ -142,9 +162,9 @@ class CharbonGStd(CharbonGreedy):
                     else:
                         var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-                    # best = self.updateACTColors(best, , side, op, neg, fixed_colors, var_colors[op])
-                    ######################
-                    tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op])
+                    # best = self.updateACTColors(best, , side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
+                    ###################### 
+                    tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                     if best[0] < tmp_adv:
                         best = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                     if tmp_adv is not None:
@@ -160,7 +180,7 @@ class CharbonGStd(CharbonGreedy):
 
                         # bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
                         ######################
-                        tmp_adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op])
+                        tmp_adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op], self.isCond(currentRStatus))
                         if bestNeg[0] < tmp_adv:
                             bestNeg = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                         if tmp_adv is not None:
@@ -225,8 +245,7 @@ class CharbonGStd(CharbonGreedy):
     
     def findCover3(self, side, col, lparts, supports, currentRStatus=0):
         cands = []
-
-        if self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
+        if self.constraints.isStatusCond(currentRStatus) or self.inSuppBounds(side, True, lparts) or self.inSuppBounds(side, False, lparts):  ### DOABLE
             segments = col.makeSegmentsColors(self.constraints.getSSetts(), side, supports, self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus))
             if side:
                 fixed_colors = [[lparts[2], lparts[1]], [lparts[0], lparts[3]]]
@@ -252,17 +271,17 @@ class CharbonGStd(CharbonGreedy):
         
     def findCoverSegments(self, side, col, segments, fixed_colors, currentRStatus=0):
         cands = []
-        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
+        for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus): #TODO: limit this? Maybe or just add a different parameter/new method even
             if len(segments[op]) < self.constraints.getCstr("max_seg"):
-                cands.extend(self.findCoverFullSearch(side, op, col, segments, fixed_colors))
+                cands.extend(self.findCoverFullSearch(side, op, col, segments, fixed_colors, currentRStatus))
             else:
-                if (False in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())):
-                    cands.extend(self.findPositiveCover(side, op, col, segments, fixed_colors))
-                if (True in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId())):
-                    cands.extend(self.findNegativeCover(side, op, col, segments, fixed_colors))
+                if (False in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus)):
+                    cands.extend(self.findPositiveCover(side, op, col, segments, fixed_colors, currentRStatus))
+                if (True in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus)):
+                    cands.extend(self.findNegativeCover(side, op, col, segments, fixed_colors, currentRStatus))
         return cands
 
-    def findCoverFullSearch(self, side, op, col, segments, fixed_colors):
+    def findCoverFullSearch(self, side, op, col, segments, fixed_colors, currentRStatus=0):
         cands = []
         bests = {False: (None, None, None), True: (None, None, None)}
 
@@ -271,17 +290,17 @@ class CharbonGStd(CharbonGreedy):
             for seg_e in range(seg_s,len(segments[op])):
                 var_colors[0] += segments[op][seg_e][2][0]
                 var_colors[1] += segments[op][seg_e][2][1]
-                for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
-                    bests[neg] = self.updateACTColors(bests[neg], (seg_s, seg_e), side, op, neg, fixed_colors, var_colors)
+                for neg in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus):
+                    bests[neg] = self.updateACTColors(bests[neg], (seg_s, seg_e), side, op, neg, fixed_colors, var_colors, self.isCond(currentRStatus))
 
-        for neg in self.constraints.getCstr("neg_query", side=side, type_id=col.typeId()):
+        for neg in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus):
             if bests[neg][0]:
                 bests[neg][-1][-1] = col.getLiteralSeg(neg, segments[op], bests[neg][-1][-1])
                 if bests[neg][-1][-1] is not None:
                     cands.append(Extension(self.constraints.getSSetts(), bests[neg]))
         return cands
 
-    def findNegativeCover(self, side, op, col, segments, fixed_colors):
+    def findNegativeCover(self, side, op, col, segments, fixed_colors, currentRStatus=0):
         
         cands = []
         var_colors_f = [0, 0]
@@ -325,9 +344,9 @@ class CharbonGStd(CharbonGreedy):
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
             if self.advRatioVar(f[2]) > b[0]:
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]])
+                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]], self.isCond(currentRStatus))
             else:
-                best_t = self.updateACTColors(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, b[2])
+                best_t = self.updateACTColors(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, b[2], self.isCond(currentRStatus))
 
         for f in bests_f:
             if f[1] == len(segments[op]):
@@ -335,9 +354,9 @@ class CharbonGStd(CharbonGreedy):
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
             if self.advRatioVar(b[2]) > f[0]: 
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]])
+                best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]], self.isCond(currentRStatus))
             else:
-                best_t = self.updateACTColors(best_t, (f[1], len(segments[op])-1), side, op, False, fixed_colors, f[2])
+                best_t = self.updateACTColors(best_t, (f[1], len(segments[op])-1), side, op, False, fixed_colors, f[2], self.isCond(currentRStatus))
 
         if best_t[0] is not None:
             tmp = best_t[-1][-1] 
@@ -346,7 +365,7 @@ class CharbonGStd(CharbonGreedy):
                 cands.append(Extension(self.constraints.getSSetts(), best_t))
         return cands
 
-    def findPositiveCover(self, side, op, col, segments, fixed_colors):
+    def findPositiveCover(self, side, op, col, segments, fixed_colors, currentRStatus=0):
         cands = []
         var_colors_f = [0.0, 0]
         nb_seg_f = 0
@@ -366,7 +385,7 @@ class CharbonGStd(CharbonGreedy):
                 var_colors_f[1] = segments[op][i][2][1]
                 nb_seg_f = 0
                 
-            best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f)
+            best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f, self.isCond(currentRStatus))
 
             # BACKWARD
             if i > 0 and self.advAcc(side, op, False, fixed_colors, segments[op][-(i+1)][2]) < self.advRatioVar(var_colors_b):
@@ -379,7 +398,7 @@ class CharbonGStd(CharbonGreedy):
                 nb_seg_b = 0
 
             best_b = self.updateACTColors(best_b, (len(segments[op])-(1+i), len(segments[op])-(1+i) + nb_seg_b), \
-                                    side, op, False, fixed_colors, var_colors_b)
+                                    side, op, False, fixed_colors, var_colors_b, self.isCond(currentRStatus))
 
         if best_b[0] is not None and best_f[0] is not None:
             bests = [best_b, best_f]
@@ -389,7 +408,7 @@ class CharbonGStd(CharbonGreedy):
                 for seg in segments[op][best_b[-1][-1][0]:best_f[-1][-1][1]+1]:
                     var_colors_m[0] += seg[2][0]
                     var_colors_m[1] += seg[2][1]
-                tmp_adv_m  = self.getAdv(side, op, False, fixed_colors, var_colors_m)
+                tmp_adv_m  = self.getAdv(side, op, False, fixed_colors, var_colors_m, self.isCond(currentRStatus))
                 if tmp_adv_m is not None:
                     bests.append((tmp_adv_m, [fixed_colors, tuple(var_colors_m)], \
                                   [side, op, False, (best_b[-1][-1][0], best_f[-1][-1][1])]))
@@ -411,7 +430,7 @@ class CharbonGStd(CharbonGreedy):
 ################################################################### PAIRS METHODS
 ###################################################################
 
-    def computePair(self, colL, colR):
+    def computePair(self, colL, colR, colC=None):
         min_type = min(colL.typeId(), colR.typeId())
         max_type = max(colL.typeId(), colR.typeId())
         method_string = 'self.do%i%i' % (min_type, max_type)
@@ -423,7 +442,24 @@ class CharbonGStd(CharbonGreedy):
             (scores, literalsL, literalsR) = method_compute(colL, colR, 1)
         else:
             (scores, literalsR, literalsL) =  method_compute(colL, colR, 0)
-        return (scores, literalsL, literalsR)
+
+        pairs = []
+        for i in range(len(scores)):
+            pair = {"litL": literalsL[i], "litR": literalsR[i], "score": scores[i]}
+
+            #### compute additional condition
+            if colC is not None:
+                suppL = colL.suppLiteral(pair["litL"])
+                suppR = colR.suppLiteral(pair["litR"])
+                sParts = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL.intersection(suppR), suppL.union(suppR)])
+                lparts = sParts.lparts()
+                currentRStatus = Constraints.getStatusCond()
+                cands = self.findCover(1, colC, lparts, sParts, currentRStatus=currentRStatus)
+                if len(cands) == 1:
+                    pair["litC"] = cands[0][1].getLiteral()
+                    pair["scoreC"] = cands[0][1].getAcc()
+            pairs.append(pair)
+        return pairs
 
     def doBoolStar(self, colL, colR, side):
         if side == 1:
@@ -912,13 +948,24 @@ class CharbonGStd(CharbonGreedy):
                 return float(num)/den
         return None
 
-    def getAdv(self, side, op, neg, fixed_colors, var_colors):
-        num = None
+    def getAdv(self, side, op, neg, fixed_colors, var_colors, is_cond=False):
+        fix_num = None
         if neg:
             tmp_var = [fixed_colors[op][i] - var_colors[i] for i in range(len(var_colors))]
         else:
             tmp_var = [var_colors[i] for i in range(len(var_colors))]
-        if op:
+        if is_cond:
+            ### SPECIAL AND
+            if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
+               and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
+               and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
+                contri = tmp_var[0]
+                fix_num = 0
+                var_num = tmp_var[0]
+                fix_den = 0
+                var_den = tmp_var[1] + tmp_var[0]            
+        elif op:
+            #OR
             if tmp_var[0] >= self.constraints.getCstr("min_itm_c") \
                and fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out") \
                and fixed_colors[1-op][0] + tmp_var[0] >= self.constraints.getCstr("min_itm_in"):
@@ -927,11 +974,10 @@ class CharbonGStd(CharbonGreedy):
                 var_num = tmp_var[0]
                 fix_den = fixed_colors[1-op][0] + fixed_colors[1-op][1] + fixed_colors[op][0]
                 var_den = tmp_var[1]
-                num = fix_num + var_num
-                den = fix_den + var_den
                 # sout = fixed_colors[op][1] - tmp_var[1]
                 # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
         else:
+            # AND
             if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
                and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
                and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
@@ -940,12 +986,12 @@ class CharbonGStd(CharbonGreedy):
                 var_num = tmp_var[0]
                 fix_den = fixed_colors[op][0] + fixed_colors[1-op][0]
                 var_den = tmp_var[1]
-                num = var_num
-                den = fix_den + var_den
                 # sout = fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1]
                 # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
                 
-        if num is not None:
+        if fix_num is not None:
+            num = fix_num + var_num
+            den = fix_den + var_den
             if den == 0:
                 if num > 0:
                     acc = float("Inf")
@@ -973,8 +1019,8 @@ class CharbonGStd(CharbonGreedy):
     # def getBestClp(self, bestColors):
     #     return bestColors[0],  self.getClp(bestColors[2][0], bestColors[2][1], bestColors[2][2], bestColors[1][0], bestColors[1][1]), bestColors[2] 
         
-    def updateACTColors(self, best, lit, side, op, neg, fixed_colors, var_colors):
-        tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors)
+    def updateACTColors(self, best, lit, side, op, neg, fixed_colors, var_colors, is_cond=False):
+        tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors, is_cond)
         if best[0] < tmp_adv:
             return tmp_adv, None, [side, op, neg, lit] ## [fixed_colors, tuple(var_colors)]
         else:

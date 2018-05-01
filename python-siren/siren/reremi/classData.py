@@ -1,4 +1,4 @@
-import os.path
+import os.path, time
 import numpy as np
 import scipy.sparse
 import codecs, re
@@ -20,6 +20,13 @@ NA_bool  = -1
 NA_cat  = -1
 
 MODE_VALUE = 0
+
+def valToTimeStr(val):
+    try:
+        return time.ctime(val)
+    except:
+        return Data.NA_str
+
 
 class DataError(Exception):
     def __init__(self, value):
@@ -164,7 +171,7 @@ class ColM(object):
     def negSuppTerm(self, term):
         return self.rows() - self.suppTerm(term) - self.miss()
 
-    def suppLiteral(self, literal):
+    def suppLiteral(self, literal): #TODO:literal has a time constraint added!
         if isinstance(literal, Term): ### It's a term, not a literal
             return self.suppTerm(literal)
         elif isinstance(literal, Literal):
@@ -1377,6 +1384,7 @@ class Data(object):
         self.split = None 
         self.as_array = [None, None, None]
         self.selected_rows = set()
+        self.condition_dt = None
         if type(N) == int:
             self.cols = cols
             self.N = N
@@ -1407,7 +1415,7 @@ class Data(object):
 
             else:
                 try:
-                    self.cols, self.N, coords, self.rnames, self.selected_rows, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
+                    self.cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
                 
                 except DataError:
                     self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
@@ -1902,6 +1910,9 @@ class Data(object):
             if details and self.isGeospatial():
                 discol.append(0)
                 discol.append(0)
+            if details and self.isConditional():
+                discol.append(0)
+
             for cid, col in enumerate(self.cols[side]):
                 if single_dataset:
                     discol.append(Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())])
@@ -1909,6 +1920,7 @@ class Data(object):
                     discol.append(Data.enabled_codes[col.getEnabled()])
 
         header = []
+        colC = None
         if (details and len(rids) > 0) or len(discol) > 0:
             header.append(csv_reader.IDENTIFIERS[0])
         if details and self.hasSelectedRows():
@@ -1916,6 +1928,10 @@ class Data(object):
         if details and self.isGeospatial():
             header.append(csv_reader.LONGITUDE[0])
             header.append(csv_reader.LATITUDE[0])
+        if details and self.isConditional():
+            colC = self.getColC()
+            header.append(colC.getName())
+
         for cid, col in enumerate(self.cols[side]):
             col.getVector()
             if len(header) > 0 or len(cids) > 0:
@@ -1931,8 +1947,8 @@ class Data(object):
         if len(header) > 0:
             csv_reader.write_row(csvf, header)
         if len(discol) > 0:
-            csv_reader.write_row(csvf, discol)
-
+            csv_reader.write_row(csvf, discol)            
+            
         for n in range(self.N):
             row = []
             if (details and len(rids) > 0) or len(discol) > 0:
@@ -1942,6 +1958,14 @@ class Data(object):
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
+            if colC is not None:
+                v = colC.getValue(n, pref="bnum")
+                if self.isTimeConditional():
+                    row.append("%s" % valToTimeStr(v))
+                else:
+                    row.append("%s" % colC.valToStr(v))
+
+
             for cci, col in enumerate(self.cols[side]):
                 row.append("%s" % col.valToStr(col.getValue(n, pref="bnum")))
                 ## row.append(col.valToStr(col.getValue(n, pref="bnum")))
@@ -2063,6 +2087,8 @@ class Data(object):
 
     def col(self, side, literal):
         colid = None
+        if side == -1:
+            return self.getColC()
         if type(literal) in [int, np.int64] and literal < len(self.cols[side]):
             colid = literal
         elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(self.cols[side]):
@@ -2076,14 +2102,11 @@ class Data(object):
     def name(self, side, literal):
         return self.col(side, literal).getName()
         
-    def supp(self, side, literal): 
+    def supp(self, side, literal):
         return self.col(side, literal).suppLiteral(literal)
     
     def OutSupp(self, side, literal): 
         return set(range(self.nbRows())) - self.supp(side, literal) - self.miss(side,literal)
-    def miss(self, side, literal):
-        return self.col(side, literal).miss()
-
     def miss(self, side, literal):
         return self.col(side, literal).miss()
 
@@ -2118,6 +2141,14 @@ class Data(object):
             iids.extend([(side, cc.getId()) for cc in self.cols[side]])
         return iids
 
+    def isConditional(self):
+        return self.condition_dt is not None
+    def isTimeConditional(self):
+        return self.condition_dt is not None and self.condition_dt["is_time"]
+
+    def getColC(self):
+        if self.isConditional():
+            return self.condition_dt["col"]
 
     def isGeospatial(self):
         return self.coords is not None
@@ -2147,8 +2178,13 @@ class Data(object):
 
     def getNames(self, side=None):
         if side is None:
-            return [[col.getName() for col in self.cols[side]] for side in [0,1]]
+            tmp = [[col.getName() for col in self.cols[side]] for side in [0,1]]
+            if self.isConditional():
+                tmp.append([self.getColC().getName()])
+            return tmp
         else:
+            if side == -1 and self.isConditional():
+                return [self.getColC().getName()]
             return [col.getName() for col in self.cols[side]]
 
     def setNames(self, names):
@@ -2339,7 +2375,7 @@ class Data(object):
 ############## READING METHODS
 ############################################################################
 def readDNCFromCSVFiles(filenames, unknown_string = None):
-    cols, N, coords, rnames = [[],[]], 0, None, None
+    cols, N, coords, rnames, cond_col = [[],[]], 0, None, None, None
     csv_params={}; 
     single_dataset = False
     if len(filenames) >= 2:
@@ -2355,9 +2391,9 @@ def readDNCFromCSVFiles(filenames, unknown_string = None):
             raise DataError('Data error reading csv: %s' % arg)
         # except csv_reader.CSVRError as arg:
         #     raise DataError(str(arg).strip("'"))
-        cols, N, coords, rnames, disabled_rows = parseDNCFromCSVData(tmp_data, single_dataset)
+        cols, N, coords, rnames, disabled_rows, cond_col = parseDNCFromCSVData(tmp_data, single_dataset)
 
-    return cols, N, coords, rnames, disabled_rows, single_dataset, unknown_string
+    return cols, N, coords, rnames, disabled_rows, cond_col, single_dataset, unknown_string
 
 def addCol(cols, col, sito=0, name=None):
     col.setId(len(cols[sito]))
@@ -2410,7 +2446,17 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     types_smap = dict([(str(c.type_id), c) for c in type_ids_org])
     cols = [[],[]]
     coords = None
+    condition_dt = None
     single_dataset = False
+
+    if csv_data.get("cond_col", None) is not None:        
+        cond_col = NumColM.parseList(csv_data["cond_col"])
+        cond_col.setId(0)
+        cond_col.name = csv_reader.COND_COL[0]
+        if csv_data.get("c_time", False):
+            cond_col.name = csv_reader.COND_COL[-1]
+        cond_col.side = -1
+        condition_dt = {"col": cond_col, "is_time": csv_data.get("c_time", False)}
 
     if csv_data.get("coord", None) is not None:
         try:
@@ -2471,7 +2517,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             else:
                 # pdb.set_trace()
                 raise DataError('Unrecognized variable type!')            
-    return (cols, N, coords, rnames, disabled_rows)
+    return (cols, N, coords, rnames, disabled_rows, condition_dt)
 
 # def getDenseArray(vect):
 #     if type(vect) is dict:
@@ -2750,12 +2796,23 @@ def main():
         #     for col in data.cols[side]:
         #         print col
 
-    rep = "/home/egalbrun/Desktop/DataReReMi/"
-    data = Data([rep+"input1Mammals.csv", rep+"input2Weather.csv", {"delimiter": ";"}, ""], "csv")
-    print data.cols[1][1].getVector()
-    data.writeCSV(["/home/egalbrun/testoutL.csv", "/home/egalbrun/testoutR.csv"])
-    dataX = Data(["/home/egalbrun/testoutL.csv", "/home/egalbrun/testoutR.csv", {}, ""], "csv")
-    print dataX.cols[1][1].getVector()
+    rep = "/home/egalbrun/short/raja_time/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+    print data
+    # rep = "/home/egalbrun/short/raja_time/"
+    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+
+    # import time
+    # cpoints = data.getCoordPoints()
+    # ta = time.mktime(time.strptime("30 Nov 00", "%d %b %y"))
+    # tz = time.mktime(time.strptime("30 Nov 10", "%d %b %y"))
+
+    # norm_long = (cpoints[:,0] - np.min(cpoints[:,0]))/(np.max(cpoints[:,0]) - np.min(cpoints[:,0]))
+    # txs = ta+(tz-ta)*norm_long
+    # tmz = [time.strftime("%d %b %y", time.localtime(tx)) for tx in txs]
+    # col = CatColM.parseList(tmz)
+    # data.addCol(col, sito=0, name="timeid")
+    # data.writeCSV([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv"])
 
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.datnum",
@@ -2763,8 +2820,6 @@ def main():
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names",
     #              None,
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names"], "multiple")
-    # data.writeCSV(["/home/galbrun/dblp_data/conference_filtered.csv",
-    #                "/home/galbrun/dblp_data/coauthor_filtered.csv"])
 
     exit()
 

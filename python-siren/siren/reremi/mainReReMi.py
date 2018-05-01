@@ -14,6 +14,7 @@ from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
+from classQuery import Op
 ## from classMinerFolds import instMiner, StatsMiner
 from classQuery import Query
 import pdb
@@ -179,13 +180,16 @@ def outputResults(filenames, results_batch, data=None, with_headers=True, mode="
     if data_recompute is not None:
         fields_recompute = Redescription.getFieldsListCust("stats", wmissing=wmissing)
         header_recompute = Redescription.dispHeader(fields_recompute) + "\tacc_diff"
-        
+
+    wcond = 0
+    if data.isConditional():
+        wcond = -1
     filesfp = {"queries": None, "queries_named": None, "support": None}
     if filenames["queries"] == "-":
         filesfp["queries"] = sys.stdout
     else:
-        filesfp["queries"] = open(filenames["queries"], mode)        
-    all_fields = Redescription.getFieldsListCust(fstyle, named=False, wmissing=wmissing)
+        filesfp["queries"] = open(filenames["queries"], mode)
+    all_fields = Redescription.getFieldsListCust(fstyle, named=False, wsplits=wcond, wmissing=wmissing)
     if with_headers:
         filesfp["queries"].write(Redescription.dispHeader(all_fields)+"\t"+header_recompute+"\n")
 
@@ -193,7 +197,7 @@ def outputResults(filenames, results_batch, data=None, with_headers=True, mode="
     all_fields_named = None
     if data is not None and data.hasNames() and "queries_named" in filenames:
         names = data.getNames()
-        all_fields_named = Redescription.getFieldsListCust(fstyle, named=True, wmissing=wmissing)
+        all_fields_named = Redescription.getFieldsListCust(fstyle, named=True, wsplits=wcond, wmissing=wmissing)
         filesfp["queries_named"] = open(filenames["queries_named"], mode)
         if with_headers:
             filesfp["queries_named"].write(Redescription.dispHeader(all_fields_named)+"\t"+header_recompute+"\n")
@@ -212,7 +216,6 @@ def outputResults(filenames, results_batch, data=None, with_headers=True, mode="
             red.recompute(data_recompute)
             acc_diff = (red.getAcc()-org.getAcc())/org.getAcc()
             addto = "\t"+red.disp(fields_recompute)+"\t%f" % acc_diff
-
         filesfp["queries"].write(org.disp(list_fields=all_fields)+addto+'\n')
         if filesfp["queries_named"] is not None:
             filesfp["queries_named"].write(org.disp(names, list_fields=all_fields_named)+addto+'\n')

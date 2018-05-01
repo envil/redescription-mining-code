@@ -124,7 +124,7 @@ class Constraints(object):
     #### STATUS TEST TO KNOW WHAT IS ALLOWED
     @classmethod
     def expandDefStatus(tcl):
-        return {"init": False, "other_contains_OR": False, "contains_OR": False, "other_type_id": 0, "type_id": 0}
+        return {"init": False, "other_contains_OR": False, "contains_OR": False, "other_type_id": 0, "type_id": 0, "cond": False}
     @classmethod
     def getExpandedStatus(tcl, status=0):
         if type(status) is dict:
@@ -138,6 +138,11 @@ class Constraints(object):
         if type(status) is dict:
             return status.get("init", False)
         return status < 0
+    @classmethod
+    def isStatusCond(tcl, status):
+        if type(status) is dict:
+            return status.get("cond", False)
+        return False
     
     @classmethod
     def getStatusPair(tcl, col, side, fixTerm):
@@ -145,7 +150,14 @@ class Constraints(object):
         status["init"] = True
         status["type_id"] = col.typeId()
         status["other_type_id"] = fixTerm.typeId()
-    
+
+    @classmethod
+    def getStatusCond(tcl, pair=False):
+        status = tcl.expandDefStatus()
+        if pair:
+            status["init"] = True
+        status["cond"] = True
+        return status
     @classmethod
     def getStatusRed(tcl, red=None, side=None):
         if red is not None and side is not None:
@@ -162,6 +174,8 @@ class Constraints(object):
         
     #### special constraints (not just lookup)    
     def allw_ops(self, side, currentRStatus=0):
+        if self.isStatusCond(currentRStatus):
+            return [False]
         if self.isStatusInitStage(currentRStatus):
             return [True]
         else:
@@ -171,6 +185,12 @@ class Constraints(object):
                 tmp = [o for o in tmp if not o]
             return tmp
     special_cstrs["allw_ops"] = "allw_ops"
+    def allw_negs(self, side, type_id, currentRStatus=0):
+        if self.isStatusCond(currentRStatus):
+            return [False]            
+        else:
+            return self.getCstr("neg_query", side=side, type_id=type_id)
+    special_cstrs["allw_negs"] = "allw_negs"
     def neg_query_init(self, side, currentRStatus=0):
         if self.isStatusInitStage(currentRStatus):
             xpd = self.getExpandedStatus(currentRStatus)
@@ -178,7 +198,6 @@ class Constraints(object):
                 return True in self.constraints.getCstr("neg_query", side=(1-side), type_id=xpd["other_type_id"])
         return False
     special_cstrs["neg_query_init"] = "neg_query_init"
-
     
     def getActions(self, k):
         return self._actions.get(k, [])
