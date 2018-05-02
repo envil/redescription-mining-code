@@ -13,7 +13,7 @@ class CharbonGMiss(CharbonGreedy):
     def handlesMiss(self):
         return False
 
-    def getCandidates(self, side, col, supports, red):
+    def getCandidates(self, side, col, supports, red, colC=None):
         currentRStatus = Constraints.getStatusRed(red, side)
         method_string = 'self.getCandidates%i' % col.typeId()
         try:
@@ -347,7 +347,7 @@ class CharbonGMiss(CharbonGreedy):
 ################################################################### PAIRS METHODS
 ###################################################################
 
-    def computePair(self, colL, colR):
+    def computePair(self, colL, colR, colC=None):
         min_type = min(colL.typeId(), colR.typeId())
         max_type = max(colL.typeId(), colR.typeId())
         method_string = 'self.do%i%i' % (min_type, max_type)
