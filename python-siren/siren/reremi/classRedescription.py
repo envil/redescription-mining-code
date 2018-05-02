@@ -341,7 +341,7 @@ class Redescription(object):
     @classmethod
     def map_field_name(tcl, fld):
         fldtmp = fld        
-        for (sf, st) in [("query_", "query"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm")]:
+        for (sf, st) in [("query_", "query"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status_disabled", "status_enabled")]:
             fld = fld.replace(sf, st)
         return fld
         
@@ -1393,7 +1393,7 @@ def printRedList(reds, names=[None, None], fields=None, full_supp=False, supp_na
     try:
         red_list = sorted(reds.items())
     except AttributeError:
-        red_list = enumerate(reds)
+        red_list = list(enumerate(reds))
 
     wcond = 0
     if any([red[1].hasCondition() for red in red_list]):

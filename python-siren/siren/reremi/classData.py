@@ -2795,7 +2795,7 @@ def main():
         # for side in [0,1]:
         #     for col in data.cols[side]:
         #         print col
-
+    
     rep = "/home/egalbrun/short/raja_time/"
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
     print data

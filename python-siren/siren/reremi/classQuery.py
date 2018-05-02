@@ -509,15 +509,6 @@ class BoolTerm(Term):
         else:
             return (u'%s'+Term.pattVName) % ( neg, self.col)
         
-    def styledDisp(self, style=""):
-        if len(style) > 0 and style[-1] == "T":
-            return Op.opsTxt[self.val]
-        elif style == "Tex":
-            return Op.opsTex[self.val]
-        elif style == "U":
-            return Op.opsU[self.val]
-        return Op.ops[self.val]
-
     ################# START FOR BACKWARD COMPATIBILITY WITH XML
     patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
     def parse(partsU):
@@ -1093,7 +1084,7 @@ class Literal(object):
         neg = self.neg.styledDisp(style)
         if re.match("Tex", style):
             return self.getTerm().dispTex(neg, names)
-        elif re.match("U", style):
+        elif re.match("U", style) or re.match("T", style):
             return self.getTerm().dispU(neg, names)
         return self.getTerm().disp(neg, names)
 

@@ -1116,7 +1116,7 @@ class StaticContent:
         infos = [{"title": field[0], "format": field[-1], "width": field[-2]} for field in self.getFields(lid, refresh)]
         if lid is not None:
             sort_info = self.lists[lid].getSortInfo()
-            if sort_info[0] is not None:
+            if sort_info[0] is not None and sort_info[0] < len(infos):
                 infos[sort_info[0]]["title"] += sort_info[1] 
         return infos
     def getItemForIid(self, iid):
@@ -1452,7 +1452,7 @@ class RedsSet(EditableContent):
             red.recompute(data)
         if data.hasLT():
             self.fields = self.getFieldsList(1)
-        if data.isConditional():
+        elif data.isConditional():
             self.fields = self.getFieldsList(-1)
         else:
             self.fields = self.getFieldsList(0)

@@ -346,7 +346,7 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         rshowids = range(len(reds))
     red_list = [reds[i] for i in rshowids if reds[i].getEnabled() or with_disabled]
     if toPackage:
-        fields_supp = [-1, "status_disabled"]
+        fields_supp = [-1, "status_enabled"]
     else:
         fields_supp = None
         # with codecs.open(filename, encoding='utf-8', mode='w') as f:
