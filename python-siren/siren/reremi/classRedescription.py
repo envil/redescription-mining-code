@@ -1143,9 +1143,10 @@ class Redescription(object):
         if type(string) is str:
             string = codecs.decode(string, 'utf-8','replace')
 
-        default_queries_fields = Redescription.getFieldsList("q_cond")
         if list_fields is None:
-            list_fields = Redescription.getFieldsList("basic"+Redescription.getFSuff(wmissing=True))
+            # list_fields = Redescription.getFieldsList("basic"+Redescription.getFSuff(wmissing=True))
+            list_fields = Redescription.getFieldsList("basic", wmissing=True, wsplits=-1)
+        default_queries_fields = [f for f in Redescription.getFieldsList("q_cond") if f in list_fields]
         poplist_fields = list(list_fields) ### to pop out the query fields...
         map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
         
@@ -1156,7 +1157,7 @@ class Redescription(object):
         for side, fldu in enumerate(default_queries_fields):
             try_parse = True
             flds = [(fldu, False)]
-            if names[side] is not None:
+            if side < len(names) and names[side] is not None:
                 fldn = "%s%s" % (fldu, Redescription.getFSuff(named=True))
                 if fldn in map_fields:
                     flds.append((fldn, True))
