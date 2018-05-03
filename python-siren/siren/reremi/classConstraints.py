@@ -195,7 +195,7 @@ class Constraints(object):
         if self.isStatusInitStage(currentRStatus):
             xpd = self.getExpandedStatus(currentRStatus)
             if xpd["other_type_id"] > 0:
-                return True in self.constraints.getCstr("neg_query", side=(1-side), type_id=xpd["other_type_id"])
+                return True in self.getCstr("neg_query", side=(1-side), type_id=xpd["other_type_id"])
         return False
     special_cstrs["neg_query_init"] = "neg_query_init"
     

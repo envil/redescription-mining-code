@@ -558,7 +558,6 @@ class CharbonGStd(CharbonGreedy):
             
         (scores, literalsF, literalsE) = ([], [], [])
         ## DOABLE
-
         # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
         # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.getCstr("max_prodbuckets") ): 
         nbb = self.constraints.getCstr("max_prodbuckets") / float(len(bucketsF[1]))
@@ -666,7 +665,6 @@ class CharbonGStd(CharbonGreedy):
             belowF = 0
             lowF = 0
             while lowF < len(interMat) and totInt - belowF >= self.constraints.getCstr("min_itm_in"):
-
                 aboveF = 0
                 upF = len(interMat)-1
                 while upF >= lowF and totInt - belowF - aboveF >= self.constraints.getCstr("min_itm_in"):
@@ -685,9 +683,7 @@ class CharbonGStd(CharbonGreedy):
                             outAboveEF = 0
                             upE = len(interMat[lowF])-1
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.getCstr("min_itm_in"):
-                                
                                 var_colors = [totInt - belowF - aboveF - belowEF - aboveEF, belowF + aboveF - outAboveEF - outBelowEF]
-
                                 best = self.updateACTColorsP33(best, (lowF, upF, lowE, upE), side, True, False, fixed_colors, var_colors)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
@@ -700,7 +696,7 @@ class CharbonGStd(CharbonGreedy):
                 belowF+=margF[lowF]
                 lowF+=1
 
-        for b in best:
+        for b in best:            
             tF = colF.getLiteralBuk(False, bucketsF[1], b[-1][-1][0:2], bucketsF[bUpF])
             tE = colE.getLiteralBuk(False, bucketsE[1], b[-1][-1][2:], bucketsE[bUpE])
             if tF is not None and tE is not None:
@@ -988,7 +984,7 @@ class CharbonGStd(CharbonGreedy):
                 var_den = tmp_var[1]
                 # sout = fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1]
                 # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
-                
+
         if fix_num is not None:
             num = fix_num + var_num
             den = fix_den + var_den
@@ -1033,15 +1029,15 @@ class CharbonGStd(CharbonGreedy):
         inserted = False
         i = 0
         while i < len(best):
-            if best[i][0] < tmp_adv:
-                if conflictF(best[i][-1][-1], lit):  ## found conflicting of better quality 
+            if best[i][0] > tmp_adv:
+                if conflictF(best[i][-1][-1], lit):  ## Best already contains conflicting of better quality 
                     return best
             else:
                 if not inserted: 
                     #best.insert(i,(tmp_adv, None, [side, op, neg, lit]))
                     best.insert(i,(tmp_adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
                     inserted = True
-                elif conflictF(best[i][-1][-1], lit): ## found conflicting of lesser quality, remove
+                elif conflictF(best[i][-1][-1], lit): ## Best contains conflicting of lesser quality than inserted, remove
                     best.pop(i)
                     i -=1
             i+=1
