@@ -2799,6 +2799,7 @@ def main():
     rep = "/home/egalbrun/short/raja_time/"
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
     print data
+    
     # rep = "/home/egalbrun/short/raja_time/"
     # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
 

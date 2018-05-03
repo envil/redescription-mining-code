@@ -110,7 +110,7 @@ class Package(object):
             preferences = self.readPreferences(pm, options_args)
             if preferences is not None:
                 elements_read["preferences"] = preferences
-            ## self.plist["NA_str"] = "nan"
+            ## self.plist["NA_str"] = "NA"
             data = self.readData()
             if data is not None:
                 elements_read["data"] = data
@@ -163,7 +163,7 @@ class Package(object):
                     fdRHS = None
                 NA_str = self.plist.get('NA_str', None)
                 if NA_str is None and self.getFormatV() <= 4:
-                    NA_str = "nan"
+                    NA_str = "NA"
                 # pdb.set_trace()    
                 data = Data([fdLHS, fdRHS, {}, NA_str], "csv")
             except Exception:

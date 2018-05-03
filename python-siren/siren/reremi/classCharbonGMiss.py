@@ -880,7 +880,7 @@ class CharbonGMiss(CharbonGreedy):
         inserted = False
         i = 0
         while i < len(best):
-            if best[i][0] < tmp_adv[0]:
+            if best[i][0] > tmp_adv[0]:
                 if conflictF(best[i][-1][-1], lit):  ## found conflicting of better quality 
                     return best
             else:
