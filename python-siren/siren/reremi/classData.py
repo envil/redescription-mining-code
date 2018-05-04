@@ -740,14 +740,14 @@ class NumColM(ColM):
     parseList = staticmethod(parseList)
 
     def toList(self, sparse=False, fill=False):
-        if self.isDense() and not self.hasMissing():
+        if self.isDense(): # and not self.hasMissing():
             if sparse:
                 return list(enumerate(self.getVector()))
             else:
                 return self.getVector()
         else:
             tmp = dict([(i,v) for (v,i) in self.sVals])
-            if self.nbRows()-1 not in tmp and fill: 
+            if self.nbRows()-1 not in tmp and fill:
                 tmp[self.nbRows()-1] = tmp[-1]
             if sparse:
                 if -1 in tmp:
@@ -2797,9 +2797,13 @@ def main():
         #         print col
     
     rep = "/home/egalbrun/short/raja_time/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    print data
-    
+    rep = "/home/egalbrun/Desktop/"
+    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+    # data.writeCSV([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv"])
+    # print data
+
+    dataX = Data([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv", {}, ""], "csv")
+    print dataX
     # rep = "/home/egalbrun/short/raja_time/"
     # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
 

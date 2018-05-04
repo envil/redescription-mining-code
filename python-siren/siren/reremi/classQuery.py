@@ -1,4 +1,4 @@
-import re, random, operator, itertools, codecs, numpy, copy
+import re, random, operator, itertools, codecs, numpy, copy, time, datetime
 from classSParts import  SParts, SSetts
 from redquery_parser import RedQueryParser
 import scipy.spatial.distance
@@ -6,6 +6,22 @@ from grako.exceptions import * # @UnusedWildImport
 import pdb
 
 VARIABLE_MARK = 'v'
+MTCH_TIME = "_time$"
+
+def format_time(v):
+    time_struct = time.localtime(v)
+    date_fmt = "%d-%b-%Y"
+    time_fmt = "%H:%M:%S"
+    fmt = date_fmt
+    if time_struct.tm_hour + time_struct.tm_min + time_struct.tm_sec == 0:
+        fmt = date_fmt
+    else:
+        if time_struct.tm_year == 0:
+            "%s" % datetime.timedelta(seconds=v)
+        else:
+            fmt = date_fmt + "," + time_fmt
+    return time.strftime(fmt, time_struct)
+
 
 def foldRowsTT(tt):
     changed = False
@@ -313,7 +329,7 @@ class Op(object):
     def styledDisp(self, style=""):
         if len(style) > 0 and style[-1] == "T":
             return Op.opsTxt[self.val]
-        elif style == "Tex":
+        elif style == "tex":
             return Op.opsTex[self.val]
         elif style == "U":
             return Op.opsU[self.val]
@@ -381,7 +397,7 @@ class Neg(object):
     def styledDisp(self, style=""):
         if len(style) > 0 and style[-1] == "T":
             return Neg.symbTxt[self.boolVal()]
-        elif style == "Tex":
+        elif style == "tex":
             return Neg.symbTex[self.boolVal()]
         elif style == "U":
             return Neg.symbU[self.boolVal()]
@@ -914,6 +930,42 @@ class NumTerm(Term):
     def __str__(self):
         return self.disp()
 
+    def dispBound(self, low=True, style=None, details={}, timeInterp=False):
+        if low:
+            notInf = self.lowb > float('-Inf')
+            bd = float(self.lowb)
+        else:
+            notInf = self.upb < float('Inf')
+            bd = float(self.upb)
+            
+        if notInf:
+            if timeInterp:
+                bd =  format_time(bd)
+
+            if style == "tex":
+                if timeInterp:
+                    val = bd
+                else:
+                    val = ('%'+details.get("prec", "")+'f') % bd
+                    if details.get("trimm", False):
+                        val = val.rstrip("0").rstrip(".")
+                if low:
+                    return val+'\\leq{}'
+                return '\\leq{}'+val
+            elif style == "U":
+                if low:
+                    return  ('%s '+ SYM.SYM_LEQ +' ') % bd
+                return  (' '+ SYM.SYM_LEQ +' %s') % bd
+            else:
+                if low:
+                    return '%s<' % bd
+                return '<%s' % bd
+        return ''
+    def dispLowBound(self, low=True, style=None, details={}, timeInterp=False):
+        return self.dispBound(True, style, details, timeInterp)
+    def dispUpBound(self, low=True, style=None, details={}, timeInterp=False):
+        return self.dispBound(False, style, details, timeInterp)
+    
     def disp(self, neg=None, names = None, lenIndex=0):
         if neg is None:
             neg = ""
@@ -923,14 +975,9 @@ class NumTerm(Term):
             neg = neg.disp()
 
         ### force float to make sure we have dots in the output
-        if self.lowb > float('-Inf'):
-            lb = '%s<' % float(self.lowb)
-        else:
-            lb = ''
-        if self.upb < float('Inf'):
-            ub = '<%s' % float(self.upb)
-        else:
-            ub = ''
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        lb = self.dispLowBound(timeInterp=timeInterp)
+        ub = self.dispUpBound(timeInterp=timeInterp)
         if lenIndex > 0 :
             lenIndex = max(lenIndex-len(lb)-len(ub),3)
             slenIndex = str(lenIndex)
@@ -940,9 +987,9 @@ class NumTerm(Term):
             lab = ('%'+slenIndex+'s') % names[self.col]
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
-            return neg+lb + lab + ub
-        else:
-            return neg+lb+(Term.pattVName % self.col) + ub
+        else: 
+            lab = Term.pattVName % self.col 
+        return neg + lb + lab + ub
 
     def dispTex(self, neg=None, names = None, prec=None):
         if neg is None:
@@ -953,26 +1000,14 @@ class NumTerm(Term):
             neg = neg.dispTex()
 
         # prec = "0.4"
-        trimm = False
+        dets = {"prec": prec}
         if prec is None:
-            trimm = True
-            prec = ""
+            dets = {"trimm": True, "prec": ""}
             
         ### force float to make sure we have dots in the output
-        if self.lowb > float('-Inf'):
-            val = ('%'+prec+'f') % float(self.lowb)
-            if trimm:
-                val = val.rstrip("0").rstrip(".")
-            lb = '$['+val+'\\leq{}'
-        else:
-            lb = '$['
-        if self.upb < float('Inf'):
-            val = ('%'+prec+'f') % float(self.upb)
-            if trimm:
-                val = val.rstrip("0").rstrip(".")
-            ub = '\\leq{}'+val+']$'
-        else:
-            ub = ']$'
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        lb = '$['+self.dispLowBound(style="tex", details=dets, timeInterp=timeInterp)
+        ub = self.dispUpBound(style="tex", details=dets, timeInterp=timeInterp)+']$'
         if type(names) == list  and len(names) > 0:
             idcol = '$ %s $' % names[self.col]
         else:
@@ -988,14 +1023,9 @@ class NumTerm(Term):
             neg = neg.dispU()
             
         ### force float to make sure we have dots in the output
-        if self.lowb > float('-Inf'):
-            lb = ('[%s '+ SYM.SYM_LEQ +' ') % float(self.lowb)
-        else:
-            lb = '['
-        if self.upb < float('Inf'):
-            ub = (' '+ SYM.SYM_LEQ +' %s]') % float(self.upb)
-        else:
-            ub = ']'
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        lb = '['+self.dispLowBound(style="U", timeInterp=timeInterp)
+        ub = self.dispUpBound(style="U", timeInterp=timeInterp)+']'
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % names[self.col]
         else:
@@ -1082,7 +1112,7 @@ class Literal(object):
 
     def styledDisp(self, names=None, style=""):
         neg = self.neg.styledDisp(style)
-        if re.match("Tex", style):
+        if re.match("tex", style):
             return self.getTerm().dispTex(neg, names)
         elif re.match("U", style) or re.match("T", style):
             return self.getTerm().dispU(neg, names)
@@ -2078,7 +2108,7 @@ class Query(object):
                     return vs[0]
                 else:
                     jstr = " %s " % op.styledDisp(style)
-                    if re.match("Tex", style):
+                    if re.match("tex", style):
                         if re.search("[\(\)]", "".join(vs)) and style[-1] != "T":
                             pref = "$\\big($ "
                             suff = " $\\big)$"
@@ -2112,7 +2142,7 @@ class Query(object):
                     suff = " )"
                 tmp = pref + jstr.join(vs) + suff
                 tt = tmp
-                if re.match("Tex", style):
+                if re.match("tex", style):
                     tmp = re.sub("\$\s+\$", " ", tmp)
                 return tmp
             #### old code to write the query justified in length lenField

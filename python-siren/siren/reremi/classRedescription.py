@@ -967,11 +967,11 @@ class Redescription(object):
     def dispHeader(list_fields=None, style="", named=False, sep = None, missing=False):
         if list_fields is None:
             fstyle = "txt"
-            if style == "Tex":
+            if style == "tex":
                 fstyle = "tex"
             list_fields = Redescription.getFieldsListCust(fstyle, named=named, wmissing=missing)
                 
-        if style == "Tex":
+        if style == "tex":
             sepc = " & "
             lbls = ["$%s$" % Redescription.getFieldsDet(fk, "lbl_tex") for fk in list_fields]
         else:
@@ -1004,7 +1004,7 @@ class Redescription(object):
     
     def disp(self, names= [None, None], list_fields=None, sep="\t", with_fname=False, rid="", nblines=1, delim="", style="", supp_names=None, last_one=False, missing=False):
         tex = False
-        if style == "Tex":            
+        if style == "tex":            
             tex = True
             sep = " & "
         details = {"style": style}
@@ -1012,7 +1012,7 @@ class Redescription(object):
             details["names"] = names
         if list_fields is None:
             fstyle = "txt"
-            if style == "Tex":
+            if style == "tex":
                 fstyle = "tex"
             named = False
             if "names" in details:
@@ -1181,6 +1181,8 @@ class Redescription(object):
         for pi, fk in enumerate(poplist_fields):
             if fk is not None and fk in Redescription.getFieldsKeys():
                 vs = parts[pi]
+                if vs == '-':
+                    continue
                 if Redescription.getFieldsDet(fk, "supp_set", False):
                     sep = Redescription.getFieldsDet(fk, "sep", ",")
                     vs = vs.strip().split(sep)
@@ -1357,7 +1359,7 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1, stand
             str_out += "@{\\hspace*{2ex}}r"
         str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
 
-        str_out += " & " + Redescription.dispHeader(list_fields, style="Tex") + " \\\\\n"
+        str_out += " & " + Redescription.dispHeader(list_fields, style="tex") + " \\\\\n"
         str_out += "%%% & " + Redescription.dispHeader(list_fields) + " \\\\\n"
         str_out += "\\midrule\n"
 
@@ -1368,13 +1370,13 @@ def printTexRedList(reds, names=[None, None], list_fields=None, nblines=1, stand
             str_out += "@{\\hspace*{2ex}}r"
         str_out += "@{\\hspace*{1ex}}}\n\\toprule\n"
 
-        str_out += " & " + Redescription.dispHeader(list_fields, style="Tex") + " \\\\\n"
+        str_out += " & " + Redescription.dispHeader(list_fields, style="tex") + " \\\\\n"
         str_out += "%%% & " + Redescription.dispHeader(list_fields) + " \\\\\n"
         str_out += "\\midrule\n"
 
     for ri, red in red_list:
         ridstr = "\RName{%s}" %ri
-        str_out += red.disp(names_alts, list_fields, style="Tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri)) + "\n" 
+        str_out += red.disp(names_alts, list_fields, style="tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri)) + "\n" 
 
     str_out += "" + \
         "\\bottomrule\n"+ \
