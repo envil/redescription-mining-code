@@ -129,7 +129,7 @@ class ExpMiner(object):
                             if not self.questionLive():
                                 nextge = []                        
                             else:
-                                tmp_cands = self.charbon.getCandidates(side, self.data.col(side,v), red.supports(), red, self.data.getColC())
+                                tmp_cands = self.charbon.getCandidates(side, self.data.col(side,v), red.supports(), red, self.data.getColsC())
                                 bests.update(tmp_cands)
 
                     if self.logger.verbosity >= 4:
@@ -444,7 +444,7 @@ class Miner(object):
                     self.logger.printL(10, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
                     
                 seen = []
-                pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColC())
+                pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColsC())
                 for i, pair in enumerate(pairs):
                     if pair["score"] >= self.constraints.getCstr("min_pairscore") and (pair["litL"], pair["litR"]) not in seen:
                         seen.append((pair["litL"], pair["litR"]))
@@ -759,7 +759,7 @@ class PairsProcess(multiprocessing.Process):
 
     def run(self):
         for pairs, (idL, idR, pload) in enumerate(self.explore_list):
-            pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColC())
+            pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColsC())
             self.queue.put({"id": self.id, "what": "pairs", "pairs": pairs, "idL": idL, "idR": idR, "pload": pload})
         self.queue.put({"id": self.id, "what": "done"})
 

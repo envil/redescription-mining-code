@@ -15,7 +15,7 @@ class CharbonGStd(CharbonGreedy):
     def isCond(self, currentRStatus=0):
         return self.constraints.isStatusCond(currentRStatus)
     
-    def getCandidates(self, side, col, supports, red, colC=None):
+    def getCandidates(self, side, col, supports, red, colsC=None):
         currentRStatus = Constraints.getStatusRed(red, side)
 
         method_string = 'self.getCandidates%i' % col.typeId()
@@ -34,24 +34,66 @@ class CharbonGStd(CharbonGreedy):
             # print lparts, lin, len(supp)
             cand.setClp([lin, lparts], cand.isNeg())
             # print cand
-            if colC is not None:
+            if colsC is not None:
                 ss = supports.copy()
                 ss.update(side, cand.getOp(), supp)
-                cand.setCondition(self.getCondition(colC, ss))
+                cand.setCondition(self.getCondition(colsC, ss))
         # print "================="
         return cands
 
-    def getCondition(self, colC, supports):
-        cond_sparts = SParts(self.constraints.getSSetts(), colC.nbRows(), [supports.suppI(), supports.suppU()])
-        lparts = cond_sparts.lparts()
-        cond_cands = self.findCover(1, colC, lparts, cond_sparts, Constraints.getStatusCond())
-        if len(cond_cands) == 1:
-            cond_cand = cond_cands[0][1]
-            supp = colC.suppLiteral(cond_cand.getLiteral())
+    def getCondition(self, colsC, supports):
+        cond_sparts = SParts(self.constraints.getSSetts(), supports.nbRows(), [supports.suppI(), supports.suppU()])
+        lparts = cond_sparts.lparts()        
+        cond_cand = self.getConditionCand(colsC, cond_sparts, lparts)
+        if cond_cand is not None:
+            supp = self.getCCandSupp(colsC, cond_cand)
             lin = cond_sparts.lpartsInterX(supp)
             cond_cand.setClp([lin, lparts], False)
             return cond_cand
-    
+
+    def getConditionCand(self, colsC, cond_sparts, lparts):
+        cis = range(len(colsC))
+        prev = None
+        best = ([], 0)
+        while len(cis) > 0:
+            current = []
+            for ci in cis:
+                cands = self.findCover(1, colsC[ci], lparts, cond_sparts, Constraints.getStatusCond())
+                if len(cands) == 1:
+                    cand = cands[0][1]
+                    if best[1] < cand.getAcc():
+                        best = ([len(current)], cand.getAcc())
+                    elif best[1] == current[-1].getAcc() and len(best[0]) > 0:
+                        best[0].append(len(current))
+                    current.append(cand)
+            if len(best[0]) == 0:
+                cis = []
+            else:
+                basis = (None, None, 0)
+                for cc in best[0]:
+                    cand = current[cc]
+                    supp = colsC[cand.getLiteral().colId()].suppLiteral(cand.getLiteral())
+                    if len(supp) > basis[-1]:
+                        basis = (cc, supp, len(supp))
+                cis = [ci for cii, ci in enumerate(cis) if basis[0] != cii]
+                keep_cand, keep_supp = current[basis[0]], basis[1]
+                if prev is None:
+                    keep_cand.setLiteral([keep_cand.getLiteral()])
+                else:
+                    keep_cand.setLiteral([keep_cand.getLiteral()]+prev.getLiteral())
+                prev = keep_cand
+                cond_sparts.update(1, False, keep_supp)
+                lparts = cond_sparts.lparts()
+                best = ([], prev.getAcc())
+        return prev
+            
+    def getCCandSupp(self, colsC, cond_cand):
+        lits = cond_cand.getLiteral()
+        if type(lits) is Literal:
+            lits = [lits]
+        return set.intersection(*[colsC[lit.colId()].suppLiteral(lit) for lit in lits])
+        
+        
     def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
 
@@ -430,7 +472,7 @@ class CharbonGStd(CharbonGreedy):
 ################################################################### PAIRS METHODS
 ###################################################################
 
-    def computePair(self, colL, colR, colC=None):
+    def computePair(self, colL, colR, colsC=None):
         min_type = min(colL.typeId(), colR.typeId())
         max_type = max(colL.typeId(), colR.typeId())
         method_string = 'self.do%i%i' % (min_type, max_type)
@@ -448,16 +490,15 @@ class CharbonGStd(CharbonGreedy):
             pair = {"litL": literalsL[i], "litR": literalsR[i], "score": scores[i]}
 
             #### compute additional condition
-            if colC is not None:
+            if colsC is not None:
                 suppL = colL.suppLiteral(pair["litL"])
                 suppR = colR.suppLiteral(pair["litR"])
-                sParts = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL.intersection(suppR), suppL.union(suppR)])
-                lparts = sParts.lparts()
-                currentRStatus = Constraints.getStatusCond()
-                cands = self.findCover(1, colC, lparts, sParts, currentRStatus=currentRStatus)
-                if len(cands) == 1:
-                    pair["litC"] = cands[0][1].getLiteral()
-                    pair["scoreC"] = cands[0][1].getAcc()
+                cond_sparts = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL.intersection(suppR), suppL.union(suppR)])
+                lparts = cond_sparts.lparts()        
+                cond_cand = self.getConditionCand(colsC, cond_sparts, lparts)
+                if cond_cand is not None:
+                    pair["litC"] = cond_cand.getLiteral()
+                    pair["scoreC"] = cond_cand.getAcc()
             pairs.append(pair)
         return pairs
 

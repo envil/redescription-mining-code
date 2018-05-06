@@ -394,10 +394,15 @@ class Redescription(object):
         r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
         r.track = [(-1, -1)]
 
-        if dt.get("litC") is not None:            
+        if dt.get("litC") is not None:
             litC = dt["litC"]
-            supp_cond = data.supp(-1, litC)
-            r.setCondition(litC, supp_cond)
+            if type(litC) is list:
+                # if len(litC) > 1: pdb.set_trace()
+                qC = Query(OR=False, buk=litC) 
+            else:                
+                qC = Query(buk=[litC])                
+            supp_cond, miss_cond = qC.recompute(-1, data)
+            r.setCondition(qC, supp_cond)
         if data.hasLT():
             r.setRestrictedSupp(data)
         return r
@@ -519,16 +524,15 @@ class Redescription(object):
 
     def hasCondition(self):
         return self.condition is not None
-    def setCondition(self, litC=None, supp_cond=None): ### here
+    def setCondition(self, qC=None, supp_cond=None): ### here
         self.condition = None
-        if litC is not None:
-            sparts = self.supports().copy()
-            sparts.update(0, False, supp_cond)
-            sparts.update(1, False, supp_cond)
-            if type(litC) is Query:
-                qC = litC
+        if qC is not None:
+            if supp_cond is None:
+                sparts = None
             else:
-                qC = Query(buk=[litC])
+                sparts = self.supports().copy()
+                sparts.update(0, False, supp_cond)
+                sparts.update(1, False, supp_cond)
             self.condition = {"q": qC, "supp": supp_cond, "sparts": sparts}
     
     def probas(self):

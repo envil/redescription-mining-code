@@ -1910,8 +1910,8 @@ class Data(object):
             if details and self.isGeospatial():
                 discol.append(0)
                 discol.append(0)
-            if details and self.isConditional():
-                discol.append(0)
+            if details and self.isConditional() and not self.isGeoConditional():
+                discol.extend([0 for i in range(len(self.getColsC()))])
 
             for cid, col in enumerate(self.cols[side]):
                 if single_dataset:
@@ -1928,9 +1928,9 @@ class Data(object):
         if details and self.isGeospatial():
             header.append(csv_reader.LONGITUDE[0])
             header.append(csv_reader.LATITUDE[0])
-        if details and self.isConditional():
-            colC = self.getColC()
-            header.append(colC.getName())
+        if details and self.isConditional() and not self.isGeoConditional():
+            colsC = self.getColsC()
+            header.append([colC.getName() for colC in colsC])
 
         for cid, col in enumerate(self.cols[side]):
             col.getVector()
@@ -1958,12 +1958,13 @@ class Data(object):
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
-            if colC is not None:
-                v = colC.getValue(n, pref="bnum")
-                if self.isTimeConditional():
-                    row.append("%s" % valToTimeStr(v))
-                else:
-                    row.append("%s" % colC.valToStr(v))
+            if colsC is not None:
+                for colC in colsC:
+                    v = colC.getValue(n, pref="bnum")
+                    if self.isTimeConditional():
+                        row.append("%s" % valToTimeStr(v))
+                    else:
+                        row.append("%s" % colC.valToStr(v))
 
 
             for cci, col in enumerate(self.cols[side]):
@@ -2088,16 +2089,18 @@ class Data(object):
     def col(self, side, literal):
         colid = None
         if side == -1:
-            return self.getColC()
-        if type(literal) in [int, np.int64] and literal < len(self.cols[side]):
+            cols_side = self.getColsC()
+        else:
+            cols_side = self.cols[side]
+        if type(literal) in [int, np.int64] and literal < len(cols_side):
             colid = literal
-        elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(self.cols[side]):
+        elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(cols_side):
             colid = literal.colId()
-            if literal.typeId() != self.cols[side][colid].typeId():
-                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (side, colid, literal, literal.typeId(), self.cols[side][colid].typeId()))
+            if literal.typeId() != cols_side[colid].typeId():
+                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (side, colid, literal, literal.typeId(), cols_side[colid].typeId()))
                 colid = None
         if colid is not None:
-            return self.cols[side][colid]
+            return cols_side[colid]
 
     def name(self, side, literal):
         return self.col(side, literal).getName()
@@ -2144,11 +2147,14 @@ class Data(object):
     def isConditional(self):
         return self.condition_dt is not None
     def isTimeConditional(self):
-        return self.condition_dt is not None and self.condition_dt["is_time"]
+        return self.condition_dt is not None and self.condition_dt.get("is_time", False)
+    def isGeoConditional(self):
+        return self.condition_dt is not None and self.condition_dt.get("is_geo", False)
 
-    def getColC(self):
+
+    def getColsC(self):
         if self.isConditional():
-            return self.condition_dt["col"]
+            return self.condition_dt["cols"]
 
     def isGeospatial(self):
         return self.coords is not None
@@ -2180,11 +2186,11 @@ class Data(object):
         if side is None:
             tmp = [[col.getName() for col in self.cols[side]] for side in [0,1]]
             if self.isConditional():
-                tmp.append([self.getColC().getName()])
+                tmp.append([colC.getName() for colC in self.getColsC()])
             return tmp
         else:
             if side == -1 and self.isConditional():
-                return [self.getColC().getName()]
+                return [colC.getName() for colC in self.getColsC()]
             return [col.getName() for col in self.cols[side]]
 
     def setNames(self, names):
@@ -2222,6 +2228,21 @@ class Data(object):
                 self.coords = coords_tmp
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
+        ### HERE FOR TRYING GEO COND
+        ### self.prepareGeoCond()
+            
+    def prepareGeoCond(self):
+        if self.isGeospatial():
+            coords_points = self.getCoordPoints()
+            geo_cols = []
+            for ci in range(coords_points.shape[1]):
+                ncolSupp = [(v,k) for (k,v) in enumerate(coords_points[:,ci])]
+                col = NumColM(ncolSupp, N=coords_points.shape[0])
+                col.setId(ci)
+                col.side = -1
+                col.name = "cond_geo%d" % ci
+                geo_cols.append(col)
+            self.condition_dt = {"cols": geo_cols, "is_geo": True}
             
     def enableAll(self):
         for side in [0,1]:
@@ -2456,7 +2477,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         if csv_data.get("c_time", False):
             cond_col.name = csv_reader.COND_COL[-1]
         cond_col.side = -1
-        condition_dt = {"col": cond_col, "is_time": csv_data.get("c_time", False)}
+        condition_dt = {"cols": [cond_col], "is_time": csv_data.get("c_time", False)}
 
     if csv_data.get("coord", None) is not None:
         try:

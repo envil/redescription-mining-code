@@ -1,4 +1,4 @@
-from classQuery import Op
+from classQuery import Op, Query
 from classRedescription import Redescription
 import pdb
 
@@ -46,11 +46,21 @@ class Extension(object):
         return self.condition
     def hasCondition(self):
         return self.condition is not None
-    
+
+    def dispLiteral(self):
+        lit = self.getLiteral()
+        if lit is None:
+            return "-"
+        elif type(lit) is list:
+            return " AND ".join(["%s" % ll for ll in lit])
+        return "%s" % lit
+
     def getLiteral(self):
         if self.isValid():
             return self.literal
-
+    def setLiteral(self, literal):
+        self.literal = literal
+        
     def getOp(self):
         if self.isValid():
             return self.op
@@ -80,9 +90,14 @@ class Extension(object):
         miss = data.miss(self.getSide(), self.getLiteral())
         tmp = red.kid(data, self.getSide(), self.getOp(), self.getLiteral(), supp, miss)
         if self.hasCondition():
-            litC = self.getCondition().getLiteral() 
-            supp_cond = data.supp(-1, litC)
-            tmp.setCondition(litC, supp_cond)
+            litC = self.getCondition().getLiteral()
+            if type(litC) is list:
+                # if len(litC) > 1: pdb.set_trace()
+                qC = Query(OR=False, buk=litC) 
+            else:
+                qC = Query(buk=[litC])
+            supp_cond, miss_cond = qC.recompute(-1, data)
+            tmp.setCondition(qC, supp_cond)
         return tmp
 
     def isValid(self):
@@ -90,12 +105,14 @@ class Extension(object):
 
     def isNeg(self):
         if self.isValid():
+            if type(self.getLiteral()) is list:
+                return False
             return self.getLiteral().isNeg()
 
     def __str__(self):
         tmp = "Empty extension"
         if self.isValid():
-            tmp = ("Extension:\t (%d, %s, %s) -> %f CLP:%s ADV:%s" % (self.getSide(), Op(self.getOp()), self.getLiteral(), self.getAcc(), str(self.clp), str(self.adv)))
+            tmp = ("Extension:\t (%d, %s, %s) -> %f CLP:%s ADV:%s" % (self.getSide(), Op(self.getOp()), self.dispLiteral(), self.getAcc(), str(self.clp), str(self.adv)))
             if self.hasCondition():
                 tmp += "\nCOND_%s" % self.getCondition()
         return tmp 
@@ -104,10 +121,10 @@ class Extension(object):
         strPieces = ["", "", "", ""]
         score_of = self
         if self.isValid():
-            strPieces[self.getSide()] = "%s %s" % (Op(self.getOp()), self.getLiteral()) 
+            strPieces[self.getSide()] = "%s %s" % (Op(self.getOp()), self.dispLiteral()) 
             if self.hasCondition():
                 # score_of = self.getCondition()
-                strPieces[2] = score_of.getLiteral().disp()
+                strPieces[2] = score_of.dispLiteral()
 
             if base_acc is None:
                 strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
