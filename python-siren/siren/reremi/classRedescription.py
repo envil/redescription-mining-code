@@ -410,8 +410,12 @@ class Redescription(object):
 
     def fromQueriesPair(queries, data):
         r = Redescription(queries[0].copy(), queries[1].copy())
-        r.recompute(data)
+        r.recompute(data)        
         r.track = [tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))]
+        if len(queries) > 2:
+            qC = queries[2]
+            supp_cond, miss_cond = qC.recompute(-1, data)
+            r.setCondition(qC, supp_cond)            
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 

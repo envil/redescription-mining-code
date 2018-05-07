@@ -63,18 +63,18 @@ class CharbonGStd(CharbonGreedy):
                     cand = cands[0][1]
                     if best[1] < cand.getAcc():
                         best = ([len(current)], cand.getAcc())
-                    elif best[1] == current[-1].getAcc() and len(best[0]) > 0:
+                    elif best[1] == cand.getAcc():
                         best[0].append(len(current))
                     current.append(cand)
             if len(best[0]) == 0:
                 cis = []
             else:
-                basis = (None, None, 0)
+                basis = (None, None, cond_sparts.nbRows(), 0.)
                 for cc in best[0]:
                     cand = current[cc]
                     supp = colsC[cand.getLiteral().colId()].suppLiteral(cand.getLiteral())
-                    if len(supp) > basis[-1]:
-                        basis = (cc, supp, len(supp))
+                    if cand.getVarRed() > basis[-1] or (cand.getVarRed() == basis[-1] and len(supp) < basis[-2]):
+                        basis = (cc, supp, len(supp), cand.getVarRed())
                 cis = [ci for cii, ci in enumerate(cis) if basis[0] != cii]
                 keep_cand, keep_supp = current[basis[0]], basis[1]
                 if prev is None:
@@ -993,14 +993,15 @@ class CharbonGStd(CharbonGreedy):
             tmp_var = [var_colors[i] for i in range(len(var_colors))]
         if is_cond:
             ### SPECIAL AND
-            if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
-               and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
-               and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
+            # if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
+            #    and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
+            #    and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
+            if tmp_var[0] >= self.constraints.getCstr("min_itm_in"):
                 contri = tmp_var[0]
                 fix_num = 0
                 var_num = tmp_var[0]
                 fix_den = 0
-                var_den = tmp_var[1] + tmp_var[0]            
+                var_den = tmp_var[1] + tmp_var[0]
         elif op:
             #OR
             if tmp_var[0] >= self.constraints.getCstr("min_itm_c") \

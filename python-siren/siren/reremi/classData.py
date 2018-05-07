@@ -1836,7 +1836,7 @@ class Data(object):
         return "%i(+%i)" % ( self.nbRowsEnabled(), self.nbRowsDisabled())
 
         
-    def writeCSV(self, outputs, thres=0.3, full_details=False, inline=False):
+    def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
         #### check whether some row name is worth storing
         rids = {}
         if self.rnames is not None:
@@ -1920,7 +1920,7 @@ class Data(object):
                     discol.append(Data.enabled_codes[col.getEnabled()])
 
         header = []
-        colC = None
+        colsC = None
         if (details and len(rids) > 0) or len(discol) > 0:
             header.append(csv_reader.IDENTIFIERS[0])
         if details and self.hasSelectedRows():
@@ -2229,7 +2229,7 @@ class Data(object):
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
         ### HERE FOR TRYING GEO COND
-        ### self.prepareGeoCond()
+        self.prepareGeoCond()
             
     def prepareGeoCond(self):
         if self.isGeospatial():
@@ -2817,13 +2817,12 @@ def main():
         #     for col in data.cols[side]:
         #         print col
     
-    rep = "/home/egalbrun/short/raja_time/"
-    rep = "/home/egalbrun/Desktop/"
-    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    # data.writeCSV([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv"])
-    # print data
+    rep = "/home/egalbrun/short/raja_small/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+    data.writeCSV([rep+"data_LHSx.csv", rep+"data_RHSx.csv"])
+    print data
 
-    dataX = Data([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv", {}, ""], "csv")
+    dataX = Data([rep+"data_LHSx.csv", rep+"data_RHSx.csv", {}, ""], "csv")
     print dataX
     # rep = "/home/egalbrun/short/raja_time/"
     # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")

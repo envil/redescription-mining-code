@@ -407,7 +407,6 @@ class DataWrapper(object):
 
     def savePackageToFile(self, filename, suffix=Package.DEFAULT_EXT):
         try:
-            pdb.set_trace()
             if self.package is None:
                 self.package = Package(None, self._stopMessage, mode="w")
             self._writePackageToFile(filename, suffix)

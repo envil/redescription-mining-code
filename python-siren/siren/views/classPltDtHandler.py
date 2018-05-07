@@ -236,7 +236,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 red = Redescription.fromQueriesPair(qr, self.getParentData())
             else:
                 red = qr
-                queries = [red.query(0), red.query(1)]
+                queries = [red.query(0), red.query(1), red.query(-1)]
             red.setRestrictedSupp(self.getParentData())
             self.pltdt["queries"] = queries
             # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
@@ -249,18 +249,20 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
+        sides = [0,1]
+        sides = [0,1,-1]
         if sd is None:
-            queries = [self.parseQuery(0),self.parseQuery(1)]
+            queries = [self.parseQuery(0), self.parseQuery(1), None]
         else:
-            queries = [None, None]
+            queries = [None, None, None]
             if query is None:
                 queries[sd] = self.parseQuery(sd)
             else:
                 queries[sd] = query
 
         changed = False
-        old = [None, None]
-        for side in [0,1]:
+        old = [None, None, None]
+        for side in sides:
             old[side] = self.pltdt["queries"][side]
             if queries[side] != None and queries[side] != self.pltdt["queries"][side]:
                 self.pltdt["queries"][side] = queries[side]
@@ -287,7 +289,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 self.sendEditBack(red)
             return red
         else: ### wrongly formatted query or not edits, revert
-            for side in [0,1]:
+            for side in sides:
                 self.getLayH().updateQueryText(self.pltdt["queries"][side], side)
         #     red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
         # return red

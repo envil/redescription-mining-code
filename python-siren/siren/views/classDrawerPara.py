@@ -531,13 +531,13 @@ class DrawerRedPara(DrawerEntitiesTD):
             if c is not None:
                 return c.getCatFromNum(v)
 
-    def getPosInfo(self, event):
-        rid = int(numpy.rint(event.xdata))
+    def getPosInfo(self, x, y):
+        rid = int(numpy.rint(x))
         if "qcols" in self.prepared_data and rid >= 0 and rid < len(self.prepared_data["qcols"]) and self.prepared_data["qcols"][rid] is not None:
-            return self.prepared_data["xlabels"][rid], self.getPinvalue(rid, event.ydata)
+            return self.prepared_data["xlabels"][rid], self.getPinvalue(rid, y)
         return rid, None
-    def getPosInfoTxt(self, event):
-        k,v = self.getPosInfo(event)
+    def getPosInfoTxt(self, x, y):
+        k,v = self.getPosInfo(x, y)
         if v is not None:
             return "%s=%s" % (k,v)
 

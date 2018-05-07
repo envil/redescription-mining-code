@@ -307,6 +307,9 @@
 	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
+    </section>
+        <section>
+<name>Maps Proj.</name>
         <section>
       <name>Projection</name>
       <parameter>

@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 import mpl_toolkits.basemap
 
 from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
@@ -390,18 +391,58 @@ class DrawerMap(DrawerBasis):
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
 
+    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
+        DrawerBasis.makeFinish(self, xylims, xybs)
+        self.drawCondionArea()
+        
+    def drawCondionArea(self):
+        if self.getParentData() is not None and self.getParentData().isGeoConditional():
+            red = self.getPltDtH().getRed()
+            if red is not None and red.hasCondition():
+                qC = red.getQueryC()
+                if len(qC) == 0:
+                    return
+                ax_lims = list(self.getAxisLims())
+                cond_lims = list(self.getPltDtH().getParentCoordsExtrema())
+                for term in qC.invTerms():
+                    cid = term.colId()
+                    if term.isLowbounded():
+                        cond_lims[2*cid] = term.getLowb()
+                    if term.isUpbounded():
+                        cond_lims[2*cid+1] = term.getUpb()
+                # corners = [self.getCoordXYtoP(cond_lims[xi], cond_lims[2+yi]) for xi, yi in [(0,0), (0,1), (1,1), (1,0)]]
+                edges = []
+                stp = 0.05
+                edges.extend([self.getCoordXYtoP(cond_lims[0], cond_lims[2] + x*(cond_lims[3]-cond_lims[2])) for x in numpy.arange(0.,1., stp)])
+                edges.extend([self.getCoordXYtoP(cond_lims[0] + x*(cond_lims[1]-cond_lims[0]), cond_lims[3]) for x in numpy.arange(0.,1., stp)])
+                edges.extend([self.getCoordXYtoP(cond_lims[1], cond_lims[2] + x*(cond_lims[3]-cond_lims[2])) for x in numpy.arange(1., 0., -stp)])                
+                edges.extend([self.getCoordXYtoP(cond_lims[0] + x*(cond_lims[1]-cond_lims[0]), cond_lims[2]) for x in numpy.arange(1., 0., -stp)])
+
+                self.axe.add_patch(Polygon(edges, closed=True, fill=True, fc="yellow", ec="yellow", zorder=10, alpha=.3))
+                # cxs, cys = zip(*corners)
+                # self.axe.plot(cxs, cys, "o", color="red", zorder=10)
+                # cxs, cys = zip(*edges)
+                # self.axe.plot(cxs, cys, "s", color="blue", zorder=10)
+
+                
     def makeBackground(self):
         MapBase.makeBasemapBack(self.view.getParentPreferences(), self.bm_args, self.bm)
 
     def drawPoly(self):
         return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)
 
-    def getPosInfo(self, event):
+    def getPosInfo(self, x, y):
         if self.bm is None:
-            return (event.xdata, event.ydata)
+            return (x, y)
         else:
-            return self.bm(event.xdata, event.ydata, inverse=True)
-            
+            return self.bm(x, y, inverse=True)
+    def getCoordXYtoP(self, x, y):
+        if self.bm is None:
+            return (x, y)
+        else:
+            return self.bm(x, y)
+
+        
     
 class DrawerEntitiesMap(DrawerMap, DrawerEntitiesTD): pass
     

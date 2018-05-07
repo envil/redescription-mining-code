@@ -580,7 +580,7 @@ class DrawerEntitiesTD(DrawerBasis):
                 elif not self.isHovered(lid):
                     self.emphasizeOnOff(turn_on=[lid], turn_off=None, hover=True, review=True)
             elif self.hoverCoordsActive():
-                txt = self.getPosInfoTxt(event)
+                txt = self.getPosInfoTxt(event.xdata, event.ydata)
                 if txt is not None:
                     self.setInfoText(txt)
                 else:
@@ -588,10 +588,10 @@ class DrawerEntitiesTD(DrawerBasis):
         elif self.hoverCoordsActive():
             self.delInfoText()
 
-    def getPosInfo(self, event):
-        return (event.xdata, event.ydata)
-    def getPosInfoTxt(self, event):
-        return "x=% 8.4f, y=% 8.4f" % self.getPosInfo(event)
+    def getPosInfo(self, x, y):
+        return (x, y)
+    def getPosInfoTxt(self, x, y):
+        return "x=% 8.4f, y=% 8.4f" % self.getPosInfo(x, y)
 
     
     def on_click(self, event):        
