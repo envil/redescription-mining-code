@@ -143,7 +143,7 @@ class Extension(object):
                    + coeffs["rel_impacc"]*self.relImpacc(base_acc) \
                    + self.pValRedScore(N, prs, coeffs) \
                    + self.pValQueryScore(N, prs, coeffs)
-            if self.hasCondition():
+            if False: #self.hasCondition():
                 sc += self.getCondition().score(base_acc, N, prs, coeffs)
             return sc
 
@@ -265,8 +265,8 @@ class ExtensionsBatch(object):
                 kid.setFull(max_var)
                 if kid.getAcc() != cand.getAcc():
                     raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
-                if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
-                    raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
+                # if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
+                #     raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
                 kids.append(kid)
         return kids
     

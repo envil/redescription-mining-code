@@ -172,8 +172,8 @@ class InitialPairs(object):
             red = Redescription.fromInitialPair(pair, data, dt)
             if (red.score() - dt["score"])**2 > 0.0001:
                 raise ExtensionError("[in InitialPairs.get]\nexpected score=%s\t~> %s" % (dt["score"], red))
-            if red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
-                raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
+            # if red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
+            #     raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
 
             return red
         

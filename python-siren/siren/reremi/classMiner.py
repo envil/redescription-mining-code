@@ -493,8 +493,10 @@ class Miner(object):
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         ### WARNING DANGEROUS few pairs for DEBUG!
-        for idL in ids[0]:
-            for idR in ids[1]:
+        for idL in ids[0][:2]:
+            for idR in ids[1][:2]:
+        # for idL in ids[0]:
+        #     for idR in ids[1]:
                 if ( not self.constraints.hasDeps() or \
                        len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
                        ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]):

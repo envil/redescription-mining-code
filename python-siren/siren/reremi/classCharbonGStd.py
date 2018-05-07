@@ -43,7 +43,7 @@ class CharbonGStd(CharbonGreedy):
 
     def getCondition(self, colsC, supports):
         cond_sparts = SParts(self.constraints.getSSetts(), supports.nbRows(), [supports.suppI(), supports.suppU()])
-        lparts = cond_sparts.lparts()        
+        lparts = cond_sparts.lparts()
         cond_cand = self.getConditionCand(colsC, cond_sparts, lparts)
         if cond_cand is not None:
             supp = self.getCCandSupp(colsC, cond_cand)
@@ -998,10 +998,20 @@ class CharbonGStd(CharbonGreedy):
             #    and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
             if tmp_var[0] >= self.constraints.getCstr("min_itm_in"):
                 contri = tmp_var[0]
+                #### ACCURACY
+                # fix_num = 0
+                # var_num = tmp_var[0]
+                # fix_den = 0
+                # var_den = tmp_var[1] + tmp_var[0]
+                ### COMP ACC
                 fix_num = 0
-                var_num = tmp_var[0]
+                var_num = float(tmp_var[0])/(tmp_var[1] + tmp_var[0])
                 fix_den = 0
-                var_den = tmp_var[1] + tmp_var[0]
+                var_den = 0
+                tt = (fixed_colors[False][1]-tmp_var[1] + fixed_colors[False][0]-tmp_var[0])
+                if tt > 0:
+                    var_den = float(fixed_colors[False][0]-tmp_var[0])/tt
+                # print "%d/%d : %d/%d" % (tmp_var[0], tmp_var[1] + tmp_var[0], fixed_colors[False][0]-tmp_var[0], tt)
         elif op:
             #OR
             if tmp_var[0] >= self.constraints.getCstr("min_itm_c") \
