@@ -14,7 +14,7 @@ import toolRead
 import csv_reader
 import pdb
 
-NA_str = "NA"
+NA_str_def = "nan"
 NA_num  = np.nan
 NA_bool  = -1
 NA_cat  = -1
@@ -499,12 +499,12 @@ class CatColM(ColM):
 
     def toList(self, sparse=False, fill=False):
         if sparse:
-            dt = [(i, NA_str) for i in self.missing]
+            dt = [(i, Data.NA_str) for i in self.missing]
             for cat, iis in self.sCats.items():
                 dt.extend([(i, cat) for i in iis])
             return dt
         else:
-            cat_dict = self.ord_cats + [NA_str]
+            cat_dict = self.ord_cats + [Data.NA_str]
             return [cat_dict[v] for v in self.getVector()]
 
     def mkVector(self):
@@ -636,6 +636,8 @@ class CatColM(ColM):
             return self.cats()[int(n)]
         return self.NA
 
+    def iter_cats(self):
+        return self.sCats.iteritems()
     def cats(self):
         return self.ord_cats
     def nbCats(self):
@@ -1377,7 +1379,7 @@ class Data(object):
     separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
     all_types_map = dict([(None, None)]+[(v.letter, v) for v in var_types[1:]])
-    NA_str = "NA"
+    NA_str = NA_str_def
 
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
         self.single_dataset = single_dataset
@@ -1816,7 +1818,10 @@ class Data(object):
         return [RowE(i, self) for i in range(self.nbRows())]
 
     def __str__(self):
-        return "%s x %s data" % (self.rowsInfo(), self.colsInfo())
+        miss_str = ""
+        if self.hasMissing():
+            miss_str = " (some entries missing)"
+        return "%s x %s data%s" % (self.rowsInfo(), self.colsInfo(), miss_str)
         # if self.nbRowsEnabled() == self.nbRows() and \
         #   self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
         #     return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))
@@ -2228,10 +2233,8 @@ class Data(object):
                 self.coords = coords_tmp
             else:
                 raise DataError('Number of coordinates does not match number of entities!')
-        ### HERE FOR TRYING GEO COND
-        self.prepareGeoCond()
             
-    def prepareGeoCond(self):
+    def prepareGeoCond(self):        
         if self.isGeospatial():
             coords_points = self.getCoordPoints()
             geo_cols = []
@@ -2516,18 +2519,21 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             col = None
 
             if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
-                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)                
+                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
                 if col is None:
-                    print "DID NOT MANAGE FORCE PARSING..."
+                    print "DID NOT MANAGE GLOBAL TYPE FORCE PARSING..."
             if col is None:
                 if "type" in det:
-                    col = det["type"].parseList(values, indices[side])
-                else:
-                    type_ids = list(type_ids_org)
-                    # if sito == 1 and len(cols[sito]) == 2:
-                    #      pdb.set_trace()
-                    while col is None and len(type_ids) >= 1:
-                        col = type_ids.pop().parseList(values, indices[side])
+                    col = det["type"].parseList(values, indices[side], force=True)
+                    if col is None:
+                        print "DID NOT MANAGE COL TYPE FORCE PARSING..."
+                        
+            if col is None:
+                type_ids = list(type_ids_org)
+                # if sito == 1 and len(cols[sito]) == 2:
+                #      pdb.set_trace()
+                while col is None and len(type_ids) >= 1:
+                    col = type_ids.pop().parseList(values, indices[side])
 
             if col is not None and col.N == N:
                 if not det.get("enabled", True) or \
@@ -2817,7 +2823,8 @@ def main():
         #     for col in data.cols[side]:
         #         print col
     
-    rep = "/home/egalbrun/short/raja_small/"
+    rep = "/home/egalbrun/short/EA_bio_and_variables/"
+    pdb.set_trace()
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
     data.writeCSV([rep+"data_LHSx.csv", rep+"data_RHSx.csv"])
     print data

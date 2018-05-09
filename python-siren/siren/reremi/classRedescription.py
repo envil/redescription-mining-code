@@ -134,6 +134,28 @@ class Redescription(object):
     ### SUPP FIELDS, SPLITS SPECIFIC
     ###################################
     for rset_id in ["all", "learn", "test", "cond"]:
+
+        what = "meanJSuppI"
+        expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
+        expSupp = "%s:prc:I" % rset_dets[rset_id]["exp"]
+        name = "%s%s" % (what, rset_dets[rset_id]["name"])
+        exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
+                              "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
+                              "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+                              "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
+        tex_fld_defs[name] = ""
+
+        what = "meanJSuppU"
+        expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
+        expSupp = "%s:prc:U" % rset_dets[rset_id]["exp"]
+        name = "%s%s" % (what, rset_dets[rset_id]["name"])
+        exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
+                              "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
+                              "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+                              "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
+        tex_fld_defs[name] = ""
+
+        
         ### COMMON STATS
         whts = ["acc", "pval"]
         if rset_id != "cond":
@@ -309,10 +331,10 @@ class Redescription(object):
     def getFieldsList(tcl, k="basic", named=False, wsplits=0, wmissing=False):
         kk = k+tcl.getFSuff(named, wsplits)
         if wmissing and kk+tcl.misssuff in tcl.field_lists:
-            return tcl.field_lists[kk+tcl.misssuff]   
+            return list(tcl.field_lists[kk+tcl.misssuff])
         if kk in tcl.field_lists:
-            return tcl.field_lists[kk]
-        return tcl.field_lists.get(k, [])
+            return list(tcl.field_lists[kk])
+        return list(tcl.field_lists.get(k, []))
     @classmethod
     def setFieldsList(tcl, k, fields):
         tcl.field_lists[k] = fields
@@ -412,7 +434,7 @@ class Redescription(object):
         r = Redescription(queries[0].copy(), queries[1].copy())
         r.recompute(data)        
         r.track = [tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))]
-        if len(queries) > 2:
+        if len(queries) > 2 and queries[2] is not None:
             qC = queries[2]
             supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)            
@@ -697,7 +719,6 @@ class Redescription(object):
             return red, True            
         else:
             return self, False
-
         
     def recompute(self, data):
         (nsuppL, missL) = self.recomputeQuery(0, data)
@@ -711,6 +732,10 @@ class Redescription(object):
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         if data.hasLT():
             self.setRestrictedSupp(data)
+        if self.hasCondition():
+            qC = self.getQueryC()
+            supp_cond, miss_cond = qC.recompute(-1, data)
+            self.setCondition(qC, supp_cond)                        
         self.dict_supp_info = None
 
     def check(self, data):
@@ -955,8 +980,10 @@ class Redescription(object):
         if "k" in details:
             tmp = self.getEVal(details["k"], details.get("exp"), details=details)
         ## print "getEValGUI", details["k"], details.get("exp"), details.get("rnd"), "->", tmp
-        if details.get("rnd") is not None:
+        if details.get("rnd") is not None and tmp is not None:
             return round(tmp, details.get("rnd"))
+        if tmp is None:
+            return details.get('replace_none')
         return tmp
 
 ##### PRINTING AND PARSING METHODS
@@ -1161,7 +1188,7 @@ class Redescription(object):
         queries = [None, None, None]
         lpartsList = {}
 
-        parts = string.rsplit(sep)
+        parts = string.strip().rsplit(sep)
         for side, fldu in enumerate(default_queries_fields):
             try_parse = True
             flds = [(fldu, False)]
@@ -1218,7 +1245,7 @@ class Redescription(object):
         (queryL, queryR, lpartsList) = Redescription.parseQueries(stringQueries, list_fields, sep, names)
         status_enabled = None
         if "status_enabled" in lpartsList:
-            status_enabled = lpartsList.pop("status_enabled")
+            status_enabled = int(lpartsList.pop("status_enabled"))
         r = None
         if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
             supportsS = SParts.parseSupport(stringSupport, data.nbRows(), data.getSSetts())

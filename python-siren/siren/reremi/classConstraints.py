@@ -26,15 +26,13 @@ class Constraints(object):
             self.N = -1
             self.ssetts = None
 
-        if self.getCstr("amnesic") == "yes":
-            self._pv["amnesic"] = True
-        else:
-            self._pv["amnesic"] = False
-        if self.getCstr("multi_cats") == "yes":
-            self._pv["multi_cats"] = True
-        else:
-            self._pv["multi_cats"] = False
-
+        ### convert Boolean
+        ks = self._pv.keys()
+        for k in ks:
+            if self._pv[k] == "yes":
+                self._pv[k] = True
+            elif self._pv[k] == "no":
+                self._pv[k] = False
             
         #### scaling support thresholds
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self.getCstr("min_itm_c"), self.getCstr("min_itm_in"), self.getCstr("min_itm_out"))

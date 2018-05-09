@@ -1,5 +1,6 @@
 import wx, numpy
- 
+
+from ..reremi.classData import NA_str_def
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 from ..reremi.classQuery import Query
@@ -223,7 +224,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             vec_dets["typeId"] = col.typeId()
             if vec_dets["typeId"] == 2:
                 vec_dets["binVals"] = numpy.unique(vec)
-                vec_dets["binLbls"] = [col.getCatForVal(b, "NA") for b in vec_dets["binVals"]]
+                vec_dets["binLbls"] = [col.getCatForVal(b, NA_str_def) for b in vec_dets["binVals"]]
             vec_dets["single"] = True
         elif self.pltdt.get("suppABCD") is not None:
             vec = self.pltdt["suppABCD"].copy()

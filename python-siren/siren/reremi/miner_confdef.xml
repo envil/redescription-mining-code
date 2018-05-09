@@ -250,6 +250,15 @@
 	<legend>Allow combining multiple categories of a categorical variable.</legend>
 	<default><value>0</value></default>
 	<options><value>no</value><value>yes</value></options>
+    </parameter>
+    <parameter>
+	<name>add_condition</name>
+	<label>Conditional</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Allow making conditional redescription, if suitable data is provided.</legend>
+	<default><value>0</value></default>
+	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
 </section>

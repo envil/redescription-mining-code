@@ -516,6 +516,12 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
     infos_details.insert(3, {"id": "lenN", "label": label_cardN, "fk": "lenN"})
     infos_details.insert(4, {"id": "pval", "label": label_pval, "fk": "pval"})
 
+    infos_details_cond = []
+    for f in infos_details:
+        infos_details_cond.append(dict(f))
+        infos_details_cond[-1]["id"] += ":C"
+        infos_details_cond[-1]["label"] = infos_details_cond[-1]["label"]
+        infos_details_cond[-1]["fk"] += "_cond"
     
     # for status in [(True, True), (False, False), (True, False), (False, True)]:
     #     i = SSetts.mapStatusToSPart(status)
@@ -535,9 +541,14 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
     # infos_details.insert(4, {"id": "pval", "label": label_pval, "meth": "getRoundPVal", "format": "%1.3f"})
     # # infos_details.insert(8, {"id": "typP", "label": label_typeP, "meth": "getTypeParts", "format": "%s", "miss": True})
 
+    def withCond(self):
+        return self.getParentData() is not None and self.getParentData().isConditional()
+        
     def setSizeSpec(self, figsize):
         self.layout_elements["queries_text"][0].SetMinSize((1*figsize[0], -1))
         self.layout_elements["queries_text"][1].SetMinSize((1*figsize[0], -1))
+        if self.withCond():
+            self.layout_elements["queries_text"][-1].SetMinSize((1*figsize[0], -1))
 
     def makeFrameSpecific(self, innerBox):
         self.layout_elements["qtxt_ids"] = [wx.NewId(), wx.NewId()]
@@ -546,7 +557,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
         colors = self.view.getColors255()
         self.layout_elements["queries_text"][0].SetForegroundColour(colors[0])
         self.layout_elements["queries_text"][1].SetForegroundColour(colors[1])
-
+        
         self.info_items = {}
         for info_item in self.infos_details:
             if not info_item.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
@@ -554,34 +565,58 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                 #                                     wx.StaticText(self.panel, label="--", style=styV, size=sizz))
                 self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"]),
                                                     wx.StaticText(self.panel, label="XXX"))
-
-
                 if info_item.get("part_id", SSetts.Eoo) < SSetts.Eoo:
                     self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["part_id"]])
 
         innerBox.Add(self.layout_elements["queries_text"][0], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
         innerBox.Add(self.layout_elements["queries_text"][1], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
 
-        innerBox.AddSpacer((-1,self.getSpacerH()), userData={"where": "*"})
-        
-        cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
-        for pi, elem in enumerate(self.infos_details):
-            if not elem.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
-                ci = 2*(pi % self.nb_cols)
-                cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
-                cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
-        # self.opt_hide.extend(cols)
-
-        lineB = wx.BoxSizer(wx.HORIZONTAL)
-        for ci, col in enumerate(cols):
-            lineB.Add(col, 0, border=1,  flag= wx.ALIGN_CENTER|wx.EXPAND)
-            if ci % 2 == 1 and ci < len(cols)-1:
-                lineB.AddSpacer((self.getSpacerW(),-1), userData={"where": "it"})
-        innerBox.Add(lineB, 0, border=1,  flag= wx.ALIGN_CENTER)
-
         self.layout_elements["queries_text"][0].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
         self.layout_elements["queries_text"][1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+        blocks = [self.infos_details]
+        
+        ######################################
+        ######### CONDITIONAL
+        if self.withCond():
 
+            self.layout_elements["qtxt_ids"].append(wx.NewId())
+            self.layout_elements["queries_text"].append(wx.TextCtrl(self.panel, self.layout_elements["qtxt_ids"][-1], style=wx.TE_PROCESS_ENTER))
+
+            for info_item in self.infos_details_cond:
+                if not info_item.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                    # self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"], style=styL, size=sizz),
+                    #                                     wx.StaticText(self.panel, label="--", style=styV, size=sizz))
+                    self.info_items[info_item["id"]] = (wx.StaticText(self.panel, label=info_item["label"]),
+                                                        wx.StaticText(self.panel, label="XXX"))
+                    if info_item.get("part_id", SSetts.Eoo) < SSetts.Eoo:
+                        self.info_items[info_item["id"]][1].SetForegroundColour(colors[info_item["part_id"]])
+
+            innerBox.Add(self.layout_elements["queries_text"][-1], 0, border=1,  flag= wx.ALIGN_CENTER, userData={"where": "it"})
+            self.layout_elements["queries_text"][-1].Bind(wx.EVT_TEXT_ENTER, self.OnEditQuery)
+            blocks.append(self.infos_details_cond)
+            
+        for bi, block in enumerate(blocks):
+            innerBox.AddSpacer((-1,self.getSpacerH()), userData={"where": "*"})
+            if bi > 0:
+                # innerBox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND|wx.ALL, 5)
+                innerBox.Add(wx.StaticText(self.panel, label="Conditional"), 0, wx.ALIGN_CENTER)
+                innerBox.Add(wx.StaticLine(self.panel, size=(200, -1), style=wx.LI_HORIZONTAL), 0, wx.ALIGN_CENTER)
+        
+            cols = [wx.BoxSizer(wx.VERTICAL) for i in range(2*self.nb_cols)]
+            for pi, elem in enumerate(block):
+                if not elem.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
+                    ci = 2*(pi % self.nb_cols)
+                    cols[ci].Add(self.info_items[elem["id"]][0], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+                    cols[ci+1].Add(self.info_items[elem["id"]][1], 1, border=1,  flag= wx.ALL|wx.ALIGN_RIGHT, userData={"where": "it"})
+            # self.opt_hide.extend(cols)
+
+            lineB = wx.BoxSizer(wx.HORIZONTAL)
+            for ci, col in enumerate(cols):
+                lineB.Add(col, 0, border=1,  flag= wx.ALIGN_CENTER|wx.EXPAND)
+                if ci % 2 == 1 and ci < len(cols)-1:
+                    lineB.AddSpacer((self.getSpacerW(),-1), userData={"where": "it"})
+            innerBox.Add(lineB, 0, border=1,  flag= wx.ALIGN_CENTER)
+        
     def prepareProcesses(self):
         self.processes_map = {"E*": {"label": "Expand", "legend": "Expand the current redescription.",
                                      "more": None, "more_dyn":[], "order": 0},
@@ -605,7 +640,10 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
         return params
 
     def setMapredInfo(self, red = None, details=None):
-        for det in self.infos_details:
+        blocks = self.infos_details
+        if self.withCond():
+            blocks = self.infos_details + self.infos_details_cond
+        for det in blocks:
             if not det.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
                 v = None
                 if red is not None:
@@ -618,26 +656,31 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                 if v is not None:
                     self.info_items[det["id"]][1].SetLabel(("%"+dt["fmt"]) % v)
                 else:
-                    self.info_items[det["id"]][1].SetLabel("XX")
+                    self.info_items[det["id"]][1].SetLabel("-")
         
     #### SEC: UPDATE
     ###########################################            
     def OnEditQuery(self, event):
         if event.GetId() in self.layout_elements["qtxt_ids"]:
             side = self.layout_elements["qtxt_ids"].index(event.GetId())
+            if side > 1:
+                side = -1
             self.view.updateQuery(side)
             
     def getQueryText(self, side):
         return self.layout_elements["queries_text"][side].GetValue().strip()            
         
     def updateQueryText(self, query, side):
-        self.layout_elements["queries_text"][side].ChangeValue(query.disp(style="U", names=self.getParentData().getNames(side)))
+        if query is not None:
+            self.layout_elements["queries_text"][side].ChangeValue(query.disp(style="U", names=self.getParentData().getNames(side)))
 
     def updateText(self, red=None):
         """ Reset red fields and info
         """
         if red is not None:
             for side in [0, 1]:
-                self.updateQueryText(red.queries[side], side)
+                self.updateQueryText(red.query(side), side)
+                if self.withCond():
+                    self.updateQueryText(red.query(-1), -1)
             self.setMapredInfo(red)
 

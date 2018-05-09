@@ -834,7 +834,7 @@ class RefsList:
         self.name = "L#%d" % self.id
         if self.src[0] == 'run':
             self.name = "%s#%s" % (self.src[1][1].title(), self.src[1][0])
-        elif self.src[0] == 'history':
+        elif self.isHist():
             self.name = "Hist"
         elif self.src[0] == 'file':
             if self.inPack():
@@ -1430,7 +1430,7 @@ class RedsSet(EditableContent):
         if Redescription.hasFieldsList("custom-"+flk, wsplits=splits):
             flk = "custom-"+flk
         for fk in Redescription.getFieldsList(flk, wsplits=splits):
-            dets = {"exp": Redescription.getFieldsDet(fk, "exp", ""), "rnd": Redescription.getFieldsDet(fk, "rnd"), "k": Redescription.getFieldsDet(fk, "name")}
+            dets = {"exp": Redescription.getFieldsDet(fk, "exp", ""), "rnd": Redescription.getFieldsDet(fk, "rnd"), "k": Redescription.getFieldsDet(fk, "name"), "replace_none": "-"}
             align = wx.LIST_FORMAT_RIGHT
             if re.search("s$", Redescription.getFieldsDet(fk, "fmt", "")):
                 align = wx.LIST_FORMAT_LEFT                
@@ -1675,10 +1675,24 @@ class ContentManager:
             return [self.getDataHdl().getItemForIid(iid) for iid in self.getDataHdl().getList(lid).getIids()]
         return None
 
+    def getNbItemsToExport(self, inc_hist=False):
+        return len(self.getItemsToExport(inc_hist))
+    def getItemsToExport(self, inc_hist=False):
+        iids = sorted(set().union(*[self.getDataHdl().getList(lid).getIids() for lid in self.getDataHdl().getOrdLists() if not self.getDataHdl().getList(lid).isHist()]))
+        return [self.getDataHdl().getItemForIid(iid) for iid in iids]
+    
     def getLidsToPack(self):
         return [lid for lid in self.getDataHdl().getOrdLists() if self.getDataHdl().getList(lid).inPack()]
-    def getListsToPack(self):
-        return [self.getDataHdl().getList(lid).getInfoToSave(lid, self.getDataHdl()) for lid in self.getLidsToPack()]
+    def getLidsToPackElect(self):
+        return [lid for lid in self.getDataHdl().getOrdLists() if not self.getDataHdl().getList(lid).inPack() and not self.getDataHdl().getList(lid).isHist()]
+
+    def getListsToPack(self, empty_add_electible=False):
+        lids = self.getLidsToPack()
+        if len(lids) == 0 and empty_add_electible:
+            lids = self.getLidsToPackElect()
+            for lid in lids:
+                self.OnAddDelListToPack(lid)
+        return [self.getDataHdl().getList(lid).getInfoToSave(lid, self.getDataHdl()) for lid in lids]
 
     def markSavedPack(self, src=None, lid=None, path=None):
         for lid in self.getLidsToPack():

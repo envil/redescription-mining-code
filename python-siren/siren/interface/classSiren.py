@@ -149,76 +149,6 @@ class ERCache():
         ps = self.getRPos(rids)
         return self.computeDeduplicateER(self.etor[eids,:][:,ps])
 
-        ### # BELOW BUGGY CODE INTENDED TO SAVE ON DEDUPLICATION COMPUTATION
-        # if self.ddER is None or self.needsRecompute():
-        #     print "Need recompute dder"
-        #     if self.etor is None:
-        #         self.gatherReds()
-        #     if eids is None or len(eids) > .5*self.etor.shape[0] or \
-        #         rids is None or len(rids) > .5*self.etor.shape[1]:
-        #         self.ddER = self.computeDeduplicateER()
-        #     else:
-        #         if eids is None:
-        #             eids = numpy.arange(self.etor.shape[0])
-
-        #         ps = self.getRPos(rids)
-        #         return self.computeDeduplicateER(self.etor[eids,:][:,ps])
-        # else:
-        #     print "No need recompute dder"
-        # # print "Get subset"            
-        # if eids is None:
-        #     e_to_rep = self.ddER["e_to_rep"].copy()
-        #     e_new_keep = self.ddER["e_rprt"].copy()
-        #     e_old_keep = self.ddER["e_rprt"]
-        # else:
-        #     e_old_keep = self.ddER["e_to_rep"][eids]
-        #     e_to_rep = -(self.ddER["e_to_rep"][eids]+2)
-        #     e_new_keep = []
-        #     for i in numpy.unique(e_old_keep):
-        #         if i >= 0:
-        #             kp = numpy.where(e_old_keep==i)[0][0]
-        #             e_to_rep[e_to_rep==-(i+2)] = len(e_new_keep)
-        #             e_new_keep.append(kp)
-        #     e_new_keep = numpy.array(e_new_keep)
-            
-        # if (rids is None or rids == self.rids):
-        #     r_to_rep = self.ddER["r_to_rep"].copy()
-        #     r_new_keep = self.ddER["r_rprt"].copy()
-        #     r_old_keep = self.ddER["r_rprt"]
-        # else:
-        #     rps = self.getRPos(rids)        
-        #     r_old_keep = self.ddER["r_to_rep"][rps]
-        #     r_to_rep = -(self.ddER["r_to_rep"][rps]+2)
-        #     r_new_keep = []
-        #     if len(numpy.unique(r_old_keep)) < len(r_old_keep):
-        #         pdb.set_trace()
-        #     for i in numpy.unique(r_old_keep):
-        #         kp = numpy.where(r_old_keep==i)[0][0]
-        #         r_to_rep[r_to_rep==-(i+2)] = len(r_new_keep)
-        #         r_new_keep.append(kp)
-        #     r_new_keep = numpy.array(r_new_keep)
-            
-        # cc = self.computeDeduplicateER(self.etor[e_old_keep,:][:,r_old_keep])
-        # if cc["has_dup_r"]:
-        #     try:
-        #         r_new_keep = r_new_keep[cc["r_rprt"]]
-        #     except IndexError:
-        #         print "IndexError r dup"
-        #         pdb.set_trace()
-                
-        #     r_to_rep = numpy.concatenate([cc["r_to_rep"],[-1]])[r_to_rep]
-
-        # if cc["has_dup_e"]:
-        #     try:
-        #         e_new_keep = e_new_keep[cc["e_rprt"]]
-        #     except IndexError:
-        #         print "IndexError e dup"
-        #         pdb.set_trace()
-            
-        #     e_to_rep = numpy.concatenate([cc["e_to_rep"],[-1]])[e_to_rep]
-
-        # return {"e_rprt": e_new_keep, "r_rprt": r_new_keep, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": cc["dists"]}
-
 
 class ProjCache():
 
@@ -459,40 +389,24 @@ class Siren():
         return -1
     def getSaveListInfo(self):
         if self.matchTabType("vr"):
-            tmp = self.selectedTab["tab"].getSaveListInfo()
-            return tmp
             return self.selectedTab["tab"].getSaveListInfo()
     def getToExportReds(self):
-        if self.matchTabType("r"):
-            return self.selectedTab["tab"].getItemsForAction(down=False)
+        if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
+            return self.tabs[self.getDefaultTabId("r")]["tab"].getItemsToExport(inc_hist=False)
         else:
-            return self.getToPackReds()
+            return []
     def getNbToExportReds(self):
-        if self.matchTabType("r"):
-            return self.selectedTab["tab"].getNbItemsForAction(down=False)
+        if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
+            return self.tabs[self.getDefaultTabId("r")]["tab"].getNbItemsToExport(inc_hist=False)
         else:
-            return self.getNbToPackReds()
-    def getToPackReds(self):
-        rr = None
-        if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
-            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getItemsForSrc('pack')
-        if rr is not None:
-            return rr
-        return self.getReds()
-    def getNbToPackReds(self):
-        rr = -1
-        if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
-            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getNbItemsForSrc('pack')
-        if rr >= 0:
-            return rr
-        return self.getNbReds()
+            return 0
     def getData(self):
         if self.dw is not None:
             return self.dw.getData()
 
     def updatePackReds(self):
         if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
-            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getListsToPack()
+            rr = self.tabs[self.getDefaultTabId("r")]["tab"].getListsToPack(empty_add_electible=True)
             self.dw.resetRedescriptions(rr)
     def markPackRedsWritten(self):
         if self.getDefaultTabId("r") in self.tabs and "tab" in self.tabs[self.getDefaultTabId("r")]:
@@ -997,7 +911,7 @@ class Siren():
         
         ID_EXPORT_REDESCRIPTIONS = wx.NewId()
         m_exportRedescriptions = submenuExport.Append(ID_EXPORT_REDESCRIPTIONS, "&Export Redescriptions\tShift+Ctrl+E", "Export redescriptions.")
-        if self.getNbToPackReds() < 1:
+        if self.getNbToExportReds() < 1:
             submenuExport.Enable(ID_EXPORT_REDESCRIPTIONS, False)
         else:
             frame.Bind(wx.EVT_MENU, self.OnExportRedescriptions, m_exportRedescriptions)
@@ -1287,7 +1201,6 @@ class Siren():
             lid = self.selectedTab["tab"].getFLLid()
             if lid is not None:
                 self.selectedTab["tab"].OnAddDelListToPack(lid)
-
         
     def OnSaveList(self, event):
         info = self.getSaveListInfo()

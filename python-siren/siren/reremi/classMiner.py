@@ -258,6 +258,9 @@ class Miner(object):
                 return TREE_CLASSES.get(self.constraints.getCstr("tree_mine_algo"), TREE_DEF)(self.constraints)
 
         else:
+            if self.constraints.getCstr("add_condition"):
+                if not self.data.isConditional() and self.data.isGeospatial():
+                    self.data.prepareGeoCond()
             ## self.charbon_alt = CharbonGMiss(self.constraints)
             ### CHARBON
             if CHARBON_MISS_FORCE or self.data.hasMissing():
@@ -493,10 +496,10 @@ class Miner(object):
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         ### WARNING DANGEROUS few pairs for DEBUG!
-        for idL in ids[0][:2]:
-            for idR in ids[1][:2]:
-        # for idL in ids[0]:
-        #     for idR in ids[1]:
+        # for idL in ids[0][:1]:
+        #     for idR in ids[1][:1]:
+        for idL in ids[0]:
+            for idR in ids[1]:
                 if ( not self.constraints.hasDeps() or \
                        len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
                        ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]):

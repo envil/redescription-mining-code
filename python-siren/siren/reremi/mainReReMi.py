@@ -8,7 +8,7 @@ import codecs
 
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
-from classData import Data
+from classData import Data, NA_str_def
 from classRedescription import Redescription, parseRedList, printRedList, printTexRedList
 from classBatch import Batch
 from classConstraints import Constraints
@@ -73,7 +73,7 @@ def loadAll(arguments=[]):
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
     
-    params_l = trunToDict(params)
+    params_l = turnToDict(params)
     filenames = prepareFilenames(params_l, tmp_dir, src_folder)
     logger = Log(params_l['verbosity'], filenames["logfile"])
 
@@ -87,16 +87,19 @@ def loadAll(arguments=[]):
     return {"params": params, "data": data, "logger": logger,
             "filenames": filenames, "reds": reds, "pm": pm}
 
-def trunToDict(params):
+def turnToDict(params):
     params_l = {}
     for k, v in  params.items():
         params_l[k] = v["data"]
     return params_l
 
+def getDataAddInfo(params_l={}):
+    return [{}, params_l.get('NA_str', NA_str_def)]
+
 def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     filenames = {"queries": "-",
                  "style_data": "csv",
-                 "add_info": [{}, params_l['NA_str']]
+                 "add_info": getDataAddInfo(params_l)
                  }
 
     if 'delim_in' in params_l:
@@ -105,6 +108,8 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
             filenames["add_info"][0]["delimiter"] = dl
     
     for p in ['result_rep', 'data_rep']:
+        if p not in params_l:
+            params_l[p] = ""
         if src_folder is not None and re.match("./", params_l[p]):
             params_l[p] = src_folder+params_l[p][1:]
         elif params_l[p] == "__TMP_DIR__":
@@ -115,55 +120,59 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
             params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
 
     ### Make data file names
-    if len(params_l["LHS_data"]) != 0 :
+    filenames["LHS_data"] = ""
+    if len(params_l.get("LHS_data", "")) != 0:
         filenames["LHS_data"] = params_l['LHS_data']
-    else:
-        filenames["LHS_data"] = params_l['data_rep']+params_l['data_l']+params_l['ext_l']
-    if len(params_l["RHS_data"]) != 0 :
+    elif len(params_l.get('data_l', "")) != 0:
+        filenames["LHS_data"] = params_l['data_rep']+params_l['data_l']+params_l.get('ext_l', "")
+
+    filenames["RHS_data"] = ""
+    if len(params_l.get("RHS_data", "")) != 0 :
         filenames["RHS_data"] = params_l['RHS_data']
-    else:
-        filenames["RHS_data"] = params_l['data_rep']+params_l['data_r']+params_l['ext_r']
+    elif len(params_l.get('data_r', "")) != 0:
+        filenames["RHS_data"] = params_l['data_rep']+params_l['data_r']+params_l.get('ext_r', "")
 
     if os.path.splitext(filenames["LHS_data"])[1] != ".csv" or os.path.splitext(filenames["RHS_data"])[1] != ".csv":
         filenames["style_data"] = "multiple"
         filenames["add_info"] = []
 
     ### Make queries file names
-    if len(params_l["queries_file"]) != 0 :
+    if len(params_l.get("queries_file", "")) != 0 :
         filenames["queries"] = params_l["queries_file"]
-    elif params_l['out_base'] != "-"  and len(params_l['out_base']) > 0 and len(params_l['ext_queries']) > 0:
-        filenames["queries"] = params_l['result_rep']+params_l['out_base']+params_l['ext_queries']
+    elif params_l.get('out_base', "-") != "-"  and len(params_l['out_base']) > 0 and len(params_l.get('ext_queries', ".queries")) > 0:
+        filenames["queries"] = params_l['result_rep']+params_l['out_base']+params_l.get('ext_queries', ".queries")
 
     if filenames["queries"] != "-":
-        try:
-            tfs = open(filenames["queries"], "a")
-            tfs.close()
-        except IOError:
-            print "Queries output file not writable, using stdout instead..."
-            filenames["queries"] = "-"
+        if not os.path.isfile(filenames["queries"]):
+            try:
+                tfs = open(filenames["queries"], "a")
+                tfs.close()
+            except IOError:
+                print "Queries output file not writable, using stdout instead..."
+                filenames["queries"] = "-"
     parts = filenames["queries"].split(".")
     basis = ".".join(parts[:-1])
     filenames["basis"] = basis
 
     ### Make named queries file name
-    if params_l["queries_named_file"] == "+" and filenames["queries"] != "-":
+    if filenames["queries"] != "-" and params_l.get("queries_named_file", "") == "+":
         filenames["queries_named"] = basis+"_named."+parts[-1]
-    elif len(params_l["queries_named_file"]) > 0:
+    elif len(params_l.get("queries_named_file", "")) > 0:
         filenames["queries_named"] = params_l["queries_named_file"]
 
     ### Make support file name
-    if params_l["support_file"] == "+" and filenames["queries"] != "-" and len(params_l['ext_support']) > 0:
+    if filenames["queries"] != "-" and params_l.get("support_file", "") == "+" and len(params_l.get('ext_support', "")) > 0:
         filenames["support"] = basis+params_l['ext_support']
-    elif len(params_l["support_file"]) > 0:
+    elif len(params_l.get("support_file", "")) > 0:
         filenames["support"] = params_l["support_file"]
 
     ### Make log file name
-    if params_l['logfile'] == "+" and filenames["queries"] != "-" and len(params_l['ext_log']) > 0:
+    if filenames["queries"] != "-" and params_l.get('logfile', "") == "+" and len(params_l.get('ext_log', "")) > 0:
         filenames["logfile"] = basis+params_l['ext_log']
-    elif len(params_l['logfile']) > 0:
+    elif len(params_l.get('logfile', "")) > 0:
         filenames["logfile"] = params_l['logfile']
 
-    if len(params_l["series_id"]) > 0:
+    if len(params_l.get("series_id", "")) > 0:
         for k in filenames.keys():
             if type(filenames[k]) is str:
                 filenames[k] = filenames[k].replace("__SID__", params_l["series_id"])
@@ -243,7 +252,7 @@ def loadPackage(filename, pm):
     return params, data
 
 def applyVarsMask(data, params):
-    params_l = trunToDict(params)
+    params_l = turnToDict(params)
     return data.applyDisableMasks(params_l.get("mask_vars_LHS"), params_l.get("mask_vars_RHS"), params_l.get("mask_rows"))
 
 def run(args):

@@ -10,6 +10,16 @@ from scipy.stats import binom
 import numpy, random
 import pdb
 
+def tool_ratio(num, den):
+    if den == 0:
+        if num > 0:
+            return float("Inf")
+        else:
+            return 0.
+    else:
+        return float(num)/den
+
+
 def tool_hypergeomPMF(k, M, n, N):
     tot, good = M, n
     bad = tot - good
@@ -187,9 +197,9 @@ class SSetts(object):
             self.IDS_nsupp = [[(into, Exo), (into, Exx)], [(tot, Exo), (tot, Exx), (into, Eox), (into, Eoo)]]
 
             #### TO COMPUTE ACCURACY after building
-            self.IDS_diff = [Exo, Eox]
             self.IDS_dL = [Exo]
             self.IDS_dR = [Eox]
+            self.IDS_diff = list(self.IDS_dL + self.IDS_dR)
             self.IDS_inter = [Exx]
             self.IDS_uncovered = [Eoo]
 
@@ -247,9 +257,9 @@ class SSetts(object):
                                   (into, Eox), (into, Eoo), (into, Emo), (into, Eom), (into, Emm)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [Exo, Eox]
                 self.IDS_dL = [Exo]
                 self.IDS_dR = [Eox]
+                self.IDS_diff = list(self.IDS_dL + self.IDS_dR)                
                 self.IDS_inter = [Exx]
                 self.IDS_uncovered = [Eoo]
 
@@ -279,9 +289,9 @@ class SSetts(object):
                                     [(tot, Exo), (tot, Exx), (tot, Exm), (into, Emx), (into, Eox), (into, Eoo), (into, Emo), (into, Emm), (into, Eom)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [Exo, Eox]
                 self.IDS_dL = [Exo]
                 self.IDS_dR = [Eox]
+                self.IDS_diff = list(self.IDS_dL + self.IDS_dR)                
                 self.IDS_inter = [Exx, Emx, Exm, Emm]
                 self.IDS_uncovered = [Eoo, Emo, Eom]
 
@@ -314,9 +324,9 @@ class SSetts(object):
                                     [(tot, Exo), (tot, Exx), (tot, Exm), (into, Emx), (into, Eox), (into, Eoo), (into, Emo), (into, Emm)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [Exo, Eox, Emx, Exm, Emo, Eom, Emm]
                 self.IDS_dL = [Exo, Exm, Emo]
                 self.IDS_dR = [Eox, Emx, Eom, Emm]
+                self.IDS_diff = list(self.IDS_dL + self.IDS_dR)
                 self.IDS_inter =  [Exx]
                 self.IDS_uncovered = [Eoo]
 
@@ -344,9 +354,9 @@ class SSetts(object):
                                   [(tot, Exo), (tot, Exx), (tot, Exm), (into, Eox), (into, Eoo), (into, Emx), (into, Emo), (into, Eom), (into, Emm)]]
 
                 #### TO COMPUTE ACCURACY after building
-                self.IDS_diff = [Exo, Eox, Exm, Emx]
                 self.IDS_dL = [Exo, Exm]
                 self.IDS_dR = [Eox, Emx]
+                self.IDS_diff = list(self.IDS_dL + self.IDS_dR)
                 self.IDS_inter = [Exx]
                 self.IDS_uncovered = [Eoo, Emo, Eom, Emm]
 
@@ -420,19 +430,16 @@ class SSetts(object):
     # compute the ratio of BLUE/RED parts depending on intersection with X
     def advRatioVar(self, side, op, parts):
         den = self.sumPartsId(side, self.IDS_varden[op], parts)
-        if den != 0:
-            return float(self.sumPartsId(side, self.IDS_varnum[op], parts))/den
-        else:
-            return float('Inf')
+        num = self.sumPartsId(side, self.IDS_varnum[op], parts)
+        return tool_ratio(num, den)
 
     # compute the accuracy resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)
     def advAcc(self, side, op, neg, lparts, lmiss, lin):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
-        return float(self.sumPartsIdInOut(side, neg, self.IDS_varnum[op] + self.IDS_fixnum[op], clp))/ \
-               self.sumPartsIdInOut(side, neg, self.IDS_varden[op] + self.IDS_fixden[op], clp)
-
+        return tool_ratio(self.sumPartsIdInOut(side, neg, self.IDS_varnum[op] + self.IDS_fixnum[op], clp),
+                          self.sumPartsIdInOut(side, neg, self.IDS_varden[op] + self.IDS_fixden[op], clp))
 
     # sets the method to compute p-values
     def setMethodPVal(self, methodpVal='Marg'):

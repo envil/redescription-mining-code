@@ -14,6 +14,8 @@ import pdb
 
 from siren.interface.classSiren import Siren
 from siren.interface.classGridTable import CustRenderer
+from siren.reremi.classPreferencesManager import PreferencesReader, getPM
+from siren.reremi.mainReReMi import prepareFilenames, getDataAddInfo
 
 import time
 
@@ -29,7 +31,7 @@ class SirenApp(wx.App):
         self.SetAppName("Siren")
         self.frame = Siren()
         series = ""
-        reds_info = None
+        reds_infos = []
         import sys, os, platform, re
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
             # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
@@ -40,14 +42,39 @@ class SirenApp(wx.App):
                 filename = sys.argv[pos_fn]
                 (p, ext) = os.path.splitext(filename)
                 if ext == '.siren':
-                    self.frame.LoadFile(filename)
+                    try:
+                        self.frame.LoadFile(filename)
+                    except Exception:
+                        pass
                     pos_fn += 1
                 elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
-                    reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filename)
-                    reds_info = (reds, sortids, filename)
+                    try:
+                        reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filename)
+                    except Exception:
+                        reds = []
+                    if len(reds) > 0:
+                        reds_infos.append((reds, sortids, filename))
                     pos_fn += 1
                 elif ext in [".conf", ".xml"]:
                     self.frame.dw.importPreferencesFromFile(filename)
+                    pm = getPM()  
+                    params = PreferencesReader(pm).getParametersDict(filename, pv={})
+                    src_folder = os.path.dirname(os.path.abspath(filename))
+                    filenames = prepareFilenames(params, src_folder=src_folder)
+
+                    if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
+                        try:
+                            self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
+                        except Exception:
+                            pass
+                    if filenames["queries"] != "-":
+                        try:
+                            reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
+                        except Exception:
+                            reds = []
+                        if len(reds) > 0:
+                            reds_infos.append((reds, sortids, filenames["queries"]))
+                        
                     pos_fn += 1
                 elif ext == '.csv':
                     # If the first file is .csv, check if we've got two files and use them as left and right files
@@ -58,15 +85,22 @@ class SirenApp(wx.App):
                         (f, ext2) = os.path.splitext(sys.argv[pos_fn+1])
                         if ext2 == '.csv':
                             pos_fn += 1
-                            RHfile = sys.argv[pos_fn]
-                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile, {}, 'NA'])
+                            RHfile = sys.argv[pos_fn]                            
+                    try:
+                        self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+getDataAddInfo())
+                    except Exception:
+                        pass
+
                     pos_fn += 1
                 else:
                     pos_fn *= -1
                     #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
-            if pos_fn < -1 or pos_fn > 1:
-                if reds_info is not None:
-                    self.frame.loadReds(reds_info[0], reds_info[1], path=reds_info[2])
+
+            reloadA = False
+            for reds_info in reds_infos:
+                self.frame.loadReds(reds_info[0], reds_info[1], path=reds_info[2])
+                reloadA = True
+            if reloadA:
                 self.frame.reloadAll()
         
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":

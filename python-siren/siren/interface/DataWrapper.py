@@ -253,7 +253,7 @@ class DataWrapper(object):
             self.logger.printL(1,"Unexpected error while importing redescriptions from file %s!\n%s" % (redescriptions_filename, sys.exc_info()[1]), "dw_error", "DW")
             self._stopMessage()
             raise
-        finally:
+        finally:            
             self._stopMessage('importing')
         return tmp_reds, tmp_rshowids
 
@@ -353,18 +353,18 @@ class DataWrapper(object):
         return data
 
     def _readRedescriptionsFromFile(self, filename, data=None):
-        if data is None:
-            if self.data is None:
-                self._stopMessage()
-                raise Exception("Cannot load redescriptions if data is not loaded")
-            else:
-                data = self.data
         reds = Batch([])
         show_ids = None
 
-        filep = open(filename, mode='r')
-        parseRedList(filep, data, reds)
-        rshowids = ICList(range(len(reds)), True)
+        if data is None:
+            if self.data is None:
+                raise Exception("Cannot load redescriptions if data is not loaded")
+            else:
+                data = self.data
+        if os.path.isfile(filename):
+            filep = open(filename, mode='r')
+            parseRedList(filep, data, reds)
+            rshowids = ICList(range(len(reds)), True)
         return reds, rshowids
 
     def _readPreferencesFromFile(self, filename):

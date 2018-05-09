@@ -1938,6 +1938,14 @@ class Query(object):
         if len(self) == 0 or data==None:
             return (set(), set())
         else:
+            if side == -1:
+                #### in case the query is a condition and the data does not have condition cols, prepare from geo is possible
+                if not data.isConditional() and data.isGeospatial():
+                    data.prepareGeoCond()
+                if not data.isConditional():
+                    ### impossible to get condition
+                    return (set(), set())
+            
             cp = self.copy()
             cp.push_negation()
             sm = evl(cp.buk, cp.op, side, data) 

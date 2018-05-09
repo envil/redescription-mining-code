@@ -124,7 +124,7 @@ class Extension(object):
             strPieces[self.getSide()] = "%s %s" % (Op(self.getOp()), self.dispLiteral()) 
             if self.hasCondition():
                 # score_of = self.getCondition()
-                strPieces[2] = score_of.dispLiteral()
+                strPieces[2] = self.getCondition().dispLiteral()
 
             if base_acc is None:
                 strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
@@ -265,8 +265,8 @@ class ExtensionsBatch(object):
                 kid.setFull(max_var)
                 if kid.getAcc() != cand.getAcc():
                     raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
-                # if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
-                #     raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
+                if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
+                    raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
                 kids.append(kid)
         return kids
     

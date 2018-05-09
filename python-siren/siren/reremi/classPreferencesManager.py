@@ -433,9 +433,9 @@ class PreferencesReader(object):
     def __init__(self, pm):
         self.pm = pm
 
-    def getParametersDict(self, filename=None, arguments=None):
+    def getParametersDict(self, filename=None, arguments=None, pv=None):
         params_l = {}
-        tmp_params = self.getParameters(filename, arguments)
+        tmp_params = self.getParameters(filename, arguments, pv)
         for k, v in tmp_params.items():
             if v["data"] != v["value"]:
                 params_l[k+":NUM"] = v["value"]
@@ -471,8 +471,6 @@ class PreferencesReader(object):
                     values = toolRead.getValues(current)
                     tmp[name] = values
         return tmp
-
-
     
     def readParametersDict(self, params_dict):
         pv = {}

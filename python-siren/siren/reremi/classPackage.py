@@ -9,7 +9,7 @@ import re
 import pdb
 
 from classRedescription import Redescription, printTexRedList, printRedList, parseRedList
-from classData import Data
+from classData import Data, NA_str_def
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
 import toolRead as toolRead
@@ -31,7 +31,7 @@ class Package(object):
     FILETYPE_VERSION = 5
     XML_FILETYPE_VERSION = 3
 
-    NA_str = "NA"
+    NA_str = NA_str_def
     RED_FN_SEP = ";"
 
     CREATOR = "ReReMi/Siren Package"
@@ -110,7 +110,6 @@ class Package(object):
             preferences = self.readPreferences(pm, options_args)
             if preferences is not None:
                 elements_read["preferences"] = preferences
-            ## self.plist["NA_str"] = "NA"
             data = self.readData()
             if data is not None:
                 elements_read["data"] = data
@@ -163,7 +162,7 @@ class Package(object):
                     fdRHS = None
                 NA_str = self.plist.get('NA_str', None)
                 if NA_str is None and self.getFormatV() <= 4:
-                    NA_str = "NA"
+                    NA_str = Package.NA_str
                 # pdb.set_trace()    
                 data = Data([fdLHS, fdRHS, {}, NA_str], "csv")
             except Exception:
