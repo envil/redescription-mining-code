@@ -48,7 +48,7 @@ class SirenApp(wx.App):
                         pass
                     pos_fn += 1
                 elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
-                    try:
+                    try:                        
                         reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filename)
                     except Exception:
                         reds = []
@@ -194,7 +194,8 @@ class SirenApp(wx.App):
             if ext == '.siren':
                 self.frame.LoadFile(filename)
             elif ext == '.csv':
-                self.frame.dw.importDataFromCSVFiles([filename, filename, {}, 'NA'])
+
+                self.frame.dw.importDataFromCSVFiles([filename, filename]+getDataAddInfo())
                 self.frame.reloadAll()
             else:
                  wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()

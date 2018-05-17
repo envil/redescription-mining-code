@@ -131,6 +131,7 @@ class DrawerBasis(object):
             if ax != self.getAxe():
                 self.getFigure().delaxes(ax)
         self.clearHighlighted()
+        self.clearInfoText()
     def clearHighlighted(self):
         ### IMPLEMENT
         pass
@@ -164,7 +165,8 @@ class DrawerBasis(object):
         self.axe = value
 
     def delElement(self, key):
-        del self.elements[key]
+        if key in self.elements:
+            del self.elements[key]
     def setElement(self, key, value):
         self.elements[key] = value
     def getElement(self, key):
@@ -172,8 +174,8 @@ class DrawerBasis(object):
     def hasElement(self, key):
         return key in self.elements
         
-    def getSettBoolV(self, key, default=False):
-        return self.view.getSettBoolV(key, default)    
+    def getSettV(self, key, default=False):
+        return self.view.getSettV(key, default)    
 
     def makeAdditionalElements(self, panel=None):
         return []
@@ -419,6 +421,9 @@ class DrawerBasis(object):
             self.getElement("info_text")["text"].set_text(text_str)
         self.draw()
 
+    def clearInfoText(self):
+        self.delElement("info_text")
+        
     def delInfoText(self):
         if self.hasElement("info_text"):
             self.getElement("info_text")["text"].remove()
@@ -442,7 +447,14 @@ class DrawerBasis(object):
 
         red = Redescription.fromQueriesPair(qrs, self.getParentData())
         tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "lenExx", "pval"]
-        headers = ["qL=", "qR=", "J=", "|E11|=", "pV="]
+        headers = ["qL=", "qR=", "J=", "|supp|=", "pV="]
+
+        # tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "prcExx"]
+        # headers = ["qL=", "qR=", "J=", "%%supp="]
+
+        # tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "prcExx", "acc_ratioTL", "lenI_ratioTA"]
+        # headers = ["qL=", "qR=", "J=", "%%supp=", "J$_{I/O}$=", "supp$_{I/A}$="]
+
         rr = pref
         tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="T") #, rid=rr)
         if not self.hasElement("red_stamp"):
@@ -484,7 +496,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return True
 
     def drawPoly(self):
-        return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)
+        return self.getPltDtH().hasPolyCoords() & self.getSettV("map_poly", self.MAP_POLY)
     
     def getAxisLims(self):
         return self.getPltDtH().getParentCoordsExtrema()
@@ -532,11 +544,11 @@ class DrawerEntitiesTD(DrawerBasis):
                 ("motion_notify_event", self.on_motion)]
         
     def hoverActive(self):
-        return self.getSettBoolV('hover_entities') and not self.hasToolbActive()
+        return self.getSettV('hover_entities') and not self.hasToolbActive()
     def hoverCoordsActive(self):
-        return self.getSettBoolV('hover_coords') and not self.hasToolbActive()    
+        return self.getSettV('hover_coords') and not self.hasToolbActive()    
     def clickActive(self):
-        return self.getSettBoolV('click_entities') and not self.hasToolbActive()
+        return self.getSettV('click_entities') and not self.hasToolbActive()
 
     def getLidAt(self, x, y):
         if self.drawPoly():
@@ -910,8 +922,9 @@ class DrawerEntitiesTD(DrawerBasis):
         else:
             ## print idp, fc, ec
             x, y = self.getCoordsXY(idp)
-            return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
-
+            # return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
+            return [self.axe.scatter([x], [y], c=fc, edgecolors=ec, s=5*sz, marker=dsetts["shape"], zorder=zo)]
+            
     def getAnnXY(self):
         return self.ann_xy
     def getInfoDets(self):

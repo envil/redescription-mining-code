@@ -25,14 +25,6 @@ class Constraints(object):
         else:
             self.N = -1
             self.ssetts = None
-
-        ### convert Boolean
-        ks = self._pv.keys()
-        for k in ks:
-            if self._pv[k] == "yes":
-                self._pv[k] = True
-            elif self._pv[k] == "no":
-                self._pv[k] = False
             
         #### scaling support thresholds
         self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self.getCstr("min_itm_c"), self.getCstr("min_itm_in"), self.getCstr("min_itm_out"))

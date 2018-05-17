@@ -297,7 +297,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
             
             #### Contribs of literals
-            if self.getSettBoolV('literals_contrib'):
+            if self.getSettV('literals_contrib'):
                 lits, map_q = self.literalsEffect(red)
             else:
                 lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]

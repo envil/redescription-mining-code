@@ -15,6 +15,7 @@ COND_COL = ('cond_var', 'cond_col', 'cond_time')
 
 ENABLED_ROWS = ('enabled_row', 'enabled_rows')
 ENABLED_COLS = ('enabled_col', 'enabled_cols')
+GROUPS_COLS = ('groups_col', 'groups_cols')
 
 COLVAR = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
 COLVAL = ['value', 'Value', 'values', 'Values']
@@ -114,13 +115,15 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                 data = dict([(head[i].strip(),[]) for i in range(len(head))])
                 #raise ValueError('some columns have the same name, this is a very bad idea...')
         no_of_columns = len(head)
-
+        specials = {}
         for row in csvreader:
             if skipfirst:
                 skipfirst = False
                 continue
             if re.match("\s*#", row[0]):
                 continue
+            if len(row) == no_of_columns+1 and ((row[0] in GROUPS_COLS) or (row[0] in ENABLED_COLS)):
+                specials[row.pop(0)] = len(data.values()[0])
             if len(row) != no_of_columns:
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
@@ -137,7 +140,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
     if fcl:
         f.close()
     ## HERE DEBUG UTF-8
-    return head, data, type_all
+    return head, data, type_all, specials
 
 def parse_sparse(D, coord, ids, varcol, valcol, off=None):
     nids = None
@@ -154,6 +157,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         col_names = None
         row_named = False
         col_enabled = None
+        col_group = None
         sub = 1
         if off is not None:
             sub = off           
@@ -168,8 +172,10 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
             try:
                 dictLL[i] = int(i)-sub
             except ValueError as e:
-                if col_names is not None and i in ENABLED_COLS:
+                if i in ENABLED_COLS: # and col_names is not None:
                     col_enabled = {}
+                elif i in GROUPS_COLS: # and col_names is not None:
+                    col_group = {}
                 else:
                     numerical_ids = False
                     break
@@ -193,7 +199,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
 
-    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: None}
+    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None}
     if valcol is None:
         nD['bool'] = True
         ### Turning the data from list of ids to sets, Boolean
@@ -211,6 +217,8 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 col_names[col] = D['data'][valcol][rid]
             elif ids[rid] in ENABLED_COLS:
                 col_enabled[col] = D['data'][valcol][rid]
+            elif ids[rid] in GROUPS_COLS:
+                col_group[col] = D['data'][valcol][rid]
             elif col in nD['headers']:
                 nD['data'][col][dictLL[ids[rid]]] = D['data'][valcol][rid]
             else:
@@ -232,6 +240,8 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
 
         if col_enabled is not None:
             col_enabled = dict([(col_names.get(str(c), c), v) for (c,v) in col_enabled.items()])
+        if col_group is not None:
+            col_group = dict([(col_names.get(str(c), c), v) for (c,v) in col_group.items()])
 
         for ko in keysc:
             cn = col_names[ko]
@@ -244,6 +254,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         nD["headers"] = new_headers + nD["headers"]
 
     nD[ENABLED_COLS[0]] = col_enabled
+    nD[GROUPS_COLS[0]] = col_group
     ### mapping the coordinates to the correct order
     ncoord = None
     hasc, coord_sp = has_coord_sparse(nD)
@@ -355,12 +366,30 @@ def get_discol(D, ids):
     discol = {}
     for s in ENABLED_COLS:
         if s in ids:
-            p = ids.index(s)
-            ids.remove(s)
+            if type(ids) is dict:
+                p = ids.pop(s)
+            else:
+                p = ids.index(s)
+                ids.remove(s)
             for c in D['headers']:
                 discol[c] = D['data'][c].pop(p)
             break
     return discol
+
+def get_groupcol(D, ids):
+    groupcol = {}
+    for s in GROUPS_COLS:
+        if s in ids:
+            if type(ids) is dict:
+                p = ids.pop(s)
+            else:
+                p = ids.index(s)
+                ids.remove(s)
+            for c in D['headers']:
+                groupcol[c] = D['data'][c].pop(p)
+            break
+    return groupcol
+
 
 def is_sparse(D):
     colid = list(COLVAR)
@@ -400,7 +429,13 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
                 rtn = (None, nb_rowsL, nrMaxR)
                 
     else:
-        tt = map(int, set(Lids) - set(["-1"]))
+        tt = []
+        for t in set(Lids):
+            if t != "-1":
+                try:
+                    tt.append(int(t))
+                except ValueError:
+                    pass
         nrMinL, nrMaxL = min(tt), max(tt)
 
         if Rfull:
@@ -413,7 +448,14 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
                 rtn = (None, nrMaxL, nb_rowsR)
 
         else:
-            tt = map(int, set(Rids) - set(["-1"]))
+            tt = []
+            for t in set(Rids):
+                if t != "-1":
+                    try:
+                        tt.append(int(t))
+                    except ValueError:
+                        pass
+
             nrMinR, nrMaxR = min(tt), max(tt)
             if nrMaxR == nrMaxL:
                 if nrMinR == 1 and nrMinL == 1:
@@ -446,10 +488,21 @@ def row_order(L, R):
             RhasIds = True
             Rids = RcondIds
 
-    if LhasIds and Lvarcol is None:
-        L[ENABLED_COLS[0]] = get_discol(L, Lids)
-    if RhasIds and Rvarcol is None:
-        R[ENABLED_COLS[0]] = get_discol(R, Rids)
+    if Lvarcol is None:
+        if LhasIds:
+            L[ENABLED_COLS[0]] = get_discol(L, Lids)
+            L[GROUPS_COLS[0]] = get_groupcol(L, Lids)
+        elif len(L["specials"]) > 0:
+            L[ENABLED_COLS[0]] = get_discol(L, L["specials"])
+            L[GROUPS_COLS[0]] = get_groupcol(L, L["specials"])
+
+    if Rvarcol is None:
+        if RhasIds:
+            R[ENABLED_COLS[0]] = get_discol(R, Rids)
+            R[GROUPS_COLS[0]] = get_groupcol(R, Rids)
+        elif len(R["specials"]) > 0:
+            R[ENABLED_COLS[0]] = get_discol(R, R["specials"])
+            R[GROUPS_COLS[0]] = get_groupcol(R, R["specials"])
 
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
@@ -656,8 +709,13 @@ def row_order_single(L):
         LhasIds = True
         Lids = LcondIds
 
-    if LhasIds and Lvarcol is None:
-        L[ENABLED_COLS[0]] = get_discol(L, Lids)
+    if Lvarcol is None:
+        if LhasIds:
+            L[ENABLED_COLS[0]] = get_discol(L, Lids)
+            L[GROUPS_COLS[0]] = get_groupcol(L, Lids)
+        elif len(L["specials"]) > 0:
+            L[ENABLED_COLS[0]] = get_discol(L, L["specials"])
+            L[GROUPS_COLS[0]] = get_groupcol(L, L["specials"])
 
     (LhasCoord, Lcoord) = has_coord(L)
 
@@ -724,12 +782,12 @@ def row_order_single(L):
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     single_dataset = (left_filename == right_filename) or (right_filename is None)
     try:
-        (Lh, Ld, Ltype) = read_csv(left_filename, csv_params, unknown_string)
+        (Lh, Ld, Ltype, Lspecials) = read_csv(left_filename, csv_params, unknown_string)
     except ValueError as arg:
         raise CSVRError("Error reading the left hand side data: %s" % arg)
     except csv.Error as arg:
         raise CSVRError("Error reading the left hand side data: %s" % arg)
-    L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None}
+    L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Lspecials}
 
     if single_dataset:
         (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L)
@@ -738,12 +796,12 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
         R = None
     else:
         try:
-            (Rh, Rd, Rtype) = read_csv(right_filename, csv_params, unknown_string)
+            (Rh, Rd, Rtype, Rspecials) = read_csv(right_filename, csv_params, unknown_string)
         except ValueError as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
         except csv.Error as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
-        R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None}
+        R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Rspecials}
         (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R)
         L['order'] = Lorder
         R['order'] = Rorder
@@ -811,8 +869,8 @@ def main(argv=[]):
     # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
     # res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
     
-    rep = "/home/egalbrun/short/raja_time/"
-    res, single = importCSV(rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv")
+    rep = "/home/egalbrun/short/raja_small/"
+    res, single = importCSV(rep+"data_RHSk.csv", rep+"data_RHSo.csv")
 
     # res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
     pdb.set_trace()

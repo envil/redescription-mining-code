@@ -421,7 +421,7 @@ class Miner(object):
                     for side in [0,1]:
                     ##for side in [1]:
                         ### check whether we are extending a redescription with this side empty
-                        for v in red.availableColsSide(side, self.deps, self.data.single_dataset):
+                        for v in red.availableColsSide(side, self.data, self.data.single_dataset):
                             if not self.questionLive(): return
 
                             if self.double_check:

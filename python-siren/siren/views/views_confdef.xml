@@ -48,56 +48,44 @@
       <parameter>
 	<name>alpha_off</name>
 	<label>Transparency off</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Turn transparency off.</legend>
-	<default><value>1</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<default><value>0</value></default>
       </parameter>
       <parameter>
 	<name>miss_details</name>
 	<label>Detailed missing</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Show details of different missing values.</legend>
-	<default><value>0</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<default><value>1</value></default>
       </parameter>
     <parameter>
 	<name>draw_delta</name>
 	<label>Draw uncovered</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Draw uncovered entities (map)</legend>
 	<default><value>1</value></default>
-	<options><value>no</value><value>yes</value></options>
       </parameter>
       <parameter>
 	<name>click_entities</name>
 	<label>Click entities</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Show details entities labels on click.</legend>
-	<default><value>0</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<default><value>1</value></default>
       </parameter>
       <parameter>
 	<name>hover_entities</name>
 	<label>Hover entities</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Show details entities labels on hover.</legend>
-	<default><value>1</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<default><value>0</value></default>
       </parameter>
       <parameter>
 	<name>hover_coords</name>
 	<label>Hover coordinates</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Show coordinates on hover.</legend>
-	<default><value>1</value></default>
-	<options><value>yes</value><value>no</value></options>
+	<default><value>0</value></default>
       </parameter>
 
     <parameter>
@@ -123,11 +111,9 @@
           <parameter>
 	<name>literals_contrib</name>
 	<label>Show literals contribution</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Show contribution of literals (PaCo)</legend>
 	<default><value>0</value></default>
-	<options><value>no</value><value>yes</value></options>
       </parameter>
    </section>
    </section>
@@ -300,11 +286,9 @@
       <parameter>
 	<name>map_poly</name>
 	<label>Polygons</label>
-	<parameter_type>single_options</parameter_type>
-	<value_type>text</value_type>
+	<parameter_type>boolean</parameter_type>
 	<legend>Use polygons to represent entities on the map</legend>
 	<default><value>1</value></default>
-	<options><value>no</value><value>yes</value></options>
       </parameter>
     </section>
     </section>

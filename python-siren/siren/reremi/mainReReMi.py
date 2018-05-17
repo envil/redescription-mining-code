@@ -423,6 +423,7 @@ def run_printout(args):
     loaded = loadAll(args[:-1])
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
+    
     if reds is None:
         reds = []
         if "queries" in filenames:

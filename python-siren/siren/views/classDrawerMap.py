@@ -429,7 +429,7 @@ class DrawerMap(DrawerBasis):
         MapBase.makeBasemapBack(self.view.getParentPreferences(), self.bm_args, self.bm)
 
     def drawPoly(self):
-        return self.getPltDtH().hasPolyCoords() & self.getSettBoolV("map_poly", self.MAP_POLY)
+        return self.getPltDtH().hasPolyCoords() & self.getSettV("map_poly", self.MAP_POLY)
 
     def getPosInfo(self, x, y):
         if self.bm is None:

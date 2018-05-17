@@ -226,7 +226,7 @@ class ExportFigsDialog(object):
         self.exfileTxt = wx.TextCtrl(self.dlg, value='', size=(500,10), style=wx.TE_READONLY)
 
         self.format_options = {'format': {"label": "Format", "order":1, "opts": [(None, ""), ('png', 'png'), ('eps', 'eps'), ('pdf', 'pdf')]},
-                               'stamp': {"label": "Stamp", "order":2, "opts": [(False, 'No'), (True, 'Yes')]},
+                               'stamp': {"label": "Stamp", "order": 2, "opts": [(True, 'Yes'), (False, 'No')]},
                                'with_disabled': {"label": "Disabled", "order":3, "opts": [(False, 'Exclude'), (True, 'Include')]},
                                'viewT': {"label": "View type", "order":4, "opts": []}}
 
@@ -244,7 +244,7 @@ class ExportFigsDialog(object):
         so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
         so_sizer.Add(self.height_ctrl, 0)
         label = wx.StaticText(self.dlg, wx.ID_ANY, "Width:")
-        self.width_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "600")
+        self.width_ctrl = wx.TextCtrl(self.dlg, ctrl_id, "800")
         so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
         so_sizer.Add(self.width_ctrl, 0)
 

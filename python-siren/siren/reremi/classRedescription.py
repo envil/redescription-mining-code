@@ -135,25 +135,25 @@ class Redescription(object):
     ###################################
     for rset_id in ["all", "learn", "test", "cond"]:
 
-        what = "meanJSuppI"
-        expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
-        expSupp = "%s:prc:I" % rset_dets[rset_id]["exp"]
-        name = "%s%s" % (what, rset_dets[rset_id]["name"])
-        exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
-                              "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
-                              "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
-                              "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
-        tex_fld_defs[name] = ""
+        # what = "meanJSuppI"
+        # expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
+        # expSupp = "%s:prc:I" % rset_dets[rset_id]["exp"]
+        # name = "%s%s" % (what, rset_dets[rset_id]["name"])
+        # exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
+        #                       "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
+        #                       "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+        #                       "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
+        # tex_fld_defs[name] = ""
 
-        what = "meanJSuppU"
-        expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
-        expSupp = "%s:prc:U" % rset_dets[rset_id]["exp"]
-        name = "%s%s" % (what, rset_dets[rset_id]["name"])
-        exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
-                              "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
-                              "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
-                              "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
-        tex_fld_defs[name] = ""
+        # what = "meanJSuppU"
+        # expJ = "%s:acc:" % rset_dets[rset_id]["exp"]
+        # expSupp = "%s:prc:U" % rset_dets[rset_id]["exp"]
+        # name = "%s%s" % (what, rset_dets[rset_id]["name"])
+        # exp_details[name] =  {"exp": "2./((1./(%s))+(100./(%s)))" % (expJ, expSupp), "fmt": ".3f",
+        #                       "lbl_gui": rset_dets[rset_id]["lbl_gui"]+what,
+        #                       "lbl_txt": "%s%s" % (what, rset_dets[rset_id]["lbl_txt"]),
+        #                       "lbl_tex": "%s%s" % (what, rset_dets[rset_id]["lbl_tex"])}
+        # tex_fld_defs[name] = ""
 
         
         ### COMMON STATS
@@ -588,17 +588,16 @@ class Redescription(object):
     def length(self, side):
         return len(self.queries[side])
         
-    def availableColsSide(self, side, deps = None, single_dataset=False):
+    def availableColsSide(self, side, data=None, single_dataset=False):
         if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
             tt = set(self.lAvailableCols[side])
-	    if single_dataset:
-		tt &= set(self.lAvailableCols[1-side])
-            if deps is not None and len(deps) > 0:
-                tn = tt
-                excl = set()
-                for c in self.queries[1-side].invCols():
-                    excl |= deps[c]
-                tt = [t for t in tn if len(deps[t] & excl) == 0]                
+            if single_dataset:
+                tt &= set(self.lAvailableCols[1-side])
+            if data is not None:
+                for ss in [0,1]:
+                    if data.hasGroups(ss):
+                        for c in self.queries[ss].invCols():
+                            tt = [t for t in tt if data.areGroupCompat(t, c, side, ss)]
             return tt
         return set() 
     def nbAvailableCols(self):

@@ -231,6 +231,66 @@ class SingleOptionsCParameter(CParameter):
         return self._options[self._default]
 
 
+class BooleanCParameter(SingleOptionsCParameter):
+    type_id = "boolean"
+    opts_data = [False, True]   
+    map_str = {"yes": True, "no": False}
+    inv_str = {True: "yes", False: "no"}
+    
+    def __init__(self, name=None, label=None, default=None, value_type=bool, options=None, legend=None):
+        CParameter.__init__(self, name, label, default, value_type, legend)
+        self._options = self.opts_data
+
+    def parseNode(self, node):        
+        CParameter.parseNode(self, node)
+        et = node.getElementsByTagName("default")
+        if len(et) > 0:
+            self._default = toolRead.getValue(et[0], bool)
+        if self._default is None:
+            raise Exception("Default value for param %s not among options!"% self._name)
+
+    def getParamValue(self, raw_value, index=False):
+        if index:
+            tmp =  toolRead.parseToType(raw_value, int)
+            if tmp is not None and tmp >= 0 and tmp < len(self._options):
+                return tmp
+        elif self.map_str.get(raw_value) is not None:
+            return int(self.map_str[raw_value])
+        return None
+
+    def getParamData(self, raw_value, index=False):
+        if index:
+            tmp =  toolRead.parseToType(raw_value, int)
+            if tmp is not None and tmp >= 0 and tmp < len(self._options):
+                return self._options[tmp]
+        return self.map_str.get(raw_value)
+
+    def getParamText(self, raw_value, index=False):
+        tmp = self.getParamData(raw_value, index)
+        if tmp is not None:
+            return self.inv_str.get(tmp)
+        return None
+        
+    def getParamTriplet(self, raw_value, index=False):
+        tmp = self.getParamValue(raw_value, index)
+        if tmp is not None:
+            return {"value": tmp, "data": self._options[tmp], "text": self.inv_str[self._options[tmp]]}
+        else:
+            return None
+        
+    def getDefaultValue(self):
+        return int(self._default)
+        
+    def getDefaultText(self):
+        return self.inv_str[self._default]
+
+    def getDefaultData(self):
+        return self._default
+        
+    def getOptionsText(self):
+        return [self.inv_str[o] for o in self._options]
+
+        
 class MultipleOptionsCParameter(SingleOptionsCParameter):
     type_id = "multiple_options"
 
@@ -318,8 +378,9 @@ class ColorCParameter(CParameter):
 
 class PreferencesManager(object):
     parameter_types = {"open": OpenCParameter,
-               "range": RangeCParameter,
+               "range": RangeCParameter,               
                "single_options": SingleOptionsCParameter,
+               "boolean": BooleanCParameter,
                "multiple_options": MultipleOptionsCParameter,
                "color_pick": ColorCParameter}
     MTCH_ST = "^(?P<basis>[^0-9]*)((_s(?P<side>[01])_(?P<typ>[0-9]))|(_s(?P<oside>[01]))|(_(?P<otyp>[0-9])))$"

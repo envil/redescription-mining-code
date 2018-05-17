@@ -354,7 +354,7 @@ class DataWrapper(object):
 
     def _readRedescriptionsFromFile(self, filename, data=None):
         reds = Batch([])
-        show_ids = None
+        rshowids = None
 
         if data is None:
             if self.data is None:

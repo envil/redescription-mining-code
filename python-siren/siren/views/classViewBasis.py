@@ -269,13 +269,6 @@ class ViewBasis(object):
             
     #### SEC: HANDLING SETTINGS
     ###########################################
-    def getSettBoolV(self, key, default=False):
-        t = self.getParentPreferences()
-        try:
-            v = t[key]["data"] == "yes"
-        except:            
-            v = default
-        return v
     def getSettV(self, key, default=False):
         t = self.getParentPreferences()
         try:
@@ -358,7 +351,7 @@ class ViewBasis(object):
         colhigh = self.getColorHigh()
         fontprops = self.getFontProps()
         defaults = self.getDrawSettDef()
-        if self.getSettBoolV('miss_details'):
+        if self.getSettV('miss_details'):
             zord_miss = self.DEF_ZORD
         else:
             zord_miss = -1       
@@ -372,7 +365,7 @@ class ViewBasis(object):
             dd[v] = p
 
         css = {"fontprops": fontprops, "draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
-               "delta_on": self.getSettBoolV('draw_delta', self.DELTA_ON)}
+               "delta_on": self.getSettV('draw_delta', self.DELTA_ON)}
         for (p, iid) in enumerate([SSetts.Exo, SSetts.Eox, SSetts.Exx, SSetts.Eoo]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),

@@ -125,7 +125,7 @@ class ExpMiner(object):
                     ### WARNING DANGEROUS few extensions for DEBUG!
                     for side in [0,1]:
                         ### check whether we are extending a redescription with this side empty
-                        for v in red.availableColsSide(side, self.constraints.getDeps(), self.data.single_dataset):
+                        for v in red.availableColsSide(side, self.data, self.data.single_dataset):
                             if not self.questionLive():
                                 nextge = []                        
                             else:
@@ -239,15 +239,6 @@ class Miner(object):
         self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
         self.partial = {"results":[], "batch": Batch()}
         self.final = {"results":[], "batch": Batch()}
-
-        ### Dependencies between variables 
-        deps = []
-        if self.data.hasNames():
-            names = self.data.getNames()
-            if len(names[0]) == len(names[1]) and re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", names[0][0]) is not None:
-                for name in names[0]:
-                    deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
-        self.constraints.setDeps(deps)
 
     def initCharbon(self):
         if self.constraints.getCstr("algo_family") == "trees":
@@ -500,8 +491,7 @@ class Miner(object):
         #     for idR in ids[1][:1]:
         for idL in ids[0]:
             for idR in ids[1]:
-                if ( not self.constraints.hasDeps() or \
-                       len(self.constraints.getDeps(idR) & self.constraints.getDeps(idL)) == 0) and \
+                if self.data.areGroupCompat(idL, idR) and \
                        ( not self.data.isSingleD() or idR > idL or idR not in ids[0] or idL not in ids[1]):
                     if done is None or (idL, idR) not in done:
                         explore_list.append((idL, idR, self.getPairLoad(idL, idR)))

@@ -61,6 +61,7 @@ class ColM(object):
         self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
         self.vect = None
+        self.gid = -1
         
     def simpleBool(self):
         return False
@@ -71,6 +72,13 @@ class ColM(object):
     def rows(self):
         return set(range(self.N))
 
+    def setGroupId(self, gid=-1):
+        self.gid = gid
+    def getGroupId(self):
+        return self.gid
+    def hasGroup(self):
+        return self.gid > -1
+    
     def setId(self, nid):
         self.id = nid
 
@@ -210,6 +218,8 @@ class ColM(object):
         act = ""
         if not self.getEnabled():
             act = " (OFF)"
+        if self.hasGroup():
+            act += " [gid=%d]" % self.getGroupId()
         return "%s variable %i %s%s, %d missing values" %(self.getType(), self.getId(), self.getName().encode('ascii', 'replace'), act, self.lMiss())
 
     def suppInBounds(self, min_in=-1, min_out=-1):
@@ -237,7 +247,8 @@ class BoolColM(ColM):
     values_eq = {True:1, False:0}
     NA = NA_bool
 
-    values = {'true': True, 'false': False, 't': True, 'f': False, '0': False, '0.0': False, '1': True, 0:False, 1:True, None: None}
+    values = toolRead.BOOL_MAP
+    
     def parseList(listV, indices=None, force=False):
         miss = set()
         if force:
@@ -1444,16 +1455,16 @@ class Data(object):
 
                     
     def hasMissing(self, side=None):
-        for side in self.getSides(side):
-            for c in self.cols[side]:
+        for sside in self.getSides(side):
+            for c in self.cols[sside]:
                 if c.hasMissing():
                     return True
         return False
 
     def getAllTypes(self, side=None):
         typs = []
-        for side in self.getSides(side):
-            typs.extend([col.typeId() for col in self.cols[side]])
+        for sside in self.getSides(side):
+            typs.extend([col.typeId() for col in self.cols[sside]])
         return set(typs)
 
     def getCommonType(self, side):
@@ -1462,6 +1473,27 @@ class Data(object):
             return s.pop()
         return None
 
+    def hasGroups(self, side=None):
+        if side is None:            
+            return any([self.hasGroups(sside) for sside in self.getSides(side)])
+        return any([col.hasGroup() for col in self.cols[side]])
+    def getCidsGroup(self, gid=-1, side=None):
+        if side is None:
+            group = []
+            for sside in self.getSides(side):
+                group.extend([(sside, cid) for cid in self.getCidsGroup(gid, sside)])
+            return group
+        return [col.getId() for col in self.cols[side] if col.getGroupId() == gid]
+    def getCidsGroupForCid(self, side, cid, other_side=False):
+        gid = self.col(side, cid).getGroupId()
+        if other_side:
+            return self.getCidsGroup(gid, 1-side)
+        return self.getCidsGroup(gid, side)
+    def areGroupCompat(self, cidA, cidB, sideA=0, sideB=1):
+        gidA = self.col(sideA, cidA).getGroupId()
+        gidB = self.col(sideB, cidB).getGroupId()
+        return gidA == -1 or gidB == -1 or gidA != gidB
+    
         
     def isSingleD(self):
         return self.single_dataset
@@ -1850,6 +1882,8 @@ class Data(object):
             rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
         mean_denses = [np.mean([col.density() for col in self.cols[0]]),
                        np.mean([col.density() for col in self.cols[1]])]
+        #### FORCE SPARSE mean_denses = [0,0]
+        #### FORCE DENSE  mean_denses = [1,1]
         argmaxd = 0
         if mean_denses[0] < mean_denses[1]:
             argmaxd = 1
@@ -1858,7 +1892,7 @@ class Data(object):
                       1-argmaxd: {"meth": "dense", "details": full_details}}
         elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE            
             methot = "triples"
-            if not self.hasDisabledCols(1-argmaxd) and sum([not col.simpleBool() for col in self.cols[1-argmaxd]])==0:
+            if not self.hasDisabledCols(1-argmaxd) and not self.hasGroups(1-argmaxd) and sum([not col.simpleBool() for col in self.cols[1-argmaxd]])==0:
                 methot = "pairs"
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
@@ -1868,7 +1902,7 @@ class Data(object):
             if self.isGeospatial() or len(rids) > 0:
                 if not simpleBool[1-argmaxd]: ### is not only boolean so can have names and coords
                     methot = "pairs"
-                    if self.hasDisabledCols(argmaxd) or not simpleBool[argmaxd]:
+                    if self.hasDisabledCols(argmaxd) or self.hasGroups(argmaxd) or not simpleBool[argmaxd]:
                         methot = "triples"
                     styles = {argmaxd: {"meth": methot, "details": full_details},
                               1-argmaxd: {"meth": "triples", "details": True, "inline": inline}}
@@ -1896,7 +1930,7 @@ class Data(object):
         for side in sides:
     #### check whether some column name is worth storing
             cids = {}
-            if sum([col.getName() != cid or not col.getEnabled() for cid, col in enumerate(self.cols[side])]) > 0:
+            if sum([col.getName() != cid or not col.getEnabled() or col.hasGroupId() for cid, col in enumerate(self.cols[side])]) > 0:
                 type_smap = None
                 if full_details and styles[side]["meth"] == "dense":
                     type_smap = {}
@@ -1908,8 +1942,10 @@ class Data(object):
 
     def writeCSVDense(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         discol = []
+        groupscol = []
         if self.hasDisabledCols(side) or (single_dataset and self.hasDisabledCols()):
             discol.append(csv_reader.ENABLED_COLS[0])
+            ### ADD VALUES IN THE ENABLED COL TO FILL FOR SPECIAL COLS
             if details and self.hasSelectedRows():
                 discol.append(0)
             if details and self.isGeospatial():
@@ -1923,10 +1959,26 @@ class Data(object):
                     discol.append(Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())])
                 else:
                     discol.append(Data.enabled_codes[col.getEnabled()])
+                    
+        if self.hasGroups(side)  or (single_dataset and self.hasGroups()):
+            groupscol.append(csv_reader.GROUPS_COLS[0])
+            ### ADD VALUES IN THE ENABLED COL TO FILL FOR SPECIAL COLS
+            if details and self.hasSelectedRows():
+                groupscol.append(-1)
+            if details and self.isGeospatial():
+                groupscol.append(-1)
+                groupscol.append(-1)
+            if details and self.isConditional() and not self.isGeoConditional():
+                groupscol.extend([-1 for i in range(len(self.getColsC()))])
 
+            for cid, col in enumerate(self.cols[side]):
+                groupscol.append(col.getGroupId())
+
+                    
         header = []
         colsC = None
-        if (details and len(rids) > 0) or len(discol) > 0:
+        inc_ids = (details and len(rids) > 0) or len(discol) > 0 or len(groupscol) > 0
+        if inc_ids:
             header.append(csv_reader.IDENTIFIERS[0])
         if details and self.hasSelectedRows():
             header.append(csv_reader.ENABLED_ROWS[0])
@@ -1953,10 +2005,12 @@ class Data(object):
             csv_reader.write_row(csvf, header)
         if len(discol) > 0:
             csv_reader.write_row(csvf, discol)            
+        if len(groupscol) > 0:
+            csv_reader.write_row(csvf, groupscol)            
             
         for n in range(self.N):
             row = []
-            if (details and len(rids) > 0) or len(discol) > 0:
+            if inc_ids:
                 row.append(rids.get(n,n))
             if details and self.hasSelectedRows():
                 row.append(Data.enabled_codes[n not in self.selectedRows()])
@@ -2008,6 +2062,14 @@ class Data(object):
                         csv_reader.write_row(csvf, [csv_reader.ENABLED_COLS[0], cids.get(cid,cid), tmp])
                     else:
                         csv_reader.write_row(csvf, [csv_reader.ENABLED_COLS[0], cid, tmp])
+
+        if self.hasGroups(side)  or (single_dataset and self.hasGroups()):
+            for cid, col in enumerate(self.cols[side]):
+                if inline:
+                    csv_reader.write_row(csvf, [csv_reader.GROUPS_COLS[0], cids.get(cid,cid), col.getGroupId()])
+                else:
+                    csv_reader.write_row(csvf, [csv_reader.GROUPS_COLS[0], cid, col.getGroupId()])
+                        
 
         fillR = False
         ### if names are not written inline, add the entities names now, that serves to recovers the correct number of lines
@@ -2535,11 +2597,16 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 while col is None and len(type_ids) >= 1:
                     col = type_ids.pop().parseList(values, indices[side])
 
-            if col is not None and col.N == N:
+            if col is not None and col.N == N:                
                 if not det.get("enabled", True) or \
                        (csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None \
                         and not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito] ):
                     col.flipEnabled()
+                if csv_data["data"][side][csv_reader.GROUPS_COLS[0]] is not None: 
+                    gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
+                    col.setGroupId(gid)
+                ## if not det.get("enabled", True) or \
+                    
                 addCol(cols, col, sito, det.get("name", name))
             else:
                 # pdb.set_trace()
@@ -2823,14 +2890,15 @@ def main():
         #     for col in data.cols[side]:
         #         print col
     
-    rep = "/home/egalbrun/short/EA_bio_and_variables/"
-    pdb.set_trace()
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    data.writeCSV([rep+"data_LHSx.csv", rep+"data_RHSx.csv"])
-    print data
+    rep = "/home/egalbrun/short/raja_small/"
 
-    dataX = Data([rep+"data_LHSx.csv", rep+"data_RHSx.csv", {}, ""], "csv")
-    print dataX
+    data = Data([rep+"data_LHSo.csv", rep+"data_RHSo.csv", {}, ""], "csv")
+    data.writeCSV([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv"])
+    # print data
+
+    dataX = Data([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv", {}, ""], "csv")
+    # print dataX
+    pdb.set_trace()
     # rep = "/home/egalbrun/short/raja_time/"
     # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
 

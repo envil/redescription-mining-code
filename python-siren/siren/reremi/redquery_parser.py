@@ -12,13 +12,12 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '18.116.14.09.26'
+__version__ = '18.137.15.31.04'
 
 class RedQueryParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, variable_mark='v', **kwargs):
+    def __init__(self, whitespace=None, nameguard=True, **kwargs):
         super(RedQueryParser, self).__init__(whitespace=whitespace,
             nameguard=nameguard, **kwargs)
-	self.variable_mark = variable_mark
 
     @rule_def
     def _QUERIES_(self):
@@ -315,8 +314,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._STRING_()
                 with self._option():
-                    self._pattern(self.variable_mark+r'\d+')
-                self._error('expecting one of: '+self.variable_mark+'\\d+')
+                    self._pattern(r'v\d+')
+                self._error('expecting one of: v\\d+')
 
     @rule_def
     def _categories_(self):
@@ -350,8 +349,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._STRING_()
                 with self._option():
-                    self._pattern(r'\d+')
-                self._error('expecting one of: \\d+')
+                    self._pattern(r'\d+([.])?\d*')
+                self._error('expecting one of: \\d+([.])?\\d*')
 
     @rule_def
     def _variable_value_(self):

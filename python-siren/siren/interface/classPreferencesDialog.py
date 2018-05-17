@@ -53,7 +53,8 @@ class PreferencesDialog(wx.Dialog):
             sec_id = wx.NewId()
             self.tabs.append(sec_id)
             self.controls_map[sec_id] = {"button": {}, "range": {},
-                             "open": {}, "single_options": {}, "multiple_options": {}, "color_pick": {}}
+                             "open": {}, "boolean": {}, "single_options": {},
+                             "multiple_options": {}, "color_pick": {}}
 
             conf = wx.Panel(self.nb, -1)
             top_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -69,6 +70,8 @@ class PreferencesDialog(wx.Dialog):
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
             for txtctrl in self.controls_map[sec_id]["range"].itervalues():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
+            for choix in self.controls_map[sec_id]["boolean"].itervalues():
+                self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
             for choix in self.controls_map[sec_id]["single_options"].itervalues():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
             for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
@@ -101,6 +104,24 @@ class PreferencesDialog(wx.Dialog):
 
                 top_sizer.Add(text_sizer, 0, wx.EXPAND|wx.ALL, 5)
 
+        ########## ADD BOOLEAN PARAMETERS
+        #so_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        if len(parameters["boolean"]) > 0: 
+            so_sizer = wx.GridSizer(rows=len(parameters["boolean"]), cols=2, hgap=5, vgap=5)
+            for item_id in parameters["boolean"]:
+
+                item = self.pref_handle.getPreferencesManager().getItem(item_id)
+                ctrl_id = wx.NewId()
+                label = wx.StaticText(frame, wx.ID_ANY, item.getLabel()+":")
+                self.controls_map[sec_id]["boolean"][item_id] = wx.Choice(frame, ctrl_id)
+                self.controls_map[sec_id]["boolean"][item_id].AppendItems(strings=item.getOptionsText())
+                self.objects_map[ctrl_id]= (sec_id, "boolean", item_id)
+                so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
+                so_sizer.Add(self.controls_map[sec_id]["boolean"][item_id], 0)
+
+            top_sizer.Add(so_sizer, 0,  wx.EXPAND|wx.ALL, 5)
+
+                
         ########## ADD SINGLE OPTIONS PARAMETERS
         #so_sizer = wx.BoxSizer(wx.HORIZONTAL)
         if len(parameters["single_options"]) > 0: 
@@ -259,7 +280,10 @@ class PreferencesDialog(wx.Dialog):
         for ty in ["open", "range"]:
             for item_id, ctrl_txt in self.controls_map[sec_id][ty].items():
                 ctrl_txt.SetValue(vdict[item_id]["text"])
-
+                
+        for item_id, ctrl_bool in self.controls_map[sec_id]["boolean"].items():
+            ctrl_bool.SetSelection(vdict[item_id]["value"])
+                
         for item_id, ctrl_single in self.controls_map[sec_id]["single_options"].items():
             ctrl_single.SetSelection(vdict[item_id]["value"])
 
@@ -280,6 +304,15 @@ class PreferencesDialog(wx.Dialog):
                     vdict[item_id] = tmp
                 else:
                     vdict[item_id] = pit.getDefaultTriplet()
+
+        for item_id, ctrl_bool in self.controls_map[sec_id]["boolean"].items():
+                pit = self.pref_handle.getPreferencesManager().getItem(item_id)
+                tmp = pit.getParamTriplet(ctrl_bool.GetSelection(), True)
+                if tmp is not None:
+                    vdict[item_id] = tmp
+                else:
+                    vdict[item_id] = pit.getDefaultTriplet()
+
 
         for item_id, ctrl_single in self.controls_map[sec_id]["single_options"].items():
                 pit = self.pref_handle.getPreferencesManager().getItem(item_id)
