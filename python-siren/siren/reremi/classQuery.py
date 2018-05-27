@@ -1575,14 +1575,23 @@ class QTree(object):
 class Query(object):
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
     side = 0
+
+    ### PROPS WHAT
     elem_letters = {"L": "Literals", "T": "Terms", "C": "Cols"}
     info_what = {"len": "len(self)", "containsOR": "self.usesOr()", "containsAND": "self.usesAnd()" , "depth": "self.max_depth()"}
     for ei, el in elem_letters.items():
         info_what[ei+"set"] = "self.inv%s()" % el
         info_what[ei+"nb"] = "len(self.inv%s())" % el
     mtch_contain = "contains(?P<typ>["+"".join(elem_letters.keys())+"])"
-    mtch_what = [mtch_contain]
 
+    Pwhat_match = "("+ "|".join(["query", mtch_contain]+info_what.keys()) +")"
+    @classmethod
+    def hasPropWhat(tcl, what):
+        return re.match(tcl.Pwhat_match, what) is not None
+    
+    ### PROPS WHICH
+    Pwhich_match = "([0-9q]*)"
+    ### which is generic, search element for containment test, i.e. col id, var name    
     @classmethod
     def testContainsWhich(tcl, which, eset, typ):
         if typ == "C":
@@ -1609,10 +1618,9 @@ class Query(object):
             return 0
         return hash(self.op) + recurse_numeric(self.buk, function =lambda x, trace: hash(t)+sum(trace), args = {"trace": []})
 
-    @classmethod
-    def hasProp(tcl, what):
-        return what in tcl.info_what or any([re.match(mtch, what) for mtch in tcl.mtch_what])
-    def getProp(self, what, which=None, details=None):        
+    def getProp(self, what, which=None, details={}):
+        if what == "query":
+            return self.prepareQuery(details)
         if what in self.info_what:
             return eval(self.info_what[what])
         tc = re.match(self.mtch_contain, what)
@@ -2156,6 +2164,13 @@ class Query(object):
             #### old code to write the query justified in length lenField
             #### string.ljust(qstr, lenField)[:lenField]
 
+    def prepareQuery(self, details={}):
+        style=details.get("style", "")
+        side=details.get("side")
+        if side is not None and details.get("named", False) and "names" in details:
+            return self.disp(names=details["names"][side], style=style)
+        return self.disp(style=style)        
+            
     def algExp(self):
         def evl(b, op, tmap):
             if isinstance(b, Literal):

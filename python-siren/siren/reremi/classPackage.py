@@ -8,7 +8,7 @@ import re
 
 import pdb
 
-from classRedescription import Redescription, printTexRedList, printRedList, parseRedList
+from classRedescription import Redescription
 from classData import Data, NA_str_def
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
@@ -178,6 +178,7 @@ class Package(object):
     def readRedescriptions(self, data):
         reds = []
         # Load redescriptions
+        rp = Redescription.getRP()
         if 'redescriptions_filename' in self.plist:
             for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):            
                 try:
@@ -186,7 +187,7 @@ class Package(object):
                         rs, rshowids = readRedescriptionsXML(fd, data)
                     else:
                         rs = []
-                        parseRedList(fd, data, rs)
+                        rp.parseRedList(fd, data, rs)
                         rshowids = range(len(rs))
                 except Exception:
                     self.raiseMess()
@@ -350,10 +351,11 @@ def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], wit
         fields_supp = None
         # with codecs.open(filename, encoding='utf-8', mode='w') as f:
     with open(filename, mode='w') as f:
+        rp = Redescription.getRP()
         if style == "tex":
-            f.write(codecs.encode(printTexRedList(red_list, names, fields_supp, nblines=nblines), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines), 'utf-8','replace'))
         else:
-            f.write(codecs.encode(printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines), 'utf-8','replace'))
             
 def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, core=False):
     sections = True

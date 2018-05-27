@@ -1,4 +1,4 @@
-import os, os.path, random, re, numpy
+import os, os.path, random, re, numpy, glob
 import time, math
 import sys
 import pickle
@@ -223,7 +223,7 @@ class Siren():
                 icons[icon_name] = wx.Bitmap(tmp)
             else:
                 icons[icon_name] = wx.NullBitmap
-        return icons
+        return icons    
     @classmethod
     def initConfs(tcl, cfiles):
         conf_defs = []
@@ -232,6 +232,17 @@ class Siren():
             if cf is not None:
                 conf_defs.append(cf)
         return conf_defs
+    @classmethod
+    def initRedProps(tcl, ffiles):
+        fields_fns = []
+        for filen, folder in ffiles:
+            cf = tcl.searchData(filen, "conf", path=[folder])
+            if cf is not None:                
+                fields_fns.append(cf)
+                for mf in glob.glob(re.sub(filen, tcl.ff_mtch, cf)):
+                    if mf != cf:
+                        fields_fns.append(mf)
+        Redescription.setupRP(fields_fns)
     
     titleTool = common_variables["PROJECT_NAME"]+' :: tools'
     titlePref = common_variables["PROJECT_NAME"]+' :: '
@@ -262,6 +273,8 @@ class Siren():
     main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
+    ffiles = [('fields_defs_basic.txt', 'reremi')]
+    ff_mtch = 'fields_defs_*.txt'
     cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface')]
     cfiles_io = [('inout_confdef.xml', 'reremi')]
     
@@ -312,6 +325,7 @@ class Siren():
 
         self.logger = Log()
         self.icons = Siren.initIcons(self.icons_setts)
+        Siren.initRedProps(self.ffiles)
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, pos = wx.DefaultPosition,
                                   size=(tmp[0]*0.66,tmp[1]*0.9), style = wx.DEFAULT_FRAME_STYLE)
@@ -1077,7 +1091,7 @@ class Siren():
             return False
         else:
             self.resetConstraints()
-            self.loadAll()
+            self.loadAll(refresh_rfields=True)
             return True
         
     def expand(self, params={}):
@@ -1273,27 +1287,18 @@ class Siren():
             self.resetFields()            
         
     def OnDefRedsFields(self, flk):
-        wsplits=False
-        if self.dw.getData().hasLT():
-            wsplits=True
-            flk += Redescription.getFSuff(wsplits=wsplits)
+        rp = Redescription.getRP()
+        modifiers = rp.getModifiersForData(self.dw.getData())
 
         choice_list = []
-        selected_ids = []
-        for k in Redescription.getFieldsKeys():
-            if wsplits or not re.match("(test|learn)", Redescription.getFieldsDet(k, "exp")):
-                choice_list.append((k, ChoiceElement(k, "%s (%s)" % (Redescription.getFieldsDet(k, "name"), Redescription.getFieldsDet(k, "exp")))))
-        choice_list.sort(key=lambda x: Redescription.getFieldsDet(x[0], "exp"))
+        for k in rp.getAllFields(flk, modifiers):
+            choice_list.append((k, ChoiceElement(k, "%s" % k)))
+        selected_ids = rp.getCurrentListFields(flk, modifiers)
         
-        cflk = "custom-"+flk
-        if Redescription.hasFieldsList("custom-"+flk):
-            flk = "custom-"+flk
-        selected_ids.extend(Redescription.getFieldsList(flk))
-
         dlg = MultiSelectorDialog(self, choice_list, selected_ids)
         fields = dlg.showDialog()
         if fields is not None:
-            Redescription.setFieldsList(cflk, fields)
+            rp.setCurrentListFields(fields, flk, modifiers)
         return fields
     
     def quitFind(self):
@@ -1819,7 +1824,7 @@ class Siren():
         self.logger.addOut({"error":1, "dw_error":1}, "stderr")
         self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
 
-    def loadAll(self):
+    def loadAll(self, refresh_rfields=False):
         if self.getVizm() is not None:
             self.getVizm().reloadVizTab()
         if self.plant is not None:
@@ -1827,7 +1832,7 @@ class Siren():
         self.reloadVars(review=False)
         self.reloadRows()
         self.clearReds()
-        self.loadReds()
+        self.loadReds(refresh_fields=refresh_rfields)
         self.updateDataInfo()
         
     def reloadAll(self):
@@ -1873,7 +1878,7 @@ class Siren():
         self.doUpdates({"menu":True})
         self.dw.reloaded()
         
-    def loadReds(self, reds=None, sortids=None, path=None):
+    def loadReds(self, reds=None, sortids=None, path=None, refresh_fields=False):
         ## Initialize red lists data
         tab = None
         if self.matchTabType("r"):
@@ -1881,6 +1886,9 @@ class Siren():
         elif self.getDefaultTabId("r") in self.tabs:
             tab = self.tabs[self.getDefaultTabId("r")]
         if tab is not None:
+            if refresh_fields:
+                tab["tab"].resetFields()
+
             if reds is None:
                 for ri, rs in enumerate(self.dw.getReds()):
                     tab["tab"].addData(rs)

@@ -814,8 +814,11 @@ class StatsMiner:
         self.cust_params = cust_params
         
     def run_stats(self):
-        list_fields = Redescription.getFieldsList(k="txt", named=False, wsplits=True, wmissing=self.data.hasMissing())
-        exp_dict = Redescription.getExpDict(list_fields)
+        rp = Redescription.getRP()
+        modifiers = rp.getModifiersForData(data)
+        modifiers["wsplits"] = True
+        list_fields = rp.getListFields("basic", modifiers)
+        exp_dict = rp.getExpDict(list_fields)
         stats_fields = [f for f in list_fields if not re.search("query", f)]
 
         splits_info = self.data.getFoldsInfo()
@@ -841,7 +844,7 @@ class StatsMiner:
             for pos in miner.final["results"]:
                 red = miner.final["batch"][pos]
                 red.recompute(self.data) ### to set the rsets
-                evals_dict = red.compEVals(exp_dict, details={})
+                evals_dict = rp.compEVals(red, exp_dict, details={})
                 stats.append([evals_dict[f] for f in stats_fields])
                 reds.append(red)
             summaries[kfold] = {"reds": reds, "stats": stats}

@@ -57,7 +57,8 @@ class ConnectionDialog(PreferencesDialog):
             sec_id = wx.NewId()
             self.tabs.append(sec_id)
             self.controls_map[sec_id] = {"button": {}, "range": {},
-                             "open": {}, "single_options": {}, "multiple_options": {}, "color_pick": {}}
+                             "open": {}, "boolean": {}, "single_options": {},
+                             "multiple_options": {}, "color_pick": {}}
             
             conf = self
             # conf = wx.Panel(self.nb, -1)
@@ -81,6 +82,8 @@ class ConnectionDialog(PreferencesDialog):
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
             for txtctrl in self.controls_map[sec_id]["range"].itervalues():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
+            for choix in self.controls_map[sec_id]["boolean"].itervalues():
+                self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
             for choix in self.controls_map[sec_id]["single_options"].itervalues():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
             for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():

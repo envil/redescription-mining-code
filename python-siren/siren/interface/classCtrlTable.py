@@ -10,6 +10,7 @@ import pdb
 
 LIST_TYPES_NAMES = ['file', 'run', 'manual', 'history']
 LIST_TYPES_ICONS = [wx.ART_REPORT_VIEW, wx.ART_EXECUTABLE_FILE, wx.ART_LIST_VIEW, wx.ART_LIST_VIEW]
+REPLACE_NONE = "-"
 
 def makeContainersIL(icons):
     size_side = 16
@@ -1148,10 +1149,17 @@ class StaticContent:
             return None
 
     def getItemData(self, iid, pos):
-        details = {"aim": "list", "id": iid, "pos": pos} 
-        dt = ["%s" % self.getItemFieldV(iid, field, details) for field in self.getFields()]
-        ck = self.getItemFieldV(iid, self.getCheckF(), details)==1
+        dt = ["%s" % self.getItemFieldV(iid, field, {"aim": "list", "id": iid, "pos": pos}) for field in self.getFields()]
+        ck = self.getItemFieldV(iid, self.getCheckF(), {"aim": "list", "id": iid, "pos": pos})==1
         return {"cols": dt, "checked": ck}
+
+    def prepareItemVDetails(self, loc_details={}, field=[]):
+        f_details = {"replace_none": REPLACE_NONE, "named": True, "style": "U"}
+        f_details.update(self.getCDetails())
+        f_details.update(loc_details)
+        if len(field) > 2 and field[2] is not None:
+                f_details.update(field[2])
+        return f_details
     
     def getItemFieldV(self, iid, field, details):
         if iid is None or field is None:
@@ -1159,13 +1167,11 @@ class StaticContent:
         item = self.getItemForIid(iid)
         methode = eval(field[1])
         if callable(methode):
-            if len(field) > 2 and field[2] is not None:
-                details.update(field[2])
-            details.update(self.details)
+            feval_details = self.prepareItemVDetails(details, field)
             try:
-                return methode(details)
+                return methode(feval_details)
             except IndexError:
-                methode(details)
+                methode(feval_details)
         else:
             return methode
     def getListsReferIid(self, iid):
@@ -1174,7 +1180,13 @@ class StaticContent:
     def resetDetails(self, details={}):
         self.resetAllSorts()
         self.details = details
-
+    def getCDetails(self):
+        return self.details
+    def getCDetail(self, dk):
+        return self.details.get(dk)
+    def setCDetail(self, dk, v):
+        self.details[dk] = v
+        
     def resetAllSorts(self):
         for lk, ll in self.lists.items():
             ll.setSort()
@@ -1411,9 +1423,9 @@ class RedsSet(EditableContent):
     str_red = 'item'
 
     FIRST_FIELDS = [('', str_red+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT),
-                    ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
-                    ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                    ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
+                    ('id', str_red+'.getShortRid', None, StaticContent.width_colid, wx.LIST_FORMAT_LEFT)] #,
+                    # ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
+                    # ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
     LAST_FIELDS = [] #('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
         
     name_m = str_red+'.getQueriesU'
@@ -1424,39 +1436,32 @@ class RedsSet(EditableContent):
         self.parent = parent
         self.resetFields()
 
-    def getFieldsList(self, splits=0):
-        tmp = []        
-        flk = "gui"
-        if Redescription.hasFieldsList("custom-"+flk, wsplits=splits):
-            flk = "custom-"+flk
-        for fk in Redescription.getFieldsList(flk, wsplits=splits):
-            dets = {"exp": Redescription.getFieldsDet(fk, "exp", ""), "rnd": Redescription.getFieldsDet(fk, "rnd"), "k": Redescription.getFieldsDet(fk, "name"), "replace_none": "-"}
-            align = wx.LIST_FORMAT_RIGHT
-            if re.search("s$", Redescription.getFieldsDet(fk, "fmt", "")):
-                align = wx.LIST_FORMAT_LEFT                
-            tmp.append((Redescription.getFieldsDet(fk, "lbl_gui", "-"),
-                        self.str_red+".getEValGUI", dets, StaticContent.width_colinfo, align))
+    def getFieldsList(self):
+        tmp = []
+        rp = self.getCDetail("rp")
+        if rp is not None and self.parent.hasDataLoaded():
+            modifiers = rp.getModifiersForData(self.parent.dw.getData())
+            for fk in rp.getCurrentListFields("gui", modifiers):
+                lbl = rp.getFieldLbl(fk, style="gui")
+                fmt = rp.getFieldFmt(fk)
+                align = wx.LIST_FORMAT_RIGHT
+                width = StaticContent.width_colinfo
+                if re.search("s$", fmt.get("fmt", "")):
+                    align = wx.LIST_FORMAT_LEFT
+                if re.search("query", lbl):
+                    width = StaticContent.width_colnamew
+                tmp.append((lbl, self.str_red+".getEValGUI", {"k": fk}, width, align))
         return self.FIRST_FIELDS + tmp + self.LAST_FIELDS        
         
     def resetFields(self):
         self.resetAllSorts()
-        if self.parent.hasDataLoaded() and self.parent.dw.getData().hasLT():
-            self.fields = self.getFieldsList(1)
-        elif self.parent.hasDataLoaded() and self.parent.dw.getData().isConditional():
-            self.fields = self.getFieldsList(-1)
-        else:
-            self.fields = self.getFieldsList(0)
+        self.setCDetail("rp", Redescription.getRP())
+        self.fields = self.getFieldsList()
 
     def recomputeAll(self, data):
         for ri, red in self.items.items():
             red.recompute(data)
-        if data.hasLT():
-            self.fields = self.getFieldsList(1)
-        elif data.isConditional():
-            self.fields = self.getFieldsList(-1)
-        else:
-            self.fields = self.getFieldsList(0)
-
+        self.resetFields()
 
     def filterToOne(self, compare_ids, parameters):
         disable_ids = self.items.filtertofirstIds(compare_ids, parameters, complement=True)

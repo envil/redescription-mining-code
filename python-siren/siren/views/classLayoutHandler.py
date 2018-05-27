@@ -503,25 +503,25 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
         whl = re.sub("_", "", SSetts.labels[i])
         infos_details.append({"id": "x%s" % SSetts.labels_sparts[i], "part_id": i,
                               "label": label_cardP % SSetts.sym_sparts[i],
-                              "fk": "len%s" % whl})
+                              "fk": ":len:%s" % whl})
                 
     for status in [(None, None), (False, None), (True, None), (None, True), (None, False)]:
         i = SSetts.mapStatusToSPart(status)
         whl = re.sub("_", "", SSetts.labels[i])
         infos_details.append({"id": "x%s" % SSetts.labels_sparts[i], "part_id": i, "miss": True,
                               "label": label_cardP % SSetts.sym_sparts[i],
-                              "fk": "len%s" % whl})
+                              "fk": ":len:%s" % whl})
 
-    infos_details.insert(0, {"id": "jacc", "label": label_jacc, "fk": "acc"})
-    infos_details.insert(3, {"id": "lenN", "label": label_cardN, "fk": "lenN"})
-    infos_details.insert(4, {"id": "pval", "label": label_pval, "fk": "pval"})
+    infos_details.insert(0, {"id": "jacc", "label": label_jacc, "fk": ":acc:"})
+    infos_details.insert(3, {"id": "lenN", "label": label_cardN, "fk": ":len:N"})
+    infos_details.insert(4, {"id": "pval", "label": label_pval, "fk": ":pval:"})
 
     infos_details_cond = []
     for f in infos_details:
         infos_details_cond.append(dict(f))
         infos_details_cond[-1]["id"] += ":C"
         infos_details_cond[-1]["label"] = infos_details_cond[-1]["label"]
-        infos_details_cond[-1]["fk"] += "_cond"
+        infos_details_cond[-1]["fk"] = "cond"+infos_details_cond[-1]["fk"]
     
     # for status in [(True, True), (False, False), (True, False), (False, True)]:
     #     i = SSetts.mapStatusToSPart(status)
@@ -643,18 +643,16 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
         blocks = self.infos_details
         if self.withCond():
             blocks = self.infos_details + self.infos_details_cond
+        rp = Redescription.getRP()
         for det in blocks:
             if not det.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
-                v = None
                 if red is not None:
                     fk = det.get("fk")
                     params = self.getPltDtH().getDetailsSplit()
                     if params is not None:
-                        fk = "%s_%s" % (fk, params["rset_id"])
-                    dt = Redescription.exp_details[fk]
-                    v = red.getEValGUI({"exp": dt["exp"], "rnd": dt.get("rnd"), "k": fk})
-                if v is not None:
-                    self.info_items[det["id"]][1].SetLabel(("%"+dt["fmt"]) % v)
+                        fk = "%s%s" % (params["rset_id"], fk)
+                    v = red.getEValGUI({"rp": rp, "k": fk, "to_str": True, "replace_none": "-"})
+                    self.info_items[det["id"]][1].SetLabel(v)
                 else:
                     self.info_items[det["id"]][1].SetLabel("-")
         

@@ -446,15 +446,11 @@ class DrawerBasis(object):
         qrs = self.getPltDtH().getQueries()
 
         red = Redescription.fromQueriesPair(qrs, self.getParentData())
-        tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "lenExx", "pval"]
-        headers = ["qL=", "qR=", "J=", "|supp|=", "pV="]
-
-        # tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "prcExx"]
-        # headers = ["qL=", "qR=", "J=", "%%supp="]
-
-        # tex_fields = ["queryLHS_named", "queryRHS_named", "acc", "prcExx", "acc_ratioTL", "lenI_ratioTA"]
-        # headers = ["qL=", "qR=", "J=", "%%supp=", "J$_{I/O}$=", "supp$_{I/A}$="]
-
+        tex_fields = ["LHS:query:", "RHS:query:", ":acc:", ":perc:Exx"]
+        headers = ["qL=", "qR=", "J=", "%supp="]
+        if self.getParentData().hasLT():            
+            tex_fields.extend(["acc_ratioTL", "len_I_ratioTA"])
+            headers.extend(["J$_{I/O}$=", "supp$_{I/A}$="])
         rr = pref
         tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="T") #, rid=rr)
         if not self.hasElement("red_stamp"):

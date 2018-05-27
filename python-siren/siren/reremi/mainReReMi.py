@@ -9,7 +9,7 @@ import codecs
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
 from classData import Data, NA_str_def
-from classRedescription import Redescription, parseRedList, printRedList, printTexRedList
+from classRedescription import Redescription
 from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
@@ -180,36 +180,34 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     return filenames
 
 def outputResults(filenames, results_batch, data=None, with_headers=True, mode="w", data_recompute=None):
-    wmissing = False
-    if data.hasMissing() or (data_recompute is not None and data_recompute.hasMissing()):
-        wmissing = True
+    rp = Redescription.getRP()
+    modifiers, data_recompute = {}, {}
+    if data is not None:
+        modifiers = rp.getModifiersForData(data)
+    if data_recompute is not None:
+        modifiers_recompute = rp.getModifiersForData(data_recompute)
     fstyle = "basic"
     
     header_recompute = ""
     if data_recompute is not None:
-        fields_recompute = Redescription.getFieldsListCust("stats", wmissing=wmissing)
-        header_recompute = Redescription.dispHeader(fields_recompute) + "\tacc_diff"
+        fields_recompute = rp.getListFields("stats", modifiers_recompute)
+        header_recompute = rp.dispHeaderFields(fields_recompute) + "\tacc_diff"
 
-    wcond = 0
-    if data.isConditional():
-        wcond = -1
     filesfp = {"queries": None, "queries_named": None, "support": None}
     if filenames["queries"] == "-":
         filesfp["queries"] = sys.stdout
     else:
         filesfp["queries"] = open(filenames["queries"], mode)
-    all_fields = Redescription.getFieldsListCust(fstyle, named=False, wsplits=wcond, wmissing=wmissing)
+    all_fields = rp.getListFields(fstyle, modifiers)
     if with_headers:
-        filesfp["queries"].write(Redescription.dispHeader(all_fields)+"\t"+header_recompute+"\n")
+        filesfp["queries"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
 
     names = None
-    all_fields_named = None
     if data is not None and data.hasNames() and "queries_named" in filenames:
         names = data.getNames()
-        all_fields_named = Redescription.getFieldsListCust(fstyle, named=True, wsplits=wcond, wmissing=wmissing)
         filesfp["queries_named"] = open(filenames["queries_named"], mode)
         if with_headers:
-            filesfp["queries_named"].write(Redescription.dispHeader(all_fields_named)+"\t"+header_recompute+"\n")
+            filesfp["queries_named"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
     
     if "support" in filenames:
         filesfp["support"] = open(filenames["support"], mode)
@@ -224,7 +222,7 @@ def outputResults(filenames, results_batch, data=None, with_headers=True, mode="
             red = org.copy()
             red.recompute(data_recompute)
             acc_diff = (red.getAcc()-org.getAcc())/org.getAcc()
-            addto = "\t"+red.disp(fields_recompute)+"\t%f" % acc_diff
+            addto = "\t"+red.disp(list_fields=fields_recompute)+"\t%f" % acc_diff
         filesfp["queries"].write(org.disp(list_fields=all_fields)+addto+'\n')
         if filesfp["queries_named"] is not None:
             filesfp["queries_named"].write(org.disp(names, list_fields=all_fields_named)+addto+'\n')
@@ -311,9 +309,10 @@ def run_filter(args):
                                              loaded["filenames"], loaded["reds"]) 
 
     constraints = Constraints(data, params)
+    rp = Redescription.getRP()
     reds = []
     with open("/home/galbrun/current/redescriptions.csv") as fd:
-        parseRedList(fd, data, reds)
+        rp.parseRedList(fd, data, reds)
 
     rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
     rr_tests = [[73]] ## [2]
@@ -394,12 +393,12 @@ def run_splits(args, splt=""):
         
         splt_fk = filenames["basis"]+ ("_split-%d:%s-kall.txt" % (nb_splits, suff))            
         with open(splt_fk, "w") as f:
-            f.write(printRedList(reds_list, fields=list_fields+["track"]))
+            f.write(rp.printRedList(reds_list, fields=list_fields+["track"]))
             
         for fk, dt in summaries.items():
             splt_fk = filenames["basis"]+ ("_split-%d:%s-k%d.txt" % (nb_splits, suff, fk))            
             with open(splt_fk, "w") as f:
-                f.write(printRedList(dt["reds"], fields=list_fields+["track"]))
+                f.write(rp.printRedList(dt["reds"], fields=list_fields+["track"]))
                 
         nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
         tot = numpy.array(all_stats[-1])
@@ -423,13 +422,13 @@ def run_printout(args):
     loaded = loadAll(args[:-1])
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
-    
+    rp = Redescription.getRP()
     if reds is None:
         reds = []
         if "queries" in filenames:
             try:
                 with open(filenames["queries"]) as fd:
-                    parseRedList(fd, data, reds)
+                    rp.parseRedList(fd, data, reds)
             except IOError:
                 reds = []
 

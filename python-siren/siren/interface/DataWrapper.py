@@ -7,7 +7,7 @@ import time
 
 import pdb
 
-from ..reremi.classRedescription import Redescription, parseRedList
+from ..reremi.classRedescription import Redescription
 from ..reremi.classData import Data, DataError, ColM
 from ..reremi.classQuery import Query, Literal
 from ..reremi.toolICList import ICList
@@ -362,8 +362,9 @@ class DataWrapper(object):
             else:
                 data = self.data
         if os.path.isfile(filename):
+            rp = Redescription.getRP()
             filep = open(filename, mode='r')
-            parseRedList(filep, data, reds)
+            rp.parseRedList(filep, data, reds)
             rshowids = ICList(range(len(reds)), True)
         return reds, rshowids
 

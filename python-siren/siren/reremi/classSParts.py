@@ -7,10 +7,12 @@
 
 from scipy.special import gammaln
 from scipy.stats import binom
-import numpy, random
+import numpy, random, re
 import pdb
 
 def tool_ratio(num, den):
+    if num is None or den is None:
+        return None
     if den == 0:
         if num > 0:
             return float("Inf")
@@ -18,7 +20,6 @@ def tool_ratio(num, den):
             return 0.
     else:
         return float(num)/den
-
 
 def tool_hypergeomPMF(k, M, n, N):
     tot, good = M, n
@@ -41,11 +42,13 @@ class SSetts(object):
 
     # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
     # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
-    labels = ['Exo', 'Eox', 'Exx', 'Eoo', 'Exm', 'Emx', 'Eom', 'Emo', 'Emm' ]
+
     status = [(True, False), (False, True), (True, True), (False, False),
               (True, None), (None, True), (False, None), (None, False), (None, None)]
     labels_status = {True:"1", False:"0", None:"?"}
-    labelsu_status = {True:u"x", False:u"o", None:u"?"}
+    labelsu_status = {True:"x", False:"o", None:"?"}
+    labelsm_status = {True:"x", False:"o", None:"m"}
+    labels = ["E%s%s" % (labelsm_status[slhs], labelsm_status[srhs]) for (slhs, srhs) in status]
     # labelsu_status = {True:u"\u2081", False:u"\u2080", None:u"\u2098"}
     labels_sparts = ["E%s%s" % (labels_status[slhs], labels_status[srhs]) for (slhs, srhs) in status]
     ## WITH UNICODE
@@ -54,7 +57,6 @@ class SSetts(object):
     # sym_status = labels_status
     
     sym_sparts = [sym_status[slhs]+sym_status[srhs] for (slhs, srhs) in status]
-
     
     ### define the numerical values for the parts
     for i, l in enumerate(labels):
@@ -64,6 +66,7 @@ class SSetts(object):
     for i, l in enumerate(io_labels):
         exec("%s = %d" % (l,i))
 
+    map_label_part = dict([(s,p) for (p,s) in enumerate(labels)])
     map_status_part = dict([(s,p) for (p,s) in enumerate(status)])
     @classmethod
     def mapStatusToSPart(tcl, status):
@@ -579,9 +582,23 @@ class SSetts(object):
 
     
 class SParts(object):
-    sets_letters = "PIULROABN"
-    infos = {"acc": "self.acc()", "pval": "self.pVal()", "pr0": "self.proba(0)", "pr1": "self.proba(1)"}
-    props_what = ["len", "supp", "prc"]
+
+    ### PROPS WHAT
+    info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
+    props_what = ["len", "card", "supp", "set", "perc", "ratio"]    
+    Pwhat_match = "("+ "|".join(info_what.keys()+ props_what) +")"
+    @classmethod
+    def hasPropWhat(tcl, what):
+        return re.match(tcl.Pwhat_match, what) is not None
+
+    ### PROPS WHICH
+    sets_letters = "PIULROABN"        
+    Pwhich_match = "("+ "|".join(["["+sets_letters+"]"] + SSetts.map_label_part.keys()) +")"    
+    @classmethod
+    def hasPropWhich(tcl, which):
+        return re.match(tcl.Pwhich_match, which) is not None
+
+    props_stats = [("acc", None), ("len", "I"), ("pval", None)]
     
     def __init__(self, ssetts, N, supports, prs = [1,1]):
         #### init from dict_info
@@ -723,7 +740,7 @@ class SParts(object):
                  if self.prs[side] != -1:
                      sdict["pr_" + str(side)] = self.prs[side]
         sdict["N"] = self.N
-        for info_key, info_meth in SParts.infos.items():
+        for info_key, info_meth in SParts.info_what.items():
             sdict[info_key] = eval(info_meth)
         return sdict
             
@@ -922,34 +939,37 @@ class SParts(object):
     #     return self.lparts_union(self.ssetts.IDS_uncovered, side)
 
     def getProp(self, what, which=None):
-        tmp = None
+        if what in SParts.info_what:
+            return eval(SParts.info_what[what])
         wt = what
-        if what == "prc":
+        if what == "card":
             wt = "len"
-        if what in SParts.props_what:   
-            if which in SSetts.labels:
-                tmp = eval("self.%sP(SSetts.%s)" % (wt, which))
-            elif which in SParts.sets_letters:
-                tmp = eval("self.%s%s()" % (wt, which))
-            if what == "prc" and tmp is not None:
-                tmp = (100.0*tmp)/self.nbRows()
-        elif what in SParts.infos:
-            tmp = eval(SParts.infos[what])
-        return tmp
-    
-    def perc(self, which="I", side=0):
-        methode = eval("self.len%s" % which)
+        elif what == "supp":
+            wt = "set"
+        methode = eval("self.%s" % wt)
         if callable(methode):
-            return (100.0*methode(side))/self.nbRows()
-        return -1
+            return methode(which)
+
+
+    def len(self, which="I"):
+        if which in SSetts.map_label_part:
+            return self.lenP(SSetts.map_label_part[which])
+        elif which in SParts.sets_letters:
+            return eval("self.len%s()" % which)
+    def set(self, which="I"):
+        if which in SSetts.map_label_part:
+            return self.suppP(SSetts.map_label_part[which])
+        elif which in SParts.sets_letters:
+            return eval("self.supp%s()" % which)   
+    def ratio(self, which="I"):
+        return tool_ratio(self.len(which), self.nbRows())
+    def perc(self, which="I"):
+        return tool_ratio(self.len(which), self.nbRows()/100.)
     
     # accuracy
     def acc(self, side=0):
         lenI = self.lenI(side)
-        if lenI == 0:
-            return 0
-        else:
-            return lenI/float(lenI+self.lenD(side))
+        return tool_ratio(lenI, lenI+self.lenD(side))
 
     # redescription p-value using support probabilities (binomial), for redescriptions
     def pValSupp(self):
@@ -1123,17 +1143,26 @@ class SParts(object):
 #             r += '| % 4i ' % self.lpart(i,0)
 #         return s+r+'||'
 
-    def dispSupp(self):
+    def __str__(self):
+        return "SUPPORT:" + self.dispSuppL(sep=" ")
+    
+    def dispSuppL(self, sep="\t"):
+        return sep.join(["card_" + self.ssetts.getLabel(i)+":" + str(len(self.sParts[i]))         for i in range(len(self.sParts))])
+    
+    def dispSupp(self, sep="\t"):
         supportStr = ''
         for i in sorted(self.supp(0)): supportStr += "%i "%i
-        supportStr +="\t"
+        supportStr += sep
         for i in sorted(self.supp(1)): supportStr += "%i "%i
         if self.missing:
-            supportStr +="\t"
+            supportStr += sep
             for i in sorted(self.miss(0)): supportStr += "%i "%i
-            supportStr +="\t"
+            supportStr += sep
             for i in sorted(self.miss(1)): supportStr += "%i "%i
         return supportStr
+
+    def dispStats(self, sep="\t"):
+        return sep.join(["%s%s:%s" % (what, which or "", self.getProp(what, which)) for (what, which) in self.props_stats])
 
     # compute the resulting support and missing when combining X and Y with given operator
     def partsSuppMiss(OR, XSuppMiss, YSuppMiss):
@@ -1205,5 +1234,3 @@ class SParts(object):
         return nsupp
     parseSupportPart = staticmethod(parseSupportPart)
 
-    def __str__(self):
-        return "SUPPORT:" + (" ".join(["card_" + self.ssetts.getLabel(i)+":" + str(len(self.sParts[i]))         for i in range(len(self.sParts))]))
