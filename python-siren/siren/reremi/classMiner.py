@@ -24,7 +24,6 @@ TREE_CLASSES = { "layeredtrees": CharbonTLayer,
 TREE_DEF = CharbonTLayer
 
 CHARBON_MISS_FORCE = False
-CHARBON_MISS_FORCE = True
 
 # PAIR_LOADS = [[1,2,3],
 #               [2,4,6],
@@ -488,8 +487,8 @@ class Miner(object):
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
         ### WARNING DANGEROUS few pairs for DEBUG!
-        # for idL in ids[0][:1]:
-        #     for idR in ids[1][:1]:
+        # for idL in ids[0][:2]:
+        #     for idR in ids[1][:2]:
         for idL in ids[0]:
             for idR in ids[1]:
                 if self.data.areGroupCompat(idL, idR) and \

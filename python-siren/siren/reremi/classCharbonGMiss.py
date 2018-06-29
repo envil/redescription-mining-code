@@ -585,13 +585,19 @@ class CharbonGMiss(CharbonGreedy):
                         literalsL = []
                         literalsR = literalsExt
                         for ltc in literalsFix:
-                            val = bucketsL[1][ltc.getTerm().getCat()]
+                            c = ltc.getTerm().getCat()
+                            if type(c) is set and len(c) > 0:
+                                c = sorted(c)[0]
+                            val = bucketsL[1][c]
                             literalsL.append( Literal(ltc.isNeg(), NumTerm(colL.getId(), val, val)) )
                     else:
                         literalsL = literalsExt                    
                         literalsR = []
                         for ltc in literalsFix:
-                            val = bucketsR[1][ltc.getTerm().getCat()]
+                            c = ltc.getTerm().getCat()
+                            if type(c) is set and len(c) > 0:
+                                c = sorted(c)[0]
+                            val = bucketsR[1][c]
                             literalsR.append( Literal(ltc.isNeg(), NumTerm(colR.getId(), val, val)) )
 
                     return (scores, literalsL, literalsR)
