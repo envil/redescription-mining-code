@@ -38,6 +38,7 @@ class SirenApp(wx.App):
             # DEBUG
             #print "Loading file", sys.argv[-1]
             pos_fn = 1
+            reloadA = False
             while pos_fn > 0 and pos_fn < len(sys.argv):
                 filename = sys.argv[pos_fn]
                 (p, ext) = os.path.splitext(filename)
@@ -65,6 +66,7 @@ class SirenApp(wx.App):
                     if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
                         try:
                             self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
+                            reloadA = True
                         except Exception:
                             pass
                     if filenames["queries"] != "-":
@@ -88,6 +90,7 @@ class SirenApp(wx.App):
                             RHfile = sys.argv[pos_fn]                            
                     try:
                         self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+getDataAddInfo())
+                        reloadA = True
                     except Exception:
                         pass
 
@@ -96,7 +99,7 @@ class SirenApp(wx.App):
                     pos_fn *= -1
                     #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
 
-            reloadA = False
+
             for reds_info in reds_infos:
                 self.frame.loadReds(reds_info[0], reds_info[1], path=reds_info[2])
                 reloadA = True

@@ -187,6 +187,7 @@ class Package(object):
                         rs, rshowids = readRedescriptionsXML(fd, data)
                     else:
                         rs = []
+                        print "HERE"
                         rp.parseRedList(fd, data, rs)
                         rshowids = range(len(rs))
                 except Exception:

@@ -1853,6 +1853,7 @@ class Siren():
             details = {"names": self.dw.getData().getNames()}
             for ti, tab in self.getTabsMatchType("r"):
                 tab["tab"].resetDetails(details, review)
+                tab["tab"].resetFields()
             for ti, tab in self.getTabsMatchType("e"):
                 tab["tab"].resetFields(self.dw, review)
 

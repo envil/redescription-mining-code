@@ -680,10 +680,10 @@ class Redescription(object):
             names = data.getNames()
         else:
             names = [None, None]
-        (queryL, queryR, lpartsList) = tcl.getRP(rp).parseQueries(stringQueries, list_fields, sep, names)
+        (queryL, queryR, lpartsList) = tcl.getRP(rp).parseQueries(stringQueries, names=names)
         supportsS = None
-        if data is not None and stringSupport is not None and type(stringSupport) == str and re.search('\t', stringSupport) :
-            supportsS = SParts.parseSupport(stringSupport, data.nbRows(), data.getSSetts())
+        if data is not None and stringSupp is not None and type(stringSupp) == str and re.search('\t', stringSupp):
+            supportsS = SParts.parseSupport(stringSupp, data.nbRows(), data.getSSetts())
         return tcl.initParsed(queryL, queryR, lpartsList, data, supportsS)
     @classmethod   
     def initParsed(tcl, queryL, queryR, lpartsList={}, data = None, supportsS=None):

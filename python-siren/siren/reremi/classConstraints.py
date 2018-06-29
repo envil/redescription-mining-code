@@ -4,8 +4,6 @@ import pdb
 
 class Constraints(object):
     
-    #     self.cminPairsScore = setts_cust.param['min_score']        
-    config_def = "miner_confdef.xml"
     special_cstrs = {}
     
     def __init__(self, data, params):
@@ -17,9 +15,8 @@ class Constraints(object):
 
         if data is not None:
             self.N = data.nbRows()
-            if data.hasMissing() is False:
+            if data.hasMissing() is False and self._pv.get("parts_type") != "exclu":
                 self._pv["parts_type"] = "grounded"
-
             data.getSSetts().reset(self.getCstr("parts_type"), self.getCstr("method_pval"))
             self.ssetts = data.getSSetts() 
         else:

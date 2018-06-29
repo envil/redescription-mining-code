@@ -30,13 +30,20 @@ def tool_hypergeomPMF(k, M, n, N):
 #same as the following but numerically more precise
 #return comb(good,k) * comb(bad,N-k) / comb(tot,N)
 
-def tool_pValOver(kInter, nbRows, suppL, suppR):
+def tool_pValOver(kInter, nbRows, suppL, suppR, lU=None):
     ## probability that two sets of these size have intersection equal or larger than kInter
-    return sum([ tool_hypergeomPMF(k, nbRows, suppL, suppR) for k in range(kInter, min(suppL, suppR)+1)])
-
-def tool_pValSupp(nbRows, supp, pr):
+    if lU is None:
+        return sum([ tool_hypergeomPMF(k, nbRows, suppL, suppR) for k in range(kInter, min(suppL, suppR)+1)])
+    else:
+        return sum([ tool_hypergeomPMF(k, nbRows, suppL, suppR) for k in range(0, lU - kInter+1)])
+        
+def tool_pValSupp(nbRows, supp, pr, lU=None):
     ## probability that an itemset with marginal probability pr has support equal or larger than supp
-    return 1-binom.cdf(supp-1, nbRows, pr) 
+    if lU is None:
+        return 1-binom.cdf(supp-1, nbRows, pr)
+    else:
+        return binom.cdf(lU-supp, nbRows, pr)         
+
 
 class SSetts(object):
 
@@ -108,9 +115,9 @@ class SSetts(object):
     ## Emm   M  |  M
 
     ## EXTENDING: A op X
-    ##        |     op = AND   |     op = AND   |
-    ##        |   x    o    m  |   x    o    m  |
-    ## ------------------------------------------
+    ##       |     op = OR    |     op = AND   |
+    ##       |   x    o    m  |   x    o    m  |
+    ## -----------------------------------------
     ## Exo   |  ---- xo ----  |  xo   oo   mo  |
     ## Eox   |  xx   ox   mx  |  ---- ox ----  |
     ## Exx   |  ---- xx ----  |  xx   ox   mx  |
@@ -147,7 +154,7 @@ class SSetts(object):
             
         if self.type_parts == type_parts:
             return
-        elif self.type_parts == "none":
+        elif self.type_parts == "none" and type_parts != "exclu":
             return
 
         self.type_parts = type_parts
@@ -168,7 +175,7 @@ class SSetts(object):
 
         # (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm) = range(9)
         self.last_nonmiss = Eoo
-        
+
         if type_parts == "none":
 
             #####################################################################################
@@ -364,6 +371,41 @@ class SSetts(object):
                 self.IDS_uncovered = [Eoo, Emo, Eom, Emm]
 
             ##############################################################
+            #### TEST     J=      |Exo|+|Eox|  /
+            ####               |Exo|+|Eox|+|Exx|
+            ##############################################################
+
+            elif type_parts == "exclu":
+
+                ##### TO COMPUTE ADVANCE while building, INDEXED BY OPERATOR (0: AND, 1: OR)
+                self.IDS_fixnum = [[(tot, Eox)],
+                                   [(tot, Exo)]]
+                self.IDS_varnum = [[(into, Exo), (out, Exx), (out, Emx)],
+                                   [(into, Eoo), (out, Eox), (into, Emo)]]
+                
+                self.IDS_fixden = [[(tot, Eox)],
+                                   [(tot, Exx), (tot, Exo)]]
+                self.IDS_varden = [[(into, Exo), (into, Exx), (out, Exx), (out, Emx)],
+                                   [(into, Eox), (out, Eox), (into, Eoo), (into, Emx), (into, Emo)]]
+
+                self.IDS_out = [[(out, Exo), (out, Emo), (tot, Eoo)],
+                           [(out, Eoo)]]
+                self.IDS_cont = [[(out, Exx)],
+                            [(out, Eox), (into, Emo)]]
+                self.IDS_nsupp = [[(into, Exo), (into, Exx)],
+                             [(tot, Exo), (tot, Exx), (tot, Exm), (into, Emx),
+                                  (into, Eox), (into, Eoo), (into, Emo), (into, Eom), (into, Emm)]]
+
+                #### TO COMPUTE ACCURACY after building
+                self.IDS_dL = [Exo]
+                self.IDS_dR = [Eox]
+                self.IDS_diff = [Exx]
+                self.IDS_inter = [Exo, Eox]
+                self.IDS_uncovered = [Eoo]
+
+                
+
+            ##############################################################
 
             ### TO COMPUTE SUPPORTS, no index
             self.IDS_supp = (Exx, Exo, Exm)
@@ -464,7 +506,6 @@ class SSetts(object):
         meth = eval('self.pVal%sQueryCand' % (self.methodpVal))
         return meth(side, op, neg, lParts, N, prs)
         # return 0 # self.pValSuppQueryCand(side, op, neg, lParts, N, prs)
-
     
     # query p-value using support probabilities (binomial), for candidates
     def pValSuppQueryCand(self, side, op, neg, lParts, N, prs = None):
@@ -477,7 +518,6 @@ class SSetts(object):
                 return 1-tool_pValSupp(N, lInter, prs[side] + lX/N - prs[side]*lX/N)
             else: 
                 return tool_pValSupp(N, lInter, prs[side]*lX/N)
-
 
     # query p-value using marginals (binomial), for candidates
     def pValMargQueryCand(self, side, op, neg, lParts, N, prs = None):
@@ -492,7 +532,6 @@ class SSetts(object):
             else: 
                 return tool_pValSupp(N, lInter, lsupp*lX/(N*N))
 
-
     # query p-value using support sizes (hypergeom), for candidates
     def pValOverQueryCand(self, side, op, neg, lParts, N, prs = None):
         if prs is None:
@@ -500,40 +539,52 @@ class SSetts(object):
         else:
             lInter = self.sumPartsId(side, self.IDS_supp, lParts[self.inOutId(self.into, neg)])
             lsupp = self.sumPartsId(side, self.IDS_supp, lParts[self.inOutId(self.tot, neg)])
-            lX = float(sum(lParts[self.inOutId(self.into, neg)]))     
+            lX = sum(lParts[self.inOutId(self.into, neg)])
             if op:
                 return 1-tool_pValOver(lInter, N, lsupp, lX)
             else: 
                 return tool_pValOver(lInter, N, lsupp, lX)
 
-        
+            
     # redescription p-value using support probabilities (binomial), for candidates
     def pValSuppRedCand(self, side, op, neg, lParts, N, prs = None):
         lInter = self.sumPartsIdInOut(side, neg, self.IDS_fixnum[op] + self.IDS_varnum[op], lParts)
-        lX = float(sum(lParts[self.inOutId(self.into, neg)]))     
+        lUnion = None
+        if self.type_parts == "exclu":
+            lUnion = self.sumPartsIdInOut(side, neg, self.IDS_fixden[op] + self.IDS_varden[op], lParts)
+                
+        lX = float(sum(lParts[self.inOutId(self.into, neg)]))
+        # if self.pValOut: pdb.set_trace()
         if prs is None :
             lO = self.sumPartsId(1-side, self.IDS_supp, lParts[self.inOutId(self.tot, neg)])
-            return tool_pValSupp(N, lInter, float(lO*lX)/(N*N))
+            return tool_pValSupp(N, lInter, float(lO*lX)/(N*N), lU=lUnion)
         elif op:
-            return tool_pValSupp(N, lInter, prs[1-side]*(prs[side] + lX/N - prs[side]*lX/N))
+            return tool_pValSupp(N, lInter, prs[1-side]*(prs[side] + lX/N - prs[side]*lX/N), lU=lUnion)
         else: 
-            return tool_pValSupp(N, lInter, prs[1-side]*(prs[side] * lX/N))
+            return tool_pValSupp(N, lInter, prs[1-side]*(prs[side] * lX/N), lU=lUnion)
 
 
     # redescription p-value using marginals (binomial), for candidates
     def pValMargRedCand(self, side, op, neg, lParts, N, prs = None):
         lInter = self.sumPartsIdInOut(side, neg, self.IDS_fixnum[op] + self.IDS_varnum[op], lParts)
+        lUnion = None
+        if self.type_parts == "exclu":
+            lUnion = self.sumPartsIdInOut(side, neg, self.IDS_fixden[op] + self.IDS_varden[op], lParts)
+
         lO = self.sumPartsId(1-side, self.IDS_supp, lParts[self.inOutId(self.tot, neg)])
         lS = self.sumPartsIdInOut(side, neg, self.IDS_nsupp[op], lParts)
-        return tool_pValSupp(N, lInter, float(lO*lS)/(N*N))
-
+        return tool_pValSupp(N, lInter, float(lO*lS)/(N*N), lU=lUnion)
     
     # redescription p-value using support sizes (hypergeom), for candidates
-    def pValOverRedCand(self, op, neg, lParts, N, prs = None):
+    def pValOverRedCand(self, side, op, neg, lParts, N, prs = None):
         lInter = self.sumPartsIdInOut(side, neg, self.IDS_fixnum[op] + self.IDS_varnum[op], lParts)
+        lUnion = None
+        if self.type_parts == "exclu":
+            lUnion = self.sumPartsIdInOut(side, neg, self.IDS_fixden[op] + self.IDS_varden[op], lParts)
+
         lO = self.sumPartsId(1-side, self.IDS_supp, lParts[self.inOutId(self.tot, neg)])
         lS = self.sumPartsIdInOut(side, neg, self.IDS_nsupp[op], lParts)
-        return tool_pValOver(lInter, N, lO, lS)
+        return tool_pValOver(lInter, N, lO, lS, lU=lUnion)
 
 
     # initialize parts counts
@@ -716,9 +767,9 @@ class SParts(object):
 
     def pVal(self):
         try:
-            return eval('self.pVal%s()' % (self.ssetts.methodpVal))
+            return eval('self.pVal%s()' % self.getMethodPVal())
         except AttributeError:
-              raise Exception('Oups method to compute the p-value does not exist !')
+            raise Exception('Oups method to compute the p-value does not exist !')
 
     def getSSetts(self):
         return self.ssetts
@@ -971,14 +1022,15 @@ class SParts(object):
         lenI = self.lenI(side)
         return tool_ratio(lenI, lenI+self.lenD(side))
 
-    # redescription p-value using support probabilities (binomial), for redescriptions
+        # redescription p-value using support probabilities (binomial), for redescriptions
     def pValSupp(self):
         if self.prs == [-1,-1] or self.N == -1:
             return -1
         elif self.lenSupp(0)*self.lenSupp(1) == 0:
             return 0
         else:
-            return tool_pValSupp(self.N, self.lenI(), self.prs[0]*self.prs[1]) 
+            lUnion = self.lenU() if self.getTypeParts() == "exclu" else None                
+            return tool_pValSupp(self.N, self.lenI(), self.prs[0]*self.prs[1], lU=lUnion)
 
     # redescription p-value using marginals (binomial), for redescriptions
     def pValMarg(self):
@@ -987,7 +1039,8 @@ class SParts(object):
         elif self.lenSupp(0)*self.lenSupp(1) == 0:
             return 0
         else:
-            return tool_pValSupp(self.N, self.lenI(), float(self.lenSupp(0)*self.lenSupp(1))/(self.N*self.N)) 
+            lUnion = self.lenU() if self.getTypeParts() == "exclu" else None                
+            return tool_pValSupp(self.N, self.lenI(), float(self.lenSupp(0)*self.lenSupp(1))/(self.N*self.N), lU=lUnion)
 
     # redescription p-value using support sizes (hypergeom), for redescriptions
     def pValOver(self):
@@ -996,8 +1049,9 @@ class SParts(object):
         elif self.lenSupp(0)*self.lenSupp(1) == 0:
             return 0
         else:
-            return tool_pValOver(self.lenI(), self.N, self.lenSupp(0) ,self.lenSupp(1))
-
+            lUnion = self.lenI() if self.getTypeParts() == "exclu" else None
+            return tool_pValOver(self.lenI(), self.N, self.lenSupp(0) ,self.lenSupp(1), lU=lUnion)
+    
     # moves the instersection of supp with part with index id_from to part with index id_to
     def moveInter(self, side, id_from, id_to, supp):
         self.sParts[self.ssetts.partId(id_to, side)] |= (self.sParts[self.ssetts.partId(id_from,side)] & supp)

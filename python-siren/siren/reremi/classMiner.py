@@ -24,6 +24,7 @@ TREE_CLASSES = { "layeredtrees": CharbonTLayer,
 TREE_DEF = CharbonTLayer
 
 CHARBON_MISS_FORCE = False
+CHARBON_MISS_FORCE = True
 
 # PAIR_LOADS = [[1,2,3],
 #               [2,4,6],

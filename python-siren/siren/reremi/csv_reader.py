@@ -159,13 +159,18 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         col_enabled = None
         col_group = None
         sub = 1
-        if off is not None:
-            sub = off           
         
         if valcol is not None and "-1" in nll:
             ### contains indexed column names
             nll.remove("-1")
             col_names = {}
+            
+        if off is not None:
+            if off+1 == len(nll):
+                sub = 0
+            else:
+                sub = off
+            
         for i in nll:
             ### in general if numerical ids are provided that should be the row number
             ### we expect rows to start at one ...
@@ -233,7 +238,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         nids = [None for i in range(len(nll))]
         for ii, i in nD["data"].pop("-1").items():
             nids[ii] = i
-
+                
     if col_names is not None:
         new_headers = []
         keysc = sorted(col_names.keys(), key=lambda x: int(x))
@@ -554,10 +559,10 @@ def row_order(L, R):
             raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
     if RhasIds and Rvarcol is not None:
-        try:
+        try:            
             R, Rcoord, Rids, RhasCoord_sp, RhasIds = parse_sparse(R, Rcoord, Rids, Rvarcol, Rvalcol, offR)
             RhasCoord |= RhasCoord_sp
-        except Exception as arg:
+        except IOError as arg: #Exception as arg:
             raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
 
     order_keys = [[],[]]
@@ -778,6 +783,14 @@ def row_order_single(L):
 
         return (L, range(nbrowsL), coord, ids, cond_col, CisTime)
 
+def readTransCSV(trans_filename, csv_params={}, unknown_string=None):
+    (Th, Td, Ttype, Tspecials) = read_csv(trans_filename, csv_params, unknown_string)
+    T = {'data': Td, 'headers': Th, "sparse": False, "type_all": Ttype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Tspecials}
+
+    (T, Torder, coord, ids, cond_col, CisTime) = row_order_single(T)
+    T['order'] = Torder
+    T["type_all"]= Ttype
+    return T, ids
 
 def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
     single_dataset = (left_filename == right_filename) or (right_filename is None)

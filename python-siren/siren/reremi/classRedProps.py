@@ -1,4 +1,4 @@
-import re, string, numpy, codecs, itertools
+import re, string, numpy, codecs, itertools, os.path
 from classQuery import SYM
 from classSParts import SSetts, tool_ratio
 import pdb
@@ -220,7 +220,8 @@ class dummyC:
 
 class RedProps(object):
 
-    def_file_basic = "fields_defs_basic.txt"
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
+    def_file_basic = pref_dir+"/fields_defs_basic.txt"
     default_def_files = [def_file_basic]
     
     rset_match = "("+ "|".join(["all","learn","test","cond"] + HAND_SIDE.keys()) +")"
@@ -802,7 +803,7 @@ class RedProps(object):
         else:
             seps = [sep]
         for ss in seps:
-            fields = [self.getPrimitiveNameForLbl(s.strip()) for s in string.split(ss)]
+            fields = [self.getPrimitiveNameForLbl(s.strip()) for s in string.strip().split(ss)]
             if all([any([re.match(h, f) is not None for f in fields]) for h in default_queries_fields]):
                 return fields, ss
         return None, None
@@ -821,29 +822,31 @@ class RedProps(object):
         lpartsList = {}
         parts = string.strip().rsplit(sep)
         for side, fldu in enumerate(default_queries_fields):
-            try_parse = True
             flds = [(fldu, False)]
             if names[side] is not None:
                 flds.append((fldu, True))
-            for (fld, named) in flds:
+            while len(flds) > 0:
+                (fld, named) = flds.pop(0)
                 poplist_fields[map_fields[fld]] = None
-                if try_parse:
-                    if map_fields[fld] >= len(parts):
-                        raise Warning("Did not find expected query field for side %d (field %s expected at %d, found only %d fields)!" % (side, fld, map_fields[fld], len(parts)))
-                    else:
-                        try:
-                            if named:
-                                query = self.Qclass.parse(parts[map_fields[fld]], names[side])
-                            else:
-                                query = self.Qclass.parse(parts[map_fields[fld]])
-                            if query is not None:
-                                queries[side] = query
-                                try_parse = False
-                        except Exception as e:
+                if map_fields[fld] >= len(parts):
+                    raise Warning("Did not find expected query field for side %d (field %s expected at %d, found only %d fields)!" % (side, fld, map_fields[fld], len(parts)))
+                else:
+                    try:
+                        if named:
+                            query = self.Qclass.parse(parts[map_fields[fld]], names[side])
+                        else:
+                            query = self.Qclass.parse(parts[map_fields[fld]])
+                    except Exception as e:
+                        query = None
+                        if len(flds) == 0:
                             raise Warning("Failed parsing query for side %d (field %s, string %s)!\n\t%s" % (side, fld, parts[map_fields[fld]], e))
+                    if query is not None:
+                        queries[side] = query
+                        flds = []
+
 
         for pi, fk in enumerate(poplist_fields):
-            if fk is not None:
+            if fk is not None and pi < len(parts):
                 vs = parts[pi]
                 if vs == '-':
                     continue
@@ -901,17 +904,23 @@ if __name__ == '__main__':
     from classRedescription import Redescription
     # from classRedescription import parseRedList
     import sys
-    
-    rep = "/home/egalbrun/short/raja_small/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    filename = rep+"redescriptions.csv"
-    
-    # filep = open(filename, mode='r')
-    # redsO = Batch([])
-    # parseRedList(filep, data, redsO)
-    # filep.close()
+
+    rep = "/home/egalbrun/TKTL/misc/ecometrics/compare_more/v3/"
+    # rep = "/home/egalbrun/short/raja_small/"
+    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+    # filename = rep+"redescriptions.csv"
+    data = Data([rep+"data/IUCN_EU_nbspc3+_focus_agg.csv", rep+"data/IUCN_EU_nbspc3+_focus_iav.csv", {}, ""], "csv")
+    filename = rep+"xps/biotraits-iav_IUCN_EU_focus_nbspc3+_i.01o.3m.1.queries"
 
     rp = Redescription.getRP()
+    filep = open(filename, mode='r')
+    redsO = Batch([])    
+    rp.parseRedList(filep, data, redsO)
+    filep.close()
+    print redsO
+    
+    exit()
+
     
     lfname = "basic"
     modifiers = {"wsplits": True}

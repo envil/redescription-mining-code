@@ -17,6 +17,9 @@ from classMiner import instMiner, StatsMiner
 from classQuery import Op
 ## from classMinerFolds import instMiner, StatsMiner
 from classQuery import Query
+
+from classRndFactory import RndFactory
+
 import pdb
 
 ## from codeRRM import RedModel
@@ -25,8 +28,8 @@ delims_dict = {"(auto)": None,
                "TAB": '\t',
                "SPC": ' '}
 
-def loadAll(arguments=[]):
-    pm = getPM()
+def loadAll(arguments=[], conf_defs=None):
+    pm = getPM(conf_defs)
 
     exec_folder = os.path.dirname(os.path.abspath(__file__))
     src_folder = exec_folder
@@ -132,6 +135,12 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     elif len(params_l.get('data_r', "")) != 0:
         filenames["RHS_data"] = params_l['data_rep']+params_l['data_r']+params_l.get('ext_r', "")
 
+    if len(params_l.get("trait_data", "")) != 0 :
+        filenames["traits_data"] = params_l['traits_data']
+    elif len(params_l.get('data_r', "")) != 0:
+        filenames["traits_data"] = params_l['data_rep']+params_l['data_t']+params_l.get('ext_t', "")
+
+        
     if os.path.splitext(filenames["LHS_data"])[1] != ".csv" or os.path.splitext(filenames["RHS_data"])[1] != ".csv":
         filenames["style_data"] = "multiple"
         filenames["add_info"] = []
@@ -181,7 +190,7 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
 
 def outputResults(filenames, results_batch, data=None, with_headers=True, mode="w", data_recompute=None):
     rp = Redescription.getRP()
-    modifiers, data_recompute = {}, {}
+    modifiers, modifiers_recompute = {}, {}
     if data is not None:
         modifiers = rp.getModifiersForData(data)
     if data_recompute is not None:
@@ -446,6 +455,62 @@ def run_printout(args):
     writeRedescriptions(reds, filename, **params)
                 
 
+def run_rnd(args):
+
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
+    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml", pref_dir + "/rnd_confdef.xml"]
+    
+    loaded = loadAll(args, conf_defs)
+    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
+
+    params_l = turnToDict(params)
+    select_red = None 
+    if len(params_l.get("select_red", "")) > 0:
+        select_red = params_l["select_red"]
+    prec_all = None
+    if params_l.get("agg_prec", -1) >= 0:
+        prec_all = params_l["agg_prec"]
+    count_vname = params_l.get("count_vname", "COUNTS")
+            
+    rf = RndFactory(org_data=data)    
+    with_traits=False
+    if "traits_data" in filenames:
+        traits_data = Data([filenames["traits_data"], None]+filenames["add_info"], filenames["style_data"])
+        rf.setTraits(traits_data)
+        with_traits=True
+        
+    if params_l.get("rnd_seed", -1) >= 0:
+        rf.setSeed(params_l["rnd_seed"])
+
+    stop = False
+    for rnd_meth in params_l["rnd_meth"]:
+        for i in range(params_l["rnd_series_size"]):
+            sub_filenames = dict(filenames)
+            suff = "_%s-%d" % (rnd_meth, i)
+            sub_filenames["basis"] += suff
+            for k in ["queries", "queries_named", "support"]:
+                if k in sub_filenames:
+                    parts = sub_filenames[k].split(".")
+                    parts[-2] += suff
+                    sub_filenames[k] = ".".join(parts)
+
+            Dsub, sids, back, store = rf.makeupRndData(rnd_meth=rnd_meth, with_traits=with_traits, count_vname=count_vname, select_red=select_red, prec_all=prec_all)
+            logger.printL(2, "STARTING Random series %s %d" % (rnd_meth, i), "log")
+            logger.printL(2, Dsub, "log")
+
+            miner = instMiner(Dsub, params, logger)
+            try:
+                miner.full_run()
+            except KeyboardInterrupt:
+                miner.initial_pairs.saveToFile()
+                logger.printL(1, 'Stopped...', "log")
+                stop = True
+                
+            outputResults(sub_filenames, miner.final, Dsub)
+            logger.clockTac(0, None)
+            if stop:
+                exit()
+    
 ##### MAIN
 ###########
     
@@ -453,6 +518,8 @@ if __name__ == "__main__":
 
     if re.match("printout", sys.argv[-1]):
         run_printout(sys.argv)
+    elif re.match("rnd", sys.argv[-1]):
+        run_rnd(sys.argv[:-1])
     elif re.match("splits", sys.argv[-1]):
         run_splits(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":

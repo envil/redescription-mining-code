@@ -1,5 +1,5 @@
 import os.path, time
-import numpy as np
+import numpy
 import scipy.sparse
 import codecs, re
 from itertools import chain
@@ -14,8 +14,10 @@ import toolRead
 import csv_reader
 import pdb
 
+FORCE_WRITE_DENSE = False
+
 NA_str_def = "nan"
-NA_num  = np.nan
+NA_num  = numpy.nan
 NA_bool  = -1
 NA_cat  = -1
 
@@ -27,7 +29,17 @@ def valToTimeStr(val):
     except:
         return Data.NA_str
 
-
+def getValSpec(param, i):
+    out = param
+    if type(param) is list:
+       out = param[i]
+    elif type(param) is dict:
+        if i in param:
+            out = param[i]
+        elif None in param:
+            out = param[None]
+    return out
+    
 class DataError(Exception):
     def __init__(self, value):
         self.value = value
@@ -49,6 +61,10 @@ class ColM(object):
     def parseList(list):
         return None
     parseList = staticmethod(parseList)
+
+    @classmethod
+    def fromVect(tcl, vect_data, prec=None, enabled=True):
+        return None
     
     def __init__(self, N=-1, nmiss= set()):
         if nmiss is None:
@@ -140,14 +156,14 @@ class ColM(object):
 
 
     def mkVector(self):
-        self.vect = np.ones(self.N, dtype=np.int)*self.NA
+        self.vect = numpy.ones(self.N, dtype=numpy.int)*self.NA
         
     def getVector(self, bincats=False, nans=None):
         if self.vect is None:
             self.mkVector()
         if self.hasMissing() and nans is not None and \
-               not ( (np.isnan(nans) and np.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
-            tmp = np.array(self.vect, dtype=np.float, copy=True)
+               not ( (numpy.isnan(nans) and numpy.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
+            tmp = numpy.array(self.vect, dtype=numpy.float, copy=True)
             tmp[tmp==self.NA] = nans
             return tmp
         return self.vect
@@ -309,6 +325,17 @@ class BoolColM(ColM):
         return BoolColM(trues, max(indices.values())+1, miss)
     parseList = staticmethod(parseList)
 
+    @classmethod
+    def fromVect(tcl, vect_data, prec=None, enabled=True):
+        tmp = vect_data
+        if prec is not None:
+            tmp = numpy.around(tmp, prec)
+
+        col = tcl(set([i for (i,v) in enumerate(tmp) if v != 0]), len(tmp))
+        if not enabled:
+            col.flipEnabled()
+        return col
+    
     def toList(self, sparse=False, fill=False):
         if sparse:
             t = int(True)
@@ -366,7 +393,7 @@ class BoolColM(ColM):
             return self.NA
 
     def mkVector(self):
-        self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(False)
+        self.vect = numpy.ones(self.N, dtype=numpy.int)*self.numEquiv(False)
         self.vect[list(self.missing)] = self.NA
         self.vect[list(self.hold)] = self.numEquiv(True)
 
@@ -508,6 +535,23 @@ class CatColM(ColM):
             return None
     parseList = staticmethod(parseList)
 
+    @classmethod
+    def fromVect(tcl, vect_data, prec=0, enabled=True):
+        tmp = vect_data
+        if prec is not None:
+            tmp = numpy.around(tmp, prec)
+        cats = {}
+        for (j,v) in enumerate(tmp):
+            if v in cats:
+                cats[v].add(j)
+            else:
+                cats[v] = set([j])
+            
+        col = tcl(cats, N=len(tmp))
+        if not enabled:
+            col.flipEnabled()
+        return col
+    
     def toList(self, sparse=False, fill=False):
         if sparse:
             dt = [(i, Data.NA_str) for i in self.missing]
@@ -519,13 +563,13 @@ class CatColM(ColM):
             return [cat_dict[v] for v in self.getVector()]
 
     def mkVector(self):
-        self.vect = np.ones(self.N, dtype=np.int)*self.numEquiv(self.NA)
+        self.vect = numpy.ones(self.N, dtype=numpy.int)*self.numEquiv(self.NA)
         for v, cat in enumerate(self.ord_cats):
             self.vect[list(self.sCats[cat])] = v
 
     def getVector(self, bincats=False, nans=None):
         if bincats: ### binarize the categories, i.e return a matrix rather than vector
-            vect = np.zeros((self.N, self.nbCats()), dtype=np.int)
+            vect = numpy.zeros((self.N, self.nbCats()), dtype=numpy.int)
             for v, cat in enumerate(self.ord_cats):
                 vect[list(self.sCats[cat]), v] = 1
             return vect
@@ -533,8 +577,8 @@ class CatColM(ColM):
         if self.vect is None:
             self.mkVector()
         if self.hasMissing() and nans is not None and \
-               not ( (np.isnan(nans) and np.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
-            tmp = np.array(self.vect, dtype=np.float, copy=True)
+               not ( (numpy.isnan(nans) and numpy.isnan(self.NA)) or nans == self.NA): ## Not the same nan...
+            tmp = numpy.array(self.vect, dtype=numpy.float, copy=True)
             tmp[tmp==self.NA] = nans
             return tmp
         return self.vect
@@ -706,6 +750,7 @@ class NumColM(ColM):
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
     # alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
     alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]\d+)?$"
+    prec_patt = "^-?\d+((?P<dec>\.\d+)|(e-(?P<epw>\d+)))?$"
     def parseVal(v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
         if (matchMiss is not False and v == matchMiss) or v == str(NumColM.NA):
             miss.add(j)
@@ -719,7 +764,13 @@ class NumColM(ColM):
                         miss.add(j)
                     return v, prec
             else:
-                pprec = len(re.match(NumColM.p_patt, str(float(v))).group("dec"))
+                pprec = 0
+                mtch = re.match(NumColM.prec_patt, str(float(v)))
+                if mtch is not None:
+                    if mtch.group("dec") is not None:
+                        pprec = len(mtch.group("dec"))
+                    elif mtch.group("epw") is not None:
+                        pprec = int(mtch.group("epw"))
                 if pprec > prec:
                     prec = pprec
                     
@@ -752,6 +803,17 @@ class NumColM(ColM):
             return None
     parseList = staticmethod(parseList)
 
+    @classmethod
+    def fromVect(tcl, vect_data, prec=None, enabled=True):
+        tmp = vect_data
+        if prec is not None:
+            tmp = numpy.around(tmp, prec)
+
+        col = tcl([(v,i) for (i,v) in enumerate(tmp)], N=len(tmp), prec=prec)
+        if not enabled:
+            col.flipEnabled()
+        return col
+    
     def toList(self, sparse=False, fill=False):
         if self.isDense(): # and not self.hasMissing():
             if sparse:
@@ -854,7 +916,7 @@ class NumColM(ColM):
             return self.vect[rid]
 
     def valToStr(self, val):
-        if (np.isnan(val) and np.isnan(self.NA)) or \
+        if (numpy.isnan(val) and numpy.isnan(self.NA)) or \
                val == self.NA:
             return Data.NA_str
         return val
@@ -911,13 +973,13 @@ class NumColM(ColM):
     def minGap(self):
         if self.vect is None:
             self.mkVector()
-        return np.min(np.diff(np.unique(self.vect[np.isfinite(self.vect)])))
+        return numpy.min(numpy.diff(numpy.unique(self.vect[numpy.isfinite(self.vect)])))
 
     def mkVector(self):
         if self.isDense():
-            self.vect = np.ones(self.N)*self.NA
+            self.vect = numpy.ones(self.N)*self.NA
         else:
-            self.vect = np.zeros(self.N)
+            self.vect = numpy.zeros(self.N)
             self.vect[list(self.missing)] = self.NA
 
         if len(self.sVals) > 0:
@@ -941,7 +1003,7 @@ class NumColM(ColM):
         return MODE_VALUE
     def getNbValues(self):
         if self.nbUniq is None:
-            self.nbUniq = np.unique([v[0] for v in self.sVals]).shape[0]
+            self.nbUniq = numpy.unique([v[0] for v in self.sVals]).shape[0]
         return self.nbUniq
 
     def compPrec(self, details=None):
@@ -978,6 +1040,7 @@ class NumColM(ColM):
             miss = set(self.missing)
             N = self.nbRows()
             if self.mode[1] is not None:
+                hasMode = True
                 mode_rids = set(self.mode[1]) 
         else:
             miss = set()
@@ -1381,7 +1444,13 @@ class RowE(object):
 
     def getRName(self, details=None):
         return self.data.getRName(self.rid)
-        
+
+TYPES_SMAP = {}
+for c in ColM.__subclasses__():
+    TYPES_SMAP[c.type_id] = c
+    TYPES_SMAP[str(c.type_id)] = c
+    TYPES_SMAP[c.letter] = c
+    
 class Data(object):
 
     enabled_codes = {(0,0): "F", (1,1): "T", 0: "F", 1: "T", (0,1): "L", (1,0): "R"}
@@ -1448,12 +1517,23 @@ class Data(object):
 
     def keys(self):
         return [(0, i) for i in range(len(self.cols[0]))]+[(1, i) for i in range(len(self.cols[1]))]
-
         
     def addCol(self, col, sito=0, name=None):
         addCol(self.cols, col, sito, name)
 
-                    
+    def addColFromVector(self, vect_data, prec=None, vname=None, side=0, enabled=True, vtype=None):
+        addColFromVector(self.cols, vect_data, prec, vname, side, enabled, vtype)
+        
+    def replaceSideFromMatrix(self, mat_data, prec=None, vnames=None, side=0, enabled=True, vtypes=None):
+        if self.nbRows() != mat_data.shape[1]:
+            raise DataError("Side replacement with different number of rows is prohibited! (%d vs. %d)" % (self.nbRows(), mat_data.shape[1]))
+        if vnames is None and self.nbCols(side) == mat_data.shape[0]:
+            vnames = ["RND_%s" % n for n in self.getNames(side)]
+        cols = prepareSideFromMatrix(mat_data, prec=prec, vnames=vnames, side=side, enabled=enabled, vtypes=vtypes)
+        back = self.cols[side]
+        self.cols[side] = cols[side]
+        return back
+        
     def hasMissing(self, side=None):
         for sside in self.getSides(side):
             for c in self.cols[sside]:
@@ -1563,6 +1643,7 @@ class Data(object):
         details = []
         off = 0
         mat = None
+        tcols = []
         for side, col in side_cols:
             if col is None:
                 tcols = [c for c in range(len(self.cols[side]))]
@@ -1580,7 +1661,10 @@ class Data(object):
                         off += 1
                     details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
 
-                mat = np.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
+
+        if len(details) > 0:
+            mat = numpy.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
+            ## print "MAT", len(details), self.nbRows(), mat.shape            
         if store:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols
@@ -1678,8 +1762,8 @@ class Data(object):
         return splits
 
     def getFoldsStats(self, side, colid):
-        folds = np.array(self.cols[side][colid].getVector())
-        counts_folds = 1.*np.bincount(folds) 
+        folds = numpy.array(self.cols[side][colid].getVector())
+        counts_folds = 1.*numpy.bincount(folds) 
         nb_folds = len(counts_folds)
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
     
@@ -1709,28 +1793,28 @@ class Data(object):
 
     ### creating subsets split
     def rsubsets_split(self, nbsubs=10, split_vals=None, grain=10.):
-        # uv, uids = np.unique(np.mod(np.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
-        # return [set(np.where(uids==uv[i])[0]) for i in range(len(uv))]
+        # uv, uids = numpy.unique(numpy.mod(numpy.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
+        # return [set(numpy.where(uids==uv[i])[0]) for i in range(len(uv))]
         if split_vals is not None:
-            uv, uids = np.unique(split_vals, return_inverse=True)
+            uv, uids = numpy.unique(split_vals, return_inverse=True)
             if len(uv) > nbsubs:
-                nv = np.floor(split_vals*grain)
-                uv, uids = np.unique(nv, return_inverse=True)
+                nv = numpy.floor(split_vals*grain)
+                uv, uids = numpy.unique(nv, return_inverse=True)
                 sizes = [(len(uv)/nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)/nbsubs+1, len(uv)%nbsubs)]
-                maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
-                np.random.shuffle(maps_to)
+                maps_to = numpy.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
+                numpy.random.shuffle(maps_to)
                 subsets_ids = [set() for i in range(nbsubs)]
                 for i in range(len(uv)):
-                    subsets_ids[maps_to[i]].update(np.where(uids==i)[0])
+                    subsets_ids[maps_to[i]].update(numpy.where(uids==i)[0])
             else:
-                subsets_ids = [set(np.where(uids==i)[0]) for i in range(len(uv))]
+                subsets_ids = [set(numpy.where(uids==i)[0]) for i in range(len(uv))]
         else:
             sizes = [(self.nbRows()/nbsubs, nbsubs - self.nbRows()%nbsubs), (self.nbRows()/nbsubs+1, self.nbRows()%nbsubs)]
-            maps_to = np.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
-            np.random.shuffle(maps_to)
+            maps_to = numpy.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
+            numpy.random.shuffle(maps_to)
             subsets_ids = [set() for i in range(nbsubs)]
             for i in range(nbsubs):
-                subsets_ids[i].update(np.where(maps_to==i)[0])
+                subsets_ids[i].update(numpy.where(maps_to==i)[0])
         return subsets_ids
     
     #### old version for reremi run subsplits
@@ -1757,13 +1841,13 @@ class Data(object):
         preff = "v%d_" % self.nbCols(sito)
         if name is None:
             name = "Rx"
-        ks = np.unique(suppVect)
+        ks = numpy.unique(suppVect)
         lbl = SSetts.labels_sparts
-        if np.max(ks) > len(lbl):
-            lbl = ["S%d" % i for i in range(np.max(ks)+1)]
+        if numpy.max(ks) > len(lbl):
+            lbl = ["S%d" % i for i in range(numpy.max(ks)+1)]
         parts = {}
         for k in ks:
-            parts[lbl[k]] = set(np.where(suppVect == k)[0])
+            parts[lbl[k]] = set(numpy.where(suppVect == k)[0])
         col = CatColM(parts, self.nbRows())
         self.addCol(col, sito, preff+name)
     def addSelCol(self, lids, name=None, sito=1):
@@ -1796,16 +1880,25 @@ class Data(object):
             if row_ids is None:
                 coords = self.coords.copy()
             else:
-                maps_to = np.array([0 for i in range(N)])
+                maps_to = numpy.array([0 for i in range(N)])
                 for old, news in row_ids.items():
                     maps_to[news] = old
                 coords = self.coords[:,maps_to]
 
         cols = [[],[]]
         for side in [0,1]:
+            sss = None
+            if shuff_side is None or (side in shuff_side):
+                if type(shuff_side) is dict and shuff_side[side] is not None:
+                    sss = shuff_side[side]
+                    if type(sss) is list:
+                        sss = dict([(v,[i]) for i,v in enumerate(sss)])
+                else:
+                    sss = row_ids
+            
             for col in self.cols[side]:
-                if shuff_side is None or (side in shuff_side): 
-                    tmp = col.subsetCol(row_ids)
+                if sss is not None:
+                    tmp = col.subsetCol(sss)
                 else: ### just copy
                     tmp = col.subsetCol()
                 tmp.side = side
@@ -1815,7 +1908,7 @@ class Data(object):
 
     def shuffle_sides(self, shuff_sides):
         shuffled_rids = range(self.nbRows())
-        np.random.shuffle(shuffled_rids)
+        numpy.random.shuffle(shuffled_rids)
         shuffled_d = dict([(v,[i]) for i,v in enumerate(shuffled_rids)])
         return self.subset(shuffled_d, shuff_sides), shuffled_d
     
@@ -1874,14 +1967,16 @@ class Data(object):
 
         
     def writeCSV(self, outputs, thres=0.1, full_details=False, inline=False):
+        if FORCE_WRITE_DENSE:
+            thres = 0.
         #### check whether some row name is worth storing
         rids = {}
         if self.rnames is not None:
             rids = dict(enumerate([prepareRowName(rname, i, self) for i, rname in enumerate(self.rnames)]))
         elif len(self.selectedRows()) > 0:
             rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
-        mean_denses = [np.mean([col.density() for col in self.cols[0]]),
-                       np.mean([col.density() for col in self.cols[1]])]
+        mean_denses = [numpy.mean([col.density() for col in self.cols[0]]),
+                       numpy.mean([col.density() for col in self.cols[1]])]
         #### FORCE SPARSE mean_denses = [0,0]
         #### FORCE DENSE  mean_denses = [1,1]
         argmaxd = 0
@@ -2159,7 +2254,7 @@ class Data(object):
             cols_side = self.getColsC()
         else:
             cols_side = self.cols[side]
-        if type(literal) in [int, np.int64] and literal < len(cols_side):
+        if type(literal) in [int, numpy.int64] and literal < len(cols_side):
             colid = literal
         elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(cols_side):
             colid = literal.colId()
@@ -2277,15 +2372,15 @@ class Data(object):
         if coords is not None:
             if (len(coords)==2 and len(coords[0]) == self.nbRows()):
                 coords_tmp = coords
-                coords_points_tmp = np.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
+                coords_points_tmp = numpy.array([[coords[0][i][0], coords[1][i][0]] for i in range(len(coords[0]))])
                 #### check for duplicates and randomize
-                ids_miss = np.where((coords_points_tmp[:,1]==-361) & (coords_points_tmp[:,0]==-361))[0]
+                ids_miss = numpy.where((coords_points_tmp[:,1]==-361) & (coords_points_tmp[:,0]==-361))[0]
                 ids_pres = list(set(range(self.nbRows())).difference(ids_miss))
                 # keys_cc = ["%s:%s" % (coords_points_tmp[v,0], coords_points_tmp[v,1]) for v in ids_pres]
                 # pdb.set_trace()
                 # if len(ids_pres) > len(set(keys_cc)):
                 #     print len(ids_pres), len(set(keys_cc))
-                miss_cc = (np.min(coords_points_tmp[ids_pres,0]), np.min(coords_points_tmp[ids_pres,1]))
+                miss_cc = (numpy.min(coords_points_tmp[ids_pres,0]), numpy.min(coords_points_tmp[ids_pres,1]))
                 coords_points_tmp[ids_miss,0] = miss_cc[0]
                 coords_points_tmp[ids_miss,1] = miss_cc[1]
                 for cci in ids_miss:
@@ -2444,7 +2539,7 @@ class Data(object):
                     if len(coord) != 2 or len(coord[0]) != len(coord[1]) or len(coord[0]) != N:
                         coord = None
                     else:
-                        coord = np.array(coord)
+                        coord = numpy.array(coord)
                 ctmp = doc.getElementsByTagName("rnames")
                 if len(ctmp) == 1:
                     rnames = [v.strip() for v in toolRead.getValues(ctmp[0], str, "rname")]
@@ -2523,6 +2618,23 @@ def parseColumnName(name, types_smap={}):
         det["type"] = types_smap[tmatch.group("type")]
     return name, det
 
+def addColFromVector(cols, vect_data, prec=None, vname=None, side=0, enabled=True, vtype=None):
+    if vtype in TYPES_SMAP:
+        cClass = TYPES_SMAP[vtype]
+    else:
+        cClass = NumColM
+    col = cClass.fromVect(vect_data, prec, enabled)
+    addCol(cols, col, sito=side, name=vname)
+
+def prepareSideFromMatrix(mat_data, prec=None, vnames=None, side=0, cols=None, enabled=True, vtypes=None):
+    ## like getMatrix, one row per variable   
+    if cols is None:
+        cols = {side: []}
+    for i in range(mat_data.shape[0]):
+        addColFromVector(cols, mat_data[i,:], prec=getValSpec(prec, i), vname=getValSpec(vnames, i), side=side, enabled=getValSpec(enabled, i), vtype=getValSpec(vtypes, i))
+    return cols
+
+    
 def parseDNCFromCSVData(csv_data, single_dataset=False):
     if single_dataset:
         sides = (0,0)
@@ -2547,7 +2659,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     if csv_data.get("coord", None) is not None:
         try:
             tmp = zip(*csv_data["coord"])
-            coords = np.array([tmp[1], tmp[0]])
+            coords = numpy.array([tmp[1], tmp[0]])
         except Exception:
             coords = None
 
@@ -2619,11 +2731,11 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 #         for i, v in vect.items():
 #             if i != -1:
 #                 tmp[i] = v
-#         return np.array([tmp])
+#         return numpy.array([tmp])
 #         # vs, ijs = zip(*[(v, (i,0)) for (i,v) in vect.items() if i != -1])
-#         # return scipy.sparse.csc_matrix((np.array(vs),np.array(ijs).T)).todense().T
+#         # return scipy.sparse.csc_matrix((numpy.array(vs),numpy.array(ijs).T)).todense().T
 #     else:
-#         return np.array([vect])
+#         return numpy.array([vect])
 
 
 ############################################################################
@@ -2666,7 +2778,7 @@ def readDNCFromFiles(data_filenames, names_filenames=None, coo_filename=None, en
     return (cols, N, coords, rnames)
         
 def readCoords(filename):
-    coord = np.loadtxt(filename, unpack=True, usecols=(1,0))
+    coord = numpy.loadtxt(filename, unpack=True, usecols=(1,0))
     return coord
 
 def readNamesSide(filename):
@@ -2859,6 +2971,7 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
     else:
         tmpCols.append(BoolColM( tmp, nbRows ))
 
+    
 #####################################################
 #####################################################
 
@@ -2889,7 +3002,13 @@ def main():
         # for side in [0,1]:
         #     for col in data.cols[side]:
         #         print col
-    
+
+        
+    rep = "/home/egalbrun/short/IUCN/"
+    data = Data([rep+"IUCN_all_nbspc3+_iav.csv", rep+"IUCN_all_nbspc3+_bio.csv", {}, ""], "csv")
+    print data
+
+    exit()
     rep = "/home/egalbrun/short/raja_small/"
 
     data = Data([rep+"data_LHSo.csv", rep+"data_RHSo.csv", {}, ""], "csv")
@@ -2907,7 +3026,7 @@ def main():
     # ta = time.mktime(time.strptime("30 Nov 00", "%d %b %y"))
     # tz = time.mktime(time.strptime("30 Nov 10", "%d %b %y"))
 
-    # norm_long = (cpoints[:,0] - np.min(cpoints[:,0]))/(np.max(cpoints[:,0]) - np.min(cpoints[:,0]))
+    # norm_long = (cpoints[:,0] - numpy.min(cpoints[:,0]))/(numpy.max(cpoints[:,0]) - numpy.min(cpoints[:,0]))
     # txs = ta+(tz-ta)*norm_long
     # tmz = [time.strftime("%d %b %y", time.localtime(tx)) for tx in txs]
     # col = CatColM.parseList(tmz)
