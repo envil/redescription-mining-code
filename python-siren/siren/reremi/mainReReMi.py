@@ -484,7 +484,11 @@ def run_rnd(args):
 
     stop = False
     for rnd_meth in params_l["rnd_meth"]:
-        for i in range(params_l["rnd_series_size"]):
+        nb_copies = params_l["rnd_series_size"]
+        if rnd_meth == "none":
+            nb_copies = 1
+        
+        for i in range(nb_copies):
             sub_filenames = dict(filenames)
             suff = "_%s-%d" % (rnd_meth, i)
             sub_filenames["basis"] += suff

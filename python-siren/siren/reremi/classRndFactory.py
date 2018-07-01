@@ -220,7 +220,10 @@ class RndFactory(object):
             store = {}
         return Dsub, sids, back, store
 
-    def makeupRndData(self, rnd_meth="-", with_traits=False, count_vname="COUNTS", vname_patt="MEAN_%s", prec_all=-1, select_red=None, select_union=False):
+    def makeupRndData(self, rnd_meth="none", with_traits=False, count_vname="COUNTS", vname_patt="MEAN_%s", prec_all=-1, select_red=None, select_union=False):
+        if rnd_meth == "none":
+            return self.makeupData(with_traits, count_vname, vname_patt, prec_all, select_red, select_union)
+        
         if self.traits_data is not None and with_traits:
             Dsub, sids, back, store = prepareRndAggData(self.org_data, self.traits_data, rnd_meth, select_red, select_union, count_vname, vname_patt, prec_all)
         else:

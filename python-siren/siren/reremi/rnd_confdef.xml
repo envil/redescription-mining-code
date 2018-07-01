@@ -69,8 +69,8 @@
 	<parameter_type>multiple_options</parameter_type>
 	<value_type>text</value_type>
 	<legend>Randomization method used to generate data.</legend>
-	<default><value>1</value></default>
-	<options><value>permute_RHS</value><value>permute_LHS</value><value>permute_traits</value><value>shuffle_traits</value><value>swaprnd_occs</value></options>
+	<default><value>0</value></default>
+	<options><value>none</value><value>permute_RHS</value><value>permute_LHS</value><value>permute_traits</value><value>shuffle_traits</value><value>swaprnd_occs</value></options>
       </parameter>
       <parameter>
 	<name>rnd_series_size</name>
