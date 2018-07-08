@@ -49,7 +49,6 @@ class DrawerRedTree(DrawerEntitiesTD):
         
     def plotTrees(self, trees, rids=None):        
         draw_settings = self.getDrawSettings()
-        
         self.plotTreesT(trees, draw_settings, rids)
         # self.plotTreesBasic(trees, draw_settings)
         for side in [0,1]:
@@ -184,7 +183,9 @@ class DrawerRedTree(DrawerEntitiesTD):
             b = tree.getBottomX()
             self.axe.plot((x, b), (y, y), 'k:')
             self.axe.plot(x, y, 'k.')
-            if tree.isLeafInNode(node):
+            if node is None:
+                pass
+            elif tree.isLeafInNode(node):
                 self.axe.plot(b, y, 'ko', picker=5, gid="%d:%d:-1.T" % (side, node), zorder=10)
             else:
                 self.axe.plot(b, y, 'wo', picker=5, gid="%d:%d:+1.T" % (side, node), zorder=10)

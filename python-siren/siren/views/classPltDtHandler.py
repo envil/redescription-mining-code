@@ -278,7 +278,8 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 red = None
                 self.pltdt["queries"] = old
         if red is not None:
-            red.setRestrictedSupp(self.getParentData())
+            if self.getParentData().hasLT():
+                red.setRestrictedSupp(self.getParentData())
             # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
             self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
             self.pltdt["red"] = red

@@ -155,7 +155,7 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().selected_rows = set(range(400))
             # for i in [5]: #range(4):
             #     self.frame.tabs[tab]["tab"].viewData(i, "TR")
-            vw = self.frame.tabs[tab]["tab"].viewData(2, "TR")
+            vw = self.frame.tabs[tab]["tab"].viewData(1, "TR")
             #vw.updateRSets({'rset_id': 'test'})
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")

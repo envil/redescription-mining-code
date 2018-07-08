@@ -599,8 +599,10 @@ class RedProps(object):
     def getFieldExp(self, ff):
         if self.hasDerivativeField(ff):
             return self.getDerivativeField(ff)["exp"]
-        elif self.isPrimitive(ff):
+        elif self.isPrimitive(ff):            
             return ff
+        elif ff in self.Rclass.info_what:
+            return ":%s:" % ff
 
     def getFieldFmt(self, ff):
         if self.hasDerivativeField(ff):
@@ -820,7 +822,7 @@ class RedProps(object):
 
         queries = [None, None, None]
         lpartsList = {}
-        parts = string.strip().rsplit(sep)
+        parts = [s.strip() for s in string.rsplit(sep)]
         for side, fldu in enumerate(default_queries_fields):
             flds = [(fldu, False)]
             if names[side] is not None:

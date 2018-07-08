@@ -1255,9 +1255,13 @@ class QTree(object):
                 yn = str(self.Ys.get(nid, "")) + "---" + str(self.Ys.get((nid, "L"), ""))
             else:
                 yn = ""
-            strn += "%s'-- (%d) %d:L %s%s[%s]\t%s\n" % ("\t" * self.tree[nid]["depth"], nid,
+            try:
+                strn += "%s'-- (%s) %d:L %s%s[%s]\t%s\n" % ("\t" * self.tree[nid]["depth"], nid,
                                                     self.tree[nid]["ynb"], self.tree[nid]["leaf"],
                                                     "\t" * self.max_depth, suppsn, yn)
+            except TypeError:
+                pdb.set_trace()
+                print self.max_depth
         return strn
 
     def hasNode(self, node):
@@ -1274,7 +1278,13 @@ class QTree(object):
         return node in self.tree and "split" in self.tree[node]
     def isParentNode(self, node):
         return node in self.tree and "children" in self.tree[node]
+    def isEmpty(self):
+        return len(self.tree) == 1 and self.isLeafNode(self.root_id)
+    def mkEmpty(self):
+        self.tree = {self.root_id: {"leaf": -1, "depth": 0, "ynb": -1, "parent": -1}}
+        self.leaves = set([self.root_id])
 
+    
     def getMaxDepth(self):
         return self.max_depth
     def getLeaves(self):
@@ -1437,7 +1447,10 @@ class QTree(object):
                     else:
                         commons[key][self.branchN].append((bi, li))
             self.recTree(range(len(branches)), commons, pid=None, fynb=QTree.branchY)
+        else:
+            self.mkEmpty()
 
+        
     def recTree(self, bids, commons, pid, fynb):
         mc = max([len(vs[0])+len(vs[1]) for vs in commons.values()])
         kks = [k for (k, vs) in commons.items() if len(vs[0])+len(vs[1])==mc]
@@ -1527,6 +1540,11 @@ class QTree(object):
                         self.recSupps(side, data, child, supps_node[ynb])
         
     def positionTree(self, side, all_width=1.0, height_inter=[1., 2.]):
+        if self.isEmpty():
+            self.Xs = [-2*(0.5-side)*1.7]
+            self.Ys = {self.root_id: .5*(height_inter[0]+height_inter[1])}
+            return
+
         mdepth = self.getMaxDepth()
         width = all_width/(mdepth+1)
         self.Xs = [-2*(0.5-side)*(i+2)*width for i in range(mdepth+2)][::-1]
@@ -1541,7 +1559,7 @@ class QTree(object):
         for li, leaf in enumerate(leaves):
             self.Ys[leaf[0]] = height_inter[0] + li*width
         self.setYs(side, None)
-
+        
     def getLeavesYs(self, side, node, interval, leaves):
         if self.isLeafNode(node):
             leaves.append((node, (interval[1]+interval[0])/2.))
@@ -1890,7 +1908,8 @@ class Query(object):
         return (self.max_depth() == 2 and self.op.isOr()) or \
                (self.max_depth() == 1 and self.op.isOr()) or \
                (self.max_depth() == 1 and not self.op.isOr()) or \
-               (len(self.buk) == 1 and isinstance(self.buk[0], Literal)) 
+               (len(self.buk) == 1 and isinstance(self.buk[0], Literal)) or \
+               len(self.buk) == 0
             
     def toTree(self, fill=False):
         broken = False
