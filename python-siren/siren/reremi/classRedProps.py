@@ -694,7 +694,6 @@ class RedProps(object):
 
 
     def disp(self, red, names=[None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None):
-
         dstyle, qstyle = self.getStyles(style)
         if not type(list_fields) is list:
             list_fields = self.getListFields(list_fields, modifiers)
@@ -762,7 +761,7 @@ class RedProps(object):
             else:
                 all_fields = fields
         if full_supp:
-            all_fields.extend(self.getListFields("supp", modifiers))
+            all_fields.extend(self.getListFields("supps", modifiers))
 
         if style == "tex":
             return self.printTexRedList(reds=reds, names=names, list_fields=all_fields, nblines=nblines)

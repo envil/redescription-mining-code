@@ -12,6 +12,10 @@ fieldlist	percsall
 all:perc:Y	Y={Ex*}[wmissing]{Em*}
 fieldlist	percs
 X:perc:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
+fieldlist	suppsall
+all:supp:Y	Y={Ex*}[wmissing]{Em*}
+fieldlist	supps
+X:supp:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	statsall
 all:acc:	
 all:len:I	

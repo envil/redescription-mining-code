@@ -137,7 +137,7 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
 
     if len(params_l.get("trait_data", "")) != 0 :
         filenames["traits_data"] = params_l['traits_data']
-    elif len(params_l.get('data_r', "")) != 0:
+    elif len(params_l.get('data_t', "")) != 0:
         filenames["traits_data"] = params_l['data_rep']+params_l['data_t']+params_l.get('ext_t', "")
 
         
@@ -451,8 +451,15 @@ def run_printout(args):
     else:
         filename = filenames["queries"] + suff
     print "FILENAME", filename
+    if type(reds) is list and len(reds) > 0 and type(reds[0]) is dict and "items" in reds[0]:
+        red_contents = []
+        for r in reds:
+            red_contents.extend([r["items"][rid] for rid in r["rshowids"]])
+    else:
+        red_contents = reds
+                
     params = getPrintParams(filename, data)
-    writeRedescriptions(reds, filename, **params)
+    writeRedescriptions(red_contents, filename, **params)
                 
 
 def run_rnd(args):
