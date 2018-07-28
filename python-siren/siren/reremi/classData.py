@@ -2424,10 +2424,10 @@ class Data(object):
             final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap)
             self.polymap_data = {"pm": pm, "final_polys": final_polys, "final_details": final_details,
                                  "edges": edges, "nodes": nodes}
-
+            
     def preparePlotPolymapData(self, params={}):
         if self.polymap_data is not None:
-            if "pm" not in self.polymap_data:
+            if "pm" not in self.polymap_data or self.polymap_data["pm"].paramsChanged(params):
                 self.initPolymapData(params)
             PointsIds = dict([(k,v) for (k,v) in enumerate(self.getRNames())])
             coordsp, border_edges, cell_map = self.polymap_data["pm"].prepPolys(PointsIds,
@@ -2440,11 +2440,10 @@ class Data(object):
 
     def prepare_areas_data(self, ccls, params={}):
         if self.polymap_data is not None:
-            if "pm" not in self.polymap_data:
+            if "pm" not in self.polymap_data or self.polymap_data["pm"].paramsChanged(params):
                 self.initPolymapData(params)
             if "out_data" not in self.polymap_data:
                 self.preparePlotPolymapData()
-                
             ccs_data, adjacent, cks = self.polymap_data["pm"].prepare_areas_data(ccls,
                                       self.polymap_data["coordsp"], self.polymap_data["cells_graph"],
                                       self.polymap_data["edges_graph"], self.polymap_data["out_data"])

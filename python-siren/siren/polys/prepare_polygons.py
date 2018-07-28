@@ -23,9 +23,6 @@ ANGLE_TOL = 0.05
 FACT_CUT = 0.8
 FACT_ALONE = 0.5
 
-GRIDH_PERCENTILE = 50
-GRIDW_FACT = 1.
-
 COLORS = {-1: "#FFFFFF", 0: "#F0F0F0", 1:"#662A8D", 2: "#FC5864", 3: "#74A8F6", 4:"#AAAAAA"}
 
 ##################################
@@ -278,14 +275,14 @@ def write_details(det_fn, final_details, PointsIds, nodes):
 #### PREPARING POLYGON FROM COORDS
 ######################################
 
-def computeHPoly(horz_edges):
+def computeHPoly(horz_edges, gridw_fact):
     #### Fit polynomial for width of cells as function of latitude
     xy = numpy.array(horz_edges)
     ps = numpy.polyfit(xy[:,0], xy[:,1], 2)
     xps = numpy.polyval(ps, xy[:,0])
     errF = (xps - xy[:,1])/xps
     ids = numpy.abs(errF) < 2
-    ps = numpy.polyfit(xy[ids,0], GRIDW_FACT*xy[ids,1], 2)
+    ps = numpy.polyfit(xy[ids,0], gridw_fact*xy[ids,1], 2)
 
     # xps = numpy.polyval(ps, xy[:,0])
     # plt.scatter(xy[:,0], xy[:,1], color="b")
@@ -637,8 +634,7 @@ def clean_poly(poly):
 # pdb.set_trace()
 
 
-def compute_polys(PointsMap):
-
+def compute_polys(PointsMap, gridh_percentile, gridw_fact):
     ### MAIN FUNCTION for computing polygons from coordinates
     
     ### Compute the voronoi diagram
@@ -716,8 +712,8 @@ def compute_polys(PointsMap):
 
 
     ### detect adaptive vertical grid size from collected near-vertical neighbors distances 
-    gridH = numpy.percentile(vert_edges, GRIDH_PERCENTILE)
-    gridWps = computeHPoly(horz_edges)
+    gridH = numpy.percentile(vert_edges, gridh_percentile)
+    gridWps = computeHPoly(horz_edges, gridw_fact)
     
     ### from the detected grid sizes, go through edges and mark far-apart neighbors
     for ei in range(1, len(edges)):
@@ -1033,11 +1029,11 @@ class PolyMap(object):
         }
         
     #### EUROPE
-    parameters["GRIDH_PERCENTILE "]= 20
+    parameters["GRIDH_PERCENTILE"]= 20
     parameters["GRIDW_FACT"] = 1.3
 
     # #### WORLD
-    # parameters["GRIDH_PERCENTILE "]= 50
+    # parameters["GRIDH_PERCENTILE"]= 50
     # parameters["GRIDW_FACT"] = 1.
 
     @classmethod
@@ -1067,6 +1063,12 @@ class PolyMap(object):
             self.filenames = self.makeFilenames(filename)
         self.params = dict(self.parameters)
         self.params.update(parameters)
+
+    def paramsChanged(self, params={}):
+        for p,k in params.items():
+            if p in self.params and self.params[p] != k:
+                return True
+        return False
         
     def getPointsFromFile(self, filename=None):
         if filename is None:
@@ -1122,7 +1124,7 @@ class PolyMap(object):
         return cells_colors
     
     def compute_polys(self, PointsMap):        
-        final_polys, final_details, edges = compute_polys(PointsMap)
+        final_polys, final_details, edges = compute_polys(PointsMap, self.params["GRIDH_PERCENTILE"], self.params["GRIDW_FACT"])
         nodes = sorted(final_polys.keys())
         return final_polys, final_details, edges, nodes
         

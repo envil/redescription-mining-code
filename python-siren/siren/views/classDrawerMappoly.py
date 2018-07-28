@@ -12,7 +12,12 @@ class DrawerEntitiesMappoly(DrawerEntitiesMap):
         if data is not None:
             inter_params = self.getParamsInter()
             vec, vec_dets = self.getVecAndDets(inter_params)
-            pp_data = data.prepare_areas_data(vec)
+            t = self.view.getParentPreferences()
+            pm_params = {}
+            for key in ["gridh_percentile", "gridw_fact"]:
+                if key in t:
+                    pm_params[key.upper()] = t[key]["data"]
+            pp_data = data.prepare_areas_data(vec, pm_params)
             if pp_data is not None:
                 for cii, ck in enumerate(pp_data["cks"]):
                     for pi in pp_data["ccs_data"][ck]["exterior_polys"]:

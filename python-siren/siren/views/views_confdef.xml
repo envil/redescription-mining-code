@@ -116,6 +116,29 @@
 	<default><value>0</value></default>
       </parameter>
    </section>
+   <section>
+      <name>Mappoly</name>
+      <parameter>
+	<name>gridh_percentile</name>
+	<label>Grid H percentile</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Percentile to determine grid height.</legend>
+	<range_min>0</range_min>
+	<range_max>100</range_max>
+	<default><value>50</value></default>
+      </parameter>
+      <parameter>
+	<name>gridw_fact</name>
+	<label>Grid W factor</label>
+	<parameter_type>range</parameter_type>
+	<value_type>float</value_type>
+	<legend>Factor to multiply grid width.</legend>
+	<range_min>0</range_min>
+	<range_max>10</range_max>
+	<default><value>1.</value></default>
+      </parameter>
+   </section>
    </section>
      <section>
 <name>Colors</name>
