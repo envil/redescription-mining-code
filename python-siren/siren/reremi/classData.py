@@ -14,6 +14,13 @@ import toolRead
 import csv_reader
 import pdb
 
+try:
+    from ..polys.prepare_polygons import PolyMap
+    polymap = True
+except ImportError:
+    polymap = False
+
+
 FORCE_WRITE_DENSE = False
 
 NA_str_def = "nan"
@@ -1462,6 +1469,11 @@ class Data(object):
     NA_str = NA_str_def
 
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
+        if polymap:
+            self.polymap_data = {}
+        else:
+            self.polymap_data = None
+        
         self.single_dataset = single_dataset
         self.split = None 
         self.as_array = [None, None, None]
@@ -2403,6 +2415,49 @@ class Data(object):
                 col.name = "cond_geo%d" % ci
                 geo_cols.append(col)
             self.condition_dt = {"cols": geo_cols, "is_geo": True}
+
+
+    def initPolymapData(self, params={}):
+        if self.polymap_data is not None:
+            pm = PolyMap(parameters=params)
+            PointsMap, PointsIds = pm.getPointsFromData(self)
+            final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap)
+            self.polymap_data = {"pm": pm, "final_polys": final_polys, "final_details": final_details,
+                                 "edges": edges, "nodes": nodes}
+
+    def preparePlotPolymapData(self, params={}):
+        if self.polymap_data is not None:
+            if "pm" not in self.polymap_data:
+                self.initPolymapData(params)
+            PointsIds = dict([(k,v) for (k,v) in enumerate(self.getRNames())])
+            coordsp, border_edges, cell_map = self.polymap_data["pm"].prepPolys(PointsIds,
+                                                           self.polymap_data["final_polys"], self.polymap_data["final_details"],
+                                                           self.polymap_data["edges"], self.polymap_data["nodes"])
+            cells_graph, edges_graph, out_data = self.polymap_data["pm"].prepare_exterior_data(coordsp, border_edges)
+            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph,
+                                      "edges_graph": edges_graph, "out_data": out_data})
+
+
+    def prepare_areas_data(self, ccls, params={}):
+        if self.polymap_data is not None:
+            if "pm" not in self.polymap_data:
+                self.initPolymapData(params)
+            if "out_data" not in self.polymap_data:
+                self.preparePlotPolymapData()
+                
+            ccs_data, adjacent, cks = self.polymap_data["pm"].prepare_areas_data(ccls,
+                                      self.polymap_data["coordsp"], self.polymap_data["cells_graph"],
+                                      self.polymap_data["edges_graph"], self.polymap_data["out_data"])
+            return {"ccs_data": ccs_data, "adjacent": adjacent, "cks": cks}
+        return None
+    
+    def getPolymapData(self, key=None):
+        if self.polymap_data is not None:
+            if key is None:
+                return self.polymap_data
+            else:
+                return self.polymap_data.get(key)
+
             
     def enableAll(self):
         for side in [0,1]:
@@ -2738,6 +2793,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 #         return numpy.array([vect])
 
 
+
 ############################################################################
 ############## LEGACY READING METHODS
 ############################################################################
@@ -2971,7 +3027,8 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
     else:
         tmpCols.append(BoolColM( tmp, nbRows ))
 
-    
+
+        
 #####################################################
 #####################################################
 
@@ -3039,8 +3096,6 @@ def main():
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names",
     #              None,
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.names"], "multiple")
-
-    exit()
 
 
 

@@ -9,6 +9,7 @@ from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from classDrawerPara import DrawerRedPara
 from classDrawerTree import DrawerRedTree
 from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
+from classDrawerMappoly import DrawerEntitiesMappoly
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
@@ -605,7 +606,21 @@ class ViewRedMap(ViewRed):
     subcl_layh = LayoutHandlerQueries
     subcl_drawer = DrawerEntitiesMap
     subcl_pltdt = PltDtHandlerRedWithCoords
- 
+
+class ViewRedMappoly(ViewRed):
+
+    TID = "MPP"
+    SDESC = "MPoly"
+    title_str = "MPoly"
+    ordN = 1
+    geo = True
+    typesI = "r"
+
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesMappoly
+    subcl_pltdt = PltDtHandlerRedWithCoords
+
+    
 class ViewRedPara(ViewRed):
     
     TID = "PC"

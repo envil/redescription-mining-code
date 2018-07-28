@@ -37,13 +37,12 @@ from ..work.toolWP import WorkPlant
 from ..work.classWorkClient import WorkClient
 from ..common_details import common_variables
 
-
 import pdb
 
-try:
-    import test_code
-except ImportError:
-    test_code = None
+# try:
+#     import test_code
+# except ImportError:
+#     test_code = None
 
   
 def getRandomColor():
@@ -763,9 +762,14 @@ class Siren():
         queries = None
         if self.matchTabType("e") or ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ) or ( self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ):
             if self.matchTabType("r"):
+                typ = "r"
                 queries = self.selectedTab["tab"].getSelectedQueries()
+            elif self.matchTabType("e"):
+                typ = "e"
+            elif self.matchTabType("v"):
+                typ = "v"
 
-            for item in self.viewsm.getViewsItems("R", "r", what=queries):
+            for item in self.viewsm.getViewsItems("R", typ, what=queries):
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                           "Plot %s." % item["title"])
@@ -944,7 +948,7 @@ class Siren():
         ID_EXPORT = wx.NewId()
         m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
 
-        if test_code:
+        if True: #test_code:
             ID_RUN_TEST = wx.NewId()
             m_runTest = menuFile.Append(ID_RUN_TEST, "&Run test feature", "Trying a new feature.")
             frame.Bind(wx.EVT_MENU, self.OnRunTest, m_runTest)
@@ -1723,8 +1727,14 @@ class Siren():
 
 
     def OnRunTest(self, event):
-        if test_code is not None:
-            test_code.test_run(self)    
+        pm = PolyMap()
+        PointsMap, PointsIds = pm.getPointsFromData(self.dw.getData())
+    
+        final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap)
+        pm.plot_final_polys(final_polys, PointsMap)
+
+        # if test_code is not None:
+        #     test_code.test_run(self)    
     
     def OnSize(self, event):
         if self.getVizm() is not None:
