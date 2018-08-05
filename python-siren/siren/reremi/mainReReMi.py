@@ -70,7 +70,12 @@ def loadAll(arguments=[], conf_defs=None):
     elif config_filename is not None:
         src_folder = os.path.dirname(os.path.abspath(config_filename))
 
-    params = PreferencesReader(pm).getParameters(config_filename, options_args, params)
+    queries_second = None
+    try:
+        params = PreferencesReader(pm).getParameters(config_filename, options_args, params)        
+    except AttributeError:
+        queries_second = config_filename
+        
     if params is None:
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
@@ -78,6 +83,8 @@ def loadAll(arguments=[], conf_defs=None):
     
     params_l = turnToDict(params)
     filenames = prepareFilenames(params_l, tmp_dir, src_folder)
+    if queries_second is not None:
+        filenames["queries_second"] = queries_second
     logger = Log(params_l['verbosity'], filenames["logfile"])
 
     if pack_filename is None:
@@ -432,15 +439,20 @@ def run_printout(args):
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
     rp = Redescription.getRP()
-    if reds is None:
-        reds = []
-        if "queries" in filenames:
-            try:
-                with open(filenames["queries"]) as fd:
-                    rp.parseRedList(fd, data, reds)
-            except IOError:
-                reds = []
+    qfilename = None
+    if reds is None and "queries" in filenames:
+        qfilename = filenames["queries"]        
+    if "queries_second" in filenames:
+        qfilename = filenames["queries_second"]
 
+    if qfilename is not None:
+        reds = []
+        try:
+            with open(qfilename) as fd:
+                rp.parseRedList(fd, data, reds)
+        except IOError:
+            reds = []
+    
     #### OUT
     parts = filenames["queries"].split(".")
     if len(parts) > 1:

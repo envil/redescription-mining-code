@@ -14,11 +14,11 @@ import toolRead
 import csv_reader
 import pdb
 
-try:
-    from ..polys.prepare_polygons import PolyMap
-    polymap = True
-except ImportError:
-    polymap = False
+# try:
+#     from ..polys.prepare_polygons import PolyMap
+#     polymap = True
+# except ImportError, ValueError:
+polymap = False
 
 
 FORCE_WRITE_DENSE = False
@@ -1639,8 +1639,12 @@ class Data(object):
         return sums_rows, sums_cols, details
         
     def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
+        compare_cols = None
         if store and self.as_array[0] == (side_cols, types, only_able, bincats):
-            return self.as_array[1]
+            if only_able:
+                compare_cols = sorted(self.as_array[1][-1].keys())
+            else:
+                return self.as_array[1]
 
         if store:
             self.as_array[0] = (side_cols, types, only_able, bincats)
@@ -1673,6 +1677,8 @@ class Data(object):
                         off += 1
                     details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
 
+        if compare_cols is not None and compare_cols == sorted(mcols.keys()):
+            return self.as_array[1]
 
         if len(details) > 0:
             mat = numpy.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T

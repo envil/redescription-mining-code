@@ -12,6 +12,8 @@ from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
 from classDrawerMappoly import DrawerEntitiesMappoly
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
+from classDrawerCorrel import DrawerRedCorrel
+
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
 from classPltDtHList import PltDtHandlerListClust
 from classProj import ProjFactory
@@ -632,6 +634,17 @@ class ViewRedPara(ViewRed):
 
     subcl_drawer = DrawerRedPara
 
+class ViewRedCorrel(ViewRed):
+    
+    TID = "CC"
+    SDESC = "Correl"
+    ordN = 6
+    title_str = "Variable Correlations"
+    typesI = "r"
+    geo = False
+
+    subcl_drawer = DrawerRedCorrel
+    
 class ViewRedTree(ViewRed):
 
     TID = "TR"
