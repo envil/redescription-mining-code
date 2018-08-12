@@ -57,6 +57,62 @@ def write_row(csvf, row_data):
             row_data[i] = codecs.encode(row_data[i], 'utf-8','replace')
     csvf.writerow(row_data)
     
+def read_coords_csv(filename, csv_params={}, unknown_string=None):
+    if type(filename) is str or type(filename) is unicode:
+        f = open(filename, 'rU')
+        fcl = True
+    elif isinstance(filename, file):
+        f = filename
+    else:
+        ### Because ZIPext files don't have a seek method...
+        f = StringIO(filename.read())
+        fcl = False
+    if f is not None:
+        try:
+            dialect = csv.Sniffer().sniff(f.read(2048))
+        except Exception:
+            dialect = "excel"
+        f.seek(0)
+        #header = csv.Sniffer().has_header(f.read(2048))
+        #f.seek(0)
+        csvreader = csv.reader(f, dialect=dialect, **csv_params)
+        ### Try to read headers
+        head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+       
+        cpos = {}
+        for i, h in enumerate(head):
+            for clbls in [LATITUDE, LONGITUDE, IDENTIFIERS]:
+                if h in clbls:
+                    cpos[clbls[0]] = i
+        if not (LATITUDE[0] in cpos and LONGITUDE[0] in cpos):
+            return None, None
+        cmax = max(cpos.values())
+        coords = []
+        if IDENTIFIERS[0] in cpos:
+            rnames = []
+        else:
+            rnames = None
+            
+        for row in csvreader:
+            if re.match("\s*#", row[0]):
+                continue
+            if len(row) < cmax+1:
+                raise ValueError('number of columns does not match (is '+
+                                 str(len(row))+', should be at least'+
+                                 str(cmax+1)+')')
+            coords.append((float(row[cpos[LATITUDE[0]]].strip()), float(row[cpos[LONGITUDE[0]]].strip())))
+            if rnames is not None:
+                tmp = row[cpos[IDENTIFIERS[0]]].strip()
+                if tmp != type(tmp)(unknown_string):
+                    if type(tmp) is str:
+                        tmp = codecs.decode(tmp, 'utf-8','replace')
+                    rnames.append(tmp)
+                else:
+                    rnames.append(None)        
+    if fcl:
+        f.close()
+    ## HERE DEBUG UTF-8
+    return coords, rnames
 
 
 def read_csv(filename, csv_params={}, unknown_string=None):

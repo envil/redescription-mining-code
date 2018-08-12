@@ -13,6 +13,8 @@ import numpy
 import matplotlib
 matplotlib.use('WXAgg')
 
+from ..reremi.classData import BoolColM, CatColM, NumColM
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.patches import Circle
@@ -37,13 +39,17 @@ class DrawerRedCorrel(DrawerEntitiesTD):
     # missing_yy = -1./6
 
     # ann_xy = (10,0)
+
+    types_lbls = [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]
     
     def __init__(self, view):
         self.view = view
         self.store_supp = None
         self.elements = {"active_info": False, "act_butt": [1]}
         self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
-        self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True} 
+        self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
+        self.types_in = {BoolColM.type_id: False, CatColM.type_id: False, NumColM.type_id: True}
+        self.fixed_radius = False
         self.initPlot()
         self.plot_void()
         ## self.draw()
@@ -58,32 +64,51 @@ class DrawerRedCorrel(DrawerEntitiesTD):
 
     def OnRedraw(self, event=None):
         self.update()
-    
+
+    def update_params(self, elems=None):
+        ks = self.parts_in.keys()
+        if elems is not None:
+            for k in ks:
+                lbl_in = "in_%s" % SSetts.labels[k]
+                lbl_out = "out_%s" % SSetts.labels[k]
+                if lbl_in in elems:
+                    if elems[lbl_in].IsChecked():
+                        self.parts_in[k] = True
+                    else:
+                        self.parts_in[k] = False
+                if lbl_out in elems:
+                    if elems[lbl_out].IsChecked():
+                        self.parts_out[k] = True
+                    else:
+                        self.parts_out[k] = False
+                        
+            for lbl, i in DrawerRedCorrel.types_lbls:
+                ll = "types_%d" % i
+                if ll in elems:
+                    if elems[ll].IsChecked():
+                        self.types_in[i] = True
+                    else:
+                        self.types_in[i] = False
+            if "fixed_radius" in elems:
+                if elems["fixed_radius"].IsChecked():
+                    self.fixed_radius = True
+                else:
+                    self.fixed_radius = False
+                        
+        
     def update(self, update_trees=True):
         if self.view.wasKilled():
             return
 
         if self.isReadyPlot():
 
-            elems = self.getElement("inter_elems")
-            ks = self.parts_in.keys()
-            if elems is not None:
-                for k in ks:
-                    lbl_in = "in_%s" % SSetts.labels[k]
-                    lbl_out = "out_%s" % SSetts.labels[k]
-                    if lbl_in in elems:
-                        if elems[lbl_in].IsChecked():
-                            self.parts_in[k] = True
-                        else:
-                            self.parts_in[k] = False
-                    if lbl_out in elems:
-                        if elems[lbl_out].IsChecked():
-                            self.parts_out[k] = True
-                        else:
-                            self.parts_out[k] = False
-                            
+            self.update_params(self.getElement("inter_elems"))
+            
             vec = self.getPltDtH().getSuppABCD()
-            mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan, only_able=True)
+            tt = [k for (k,v) in self.types_in.items() if v]
+            if len(tt) == 0:
+                tt = None
+            mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan, types=tt, only_able=True)
             self.clearPlot()
 
             pos_in = numpy.zeros(vec.shape, dtype=bool)
@@ -132,7 +157,12 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                     self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
                     self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=numpy.degrees(angle), ha="left", va="bottom")
 
-            patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=.48*numpy.abs(flt_Rin[i])) for i in range(flt_Rin.shape[0])]
+            if self.fixed_radius:
+                rads = .44*numpy.ones(flt_Rin.shape)
+            else:
+                rads = .48*numpy.abs(flt_Rin)
+
+            patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
             ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
             fcolors = [cmap(.5*(flt_Rin[i]+1)) for i in range(flt_Rin.shape[0])]
             ecolors = [cmap(.5*(flt_Rout[i]+1)) for i in range(flt_Rin.shape[0])]
@@ -183,6 +213,28 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         inter_elems = {}
 
         ##############################################
+        add_boxA = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        for lbl, i in DrawerRedCorrel.types_lbls:
+            inter_elems["types_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
+            inter_elems["types_%d" % i].SetValue(self.types_in[i])
+
+            label = wx.StaticText(panel, wx.ID_ANY, "%s:" % lbl)
+            label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            add_boxA.Add(label, 0, border=0, flag=flags)
+            add_boxA.Add(inter_elems["types_%d" % i], 0, border=0, flag=flags)
+
+        add_boxA.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        inter_elems["fixed_radius"] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
+        inter_elems["fixed_radius"].SetValue(self.fixed_radius)
+
+        label = wx.StaticText(panel, wx.ID_ANY, "fix r:")
+        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        add_boxA.Add(label, 0, border=0, flag=flags)
+        add_boxA.Add(inter_elems["fixed_radius"], 0, border=0, flag=flags)
+        
+        add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
         add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
 
@@ -200,7 +252,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             v_box.Add(inter_elems["in_"+sub], 0, border=1, flag=flags) #, userData={"where":"*"})
             v_box.Add(inter_elems["out_"+sub], 0, border=1, flag=flags) #, userData={"where":"*"})
             add_boxB.Add(v_box, 0, border=1, flag=flags)
-
+        
         add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
         add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
         add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
@@ -210,7 +262,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)
-        return [add_boxB]
+        return [add_boxA, add_boxB]
 
 
     # def OnPick(self, event):

@@ -1,4 +1,5 @@
 from classDrawerMap import DrawerEntitiesMap
+from ..reremi.csv_reader import read_coords_csv
 
 import pdb
 
@@ -9,6 +10,7 @@ class DrawerEntitiesMappoly(DrawerEntitiesMap):
 
     def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
         data = self.getParentData()
+        
         if data is not None:
             inter_params = self.getParamsInter()
             vec, vec_dets = self.getVecAndDets(inter_params)
@@ -26,7 +28,9 @@ class DrawerEntitiesMappoly(DrawerEntitiesMap):
                         else:
                             xs, ys = zip(*[self.bm(x,y) for (x,y) in pp_data["ccs_data"][ck]["polys"][pi]])
                         if pp_data["ccs_data"][ck]["color"] == -1:
-                            axe.fill(xs, ys, color="white", zorder=pp_data["ccs_data"][ck]["level"]+2)
+                            axe.fill(xs, ys, color="white", zorder=pp_data["ccs_data"][ck]["level"]+2, alpha=0.66)
+                        elif pp_data["ccs_data"][ck]["color"] == -2:
+                            axe.fill(xs, ys, color="#FAFAFA", zorder=pp_data["ccs_data"][ck]["level"]+2, alpha=0.33)
                         else:
                             axe.fill(xs, ys, color=draw_settings[pp_data["ccs_data"][ck]["color"]]["color_e"], zorder=pp_data["ccs_data"][ck]["level"]+2)
 

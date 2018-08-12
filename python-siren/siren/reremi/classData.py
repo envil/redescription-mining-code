@@ -14,11 +14,11 @@ import toolRead
 import csv_reader
 import pdb
 
-# try:
-#     from ..polys.prepare_polygons import PolyMap
-#     polymap = True
-# except ImportError, ValueError:
-polymap = False
+try:
+    from polys.prepare_polygons import PolyMap
+    polymap = True
+except ImportError, ValueError:
+    polymap = False
 
 
 FORCE_WRITE_DENSE = False
@@ -2383,10 +2383,29 @@ class Data(object):
                     else:
                         raise DataError('Number of names does not match number of variables!')
 
+    def hasCoordsBckg(self):
+        return self.coords_bckg is not None
+    def setCoordsBckg(self, coords_bckg):
+        self.coords_bckg = coords_bckg
+    def getCoordsBckg(self):
+        return self.coords_bckg
+    def hasRNamesBckg(self):
+        return self.rnames_bckg is not None
+    def setRNamesBckg(self, rnames_bckg):
+        self.rnames_bckg = rnames_bckg
+    def getRNamesBckg(self):
+        return self.rnames_bckg
+    def setBckg(self, coords_bckg, rnames_bckg):
+        self.setCoordsBckg(coords_bckg)
+        self.setRNamesBckg(rnames_bckg)
+
+    
     def setCoords(self, coords):
         ### coords are NOT turned to a numpy array because polygons might have different numbers of points
         self.coords = None
         self.coords_points = None
+        self.coords_bckg = None
+        self.rnames_bckg = None
         if coords is not None:
             if (len(coords)==2 and len(coords[0]) == self.nbRows()):
                 coords_tmp = coords
@@ -2425,31 +2444,47 @@ class Data(object):
 
     def initPolymapData(self, params={}):
         if self.polymap_data is not None:
-            pm = PolyMap(parameters=params)
+            pm = PolyMap()
             PointsMap, PointsIds = pm.getPointsFromData(self)
-            final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap)
+            final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap, params.get("gridh_percentile"), params.get("gridw_fact"))
             self.polymap_data = {"pm": pm, "final_polys": final_polys, "final_details": final_details,
-                                 "edges": edges, "nodes": nodes}
+                                 "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
+                                 "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}
             
     def preparePlotPolymapData(self, params={}):
         if self.polymap_data is not None:
-            if "pm" not in self.polymap_data or self.polymap_data["pm"].paramsChanged(params):
+            changed = True
+            if "pm" in self.polymap_data:
+                changed = False
+                for (k,v) in params.items():
+                    if self.polymap_data.get(k) != v:
+                        changed = True
+            if changed:
                 self.initPolymapData(params)
-            PointsIds = dict([(k,v) for (k,v) in enumerate(self.getRNames())])
-            coordsp, border_edges, cell_map = self.polymap_data["pm"].prepPolys(PointsIds,
+            coordsp, border_edges, cell_map = self.polymap_data["pm"].prepPolys(self.polymap_data["p_ids"],
                                                            self.polymap_data["final_polys"], self.polymap_data["final_details"],
                                                            self.polymap_data["edges"], self.polymap_data["nodes"])
             cells_graph, edges_graph, out_data = self.polymap_data["pm"].prepare_exterior_data(coordsp, border_edges)
-            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph,
-                                      "edges_graph": edges_graph, "out_data": out_data})
+            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data})
 
-
+    def getPlotPolymapDataFromFiles(self, filenames, params={}):
+        if self.polymap_data is not None:
+            if "pm" not in self.polymap_data:
+                pm = PolyMap()
+                self.polymap_data["pm"] = pm
+        coordsp, border_edges, cell_map = self.polymap_data["pm"].getPolysFromFiles(filenames, params.get("SEP"), params.get("ID_INT"))
+        cells_graph, edges_graph, out_data = self.polymap_data["pm"].prepare_exterior_data(coordsp, border_edges)
+        self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data})
+        
+    def savePlotPolymapDataToFiles(self, filenames, params={}):
+        if self.polymap_data is not None or "pm" not in self.polymap_data:
+            self.polymap_data["pm"].write_to_files(filenames, PointsIds, final_polys, final_details, edges, nodes)
+            
+        
     def prepare_areas_data(self, ccls, params={}):
         if self.polymap_data is not None:
-            if "pm" not in self.polymap_data or self.polymap_data["pm"].paramsChanged(params):
-                self.initPolymapData(params)
             if "out_data" not in self.polymap_data:
-                self.preparePlotPolymapData()
+                self.preparePlotPolymapData(params)
             ccs_data, adjacent, cks = self.polymap_data["pm"].prepare_areas_data(ccls,
                                       self.polymap_data["coordsp"], self.polymap_data["cells_graph"],
                                       self.polymap_data["edges_graph"], self.polymap_data["out_data"])
@@ -3032,7 +3067,6 @@ def parseVarSparsebool(tmpCols, a, nbRows, nbCols):
     else:
         tmpCols.append(BoolColM( tmp, nbRows ))
 
-
         
 #####################################################
 #####################################################
@@ -3066,15 +3100,22 @@ def main():
         #         print col
 
         
-    rep = "/home/egalbrun/short/IUCN/"
-    data = Data([rep+"IUCN_all_nbspc3+_iav.csv", rep+"IUCN_all_nbspc3+_bio.csv", {}, ""], "csv")
-    print data
+    # rep = "/home/egalbrun/short/IUCN/"
+    # data = Data([rep+"IUCN_all_nbspc3+_iav.csv", rep+"IUCN_all_nbspc3+_bio.csv", {}, ""], "csv")
+    # print data
 
-    exit()
+    # exit()
     rep = "/home/egalbrun/short/raja_small/"
 
-    data = Data([rep+"data_LHSo.csv", rep+"data_RHSo.csv", {}, ""], "csv")
-    data.writeCSV([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv"])
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
+    coords_bckg, rnames_bckg = csv_reader.read_coords_csv(rep+"coords_bckg.csv")
+    data.setBckg(coords_bckg, rnames_bckg)
+    pdb.set_trace()
+    pp_data = data.initPolymapData()
+    pdb.set_trace()
+    
+    exit()
+    # data.writeCSV([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv"])
     # print data
 
     dataX = Data([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv", {}, ""], "csv")

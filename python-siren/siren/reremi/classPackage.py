@@ -13,7 +13,7 @@ from classData import Data, NA_str_def
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
 import toolRead as toolRead
-
+import csv_reader
 
 class Package(object):
     """Class to handle the zip packages that contain data, preferences, results, etc. for redescription mining.
@@ -173,6 +173,12 @@ class Package(object):
                 fdLHS.close()
                 if fdRHS is not None: 
                     fdRHS.close()
+
+        if data is not None and 'data_coords_bckg' in self.plist:
+            fdCB = self.package.open(self.plist['data_coords_bckg'], 'r')
+            coords_bckg, rnames_bckg = csv_reader.read_coords_csv(fdCB)
+            data.setBckg(coords_bckg, rnames_bckg)
+            
         return data
 
     def readRedescriptions(self, data):
