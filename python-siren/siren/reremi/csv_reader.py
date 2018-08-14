@@ -56,17 +56,25 @@ def write_row(csvf, row_data):
         if type(row_data[i]) is unicode:
             row_data[i] = codecs.encode(row_data[i], 'utf-8','replace')
     csvf.writerow(row_data)
-    
-def read_coords_csv(filename, csv_params={}, unknown_string=None):
+
+def getFp(filename, write=False):
+    fcl = False
+    f = None
     if type(filename) is str or type(filename) is unicode:
-        f = open(filename, 'rU')
+        if write:
+            f = open(filename, 'w')
+        else:
+            f = open(filename, 'rU')
         fcl = True
     elif isinstance(filename, file):
         f = filename
-    else:
+    else:        
         ### Because ZIPext files don't have a seek method...
         f = StringIO(filename.read())
-        fcl = False
+    return f, fcl
+    
+def read_coords_csv(filename, csv_params={}, unknown_string=None):
+    f, fcl = getFp(filename)
     if f is not None:
         try:
             dialect = csv.Sniffer().sniff(f.read(2048))
@@ -113,20 +121,26 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
         f.close()
     ## HERE DEBUG UTF-8
     return coords, rnames
+def write_coords_csv(filename, coords, rnames=None, csv_params={}, unknown_string=None):
+    f, fcl = getFp(filename, write=True)
+    if f is not None:
+        head = [LATITUDE[0], LONGITUDE[0]]
+        if rnames is not None:
+            head.append(IDENTIFIERS[0])
+        f.write(",".join(head)+"\n")
+        for i, coord in enumerate(coords):
+            tow = ["%f" % c for c in coord]
+            if rnames is not None:
+                tow.append("%s" % rnames[i])
+            f.write(",".join(tow)+"\n")
+    if fcl:
+        f.close()
 
 
 def read_csv(filename, csv_params={}, unknown_string=None):
     type_all = None
     skipfirst = False
-    if type(filename) is str or type(filename) is unicode:
-        f = open(filename, 'rU')
-        fcl = True
-    elif isinstance(filename, file):
-        f = filename
-    else:
-        ### Because ZIPext files don't have a seek method...
-        f = StringIO(filename.read())
-        fcl = False
+    f, fcl = getFp(filename)
     if f is not None:
         try:
             dialect = csv.Sniffer().sniff(f.read(2048))

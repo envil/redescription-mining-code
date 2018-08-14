@@ -138,6 +138,16 @@
 	<range_max>10</range_max>
 	<default><value>1.</value></default>
       </parameter>
+    <parameter>
+	<name>smooth_fact</name>
+	<label>Smoothing factor</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>Polygons smoothing factor.</legend>
+	<range_min>0</range_min>
+	<range_max>100</range_max>
+	<default><value>0</value></default>
+      </parameter>
    </section>
    </section>
      <section>

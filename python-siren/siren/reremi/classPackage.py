@@ -13,7 +13,6 @@ from classData import Data, NA_str_def
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
 import toolRead as toolRead
-import csv_reader
 
 class Package(object):
     """Class to handle the zip packages that contain data, preferences, results, etc. for redescription mining.
@@ -23,6 +22,11 @@ class Package(object):
     # Names of the files in the package
     DATA_FILENAMES = ['data_LHS.csv',
                      'data_RHS.csv']
+    COORDS_BCKG_FILENAME = 'data_coords_bckg.txt'
+    POLYGONS_FILENAMES = ['data_polygons_poly.txt', 'data_polygons_edges.txt']
+    COORDS_BCKG_KEY = 'coords_bckg'
+    POLYGONS_KEYS = ['polygons_poly', 'polygons_edges']
+
     REDESCRIPTIONS_FILENAME = 'redescriptions.csv'
     PREFERENCES_FILENAME = 'preferences.xml'
     PLIST_FILE = 'info.plist'
@@ -174,10 +178,12 @@ class Package(object):
                 if fdRHS is not None: 
                     fdRHS.close()
 
-        if data is not None and 'data_coords_bckg' in self.plist:
-            fdCB = self.package.open(self.plist['data_coords_bckg'], 'r')
-            coords_bckg, rnames_bckg = csv_reader.read_coords_csv(fdCB)
-            data.setBckg(coords_bckg, rnames_bckg)
+        if data is not None and self.COORDS_BCKG_KEY in self.plist:
+            fdCB = self.package.open(self.plist[self.COORDS_BCKG_KEY], 'r')
+            data.readBckg(fdCB)
+        if data is not None and all([k in self.plist for k in self.POLYGONS_KEYS]):
+            filenames = dict([(k, self.package.open(self.plist[k], 'r')) for k in self.POLYGONS_KEYS])
+            data.getPlotPolymapDataFromFiles(filenames)
             
         return data
 
@@ -235,6 +241,7 @@ class Package(object):
                 if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
                     filenames[1] = os.path.join(tmp_dir, plist['data_RHS_filename'])
                 writeData(contents["data"], filenames, toPackage = True)
+                writeDataExtra(contents["data"], plist, tmp_dir)
             except IOError:
                 shutil.rmtree(tmp_dir)
                 self.filename = old_package_filename
@@ -305,6 +312,11 @@ class Package(object):
             fns['data_LHS_filename'] = self.DATA_FILENAMES[0]
             if not contents["data"].isSingleD():
                 fns['data_RHS_filename'] = self.DATA_FILENAMES[1]
+            if contents["data"].hasCoordsBckg():
+                fns[self.COORDS_BCKG_KEY] = self.COORDS_BCKG_FILENAME
+            if contents["data"].hasPolymapDataToSave():
+                for ki, k in enumerate(self.POLYGONS_KEYS):
+                    fns[k] = self.POLYGONS_FILENAMES[ki]
                                 
         if "preferences" in contents:
             fns['preferences_filename'] = self.PREFERENCES_FILENAME
@@ -375,6 +387,16 @@ def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, 
 
 def writeData(data, filenames, toPackage = False):
     data.writeCSV(filenames)
+
+def writeDataExtra(data, plist=None, tmp_dir="./"):
+    if plist is not None:
+        if Package.COORDS_BCKG_KEY in plist:
+            fn = os.path.join(tmp_dir, plist[Package.COORDS_BCKG_KEY])
+            data.writeBckg(fn)
+        if all([k in plist for k in Package.POLYGONS_KEYS]):
+            filenames = dict([(k, os.path.join(tmp_dir, plist[k])) for k in Package.POLYGONS_KEYS])
+            data.savePlotPolymapDataToFiles(filenames)
+
 
 def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
     package = Package(None, None, mode="w")

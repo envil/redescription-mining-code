@@ -1,12 +1,14 @@
 #! /usr/local/bin/python
 
-import sys, os.path
+import sys, os.path, codecs, re
+from StringIO import StringIO
+
 import numpy
 
-import matplotlib.pyplot as plt
-import matplotlib.cm
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
+# import matplotlib.pyplot as plt
+# import matplotlib.cm
+# from matplotlib.patches import Polygon
+# from matplotlib.collections import PatchCollection
 
 import voronoi_poly
 
@@ -28,6 +30,23 @@ COLORS = {-1: "#FFFFFF", 0: "#F0F0F0", 1:"#662A8D", 2: "#FC5864", 3: "#74A8F6", 
 ##################################
 #### READING FILES LOADING DATA
 ##################################
+
+def getFp(filename, write=False):
+    fcl = False
+    f = None
+    if type(filename) is str or type(filename) is unicode:
+        if write:
+            f = open(filename, 'w')
+        else:
+            f = open(filename, 'rU')
+        fcl = True
+    elif isinstance(filename, file):
+        f = filename
+    else:        
+        ### Because ZIPext files don't have a seek method...
+        f = StringIO(filename.read())
+    return f, fcl
+
 
 def loadCoords(coords_fn, sep=",", lat_cid=0, lng_cid=1, names_cid=None):    
     #Creating the PointsMap from the input data
@@ -120,12 +139,7 @@ def prepBorderEdges(final_details, PointsIds, nodes, coords_map={}, splits_eids=
 #### WRITING TO FILE
 ######################################
 def write_polys(poly_fn, coordsp, cell_map):
-    fcl = False
-    if type(poly_fn) is file:
-        fp = poly_fn
-    else:
-        fcl = True
-        fp = open(poly_fn, "w")
+    fp, fcl = getFp(poly_fn, write=True)
     cell_list = sorted(cell_map.keys(), key=lambda x: cell_map[x]) 
     for ci, cn in enumerate(cell_list):
         ex, ey = zip(*coordsp[ci])
@@ -136,13 +150,7 @@ def write_polys(poly_fn, coordsp, cell_map):
         fp.close()
         
 def write_border_edges(det_fn, border_edges):
-    fcl = False
-    if type(det_fn) is file:
-        fp = det_fn
-    else:
-        fcl = True
-        fp = open(det_fn, "w")
-
+    fp, fcl = getFp(det_fn, write=True)
     for edge, cell in border_edges.items():
         fp.write("%s:%s,%s:%s,%s,%s\n" % (edge[0][0], edge[1][0], edge[0][1], edge[1][1], cell[0], cell[1]))
     if fcl:
@@ -152,13 +160,7 @@ def write_border_edges(det_fn, border_edges):
 #### READING FROM FILE
 ######################################
 def read_polys(poly_fn, id_int):
-    fcl = False
-    if type(poly_fn) is file:
-        fp = poly_fn
-    else:
-        fcl = True
-        fp = open(poly_fn, "r")        
-        
+    fp, fcl = getFp(poly_fn)
     coordsp = []
     cell_map = {}
     for line in fp:
@@ -179,13 +181,7 @@ def read_polys(poly_fn, id_int):
     return coordsp, cell_map
         
 def read_border_edges(det_fn, id_int):
-    fcl = False
-    if type(det_fn) is file:
-        fp = det_fn
-    else:
-        fcl = True
-        fp = open(det_fn, "r")
-
+    fp, fcl = getFp(det_fn)
     border_edges = {}
     for line in fp:
         parts = line.strip().split(",")
@@ -839,6 +835,16 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
 ##################################
 #### PREPARING FOR PLOTTING
 ##################################
+def smoothen_polys(polys, fact=1):
+    if fact <= 1:
+        return polys
+    return [smoothen_poly(poly, fact) for poly in polys]
+def smoothen_poly(poly, fact=1):
+    if fact <= 1 or len(poly) / fact < 10:
+        return poly
+    return poly[:-(fact-1):fact]+[poly[-1]]
+
+
 
 def prepare_cc_polys(ccells, coordsp):
     edge_counts = {}
@@ -1104,11 +1110,17 @@ class PolyMap(object):
         return cells_graph, edges_graph, out_data    
         
 
-    def prepare_areas_data(self, cells_colors, coordsp, cells_graph, edges_graph, out_data):
+    def prepare_areas_data(self, cells_colors, coordsp, cells_graph, edges_graph, out_data, smooth_fact=1):
         ccs_data = {}
-
+        
         cells_colors_bckg = -2*numpy.ones(len(coordsp), dtype=int)
-        cells_colors_bckg[:cells_colors.shape[0]] = cells_colors
+        if type(cells_colors) is list:
+            cells_colors_bckg[cells_colors] = 0
+        elif type(cells_colors) is dict:
+            for i, v in cells_colors.items():
+                cells_colors_bckg[i] = v
+        else:
+            cells_colors_bckg[:cells_colors.shape[0]] = cells_colors
         cells_to_ccs = numpy.zeros(len(coordsp), dtype=int)   
         adjacent = dict([(ci, {}) for ci in out_data.keys()])
 
@@ -1116,7 +1128,8 @@ class PolyMap(object):
             for cc in connected_components(cells_graph, cells_colors_bckg, si):
                 ci = len(ccs_data)
                 cc_polys = prepare_cc_polys(cc, coordsp)
-                ccs_data[ci] = {"ci": ci, "cells": cc, "polys": cc_polys, "color": si, "level": -1}
+                smooth_polys = smoothen_polys(cc_polys, fact=smooth_fact)
+                ccs_data[ci] = {"ci": ci, "cells": cc, "polys": cc_polys, "smooth_polys": smooth_polys, "color": si, "level": -1}
                 adjacent[ci] = {}
                 for c in cc:
                     cells_to_ccs[c] = ci
@@ -1167,23 +1180,23 @@ if __name__=="__main__":
     if len(sys.argv) > 1:
         coords_fn = sys.argv[1]
 
-    pm = PolyMap()
-    filenames = pm.makeFilenames(coords_fn)
+    polymap_instance = PolyMap()
+    filenames = polymap_instance.makeFilenames(coords_fn)
 
-    PointsMap, PointsIds = pm.getPointsFromFile(filenames["coords"])
+    PointsMap, PointsIds = polymap_instance.getPointsFromFile(filenames["coords"])
     
-    final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap)
-    # pm.plot_final_polys(final_polys, PointsMap)
-    coordsp, border_edges, cell_map = pm.prepPolys(PointsIds, final_polys, final_details, edges, nodes)
-    pm.write_to_files(filenames, coordsp, border_edges, cell_map)
+    final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap)
+    # polymap_instance.plot_final_polys(final_polys, PointsMap)
+    coordsp, border_edges, cell_map = polymap_instance.prepPolys(PointsIds, final_polys, final_details, edges, nodes)
+    polymap_instance.write_to_files(filenames, coordsp, border_edges, cell_map)
     
-    ## coordsp, border_edges, cell_map = pm.getPolysFromFiles(filenames, pm.parameters["ID_INT"])
+    ## coordsp, border_edges, cell_map = polymap_instance.getPolysFromFiles(filenames, polymap_instance.parameters["ID_INT"])
     
-    cells_graph, edges_graph, out_data = pm.prepare_exterior_data(coordspX, border_edgesX)
-    cells_colors = pm.getSuppsFromFile(filenames["supp"], cell_map)
+    cells_graph, edges_graph, out_data = polymap_instance.prepare_exterior_data(coordspX, border_edgesX)
+    cells_colors = polymap_instance.getSuppsFromFile(filenames["supp"], cell_map)
 
     for ccls in cells_colors: 
-        ccs_data, adjacent, cks = pm.prepare_areas_data(ccls, coordsp, cells_graph, edges_graph, out_data)
+        ccs_data, adjacent, cks = polymap_instance.prepare_areas_data(ccls, coordsp, cells_graph, edges_graph, out_data)
                 
         for cii, ck in enumerate(cks):
             for pi in ccs_data[ck]["exterior_polys"]:

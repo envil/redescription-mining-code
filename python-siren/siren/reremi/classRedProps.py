@@ -746,6 +746,7 @@ class RedProps(object):
     ####        PRINTING
     ##############################################
     def printRedList(self, reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, modifiers={}, style="txt"):
+        # print "PRINT RED LIST", modifiers
         try:
             red_list = sorted(reds.items())
         except AttributeError:
@@ -771,6 +772,7 @@ class RedProps(object):
         return str_out
 
     def printTexRedList(self, reds, names=[None, None], list_fields=None, nblines=1, standalone=False, modifiers={}):
+        # print "PRINT RED TEX LIST", modifiers
         standalone = True
         try:
             red_list = sorted(reds.items())
@@ -782,7 +784,7 @@ class RedProps(object):
         if list_fields is None:
             modifiers = self.updateModifiers(red_list, modifiers)
             list_fields = self.getCurrentListFields("tex", modifiers)
-
+        # print "LIST FIELDS", list_fields
         str_odoc, names_alts = openTexDocument(names, standalone)
         str_oth, with_fname = openTexTabular(list_fields, nblines)
         str_reds = ""

@@ -909,6 +909,13 @@ class Siren():
         #m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
 
+        ID_IMPORT_COODSBCKG = wx.NewId()
+        m_impCB = submenuImport.Append(ID_IMPORT_COODSBCKG, "Import &Bckg Coords", "Import background coordinates.")
+        if self.getData() is not None:
+            frame.Bind(wx.EVT_MENU, self.OnImportCoordsBckg, m_impCB)
+        else:
+            submenuImport.Enable(ID_IMPORT_COODSBCKG, False)
+        
         ID_IMPORT_PREFERENCES = wx.NewId()
         m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
         frame.Bind(wx.EVT_MENU, self.OnImportPreferences, m_impPreferences)
@@ -1344,7 +1351,22 @@ class Siren():
         dlg = ImportDataCSVDialog(self)
         dlg.showDialog()
         self.changePage(self.getDefaultTabId("e"))
-                            
+
+    def OnImportCoordsBckg(self, event):
+        """Shows a custom dialog to open bckg coordinates"""
+        if not self.getData():
+            return
+        dir_name = os.path.expanduser('~/')
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:                
+                self.getData().readBckg(path)
+            except:
+                pass
+        open_dlg.Destroy()
+
     def OnImportPreferences(self, event):
         if not self.checkAndProceedWithUnsavedChanges(self.dw.preferences.isChanged):
             return
@@ -1377,11 +1399,11 @@ class Siren():
             path = open_dlg.GetPath()
             try:
                 reds, sortids = self.dw.loadRedescriptionsFromFile(path)
+                self.loadReds(reds, sortids, path=path)
+                self.changePage(self.getDefaultTabId("r"))
             except:
                 pass
         open_dlg.Destroy()        
-        self.loadReds(reds, sortids, path=path)
-        self.changePage(self.getDefaultTabId("r"))
         
     def OnExportRedescriptions(self, event):
         if self.getNbToExportReds() < 1:

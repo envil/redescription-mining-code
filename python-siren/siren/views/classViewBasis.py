@@ -612,9 +612,9 @@ class ViewRedMap(ViewRed):
 class ViewRedMappoly(ViewRed):
 
     TID = "MPP"
-    SDESC = "MPoly"
-    title_str = "MPoly"
-    ordN = 1
+    SDESC = "Map.Poly"
+    title_str = "Map Polygons"
+    ordN = 2
     geo = True
     typesI = "r"
 

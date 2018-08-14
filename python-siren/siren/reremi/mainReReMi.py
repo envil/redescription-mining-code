@@ -33,7 +33,8 @@ def loadAll(arguments=[], conf_defs=None):
 
     exec_folder = os.path.dirname(os.path.abspath(__file__))
     src_folder = exec_folder
-    
+
+    package = None
     pack_filename = None
     config_filename = None
     tmp_dir = None
@@ -95,7 +96,7 @@ def loadAll(arguments=[], conf_defs=None):
         filenames["package"] = os.path.abspath(pack_filename)
     print filenames
     return {"params": params, "data": data, "logger": logger,
-            "filenames": filenames, "reds": reds, "pm": pm}
+            "filenames": filenames, "reds": reds, "pm": pm, "package": package}
 
 def turnToDict(params):
     params_l = {}
@@ -538,7 +539,7 @@ def run_rnd(args):
 ###########
     
 if __name__ == "__main__":
-
+    
     if re.match("printout", sys.argv[-1]):
         run_printout(sys.argv)
     elif re.match("rnd", sys.argv[-1]):

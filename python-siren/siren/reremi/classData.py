@@ -2386,6 +2386,7 @@ class Data(object):
     def hasCoordsBckg(self):
         return self.coords_bckg is not None
     def setCoordsBckg(self, coords_bckg):
+        self.resetPolymapData()
         self.coords_bckg = coords_bckg
     def getCoordsBckg(self):
         return self.coords_bckg
@@ -2398,7 +2399,11 @@ class Data(object):
     def setBckg(self, coords_bckg, rnames_bckg):
         self.setCoordsBckg(coords_bckg)
         self.setRNamesBckg(rnames_bckg)
-
+    def readBckg(self, filename):
+        coords_bckg, rnames_bckg = csv_reader.read_coords_csv(filename)
+        self.setBckg(coords_bckg, rnames_bckg)
+    def writeBckg(self, filename):
+        csv_reader.write_coords_csv(filename, self.coords_bckg, self.rnames_bckg)
     
     def setCoords(self, coords):
         ### coords are NOT turned to a numpy array because polygons might have different numbers of points
@@ -2441,53 +2446,64 @@ class Data(object):
                 geo_cols.append(col)
             self.condition_dt = {"cols": geo_cols, "is_geo": True}
 
+    def resetPolymapData(self, params={}):
+        if self.polymap_data is not None:
+            if "polymap_instance" in self.polymap_data:
+                replacement = {"polymap_instance": self.polymap_data["polymap_instance"]}
+                for elem in ["gridh_percentile", "gridw_fact"]:
+                    if elem in self.polymap_data:
+                        replacement[elem] = self.polymap_data[elem]
+                self.polymap_data = replacement
 
     def initPolymapData(self, params={}):
         if self.polymap_data is not None:
-            pm = PolyMap()
-            PointsMap, PointsIds = pm.getPointsFromData(self)
-            final_polys, final_details, edges, nodes = pm.compute_polys(PointsMap, params.get("gridh_percentile"), params.get("gridw_fact"))
-            self.polymap_data = {"pm": pm, "final_polys": final_polys, "final_details": final_details,
+            polymap_instance = PolyMap()
+            PointsMap, PointsIds = polymap_instance.getPointsFromData(self)
+            final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap, params.get("gridh_percentile"), params.get("gridw_fact"))
+            self.polymap_data = {"polymap_instance": polymap_instance, "final_polys": final_polys, "final_details": final_details,
                                  "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
                                  "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}
             
     def preparePlotPolymapData(self, params={}):
         if self.polymap_data is not None:
             changed = True
-            if "pm" in self.polymap_data:
+            if "polymap_instance" in self.polymap_data:
                 changed = False
                 for (k,v) in params.items():
                     if self.polymap_data.get(k) != v:
                         changed = True
             if changed:
                 self.initPolymapData(params)
-            coordsp, border_edges, cell_map = self.polymap_data["pm"].prepPolys(self.polymap_data["p_ids"],
+            coordsp, border_edges, cell_map = self.polymap_data["polymap_instance"].prepPolys(self.polymap_data["p_ids"],
                                                            self.polymap_data["final_polys"], self.polymap_data["final_details"],
                                                            self.polymap_data["edges"], self.polymap_data["nodes"])
-            cells_graph, edges_graph, out_data = self.polymap_data["pm"].prepare_exterior_data(coordsp, border_edges)
-            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data})
+            cells_graph, edges_graph, out_data = self.polymap_data["polymap_instance"].prepare_exterior_data(coordsp, border_edges)
+            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
+                                      "border_edges": border_edges, "cell_map": cell_map})
 
     def getPlotPolymapDataFromFiles(self, filenames, params={}):
         if self.polymap_data is not None:
-            if "pm" not in self.polymap_data:
-                pm = PolyMap()
-                self.polymap_data["pm"] = pm
-        coordsp, border_edges, cell_map = self.polymap_data["pm"].getPolysFromFiles(filenames, params.get("SEP"), params.get("ID_INT"))
-        cells_graph, edges_graph, out_data = self.polymap_data["pm"].prepare_exterior_data(coordsp, border_edges)
-        self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data})
-        
+            if "polymap_instance" not in self.polymap_data:
+                self.polymap_data["polymap_instance"] = PolyMap()
+        coordsp, border_edges, cell_map = self.polymap_data["polymap_instance"].getPolysFromFiles(filenames, params.get("ID_INT"))
+        cells_graph, edges_graph, out_data = self.polymap_data["polymap_instance"].prepare_exterior_data(coordsp, border_edges)
+        self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
+                                  "border_edges": border_edges, "cell_map": cell_map})
+
+    def hasPolymapDataToSave(self):
+        return self.polymap_data is not None and all([k in self.polymap_data for k in ["polymap_instance", "coordsp", "border_edges", "cell_map"]])
     def savePlotPolymapDataToFiles(self, filenames, params={}):
-        if self.polymap_data is not None or "pm" not in self.polymap_data:
-            self.polymap_data["pm"].write_to_files(filenames, PointsIds, final_polys, final_details, edges, nodes)
+        if self.hasPolymapDataToSave():            
+            self.polymap_data["polymap_instance"].write_to_files(filenames, self.polymap_data["coordsp"], self.polymap_data["border_edges"], self.polymap_data["cell_map"])
             
         
     def prepare_areas_data(self, ccls, params={}):
         if self.polymap_data is not None:
             if "out_data" not in self.polymap_data:
                 self.preparePlotPolymapData(params)
-            ccs_data, adjacent, cks = self.polymap_data["pm"].prepare_areas_data(ccls,
+            ccs_data, adjacent, cks = self.polymap_data["polymap_instance"].prepare_areas_data(ccls,
                                       self.polymap_data["coordsp"], self.polymap_data["cells_graph"],
-                                      self.polymap_data["edges_graph"], self.polymap_data["out_data"])
+                                      self.polymap_data["edges_graph"], self.polymap_data["out_data"], smooth_fact=params.get("smooth_fact", 1))
             return {"ccs_data": ccs_data, "adjacent": adjacent, "cks": cks}
         return None
     
