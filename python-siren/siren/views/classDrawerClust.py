@@ -11,10 +11,8 @@ import pdb
 
     
 class DrawerClustTD(DrawerEntitiesTD):
-        
-    @classmethod
-    def getCMap(tcl, ltid):
-        return plt.get_cmap("rainbow")
+
+    cmap_name = "rainbow"
     def drawPoly(self):
         return False
     

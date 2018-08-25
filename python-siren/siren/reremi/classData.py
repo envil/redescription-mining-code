@@ -2460,11 +2460,14 @@ class Data(object):
             polymap_instance = PolyMap()
             PointsMap, PointsIds = polymap_instance.getPointsFromData(self)
             final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap, params.get("gridh_percentile"), params.get("gridw_fact"))
-            self.polymap_data = {"polymap_instance": polymap_instance, "final_polys": final_polys, "final_details": final_details,
-                                 "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
-                                 "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}
+            dets = {"polymap_instance": polymap_instance, "final_polys": final_polys, "final_details": final_details,
+                        "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
+                        "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}                
+            self.polymap_data = dets
+            return dets
             
     def preparePlotPolymapData(self, params={}):
+        dets = {}
         if self.polymap_data is not None:
             changed = True
             if "polymap_instance" in self.polymap_data:
@@ -2478,8 +2481,10 @@ class Data(object):
                                                            self.polymap_data["final_polys"], self.polymap_data["final_details"],
                                                            self.polymap_data["edges"], self.polymap_data["nodes"])
             cells_graph, edges_graph, out_data = self.polymap_data["polymap_instance"].prepare_exterior_data(coordsp, border_edges)
-            self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
-                                      "border_edges": border_edges, "cell_map": cell_map})
+            dets = {"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
+                        "border_edges": border_edges, "cell_map": cell_map}
+            self.polymap_data.update(dets)            
+        return dets
 
     def getPlotPolymapDataFromFiles(self, filenames, params={}):
         if self.polymap_data is not None:
@@ -2495,9 +2500,8 @@ class Data(object):
     def savePlotPolymapDataToFiles(self, filenames, params={}):
         if self.hasPolymapDataToSave():            
             self.polymap_data["polymap_instance"].write_to_files(filenames, self.polymap_data["coordsp"], self.polymap_data["border_edges"], self.polymap_data["cell_map"])
-            
-        
-    def prepare_areas_data(self, ccls, params={}):
+                    
+    def prepare_borders_data(self, ccls):
         if self.polymap_data is not None:
             if "out_data" not in self.polymap_data:
                 self.preparePlotPolymapData(params)

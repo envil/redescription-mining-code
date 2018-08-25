@@ -5,19 +5,24 @@ from StringIO import StringIO
 
 import numpy
 
-# import matplotlib.pyplot as plt
-# import matplotlib.cm
-# from matplotlib.patches import Polygon
-# from matplotlib.collections import PatchCollection
-
 import voronoi_poly
 
 import pdb
 
-PLOT = True
-PLOT_SPLIT = True
-PLOT_EVERY = True
+PLOT = False #True
+PLOT_SPLIT = False #True
+PLOT_EVERY = False # True
 VERBOSE = False
+
+if PLOT or PLOT_SPLIT or PLOT_EVERY:
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as mcm
+else:
+    plt = None
+    mcm = None
+# from matplotlib.patches import Polygon
+# from matplotlib.collections import PatchCollection
+
 
 GRT_CIR = 6370.997
 
@@ -53,19 +58,32 @@ def loadCoords(coords_fn, sep=",", lat_cid=0, lng_cid=1, names_cid=None):
     PointsMap={}
     PointsIds={}
     fp=open(coords_fn, "r")
-    for line in fp:
+    for line in fp:        
         data=line.strip().split(sep)
-
+        (lat_v, lng_v) = (None, None)
         try:
             if True:
             # if float(data[1]) < 0 and float(data[1]) > -30 and float(data[2]) < -20:
-                if names_cid is not None:
-                    PointsIds[len(PointsMap)]=data[names_cid].strip()                    
+                if ":" in data[lat_cid].strip():
+                    lat_v = float(data[lat_cid].strip().strip("\"").split(":")[0])
                 else:
-                    PointsIds[len(PointsMap)]=len(PointsMap)
-                PointsMap[len(PointsMap)]=(float(data[lat_cid].strip()),float(data[lng_cid].strip()))               
+                    lat_v = float(data[lat_cid].strip().strip("\""))
+                if ":" in data[lng_cid].strip():
+                    lng_v = float(data[lng_cid].strip().strip("\"").split(":")[0])
+                else:
+                    lng_v = float(data[lng_cid].strip().strip("\""))
+
+                name = len(PointsMap)
+                if names_cid is not None:
+                    name = data[names_cid].strip().strip("\"")
+                    if name == "groups_col" or name == "enabled_col":
+                        (lat_v, lng_v) = (None, None)
         except:
-            sys.stderr.write( "(warning) Invalid Input Line: "+line)
+            (lat_v, lng_v) = (None, None)
+
+        if lat_v is not None and lng_v is not None:
+            PointsIds[len(PointsMap)] = name
+            PointsMap[len(PointsMap)] = (lng_v, lat_v)                
     fp.close()
     return PointsMap, PointsIds
 
@@ -351,7 +369,7 @@ def ortho_prj(x1, y1, x2, y2, xn, yn):
     cosA = (xA*xB+yA*yB)/(lA*lB)
     return (x1 + cosA*lB*xA/lA, y1 + cosA*lB*yA/lA)
 
-def fill_gaps(poly, eis, node, sx, sy, edges):
+def fill_gaps(poly, eis, node, sx, sy, edges, PointsIds=None):
     ### fill the gaps between edges of incomplete cut polygon
     filled_pis = []
 
@@ -381,7 +399,6 @@ def fill_gaps(poly, eis, node, sx, sy, edges):
     else:
         eis_reorder = eis
     # print "REORDERED", eis_reorder
-
     
     which = "X"
     if len(poly) == 1:
@@ -452,28 +469,28 @@ def fill_gaps(poly, eis, node, sx, sy, edges):
                 j += 1
             filled.append(filled[0])
 
-    # if which == "Xm":
-    #     print which, node
-    #     print "----\nPOLY", poly, "\nEIS", eis
-    #     print "FILLED", filled, "\nPIS", filled_pis
-    #     print len(eis_reorder), j
-    #     if len(eis_reorder) != j:
-    #         pdb.set_trace()
+    if PLOT_EVERY and which == "Xm": # and (PointsIds is not None and PointsIds[node] == "30UVB4"):
+        print which, node
+        print "----\nPOLY", poly, "\nEIS", eis
+        print "FILLED", filled, "\nPIS", filled_pis
+        print len(eis_reorder), j
+        if len(eis_reorder) != j:
+            pdb.set_trace()
 
 
-    #     cmap = matplotlib.cm.get_cmap('rainbow')
-    #     plt.plot(filled[0][0], filled[0][1],"x", ms=10, color="red")
-    #     plt.plot(filled[1][0], filled[1][1],"^", ms=10, color="red")
-    #     for oi in range(1, len(filled)):
-    #         color = cmap((oi-1.)/(len(filled)-1.))
-    #         plt.plot((filled[oi-1][0], filled[oi][0]), (filled[oi-1][1], filled[oi][1]),"o-", color=color, linewidth=2)
-    #     for dd in filled_pis:
-    #         color = cmap(dd["range"][0]/(len(filled)-1.))
-    #         f = 0.001
-    #         for aei in dd["eis"]:
-    #             ei = abs(aei)
-    #             plt.plot((edges[ei]["edge"][0][0]+f, edges[ei]["edge"][1][0]+f), (edges[ei]["edge"][0][1]+f, edges[ei]["edge"][1][1]+f),"s--", color=color, linewidth=1)
-    #     plt.show()
+        cmap = mcm.get_cmap('rainbow')
+        plt.plot(filled[0][0], filled[0][1],"x", ms=10, color="red")
+        plt.plot(filled[1][0], filled[1][1],"^", ms=10, color="red")
+        for oi in range(1, len(filled)):
+            color = cmap((oi-1.)/(len(filled)-1.))
+            plt.plot((filled[oi-1][0], filled[oi][0]), (filled[oi-1][1], filled[oi][1]),"o-", color=color, linewidth=2)
+        for dd in filled_pis:
+            color = cmap(dd["range"][0]/(len(filled)-1.))
+            f = 0.001
+            for aei in dd["eis"]:
+                ei = abs(aei)
+                plt.plot((edges[ei]["edge"][0][0]+f, edges[ei]["edge"][1][0]+f), (edges[ei]["edge"][0][1]+f, edges[ei]["edge"][1][1]+f),"s--", color=color, linewidth=1)
+        plt.show()
             
     return filled, filled_pis
         
@@ -564,9 +581,8 @@ def clean_poly(poly):
 # pdb.set_trace()
 
 
-def compute_polys(PointsMap, gridh_percentile, gridw_fact):
+def compute_polys(PointsMap, gridh_percentile=-1, gridw_fact=-1, PointsIds=None):
     ### MAIN FUNCTION for computing polygons from coordinates
-    
     ### Compute the voronoi diagram
     #################################
     ### coordinates of the points
@@ -591,7 +607,10 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
     assert all([(len(x)==2 or len(x)==1) for (k,x) in map_edges.items()])
 
     # define the colormap
-    ## cmap = plt.get_cmap('cool')
+    if plt is not None:
+        cmap = plt.get_cmap('cool')
+    else:
+        cmap = None
     EXT_D = getDistance(numpy.min(sx), numpy.min(sy), numpy.max(sx), numpy.max(sy))
     MAX_D = 1.
 
@@ -612,16 +631,18 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
         else: ## other edge
             nodes = (sts[0], sts[1])
             dst, dstTE, clsr = getDistanceTroughEdge(sx[sts[0]], sy[sts[0]], sx[sts[1]], sy[sts[1]], edg)
-            if dst > MAX_D:
-                MAX_D = dst
-            cos, sin = angleCosSin(sx[sts[0]], sy[sts[0]], sx[sts[1]], sy[sts[1]])
             far = 0
-            if numpy.abs(cos) > (1-ANGLE_TOL): ## if near-horizontal
-                horz_edges.append((numpy.abs(sy[sts[0]]), dst))
-            elif numpy.abs(cos) < ANGLE_TOL: ## if near-vertical
-                if dst < gridH: 
-                    gridH = dst
-                vert_edges.append(dst)
+            cos, sin = angleCosSin(sx[sts[0]], sy[sts[0]], sx[sts[1]], sy[sts[1]])
+
+            if gridh_percentile > 0:
+                if dst > MAX_D:
+                    MAX_D = dst
+                if numpy.abs(cos) > (1-ANGLE_TOL): ## if near-horizontal
+                    horz_edges.append((numpy.abs(sy[sts[0]]), dst))
+                elif numpy.abs(cos) < ANGLE_TOL: ## if near-vertical
+                    if dst < gridH: 
+                        gridH = dst
+                    vert_edges.append(dst)
 
         # for ni in [0,1]:            
         #     if nodes[ni] not in graph:
@@ -640,34 +661,34 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
     ### build index of nodes ids in voronoi data
     nodes_vli = dict([(details["info"], so) for so, details in vl.items()])
 
-
-    ### detect adaptive vertical grid size from collected near-vertical neighbors distances 
-    gridH = numpy.percentile(vert_edges, gridh_percentile)
-    gridWps = computeHPoly(horz_edges, gridw_fact)
+    if gridh_percentile > 0:
+        ### detect adaptive vertical grid size from collected near-vertical neighbors distances 
+        gridH = numpy.percentile(vert_edges, gridh_percentile)
+        gridWps = computeHPoly(horz_edges, gridw_fact)
     
-    ### from the detected grid sizes, go through edges and mark far-apart neighbors
-    for ei in range(1, len(edges)):
-        dt = edges[ei]
-        lw = 1
-        if dt["nodes"][1] >= 0:
-            y = (sy[dt["nodes"][0]]+sy[dt["nodes"][1]])/2.
-            th = getDistanceThres(y, gridH, gridWps, 1.) ### max distance to be considered neighbors at this latitude
-            if dt["n_dist"] > 1.2*th:
-                dt["far"] = 1
-                lw = 6
-            elif dt["n_distTE"] > 1.2*th:
-                dt["far"] = 2
-                lw = 4
-        else:
-            lw = 8
-    #     if PLOT_SPLIT and lw > 1:
-    #         ex,ey = zip(*dt["edge"])
-    #         ci = dt["n_dist"]/MAX_D
-    #         plt.plot(ex, ey, color=cmap(ci), linewidth=lw)
-    # if PLOT_SPLIT:
-    #     plt.plot(sx, sy, "g+")
-    #     plt.show()
-    
+        ### from the detected grid sizes, go through edges and mark far-apart neighbors
+        for ei in range(1, len(edges)):
+            dt = edges[ei]
+            lw = 1
+            if dt["nodes"][1] >= 0:
+                y = (sy[dt["nodes"][0]]+sy[dt["nodes"][1]])/2.
+                th = getDistanceThres(y, gridH, gridWps, 1.) ### max distance to be considered neighbors at this latitude
+                if dt["n_dist"] > 1.2*th:
+                    dt["far"] = 1
+                    lw = 6
+                elif dt["n_distTE"] > 1.2*th:
+                    dt["far"] = 2
+                    lw = 4
+            else:
+                lw = 8
+            if PLOT_SPLIT and lw > 1:
+                ex,ey = zip(*dt["edge"])
+                ci = dt["n_dist"]/MAX_D
+                plt.plot(ex, ey, color=cmap(ci), linewidth=lw)
+        if PLOT_SPLIT:
+            plt.plot(sx, sy, "g+")
+            plt.show()
+        
     require_cut = {}
     polys = {}
     edges_ids = {}
@@ -695,9 +716,12 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
                 #         rep_poly.append(edges[-pi]["edge"][1])
             polys[node] = pis
             edges_ids[node] = pis
-            
+
+            pcheck = []
+            if gridh_percentile > 0:
+                pcheck = range(len(poly))
             ### collect edges that are not far but adjacent to far, which will need to be cut 
-            for pi in range(len(poly)):
+            for pi in pcheck:
                 for ppi in range(len(poly[pi])-1):
                     if edges[abs(pis[pi][ppi])]["far"] != 0:
                         oei = None
@@ -710,7 +734,7 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
                             if oei not in require_cut:
                                 require_cut[oei] = []
                             require_cut[oei].append((which, node, pi, ppi))
-
+    
                         aft = ppi+1
                         if aft == len(pis[pi]): aft = 0
                         if edges[abs(pis[pi][aft])]["far"] == 0:
@@ -722,7 +746,7 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
                             if oei not in require_cut:
                                 require_cut[oei] = []
                             require_cut[oei].append((which, node, pi, ppi))
-
+    
         else:
             polys[node] = None #getPolyRect(sx[node], sy[node], gridH, gridWps, .5)
             edges_ids[node] = eis
@@ -798,19 +822,22 @@ def compute_polys(PointsMap, gridh_percentile, gridw_fact):
                             edge[1] = cut_edges[(abs(pi), 1)]
                         if pi < 0:
                             edge = [edge[1], edge[0]]
-                            
-                        tmp.append(tuple(edge))
-                        if len(last) > 1:
-                            tmpis.append(last)
-                            last = [None]
-                        tmpis.append([pi])
+
+                        if edge[1] == edge[0]:
+                            last.append(pi)
+                        else:
+                            tmp.append(tuple(edge))
+                            if len(last) > 1:
+                                tmpis.append(last)
+                                last = [None]
+                            tmpis.append([pi])
                     else:
                         last.append(pi)
                 if len(last) > 1:
                     tmpis.append(last)
 
                 ### HERE
-                filled, filled_pis = fill_gaps(tmp, tmpis, node, sx, sy, edges)
+                filled, filled_pis = fill_gaps(tmp, tmpis, node, sx, sy, edges, PointsIds)
                 current.append(filled)
                 current_pis.append(filled_pis)
                 # if len(current[-1]) == 1:
@@ -968,13 +995,13 @@ class PolyMap(object):
         "ID_INT": False
         }
 
-    #### EUROPE
-    parameters["gridh_percentile"]= 20
-    parameters["gridw_fact"] = 1.3
+    # #### EUROPE
+    # parameters["gridh_percentile"]= 20
+    # parameters["gridw_fact"] = 1.3
 
-    # #### WORLD
-    # parameters["gridh_percentile"]= 50
-    # parameters["gridw_fact"] = 1.
+    #### WORLD
+    parameters["gridh_percentile"]= 50
+    parameters["gridw_fact"] = 1.
 
     @classmethod
     def makeFilenames(tcl, tmp_filename="coords.csv"):
@@ -1040,7 +1067,7 @@ class PolyMap(object):
                     
                 PointsIds[next_id] = rname
                 PointsMap[next_id] = coord
-        print "NBS", org_nb, len(PointsMap)
+        ## print "NBS", org_nb, len(PointsMap)
         return PointsMap, PointsIds
     
     def getPolysFromFiles(self, filenames, id_int=None):
@@ -1081,12 +1108,12 @@ class PolyMap(object):
                                 cells_colors[-1][cell_map[cid]] = si+1
         return cells_colors
     
-    def compute_polys(self, PointsMap, gridh_percentile=None, gridw_fact=None):
+    def compute_polys(self, PointsMap, gridh_percentile=None, gridw_fact=None, PointsIds=None):
         if gridh_percentile is None: 
             gridh_percentile = self.parameters["gridh_percentile"]
         if gridw_fact is None:
             gridw_fact = self.parameters["gridw_fact"]
-        final_polys, final_details, edges = compute_polys(PointsMap, gridh_percentile, gridw_fact)
+        final_polys, final_details, edges = compute_polys(PointsMap, gridh_percentile, gridw_fact, PointsIds)
         nodes = sorted(final_polys.keys())
         return final_polys, final_details, edges, nodes
         
@@ -1094,13 +1121,15 @@ class PolyMap(object):
         write_polys(filenames["polygons_poly"], coordsp, cell_map)
         write_border_edges(filenames["polygons_edges"], border_edges)
         
-    # def plot_final_polys(self, final_polys, PointsMap): 
-    #     for node, pls in final_polys.items():                
-    #         for pl in pls:
-    #             ex,ey = zip(*pl)
-    #             plt.plot(ex, ey, "b")
-    #         plt.plot(PointsMap[node][0], PointsMap[node][1], "go")
-    #     plt.show()
+    def plot_final_polys(self, final_polys, PointsMap):
+        if plt is None:
+            return
+        for node, pls in final_polys.items():                
+            for pl in pls:
+                ex,ey = zip(*pl)
+                plt.plot(ex, ey, "b")
+            plt.plot(PointsMap[node][0], PointsMap[node][1], "go")
+        plt.show()
  
     def prepare_exterior_data(self, coordsp, border_edges):
         ### PREPARE DATA (EXTERIOR/INTERIOR BORDERS)
@@ -1185,14 +1214,15 @@ if __name__=="__main__":
 
     PointsMap, PointsIds = polymap_instance.getPointsFromFile(filenames["coords"])
     
-    final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap)
-    # polymap_instance.plot_final_polys(final_polys, PointsMap)
+    final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap, PointsIds=PointsIds)
+    polymap_instance.plot_final_polys(final_polys, PointsMap)
     coordsp, border_edges, cell_map = polymap_instance.prepPolys(PointsIds, final_polys, final_details, edges, nodes)
+
     polymap_instance.write_to_files(filenames, coordsp, border_edges, cell_map)
     
     ## coordsp, border_edges, cell_map = polymap_instance.getPolysFromFiles(filenames, polymap_instance.parameters["ID_INT"])
     
-    cells_graph, edges_graph, out_data = polymap_instance.prepare_exterior_data(coordspX, border_edgesX)
+    cells_graph, edges_graph, out_data = polymap_instance.prepare_exterior_data(coordsp, border_edges)
     cells_colors = polymap_instance.getSuppsFromFile(filenames["supp"], cell_map)
 
     for ccls in cells_colors: 

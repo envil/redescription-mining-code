@@ -9,13 +9,13 @@ from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from classDrawerPara import DrawerRedPara
 from classDrawerTree import DrawerRedTree
 from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
-from classDrawerMappoly import DrawerEntitiesMappoly
+from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
 from classDrawerCorrel import DrawerRedCorrel
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
-from classPltDtHList import PltDtHandlerListClust
+from classPltDtHList import PltDtHandlerListClust, PltDtHandlerListBlocks
 from classProj import ProjFactory
 
 import pdb
@@ -704,7 +704,33 @@ class ViewClustMap(ViewList):
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
 
+class ViewClustMappoly(ViewList):
+    
+    TID = "CLMPP"
+    SDESC = "CluMapPolyLViz"
+    ordN = 1
+    title_str = "Map Polygons"
+    typesI = "r"
+    geo = True
+    
+    subcl_drawer = DrawerClustMappoly
+    subcl_pltdt = PltDtHandlerListClust
+    subcl_layh = LayoutHandlerBasis
 
+
+class ViewBorders(ViewList):
+    
+    TID = "CLBRD"
+    SDESC = "BordersMapLViz"
+    ordN = 3
+    title_str = "Map Borders"
+    typesI = "r"
+    geo = True
+    
+    subcl_drawer = DrawerBorders
+    subcl_pltdt = PltDtHandlerListBlocks
+    subcl_layh = LayoutHandlerBasis
+    
 class ViewClustProj(ViewEntitiesProj, ViewList):
 
 

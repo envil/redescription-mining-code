@@ -439,6 +439,13 @@ def run_printout(args):
     loaded = loadAll(args[:-1])
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
+
+    # nb_spc_vec = data.col(0, 11).getVector()
+    # for r in reds[0]["items"]:       
+    #     sids = list(r.getSuppI())
+    #     clipped = nb_spc_vec[sids]
+    #     print r.disp(), "\tNB_SPC", numpy.min(clipped), numpy.max(clipped), numpy.mean(clipped), numpy.median(clipped), numpy.std(clipped)
+        
     rp = Redescription.getRP()
     qfilename = None
     if reds is None and "queries" in filenames:

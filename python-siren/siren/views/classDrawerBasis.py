@@ -18,6 +18,15 @@ from classInterObjects import MaskCreator
 
 import pdb
 
+# SPECIAL_BINS = [3, 5, 7, 10, 13]
+# SPECIAL_LBLS = ["[3, 4]", "[5, 6]", "[7, 9]", "[10, 12]", "[13, 17]"]
+# SPECIAL_BINS = range(3,18) #[3, 5, 7, 10, 13]
+# SPECIAL_LBLS = ["%s" % v for v in SPECIAL_BINS]
+
+# SPECIAL_CMAP = "jet"
+
+SPECIAL_BINS, SPECIAL_LBLS, SPECIAL_CMAP = None, None, None
+
 class DrawerBasis(object):
 
     wait_delay = 300
@@ -26,9 +35,19 @@ class DrawerBasis(object):
     info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
 
     ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
+    cmap_name = None
+    cmap_default = "jet"
     @classmethod
     def getCMap(tcl, ltid):
-        return plt.get_cmap(tcl.ltids_map.get(ltid, "jet"))
+        if tcl.cmap_name is not None:
+            return plt.get_cmap(tcl.cmap_name)
+        return plt.get_cmap(tcl.ltids_map.get(ltid, tcl.cmap_default))
+
+    @classmethod
+    def prepMapper(tcl, vmin=0, vmax=1, ltid=0):
+        cmap = tcl.getCMap(ltid)            
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+        return matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     
     def __init__(self, view):
         self.view = view
@@ -55,7 +74,7 @@ class DrawerBasis(object):
             return
 
         if self.isReadyPlot():
-
+            
             self.clearPlot()
             self.makeBackground()
             inter_params = self.getParamsInter()
@@ -73,12 +92,15 @@ class DrawerBasis(object):
                 self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
                 mapper = None
 
-            if len(selected) > 0:
+            if len(selected) > 0 and "fc_dots" in self.dots_draws:
                 selp = inter_params.get("slide_opac", 50)/100.
                 self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
-                
-            draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
+
+            if "draw_dots" in self.dots_draws:
+                draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
+            else:
+                draw_indices = []
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
                 self.plotDotsSimple(self.getAxe(), self.dots_draws, draw_indices, draw_settings)
             else:
@@ -809,13 +831,18 @@ class DrawerEntitiesTD(DrawerBasis):
     
     def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
         delta_on = draw_settings.get("delta_on", True)
-        cmap, vmin, vmax = (self.getCMap(vec_dets["typeId"]), numpy.nanmin(vec), numpy.nanmax(vec))
+
+        if SPECIAL_BINS is not None:
+            re_vec, re_vec_dets = vec, vec_dets
+            vec_dets = {'typeId': 2, 'single': True, 'binVals': None, 'binLbls': None}
+            vec = numpy.zeros(re_vec.shape[0], dtype=int)
+            for b in SPECIAL_BINS[1:]:
+                vec += 1*(re_vec >= b)
+        
+        vmin, vmax = (numpy.nanmin(vec), numpy.nanmax(vec))
         if vec_dets.get("min_max") is not None:
             vmin, vmax = vec_dets["min_max"]
-
-        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
-        mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-
+        mapper = self.prepMapper(vmin, vmax, vec_dets["typeId"])
         # if min_max is not None:
         #     mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
         #     ec_dots = numpy.array([mmp[v] for v in vec])
@@ -837,10 +864,21 @@ class DrawerEntitiesTD(DrawerBasis):
         return dots_draws, mapper
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
+
+        if SPECIAL_BINS is not None:
+            re_vec, re_vec_dets = vec, vec_dets
+            vec_dets = {'typeId': 2, 'single': True, 'binVals': range(len(SPECIAL_BINS)), 'binLbls': SPECIAL_LBLS}
+            # vec_dets = {'typeId': 2, 'single': True, 'binVals': None, 'binLbls': None}
+            vec = numpy.zeros(re_vec.shape[0], dtype=int)
+            for b in SPECIAL_BINS[1:]:
+                vec += 1*(re_vec >= b)
+
         x0, x1, y0, y1, bx, by = corners
         fracts = [.1, .03] ## ratio bars adjusted/fixed
         nb = nb_bins
         idsan = numpy.where(~numpy.isnan(vec))[0]
+        uniq = numpy.unique(vec[idsan])
+        nb_distinct = len(uniq)
         if vec_dets["binLbls"] is not None:
             if vec_dets.get("binHist") is not None:
                 nb = vec_dets["binHist"]
@@ -855,9 +893,11 @@ class DrawerEntitiesTD(DrawerBasis):
         #     nb.append(nb[-1]+1)
         #     bins_ticks = numpy.unique(vec[idsan])
         #     bins_lbl = vec_dets["binLbls"]
+        elif nb_distinct-1 < nb and len(set(numpy.diff(uniq))) == 1:
+            nb = nb_distinct-1
 
         n, bins, patches = plt.hist(vec[idsan], bins=nb)
-        
+
         sum_h = numpy.max(n)
         norm_h = [ni*fracts[0]*float(x1-x0)/sum_h+fracts[1]*float(x1-x0) for ni in n]
         if vec_dets["binLbls"] is not None:            

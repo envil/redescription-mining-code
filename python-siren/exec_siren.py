@@ -151,11 +151,13 @@ class SirenApp(wx.App):
             #     mapV.OnKil()
 
             tab ="reds"
+            self.frame.tabs[tab]["tab"].viewData(0, "CC")
+            # tab ="vars"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
             # for i in [5]: #range(4):
             #     self.frame.tabs[tab]["tab"].viewData(i, "TR")
-            vw = self.frame.tabs[tab]["tab"].viewData(1, "MPP")
+            # vw = self.frame.tabs[tab]["tab"].viewData((0,9), "MAP")
             #vw.updateRSets({'rset_id': 'test'})
             # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
             # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")

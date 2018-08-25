@@ -69,15 +69,52 @@ class PltDtHandlerList(PltDtHandlerBasis):
         return self.pltdt.get("ddER")
 
         
-
-class PltDtHandlerListClust(PltDtHandlerWithCoords, PltDtHandlerList):
-
-    NBC_DEF = 2
-    MAXC_DEF = 12
+class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
     
     def __init__(self, view):
         PltDtHandlerWithCoords.__init__(self, view)    
 
+    def getVec(self, nbc=None):
+        if "vec" not in self.pltdt:
+            vec, dets = self.getVecAndDets(nbc)        
+            return vec
+        return self.pltdt["vec"]
+
+    def getVecDets(self, nbc=None):
+        if "vec_dets" not in self.pltdt:
+            vec, dets = self.getVecAndDets(nbc)        
+            return dets
+        return self.pltdt["vec_dets"]
+    
+    def getVecAndDets(self, nbc=None):
+        vec = numpy.empty((0))
+        etor = self.getEtoR()
+        vec_dets = {"etor": etor}
+
+        self.pltdt["vec"] = vec
+        self.pltdt["vec_dets"] = vec_dets
+        return vec, vec_dets
+    
+    def isSingleVar(self):
+        return True
+
+    def setCurrent(self, reds_map):
+        PltDtHandlerList.setCurrent(self, reds_map)
+        self.reds = dict(reds_map)
+        self.srids = [rid for (rid, red) in reds_map]
+        self.getEtoR()
+        self.setPreps()
+        self.getDrawer().update()
+        self.view.makeMenu()
+
+    def setPreps(self):
+        pass
+    
+class PltDtHandlerListClust(PltDtHandlerListBlocks):
+
+    NBC_DEF = 2
+    MAXC_DEF = 12
+    
     def getSettMaxClust(self):
         t = self.getParentPreferences()
         try:
@@ -96,19 +133,26 @@ class PltDtHandlerListClust(PltDtHandlerWithCoords, PltDtHandlerList):
         nodesc, order, dds, uniq_dds = get_cover_far(ddER["dists"], self.getSettMaxClust())
         return {"nodesc": nodesc, "order": order, "dds": dds, "uniq_dds": uniq_dds, "nbc_max": numpy.sum(nodesc>0)}    
 
-    def getVec(self, nbc=None):
-        if "vec" not in self.pltdt:
-            vec, dets = self.getVecAndDets(nbc)        
-            return vec
-        return self.pltdt["vec"]
+    def setInterParams(self):
+        ielems = self.getDrawer().getInterElements()
+        if "choice_nbc" in ielems:
+            opts = self.getDistOpts()
+            sel = numpy.min([len(opts)-1, 2])
+            ielems["choice_nbc"].SetItems(opts)
+            ielems["choice_nbc"].SetSelection(sel)
+        
+    def getDistOpts(self):
+        if self.pltdt.get("clusters") is not None:
+            nb = numpy.max(self.pltdt["clusters"]["nodesc"])+1
+            # return ["%d" % d for d in range(1,nb)]
+            return ["%d" % d for d in self.pltdt["clusters"]["uniq_dds"]]
+        else:
+            return ["%d" % d for d in range(1,3)]
 
-    def getVecDets(self, nbc=None):
-        if "vec_dets" not in self.pltdt:
-            vec, dets = self.getVecAndDets(nbc)        
-            return dets
-        return self.pltdt["vec_dets"]
+    def setPreps(self):
+        self.getClusters()
+        self.setInterParams()
 
-    
     def getVecAndDets(self, nbc=None):
         if nbc is None:
             nbc = self.NBC_DEF
@@ -165,32 +209,4 @@ class PltDtHandlerListClust(PltDtHandlerWithCoords, PltDtHandlerList):
         self.pltdt["vec_dets"] = vec_dets        
         return vec, vec_dets
 
-    def isSingleVar(self):
-        return True
-
-    def setInterParams(self):
-        ielems = self.getDrawer().getInterElements()
-        if "choice_nbc" in ielems:
-            opts = self.getDistOpts()
-            sel = numpy.min([len(opts)-1, 2])
-            ielems["choice_nbc"].SetItems(opts)
-            ielems["choice_nbc"].SetSelection(sel)
         
-    def setCurrent(self, reds_map):
-        PltDtHandlerList.setCurrent(self, reds_map)
-        self.reds = dict(reds_map)
-        self.srids = [rid for (rid, red) in reds_map]
-        self.getEtoR()
-        self.getClusters()
-        self.setInterParams()
-        self.getDrawer().update()
-        self.view.makeMenu()
-
-    def getDistOpts(self):
-        if self.pltdt.get("clusters") is not None:
-            nb = numpy.max(self.pltdt["clusters"]["nodesc"])+1
-            # return ["%d" % d for d in range(1,nb)]
-            return ["%d" % d for d in self.pltdt["clusters"]["uniq_dds"]]
-        else:
-            return ["%d" % d for d in range(1,3)]
-    

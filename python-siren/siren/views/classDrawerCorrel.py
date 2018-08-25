@@ -46,9 +46,13 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.view = view
         self.store_supp = None
         self.elements = {"active_info": False, "act_butt": [1]}
-        self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
+        ### TEMPORARY
+        # self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
+        # self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
+        # self.types_in = {BoolColM.type_id: False, CatColM.type_id: False, NumColM.type_id: True}
+        self.parts_in = {SSetts.Exx: False, SSetts.Exo: True, SSetts.Eox: False, SSetts.Eoo: False}
         self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
-        self.types_in = {BoolColM.type_id: False, CatColM.type_id: False, NumColM.type_id: True}
+        self.types_in = {BoolColM.type_id: True, CatColM.type_id: False, NumColM.type_id: False}
         self.fixed_radius = False
         self.initPlot()
         self.plot_void()
@@ -120,76 +124,111 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                 if v:
                     pos_out |= (vec == part)
 
-            Rall = numpy.corrcoef(mat)
-            if numpy.sum(pos_in) > 0:
-                Rin = numpy.corrcoef(mat[:, pos_in])
-            else:
-                Rin = Rall
-            if numpy.sum(pos_out) > 0:
-                Rout = numpy.corrcoef(mat[:, pos_out])
-            else:
-                Rout = Rout
-
-            cmap = cm.get_cmap('PuOr')
-            xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
-            flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
-            ids_under = (flt_ys == 0) | (flt_xs == Rout.shape[0]-1)
-            ids_under = flt_ys > flt_xs
-            flt_xs, flt_ys, flt_Rout, flt_Rin = flt_xs[ids_under], flt_ys[ids_under], flt_Rout[ids_under], flt_Rin[ids_under]
-            angle = numpy.pi*1/4
-            rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
-            rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)           
-
-            labels = [d["name"] for d in details]
-            width_band = .45
-            margband_bot = width_band
-            margband_top = 1.
-            
-            for i, lbl in enumerate(labels):
-                cline = "#888888" if i %2 == 0 else "#CCCCCC"
-                if i > 0:
-                    xys = numpy.dot(numpy.array([[-1, i], [-margband_top, i-width_band], [-margband_top, i+width_band], [(i-1)+margband_bot, i+width_band], [(i-1)+margband_bot, i-width_band]]), rot)
-                    self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
-                    self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=-numpy.degrees(angle), ha="right", va="bottom")
-
-                if i < len(labels)-1:
-                    xys = numpy.dot(numpy.array([[i, Rout.shape[0]], [i-width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (i+1)-margband_bot], [i-width_band, (i+1)-margband_bot]]), rot)
-                    self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
-                    self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=numpy.degrees(angle), ha="left", va="bottom")
-
-            if self.fixed_radius:
-                rads = .44*numpy.ones(flt_Rin.shape)
-            else:
-                rads = .48*numpy.abs(flt_Rin)
-
-            patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
-            ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
-            fcolors = [cmap(.5*(flt_Rin[i]+1)) for i in range(flt_Rin.shape[0])]
-            ecolors = [cmap(.5*(flt_Rout[i]+1)) for i in range(flt_Rin.shape[0])]
-            # ecolors = [ecmap(.5*numpy.abs(flt_Rin[i]-flt_Rout[i])) for i in range(flt_Rin.shape[0])]
-            p = PatchCollection(patches, alpha=1., zorder=10, facecolors = fcolors, edgecolors = ecolors, linewidths=(2.,))
-            self.axe.add_collection(p)
-
-            diag_size = numpy.sqrt(2)*(Rout.shape[0]-1)
-            nb_bins = 100
-            width_bin = diag_size/nb_bins
-            for i in range(nb_bins):
-                self.axe.fill([i*width_bin, (i+1)*width_bin, (i+1)*width_bin, i*width_bin], [-.75, -.75, -1.25, -1.25], color=cmap(i/(nb_bins-1.)))
-
-            self.axe.text(-1, -1., "-1", ha="center", va="center")
-            self.axe.text(diag_size+1, -1., "+1", ha="center", va="center")
-                    
-            self.axe.set_xlim([0-.2*Rout.shape[0], diag_size+.2*Rout.shape[0]])
-            self.axe.set_ylim([-2, diag_size/2+.2*Rout.shape[0]])
-            self.axe.set_xticks([])
-            self.axe.set_yticks([])
-
+            ### (DE)ACTIVATE COUNT PLOTS
+            # if tt == [BoolColM.type_id]:
+            #     self.makeCountsPlot(mat, pos_in, pos_out, details)
+            # else:
+            self.makeCorrelPlot(mat, pos_in, pos_out, details)
             self.draw()
             self.setFocus()
         else:
             self.plot_void()
                 
+    def makeCountsPlot(self, mat, pos_in, pos_out, details):
+        Rall = numpy.sum(mat, axis=1)
+        if numpy.sum(pos_in) > 0:
+            Nbin = float(numpy.sum(pos_in))
+            Rin = numpy.sum(mat[:, pos_in], axis=1)
+        else:
+            Nbin = float(mat.shape[1])
+            Rin = Rall
+        if numpy.sum(pos_out) > 0:
+            Nbout = float(numpy.sum(pos_out))
+            Rout = numpy.sum(mat[:, pos_out], axis=1)
+        else:
+            Nbout = float(mat.shape[1])
+            Rout = Rout
+        nnz_ids = numpy.where(Rin > (numpy.sum(pos_in)/10.))[0]
+        sids = nnz_ids[numpy.argsort(Rin[nnz_ids])]
+        cmap = cm.get_cmap('PuOr')
+        self.axe.barh(numpy.arange(len(sids))+.025, Rin[sids]/Nbin, left=.33, height=.95, color=cmap(100))
+        self.axe.barh(numpy.arange(len(sids))+.025, Rout[sids]/Nbout, left=-Rout[sids]/Nbout-.33, height=.95, color=cmap(0))
+        for ii, i in enumerate(sids):
+            self.axe.text(0, ii+.5, details[i]["name"], va="center", ha="center")
+        self.axe.set_ylim([0, len(sids)])
+        self.axe.set_xlim([-1.33, 1.33])
+        ticks = [0, .25, .5, .75, 1.]
+        self.axe.set_xticks([-i-.33 for i in ticks[::-1]]+[i+.33 for i in ticks])
+        self.axe.set_xticklabels(ticks[::-1]+ticks)
+        self.axe.set_yticks([])
+        # pdb.set_trace()
+            
+    def makeCorrelPlot(self, mat, pos_in, pos_out, details):
+        Rall = numpy.corrcoef(mat)
+        if numpy.sum(pos_in) > 0:
+            Rin = numpy.corrcoef(mat[:, pos_in])
+        else:
+            Rin = Rall
+        if numpy.sum(pos_out) > 0:
+            Rout = numpy.corrcoef(mat[:, pos_out])
+        else:
+            Rout = Rout
 
+        cmap = cm.get_cmap('PuOr')
+        xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
+        flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
+        ids_under = (flt_ys == 0) | (flt_xs == Rout.shape[0]-1)
+        ids_under = flt_ys > flt_xs
+        flt_xs, flt_ys, flt_Rout, flt_Rin = flt_xs[ids_under], flt_ys[ids_under], flt_Rout[ids_under], flt_Rin[ids_under]
+        angle = numpy.pi*1/4
+        rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
+        rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)           
+
+        labels = [d["name"] for d in details]
+        width_band = .45
+        margband_bot = width_band
+        margband_top = 1.
+        
+        for i, lbl in enumerate(labels):
+            cline = "#888888" if i %2 == 0 else "#CCCCCC"
+            if i > 0:
+                xys = numpy.dot(numpy.array([[-1, i], [-margband_top, i-width_band], [-margband_top, i+width_band], [(i-1)+margband_bot, i+width_band], [(i-1)+margband_bot, i-width_band]]), rot)
+                self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
+                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=-numpy.degrees(angle), ha="right", va="bottom")
+
+            if i < len(labels)-1:
+                xys = numpy.dot(numpy.array([[i, Rout.shape[0]], [i-width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (i+1)-margband_bot], [i-width_band, (i+1)-margband_bot]]), rot)
+                self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
+                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=numpy.degrees(angle), ha="left", va="bottom")
+
+        if self.fixed_radius:
+            rads = .44*numpy.ones(flt_Rin.shape)
+        else:
+            rads = .48*numpy.abs(flt_Rin)
+        
+        patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
+        ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
+        fcolors = [cmap(.5*(flt_Rin[i]+1)) for i in range(flt_Rin.shape[0])]
+        ecolors = [cmap(.5*(flt_Rout[i]+1)) for i in range(flt_Rin.shape[0])]
+        # ecolors = [ecmap(.5*numpy.abs(flt_Rin[i]-flt_Rout[i])) for i in range(flt_Rin.shape[0])]
+        p = PatchCollection(patches, alpha=1., zorder=10, facecolors = fcolors, edgecolors = ecolors, linewidths=(2.,))
+        self.axe.add_collection(p)
+
+        diag_size = numpy.sqrt(2)*(Rout.shape[0]-1)
+        nb_bins = 100
+        width_bin = diag_size/nb_bins
+        for i in range(nb_bins):
+            self.axe.fill([i*width_bin, (i+1)*width_bin, (i+1)*width_bin, i*width_bin], [-.75, -.75, -1.25, -1.25], color=cmap(i/(nb_bins-1.)))
+
+        self.axe.text(-1, -1., "-1", ha="center", va="center")
+        self.axe.text(diag_size+1, -1., "+1", ha="center", va="center")
+                
+        self.axe.set_xlim([0-.2*Rout.shape[0], diag_size+.2*Rout.shape[0]])
+        self.axe.set_ylim([-2, diag_size/2+.2*Rout.shape[0]])
+        self.axe.set_xticks([])
+        self.axe.set_yticks([])
+
+            
     # def makeAdditionalElements(self, panel=None):
     #     self.setElement("buttons", [])
     #     self.setElement("inter_elems", {})
