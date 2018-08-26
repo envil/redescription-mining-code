@@ -33,7 +33,8 @@ class DrawerBasis(object):
     max_emphlbl = 5
     ann_xy = (-10, 15)
     info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
-
+    
+    NBBINS = 20
     ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
     cmap_name = None
     cmap_default = "jet"

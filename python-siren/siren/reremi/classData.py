@@ -2501,7 +2501,7 @@ class Data(object):
         if self.hasPolymapDataToSave():            
             self.polymap_data["polymap_instance"].write_to_files(filenames, self.polymap_data["coordsp"], self.polymap_data["border_edges"], self.polymap_data["cell_map"])
                     
-    def prepare_borders_data(self, ccls):
+    def prepare_areas_data(self, ccls, params={}):
         if self.polymap_data is not None:
             if "out_data" not in self.polymap_data:
                 self.preparePlotPolymapData(params)

@@ -12,6 +12,9 @@ import pdb
 PLOT = False #True
 PLOT_SPLIT = False #True
 PLOT_EVERY = False # True
+# PLOT = True
+# PLOT_SPLIT = True
+
 VERBOSE = False
 
 if PLOT or PLOT_SPLIT or PLOT_EVERY:

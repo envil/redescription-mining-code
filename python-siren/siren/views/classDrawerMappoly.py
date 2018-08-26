@@ -1,4 +1,5 @@
 import numpy
+from matplotlib.collections import LineCollection
 
 from classDrawerMap import DrawerMap
 from classDrawerBasis import DrawerEntitiesTD
@@ -64,7 +65,7 @@ class DrawerClustMappoly(DrawerMappoly, DrawerClustTD): pass
 
 class DrawerBorders(DrawerMap, DrawerClustTD):
     
-    cmap_name = "Reds"
+    cmap_name = "Oranges"
     def plotSimple(self):
         return False
 
@@ -73,32 +74,42 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         return [], mapper
     
     def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
-        mapper = self.prepMapper(vmin=0, vmax=vec_dets["etor"].shape[1], ltid=1)
-        dots_draws = []
+        dots_draws = {}
+        mapper = None
         data = self.getParentData()
         if data is not None:
-            pp_data = data.initPolymapData({"gridh_percentile": 0})
-            # etor = numpy.vstack([vec_dets["etor"], numpy.zeros((1, vec_dets["etor"].shape[1]), dtype=bool)])
             etor  = vec_dets["etor"]
             max_id, max_val = etor.shape
-            for edge in pp_data["edges"]:
-                if edge["nodes"][0] < max_id and edge["nodes"][1] < max_id and edge["nodes"][0] != -1 and edge["nodes"][1] != -1:
-                    # val = numpy.sum(etor[edge["nodes"][0], :] != etor[edge["nodes"][1], :])
-                    val = numpy.sum(numpy.logical_xor(etor[edge["nodes"][0], :], etor[edge["nodes"][1], :]))
-                else:
-                    val = max_val
-                color = mapper.to_rgba(val, alpha=draw_settings["default"]["color_e"][-1])
-                if val > 0:
-                    dots_draws.append((edge["edge"], color, val))
+
+            pp_data = data.initPolymapData({"gridh_percentile": 0})
+            if self.bm is None:
+                edges = numpy.array([edge["edge"] for edge in pp_data["edges"]])
+            else:
+                edges = numpy.array([[self.bm(*edge["edge"][0]), self.bm(*edge["edge"][1])] for edge in pp_data["edges"]])
+            
+            node_pairs = numpy.array([edge["nodes"] for edge in pp_data["edges"]], dtype=int)
+            nodes_in = (node_pairs < max_id) & (node_pairs != -1)
+            borders_inner = numpy.sum(nodes_in, axis=1) == 2
+            borders_outer = numpy.sum(nodes_in, axis=1) == 1
+
+            edges_outer = edges[borders_outer, :, :]
+            edges_inner = edges[borders_inner, :, :]
+            
+            vals = numpy.sum(numpy.logical_xor(etor[node_pairs[borders_inner,0], :], etor[node_pairs[borders_inner,1], :]), axis=1)
+            mapper = self.prepMapper(vmin=0, vmax=numpy.max(vals), ltid=1)
+            colors = mapper.to_rgba(vals, alpha=draw_settings["default"]["color_e"][-1])
+            dots_draws = {"edges_outer": edges_outer, "edges_inner": edges_inner, "vals": vals, "colors": colors}
         return dots_draws, mapper
     
     def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
-        for (ccs, color, val) in dots_draws:
-            if self.bm is None:
-                xs, ys = zip(*ccs)
-            else:
-                xs, ys = zip(*[self.bm(x,y) for (x,y) in ccs])
-            axe.plot(xs, ys, color=color)
-            
+        line_segments = LineCollection(dots_draws["edges_outer"], colors="#AAAAAA", linewidths=1.)
+        axe.add_collection(line_segments)
+        mv = float(numpy.max(dots_draws["vals"]))
+        line_segments = LineCollection(dots_draws["edges_inner"], colors=dots_draws["colors"], linewidths=2*dots_draws["vals"]/mv)
+        axe.add_collection(line_segments)
+
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
+        x0, x1, y0, y1, bx, by = corners
+        self.hist_click_info = {"left_edge_map": x0, "right_edge_map": x1, "right_edge_occ": x1, "right_edge_hist": x1,
+                                "hedges_hist": [y0], "vedges_occ": [y0]}                
         return corners

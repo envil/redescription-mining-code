@@ -108,7 +108,8 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be at least'+
                                  str(cmax+1)+')')
-            coords.append((float(row[cpos[LATITUDE[0]]].strip()), float(row[cpos[LONGITUDE[0]]].strip())))
+            coords.append((float(row[cpos[LONGITUDE[0]]].strip()), float(row[cpos[LATITUDE[0]]].strip())))
+            # coords.append((float(row[cpos[LATITUDE[0]]].strip()), float(row[cpos[LONGITUDE[0]]].strip())))
             if rnames is not None:
                 tmp = row[cpos[IDENTIFIERS[0]]].strip()
                 if tmp != type(tmp)(unknown_string):
@@ -124,7 +125,7 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
 def write_coords_csv(filename, coords, rnames=None, csv_params={}, unknown_string=None):
     f, fcl = getFp(filename, write=True)
     if f is not None:
-        head = [LATITUDE[0], LONGITUDE[0]]
+        head = [LONGITUDE[0], LATITUDE[0]]
         if rnames is not None:
             head.append(IDENTIFIERS[0])
         f.write(",".join(head)+"\n")

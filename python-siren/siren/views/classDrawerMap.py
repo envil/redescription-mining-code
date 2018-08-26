@@ -373,6 +373,7 @@ class DrawerMap(DrawerBasis):
     MAP_POLY = True
     def initPlot(self):
         self.bm, self.bm_args = MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
+        ### self.bm, self.bm_args = None, {}
         
         if self.bm is not None:
             self.getPltDtH().setBM(self.bm)
