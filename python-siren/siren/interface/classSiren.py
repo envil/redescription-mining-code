@@ -82,7 +82,8 @@ class ERCache():
             nbE = reds[self.rids[0]].sParts.nbRows()
         self.etor = numpy.zeros((nbE, len(self.rids)), dtype=bool)
         for r, rid in enumerate(self.rids):
-            self.etor[list(reds[rid].getSuppI()), r] = True
+            self.etor[list(reds[rid].getSuppU()), r] = True
+            # self.etor[list(reds[rid].getSuppI()), r] = True
 
     def getRPos(self, rids):
         r_to_p = dict([(r,p) for (p,r) in enumerate(self.rids)])

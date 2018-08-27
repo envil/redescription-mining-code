@@ -2219,6 +2219,8 @@ class Data(object):
 
     ### THIS FORMAT ONLY ALLOWS BOOLEAN WITHOUT COORS, IF NAMES THEY HAVE TO BE INLINE
     def writeCSVSparsePairs(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
+        # self.writeCSVSparseTriples(side, csvf, rids, cids, details, inline, single_dataset)
+        # return
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0]]
         letter = self.getCommonType(side)
         # if letter is not None: ### THIS CAN ONLY BE FULLY BOOLEAN...
@@ -2456,27 +2458,31 @@ class Data(object):
                 self.polymap_data = replacement
 
     def initPolymapData(self, params={}):
-        if self.polymap_data is not None:
+        if self.polymap_data is not None and not self.hasPolyReady(params):
             polymap_instance = PolyMap()
             PointsMap, PointsIds = polymap_instance.getPointsFromData(self)
             final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap, params.get("gridh_percentile"), params.get("gridw_fact"))
             dets = {"polymap_instance": polymap_instance, "final_polys": final_polys, "final_details": final_details,
-                        "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
-                        "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}                
+                    "edges": edges, "nodes": nodes, "p_map": PointsMap, "p_ids": PointsIds,
+                    "gridh_percentile": params.get("gridh_percentile"), "gridw_fact": params.get("gridw_fact")}                
             self.polymap_data = dets
             return dets
-            
+        return self.polymap_data
+    
+    def hasPolyReady(self, params={}):
+        ready = False
+        if self.polymap_data is not None:            
+            if "polymap_instance" in self.polymap_data:
+                ready = True
+                for k in ["gridh_percentile", "gridw_fact"]:
+                    if self.polymap_data.get(k) != params.get(k):
+                        ready = False
+        return ready
+        
     def preparePlotPolymapData(self, params={}):
         dets = {}
         if self.polymap_data is not None:
-            changed = True
-            if "polymap_instance" in self.polymap_data:
-                changed = False
-                for (k,v) in params.items():
-                    if self.polymap_data.get(k) != v:
-                        changed = True
-            if changed:
-                self.initPolymapData(params)
+            self.initPolymapData(params)
             coordsp, border_edges, cell_map = self.polymap_data["polymap_instance"].prepPolys(self.polymap_data["p_ids"],
                                                            self.polymap_data["final_polys"], self.polymap_data["final_details"],
                                                            self.polymap_data["edges"], self.polymap_data["nodes"])
@@ -2492,8 +2498,10 @@ class Data(object):
                 self.polymap_data["polymap_instance"] = PolyMap()
         coordsp, border_edges, cell_map = self.polymap_data["polymap_instance"].getPolysFromFiles(filenames, params.get("ID_INT"))
         cells_graph, edges_graph, out_data = self.polymap_data["polymap_instance"].prepare_exterior_data(coordsp, border_edges)
-        self.polymap_data.update({"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
-                                  "border_edges": border_edges, "cell_map": cell_map})
+        dets = {"coordsp": coordsp, "cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data,
+                "border_edges": border_edges, "cell_map": cell_map}
+        self.polymap_data.update(dets)
+        return dets
 
     def hasPolymapDataToSave(self):
         return self.polymap_data is not None and all([k in self.polymap_data for k in ["polymap_instance", "coordsp", "border_edges", "cell_map"]])
@@ -3125,6 +3133,13 @@ def main():
     # print data
 
     # exit()
+    rep_in = "/home/egalbrun/TKTL/misc/ecometrics/compare_more/v2/data/"
+    rep_out = "/home/egalbrun/short/"
+    
+    data = Data([rep_in+"IUCN_EU_nbspc3+_focus_agg-coords.csv", rep_in+"occurence_IUCN_all.csv", {}, ""], "csv")
+    data.cols[1] = [c for c in data.cols[1] if len(c.supp()) > 0]
+    data.writeCSV([rep_out+"data_agg.csv", rep_out+"data_occs.csv"])
+    exit()
     rep = "/home/egalbrun/short/raja_small/"
 
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")

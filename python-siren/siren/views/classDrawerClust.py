@@ -12,12 +12,27 @@ import pdb
     
 class DrawerClustTD(DrawerEntitiesTD):
 
+    redistrib_colors = True
     cmap_name = "rainbow"
     def drawPoly(self):
         return False
     
     def getVecAndDets(self, inter_params=None):
-        vec, vec_dets = self.getPltDtH().getVecAndDets(inter_params.get("choice_nbc"))
+        vec_org, vec_dets_org = self.getPltDtH().getVecAndDets(inter_params.get("choice_nbc"))
+        vec, vec_dets = vec_org, vec_dets_org
+        uu = numpy.unique(vec_org)
+        if self.redistrib_colors and len(uu) < numpy.max(vec_org)+1:
+            map_v = -numpy.ones(numpy.max(vec_org)+2, dtype=int)
+            i = -1
+            for v in uu:
+                if v > -1:
+                    i += 1  
+                    map_v[v] = i
+            vec, vec_dets = map_v[vec_org], dict(vec_dets_org)
+            vec_dets['min_max'] = (0, numpy.max(map_v))
+            vec_dets['binVals'] = numpy.arange(0, vec_dets['min_max'][1]+1, dtype=int)
+            vec_dets['binHist'] = numpy.arange(-1, vec_dets['min_max'][1]+1) + .5
+            
         self.setElement("vec", vec)
         self.setElement("vec_dets", vec_dets)
         return vec, vec_dets

@@ -151,7 +151,7 @@ class SirenApp(wx.App):
             #     mapV.OnKil()
 
             tab ="reds"
-            self.frame.tabs[tab]["tab"].viewListData(1, "CLBRD")
+            self.frame.tabs[tab]["tab"].viewListData(0, "CLBRD") #"CLM")
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))

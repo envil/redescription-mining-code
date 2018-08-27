@@ -934,6 +934,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return (x0, x1, y0, y1, bx, by)
         
     def plotDotsSimple(self, axe, dots_draws, draw_indices, draw_settings):
+        
         ku, kindices = numpy.unique(dots_draws["zord_dots"][draw_indices], return_inverse=True)
         ## pdb.set_trace()
         for vi, vv in enumerate(ku):

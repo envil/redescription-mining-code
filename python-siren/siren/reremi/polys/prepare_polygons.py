@@ -818,14 +818,18 @@ def compute_polys(PointsMap, gridh_percentile=-1, gridw_fact=-1, PointsIds=None)
                     # org[-1].append(org_edge)
                     
                     if edges[abs(pi)]["far"] == 0:
-                        edge = [edges[abs(pi)]["edge"][0], edges[abs(pi)]["edge"][1]]
-                        if (abs(pi), 0) in cut_edges:
-                            edge[0] = cut_edges[(abs(pi), 0)]
-                        if (abs(pi), 1) in cut_edges:
-                            edge[1] = cut_edges[(abs(pi), 1)]
+                        if "cut_edge" not in edges[abs(pi)]:
+                            edge = [edges[abs(pi)]["edge"][0], edges[abs(pi)]["edge"][1]]
+                            if (abs(pi), 0) in cut_edges:
+                                edge[0] = cut_edges[(abs(pi), 0)]
+                            if (abs(pi), 1) in cut_edges:
+                                edge[1] = cut_edges[(abs(pi), 1)]
+                            edges[abs(pi)]["cut_edge"] = tuple(edge)
+                        else:
+                            edge = [edges[abs(pi)]["cut_edge"][0], edges[abs(pi)]["cut_edge"][1]]
                         if pi < 0:
                             edge = [edge[1], edge[0]]
-
+                                
                         if edge[1] == edge[0]:
                             last.append(pi)
                         else:

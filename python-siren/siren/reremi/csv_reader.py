@@ -92,6 +92,7 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
             for clbls in [LATITUDE, LONGITUDE, IDENTIFIERS]:
                 if h in clbls:
                     cpos[clbls[0]] = i
+
         if not (LATITUDE[0] in cpos and LONGITUDE[0] in cpos):
             return None, None
         cmax = max(cpos.values())
@@ -102,7 +103,7 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
             rnames = None
             
         for row in csvreader:
-            if re.match("\s*#", row[0]):
+            if re.match("\s*#", row[0]) or row[0] in ENABLED_ROWS+ENABLED_COLS+GROUPS_COLS:
                 continue
             if len(row) < cmax+1:
                 raise ValueError('number of columns does not match (is '+

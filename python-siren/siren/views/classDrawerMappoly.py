@@ -5,7 +5,7 @@ from classDrawerMap import DrawerMap
 from classDrawerBasis import DrawerEntitiesTD
 from classDrawerClust import DrawerClustTD
 
-from ..reremi.csv_reader import read_coords_csv
+from ..reremi.classData import BoolColM, CatColM, NumColM
 
 import pdb
 
@@ -62,10 +62,11 @@ class DrawerEntitiesMappoly(DrawerMappoly, DrawerEntitiesTD): pass
     
 class DrawerClustMappoly(DrawerMappoly, DrawerClustTD): pass
 
-
 class DrawerBorders(DrawerMap, DrawerClustTD):
     
     cmap_name = "Oranges"
+    redistrib_colors = False
+
     def plotSimple(self):
         return False
 
@@ -76,34 +77,50 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
     def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
         dots_draws = {}
         mapper = None
-        data = self.getParentData()
+        data = self.getParentData()       
         if data is not None:
+            # mat, dets, mc = data.getMatrix(types=[BoolColM.type_id], only_able=True)
+            # etor = numpy.array(mat.T, dtype=bool)
+
             etor  = vec_dets["etor"]
             max_id, max_val = etor.shape
 
-            pp_data = data.initPolymapData({"gridh_percentile": 0})
+            t = self.view.getParentPreferences()
+            pm_params = {}
+            for key in ["gridh_percentile", "gridw_fact", "smooth_fact"]:
+                if key in t:
+                    pm_params[key] = t[key]["data"]
+
+            pp_data = data.initPolymapData(pm_params)
             if self.bm is None:
-                edges = numpy.array([edge["edge"] for edge in pp_data["edges"]])
+                edges = numpy.array([edge.get("cut_edge", edge["edge"]) for edge in pp_data["edges"]])
             else:
-                edges = numpy.array([[self.bm(*edge["edge"][0]), self.bm(*edge["edge"][1])] for edge in pp_data["edges"]])
+                edges = numpy.array([zip(*self.bm(*zip(*edge.get("cut_edge", edge["edge"])))) for edge in pp_data["edges"]])
+                # edges = numpy.array([zip(*self.bm(*zip(*edge["edge"]))) for edge in pp_data["edges"]])
             
             node_pairs = numpy.array([edge["nodes"] for edge in pp_data["edges"]], dtype=int)
+            far_vs = numpy.array([edge["far"] for edge in pp_data["edges"]], dtype=int)
             nodes_in = (node_pairs < max_id) & (node_pairs != -1)
-            borders_inner = numpy.sum(nodes_in, axis=1) == 2
-            borders_outer = numpy.sum(nodes_in, axis=1) == 1
+            
+            borders_inner = (numpy.sum(nodes_in, axis=1) == 2) & (far_vs == 0)
+            borders_inter = (numpy.sum(nodes_in, axis=1) == 1) & (far_vs == 0)            
+            # borders_outer = numpy.sum(nodes_in, axis=1) == 1
 
-            edges_outer = edges[borders_outer, :, :]
             edges_inner = edges[borders_inner, :, :]
+            edges_inter = edges[borders_inter, :, :]
+            # edges_outer = edges[borders_outer, :, :]
             
             vals = numpy.sum(numpy.logical_xor(etor[node_pairs[borders_inner,0], :], etor[node_pairs[borders_inner,1], :]), axis=1)
             mapper = self.prepMapper(vmin=0, vmax=numpy.max(vals), ltid=1)
             colors = mapper.to_rgba(vals, alpha=draw_settings["default"]["color_e"][-1])
-            dots_draws = {"edges_outer": edges_outer, "edges_inner": edges_inner, "vals": vals, "colors": colors}
+            dots_draws = {"edges_inter": edges_inter, "edges_inner": edges_inner, "vals": vals, "colors": colors}
+            #, "far_vs": far_vs, "sums_in": sums_in, "edges_outer": edges_outer, "edges": edges, "edges_cut": edges_cut}
         return dots_draws, mapper
     
     def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
-        line_segments = LineCollection(dots_draws["edges_outer"], colors="#AAAAAA", linewidths=1.)
+        line_segments = LineCollection(dots_draws["edges_inter"], colors="#AAAAAA", linewidths=1.)
         axe.add_collection(line_segments)
+
         mv = float(numpy.max(dots_draws["vals"]))
         line_segments = LineCollection(dots_draws["edges_inner"], colors=dots_draws["colors"], linewidths=2*dots_draws["vals"]/mv)
         axe.add_collection(line_segments)
