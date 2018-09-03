@@ -6,7 +6,6 @@ from classExtension import ExtensionError, ExtensionsBatch
 from classSouvenirs import Souvenirs
 from classConstraints import Constraints
 from classInitialPairs import InitialPairs
-from classData import BoolColM, CatColM, NumColM
 
 import numpy
 

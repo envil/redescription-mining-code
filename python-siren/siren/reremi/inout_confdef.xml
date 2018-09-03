@@ -164,6 +164,9 @@
 	<default><value></value></default>
       </parameter>
     </section>
+  </section>
+    <section>
+      <name>Extra</name>
     <section>
       <name>Extra</name>
       <parameter>
@@ -218,6 +221,24 @@
 	<length>100000</length>
 	<default><value></value></default>
     </parameter>
+    <parameter>
+	<name>extensions_rep</name>
+	<label>Extensions repertory</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Repertory where extension data files are stored.</legend>
+	<length>250</length>
+	<default><value>__TMP_DIR__</value></default>
+      </parameter>
+      <parameter>
+	<name>extensions_names</name>
+	<label>Extensions data filenames</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Keys and names of the extension data files.</legend>
+	<length>250</length>
+	<default><value></value></default>
+      </parameter>
     </section>
   </section>
 </root>

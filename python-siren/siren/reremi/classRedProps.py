@@ -248,7 +248,7 @@ class RedProps(object):
         tcl.lbl_match = "(?P<what>"+tcl.all_what_match+")[_]?(?P<which>"+tcl.all_which_match+")[_]?(?P<rset_id>"+tcl.rset_match+")?"
 
 
-    substs = [("queryLHS", "query_LHS"), ("queryRHS", "query_RHS"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status_disabled", "status_enabled")]
+    substs = [("queryLHS", "query_LHS"), ("queryRHS", "query_RHS"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
     
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
     map_lbls = {}
@@ -268,7 +268,7 @@ class RedProps(object):
     map_lbls["tex"]["specials"] = {}
     map_lbls["gui"] = {"what": {"acc": "J", "pval": "pV", "perc": "%", "ratio": "/",
                                 "len": ("|", "|"), "card": ("|", "|"),
-                                "set": "", "supp": ""},
+                                "set": "", "supp": "", "extra": ""},
                        "which": {"I": "supp"},
                        "rset": {"all" : "",
                                 "cond" : "C",
@@ -281,7 +281,7 @@ class RedProps(object):
                  "tex": "$\\PP{%(what)s}{%(which)s}{%(rset)s}$",
                  "gui": "%(rset)s %(what)s%(which)s%(what_1)s"}
     def_elems = {"what": "", "which": "", "rset": "", "what_1": ""}
-
+    extra_patt = ":extra:(?P<xtr>\w+)"
 
     modifiers_defaults = {"wsplits": False, "wmissing": False, "wcond": False}
     @classmethod
@@ -369,7 +369,7 @@ class RedProps(object):
         for (sf, st) in tcl.substs:
             fld = fld.replace(sf, st)
         parts = {"rset_id": "all", "what": None, "which": ""}
-        ptyps = {"what": None, "which": None}
+        ptyps = {"what": None, "which": None}        
         mtch_all = re.match(tcl.lbl_match+"$", fld)
         if mtch_all is not None:
             if mtch_all.group("rset_id") is not None:
@@ -431,7 +431,7 @@ class RedProps(object):
         props_collect = set()
         trans_exps = {}
         for eid, exp in exps.items():
-            texp = exp
+            texp = exp            
             for mtch in list(re.finditer(tcl.match_primitive, exp))[::-1]:
                 props_collect.add(mtch)
                 texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
@@ -520,7 +520,6 @@ class RedProps(object):
                 
     modifiers_mtch = "((\[(?P<modify>[^\]]*)\])|((?P<plc_hld>\w)\=)|(\{(?P<vals>[^}]*)\})|(?P<spc> +))"
     def parseFieldsLine(self, line):
-        #### HERE        
         prts = line.strip().split("\t")
         if len(prts) == 1:
             return [{"field": prts[0]}]
@@ -634,7 +633,15 @@ class RedProps(object):
             if cust_eval(f.get("modify", "True"), ddmod):
                 fields.append(f["field"])
         return fields
-
+    def getNeededExtras(self, lfname, modifiers={}):
+        list_fields = self.getListFields(lfname, modifiers)
+        exp_dict = self.getExpDict(list_fields)
+        extras = []
+        for fk, exp in exp_dict.items():
+            for p in re.finditer(self.extra_patt, exp):
+                extras.append((fk, p.group("xtr")))
+        return extras
+    
     def getCurrentListFields(self, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
@@ -692,7 +699,7 @@ class RedProps(object):
             list_fields = self.getListFields(list_fields, modifiers)
         return self.dispHeaderFields(list_fields, style, sep)
 
-
+    
     def disp(self, red, names=[None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None):
         dstyle, qstyle = self.getStyles(style)
         if not type(list_fields) is list:
@@ -709,7 +716,7 @@ class RedProps(object):
         if row_names is not None:
             details["row_names"] = row_names
             details["named"] = True
-
+            
         exp_dict = self.getExpDict(list_fields)
         evals_dict = self.compEVals(red, exp_dict, details)
 

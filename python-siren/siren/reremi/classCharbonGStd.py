@@ -1,4 +1,4 @@
-from classData import CatColM
+from classData import Data
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
@@ -630,9 +630,9 @@ class CharbonGStd(CharbonGreedy):
                 nbes = [float(max(sum([len(v) for (k,v) in bbs[s].items()]), .5)) for s in [0,1]]
                 side = None
                 if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or nbes[0]/len(bbs[0]) > nbes[1]/len(bbs[1]) ):
-                    ccL, ccR, side = (CatColM(bbs[0], colL.nbRows(), colL.miss()), colR, 1) 
+                    ccL, ccR, side = (Data.getColClassForName("Categorical")(bbs[0], colL.nbRows(), colL.miss()), colR, 1) 
                 elif len(bbs[1]) > 0:
-                    ccL, ccR, side = (colL, CatColM(bbs[1], colR.nbRows(), colR.miss()), 0) 
+                    ccL, ccR, side = (colL, Data.getColClassForName("Categorical")(bbs[1], colR.nbRows(), colR.miss()), 0) 
 
                 if side is not None:
                     #### working with on variable as categories is workable

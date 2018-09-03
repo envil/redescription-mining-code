@@ -151,6 +151,7 @@ class SirenApp(wx.App):
             #     mapV.OnKil()
 
             tab ="reds"
+            # vw = self.frame.tabs[tab]["tab"].viewData(0, "MPP")
             self.frame.tabs[tab]["tab"].viewListData(0, "CLBRD") #"CLM")
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
@@ -170,7 +171,7 @@ class SirenApp(wx.App):
             # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
             # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
             # mapV.setCurrent(self.frame.tabs[tab]["tab"].getSelectedItem(), self.frame.tabs["reds"]["tab"].tabId)
-            
+
         return True
 
     def BringWindowToFront(self):

@@ -18,7 +18,8 @@ import wx.lib.dialogs
 
 from ..reremi.toolLog import Log
 from ..reremi.classRedescription import Redescription
-from ..reremi.classData import Data, DataError
+from ..reremi.classCol import DataError
+from ..reremi.classData import Data
 from ..reremi.classConstraints import Constraints
 from ..reremi.classBatch import Batch
 from ..reremi.toolICList import ICList
@@ -48,50 +49,60 @@ import pdb
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
-class ERCache():
 
+class ERCache():
+    
     def __init__(self, parent):
         self.parent = parent
         self.rids = []
+        self.spids = None
         self.etor = None
         self.ddER = None
 
     def getRids(self):
         return self.rids
+    def getSPids(self):
+        return self.spids
 
-    def gatherReds(self):
+    def gatherReds(self, spids=None):
         reds_map = self.parent.getRTab().getAllReds()
-        self.setReds(reds_map)
+        self.setReds(reds_map, spids)
 
-    def needsRecompute(self):
+    def needsRecompute(self, spids=None):
         if self.etor is None:
             return True
         reds_map = self.parent.getRTab().getAllReds()
         rids = [rid for (rid, red) in reds_map]
-        return rids != self.getRids()
+        return rids != self.getRids() or spids != self.getSPids()
         
         
-    def setReds(self, reds_map):
+    def setReds(self, reds_map, spids=None):
         self.etor = None
         self.ddER = None
         reds = dict(reds_map)
         self.rids = [rid for (rid, red) in reds_map]
+        self.spids = spids
         
         nbE = 0
         if len(self.rids) > 0:
             nbE = reds[self.rids[0]].sParts.nbRows()
         self.etor = numpy.zeros((nbE, len(self.rids)), dtype=bool)
         for r, rid in enumerate(self.rids):
-            self.etor[list(reds[rid].getSuppU()), r] = True
-            # self.etor[list(reds[rid].getSuppI()), r] = True
+            if spids == "I" or spids is None:
+                self.etor[list(reds[rid].getSuppI()), r] = True
+            elif spids == "U":
+                self.etor[list(reds[rid].getSuppU()), r] = True
+            else:
+                for pid in spids:
+                    self.etor[list(reds[rid].supports().part(pid)), r] = True
 
     def getRPos(self, rids):
         r_to_p = dict([(r,p) for (p,r) in enumerate(self.rids)])
         return [r_to_p[rid] for rid in rids if rid in r_to_p]
             
-    def getEtoR(self, rids=None, eids=None):
-        if self.needsRecompute():
-            self.gatherReds()
+    def getEtoR(self, rids=None, eids=None, spids=None):
+        if self.needsRecompute(spids):
+            self.gatherReds(spids)
             
         sub_etor = self.etor
         if eids is not None:
@@ -101,10 +112,11 @@ class ERCache():
             return sub_etor[:,ps]
         return sub_etor
     
-    def computeDeduplicateER(self, etor=None):
+    def computeDeduplicateER(self, etor=None, spids=None):
+        pdb.set_trace()
         if etor is None:
             if self.etor is None:
-                self.gatherReds()
+                self.gatherReds(spids)
             etor = self.etor
             
         #### DE-DUPLICATE REDS
@@ -138,16 +150,16 @@ class ERCache():
         return {"e_rprt": keep_es, "r_rprt": keep_rs, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": dists,
                     "has_dup_r": len(rb) > 0, "has_dup_e": len(eb) > 0}
 
-    def getDeduplicateER(self, rids=None, eids=None):
+    def getDeduplicateER(self, rids=None, eids=None, spids=None):
         if self.etor is None:
-            self.gatherReds()
+            self.gatherReds(spids)
 
         if eids is None:
             eids = numpy.arange(self.etor.shape[0])
         if rids is None:
             rids = numpy.arange(self.etor.shape[1])
         ps = self.getRPos(rids)
-        return self.computeDeduplicateER(self.etor[eids,:][:,ps])
+        return self.computeDeduplicateER(self.etor[eids,:][:,ps], spids)
 
 
 class ProjCache():
@@ -275,7 +287,7 @@ class Siren():
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
     ffiles = [('fields_defs_basic.txt', 'reremi')]
     ff_mtch = 'fields_defs_*.txt'
-    cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface')]
+    cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface'), ('dataext_confdef.xml', 'reremi')]
     cfiles_io = [('inout_confdef.xml', 'reremi')]
     
     results_delay = 1000
@@ -615,6 +627,10 @@ class Siren():
                     m_svla = menuRed.Append(ID_SVA, "Save Plots As...", "Save Plots as...")
                     frame.Bind(wx.EVT_MENU, self.OnExportListFigs, m_svla)
 
+                if self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL():
+                    ID_COH = wx.NewId()
+                    m_coh = menuRed.Append(ID_COH, "Cohesion", "Compute cohesion of current variable.")
+                    frame.Bind(wx.EVT_MENU, self.OnCohesion, m_coh)                            
 
                 if self.matchTabType("e") or ( self.matchTabType("v") and self.selectedTab["tab"].nbItems() > 0):
                     ID_FIND = wx.NewId()
@@ -718,6 +734,10 @@ class Siren():
                 m_nor = menuRed.Append(ID_NOR, "&Normalize", "Normalize current redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnNormalize, m_nor)
 
+                ID_COH = wx.NewId()
+                m_coh = menuRed.Append(ID_COH, "Cohesion", "Compute cohesion of current redescription.")
+                frame.Bind(wx.EVT_MENU, self.OnCohesion, m_coh)                            
+                
                 ID_EXPAND = wx.NewId()
                 m_expand = menuRed.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
                 frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
@@ -1560,7 +1580,7 @@ class Siren():
     def OnDisabledAll(self, event):
         if self.matchTabType("evr"):
             self.selectedTab["tab"].setAllDisabled()
-
+            
     def OnDelete(self, event):
         if self.matchTabType("r"):
             self.selectedTab["tab"].onDeleteAny()
@@ -1599,6 +1619,14 @@ class Siren():
                     # self.selectedTab["tab"].appendItemToHist(red)
                     self.doUpdates({"menu":True})
 
+    def OnCohesion(self, event):
+        if self.matchTabType("vr"):
+            iid = self.selectedTab["tab"].getSelectedItemIid()
+            item = self.selectedTab["tab"].getSelectedItem()
+            if item is not None:
+                cohesion = self.dw.getData().computeCohesion(item)
+                print cohesion            
+                    
     def appendToHist(self, red):
         if self.getDefaultTabId("r") in self.tabs:
             self.tabs[self.getDefaultTabId("r")]["tab"].appendItemToHist(red)

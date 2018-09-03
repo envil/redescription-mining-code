@@ -6,7 +6,7 @@ import wx.grid
 
 import re, colorsys, random, datetime, math
 from ..reremi.toolICList import ICList
-from ..reremi.classData import ColM, NA_str_def
+from ..reremi.classCol import ColM, NA_str_c
 from ..reremi.classQuery import SYM, Query, Literal
 from ..reremi.classRedescription import Redescription
 
@@ -616,7 +616,7 @@ class RowTable(GridTable):
                 if tmp == "-" or (math.isnan(tmp) and math.isnan(self.fields[col][2]["NA"])) \
                        or (tmp == self.fields[col][2]["NA"]):
                     l = 255
-                    labl = NA_str_def
+                    labl = NA_str_c
                 else:
                     rangeV = self.fields[col][2]["range"]
                     lr = row/(1.0*self.nbItems())

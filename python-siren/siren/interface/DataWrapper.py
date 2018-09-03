@@ -7,12 +7,16 @@ import time
 
 import pdb
 
-from ..reremi.classRedescription import Redescription
-from ..reremi.classData import Data, DataError, ColM
-from ..reremi.classQuery import Query, Literal
 from ..reremi.toolICList import ICList
 from ..reremi.toolICDict import ICDict
 from ..reremi.toolLog import Log
+
+from ..reremi.classCol import DataError, ColM
+from ..reremi.classData import Data
+
+from ..reremi.classQuery import Query, Literal
+from ..reremi.classRedescription import Redescription
+
 from ..reremi.classBatch import Batch
 from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 from ..reremi import toolRead
@@ -519,12 +523,12 @@ class DataWrapper(object):
             for iid, item in enumerate(items):
                 if not with_disabled and not item.getEnabled():
                     continue
-                if type(item) in ColM.__subclasses__():
+                if isinstance(item, ColM):
                     queries = [Query(), Query()]
                     queries[item.getSide()].extend(-1, Literal(False, item.getTerm()))
                     mapV = vm.newRedVHist(queries, viewT, -1)
 
-                elif type(item) is Redescription:
+                elif isinstance(item, Redescription):
                     mapV = vm.viewData(viewT, item, iid, -1)
                 mapV.lastStepInit(blocking=True)
                 mapV.getLayH().getFrame().SetClientSizeWH(dims[0], dims[1])

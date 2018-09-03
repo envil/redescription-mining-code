@@ -6,7 +6,7 @@ import wx
 ### from wx import ID_ANY, ID_APPLY, ID_FIND, ID_OK
 
 import os.path, re
-from ..reremi.classData import DataError, NA_str_def
+from ..reremi.classData import DataError, NA_str_c
 
 import pdb
 
@@ -132,7 +132,7 @@ class ImportDataCSVDialog(object):
 
         ctrl_id = wx.NewId()
         label = wx.StaticText(self.dlg, wx.ID_ANY, "Missing:")
-        self.missing_ctrl = wx.TextCtrl(self.dlg, ctrl_id, NA_str_def)
+        self.missing_ctrl = wx.TextCtrl(self.dlg, ctrl_id, NA_str_c)
         so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
         so_sizer.Add(self.missing_ctrl, 0)
 

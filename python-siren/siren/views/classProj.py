@@ -1,8 +1,9 @@
 import re, random, sys
 import numpy
-import inspect, signal
+import inspect
+# import signal
 # import tsne
-from ..reremi.classData import BoolColM, CatColM, NumColM
+from ..reremi.classData import Data
 import os
 
 import pdb
@@ -78,9 +79,9 @@ class Proj(object):
     SDESC = "---"
     whats = ["variables", "entities", "cluster"]
     title_str = "Projection"
-    gen_parameters = {"types":[NumColM.type_id], "only_able":True}
+    gen_parameters = {"types": Data.getTidForName(["Numerical"]), "only_able":True}
     fix_parameters = {}
-    options_parameters = {"types": [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]}
+    options_parameters = {"types": Data.getNamesTids()}
     dyn_f = []
     
     def __init__(self, data, params=None, what="entities", transpose=True):
@@ -265,7 +266,7 @@ class AxesProj(Proj):
     whats = ["entities", "cluster"]
     title_str = "Scatter Plot"
     gen_parameters = {Proj.xaxis_lbl: "-1.0", Proj.yaxis_lbl: "-1.0"}
-    fix_parameters = {"types":[BoolColM.type_id, CatColM.type_id, NumColM.type_id], "only_able":False}
+    fix_parameters = {"types": Data.real_types, "only_able":False}
     dyn_f = []
 
     def addParamsRandrep(self, more={}):
@@ -303,7 +304,7 @@ class AxesProj(Proj):
             self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
         for side in [0,1]:
-            if details[mcols[scs[side]]]["type"] != NumColM.type_id:
+            if Data.isTypeId(details[mcols[scs[side]]]["type"], "Numerical"):
                 self.coords_proj[side] = 1.*self.coords_proj[side] + 0.33*numpy.random.rand(len(self.coords_proj[side]))
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]

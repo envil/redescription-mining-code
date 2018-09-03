@@ -9,7 +9,7 @@ import re
 import pdb
 
 from classRedescription import Redescription
-from classData import Data, NA_str_def
+from classData import Data
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
 import toolRead as toolRead
@@ -22,10 +22,6 @@ class Package(object):
     # Names of the files in the package
     DATA_FILENAMES = ['data_LHS.csv',
                      'data_RHS.csv']
-    COORDS_BCKG_FILENAME = 'data_coords_bckg.txt'
-    POLYGONS_FILENAMES = ['data_polygons_poly.txt', 'data_polygons_edges.txt']
-    COORDS_BCKG_KEY = 'coords_bckg'
-    POLYGONS_KEYS = ['polygons_poly', 'polygons_edges']
 
     REDESCRIPTIONS_FILENAME = 'redescriptions.csv'
     PREFERENCES_FILENAME = 'preferences.xml'
@@ -35,7 +31,7 @@ class Package(object):
     FILETYPE_VERSION = 5
     XML_FILETYPE_VERSION = 3
 
-    NA_str = NA_str_def
+    NA_str = Data.NA_str_def
     RED_FN_SEP = ";"
 
     CREATOR = "ReReMi/Siren Package"
@@ -116,6 +112,10 @@ class Package(object):
                 elements_read["preferences"] = preferences
             data = self.readData()
             if data is not None:
+                ext_keys = None
+                if preferences is not None and "activated_extensions" in preferences:
+                    ext_keys = preferences["activated_extensions"]["data"]
+                data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
                 elements_read["data"] = data
                 reds = self.readRedescriptions(data)
                 if reds is not None and len(reds) > 0:
@@ -144,20 +144,7 @@ class Package(object):
     def readData(self):
         data = None
         # Load data
-        if self.isOldXMLFormat():
-            ################# START FOR BACKWARD COMPATIBILITY WITH XML
-            if 'data_filename' in self.plist:
-                try:
-                    fd = self.package.open(self.plist['data_filename'], 'r')
-                    data = Data.readDataFromXMLFile(fd)
-                except Exception as e:
-                    print e
-                    self.raiseMess()
-                    raise
-                finally:
-                    fd.close()
-
-        elif 'data_LHS_filename' in self.plist:
+        if 'data_LHS_filename' in self.plist:
             try:
                 fdLHS = self.package.open(self.plist['data_LHS_filename'], 'r')
                 if self.plist.get('data_RHS_filename', self.plist['data_LHS_filename']) != self.plist['data_LHS_filename']:
@@ -176,15 +163,7 @@ class Package(object):
             finally:
                 fdLHS.close()
                 if fdRHS is not None: 
-                    fdRHS.close()
-
-        if data is not None and self.COORDS_BCKG_KEY in self.plist:
-            fdCB = self.package.open(self.plist[self.COORDS_BCKG_KEY], 'r')
-            data.readBckg(fdCB)
-        if data is not None and all([k in self.plist for k in self.POLYGONS_KEYS]):
-            filenames = dict([(k, self.package.open(self.plist[k], 'r')) for k in self.POLYGONS_KEYS])
-            data.getPlotPolymapDataFromFiles(filenames)
-            
+                    fdRHS.close()            
         return data
 
     def readRedescriptions(self, data):
@@ -241,7 +220,7 @@ class Package(object):
                 if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
                     filenames[1] = os.path.join(tmp_dir, plist['data_RHS_filename'])
                 writeData(contents["data"], filenames, toPackage = True)
-                writeDataExtra(contents["data"], plist, tmp_dir)
+                writeDataExtensions(contents["data"], plist, tmp_dir)
             except IOError:
                 shutil.rmtree(tmp_dir)
                 self.filename = old_package_filename
@@ -312,11 +291,7 @@ class Package(object):
             fns['data_LHS_filename'] = self.DATA_FILENAMES[0]
             if not contents["data"].isSingleD():
                 fns['data_RHS_filename'] = self.DATA_FILENAMES[1]
-            if contents["data"].hasCoordsBckg():
-                fns[self.COORDS_BCKG_KEY] = self.COORDS_BCKG_FILENAME
-            if contents["data"].hasPolymapDataToSave():
-                for ki, k in enumerate(self.POLYGONS_KEYS):
-                    fns[k] = self.POLYGONS_FILENAMES[ki]
+            fns.update(contents["data"].getExtensionsActiveFilesDict())    
                                 
         if "preferences" in contents:
             fns['preferences_filename'] = self.PREFERENCES_FILENAME
@@ -388,15 +363,9 @@ def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, 
 def writeData(data, filenames, toPackage = False):
     data.writeCSV(filenames)
 
-def writeDataExtra(data, plist=None, tmp_dir="./"):
+def writeDataExtensions(data, plist=None, tmp_dir="./"):
     if plist is not None:
-        if Package.COORDS_BCKG_KEY in plist:
-            fn = os.path.join(tmp_dir, plist[Package.COORDS_BCKG_KEY])
-            data.writeBckg(fn)
-        if all([k in plist for k in Package.POLYGONS_KEYS]):
-            filenames = dict([(k, os.path.join(tmp_dir, plist[k])) for k in Package.POLYGONS_KEYS])
-            data.savePlotPolymapDataToFiles(filenames)
-
+        data.saveExtensions(plist, {"tmp_dir": tmp_dir})
 
 def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
     package = Package(None, None, mode="w")

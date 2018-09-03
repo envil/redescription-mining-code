@@ -44,7 +44,17 @@ def get_cover_far(dists, nb):
     return nodesc, o, dds, uniq_dds
 
 class PltDtHandlerList(PltDtHandlerBasis):
-    
+
+    parts_map = {"Exx": SSetts.Exx, "Exo": SSetts.Exo, "Eox": SSetts.Eox, "Eoo": SSetts.Eoo}
+    SPARTS_DEF = ["Exx"]   
+    def getSettSuppParts(self):
+        t = self.getParentPreferences()
+        try:
+            v = t["supp_part_clus"]["data"]
+        except:            
+            v = self.SPARTS_DEF
+        return [self.parts_map[x] for x in v]
+
     def hasQueries(self):
         return False
     def getCoords(self):
@@ -57,15 +67,16 @@ class PltDtHandlerList(PltDtHandlerBasis):
     def setCurrent(self, reds_map):
         self.pltdt["reds"] = dict(reds_map)
         self.pltdt["srids"] = [rid for (rid, red) in reds_map]
+        self.pltdt["spids"] = self.getSettSuppParts()
 
     def getEtoR(self):
         if self.pltdt.get("etor") is None and self.pltdt.get("srids") is not None:
-            self.pltdt["etor"] = self.view.parent.getERCache().getEtoR(self.pltdt["srids"])
+            self.pltdt["etor"] = self.view.parent.getERCache().getEtoR(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("etor")
     
     def getDeduplicateER(self):
         if self.pltdt.get("ddER") is None and self.pltdt.get("srids") is not None:
-            self.pltdt["ddER"] = self.view.parent.getERCache().getDeduplicateER(self.pltdt["srids"])
+            self.pltdt["ddER"] = self.view.parent.getERCache().getDeduplicateER(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("ddER")
 
         

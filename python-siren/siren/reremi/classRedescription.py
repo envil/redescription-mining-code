@@ -1,6 +1,6 @@
-import re, string, numpy, codecs
+import re, string, numpy, codecs, copy
 from classQuery import  *
-from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio
+from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
 from classBatch import Batch
 from classRedProps import RedProps
 import toolRead
@@ -23,12 +23,12 @@ class Redescription(object):
     # info_what_dets = {"queryLHS": "self.prepareQueryLHS",
     #                   "queryRHS": "self.prepareQueryRHS",
     #                   "queryCOND": "self.prepareQueryCOND"}
-    info_what = {"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
-    Pwhat_match = "("+ "|".join(info_what.keys()+info_what_dets.keys()) +")"
+    info_what = {} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
+    Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
 
     ### PROPS WHICH
     which_rids = "rids"
-    Pwhich_match = "("+ "|".join([which_rids]) +")"    
+    Pwhich_match = "("+ "|".join(["[^_]+"]+[which_rids]) +")"    
     @classmethod
     def hasPropWhich(tcl, which):
         return re.match(tcl.Pwhich_match, which) is not None
@@ -59,12 +59,10 @@ class Redescription(object):
             self.sParts = None
             self.dict_supp_info = {}
         self.lAvailableCols = [None, None]
-        self.vectorABCD = None
-        self.status = 1
-        self.track = []
+        self.extras = {"status": 1, "track": []}
         self.cache_evals = {}
         self.condition = None
-
+        
     def fromInitialPair(initialPair, data, dt={}):
         if initialPair[0] is None and initialPair[1] is None:
             return None
@@ -84,7 +82,7 @@ class Redescription(object):
             supps_miss[side+2] = missS
 
         r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
-        r.track = [(-1, -1)]
+        r.setTrack([(-1, -1)])
 
         if dt.get("litC") is not None:
             litC = dt["litC"]
@@ -103,7 +101,7 @@ class Redescription(object):
     def fromQueriesPair(queries, data):
         r = Redescription(queries[0].copy(), queries[1].copy())
         r.recompute(data)        
-        r.track = [tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))]
+        r.setTrack([tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))])
         if len(queries) > 2 and queries[2] is not None:
             qC = queries[2]
             supp_cond, miss_cond = qC.recompute(-1, data)
@@ -290,7 +288,7 @@ class Redescription(object):
             self.dict_supp_info = None
             if self.lAvailableCols[side] is not None:
                 self.lAvailableCols[side].remove(literal.colId())
-            self.track.append(((1-side) * 1-2*int(op.isOr()), literal.colId()))
+            self.appendTrack(((1-side) * 1-2*int(op.isOr()), literal.colId()))
 
     def setFull(self, max_var=None):
         if max_var is not None:
@@ -309,8 +307,7 @@ class Redescription(object):
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
-        r.status = self.status
-        r.track = list(self.track)
+        r.extras = self.copyExtras()
         r.restricted_sets = {}
         for sid, rst in self.restricted_sets.items():
             r.restricted_sets[sid] = {"sParts": rst["sParts"],
@@ -402,7 +399,8 @@ class Redescription(object):
             supp_cond, miss_cond = qC.recompute(-1, data)
             self.setCondition(qC, supp_cond)                        
         self.dict_supp_info = None
-
+        self.computeExtras(data)
+        
     def check(self, data):
         result = 0
         details = None
@@ -422,21 +420,32 @@ class Redescription(object):
     def hasMissing(self):
         return self.supports().hasMissing()
 
+    def setExtra(self, key, val):
+        self.extras[key] = val
+    def getExtra(self, key=None, details=None):
+        if key is None:
+            return self.extras
+        return self.extras.get(key)
+    def copyExtras(self):
+        return copy.deepcopy(self.extras)
+    def computeExtras(self, data, extras=None, details=None):
+        self.extras.update(data.computeExtras(self, extras, details))
+        
     def getStatus(self):
-        return self.status
+        return self.extras["status"]
+    def setStatus(self, status):
+        self.extras["status"] = status
     def getEnabled(self):
-        return self.status
-
+        return self.getStatus()
     def flipEnabled(self):
-        self.status = -self.status
+        self.setStatus(-self.getStatus())
 
     def setEnabled(self):
-        self.status = 1
+        self.setStatus(1)
     def setDisabled(self):
-        self.status = -1
-
+        self.setStatus(-1)
     def setDiscarded(self):
-        self.status = -2
+        self.setStatus(-2)
 
     ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
     def getQueriesU(self, details=None):
@@ -457,22 +466,33 @@ class Redescription(object):
         else:
             return self.queries[1].disp(style="U")
 
+    def setTrack(self, track=[]):
+        self.extras["track"] = track
+    def appendTrack(self, t):
+        self.extras["track"].append(t)
+    def extendTrack(self, track=[]):
+        self.extras["track"].extend(track)
+
     def getTrack(self, details=None):
         if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
-            return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.track])
+            return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.getTrack()])
         else:
-            return self.track
+            return self.extras["track"]
 
     def getSortAble(self, details=None):
         if details.get("aim") == "sort":
-            return (self.status, details.get("id", "?"))
+            return (self.getStatus(), details.get("id", "?"))
         return ""
 
     def getShortRid(self, details=None):
         return "R%s" % details.get("id", "?")
 
     def getEnabled(self, details=None):
-        return 1*(self.status>0)
+        return 1*(self.getStatus()>0)
+    # def getCohesion(self, details=None):
+    #     return self.getDetail("cohesion")
+    # def getCohesionNat(self, details=None):
+    #     return self.getDetail("cohesion_nat")
 
     def getTypeParts(self, details=None):
         return self.supports().getTypeParts()
@@ -574,6 +594,8 @@ class Redescription(object):
         return self.getRSetParts(details).suppB()
     
     def getProp(self, what, which=None, rset_id=None, details=None):
+        if what == "extra":
+            return self.getExtra(which, details)
         if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
             q = self.query(HAND_SIDE[rset_id])            
             if q is not None:
@@ -671,7 +693,7 @@ class Redescription(object):
         return self.prepareQuery(0, details)
     def prepareQueryCOND(self, details):
         return self.prepareQuery(-1, details)    
-
+   
     def disp(self, names=[None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, rp=None):
         return self.getRP(rp).disp(self, names, row_names, with_fname, rid, nblines, delim, last_one, list_fields, modifiers, style, sep)
     @classmethod   
@@ -680,6 +702,7 @@ class Redescription(object):
             names = data.getNames()
         else:
             names = [None, None]
+        pdb.set_trace()
         (queryL, queryR, lpartsList) = tcl.getRP(rp).parseQueries(stringQueries, names=names)
         supportsS = None
         if data is not None and stringSupp is not None and type(stringSupp) == str and re.search('\t', stringSupp):
@@ -688,6 +711,8 @@ class Redescription(object):
     @classmethod   
     def initParsed(tcl, queryL, queryR, lpartsList={}, data = None, supportsS=None):
         status_enabled = None
+        if "all:extra:status" in lpartsList:
+            status_enabled = int(lpartsList.pop("all:extra:status"))
         if "status_enabled" in lpartsList:
             status_enabled = int(lpartsList.pop("status_enabled"))
         r = None
@@ -714,7 +739,7 @@ class Redescription(object):
                 supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)
         if r is not None and status_enabled is not None:
-            r.status = status_enabled
+            r.setStatus(status_enabled)
         return r
     
         

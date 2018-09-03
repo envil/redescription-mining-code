@@ -1369,7 +1369,8 @@ class VarsSet(StaticContent):
     fields_def = [('',str_var+'.getSortAble', None, StaticContent.width_colcheck, wx.LIST_FORMAT_LEFT), 
                   ('id', str_var+'.getId', None,  StaticContent.width_colid, wx.LIST_FORMAT_LEFT),
                   ('name', str_var+'.getName', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
-                  ('type', str_var+'.getType', None, StaticContent.width_colinfow, wx.LIST_FORMAT_LEFT)]
+                  ('type', str_var+'.getType', None, StaticContent.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
+                  # ('cohesion', str_var+'.getCohesion', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT)]
     fields_miss = [('missing', str_var+'.getMissInfo', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT)]
     fields_var = {1: [('density', str_var+'.getDensity', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT)],
                   2:[('categories', str_var+'.getCategories', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT)],
@@ -1427,7 +1428,9 @@ class RedsSet(EditableContent):
                     # ('query LHS', str_red+'.getQueryLU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT),
                     # ('query RHS', str_red+'.getQueryRU', None, StaticContent.width_colnamew, wx.LIST_FORMAT_LEFT)]
     LAST_FIELDS = [] #('track', str_red+'.getTrack', None, StaticContent.width_colinfo, wx.LIST_FORMAT_LEFT)]
-        
+    # LAST_FIELDS = [('cohesion', str_red+'.getCohesion', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT),
+    #                ('cohesionN', str_red+'.getCohesionNat', None, StaticContent.width_colinfo, wx.LIST_FORMAT_RIGHT)]
+    
     name_m = str_red+'.getQueriesU'
     check_m = str_red+'.getEnabled'
 

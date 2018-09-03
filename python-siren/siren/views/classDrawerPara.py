@@ -14,7 +14,6 @@ import scipy.spatial.distance
 import scipy.cluster
 
 from ..reremi.classRedescription import Redescription
-from ..reremi.classData import BoolColM, CatColM, NumColM
 from ..reremi.classSParts import SSetts
 from classDrawerBasis import DrawerEntitiesTD
 from classInterObjects import ResizeableRectangle, DraggableRectangle
@@ -233,13 +232,14 @@ class DrawerRedPara(DrawerEntitiesTD):
 
     def updateRanges(self, lits):
         ranges = []
+        data = self.getParentData()
         for side in [0,1]:
-            for l, dets in lits[side]:
-                if l.typeId() == BoolColM.type_id:                    
-                    ranges.append([self.getParentData().col(side, l.colId()).numEquiv(r)
+            for l, dets in lits[side]:                
+                if self.isTypeId(l.typeId(), "Boolean"):
+                    ranges.append([data.col(side, l.colId()).numEquiv(r)
                                    for r in [dets[0][-1], dets[0][-1]]])
                 else:
-                    ranges.append([self.getParentData().col(side, l.colId()).numEquiv(r)
+                    ranges.append([data.col(side, l.colId()).numEquiv(r)
                                    for r in l.valRange()])
         ranges.insert(len(lits[0]), [None, None])
         return ranges
@@ -336,10 +336,9 @@ class DrawerRedPara(DrawerEntitiesTD):
                                          edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=10)
 
                     if self.prepared_data["qcols"][i] is not None:
-                        if self.prepared_data["qcols"][i].typeId() == NumColM.type_id:
+                        if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
                             rects_rez[i] = rects[0]
-                        elif self.prepared_data["qcols"][i].typeId() == CatColM.type_id or \
-                                 self.prepared_data["qcols"][i].typeId() == BoolColM.type_id:   
+                        elif self.isTypeId(self.prepared_data["qcols"][i].typeId(), ["Boolean", "Categorical"]):
                             rects_drag[i] = rects[0]
 
             self.drs = []
@@ -502,7 +501,7 @@ class DrawerRedPara(DrawerEntitiesTD):
     def getPinvalue(self, rid, b, direc=0):
         if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
             return 0
-        elif self.prepared_data["qcols"][rid].typeId() == NumColM.type_id:
+        elif self.isTypeId(self.prepared_data["qcols"][rid].typeId(), "Numerical"):
             v = self.getVforY(rid, b)
             prec = int(-numpy.log10(self.prepared_data["limits"][2, rid]))
             #tmp = 10**-prec*numpy.around(v*10**prec)
@@ -517,8 +516,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             elif tmp <= self.prepared_data["limits"][0, rid]:
                 tmp = float("-Inf")
             return tmp
-        elif self.prepared_data["qcols"][rid].typeId() == CatColM.type_id or \
-                 self.prepared_data["qcols"][rid].typeId() == BoolColM.type_id:
+        elif self.isTypeId(self.prepared_data["qcols"][rid].typeId(), ["Boolean", "Categorical"]):
             v = int(round(b*(self.prepared_data["limits"][1, rid]-self.prepared_data["limits"][0,rid])+self.prepared_data["limits"][0, rid]))
             if v > self.prepared_data["limits"][1, rid]:
                 v = self.prepared_data["limits"][1, rid]
@@ -555,7 +553,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             l, dets = self.prepared_data["lits"][side][pos]
             alright = False
             upAll = False
-            if l.typeId() == NumColM.type_id:
+            if self.isTypeId(l.typeId(), "Numerical"):
                 ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
                 bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
@@ -566,7 +564,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                         if comp:
                             ll.flip()
                 alright = True
-            elif l.typeId() == CatColM.type_id:
+            elif self.isTypeId(l.typeId(), "Categorical"):
                 cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if cat is not None:
                     upAll = (l.getCat() != cat)
@@ -575,7 +573,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                             ### HERE CAT FIX
                             copied.getBukElemAt(path).getTerm().setRange(set([cat]))
                     alright = True
-            elif l.typeId() == BoolColM.type_id:
+            elif self.isTypeId(l.typeId(), "Boolean"):
                 bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if bl is not None:
                     upAll = bl != dets[0][-1]

@@ -351,10 +351,6 @@ class Neg(object):
     symbU = ['', SYM.SYM_NOT]
     symbTxt = ['', "not "]
 
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    patt = '(?P<neg>'+symb[1].strip()+')'
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
-
     def __init__(self, nNeg=False):
         if nNeg == True or nNeg < 0:
             self.neg = -1
@@ -407,10 +403,8 @@ class Term(object):
     
     pattVName = VARIABLE_MARK+"%d"
     type_id = 0
-
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    patt = '(?P<col>[^\\=<>'+ SYM.SYMU_LEQ + SYM.SYMU_EIN + SYM.SYMU_NIN +']+)'
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
+    type_letter = '-'
+    type_name = '-'
     
     def __init__(self, ncol):
         self.col = ncol
@@ -456,6 +450,9 @@ class Term(object):
     
 class BoolTerm(Term):
     type_id = 1
+    type_letter = 'B'
+    type_name = 'Boolean'
+
 
     def valRange(self):
         return [True, True]
@@ -524,27 +521,12 @@ class BoolTerm(Term):
             return u'%s%s' % ( neg, names[self.col])
         else:
             return (u'%s'+Term.pattVName) % ( neg, self.col)
-        
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*$']
-    def parse(partsU):
-        ncol = None
-        if partsU is not None:
-            neg = (partsU.group('neg') is not None)
-            tmpcol = partsU.group('col').strip()
-            try:
-                ncol = int(tmpcol)
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In boolean term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
-        if ncol is not None :
-            return (neg, BoolTerm(ncol))
-        return (None, None)
-    parse = staticmethod(parse)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
-    
-class CatTermONE(Term):
+            
+class CatTermONE(Term): ## LEGACY
     type_id = 2
+    type_letter = 'C'
+    type_name = 'Categorical'
+
     basis_cat = "c?"
     
     def __init__(self, ncol, ncat):
@@ -657,31 +639,12 @@ class CatTermONE(Term):
         else:
             return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, self.getCat())
 
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
-    def parse(partsU):
-        ncol = None
-        if partsU is not None:
-            neg = (partsU.group('neg') is not None)
-            tmpcol = partsU.group('col').strip()
-            try:
-                ncol = int(tmpcol)
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
-            try:
-                cat = partsU.group('cat')
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
-        if ncol is not None :
-            return (neg, CatTerm(ncol, cat))
-        return (None, None)
-    parse = staticmethod(parse)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
 class CatTerm(Term):
     type_id = 2
+    type_letter = 'C'
+    type_name = 'Categorical'
+
     basis_cat = "c?"
     
     def __init__(self, ncol, ncat):
@@ -819,32 +782,11 @@ class CatTerm(Term):
         else:
             return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, cat_str)
 
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\=\s*(?P<cat>\S*)\s*$']
-    def parse(partsU):
-        ncol = None
-        if partsU is not None:
-            neg = (partsU.group('neg') is not None)
-            tmpcol = partsU.group('col').strip()
-            try:
-                ncol = int(tmpcol)
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In categorical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
-            try:
-                cat = partsU.group('cat')
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In categorical term %s, category is not convertible to int (%s)\n'%(partsU.group('cat'), detail))
-        if ncol is not None :
-            return (neg, CatTerm(ncol, set([cat])))
-        return (None, None)
-    parse = staticmethod(parse)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
-
     
 class NumTerm(Term):
     type_id = 3
+    type_letter = 'N'
+    type_name = 'Numerical'
     
     def __init__(self, ncol, nlowb, nupb):
         if numpy.isinf(nlowb) and numpy.isinf(nupb) or nlowb > nupb:
@@ -1034,48 +976,6 @@ class NumTerm(Term):
             return neg+lb+idcol+ub
         except UnicodeDecodeError:
             return neg+lb+"v"+str(self.col)+ub
-
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    num_patt = '-?\d+\.\d+'
-    patt = ['^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*\<\s*(?P<upb>'+num_patt+')\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\>\s*(?P<lowb>'+num_patt+')\s*$',
-            '^\s*'+Neg.patt+'?\s*'+Term.patt+'\s*\<\s*(?P<upb>'+num_patt+')\s*$']
-    def parse(partsU):
-        ncol=None
-        if partsU is not None :
-            neg = (partsU.group('neg') is not None)
-            lowb = float('-inf')
-            upb = float('inf')
-            
-            tmpcol = partsU.group('col').strip()
-            try:
-                ncol = int(tmpcol)
-            except ValueError, detail:
-                ncol = None
-                raise Warning('In numerical term %s, column is not convertible to int (%s)\n'%(tmpcol, detail))
-
-            if 'lowb' in partsU.groupdict() and partsU.group('lowb') is not None:
-                tmplowbs = partsU.group('lowb')
-                try:
-                    lowb = float(tmplowbs)
-                except ValueError, detail:
-                    ncol = None
-                    raise Warning('In numerical term %s, lower bound is not convertible to float (%s)\n'%(tmplowbs, detail))
-
-            if 'upb' in partsU.groupdict() and partsU.group('upb') is not None:
-                tmpupbs = partsU.group('upb')
-                try:
-                    upb = float(tmpupbs)
-                except ValueError, detail:
-                    ncol = None
-                    raise Warning('In numerical term %s, upper bound is not convertible to float (%s)\n'%(tmpupbs, detail))
-            
-        if ncol is not None and (lowb != float('-inf') or upb != float('inf')) and lowb <= upb:
-            return (neg, NumTerm(ncol, lowb, upb))
-        return (None, None)
-    parse = staticmethod(parse)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
-
                
 class Literal(object):
 
@@ -1168,25 +1068,6 @@ class Literal(object):
         else:
             return self.getTerm().truthEval(variableV)
             
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    def parse(string):
-        i = 0
-        term = None
-        while i < len(Literal.termTypes) and term is None:
-            patts = Literal.termTypes[i]['class'].patt
-            j = 0
-            while j < len(patts) and term is None:
-                parts = re.match(patts[j], string)
-                if parts is not None:
-                    (neg, term) = Literal.termTypes[i]['class'].parse(parts)
-                j+=1
-            i+=1
-        if term is not None:
-            return Literal(neg, term)
-        else:
-            return None
-    parse = staticmethod(parse)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
 class QTree(object):
 
@@ -2300,35 +2181,6 @@ class Query(object):
                 return tmp, False
             else:
                 return tmp, True
-
-        
-    ################# START FOR BACKWARD COMPATIBILITY WITH XML
-    def parseApd(string):
-        bannchar = Op.ops[-1]+Op.ops[1]
-        pattAny = '(?P<op>['+Op.ops[-1]+']|['+Op.ops[1]+'])'
-        pattrn = '^(?P<pattIn>[^\\'+bannchar+']*)'+pattAny+'?(?P<pattOut>(?(op).*))$'
-        op = None; r = None
-        parts = re.match(pattrn, string)
-        if parts is not None:
-            r = Query()
-        while parts is not None:
-            t = Literal.parse(parts.group('pattIn'))
-            if t is not None:
-                r.extend(op, t, resort=False)
-                if parts.group('op') is not None:
-                    op = Op(parts.group('op')==Op.ops[1])
-                    parts = re.match(pattrn, parts.group('pattOut'))
-                else:
-                    parts = None
-            else:
-                ## stop
-                parts = None
-                r = None
-        if r is not None and len(r) == 0:
-            r = Query()
-        return r 
-    parseApd = staticmethod(parseApd)
-    ################# END FOR BACKWARD COMPATIBILITY WITH XML
 
     def parse(part, names = None, ids_map=None):
         if len(part.strip()) == 0 or part.strip() == "[]":

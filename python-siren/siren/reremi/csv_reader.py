@@ -246,9 +246,12 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         for i in nll:
             ### in general if numerical ids are provided that should be the row number
             ### we expect rows to start at one ...
+            e = False
             try:
                 dictLL[i] = int(i)-sub
             except ValueError as e:
+                e = True
+            if dictLL[i] < 0 or e:
                 if i in ENABLED_COLS: # and col_names is not None:
                     col_enabled = {}
                 elif i in GROUPS_COLS: # and col_names is not None:
@@ -256,6 +259,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 else:
                     numerical_ids = False
                     break
+
         if numerical_ids:
             if off is None and (-sub in dictLL.values()):
                 ### ... unless there was a zero
@@ -275,7 +279,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 nids = [None for i in range(len(nll))]
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
-
+                    
     nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None}
     if valcol is None:
         nD['bool'] = True

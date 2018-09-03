@@ -13,7 +13,6 @@ import numpy
 import matplotlib
 matplotlib.use('WXAgg')
 
-from ..reremi.classData import BoolColM, CatColM, NumColM
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -39,21 +38,20 @@ class DrawerRedCorrel(DrawerEntitiesTD):
     # missing_yy = -1./6
 
     # ann_xy = (10,0)
-
-    types_lbls = [("Boolean", BoolColM.type_id), ("Categorical", CatColM.type_id), ("Numerical", NumColM.type_id)]
     
     def __init__(self, view):
         self.view = view
         self.store_supp = None
         self.elements = {"active_info": False, "act_butt": [1]}
         ### TEMPORARY
-        # self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
-        # self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
-        # self.types_in = {BoolColM.type_id: False, CatColM.type_id: False, NumColM.type_id: True}
-        self.parts_in = {SSetts.Exx: False, SSetts.Exo: True, SSetts.Eox: False, SSetts.Eoo: False}
+        self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
         self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
-        self.types_in = {BoolColM.type_id: True, CatColM.type_id: False, NumColM.type_id: False}
-        self.fixed_radius = False
+        self.types_in = dict([(tid, True) for (name, tid) in self.getNamesTids()])
+        # self.types_in[self.getTidForName("Boolean")] = False
+        # self.types_in[self.getTidForName("Categorical")] = False
+        # self.parts_in = {SSetts.Exx: False, SSetts.Exo: True, SSetts.Eox: False, SSetts.Eoo: False}
+        # self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
+        self.fixed_radius = True
         self.initPlot()
         self.plot_void()
         ## self.draw()
@@ -86,7 +84,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                     else:
                         self.parts_out[k] = False
                         
-            for lbl, i in DrawerRedCorrel.types_lbls:
+            for lbl, i in self.getTypeLbls():
                 ll = "types_%d" % i
                 if ll in elems:
                     if elems[ll].IsChecked():
@@ -125,7 +123,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                     pos_out |= (vec == part)
 
             ### (DE)ACTIVATE COUNT PLOTS
-            # if tt == [BoolColM.type_id]:
+            # if tt == self.getTidForName(["Boolean"]):
             #     self.makeCountsPlot(mat, pos_in, pos_out, details)
             # else:
             self.makeCorrelPlot(mat, pos_in, pos_out, details)
@@ -254,7 +252,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         ##############################################
         add_boxA = wx.BoxSizer(wx.HORIZONTAL)
         add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
-        for lbl, i in DrawerRedCorrel.types_lbls:
+        for lbl, i in self.getTypeLbls():
             inter_elems["types_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
             inter_elems["types_%d" % i].SetValue(self.types_in[i])
 

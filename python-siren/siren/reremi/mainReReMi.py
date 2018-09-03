@@ -8,7 +8,7 @@ import codecs
 
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
-from classData import Data, NA_str_def
+from classData import Data
 from classRedescription import Redescription
 from classBatch import Batch
 from classConstraints import Constraints
@@ -60,7 +60,6 @@ def loadAll(arguments=[], conf_defs=None):
 
     if pack_filename is not None:
         src_folder = os.path.dirname(os.path.abspath(pack_filename))
-
         package = Package(pack_filename)
         elements_read = package.read(pm)        
         data = elements_read.get("data", None)
@@ -90,6 +89,7 @@ def loadAll(arguments=[], conf_defs=None):
 
     if pack_filename is None:
         data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
+        data.loadExtensions(ext_keys=params_l.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params_l)
     logger.printL(2, data, "log")
 
     if pack_filename is not None:
@@ -105,7 +105,7 @@ def turnToDict(params):
     return params_l
 
 def getDataAddInfo(params_l={}):
-    return [{}, params_l.get('NA_str', NA_str_def)]
+    return [{}, params_l.get('NA_str', Data.NA_str_def)]
 
 def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
     filenames = {"queries": "-",
@@ -118,7 +118,7 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
         if dl is not None:
             filenames["add_info"][0]["delimiter"] = dl
     
-    for p in ['result_rep', 'data_rep']:
+    for p in ['result_rep', 'data_rep', 'extensions_rep']:
         if p not in params_l:
             params_l[p] = ""
         if src_folder is not None and re.match("./", params_l[p]):
@@ -153,6 +153,15 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
         filenames["style_data"] = "multiple"
         filenames["add_info"] = []
 
+    if len(params_l.get("extensions_names", "")) != 0:
+        filenames["extensions"] = {}
+        extkf = params_l.get("extensions_names", "")
+        for blck in extkf.strip().split(";"):
+            parts = [p.strip() for p in blck.split("=")]
+            if len(parts) == 2:
+                filenames["extensions"]["extf_"+parts[0]] = params_l["extensions_rep"] + parts[1]
+
+        
     ### Make queries file names
     if len(params_l.get("queries_file", "")) != 0 :
         filenames["queries"] = params_l["queries_file"]
@@ -436,7 +445,12 @@ def run_printout(args):
     suff = args[-1].strip("printout")
     if len(suff) == 0:
         suff = "_reprint"
-    loaded = loadAll(args[:-1])
+
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
+    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml",
+                 pref_dir + "/dataext_confdef.xml"]
+        
+    loaded = loadAll(args[:-1], conf_defs)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
 
@@ -477,15 +491,17 @@ def run_printout(args):
             red_contents.extend([r["items"][rid] for rid in r["rshowids"]])
     else:
         red_contents = reds
-                
-    params = getPrintParams(filename, data)
+
+    data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})
+    params = getPrintParams(filename, data)    
     writeRedescriptions(red_contents, filename, **params)
                 
 
 def run_rnd(args):
 
     pref_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml", pref_dir + "/rnd_confdef.xml"]
+    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml",
+                 pref_dir + "/dataext_confdef.xml", pref_dir + "/rnd_confdef.xml"]
     
     loaded = loadAll(args, conf_defs)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
@@ -559,3 +575,4 @@ if __name__ == "__main__":
         run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)
+

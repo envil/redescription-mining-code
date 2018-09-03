@@ -1,5 +1,6 @@
 field	acc_ratioTL	test:acc:/learn:acc:	.2f
 field	len_I_ratioTA	test:len:I/(1.*all:len:I)	.2f
+field	cohesion	:extra:cohesion	.2f
 fieldlist	queries
 LHS:query:
 RHS:query:
@@ -29,11 +30,13 @@ fieldlist	basic
 list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
+cohesion	
 list	cards
 fieldlist	gui
 list	queries
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 list	stats
+cohesion	
 fieldlist	tex
 list	queries
 X:acc:	X=[wsplits]{test,learn}{all}[wcond]{cond}

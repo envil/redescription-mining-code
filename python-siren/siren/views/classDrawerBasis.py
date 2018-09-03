@@ -11,6 +11,7 @@ from matplotlib.text import Text
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Polygon
 
+from ..reremi.classData import Data
 from ..reremi.classQuery import SYM, Query
 from ..reremi.classRedescription import Redescription
 from ..reremi.classSParts import SSetts
@@ -38,6 +39,18 @@ class DrawerBasis(object):
     ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
     cmap_name = None
     cmap_default = "jet"
+
+    @classmethod
+    def getNamesTids(tcl):
+        return Data.getNamesTids()
+    @classmethod
+    def getTidForName(tcl, name):
+        return Data.getTidForName(name)
+    @classmethod
+    def isTypeId(tcl, tid, name):
+        return Data.isTypeId(tid, name)
+
+    
     @classmethod
     def getCMap(tcl, ltid):
         if tcl.cmap_name is not None:

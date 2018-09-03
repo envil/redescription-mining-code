@@ -5,8 +5,6 @@ from classDrawerMap import DrawerMap
 from classDrawerBasis import DrawerEntitiesTD
 from classDrawerClust import DrawerClustTD
 
-from ..reremi.classData import BoolColM, CatColM, NumColM
-
 import pdb
 
 SMOOTH = False #True
@@ -79,10 +77,10 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         mapper = None
         data = self.getParentData()       
         if data is not None:
-            # mat, dets, mc = data.getMatrix(types=[BoolColM.type_id], only_able=True)
-            # etor = numpy.array(mat.T, dtype=bool)
+            # etor  = vec_dets["etor"]
+            mat, dets, mc = data.getMatrix(types=self.getTidForName(["Boolean"]), only_able=True)
+            etor = numpy.array(mat.T, dtype=bool)
 
-            etor  = vec_dets["etor"]
             max_id, max_val = etor.shape
 
             t = self.view.getParentPreferences()
@@ -109,9 +107,13 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             edges_inner = edges[borders_inner, :, :]
             edges_inter = edges[borders_inter, :, :]
             # edges_outer = edges[borders_outer, :, :]
-            
-            vals = numpy.sum(numpy.logical_xor(etor[node_pairs[borders_inner,0], :], etor[node_pairs[borders_inner,1], :]), axis=1)
-            mapper = self.prepMapper(vmin=0, vmax=numpy.max(vals), ltid=1)
+
+            nb_diff_spc = numpy.sum(numpy.logical_xor(etor[node_pairs[borders_inner,0], :], etor[node_pairs[borders_inner,1], :]), axis=1)
+            diff_nb_spc = numpy.abs(numpy.sum(etor[node_pairs[borders_inner,0], :], axis=1) - numpy.sum(etor[node_pairs[borders_inner,1], :], axis=1))
+            vals = diff_nb_spc # nb_diff_spc - diff_nb_spc
+
+            mapper = self.prepMapper(vmin=0, vmax=numpy.max(nb_diff_spc), ltid=1)
+            # mapper = self.prepMapper(vmin=0, vmax=numpy.max(vals), ltid=1)
             colors = mapper.to_rgba(vals, alpha=draw_settings["default"]["color_e"][-1])
             dots_draws = {"edges_inter": edges_inter, "edges_inner": edges_inner, "vals": vals, "colors": colors}
             #, "far_vs": far_vs, "sums_in": sums_in, "edges_outer": edges_outer, "edges": edges, "edges_cut": edges_cut}
@@ -122,8 +124,9 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         axe.add_collection(line_segments)
 
         mv = float(numpy.max(dots_draws["vals"]))
-        line_segments = LineCollection(dots_draws["edges_inner"], colors=dots_draws["colors"], linewidths=2*dots_draws["vals"]/mv)
-        axe.add_collection(line_segments)
+        if mv > 0:
+            line_segments = LineCollection(dots_draws["edges_inner"], colors=dots_draws["colors"], linewidths=2*dots_draws["vals"]/mv)
+            axe.add_collection(line_segments)
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
         x0, x1, y0, y1, bx, by = corners

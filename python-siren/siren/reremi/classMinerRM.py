@@ -7,7 +7,6 @@ from classSouvenirs import Souvenirs
 from classConstraints import Constraints
 from classInitialPairs import InitialPairs
 from codeRRM import RedModel
-from classData import BoolColM, CatColM, NumColM
 
 import pdb
 

@@ -9,7 +9,7 @@ from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from classDrawerPara import DrawerRedPara
 from classDrawerTree import DrawerRedTree
 from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
-from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
+# from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
 from classDrawerCorrel import DrawerRedCorrel
@@ -609,18 +609,18 @@ class ViewRedMap(ViewRed):
     subcl_drawer = DrawerEntitiesMap
     subcl_pltdt = PltDtHandlerRedWithCoords
 
-class ViewRedMappoly(ViewRed):
+# class ViewRedMappoly(ViewRed):
 
-    TID = "MPP"
-    SDESC = "Map.Poly"
-    title_str = "Map Polygons"
-    ordN = 2
-    geo = True
-    typesI = "r"
+#     TID = "MPP"
+#     SDESC = "Map.Poly"
+#     title_str = "Map Polygons"
+#     ordN = 2
+#     geo = True
+#     typesI = "r"
 
-    subcl_layh = LayoutHandlerQueries
-    subcl_drawer = DrawerEntitiesMappoly
-    subcl_pltdt = PltDtHandlerRedWithCoords
+#     subcl_layh = LayoutHandlerQueries
+#     subcl_drawer = DrawerEntitiesMappoly
+#     subcl_pltdt = PltDtHandlerRedWithCoords
 
     
 class ViewRedPara(ViewRed):
@@ -704,32 +704,32 @@ class ViewClustMap(ViewList):
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
 
-class ViewClustMappoly(ViewList):
+# class ViewClustMappoly(ViewList):
     
-    TID = "CLMPP"
-    SDESC = "CluMapPolyLViz"
-    ordN = 1
-    title_str = "Map Polygons"
-    typesI = "r"
-    geo = True
+#     TID = "CLMPP"
+#     SDESC = "CluMapPolyLViz"
+#     ordN = 1
+#     title_str = "Map Polygons"
+#     typesI = "r"
+#     geo = True
     
-    subcl_drawer = DrawerClustMappoly
-    subcl_pltdt = PltDtHandlerListClust
-    subcl_layh = LayoutHandlerBasis
+#     subcl_drawer = DrawerClustMappoly
+#     subcl_pltdt = PltDtHandlerListClust
+#     subcl_layh = LayoutHandlerBasis
 
 
-class ViewBorders(ViewList):
+# class ViewBorders(ViewList):
     
-    TID = "CLBRD"
-    SDESC = "BordersMapLViz"
-    ordN = 3
-    title_str = "Map Borders"
-    typesI = "r"
-    geo = True
+#     TID = "CLBRD"
+#     SDESC = "BordersMapLViz"
+#     ordN = 3
+#     title_str = "Map Borders"
+#     typesI = "r"
+#     geo = True
     
-    subcl_drawer = DrawerBorders
-    subcl_pltdt = PltDtHandlerListBlocks
-    subcl_layh = LayoutHandlerBasis
+#     subcl_drawer = DrawerBorders
+#     subcl_pltdt = PltDtHandlerListBlocks
+#     subcl_layh = LayoutHandlerBasis
     
 class ViewClustProj(ViewEntitiesProj, ViewList):
 
