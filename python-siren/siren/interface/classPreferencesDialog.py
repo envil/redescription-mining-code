@@ -23,18 +23,23 @@ class PreferencesDialog(wx.Dialog):
     """
     Creates a preferences dialog to change the settings
     """
-
+    dialog_title = "Preferences"
+    sections_skip = ["Network", "Split", "Extensions"]
     button_types = [{"name":"cancel", "label":"Cancel", "funct": "self.onCancel"},
              {"name":"reset", "label":"Reset", "funct": "self.onReset"},
              {"name":"rtod", "label":"ResetToDefault", "funct": "self.onResetToDefault"},
              {"name":"apply", "label":"Apply", "funct": "self.onApply"},
              {"name":"ok", "label":"OK", "funct": "self.onOK"}]
-     
+    buttons_up = ["reset", "apply"]
+    apply_proceed_msg = 'Do you want to apply all changes or reset the values before proceeding?'
+    apply_proceed_title = 'Unapplied changes'
+    apply_proceed_lbl = 'Apply'
+    
     def __init__(self, parent, pref_handle):
         """
         Initialize the config dialog
         """
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Preferences', style=wx.RESIZE_BORDER|wx.DEFAULT_DIALOG_STYLE) #, size=(550, 300))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, self.dialog_title, style=wx.RESIZE_BORDER|wx.DEFAULT_DIALOG_STYLE) #, size=(550, 300))
         self.nb = wx.Notebook(self, wx.ID_ANY, style=wx.NB_TOP)
         nb_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(nb_sizer)
@@ -47,9 +52,8 @@ class PreferencesDialog(wx.Dialog):
 
         self.cancel_change = False # Tracks if we should cancel a page change
 
-        for section in self.pref_handle.getPreferencesManager().subsections:
-            if section.get("name") in ["Network", "Split"]:
-                continue
+        
+        for section in self.iterateSections():
             sec_id = wx.NewId()
             self.tabs.append(sec_id)
             self.controls_map[sec_id] = {"button": {}, "range": {},
@@ -63,20 +67,7 @@ class PreferencesDialog(wx.Dialog):
             conf.SetSizer(top_sizer)
 
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-            self.controls_map[sec_id]["button"]["reset"].Disable()
-            self.controls_map[sec_id]["button"]["apply"].Disable()
-            
-            for txtctrl in self.controls_map[sec_id]["open"].itervalues():
-                self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for txtctrl in self.controls_map[sec_id]["range"].itervalues():
-                self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for choix in self.controls_map[sec_id]["boolean"].itervalues():
-                self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for choix in self.controls_map[sec_id]["single_options"].itervalues():
-                self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
-                for chkbox in chkset.itervalues():
-                    self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
+            self.bindSec(sec_id)
 
             self.nb.AddPage(conf, section.get("name"))
             top_sizer.Fit(conf)
@@ -85,9 +76,16 @@ class PreferencesDialog(wx.Dialog):
         
         self.Centre()
         nb_sizer.Fit(self)
-    
-    def dispGUI(self, parameters, sec_id, frame, top_sizer):
 
+    def iterateSections(self):
+        for section in self.pref_handle.getPreferencesManager().getTopSections():
+            if not section.get("name") in self.sections_skip:
+                yield section
+        
+    def dispGUI(self, parameters, sec_id, frame, top_sizer):
+        if parameters.get("empty", False):
+            return
+        
         for ty in ["open", "range"]:
         ########## ADD TEXT PARAMETERS
             if len(parameters[ty]) > 0: 
@@ -205,17 +203,18 @@ class PreferencesDialog(wx.Dialog):
             self.objects_map[btnId] = (sec_id, "button", button["name"])
 
         top_sizer.Add(btn_sizer, 0, wx.ALIGN_BOTTOM|wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5)
-
+        
     def onPageChanging(self, event):
         sec_id = self.tabs[event.GetOldSelection()]
-        if self.controls_map[sec_id]["button"]["apply"].IsEnabled():
+        
+        if self.detectedChange(sec_id):
             ### TODO:: FOR NOW SIMPLY APPLY WITHOUT ASKING FOR CONFIRMATION
             # save_dlg = wx.MessageDialog(self.toolFrame, 'Do you want to apply changes before changing tab, otherwise they will be lost?', caption="Warning!", style=wx.YES_NO|wx.YES_DEFAULT)
             # if save_dlg.ShowModal() != wx.ID_NO:
             #     return
             # save_dlg.Destroy()
 
-            dlg = ApplyResetCancelDialog(parent=self, title='Unapplied changes', msg='Do you want to apply all changes or reset the values before proceeding?');
+            dlg = ApplyResetCancelDialog(parent=self, title=self.apply_proceed_title, msg=self.apply_proceed_msg, apply_lbl=self.apply_proceed_lbl);
             res = dlg.ShowModal()
             dlg.Destroy()
             if res == 1:
@@ -240,8 +239,7 @@ class PreferencesDialog(wx.Dialog):
 
     def _reset(self, sec_id):
         self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-        self.controls_map[sec_id]["button"]["reset"].Disable()
-        self.controls_map[sec_id]["button"]["apply"].Disable()
+        self.upButtons(sec_id, on_action="off")
 
     def onResetToDefault(self, event):
         if event.GetId() in self.objects_map.keys():
@@ -257,8 +255,7 @@ class PreferencesDialog(wx.Dialog):
         vdict = self.getSecValuesDict(sec_id)
         self.pref_handle.updatePreferencesDict(vdict)
         self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-        self.controls_map[sec_id]["button"]["reset"].Disable()
-        self.controls_map[sec_id]["button"]["apply"].Disable()
+        self.upButtons(sec_id, on_action="off")
     
     def onOK(self, event):
         if event.GetId() in self.objects_map.keys():
@@ -270,12 +267,23 @@ class PreferencesDialog(wx.Dialog):
     def changeHappened(self, event):
         if event.GetId() in self.objects_map.keys():
             sec_id = self.objects_map[event.GetId()][0]
-            self.controls_map[sec_id]["button"]["reset"].Enable()
-            self.controls_map[sec_id]["button"]["apply"].Enable()
-        
+            self.upButtons(sec_id, on_action="on")
+            
+    def detectedChange(self, sec_id):
+        return len(self.buttons_up) > 0 and self.controls_map[sec_id]["button"][self.buttons_up[0]].IsEnabled()
+            
+    def upButtons(self, sec_id, on_action="off"):
+        if on_action is None:
+            return
+        for b in self.buttons_up:
+            if on_action == "on":
+                self.controls_map[sec_id]["button"][b].Enable()
+            else:
+                self.controls_map[sec_id]["button"][b].Disable()
+                
     def onClose(self):
         self.EndModal(0)
-
+        
     def setSecValuesFromDict(self, sec_id, vdict):
         for ty in ["open", "range"]:
             for item_id, ctrl_txt in self.controls_map[sec_id][ty].items():
@@ -293,6 +301,21 @@ class PreferencesDialog(wx.Dialog):
 
         for item_id, colour_txt in self.controls_map[sec_id]["color_pick"].items():
             colour_txt.SetColour(wx.Colour(*vdict[item_id]["value"]))
+
+    def bindSec(self, sec_id):
+        self.upButtons(sec_id, on_action="off")
+        
+        for txtctrl in self.controls_map[sec_id]["open"].itervalues():
+            self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
+        for txtctrl in self.controls_map[sec_id]["range"].itervalues():
+            self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
+        for choix in self.controls_map[sec_id]["boolean"].itervalues():
+            self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
+        for choix in self.controls_map[sec_id]["single_options"].itervalues():
+            self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
+        for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
+            for chkbox in chkset.itervalues():
+                self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
             
     def getSecValuesDict(self, sec_id):
         vdict = {}
@@ -359,7 +382,7 @@ class PreferencesDialog(wx.Dialog):
 class ApplyResetCancelDialog(wx.Dialog):
     """Shows a dialog with three buttons: Apply, Reset, and Cancel.
     Returns 1 for apply, 2 for reset, and -1 for cancel"""
-    def __init__(self, parent, title="", msg=""):
+    def __init__(self, parent, title="", msg="", apply_lbl="Apply"):
         super(ApplyResetCancelDialog, self).__init__(parent=parent, title=title) #, size=(300, 150))
 
         top_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -370,7 +393,7 @@ class ApplyResetCancelDialog(wx.Dialog):
 
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        applyBtn = wx.Button(self, id=wx.ID_ANY, label="Apply")
+        applyBtn = wx.Button(self, id=wx.ID_ANY, label=apply_lbl)
         resetBtn = wx.Button(self, id=wx.ID_ANY, label="Reset")
         cancelBtn = wx.Button(self, id=wx.ID_CANCEL, label="Cancel")
 

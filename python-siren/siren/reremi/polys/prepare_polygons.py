@@ -118,7 +118,7 @@ def prepBorderEdges(final_details, PointsIds, nodes, coords_map={}, splits_eids=
     return border_edges
 
 
-def prepPolys(self, PointsIds, final_polys, final_details, edges, nodes):
+def prepPolys(PointsIds, final_polys, final_details, edges, nodes):
     coords_map = prepCoordsPolys(final_polys, nodes, PointsIds)
     splits_eids = prepEdgesSplits(edges, PointsIds)
     border_edges = prepBorderEdges(final_details, PointsIds, nodes, coords_map=coords_map, splits_eids=splits_eids)

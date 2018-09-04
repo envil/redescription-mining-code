@@ -55,9 +55,9 @@ class ViewFactory(object):
         return tcl.viewsT_typs_map.get(viewT)
 
     @classmethod
-    def getViewsInfo(tcl, typv="R", tabT=None, geo=False, what=None, excludeT=None):
+    def getViewsInfo(tcl, typv="R", tabT=None, geo=False, ext_keys=None, what=None, excludeT=None):
         infos = [{"viewT": viewT, "title": details["title"], "short_title": details.get("short_title", details["title"]),
-                  "ord": details["ord"], "suitable":details["class"].suitableView(geo, what, tabT)} \
+                  "ord": details["ord"], "suitable": details["class"].suitableView(geo, ext_keys, what, tabT)} \
                  for viewT, details in tcl.getClasses(typv).items() if (excludeT is None or viewT not in excludeT)]
         infos.sort(key=lambda x: (x["ord"], x["title"]))
         return infos

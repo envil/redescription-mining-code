@@ -50,7 +50,13 @@ class ExtensionPool(object):
     def delExtension(self, key):
         if key in self.extensions:
             del self.extensions[key]
-                                   
+    def hasActiveExtension(self, key):
+        return key in self.extensions
+    def getActiveExtensionKeys(self):
+        return self.extensions.keys()
+    def getAvailableExtensionKeys(self):
+        return self.extensions_map.keys()
+            
     def computeExtras(self, item, extras=None, details=None):
         if extras is None:
             extras = [k for (k,kk) in self.extras_map.items() if kk in self.extensions]
@@ -98,10 +104,13 @@ class ExtensionPool(object):
         for ek in eks:
             ext = self.extensions[ek]
             ext.doWithFiles("save", filenames, details)        
-    def getExtensionsFilesDict(self):
+    def getExtensionsFilesDict(self, exts=None):
         fdict = {}
-        for ek, ext in self.extensions_map.items():
-            fdict.update(ext["class"].getFilesDict())    
+        if exts is None:
+            exts = self.extensions_map.keys()
+        for ek in exts:
+            if ek in self.extensions_map:
+                fdict.update(self.extensions_map[ek]["class"].getFilesDict())    
         return fdict
     def getExtensionsActiveFilesDict(self):
         fdict = {}
@@ -222,18 +231,24 @@ class Data(object):
     def computeExtras(self, item, extras=None, details=None):
         return self.extensions.computeExtras(item, extras, details)
 
-    def initExtension(self, key, params={}):
-        self.extensions.initExtension(key, params)
+    def initExtension(self, key, filenames=None, params=None, details=None):
+        self.extensions.initExtension(key, filenames, params, details)
     def getExtension(self, key):
         return self.extensions.getExtension(key)
     def delExtension(self, key):
         self.extensions.delExtension()
+    def hasActiveExtension(self, key):
+        return self.extensions.hasActiveExtension(key)
+    def getActiveExtensionKeys(self):
+        return self.extensions.getActiveExtensionKeys()
+    def getAvailableExtensionKeys(self):
+        return self.extensions.getAvailableExtensionKeys()
     def saveExtensions(self, filenames=None, details=None):
         self.extensions.saveExtensions(filenames, details)
     def loadExtensions(self, ext_keys=None, filenames=None, params=None, details=None):
         self.extensions.loadExtensions(ext_keys, filenames, params, details)
-    def getExtensionsFilesDict(self):
-        return self.extensions.getExtensionsFilesDict()
+    def getExtensionsFilesDict(self, exts=None):
+        return self.extensions.getExtensionsFilesDict(exts)
     def getExtensionsActiveFilesDict(self):
         return self.extensions.getExtensionsActiveFilesDict()
     

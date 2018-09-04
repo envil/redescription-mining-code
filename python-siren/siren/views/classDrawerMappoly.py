@@ -7,7 +7,7 @@ from classDrawerClust import DrawerClustTD
 
 import pdb
 
-SMOOTH = False #True
+SMOOTH = True
 
 class DrawerMappoly(DrawerMap):
 
@@ -16,21 +16,20 @@ class DrawerMappoly(DrawerMap):
 
     def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
         data = self.getParentData()
-        
+        geoplus = None
+        # pdb.set_trace()
         if data is not None:
+            geoplus = data.getExtension("geoplus")
+            
+        if geoplus is not None:
             inter_params = self.getParamsInter()
             vec, vec_dets = self.getVecAndDets(inter_params)
-            t = self.view.getParentPreferences()
-            pm_params = {}
-            for key in ["gridh_percentile", "gridw_fact", "smooth_fact"]:
-                if key in t:
-                    pm_params[key] = t[key]["data"]
             vcc = vec            
             if numpy.min(vec) < 0:
                 vcc -=  numpy.min(vec)
-            ## vcc = numpy.arange(vcc.shape[0])
-            pp_data = data.prepare_areas_data(vcc, pm_params)
-            if pp_data is not None:
+                
+            pp_data = geoplus.computeAreasData(vcc)
+            if pp_data is not None and "cks" in pp_data:
                 for cii, ck in enumerate(pp_data["cks"]):
                     if SMOOTH and "smooth_polys" in pp_data["ccs_data"][ck]:
                         pp_polys = pp_data["ccs_data"][ck]["smooth_polys"]
@@ -75,21 +74,21 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
     def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
         dots_draws = {}
         mapper = None
-        data = self.getParentData()       
+
+        data = self.getParentData()
+        geoplus = None
         if data is not None:
+            geoplus = data.getExtension("geoplus")
+            
+        if geoplus is not None:
             # etor  = vec_dets["etor"]
             mat, dets, mc = data.getMatrix(types=self.getTidForName(["Boolean"]), only_able=True)
             etor = numpy.array(mat.T, dtype=bool)
 
             max_id, max_val = etor.shape
 
-            t = self.view.getParentPreferences()
-            pm_params = {}
-            for key in ["gridh_percentile", "gridw_fact", "smooth_fact"]:
-                if key in t:
-                    pm_params[key] = t[key]["data"]
 
-            pp_data = data.initPolymapData(pm_params)
+            pp_data = geoplus.computePolys()
             if self.bm is None:
                 edges = numpy.array([edge.get("cut_edge", edge["edge"]) for edge in pp_data["edges"]])
             else:

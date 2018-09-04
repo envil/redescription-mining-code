@@ -173,7 +173,7 @@ class DataExtension(object):
     
 class GeoPlusExtension(DataExtension):
 
-    extension_key = "geo+"
+    extension_key = "geoplus"
     extras_map = {}
     filing = []
     params_keys = ["gridh_percentile", "gridw_fact", "smooth_fact", "natural_borders"]
@@ -278,11 +278,9 @@ class GeoPlusExtension(DataExtension):
     def computeAreasData(self, cells_colors, details=None, force=False):
         if details is None:
             details = {}
-        if "cells_colors" not in details:
-            return {}
         self.setParams(details)
         self.prepExteriorData(details=details, force=force)
-        ccs_data, cks, adjacent = prep_polys.prepare_areas_data(details["cells_colors"], self.getElement("coordsp"), 
+        ccs_data, cks, adjacent = prep_polys.prepare_areas_data(cells_colors, self.getElement("coordsp"), 
                   self.getElement("cells_graph"), self.getElement("edges_graph"), self.getElement("out_data"), self.getElement("smooth_fact", 1))
         return {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
         
@@ -351,9 +349,10 @@ class GeoPlusExtension(DataExtension):
         fp = self.getFp("extf_"+self.F_COORD_BCKG, filenames, details, "r")
         coords_bckg, rnames_bckg = csv_reader.read_coords_csv(fp)
         self.closeFp(fp, details)
-        self.setElement("coords_bckg", coords_bckg)
-        if rnames_bckg is not None:
-            self.setElement("rnames_bckg", rnames_bckg)
+        if coords_bckg is not None:
+            self.setElement("coords_bckg", coords_bckg)
+            if rnames_bckg is not None:
+                self.setElement("rnames_bckg", rnames_bckg)
         return coords_bckg, rnames_bckg
     
     F_POLYS = "polys"

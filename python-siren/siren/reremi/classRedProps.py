@@ -219,7 +219,7 @@ class dummyC:
         print "WARNING: Class not properly set up!"
 
 class RedProps(object):
-
+   
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = pref_dir+"/fields_defs_basic.txt"
     default_def_files = [def_file_basic]
@@ -282,8 +282,20 @@ class RedProps(object):
                  "gui": "%(rset)s %(what)s%(which)s%(what_1)s"}
     def_elems = {"what": "", "which": "", "rset": "", "what_1": ""}
     extra_patt = ":extra:(?P<xtr>\w+)"
-
+    XTRKS = "##XTRKS##"
+    
     modifiers_defaults = {"wsplits": False, "wmissing": False, "wcond": False}
+    @classmethod
+    def compliesModifiers(tcl, f, modifiers):
+        ## if re.search("wxtr_", f.get("modify", "")): pdb.set_trace()
+        try:
+            return cust_eval(f.get("modify", "True"), modifiers)
+        except NameError as e:
+            pass
+            # if re.search("wxtr_", e.message):
+            #     return False
+        return False
+
     @classmethod
     def updateModifiers(tcl, red_list, modifiers={}):
         if ("wcond" not in modifiers) and any([red[1].hasCondition() for red in red_list]):
@@ -296,12 +308,19 @@ class RedProps(object):
     def getModifiersForData(tcl, data):
         if data is None:
             return {}
-        return {"wsplits": data.hasLT(),
-                "wcond": data.isConditional(),
-                "wmissing": data.hasMissing()}
+        tmp = {"wsplits": data.hasLT(),
+               "wcond": data.isConditional(),
+               "wmissing": data.hasMissing()}
+        for xtr in data.getActiveExtensionKeys():
+            tmp["wxtr_%s" % xtr] = True
+        return tmp
     @classmethod
     def hashModifiers(tcl, modifiers):
-        return "%(wmissing)d%(wcond)d%(wsplits)d" % modifiers
+        xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])        
+        b = "%(wmissing)d%(wcond)d%(wsplits)d" % modifiers
+        if len(xtr) > 0:
+            b += ":"+xtr
+        return b
     @classmethod
     def getStyles(tcl, style):
         if style in ["tex", "txt"]:
@@ -416,6 +435,17 @@ class RedProps(object):
         fmt = tcl.getPrimitiveFmt(exp)
         val = tcl.getPrimitiveVal(red, exp, details)
         return prepareValFmt(val, fmt, to_str)        
+    
+    @classmethod
+    def containsExtras(tcl, exp):
+        return re.search(tcl.extra_patt, exp) is not None
+    @classmethod
+    def containingExtras(tcl, exps={}):
+        kxtrs = []
+        for k, exp in exps.items():
+            if tcl.containsExtras(k) or (exp is not None and tcl.containsExtras(exp)):
+                kxtrs.append(k)
+        return kxtrs
 
     ### DERIVATIVE EVAL
     @classmethod
@@ -431,7 +461,7 @@ class RedProps(object):
         props_collect = set()
         trans_exps = {}
         for eid, exp in exps.items():
-            texp = exp            
+            texp = exp
             for mtch in list(re.finditer(tcl.match_primitive, exp))[::-1]:
                 props_collect.add(mtch)
                 texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
@@ -447,10 +477,12 @@ class RedProps(object):
     @classmethod
     def refreshEVals(tcl, red, exps, details={}):
         red.setCacheEVals(tcl.compEVals(red, exps, details))
+        red.markCacheEValsXTR(tcl.containingExtras(exps))
     @classmethod
     def getEVal(tcl, red, k, exp=None, fresh=False, default=None, details={}):
         if (exp is not None) and (not red.hasCacheEVal(k) or fresh):
             red.setCacheEVal(k, tcl.compEVal(red, exp, details))
+            red.markCacheEValsXTR(tcl.containingExtras({k: exp}))
         return red.getCacheEVal(k)
     @classmethod
     def getEVals(tcl, red, exps, fresh=False, details={}):
@@ -460,6 +492,7 @@ class RedProps(object):
             revals = dict([(k,v) for (k,v) in exps.items() if not red.hasCacheEVal(k)])
         if len(revals) > 0:
             red.updateCacheEVals(tcl.compEVals(red, revals, details))
+            red.markCacheEValsXTR(tcl.containingExtras(revals))
         return dict([(k,red.getCacheEVal(k)) for k in exps.keys()])
 
     def getEValF(self, red, k, fresh=False, default=None, details={}):
@@ -623,14 +656,14 @@ class RedProps(object):
         fmt = self.getFieldFmt(fk)
         return prepareValFmt(val, fmt, to_str, replace_none)
 
-
+        
     #### PREPARING DERIVATIVE FIELDS
     def getListFields(self, lfname, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
         fields = []
         for f in self.getFieldsList(lfname):
-            if cust_eval(f.get("modify", "True"), ddmod):
+            if self.compliesModifiers(f, ddmod):
                 fields.append(f["field"])
         return fields
     def getNeededExtras(self, lfname, modifiers={}):
@@ -664,7 +697,7 @@ class RedProps(object):
         all_fields = {}
         for lfname in self.getListsKeys():
             for fi, f in enumerate(self.getFieldsList(lfname)):
-                if cust_eval(f.get("modify", "True"), ddmod):
+                if self.compliesModifiers(f, ddmod):
                     field = f["field"]
                     if field not in all_fields:
                         all_fields[field] = [0.,0]
@@ -716,7 +749,7 @@ class RedProps(object):
         if row_names is not None:
             details["row_names"] = row_names
             details["named"] = True
-            
+
         exp_dict = self.getExpDict(list_fields)
         evals_dict = self.compEVals(red, exp_dict, details)
 

@@ -401,13 +401,14 @@ class PreferencesManager(object):
 
     def __str__(self):
         strd = "Preferences manager:\n"
-        for sec in self.subsections:
+        for sec in self.getTopSections():
             strd += self.dispSection(sec)
         return strd
 
-
+    def getTopSections(self):
+        return self.subsections
     def getSectionByName(self, name):
-        tmp = [(ti, t) for (ti, t) in enumerate(self.subsections) if t["name"] == name]
+        tmp = [(ti, t) for (ti, t) in enumerate(self.getTopSections()) if t["name"] == name]
         if len(tmp) == 1:
             return tmp[0]
         else:

@@ -9,7 +9,7 @@ from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from classDrawerPara import DrawerRedPara
 from classDrawerTree import DrawerRedTree
 from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
-# from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
+from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
 from classDrawerCorrel import DrawerRedCorrel
@@ -42,6 +42,7 @@ class ViewBasis(object):
     ordN = 0
     title_str = "Basis View"
     geo = False
+    ext_keys = None
     typesI = ""
 
     subcl_layh = LayoutHandlerBasis
@@ -77,10 +78,20 @@ class ViewBasis(object):
         if tcl.TID is not None:
             return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
         return {}
+
+    @classmethod
+    def suitableExts(tcl, ext_keys=None):
+        ext_suit = True
+        if tcl.ext_keys is not None:
+            if ext_keys is None:
+                ext_suit = False
+            else:
+                ext_suit = all([k in ext_keys for k in tcl.ext_keys])
+        return ext_suit
     
     @classmethod
-    def suitableView(tcl, geo=False, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo)
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and tcl.suitableExts(ext_keys)
     
     def getItemId(self):
         if self.hasParent():
@@ -609,18 +620,19 @@ class ViewRedMap(ViewRed):
     subcl_drawer = DrawerEntitiesMap
     subcl_pltdt = PltDtHandlerRedWithCoords
 
-# class ViewRedMappoly(ViewRed):
+class ViewRedMappoly(ViewRed):
 
-#     TID = "MPP"
-#     SDESC = "Map.Poly"
-#     title_str = "Map Polygons"
-#     ordN = 2
-#     geo = True
-#     typesI = "r"
-
-#     subcl_layh = LayoutHandlerQueries
-#     subcl_drawer = DrawerEntitiesMappoly
-#     subcl_pltdt = PltDtHandlerRedWithCoords
+    TID = "MPP"
+    SDESC = "Map.Poly"
+    title_str = "Map Polygons"
+    ordN = 2
+    geo = True
+    typesI = "r"
+    ext_keys = ["geoplus"]
+    
+    subcl_layh = LayoutHandlerQueries
+    subcl_drawer = DrawerEntitiesMappoly
+    subcl_pltdt = PltDtHandlerRedWithCoords
 
     
 class ViewRedPara(ViewRed):
@@ -658,7 +670,7 @@ class ViewRedTree(ViewRed):
     subcl_pltdt = PltDtHandlerRed
     
     @classmethod
-    def suitableView(tcl, geo=False, what=None, tabT=None):
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
                ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
 
@@ -684,11 +696,10 @@ class ViewList(ViewBasis):
     title_str = "List View"
     geo = False
     typesI = "r"
-
-    
+   
     @classmethod
-    def suitableView(tcl, geo=False, what=None, tabT=None):
-        return tabT is None or tabT in tcl.typesI
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI) and tcl.suitableExts(ext_keys)
 
 
 class ViewClustMap(ViewList):
@@ -704,32 +715,34 @@ class ViewClustMap(ViewList):
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
 
-# class ViewClustMappoly(ViewList):
+class ViewClustMappoly(ViewList):
     
-#     TID = "CLMPP"
-#     SDESC = "CluMapPolyLViz"
-#     ordN = 1
-#     title_str = "Map Polygons"
-#     typesI = "r"
-#     geo = True
-    
-#     subcl_drawer = DrawerClustMappoly
-#     subcl_pltdt = PltDtHandlerListClust
-#     subcl_layh = LayoutHandlerBasis
+    TID = "CLMPP"
+    SDESC = "CluMapPolyLViz"
+    ordN = 1
+    title_str = "Map Polygons"
+    typesI = "r"
+    geo = True
+    ext_keys = ["geoplus"]
+        
+    subcl_drawer = DrawerClustMappoly
+    subcl_pltdt = PltDtHandlerListClust
+    subcl_layh = LayoutHandlerBasis
 
 
-# class ViewBorders(ViewList):
+class ViewBorders(ViewList):
     
-#     TID = "CLBRD"
-#     SDESC = "BordersMapLViz"
-#     ordN = 3
-#     title_str = "Map Borders"
-#     typesI = "r"
-#     geo = True
-    
-#     subcl_drawer = DrawerBorders
-#     subcl_pltdt = PltDtHandlerListBlocks
-#     subcl_layh = LayoutHandlerBasis
+    TID = "CLBRD"
+    SDESC = "BordersMapLViz"
+    ordN = 3
+    title_str = "Map Borders"
+    typesI = "r"
+    geo = True
+    ext_keys = ["geoplus"]
+        
+    subcl_drawer = DrawerBorders
+    subcl_pltdt = PltDtHandlerListBlocks
+    subcl_layh = LayoutHandlerBasis
     
 class ViewClustProj(ViewEntitiesProj, ViewList):
 

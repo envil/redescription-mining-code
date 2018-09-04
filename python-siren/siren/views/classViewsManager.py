@@ -26,13 +26,18 @@ class ViewsManager:
         if self.parent.dw is not None:
             return self.parent.dw.isGeospatial()
         return False
+    def getExtensionKeys(self):
+        if self.parent.dw is not None:
+            return self.parent.dw.getExtensionKeys()
+        return []
 
+    
     def getViewsItems(self, typv="R", tab_type=None, what=None, vkey=None):
         excludeT = None
         if vkey in self.vtoi:
             typv = self.vtoi[vkey][1]
             excludeT = [vkey[0]]
-        return ViewFactory.getViewsInfo(typv, tab_type, self.isGeospatial(), what, excludeT)
+        return ViewFactory.getViewsInfo(typv, tab_type, self.isGeospatial(), self.getExtensionKeys(), what, excludeT)
 
     def getDefaultViewT(self, typv="R", type_tab=None):
         return ViewFactory.getDefaultViewT(typv, self.isGeospatial(), type_tab)

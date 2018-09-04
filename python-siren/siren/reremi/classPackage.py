@@ -28,7 +28,7 @@ class Package(object):
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
 
-    FILETYPE_VERSION = 5
+    FILETYPE_VERSION = 6
     XML_FILETYPE_VERSION = 3
 
     NA_str = Data.NA_str_def
@@ -112,10 +112,9 @@ class Package(object):
                 elements_read["preferences"] = preferences
             data = self.readData()
             if data is not None:
-                ext_keys = None
-                if preferences is not None and "activated_extensions" in preferences:
-                    ext_keys = preferences["activated_extensions"]["data"]
-                data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
+                if 'ext_keys' in self.plist:
+                    ext_keys = self.plist['ext_keys'].strip().split(";")
+                    data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
                 elements_read["data"] = data
                 reds = self.readRedescriptions(data)
                 if reds is not None and len(reds) > 0:
@@ -163,7 +162,7 @@ class Package(object):
             finally:
                 fdLHS.close()
                 if fdRHS is not None: 
-                    fdRHS.close()            
+                    fdRHS.close()                    
         return data
 
     def readRedescriptions(self, data):
@@ -291,6 +290,9 @@ class Package(object):
             fns['data_LHS_filename'] = self.DATA_FILENAMES[0]
             if not contents["data"].isSingleD():
                 fns['data_RHS_filename'] = self.DATA_FILENAMES[1]
+            ext_keys = contents["data"].getActiveExtensionKeys()
+            if len(ext_keys) > 0:
+                d['ext_keys'] = ";".join(ext_keys)
             fns.update(contents["data"].getExtensionsActiveFilesDict())    
                                 
         if "preferences" in contents:
@@ -332,23 +334,23 @@ def readRedescriptionsXML(filep, data):
     return reds, rshowids
 
 
-def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None):
+def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}):
     if names is False:
         names = [None, None]
     if rshowids is None:
         rshowids = range(len(reds))
     red_list = [reds[i] for i in rshowids if reds[i].getEnabled() or with_disabled]
     if toPackage:
-        fields_supp = [-1, "status_enabled"]
+        fields_supp = [-1, ":extra:status"]
     else:
         fields_supp = None
         # with codecs.open(filename, encoding='utf-8', mode='w') as f:
     with open(filename, mode='w') as f:
         rp = Redescription.getRP()
         if style == "tex":
-            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines, modifiers=modifiers), 'utf-8','replace'))
         else:
-            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines, modifiers=modifiers), 'utf-8','replace'))
             
 def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, core=False):
     sections = True

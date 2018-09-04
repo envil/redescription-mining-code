@@ -107,6 +107,7 @@ class SirenApp(wx.App):
                 self.frame.reloadAll()
         
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+            # self.frame.OnExtensionsDialog(None)
             # print "No debug action..."
             # DEBUG
             # print "Loading file", sys.argv[-1]
@@ -151,8 +152,9 @@ class SirenApp(wx.App):
             #     mapV.OnKil()
 
             tab ="reds"
-            # vw = self.frame.tabs[tab]["tab"].viewData(0, "MPP")
-            self.frame.tabs[tab]["tab"].viewListData(0, "CLBRD") #"CLM")
+            vw = self.frame.tabs[tab]["tab"].viewData(0, "MPP")
+            
+            ## self.frame.tabs[tab]["tab"].viewListData(0, "CLBRD") #"CLM")
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))

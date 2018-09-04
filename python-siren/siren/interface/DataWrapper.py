@@ -113,6 +113,11 @@ class DataWrapper(object):
             return True
         else:
             return False
+    def getExtensionKeys(self):
+        if self.data is not None:
+            return self.data.getActiveExtensionKeys()
+        else:
+            return []
 
     def getCoords(self):
         if self.data is not None and self.data.isGeospatial():
@@ -223,6 +228,14 @@ class DataWrapper(object):
                 self.resetSSetts()
             #self.isChanged = True
 
+    def loadExtension(self, ek, filenames={}):
+        if len(filenames) == 0 and ek in self.getExtensionKeys():
+            self.data.getExtension(ek).setParams(self.getPreferences())        
+        else:
+            self.data.initExtension(ek, filenames, self.getPreferences())        
+        # self._isChanged = True
+        self._needsReload = True
+            
     def setData(self, data):
         self.data = data
         self.resetSSetts()
@@ -492,6 +505,8 @@ class DataWrapper(object):
     def exportRedescriptions(self, filename, reds=None, rshowids=None):
         self._startMessage('exporting', filename)
         params = getPrintParams(filename, self.data)
+        rp = Redescription.getRP()
+        params["modifiers"] = rp.getModifiersForData(self.data)
         try:
             if reds is None:
                 reds = self.reds

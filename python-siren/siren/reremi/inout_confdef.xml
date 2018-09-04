@@ -222,6 +222,15 @@
 	<default><value></value></default>
     </parameter>
     <parameter>
+	<name>activated_extensions</name>
+	<label>Activated extensions</label>
+	<parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Data extensions to activate.</legend>
+	<default>0</default>
+	<options><value>[AUTO]</value><value>geoplus</value></options>
+    </parameter>
+    <parameter>
 	<name>extensions_rep</name>
 	<label>Extensions repertory</label>
 	<parameter_type>open</parameter_type>

@@ -30,6 +30,7 @@ from classCtrlTable import RedsManager, VarsManager
 from classPreferencesDialog import PreferencesDialog
 from classConnectionDialog import ConnectionDialog
 from classSplitDialog import SplitDialog
+from classExtensionsDialog import ExtensionsDialog
 from miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog, MultiSelectorDialog, ChoiceElement
 from ..views.factView import ViewFactory
 from ..views.classVizManager import VizManager
@@ -929,13 +930,6 @@ class Siren():
         # m_impData = submenuImport.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
         #m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
-
-        ID_IMPORT_COODSBCKG = wx.NewId()
-        m_impCB = submenuImport.Append(ID_IMPORT_COODSBCKG, "Import &Bckg Coords", "Import background coordinates.")
-        if self.getData() is not None:
-            frame.Bind(wx.EVT_MENU, self.OnImportCoordsBckg, m_impCB)
-        else:
-            submenuImport.Enable(ID_IMPORT_COODSBCKG, False)
         
         ID_IMPORT_PREFERENCES = wx.NewId()
         m_impPreferences = submenuImport.Append(ID_IMPORT_PREFERENCES, "Import &Preferences", "Import preferences into the project.")
@@ -976,10 +970,10 @@ class Siren():
         ID_EXPORT = wx.NewId()
         m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
 
-        if True: #test_code:
-            ID_RUN_TEST = wx.NewId()
-            m_runTest = menuFile.Append(ID_RUN_TEST, "&Run test feature", "Trying a new feature.")
-            frame.Bind(wx.EVT_MENU, self.OnRunTest, m_runTest)
+        # if True: #test_code:
+        #     ID_RUN_TEST = wx.NewId()
+        #     m_runTest = menuFile.Append(ID_RUN_TEST, "&Run test feature", "Trying a new feature.")
+        #     frame.Bind(wx.EVT_MENU, self.OnRunTest, m_runTest)
             
         ## Preferences
         menuFile.AppendSeparator()
@@ -1000,6 +994,14 @@ class Siren():
                 if not self.hasDataLoaded():
                         menuFile.Enable(ID_SPLT, False)
 
+        ## Extensions setup
+        if True:
+                ID_EXTD = wx.NewId()
+                m_extdia = menuFile.Append(ID_EXTD, "Extensions setup...\tCtrl+l", "Setup data extensions.")
+                frame.Bind(wx.EVT_MENU, self.OnExtensionsDialog, m_extdia)
+                if not self.hasDataLoaded():
+                        menuFile.Enable(ID_EXTD, False)
+                        
         ## Export submenu
         submenuFields = wx.Menu() # Submenu for exporting
         
@@ -1373,21 +1375,6 @@ class Siren():
         dlg.showDialog()
         self.changePage(self.getDefaultTabId("e"))
 
-    def OnImportCoordsBckg(self, event):
-        """Shows a custom dialog to open bckg coordinates"""
-        if not self.getData():
-            return
-        dir_name = os.path.expanduser('~/')
-        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
-        if open_dlg.ShowModal() == wx.ID_OK:
-            path = open_dlg.GetPath()
-            try:                
-                self.getData().readBckg(path)
-            except:
-                pass
-        open_dlg.Destroy()
-
     def OnImportPreferences(self, event):
         if not self.checkAndProceedWithUnsavedChanges(self.dw.preferences.isChanged):
             return
@@ -1682,7 +1669,6 @@ class Siren():
         if self.dw.needsReload():
             self.recomputeAll()
             # self.reloadReds()
-
         
     def OnConnectionDialog(self, event):
         d = ConnectionDialog(self.toolFrame, self.dw, self.plant, self)
@@ -1693,7 +1679,15 @@ class Siren():
         d = SplitDialog(self.toolFrame, self.dw, self)
         d.ShowModal()
         d.Destroy()
-
+    def OnExtensionsDialog(self, event):
+        d = ExtensionsDialog(self.toolFrame, self.dw)
+        d.ShowModal()
+        d.Destroy()
+        # ######### DEBUG
+        # self.dw.loadExtension("geo+", filenames={'extf_coords_bckg': '/home/egalbrun/short/X.siren_FILES/coords_bckg.csv'})
+        if self.dw.needsReload():
+            self.recomputeAll()
+            ## self.reloadReds()
 
     def OnHelp(self, event):
         self._onHelpOutside()

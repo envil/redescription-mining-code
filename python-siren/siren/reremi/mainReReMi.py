@@ -492,8 +492,10 @@ def run_printout(args):
     else:
         red_contents = reds
 
-    data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})
-    params = getPrintParams(filename, data)    
+    # saveAsPackage("/home/egalbrun/Desktop/Z.siren", data, preferences=params, pm=loaded["pm"])        
+    # data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})
+    params = getPrintParams(filename, data)
+    params["modifiers"] = rp.getModifiersForData(data)
     writeRedescriptions(red_contents, filename, **params)
                 
 

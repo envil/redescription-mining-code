@@ -30,13 +30,13 @@ fieldlist	basic
 list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
-cohesion	
+cohesion	[wxtr_geoplus]
 list	cards
 fieldlist	gui
 list	queries
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
+cohesion	[wxtr_geoplus]
 list	stats
-cohesion	
 fieldlist	tex
 list	queries
 X:acc:	X=[wsplits]{test,learn}{all}[wcond]{cond}

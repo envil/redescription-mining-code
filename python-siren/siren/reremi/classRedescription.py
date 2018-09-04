@@ -429,6 +429,7 @@ class Redescription(object):
     def copyExtras(self):
         return copy.deepcopy(self.extras)
     def computeExtras(self, data, extras=None, details=None):
+        self.resetCacheEVals(only_extras=True)
         self.extras.update(data.computeExtras(self, extras, details))
         
     def getStatus(self):
@@ -631,7 +632,17 @@ class Redescription(object):
                 return methode(details)
         elif what in Redescription.info_what: ### other redescription info
             return eval(Redescription.info_what[what])
-         
+
+    def markCacheEValsXTR(self, ks):
+        if RedProps.XTRKS not in self.cache_evals:            
+            self.cache_evals[RedProps.XTRKS] = set()
+        self.cache_evals[RedProps.XTRKS].update(ks)
+    def resetCacheEVals(self, only_extras=False):
+        if only_extras:
+            for k in self.cache_evals.get(RedProps.XTRKS, []):
+                del self.cache_evals[k]
+        else:
+            self.cache_evals = {}
     def setCacheEVals(self, cevs):
         self.cache_evals = cevs
     def updateCacheEVals(self, cevs):
@@ -648,7 +659,7 @@ class Redescription(object):
         if "rp" in details:
             val = details["rp"].getEValGUI(self, details)
         if val is None:
-            return details.get('replace_none')
+            val = details.get('replace_none')
         return val
 
     
