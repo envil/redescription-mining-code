@@ -20,6 +20,7 @@ class MapBase:
     # circ_avg=2*numpy.pi*6371000.
     circ_def=2*numpy.pi*6370997.
 
+    background_zorder = 10
     marg_f = 100.0
     proj_def = "mill"
     proj_names = {"None": None,
@@ -325,16 +326,16 @@ class MapBase:
         draws, colors, more = tcl.getBasemapBackSetts(prefs)
         bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
         if draws["rivers"]:
-            bm.drawrivers(color=colors["sea_color"])
+            bm.drawrivers(color=colors["sea_color"], zorder=tcl.background_zorder)
         if draws["coasts"]:
             bounds_color = colors["line_color"]
-            bm.drawcoastlines(color=colors["line_color"])
+            bm.drawcoastlines(color=colors["line_color"], zorder=tcl.background_zorder)
         if draws["countries"]:
             bounds_color = colors["line_color"]
-            bm.drawcountries(color=colors["line_color"])
+            bm.drawcountries(color=colors["line_color"], zorder=tcl.background_zorder)
         if draws["states"]:
             bounds_color = colors["line_color"]
-            bm.drawstates(color=colors["line_color"])
+            bm.drawstates(color=colors["line_color"], zorder=tcl.background_zorder)
         if draws["continents"]:
             contin_color = colors["land_color"]
         if draws["seas"]:
@@ -345,35 +346,47 @@ class MapBase:
         if draws["parallels"]:
             tt = tcl.getParallelsRange(bm_args)
             # print "parallels", tt
-            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1])
+            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1], zorder=tcl.background_zorder)
         if draws["meridians"]:
             tt = tcl.getMeridiansRange(bm_args)
             # print "meridians", tt
-            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0])
+            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0], zorder=tcl.background_zorder)
 
         func_map = {1: bm.shadedrelief, 2: bm.etopo, 3: bm.bluemarble}
         bd = False
         if more.get("map_back") in func_map:
             ### HERE http://matplotlib.org/basemap/users/geography.html
             try:
-                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"])
+                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"], zorder=tcl.background_zorder)
                 bd = True
             except IndexError:
                 bd = False
                 print "Impossible to draw the image map background!"
         if not bd:
             if bounds_color != colors["none"] or sea_color != colors["none"]:
-                bm.drawmapboundary(color=bounds_color, fill_color=sea_color)
+                bm.drawmapboundary(color=bounds_color, fill_color=sea_color, zorder=tcl.background_zorder)
             if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
                 bm.fillcontinents(color=contin_color, lake_color=lake_color)
             # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
 
 class DrawerMap(DrawerBasis):
+    def_background_zorder = -10
     
+    @classmethod
+    def setMapBackZ(tcl, z=None):
+        if z is None:
+            MapBase.background_zorder = tcl.def_background_zorder
+        else:
+            MapBase.background_zorder = z
+
     MAP_POLY = True
+    def initBM(self):
+        ### return None, {}
+        return MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
+    
     def initPlot(self):
-        self.bm, self.bm_args = MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
-        ### self.bm, self.bm_args = None, {}
+        self.setMapBackZ()
+        self.bm, self.bm_args = self.initBM()
         
         if self.bm is not None:
             self.getPltDtH().setBM(self.bm)
@@ -388,6 +401,8 @@ class DrawerMap(DrawerBasis):
               ylim=[midlat-1.05*mside, midlat+1.05*mside]))
 
     def getAxisLims(self):
+        if self.bm is None:
+            return self.getPltDtH().getParentCoordsExtrema()
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])

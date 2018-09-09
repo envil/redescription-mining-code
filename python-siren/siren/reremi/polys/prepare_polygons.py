@@ -1,139 +1,228 @@
-#! /usr/local/bin/python
-
-import sys
-
+import re
 import numpy
 import voronoi_poly
 
 import pdb
 
-PLOT = False #True
-PLOT_SPLIT = False #True
-PLOT_EVERY = False # True
-# PLOT = True
-# PLOT_SPLIT = True
+IN_PACK = True
+if __name__=="__main__":
+    IN_PACK = False
 
-VERBOSE = False
+    
+TIK = "types_index"
+# TYPES legend
+# -----------
+# outer: cut from an edge from the frame
+# inner: cut from edges not from the frame
+# org: from the voronoi tessalation
+# frame: frame edge, external bounding box
+# cut: cut edge
+# isolated: part of a cell unconnected to surrounding (all edges cut)
+# projected: indirectly joining existing end points
+# fill: directly joining two existing end points
+# residue: side of a cut edge
+TYPES_MAP = {"outer": -10, "inner": -11, "org": 0, "frame": -2, "cut": 1, "isolated": 10, "projected": 20, "fill": 21, "residue": 22}
+OUTER_MAP = {True: "outer", False: "inner"}
 
-    # parameters = {
-    #     "NAMES_CID": 0,
-    #     "LAT_CID": 2,
-    #     "LNG_CID": 1,
-    #     "SEP": ",",
-    #     "ID_INT": False
-    #     }
-
-    # # #### EUROPE
-    # # parameters["gridh_percentile"]= 20
-    # # parameters["gridw_fact"] = 1.3
-
-    # #### WORLD
-    # parameters["gridh_percentile"]= 50
-    # parameters["gridw_fact"] = 1.
+LOG_ON = False
 
 
-if PLOT or PLOT_SPLIT or PLOT_EVERY:
+## PLOTTING
+#####################    
+
+if IN_PACK:
+    ## OFF
+    def plot_edges(eids, list_edges, lbl=None, linestyle="-", marker="", color="k", linewidth=1):
+        pass
+    def plot_filled(eids, list_edges, lbl=None, linestyle="-", marker="", color="k", linewidth=1):
+        pass
+    def plot_edges_colordered(eids, list_edges, lbl=None, linestyle="-", marker="o", linewidth=1, ccolor=None, simple=False):
+        pass
+    def plot_esets_colordered(esets, list_edges, lbls=None, linestyle="-", marker="o", linewidth=1, simple=False):
+        pass
+    def plot_show(block=False):
+        pass
+
+else:
+    ## ON
     import matplotlib.pyplot as plt
     import matplotlib.cm as mcm
-else:
-    plt = None
-    mcm = None
-# from matplotlib.patches import Polygon
-# from matplotlib.collections import PatchCollection
-
-
-GRT_CIR = 6370.997
-
-ANGLE_TOL = 0.05
-FACT_CUT = 0.8
-FACT_ALONE = 0.5
-
-COLORS = {-1: "#FFFFFF", 0: "#F0F0F0", 1:"#662A8D", 2: "#FC5864", 3: "#74A8F6", 4:"#AAAAAA"}
-
-
-def prepCoordsPolys(final_polys, nodes, PointsIds):
-    coordsp = {}
-    for node in nodes:
-        exys = []
-        for pl in final_polys[node]:
-            exys.extend(pl)        
-        coordsp[PointsIds[node]] = dedup_poly(round_poly(exys, nb_dec=4))
-    return coordsp
-
-def prepEdgesSplits(edges, PointsIds):
-    split_graph = {}
-    border_points = set()
-
-    for ei, dt in enumerate(edges):
-        nA = PointsIds[dt["nodes"][0]] if dt["nodes"][0] > -1 else None
-        nB = PointsIds[dt["nodes"][1]] if dt["nodes"][1] > -1 else None
-        xs, ys = zip(*dt["edge"])
-        idE = ei+1
-        typN = dt["far"]
-            
-        if typN != 0:
-            for ii, jj in [(0,1), (1,0)]:
-                if (xs[ii], ys[ii]) not in split_graph:
-                    split_graph[(xs[ii], ys[ii])] = {}
-                split_graph[(xs[ii], ys[ii])][(xs[jj], ys[jj])] = idE
-            if typN == -1:
-                border_points.update([(xs[0], ys[0]), (xs[1], ys[1])])
-                    
-    seen={}
-    ccs = []
-    idEs = [] 
-    for v in border_points:
-        if v not in seen:
-            c, idEsX = ss_spides(v, split_graph)
-            ccs.append(list(c))
-            idEs.append(idEsX)
-            seen.update(c)
-    splits_eids = set().union(*idEs)
-    return splits_eids
-
-def prepBorderEdges(final_details, PointsIds, nodes, coords_map={}, splits_eids=set()):
-    border_edges = {}
-    for node in nodes:
-        for bi, blocks in enumerate(final_details[node]):
-            for bbi, block in enumerate(blocks):
-                cid = PointsIds[node]
-                pps = block["eis"]
+    def plot_edges(eids, list_edges, lbl=None, linestyle="-", marker="", color="k", linewidth=1):
+        for pi, pp in enumerate(eids):
+            edge = get_ordered_edge(pp, list_edges)
+            x, y = zip(*edge)
+            plt.plot(x, y, marker=marker, color=color, linewidth=linewidth, linestyle=linestyle)
+            if lbl == "IDS":
+                plt.text((x[0]+x[1])/2., (y[0]+y[1])/2., "%d:%d" % (pi,pp), color=color)
+            elif lbl is not None and pi == 0:
+                plt.text(x[0], y[0], lbl)
+    
+    def plot_filled(eids, list_edges, lbl=None, linestyle="-", marker="", color="k", linewidth=1):
+        fe = get_ordered_edge(eids[0], list_edges)
+        points = [fe[0], fe[1]]+[get_ordered_edge(pp, list_edges)[1] for pp in eids[1:]]
+        xs, ys = zip(*points)
+        plt.fill(xs, ys, color=color, linewidth=linewidth, linestyle=linestyle)
+        if lbl is not None and pi == 0:
+            plt.text(xs[0], ys[0], lbl)
                 
-                found = []
-                i = 0
-                while i < len(pps) and not found: 
-                    if abs(pps[i]) in splits_eids:
-                        found.append(abs(int(pps[i]))) #= True
-                    i += 1
-                if len(found) > 0:
-                    start = block["range"][0]
-                    stop = block["range"][1]
-                    if stop == -1 or stop+1 >= len(coords_map[cid]):
-                        stop = len(coords_map[cid])-1
-                    
-                    for i in range(start, stop):
-                        border_edges[(coords_map[cid][i], coords_map[cid][i+1])] = (cid, i)
-                        border_edges[(coords_map[cid][i+1], coords_map[cid][i])] = (cid, -(i+1))
+    def plot_edges_colordered(eids, list_edges, lbl=None, linestyle="-", marker="o", linewidth=1, ccolor=None, simple=False):
+        if ccolor is None:
+            color = None
+            cmap = mcm.get_cmap('rainbow')
+        else:
+            color = ccolor
+        lp = len(eids)-1.
+        for pi, pp in enumerate(eids):
+            if ccolor is None:
+                color = cmap(pi/lp)
+            edge = get_ordered_edge(pp, list_edges)
+            x, y = zip(*edge)
+            plt.plot(x, y, marker="", color=color, linewidth=linewidth, linestyle=linestyle)
+            if not simple:
+                plt.plot(x[0], y[0], marker=marker, color=color)
+                plt.text((x[0]+2*x[1])/3., (y[0]+2*y[1])/3., "%d:%d" % (pi, pp))
+            if lbl is not None and pi == 0:
+                plt.text(x[0], y[0], lbl)
+    
+    def plot_esets_colordered(esets, list_edges, lbls=None, linestyle="-", marker="o", linewidth=1, simple=False):
+        cmap = mcm.get_cmap('rainbow')
+        lp = numpy.maximum(1., len(esets)-1.)
+        for pi, pp in enumerate(esets):
+            color = cmap(pi/lp)
+            lbl = None
+            if lbls is not None:
+                lbl = lbls[pi]
+            plot_edges_colordered(pp, list_edges, lbl, linestyle, marker, linewidth, color, simple)
+    
+    def plot_show(block=False):
+        plt.show(block)
+    
+#######################################################
 
-    return border_edges
+## READING
+#####################
+# parameters = {
+#     "NAMES_CID": 0,
+#     "LAT_CID": 2,
+#     "LNG_CID": 1,
+#     "SEP": ",",
+#     "ID_INT": False
+#     }
 
+# # #### EUROPE
+# # parameters["gridh_percentile"]= 20
+# # parameters["gridw_fact"] = 1.3
 
-def prepPolys(PointsIds, final_polys, final_details, edges, nodes):
-    coords_map = prepCoordsPolys(final_polys, nodes, PointsIds)
-    splits_eids = prepEdgesSplits(edges, PointsIds)
-    border_edges = prepBorderEdges(final_details, PointsIds, nodes, coords_map=coords_map, splits_eids=splits_eids)
-    ## pdb.set_trace()
-    rev_ids = dict([(v,k) for (k,v) in PointsIds.items()])
-    cell_list = sorted(coords_map.keys(), key=lambda x: rev_ids[x])
-    cell_map = dict([(v,k) for (k,v) in enumerate(cell_list)])
-    coordsp = [coords_map[i] for i in cell_list]
-    return coordsp, border_edges, cell_map
+# #### WORLD
+# parameters["gridh_percentile"]= 50
+# parameters["gridw_fact"] = 1.
 
+if IN_PACK:
+    def read_coords_csv(filename, csv_params={}, unknown_string=None):
+        return [], []
+else:   
+    import csv, codecs
+    
+    LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
+    LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
+    IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
+    COND_COL = ('cond_var', 'cond_col', 'cond_time')
+    
+    
+    ENABLED_ROWS = ('enabled_row', 'enabled_rows')
+    ENABLED_COLS = ('enabled_col', 'enabled_cols')
+    GROUPS_COLS = ('groups_col', 'groups_cols')
+    
+    COLVAR = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
+    COLVAL = ['value', 'Value', 'values', 'Values']
+    
+    def read_coords_csv(filename, csv_params={}, unknown_string=None):
+        f = open(filename, "r")
+        if f is not None:
+            try:
+                dialect = csv.Sniffer().sniff(f.read(2048))
+            except Exception:
+                dialect = "excel"
+            f.seek(0)
+            #header = csv.Sniffer().has_header(f.read(2048))
+            #f.seek(0)
+            csvreader = csv.reader(f, dialect=dialect, **csv_params)
+            ### Try to read headers
+            head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+           
+            cpos = {}
+            for i, h in enumerate(head):
+                for clbls in [LATITUDE, LONGITUDE, IDENTIFIERS]:
+                    if h in clbls:
+                        cpos[clbls[0]] = i
+    
+            if not (LATITUDE[0] in cpos and LONGITUDE[0] in cpos):
+                return None, None
+            cmax = max(cpos.values())
+            coords = []
+            if IDENTIFIERS[0] in cpos:
+                rnames = []
+            else:
+                rnames = None
+                
+            for row in csvreader:
+                if re.match("\s*#", row[0]) or row[0] in ENABLED_ROWS+ENABLED_COLS+GROUPS_COLS:
+                    continue
+                if len(row) < cmax+1:
+                    raise ValueError('number of columns does not match (is '+
+                                     str(len(row))+', should be at least'+
+                                     str(cmax+1)+')')
+                coords.append((float(row[cpos[LONGITUDE[0]]].strip()), float(row[cpos[LATITUDE[0]]].strip())))
+                # coords.append((float(row[cpos[LATITUDE[0]]].strip()), float(row[cpos[LONGITUDE[0]]].strip())))
+                if rnames is not None:
+                    tmp = row[cpos[IDENTIFIERS[0]]].strip()
+                    if tmp != type(tmp)(unknown_string):
+                        if type(tmp) is str:
+                            tmp = codecs.decode(tmp, 'utf-8','replace')
+                        rnames.append(tmp)
+                    else:
+                        rnames.append(None)        
+                        
+        f.close()
+        return coords, rnames
+#######################################################
 
-        
+    
+            
 ######################################
 #### PREPARING POLYGON FROM COORDS
 ######################################
+GRT_CIR = 6370.997
+def getDistance(x1, y1, x2, y2, dst_type="globe"):
+    ### compute distance between points
+    if dst_type == "globe":       
+        return greatCircleDistance(x1, y1, x2, y2)
+    else:
+        return flatDistance(x1, y1, x2, y2)
+
+def getDistanceTroughEdge(x1, y1, x2, y2, edge, dst_type="globe"):
+    ### compute distance between points, crossing through edge 
+    midX = (x1 + x2)/2.
+    midY = (y1 + y2)/2.
+    dst = getDistance(x1, y1, x2, y2, dst_type)
+    closer = 0
+    if (midX-edge[1][0])**2+(midY-edge[1][1])**2 < (midX-edge[0][0])**2+(midY-edge[0][1])**2:
+        closer = 1
+        
+    if midX >= numpy.minimum(edge[0][0], edge[1][0]) and midX <= numpy.maximum(edge[0][0], edge[1][0]) and midY >= numpy.minimum(edge[0][1], edge[1][1]) and midY <= numpy.maximum(edge[0][1], edge[1][1]):
+        return dst, dst, closer
+
+    return dst, getDistance(x1, y1, edge[closer][0], edge[closer][1], dst_type)+getDistance(edge[closer][0], edge[closer][1], x2, y2, dst_type), closer
+
+def flatDistance(x1, y1, x2, y2):
+    return numpy.sqrt((x1-x2)**2+(y1-y2)**2)
+def greatCircleDistance(x1, y1, x2, y2):
+    x1 = numpy.radians(x1)
+    y1 = numpy.radians(y1)
+    x2 = numpy.radians(x2)
+    y2 = numpy.radians(y2)
+    angle1 = numpy.arccos(numpy.sin(x1) * numpy.sin(x2) + numpy.cos(x1) * numpy.cos(x2) * numpy.cos(y1 - y2))
+    return  angle1*GRT_CIR
 
 def computeHPoly(horz_edges, gridw_fact):
     #### Fit polynomial for width of cells as function of latitude
@@ -157,13 +246,14 @@ def getInterXH(x1, y1, x2, y2, yh):
     ### get intersection of horizontal line y=yh, with line going through (x1, y1) and (x2, y2)
     return x1+(yh-y1)*(x2-x1)/(y2-y1)
 
-def getCutPoint(edge, end_cut, nodes, sx, sy, gridH, gridWps, f, edata, plot_dot=True):
+FACT_CUT = 0.8
+def getCutPoint(PointsMap, edge_data, end_cut, gridH, gridWps):
     ### cut edge on end_cut
-    if end_cut is None:
-        return None, False
-    nA, nB = nodes
-    midX = (sx[nA] + sx[nB])/2.
-    midY = (sy[nA] + sy[nB])/2.
+    f = FACT_CUT
+    edge = edge_data["edge"]
+    nA, nB = edge_data["nodes"]
+    midX = (PointsMap[nA][0] + PointsMap[nB][0])/2.
+    midY = (PointsMap[nA][1] + PointsMap[nB][1])/2.
 
     cancel = {"V": False, "H": False}
     (xv, yv) = (edge[end_cut][0], edge[end_cut][1])
@@ -187,16 +277,17 @@ def getCutPoint(edge, end_cut, nodes, sx, sy, gridH, gridWps, f, edata, plot_dot
         cancel["H"] = True
         # print "No vertical intersection"
 
-
     if xv < numpy.minimum(edge[0][0], edge[1][0]) or xv > numpy.maximum(edge[0][0], edge[1][0]) or yv < numpy.minimum(edge[0][1], edge[1][1]) or yv > numpy.maximum(edge[0][1], edge[1][1]):
         (xv, yv) = (edge[end_cut][0], edge[end_cut][1])
         cancel["V"] = True
     if xh < numpy.minimum(edge[0][0], edge[1][0]) or xh > numpy.maximum(edge[0][0], edge[1][0]) or yh < numpy.minimum(edge[0][1], edge[1][1]) or yh > numpy.maximum(edge[0][1], edge[1][1]):
         (xh, yh) = (edge[end_cut][0], edge[end_cut][1])
         cancel["H"] = True
-    if cancel["H"] and cancel["V"] and (edata["n_distTE"] > edata["n_dist"]):
-        (xh, yh) = (edge[edata["n_closer"]][0], edge[edata["n_closer"]][1])
-    plotted_dot = (plot_dot and cancel["H"] and cancel["V"] and (edata["n_distTE"] > edata["n_dist"]))
+    if cancel["H"] and cancel["V"] and (edge_data["n_distTE"] > edge_data["n_dist"]):
+        if edge_data["n_closer"] == end_cut:
+            (xh, yh) = (edge[edge_data["n_closer"]][0], edge[edge_data["n_closer"]][1])
+        else:
+            (xh, yh) = ((2*edge[end_cut][0]+1*edge[1-end_cut][0])/3., (2*edge[end_cut][1]+1*edge[1-end_cut][1])/3.)
         
     dh = (xh-edge[1-end_cut][0])**2 + (yh-edge[1-end_cut][1])**2
     dv = (xv-edge[1-end_cut][0])**2 + (yv-edge[1-end_cut][1])**2
@@ -209,49 +300,7 @@ def getCutPoint(edge, end_cut, nodes, sx, sy, gridH, gridWps, f, edata, plot_dot
             select_cut = (xh, yh)
     elif dv < dorg:
         select_cut = (xv, yv)
-
-    if VERBOSE:
-        print "-----------------"
-        print "cutting", (edge[end_cut][0], edge[end_cut][1])
-        print "TO", select_cut
-    # if plotted_dot:
-    #     plt.plot([sx[nA], midX, sx[nB]], [sy[nA], midY, sy[nB]], ":ko")
-    #     x, y = zip(*edge)
-    #     plt.plot(x, y, "y", linewidth=3)
-    #     plt.plot(edge[end_cut][0], edge[end_cut][1], "yo")
-    #     if select_cut is not None:
-    #         plt.plot(select_cut[0], select_cut[1], "rx")
-
-    #     box = getPolyRect(midX, midY, gridH, gridWps, f)
-    #     ex, ey = zip(*box)
-    #     plt.plot(ex, ey, 'k:')
-    return select_cut, plotted_dot
-
-def getDistance(x1, y1, x2, y2):
-    ### compute distance between points
-    return greatCircleDistance(x1, y1, x2, y2)
-
-def getDistanceTroughEdge(x1, y1, x2, y2, edge):
-    ### compute distance between points, crossing through edge 
-    midX = (x1 + x2)/2.
-    midY = (y1 + y2)/2.
-    dst = getDistance(x1, y1, x2, y2)
-    closer = 0
-    if (midX-edge[1][0])**2+(midY-edge[1][1])**2 < (midX-edge[0][0])**2+(midY-edge[0][1])**2:
-        closer = 1
-        
-    if midX >= numpy.minimum(edge[0][0], edge[1][0]) and midX <= numpy.maximum(edge[0][0], edge[1][0]) and midY >= numpy.minimum(edge[0][1], edge[1][1]) and midY <= numpy.maximum(edge[0][1], edge[1][1]):
-        return dst, dst, closer
-
-    return dst, getDistance(x1, y1, edge[closer][0], edge[closer][1])+getDistance(edge[closer][0], edge[closer][1], x2, y2), closer
-
-def greatCircleDistance(x1, y1, x2, y2):
-    x1 = numpy.radians(x1)
-    y1 = numpy.radians(y1)
-    x2 = numpy.radians(x2)
-    y2 = numpy.radians(y2)
-    angle1 = numpy.arccos(numpy.sin(x1) * numpy.sin(x2) + numpy.cos(x1) * numpy.cos(x2) * numpy.cos(y1 - y2))
-    return  angle1*GRT_CIR
+    return select_cut
 
 def getRectW(x, y, gridH, gridWps):
     ### get width of standard edge for coordinates (x, y) 
@@ -285,131 +334,6 @@ def ortho_prj(x1, y1, x2, y2, xn, yn):
     lB = numpy.sqrt(xB**2+yB**2)
     cosA = (xA*xB+yA*yB)/(lA*lB)
     return (x1 + cosA*lB*xA/lA, y1 + cosA*lB*yA/lA)
-
-def fill_gaps(poly, eis, node, sx, sy, edges, PointsIds=None):
-    ### fill the gaps between edges of incomplete cut polygon
-    filled_pis = []
-
-    #### REORDERING EIS
-    eis_sub, eis_org = ([], [])
-    eis_sbA, eis_sbZ = ([], [])
-    for eiss in eis:
-        if eiss[0] is None:
-            eis_sub.extend(eiss[1:])
-            if len(eis_org) == 0:                
-                eis_sbZ.append(eiss[1:])
-            else:
-                eis_sbA.append(eiss[1:])
-        else:
-            eis_org.extend(eiss)
-    if eis[-1][0] is None and len(eis_sbZ) > 0:        
-        eis_sbA[-1].extend(eis_sbZ.pop(0))
-    eis_sbA += eis_sbZ
-
-    # print "EIS", eis
-    if eis[0][0] is None:
-        eis_reorder = eis[1:]            
-        if eis[-1][0] is None:
-            eis_reorder[-1].extend(eis[0][1:])
-        else:
-            eis_reorder.append(eis[0])
-    else:
-        eis_reorder = eis
-    # print "REORDERED", eis_reorder
-    
-    which = "X"
-    if len(poly) == 1:
-        ### If there is only one edge
-        which = "X1"        
-        xp, yp = ortho_prj(poly[0][0][0], poly[0][0][1], poly[0][1][0], poly[0][1][1], sx[node], sy[node])
-        tx, ty = (2.*(sx[node]-xp), 2.*(sy[node]-yp))
-        filled = [poly[0][0], poly[0][1], (poly[0][1][0]+tx, poly[0][1][1]+ty), (poly[0][0][0]+tx, poly[0][0][1]+ty), poly[0][0]]
-        filled_pis = [{"range": (0, 1), "eis": eis_org}, {"range": (1, 4), "eis": eis_sub}]
-    elif len(poly) == 2:
-        ### If there are two edges
-        which = "X2"        
-        if poly[0][1] == poly[1][0]: ### fill in second to last?
-            which = "X2a"        
-            corner = poly[0][1]
-            new_corner = (corner[0]+ 2*(sx[node]-corner[0]), corner[1]+ 2*(sy[node]-corner[1]))
-            filled = [poly[0][0], poly[0][1], poly[1][1], new_corner, poly[0][0]]
-            filled_pis = [{"range": (0, 1), "eis": [eis_org[0]]},
-                          {"range": (1, 2), "eis": [eis_org[1]]},
-                          {"range": (2, 4), "eis": eis_sub}]
-        elif poly[0][0] == poly[1][1]:
-            which = "X2b"        
-            corner = poly[1][1]
-            new_corner = (corner[0]+ 2*(sx[node]-corner[0]), corner[1]+ 2*(sy[node]-corner[1]))
-            filled = [poly[1][0], poly[1][1], poly[0][1], new_corner, poly[1][0]]
-            filled_pis = [{"range": (0, 1), "eis": [eis_org[1]]},
-                          {"range": (1, 2), "eis": [eis_org[0]]},
-                          {"range": (2, 4), "eis": eis_sub}]
-        else:
-            filled = [poly[0][0], poly[0][1], poly[1][0], poly[1][1], poly[0][0]]
-            filled_pis = [{"range": (0, 1), "eis": [eis_org[0]]},
-                          {"range": (1, 2), "eis": []},
-                          {"range": (2, 3), "eis": [eis_org[1]]},
-                          {"range": (3, 4), "eis": []}]
-            if eis_reorder[1][0] is None:
-                filled_pis[1]["eis"] = eis_reorder[1][1:]
-            if eis_reorder[-1][0] is None:
-                filled_pis[-1]["eis"] = eis_reorder[-1][1:]
-                
-    else:
-        ### If there are more than two edges
-        which = "Xm"
-            
-        filled = list(poly[0])
-        filled_pis = [{"range": (0, 1), "eis": eis_reorder[0]}]
-        j = 1
-        for i in range(1, len(poly)):
-            if poly[i][0] != filled[-1]:
-                if eis_reorder[j][0] is None:
-                    filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": eis_reorder[j][1:]})
-                    j += 1
-                else:
-                    filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": []})
-                filled.append(poly[i][0])
-
-            if eis_reorder[j][0] is None:
-                filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": eis_reorder[j][1:]})
-            else:
-                filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": eis_reorder[j]})
-            j += 1
-            filled.append(poly[i][1])
-        if filled[-1] != filled[0]:
-            if j < len(eis_reorder):
-                if eis_reorder[j][0] is None:
-                    filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": eis_reorder[j][1:]})
-                else:
-                    filled_pis.append({"range": (len(filled)-1, len(filled)), "eis": eis_reorder[j]})
-                j += 1
-            filled.append(filled[0])
-
-    if PLOT_EVERY and which == "Xm": # and (PointsIds is not None and PointsIds[node] == "30UVB4"):
-        print which, node
-        print "----\nPOLY", poly, "\nEIS", eis
-        print "FILLED", filled, "\nPIS", filled_pis
-        print len(eis_reorder), j
-        if len(eis_reorder) != j:
-            pdb.set_trace()
-
-
-        cmap = mcm.get_cmap('rainbow')
-        plt.plot(filled[0][0], filled[0][1],"x", ms=10, color="red")
-        plt.plot(filled[1][0], filled[1][1],"^", ms=10, color="red")
-        for oi in range(1, len(filled)):
-            color = cmap((oi-1.)/(len(filled)-1.))
-            plt.plot((filled[oi-1][0], filled[oi][0]), (filled[oi-1][1], filled[oi][1]),"o-", color=color, linewidth=2)
-        for dd in filled_pis:
-            color = cmap(dd["range"][0]/(len(filled)-1.))
-            f = 0.001
-            for aei in dd["eis"]:
-                ei = abs(aei)
-                plt.plot((edges[ei]["edge"][0][0]+f, edges[ei]["edge"][1][0]+f), (edges[ei]["edge"][0][1]+f, edges[ei]["edge"][1][1]+f),"s--", color=color, linewidth=1)
-        plt.show()
-            
-    return filled, filled_pis
         
 def flatten_poly(poly):
     ### turn bunch of edges into polygon as ordered sequence of edges
@@ -496,311 +420,6 @@ def clean_poly(poly):
 # for dot in [(0., 0., 0., 1.), (0., 0., 1., 0.), (70., 0., 70., 1.), (70., 0., 71., 0.)]:
 #     print dot, greatCircleDistance(dot[0], dot[1], dot[2], dot[3]), angleCosSin(dot[0], dot[1], dot[2], dot[3])
 # pdb.set_trace()
-
-
-def compute_polys(PointsMap, gridh_percentile=-1, gridw_fact=-1, PointsIds=None):
-    ### MAIN FUNCTION for computing polygons from coordinates
-    ### Compute the voronoi diagram
-    #################################
-    ### coordinates of the points
-    sx, sy = zip(*PointsMap.values())
-    #1. Stations, Lines and edges   
-    vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[max(sy)+1, min(sx)-1, min(sy)-1, max(sx)+1])
-
-    ### Collect nodes on either side of each edge in the voronoi diagram
-    map_edges = {}
-    for so, details in vl.items():
-        for edge in details['obj_polygon']:
-            if edge[0] < edge[1]:
-                norm_edge = (edge[0], edge[1])
-            else:
-                norm_edge = (edge[1], edge[0])
-          
-            if norm_edge in map_edges:
-                map_edges[norm_edge].append(details["info"])
-            else:
-                map_edges[norm_edge] = [details["info"]]
-    ### exactly two adjacent nodes, except for border edges that have only one
-    assert all([(len(x)==2 or len(x)==1) for (k,x) in map_edges.items()])
-
-    # define the colormap
-    if plt is not None:
-        cmap = plt.get_cmap('cool')
-    else:
-        cmap = None
-    EXT_D = getDistance(numpy.min(sx), numpy.min(sy), numpy.max(sx), numpy.max(sy))
-    MAX_D = 1.
-
-
-    ### compute distances between neighbors,
-    ### collect near-vertical and near-horizontal neighbors to detect the side of the grid
-    gridH = float("Inf")
-    edges = [{"edge": (None, -1)}]
-    horz_edges = []
-    vert_edges = []
-    # graph = {}
-    for edg, sts in map_edges.items():
-        if len(sts) == 1: ## border edge
-            nodes = (sts[0], -1)
-            dst, dstTE, clsr = EXT_D+1, EXT_D+1, 0           
-            cos, sin = (0,0)
-            far = -1
-        else: ## other edge
-            nodes = (sts[0], sts[1])
-            dst, dstTE, clsr = getDistanceTroughEdge(sx[sts[0]], sy[sts[0]], sx[sts[1]], sy[sts[1]], edg)
-            far = 0
-            cos, sin = angleCosSin(sx[sts[0]], sy[sts[0]], sx[sts[1]], sy[sts[1]])
-
-            if gridh_percentile > 0:
-                if dst > MAX_D:
-                    MAX_D = dst
-                if numpy.abs(cos) > (1-ANGLE_TOL): ## if near-horizontal
-                    horz_edges.append((numpy.abs(sy[sts[0]]), dst))
-                elif numpy.abs(cos) < ANGLE_TOL: ## if near-vertical
-                    if dst < gridH: 
-                        gridH = dst
-                    vert_edges.append(dst)
-
-        # for ni in [0,1]:            
-        #     if nodes[ni] not in graph:
-        #         graph[nodes[ni]] = []
-        #     graph[nodes[ni]].append((nodes[1-ni], len(edges)))                
-        edges.append({"n_dist": dst, "n_distTE": dstTE, "n_closer": clsr, "angle": numpy.abs(cos), "nodes": nodes, "edge": edg, "far": far})
-
-    ### build index of edge ids in data
-    map_norm_edges = dict([(ed["edge"], ei) for (ei, ed) in enumerate(edges)])
-    for (ei, ed) in enumerate(edges):
-        redge = (ed["edge"][1], ed["edge"][0])
-        if redge in map_norm_edges:
-            pdb.set_trace()
-        else:
-            map_norm_edges[redge] = -ei
-    ### build index of nodes ids in voronoi data
-    nodes_vli = dict([(details["info"], so) for so, details in vl.items()])
-
-    if gridh_percentile > 0:
-        ### detect adaptive vertical grid size from collected near-vertical neighbors distances 
-        gridH = numpy.percentile(vert_edges, gridh_percentile)
-        gridWps = computeHPoly(horz_edges, gridw_fact)
-    
-        ### from the detected grid sizes, go through edges and mark far-apart neighbors
-        for ei in range(1, len(edges)):
-            dt = edges[ei]
-            lw = 1
-            if dt["nodes"][1] >= 0:
-                y = (sy[dt["nodes"][0]]+sy[dt["nodes"][1]])/2.
-                th = getDistanceThres(y, gridH, gridWps, 1.) ### max distance to be considered neighbors at this latitude
-                if dt["n_dist"] > 1.2*th:
-                    dt["far"] = 1
-                    lw = 6
-                elif dt["n_distTE"] > 1.2*th:
-                    dt["far"] = 2
-                    lw = 4
-            else:
-                lw = 8
-            if PLOT_SPLIT and lw > 1:
-                ex,ey = zip(*dt["edge"])
-                ci = dt["n_dist"]/MAX_D
-                plt.plot(ex, ey, color=cmap(ci), linewidth=lw)
-        if PLOT_SPLIT:
-            plt.plot(sx, sy, "g+")
-            plt.show()
-        
-    require_cut = {}
-    polys = {}
-    edges_ids = {}
-    ## go over each node in the voronoi diagram, prepare polygon 
-    for node, nvi in nodes_vli.items():
-        has_far = False
-        has_near = False
-        eis = []
-        for edge in vl[nvi]['obj_polygon']:
-            eis.append(map_norm_edges[edge])
-            if edges[abs(eis[-1])]["far"] == 0:
-                has_near = True
-            else:
-                has_far = True
-        if has_near:        
-            poly, polis = flatten_poly(vl[nvi]['obj_polygon'])
-            pis = []
-            for poli in polis:
-                pis.append([numpy.sign(pi)*numpy.sign(eis[abs(pi)-1])*abs(eis[abs(pi)-1]) for pi in poli])
-                # rep_poly = []
-                # for pi in pis[-1]:
-                #     if pi > 0:
-                #         rep_poly.append(edges[pi]["edge"][0])
-                #     elif pi < 0:
-                #         rep_poly.append(edges[-pi]["edge"][1])
-            polys[node] = pis
-            edges_ids[node] = pis
-
-            pcheck = []
-            if gridh_percentile > 0:
-                pcheck = range(len(poly))
-            ### collect edges that are not far but adjacent to far, which will need to be cut 
-            for pi in pcheck:
-                for ppi in range(len(poly[pi])-1):
-                    if edges[abs(pis[pi][ppi])]["far"] != 0:
-                        oei = None
-                        if edges[abs(pis[pi][ppi-1])]["far"] == 0:
-                            oei = abs(pis[pi][ppi-1])
-                            which = poly[pi][ppi]
-                            # ww = sorted(set(edges[abs(pis[pi][ppi-1])]["edge"]).intersection(edges[abs(pis[pi][ppi])]["edge"]))
-                            # if len(ww) != 1 or ww[0] != which:
-                            #     pdb.set_trace()
-                            if oei not in require_cut:
-                                require_cut[oei] = []
-                            require_cut[oei].append((which, node, pi, ppi))
-    
-                        aft = ppi+1
-                        if aft == len(pis[pi]): aft = 0
-                        if edges[abs(pis[pi][aft])]["far"] == 0:
-                            oei = abs(pis[pi][aft])
-                            which = poly[pi][ppi+1]
-                            # ww = sorted(set(edges[abs(pis[pi][aft])]["edge"]).intersection(edges[abs(pis[pi][ppi])]["edge"]))
-                            # if len(ww) != 1 or ww[0] != which:
-                            #     pdb.set_trace()
-                            if oei not in require_cut:
-                                require_cut[oei] = []
-                            require_cut[oei].append((which, node, pi, ppi))
-    
-        else:
-            polys[node] = None #getPolyRect(sx[node], sy[node], gridH, gridWps, .5)
-            edges_ids[node] = eis
-            
-    ## cutting edges 
-    cut_edges = {}
-    for ei, dt in require_cut.items():
-        plot_dot = PLOT_EVERY
-        if VERBOSE:
-            print "====== EDGE CUT"
-            print ei, edges[ei]["nodes"], dt
-
-        for end_cut in set([d[0] for d in dt]):
-            if end_cut == edges[ei]["edge"][0]:
-                end_point = 0
-            elif end_cut == edges[ei]["edge"][1]:
-                end_point = 1
-            else:
-                end_point = None
-                raise Warning("Wrong end point!") 
-            cut_point, plotted_dot = getCutPoint(edges[ei]["edge"], end_point, edges[ei]["nodes"], sx, sy, gridH, gridWps, FACT_CUT, edges[ei], plot_dot=plot_dot)
-            if cut_point is not None:
-                cut_edges[(ei, end_point)] = cut_point
-
-        # if plotted_dot: 
-        #     for n in edges[ei]["nodes"]:           
-        #         pis = polys[n]
-        #         for pi in pis[0]:
-        #             if edges[abs(pi)]["far"] == -1:
-        #                 c = "b"
-        #                 # print edges[abs(pi)]
-        #             elif edges[abs(pi)]["far"] == 1:
-        #                 c = "c"
-        #                 # print edges[abs(pi)]
-        #             elif edges[abs(pi)]["far"] == 2:
-        #                 c = "m"
-        #                 # print edges[abs(pi)]
-        #             else:
-        #                 c = "r"
-        #             x, y = zip(*edges[abs(pi)]["edge"])
-        #             plt.plot(x, y, c)
-        #     plt.show()
-
-
-    final_polys = {}
-    final_details = {}
-    ## constructing the polygons
-    for node, pols in polys.items():
-        if pols is None:
-            final_polys[node] = [getPolyRect(sx[node], sy[node], gridH, gridWps, FACT_ALONE)]                
-            final_details[node] = [[{"range": (0, 4), "eis": edges_ids[node]}]]
-        else:
-            current = []
-            current_pis = []
-            # org = []
-            for pis in pols:
-                tmp = []
-                tmpis = []
-                last = [None]
-                # current.append([])
-                # org.append([])                
-                for pi in pis:
-                    # org_edge = (edges[abs(pi)]["edge"][0], edges[abs(pi)]["edge"][1])
-                    # if pi < 0:
-                    #     org_edge = (org_ed ge[1], org_edge[0])
-                    # org[-1].append(org_edge)
-                    
-                    if edges[abs(pi)]["far"] == 0:
-                        if "cut_edge" not in edges[abs(pi)]:
-                            edge = [edges[abs(pi)]["edge"][0], edges[abs(pi)]["edge"][1]]
-                            if (abs(pi), 0) in cut_edges:
-                                edge[0] = cut_edges[(abs(pi), 0)]
-                            if (abs(pi), 1) in cut_edges:
-                                edge[1] = cut_edges[(abs(pi), 1)]
-                            edges[abs(pi)]["cut_edge"] = tuple(edge)
-                        else:
-                            edge = [edges[abs(pi)]["cut_edge"][0], edges[abs(pi)]["cut_edge"][1]]
-                        if pi < 0:
-                            edge = [edge[1], edge[0]]
-                                
-                        if edge[1] == edge[0]:
-                            last.append(pi)
-                        else:
-                            tmp.append(tuple(edge))
-                            if len(last) > 1:
-                                tmpis.append(last)
-                                last = [None]
-                            tmpis.append([pi])
-                    else:
-                        last.append(pi)
-                if len(last) > 1:
-                    tmpis.append(last)
-
-                ### HERE
-                filled, filled_pis = fill_gaps(tmp, tmpis, node, sx, sy, edges, PointsIds)
-                current.append(filled)
-                current_pis.append(filled_pis)
-                # if len(current[-1]) == 1:
-                #     for oe in org[-1]:
-                #         x,y = zip(*oe)
-                #         plt.plot(x,y,"b:")
-                #     for oe in current[-1]:
-                #         x,y = zip(*oe)
-                #         plt.plot(x,y,"g--")
-
-                #     x,y = zip(*filled)
-                #     plt.plot(x,y,"r")
-                #     plt.plot(sx[node],sy[node],"ko")
-                #     plt.show()
-
-            final_polys[node] = current
-            final_details[node] = current_pis
-    edges.pop(0)
-    nodes = sorted(final_polys.keys())
-    return final_polys, final_details, edges, nodes
-
-def compute_node_pairs(edges, max_nid):
-    node_pairs = []
-    for ei, edge in enumerate(edges):
-        if edge["nodes"][0] < max_nid and edge["nodes"][0] != -1:
-            if edge["nodes"][1] < max_nid and edge["nodes"][1] != -1:
-                if edge["far"] == 0:
-                    node_pairs.append([ei, edge["nodes"][0], edge["nodes"][1]])
-                else:
-                    node_pairs.append([ei, edge["nodes"][1], -1])
-                    node_pairs.append([ei, edge["nodes"][0], -1])
-            else:
-                node_pairs.append([ei, edge["nodes"][0], -1])
-        elif edge["nodes"][1] < max_nid and edge["nodes"][1] != -1:
-            node_pairs.append([ei, edge["nodes"][1], -1])
-
-    return numpy.array(node_pairs, dtype=int)
-
-
-##################################
-#### PREPARING FOR PLOTTING
-##################################
 def smoothen_polys(polys, fact=1):
     if fact <= 1:
         return polys
@@ -812,77 +431,666 @@ def smoothen_poly(poly, fact=1):
 
 
 
-def prepare_cc_polys(ccells, coordsp):
-    edge_counts = {}
-    for cell in ccells:
-        for i in range(1, len(coordsp[cell])):
-            org_edge = (coordsp[cell][i-1], coordsp[cell][i])
-            if org_edge[1] < org_edge[0]:
-                edge = (org_edge[1], org_edge[0])
-            else:
-                edge = (org_edge[0], org_edge[1])
-            edge_counts[edge] = edge_counts.get(edge, 0) + 1
-    borders = [e for e,c in edge_counts.items() if c == 1]
-    fps, fpis = flatten_poly(borders)
-    polys = []
-    for pp in fps:
-        polys.extend(clean_poly(pp))
-    return polys
+###########################################################################
+def get_ordered_edge_flatten(seid, list_edges, sign=None):
+    if seid == 0:
+        return [0, 1, 1, 0]
+    if (sign is None and seid > 0) or (sign > 0):
+        return [list_edges[abs(seid)]["edge"][0][0], list_edges[abs(seid)]["edge"][0][1], list_edges[abs(seid)]["edge"][1][0], list_edges[abs(seid)]["edge"][1][1]]
+    else:
+        return [list_edges[abs(seid)]["edge"][1][0], list_edges[abs(seid)]["edge"][1][1], list_edges[abs(seid)]["edge"][0][0], list_edges[abs(seid)]["edge"][0][1]]
+def get_ordered_edge(seid, list_edges, sign=None):
+    if (sign is None and seid > 0) or (sign > 0):
+        return (list_edges[abs(seid)]["edge"][0], list_edges[abs(seid)]["edge"][1])
+    else:
+        return (list_edges[abs(seid)]["edge"][1], list_edges[abs(seid)]["edge"][0])
+def get_cut_edge(list_edges, seid, node=None):
+    if "cut_eid" in list_edges[abs(seid)]:        
+        ceid = list_edges[abs(seid)]["cut_eid"]
+        # if ceid < 0 or seid < 0: pdb.set_trace()
+        edge = get_ordered_edge(ceid, list_edges)
+        if seid < 0:
+            ceid *= -1
+            edge = [edge[1], edge[0]]
+    else:
+        ceid = seid
+        edge = get_ordered_edge(seid, list_edges)
 
-def make_edges_graph(coordsp):
-    edges_graph = {}
-    edges_list = []
-    edges_map = {}
-    for ss, coord in enumerate(coordsp):                                
-        for i in range(1, len(coord)):
-            org_edge = (coord[i-1], coord[i])
-            if org_edge not in edges_map:                
-                if org_edge[1] < org_edge[0]:
-                    edge = (org_edge[1], org_edge[0])
+    if node is not None and node not in list_edges[abs(ceid)]["nodes"]:
+        list_edges[abs(ceid)]["nodes"].append(node)       
+    return ceid, edge
+
+def order_edge(prev_point, next_point=None):
+    if next_point is None:
+        prev_point, next_point = prev_point
+    if prev_point < next_point:
+        sign = 1
+        new_edge = (prev_point, next_point)
+    else:
+        sign = -1
+        new_edge = (next_point, prev_point)        
+    return new_edge, sign
+def update_types(list_edges, neid, type_edge=None, from_edge=False):
+    if type_edge is not None:
+        tte = type_edge 
+        if not type(type_edge) in [list, set]:
+            tte = [type_edge]
+        if not from_edge:
+            list_edges[neid]["types"].update(tte)
+        if list_edges[0] is not None and TIK in list_edges[0]:
+            for te in tte:
+                assert(te in TYPES_MAP)
+                if te not in list_edges[0][TIK]:
+                    list_edges[0][TIK][te] = set()
+                list_edges[0][TIK][te].add(neid)
+def create_new_edge(prev_point,  next_point, node, map_edges, list_edges, type_edge=None, add_data={}):
+    new_edge, sign = order_edge(prev_point, next_point)
+    if new_edge in map_edges:
+        ## if not add_force: pdb.set_trace() ### something strange
+        neid = map_edges[new_edge]
+    else:
+        neid = len(list_edges)
+        map_edges[new_edge] = neid
+        list_edges.append({"edge": new_edge, "nodes": [], "pos": [], "types": set()})
+    if node is not None and node not in list_edges[neid]["nodes"]:
+        list_edges[neid]["nodes"].append(node)
+    list_edges[neid].update(add_data)    
+    update_types(list_edges, neid, type_edge)
+    return sign*neid
+
+
+def compute_voronoi(PointsMap):
+    ### MAIN FUNCTION for computing polygons from coordinates
+    ### Compute the voronoi diagram
+    #################################
+    ### coordinates of the points
+    sx, sy = zip(*PointsMap.values())
+    bbox = (numpy.min(sx), numpy.min(sy), numpy.max(sx), numpy.max(sy))
+    #1. Stations, Lines and edges   
+    vl=voronoi_poly.VoronoiPolygonsMod(PointsMap, BoundingBox=[bbox[3]+1, bbox[0]-1, bbox[1]-1, bbox[2]+1])
+
+    ### Collect nodes on either side of each edge in the voronoi diagram
+    map_edges = {}
+    list_edges = [{"edge": None, TIK: {}, "nb_nodes": len(PointsMap)}] ## so no real edge is indexed with 0, which has no sign and does not allow marking direction 
+    polys = {}
+    for so, details in vl.items():
+        poly_tmp = []
+        pids = []
+        for edge in details['obj_polygon']:
+            neid = create_new_edge(edge[0], edge[1], details["info"], map_edges, list_edges, type_edge="org")
+            poly_tmp.append(edge)
+            pids.append(neid)
+        poly, polis = flatten_poly(poly_tmp)
+        assert(len(polis) == 1 and len(polis[0]) == len(poly_tmp))
+        ord_pids = [pids[abs(p)-1]*numpy.sign(p) for p in polis[0]]
+        polys[details["info"]] = ord_pids
+        for pi, eid in enumerate(ord_pids):
+            list_edges[abs(eid)]["pos"].append((pi+1)*numpy.sign(eid))                        
+
+    ### exactly two adjacent nodes, except for border edges that have only one
+    ## assert all([(len(x["nodes"])==2 or len(x["nodes"])==1) for (k,x) in map_edges.items()])
+    return map_edges, list_edges, polys, bbox
+
+def compute_edges_distances(PointsMap, list_edges, dst_type="globe"):
+    for eid in range(1, len(list_edges)):
+        dt = list_edges[eid]
+        if len(dt["nodes"]) == 1: ## border edge
+            update_types(list_edges, eid, "frame")
+            dt["far"] = -1
+        else: ## other edge
+            dst, dstTE, clsr = getDistanceTroughEdge(PointsMap[dt["nodes"][0]][0], PointsMap[dt["nodes"][0]][1], PointsMap[dt["nodes"][1]][0], PointsMap[dt["nodes"][1]][1], dt["edge"], dst_type)
+            cos, sin = angleCosSin(PointsMap[dt["nodes"][0]][0], PointsMap[dt["nodes"][0]][1], PointsMap[dt["nodes"][1]][0], PointsMap[dt["nodes"][1]][1])
+            dt.update({"n_dist": dst, "n_distTE": dstTE, "n_closer": clsr, "cos": numpy.abs(cos), "far": 0})
+    return list_edges
+
+ANGLE_TOL = 0.05
+def compute_grid_size(PointsMap, list_edges, gridh_percentile=-1, gridw_fact=-1):
+    MAX_D = 1.
+    gridH = float("Inf")
+    horz_edges = []
+    vert_edges = []
+    for eid in range(1, len(list_edges)):
+        if list_edges[eid]["far"] != 0:
+            continue
+        dt = list_edges[eid]
+        if dt["n_dist"] > MAX_D:
+            MAX_D = dt["n_dist"]
+        if dt["cos"] > (1-ANGLE_TOL): ## if near-horizontal
+            y0 = numpy.abs(PointsMap[dt["nodes"][0]][1] + PointsMap[dt["nodes"][1]][1])/2
+            horz_edges.append((y0, dt["n_dist"]))
+        elif dt["cos"] < ANGLE_TOL: ## if near-vertical
+            if dt["n_dist"] < gridH: 
+                gridH = dt["n_dist"]
+            vert_edges.append(dt["n_dist"])
+    gridH = numpy.percentile(vert_edges, gridh_percentile)
+    gridWps = computeHPoly(horz_edges, gridw_fact)
+    return gridH, gridWps
+
+
+def update_far(PointsMap, list_edges, gridH, gridWps):
+    for eid in range(1, len(list_edges)):
+        if list_edges[eid]["far"] == 0:
+            dt = list_edges[eid]
+            y0 = numpy.abs(PointsMap[dt["nodes"][0]][1] + PointsMap[dt["nodes"][1]][1])/2
+            th = getDistanceThres(y0, gridH, gridWps, 1.) ### max distance to be considered neighbors at this latitude
+            if dt["n_dist"] > 1.2*th:
+                dt["far"] = 1
+            elif dt["n_distTE"] > 1.2*th:
+                dt["far"] = 2
+    return list_edges
+
+def gather_require_cut(PointsMap, map_edges, list_edges, polys):
+    require_cut = {}
+    polys_cut_info = {}
+    isolated_nodes = []
+    ## go over each node in the voronoi diagram, prepare polygon 
+    for node, poly in polys.items():
+        cut_info = [-int(list_edges[abs(seid)]["far"] != 0) for seid in poly]
+        if numpy.sum(cut_info) == 0:  ## contains at least one edge far==0
+            continue
+        elif numpy.prod(cut_info) == 0:  ## contains at least one edge far==0
+            ### collect edges that are not far but adjacent to far, which will need to be cut 
+            for pi, seid in enumerate(poly):
+                if list_edges[abs(seid)]["far"] != 0:
+                    if list_edges[abs(poly[pi-1])]["far"] == 0:
+                        oei = abs(poly[pi-1])
+                        wend = int(numpy.sign(poly[pi-1]) > 0)
+                        if oei not in require_cut:
+                            require_cut[oei] = []
+                        require_cut[oei].append((node, pi, wend))
+                        cut_info[pi-1] = 1
+    
+                    aft = pi+1
+                    if aft == len(poly): aft = 0
+                    if list_edges[abs(poly[aft])]["far"] == 0:
+                        oei = abs(poly[aft])
+                        wend = int(numpy.sign(poly[aft]) < 0)
+                        if oei not in require_cut:
+                            require_cut[oei] = []
+                        require_cut[oei].append((node, pi, wend))
+                        cut_info[aft] = 1
+            polys_cut_info[node] = cut_info
+        else:
+            isolated_nodes.append(node)
+    return require_cut, polys_cut_info, isolated_nodes
+
+def cut_edges(PointsMap, map_edges, list_edges, require_cut, gridH, gridWps):
+    ## cutting edges
+    recut_nodes = {}
+    for ei, dt in require_cut.items():
+        edge = [list_edges[ei]["edge"][0], list_edges[ei]["edge"][1]]
+        end_points = set([d[-1] for d in dt])
+        end_cut = []
+        for end_point in end_points:
+            cut_point = getCutPoint(PointsMap, list_edges[ei], end_point, gridH, gridWps)
+            if cut_point is not None:
+                end_cut.append(end_point)
+                edge[end_point] = cut_point
+        if len(end_cut) > 0:
+            neid = create_new_edge(edge[0], edge[1], None, map_edges, list_edges, type_edge = ["cut", OUTER_MAP[False]])
+            nodes = set([d[0] for d in dt])
+            recut_n = set(list_edges[ei]["nodes"]).difference(nodes)
+            for rn in recut_n:
+                if rn not in recut_nodes:
+                    recut_nodes[rn] = {}
+                recut_nodes[rn][ei] = end_cut
+        else:
+            neid = ei            
+        list_edges[ei]["cut_eid"] = neid            
+        list_edges[abs(neid)]["uncut_eid"] = ei
+    return recut_nodes
+
+        
+FACT_ALONE = 0.5
+def assemble_isolated(PointsMap, map_edges, list_edges, polys, isolated_nodes, gridH, gridWps, assembled={}):
+    for node in isolated_nodes:
+        epoly = getPolyRect(PointsMap[node][0], PointsMap[node][1], gridH, gridWps, FACT_ALONE)
+        map_to = []
+        ### does it connects to the outer border?
+        outer = any([list_edges[abs(k)]["far"] == -1 for k in polys[node]])
+        for pi in range(len(epoly)-1):
+            neid = create_new_edge(epoly[pi], epoly[pi+1], node, map_edges, list_edges, type_edge = ["isolated", OUTER_MAP[outer]])
+            map_to.append(neid)
+        assembled[node] = map_to
+    return assembled
+
+
+def assemble_cut(PointsMap, map_edges, list_edges, polys, polys_cut_info, recut_nodes, assembled={}):
+    for node, info in polys_cut_info.items():
+        poly = polys[node]
+        if node == 151: pdb.set_trace()
+        modified = False
+        dropped = 0
+        if node in recut_nodes:
+            recuts = recut_nodes.pop(node)
+            for ii, p in enumerate(poly):
+                if abs(p) in recuts:
+                    info[ii] = 2
+                    
+        outer = False
+        pids = []
+        process_order = []
+        
+        if numpy.prod(info) != 0:
+            modified = True
+            ones_pos = [zid for zid, i in enumerate(info) if i > 0]
+            first_zid = ones_pos.pop(0)
+            process_order = range(first_zid, len(info))+range(first_zid)
+            if len(ones_pos) == 0:
+                outer = any([list_edges[abs(k)]["far"] == -1 for k in poly])
+                seid = poly[first_zid]
+                ceid, edge = get_cut_edge(list_edges, seid, node)
+
+                xp, yp = ortho_prj(edge[0][0], edge[0][1], edge[1][0], edge[1][1], PointsMap[node][0], PointsMap[node][1])
+                tx, ty = (2.*(PointsMap[node][0]-xp), 2.*(PointsMap[node][1]-yp))
+                neid = create_new_edge((edge[1][0]+tx, edge[1][1]+ty), (edge[0][0]+tx, edge[0][1]+ty), node, map_edges, list_edges, type_edge = ["projected", OUTER_MAP[outer]])
+                pids = [neid]
+            elif len(ones_pos) == 1:
+                first_seid = poly[first_zid]
+                corner = None
+                if ones_pos[0] == first_zid + 1:
+                    corner = get_ordered_edge(first_seid, list_edges)[1]
+                elif first_zid == 0  and ones_pos[0] == len(info)-1:
+                    corner = get_ordered_edge(first_seid, list_edges)[0]
+                    process_order = [len(info)-1] + range(len(info)-1)
+
+                if corner is not None:
+                    outer = any([list_edges[abs(k)]["far"] == -1 for k in poly])
+                    new_corner = (corner[0]+ 2*(PointsMap[node][0]-corner[0]), corner[1]+ 2*(PointsMap[node][1]-corner[1]))
+                    pids = [new_corner, None]
+        
+        else:
+            first_zid = 0
+            while first_zid < len(info) and info[first_zid] != 0:
+                first_zid += 1
+            process_order = range(first_zid, len(info))+range(first_zid)
+        # print "INFO", node, [info[zid] for zid in process_order]
+                
+        for i in process_order:
+            if info[i] > 0:
+                seid = poly[i]
+                ceid, ord_edge = get_cut_edge(list_edges, seid, node)
+                if seid != ceid:
+                    modified = True
+                elif dropped == 1:
+                    dropped = 0
+                prev_point = ord_edge[0]                    
+                if len(pids) > 0:
+                    if pids[-1] is None:
+                        prev_point = pids[0]
+                        pids = []
+                    else:
+                        prev_point = get_ordered_edge(pids[-1], list_edges)[1]
+                        # prev_point = list_edges[abs(pids[-1])]["edge"][int(pids[-1] > 0)]                        
+                if prev_point !=  ord_edge[0]:
+                    neid = create_new_edge(prev_point, ord_edge[0], node, map_edges, list_edges, type_edge = ["fill", OUTER_MAP[outer]])
+                    pids.append(neid)
+                    outer = False
+
+                if len(pids) > 0 and ceid == -pids[-1]:
+                    pids.pop()                    
                 else:
-                    edge = (org_edge[0], org_edge[1])
-                edges_map[edge] = len(edges_list)
-                edges_map[(edge[1], edge[0])] = -len(edges_list)
-                edges_list.append(edge)
-                edges_graph[edges_map[edge]] = []
-            try:
-                edges_graph[abs(edges_map[org_edge])].append(ss)
-            except KeyError:
-                pdb.set_trace()
-                print org_edge
-    return edges_graph, edges_list, edges_map
+                    pids.append(ceid)
+                
+            elif info[i] == 0:
+                pids.append(poly[i])
+            else: ## info[i] == -1:
+                dropped += 1
+                if list_edges[abs(poly[i])]["far"] == -1:
+                    outer = True
 
-def make_cells_graph(edges_graph):
-    cells_graph = {}
-    for (edge, cells) in edges_graph.items():
-        for cell in cells:
-            if cell not in cells_graph:
-                cells_graph[cell] = {}
-            for cellx in cells:
-                if cell != cellx:
-                    cells_graph[cell][cellx] = edge
-    return cells_graph
+        #### make sure it's closed
+        prev_point = get_ordered_edge(pids[-1], list_edges)[1]
+        first_point = get_ordered_edge(pids[0], list_edges)[0]
+        if prev_point != first_point:            
+            # print "Doesn't close"
+            neid = create_new_edge(prev_point, first_point, node, map_edges, list_edges, type_edge = ["fill", OUTER_MAP[outer]])
+            if neid == -pids[-1]:
+                pids.pop()
+            else:
+                pids.append(neid)
+            outer = False
 
-def make_out_data(edges_graph, border_edges, edges_map, edges_list):  ### ALSO UPDATES EDGES_GRAPH
-    out = [edges_list[k] for k,vs in edges_graph.items() if len(vs) == 1]
+        if dropped > 1:
+            modified = True            
+        if not modified and sorted(pids) != sorted(poly):
+            print "MODIFIED?", node, modified, "actually:", sorted(pids) != sorted(poly)
+            print pids
+            print poly
+            raise ValueError("Cutting modification error")
+        if modified:
+            assembled[node] = pids            
+    return assembled
+    
+def assemble_recut(PointsMap, map_edges, list_edges, polys, recut_nodes, assembled={}):
+    # global LOG_ON
+    # LOG_ON = True
+    for node, eids in recut_nodes.items():
+    # if True:
+    #     node = 151
+    #     eids = recut_nodes[node]
+
+        poly = polys[node]
+        map_poly = [[pi] for pi in poly]
+        modified = False
+        list_recut = []
+        for p, v in enumerate(poly):
+            ext = [(p, 0, 0)]
+            if abs(v) in eids:                
+                if 0 in eids[abs(v)]:
+                    if v > 0:
+                        ext.insert(0, (p, -1))
+                    else:
+                        ext.append((p, 1))
+                if 1 in eids[abs(v)]:
+                    if v < 0:
+                        ext.insert(0, (p, -1))
+                    else:
+                        ext.append((p, 1))
+            list_recut.extend(ext)
+        list_recut.insert(0, list_recut.pop())
+        
+        i = 0
+        if LOG_ON:
+            print "NODE", node, list_recut
+        while i < len(list_recut):
+            if list_recut[i][-1] != 0:
+                if LOG_ON:
+                    print "Check", list_recut[i]                
+                pos, where_insert = list_recut[i]
+                cut_end = (where_insert+1)/2
+                seid = poly[pos]
+                ceid = list_edges[abs(seid)]["cut_eid"]
+                if seid < 0:
+                    ceid *= -1
+                edge = get_ordered_edge(seid, list_edges)
+                cedge = get_ordered_edge(ceid, list_edges)
+                
+                if cedge[cut_end] != edge[cut_end]:
+                    jump = False
+
+                    if i+1 < len(list_recut) and list_recut[i][-1]*list_recut[i+1][-1] != 0:
+                        jump = True
+                        if LOG_ON:
+                            print "Check other", list_recut[i+1]                
+
+                        pos_other, where_insert_other = list_recut[i+1]
+                        cut_end_other = (where_insert_other+1)/2
+                        seid_other = poly[pos_other]
+                        ceid_other = list_edges[abs(seid_other)]["cut_eid"]
+                        if seid_other < 0:
+                            ceid_other *= -1
+                        edge_other = get_ordered_edge(seid_other, list_edges)
+                        cedge_other = get_ordered_edge(ceid_other, list_edges)
+                        if cedge_other[cut_end_other] != edge_other[cut_end_other]:
+                            ### corner recut
+                            if LOG_ON:
+                                print "corner cut", edge, edge_other, "->", cedge, cedge_other                
+
+                            if cut_end == 0 or cut_end_other == 1: pdb.set_trace()
+                                
+                            neid = create_new_edge(cedge[cut_end], cedge_other[cut_end_other], node, map_edges, list_edges, type_edge = ["residue", OUTER_MAP[False]])
+
+                            map_poly[pos][-1] = ceid
+                            map_poly[pos].append(neid)
+                            map_poly[pos_other][-1] = ceid_other
+
+                            modified = True
+                            i += 1
+                        else:
+                            jump = False
+                            
+                    if not jump:
+                        ### single recut
+                        if LOG_ON:
+                            print "single cut", edge, "->", cedge                
+                    
+                        neid = create_new_edge(edge[cut_end], cedge[cut_end], node, map_edges, list_edges, type_edge = ["residue", OUTER_MAP[False]])
+                        if cut_end == 0:
+                            map_poly[pos][0] = ceid
+                            map_poly[pos].insert(0, neid)
+                        else:
+                            map_poly[pos][-1] = ceid
+                            map_poly[pos].append(-1*neid)
+                        modified = True
+                else:                                      
+                    print "cut redacted"
+            i += 1
+            ####################
+                
+        if modified:
+            assembled[node] = []
+            for pp in map_poly:
+                assembled[node].extend(pp)
+        # plot_edges(poly, list_edges, lbl="IDS", color="b", linestyle="-", marker="x")
+        # plot_edges(assembled.get(node, []), list_edges, lbl="IDS", color="r", linestyle=":", marker="+")
+        # plot_show(True)
+
+    # LOG_ON = False
+    return assembled
+
+def prepare_edges(PointsMap, gridh_percentile=-1, gridw_fact=-1, after_cut=True, dst_type="globe"):
+    map_edges, list_edges, polys, bbox = compute_voronoi(PointsMap)
+    list_edges[0]["last_org"] = len(list_edges)
+    
+    polys_cut = {}
+
+    if gridh_percentile > 0 and after_cut:
+        compute_edges_distances(PointsMap, list_edges, dst_type)
+        gridH, gridWps = compute_grid_size(PointsMap, list_edges, gridh_percentile=50, gridw_fact=1.)    
+        update_far(PointsMap, list_edges, gridH, gridWps)
+        require_cut, polys_cut_info, isolated_nodes = gather_require_cut(PointsMap, map_edges, list_edges, polys)
+        recut_nodes = cut_edges(PointsMap, map_edges, list_edges, require_cut, gridH, gridWps)
+        list_edges[0]["last_cut"] = len(list_edges)
+    
+        assemble_isolated(PointsMap, map_edges, list_edges, polys, isolated_nodes, gridH, gridWps, polys_cut)
+        list_edges[0]["last_isolated"] = len(list_edges)
+        
+        assemble_cut(PointsMap, map_edges, list_edges, polys, polys_cut_info, recut_nodes, polys_cut)
+        assemble_recut(PointsMap, map_edges, list_edges, polys, recut_nodes, polys_cut)
+        
+    for node, poly in polys.items():
+        if node in polys_cut:
+            pp = polys_cut[node]
+        else:
+            pp = poly    
+        for pi, eid in enumerate(pp):
+            if "nodes_cut" not in list_edges[abs(eid)]:
+                list_edges[abs(eid)]["nodes_cut"] = []
+                list_edges[abs(eid)]["pos_cut"] = []
+            list_edges[abs(eid)]["nodes_cut"].append(node)
+            list_edges[abs(eid)]["pos_cut"].append((pi+1)*numpy.sign(eid))                        
+            
+    return map_edges, list_edges, polys, polys_cut
+
+def get_edges_coords_flatten(list_edges, seids=None, after_cut=True):
+    coords = []
+    if seids is None:
+        if after_cut:
+            up_to = len(list_edges)
+        else:
+            up_to = list_edges[0]["last_org"]
+        return [get_ordered_edge_flatten(eid, list_edges) for eid in range(0, up_to)]
+    else:
+        return [get_ordered_edge_flatten(seid, list_edges) for seid in seids]
+        
+
+def get_all_grps(list_edges):
+    return [None] + range(-2, 2)
+def get_edge_grp(list_edges, eid=None):
+    if eid is None:
+        return None
+    grp = 0
+    if "nodes_cut" in list_edges[eid]:
+        grp += 1
+    if "far" in list_edges[eid]:
+        grp -= 1
+        if not "cut_eid" in list_edges[eid]:
+            grp -= 1
+    return grp
+
+def make_edges_graph_grps(map_edges, list_edges):
+    edges_graph = {}
+    all_grps = get_all_grps(list_edges)
+    grp_to_edges = dict([(s,[]) for s in all_grps])
+    for edge, eid in map_edges.items():
+        grp = get_edge_grp(list_edges, eid)
+        grp_to_edges[grp].append(eid)
+        for ni, n in enumerate(edge):
+            if n not in edges_graph:
+                edges_graph[n] = dict([(s,[]) for s in all_grps])
+            edges_graph[n][grp].append(edge[1-ni])
+        if "cut_eid" in list_edges[eid]:
+            ceid = list_edges[eid]["cut_eid"]
+            cedge = get_ordered_edge(ceid, list_edges)
+            grp_sp = get_edge_grp(list_edges, None)
+            added = False
+            for ni, n in enumerate(edge):
+                if cedge[ni] != n:
+                    added = True
+                    edges_graph[n][grp_sp].append(cedge[ni])
+                    if cedge[ni] not in edges_graph:
+                        edges_graph[cedge[ni]] = dict([(s,[]) for s in all_grps])
+                    edges_graph[cedge[ni]][grp_sp].append(n)
+            if added:
+                grp_to_edges[grp_sp].extend([eid, abs(ceid)])
+    return edges_graph, grp_to_edges
+
+def get_ordered_pairs(v, vs):
+    return [order_edge(v, vv)[0] for vv in vs]
+
+def filter_splength(source, graph, trav=[], collect=None):
+    seen={}                  # level (number of hops) when seen in BFS
+    level=0                  # the current level
+    nextlevel=set([source])  # dict of nodes to check at next level
+    while nextlevel:
+        thislevel=nextlevel  # advance to next level
+        nextlevel=set()         # and start a new list (fringe)
+        for v in thislevel:
+            if v not in seen:
+                seen[v]=level # set the level of vertex v
+                for t in trav:
+                    if collect is not None:
+                        collect.update(get_ordered_pairs(v, graph[v][t]))
+                    nextlevel.update(graph[v][t]) # add neighbors of v
+        level=level+1
+    return seen  # return all path lengths as dictionary
+
+def filter_cc(edges_graph, src_pool, trav=[]):
+    seen={}
+    for v in src_pool:
+        if v not in seen:
+            collect = set()
+            c = filter_splength(v, edges_graph, trav, collect)
+            yield list(c), collect
+            seen.update(c)
+
+def frame_cc(map_edges, list_edges):
+    edges_graph, grp_to_edges = make_edges_graph_grps(map_edges, list_edges)
+    src_points = set().union(*[list_edges[eid]["edge"] for eid in list_edges[0][TIK].get("frame", [])])
+    blocks = []
+    for cc, collect in filter_cc(edges_graph, src_points, trav=[-2]):
+        reached = [map_edges[e] for e in collect]
+        # next_layer = [map_edges[x] for x in set().union(*[get_ordered_pairs(c, edges_graph[c][-1]) for c in cc])]
+        more_edges = set().union(*[[map_edges[x]
+                                   for x in set().union(*[get_ordered_pairs(d, edges_graph[d][1])
+                                                              for d in edges_graph[c][None]])
+                                   if map_edges[x] >= list_edges[0]["last_cut"]] for c in cc])
+        blocks.append({"bckbone": cc, "reached": reached, "more_edges": more_edges})        
+    return blocks
+
+def prepare_border_data(list_edges, connect_frame=None, after_cut=True):
+    if after_cut:
+        key_nodes = "nodes_cut"
+        up_to = len(list_edges)
+    else:
+        key_nodes = "nodes"
+        up_to = list_edges[0]["last_org"]
+
+    beids =[eid for eid in range(1, up_to) if len(list_edges[eid].get(key_nodes, [])) == 1]    
+    out = [list_edges[eids]["edge"] for eids in beids]
     fps, fpis = flatten_poly(out)
     out_data = {}
-    for pp in fps:        
-        for poly in clean_poly(pp):
-            ci = -(len(out_data)+1)
-            interior = True
-            for i in range(1, len(poly)):
-                org_edge = (poly[i-1], poly[i])
-                if org_edge in border_edges:
-                    interior = False
-                edges_graph[abs(edges_map[org_edge])].append(ci)
-            out_data[ci] = {"ci": ci, "cells": [], "polys": [poly], "color": -1, "level": -int(interior)}
+    for ppi, pp in enumerate(fps):
+        org_len = len(pp)
+        tt = clean_poly(pp)
+        if len(tt) != 1 or len(tt[0]) != org_len:
+            raise ValueError("Dirty polygon")
+        peids = [numpy.sign(x)*beids[abs(x)-1] for x in fpis[ppi]]
+        ci = -(len(out_data)+1)
+        interior = (connect_frame is not None and len(connect_frame.intersection(peids)) == 0)
+        out_data[ci] = {"ci": ci, "cells": [], "polys": [peids], "color": -1, "level": -int(interior)}
     return out_data
 
+def make_out_data(map_edges, list_edges, after_cut=True):
+    if after_cut:
+        blocks = frame_cc(map_edges, list_edges)
+        connect_frame = set().union(*[b["more_edges"] for b in blocks])
+        connect_frame.update(list_edges[0][TIK].get("isolated", []))
+        connect_frame.update(list_edges[0][TIK].get("projected",[]))        
+    else:
+        connect_frame = None
+    return prepare_border_data(list_edges, connect_frame, after_cut)
 
-def ss_spides(source, splits_graph):
+def make_nodes_graph(list_edges, after_cut=True):
+    nodes_graph = {}
+    if after_cut:
+        key_nodes = "nodes_cut"
+        up_to = len(list_edges)
+    else:
+        key_nodes = "nodes"
+        up_to = list_edges[0]["last_org"]
+
+    for eid in range(1, up_to):
+        if key_nodes not in list_edges[eid]:
+            continue
+        nodes = list_edges[eid][key_nodes]
+        for node in nodes:
+            if node not in nodes_graph:
+                nodes_graph[node] = {}
+            for nodex in nodes:
+                if node != nodex:
+                    nodes_graph[node][nodex] = eid
+    return nodes_graph               
+
+def compute_node_pairs(list_edges, max_nid=None, after_cut=True):
+    node_pairs = []
+    if after_cut:
+        key_nodes = "nodes_cut"
+        up_to = len(list_edges)
+    else:
+        key_nodes = "nodes"
+        up_to = list_edges[0]["last_org"]
+
+    for eid in range(1, up_to):
+        if key_nodes not in list_edges[eid]:
+            continue
+        nodes = list_edges[eid][key_nodes]
+        if len(nodes) == 1:
+            if max_nid is None or nodes[0] < max_nid:
+                node_pairs.append([eid, nodes[0], -1])
+        elif len(nodes) == 2:
+            if max_nid is None or (nodes[0] < max_nid and nodes[1] < max_nid):
+                node_pairs.append([eid, nodes[0], nodes[1]])
+            elif nodes[0] < max_nid:
+                node_pairs.append([eid, nodes[0], -1])
+            elif nodes[1] < max_nid:
+                node_pairs.append([eid, nodes[1], -1])
+    return numpy.array(node_pairs, dtype=int)
+
+def prepare_cc_polys(list_edges, nodes_sel, polys):
+    edge_counts = {}
+    for node in nodes_sel:
+        for eid in polys.get(node, []):         
+            edge_counts[abs(eid)] = edge_counts.get(abs(eid), 0) + 1
+    borders_eids = [eid for eid,c in edge_counts.items() if c == 1]
+    borders_edges = [list_edges[eid]["edge"] for eid in borders_eids]
+    fps, fpis = flatten_poly(borders_edges)
+    pps = [[numpy.sign(ee)*borders_eids[abs(ee)-1] for ee in pp] for pp in fpis]
+    return pps
+
+def ss_splength(source, nodes_graph, nodes_colors=None):
     seen={}                  # level (number of hops) when seen in BFS
-    idEs = set()
     level=0                  # the current level
     nextlevel=set([source])  # dict of nodes to check at next level
     while nextlevel:
@@ -891,100 +1099,82 @@ def ss_spides(source, splits_graph):
         for v in thislevel:
             if v not in seen:
                 seen[v]=level # set the level of vertex v
-                for c, idE in splits_graph[v].items():
-                    idEs.add(idE)
-                    nextlevel.add(c) # add neighbors of v
-        level=level+1
-    return seen, idEs  # return all path lengths as dictionary
-
-
-def ss_splength(source, cells_graph, cells_colors=None):
-    seen={}                  # level (number of hops) when seen in BFS
-    level=0                  # the current level
-    nextlevel=set([source])  # dict of nodes to check at next level
-    while nextlevel:
-        thislevel=nextlevel  # advance to next level
-        nextlevel=set()         # and start a new list (fringe)
-        for v in thislevel:
-            if v not in seen:
-                seen[v]=level # set the level of vertex v
-                nextlevel.update([c for c in cells_graph[v].keys() if cells_colors is None or (c >= 0 and cells_colors[v] == cells_colors[c])]) # add neighbors of v
+                nextlevel.update([c for c in nodes_graph[v].keys() if nodes_colors is None or (c >= 0 and nodes_colors[v] == nodes_colors[c])]) # add neighbors of v
         level=level+1
     return seen  # return all path lengths as dictionary
 
 
-def connected_components(cells_graph, cells_colors, color):
+def connected_components(nodes_graph, nodes_colors, color):
     seen={}
-    pool = numpy.where(cells_colors == color)[0]
+    pool = numpy.where(nodes_colors == color)[0]
     for v in pool:
         if v not in seen:
-            c = ss_splength(v, cells_graph, cells_colors)
+            c = ss_splength(v, nodes_graph, nodes_colors)
             yield list(c)
             seen.update(c)
 
-        
-def plot_final_polys(final_polys, PointsMap):
-    if plt is None:
-        return
-    for node, pls in final_polys.items():                
-        for pl in pls:
-            ex,ey = zip(*pl)
-            plt.plot(ex, ey, "b")
-        plt.plot(PointsMap[node][0], PointsMap[node][1], "go")
-    plt.show()
- 
-def prepare_exterior_data(coordsp, border_edges):
-    ### PREPARE DATA (EXTERIOR/INTERIOR BORDERS)
-    edges_graph, edges_list, edges_map = make_edges_graph(coordsp)
-    out_data = make_out_data(edges_graph, border_edges, edges_map, edges_list)
-    cells_graph = make_cells_graph(edges_graph)
-    return cells_graph, edges_graph, out_data    
-    
-def prepare_areas_data(cells_colors, coordsp, cells_graph, edges_graph, out_data, smooth_fact=1):
-    ccs_data = {}
-    
-    cells_colors_bckg = -2*numpy.ones(len(coordsp), dtype=int)
-    if type(cells_colors) is list:
-        cells_colors_bckg[cells_colors] = 0
-    elif type(cells_colors) is dict:
-        for i, v in cells_colors.items():
-            cells_colors_bckg[i] = v
-    else:
-        cells_colors_bckg[:cells_colors.shape[0]] = cells_colors
-    cells_to_ccs = numpy.zeros(len(coordsp), dtype=int)   
-    adjacent = dict([(ci, {}) for ci in out_data.keys()])
+def prepare_areas_helpers(map_edges, list_edges, after_cut=True):
+    nodes_graph = make_nodes_graph(list_edges, after_cut)
+    out_data = make_out_data(map_edges, list_edges, after_cut)
+    return out_data, nodes_graph
 
-    for si in set(cells_colors_bckg):
-        for cc in connected_components(cells_graph, cells_colors_bckg, si):
-            ci = len(ccs_data)
-            cc_polys = prepare_cc_polys(cc, coordsp)
-            smooth_polys = smoothen_polys(cc_polys, fact=smooth_fact)
-            ccs_data[ci] = {"ci": ci, "cells": cc, "polys": cc_polys, "smooth_polys": smooth_polys, "color": si, "level": -1}
-            adjacent[ci] = {}
-            for c in cc:
-                cells_to_ccs[c] = ci
-    ccs_data.update(out_data)
-    
-    for edge, cs in edges_graph.items():
-        cc0 = cells_to_ccs[cs[0]] if cs[0] >= 0 else cs[0]
-        cc1 = cells_to_ccs[cs[1]] if cs[1] >= 0 else cs[1]
-        if cc0 != cc1:
-            adjacent[cc1][cc0] = adjacent[cc1].get(cc0, 0) + 1
-            adjacent[cc0][cc1] = adjacent[cc0].get(cc1, 0) + 1
+def prepare_areas_polys(polys, polys_cut, after_cut=True):
+    if after_cut:
+        pp = dict([(p, polys_cut.get(p) or polys[p]) for p in polys])
+    else:
+        pp = polys
+    return pp
             
+def prepare_areas_data(nodes_colors, list_edges, polys, out_data, nodes_graph):
+    #### nodes_colors_bckg: contains ids of parts all nodes belong to, i.e. support part, variable value, -2 means outside support, bckg cell
+    nodes_colors_bckg = -2*numpy.ones(len(polys), dtype=int)
+    if type(nodes_colors) is list:
+        nodes_colors_bckg[nodes_colors] = 0
+    elif type(nodes_colors) is dict:
+        for i, v in nodes_colors.items():
+            nodes_colors_bckg[i] = v
+    else:
+        nodes_colors_bckg[:nodes_colors.shape[0]] = nodes_colors
+
+    #### compute color connected components
+    ccs_data = {}
+    for si in set(nodes_colors_bckg):
+        for cc in connected_components(nodes_graph, nodes_colors_bckg, si):
+            ci = len(ccs_data)
+            cc_polys = prepare_cc_polys(list_edges, cc, polys)
+            ccs_data[ci] = {"ci": ci, "nodes": cc, "polys": cc_polys, "color": si, "level": -1}
+    ccs_data.update(out_data)
+
+    cis = ccs_data.keys()
+    eids_to_ccs = {} 
+    adjacent = dict([(ci, set()) for ci in cis])
+    for ci in cis:
+        ccs_data[ci]["poly_sets"] = []
+        for p in ccs_data[ci]["polys"]:
+            ccs_data[ci]["poly_sets"].append(set([abs(eid) for eid in p]))
+            for eid in ccs_data[ci]["poly_sets"][-1]:
+                if eid not in eids_to_ccs:
+                    eids_to_ccs[eid] = []
+                else:
+                    adjacent[eids_to_ccs[eid][0]].add(ci)
+                    adjacent[ci].add(eids_to_ccs[eid][0])
+                eids_to_ccs[eid].append(ci)
+
+    #### compute reachability level starting from outside level=0
     queue = [k for (k, vs) in ccs_data.items() if vs["level"] == 0]
     nextlevel = set()
     level = 1
     while len(queue) > 0:                        
         for ci in queue:
-            for cj in adjacent[ci].keys():
+            for cj in adjacent[ci]:
                 if ccs_data[cj]["level"] < 0:
                     ccs_data[cj]["level"] = level
                     nextlevel.add(cj)
         queue = nextlevel
         nextlevel = set()
         level += 1
-        
+
+    #### From outside to inner most components find exterior border of component
     cks = sorted(ccs_data.keys(), key=lambda x: ccs_data[x]["level"])
     for ck, data in ccs_data.items():
         data["exterior_polys"] = [i for i in range(len(data["polys"]))]
@@ -994,43 +1184,216 @@ def prepare_areas_data(cells_colors, coordsp, cells_graph, edges_graph, out_data
         if len(data["polys"]) < 2:
             continue
         interior_dots = set()
-        for k in adjacent[ck].keys():
-            if data["level"] <  ccs_data[k]["level"]:
-                interior_dots.update(*ccs_data[k]["polys"])
+        for k in adjacent[ck]:
+            if data["level"] < ccs_data[k]["level"]:
+                interior_dots.update(*ccs_data[k]["poly_sets"])
             
         if len(interior_dots) > 0:                            
-            data["exterior_polys"] = [pi for pi, poly in enumerate(data["polys"]) if len(set(poly).difference(interior_dots)) > 0]
+            data["exterior_polys"] = [pi for pi, poly in enumerate(data["poly_sets"]) if len(set(poly).difference(interior_dots)) > 0]
     return ccs_data, cks, adjacent
 
 
-# #Run this for instance as "python prepare_polygons.py ~/coords.csv ~/poly_coords.csv - map"
-# if __name__=="__main__":
+# EDGES_FIELDS_LIST = []
+EDGES_FIELDS_LIST = [('eid', "%d"), ('edge', "(%s,%s)"), ("types", "%s"),
+                     ('nodes', "(%s,%s)"), ('pos', "(%s,%s)"),
+                     ('nodes_cut', "(%s,%s)"), ('pos_cut', "(%s,%s)"),
+                     ('uncut_eid', "%d"), ('cut_eid', "%d"),
+                     ('n_dist', "%f"), ('n_distTE', "%f"), ('cos', "%f"), ('far', "%d"), ('n_closer', "%d")]
+EDGES_FIELDS_MAP = dict(EDGES_FIELDS_LIST)
 
-#     coords_fn = None
-#     if len(sys.argv) > 1:
-#         coords_fn = sys.argv[1]
+def preamble_for_edges(list_edges):
+    entries = [(k,v) for (k,v) in list_edges[0].items() if re.match("last_", k) or (k == "nb_nodes")]
+    entries.sort(key=lambda x: x[1])
+    return "# LIST OF EDGES\t%s" % " ".join(["%s=%d" % (k,v) for (k,v) in entries])
+def header_for_edges(list_edges):
+    return "\t".join([k for k,f in EDGES_FIELDS_LIST])
 
-#     polymap_instance = PolyMap()
-#     filenames = polymap_instance.makeFilenames(coords_fn)
+def parse_preamble(line):
+    list_edges = [{"edge": None, TIK: {}, "nb_nodes": 0}]
+    if re.match("# LIST OF EDGES\t", line):
+        parts = line.strip().split("\t")[1].split(" ")
+        for part in parts:
+            pp = part.strip().split("=")
+            list_edges[0][pp[0]] = int(pp[1])
+    return list_edges
+def parse_header(line):
+    parts = line.strip().split("\t")
+    return [(p, i) for i,p in enumerate(parts)]
 
-#     PointsMap, PointsIds = polymap_instance.getPointsFromFile(filenames["coords"])
-    
-#     final_polys, final_details, edges, nodes = polymap_instance.compute_polys(PointsMap, PointsIds=PointsIds)
-#     polymap_instance.plot_final_polys(final_polys, PointsMap)
-#     coordsp, border_edges, cell_map = polymap_instance.prepPolys(PointsIds, final_polys, final_details, edges, nodes)
-
-#     polymap_instance.write_to_files(filenames, coordsp, border_edges, cell_map)
-    
-#     ## coordsp, border_edges, cell_map = polymap_instance.getPolysFromFiles(filenames, polymap_instance.parameters["ID_INT"])
-    
-#     cells_graph, edges_graph, out_data = polymap_instance.prepare_exterior_data(coordsp, border_edges)
-#     cells_colors = polymap_instance.getSuppsFromFile(filenames["supp"], cell_map)
-
-#     for ccls in cells_colors: 
-#         ccs_data, adjacent, cks = polymap_instance.prepare_areas_data(ccls, coordsp, cells_graph, edges_graph, out_data)
+def str_for_edge(list_edges, eid):
+    edge = {"eid": eid}
+    edge.update(list_edges[eid])
+    for field in ['types']:
+        if field in edge:
+            edge[field] = "(%s)" % ",".join(edge[field])
+    for field in ['nodes', 'pos', 'nodes_cut', 'pos_cut']:
+        if field in edge:
+            if len(edge[field]) == 1:
+                edge[field] = (edge[field][0], "-")
+            elif len(edge[field]) == 2:
+                edge[field] = (edge[field][0], edge[field][1])
+            elif len(edge[field]) > 2:
+                raise ValueError("More than two nodes to an edge!")
+            else:
+                edge[field] = None
+    return "\t".join([f % edge[k] if edge.get(k) is not None else "" for k,f in EDGES_FIELDS_LIST])
+def parse_edge(line, head):
+    parts = line.strip().split("\t")
+    eid = None
+    edge = {"edge": None, "nodes": [], "types": set()}
+    for p,i in head:
+        if i < len(parts) and len(parts[i]) > 0:
+            if p in ["edge"]:
+                v = eval(parts[i])
+            elif p in ["types"]:
+                v = set(parts[i].strip("()").split(","))
+            elif EDGES_FIELDS_MAP[p] == "(%s,%s)":                
+                v = [int(vx) for vx in parts[i].strip("()").split(",") if vx != "-"]
+            elif re.match("%[0-9.]*f$", EDGES_FIELDS_MAP[p]):
+                v = float(parts[i])
+            elif re.match("%[0-9.]*d$", EDGES_FIELDS_MAP[p]):
+                v = int(parts[i])
+            else:
+                v = parts[i]
                 
-#         for cii, ck in enumerate(cks):
-#             for pi in ccs_data[ck]["exterior_polys"]:
-#                 xs, ys = zip(*ccs_data[ck]["polys"][pi])
-#                 plt.fill(xs, ys, color=COLORS[ccs_data[ck]["color"]])
-#         plt.show()
+            if p == "eid":
+                eid = v
+            else:
+                edge[p] = v
+    return eid, edge
+
+def write_edges(fp, list_edges):
+    close = False
+    if not isinstance(fp, file):
+        fp = open(fp, "w")
+        close = True
+    fp.write(preamble_for_edges(list_edges)+"\n")
+    fp.write(header_for_edges(list_edges)+"\n")
+    for eid in range(1, len(list_edges)):
+        fp.write(str_for_edge(list_edges, eid)+"\n")    
+    if close:
+        fp.close()
+    
+def read_edges(fp):
+    list_edges = None
+    close = False
+    if not isinstance(fp, file):
+        fp = open(fp)
+        close = True
+    head = None
+    for line in fp:
+        if list_edges is None:
+            list_edges = parse_preamble(line)
+        elif head is None:
+            head = parse_header(line)
+        else:
+            eid, edge = parse_edge(line, head)
+            if eid is not None and eid == len(list_edges):
+                list_edges.append(edge)                
+    if close:
+        fp.close()
+    return list_edges
+
+def build_from_edges(list_edges):
+    map_edges, polys, polys_cut = ({}, {}, {})
+    tmp_polys, tmp_polys_cut = ({}, {})
+    for eid in range(1, len(list_edges)):
+        edge = list_edges[eid]
+        map_edges[edge["edge"]] = eid
+        if len(edge["types"]) > 0:
+            update_types(list_edges, eid, edge["types"], from_edge=True)
+        for nkey, pkey, trg in [("nodes_cut", "pos_cut", tmp_polys_cut), ("nodes", "pos", tmp_polys)]:
+            if edge.get(nkey) is not None and edge.get(pkey) is not None and len(edge.get(nkey)) > 0 and len(edge.get(nkey)) == len(edge.get(pkey)):
+                for ni, n in enumerate(edge[nkey]):
+                    p = edge[pkey][ni]
+                    if n not in trg:
+                        trg[n] = []
+                    trg[n].append((abs(p), numpy.sign(p)*eid))
+    nodes_polys = set().union(tmp_polys.keys(), tmp_polys_cut.keys())
+    for node in nodes_polys:
+        if node in tmp_polys:
+            tmp_polys[node].sort()
+        if node in tmp_polys_cut:
+            tmp_polys_cut[node].sort()
+        if tmp_polys.get(node) == tmp_polys_cut.get(node):
+            polys[node] = [p[1] for p in tmp_polys[node]]
+        else:
+            if node in tmp_polys:
+                polys[node] = [p[1] for p in tmp_polys[node]]
+            if node in tmp_polys_cut:
+                polys_cut[node] = [p[1] for p in tmp_polys_cut[node]]
+    return map_edges, list_edges, polys, polys_cut
+
+def read_edges_and_co(fp):
+    list_edges = read_edges(fp)
+    return build_from_edges(list_edges)
+
+    
+
+# #Run this for instance as "python prepare_polygons.py ~/coords.csv ~/poly_coords.csv - map"
+if __name__=="__main__":
+    
+    coords_bckg, rnames_bckg = read_coords_csv("coords_bckg.csv")
+    PointsMap={}
+    PointsIds={}
+    for i, coord in enumerate(rnames_bckg):
+        PointsIds[i] = rnames_bckg[i]
+        PointsMap[i] = coords_bckg[i]
+
+    map_edges, list_edges, polys, polys_cut = prepare_edges(PointsMap, gridh_percentile=50, gridw_fact=1.)
+
+    
+    # fname = "/home/egalbrun/short/test_edges.txt"
+    # write_edges(fname, list_edges)
+    # rmap_edges, rlist_edges, rpolys, rpolys_cut = read_edges_and_co(fname)
+    
+    # npairs = compute_node_pairs(list_edges, max_nid=200)
+
+    after_cut=True
+    pp = prepare_areas_polys(polys, polys_cut, after_cut)
+    out_data, nodes_graph = prepare_areas_helpers(map_edges, list_edges, after_cut)
+    ccs_data, cks, adjacent = prepare_areas_data([40, 86], list_edges, pp, out_data, nodes_graph)
+
+    colors = {-2: "#AAAAAA", -1: "white", 0: "r"}
+    pp_data = {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
+    if pp_data is not None and "cks" in pp_data:
+        for cii, ck in enumerate(pp_data["cks"]):
+            pp_polys = pp_data["ccs_data"][ck]["polys"]
+                    
+            for pi in pp_data["ccs_data"][ck]["exterior_polys"]:
+                plot_filled(pp_polys[pi], list_edges, color=colors.get(pp_data["ccs_data"][ck]["color"], "k"))
+                
+    # for ci, dt in out_data.items():
+    #     if dt["level"] == 0:
+    #         linewidth = 2
+    #     else:
+    #         linewidth = 1
+    #     plot_edges(dt["polys"][0], list_edges, linewidth=linewidth)
+            
+    # # eids_sel =  get_border_eids(list_edges)
+    # eids_sel = list_edges[0][TIK][OUTER_MAP[True]]
+    # for eid in range(1, len(list_edges)):
+    #     linewidth = 1
+    #     if eid in eids_sel:
+    #         linewidth = 2
+    #     nbN = len(list_edges[eid].get("nodes_cut", []))
+    #     if nbN > 0:
+    #         if nbN == 2:
+    #             color = "b"
+    #         elif nbN == 1:
+    #             color = "g"
+    #         else:
+    #             color = "r"
+    #         plot_edges([eid], list_edges, color=color, linewidth=linewidth)
+            
+    ### FULL MAP BY TYPES
+    # bounds = [1, list_edges[0]["last_org"], list_edges[0]["last_cut"], list_edges[0]["last_isolated"], len(list_edges)]
+    # elements = [(bounds[0], bounds[1], ":", "b"), (bounds[1], bounds[2], "-", "g"), (bounds[2], bounds[3], "-", "m"), (bounds[3], bounds[4], "-", "r")]
+    # for (bdw, bup, linestyle, color) in elements:
+    #     plot_edges(range(bdw, bup), list_edges, linestyle=linestyle, color=color)
+
+    # plot_edges_colordered(list_edges[0][TIK][OUTER_MAP[True]], list_edges, "outer")
+    # plot_edges(get_border_eids(list_edges), list_edges, linestyle=":", color="k")
+        
+    plot_show(True)
+        

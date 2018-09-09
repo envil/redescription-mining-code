@@ -176,11 +176,19 @@ class GeoPlusExtension(DataExtension):
     extension_key = "geoplus"
     extras_map = {}
     filing = []
-    params_keys = ["gridh_percentile", "gridw_fact", "smooth_fact", "natural_borders"]
+    params_keys = ["gridh_percentile", "gridw_fact", "after_cut","dst_type"]
     
     def reset(self):
         self.retainElements(self.params_keys)
-    
+
+    def setCoordsBckg(self, coords_bckg):
+        self.reset()
+        self.setElement("coords_bckg", coords_bckg)
+        
+    def needRecomputeEdges(self):
+        loc_params = ["gridw_fact", "gridh_percentile", "dst_type"]
+        return not self.hasElement("list_edges") or (self.getElement("after_cut", True) and self.hasChangedParams(loc_params))
+        
     # ######################################
     # #### COMPUTATIONS
     # ######################################
@@ -229,60 +237,59 @@ class GeoPlusExtension(DataExtension):
                 PointsMap[next_id] = coord
         ## print "NBS", org_nb, len(PointsMap)
         return PointsMap, PointsIds
-
-    def computePolys(self, details=None, force=False):
+        
+    def computeEdges(self, details=None, force=False):
         if details is None:
             details = {}
         self.setParams(details)
-        loc_params = ["gridw_fact", "gridh_percentile"]
-        if force or not self.hasElement("polys") or self.hasChangedParams(loc_params):
-            self.checkedParams(loc_params)
+        loc_params = ["gridw_fact", "gridh_percentile", "dst_type"]
+        if force or self.needRecomputeEdges():
+            self.checkedParams(["after_cut"]+loc_params)
             PointsMap, PointsIds = self.gatherPoints()
-            polys, details, edges, nodes = prep_polys.compute_polys(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_fact", -1), PointsIds)
-            dets = {"polys": polys, "details": details, "edges": edges, "nodes": nodes, "p_ids": PointsIds, "p_map": PointsMap}
-            self.updateElements(dets)            
-        return dict([(k, self.getElement(k)) for k in ["polys", "details", "edges", "nodes", "p_ids", "p_map"]])
-
-    def prepPolys(self, details=None, force=False):
-        if details is None:
-            details = {}
-        self.setParams(details)
-        if force or not self.hasElement("border_edges") or not self.hasElement("coordsp") or self.hasChangedParams(["gridw_fact", "gridh_percentile"]):
-            self.computePolys(details=details, force=force)
-            coordsp, border_edges, cell_map = prep_polys.prepPolys(self.getElement("p_ids"), self.getElement("polys"), self.getElement("details"), self.getElement("edges"), self.getElement("nodes"))
-            dets = {"coordsp": coordsp, "border_edges": border_edges, "cell_map": cell_map}
+            
+            map_edges, list_edges, polys, polys_cut = prep_polys.prepare_edges(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_fact", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
+            dets =  {"p_ids": PointsIds, "p_map": PointsMap,
+                     "map_edges": map_edges, "list_edges": list_edges,
+                     "polys": polys, "polys_cut": polys_cut}
+             
             self.updateElements(dets)
-        return dict([(k, self.getElement(k)) for k in ["coordsp", "border_edges", "cell_map"]])
+        return {"list_edges": self.getElement("list_edges")}
 
     def prepNodePairs(self, details=None, force=False):
         if details is None:
             details = {}
         self.setParams(details)
-        if force or not self.hasElement("node_pairs") or self.hasChangedParams(["gridw_fact", "gridh_percentile"]):
-            self.computePolys(details=details, force=force)
-            node_pairs = prep_polys.compute_node_pairs(self.getElement("edges"), self.getParentData().nbRows())
+        if force or self.needRecomputeEdges():
+            self.computeEdges(details=details, force=force)
+            node_pairs = prep_polys.compute_node_pairs(self.getElement("list_edges"), self.getParentData().nbRows(), self.getElement("after_cut", True))
             self.setElement("node_pairs", node_pairs)
-        return dict([(k, self.getElement(k)) for k in ["node_pairs"]])
+        return {"node_pairs": self.getElement("node_pairs")}
 
-    def prepExteriorData(self, details=None, force=False):
+    def getEdgesCoordsFlatten(self, seids=None, details=None, force=False):
         if details is None:
             details = {}
         self.setParams(details)
-        if force or not self.hasElement("edges_graph") or self.hasChangedParams(["gridw_fact", "gridh_percentile"]):
-            self.prepPolys(details=details, force=force)
-            cells_graph, edges_graph, out_data = prep_polys.prepare_exterior_data(self.getElement("coordsp"), self.getElement("border_edges"))
-            dets = {"cells_graph": cells_graph, "edges_graph": edges_graph, "out_data": out_data}
-            self.updateElements(dets)
-        return dict([(k, self.getElement(k)) for k in ["cells_graph", "edges_graph", "out_data"]])
-    
+        if force or self.needRecomputeEdges():
+            self.computeEdges(details=details, force=force)
+        return prep_polys.get_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
+        
     def computeAreasData(self, cells_colors, details=None, force=False):
         if details is None:
             details = {}
         self.setParams(details)
-        self.prepExteriorData(details=details, force=force)
-        ccs_data, cks, adjacent = prep_polys.prepare_areas_data(cells_colors, self.getElement("coordsp"), 
-                  self.getElement("cells_graph"), self.getElement("edges_graph"), self.getElement("out_data"), self.getElement("smooth_fact", 1))
+        recomputed = False 
+        if force or self.needRecomputeEdges():
+            self.computeEdges(details=details, force=force)
+            recomputed = True
+        if recomputed or not self.hasElement("nodes_graph"):
+            out_data, nodes_graph = prep_polys.prepare_areas_helpers(self.getElement("map_edges"), self.getElement("list_edges"), after_cut=self.getElement("after_cut", True))
+            dets = {"out_data": out_data, "nodes_graph": nodes_graph}
+            self.updateElements(dets)
+
+        pp = prep_polys.prepare_areas_polys(self.getElement("polys"), self.getElement("polys_cut"), self.getElement("after_cut", True))
+        ccs_data, cks, adjacent = prep_polys.prepare_areas_data(cells_colors, self.getElement("list_edges"), pp, self.getElement("out_data"), self.getElement("nodes_graph"))
         return {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
+
         
     def computeCohesion(self, item, details=None, force=False):
         if details is None:
@@ -323,10 +330,7 @@ class GeoPlusExtension(DataExtension):
         node_pairs = self.getElement("node_pairs")
         vec = numpy.concatenate([vec_org, [bv]])
         nb_inner_edges = numpy.sum((vec[node_pairs[:,2]] != bv) & (vec[node_pairs[:,1]] == vec[node_pairs[:,2]]))
-        if self.getElement("natural_borders", False):
-            nb_outer_edges = numpy.sum((node_pairs[:,2] != -1) & (vec[node_pairs[:,1]] != vec[node_pairs[:,2]]))
-        else:
-            nb_outer_edges = numpy.sum(vec[node_pairs[:,1]] != vec[node_pairs[:,2]])    
+        nb_outer_edges = numpy.sum(vec[node_pairs[:,1]] != vec[node_pairs[:,2]])    
         if nb_outer_edges > 0:
             cohesion = nb_inner_edges/float(nb_inner_edges+nb_outer_edges)
         return cohesion
@@ -350,137 +354,27 @@ class GeoPlusExtension(DataExtension):
         coords_bckg, rnames_bckg = csv_reader.read_coords_csv(fp)
         self.closeFp(fp, details)
         if coords_bckg is not None:
-            self.setElement("coords_bckg", coords_bckg)
+            self.setCoordsBckg(coords_bckg)
             if rnames_bckg is not None:
-                self.setElement("rnames_bckg", rnames_bckg)
+                self.setElement("rnames_bckg", rnames_bckg)                
         return coords_bckg, rnames_bckg
     
-    F_POLYS = "polys"
-    F_BEDGES = "border_edges"
-    filing.append({"filenames": {"extf_"+F_BEDGES: F_BEDGES+".csv", "extf_"+F_POLYS: F_POLYS+".csv"},
-                   "save": "writeGeom", "load": "readGeom", "active": "containsGeom"})    
-    def containsGeom(self):
-        return self.hasElement("border_edges") and self.hasElement("coordsp") and self.hasElement("cell_map")
-    def writeGeom(self, filenames, details=None):
-        self.writePolys(filenames, details)
-        self.writeBorderEdges(filenames, details)
-    def readGeom(self, filenames, details=None):
-        x,y = self.readPolys(filenames, details)
-        z = self.readBorderEdges(filenames, details)
-        return x,y,z
-    
-    def writePolys(self, filenames, details=None):
-        if self.hasElement("coordsp") and self.hasElement("cell_map"):
-            coordsp = self.getElement("coordsp")
-            cell_map = self.getElement("cell_map")
-            fp = self.getFp("extf_"+self.F_POLYS, filenames, details, "w")
-            cell_list = sorted(cell_map.keys(), key=lambda x: cell_map[x]) 
-            for ci, cn in enumerate(cell_list):
-                ex, ey = zip(*coordsp[ci])
-                fp.write("\"%s\",\"%s\",\"%s\"\n" % (cn, 
-                                ":".join(["%s" % x for x in ex]),
-                                ":".join(["%s" % y for y in ey])))
-            self.closeFp(fp, details)            
-    def readPolys(self, filenames, details=None):
-        fp = self.getFp("extf_"+self.F_POLYS, filenames, details, "r")
-        id_int = details.get("id_int", False)
-        coordsp = []
-        cell_map = {}
-        for line in fp:
-            parts = line.strip().split(",")
-            iid = parts[0].strip("\"")
-            if id_int:
-                iid = int(iid)
-            cell_map[iid] = len(cell_map)
-            xs = map(float, parts[1].strip("\"").split(":"))
-            ys = map(float, parts[2].strip("\"").split(":"))
-            coords = None
-            if len(xs) == len(ys):
-                coords = zip(xs, ys)
-            cc = coords #dedup_poly(coords)
-            coordsp.append(cc)
-        self.closeFp(fp, details)
-        self.setElement("coordsp", coordsp)
-        self.setElement("cell_map", cell_map)
-        return coordsp, cell_map
-    
-    def writeBorderEdges(self, filenames, details=None): #det_fn, border_edges):
-        if self.hasElement("border_edges"):
-            fp = self.getFp("extf_"+self.F_BEDGES, filenames, details, "w")
-            for edge, cell in border_edges.items():
-                fp.write("%s:%s,%s:%s,%s,%s\n" % (edge[0][0], edge[1][0], edge[0][1], edge[1][1], cell[0], cell[1]))
-            self.closeFp(fp, details)            
-    def readBorderEdges(self, filenames, details=None):
-        fp = self.getFp("extf_"+self.F_BEDGES, filenames, details, "r")
-        id_int = details.get("id_int", False)
-        border_edges = {}
-        for line in fp:
-            parts = line.strip().split(",")
-            xs = map(float, parts[0].split(":"))
-            ys = map(float, parts[1].split(":"))
-            w = int(parts[3])
-            iid = parts[2].strip("\"")
-            if id_int:
-                iid = int(iid)
-            border_edges[((xs[0], ys[0]), (xs[1], ys[1]))] = (iid, w)
-        self.closeFp(fp, details)
-        self.setElement("border_edges", border_edges)
-        return border_edges
-
-    F_NPAIRS = "node_pairs"
-    filing.append({"filenames": {"extf_"+F_NPAIRS: F_NPAIRS+".csv"}, "save": "writeNodePairs", "load": "readNodePairs", "active": "containsNodePairs"})
-    def containsNodePairs(self):        
-        return self.hasElement("node_pairs")
-    def writeNodePairs(self, filenames, details=None):
-        if self.containsNodePairs():            
-            N = self.getElement("node_pairs")
-            fp = self.getFp("extf_"+self.F_NPAIRS, filenames, details, "w")
-            numpy.savetxt(fp, N, fmt="%d")
-            self.closeFp(fp, details)
-    def readNodePairs(self, filenames, details=None):
-        fp = self.getFp("extf_"+self.F_NPAIRS, filenames, details, "r")
-        N = numpy.loadtxt(fp, dtype=int)
-        self.closeFp(fp, details)
-        self.setElement("node_pairs", N)
-        return N
-
-    F_EDGES = "edges"
-    filing.append({"filenames": {"extf_"+F_EDGES: F_EDGES+".csv"}, "save": "writeEdges", "load": "readEdges", "active": "containsEdges"})
-    def containsEdges(self):        
-        return self.hasElement("edges")
+    F_EDGES = "list_edges"
+    filing.append({"filenames": {"extf_"+F_EDGES: F_EDGES+".csv"},
+                   "save": "writeEdges", "load": "readEdges", "active": "containsEdges"})    
+    def containsEdges(self):
+        return self.hasElement("list_edges")
     def writeEdges(self, filenames, details=None):
-        if self.containsEdges():
-            edges = self.getElement("edges")
+        if self.hasElement("list_edges"):
             fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "w")
-            fields = [('edge', "(%s,%s)"), ('cut_edge', "(%s,%s)"), ('nodes', "(%d,%d)"),
-                       ('n_dist', "%f"), ('n_distTE', "%f"), ('angle', "%f"), ('far', "%d"), ('n_closer', "%d")]
-            fp.write("\t".join([k for k,f in fields])+"\n")
-            for edge in edges:                
-                fp.write("\t".join([f % edge[k] if k in edge else "" for k,f in fields])+"\n")
+            prep_polys.write_edges(fp, self.getElement("list_edges"))
             self.closeFp(fp, details)
     def readEdges(self, filenames, details=None):
         fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "r")
-        edges = []
-        head = None
-        for li, line in enumerate(fp):
-            parts =  line.strip().split("\t")
-            if li == 0:                
-                head = [(p, i) for i,p in enumerate(parts)]
-            else:
-                edge = {}
-                for p,i in head:
-                    if len(parts[i]) > 0:
-                        if p in ["edge", "cut_edge"]:
-                            v = eval(parts[i])
-                        elif p in ["nodes"]:
-                            pp = parts[i].strip("()").split(",")
-                            v = (int(pp[0]), int(pp[1]))
-                        elif p in ["far", "n_closer"]:
-                            v = int(parts[i])
-                        else:
-                            v = float(parts[i])
-                        edge[p] = v
-                edges.append(edge)                
+        ## id_int = details.get("id_int", False)
+        map_edges, list_edges, polys, polys_cut = prep_polys.read_edges_and_co(fp)
         self.closeFp(fp, details)
-        self.setElement("edges", edges)
-        return edges
+        dets =  {"map_edges": map_edges, "list_edges": list_edges,
+                 "polys": polys, "polys_cut": polys_cut}
+        self.updateElements(dets)
+        return {"list_edges", self.getElement("list_edges")}
