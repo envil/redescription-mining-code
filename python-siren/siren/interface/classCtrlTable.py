@@ -1496,6 +1496,9 @@ class ContentManager:
         self.initData(parent)
         self.initView(frame)
 
+    def neededCopy(self, element):
+        return element
+        
     def initData(self, parent):
         self.data = EditableContent()
     def initView(self, frame):
@@ -1736,7 +1739,6 @@ class ContentManager:
             self.getDataHdl().moveItems(lid, nlid, sel, pos)
         self.getViewHdl().refresh()
 
-
     def getIidsForAction(self, down=True):
         sel = []
         iids = []
@@ -1928,12 +1930,27 @@ class ContentManager:
         if pos > -1:
             return self.getDataHdl().getList(self.getViewLid()).getIidAtPos(pos)
         return None
-    def getSelectedItem(self):
-        iid = self.getSelectedItemIid()
+    def getSelectedIidAndItem(self, iid=None):
+        if iid is None:
+            iid = self.getSelectedItemIid()
         if iid is not None:
-            return self.getDataHdl().getItemForIid(iid)
-        return None
+            return iid, self.getDataHdl().getItemForIid(iid)
+        return None, None
+    def getSelectedItem(self, iid=None):
+        return self.getSelectedIidAndItem(iid)[1]
+    def getSelectedItems(self, lid=None):
+        items_map = []
+        poss = None
+        if lid == -1 or lid is None:
+            lc = self.getViewFL()
+            lid = self.getViewLid()
+            if lc.isItemsL():
+                poss = lc.getSelection()
+        if lid is not None:
+            items_map = self.getItemsMapForLid(lid, poss)
+        return items_map
 
+    
     def substituteItem(self, iid, item, rfrsh=True):
         ### just substitute, if absent from data does nothing
         lids = self.getDataHdl().getListsReferIid(iid)
@@ -1997,27 +2014,21 @@ class ContentManager:
         return self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
 
     def viewData(self, rid=None, viewT=None):
-        if rid is None:
-            rid = self.getSelectedItemIid()
-        red = self.getDataHdl().getItemForIid(rid).copy()
-        if viewT is None:
-            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
-        return self.parent.viewsm.viewData(viewT, red, rid, self.tabId)        
+        rid, red = self.getSelectedIidAndItem(iid=rid)
+        if red is not None:
+            if viewT is None:
+                viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
+            if viewT is not None:
+                pdb.set_trace()
+                return self.parent.viewsm.viewData(viewT, self.neededCopy(red), rid, self.tabId)        
 
     def viewListData(self, lid=None, viewT=None):
-        items_map = []
-        poss = None
-        if lid == -1 or lid is None:
-            lc = self.getViewFL()
-            lid = self.getViewLid()
-            if lc.isItemsL():
-                poss = lc.getSelection()
-        if lid is not None:
-            items_map = self.getItemsMapForLid(lid, poss)
+        items_map = self.getSelectedItems(lid=lid)
         if len(items_map) > 0:
             if viewT is None:
                 viewT = self.parent.viewsm.getDefaultViewT("L", self.parent.tabs[self.tabId]["type"])
-            return self.parent.viewsm.viewData(viewT, items_map, lid, self.tabId)
+            if viewT is not None:
+                return self.parent.viewsm.viewData(viewT, items_map, lid, self.tabId)
 
 class VarsManager(ContentManager):
 
@@ -2052,16 +2063,14 @@ class VarsManager(ContentManager):
     
 class RedsManager(ContentManager):
 
+    def neededCopy(self, element):
+        return element.copy()
+
     def getAllReds(self):
         return self.data.getAllItems()
 
     def initData(self, parent):
         self.data = RedsSet(parent)
-    def getSelectedQueries(self):
-        red = self.getSelectedItem()
-        if red is not None and isinstance(red, Redescription):
-            return red.getQueries()
-        return 
 
     def refreshComp(self, data):
         self.getDataHdl().recomputeAll(data)

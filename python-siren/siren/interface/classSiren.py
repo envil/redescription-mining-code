@@ -114,7 +114,6 @@ class ERCache():
         return sub_etor
     
     def computeDeduplicateER(self, etor=None, spids=None):
-        pdb.set_trace()
         if etor is None:
             if self.etor is None:
                 self.gatherReds(spids)
@@ -781,17 +780,19 @@ class Siren():
 
         countIts = menuViz.GetMenuItemCount()
             
-        queries = None
-        if self.matchTabType("e") or ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ) or ( self.matchTabType("v") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ):
-            if self.matchTabType("r"):
-                typ = "r"
-                queries = self.selectedTab["tab"].getSelectedQueries()
-            elif self.matchTabType("e"):
-                typ = "e"
-            elif self.matchTabType("v"):
-                typ = "v"
+        what = None
+        if self.matchTabType("r"):
+            typ = "r"
+        elif self.matchTabType("e"):
+            typ = "e"
+        elif self.matchTabType("v"):
+            typ = "v"
 
-            for item in self.viewsm.getViewsItems("R", typ, what=queries):
+        ### MENU VIZ FOR SINGLE ITEMS 
+        if self.matchTabType("e") or \
+          ( self.matchTabType("vr") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() == 1 ):
+            what = self.selectedTab["tab"].getSelectedItem()
+            for item in self.viewsm.getViewsItems("R", typ, what=what):
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                           "Plot %s." % item["title"])
@@ -800,26 +801,19 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
                 self.ids_viewT[ID_NEWV] = item["viewT"]
 
-        if self.matchTabType("r") and self.selectedTab["tab"].hasFocusContainersL()  and self.selectedTab["tab"].nbSelectedLists() > 0:
-            for item in self.viewsm.getViewsItems("L", "r"):
+        ### MENU VIZ FOR MULTIPLE ITEMS 
+        if self.matchTabType("vr") and \
+          (( self.selectedTab["tab"].hasFocusContainersL() and self.selectedTab["tab"].nbSelectedLists() > 0) or \
+           ( self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() > 1 )):
+            what = self.selectedTab["tab"].getSelectedItems()
+            for item in self.viewsm.getViewsItems("L", typ, what=what):
                 ID_NEWV = wx.NewId()
                 m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
                                           "Plot %s." % item["title"])
                 if not item["suitable"]:
                     m_newv.Enable(False)
-                frame.Bind(wx.EVT_MENU, self.OnNewVList, m_newv)
+                frame.Bind(wx.EVT_MENU, self.OnNewVMulti, m_newv)
                 self.ids_viewT[ID_NEWV] = item["viewT"]
-
-        if ( self.matchTabType("r") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() > 1 ):
-            for item in self.viewsm.getViewsItems("L", "r"):
-                ID_NEWV = wx.NewId()
-                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                          "Plot %s." % item["title"])
-                if not item["suitable"]:
-                    m_newv.Enable(False)
-                frame.Bind(wx.EVT_MENU, self.OnNewVItems, m_newv)
-                self.ids_viewT[ID_NEWV] = item["viewT"]
-
                 
         if menuViz.GetMenuItemCount() == countIts:
             self.appendEmptyMenuEntry(menuViz, "No visualization", "There are no visualizations.")
@@ -1496,14 +1490,16 @@ class Siren():
     def OnSaveSelAsVar(self, lids, name):
         self.dw.getData().addSelCol(lids, name)
         self.reloadVars()
-        
-    def OnNewVList(self, event):
-        if self.matchTabType("r"):
-            self.selectedTab["tab"].viewListData(viewT=self.ids_viewT[event.GetId()])
-    def OnNewVItems(self, event):
-        if self.matchTabType("r"):
-            self.selectedTab["tab"].viewListData(lid=-1, viewT=self.ids_viewT[event.GetId()])
 
+    def OnNewVMulti(self, event):
+        if self.matchTabType("vr"):
+            #### LIST
+            if self.selectedTab["tab"].hasFocusContainersL() and self.selectedTab["tab"].nbSelectedLists() > 0:
+                self.selectedTab["tab"].viewListData(viewT=self.ids_viewT[event.GetId()])
+            #### MULTIPLE ITEMS
+            elif self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelectedItems() > 1:
+                self.selectedTab["tab"].viewListData(lid=-1, viewT=self.ids_viewT[event.GetId()])
+                
     def OnNewV(self, event):
         if self.matchTabType("evr"):
             self.selectedTab["tab"].viewData(viewT=self.ids_viewT[event.GetId()])

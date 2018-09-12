@@ -169,7 +169,12 @@ class Redescription(object):
         if side is not None:
             return self.queries[side].usesOr()
         return self.queries[0].usesOr() or self.queries[1].usesOr()
-
+    def isTreeCompatible(self, side=None):
+        if side is not None:
+            return self.queries[side].isTreeCompatible()
+        return self.queries[0].isTreeCompatible() and self.queries[1].isTreeCompatible()
+        
+    
     def supp(self, side):
         return self.supports().supp(side)
 

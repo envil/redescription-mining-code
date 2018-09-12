@@ -362,7 +362,13 @@ class Data(object):
             sums_cols.append(self.cols[side][col].sumCol())
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
-        
+
+    @classmethod
+    def getMatrixCols(tcl, cols, nb_rows=None, bincats=False, nans=None):
+        if nb_rows is None:
+            nb_rows = cols[0].nbRows()
+        return numpy.hstack([col.getVector(bincats, nans).reshape((nb_rows,-1)) for col in cols]).T    
+    
     def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
         compare_cols = None
         if store and self.as_array[0] == (side_cols, types, only_able, bincats):
@@ -406,7 +412,8 @@ class Data(object):
             return self.as_array[1]
 
         if len(details) > 0:
-            mat = numpy.hstack([self.cols[d["side"]][d["col"]].getVector(bincats, nans).reshape((self.nbRows(),-1)) for d in details]).T
+            cols = [self.cols[d["side"]][d["col"]] for d in details]
+            mat = self.getMatrixCols(cols, nb_rows=self.nbRows(), bincats=bincats, nans=nans)
             ## print "MAT", len(details), self.nbRows(), mat.shape            
         if store:
             self.as_array[1] = (mat, details, mcols)

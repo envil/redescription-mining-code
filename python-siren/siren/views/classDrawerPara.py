@@ -294,7 +294,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             suppABCD = self.getPltDtH().getSuppABCD()
             draw_settings = self.getDrawSettings()
             selected = self.getPltDtH().getUnvizRows()
-            self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
+            self.dots_draw = self.prepareDotsDrawSupp(vec, vec_dets, draw_settings)
             
             #### Contribs of literals
             if self.getSettV('literals_contrib'):
@@ -316,14 +316,14 @@ class DrawerRedPara(DrawerEntitiesTD):
             ### SELECTED DATA
             if len(selected) > 0:
                 selp = inter_params.get("slide_opac", 50)/100.
-                self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
-                self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
+                self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] *= selp
+                self.dots_draw["ec_dots"][numpy.array(list(selected)), -1] *= selp
 
             ### PLOTTING
             ### Lines
             for r in self.getElement("reps"):
                 # if numpy.sum(~numpy.isfinite(self.prepared_data["data_m"][:,r])) == 0:
-                if self.dots_draws["ec_dots"][r,-1] > 0 and self.dots_draws["zord_dots"][r] != -1: ## , ec=self.getPlotColor(r, "ec")
+                if self.dots_draw["ec_dots"][r,-1] > 0 and self.dots_draw["zord_dots"][r] != -1: ## , ec=self.getPlotColor(r, "ec")
                     self.drawEntity(r, fc=self.getPlotColor(r, "ec")) #, zo=self.getPlotProp(r, "zord"))
 
             ### Bars slidable/draggable rectangles

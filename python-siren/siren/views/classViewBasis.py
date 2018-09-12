@@ -68,8 +68,7 @@ class ViewBasis(object):
         return self.pltdtH
     def getParent(self):
         return self.parent
-
-    
+        
     #### SEC: VIEW IDENTIFICATION
     ###########################################
 
@@ -88,10 +87,19 @@ class ViewBasis(object):
             else:
                 ext_suit = all([k in ext_keys for k in tcl.ext_keys])
         return ext_suit
-    
+
+    @classmethod
+    def includeView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return (tabT is None or tabT in tcl.typesI)
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and tcl.suitableExts(ext_keys)
+        return (not tcl.geo or geo) and tcl.suitableExts(ext_keys)
+    @classmethod
+    def inclSuit(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        incl = tcl.includeView(geo, ext_keys, what, tabT)
+        suit = tcl.suitableView(geo, ext_keys, what, tabT)
+        return incl, suit and incl 
+
     
     def getItemId(self):
         if self.hasParent():
@@ -428,7 +436,7 @@ class ViewBasis(object):
         return self.getPltDtH().setCurrent(qr)
 
     def isSingleVar(self):
-        return False
+        return self.getPltDtH().isSingleVar()
         
     def refresh(self):
         self.getLayH().autoShowSplitsBoxes()
@@ -600,9 +608,9 @@ class ViewRed(ViewBasis):
     def updateQuery(self, sd=None, query=None):
         return self.getPltDtH().updateQuery(sd, query)
             
-    def isSingleVar(self):
-        return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
-          (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
+    # def isSingleVar(self):
+    #     # return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
+    #     #   (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
 
     def addStamp(self, pref=""):
         self.getDrawer().addStamp(pref)
@@ -627,13 +635,17 @@ class ViewRedMappoly(ViewRed):
     title_str = "Map Polygons"
     ordN = 2
     geo = True
-    typesI = "r"
+    typesI = "vr"
     ext_keys = ["geoplus"]
     
     subcl_layh = LayoutHandlerQueries
     subcl_drawer = DrawerEntitiesMappoly
     subcl_pltdt = PltDtHandlerRedWithCoords
 
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), ["Boolean", "Categorical"])))
+    
     
 class ViewRedPara(ViewRed):
     
@@ -646,6 +658,7 @@ class ViewRedPara(ViewRed):
 
     subcl_drawer = DrawerRedPara
 
+    
 class ViewRedCorrel(ViewRed):
     
     TID = "CC"
@@ -656,6 +669,10 @@ class ViewRedCorrel(ViewRed):
     geo = False
 
     subcl_drawer = DrawerRedCorrel
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), "Boolean")))
+
     
 class ViewRedTree(ViewRed):
 
@@ -671,8 +688,7 @@ class ViewRedTree(ViewRed):
     
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and (not tcl.geo or geo) and \
-               ( what is None or (what[0].isTreeCompatible() and what[1].isTreeCompatible()))
+        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "v" or (tabT=="r" and what.isTreeCompatible()))
 
 
 class ViewRedProj(ViewEntitiesProj, ViewRed):
@@ -687,7 +703,9 @@ class ViewRedProj(ViewEntitiesProj, ViewRed):
     subcl_pltdt = PltDtHandlerRedWithCoords
     subcl_drawer = DrawerEntitiesProj
     
-               
+#####################################
+### LISTS
+#####################################               
 class ViewList(ViewBasis):
     
     TID = "L"
@@ -695,11 +713,11 @@ class ViewList(ViewBasis):
     ordN = 0
     title_str = "List View"
     geo = False
-    typesI = "r"
+    typesI = "vr"
    
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI) and tcl.suitableExts(ext_keys)
+        return ViewBasis.suitableView(geo, ext_keys, what, tabT) and tcl.suitableExts(ext_keys)
 
 
 class ViewClustMap(ViewList):
@@ -708,7 +726,7 @@ class ViewClustMap(ViewList):
     SDESC = "CluMapLViz"
     ordN = 0
     title_str = "Map"
-    typesI = "r"
+    typesI = "vr"
     geo = True
     
     subcl_drawer = DrawerClustMap
@@ -721,7 +739,7 @@ class ViewClustMappoly(ViewList):
     SDESC = "CluMapPolyLViz"
     ordN = 1
     title_str = "Map Polygons"
-    typesI = "r"
+    typesI = "vr"
     geo = True
     ext_keys = ["geoplus"]
         
@@ -736,7 +754,7 @@ class ViewBorders(ViewList):
     SDESC = "BordersMapLViz"
     ordN = 3
     title_str = "Map Borders"
-    typesI = "r"
+    typesI = "vr"
     geo = True
     ext_keys = ["geoplus"]
         
@@ -752,7 +770,7 @@ class ViewClustProj(ViewEntitiesProj, ViewList):
     ordN = 10
     what = "cluster"
     title_str = "Cluster Proj View"
-    typesI = "r"
+    typesI = "vr"
     geo = False
 
     subcl_drawer = DrawerClustProj

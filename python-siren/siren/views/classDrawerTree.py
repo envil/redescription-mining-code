@@ -257,7 +257,7 @@ class DrawerRedTree(DrawerEntitiesTD):
                 vec, vec_dets = self.getVecAndDets(inter_params)
                 draw_settings = self.getDrawSettings()
                 ### for highlights
-                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
+                self.dots_draw = self.prepareDotsDrawSupp(vec, vec_dets, draw_settings)
                 # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
                 # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
                 self.plotTrees(self.trees, rids)

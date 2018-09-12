@@ -100,25 +100,21 @@ class DrawerBasis(object):
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
             corners = (x0, x1, y0, y1, bx, by)
 
-            if self.getPltDtH().isSingleVar():
-                self.dots_draws, mapper = self.prepareSingleVarDots(vec, vec_dets, draw_settings)
-            else:
-                self.dots_draws = self.prepareEntitiesDots(vec, vec_dets, draw_settings)
-                mapper = None
+            self.dots_draw, mapper = self.prepareDotsDraw(vec, vec_dets, draw_settings)
 
-            if len(selected) > 0 and "fc_dots" in self.dots_draws:
+            if len(selected) > 0 and "fc_dots" in self.dots_draw:
                 selp = inter_params.get("slide_opac", 50)/100.
-                self.dots_draws["fc_dots"][numpy.array(list(selected)), -1] *= selp
-                self.dots_draws["ec_dots"][numpy.array(list(selected)), -1] *= selp
+                self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] *= selp
+                self.dots_draw["ec_dots"][numpy.array(list(selected)), -1] *= selp
 
-            if "draw_dots" in self.dots_draws:
-                draw_indices = numpy.where(self.dots_draws["draw_dots"])[0]
+            if "draw_dots" in self.dots_draw:
+                draw_indices = numpy.where(self.dots_draw["draw_dots"])[0]
             else:
                 draw_indices = []
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
-                self.plotDotsSimple(self.getAxe(), self.dots_draws, draw_indices, draw_settings)
+                self.plotDotsSimple(self.getAxe(), self.dots_draw, draw_indices, draw_settings)
             else:
-                self.plotDotsPoly(self.getAxe(), self.dots_draws, draw_indices, draw_settings)
+                self.plotDotsPoly(self.getAxe(), self.dots_draw, draw_indices, draw_settings)
 
             if mapper is not None:
                 corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners, draw_settings)
@@ -130,6 +126,14 @@ class DrawerBasis(object):
         else:
             self.plot_void()      
 
+    def prepareDotsDraw(self, vec, vec_dets, draw_settings):
+        if self.getPltDtH().isSingleVar():
+            dots_draw, mapper = self.prepareDotsDrawOther(vec, vec_dets, draw_settings)
+        else:
+            dots_draw = self.prepareDotsDrawSupp(vec, vec_dets, draw_settings)
+            mapper = None
+        return dots_draw, mapper
+            
     ### IMPLEMENT
     def isEntitiesPlt(self):
         return False
@@ -522,7 +526,7 @@ class DrawerEntitiesTD(DrawerBasis):
     
     def __init__(self, view):
         DrawerBasis.__init__(self, view)
-        self.dots_draws = None
+        self.dots_draw = None
     
     def isEntitiesPlt(self):
         return True
@@ -588,7 +592,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return self.getLidAtSimple(x, y)
     
     def getLidAtPoly(self, x, y):
-        ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
+        ids_drawn = numpy.where(self.dots_draw["draw_dots"])[0]
         d = scipy.spatial.distance.cdist(self.getCoordsXY(ids_drawn).T, [(x,y)])
         cands = [ids_drawn[i[0]] for i in numpy.argsort(d, axis=0)[:5]]
         i = 0
@@ -599,7 +603,7 @@ class DrawerEntitiesTD(DrawerBasis):
             i += 1
     
     def getLidAtSimple(self, x, y):
-        ids_drawn = numpy.where(self.dots_draws["draw_dots"])[0]
+        ids_drawn = numpy.where(self.dots_draw["draw_dots"])[0]
         sz = self.getPlotProp(0, "sz")
         size_dots = self.getLayH().getFigure().get_dpi()*self.getLayH().getFigure().get_size_inches()
         xlims = self.getAxe().get_xlim()
@@ -804,14 +808,14 @@ class DrawerEntitiesTD(DrawerBasis):
     #### SEC: PLOTTING
     ###########################################
     def hasDotsReady(self):
-        return self.dots_draws is not None
+        return self.dots_draw is not None
 
     def getPlotColor(self, idp, prop):
-        return tuple(self.dots_draws[prop+"_dots"][idp])
+        return tuple(self.dots_draw[prop+"_dots"][idp])
     def getPlotProp(self, idp, prop):
-        return self.dots_draws[prop+"_dots"][idp]
+        return self.dots_draw[prop+"_dots"][idp]
     
-    def prepareEntitiesDots(self,  vec, vec_dets, draw_settings):
+    def prepareDotsDrawSupp(self,  vec, vec_dets, draw_settings):
         delta_on = draw_settings.get("delta_on", True)
         u, indices = numpy.unique(vec, return_inverse=True)
 
@@ -843,7 +847,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return {"fc_dots": fc_dots, "ec_dots": ec_dots, "sz_dots": sz_dots, "zord_dots": zord_dots, "draw_dots": draw_dots}
 
     
-    def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
+    def prepareDotsDrawOther(self, vec, vec_dets, draw_settings):
         delta_on = draw_settings.get("delta_on", True)
 
         if SPECIAL_BINS is not None:
@@ -870,12 +874,12 @@ class DrawerEntitiesTD(DrawerBasis):
         fc_dots = numpy.copy(ec_dots)
         # fc_dots[:,-1] = dsetts["color_f"][-1]
                                 
-        dots_draws = {"fc_dots": fc_dots, "ec_dots": ec_dots,
+        dots_draw = {"fc_dots": fc_dots, "ec_dots": ec_dots,
                       "sz_dots": numpy.ones(vec.shape)*draw_settings["default"]["size"],
                       "zord_dots": numpy.ones(vec.shape)*draw_settings["default"]["zord"],
                       "draw_dots": numpy.ones(vec.shape, dtype=bool)}
         mapper.set_array(vec)
-        return dots_draws, mapper
+        return dots_draw, mapper
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
 
@@ -946,20 +950,20 @@ class DrawerEntitiesTD(DrawerBasis):
                             labelleft="off", labelright="on", labelsize=self.view.getFontProps().get("size"))
         return (x0, x1, y0, y1, bx, by)
         
-    def plotDotsSimple(self, axe, dots_draws, draw_indices, draw_settings):
+    def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
         
-        ku, kindices = numpy.unique(dots_draws["zord_dots"][draw_indices], return_inverse=True)
+        ku, kindices = numpy.unique(dots_draw["zord_dots"][draw_indices], return_inverse=True)
         ## pdb.set_trace()
         for vi, vv in enumerate(ku):
             if vv != -1: 
                 axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
                             self.getCoords(1,draw_indices[kindices==vi]),
-                            c=dots_draws["fc_dots"][draw_indices[kindices==vi],:],
-                            edgecolors=dots_draws["ec_dots"][draw_indices[kindices==vi],:],
-                            s=5*dots_draws["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"], #### HERE
+                            c=dots_draw["fc_dots"][draw_indices[kindices==vi],:],
+                            edgecolors=dots_draw["ec_dots"][draw_indices[kindices==vi],:],
+                            s=5*dots_draw["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"], #### HERE
                             zorder=vv)
                 
-    def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
+    def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
         for idp in draw_indices:
             vv = self.getPlotProp(idp, "zord")
             if vv != 1:

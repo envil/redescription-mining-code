@@ -16,6 +16,9 @@ class DrawerClustTD(DrawerEntitiesTD):
     cmap_name = "rainbow"
     def drawPoly(self):
         return False
+
+    def prepareDotsDraw(self, vec, vec_dets, draw_settings):
+        return self.prepareDotsDrawOther(vec, vec_dets, draw_settings)
     
     def getVecAndDets(self, inter_params=None):
         vec_org, vec_dets_org = self.getPltDtH().getVecAndDets(inter_params.get("choice_nbc"))

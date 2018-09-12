@@ -231,13 +231,15 @@ class PltDtHandlerRed(PltDtHandlerBasis):
         return vec, vec_dets
     
     def setCurrent(self, qr=None):
+        red = None
         if qr is not None:
-            if type(qr) in [list, tuple]:
+            if isinstance(qr, Redescription):
+                red = qr                
+                queries = [red.query(0), red.query(1), red.query(-1)]
+            elif type(qr) in [list, tuple]:
                 queries = qr
                 red = Redescription.fromQueriesPair(qr, self.getParentData())
-            else:
-                red = qr
-                queries = [red.query(0), red.query(1), red.query(-1)]
+        if red is not None:
             red.setRestrictedSupp(self.getParentData())
             self.pltdt["queries"] = queries
             # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)

@@ -15,7 +15,10 @@ class DrawerMappoly(DrawerMap):
     def plotSimple(self):
         return False
 
-    def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
+    def prepareDotsDraw(self, vec, vec_dets, draw_settings):
+       return self.prepareDotsDrawOther(vec, vec_dets, draw_settings)
+    
+    def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
         data = self.getParentData()
         geoplus = None
         # pdb.set_trace()
@@ -66,12 +69,8 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
     def plotSimple(self):
         return False
 
-    def prepareEntitiesDots(self,  vec, vec_dets, draw_settings):
-        mapper = self.prepMapper()
-        return [], mapper
-    
-    def prepareSingleVarDots(self, vec, vec_dets, draw_settings):
-        dots_draws = {}
+    def prepareDotsDrawOther(self, vec, vec_dets, draw_settings):
+        dots_draw = {}
         mapper = None
 
         data = self.getParentData()
@@ -80,11 +79,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             geoplus = data.getExtension("geoplus")
             
         if geoplus is not None:
-            # etor  = vec_dets["etor"]
-            mat, dets, mc = data.getMatrix(types=self.getTidForName(["Boolean"]), only_able=True)
-            etor = numpy.array(mat.T, dtype=bool)
-
-            max_id, max_val = etor.shape
+            etor  = vec_dets["etor"]
 
             np_data = geoplus.prepNodePairs()
             edges_coords = numpy.array(geoplus.getEdgesCoordsFlatten())
@@ -97,44 +92,31 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                 # edges = numpy.array([zip(*self.bm(*zip(*edge.get("cut_edge", edge["edge"])))) for edge in pp_data["edges"]])
                 # edges = numpy.array([zip(*self.bm(*zip(*edge["edge"]))) for edge in pp_data["edges"]])
 
-            print "Implementation in progress"
             node_pairs = np_data["node_pairs"]
-            # vec = numpy.concatenate([vec_org, [bv]])
-            # nb_inner_edges = numpy.sum((vec[node_pairs[:,2]] != bv) & (vec[node_pairs[:,1]] == vec[node_pairs[:,2]]))
-            # nb_outer_edges = numpy.sum(vec[node_pairs[:,1]] != vec[node_pairs[:,2]])    
-
-                
-            # node_pairs = numpy.array([edge["nodes"] for edge in pp_data["edges"]], dtype=int)
-            # far_vs = numpy.array([edge["far"] for edge in pp_data["edges"]], dtype=int)
-            # nodes_in = (node_pairs < max_id) & (node_pairs != -1)
             
-            borders_inner = node_pairs[node_pairs[:,-1] != -1, 0]
-            borders_inter = node_pairs[node_pairs[:,-1] == -1, 0]
-            # # borders_outer = numpy.sum(nodes_in, axis=1) == 1
+            outer = node_pairs[node_pairs[:,-1] == -1, :]
+            edges_outer = edges_tensor[outer[:,0], :, :]
+            
+            inner = node_pairs[node_pairs[:,-1] != -1, :]
+            edges_inner = edges_tensor[inner[:,0], :, :]
+            ## nb_diff_spc
+            vals = numpy.sum(numpy.logical_xor(etor[inner[:,1], :], etor[inner[:,2], :]), axis=1)
+            # ## diff_nb_spc
+            vcs = numpy.abs(numpy.sum(etor[inner[:,1], :], axis=1) - numpy.sum(etor[inner[:,2], :], axis=1))
 
-            edges_inner = edges_tensor[borders_inner, :, :]
-            edges_inter = edges_tensor[borders_inter, :, :]
-            # # edges_outer = edges[borders_outer, :, :]
-
-            # nb_diff_spc = numpy.sum(numpy.logical_xor(etor[node_pairs[borders_inner,0], :], etor[node_pairs[borders_inner,1], :]), axis=1)
-            # diff_nb_spc = numpy.abs(numpy.sum(etor[node_pairs[borders_inner,0], :], axis=1) - numpy.sum(etor[node_pairs[borders_inner,1], :], axis=1))
-            # vals = diff_nb_spc # nb_diff_spc - diff_nb_spc
-
-            # mapper = self.prepMapper(vmin=0, vmax=numpy.max(nb_diff_spc), ltid=1)
-            mapper = self.prepMapper(vmin=0, vmax=4, ltid=1)
-            # mapper = self.prepMapper(vmin=0, vmax=numpy.max(vals), ltid=1)
-            # colors = mapper.to_rgba(vals, alpha=draw_settings["default"]["color_e"][-1])
-            dots_draws = {"edges_inter": edges_inter, "edges_inner": edges_inner} #, "vals": vals, "colors": colors}
-            #, "far_vs": far_vs, "sums_in": sums_in, "edges_outer": edges_outer, "edges": edges, "edges_cut": edges_cut}
-        return dots_draws, mapper
+            mapper = self.prepMapper(vmin=0, vmax=numpy.max(vcs), ltid=1)
+            colors = mapper.to_rgba(vcs, alpha=draw_settings["default"]["color_e"][-1])
+            dots_draw = {"edges_inner": edges_inner, "edges_outer": edges_outer,
+                          "vals": vals, "colors": colors}
+        return dots_draw, mapper
     
-    def plotDotsPoly(self, axe, dots_draws, draw_indices, draw_settings):
-        line_segments = LineCollection(dots_draws["edges_inter"], colors="#AAAAAA", linewidths=1.)
+    def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
+        line_segments = LineCollection(dots_draw["edges_outer"], colors="#AAAAAA", linewidths=1.)
         axe.add_collection(line_segments)
 
-        mv = 1. #float(numpy.max(dots_draws["vals"]))
+        mv = float(numpy.max(dots_draw["vals"]))
         if mv > 0:
-            line_segments = LineCollection(dots_draws["edges_inner"], colors="red") #dots_draws["colors"], linewidths=2*dots_draws["vals"]/mv)
+            line_segments = LineCollection(dots_draw["edges_inner"], colors=dots_draw["colors"], linewidths=2*dots_draw["vals"]/mv)
             axe.add_collection(line_segments)
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):

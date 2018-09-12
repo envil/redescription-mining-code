@@ -1,6 +1,9 @@
 import wx, numpy
- 
+
+from ..reremi.classData import Data
 from ..reremi.classSParts import SSetts
+from ..reremi.classRedescription import Redescription
+
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords
 
@@ -45,6 +48,7 @@ def get_cover_far(dists, nb):
 
 class PltDtHandlerList(PltDtHandlerBasis):
 
+    
     parts_map = {"Exx": SSetts.Exx, "Exo": SSetts.Exo, "Eox": SSetts.Eox, "Eoo": SSetts.Eoo}
     SPARTS_DEF = ["Exx"]   
     def getSettSuppParts(self):
@@ -60,23 +64,39 @@ class PltDtHandlerList(PltDtHandlerBasis):
     def getCoords(self):
         pass
 
+    def isSingleVar(self):
+        return self.pltdt.get("single_var", False)
+    
     def getReds(self):
         ### the actual queries, not copies, to test, etc. not for modifications
         return self.pltdt.get("reds")
 
     def setCurrent(self, reds_map):
-        self.pltdt["reds"] = dict(reds_map)
-        self.pltdt["srids"] = [rid for (rid, red) in reds_map]
-        self.pltdt["spids"] = self.getSettSuppParts()
+        if len(reds_map) == 0 or isinstance(reds_map[0][1], Redescription):
+            self.pltdt["single_var"] = False
+            self.pltdt["reds"] = dict(reds_map)
+            self.pltdt["srids"] = [rid for (rid, red) in reds_map]
+            self.pltdt["spids"] = self.getSettSuppParts()
+        else:
+            self.pltdt["single_var"] = True
+            self.pltdt["vars"] = reds_map
 
     def getEtoR(self):
-        if self.pltdt.get("etor") is None and self.pltdt.get("srids") is not None:
-            self.pltdt["etor"] = self.view.parent.getERCache().getEtoR(self.pltdt["srids"], spids=self.pltdt["spids"])
+        if self.pltdt.get("etor") is None:
+            if self.isSingleVar():
+                tmp = Data.getMatrixCols([c[1] for c in self.pltdt["vars"]], bincats=True).T
+                self.pltdt["etor"] = numpy.array(tmp, dtype=bool)
+            elif self.pltdt.get("srids") is not None:
+                self.pltdt["etor"] = self.view.parent.getERCache().getEtoR(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("etor")
     
     def getDeduplicateER(self):
-        if self.pltdt.get("ddER") is None and self.pltdt.get("srids") is not None:
-            self.pltdt["ddER"] = self.view.parent.getERCache().getDeduplicateER(self.pltdt["srids"], spids=self.pltdt["spids"])
+        if self.pltdt.get("ddER") is None:
+            if self.isSingleVar():
+                if self.pltdt.get("etor") is not None:
+                    self.pltdt["ddER"] = self.view.parent.getERCache().computeDeduplicateER(self.pltdt["etor"])
+            elif self.pltdt.get("srids") is not None:
+                self.pltdt["ddER"] = self.view.parent.getERCache().getDeduplicateER(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("ddER")
 
         
@@ -106,13 +126,8 @@ class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
         self.pltdt["vec_dets"] = vec_dets
         return vec, vec_dets
     
-    def isSingleVar(self):
-        return True
-
     def setCurrent(self, reds_map):
         PltDtHandlerList.setCurrent(self, reds_map)
-        self.reds = dict(reds_map)
-        self.srids = [rid for (rid, red) in reds_map]
         self.getEtoR()
         self.setPreps()
         self.getDrawer().update()
@@ -173,14 +188,13 @@ class PltDtHandlerListClust(PltDtHandlerListBlocks):
         etor = self.getEtoR()
         ddER = self.getDeduplicateER()
         clusters = self.getClusters()
-
+        
         if clusters is not None:
-            # v_out = -10
-            # if self.clusters["nbc_max"] > 10 and self.clusters["nbc_max"] < 20:
+            max_dist = 0
             v_out = -1           
-            ######
-            nnb = numpy.min([nbc, len(clusters["uniq_dds"])-1])
-            max_dist = clusters["uniq_dds"][nnb]
+            if len(clusters.get("uniq_dds", [])) > 0:
+                nnb = numpy.min([nbc, len(clusters["uniq_dds"])-1])
+                max_dist = clusters["uniq_dds"][nnb]
             nn = sorted(numpy.where(clusters["dds"]>=max_dist)[0], key=lambda x: clusters["nodesc"][x])
             ## nn = sorted(numpy.where((self.clusters["nodesc"]>0) & (self.clusters["nodesc"]<nb+2))[0], key=lambda x: self.clusters["nodesc"][x])
             orids = sorted(range(len(nn)), key=lambda x: clusters["order"][x])

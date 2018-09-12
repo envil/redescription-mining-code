@@ -112,9 +112,9 @@ class ViewsManager:
         if type(what) == list:
             #### HERE SIMPLIFY LIST ELEMENT ID            
             # pdb.set_trace()
-            iid = -numpy.sum([2**k for (k,v) in what])
-            if iid < -99:
-                iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if k[1] == "L" and k[-1] < 0])-1
+            # iid = -numpy.sum([2**k for (k,v) in what])
+            # if iid < -99:
+            iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if k[1] == "L" and k[-1] < 0])-1
         ikey = (tabId, ViewFactory.getTypV(viewT), iid)
         if ikey in self.itov and viewT in self.itov[ikey]:
             vid = self.itov[ikey][viewT]
