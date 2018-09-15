@@ -52,14 +52,16 @@ class DrawerBasis(object):
 
     
     @classmethod
-    def getCMap(tcl, ltid):
+    def getCMap(tcl, ltid=0, name_over=None):
+        if name_over is not None:
+            return plt.get_cmap(name_over)
         if tcl.cmap_name is not None:
             return plt.get_cmap(tcl.cmap_name)
         return plt.get_cmap(tcl.ltids_map.get(ltid, tcl.cmap_default))
 
     @classmethod
-    def prepMapper(tcl, vmin=0, vmax=1, ltid=0):
-        cmap = tcl.getCMap(ltid)            
+    def prepMapper(tcl, vmin=0, vmax=1, ltid=0, name_over=None):
+        cmap = tcl.getCMap(ltid, name_over)            
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
         return matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     

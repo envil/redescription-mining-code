@@ -176,7 +176,7 @@ class GeoPlusExtension(DataExtension):
     extension_key = "geoplus"
     extras_map = {}
     filing = []
-    params_keys = ["gridh_percentile", "gridw_fact", "after_cut","dst_type"]
+    params_keys = ["gridh_percentile", "gridw_percentile", "after_cut","dst_type"]
     
     def reset(self):
         self.retainElements(self.params_keys)
@@ -186,7 +186,7 @@ class GeoPlusExtension(DataExtension):
         self.setElement("coords_bckg", coords_bckg)
         
     def needRecomputeEdges(self):
-        loc_params = ["gridw_fact", "gridh_percentile", "dst_type"]
+        loc_params = ["gridw_percentile", "gridh_percentile", "dst_type"]
         return not self.hasElement("list_edges") or (self.getElement("after_cut", True) and self.hasChangedParams(loc_params))
         
     # ######################################
@@ -242,12 +242,12 @@ class GeoPlusExtension(DataExtension):
         if details is None:
             details = {}
         self.setParams(details)
-        loc_params = ["gridw_fact", "gridh_percentile", "dst_type"]
+        loc_params = ["gridw_percentile", "gridh_percentile", "dst_type"]
         if force or self.needRecomputeEdges():
             self.checkedParams(["after_cut"]+loc_params)
             PointsMap, PointsIds = self.gatherPoints()
             
-            map_edges, list_edges, polys, polys_cut = prep_polys.prepare_edges(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_fact", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
+            map_edges, list_edges, polys, polys_cut, bbox = prep_polys.prepare_edges_dst(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_percentile", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
             dets =  {"p_ids": PointsIds, "p_map": PointsMap,
                      "map_edges": map_edges, "list_edges": list_edges,
                      "polys": polys, "polys_cut": polys_cut}
@@ -328,8 +328,8 @@ class GeoPlusExtension(DataExtension):
         cohesion = -1
         bv = back_v if back_v is not None else float("Inf")
         node_pairs = self.getElement("node_pairs")
-        vec = numpy.concatenate([vec_org, [bv]])
-        nb_inner_edges = numpy.sum((vec[node_pairs[:,2]] != bv) & (vec[node_pairs[:,1]] == vec[node_pairs[:,2]]))
+        vec = numpy.concatenate([vec_org, [bv, bv]])
+        nb_inner_edges = numpy.sum((node_pairs[:,2] >= 0) & (vec[node_pairs[:,1]] == vec[node_pairs[:,2]]))
         nb_outer_edges = numpy.sum(vec[node_pairs[:,1]] != vec[node_pairs[:,2]])    
         if nb_outer_edges > 0:
             cohesion = nb_inner_edges/float(nb_inner_edges+nb_outer_edges)
@@ -377,4 +377,4 @@ class GeoPlusExtension(DataExtension):
         dets =  {"map_edges": map_edges, "list_edges": list_edges,
                  "polys": polys, "polys_cut": polys_cut}
         self.updateElements(dets)
-        return {"list_edges", self.getElement("list_edges")}
+        return {"list_edges": self.getElement("list_edges")}

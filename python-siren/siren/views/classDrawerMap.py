@@ -325,6 +325,7 @@ class MapBase:
             return
         draws, colors, more = tcl.getBasemapBackSetts(prefs)
         bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
+        
         if draws["rivers"]:
             bm.drawrivers(color=colors["sea_color"], zorder=tcl.background_zorder)
         if draws["coasts"]:
@@ -357,20 +358,20 @@ class MapBase:
         if more.get("map_back") in func_map:
             ### HERE http://matplotlib.org/basemap/users/geography.html
             try:
-                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"], zorder=tcl.background_zorder)
+                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"]) #, zorder=tcl.background_zorder)
                 bd = True
             except IndexError:
                 bd = False
                 print "Impossible to draw the image map background!"
         if not bd:
             if bounds_color != colors["none"] or sea_color != colors["none"]:
-                bm.drawmapboundary(color=bounds_color, fill_color=sea_color, zorder=tcl.background_zorder)
+                bm.drawmapboundary(color=bounds_color, fill_color=sea_color) #, zorder=tcl.background_zorder)
             if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
-                bm.fillcontinents(color=contin_color, lake_color=lake_color)
+                bm.fillcontinents(color=contin_color, lake_color=lake_color) #, zorder=tcl.background_zorder)
             # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
-
+            
 class DrawerMap(DrawerBasis):
-    def_background_zorder = -10
+    def_background_zorder = None
     
     @classmethod
     def setMapBackZ(tcl, z=None):

@@ -2,6 +2,7 @@ import wx
 import numpy
  
 from ..reremi.classSParts import SSetts
+from ..reremi.classData import Data
 
 from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
 
@@ -92,14 +93,16 @@ class ViewBasis(object):
     def includeView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
         return (tabT is None or tabT in tcl.typesI)
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+    def suitableViewBase(tcl, geo=False, ext_keys=None, what=None, tabT=None):
         return (not tcl.geo or geo) and tcl.suitableExts(ext_keys)
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT)
     @classmethod
     def inclSuit(tcl, geo=False, ext_keys=None, what=None, tabT=None):
         incl = tcl.includeView(geo, ext_keys, what, tabT)
         suit = tcl.suitableView(geo, ext_keys, what, tabT)
         return incl, suit and incl 
-
     
     def getItemId(self):
         if self.hasParent():
@@ -644,7 +647,7 @@ class ViewRedMappoly(ViewRed):
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), ["Boolean", "Categorical"])))
+        return (not tcl.geo or geo) and tcl.suitableExts(ext_keys) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), ["Boolean", "Categorical"])))
     
     
 class ViewRedPara(ViewRed):
@@ -671,7 +674,7 @@ class ViewRedCorrel(ViewRed):
     subcl_drawer = DrawerRedCorrel
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), "Boolean")))
+        return (not tcl.geo or geo) and tcl.suitableExts(ext_keys) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), "Boolean")))
 
     
 class ViewRedTree(ViewRed):
@@ -714,12 +717,26 @@ class ViewList(ViewBasis):
     title_str = "List View"
     geo = False
     typesI = "vr"
-   
+                           
+class ViewClustProj(ViewEntitiesProj, ViewList):
+
+
+    TID = "CLP"
+    SDESC = "CluProjLViz"
+    ordN = 10
+    what = "cluster"
+    title_str = "Cluster Proj View"
+    typesI = "vr"
+    geo = False
+
+    subcl_drawer = DrawerClustProj
+    subcl_pltdt = PltDtHandlerListClust
+    subcl_layh = LayoutHandlerBasis
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewBasis.suitableView(geo, ext_keys, what, tabT) and tcl.suitableExts(ext_keys)
+        return (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
 
-
+    
 class ViewClustMap(ViewList):
     
     TID = "CLM"
@@ -733,6 +750,10 @@ class ViewClustMap(ViewList):
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
 
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
+    
 class ViewClustMappoly(ViewList):
     
     TID = "CLMPP"
@@ -746,6 +767,10 @@ class ViewClustMappoly(ViewList):
     subcl_drawer = DrawerClustMappoly
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
+
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
 
 
 class ViewBorders(ViewList):
@@ -761,19 +786,7 @@ class ViewBorders(ViewList):
     subcl_drawer = DrawerBorders
     subcl_pltdt = PltDtHandlerListBlocks
     subcl_layh = LayoutHandlerBasis
-    
-class ViewClustProj(ViewEntitiesProj, ViewList):
 
-
-    TID = "CLP"
-    SDESC = "CluProjLViz"
-    ordN = 10
-    what = "cluster"
-    title_str = "Cluster Proj View"
-    typesI = "vr"
-    geo = False
-
-    subcl_drawer = DrawerClustProj
-    subcl_pltdt = PltDtHandlerListClust
-    subcl_layh = LayoutHandlerBasis
-
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+        return ViewRed.suitableView(geo, ext_keys, what, tabT)

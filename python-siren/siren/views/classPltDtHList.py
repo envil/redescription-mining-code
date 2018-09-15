@@ -84,8 +84,11 @@ class PltDtHandlerList(PltDtHandlerBasis):
     def getEtoR(self):
         if self.pltdt.get("etor") is None:
             if self.isSingleVar():
-                tmp = Data.getMatrixCols([c[1] for c in self.pltdt["vars"]], bincats=True).T
-                self.pltdt["etor"] = numpy.array(tmp, dtype=bool)
+                tmp = Data.getMatrixCols([c[1] for c in self.pltdt["vars"]]).T
+                if all([Data.isTypeId(c[1].typeId(), "Boolean") for c in self.pltdt["vars"]]):
+                    self.pltdt["etor"] = numpy.array(tmp, dtype=bool)
+                else:
+                    self.pltdt["etor"] = tmp
             elif self.pltdt.get("srids") is not None:
                 self.pltdt["etor"] = self.view.parent.getERCache().getEtoR(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("etor")

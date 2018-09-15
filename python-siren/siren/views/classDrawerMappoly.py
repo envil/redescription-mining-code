@@ -10,13 +10,10 @@ import pdb
 SMOOTH = True
 
 class DrawerMappoly(DrawerMap):
-    def_background_zorder = 10
+    def_background_zorder = 20
     
     def plotSimple(self):
         return False
-
-    def prepareDotsDraw(self, vec, vec_dets, draw_settings):
-       return self.prepareDotsDrawOther(vec, vec_dets, draw_settings)
     
     def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
         data = self.getParentData()
@@ -55,9 +52,9 @@ class DrawerMappoly(DrawerMap):
 
 
 class DrawerEntitiesMappoly(DrawerMappoly, DrawerEntitiesTD): pass
-    
-class DrawerClustMappoly(DrawerMappoly, DrawerClustTD): pass
 
+class DrawerClustMappoly(DrawerMappoly, DrawerClustTD): pass
+    
 class DrawerBorders(DrawerMap, DrawerClustTD):
     
     cmap_name = "Oranges"
@@ -94,17 +91,25 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
 
             node_pairs = np_data["node_pairs"]
             
-            outer = node_pairs[node_pairs[:,-1] == -1, :]
+            # outer = node_pairs[node_pairs[:,-1] < 0, :]
+            outer = node_pairs[node_pairs[:,-1] == -2, :]
             edges_outer = edges_tensor[outer[:,0], :, :]
             
-            inner = node_pairs[node_pairs[:,-1] != -1, :]
+            inner = node_pairs[node_pairs[:,-1] >= 0, :]
             edges_inner = edges_tensor[inner[:,0], :, :]
-            ## nb_diff_spc
-            vals = numpy.sum(numpy.logical_xor(etor[inner[:,1], :], etor[inner[:,2], :]), axis=1)
-            # ## diff_nb_spc
-            vcs = numpy.abs(numpy.sum(etor[inner[:,1], :], axis=1) - numpy.sum(etor[inner[:,2], :], axis=1))
-
-            mapper = self.prepMapper(vmin=0, vmax=numpy.max(vcs), ltid=1)
+            if etor.dtype == "bool":
+                ## nb_diff_spc
+                vals = numpy.sum(numpy.logical_xor(etor[inner[:,1], :], etor[inner[:,2], :]), axis=1)
+                # ## diff_nb_spc
+                vcs = numpy.abs(numpy.sum(etor[inner[:,1], :], axis=1) - numpy.sum(etor[inner[:,2], :], axis=1))
+                name_over = None
+            else:
+                rng = numpy.max(etor, axis=0) - numpy.min(etor, axis=0)
+                vals = numpy.sum(etor[inner[:,1], :] != etor[inner[:,2], :], axis=1)
+                vcs = numpy.sum(numpy.abs(etor[inner[:,1], :] - etor[inner[:,2], :]) / rng, axis=1)
+                name_over = "Purples"
+                
+            mapper = self.prepMapper(vmin=0, vmax=numpy.max(vcs), ltid=1, name_over=name_over)
             colors = mapper.to_rgba(vcs, alpha=draw_settings["default"]["color_e"][-1])
             dots_draw = {"edges_inner": edges_inner, "edges_outer": edges_outer,
                           "vals": vals, "colors": colors}

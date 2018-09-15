@@ -2019,7 +2019,6 @@ class ContentManager:
             if viewT is None:
                 viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
             if viewT is not None:
-                pdb.set_trace()
                 return self.parent.viewsm.viewData(viewT, self.neededCopy(red), rid, self.tabId)        
 
     def viewListData(self, lid=None, viewT=None):
