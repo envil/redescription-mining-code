@@ -3,7 +3,7 @@ import numpy
 import codecs, re
 
 from toolRead import BOOL_MAP
-from classQuery import Op, Term, BoolTerm, CatTerm, NumTerm, Literal
+from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal
 import pdb
 
 NA_num  = numpy.nan
@@ -50,7 +50,12 @@ class ColM(object):
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
     NA = NA_bool
     NA_specimen_str = ["na", "nan", "-", "-1"]
-
+    anon_term = AnonTerm
+    
+    @classmethod
+    def getAnonTermClass(tcl):
+        return tcl.anon_term
+    
     @classmethod
     def getAssocTermClass(tcl):
         return tcl.assoc_term
@@ -155,6 +160,9 @@ class ColM(object):
     def getId(self, details=None):
         return self.id
 
+    def getAnonTerm(self):
+        return self.getAnonTermClass()(self.getId(), self.typeId())
+    
     def upSumsRows(self, sums_rows):
         pass
     def sumCol(self):
@@ -209,7 +217,7 @@ class ColM(object):
         return self.missing
     def negSuppTerm(self, term):
         return self.rows() - self.suppTerm(term) - self.miss()
-
+       
     def suppLiteral(self, literal): #TODO:literal has a time constraint added!
         if isinstance(literal, Term): ### It's a term, not a literal
             return self.suppTerm(literal)
@@ -357,16 +365,10 @@ class BoolColM(ColM):
 
     def minGap(self):
         return 1.
-
-    def getTerm(self):
-        return self.getAssocTermClass()(self.id)
-
-    def isBasis(self, term):
-        return False
     
     def getInitTerms(self, minIn=0, minOut=0):
         if len(self.hold) >= minIn and self.N-(len(self.hold)+self.nbMissing()) >= minOut:
-            return [(self.getAssocTermClass()(self.id), len(self.hold))]
+            return [(self.getAssocTermClass()(self.getId()), len(self.hold))]
         else:
             return []
         
@@ -451,6 +453,8 @@ class BoolColM(ColM):
         return self.hold
     
     def suppTerm(self, term):
+        if term.isAnon():
+            return set()
         return set(self.hold)
 
     def lTrue(self):
@@ -470,7 +474,6 @@ associate_term_class(BoolColM, BoolTerm)
 class CatColM(ColM):
     width = 1
     NA =  NA_cat
-    basis_cat = CatTerm.basis_cat
     
     def makeCatLit(self, best_cat, neg, allw_neg=True):
         if type(best_cat) in [list, set]:
@@ -568,22 +571,12 @@ class CatColM(ColM):
 
     def minGap(self):
         return 1
-
-    def getTerm(self):
-        return self.getAssocTermClass()(self.id, self.basis_cat)
-        ## return CatTerm(self.id, self.modeCat())
-
-    def isBasisCat(self, cat):
-        return cat == self.basis_cat
-
-    def isBasis(self, term):
-        return self.isBasisCat(term.getCat())
         
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
         for cat in self.cats():
             if len(self.sCats[cat]) >= minIn and self.N-(len(self.sCats[cat])+self.nbMissing()) >= minOut:
-                terms.append((self.getAssocTermClass()(self.id, cat), len(self.sCats[cat])))
+                terms.append((self.getAssocTermClass()(self.getId(), cat), len(self.sCats[cat])))
         return terms
 
     def __str__(self):
@@ -682,8 +675,6 @@ class CatColM(ColM):
         return len(self.ord_cats)
     
     def suppCat(self, cat):
-        if self.isBasisCat(cat):
-            return self.rows() - self.miss()
         supp = set()
         if type(cat) in [list, set]:
             cc = cat
@@ -694,6 +685,8 @@ class CatColM(ColM):
         return supp
             
     def suppTerm(self, term):
+        if term.isAnon():
+            return set()
         return self.suppCat(term.cat)
 
     def suppInBounds(self, min_in=-1, min_out=-1):
@@ -792,13 +785,6 @@ class NumColM(ColM):
             else:
                 return [tmp.get(i, tmp[-1]) for i in range(self.nbRows())]
     
-    def getTerm(self):
-        return self.getAssocTermClass()(self.id, self.getMin(), self.getMax())
-        ## return NumTerm(self.id, self.sVals[int(len(self.sVals)*0.25)][0], self.sVals[int(len(self.sVals)*0.75)][0])
-
-    def isBasis(self, term):
-        return  ( term.getUpb() == self.getMax() and term.getLowb() == self.getMin() )
-
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
         # if self.lenMode() >= minIn and self.lenNonMode() >= minOut:
@@ -810,10 +796,10 @@ class NumColM(ColM):
             while hi_idx < len(self.sVals) and self.sVals[hi_idx][0] == self.sVals[idx][0]:
                 hi_idx += 1
             if low_idx >= 0 and low_idx+1 >= minIn and ( self.nbRows() - (low_idx+1) ) >= minOut :
-                terms.append((self.getAssocTermClass()(self.id, float("-Inf"), self.sVals[low_idx][0]), low_idx+1))
+                terms.append((self.getAssocTermClass()(self.getId(), float("-Inf"), self.sVals[low_idx][0]), low_idx+1))
             if hi_idx < len(self.sVals) and (len(self.sVals)-hi_idx) >= minIn \
                    and ( self.nbRows() - (len(self.sVals)-hi_idx) ) >= minOut :
-                terms.append((self.getAssocTermClass()(self.id, self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
+                terms.append((self.getAssocTermClass()(self.getId(), self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
         else:            
             max_agg = 2*minIn #max(2*min(minIn, minOut), max(minIn, minOut)/2)
             tt = self.collapseBuckets(max_agg)
@@ -824,7 +810,7 @@ class NumColM(ColM):
                         lowb = float("-Inf")
                     elif i == len(tt[0])-1:
                         upb = float("Inf")
-                    terms.append((self.getAssocTermClass()(self.id, lowb, upb), i))
+                    terms.append((self.getAssocTermClass()(self.getId(), lowb, upb), i))
                     # print "Found term\t", terms[-1][0], terms[-1][1], count 
 
         # if len(terms) == 0:
@@ -1196,6 +1182,8 @@ class NumColM(ColM):
         return (bucketsSupp, bucketsVal, bukMode)
 
     def suppTerm(self, term):
+        if term.isAnon():
+            return set()
         suppIt = set()
         for (val , row) in self.sVals:
             if val > term.upb :

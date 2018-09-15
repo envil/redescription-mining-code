@@ -36,7 +36,7 @@ class DrawerBasis(object):
     info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
     
     NBBINS = 20
-    ltids_map = {1: "binary", 2: "spectral", 3: "viridis"}
+    ltids_map = {1: "PiYG", 2: "spectral", 3: "viridis"}
     cmap_name = None
     cmap_default = "jet"
 
@@ -47,8 +47,8 @@ class DrawerBasis(object):
     def getTidForName(tcl, name):
         return Data.getTidForName(name)
     @classmethod
-    def isTypeId(tcl, tid, name):
-        return Data.isTypeId(tid, name)
+    def isTypeId(tcl, tid, name, default_accept=False):
+        return Data.isTypeId(tid, name, default_accept)
 
     
     @classmethod

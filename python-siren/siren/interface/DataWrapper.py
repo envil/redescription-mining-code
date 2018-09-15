@@ -540,7 +540,7 @@ class DataWrapper(object):
                     continue
                 if isinstance(item, ColM):
                     queries = [Query(), Query()]
-                    queries[item.getSide()].extend(-1, Literal(False, item.getTerm()))
+                    queries[item.getSide()].extend(-1, Literal(False, item.getAnonTerm()))
                     mapV = vm.newRedVHist(queries, viewT, -1)
 
                 elif isinstance(item, Redescription):

@@ -130,3 +130,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                                 "hedges_hist": [y0], "vedges_occ": [y0]}                
         return corners
     
+    def makeAdditionalElements(self, panel=None):
+        self.setElement("buttons", [])
+        self.setElement("inter_elems", {})        
+        return []

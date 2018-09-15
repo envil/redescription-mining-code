@@ -398,6 +398,8 @@ class Neg(object):
         elif style == "U":
             return Neg.symbU[self.boolVal()]
         return Neg.symb[self.boolVal()]
+
+TERM_ID_CLASS = {}
     
 class Term(object):
     
@@ -406,11 +408,19 @@ class Term(object):
     type_letter = '-'
     type_name = '-'
     
-    def __init__(self, ncol):
+    def __init__(self, ncol, vX=None, vY=None):
         self.col = ncol
 
     def valRange(self):
         return [None, None]
+    
+    def isAnon(self):
+        return False
+
+    def getAdjusted(self, bounds):
+        tmp = self.copy()
+        tmp.setRange(bounds)
+        return tmp
 
     def setRange(self, newR):
         pass
@@ -447,12 +457,12 @@ class Term(object):
     
     def __str__(self):
         return (Term.pattVName + ' ') % self.col
+
     
 class BoolTerm(Term):
     type_id = 1
     type_letter = 'B'
     type_name = 'Boolean'
-
 
     def valRange(self):
         return [True, True]
@@ -526,22 +536,15 @@ class CatTermONE(Term): ## LEGACY
     type_id = 2
     type_letter = 'C'
     type_name = 'Categorical'
-
-    basis_cat = "c?"
     
-    def __init__(self, ncol, ncat):
+    def __init__(self, ncol, ncat, vY=None):
         self.col = ncol
         self.cat = ncat
 
     def getCat(self):
         return self.cat
     
-    def isBasisCat(self):
-        return self.cat == self.basis_cat
-    
     def valRange(self):
-        if self.isBasisCat():
-            return ["#LOW#", "#HIGH#"]
         return [self.getCat(), self.getCat()]
 
     def setRange(self, cat):
@@ -644,10 +647,8 @@ class CatTerm(Term):
     type_id = 2
     type_letter = 'C'
     type_name = 'Categorical'
-
-    basis_cat = "c?"
     
-    def __init__(self, ncol, ncat):
+    def __init__(self, ncol, ncat, vY=None):
         self.col = ncol
         if type(ncat) in [list, set]:
             self.cat = ncat
@@ -656,12 +657,8 @@ class CatTerm(Term):
 
     def getCat(self):
         return self.cat
-    def isBasisCat(self):
-        return self.cat == self.basis_cat
 
     def valRange(self):
-        if self.isBasisCat():
-            return ["#LOW#", "#HIGH#"]
         return sorted(self.getCat())
 
     def setRange(self, cat):
@@ -684,13 +681,9 @@ class CatTerm(Term):
             return self.cmpCol(other)
 
     def truthEval(self, variableV):
-        if self.isBasisCat():
-            return False
         return variableV in self.cat
 
     def hashCat(self):
-        if self.isBasisCat():
-            return hash(self.cat)
         return hash(self.getCatsStr())
         
     
@@ -702,8 +695,6 @@ class CatTerm(Term):
         return self.disp()
     
     def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
-        if self.isBasisCat():
-            return self.cat
         strcat = op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
         if len(self.cat) == 1:
             strcat = op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
@@ -976,14 +967,95 @@ class NumTerm(Term):
             return neg+lb+idcol+ub
         except UnicodeDecodeError:
             return neg+lb+"v"+str(self.col)+ub
-               
+
+class AnonTerm(Term):
+
+    pattVName = VARIABLE_MARK+"?%d"
+    type_id = -1
+    type_letter = '?'
+    type_name = '?'
+    
+    types_classes = {}
+    for c in Term.__subclasses__():
+        types_classes[c.type_id] = c
+
+    
+    def __init__(self, ncol, type_id=None, vY=None):
+        self.col = ncol
+        if type_id is not None:
+            self.type_id = type_id
+        else:
+            self.type_id = AnonTerm.type_id
+            
+    def isAnon(self):
+        return True
+    def setTypeId(self, type_id):
+        self.type_id = type_id
+
+    def typeId(self):
+        return self.type_id
+        
+    def copy(self):
+        return AnonTerm(self.col, self.type_id)
+
+    def getAdjusted(self, bounds):
+        tmp = None
+        if self.typeId() in self.types_classes:
+            tmp = self.types_classes[self.typeId()](self.colId(), 0, 1)
+            tmp.setRange(bounds)
+        return tmp
+
+    
+    def __cmp__(self, other):
+        if self.cmpCol(other) == 0:
+            return self.cmpType(other)
+        else:
+            return self.cmpCol(other)
+        
+    def __hash__(self):
+        return self.col*hash("??")
+    
+    def __str__(self):
+        return self.disp()
+
+    def truthEval(self, variableV):
+        return False
+
+    def disp(self, neg=None, names=None, lenIndex=0):
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.disp()
+
+        return ('%s'+AnonTerm.pattVName+' ') % (neg, self.col)
+        
+    def dispTex(self, neg=None, names = None):
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.dispTex()
+        return ('%s$'+AnonTerm.pattVName+' $') % ( neg, self.col)
+
+    def dispU(self, neg=None, names = None):
+        if neg is None:
+            neg = ""
+        if type(neg) == bool:
+            neg = Neg(neg)
+        if type(neg) is Neg:
+            neg = neg.dispU()
+        return (u'%s'+AnonTerm.pattVName+' ') % ( neg, self.col)
+
+        
 class Literal(object):
 
     ### types ordered for parsing
     termTypes = [{'class': NumTerm }, \
                  {'class': CatTerm }, \
-                 {'class': BoolTerm }]
-
+                 {'class': BoolTerm }]                 
     
     def __init__(self, nneg, nterm):
         self.term = nterm ## Already an Term instance
@@ -991,7 +1063,12 @@ class Literal(object):
 
     def copy(self):
         return Literal(self.neg.boolVal(), self.term.copy())
-
+    
+    def isAnon(self):
+        return self.term.isAnon()
+    def getAdjusted(self, bounds):
+        return Literal(self.neg.boolVal(), self.term.getAdjusted(bounds))
+    
     def valRange(self):
         if self.typeId() == 1:
             return [not self.neg.boolVal(), not self.neg.boolVal()]
@@ -1572,7 +1649,35 @@ class Query(object):
             else:
                 return self.getBukElemAt(path, buk[path[i]], i+1)
         return None
-        
+    
+    def setBukElemAtR(self, newE, path, buk=None, i=None): ## starting pos from end of path
+        if i is None:
+            i = len(path)-1
+        if buk is None:
+            buk = self.buk
+        if path[i] < len(buk):
+            if i == 0:
+                tmp = buk[path[i]]
+                buk[path[i]] = newE
+                return tmp
+            else:
+                return self.setBukElemAt(newE, path, buk[path[i]], i-1)
+        return None
+    def setBukElemAt(self, newE, path, buk=None, i=None): ## starting pos from start of path
+        if i is None:
+            i = 0
+        if buk is None:
+            buk = self.buk
+        if type(buk) is list and path[i] < len(buk):
+            if i == len(path)-1:
+                tmp = buk[path[i]]
+                buk[path[i]] = newE
+                return tmp
+            else:
+                return self.setBukElemAt(newE, path, buk[path[i]], i+1)
+        return None
+
+    
     def copy(self):
         c = Query()
         c.op = self.op.copy()
@@ -1873,7 +1978,7 @@ class Query(object):
                 vs = [evl(bb, op.other(), side, data, restrict) for bb in b]
                 return SParts.updateProbaMass(vs, op.isOr()) 
 
-        if data is None:
+        if data is None or self.containsAnon():
             pr = -1
         elif len(self) == 0 :
             pr = 1
@@ -1985,12 +2090,22 @@ class Query(object):
             evl(self.buk, lits, path)
         return lits
 
-    def isBasis(self, side, data):
+    def isBasis(self):
         if len(self) == 1:
             ll = self.listLiterals()
-            return data.literalIsBasis(side, ll[0])
+            return ll[0].isAnon()
         return False
-        
+    def typeId(self):
+        if len(self) == 1:
+            ll = self.listLiterals()
+            return ll[0].typeId()
+        return None
+
+    def containsAnon(self):
+        if len(self) > 0:
+            return any([l.isAnon() for l in self.listLiterals()])
+        return False
+    
     def __str__(self):
         return self.disp()    
 
@@ -2262,6 +2377,9 @@ class QuerySemantics(object):
     def boolean_literal(self, ast):
         return [Literal("neg" in ast, BoolTerm(self.parse_vname(ast.get("variable_name"))))]
 
+    def anonymous_literal(self, ast):
+        return [Literal("neg" in ast, AnonTerm(self.parse_anonvname(ast.get("variable_name"))))]
+    
     def variable_name(self, ast):
         return ast
 
@@ -2274,6 +2392,15 @@ class QuerySemantics(object):
         elif "catlist" in ast:
             return set(ast["catlist"])
         return set()
+
+    def parse_anonvname(self, vname):
+        tmp = re.match(VARIABLE_MARK+"\?(?P<id>\d+)$", vname)
+        if tmp is not None:
+            vv = int(tmp.group("id"))
+            if self.ids_map is not None:
+                return self.ids_map.get(vv, vv)
+            return vv
+        raise Exception("Could not parse anon variable name!")
 
     def parse_vname(self, vname):
         tmp = re.match(VARIABLE_MARK+"(?P<id>\d+)$", vname)
@@ -2299,7 +2426,7 @@ if __name__ == '__main__':
     from classData import Data
     from classQuery import QuerySemantics ## import for Literal instance type test
     import sys
-    rep = "/home/egalbrun/short/vaalikone_FILES/"
+    rep = "/home/egalbrun/short/raja_small/"
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     qsLHS = QuerySemantics(data.getNames(0))
     qsRHS = QuerySemantics(data.getNames(1))

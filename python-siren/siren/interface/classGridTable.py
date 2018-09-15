@@ -545,7 +545,7 @@ class VarTable(GridTable):
         else:
             datVar = self.getItemAtRow(pos)
         queries = [Query(), Query()]
-        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+        queries[datVar.side].extend(-1, Literal(False, datVar.getAnonTerm()))
         self.parent.viewsm.newRedVHist(queries, viewT)
  
     def resetFields(self, dw=None, review=True):

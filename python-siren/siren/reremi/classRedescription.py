@@ -109,6 +109,18 @@ class Redescription(object):
         return r
     fromQueriesPair = staticmethod(fromQueriesPair)
 
+    def isBasis(self):        
+        return (len(self.query(0)) == 0 and self.query(1).isBasis()) or \
+               (len(self.query(1)) == 0 and self.query(0).isBasis())
+    def containsAnon(self, side=None):
+        if side is None:
+            return self.query(0).containsAnon() or self.query(1).containsAnon()
+        else:
+            return self.query(side).containsAnon()
+    def typeId(self):
+        if self.isBasis():
+            return self.query(0).typeId() or self.query(1).typeId()
+        return None
     def dropSupport(self):
         if self.sParts is not None:
             self.dict_supp_info.toDict()

@@ -189,7 +189,9 @@ class Data(object):
             return [tcl.real_types_name_to_id.get(n) for n in name]
         return tcl.real_types_name_to_id.get(name)
     @classmethod
-    def isTypeId(tcl, tid, name):
+    def isTypeId(tcl, tid, name, default_accept=False):
+        if tid is None:
+            return default_accept
         if type(name) is list:
             return tid in tcl.getTidForName(name)
         return tcl.getTidForName(name) == tid
@@ -1010,7 +1012,7 @@ class Data(object):
             colid = literal
         elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(cols_side):
             colid = literal.colId()
-            if literal.typeId() != cols_side[colid].typeId():
+            if not literal.isAnon() and literal.typeId() != cols_side[colid].typeId():
                 raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (side, colid, literal, literal.typeId(), cols_side[colid].typeId()))
                 colid = None
         if colid is not None:
@@ -1029,9 +1031,6 @@ class Data(object):
 
     def literalSuppMiss(self, side, literal):
         return (self.supp(side, literal), self.miss(side,literal))
-
-    def literalIsBasis(self, side, literal):
-        return self.col(side, literal).isBasis(literal.getTerm())
     
     def usableIds(self, min_in=-1, min_out=-1):
         return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \

@@ -2045,7 +2045,7 @@ class VarsManager(ContentManager):
         if datVar is None and rid is not None:
             datVar = self.getDataHdl().getItemForIid(rid)
         queries = [Query(), Query()]
-        queries[datVar.getSide()].extend(-1, Literal(False, datVar.getTerm()))
+        queries[datVar.getSide()].extend(-1, Literal(False, datVar.getAnonTerm()))
         return self.parent.viewsm.newRedVHist(queries, viewT)
 
     def viewData(self, rid=None, viewT=None):
@@ -2055,7 +2055,7 @@ class VarsManager(ContentManager):
         if viewT is None:
             viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
         queries = [Query(), Query()]
-        queries[datVar.side].extend(-1, Literal(False, datVar.getTerm()))
+        queries[datVar.side].extend(-1, Literal(False, datVar.getAnonTerm()))
         return self.parent.viewsm.newRedVHist(queries, viewT)
 
 

@@ -234,10 +234,23 @@ class DrawerRedPara(DrawerEntitiesTD):
         ranges = []
         data = self.getParentData()
         for side in [0,1]:
-            for l, dets in lits[side]:                
-                if self.isTypeId(l.typeId(), "Boolean"):
+            for l, dets in lits[side]:
+                if l.isAnon():
+                    #### ANONYMOUS
+                    if self.isTypeId(l.typeId(), "Boolean"):
+                        ranges.append([data.col(side, l.colId()).numEquiv(r)
+                                       for r in [dets[0][-1], dets[0][-1]]])
+                    elif self.isTypeId(l.typeId(), "Categorical"):
+                        ranges.append([0, 0])
+                    elif self.isTypeId(l.typeId(), "Numerical"):
+                        ranges.append(data.col(side, l.colId()).getRange())
+                    else:
+                        ranges.append([None, None])
+                    # ranges.append([None, None])
+
+                elif self.isTypeId(l.typeId(), "Boolean"):
                     ranges.append([data.col(side, l.colId()).numEquiv(r)
-                                   for r in [dets[0][-1], dets[0][-1]]])
+                                   for r in [dets[0][-1], dets[0][-1]]])                        
                 else:
                     ranges.append([data.col(side, l.colId()).numEquiv(r)
                                    for r in l.valRange()])
@@ -553,7 +566,28 @@ class DrawerRedPara(DrawerEntitiesTD):
             l, dets = self.prepared_data["lits"][side][pos]
             alright = False
             upAll = False
-            if self.isTypeId(l.typeId(), "Numerical"):
+
+            if l.isAnon():
+                bounds = None 
+                if self.isTypeId(l.typeId(), "Numerical"):
+                    ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                    bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
+                else:
+                    cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                    if cat is not None:
+                        bounds = set([cat])
+                if bounds is not None:
+                    upAll = True
+                    for path, comp, neg in dets:
+                        ll = copied.getBukElemAt(path)
+                        newE = ll.getAdjusted(bounds)
+                        if newE is not None:
+                            copied.setBukElemAt(newE, path)
+                        self.prepared_data["lits"][side][pos] = (newE, self.prepared_data["lits"][side][pos][1])
+                alright = True
+
+                
+            elif self.isTypeId(l.typeId(), "Numerical"):
                 ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
                 bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
@@ -567,12 +601,12 @@ class DrawerRedPara(DrawerEntitiesTD):
             elif self.isTypeId(l.typeId(), "Categorical"):
                 cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if cat is not None:
-                    upAll = (l.getCat() != cat)
+                    upAll = (l.getTerm().getCat() != cat)
                     if upAll:
                         for path, comp, neg in dets:
                             ### HERE CAT FIX
                             copied.getBukElemAt(path).getTerm().setRange(set([cat]))
-                    alright = True
+                alright = True
             elif self.isTypeId(l.typeId(), "Boolean"):
                 bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
                 if bl is not None:
@@ -580,7 +614,8 @@ class DrawerRedPara(DrawerEntitiesTD):
                     if upAll:
                         for path, comp, neg in dets:
                             copied.getBukElemAt(path).flip()
-                    alright = True
+                    alright = True                    
+                    
             if alright:
                 self.prepared_data["ranges"][rid] = [self.getParentData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
                 if upAll:

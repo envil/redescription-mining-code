@@ -2,7 +2,8 @@ import wx
 import numpy
  
 from ..reremi.classSParts import SSetts
-from ..reremi.classData import Data
+from ..reremi.classCol import ColM
+from ..reremi.classRedescription import Redescription
 
 from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
 
@@ -213,7 +214,7 @@ class ViewBasis(object):
 
     def enumerateVizItems(self):
         if self.hasParent():
-            return self.getParentViewsm().getViewsItems(vkey=self.getId())
+            return self.getParentViewsm().getViewsItems(vkey=self.getId(), what=self.getWhat())
         return []
     def makeVizMenu(self, frame, menuViz=None):
         """
@@ -438,6 +439,9 @@ class ViewBasis(object):
     def setCurrent(self, qr=None):
         return self.getPltDtH().setCurrent(qr)
 
+    def getWhat(self):
+        return self.getPltDtH().getWhat()
+    
     def isSingleVar(self):
         return self.getPltDtH().isSingleVar()
         
@@ -611,10 +615,6 @@ class ViewRed(ViewBasis):
     def updateQuery(self, sd=None, query=None):
         return self.getPltDtH().updateQuery(sd, query)
             
-    # def isSingleVar(self):
-    #     # return (len(self.data["queries"][0]) == 0 and self.data["queries"][1].isBasis(1, self.getParentData())) or \
-    #     #   (len(self.data["queries"][1]) == 0 and self.data["queries"][0].isBasis(0, self.getParentData()))
-
     def addStamp(self, pref=""):
         self.getDrawer().addStamp(pref)
 
@@ -647,8 +647,12 @@ class ViewRedMappoly(ViewRed):
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (not tcl.geo or geo) and tcl.suitableExts(ext_keys) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), ["Boolean", "Categorical"])))
-    
+        if (not tcl.geo or geo) and tcl.suitableExts(ext_keys):
+            what_tid = None        
+            if isinstance(what, Redescription) or isinstance(what, ColM):
+                what_tid = what.typeId()
+            return DrawerBasis.isTypeId(what_tid, ["Boolean", "Categorical"], default_accept=True)
+        return False
     
 class ViewRedPara(ViewRed):
     
@@ -674,7 +678,12 @@ class ViewRedCorrel(ViewRed):
     subcl_drawer = DrawerRedCorrel
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (not tcl.geo or geo) and tcl.suitableExts(ext_keys) and (tabT == "r" or (tabT=="v" and DrawerBasis.isTypeId(what.typeId(), "Boolean")))
+        if (not tcl.geo or geo) and tcl.suitableExts(ext_keys):
+            what_tid = None        
+            if isinstance(what, Redescription) or isinstance(what, ColM):
+                what_tid = what.typeId()
+            return DrawerBasis.isTypeId(what_tid, "Boolean", default_accept=True)
+        return False
 
     
 class ViewRedTree(ViewRed):
@@ -691,7 +700,7 @@ class ViewRedTree(ViewRed):
     
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "v" or (tabT=="r" and what.isTreeCompatible()))
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and (tabT == "v" or (isinstance(what, Redescription) and what.isTreeCompatible()))
 
 
 class ViewRedProj(ViewEntitiesProj, ViewRed):
@@ -717,7 +726,14 @@ class ViewList(ViewBasis):
     title_str = "List View"
     geo = False
     typesI = "vr"
-                           
+
+    @classmethod
+    def allCompat(tcl, what, names):
+        if what is not None:
+            return all([((isinstance(c[1], Redescription) or isinstance(c[1], ColM)) and DrawerBasis.isTypeId(c[1].typeId(), names, default_accept=True)) for c in what])
+        return False
+
+    
 class ViewClustProj(ViewEntitiesProj, ViewList):
 
 
@@ -734,8 +750,7 @@ class ViewClustProj(ViewEntitiesProj, ViewList):
     subcl_layh = LayoutHandlerBasis
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
-
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
     
 class ViewClustMap(ViewList):
     
@@ -752,7 +767,7 @@ class ViewClustMap(ViewList):
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
     
 class ViewClustMappoly(ViewList):
     
@@ -770,7 +785,7 @@ class ViewClustMappoly(ViewList):
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT) and (tabT == "r" or (tabT=="v" and all([Data.isTypeId(c[1].typeId(), "Boolean") for c in what])))
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
 
 
 class ViewBorders(ViewList):
@@ -789,4 +804,4 @@ class ViewBorders(ViewList):
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return ViewRed.suitableView(geo, ext_keys, what, tabT)
+        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")

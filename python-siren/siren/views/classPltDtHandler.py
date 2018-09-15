@@ -101,6 +101,8 @@ class PltDtHandlerBasis(object):
     
     def setCurrent(self, data):
         pass
+    def getWhat(self):
+        return self.pltdt.get("red")
 
 class PltDtHandlerWithCoords(PltDtHandlerBasis):
 
@@ -191,8 +193,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
         return self.pltdt["suppABCD"]
     
     def isSingleVar(self):
-        return (len(self.getQuery(0)) == 0 and self.getQuery(1).isBasis(1, self.getParentData())) or \
-               (len(self.getQuery(1)) == 0 and self.getQuery(0).isBasis(0, self.getParentData()))
+        return self.getRed().isBasis()
                
     def getQCols(self):
         return [(0,c) for c in self.getQuery(0).invCols()]+[(1,c) for c in self.getQuery(1).invCols()]
@@ -225,6 +226,9 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             if vec_dets["typeId"] == 2:
                 vec_dets["binVals"] = numpy.unique(vec)
                 vec_dets["binLbls"] = [col.getCatForVal(b, NA_str_c) for b in vec_dets["binVals"]]
+            elif vec_dets["typeId"] == 1:
+                vec_dets["binVals"] = numpy.unique(vec)
+                vec_dets["binLbls"] = [str(bool(b)) if b >= 0 else NA_str_c for b in vec_dets["binVals"]]                
             vec_dets["single"] = True
         elif self.pltdt.get("suppABCD") is not None:
             vec = self.pltdt["suppABCD"].copy()
@@ -273,7 +277,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
 
         red = None
         if changed or force:
-            try:
+            try:                
                 red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
             except Exception:
                 ### Query could be parse but not recomputed

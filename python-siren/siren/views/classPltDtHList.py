@@ -71,6 +71,12 @@ class PltDtHandlerList(PltDtHandlerBasis):
         ### the actual queries, not copies, to test, etc. not for modifications
         return self.pltdt.get("reds")
 
+    def getWhat(self):
+        if self.isSingleVar():
+            return self.pltdt["vars"]
+        else:
+            return self.getReds()
+    
     def setCurrent(self, reds_map):
         if len(reds_map) == 0 or isinstance(reds_map[0][1], Redescription):
             self.pltdt["single_var"] = False

@@ -12,7 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '18.137.15.31.04'
+__version__ = '18.258.12.17.51'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -129,6 +129,9 @@ class RedQueryParser(Parser):
                 self._realvalued_literal_()
                 self.ast['realvalued_literal'] = self.last_node
             with self._option():
+                self._anonymous_literal_()
+                self.ast['anonymous_literal'] = self.last_node
+            with self._option():
                 self._boolean_literal_()
                 self.ast['boolean_literal'] = self.last_node
             self._error('no available options')
@@ -179,6 +182,15 @@ class RedQueryParser(Parser):
                     self._categories_()
                     self.ast['categories'] = self.last_node
             self._error('no available options')
+
+    @rule_def
+    def _anonymous_literal_(self):
+        with self._optional():
+            self._neg_()
+            self.ast['neg'] = self.last_node
+        with self._group():
+            self._anonva_name_()
+            self.ast['variable_name'] = self.last_node
 
     @rule_def
     def _realvalued_literal_(self):
@@ -318,6 +330,10 @@ class RedQueryParser(Parser):
                 self._error('expecting one of: v\\d+')
 
     @rule_def
+    def _anonva_name_(self):
+        self._pattern(r'v\?\d+')
+
+    @rule_def
     def _categories_(self):
         with self._group():
             with self._choice():
@@ -362,7 +378,7 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _STRING_(self):
-        self._pattern(r'[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac \d]+([^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
+        self._pattern(r'[^<>=!\[\]\(\)\{\}\?&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac \d]+([^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
 
     @rule_def
     def _op_parenthesis_(self):
@@ -530,6 +546,9 @@ class RedQuerySemantics(object):
     def categorical_literal(self, ast):
         return ast
 
+    def anonymous_literal(self, ast):
+        return ast
+
     def realvalued_literal(self, ast):
         return ast
 
@@ -537,6 +556,9 @@ class RedQuerySemantics(object):
         return ast
 
     def variable_name(self, ast):
+        return ast
+
+    def anonva_name(self, ast):
         return ast
 
     def categories(self, ast):
