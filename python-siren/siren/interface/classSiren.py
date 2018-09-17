@@ -1143,10 +1143,8 @@ class Siren():
         if proj is not None and vid is not None:
             out = self.proj_cache.queryPC(proj, vid)
             if out == 0:
-                # print "Found previous proj"
                 self.readyProj(None, vid, proj)
             elif out < 0:
-                # print "No previous proj"
                 wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
                 if wid is None:
                     self.plant.getWP().addWorker("projector", self, proj,

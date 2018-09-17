@@ -397,7 +397,7 @@ class Data(object):
             if col is None:
                 tcols = [c for c in range(len(self.cols[side]))]
             else:
-                tcols = [col] 
+                tcols = [col]
             tcols = [c for c in tcols if self.cols[side][c].typeId() in types and (not only_able or self.cols[side][c].getEnabled())]
             if len(tcols) > 0:
                 for col in tcols:

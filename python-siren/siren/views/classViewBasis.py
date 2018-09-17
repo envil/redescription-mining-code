@@ -522,6 +522,7 @@ class ViewEntitiesProj(ViewBasis):
             self.drawer.getElement("rep_butt").SetLabel("Wait...")
         if self.getPltDtH().hasQueries():
             self.getProj().addParamsRandrep({"vids": self.getPltDtH().getQCols()})
+
         if blocking:
             try:
                 self.proj.do()

@@ -80,7 +80,7 @@ class PltDtHandlerList(PltDtHandlerBasis):
     def setCurrent(self, reds_map):
         if len(reds_map) == 0 or isinstance(reds_map[0][1], Redescription):
             self.pltdt["single_var"] = False
-            self.pltdt["reds"] = dict(reds_map)
+            self.pltdt["reds"] = reds_map
             self.pltdt["srids"] = [rid for (rid, red) in reds_map]
             self.pltdt["spids"] = self.getSettSuppParts()
         else:

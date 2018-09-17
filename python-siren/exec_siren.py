@@ -151,10 +151,10 @@ class SirenApp(wx.App):
             #             mapV.savefig((fname % (i, what))+fmt, dpi=30, format=fmt)
             #     mapV.OnKil()
 
-            tab ="reds"
-            vw = self.frame.tabs[tab]["tab"].viewData(0, "MAP")
-            
-            # self.frame.tabs[tab]["tab"].viewListData(0, "CLBRD") #"CLM")
+            # tab ="reds"
+            # vw = self.frame.tabs[tab]["tab"].viewData(0, "AXE_entities")
+            tab ="vars"
+            self.frame.tabs[tab]["tab"].viewListData(0, "AXE_entities") #"CLM")
             
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()

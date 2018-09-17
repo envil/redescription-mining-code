@@ -240,10 +240,14 @@ class Proj(object):
         loc_params = {}
         loc_params.update(self.params)
         loc_params.update(params)
+        if self.params.get(Proj.yaxis_lbl, "-1.0") == "-1.0" or self.params.get(Proj.xaxis_lbl, "-1.0") == "-1.0" and not "random_state" in self.params:
+            self.params["random_state"] = random.randint(0, self.rint_max)
         return loc_params
 
     def getParamsHash(self):
         prms = self.getParameters()
+        # if prms.get(self.xaxis_lbl) == "-1.0" or prms.get(self.yaxis_lbl) == "-1.0":            
+        #     return "RND"
         return ";".join(["%s=%s" % (k, prms[k]) for k in sorted(prms.keys())])
 
 
@@ -266,12 +270,10 @@ class AxesProj(Proj):
     whats = ["entities", "cluster"]
     title_str = "Scatter Plot"
     gen_parameters = {Proj.xaxis_lbl: "-1.0", Proj.yaxis_lbl: "-1.0"}
-    fix_parameters = {"types": Data.real_types, "only_able":False}
+    fix_parameters = {"types": Data.real_types_name_to_id.values(), "only_able":False}
     dyn_f = []
 
     def addParamsRandrep(self, more={}):
-        if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
-            self.params["random_state"] = random.randint(0, self.rint_max)
         self.params.update(more)
 
     def comp(self):
