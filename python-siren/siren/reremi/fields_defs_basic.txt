@@ -25,7 +25,12 @@ fieldlist	stats
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 X:acc:	X=[wsplits]{test,learn}{all}[wcond]{cond}
 X:len:I	X=[wsplits]{test,learn}{all}[wcond]{cond}
-X:pval:	X=[wsplits]{test,learn}{all}[wcond]{cond}
+X:pval:	X=[wsplits]{test,learn}{all}[wcond]{cond}	
+fieldlist	statsactive
+X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
+X:acc:	X=[wsplits]{test,learn}{active}[wcond]{cond}
+X:len:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
+X:pval:	X=[wsplits]{test,learn}{active}[wcond]{cond}
 fieldlist	basic
 list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}
@@ -36,7 +41,7 @@ fieldlist	gui
 list	queries
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]
-list	stats
+list	statsactive
 fieldlist	tex
 list	queries
 X:acc:	X=[wsplits]{test,learn}{all}[wcond]{cond}

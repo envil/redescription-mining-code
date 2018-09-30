@@ -82,14 +82,14 @@ class CharbonTCW(CharbonTree):
                     else:
                         raise Warning("Literal cannot be parsed !")
                         cid = features[parent]
-                    if data.cols[side][cid].typeId() == BoolTerm.type_id:
+                    if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
                         lit = Literal(neg, BoolTerm(cid))
-                    elif data.cols[side][cid].typeId() == CatTerm.type_id:
+                    elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
                         lit = Literal(neg, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
-                    elif data.cols[side][cid].typeId() == NumTerm.type_id:
+                    elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
                         # ###################################
                         # if neg:
-                        #     # rng = (float("-inf"), data.cols[side][cid].getRoundThres(threshold[parent], "high"))
+                        #     # rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold[parent], "high"))
                         #     rng = (float("-inf"), threshold[parent])
                         # else:
                         #     # rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
@@ -100,7 +100,7 @@ class CharbonTCW(CharbonTree):
                         lit = Literal(neg, NumTerm(cid, rng[0], rng[1]))
 
                     else:
-                        raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())
+                        raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.col(side, cid).typeId())
                     branch.append(lit)
                 child = parent
             return branch

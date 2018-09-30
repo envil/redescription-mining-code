@@ -6,17 +6,16 @@ import tempfile
 
 import codecs
 
+from classContent import BatchCollection
+
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
 from classData import Data
 from classRedescription import Redescription
-from classBatch import Batch
 from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
-from classQuery import Op
 ## from classMinerFolds import instMiner, StatsMiner
-from classQuery import Query
 
 from classRndFactory import RndFactory
 
@@ -205,7 +204,7 @@ def prepareFilenames(params_l, tmp_dir=None, src_folder=None):
 
     return filenames
 
-def outputResults(filenames, results_batch, data=None, with_headers=True, mode="w", data_recompute=None):
+def outputResults(filenames, results, data=None, with_headers=True, mode="w", data_recompute=None):
     rp = Redescription.getRP()
     modifiers, modifiers_recompute = {}, {}
     if data is not None:
@@ -239,10 +238,8 @@ def outputResults(filenames, results_batch, data=None, with_headers=True, mode="
         filesfp["support"] = open(filenames["support"], mode)
         
     #### TO DEBUG: output all shown in siren, i.e. no filtering
-    ## for pos in range(len(results_batch["batch"])):
     addto = ""
-    for pos in results_batch["results"]:
-        org = results_batch["batch"][pos]
+    for org in results:
         
         if data_recompute is not None:
             red = org.copy()
@@ -290,7 +287,7 @@ def run(args):
         miner.initial_pairs.saveToFile()
         logger.printL(1, 'Stopped...', "log")
 
-    outputResults(filenames, miner.final, data)
+    outputResults(filenames, miner.rcollect.getItems("F"), data)
     logger.clockTac(0, None)
 
 ###############################
@@ -337,33 +334,35 @@ def run_filter(args):
     constraints = Constraints(data, params)
     rp = Redescription.getRP()
     reds = []
-    with open("/home/galbrun/current/redescriptions.csv") as fd:
+    with open("/home/egalbrun/short/redescriptions.csv") as fd:
         rp.parseRedList(fd, data, reds)
 
-    rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
-    rr_tests = [[73]] ## [2]
-    for ri, add_redids in enumerate(rr_tests):
+    return BatchCollection(reds).selectedItems(constraints.getActions("redundant"))
 
-        include_redids = [84, 77, 53, 29, 94]
+    # rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
+    # rr_tests = [[73]] ## [2]
+    # for ri, add_redids in enumerate(rr_tests):
 
-        bbatch = Batch([reds[i] for i in include_redids]+[reds[i] for i in add_redids])
-        org_ids = bbatch.selected(constraints.getActions("final"))
+    #     include_redids = [84, 77, 53, 29, 94]
+
+    #     bbatch = Batch([reds[i] for i in include_redids]+[reds[i] for i in add_redids])
+    #     org_ids = bbatch.selected(constraints.getActions("final"))
         
-        batch = Batch([reds[i] for i in include_redids])
-        pids = batch.selected(constraints.getActions("final"))
-        batch.extend([reds[i] for i in add_redids])
-        # tmp_ids = batch.selected(self.constraints.getActions("redundant"))
-        ticc = datetime.datetime.now()
-        new_ids = range(len(include_redids), len(include_redids)+len(add_redids))
-        tmp_ids = batch.selected(constraints.getActions("final"), ids= pids+new_ids, new_ids=new_ids)
-        tacc = datetime.datetime.now()
-        print "Elapsed ", ri, tacc-ticc
-        if tmp_ids != org_ids:
-            print "Not identical"
-        pdb.set_trace()
-        print len(tmp_ids), len(org_ids)
+    #     batch = Batch([reds[i] for i in include_redids])
+    #     pids = batch.selected(constraints.getActions("final"))
+    #     batch.extend([reds[i] for i in add_redids])
+    #     # tmp_ids = batch.selected(self.constraints.getActions("redundant"))
+    #     ticc = datetime.datetime.now()
+    #     new_ids = range(len(include_redids), len(include_redids)+len(add_redids))
+    #     tmp_ids = batch.selected(constraints.getActions("final"), ids= pids+new_ids, new_ids=new_ids)
+    #     tacc = datetime.datetime.now()
+    #     print "Elapsed ", ri, tacc-ticc
+    #     if tmp_ids != org_ids:
+    #         print "Not identical"
+    #     pdb.set_trace()
+    #     print len(tmp_ids), len(org_ids)
         
-    return [batch[i] for i in tmp_ids]
+    # return [batch[i] for i in tmp_ids]
 
     ## miner = instMiner(data, params, logger)
     ## try:
@@ -394,7 +393,7 @@ def run_splits(args, splt=""):
         fold_cols = [None]
     else:
         for fci in fold_cols:
-            data.cols[fci[0]][fci[1]].setDisabled()
+            data.col(fci[0], fci[1]).setDisabled()
 
     for fci in fold_cols:
         if fci is None:
@@ -408,7 +407,7 @@ def run_splits(args, splt=""):
             logger.printL(2, "Using existing fold: side %s col %s" % fci, "log")
             sss = data.extractFolds(fci[0], fci[1])
             nb_splits = len(sss)
-            suff = data.cols[fci[0]][fci[1]].getName()
+            suff = data.col(fci[0],fci[1]).getName()
         print "SIDS", suff, sorted(data.getFoldsInfo()["split_ids"].items(), key=lambda x: x[1])
         print data
         splt_pckgf = filenames["basis"]+ ("_split-%d:%s.siren" % (nb_splits, suff))
@@ -488,7 +487,7 @@ def run_printout(args):
     if type(reds) is list and len(reds) > 0 and type(reds[0]) is dict and "items" in reds[0]:
         red_contents = []
         for r in reds:
-            red_contents.extend([r["items"][rid] for rid in r["rshowids"]])
+            red_contents.extend(r["items"])
     else:
         red_contents = reds
 
@@ -573,8 +572,8 @@ if __name__ == "__main__":
         run_splits(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":
         run_filter(sys.argv[:-1])
-    elif sys.argv[-1] == "filterRM":
-        run_filterRM(sys.argv[:-1])
+    # elif sys.argv[-1] == "filterRM":
+    #     run_filterRM(sys.argv[:-1])
     else:
         run(sys.argv)
 

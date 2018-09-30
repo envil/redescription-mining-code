@@ -327,11 +327,11 @@ def make_literal(side, node, data, cols_info):
         threshold = node[-2]
         direct = node[-1]
 
-        if data.cols[side][cid].typeId() == BoolTerm.type_id:
-            lit = Literal(direct > 0, BoolTerm(cid))
-        elif data.cols[side][cid].typeId() == CatTerm.type_id:
-            lit = Literal(direct > 0, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
-        elif data.cols[side][cid].typeId() == NumTerm.type_id:
+        if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
+            lit = Literal(neg, BoolTerm(cid))
+        elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
+            lit = Literal(neg, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
+        elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
             # ###################################
             # if direct > 0:
             #     #rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold, "high"))
@@ -345,7 +345,7 @@ def make_literal(side, node, data, cols_info):
             lit = Literal(direct > 0, NumTerm(cid, rng[0], rng[1]))
 
         else:
-            raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.cols[side][cid].typeId())
+            raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.col(side, cid).typeId())
     return lit
 
 
@@ -381,7 +381,7 @@ class CharbonTLayer(CharbonTree):
         else:
             mmap = tcols_r
         if llt.typeId() == 2:
-            off = data.cols[side][llt.colId()].numEquiv(llt.getTerm().getCat())
+            off = data.col(side, llt.colId()).numEquiv(llt.getTerm().getCat())
         else:
             off = 0
         vid = mmap[(side, llt.colId(), off)]

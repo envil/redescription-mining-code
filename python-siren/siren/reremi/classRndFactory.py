@@ -65,7 +65,9 @@ def prepareMatrices(data, dT):
 def prepareCounts(X, data=None, count_vname="COUNTS", side=0):
     counts = numpy.sum(X, axis=0)
     if data is not None and len(data.getColsByName("^%s$" % count_vname)) == 0:
-        data.addColFromVector(counts, prec=0, vname=count_vname, side=side)
+        col = prepareColFromVector(counts, prec=0)
+        col.setSideIdName(side, data.nbCols(side), count_vname)        
+        data.appendCol(col, side)
     return counts
 
 def selectRids(data, select_red, select_union=False):
@@ -97,7 +99,9 @@ def prepareAggData(data, dT, select_red=None, select_union=False, count_vname="C
     Dsub = data.subset(row_ids=sids)
     back = Dsub.replaceSideFromMatrix(Z, prec=store["prec"], vnames=store["vnames"], side=0)    
     counts_sub = store["counts"][sids] if sids is not None else store["counts"]
-    Dsub.addColFromVector(counts_sub, prec=0, vname=count_vname, side=0, enabled=False)
+    col = Dsub.prepareColFromVector(counts_sub, prec=0, enabled=False)
+    col.setSideIdName(0, Dsub.nbCols(0), count_vname)
+    Dsub.appendCol(col, 0)
     return Dsub, sids, back, store
 
 def prepareRndAggData(data, dT, rnd_meth="permute_LHS", select_red=None, select_union=False, count_vname="COUNTS", vname_patt="MEAN_%s", prec_all=-1):
@@ -151,8 +155,9 @@ def prepareRndAggData(data, dT, rnd_meth="permute_LHS", select_red=None, select_
         org = Dsub.replaceSideFromMatrix(Xp, side=0, vtypes={None: 1, X.shape[0]: 3})
         
     back = Dsub.replaceSideFromMatrix(Z, prec=store["prec"], vnames=store["vnames"], side=0)    
-    Dsub.addColFromVector(counts_sub, prec=0, vname=count_vname, side=0, enabled=False)
-    
+    col = Dsub.prepareColFromVector(counts_sub, prec=0, enabled=False)
+    col.setSideIdName(0, Dsub.nbCols(0), count_vname)
+    Dsub.appendCol(col, 0)
     return Dsub, sids, back, store
 
 

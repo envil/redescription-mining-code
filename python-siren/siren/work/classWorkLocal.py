@@ -33,18 +33,20 @@ import pdb
 #     def run(self):
 #        pass
 #        # self.miner.interval_run(self.cust_params)
-#class ProjectorProcess:
+# class ProjectorProcess:
 #     def __init__(self, pid, boss, queue_in, proj=None):
 #         self.id = pid
 #         self.logger = boss.getLogger()
 #         if proj is not None:
 #             self.proj = proj
 #             self.start()
+#     def getId(self):
+#         return self.id
 
 #     def stop(self):
 #         self.proj.stop()
-#         self.logger.printL(1, self.proj, "result", self.id)
-#         self.logger.printL(1, None, "progress", self.id)
+#         self.logger.printL(1, self.proj, "result", self.getId())
+#         self.logger.printL(1, None, "progress", self.getId())
         
 #     def start(self):
 #         self.run()
@@ -53,10 +55,10 @@ import pdb
 #             self.proj.do()
 #         except ValueError as e: #Exception as e:
 #             self.proj.clearCoords()
-#             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
+#             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
 #         finally:
-#             self.logger.printL(1, self.proj, "result", self.id)
-#             self.logger.printL(1, None, "progress", self.id)
+#             self.logger.printL(1, self.proj, "result", self.getId())
+#             self.logger.printL(1, None, "progress", self.getId())
 
 
 ##### WITH MULTIPROCESSING
@@ -98,21 +100,23 @@ class ProjectorProcess(multiprocessing.Process):
         if proj is not None:
             self.proj = proj
             self.start()
+    def getId(self):
+        return self.id
 
     def stop(self):
         self.proj.stop()
-        self.logger.printL(1, self.proj, "result", self.id)
-        self.logger.printL(1, None, "progress", self.id)
+        self.logger.printL(1, self.proj, "result", self.getId())
+        self.logger.printL(1, None, "progress", self.getId())
 
     def run(self):        
         try:
             self.proj.do()
         except ValueError as e: #Exception as e:
             self.proj.clearCoords()
-            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
+            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
         finally:
-            self.logger.printL(1, self.proj, "result", self.id)
-            self.logger.printL(1, None, "progress", self.id)
+            self.logger.printL(1, self.proj, "result", self.getId())
+            self.logger.printL(1, None, "progress", self.getId())
 
 ############################################
 ############################################

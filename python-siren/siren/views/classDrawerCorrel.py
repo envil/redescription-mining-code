@@ -84,7 +84,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                     else:
                         self.parts_out[k] = False
                         
-            for lbl, i in self.getTypeLbls():
+            for lbl, i in self.getNamesTids():
                 ll = "types_%d" % i
                 if ll in elems:
                     if elems[ll].IsChecked():
@@ -252,7 +252,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         ##############################################
         add_boxA = wx.BoxSizer(wx.HORIZONTAL)
         add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
-        for lbl, i in self.getTypeLbls():
+        for lbl, i in self.getNamesTids():
             inter_elems["types_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
             inter_elems["types_%d" % i].SetValue(self.types_in[i])
 

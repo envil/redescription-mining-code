@@ -399,7 +399,6 @@ class Neg(object):
             return Neg.symbU[self.boolVal()]
         return Neg.symb[self.boolVal()]
 
-TERM_ID_CLASS = {}
     
 class Term(object):
     

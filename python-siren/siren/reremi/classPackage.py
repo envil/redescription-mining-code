@@ -12,7 +12,6 @@ from classRedescription import Redescription
 from classData import Data
 from classQuery import Query
 from classPreferencesManager import PreferencesReader, getPM
-import toolRead as toolRead
 
 class Package(object):
     """Class to handle the zip packages that contain data, preferences, results, etc. for redescription mining.
@@ -173,18 +172,14 @@ class Package(object):
             for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):            
                 try:
                     fd = self.package.open(file_red, 'r')
-                    if self.isOldXMLFormat():
-                        rs, rshowids = readRedescriptionsXML(fd, data)
-                    else:
-                        rs = []
-                        rp.parseRedList(fd, data, rs)
-                        rshowids = range(len(rs))
+                    rs = []
+                    rp.parseRedList(fd, data, rs)
                 except Exception:
                     self.raiseMess()
                     raise
                 finally:
                     fd.close()
-                reds.append({"items": rs, "src": ('file', file_red, 1), "rshowids": rshowids})
+                reds.append({"items": rs, "src": ('file', file_red, 1)})
         return reds
 
 ######### WRITING ELEMENTS
@@ -231,7 +226,7 @@ class Package(object):
             for rs in contents["redescriptions"]:            
                 try:
                     writeRedescriptions(rs.get("items", []), os.path.join(tmp_dir, os.path.basename(rs["src"][1])),
-                                        rs.get("rshowids"), names=False, with_disabled=True, toPackage = True)
+                                        names=False, with_disabled=True, toPackage=True)
                 except IOError:
                     shutil.rmtree(tmp_dir)
                     self.filename = old_package_filename
@@ -307,39 +302,10 @@ class Package(object):
         return d, fns
 
 
-######### ADDITIONAL FUNCTIONS
-###############################
-
-def readRedescriptionsXML(filep, data):
-    red = []
-    show_ids = None
-    
-    doc = toolRead.parseXML(filep)
-    if doc is not None:
-        tmpreds = doc.getElementsByTagName("redescriptions")
-        if len(tmpreds) == 1:
-            reds_node = tmpreds[0]
-            for redx in reds_node.getElementsByTagName("redescription"):
-                tmp = Redescription()
-                tmp.fromXML(redx)
-                tmp.recompute(data)
-                reds.append(tmp)
-            tmpsi = reds_node.getElementsByTagName("showing_ids")
-            if len(tmpsi) == 1:
-                show_ids = toolRead.getValues(tmpsi[0], int)
-                if len(show_ids) == 0 or min(show_ids) < 0 or max(show_ids) >= len(reds):
-                    show_ids = None
-    if show_ids is None:
-        show_ids = range(len(reds))
-    return reds, rshowids
-
-
-def writeRedescriptions(reds, filename, rshowids=None, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}):
+def writeRedescriptions(reds, filename, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}):
     if names is False:
         names = [None, None]
-    if rshowids is None:
-        rshowids = range(len(reds))
-    red_list = [reds[i] for i in rshowids if reds[i].getEnabled() or with_disabled]
+    red_list = [red for red in reds if red.isEnabled() or with_disabled]
     if toPackage:
         fields_supp = [-1, ":extra:status"]
     else:

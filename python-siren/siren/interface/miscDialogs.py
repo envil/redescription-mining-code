@@ -171,7 +171,6 @@ class ImportDataCSVDialog(object):
         self.open_dir = os.path.expanduser('~/')
         self.wcd = 'All files|*|CSV files|*.csv'
 
-
     def showDialog(self):
         na = None
         dialect_dict = {}
@@ -189,7 +188,7 @@ class ImportDataCSVDialog(object):
                 pass
                 raise
             else:
-                self.parent.loadAll()
+                self.parent.refresh()
             finally:
                 self.dlg.Destroy()
             return True
@@ -215,9 +214,8 @@ class ImportDataCSVDialog(object):
 
 class ExportFigsDialog(object):
     """Helper class to show the dialog for importing data file csv pairs"""
-    def __init__(self, parent, vm, items, ddir=None):
+    def __init__(self, parent, view_items, items, ddir=None):
         self.parent = parent
-        self.vm = vm
         self.items = items
         self.dlg = wx.Dialog(self.parent.toolFrame, title="Export figures")
 
@@ -230,11 +228,8 @@ class ExportFigsDialog(object):
                                'with_disabled': {"label": "Disabled", "order":3, "opts": [(False, 'Exclude'), (True, 'Include')]},
                                'viewT': {"label": "View type", "order":4, "opts": []}}
 
-        viewTdef = vm.getDefaultViewT(typv="R")
-        for v in vm.getViewsItems(typv="R"):
+        for v in view_items:
             self.format_options["viewT"]["opts"].append((v["viewT"], v["short_title"]))
-            if v["viewT"] == viewTdef:
-                self.format_options["viewT"]["opts"].insert(0, (v["viewT"], v["short_title"]))
         
         so_sizer = wx.FlexGridSizer(rows=2, cols=(2+len(self.format_options)), hgap=1, vgap=1)
 
@@ -302,7 +297,7 @@ class ExportFigsDialog(object):
                 if tmp is not None:
                     format_dict[item] = tmp
             try:
-                self.parent.dw.exportItemsFigs(self.vm, self.exfile, self.items, (width, height), format_dict)
+                self.parent.dw.exportFigs(self.parent, self.exfile, self.items, (width, height), format_dict)
             except:
                 pass
                 raise

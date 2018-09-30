@@ -49,7 +49,7 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
         
         if row in grid.GetSelectedRows():
             back, fore, bstyle = self.BACKGROUND_SELECTED, self.TEXT_SELECTED, self.SBRUSH_SELECTED
-        elif grid.GetTable().getEnabled(row) == 0:
+        elif not grid.GetTable().isEnabled(row):
             back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
         try:
             dc.SetTextForeground( fore )
@@ -91,13 +91,13 @@ class ColorRenderer(CustRenderer):
         if tmp is not None:
             s = 1
             if row in grid.GetSelectedRows(): s=0.5
-            elif grid.GetTable().getEnabled(row) == 0: s= 0.2 
+            elif not grid.GetTable().isEnabled(row): s= 0.2 
             rgb_back, rgb_fore = getRGB(int(tmp.group("h"))/255.0, int(tmp.group("l"))/255.0, s)
             back, fore, bstyle = wx.Colour(*rgb_back), wx.Colour(*rgb_fore), self.SBRUSH
             value = tmp.group("val")
         elif row in grid.GetSelectedRows():
             back, fore, bstyle = self.BACKGROUND_SELECTED, self.TEXT_SELECTED, self.SBRUSH_SELECTED
-        elif grid.GetTable().getEnabled(row) == 0:
+        elif not grid.GetTable().isEnabled(row):
             back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
         try:
             dc.SetTextForeground( fore )
@@ -196,7 +196,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def Show(self):
         self.grid.Show()
-
+                
     ### GRID METHOD
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
@@ -316,7 +316,7 @@ class GridTable(wx.grid.PyGridTableBase):
             self.ResetView()
             self.resetSizes()
             
-    def resetData(self, data=None, srids=None):
+    def resetData(self, data=None, srids=None, fields_data=None):
         if data is not None:
             self.data = data
         else:
@@ -327,55 +327,23 @@ class GridTable(wx.grid.PyGridTableBase):
         else:
             self.sortids = ICList([idi for idi in range(len(self.data))], True)
 
-        self.resetFields()
+        self.resetFields(fields_data, review=False)
         self.updateSort()
         self.ResetView()
         self.resetSizes()
+        self.redraw()
 
-    def resetFields(self, dw=None, review=True):
+    def resetFields(self, fields_data=None, review=True):
         self.sortP = (None, False)
 
-    def getEnabled(self, row):
-        return self.getItemAtRow(row).getEnabled()
-
-    def notify_change(self):
-        if type(self.data) == ICList:
-            self.data.isChanged = True
-
-    def flipEnabled(self, row):
-        self.data[self.sortids[row]].flipEnabled()
-        self.notify_change()
-        self.ResetView()
-
-    def flipAllEnabled(self, dids=None):
-        if dids is None:
-            dids = range(len(self.data))
-        for did in dids:
-            self.data[did].flipEnabled()
-        self.notify_change()
-        self.ResetView()
-
-    def setAllDisabled(self, dids=None):
-        if dids is None:
-            dids = range(len(self.data))
-        for did in dids:
-            self.data[did].setDisabled()
-        self.notify_change()
-        self.ResetView()
-
-    def setAllEnabled(self, dids=None):
-        if dids is None:
-            dids = range(len(self.data))
-        for did in dids:
-            self.data[did].setEnabled()
-        self.notify_change()
-        self.ResetView()
+    def isEnabled(self, row):
+        return self.getItemAtRow(row).isEnabled()
 
     def OnMouse(self,event):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
             if event.Col == 0:
-                self.flipEnabled(event.GetRow())                
+                self.parent.OnActContent("FlipEnabled")
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -405,9 +373,6 @@ class GridTable(wx.grid.PyGridTableBase):
 
         if self.getSelectedRow() is not None and not self.grid.IsVisible(self.getSelectedRow(), 0):
             self.grid.MakeCellVisible(self.getSelectedRow(), 0)
-
-    def deleteDisabled(self):
-        pass
 
     def getSelectedItem(self):
         if self.getSelectedRow() is not None:
@@ -516,48 +481,44 @@ class GridTable(wx.grid.PyGridTableBase):
     def OnViewData(self, event):        
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
-            self.viewData()
-
-class VarTable(GridTable):     
-
-    fields_def = [('','self.data[x].getEnabled', None, GridTable.width_colcheck),
-                  ('id', 'self.data[x].getId', None, GridTable.width_colid),
-                  ('name', 'self.data[x].getName', None, GridTable.width_colnamew),
-                  ('type', 'self.data[x].getType', None, GridTable.width_colinfow)]
-    fields_miss = [('missing', 'self.data[x].getMissInfo', None, GridTable.width_colinfo)]
-    fields_var = {1: [('density', 'self.data[x].getDensity', None, GridTable.width_colinfo)],
-                  2:[('categories', 'self.data[x].getCategories', None, GridTable.width_colinfo)],
-                  3:[('min', 'self.data[x].getMin', None, GridTable.width_colinfo),
-                     ('max', 'self.data[x].getMax', None, GridTable.width_colinfo)]}
-    name_m = 'self.data[x].getName'
-
-    def notify_change(self):
-        self.parent.updateDataInfo()
-        if type(self.data) == ICList:
-            self.data.isChanged = True
-
-    
-    def viewData(self, pos=None, viewT=None):
-        if viewT is None:
-            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
-        if pos is None:
-            datVar = self.getSelectedItem()
+            self.parent.viewOpen()
+            
+    def getSelectedRowId(self):            
+        if self.getSelectedRow() is not None:
+            item = self.getItemAtRow(self.getSelectedRow())
+            if item is not None:
+                return item.getId()
+    def getSelectedCid(self):
+        if self.getSelectedCol() < len(self.cids_list):
+            return self.cids_list[self.getSelectedCol()]
+    def getSelectedIid(self):
+        return self.getSelectedCid()        
+    def getSelectedIids(self):
+        cid  = self.getSelectedCid()
+        if cid is not None:
+            return [cid]
+        return []
+    def getSelectedLids(self):
+        row_id = self.getSelectedRowId()
+        if row_id is not None:
+            return [row_id]
+        return []
+    def hasFocusContainersL(self):
+        return False
+    def hasFocusItemsL(self):
+        return True
+    def nbSelected(self):
+        if self.getSelectedRow() is not None:
+            return 1
         else:
-            datVar = self.getItemAtRow(pos)
-        queries = [Query(), Query()]
-        queries[datVar.side].extend(-1, Literal(False, datVar.getAnonTerm()))
-        self.parent.viewsm.newRedVHist(queries, viewT)
- 
-    def resetFields(self, dw=None, review=True):
-        self.sortP = (None, False)
-        self.fields = []
-        self.fields.extend(self.fields_def)
-        if len([r for r in self.data if r.hasMissing()]) > 0:
-            self.fields.extend(self.fields_miss)
-        for tyid in set([r.typeId() for r in self.data]):
-            self.fields.extend(self.fields_var[tyid])
-
-
+            return 0
+    def refreshItem(self, iid):
+        self.ResetView()
+    def refreshList(self, lid):
+        self.ResetView()
+    def refreshListContent(self, lid, selected_iids=None):
+        self.ResetView()
+        
 class RowTable(GridTable):     
     ## (#NBROWS)
     fields_def = [('','self.data[x].getEnabled'),
@@ -568,37 +529,36 @@ class RowTable(GridTable):
     def __init__(self, parent, tabId, frame, short=None):
         GridTable.__init__(self, parent, tabId, frame, short)
         self.fix_col = 0
-
-    def viewData(self, pos=None, viewT=None):
-        if viewT is None:
-            viewT = self.parent.viewsm.getDefaultViewT("R", self.parent.tabs[self.tabId]["type"])
-        queries = [Query(), Query()]
-        self.parent.viewsm.newRedVHist(queries, viewT)
+        self.cids_list = []
  
-    def resetFields(self, dw=None, review=True):
+    def resetFields(self, fields_data=None, review=True):
         self.sortP = (None, False)
         self.sc = set() # show column (for collapsed/expanded columns)
         self.fix_col = 2
-        if dw is not None:
+        self.cids_list = [None, None]
+        if fields_data is not None:
             self.cols_map = {}
             self.fields = []
             for f in self.fields_def:
-                f = (re.sub("NBROWS", "%d" % dw.getData().nbRows(), f[0]), f[1])
+                f = (re.sub("NBROWS", "%d" % fields_data.nbRows(), f[0]), f[1])
                 self.fields.append(f)
             ## self.fields.extend(self.fields_def)
-            if dw.getData().hasRNames():
+            if fields_data.hasRNames():
                 self.fields.append(('name', 'self.data[x].getRName'))
                 name_m = 'self.data[x].getRName'
                 self.fix_col += 1
+                self.cids_list.append(None)
             for side, sideS in [(0, "LHS"),(1, "RHS")]:
-                nb = max(1,len(dw.getDataCols(side))-1.0)
-                for ci, col in enumerate(dw.getDataCols(side)):
+                nb = max(1,len(fields_data.colsSide(side))-1.0)
+                for ci, col in enumerate(fields_data.colsSide(side)):
                     self.cols_map[(side, col.getId())] = len(self.fields)
                     self.fields.append(("%s:%s" % (sideS, col.getName()), 'self.data[x].getValue', {"side":side, "col": col.getId(), "range": col.getRange(), "NA": col.NA, "r":ci/nb}))
+                    self.cids_list.append((side, col.getId()))
             if len(self.cols_map) <= 20:
                 self.sc = set(self.cols_map.values())
             if review:
-                self.ResetView()
+                self.redraw()
+                # self.ResetView()
 
 
     ### GRID METHOD
@@ -664,24 +624,7 @@ class RowTable(GridTable):
             else:
                 direct = SYM.SYM_ARRBOT
         return name + direct
-
-    def notify_change(self):
-        self.parent.updateDataInfo()
-        self.parent.recomputeAll()
         
-    def resetData(self, data=None, srids=None):
-        if data is not None:
-            self.data = data
-        else:
-            self.data = ICList()
-
-        if srids is not None:
-            self.sortids = srids
-        else:
-            self.sortids = ICList([idi for idi in range(len(self.data))], True)
-        self.sortP = (None, False)
-        self.redraw()
-
     def resetDetails(self, details={}, review=True):
         self.sortP = (None, False)
         self.details = details

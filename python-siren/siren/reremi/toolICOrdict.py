@@ -8,7 +8,7 @@ class ICOrdict(collections.MutableMapping):
     Initialization and use like normal dict, except that doesn't support initialization from keywords
     (as in 'dict(one=1, two=2)'). Has property isChanged, which is initially set to False, unless other
     value is given to __init__() as second argument.
-    The following actions set d.isChanged to True for ICDict d:
+    The following actions set d.isChanged to True for ICOrdict d:
     d[key] = value
     del d[key]
     d.clear()
@@ -17,9 +17,9 @@ class ICOrdict(collections.MutableMapping):
     d.setdefault(key)
     d.update()
 
-    Method d.copy() will return a new ICDict with isChanged property set to that of d.
+    Method d.copy() will return a new ICOrdict with isChanged property set to that of d.
 
-    Method d.fromkeys(seq) will return a new ICDict with isChanged = False.
+    Method d.fromkeys(seq) will return a new ICOrdict with isChanged = False.
     """
 
     def __init__(self, iterable=[], isChanged = False):
@@ -35,7 +35,7 @@ class ICOrdict(collections.MutableMapping):
         
     @property
     def isChanged(self):
-        "The property for tracking if the ICDict has changed. Accepts only Boolean values"
+        "The property for tracking if the ICOrdict has changed. Accepts only Boolean values"
         return self._isChanged
 
     @isChanged.setter
@@ -121,18 +121,18 @@ class ICOrdict(collections.MutableMapping):
         return self.data.__iter__()
 
     def copy(self):
-        new = ICDict(self.data)
+        new = ICOrdict(self.data)
         new.isChanged = self._isChanged
         new._nkey = self._nkey
         return new
 
     def has_key(self, key):
-        print "has_key() has been deprecated, use 'key in ICDict' instead"
+        print "has_key() has been deprecated, use 'key in ICOrdict' instead"
         return key in self.data
 
     @classmethod
     def fromkeys(cls, seq, value=None):
-        new = ICDict()
+        new = ICOrdict()
         new.data = dict.fromkeys(seq, value)
         new.isChanged = False
         return new

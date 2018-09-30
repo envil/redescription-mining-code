@@ -670,7 +670,7 @@ class CharbonGStd(CharbonGreedy):
                     side = org_side
                     ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])
                     
-        ## print "buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.id, len(bucketsL[1]), colR.id, len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1]))
+        ## print "buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.getId(), len(bucketsL[1]), colR.getId(), len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1]))
         if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
             ## print "Trying buckets...", len(bucketsF[0]), len(bucketsE[0])
             totInt = colE.nbRows()

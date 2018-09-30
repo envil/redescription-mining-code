@@ -50,6 +50,7 @@ TEX_CLR = "\\usepackage{color}\n"+ \
 TEX_CMD = "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
               "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
               "\\newcommand{\\iCOND}{\\mathbf{C}} % index for conditional\n"+ \
+              "\\newcommand{\\SubActive}{A} % index for learn subset\n"+ \
               "\\newcommand{\\SubCond}{C} % index for learn subset\n"+ \
               "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
               "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
@@ -224,7 +225,7 @@ class RedProps(object):
     def_file_basic = pref_dir+"/fields_defs_basic.txt"
     default_def_files = [def_file_basic]
     
-    rset_match = "("+ "|".join(["all","learn","test","cond"] + HAND_SIDE.keys()) +")"
+    rset_match = "("+ "|".join(["all","learn","test","cond","active"] + HAND_SIDE.keys()) +")"
     what_match = "\w+"
     which_match = "\w+" 
     match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
@@ -258,7 +259,8 @@ class RedProps(object):
                                 "len": "\\abs", "card": "\\abs",
                                 "ratio": "\\ratio", "perc": "\\perc"},
                        "which": {"I": "\\supp"},
-                       "rset": {"all" : "\\RSetAll", 
+                       "rset": {"all" : "\\RSetAll",
+                                "active" : "\\SubActive",
                                 "cond" : "\\SubCond",
                                 "learn" : "_{\\RSetLearn}", "test" : "_{\\RSetTest}",
                                 "ratioTL" : "_{\\RSetTest/\\RSetLearn}",
@@ -270,7 +272,7 @@ class RedProps(object):
                                 "len": ("|", "|"), "card": ("|", "|"),
                                 "set": "", "supp": "", "extra": ""},
                        "which": {"I": "supp"},
-                       "rset": {"all" : "",
+                       "rset": {"all" : "", "active" : "",
                                 "cond" : "C",
                                 "learn" : SYM.SYM_LEARN, "test" : SYM.SYM_TEST,
                                 "ratioTL" : "T/L",
@@ -940,70 +942,5 @@ class RedProps(object):
         return reds, {"fields": list_fields, "sep": sep, "lines": more}
 
     
-if __name__ == '__main__':
-    # print Redescription.exp_details.keys()
-    from classBatch import Batch
-    from classData import Data
-    from classRedescription import Redescription
-    # from classRedescription import parseRedList
-    import sys
-
-    rep = "/home/egalbrun/TKTL/misc/ecometrics/compare_more/v3/"
-    # rep = "/home/egalbrun/short/raja_small/"
-    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    # filename = rep+"redescriptions.csv"
-    data = Data([rep+"data/IUCN_EU_nbspc3+_focus_agg.csv", rep+"data/IUCN_EU_nbspc3+_focus_iav.csv", {}, ""], "csv")
-    filename = rep+"xps/biotraits-iav_IUCN_EU_focus_nbspc3+_i.01o.3m.1.queries"
-
-    rp = Redescription.getRP()
-    filep = open(filename, mode='r')
-    redsO = Batch([])    
-    rp.parseRedList(filep, data, redsO)
-    filep.close()
-    print redsO
-    
-    exit()
-
-    
-    lfname = "basic"
-    modifiers = {"wsplits": True}
-    tt = rp.getListFields(lfname, modifiers)
-    print rp.getExpDict(tt)
-    exit()
-    
-    filep = open(filename, mode='r')
-    reds = Batch([])
-    rp.parseRedList(filep, data, reds)
-    filep.close()
-    rid = 4
-    # print reds[rid].disp(with_fname=True, style="U", modifiers={"wmissing": True})
-    # print reds[rid].disp(with_fname=True, style="gui")
-    # print reds[rid].disp(with_fname=True, style="T")
-    # print reds[rid].disp(with_fname=True, style="txt")
-    # print reds[rid].disp(with_fname=True, style="tex")
-    # # th = rp.dispHeader("basic", style="txt")
-    # # ff = rp.parseHeader(th)
-    # # print ff
-
-    # # print rp.printTexRedList(reds, names=data.getNames())
-    print rp.printRedList(reds, names=data.getNames(), style="T")
-    
-    # print rp.dispHeader("basic", style="tex")
-    # print rp.disp(reds[1], names=data.getNames(), style="tex", with_fname=True)
-
-    # rid = 2
-    # details = {"names": data.getNames(), "row_names": data.getRNames(), "named": True, "style": "U"}
-    # exps = dict(enumerate(["all:acc:", "all:len:I", ":set:Exo", "test:ratio:Exx", "LHS:query:", "RHS:query:", "LHS:Lnb:", "LHS:len:", "RHS:Tset:", "RHS:depth:", "RHS:containsOR:"]))
-    # # for ei, exp in exps.items():
-    # #     ll = RedProps.getPrimitiveLbl(exp)
-    # #     nn = RedProps.getPrimitiveNameForLbl(ll)
-    # #     print "PRIM", exp, ll, nn
-    
-    # print RedProps.getEVals(reds[rid], exps, fresh=False, details=details)
-
-
-        # print "-----------------"
-        # print RedProps.getPrimitiveLbl(prim, style="txt"), RedProps.getPrimitiveLbl(prim, style="tex"), RedProps.getPrimitiveLbl(prim, style="gui")
-        # print RedProps.getPrimitiveVal(reds[rid], prim), RedProps.getPrimitiveValFormatted(reds[rid], prim, details=details, style="txt")
-
-
+# if __name__ == '__main__':
+#     pass

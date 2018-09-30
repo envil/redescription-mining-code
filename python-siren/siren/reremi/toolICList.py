@@ -59,10 +59,10 @@ class ICList(list):
 
     # "Numeric" operations for concatenation and repetition
     def __add__(self, other):
-        return Redescriptions(list.__add__(self, other), True)
+        return ICList(list.__add__(self, other), True)
 
     def __radd__(self, other):
-        return Redescriptions(list.__radd__(self, other), True)
+        return ICList(list.__radd__(self, other), True)
     
     def __iadd__(self, other):
         list.__iadd__(self, other)
@@ -70,10 +70,10 @@ class ICList(list):
         return self
 
     def __mul__(self, other):
-        return Redescriptions(list.__mul__(self, other), True)
+        return ICList(list.__mul__(self, other), True)
 
     def __rmull__(self, other):
-        return Redescriptions(list.__rmul__(self, other), True)
+        return ICList(list.__rmul__(self, other), True)
 
     def __imul__(self, other):
         list.__imul__(self, other)

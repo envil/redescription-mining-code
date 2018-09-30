@@ -44,7 +44,7 @@ class SplitDialog(PreferencesDialog):
         self.splits_info = self.data_handle.getData().getFoldsInfo()
         self.cands_splits = self.data_handle.getData().findCandsFolds()
         self.source_cands = [self.DEACTIVATED_LBL, self.AUTOMATIC_LBL] + \
-                    [self.data_handle.getData().cols[side][colid].getName() for (side, colid) in self.cands_splits]
+                    [self.data_handle.getData().col(side, colid).getName() for (side, colid) in self.cands_splits]
         self.controls_map["add"] = {}
 
         if ti is not None:
@@ -162,14 +162,12 @@ class SplitDialog(PreferencesDialog):
     def onApply(self, event):
         source_pos = self.controls_map["add"]["source"].GetCurrentSelection()
         if self.source_cands[source_pos] == self.DEACTIVATED_LBL:
-            self.data_handle.getData().dropLT()
+            self.data_handle.assignLT()
         else:
             ids = {}
             for lt in ["learn", "test"]:
                 ids[lt] = [self.stored_splits_ids[bid] for bid, box in self.controls_map["add"][lt].items() if box.IsChecked()]
-            self.data_handle.getData().assignLT(ids["learn"], ids["test"])
-        # pdb.set_trace()
-        self.tool.recomputeAll()
+            self.data_handle.assignLT(ids["learn"], ids["test"])
         self.EndModal(0)
 
 
@@ -235,7 +233,7 @@ class SplitDialog(PreferencesDialog):
                                 self.pref_handle.getPreference("grain"))
         else:
             (side, colid) = self.cands_splits[source_pos-2]
-            self.data_handle.getData().extractFolds(side, colid)
+            self.data_handle.extractFolds(side, colid)
         self.splits_info = self.data_handle.getData().getFoldsInfo()
         self.setSelectedSource()
         
@@ -252,6 +250,5 @@ class SplitDialog(PreferencesDialog):
 
     def onSaveToC(self, event=None):
         if self.data_handle.getData().hasAutoSplits():
-            self.data_handle.getData().addFoldsCol()
+            self.data_handle.addFoldsCol()
             self.controls_map[self.sec_id]["button"]["save_col"].Disable()
-            self.tool.reloadVars()

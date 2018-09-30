@@ -103,7 +103,7 @@ class DrawerBasis(object):
             corners = (x0, x1, y0, y1, bx, by)
 
             self.dots_draw, mapper = self.prepareDotsDraw(vec, vec_dets, draw_settings)
-
+            
             if len(selected) > 0 and "fc_dots" in self.dots_draw:
                 selp = inter_params.get("slide_opac", 50)/100.
                 self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] *= selp
@@ -738,7 +738,7 @@ class DrawerEntitiesTD(DrawerBasis):
     def sendEmphasize(self, lids):
         return self.getParentViewsm().setEmphasizedR(vkey=self.getId(), lids=lids, show_info=self.q_active_info())
 
-    def sendFlipEmphasizedR(self):
+    def sendFlipEmphasizedR(self):        
         return self.getParentViewsm().doFlipEmphasizedR(vkey=self.getId())        
 
     def initHighlighted(self):
@@ -874,7 +874,7 @@ class DrawerEntitiesTD(DrawerBasis):
             ec_dots = mmp[vec]
         
         fc_dots = numpy.copy(ec_dots)
-        # fc_dots[:,-1] = dsetts["color_f"][-1]
+        fc_dots[:,-1] = draw_settings["default"]["color_f"][-1]
                                 
         dots_draw = {"fc_dots": fc_dots, "ec_dots": ec_dots,
                       "sz_dots": numpy.ones(vec.shape)*draw_settings["default"]["size"],
@@ -990,10 +990,15 @@ class DrawerEntitiesTD(DrawerBasis):
     def drawAnnotation(self, xy, ec, tag, xytext=None):
         if xytext is None:
             xytext = self.getAnnXY()
+        bckgc = numpy.around(numpy.max((1-ec[0], 1-ec[1], 1-ec[2])))
+        if len(ec) > 3:
+            whitec = (bckgc, bckgc, bckgc, ec[3])
+        else:
+            whitec = (bckgc, bckgc, bckgc)
         return [self.axe.annotate(tag, xy=xy, zorder=8,
                                 xycoords='data', xytext=xytext, textcoords='offset points',
-                                color=ec, va="center", backgroundcolor="#FFFFFF",
-                                bbox=dict(boxstyle="round", facecolor="#FFFFFF", ec=ec),
-                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc="#FFFFFF", ec=ec,
+                                color=ec, va="center", backgroundcolor=whitec,
+                                bbox=dict(boxstyle="round", facecolor=whitec, ec=ec),
+                                arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc=whitec, ec=ec,
                                                     patchA=None, patchB=self.getElement("ellipse"), relpos=(0.2, 0.5)),**self.view.getFontProps())]
 

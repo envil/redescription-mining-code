@@ -1,12 +1,12 @@
 import re, string, numpy, codecs, copy
+from classContent import Item
+from classCol import  ColM
 from classQuery import  *
 from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
-from classBatch import Batch
 from classRedProps import RedProps
-import toolRead
 import pdb
 
-ACTIVE_RSET_ID = "S0"
+ACTIVE_RSET_ID = "active"
 HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1}
 
 def mapSuppNames(supp, details={}):
@@ -15,7 +15,7 @@ def mapSuppNames(supp, details={}):
     return supp
 
 
-class Redescription(object):
+class Redescription(Item):
     diff_score = Query.diff_length + 1
     
     ### PROPS WHAT
@@ -48,8 +48,15 @@ class Redescription(object):
                 tcl.setupRP()
             return tcl.RP
         return rp
-    
+
+    next_uid = -1
+    @classmethod
+    def generateNextUid(tcl):
+        tcl.next_uid += 1
+        return tcl.next_uid
+
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
+        Item.__init__(self)
         self.resetRestrictedSuppSets()
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
@@ -62,8 +69,9 @@ class Redescription(object):
         self.extras = {"status": 1, "track": []}
         self.cache_evals = {}
         self.condition = None
-        
-    def fromInitialPair(initialPair, data, dt={}):
+
+    @classmethod
+    def fromInitialPair(tcl, initialPair, data, dt={}):
         if initialPair[0] is None and initialPair[1] is None:
             return None
         supps_miss = [set(), set(), set(), set()]
@@ -81,7 +89,7 @@ class Redescription(object):
             supps_miss[side] = suppS
             supps_miss[side+2] = missS
 
-        r = Redescription(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
+        r = tcl(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
         r.setTrack([(-1, -1)])
 
         if dt.get("litC") is not None:
@@ -93,13 +101,13 @@ class Redescription(object):
                 qC = Query(buk=[litC])                
             supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)
-        if data.hasLT():
+        if data.hasLT() or data.hasSelectedRows():
             r.setRestrictedSupp(data)
         return r
-    fromInitialPair = staticmethod(fromInitialPair)
 
-    def fromQueriesPair(queries, data):
-        r = Redescription(queries[0].copy(), queries[1].copy())
+    @classmethod
+    def fromQueriesPair(tcl, queries, data):
+        r = tcl(queries[0].copy(), queries[1].copy())
         r.recompute(data)        
         r.setTrack([tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))])
         if len(queries) > 2 and queries[2] is not None:
@@ -107,8 +115,19 @@ class Redescription(object):
             supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)            
         return r
-    fromQueriesPair = staticmethod(fromQueriesPair)
 
+    @classmethod
+    def fromCol(tcl, col, data):
+        queries = [Query(), Query()]
+        track = []
+        if isinstance(col, ColM):
+            queries[col.getSide()].extend(-1, Literal(False, col.getAnonTerm()))
+            track.append((col.getSide(), col.getId()))
+        r = tcl(queries[0], queries[1])
+        r.recompute(data)        
+        r.setTrack(track)
+        return r
+    
     def isBasis(self):        
         return (len(self.query(0)) == 0 and self.query(1).isBasis()) or \
                (len(self.query(1)) == 0 and self.query(0).isBasis())
@@ -125,7 +144,10 @@ class Redescription(object):
         if self.sParts is not None:
             self.dict_supp_info.toDict()
             self.sParts = None
-
+    def sameRectangles(self, y):
+        return self.supp(0) == y.supp(0) and self.supp(1) != y.supp(1) and \
+          self.invColsSide(0) != y.invColsSide(0) and self.invColsSide(1) != y.invColsSide(1)
+        
     def compare(self, y):
         if self.score() > y.score():
             return Redescription.diff_score
@@ -355,14 +377,23 @@ class Redescription(object):
     def resetRestrictedSuppSets(self):
         self.restricted_sets = {}
 
+    def getRSKeys(self):
+        return self.restricted_sets.keys()
+    def hasActiveRS(self):        
+        return ACTIVE_RSET_ID in self.getRSKeys()
+        
     def setRestrictedSuppSets(self, data, supp_sets=None):
         self.dict_supp_info = None
+        resets_ids = []
         if supp_sets is None:
             if data.hasLT():
                 supp_sets = data.getLT()
             else:
                 supp_sets = {ACTIVE_RSET_ID: data.nonselectedRows()}
         for sid, sset in supp_sets.items():
+            old_rids = None
+            if sid in self.restricted_sets:
+                old_rids = self.restricted_sets[sid]["rids"]
             if len(sset) == 0:
                 self.restricted_sets[sid] = {"sParts": None,
                                              "prs": None,
@@ -379,6 +410,11 @@ class Redescription(object):
                                              "prs": [self.queries[0].proba(0, data, sset),
                                                      self.queries[1].proba(1, data, sset)],
                                              "rids": set(sset)}
+
+            if old_rids is None or old_rids != self.restricted_sets[sid]["rids"]:
+                resets_ids.append(sid)
+        if len(resets_ids) > 0:
+            self.resetCacheEVals(resets_ids=resets_ids)
             
     def getNormalized(self, data=None, side=None):
         if side is not None:
@@ -409,7 +445,7 @@ class Redescription(object):
         else:
             self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR]) #TODO: recompute
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
-        if data.hasLT():
+        if data.hasLT() or data.hasSelectedRows():
             self.setRestrictedSupp(data)
         if self.hasCondition():
             qC = self.getQueryC()
@@ -453,8 +489,11 @@ class Redescription(object):
         return self.extras["status"]
     def setStatus(self, status):
         self.extras["status"] = status
-    def getEnabled(self):
-        return self.getStatus()
+    def getEnabled(self, details=None):
+        return 1*(self.getStatus()>0)
+    def isEnabled(self, details=None):
+        return self.getStatus()>0
+
     def flipEnabled(self):
         self.setStatus(-self.getStatus())
 
@@ -486,8 +525,11 @@ class Redescription(object):
 
     def setTrack(self, track=[]):
         self.extras["track"] = track
-    def appendTrack(self, t):
-        self.extras["track"].append(t)
+    def appendTrack(self, t, p=None):
+        if p is None:
+            self.extras["track"].append(t)
+        else:
+            self.extras["track"].insert(p,t)
     def extendTrack(self, track=[]):
         self.extras["track"].extend(track)
 
@@ -503,10 +545,8 @@ class Redescription(object):
         return ""
 
     def getShortRid(self, details=None):
-        return "R%s" % details.get("id", "?")
+        return "r%s" % details.get("id", "?")
 
-    def getEnabled(self, details=None):
-        return 1*(self.getStatus()>0)
     # def getCohesion(self, details=None):
     #     return self.getDetail("cohesion")
     # def getCohesionNat(self, details=None):
@@ -525,15 +565,15 @@ class Redescription(object):
         else:
             rset_id = details
         if rset_id is not None:
-            if rset_id == "all":
-                return {"sParts": self.supports()}
-            elif rset_id == "cond" and self.hasCondition():
+            if rset_id == "cond" and self.hasCondition():
                 return {"sParts": self.getSupportsC()}
             elif rset_id in self.restricted_sets:
                 return self.restricted_sets[rset_id]
+            elif rset_id == "all" or rset_id == ACTIVE_RSET_ID:
+                return {"sParts": self.supports()}
             return None
-        elif ACTIVE_RSET_ID in self.restricted_sets:
-            return self.restricted_sets[ACTIVE_RSET_ID]
+        # elif ACTIVE_RSET_ID in self.restricted_sets:
+        #     return self.restricted_sets[ACTIVE_RSET_ID]
         else:            
             return {"sParts": self.supports()}
     def getRSetParts(self, details=None):
@@ -622,7 +662,7 @@ class Redescription(object):
                 return q.getProp(what, which, dts)
             return None
 
-        if rset_id is not None and which == self.which_rids: ### ids details for split sets
+        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
             rset_ids = self.getRSetIds(rset_id)
             if rset_ids is None:
                 return None
@@ -639,7 +679,7 @@ class Redescription(object):
             rset_parts = self.getRSetParts(rset_id)
             if rset_parts is None:
                 return None
-            prp = self.getRSetParts(rset_id).getProp(what, which)
+            prp = rset_parts.getProp(what, which)
             if what == "supp" or what == "set":
                 return mapSuppNames(prp, details)            
             return prp
@@ -654,10 +694,15 @@ class Redescription(object):
         if RedProps.XTRKS not in self.cache_evals:            
             self.cache_evals[RedProps.XTRKS] = set()
         self.cache_evals[RedProps.XTRKS].update(ks)
-    def resetCacheEVals(self, only_extras=False):
+    def resetCacheEVals(self, only_extras=False, resets_ids=None):
         if only_extras:
             for k in self.cache_evals.get(RedProps.XTRKS, []):
                 del self.cache_evals[k]
+        elif resets_ids is not None:
+            ks = self.cache_evals.keys()
+            for k in ks:
+                if any([re.match("%s:" % rk, k) for rk in resets_ids]):
+                    del self.cache_evals[k]
         else:
             self.cache_evals = {}
     def setCacheEVals(self, cevs):
@@ -774,7 +819,6 @@ class Redescription(object):
 if __name__ == '__main__':
     # print Redescription.exp_details.keys()
     from classData import Data
-    from classQuery import Query
     import sys
 
     rep = "/home/egalbrun/short/vaalikone_FILES/"
@@ -785,7 +829,7 @@ if __name__ == '__main__':
     # filename = rep+"redescriptions.csv"
     filename = rep+"tid_test.queries"
     filep = open(filename, mode='r')
-    reds = Batch([])
+    reds = []
     rp.parseRedList(filep, data, reds)
     with open("/home/egalbrun/short/tmp_queries.txt", mode='w') as fp:
         # pdb.set_trace()

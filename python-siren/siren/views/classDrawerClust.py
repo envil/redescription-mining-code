@@ -150,7 +150,7 @@ class DrawerClustTD(DrawerEntitiesTD):
 
     def on_click(self, event):
         # print "Event location:", event.xdata, event.ydata
-        if self.clickActive() and self.inCapture(event):
+        if self.clickActive() and self.inCapture(event) and self.hist_click_info is not None:
             if event.xdata > self.hist_click_info['right_edge_occ'] and event.xdata < self.hist_click_info['right_edge_hist'] and \
               event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
                 self.on_click_hist(event)

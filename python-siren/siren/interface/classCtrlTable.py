@@ -1494,7 +1494,7 @@ class ContentManager:
         self.curr_match = None
         self.prev_sels = None
         self.initData(parent)
-        self.initView(frame)
+
 
     def neededCopy(self, element):
         return element
@@ -1538,7 +1538,7 @@ class ContentManager:
     ################## CONTENT MANAGEMENT METHODS
     def addData(self, src=None, data=[], sord=None, focus=True):
         if src is not None and type(src) is dict:
-            nlid = self.getDataHdl().addList(src=src.get("src"), items=src.get("items", []), sord=src.get("rshowids"))
+            nlid = self.getDataHdl().addList(src=src.get("src"), items=src.get("items", []))
         else:
             nlid = self.getDataHdl().addList(src=src, items=data, sord=sord)
         if focus:

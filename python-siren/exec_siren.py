@@ -31,30 +31,23 @@ class SirenApp(wx.App):
         self.SetAppName("Siren")
         self.frame = Siren()
         series = ""
-        reds_infos = []
         import sys, os, platform, re
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
             # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
             # DEBUG
             #print "Loading file", sys.argv[-1]
             pos_fn = 1
-            reloadA = False
             while pos_fn > 0 and pos_fn < len(sys.argv):
                 filename = sys.argv[pos_fn]
                 (p, ext) = os.path.splitext(filename)
                 if ext == '.siren':
                     try:
-                        self.frame.LoadFile(filename)
+                        self.frame.dw.openPackage(filename)
                     except Exception:
                         pass
                     pos_fn += 1
                 elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
-                    try:                        
-                        reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filename)
-                    except Exception:
-                        reds = []
-                    if len(reds) > 0:
-                        reds_infos.append((reds, sortids, filename))
+                    self.frame.dw.loadRedescriptionsFromFile(filename)
                     pos_fn += 1
                 elif ext in [".conf", ".xml"]:
                     self.frame.dw.importPreferencesFromFile(filename)
@@ -62,20 +55,10 @@ class SirenApp(wx.App):
                     params = PreferencesReader(pm).getParametersDict(filename, pv={})
                     src_folder = os.path.dirname(os.path.abspath(filename))
                     filenames = prepareFilenames(params, src_folder=src_folder)
-
                     if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
-                        try:
-                            self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
-                            reloadA = True
-                        except Exception:
-                            pass
+                        self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
                     if filenames["queries"] != "-":
-                        try:
-                            reds, sortids = self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
-                        except Exception:
-                            reds = []
-                        if len(reds) > 0:
-                            reds_infos.append((reds, sortids, filenames["queries"]))
+                        self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
                         
                     pos_fn += 1
                 elif ext == '.csv':
@@ -88,23 +71,13 @@ class SirenApp(wx.App):
                         if ext2 == '.csv':
                             pos_fn += 1
                             RHfile = sys.argv[pos_fn]                            
-                    try:
-                        self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+getDataAddInfo())
-                        reloadA = True
-                    except Exception:
-                        pass
 
+                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+getDataAddInfo())
                     pos_fn += 1
                 else:
                     pos_fn *= -1
                     #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
-
-
-            for reds_info in reds_infos:
-                self.frame.loadReds(reds_info[0], reds_info[1], path=reds_info[2])
-                reloadA = True
-            if reloadA:
-                self.frame.reloadAll()
+        self.frame.refresh()
         
         if len(sys.argv) > 2 and sys.argv[-1] == "debug":
             # self.frame.OnExtensionsDialog(None)
@@ -153,8 +126,9 @@ class SirenApp(wx.App):
 
             # tab ="reds"
             # vw = self.frame.tabs[tab]["tab"].viewData(0, "AXE_entities")
-            tab ="vars"
-            self.frame.tabs[tab]["tab"].viewListData(0, "AXE_entities") #"CLM")
+            iids = self.frame.getData().getIidsList((0,0))
+            what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
+            self.frame.viewOpen(self, what, iid=-1, viewT="CLBRD") #"CLM")
             
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
@@ -205,7 +179,7 @@ class SirenApp(wx.App):
             elif ext == '.csv':
 
                 self.frame.dw.importDataFromCSVFiles([filename, filename]+getDataAddInfo())
-                self.frame.reloadAll()
+                self.frame.refresh()
             else:
                  wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()
 

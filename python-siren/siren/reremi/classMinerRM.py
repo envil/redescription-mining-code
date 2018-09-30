@@ -98,6 +98,9 @@ class Miner(object):
                 for name in names[0]:
                     self.deps.append(set(map(int, re.search("^.* \[\[(?P<deps>[0-9,]*)\]\]$", name).group("deps").split(","))))
 
+    def getId(self):
+        return self.id
+    
     def initCharbon(self):
         if self.constraints.getCstr("algo_family") == "trees" and not self.data.hasMissing():
             return TREE_CLASSES.get(self.constraints.getCstr("tree_mine_algo"), TREE_DEF)(self.constraints)
@@ -155,20 +158,20 @@ class Miner(object):
         self.progress_ss["total"] = self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         
-        self.logger.clockTic(self.id, "part run")        
-        self.logger.printL(1, (100, 0), 'progress', self.id)
-        self.logger.printL(1, "Expanding...", 'status', self.id) ### todo ID
+        self.logger.clockTic(self.getId(), "part run")        
+        self.logger.printL(1, (100, 0), 'progress', self.getId())
+        self.logger.printL(1, "Expanding...", 'status', self.getId()) ### todo ID
 
         self.expandRedescriptions(reds)
 
-        self.logger.clockTac(self.id, "part run", "%s" % self.questionLive())        
+        self.logger.clockTac(self.getId(), "part run", "%s" % self.questionLive())        
         if not self.questionLive():
-            self.logger.printL(1, 'Interrupted...', 'status', self.id)
+            self.logger.printL(1, 'Interrupted...', 'status', self.getId())
         else:
-            self.logger.printL(1, 'Done...', 'status', self.id)
+            self.logger.printL(1, 'Done...', 'status', self.getId())
 
 
-        self.logger.printL(1, None, 'progress', self.id)
+        self.logger.printL(1, None, 'progress', self.getId())
         return self.partial
 
     def init_progress_full(self, explore_list=None):
@@ -183,21 +186,21 @@ class Miner(object):
         self.progress_ss["expansion"] = (self.constraints.getCstr("max_var", side=0)+self.constraints.getCstr("max_var", side=0)-2)*2*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["pairs_gen"] + self.constraints.getCstr("max_red")*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
-        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
 
     def full_run(self, cust_params={}):
         self.final["results"] = []
         self.final["batch"].reset()
         self.count = 0
         
-        self.logger.printL(1, "Starting mining", 'status', self.id) ### todo ID
+        self.logger.printL(1, "Starting mining", 'status', self.getId()) ### todo ID
 
         #### progress initialized after listing pairs
-        self.logger.clockTic(self.id, "pairs")
+        self.logger.clockTic(self.getId(), "pairs")
         self.initializeRedescriptions()
-        self.logger.clockTac(self.id, "pairs")
+        self.logger.clockTac(self.getId(), "pairs")
         
-        self.logger.clockTic(self.id, "full run")
+        self.logger.clockTic(self.getId(), "full run")
         initial_red = self.initial_pairs.get(self.data, self.testIni)
 
         while initial_red is not None and self.questionLive():
@@ -205,10 +208,10 @@ class Miner(object):
 
             ir_dets = self.initial_pairs.getLatestDetails()
             if (initial_red.score() - ir_dets["score"])**2 > 0.0001:           
-                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.id)
+                self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s (expected score=%s)\n--------------\n%s\n--------------" % (self.count, ir_dets["score"], initial_red), "log", self.getId())
             
-            self.logger.clockTic(self.id, "expansion")
-            self.logger.printL(1,"Expansion %d" % self.count, "log", self.id)
+            self.logger.clockTic(self.getId(), "expansion")
+            self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
             self.expandRedescriptions([initial_red])
             
             self.final["batch"].extend([self.partial["batch"][i] for i in self.partial["results"]])
@@ -217,18 +220,18 @@ class Miner(object):
                 treds = [self.final["batch"][pos] for pos in self.final["results"]]
                 self.rm = self.rm.fillCopy(self.data, treds)
 
-            self.logger.clockTac(self.id, "expansion", "%s" % self.questionLive())
-            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
+            self.logger.clockTac(self.getId(), "expansion", "%s" % self.questionLive())
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.getId())
 
             initial_red = self.initial_pairs.get(self.data, self.testIni)
 
-        self.logger.clockTac(self.id, "full run", "%s" % self.questionLive())        
+        self.logger.clockTac(self.getId(), "full run", "%s" % self.questionLive())        
         if not self.questionLive():
-            self.logger.printL(1, 'Interrupted...', 'status', self.id)
+            self.logger.printL(1, 'Interrupted...', 'status', self.getId())
         else:
-            self.logger.printL(1, 'Done...', 'status', self.id)
+            self.logger.printL(1, 'Done...', 'status', self.getId())
 
-        self.logger.printL(1, None, 'progress', self.id)
+        self.logger.printL(1, None, 'progress', self.getId())
         return self.final
 
 
@@ -247,7 +250,7 @@ class Miner(object):
             self.initializeRedescriptionsGreedy(ids)
 
     def initializeRedescriptionsTree(self, ids=None):
-        self.logger.printL(1, 'Searching for initial literals...', 'status', self.id)
+        self.logger.printL(1, 'Searching for initial literals...', 'status', self.getId())
         self.init_progress_full()
         
         if ids is None:
@@ -263,8 +266,8 @@ class Miner(object):
                     else:
                         self.initial_pairs.add(None, l, {"score":0, side: idl, 1-side: -1})
 
-        self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.id)
-        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+        self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.getId())
+        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
 
         
     def initializeRedescriptionsGreedy(self, ids=None):
@@ -273,7 +276,7 @@ class Miner(object):
         ### Loading pairs from file if filename provided
         if not self.initial_pairs.loadFromFile():
 
-            self.logger.printL(1, 'Searching for initial pairs...', 'status', self.id)
+            self.logger.printL(1, 'Searching for initial pairs...', 'status', self.getId())
             explore_list = self.getInitExploreList(ids)
             self.init_progress_full(explore_list)
 
@@ -284,12 +287,12 @@ class Miner(object):
 
                 self.progress_ss["current"] += pload
                 if pairs % 100 == 0:
-                    self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
-                    self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                    self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.getId())
+                    self.logger.printL(3, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
                 if pairs % 10 == 5:
 
-                    self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.id)
-                    self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                    self.logger.printL(7, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.getId())
+                    self.logger.printL(7, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
 
                 seen = []
                 (scores, literalsL, literalsR) = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR))
@@ -306,15 +309,15 @@ class Miner(object):
                             nsc = scores[i]
                     if nsc is not None:
                         seen.append((literalsL[i], literalsR[i]))
-                        self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.id)
+                        self.logger.printL(6, 'Score:%f %s <=> %s' % (nsc, literalsL[i], literalsR[i]), "log", self.getId())
                         if self.double_check:
                             tmp = Redescription.fromInitialPair((literalsL[i], literalsR[i]), self.data)
                             if tmp.getAcc() != scores[i]:
-                                self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.id)
+                                self.logger.printL(1,'OUILLE! Score:%f %s <=> %s\t\t%s' % (scores[i], literalsL[i], literalsR[i], tmp), "log", self.getId())
 
                         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": scores[i], 0: idL, 1: idR})
-            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.id)
-            self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+            self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
 
             ### Saving pairs to file if filename provided
             self.initial_pairs.saveToFile()
@@ -373,11 +376,11 @@ class Miner(object):
                     self.partial["batch"].append(new_red)
 
                 self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
-                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-                self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.id)
+                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
+                self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.getId())
 
-            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
-            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
+            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.getId())
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.getId())
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
@@ -394,8 +397,8 @@ class Miner(object):
                 ii += 1
             if addR:
                 self.partial["results"].append(1)
-        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
-        self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
+        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.getId())
+        self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.getId())
         for red in self.partial["results"]:
             self.logger.printL(2, "--- %s" % self.partial["batch"][red])
 
@@ -429,7 +432,7 @@ class Miner(object):
                                     kid = cand.kid(red, self.data)
                                     if kid.getAcc() != cand.getAcc():
                                         pdb.set_trace()
-                                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s" % (self.count, len(red), redi, red, cand, kid), "log", self.id)
+                                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n\t%s\n\t%s\n\t~> %s" % (self.count, len(red), redi, red, cand, kid), "log", self.getId())
 
                                 if self.rm is not None:
                                     bests.updateDL(tmp, self.rm, self.data)
@@ -443,10 +446,10 @@ class Miner(object):
                                     bests.update(self.charbon.getCandidates(side, self.data.col(side, v), red.supports(), red))
 
                         self.progress_ss["current"] += self.progress_ss["cand_side"][side]
-                        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
+                        self.logger.printL(1, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
                                                         
                     if self.logger.verbosity >= 4:
-                        self.logger.printL(4, bests, "log", self.id)
+                        self.logger.printL(4, bests, "log", self.getId())
 
                     try:
                         ### DL HERE
@@ -461,7 +464,7 @@ class Miner(object):
                                                           self.constraints.getCstr("max_var", side=1)])
 
                     except ExtensionError as details:
-                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.id)
+                        self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.getId())
                         kids = []
 
                     self.partial["batch"].extend(kids)
@@ -470,21 +473,21 @@ class Miner(object):
                     ### parent has been used remove availables
                     red.removeAvailables()
                 self.progress_ss["current"] = tmp_gen + self.progress_ss["generation"]
-                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.id)
-                self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.id)
+                self.logger.printL(2, (self.progress_ss["total"], self.progress_ss["current"]), 'progress', self.getId())
+                self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.getId())
 
-            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.id)
+            self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.getId())
             nextge_keys = self.partial["batch"].selected(self.constraints.getActions("nextge"))
             nextge = [self.partial["batch"][i] for i in nextge_keys]
 
             self.partial["batch"].applyFunctTo(".removeAvailables()", nextge_keys, complement=True)
-            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
+            self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.getId())
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
         self.partial["results"] = self.partial["batch"].selected(self.constraints.getActions("partial"))
-        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.id)
-        self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.id)
+        self.logger.printL(1, {"final":self.final["batch"], "partial":self.partial["batch"]}, 'result', self.getId())
+        self.logger.printL(1, "%d redescriptions selected" % len(self.partial["results"]), 'status', self.getId())
         for red in self.partial["results"]:
             self.logger.printL(2, "--- %s" % self.partial["batch"][red])
 

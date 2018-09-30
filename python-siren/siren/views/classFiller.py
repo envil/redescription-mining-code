@@ -22,10 +22,10 @@ class Filler(object):
     def getFHeight(self):
         return LayoutHandlerBasis.fheight[self.getVizType()]
 
-    def __init__(self, parent, pos):
+    def __init__(self, parent, frame, pos):
         self.parent = parent
         self.pos = pos
-        self.mapFrame = self.parent.tabs["viz"]["tab"]
+        self.mapFrame = frame
         self.panel = wx.Panel(self.mapFrame, -1, style=wx.RAISED_BORDER)
         self.drawFrame()
         self.binds()

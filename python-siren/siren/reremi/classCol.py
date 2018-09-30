@@ -3,6 +3,7 @@ import numpy
 import codecs, re
 
 from toolRead import BOOL_MAP
+from classContent import Item
 from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal
 import pdb
 
@@ -44,7 +45,7 @@ class DataError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class ColM(object):
+class ColM(Item):
 
     width = 0
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
@@ -85,6 +86,25 @@ class ColM(object):
         self.vect = None
         self.gid = -1
         self.extras = {}
+        
+    def getUid(self):
+        return (self.side, self.id)
+    def setUid(self, iid=None):
+        raise Warning("Col UID is ready-only!")
+    def setSideIdName(self, side, cid, name=None):
+        self.setId(cid)
+        self.side = side
+        if name is None:
+            self.name = Term.pattVName % cid
+        else:
+            self.name = name
+
+    #### TODO IMPLEMENT
+    # def getFieldV(self, field="uid", details={}):
+    #     if field == "uid":
+    #         return self.getUid()
+    #     return None
+
         
     def setExtra(self, key, val):
         self.extras[key] = val
@@ -204,7 +224,7 @@ class ColM(object):
     def getMax(self, details=None):
         return "-"
     def getMissInfo(self, details=None):
-        return "%1.2f%%: %d"% (len(self.missing)/float(self.N), len(self.missing))
+        return "%1.2f%%: %d"% (self.nbMissing()/float(self.N), self.nbMissing())
     def getRange(self):
         return []
     # def getCohesion(self, details=None):
@@ -244,6 +264,8 @@ class ColM(object):
 
     def getEnabled(self, details=None):
         return self.enabled
+    def isEnabled(self, details=None):
+        return self.getEnabled() > 0
 
     def flipEnabled(self):
         self.enabled = 1-self.enabled
@@ -255,7 +277,7 @@ class ColM(object):
 
     def __str__(self):
         act = ""
-        if not self.getEnabled():
+        if not self.isEnabled():
             act = " (OFF)"
         if self.hasGroup():
             act += " [gid=%d]" % self.getGroupId()
@@ -265,7 +287,7 @@ class ColM(object):
         return (self.infofull["in"][1] and self.infofull["out"][1]) 
 
     def usable(self, min_in=-1, min_out=-1, checkable=True):
-        return self.suppInBounds(min_in, min_out) and (not checkable or self.getEnabled())
+        return self.suppInBounds(min_in, min_out) and (not checkable or self.isEnabled())
 associate_term_class(ColM, Term)
     
 class BoolColM(ColM):
@@ -358,17 +380,17 @@ class BoolColM(ColM):
             return self.getVector()
 
     def density(self):
-        if self.N == len(self.missing):
+        if self.N == self.nbMissing():
             return 0.0
         else:
-            return len(self.hold)/float(self.N-len(self.missing))
+            return self.sumCol()/float(self.N-self.nbMissing())
 
     def minGap(self):
         return 1.
     
     def getInitTerms(self, minIn=0, minOut=0):
-        if len(self.hold) >= minIn and self.N-(len(self.hold)+self.nbMissing()) >= minOut:
-            return [(self.getAssocTermClass()(self.getId()), len(self.hold))]
+        if self.sumCol() >= minIn and self.N-(self.sumCol()+self.nbMissing()) >= minOut:
+            return [(self.getAssocTermClass()(self.getId()), self.sumCol())]
         else:
             return []
         
@@ -458,10 +480,10 @@ class BoolColM(ColM):
         return set(self.hold)
 
     def lTrue(self):
-        return len(self.hold)
+        return self.sumCol()
 
     def lFalse(self):
-        return self.nbRows() - self.lTrue() - len(self.miss())
+        return self.nbRows() - self.lTrue() - self.lMiss()
 
     def suppInBounds(self, min_in=-1, min_out=-1):
         if self.infofull["in"][0] != min_in:
@@ -1019,12 +1041,12 @@ class NumColM(ColM):
         ### all rows which are not listed in either sVals or missing take that value
         ## if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
         ##     self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
-        ## if force or (len(self.sVals)+len(self.missing) > 0 and len(self.sVals)+len(self.missing) != self.N ):
+        ## if force or (len(self.sVals)+self.nbMissing() > 0 and len(self.sVals)+self.nbMissing() != self.N ):
         tmpV = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
         # if len([i for v,i in self.sVals if v == MODE_VALUE]) > 0.1*self.N compute vector
         #     self.sVals = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
-        if force or ( len(self.sVals)+len(self.missing) > 0 and len(tmpV)+len(self.missing) != self.N \
-           and ( len(self.sVals)+len(self.missing) < self.N  or len(self.sVals) - len(tmpV)  > 0.1*self.N)):
+        if force or ( len(self.sVals)+self.nbMissing() > 0 and len(tmpV)+self.nbMissing() != self.N \
+           and ( len(self.sVals)+self.nbMissing() < self.N  or len(self.sVals) - len(tmpV)  > 0.1*self.N)):
            ### THIS CONDITION LAST CONDITION: either is already sparse or turning to sparse would bring gain
             self.sVals = tmpV    ## gather row ids for which
             ## gather row ids for which

@@ -48,11 +48,14 @@ class ProjectorProcess(multiprocessing.Process):
         if proj is not None:
             self.proj = proj
             self.start()
+            
+    def getId(self):
+        return self.id
 
     def stop(self):
         self.proj.stop()
-        self.logger.printL(1, self.proj, "result", self.id)
-        self.logger.printL(1, None, "progress", self.id)
+        self.logger.printL(1, self.proj, "result", self.getId())
+        self.logger.printL(1, None, "progress", self.getId())
         self.terminate()
 
     def run(self):
@@ -60,10 +63,10 @@ class ProjectorProcess(multiprocessing.Process):
             self.proj.do()
         except Exception as e:
             self.proj.clearCoords()
-            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.id)
+            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
         finally:
-            self.logger.printL(1, self.proj, "result", self.id)
-            self.logger.printL(1, None, "progress", self.id)
+            self.logger.printL(1, self.proj, "result", self.getId())
+            self.logger.printL(1, None, "progress", self.getId())
         
 def make_server_manager(port, authkey):
     job_q = multiprocessing.Queue()
@@ -187,11 +190,14 @@ class WorkHandler(object):
         self.working = {}
         self.retired = {}
 
+    def getId(self):
+        return self.id
+
     def getResultsQueue(self):
         return self.shared_result_q
 
     def getLoadStr(self):
-        return "%d:w%d+p%d+r%d" % (self.id, len(self.working), len(self.pending), len(self.retired))
+        return "%d:w%d+p%d+r%d" % (self.getId(), len(self.working), len(self.pending), len(self.retired))
 
     def handleJob(self, job):
         print "HANDLING JOB", job.get("task")
@@ -267,7 +273,7 @@ class WorkHandler(object):
         time.sleep(20)
         del self.working
         self.manager.shutdown()
-        self.parent.unregister(self.id)
+        self.parent.unregister(self.getId())
 
 if __name__ == '__main__':
     args = {}

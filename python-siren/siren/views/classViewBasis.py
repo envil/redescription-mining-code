@@ -3,6 +3,7 @@ import numpy
  
 from ..reremi.classSParts import SSetts
 from ..reremi.classCol import ColM
+from ..reremi.classData import RowE
 from ..reremi.classRedescription import Redescription
 
 from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
@@ -21,6 +22,22 @@ from classPltDtHList import PltDtHandlerListClust, PltDtHandlerListBlocks
 from classProj import ProjFactory
 
 import pdb
+
+
+def typeIWhat(what):
+    if isinstance(what, ColM) or isinstance(what, RowE):
+        return "v"
+    if isinstance(what, Redescription):
+        if what.typeId() is not None:
+            return "v"
+        else:
+            return "r"
+    elif type(what) is list and len(what) > 0 and len(what[0]) == 2:
+        if all([isinstance(c[1], Redescription) for c in what]):
+            return "R"
+        elif all([isinstance(c[1], ColM) for c in what]):
+            return "V"
+        
 
 class ViewBasis(object):
     """
@@ -50,6 +67,16 @@ class ViewBasis(object):
     subcl_layh = LayoutHandlerBasis
     subcl_drawer = DrawerBasis
     subcl_pltdt = PltDtHandlerBasis
+
+    @classmethod
+    def getTypesI(tcl):
+        return tcl.typesI
+    @classmethod
+    def getTID(tcl):
+        return tcl.TID
+    @classmethod
+    def isGeoV(tcl):
+        return tcl.geo
     
     def __init__(self, parent, vid, more=None):
         self.parent = parent
@@ -76,8 +103,8 @@ class ViewBasis(object):
 
     @classmethod
     def getViewsDetails(tcl):
-        if tcl.TID is not None:
-            return {tcl.TID: {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
+        if tcl.getTID() is not None:
+            return {tcl.getTID(): {"title": tcl.title_str, "class": tcl, "more": None, "ord": tcl.ordN}}
         return {}
 
     @classmethod
@@ -91,19 +118,11 @@ class ViewBasis(object):
         return ext_suit
 
     @classmethod
-    def includeView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return (tabT is None or tabT in tcl.typesI)
-    @classmethod
-    def suitableViewBase(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+    def suitableViewBase(tcl, geo=False, ext_keys=None, what=None):
         return (not tcl.geo or geo) and tcl.suitableExts(ext_keys)
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT)
-    @classmethod
-    def inclSuit(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        incl = tcl.includeView(geo, ext_keys, what, tabT)
-        suit = tcl.suitableView(geo, ext_keys, what, tabT)
-        return incl, suit and incl 
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what)
     
     def getItemId(self):
         if self.hasParent():
@@ -272,12 +291,12 @@ class ViewBasis(object):
             params = {"red": self.getPltDtH().getCopyRed()}
             if event.GetId() in self.menu_map_pro:
                 params = self.getLayH().getProcessesParams(self.menu_map_pro[event.GetId()], params)
-            self.getParent().expandFromView(params)
+            self.getParent().expand(params)
 
     def OnExpandSimp(self, event):
         if self.getPltDtH().hasQueries():
             params = {"red": self.getPltDtH().getCopyRed()}
-            self.getParent().expandFromView(params)
+            self.getParent().expand(params)
     def getWeightCover(self, params):
         params["area"] = self.getDrawer().getHighlightedIds()
         return params
@@ -340,7 +359,7 @@ class ViewBasis(object):
     
     def getColorA(self, color, alpha=None):
         alpha = self.getAlpha(alpha, color)
-        return tuple([color[0],color[1], color[2], alpha])
+        return tuple([color[0], color[1], color[2], alpha])
     
     def getColorHigh(self):
         return self.getColorA(self.getColorKey1("color_h"))
@@ -460,7 +479,7 @@ class ViewEntitiesProj(ViewBasis):
     ordN = 0
     what = "entities"
     title_str = "Entities Projection"
-    typesI = "evr"
+    typesI = "vr"
     defaultViewT = ProjFactory.defaultView.PID + "_" + what
 
     subcl_drawer = DrawerEntitiesProj
@@ -647,7 +666,7 @@ class ViewRedMappoly(ViewRed):
     subcl_pltdt = PltDtHandlerRedWithCoords
 
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
         if (not tcl.geo or geo) and tcl.suitableExts(ext_keys):
             what_tid = None        
             if isinstance(what, Redescription) or isinstance(what, ColM):
@@ -673,12 +692,12 @@ class ViewRedCorrel(ViewRed):
     SDESC = "Correl"
     ordN = 6
     title_str = "Variable Correlations"
-    typesI = "r"
+    typesI = "vr"
     geo = False
 
     subcl_drawer = DrawerRedCorrel
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
         if (not tcl.geo or geo) and tcl.suitableExts(ext_keys):
             what_tid = None        
             if isinstance(what, Redescription) or isinstance(what, ColM):
@@ -700,8 +719,8 @@ class ViewRedTree(ViewRed):
     subcl_pltdt = PltDtHandlerRed
     
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and (tabT == "v" or (isinstance(what, Redescription) and what.isTreeCompatible()))
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) and isinstance(what, Redescription) and what.isTreeCompatible()
 
 
 class ViewRedProj(ViewEntitiesProj, ViewRed):
@@ -726,7 +745,7 @@ class ViewList(ViewBasis):
     ordN = 0
     title_str = "List View"
     geo = False
-    typesI = "vr"
+    typesI = ""
 
     @classmethod
     def allCompat(tcl, what, names):
@@ -743,15 +762,15 @@ class ViewClustProj(ViewEntitiesProj, ViewList):
     ordN = 10
     what = "cluster"
     title_str = "Cluster Proj View"
-    typesI = "vr"
+    typesI = "VR"
     geo = False
 
     subcl_drawer = DrawerClustProj
     subcl_pltdt = PltDtHandlerListClust
     subcl_layh = LayoutHandlerBasis
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
     
 class ViewClustMap(ViewList):
     
@@ -759,7 +778,7 @@ class ViewClustMap(ViewList):
     SDESC = "CluMapLViz"
     ordN = 0
     title_str = "Map"
-    typesI = "vr"
+    typesI = "VR"
     geo = True
     
     subcl_drawer = DrawerClustMap
@@ -767,8 +786,8 @@ class ViewClustMap(ViewList):
     subcl_layh = LayoutHandlerBasis
 
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
     
 class ViewClustMappoly(ViewList):
     
@@ -776,7 +795,7 @@ class ViewClustMappoly(ViewList):
     SDESC = "CluMapPolyLViz"
     ordN = 1
     title_str = "Map Polygons"
-    typesI = "vr"
+    typesI = "VR"
     geo = True
     ext_keys = ["geoplus"]
         
@@ -785,8 +804,8 @@ class ViewClustMappoly(ViewList):
     subcl_layh = LayoutHandlerBasis
 
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
 
 
 class ViewBorders(ViewList):
@@ -795,7 +814,7 @@ class ViewBorders(ViewList):
     SDESC = "BordersMapLViz"
     ordN = 3
     title_str = "Map Borders"
-    typesI = "vr"
+    typesI = "VR"
     geo = True
     ext_keys = ["geoplus"]
         
@@ -804,5 +823,5 @@ class ViewBorders(ViewList):
     subcl_layh = LayoutHandlerBasis
 
     @classmethod
-    def suitableView(tcl, geo=False, ext_keys=None, what=None, tabT=None):
-        return tcl.suitableViewBase(geo, ext_keys, what, tabT) and ViewList.allCompat(what, "Boolean")
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) # and ViewList.allCompat(what, "Boolean")

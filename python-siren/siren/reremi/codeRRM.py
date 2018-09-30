@@ -1,3 +1,6 @@
+################ OUTDATED!
+
+
 #!/usr/bin/python
 import numpy, re, datetime, itertools
 import pickle

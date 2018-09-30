@@ -31,16 +31,16 @@ class ViewsManager:
             return self.parent.dw.getExtensionKeys()
         return []
 
-    
-    def getViewsItems(self, typv="R", tab_type=None, what=None, vkey=None):
+    def getViewsItems(self, what=None, vkey=None):
         excludeT = None
+        typeI = ViewFactory.typeIWhat(what)
         if vkey in self.vtoi:
-            typv = self.vtoi[vkey][1]
+            typeI = self.vtoi[vkey][0]
             excludeT = [vkey[0]]
-        return ViewFactory.getViewsInfo(typv, tab_type, self.isGeospatial(), self.getExtensionKeys(), what, excludeT)
+        return ViewFactory.getViewsInfo(typeI, self.isGeospatial(), self.getExtensionKeys(), what, excludeT)
 
-    def getDefaultViewT(self, typv="R", type_tab=None):
-        return ViewFactory.getDefaultViewT(typv, self.isGeospatial(), type_tab)
+    def getDefaultViewT(self, typeI="r"):
+        return ViewFactory.getDefaultViewT(typeI, self.isGeospatial())
 
     def getNbViews(self):
         return len(self.view_map)
@@ -55,7 +55,9 @@ class ViewsManager:
             return self.view_map[vkey]
     def iterateViews(self):
         return self.view_map.items()
-
+    def getVKeys(self):
+        return self.itov.keys()
+    
     def getViewX(self, viewT, vid=None):
         if (viewT, vid) not in self.view_map:
             view = ViewFactory.getView(viewT, self.parent, wx.NewId())
@@ -89,33 +91,25 @@ class ViewsManager:
 
     def viewOther(self, viewT, vkey):
         if vkey in self.vtoi:
-            (tabId, typ, iid) = self.vtoi[vkey]
-            if tabId in self.parent.tabs and self.parent.matchTabType("r", self.parent.tabs[tabId]):
-                if typ == "R":
-                    what = self.parent.tabs[tabId]["tab"].getItemForIid(iid)
-                elif typ == "L":
-                    what = None
-                self.viewData(viewT, what, iid, tabId)
+            what = self.view_map[vkey].getWhat()
+            (typeI, iid) = self.vtoi[vkey]
+            self.viewData(what, iid, viewT)
 
-    def viewData(self, viewT, what, iid=None, tabId=None):
-        if tabId is None:
-            tabId = self.parent.getDefaultTabId("r")
-        # if what is None:
-        #     if tabId in self.parent.tabs and self.parent.matchTabType("r", self.parent.tabs[tabId]):
-        #         what = self.parent.tabs[tabId]["tab"].getItemForIid(rid)
-        # if what is None and lid is not None:
-        #     if tabId in self.parent.tabs and self.parent.matchTabType("r", self.parent.tabs[tabId]):
-        #         what = self.parent.tabs[tabId]["tab"].getItemsMapForLid(iid)
-            
+    def viewData(self, what, iid, viewT=None):
+        typeI = ViewFactory.typeIWhat(what)
+        if viewT is None:
+            viewT = self.getDefaultViewT(typeI)            
         vid = None
         ## if iid == -1 and
-        if type(what) == list:
+        if ord(typeI) < ord("a"):
             #### HERE SIMPLIFY LIST ELEMENT ID            
             # pdb.set_trace()
             # iid = -numpy.sum([2**k for (k,v) in what])
             # if iid < -99:
-            iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if k[1] == "L" and k[-1] < 0])-1
-        ikey = (tabId, ViewFactory.getTypV(viewT), iid)
+            iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if ord(k[0]) < ord("a") and k[-1] < 0])-1
+            ikey = (typeI, iid)
+        else:
+            ikey = ("r", iid)
         if ikey in self.itov and viewT in self.itov[ikey]:
             vid = self.itov[ikey][viewT]
             
@@ -195,49 +189,43 @@ class ViewsManager:
         for vid, view in self.view_map.items():
             view.makeMenu()
                         
-    def newRedVHist(self, queries, viewT, listsHdl=None):
-        mapV = self.getViewX(viewT, None)
-        red = mapV.setCurrent(queries)
-        if listsHdl is None:
-            listsHdl = self.parent.getDefaultTab("r")
-        iid = -1
-        if listsHdl is not None and listsHdl != -1:
-            iid = listsHdl.insertItem('hist', red)
-
-            ikey = (listsHdl.tabId, ViewFactory.getTypV(viewT), iid)
-            self.registerView(mapV.getId(), ikey, upMenu=False)
-            self.parent.updateMenus()
-            mapV.updateTitle()
-            mapV.lastStepInit()
-        return mapV
-
-    def recomputeAll(self):
+    def refresh(self, iids=None):
         for vkey, view in self.view_map.items():
-            view.refresh()
+            if iids is None or self.vtoi[vkey][1] in iids:
+                view.refresh()
     def getItemId(self, vkey):
         if vkey in self.vtoi:
-            return "%s%d" % (self.vtoi[vkey][1], self.vtoi[vkey][2])
-        return "?"
+            return "%s%s" % self.vtoi[vkey]
+        return "?"    
     def getItemViewCount(self, vkey):
         if vkey in self.vtoi:
             return len(self.itov[self.vtoi[vkey]])
         return 0
-    def dispatchEdit(self, red, vkey=None, ikey=None):
+    def dispatchEdit(self, red, ikey=None, vkey=None):
         if ikey is None and vkey in self.vtoi:
-            ikey = self.vtoi[vkey]
+            ikey = self.vtoi[vkey]            
+        self.parent.applyEditToData(red, ikey, vkey)
+        
+    def backEdit(self, red, ikey=None, vkey=None):
+        # if ikey is None:
+        #     typeI = ViewFactory.typeIWhat(red)
+        #     if iid is None:
+        #         iid = red.getUid()
+        #     ikey = (typeI, iid)
             
-        if vkey != -1 and ikey[0] in self.parent.tabs:
-            self.parent.tabs[ikey[0]]["tab"].applyEditToData(ikey[-1], red)
-
         for (vt, vid) in self.itov.get(ikey, {}).items():
             if (vt, vid) != vkey:
-                mm = self.accessViewX((vt, vid))
-                mm.setCurrent(red)
+                if red is not None:
+                    mm = self.accessViewX((vt, vid))
+                    mm.setCurrent(red)
+                else:
+                    self.deleteView(vkey= (vt, vid))
 
     def doFlipEmphasizedR(self, vkey):
         if vkey in self.vtoi and self.vtoi[vkey] in self.emphasized:
-            self.parent.flipRowsEnabled(self.emphasized[self.vtoi[vkey]])
+            emph = list(self.emphasized[self.vtoi[vkey]])
             self.setEmphasizedR(vkey, self.emphasized[self.vtoi[vkey]])
+            self.parent.OnActContent("FlipEnabled", more_info={"row_ids": emph, "tab_type": "e"})
 
     def getEmphasizedR(self, vkey):
         if vkey in self.vtoi and self.vtoi[vkey] in self.emphasized:
@@ -271,8 +259,6 @@ class ViewsManager:
                 mm.emphasizeOnOff(turn_on=turn_on, turn_off=turn_off)
             
             if len(turn_on) == 1 and show_info:
-                if toed[0] in self.parent.tabs:
-                    red = self.parent.tabs[toed[0]]["tab"].getItemForIid(toed[1])
-                    for lid in turn_on:
-                        self.parent.showDetailsBox(lid, red)
+                self.parent.showDetailsBox(toed, turn_on)
+                        
 

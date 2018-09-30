@@ -108,11 +108,17 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                 vals = numpy.sum(etor[inner[:,1], :] != etor[inner[:,2], :], axis=1)
                 vcs = numpy.sum(numpy.abs(etor[inner[:,1], :] - etor[inner[:,2], :]) / rng, axis=1)
                 name_over = "Purples"
-                
+
+            top_vcs = numpy.max(vcs)
+            step = numpy.maximum(1, int(top_vcs)/10)
+            binVals = numpy.arange(0, top_vcs+step, step)
+            binLbls = ["%d" % b for b in binVals]
+                 
             mapper = self.prepMapper(vmin=0, vmax=numpy.max(vcs), ltid=1, name_over=name_over)
             colors = mapper.to_rgba(vcs, alpha=draw_settings["default"]["color_e"][-1])
             dots_draw = {"edges_inner": edges_inner, "edges_outer": edges_outer,
                           "vals": vals, "colors": colors}
+            vec_dets.update({"binLbls": binLbls, "binVals": binVals})
         return dots_draw, mapper
     
     def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
@@ -124,11 +130,49 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             line_segments = LineCollection(dots_draw["edges_inner"], colors=dots_draw["colors"], linewidths=2*dots_draw["vals"]/mv)
             axe.add_collection(line_segments)
 
+
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
         x0, x1, y0, y1, bx, by = corners
-        self.hist_click_info = {"left_edge_map": x0, "right_edge_map": x1, "right_edge_occ": x1, "right_edge_hist": x1,
-                                "hedges_hist": [y0], "vedges_occ": [y0]}                
-        return corners
+        fracts = [.25, .05] ## ratio bars occ/fixed
+        nbc = len(vec_dets["binLbls"])        
+        bins_ticks = numpy.arange(nbc)
+        tmpb = [b-0.5 for b in bins_ticks]
+        tmpb.append(tmpb[-1]+1)
+
+        # norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
+        # norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
+        norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in bins_ticks]
+        norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in tmpb]
+        left = [norm_bins[i] for i in range(nbc)]
+        width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
+
+        h_hist = fracts[1]*(x1-x0)+2*bx
+        bottom_hist = x1
+        top_hist = bottom_hist+h_hist
+        
+        bckc = "white"        
+        bins_lbl = vec_dets["binLbls"]
+        #vvmax = int(numpy.max(vec))
+        colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
+        # colors[-1] = draw_settings["default"]["color_f"]
+        
+        axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc)
+        # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
+        # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
+        # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2)
+        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        
+        x1 += h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
+
+        self.hist_click_info = None
+        axe.set_yticks(norm_bins_ticks)
+        axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
+        # self.axe.yaxis.tick_right()
+        axe.tick_params(direction="inout", left="off", right="on",
+                            labelleft="off", labelright="on")
+        return (x0, x1, y0, y1, bx, by)
+
     
     def makeAdditionalElements(self, panel=None):
         self.setElement("buttons", [])

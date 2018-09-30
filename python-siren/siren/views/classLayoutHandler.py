@@ -639,7 +639,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
             params = k(params)
         return params
 
-    def setMapredInfo(self, red = None, details=None):
+    def setRedInfo(self, red = None, details=None):
         blocks = self.infos_details
         if self.withCond():
             blocks = self.infos_details + self.infos_details_cond
@@ -649,9 +649,18 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                 if red is not None:
                     fk = det.get("fk")
                     params = self.getPltDtH().getDetailsSplit()
+                    fk_all = "%s%s" % ("all", fk)
                     if params is not None:
                         fk = "%s%s" % (params["rset_id"], fk)
+                    elif red.hasActiveRS():
+                        fk = "%s%s" % ("active", fk)
+                    else:
+                        fk_all = None
+                        
                     v = red.getEValGUI({"rp": rp, "k": fk, "to_str": True, "replace_none": "-"})
+                    if fk_all is not None:
+                        v_all = red.getEValGUI({"rp": rp, "k": fk_all, "to_str": True, "replace_none": "-"})
+                        v = "%s (%s)" % (v, v_all)
                     self.info_items[det["id"]][1].SetLabel(v)
                 else:
                     self.info_items[det["id"]][1].SetLabel("-")
@@ -680,5 +689,5 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
                 self.updateQueryText(red.query(side), side)
                 if self.withCond():
                     self.updateQueryText(red.query(-1), -1)
-            self.setMapredInfo(red)
+            self.setRedInfo(red)
 

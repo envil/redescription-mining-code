@@ -3,6 +3,7 @@ import numpy
 import codecs, re
 from itertools import chain
 
+from classContent import Container, ContentCollection
 from classCol import DataError, ColM, BoolColM, CatColM, NumColM, NA_str_c
 from classDataExtension import DataExtension
 from classQuery import Op, Term, Literal, Query 
@@ -137,12 +138,13 @@ class RowE(object):
         else:
             return self.data.getValue(side, col, self.rid)
 
-
     def getEnabled(self, details=None):
         if self.rid not in self.data.selectedRows():
             return 1
         else:
             return 0
+    def isEnabled(self, details=None):
+        return self.getEnabled(details) > 0
         
     def flipEnabled(self):
         if self.rid in self.data.selectedRows():
@@ -157,6 +159,8 @@ class RowE(object):
 
     def getId(self, details=None):
         return self.rid
+    def getUid(self, details=None):
+        return self.getId()
 
     def getRName(self, details=None):
         return self.data.getRName(self.rid)
@@ -166,8 +170,13 @@ for c in ColM.__subclasses__():
     TYPES_SMAP[c.type_id] = c
     TYPES_SMAP[str(c.type_id)] = c
     TYPES_SMAP[c.type_letter] = c
+
+class ContainerVars(Container):
+    def getShortStr(self):
+        return "Vars #%s (%d)" % (self.getUid(), len(self))
+
     
-class Data(object):
+class Data(ContentCollection):
 
     enabled_codes = {(0,0): "F", (1,1): "T", 0: "F", 1: "T", (0,1): "L", (1,0): "R"}
     enabled_codes_rev_simple = {"F": 0, "T": 1}
@@ -200,8 +209,9 @@ class Data(object):
             return [TYPES_SMAP.get(tcl.real_types_name_to_id.get(n)) for n in name]
         return TYPES_SMAP.get(tcl.real_types_name_to_id.get(name))
 
-    
+    container_class = ContainerVars
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
+        ContentCollection.__init__(self)
         self.single_dataset = single_dataset
         self.split = None 
         self.as_array = [None, None, None]
@@ -209,27 +219,24 @@ class Data(object):
         self.condition_dt = None
         self.extensions = ExtensionPool(self)
         if type(N) == int:
-            self.cols = cols
+            data_cols = cols
             self.N = N
             self.rnames = rnames
         elif type(N) == str:
             try:
-                self.cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)                
+                data_cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)                
             except DataError:
-                self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
+                data_cols, self.N, coords, self.rnames = [[],[]], 0, None, None
                 raise
         else:
             print "Input non recognized!"
-            self.cols, self.N, coords, self.rnames = [[],[]], 0, None, None
+            data_cols, self.N, coords, self.rnames = [[],[]], 0, None, None
             raise
         self.setCoords(coords)
-        
-        if type(self.cols) == list and len(self.cols) == 2:
-            self.cols = [ICList(self.cols[0]), ICList(self.cols[1])]
-        else:
-            self.cols = [ICList(),ICList()]
-        self.ssetts = SSetts(self.hasMissing())
 
+        self.initLists(data_cols)
+        self.ssetts = SSetts(self.hasMissing())
+        
     def computeExtras(self, item, extras=None, details=None):
         return self.extensions.computeExtras(item, extras, details)
 
@@ -253,29 +260,73 @@ class Data(object):
         return self.extensions.getExtensionsFilesDict(exts)
     def getExtensionsActiveFilesDict(self):
         return self.extensions.getExtensionsActiveFilesDict()
-    
-    def keys(self):
-        return [(0, i) for i in range(len(self.cols[0]))]+[(1, i) for i in range(len(self.cols[1]))]
-        
-    def addCol(self, col, sito=0, name=None):
-        addCol(self.cols, col, sito, name)
 
-    def addColFromVector(self, vect_data, prec=None, vname=None, side=0, enabled=True, vtype=None):
-        addColFromVector(self.cols, vect_data, prec, vname, side, enabled, vtype)
+    def isSingleD(self):
+        return self.single_dataset
+                
+    def setColsSide(self, side, cols):
+        self.clearList(side)
+        for c in cols:
+            self.appendCol(c, side)
+    def appendCol(self, col, side=0):
+        self.addItem(col, side)
+
         
+    def colsSide(self, side):
+        if side in self.containers:
+            return [self.items[iid] for iid in self.containers[side]]
+        return []        
+    def col(self, side, literal):
+        cid = None
+        if side in self.containers:
+            if type(literal) in [int, numpy.int64] and literal < self.getLen(side):
+                cid = (side, literal)
+            elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < self.getLen(side):
+                cid = (side, literal.colId())
+                if cid not in self.items:
+                    cid = None
+                    raise DataError("This columns does not exist! CID=%s" % str(cid))
+                elif not literal.isAnon() and literal.typeId() != self.items[cid].typeId():
+                    cid = None
+                    raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (cid, literal, literal.typeId(), self.items[cid].typeId()))
+
+        if cid is not None:
+            return self.items[cid]
+    def getElement(self, iid):
+        return self.col(iid[0], iid[1])
+    def getSides(self, side=None):
+        if side is not None:
+            return [side]
+        return self.getList()
+
+    def keys(self):
+        kys = []
+        for side in self.getSides():
+            for col in self.colsSide(side):
+                kys.append((side, col.getId()))
+        return kys
+        
+    def getValue(self, side, col, rid):
+        return self.col(side,col).getValue(rid)
+
+    def getNumValue(self, side, col, rid):
+        return self.col(side, col).getNumValue(rid)
+
+                
     def replaceSideFromMatrix(self, mat_data, prec=None, vnames=None, side=0, enabled=True, vtypes=None):
         if self.nbRows() != mat_data.shape[1]:
             raise DataError("Side replacement with different number of rows is prohibited! (%d vs. %d)" % (self.nbRows(), mat_data.shape[1]))
         if vnames is None and self.nbCols(side) == mat_data.shape[0]:
             vnames = ["RND_%s" % n for n in self.getNames(side)]
         cols = prepareSideFromMatrix(mat_data, prec=prec, vnames=vnames, side=side, enabled=enabled, vtypes=vtypes)
-        back = self.cols[side]
-        self.cols[side] = cols[side]
+        back = self.colsSide(side)
+        self.setColsSide(side, cols[side])
         return back
-        
+
+    #### TODO: STOP
     def hasMissing(self, side=None):
         for sside in self.getSides(side):
-            for c in self.cols[sside]:
+            for c in self.colsSide(sside):
                 if c.hasMissing():
                     return True
         return False
@@ -283,11 +334,11 @@ class Data(object):
     def getAllTypes(self, side=None):
         typs = []
         for sside in self.getSides(side):
-            typs.extend([col.typeId() for col in self.cols[sside]])
+            typs.extend([col.typeId() for col in self.colsSide(sside)])
         return set(typs)
 
     def getCommonType(self, side):
-        s = set([col.type_letter for col in self.cols[side]])
+        s = set([col.type_letter for col in self.colsSide(side)])
         if len(s) == 1:
             return s.pop()
         return None
@@ -295,14 +346,14 @@ class Data(object):
     def hasGroups(self, side=None):
         if side is None:            
             return any([self.hasGroups(sside) for sside in self.getSides(side)])
-        return any([col.hasGroup() for col in self.cols[side]])
+        return any([col.hasGroup() for col in self.colsSide(side)])
     def getCidsGroup(self, gid=-1, side=None):
         if side is None:
             group = []
             for sside in self.getSides(side):
                 group.extend([(sside, cid) for cid in self.getCidsGroup(gid, sside)])
             return group
-        return [col.getId() for col in self.cols[side] if col.getGroupId() == gid]
+        return [col.getId() for col in self.colsSide(side) if col.getGroupId() == gid]
     def getCidsGroupForCid(self, side, cid, other_side=False):
         gid = self.col(side, cid).getGroupId()
         if other_side:
@@ -314,23 +365,8 @@ class Data(object):
         return gidA == -1 or gidB == -1 or gidA != gidB
     
         
-    def isSingleD(self):
-        return self.single_dataset
-
-    def getSides(self, side=None):
-        if side is not None:
-            return [side]
-        return range(len(self.cols))
-
     def getSSetts(self):
         return self.ssetts
-
-    def getValue(self, side, col, rid):
-        return self.cols[side][col].getValue(rid)
-
-    def getNumValue(self, side, col, rid):
-        return self.cols[side][col].getNumValue(rid)
-
 
     def getRName(self, rid):
         if self.rnames is not None and rid < len(self.rnames):
@@ -357,11 +393,11 @@ class Data(object):
         sums_cols = []
         details = []
         for side, col in group:
-            tid = self.cols[side][col].type_id
+            tid = self.col(side, col).typeId()
             if sums_rows[tid] is None:
-                sums_rows[tid] = self.cols[side][col].initSums(self.N)
-            self.cols[side][col].upSumsRows(sums_rows[tid])
-            sums_cols.append(self.cols[side][col].sumCol())
+                sums_rows[tid] = self.col(side, col).initSums(self.N)
+            self.col(side, col).upSumsRows(sums_rows[tid])
+            sums_cols.append(self.col(side, col).sumCol())
             details.append((side, col, tid))
         return sums_rows, sums_cols, details
 
@@ -386,7 +422,7 @@ class Data(object):
             types = [BoolColM.type_id, CatColM.type_id, NumColM.type_id]
 
         if side_cols is None:
-            side_cols = [(side, None) for side in [0,1]]
+            side_cols = [(side, None) for side in self.getSides()]
                     
         mcols = {}
         details = []
@@ -395,26 +431,26 @@ class Data(object):
         tcols = []
         for side, col in side_cols:
             if col is None:
-                tcols = [c for c in range(len(self.cols[side]))]
+                tcols = [c.getId() for c in self.colsSide(side)]
             else:
                 tcols = [col]
-            tcols = [c for c in tcols if self.cols[side][c].typeId() in types and (not only_able or self.cols[side][c].getEnabled())]
+            tcols = [c for c in tcols if self.col(side, c).typeId() in types and (not only_able or self.col(side, c).isEnabled())]
             if len(tcols) > 0:
                 for col in tcols:
                     bids = [0]
-                    if bincats and self.cols[side][col].typeId() == 2:
-                        bids = range(self.cols[side][col].nbCats()) 
+                    if bincats and self.col(side, col).typeId() == 2:
+                        bids = range(self.col(side, col).nbCats()) 
                     mcols[(side, col)] = len(details)
                     for bid in bids:
                         mcols[(side, col, bid)] = off
                         off += 1
-                    details.append({"side": side, "col": col, "type": self.cols[side][col].typeId(), "name":self.cols[side][col].getName(), "enabled":self.cols[side][c].getEnabled(), "bincats": bids})
+                    details.append({"side": side, "col": col, "type": self.col(side, col).typeId(), "name":self.col(side, col).getName(), "enabled":self.col(side, c).getEnabled(), "bincats": bids})
 
         if compare_cols is not None and compare_cols == sorted(mcols.keys()):
             return self.as_array[1]
 
         if len(details) > 0:
-            cols = [self.cols[d["side"]][d["col"]] for d in details]
+            cols = [self.col(d["side"], d["col"]) for d in details]
             mat = self.getMatrixCols(cols, nb_rows=self.nbRows(), bincats=bincats, nans=nans)
             ## print "MAT", len(details), self.nbRows(), mat.shape            
         if store:
@@ -427,7 +463,7 @@ class Data(object):
     def getSplit(self, nbsubs=10, coo_dim=None, grain=10., force=False):
         if coo_dim is not None and \
                not (( self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords())) or \
-                    ( coo_dim > 0 and coo_dim < len(self.cols[0])+len(self.cols[1])+1 )):
+                    ( coo_dim > 0 and coo_dim < self.nbCols(0)+self.nbCols(1)+1 )):
             coo_dim = None
 
         if ( self.split is None ) or ( self.split["source"] != "auto" ) \
@@ -440,10 +476,10 @@ class Data(object):
             elif self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords()):
                 vals = self.getCoordPoints()[:,abs(coo_dim)-1]
             else: ## is in the variables
-                if coo_dim-1 >= len(self.cols[0]):
-                    col = self.cols[1][coo_dim-len(self.cols[0])-1]
+                if coo_dim-1 >= self.nbCols(0):
+                    col = self.col(1, coo_dim-self.nbCols(0)-1)
                 else:
-                    col = self.cols[0][coo_dim-1]
+                    col = self.col(0, coo_dim-1)
                 vals = col.getVector()
 
             self.split = {"source": "auto",
@@ -493,28 +529,29 @@ class Data(object):
 
     def extractFolds(self, side, colid):        
         splits = None
-        if type(self.cols[side][colid]) is CatColM:
-            self.cols[side][colid].setDisabled()
-            splits = dict([(re.sub("^F:", "", f), set(fsupp)) for (f, fsupp) in self.cols[side][colid].sCats.items()])
+        if self.isTypeId(self.col(side, colid).typeId(), "Categorical"):
+            col = self.col(side, colid)
+            col.setDisabled()
+            splits = dict([(re.sub("^F:", "", f), set(fsupp)) for (f, fsupp) in col.iter_cats()])
             skeys = sorted(splits.keys())
             self.split = {"source": "data",
-                          "parameters": {"side": side, "colid": colid, "colname": self.cols[side][colid].getName()},
+                          "parameters": {"side": side, "colid": colid, "colname": col.getName()},
                           "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
                           "splits": [splits[k] for k in skeys]}
-        elif type(self.cols[side][colid]) is BoolColM:
-            self.cols[side][colid].setDisabled()
-            col = self.cols[side][colid]
+        elif self.isTypeId(self.col(side, colid).typeId(), "Boolean"):
+            col = self.col(side, colid)
+            col.setDisabled()
             splits = {"True": set(col.supp()), "False": set(col.negSuppTerm(None))}
             skeys = sorted(splits.keys())
             self.split = {"source": "data",
-                          "parameters": {"side": side, "colid": colid, "colname": self.cols[side][colid].getName()},
+                          "parameters": {"side": side, "colid": colid, "colname": col.getName()},
                           "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
                           "splits": [splits[k] for k in skeys]}
 
         return splits
 
     def getFoldsStats(self, side, colid):
-        folds = numpy.array(self.cols[side][colid].getVector())
+        folds = numpy.array(self.col(side, colid).getVector())
         counts_folds = 1.*numpy.bincount(folds) 
         nb_folds = len(counts_folds)
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
@@ -528,18 +565,19 @@ class Data(object):
 
     def getColsByName(self, pattern):
         results = []
-        for (sito, cols) in enumerate(self.cols):
-            for (ci, col) in enumerate(cols):
+        for side in self.getSides():
+            for col in self.colsSide(side):
                 if re.search(pattern, col.getName()):
-                    results.append((sito, ci))
+                    results.append((side, col.getId()))
         return results
     def getColsMoreFolds(self, folds=[], nbcats = [1,6], inclB=True):
         results = []
-        for (sito, cols) in enumerate(self.cols):
-            for (ci, col) in enumerate(cols):
+        for side in self.getSides():
+            for col in self.colsSide(side):
+                (sito, ci) = (side, col.getId())
                 if ( (sito, ci) not in folds ) and ( \
-                        ( col.typeId() == CatColM.type_id and col.nbCats() > nbcats[0] and col.nbCats() < nbcats[1])
-                        or ( col.typeId() == BoolColM.type_id and inclB) ):  
+                        ( self.isTypeId(col.typeId(), "Categorical") and col.nbCats() > nbcats[0] and col.nbCats() < nbcats[1])
+                        or ( self.isTypeId(col.typeId(), "Boolean") and inclB) ):  
                     results.append((sito, ci))
         return results
 
@@ -581,12 +619,13 @@ class Data(object):
         if subsets is None and self.split is not None:
             if self.split["source"] == "auto":
                 subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
-                suff = "%d%sg%s" % (len(self.cols[sito]), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
+                suff = "%d%sg%s" % (self.nbCols(sito), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
         if type(subsets) is list:
             subsets = dict(enumerate(subsets))
         if subsets is not None and type(subsets) is dict:
             col = CatColM(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), self.nbRows())
-            self.addCol(col, sito, "folds_split_"+suff)    
+            col.setSideIdName(sito, self.nbCols(sito), "folds_split_"+suff) 
+            self.appendCol(col, sito)    
     #######################
 
     def addSuppCol(self, suppVect, name=None, sito=1):
@@ -601,13 +640,15 @@ class Data(object):
         for k in ks:
             parts[lbl[k]] = set(numpy.where(suppVect == k)[0])
         col = CatColM(parts, self.nbRows())
-        self.addCol(col, sito, preff+name)
+        col.setSideIdName(sito, self.nbCols(sito), preff+name)
+        self.appendCol(col, sito)
     def addSelCol(self, lids, name=None, sito=1):
         preff = "v%d_" % self.nbCols(sito)
         if name is None:
             name = "Sx"
         col = BoolColM(set(lids), self.nbRows())
-        self.addCol(col, sito, preff+name)
+        col.setSideIdName(sito, self.nbCols(sito), preff+name)
+        self.appendCol(col, sito)
 
     def subset(self, row_ids=None, shuff_side=None):
         coords = None
@@ -648,13 +689,12 @@ class Data(object):
                 else:
                     sss = row_ids
             
-            for col in self.cols[side]:
+            for col in self.colsSide(side):
                 if sss is not None:
                     tmp = col.subsetCol(sss)
                 else: ### just copy
                     tmp = col.subsetCol()
-                tmp.side = side
-                tmp.id = len(cols[side])
+                tmp.setSideIdName(side, len(cols[side]))
                 cols[side].append(tmp)
         return Data(cols, N, coords, rnames, self.isSingleD())
 
@@ -693,6 +733,9 @@ class Data(object):
 
     def getRows(self):
         return [RowE(i, self) for i in range(self.nbRows())]
+    def getRow(self, i):
+        if i >= 0 and i < self.nbRows():
+            return RowE(i, self)
 
     def __str__(self):
         miss_str = ""
@@ -727,8 +770,8 @@ class Data(object):
             rids = dict(enumerate([prepareRowName(rname, i, self) for i, rname in enumerate(self.rnames)]))
         elif len(self.selectedRows()) > 0:
             rids = dict(enumerate([prepareRowName(i+1, i, self) for i in range(self.N)]))
-        mean_denses = [numpy.mean([col.density() for col in self.cols[0]]),
-                       numpy.mean([col.density() for col in self.cols[1]])]
+        mean_denses = [numpy.mean([col.density() for col in self.colsSide(0)]),
+                       numpy.mean([col.density() for col in self.colsSide(1)])]
         #### FORCE SPARSE mean_denses = [0,0]
         #### FORCE DENSE  mean_denses = [1,1]
         argmaxd = 0
@@ -739,13 +782,13 @@ class Data(object):
                       1-argmaxd: {"meth": "dense", "details": full_details}}
         elif mean_denses[argmaxd] > thres:  ## ONE SIDE IS DENSE            
             methot = "triples"
-            if not self.hasDisabledCols(1-argmaxd) and not self.hasGroups(1-argmaxd) and sum([not col.simpleBool() for col in self.cols[1-argmaxd]])==0:
+            if not self.hasDisabledCols(1-argmaxd) and not self.hasGroups(1-argmaxd) and sum([not col.simpleBool() for col in self.colsSide(1-argmaxd)])==0:
                 methot = "pairs"
             styles = {argmaxd: {"meth": "dense", "details": True},
                       1-argmaxd: {"meth": methot, "details": full_details, "inline": inline}}
         else:  ## BOTH SIDES ARE SPARSE
-            simpleBool = [sum([not col.simpleBool() for col in self.cols[0]]) == 0,
-                          sum([not col.simpleBool() for col in self.cols[1]]) == 0]
+            simpleBool = [sum([not col.simpleBool() for col in self.colsSide(0)]) == 0,
+                          sum([not col.simpleBool() for col in self.colsSide(1)]) == 0]
             if self.isGeospatial() or len(rids) > 0:
                 if not simpleBool[1-argmaxd]: ### is not only boolean so can have names and coords
                     methot = "pairs"
@@ -777,11 +820,11 @@ class Data(object):
         for side in sides:
     #### check whether some column name is worth storing
             cids = {}
-            if sum([col.getName() != cid or not col.getEnabled() or col.hasGroupId() for cid, col in enumerate(self.cols[side])]) > 0:
+            if sum([col.getName() != col.getId() or not col.isEnabled() or col.hasGroupId() for col in self.colsSide(side)]) > 0:
                 type_smap = None
                 if full_details and styles[side]["meth"] == "dense":
                     type_smap = {}
-                cids = dict(enumerate([prepareColumnName(col, type_smap) for col in self.cols[side]]))
+                cids = dict(enumerate([prepareColumnName(col, type_smap) for col in self.colsSide(side)]))
                 meth = meths[styles[side].pop("meth")]
             with open(outputs[side], "wb") as fp:
                 csvf = csv_reader.start_out(fp)
@@ -799,11 +842,12 @@ class Data(object):
                 discol.append(0)
                 discol.append(0)
             if details and self.isConditional() and not self.isGeoConditional():
-                discol.extend([0 for i in range(len(self.getColsC()))])
+                discol.extend([0 for i in self.getColsC()])
 
-            for cid, col in enumerate(self.cols[side]):
+            for col in self.colsSide(side):
+                cid = col.getId()
                 if single_dataset:
-                    discol.append(Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())])
+                    discol.append(Data.enabled_codes[(self.col(0, cid).getEnabled(), self.col(1, cid).getEnabled())])
                 else:
                     discol.append(Data.enabled_codes[col.getEnabled()])
                     
@@ -816,9 +860,9 @@ class Data(object):
                 groupscol.append(-1)
                 groupscol.append(-1)
             if details and self.isConditional() and not self.isGeoConditional():
-                groupscol.extend([-1 for i in range(len(self.getColsC()))])
+                groupscol.extend([-1 for i in self.getColsC()])
 
-            for cid, col in enumerate(self.cols[side]):
+            for col in self.colsSide(side):
                 groupscol.append(col.getGroupId())
 
                     
@@ -833,11 +877,11 @@ class Data(object):
             header.append(csv_reader.LONGITUDE[0])
             header.append(csv_reader.LATITUDE[0])
         if details and self.isConditional() and not self.isGeoConditional():
-            colsC = self.getColsC()
-            header.append([colC.getName() for colC in colsC])
+            header.append([colC.getName() for colC in self.getColsC()])
 
-        for cid, col in enumerate(self.cols[side]):
+        for col in self.colsSide(side):
             col.getVector()
+            cid = col.getId()
             if len(header) > 0 or len(cids) > 0:
                 header.append(cids.get(cid, cid))
 
@@ -873,7 +917,7 @@ class Data(object):
                         row.append("%s" % colC.valToStr(v))
 
 
-            for cci, col in enumerate(self.cols[side]):
+            for col in self.colsSide(side):
                 row.append("%s" % col.valToStr(col.getValue(n, pref="bnum")))
                 ## row.append(col.valToStr(col.getValue(n, pref="bnum")))
             csv_reader.write_row(csvf, row)
@@ -899,9 +943,10 @@ class Data(object):
                 csv_reader.write_row(csvf, [trids.get(n,n), csv_reader.ENABLED_ROWS[0], "F"])
 
         if self.hasDisabledCols(side) or (single_dataset and self.hasDisabledCols()):
-            for cid, col in enumerate(self.cols[side]):
+            for col in self.colsSide(side):
+                cid = col.getId()
                 if single_dataset:
-                    tmp = Data.enabled_codes[(self.cols[0][cid].getEnabled(), self.cols[1][cid].getEnabled())]
+                    tmp = Data.enabled_codes[(self.col(0, cid).getEnabled(), self.col(1, cid).getEnabled())]
                 else:
                     tmp = Data.enabled_codes[col.getEnabled()]
                 if tmp != Data.enabled_codes[1]:
@@ -911,7 +956,8 @@ class Data(object):
                         csv_reader.write_row(csvf, [csv_reader.ENABLED_COLS[0], cid, tmp])
 
         if self.hasGroups(side)  or (single_dataset and self.hasGroups()):
-            for cid, col in enumerate(self.cols[side]):
+            for col in self.colsSide(side):
+                cid = col.getId()
                 if inline:
                     csv_reader.write_row(csvf, [csv_reader.GROUPS_COLS[0], cids.get(cid,cid), col.getGroupId()])
                 else:
@@ -927,7 +973,8 @@ class Data(object):
             ### otherwise it will need fill to recover the number of lines
             fillR = True
 
-        for ci, col in enumerate(self.cols[side]):
+        for col in self.colsSide(side):
+            ci = col.getId()
             fillC = False
             if not inline and len(cids) > 0:
                 ### if names are not written inline, add the variable's name now
@@ -965,17 +1012,18 @@ class Data(object):
         csv_reader.write_row(csvf, header)
         if not details:
             rids = {}
-        for ci, col in enumerate(self.cols[side]):
+        for col in self.colsSide(side):
+            ci = col.getId()
             for (n,v) in col.toList(sparse=True, fill=False):
                 csv_reader.write_row(csvf, [rids.get(n,n), cids.get(ci,ci)])
 
     def disp(self):
         strd = str(self) +":\n"
         strd += 'Left Hand side columns:\n'
-        for col in self.cols[0]:
+        for col in self.colsSide(0):
             strd += "\t%s\n" % col
         strd += 'Right Hand side columns:\n'
-        for col in self.cols[1]:
+        for col in self.colsSide(1):
             strd += "\t%s\n" % col
         return strd
 
@@ -990,34 +1038,12 @@ class Data(object):
         return len(self.selected_rows)
 
     def nbCols(self, side):
-        return len(self.cols[side])
+        return self.getLen(side)
     def nbColsEnabled(self, side):
-        return len([c for c in self.cols[side] if c.getEnabled()])
+        return len([c for c in self.colsSide(side) if c.isEnabled()])
     def nbColsDisabled(self, side):
-        return len([c for c in self.cols[side] if not c.getEnabled()])
+        return len([c for c in self.colsSide(side) if not c.isEnabled()])
         
-    def colsSide(self, side): 
-        return self.cols[side]
-
-    def getElement(self, iid):
-        return self.col(iid[0], iid[1])
-
-    def col(self, side, literal):
-        colid = None
-        if side == -1:
-            cols_side = self.getColsC()
-        else:
-            cols_side = self.cols[side]
-        if type(literal) in [int, numpy.int64] and literal < len(cols_side):
-            colid = literal
-        elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < len(cols_side):
-            colid = literal.colId()
-            if not literal.isAnon() and literal.typeId() != cols_side[colid].typeId():
-                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (side, colid, literal, literal.typeId(), cols_side[colid].typeId()))
-                colid = None
-        if colid is not None:
-            return cols_side[colid]
-
     def name(self, side, literal):
         return self.col(side, literal).getName()
         
@@ -1033,28 +1059,28 @@ class Data(object):
         return (self.supp(side, literal), self.miss(side,literal))
     
     def usableIds(self, min_in=-1, min_out=-1):
-        return [[i for i,col in enumerate(self.cols[0]) if col.usable(min_in, min_out)], \
-                [i for i,col in enumerate(self.cols[1]) if col.usable(min_in, min_out)]]
+        return [[col.getId() for col in self.colsSide(0) if col.usable(min_in, min_out)], \
+                [col.getId() for col in self.colsSide(1) if col.usable(min_in, min_out)]]
 
     def getDisabledCols(self, side=None):
         dis = []
         for s in self.getSides(side):
-            for col in self.cols[s]:
-                if not col.getEnabled():
-                    dis.append((s,col.id))
+            for col in self.colsSide(s):
+                if not col.isEnabled():
+                    dis.append((s, col.getId()))
         return dis
 
     def hasDisabledCols(self, side=None):
         for s in self.getSides(side):
-            for col in self.cols[s]:
-                if not col.getEnabled():
+            for col in self.colsSide(s):
+                if not col.isEnabled():
                     return True
         return False
 
     def getIids(self, side=None):
         iids = []
         for s in self.getSides(side):
-            iids.extend([(side, cc.getId()) for cc in self.cols[side]])
+            iids.extend([(side, cc.getId()) for cc in self.colsSide(side)])
         return iids
 
     def isConditional(self):
@@ -1089,26 +1115,26 @@ class Data(object):
         return self.rnames is not None
 
     def hasNames(self):
-        for side in [0,1]:
-            for col in self.cols[side]:
+        for side in self.getSides():
+            for col in self.colsSide(side):
                 if col.hasName():
                     return True
         return False
 
     def getNames(self, side=None):
         if side is None:
-            tmp = [[col.getName() for col in self.cols[side]] for side in [0,1]]
+            tmp = [[col.getName() for col in self.colsSide(side)] for side in self.getSides()]
             if self.isConditional():
                 tmp.append([colC.getName() for colC in self.getColsC()])
             return tmp
         else:
             if side == -1 and self.isConditional():
                 return [colC.getName() for colC in self.getColsC()]
-            return [col.getName() for col in self.cols[side]]
+            return [col.getName() for col in self.colsSide(side)]
 
     def setNames(self, names):
         if len(names) == 2:
-            for side in [0,1]:
+            for side in self.getSides():
                 if names[side] is not None:
                     if len(names) == self.nbCols(side):
                         for i, col in enumerate(self.colsSide(side)):
@@ -1158,7 +1184,7 @@ class Data(object):
 
     
     def enableAll(self):
-        for side in [0,1]:
+        for side in self.getSides():
             for i in range(self.nbCols(side)): self.col(side, i).setEnabled() ### reset all to active
         self.selected_rows = set() ### reset all to active
         
@@ -1264,14 +1290,6 @@ def readDNCFromCSVFiles(filenames, unknown_string = None):
 
     return cols, N, coords, rnames, disabled_rows, cond_col, single_dataset, unknown_string
 
-def addCol(cols, col, sito=0, name=None):
-    col.setId(len(cols[sito]))
-    col.side = sito
-    if name is None:
-        col.name = Term.pattVName % len(cols[sito])
-    else:
-        col.name = name
-    cols[sito].append(col)
 
 def prepareRowName(rname, rid=None, data=None):
     return "%s" % rname 
@@ -1292,7 +1310,7 @@ def parseRowsNames(rnames):
 def prepareColumnName(col, types_smap={}):
     return "%s" % col.getName() 
     en = ""
-    if not col.getEnabled():
+    if not col.isEnabled():
         en = "_"
     if types_smap is None:
         return "%s%s" % (en, col.getName()) 
@@ -1306,20 +1324,21 @@ def parseColumnName(name, types_smap={}):
         det["type"] = types_smap[tmatch.group("type")]
     return name, det
 
-def addColFromVector(cols, vect_data, prec=None, vname=None, side=0, enabled=True, vtype=None):
+def prepareColFromVector(vect_data, prec=None, enabled=True, vtype=None):
     if vtype in TYPES_SMAP:
         cClass = TYPES_SMAP[vtype]
     else:
         cClass = NumColM
-    col = cClass.fromVect(vect_data, prec, enabled)
-    addCol(cols, col, sito=side, name=vname)
+    return cClass.fromVect(vect_data, prec, enabled)
 
 def prepareSideFromMatrix(mat_data, prec=None, vnames=None, side=0, cols=None, enabled=True, vtypes=None):
     ## like getMatrix, one row per variable   
     if cols is None:
         cols = {side: []}
     for i in range(mat_data.shape[0]):
-        addColFromVector(cols, mat_data[i,:], prec=getValSpec(prec, i), vname=getValSpec(vnames, i), side=side, enabled=getValSpec(enabled, i), vtype=getValSpec(vtypes, i))
+        col = prepareColFromVector(mat_data[i,:], prec=getValSpec(prec, i), enabled=getValSpec(enabled, i), vtype=getValSpec(vtypes, i))
+        col.setSideIdName(side, len(cols[side]), getValSpec(vnames, i))
+        cols[side].append(col)
     return cols
 
     
@@ -1406,8 +1425,8 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
                     col.setGroupId(gid)
                 ## if not det.get("enabled", True) or \
-                    
-                addCol(cols, col, sito, det.get("name", name))
+                col.setSideIdName(sito, len(cols[sito]), det.get("name", name))
+                cols[sito].append(col)
             else:
                 # pdb.set_trace()
                 raise DataError('Unrecognized variable type!')            
@@ -1448,12 +1467,14 @@ def main():
     # print data
 
     rep_in = "/home/egalbrun/short/raja_small/"
-    
-    data = Data([rep_in+"data_LHS.csv", rep_in+"data_RHS.csv", {}, ""], "csv")
-    data.loadExtensions(filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
-    print data.computeExtras(data.cols[0][0], extras=["cohesion"])
+
     pdb.set_trace()
-    data.saveExtensions(details={"dir": rep_in}) #filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
+    data = Data([rep_in+"data_LHS.csv", rep_in+"data_RHS.csv", {}, ""], "csv")
+    data.writeCSV([rep_in+"out_LHS.csv", rep_in+"out_RHS.csv"])
+    # data.loadExtensions(filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
+    # print data.computeExtras(data.cols[0][0], extras=["cohesion"])
+    # pdb.set_trace()
+    # data.saveExtensions(details={"dir": rep_in}) #filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
     exit()
     
     rep_in = "/home/egalbrun/TKTL/misc/ecometrics/compare_more/v2/data/"
@@ -1465,23 +1486,6 @@ def main():
     exit()
     rep = "/home/egalbrun/short/raja_small/"
 
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-    coords_bckg, rnames_bckg = csv_reader.read_coords_csv(rep+"coords_bckg.csv")
-    data.setBckg(coords_bckg, rnames_bckg)
-    pdb.set_trace()
-    pp_data = data.initPolymapData()
-    pdb.set_trace()
-    
-    exit()
-    # data.writeCSV([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv"])
-    # print data
-
-    dataX = Data([rep+"data_LHSv2.csv", rep+"data_RHSv2.csv", {}, ""], "csv")
-    # print dataX
-    pdb.set_trace()
-    # rep = "/home/egalbrun/short/raja_time/"
-    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, ""], "csv")
-
     # import time
     # cpoints = data.getCoordPoints()
     # ta = time.mktime(time.strptime("30 Nov 00", "%d %b %y"))
@@ -1491,7 +1495,8 @@ def main():
     # txs = ta+(tz-ta)*norm_long
     # tmz = [time.strftime("%d %b %y", time.localtime(tx)) for tx in txs]
     # col = CatColM.parseList(tmz)
-    # data.addCol(col, sito=0, name="timeid")
+    # col.setSideIdName(sito=0, data.nbCols(0), name="timeid")
+    # data.appendCol(col, 0)
     # data.writeCSV([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv"])
 
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",

@@ -121,7 +121,7 @@ class WorkInactive:
                 for red in tap[worker_info["results_track"]:nb_tap]:
                     redc = red.copy()
                     #### TRACKING HERE
-                    redc.track.insert(0, (source, "W"))
+                    redc.appendTrack((source, "W"), 0)
                     tmp.append(redc)
                 worker_info["results_track"] = nb_tap
                 if parent is None:

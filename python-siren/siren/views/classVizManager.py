@@ -30,7 +30,7 @@ class VizManager:
         self.selected_cell = None
         
         self.drawSW(frame)
-        self.initialize()
+        # self.initialize()
 
     def hasParent(self):
         return self.parent is not None
@@ -115,7 +115,7 @@ class VizManager:
         if self.isReadyVizIntab():
             self.clearVizTab()
         self.initialize()
-        self.parent.doUpdates({"menu":True})
+        self.parent.updateMenus()
             
     def getVizcellSelected(self):
         return self.selected_cell
@@ -169,7 +169,7 @@ class VizManager:
     def fillInViz(self):
         for i in range(1, self.getVizGridNbDim(0)+1):
             for j in range(1, self.getVizGridNbDim(1)+1):
-                self.vfiller_ids[(i,j)] = Filler(self.parent, (i,j))
+                self.vfiller_ids[(i,j)] = Filler(self.parent, self.getSW(), (i,j))
 
     def addGridDimViz(self, dim):
         for bi, but in self.buttons.items():
@@ -195,7 +195,7 @@ class VizManager:
         ppos = [self.getVizGridNbDim(dim), self.getVizGridNbDim(dim)]
         for i in range(1, self.getVizGridNbDim(1-dim)+1):
             ppos[1-dim] = i
-            self.vfiller_ids[tuple(ppos)] = Filler(self.parent, tuple(ppos))
+            self.vfiller_ids[tuple(ppos)] = Filler(self.parent, self.getSW(), tuple(ppos))
 
     def dropGridDimViz(self, dim, cid):
         ssel = [0,0]
@@ -317,7 +317,7 @@ class VizManager:
 
     def setVizcellFreeded(self, pos):
         self.vused_ids.pop(pos)
-        self.vfiller_ids[pos] = Filler(self.parent, pos)
+        self.vfiller_ids[pos] = Filler(self.parent, self.getSW(), pos)
         self.updateVizcellSelected()
 
     def isVizSplit(self):
@@ -366,4 +366,4 @@ class VizManager:
                 # self.parent.buttViz.SetBackgroundColour((255, 255, 255))
 
             self.hideShowBxViz()
-            self.parent.doUpdates({"menu":True})
+            self.parent.updateMenus()

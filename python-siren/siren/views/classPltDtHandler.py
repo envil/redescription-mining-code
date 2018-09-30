@@ -236,15 +236,11 @@ class PltDtHandlerRed(PltDtHandlerBasis):
     
     def setCurrent(self, qr=None):
         red = None
-        if qr is not None:
-            if isinstance(qr, Redescription):
-                red = qr                
-                queries = [red.query(0), red.query(1), red.query(-1)]
-            elif type(qr) in [list, tuple]:
-                queries = qr
-                red = Redescription.fromQueriesPair(qr, self.getParentData())
+        if isinstance(qr, Redescription):
+            red = qr                
+            queries = [red.query(0), red.query(1), red.query(-1)]
         if red is not None:
-            red.setRestrictedSupp(self.getParentData())
+            # red.setRestrictedSupp(self.getParentData())
             self.pltdt["queries"] = queries
             # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
             self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
@@ -280,21 +276,23 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             try:                
                 red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
             except Exception:
-                ### Query could be parse but not recomputed
+                ### Query could be parsed but not recomputed
                 red = None
                 self.pltdt["queries"] = old
         if red is not None:
-            if self.getParentData().hasLT():
-                red.setRestrictedSupp(self.getParentData())
-            # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
-            self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
-            self.pltdt["red"] = red
-            self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()
-            self.getDrawer().update(update_trees)
-            if upAll:
-                self.getLayH().updateText(red)
-                self.view.makeMenu()
-                self.sendEditBack(red)
+            #### SEND BACK 
+            self.sendEditBack(red)
+            # if self.getParentData().hasLT():
+            #     red.setRestrictedSupp(self.getParentData())
+            # # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
+            # self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
+            # self.pltdt["red"] = red
+            # self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()
+            # self.getDrawer().update(update_trees)
+            # if upAll:
+            #     self.getLayH().updateText(red)
+            #     self.view.makeMenu()
+            #     self.sendEditBack(red)
             return red
         else: ### wrongly formatted query or not edits, revert
             for side in sides:
