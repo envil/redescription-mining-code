@@ -112,7 +112,7 @@ class DataWrapper(object):
         return []
 
     def getContentInfo(self, info_in={}):
-        info = {"pck_path": None, "tab_type": "r", "tab_id": None, "active_lid": None, "row_ids": [], "lids": None}
+        info = {"pck_path": None, "tab_type": "r", "tab_id": None, "active_lid": None, "lids": None}
         info.update(info_in)
         if self.getData() is not None and self.isFromPackage and self.getPackageSaveFilename() is not None:
             info["pck_path"] = self.getPackageSaveFilename()
@@ -122,8 +122,6 @@ class DataWrapper(object):
             info.update(self.getData().getContentInfo(info["lids"], info["iids"]))
         elif info["tab_type"] == "e" and self.getData() is not None:
             info.update(self.getData().getContentInfo(None, info["iids"]))
-            if "row_ids" not in info:
-                info["row_ids"] = info["lids"]
         if "lid" not in info: ### fill default
             info.update(self.reds.getContentInfo(None, []))
         return info

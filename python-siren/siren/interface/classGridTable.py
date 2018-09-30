@@ -276,7 +276,10 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def nbItems(self):
         return len(self.sortids)
-
+    def getIidAtRow(self, row):
+        item = self.getItemAtRow(row)
+        if item is not None:
+            return item.getId()       
     def getItemAtRow(self, row):
         """Return the data of a row"""
         if row < self.nbItems() and self.sortids[row] < len(self.data):
@@ -341,9 +344,15 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def OnMouse(self,event):
         if event.GetRow() < self.nbItems():
-            self.setSelectedRow(event.GetRow(), event.GetCol())
             if event.Col == 0:
-                self.parent.OnActContent("FlipEnabled")
+                rid = self.getIidAtRow(event.GetRow())
+                self.parent.OnActContent("FlipEnabled", {"row_ids": [rid], "tab_type": "e"})
+            else:
+                if event.GetRow() in self.getSelectedRows():
+                    self.GetView().DeselectRow(event.GetRow())
+                else:
+                    self.addSelectedRow(event.GetRow(), event.GetCol())
+            
        
     def ResetView(self):
         """Trim/extend the control's rows and update all values"""
@@ -389,6 +398,8 @@ class GridTable(wx.grid.PyGridTableBase):
             return self.GetView().GetSelectedRows()[0]
         else:
             return None
+    def getSelectedRows(self):
+        return self.GetView().GetSelectedRows()
 
     def getSelectedCol(self):
         return max(0,self.GetView().GetGridCursorCol())
@@ -398,6 +409,11 @@ class GridTable(wx.grid.PyGridTableBase):
         if col is None: col = 0
         self.GetView().SetGridCursor(row,col)
         self.GetView().SelectRow(row)
+    def addSelectedRow(self, row, col=0):
+        if row is None: row = 0
+        if col is None: col = 0
+        self.GetView().SetGridCursor(row,col)
+        self.GetView().SelectRow(row, addToSelected=True)
         
     def neutraliseSort(self):
         self.sortP = (None, False)
@@ -405,7 +421,8 @@ class GridTable(wx.grid.PyGridTableBase):
     def setSort(self, event):
         colS = event.GetCol()
         if colS == -1:
-            pass ### TODO select all
+            if event.GetRow() < self.nbItems():
+                self.setSelectedRow(row = event.GetRow())
         else:
             old = self.sortP[0]
             if self.sortP[0] == colS:
@@ -470,7 +487,8 @@ class GridTable(wx.grid.PyGridTableBase):
             
     def OnRightClick(self, event):
         if event.GetRow() < self.nbItems():
-            self.setSelectedRow(event.GetRow(), event.GetCol())
+            if event.GetRow() not in self.getSelectedRows():
+                self.setSelectedRow(event.GetRow(), event.GetCol())
             self.parent.makePopupMenu(self.parent.toolFrame)
 
     def OnKU(self, event):
@@ -482,12 +500,19 @@ class GridTable(wx.grid.PyGridTableBase):
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
             self.parent.viewOpen()
+            return self.getIidAtRow(self.getSelectedRow())
             
     def getSelectedRowId(self):            
         if self.getSelectedRow() is not None:
-            item = self.getItemAtRow(self.getSelectedRow())
+            return self.getIidAtRow(self.getSelectedRow())
+    def getSelectedRowIds(self):
+        ids = []
+        for r in self.getSelectedRows():
+            item = self.getItemAtRow(r)
             if item is not None:
-                return item.getId()
+                ids.append(item.getId())
+        return ids
+
     def getSelectedCid(self):
         if self.getSelectedCol() < len(self.cids_list):
             return self.cids_list[self.getSelectedCol()]
@@ -499,10 +524,12 @@ class GridTable(wx.grid.PyGridTableBase):
             return [cid]
         return []
     def getSelectedLids(self):
-        row_id = self.getSelectedRowId()
-        if row_id is not None:
-            return [row_id]
         return []
+    # def getSelectedLids(self):
+    #     row_id = self.getSelectedRowId()
+    #     if row_id is not None:
+    #         return [row_id]
+    #     return []
     def hasFocusContainersL(self):
         return False
     def hasFocusItemsL(self):

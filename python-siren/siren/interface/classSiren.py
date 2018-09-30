@@ -1545,8 +1545,8 @@ class Siren():
         elif entities_rneeds.get("fields"):
             self.getETab().resetFields(self.dw.getData())
             rdatainfo = True
-        elif len(rneeds.get("lists", []))+len(rneeds.get("lists_content", []))+len(rneeds.get("items", [])) > 0:
-            self.getETab().resetView()
+        elif len(entities_rneeds.get("lists", []))+len(entities_rneeds.get("lists_content", []))+len(entities_rneeds.get("items", [])) > 0:
+            self.getETab().ResetView()
             
         ### RELOADING VARS
         vars_rneeds = rneeds.get("v", {})
@@ -1622,7 +1622,7 @@ class Siren():
                 info_in["lids"] = tab.getSelectedLids()
         elif info_in["tab_type"] == "e":
             info_in["iids"] = tab.getSelectedIids()
-            info_in["lids"] = tab.getSelectedLids()
+            info_in["row_ids"] = tab.getSelectedRowIds()
         info = self.dw.getContentInfo(info_in)
         return info
     
