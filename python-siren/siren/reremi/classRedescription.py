@@ -3,7 +3,7 @@ from classContent import Item
 from classCol import  ColM
 from classQuery import  *
 from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
-from classRedProps import RedProps
+from classProps import RedProps
 import pdb
 
 ACTIVE_RSET_ID = "active"
@@ -38,7 +38,7 @@ class Redescription(Item):
     @classmethod
     def setupRP(tcl, fields_fns=None):
         elems_typs = [("q", Query), ("s", SParts), ("r", Redescription)]
-        RedProps.setupRProps(Query, Redescription, elems_typs)
+        RedProps.setupProps(elems_typs, Query, Redescription)
         tcl.RP = RedProps(fields_fns)
 
     @classmethod

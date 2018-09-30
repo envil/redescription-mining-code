@@ -5,6 +5,8 @@ import codecs, re
 from toolRead import BOOL_MAP
 from classContent import Item
 from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal
+from classSParts import tool_ratio
+from classProps import VarProps
 import pdb
 
 NA_num  = numpy.nan
@@ -38,7 +40,12 @@ def getValSpec(param, i):
         elif None in param:
             out = param[None]
     return out
-    
+
+def mapSuppNames(supp, details={}):
+    if details.get("named", False) and "row_names" in details:
+        return [details["row_names"][t] for t in supp]
+    return supp
+
 class DataError(Exception):
     def __init__(self, value):
         self.value = value
@@ -47,6 +54,88 @@ class DataError(Exception):
 
 class ColM(Item):
 
+    ##############################################################
+    ##############################################################
+    ### PROPS WHAT
+    info_what_dets = {}
+    # info_what_dets = {"queryLHS": "self.prepareQueryLHS",
+    #                   "queryRHS": "self.prepareQueryRHS",
+    #                   "queryCOND": "self.prepareQueryCOND"}
+    info_what = {"type": "self.getType()", "missing": "self.getMissInfo()",
+                 "density": "self.getDensity()",
+                 "categories": "self.getCategories()",
+                 "min": "self.getMin()", "max": "self.getMax()"}
+    Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
+
+    ### PROPS WHICH
+    which_rids = "rids"
+    Pwhich_match = "("+ "|".join(["[^_]+"]+[which_rids]) +")"    
+    @classmethod
+    def hasPropWhich(tcl, which):
+        return re.match(tcl.Pwhich_match, which) is not None
+
+    RP = None
+    @classmethod
+    def setupRP(tcl, fields_fns=None):
+        elems_typs = [("v", ColM)]
+        VarProps.setupProps(elems_typs)
+        tcl.RP = VarProps(fields_fns)
+
+    @classmethod
+    def getRP(tcl, rp=None):
+        if rp is None:
+            if tcl.RP is None:
+                tcl.setupRP()
+            return tcl.RP
+        return rp
+
+    def getProp(self, what, which=None, rset_id=None, details=None):
+        if what == "extra":
+            return self.getExtra(which, details)
+
+        elif what in ColM.info_what_dets: ### other redescription info
+            methode = eval(ColM.info_what_dets[what])
+            if callable(methode):
+                return methode(details)
+        elif what in ColM.info_what: ### other redescription info
+            return eval(ColM.info_what[what])
+
+    def markCacheEValsXTR(self, ks):
+        if VarProps.XTRKS not in self.cache_evals:            
+            self.cache_evals[VarProps.XTRKS] = set()
+        self.cache_evals[VarProps.XTRKS].update(ks)
+    def resetCacheEVals(self, only_extras=False, resets_ids=None):
+        if only_extras:
+            for k in self.cache_evals.get(VarProps.XTRKS, []):
+                del self.cache_evals[k]
+        elif resets_ids is not None:
+            ks = self.cache_evals.keys()
+            for k in ks:
+                if any([re.match("%s:" % rk, k) for rk in resets_ids]):
+                    del self.cache_evals[k]
+        else:
+            self.cache_evals = {}
+    def setCacheEVals(self, cevs):
+        self.cache_evals = cevs
+    def updateCacheEVals(self, cevs):
+        self.cache_evals.update(cevs)
+    def setCacheEVal(self, ck, cev):
+        self.cache_evals[ck] = cev
+    def getCacheEVal(self, ck):
+        return self.cache_evals.get(ck)
+    def hasCacheEVal(self, ck):
+        return ck in self.cache_evals
+
+    def getEValGUI(self, details):
+        val = None
+        if "rp" in details:
+            val = details["rp"].getEValGUI(self, details)
+        if val is None:
+            val = details.get('replace_none')
+        return val
+    ##############################################################
+    ##############################################################
+    
     width = 0
     typespec_placeholder = "<!-- TYPE_SPECIFIC -->"
     NA = NA_bool
@@ -78,37 +167,28 @@ class ColM(Item):
             nmiss = set()
         self.N = N
         self.missing = nmiss
-        self.id = -1
-        self.side = -1
-        self.name = None
-        self.enabled = 1
         self.infofull = {"in": (-1, True), "out": (-1, True)}
         self.vect = None
-        self.gid = -1
-        self.extras = {}
+        self.extras = {"status": 1, "side": -1, "id": -1, "gid": -1}
+        self.cache_evals = {}
+        
         
     def getUid(self):
-        return (self.side, self.id)
+        return (self.getSide(), self.getId())
     def setUid(self, iid=None):
         raise Warning("Col UID is ready-only!")
     def setSideIdName(self, side, cid, name=None):
         self.setId(cid)
-        self.side = side
+        self.extras["side"] = side
         if name is None:
-            self.name = Term.pattVName % cid
+            self.extras["name"] = Term.pattVName % cid
         else:
-            self.name = name
+            self.extras["name"] = name
 
-    #### TODO IMPLEMENT
-    # def getFieldV(self, field="uid", details={}):
-    #     if field == "uid":
-    #         return self.getUid()
-    #     return None
-
-        
+            
     def setExtra(self, key, val):
         self.extras[key] = val
-    def getExtra(self, key=None):
+    def getExtra(self, key=None, details=None):
         if key is None:
             return self.extras
         return self.extras.get(key)
@@ -127,14 +207,14 @@ class ColM(Item):
         return set(range(self.N))
 
     def setGroupId(self, gid=-1):
-        self.gid = gid
+        self.extras["gid"] = gid
     def getGroupId(self):
-        return self.gid
+        return self.extras.get("gid", -1)
     def hasGroup(self):
-        return self.gid > -1
+        return self.getGroupId() > -1
     
     def setId(self, nid):
-        self.id = nid
+        self.extras["id"] = nid
         
     def hasMissing(self):
         return self.missing is not None and len(self.missing) > 0
@@ -166,19 +246,19 @@ class ColM(Item):
         return self.density() > thres
 
     def getName(self, details=None):
-        if self.name is not None:
-            return self.name
+        if self.hasName():
+            return self.extras["name"]
         else:
             return Term.pattVName % self.getId()
 
     def hasName(self):
-        return self.name is not None
+        return self.extras.get("name") is not None
         
     def getSide(self, details=None):
-        return self.side
+        return self.extras.get("side")
 
     def getId(self, details=None):
-        return self.id
+        return self.extras.get("id")
 
     def getAnonTerm(self):
         return self.getAnonTermClass()(self.getId(), self.typeId())
@@ -211,18 +291,18 @@ class ColM(Item):
 
     def getSortAble(self, details=None):
         if details.get("aim") == "sort":
-            return (self.enabled, self.getId())
+            return (self.getEnabled(), self.getId())
         return ""
     def getType(self, details=None):
         return self.type_name
     def getDensity(self, details=None):
-        return "-"
+        return None
     def getCategories(self, details=None):
-        return "-"
+        return None
     def getMin(self, details=None):
-        return "-"
+        return None
     def getMax(self, details=None):
-        return "-"
+        return None
     def getMissInfo(self, details=None):
         return "%1.2f%%: %d"% (self.nbMissing()/float(self.N), self.nbMissing())
     def getRange(self):
@@ -263,17 +343,17 @@ class ColM(Item):
                 return len(self.suppTerm(literal.getTerm()))
 
     def getEnabled(self, details=None):
-        return self.enabled
+        return self.extras["status"]
     def isEnabled(self, details=None):
         return self.getEnabled() > 0
 
     def flipEnabled(self):
-        self.enabled = 1-self.enabled
+        self.extras["status"] = 1-self.extras["status"]
 
     def setEnabled(self):
-        self.enabled = 1
+        self.extras["status"] = 1
     def setDisabled(self):
-        self.enabled = 0
+        self.extras["status"] = 0
 
     def __str__(self):
         act = ""
@@ -425,7 +505,8 @@ class BoolColM(ColM):
 
     def getDensity(self, details=None):
         if self.N > 0:
-            return "%1.4f" % self.density()
+            return self.density()
+            # return "%1.4f" % self.density()
         return 0
 
     def __init__(self, ncolSupp=set(), N=-1, nmiss=set()):
@@ -447,8 +528,7 @@ class BoolColM(ColM):
             for old in self.hold.intersection(row_ids.keys()):
                 hold.update(row_ids[old])
         tmp = BoolColM(hold, N, miss)
-        tmp.name = self.name
-        tmp.enabled = self.enabled
+        tmp.extras = self.copyExtras()
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
     
@@ -676,8 +756,7 @@ class CatColM(ColM):
                 for old in rs.intersection(row_ids.keys()):
                     scats[cat].update(row_ids[old])
         tmp = CatColM(scats, N, miss)
-        tmp.name = self.name
-        tmp.enabled = self.enabled
+        tmp.extras = self.copyExtras()
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
 
@@ -1031,8 +1110,7 @@ class NumColM(ColM):
             mode = (self.mode[0], mode_rids)
 
         tmp = NumColM(svals, N, miss, self.prec, mode=mode)
-        tmp.name = self.name
-        tmp.enabled = self.enabled
+        tmp.extras = self.copyExtras()
         tmp.infofull = {"in": tuple(self.infofull["in"]), "out": tuple(self.infofull["out"])}
         return tmp
 

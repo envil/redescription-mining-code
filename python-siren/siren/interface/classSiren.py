@@ -236,16 +236,26 @@ class Siren():
                 conf_defs.append(cf)
         return conf_defs
     @classmethod
-    def initRedProps(tcl, ffiles):
-        fields_fns = []
-        for filen, folder in ffiles:
+    def initProps(tcl, vffiles, rffiles):
+        vfields_fns = []
+        for filen, folder in vffiles:
             cf = tcl.searchData(filen, "conf", path=[folder])
             if cf is not None:                
-                fields_fns.append(cf)
-                for mf in glob.glob(re.sub(filen, tcl.ff_mtch, cf)):
+                vfields_fns.append(cf)
+                for mf in glob.glob(re.sub(filen, tcl.vff_mtch, cf)):
                     if mf != cf:
-                        fields_fns.append(mf)
-        Redescription.setupRP(fields_fns)
+                        vfields_fns.append(mf)
+        ColM.setupRP(vfields_fns)
+
+        rfields_fns = []
+        for filen, folder in rffiles:
+            cf = tcl.searchData(filen, "conf", path=[folder])
+            if cf is not None:                
+                rfields_fns.append(cf)
+                for mf in glob.glob(re.sub(filen, tcl.rff_mtch, cf)):
+                    if mf != cf:
+                        rfields_fns.append(mf)
+        Redescription.setupRP(rfields_fns)
     
     titleTool = common_variables["PROJECT_NAME"]+' :: tools'
     titlePref = common_variables["PROJECT_NAME"]+' :: '
@@ -276,8 +286,10 @@ class Siren():
     main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
-    ffiles = [('fields_defs_basic.txt', 'reremi')]
-    ff_mtch = 'fields_defs_*.txt'
+    rffiles = [('fields_rdefs_basic.txt', 'reremi')]
+    vffiles = [('fields_vdefs_basic.txt', 'reremi')]
+    rff_mtch = 'fields_rdefs_*.txt'
+    vff_mtch = 'fields_vdefs_*.txt'
     cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface'), ('dataext_confdef.xml', 'reremi')]
     cfiles_io = [('inout_confdef.xml', 'reremi')]
     
@@ -328,7 +340,7 @@ class Siren():
 
         self.logger = Log()
         self.icons = Siren.initIcons(self.icons_setts)
-        Siren.initRedProps(self.ffiles)
+        Siren.initProps(self.vffiles, self.rffiles)
         tmp = wx.DisplaySize()
         self.toolFrame = wx.Frame(None, -1, self.titleTool, pos = wx.DefaultPosition,
                                   size=(tmp[0]*0.66,tmp[1]*0.9), style = wx.DEFAULT_FRAME_STYLE)

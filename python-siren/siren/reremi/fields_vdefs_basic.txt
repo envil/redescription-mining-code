@@ -1,0 +1,8 @@
+fieldlist	gui
+:extra:name
+:type:	
+:missing:	[wmissing]
+:density:	[wtype_B]
+:categories:	[wtype_C]
+:min:	[wtype_N]
+:max:	[wtype_N]
