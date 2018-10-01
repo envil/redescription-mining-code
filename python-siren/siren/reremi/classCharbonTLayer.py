@@ -330,7 +330,7 @@ def make_literal(side, node, data, cols_info):
         if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
             lit = Literal(neg, BoolTerm(cid))
         elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
-            lit = Literal(neg, CatTerm(cid, data.col(side, cid).getCatFromNum(cbin)))
+            lit = Literal(neg, CatTerm(cid, data.col(side, cid).getValFromNum(cbin)))
         elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
             # ###################################
             # if direct > 0:

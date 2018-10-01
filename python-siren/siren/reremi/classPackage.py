@@ -104,7 +104,6 @@ class Package(object):
     def read(self, pm, options_args=None):
         elements_read = {}
         self.openPack()
-
         try:
             preferences = self.readPreferences(pm, options_args)
             if preferences is not None:

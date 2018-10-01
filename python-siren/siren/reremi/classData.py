@@ -224,7 +224,7 @@ class Data(ContentCollection):
             self.rnames = rnames
         elif type(N) == str:
             try:
-                data_cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)                
+                data_cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
             except DataError:
                 data_cols, self.N, coords, self.rnames = [[],[]], 0, None, None
                 raise
@@ -236,7 +236,17 @@ class Data(ContentCollection):
 
         self.initLists(data_cols)
         self.ssetts = SSetts(self.hasMissing())
-        
+
+    def recomputeCols(self, side=None, cid=None):
+        if cid is None:
+            for side in self.getSides(side):
+                for col in self.colsSide(side):
+                    col.recompute(self)
+        else:
+            col = self.col(side, cid)
+            if col is not None:
+                col.recompute(self)    
+                
     def computeExtras(self, item, extras=None, details=None):
         return self.extensions.computeExtras(item, extras, details)
 
@@ -270,7 +280,9 @@ class Data(ContentCollection):
             self.appendCol(c, side)
     def appendCol(self, col, side=0):
         self.addItem(col, side)
-
+    def addItem(self, item, trg_lid=None, trg_pos=-1):
+        ContentCollection.addItem(self, item, trg_lid, trg_pos)
+        item.recompute(self)
         
     def colsSide(self, side):
         if side in self.containers:
@@ -1398,7 +1410,6 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 continue
             values = csv_data['data'][side]["data"][name]
             col = None
-
             if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
                 col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
                 if col is None:

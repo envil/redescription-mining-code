@@ -1,15 +1,170 @@
-import re, string, numpy, codecs, itertools, os.path
 from classQuery import SYM
+import re, string, numpy, codecs, copy, itertools, os.path
 from classSParts import SSetts, tool_ratio
+from classContent import Item
 import pdb
 
+ACTIVE_RSET_ID = "active"
 SIDE_CHARS = {0:"L", 1:"R", -1: "C"}
 HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1}
 NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
 WIDTH_MID = .5
 
+class WithEVals(Item):
 
+    ### PROPS WHAT
+    info_what_dets = {}
+    info_what = {}
+    Pwhat_match = ""    
+
+    ### PROPS WHICH
+    which_rids = "rids"
+    Pwhich_match = "("+ "|".join(["[^_]+"]+[which_rids]) +")"    
+    @classmethod
+    def hasPropWhich(tcl, which):
+        return re.match(tcl.Pwhich_match, which) is not None
+
+    RP = None
+    @classmethod
+    def setupRP(tcl, fields_fns=None):
+        pass
+
+    @classmethod
+    def getRP(tcl, rp=None):
+        if rp is None:
+            if tcl.RP is None:
+                tcl.setupRP()
+            return tcl.RP
+        return rp
+    
+    def __init__(self):
+        Item.__init__(self)
+        self.extras = {}
+        self.cache_evals = {}           
+        self.resetRestrictedSuppSets()
+    def nbRows(self):
+        return 0
+    def rows(self):
+        return set(range(self.nbRows()))
+        
+    def recompute(self, data):
+        if data.hasLT() or data.hasSelectedRows():
+            self.setRestrictedSupp(data)
+        self.computeExtras(data)
+
+    def getProp(self, what, which=None, rset_id=None, details=None):
+        if what == "extra":
+            return self.getExtra(which, details)
+        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
+            rset_ids = self.getRestrictedRids(rset_id)
+            if rset_ids is None:
+                return None
+            if what == "len" or what == "card":
+                return len(rset_ids)
+            elif what == "supp" or what == "set":
+                return mapSuppNames(rset_ids, details)
+            elif what == "perc":
+                return tool_ratio(100.*len(rset_ids), self.nbRows())
+            elif what == "ratio":
+                return tool_ratio(len(rset_ids), self.nbRows())
+
+        elif what in self.info_what_dets: ### other redescription info
+            methode = eval(self.info_what_dets[what])
+            if callable(methode):
+                return methode(details)
+        elif what in self.info_what: ### other redescription info
+            return eval(self.info_what[what])
+    def getEValGUI(self, details):
+        val = None
+        if "rp" in details:
+            val = details["rp"].getEValGUI(self, details)
+        if val is None:
+            val = details.get('replace_none')
+        return val
+        
+    #### EXTRAS
+    #######################
+    def setExtra(self, key, val):
+        self.extras[key] = val
+    def getExtra(self, key=None, details=None):
+        if key is None:
+            return self.extras
+        return self.extras.get(key)
+    def copyExtras(self):
+        return copy.deepcopy(self.extras)
+    def computeExtras(self, data, extras=None, details=None):
+        self.resetCacheEVals(only_keys=[Props.XTRKS])
+        self.extras.update(data.computeExtras(self, extras, details))
+        
+    #### EVals Cache
+    #######################
+    def markCacheEValsKeys(self, kks):
+        for key, ks in kks:
+            if key not in self.cache_evals:            
+                self.cache_evals[key] = set()
+            self.cache_evals[key].update(ks)
+    def resetCacheEVals(self, only_keys=None):
+        if only_keys is True:
+            only_keys = Props.test_containing_kp.keys()
+        if type(only_keys) is list:
+            for key in only_keys:
+                for k in self.cache_evals.get(key, []):
+                    del self.cache_evals[k]
+        else:
+            self.cache_evals = {}
+    def setCacheEVals(self, cevs):
+        self.cache_evals = cevs
+    def updateCacheEVals(self, cevs):
+        self.cache_evals.update(cevs)
+    def setCacheEVal(self, ck, cev):
+        self.cache_evals[ck] = cev
+    def getCacheEVal(self, ck):
+        return self.cache_evals.get(ck)
+    def hasCacheEVal(self, ck):
+        return ck in self.cache_evals
+        
+    #### Restricted sets
+    #######################
+    def setRestrictedSupp(self, data):
+        ### USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
+        ck = self.setRestrictedSuppSets(data, supp_sets=None)
+        if ck:
+            self.resetCacheEVals(only_keys=[Props.RSKS])
+    def resetRestrictedSuppSets(self):
+        self.restricted_sets = {}
+        self.resetCacheEVals(only_keys=[Props.RSKS])
+    def getRSKeys(self):
+        return self.restricted_sets.keys()
+    def hasActiveRS(self):        
+        return ACTIVE_RSET_ID in self.getRSKeys()
+    def hasRSets(self):
+        return len(self.restricted_sets) > 0
+
+    def getRestrictedRids(self, details=None, all_none=False, as_list=False):
+        if type(details) is dict:
+            rset_id = details.get("rset_id")
+        else:
+            rset_id = details
+        rset = None 
+        if rset_id is not None:
+            if rset_id in self.restricted_sets:
+                rset = self.restricted_sets[rset_id]["rids"]
+            elif not all_none and (rset_id == "all" or rset_id == ACTIVE_RSET_ID):
+                rset = self.rows()
+        if rset is not None and as_list:
+            rset = sorted(rset)
+        return rset
+                
+    def setRestrictedSuppSets(self, data, supp_sets=None):
+        self.resetRestrictedSuppSets()
+##################################################
+        
+def mapSuppNames(supp, details={}):
+    if details.get("named", False) and "row_names" in details:
+        return [details["row_names"][t] for t in supp]
+    return supp
+            
 ####   TOOLS FOR LATEX PRINTING
 def digit_to_char(n, pad=None):
     if pad is None:
@@ -211,36 +366,16 @@ def expand_val(val):
     return [val.strip()]
 
 
-class dummyC:
-    def __init__(self):
-        print "WARNING: Class not properly set up!"
-    def initParsed(self):
-        print "WARNING: Class not properly set up!"
-    def parse(self):
-        print "WARNING: Class not properly set up!"
-
 class Props(object):
    
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = None
     default_def_files = []
-    
+
+    rset_sub_match = ""
     rset_match = ""
     what_match = "\w+"
     which_match = "\w+"         
-    
-    @classmethod
-    def setupProps(tcl, elems_typs=[]):
-        tcl.elems_typs = elems_typs
-        tcl.setupPMatches()
-    @classmethod
-    def setupPMatches(tcl):
-        tcl.match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.what_match+"):(?P<which>"+tcl.which_match+")?)"
-        tcl.all_what_match = "("+ "|".join(["(?P<"+ preff +"what>"+cc.Pwhat_match+")" for (preff, cc) in tcl.elems_typs]) +")"
-        tcl.all_which_match = "("+ "|".join(["(?P<"+ preff +"which>"+cc.Pwhich_match+")" for (preff, cc) in tcl.elems_typs]) +")"   
-        tcl.all_match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.all_what_match+"):(?P<which>"+tcl.all_which_match+")?)"
-        tcl.lbl_match = "(?P<what>"+tcl.all_what_match+")[_]?(?P<which>"+tcl.all_which_match+")[_]?(?P<rset_id>"+tcl.rset_match+")?"
-
 
     substs = []
     
@@ -256,8 +391,25 @@ class Props(object):
                  "tex": "$\\PP{%(what)s}{%(which)s}{%(rset)s}$",
                  "gui": "%(rset)s %(what)s%(which)s%(what_1)s"}
     def_elems = {"what": "", "which": "", "rset": "", "what_1": ""}
-    extra_patt = ":extra:(?P<xtr>\w+)"
     XTRKS = "##XTRKS##"
+    extra_patt = ":extra:(?P<xtr>\w+)"
+    RSKS = "##RSKS##"
+    
+    @classmethod
+    def setupProps(tcl, Rclass, elems_typs=[]):        
+        tcl.Rclass = Rclass
+        tcl.elems_typs = elems_typs
+        tcl.setupPMatches()
+    @classmethod
+    def setupPMatches(tcl):
+        tcl.match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.what_match+"):(?P<which>"+tcl.which_match+")?)"
+        tcl.all_what_match = "("+ "|".join(["(?P<"+ preff +"what>"+cc.Pwhat_match+")" for (preff, cc) in tcl.elems_typs]) +")"
+        tcl.all_which_match = "("+ "|".join(["(?P<"+ preff +"which>"+cc.Pwhich_match+")" for (preff, cc) in tcl.elems_typs]) +")"   
+        tcl.all_match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.all_what_match+"):(?P<which>"+tcl.all_which_match+")?)"
+        tcl.lbl_match = "(?P<what>"+tcl.all_what_match+")[_]?(?P<which>"+tcl.all_which_match+")[_]?(?P<rset_id>"+tcl.rset_match+")?"
+        tcl.rsets_patt = "(?P<rset_id>"+tcl.rset_sub_match+"):.+:"
+        tcl.test_containing_kp = {tcl.XTRKS: tcl.extra_patt, tcl.RSKS: tcl.rsets_patt}
+
     
     modifiers_defaults = {"wsplits": False, "wmissing": False}
     @classmethod
@@ -314,8 +466,19 @@ class Props(object):
     @classmethod
     def getPrimitiveFmt(tcl, exp):
         what, which, rset = tcl.getPrimitiveWs(exp)
+        if what is not None:
+            if what in ["len", "card", "depth", "width"] or re.search("nb$", what):
+                return {"fmt": "d"}
+            if what in ["supp", "set"] or re.search("set$", what):
+                return {"fmt": "s", "supp_set": True, "sep": ", "}
+            if what in ["perc", "density", "min", "max"]:
+                return {"fmt": ".2f", "rnd": 2}
+            if what in ["ratio"]:
+                return {"fmt": ".4f", "rnd": 4}
+            if what in ["acc", "pval"]:
+                return {"fmt": ".3f", "rnd": 3}
         return {"fmt": "s"}
-
+    
     @classmethod        
     def getPrimitiveLbl(tcl, exp, style="txt"):
         return tcl.prepareWsLbl(tcl.getPrimitiveWs(exp), style=style)
@@ -392,18 +555,23 @@ class Props(object):
         fmt = tcl.getPrimitiveFmt(exp)
         val = tcl.getPrimitiveVal(red, exp, details)
         return prepareValFmt(val, fmt, to_str)        
-    
+
     @classmethod
-    def containsExtras(tcl, exp):
-        return re.search(tcl.extra_patt, exp) is not None
-    @classmethod
-    def containingExtras(tcl, exps={}):
+    def containingSomething(tcl, patt, exps={}):
         kxtrs = []
         for k, exp in exps.items():
-            if tcl.containsExtras(k) or (exp is not None and tcl.containsExtras(exp)):
+            if (re.search(patt, k) is not None) or (exp is not None and (re.search(patt, exp) is not None)):
                 kxtrs.append(k)
         return kxtrs
-
+    @classmethod
+    def testContaining(tcl, exps):
+        xps = []
+        for key, patt in tcl.test_containing_kp.items():
+            c = tcl.containingSomething(patt, exps)
+            if len(c) > 0:
+                xps.append((key, c))
+        return xps
+    
     ### DERIVATIVE EVAL
     @classmethod
     def compEVal(tcl, red, exp, details={}):
@@ -434,12 +602,12 @@ class Props(object):
     @classmethod
     def refreshEVals(tcl, red, exps, details={}):
         red.setCacheEVals(tcl.compEVals(red, exps, details))
-        red.markCacheEValsXTR(tcl.containingExtras(exps))
+        red.markCacheEValsKeys(tcl.testContaining(exps))
     @classmethod
     def getEVal(tcl, red, k, exp=None, fresh=False, default=None, details={}):
         if (exp is not None) and (not red.hasCacheEVal(k) or fresh):
             red.setCacheEVal(k, tcl.compEVal(red, exp, details))
-            red.markCacheEValsXTR(tcl.containingExtras({k: exp}))
+            red.markCacheEValsKeys(tcl.testContaining({k: exp}))
         return red.getCacheEVal(k)
     @classmethod
     def getEVals(tcl, red, exps, fresh=False, details={}):
@@ -449,7 +617,7 @@ class Props(object):
             revals = dict([(k,v) for (k,v) in exps.items() if not red.hasCacheEVal(k)])
         if len(revals) > 0:
             red.updateCacheEVals(tcl.compEVals(red, revals, details))
-            red.markCacheEValsXTR(tcl.containingExtras(revals))
+            red.markCacheEValsKeys(tcl.testContaining(revals))
         return dict([(k,red.getCacheEVal(k)) for k in exps.keys()])
 
     def getEValF(self, red, k, fresh=False, default=None, details={}):
@@ -461,7 +629,7 @@ class Props(object):
             return self.formatVal(val, details["k"], to_str=details.get("to_str", False), replace_none=details.get("replace_none", "-"))
         return None
     
-    def __init__(self, fields_fns=None):
+    def __init__(self, Rclass, fields_fns=None):
         self.derivatives = {}
         self.setupFDefs(fields_fns)
 
@@ -590,7 +758,7 @@ class Props(object):
             return self.getDerivativeField(ff)["exp"]
         elif self.isPrimitive(ff):            
             return ff
-        elif ff in self.Rclass.info_what:
+        elif ff in self.Rclass.info_what or ff in self.Rclass.info_what_dets:
             return ":%s:" % ff
 
     def getFieldFmt(self, ff):
@@ -677,12 +845,18 @@ class VarProps(Props):
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = pref_dir+"/fields_vdefs_basic.txt"
     default_def_files = [def_file_basic]
-    
+
+    rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
     rset_match = "("+ "|".join(["all","learn","test","active"]) +")"
     what_match = "\w+"
     which_match = "\w+" 
     match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
-        
+
+    lbl_patts = {}
+    lbl_patts.update(Props.lbl_patts)
+    lbl_patts["gui"] = "%(rset)s %(what)s %(which)s%(what_1)s"
+
+    
     substs = [("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
     
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
@@ -703,15 +877,9 @@ class VarProps(Props):
                        "rset": {"all" : "", "active" : "",
                                 "learn" : SYM.SYM_LEARN, "test" : SYM.SYM_TEST}}
     map_lbls["gui"]["specials"] = {}
-    lbl_patts = {"txt": "%(what)s_%(which)s_%(rset)s",
-                 "tex": "$\\PP{%(what)s}{%(which)s}{%(rset)s}$",
-                 "gui": "%(rset)s %(what)s%(which)s%(what_1)s"}
-    def_elems = {"what": "", "which": "", "rset": "", "what_1": ""}
-    extra_patt = ":extra:(?P<xtr>\w+)"
-    XTRKS = "##XTRKS##"
-    
+
     @classmethod
-    def updateModifiers(tcl, var_list, modifiers={}):
+    def updateModifiers(tcl, var_list, modifiers={}):        
         types_letters = set([var[1].type_letter for var in var_list])
         for types_letter in types_letters:
             tk = "wtype_%s" % types_letter
@@ -731,21 +899,13 @@ class VarProps(Props):
             b += ":"+xtr
         return b
 
-    ### PRIMITIVE FORMATS AND LABELS
-    @classmethod
-    def getPrimitiveFmt(tcl, exp):
-        what, which, rset = tcl.getPrimitiveWs(exp)
-        if what is not None: #### FURTHER EDIT HERE
-            if what in ["density", "min", "max"]:
-                return {"fmt": ".2f", "rnd": 2}
-        return {"fmt": "s"}
-
 class RedProps(Props):
    
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = pref_dir+"/fields_rdefs_basic.txt"
     default_def_files = [def_file_basic]
-    
+
+    rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
     rset_match = "("+ "|".join(["all","learn","test","cond","active"] + HAND_SIDE.keys()) +")"
     what_match = "\w+"
     which_match = "\w+" 
@@ -755,14 +915,17 @@ class RedProps(Props):
     all_which_match = ""
     all_match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+all_what_match+"):(?P<which>"+all_which_match+")?)"
     lbl_match = "(?P<what>"+all_what_match+")[_]?(?P<which>"+all_which_match+")[_]?(?P<rset_id>"+rset_match+")?"
-    
+
+
+    #### The classes provided below should have the following methods: 
+    ## __init__(self), initParsed(self), parse(self)
     @classmethod
-    def setupProps(tcl, elems_typs=[], Qclass=dummyC, Rclass=dummyC):
+    def setupProps(tcl, Qclass, Rclass, elems_typs=[]):
         tcl.Qclass = Qclass
         tcl.Rclass = Rclass
         tcl.elems_typs = elems_typs
         tcl.setupPMatches()
-
+        
     substs = [("queryLHS", "query_LHS"), ("queryRHS", "query_RHS"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
     
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
@@ -793,12 +956,6 @@ class RedProps(Props):
                                 "ratioTA" : "T/A", "ratioLA" : "L/A",
                                 "0" : "LHS", "1" : "RHS", "-1" : "COND",}}
     map_lbls["gui"]["specials"] = {}
-    lbl_patts = {"txt": "%(what)s_%(which)s_%(rset)s",
-                 "tex": "$\\PP{%(what)s}{%(which)s}{%(rset)s}$",
-                 "gui": "%(rset)s %(what)s%(which)s%(what_1)s"}
-    def_elems = {"what": "", "which": "", "rset": "", "what_1": ""}
-    extra_patt = ":extra:(?P<xtr>\w+)"
-    XTRKS = "##XTRKS##"
     
     modifiers_defaults = {"wsplits": False, "wmissing": False, "wcond": False}
     @classmethod
@@ -827,22 +984,6 @@ class RedProps(Props):
             b += ":"+xtr
         return b
     
-    ### PRIMITIVE FORMATS AND LABELS
-    @classmethod
-    def getPrimitiveFmt(tcl, exp):
-        what, which, rset = tcl.getPrimitiveWs(exp)
-        if what is not None:
-            if what in ["len", "card", "depth", "width"] or re.search("nb$", what):
-                return {"fmt": "d"}
-            if what in ["supp", "set"] or re.search("set$", what):
-                return {"fmt": "s", "supp_set": True, "sep": ", "}
-            if what in ["perc"]:
-                return {"fmt": ".2f", "rnd": 2}
-            if what in ["ratio"]:
-                return {"fmt": ".4f", "rnd": 4}
-            if what in ["acc", "pval"]:
-                return {"fmt": ".3f", "rnd": 3}
-        return {"fmt": "s"}
 
     
     ##############################################

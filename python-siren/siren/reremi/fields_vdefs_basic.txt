@@ -1,3 +1,4 @@
+field	cohesion	:extra:cohesion	.2f
 fieldlist	gui
 :extra:name
 :type:	
@@ -6,3 +7,4 @@ fieldlist	gui
 :categories:	[wtype_C]
 :min:	[wtype_N]
 :max:	[wtype_N]
+cohesion	[wxtr_geoplus]

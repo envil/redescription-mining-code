@@ -269,23 +269,21 @@ class DataWrapper(object):
             if len(SSETTS_PARAMS.intersection(dtv)) > 0:
                 self.resetSSetts()
             self.resetConstraints()
-            #self.isChanged = True
-            self.addReloadAll()
+            self.addReloadRecompute()
             
     def loadExtension(self, ek, filenames={}):
         if len(filenames) == 0 and ek in self.getExtensionKeys():
             self.data.getExtension(ek).setParams(self.getPreferences())        
         else:
             self.data.initExtension(ek, filenames, self.getPreferences())
-        self.addReloadAll()
-        # self._isChanged = True
-        # self._needsReload = True
-
-    def addSuppCol(self, suppVect, name):
-        self.getData().addSuppCol(suppVect, name)
+        self.addReloadRecompute()
         self.addReloadData("v")
-    def addSelCol(self, lids, name):
-        self.getData().addSelCol(lids, name)
+
+    def addSuppCol(self, suppVect, name, side=1):
+        self.getData().addSuppCol(suppVect, name, side)
+        self.addReloadData("v")
+    def addSelCol(self, lids, name, side=1):
+        self.getData().addSelCol(lids, name, side)
         self.addReloadData("v")
     ### HANDLING FOLDS
     def addFoldsCol(self):
@@ -316,14 +314,26 @@ class DataWrapper(object):
             self.addReloadAll()
     def resetConstraints(self):
         self.constraints = Constraints(self.getData(), self.getPreferences())
-                                
-    def recomputeReds(self):
+
+    def recompute(self):
         self.doneReloadRecompute()
+        self.recomputeReds()
+        self.recomputeVars()
+
+    def recomputeVars(self):
+        data = self.getData()
+        if data is not None:
+            data.recomputeCols()
+            self.addReloadData("v")
+            self.addReloadFields("v")        
+        
+    def recomputeReds(self):
         data = self.getData()
         if data is not None:
             for rid in self.reds.getIids():
                 self.reds.getItem(rid).recompute(data)
             self.addReloadData("r")
+            self.addReloadFields("r")        
             self.addReloadData("z")
         
 ################################################################
@@ -726,7 +736,7 @@ class DataWrapper(object):
         # self._needsReload = {"reset_all": True}
     def getNeedsReloadDone(self):
         rneeds = self.getNeedsReload()
-        if not rneeds.get("recompute_reds"):
+        if not rneeds.get("recompute"):
             self.reloaded()
         return rneeds    
     def addReloadItem(self, ii, tab_type="r"):
@@ -773,9 +783,9 @@ class DataWrapper(object):
             return
         self._needsReload["switch"] = tab_type
     def addReloadRecompute(self):
-        self._needsReload["recompute_reds"] = True
+        self._needsReload["recompute"] = True
     def doneReloadRecompute(self):
-        self._needsReload["recompute_reds"] = False
+        self._needsReload["recompute"] = False
     def addReloadAll(self):
         self._needsReload["reset_all"] = True
 

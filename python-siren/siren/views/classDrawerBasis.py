@@ -402,10 +402,14 @@ class DrawerBasis(object):
     def save_supp_var(self, more=None):
         if self.hasParent():
             self.getParent().OnSaveSuppAsVar(self.getVec(), "%s" % self.getParentViewsm().getItemId(self.getId()))
-    def save_sel_var(self, more=None):
+    def saveSelVar(self, side=1):
         if self.hasParent() and self.isEntitiesPlt():
             lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
-            self.getParent().OnSaveSelAsVar(lids, "S%s" % self.getParentViewsm().getItemId(self.getId()))
+            self.getParent().OnSaveSelAsVar(lids, "SEL%s" % self.getParentViewsm().getItemId(self.getId()), side)
+    def save_sel_varLHS(self, more=None):
+        self.saveSelVar(side=0)
+    def save_sel_varRHS(self, more=None):
+        self.saveSelVar(side=1)
 
                  
     #### SEC: FILL and WAIT PLOTTING
@@ -661,18 +665,23 @@ class DrawerEntitiesTD(DrawerBasis):
                             "noggle_info": {"method": self.do_toggle_info, "label": "Toggle i&nfo",
                                                "legend": "Toggle info", "more": None,  "type": "check",
                                                "order":101, "active_q":self.q_active_info},
-                            "vave_sel_var": {"method": self.save_sel_var, "label": "Save selection as variable",
-                                               "legend": "Save the selection as a new data variable",
+                            "vave_sel_varLHS": {"method": self.save_sel_varLHS, "label": "Save selection as LHS variable",
+                                               "legend": "Save the selection as a new left-hand side data variable",
+                                               "more": None,  "type": "main",
+                                               "order":10, "active_q":self.q_has_selected},
+                            "wave_sel_varRHS": {"method": self.save_sel_varRHS, "label": "Save selection as RHS variable",
+                                               "legend": "Save the selection as a new right-hand side data variable",
                                                "more": None,  "type": "main",
                                                "order":10, "active_q":self.q_has_selected}
+
                             }
 
 
         if self.getPltDtH().hasQueries():
-            self.actions_map["save_supp_var"] = {"method": self.save_supp_var, "label": "Save supp as variable",
-                                                "legend": "Save the support as a new data variable",
-                                                "more": None,  "type": "main",
-                                                "order":11, "active_q":self.q_not_svar}
+            # self.actions_map["save_supp_var"] = {"method": self.save_supp_var, "label": "Save supp as variable",
+            #                                     "legend": "Save the support as a new data variable",
+            #                                     "more": None,  "type": "main",
+            #                                     "order":11, "active_q":self.q_not_svar}
             for setk, setl, setp in self.map_select_supp:
                 self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "(De)select "+setl,
                                                  "legend": "(De)select dots in "+setl, "more": setp, "type": "main",

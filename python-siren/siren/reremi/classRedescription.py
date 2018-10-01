@@ -1,21 +1,12 @@
-import re, string, numpy, codecs, copy
-from classContent import Item
+import re, string, numpy, codecs
 from classCol import  ColM
 from classQuery import  *
 from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
-from classProps import RedProps
+from classProps import WithEVals, RedProps, mapSuppNames, ACTIVE_RSET_ID, HAND_SIDE
 import pdb
 
-ACTIVE_RSET_ID = "active"
-HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1}
 
-def mapSuppNames(supp, details={}):
-    if details.get("named", False) and "row_names" in details:
-        return [details["row_names"][t] for t in supp]
-    return supp
-
-
-class Redescription(Item):
+class Redescription(WithEVals):
     diff_score = Query.diff_length + 1
     
     ### PROPS WHAT
@@ -25,29 +16,14 @@ class Redescription(Item):
     #                   "queryCOND": "self.prepareQueryCOND"}
     info_what = {} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
-
-    ### PROPS WHICH
-    which_rids = "rids"
-    Pwhich_match = "("+ "|".join(["[^_]+"]+[which_rids]) +")"    
-    @classmethod
-    def hasPropWhich(tcl, which):
-        return re.match(tcl.Pwhich_match, which) is not None
-
+    ### PROPS WHICH in WithEVals class
 
     RP = None
     @classmethod
     def setupRP(tcl, fields_fns=None):
         elems_typs = [("q", Query), ("s", SParts), ("r", Redescription)]
-        RedProps.setupProps(elems_typs, Query, Redescription)
+        RedProps.setupProps(Query, Redescription, elems_typs)
         tcl.RP = RedProps(fields_fns)
-
-    @classmethod
-    def getRP(tcl, rp=None):
-        if rp is None:
-            if tcl.RP is None:
-                tcl.setupRP()
-            return tcl.RP
-        return rp
 
     next_uid = -1
     @classmethod
@@ -56,8 +32,7 @@ class Redescription(Item):
         return tcl.next_uid
 
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
-        Item.__init__(self)
-        self.resetRestrictedSuppSets()
+        WithEVals.__init__(self)
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
             self.sParts = SParts(ssetts, nN, nsupps, nPrs)
@@ -66,8 +41,8 @@ class Redescription(Item):
             self.sParts = None
             self.dict_supp_info = {}
         self.lAvailableCols = [None, None]
-        self.extras = {"status": 1, "track": []}
-        self.cache_evals = {}
+        self.extras["status"] = 1
+        self.extras["track"] = []
         self.condition = None
 
     @classmethod
@@ -101,8 +76,7 @@ class Redescription(Item):
                 qC = Query(buk=[litC])                
             supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)
-        if data.hasLT() or data.hasSelectedRows():
-            r.setRestrictedSupp(data)
+        WithEVals.recompute(r, data)
         return r
 
     @classmethod
@@ -220,6 +194,11 @@ class Redescription(Item):
 
     def supports(self):
         return self.sParts
+
+    def nbRows(self):
+        return self.supports().nbRows()
+    def rows(self):
+        return set(range(self.nbRows()))
     
     def partsAll(self):
         return self.supports().sParts
@@ -369,53 +348,7 @@ class Redescription(Item):
 
     def invCols(self):
         return [self.invColsSide(0), self.invColsSide(1)]
-        
-    def setRestrictedSupp(self, data):
-        ### USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
-        self.setRestrictedSuppSets(data, supp_sets=None)
-        
-    def resetRestrictedSuppSets(self):
-        self.restricted_sets = {}
-
-    def getRSKeys(self):
-        return self.restricted_sets.keys()
-    def hasActiveRS(self):        
-        return ACTIVE_RSET_ID in self.getRSKeys()
-        
-    def setRestrictedSuppSets(self, data, supp_sets=None):
-        self.dict_supp_info = None
-        resets_ids = []
-        if supp_sets is None:
-            if data.hasLT():
-                supp_sets = data.getLT()
-            else:
-                supp_sets = {ACTIVE_RSET_ID: data.nonselectedRows()}
-        for sid, sset in supp_sets.items():
-            old_rids = None
-            if sid in self.restricted_sets:
-                old_rids = self.restricted_sets[sid]["rids"]
-            if len(sset) == 0:
-                self.restricted_sets[sid] = {"sParts": None,
-                                             "prs": None,
-                                             "rids": set()}
-            elif sid not in self.restricted_sets or self.restricted_sets[sid]["rids"] != sset:
-                (nsuppL, missL) = self.recomputeQuery(0, data, sset)
-                (nsuppR, missR) = self.recomputeQuery(1, data, sset)
-                if len(missL) + len(missR) > 0:
-                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR, missL, missR])
-                else:
-                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR])
-
-                self.restricted_sets[sid] = {"sParts": rsParts,
-                                             "prs": [self.queries[0].proba(0, data, sset),
-                                                     self.queries[1].proba(1, data, sset)],
-                                             "rids": set(sset)}
-
-            if old_rids is None or old_rids != self.restricted_sets[sid]["rids"]:
-                resets_ids.append(sid)
-        if len(resets_ids) > 0:
-            self.resetCacheEVals(resets_ids=resets_ids)
-            
+                    
     def getNormalized(self, data=None, side=None):
         if side is not None:
             sides = [side]
@@ -445,14 +378,12 @@ class Redescription(Item):
         else:
             self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR]) #TODO: recompute
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
-        if data.hasLT() or data.hasSelectedRows():
-            self.setRestrictedSupp(data)
         if self.hasCondition():
             qC = self.getQueryC()
             supp_cond, miss_cond = qC.recompute(-1, data)
             self.setCondition(qC, supp_cond)                        
         self.dict_supp_info = None
-        self.computeExtras(data)
+        WithEVals.recompute(self, data)
         
     def check(self, data):
         result = 0
@@ -472,18 +403,6 @@ class Redescription(Item):
 
     def hasMissing(self):
         return self.supports().hasMissing()
-
-    def setExtra(self, key, val):
-        self.extras[key] = val
-    def getExtra(self, key=None, details=None):
-        if key is None:
-            return self.extras
-        return self.extras.get(key)
-    def copyExtras(self):
-        return copy.deepcopy(self.extras)
-    def computeExtras(self, data, extras=None, details=None):
-        self.resetCacheEVals(only_extras=True)
-        self.extras.update(data.computeExtras(self, extras, details))
         
     def getStatus(self):
         return self.extras["status"]
@@ -557,8 +476,45 @@ class Redescription(Item):
     def getMethodPVal(self, details=None):
         return self.supports().getMethodPVal()    
 
-    def hasRSets(self):
-        return len(self.restricted_sets) > 0
+
+    ##### RESTRICTED SETS        
+    def setRestrictedSuppSets(self, data, supp_sets=None):
+        resets_ids = []
+        if supp_sets is None:
+            if data.hasLT():
+                supp_sets = data.getLT()
+            else:
+                supp_sets = {ACTIVE_RSET_ID: data.nonselectedRows()}
+        for sid, sset in supp_sets.items():
+            old_rids = None
+            if sid in self.restricted_sets:
+                old_rids = self.restricted_sets[sid]["rids"]
+            if len(sset) == 0:
+                if sid not in self.restricted_sets or len(self.restricted_sets[sid]["rids"]) > 0:
+                    resets_ids.append(sid)                    
+                self.restricted_sets[sid] = {"sParts": None,
+                                             "prs": None,
+                                             "rids": set()}
+
+            elif sid not in self.restricted_sets or self.restricted_sets[sid]["rids"] != sset:
+                (nsuppL, missL) = self.recomputeQuery(0, data, sset)
+                (nsuppR, missR) = self.recomputeQuery(1, data, sset)
+                if len(missL) + len(missR) > 0:
+                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR, missL, missR])
+                else:
+                    rsParts = SParts(data.getSSetts(), sset, [nsuppL, nsuppR])
+
+                self.restricted_sets[sid] = {"sParts": rsParts,
+                                             "prs": [self.queries[0].proba(0, data, sset),
+                                                     self.queries[1].proba(1, data, sset)],
+                                             "rids": set(sset)}
+                resets_ids.append(sid)
+                
+        if len(resets_ids) > 0:
+            self.dict_supp_info = None
+            return True
+        return False
+           
     def getRSet(self, details=None):
         if type(details) is dict:
             rset_id = details.get("rset_id")
@@ -580,11 +536,6 @@ class Redescription(Item):
         rset = self.getRSet(details)
         if rset is not None:
             return rset.get("sParts")
-    def getRSetIds(self, details=None):
-        rset = self.getRSet(details)
-        if rset is not None and "rids" in rset:
-            return sorted(rset["rids"])
-        return None
        
     def getRSetABCD(self, details=None):
         ssp = self.getRSetParts(details)
@@ -663,7 +614,7 @@ class Redescription(Item):
             return None
 
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
-            rset_ids = self.getRSetIds(rset_id)
+            rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
                 return None
             if what == "len" or what == "card":
@@ -671,9 +622,9 @@ class Redescription(Item):
             elif what == "supp" or what == "set":
                 return mapSuppNames(rset_ids, details)
             elif what == "perc":
-                return tool_ratio(100.*len(rset_ids), self.supports().nbRows())
+                return tool_ratio(100.*len(rset_ids), self.nbRows())
             elif what == "ratio":
-                return tool_ratio(len(rset_ids), self.supports().nbRows())
+                return tool_ratio(len(rset_ids), self.nbRows())
 
         if SParts.hasPropWhat(what): ### info from supp parts
             rset_parts = self.getRSetParts(rset_id)
@@ -689,41 +640,6 @@ class Redescription(Item):
                 return methode(details)
         elif what in Redescription.info_what: ### other redescription info
             return eval(Redescription.info_what[what])
-
-    def markCacheEValsXTR(self, ks):
-        if RedProps.XTRKS not in self.cache_evals:            
-            self.cache_evals[RedProps.XTRKS] = set()
-        self.cache_evals[RedProps.XTRKS].update(ks)
-    def resetCacheEVals(self, only_extras=False, resets_ids=None):
-        if only_extras:
-            for k in self.cache_evals.get(RedProps.XTRKS, []):
-                del self.cache_evals[k]
-        elif resets_ids is not None:
-            ks = self.cache_evals.keys()
-            for k in ks:
-                if any([re.match("%s:" % rk, k) for rk in resets_ids]):
-                    del self.cache_evals[k]
-        else:
-            self.cache_evals = {}
-    def setCacheEVals(self, cevs):
-        self.cache_evals = cevs
-    def updateCacheEVals(self, cevs):
-        self.cache_evals.update(cevs)
-    def setCacheEVal(self, ck, cev):
-        self.cache_evals[ck] = cev
-    def getCacheEVal(self, ck):
-        return self.cache_evals.get(ck)
-    def hasCacheEVal(self, ck):
-        return ck in self.cache_evals
-
-    def getEValGUI(self, details):
-        val = None
-        if "rp" in details:
-            val = details["rp"].getEValGUI(self, details)
-        if val is None:
-            val = details.get('replace_none')
-        return val
-
     
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING

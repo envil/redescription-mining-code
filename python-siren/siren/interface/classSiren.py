@@ -1508,16 +1508,15 @@ class Siren():
             rneeds = {"reset_all": True}
         elif rneeds == 1:
             rneeds = self.dw.getNeedsReloadDone()
-            if rneeds.get("recompute_reds"):
+            if rneeds.get("recompute"):
                 # print "REFRESH INTERM", rneeds
                 # print "RECOMPUTE"
-                self.dw.recomputeReds()
+                self.dw.recompute()
                 rneeds = self.dw.getNeedsReloadDone()
-
+                
         # print "REFRESH", rneeds
         if not type(rneeds) is dict:
             return
-
         
         rall = rneeds.get("reset_all", False)
         rdatainfo = rall
@@ -1663,13 +1662,12 @@ class Siren():
         dlg.showDialog()
         self.refresh()
         
-    def OnSaveSuppAsVar(self, suppVect, name):
-        self.dw.addSuppCol(suppVect, name)
+    # def OnSaveSuppAsVar(self, suppVect, name):
+    #     self.dw.addSuppCol(suppVect, name)
+    #     self.refresh()
+    def OnSaveSelAsVar(self, lids, name, side=1):
+        self.dw.addSelCol(lids, name, side)
         self.refresh()
-    def OnSaveSelAsVar(self, lids, name):
-        self.dw.addSelCol(lids, name)
-        self.refresh()
-
 
     #### PREFERENCES
     def OnImportPreferences(self, event):

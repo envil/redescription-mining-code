@@ -243,7 +243,7 @@ class DrawerRedTree(DrawerEntitiesTD):
             if self.okTrees():
                 #### WARNING: CONFUSION RESTRICTED SUPPORT <> MISSING VALUES
                 ## rsupp = red.supports().parts4M()
-                rids = red.getRSetIds(self.getPltDtH().getDetailsSplit())                
+                rids = sorted(red.getRestrictedRids(self.getPltDtH().getDetailsSplit()))
 
                 rsupp = red.getRSetParts(self.getPltDtH().getDetailsSplit()).parts4M()
                 for side in [0,1]:
