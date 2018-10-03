@@ -1092,7 +1092,7 @@ class Data(ContentCollection):
     def getIids(self, side=None):
         iids = []
         for s in self.getSides(side):
-            iids.extend([(side, cc.getId()) for cc in self.colsSide(side)])
+            iids.extend([(s, cc.getId()) for cc in self.colsSide(s)])
         return iids
 
     def isConditional(self):

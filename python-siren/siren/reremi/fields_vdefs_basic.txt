@@ -8,3 +8,9 @@ fieldlist	gui
 :min:	[wtype_N]
 :max:	[wtype_N]
 cohesion	[wxtr_geoplus]
+fieldlist	statsactive
+active:len:rids
+active:sum:vect	[wtype_B]
+active:set:vals	[wtype_C]
+active:min:vect	[wtype_N]
+active:max:vect	[wtype_N]

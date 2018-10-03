@@ -437,13 +437,16 @@ class MultiSelectorDialog(object):
                         "down": wx.Button(self.dlg,-1, "v", pos=(110, 180)),
                         "add": wx.Button(self.dlg,-1, ">", pos=(110, 180)),
                         "rm": wx.Button(self.dlg,-1, "<", pos=(110, 180)),
-                        "reset": wx.Button(self.dlg,-1, "Reset", pos=(110, 180))}
+                        "reset": wx.Button(self.dlg,-1, "Reset", pos=(110, 180)),
+                        "drop": wx.Button(self.dlg,-1, "Drop", pos=(110, 180))}
 
+        # self.dlg.Bind(wx.EVT_BUTTON, self.onButton)        
         self.buttons["up"].Bind(wx.EVT_BUTTON, self.onBtnUp)
         self.buttons["down"].Bind(wx.EVT_BUTTON, self.onBtnDown)
         self.buttons["add"].Bind(wx.EVT_BUTTON, self.onBtnAdd)
         self.buttons["rm"].Bind(wx.EVT_BUTTON, self.onBtnRm)
-        self.buttons["reset"].Bind(wx.EVT_BUTTON, self.onBtnReset)        
+        self.buttons["reset"].Bind(wx.EVT_BUTTON, self.onBtnReset)
+        self.buttons["drop"].Bind(wx.EVT_BUTTON, self.onBtnDrop)        
 
         self.lists["LHS"].Bind(wx.EVT_LISTBOX_DCLICK, self.onLstAdd)
         self.lists["RHS"].Bind(wx.EVT_LISTBOX_DCLICK, self.onLstRm)
@@ -452,7 +455,7 @@ class MultiSelectorDialog(object):
 
         sizer_btns = wx.BoxSizer(wx.VERTICAL)
         sizer_btns.AddStretchSpacer()
-        for btn in ["up", "add", "rm", "down", "reset"]:
+        for btn in ["up", "add", "rm", "down", "reset", "drop"]:
             sizer_btns.Add(self.buttons[btn], 0, wx.ALL, 5)
         sizer_btns.AddStretchSpacer()
             
@@ -462,13 +465,14 @@ class MultiSelectorDialog(object):
         sizer.Add(self.lists["RHS"], 2, wx.EXPAND|wx.ALL, 5)
 
         btnSizer = self.dlg.CreateButtonSizer(wx.OK|wx.CANCEL)
+        self.status = None
         topSizer = wx.BoxSizer(wx.VERTICAL)
         topSizer.Add(sizer, 2, wx.EXPAND|wx.ALL, 5)
         topSizer.Add(btnSizer, 0, wx.EXPAND|wx.ALL, 5)
         
         self.dlg.SetSizer(topSizer)
         self.dlg.Fit()
-
+        
 
     def populate(self, choice_list, selected_ids=[]):
         self.options = dict(choice_list)
@@ -493,6 +497,10 @@ class MultiSelectorDialog(object):
         for r in sorted(poss, reverse=True):
             self.lists[which].Delete(r)
 
+    def onBtnDrop(self, event):
+        self.status = -1
+        self.dlg.Destroy()
+            
     def onBtnReset(self, event):
         self.resetLists()
     def onBtnUp(self, event):
@@ -551,8 +559,9 @@ class MultiSelectorDialog(object):
             self.removeElemsList(LFrom, selposs)
 
     def showDialog(self):
-        fields = None
-        if self.dlg.ShowModal() == wx.ID_OK:
-            fields = self.getOrdSelect()
+        rtn = self.dlg.ShowModal()
+        if rtn == wx.ID_OK:
+            self.status = self.getOrdSelect()
         self.dlg.Destroy()
-        return fields
+        return self.status
+    

@@ -6,10 +6,15 @@ import pdb
 
 ACTIVE_RSET_ID = "active"
 SIDE_CHARS = {0:"L", 1:"R", -1: "C"}
-HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1}
+HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1, "BOTH": ["LHS","RHS"]}
 NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
 WIDTH_MID = .5
+
+def all_subclasses(cls):
+    return cls.__subclasses__() + [g for s in cls.__subclasses__()
+                                   for g in all_subclasses(s)]    
+
 
 class WithEVals(Item):
 
@@ -435,11 +440,14 @@ class Props(object):
             tmp["wxtr_%s" % xtr] = True
         return tmp
     @classmethod
-    def hashModifiers(tcl, modifiers):
-        xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])        
+    def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wsplits)d" % modifiers
-        if len(xtr) > 0:
-            b += ":"+xtr
+        if cust:
+                b += ":CUST"
+        else:
+            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])        
+            if len(xtr) > 0:
+                b += ":"+xtr
         return b
     @classmethod
     def getStyles(tcl, style):
@@ -749,6 +757,9 @@ class Props(object):
         return self.field_lists.get(fk, [])
     def setFieldsList(self, fk, flist):
         self.field_lists[fk] = flist
+    def delFieldsList(self, fk):
+        if fk in self.field_lists:
+            del self.field_lists[fk]        
     def getListsKeys(self):
         return self.field_lists.keys()
 
@@ -799,22 +810,29 @@ class Props(object):
             for p in re.finditer(self.extra_patt, exp):
                 extras.append((fk, p.group("xtr")))
         return extras
-    
+
     def getCurrentListFields(self, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
         hmod = self.hashModifiers(ddmod)
-        options = ["%s-%s" % (ckey, hmod), "%s" % ckey, "basic"]
+        hmod_cust = self.hashModifiers(ddmod, cust=True)
+        options = ["%s-%s" % (ckey, hmod_cust), "%s-%s" % (ckey, hmod), "%s" % ckey, "basic"]
         for opt in options:
             if self.hasFieldsList(opt):
                 return self.getListFields(opt, modifiers)
     def setCurrentListFields(self, ll, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
-        hmod = self.hashModifiers(ddmod)
+        hmod = self.hashModifiers(ddmod, cust=True)
         ck = "%s-%s" % (ckey, hmod)
         flist = [{"field": f} for f in ll]
         self.setFieldsList(ck, flist)
+    def dropCustListFields(self, ckey, modifiers={}):
+        ddmod = dict(self.modifiers_defaults)
+        ddmod.update(modifiers)
+        hmod = self.hashModifiers(ddmod, cust=True)
+        ck = "%s-%s" % (ckey, hmod)
+        self.delFieldsList(ck)
 
     def getAllFields(self, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
@@ -879,26 +897,35 @@ class VarProps(Props):
     map_lbls["gui"]["specials"] = {}
 
     @classmethod
-    def updateModifiers(tcl, var_list, modifiers={}):        
-        types_letters = set([var[1].type_letter for var in var_list])
+    def updateModifiers(tcl, var_list=[], modifiers={}, has_missing=False, types_letters=[]):
+        if types_letters is None:
+            types_letters = set([cc.type_letter for cc in all_subclasses(tcl.Rclass)])
+        else:
+            types_letters = set(types_letters)
+        types_letters.update([var[1].type_letter for var in var_list])
+        has_missing |= any([var[1].hasMissing() for var in var_list])            
         for types_letter in types_letters:
             tk = "wtype_%s" % types_letter
             if (tk not in modifiers):
                 modifiers[tk] = True
-        if ("wmissing" not in modifiers) and any([var[1].hasMissing() for var in var_list]):
+        if ("wmissing" not in modifiers) and has_missing:
             modifiers["wmissing"] = True
         return modifiers
     @classmethod
-    def hashModifiers(tcl, modifiers):
-        xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])
-        typ = ":".join([k.replace("wtype_", "") for k,v in modifiers.items() if re.match("wtype_", k) and v])        
+    def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wsplits)d" % modifiers
-        if len(typ) > 0:
-            b += ":"+typ
-        if len(xtr) > 0:
-            b += ":"+xtr
+        if cust:
+                b += ":CUST"
+        else:
+            typ = ":".join([k.replace("wtype_", "") for k,v in modifiers.items() if re.match("wtype_", k) and v])        
+            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])
+            if len(typ) > 0:
+                b += ":"+typ
+            if len(xtr) > 0:
+                b += ":"+xtr
         return b
 
+    
 class RedProps(Props):
    
     pref_dir = os.path.dirname(os.path.abspath(__file__))
@@ -943,7 +970,7 @@ class RedProps(Props):
                                 "ratioTL" : "_{\\RSetTest/\\RSetLearn}",
                                 "ratioTA" : "_{\\RSetTest/\\RSetAA}", "ratioLA" : "_{\\RSetLearn/\\RSetAA}",
                                 "LHS" : "_\\iLHS", "RHS" : "_\\iRHS", "COND" : "_\\iCOND",
-                                "0" : "_\\iLHS", "1" : "_\\iRHS", "-1" : "_\\iCOND",}}
+                                "0" : "_\\iLHS", "1" : "_\\iRHS", "-1" : "_\\iCOND", "BOTH":"_{\\iLHS+\\iRHS}"}}
     map_lbls["tex"]["specials"] = {}
     map_lbls["gui"] = {"what": {"acc": "J", "pval": "pV", "perc": "%", "ratio": "/",
                                 "len": ("|", "|"), "card": ("|", "|"),
@@ -977,14 +1004,16 @@ class RedProps(Props):
             tmp["wxtr_%s" % xtr] = True
         return tmp
     @classmethod
-    def hashModifiers(tcl, modifiers):
-        xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])        
+    def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wcond)d%(wsplits)d" % modifiers
-        if len(xtr) > 0:
-            b += ":"+xtr
+        if cust:
+                b += ":CUST"
+        else:
+            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])
+            if len(xtr) > 0:
+                b += ":"+xtr
         return b
     
-
     
     ##############################################
     ####        PRINTING

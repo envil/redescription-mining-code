@@ -140,6 +140,10 @@ class DataWrapper(object):
             return self.data.nbRows()
         return 0
 
+    def getAllCols(self):
+        if self.data is not None:
+            return [(iid, self.data.getItem(iid)) for iid in self.data.getIids()]
+        return []
     def getDataCols(self, side):
         if self.data is not None:
             return self.data.colsSide(side)

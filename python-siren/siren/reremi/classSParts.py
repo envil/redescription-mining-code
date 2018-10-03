@@ -636,7 +636,7 @@ class SParts(object):
 
     ### PROPS WHAT
     info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
-    props_what = ["len", "card", "supp", "set", "perc", "ratio"]    
+    props_what = ["len", "card", "supp", "set", "perc", "ratio", "area"]    
     Pwhat_match = "("+ "|".join(info_what.keys()+ props_what) +")"
     @classmethod
     def hasPropWhat(tcl, what):
@@ -993,7 +993,7 @@ class SParts(object):
         if what in SParts.info_what:
             return eval(SParts.info_what[what])
         wt = what
-        if what == "card":
+        if what == "card" or what == "area":
             wt = "len"
         elif what == "supp":
             wt = "set"

@@ -17,6 +17,8 @@ fieldlist	suppsall
 all:supp:Y	Y={Ex*}[wmissing]{Em*}
 fieldlist	supps
 X:supp:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
+fieldlist	areas
+X:area:Y	Y={L,R,A,B,U,I} X=[wsplits]{test,learn}{all,active}
 fieldlist	statsall
 all:acc:	
 all:len:I	
@@ -38,7 +40,8 @@ X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]
 list	cards
 fieldlist	gui
-active:len:rids
+BOTH:len:q
+active:area:I
 list	queries
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]

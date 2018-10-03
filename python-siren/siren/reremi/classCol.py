@@ -5,7 +5,7 @@ import codecs, re
 from toolRead import BOOL_MAP
 from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal
 from classSParts import tool_ratio
-from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID, HAND_SIDE
+from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
 import pdb
 
 NA_num  = numpy.nan

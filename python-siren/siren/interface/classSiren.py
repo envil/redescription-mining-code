@@ -412,6 +412,10 @@ class Siren():
     def getData(self):
         if self.dw is not None:
             return self.dw.getData()
+    def getAllCols(self):
+        if self.dw is not None:
+            return self.dw.getAllCols()
+        return []
         
     def getRed(self, iid):
         if self.dw is not None:
@@ -1040,15 +1044,19 @@ class Siren():
                         
         ## Export submenu
         submenuFields = wx.Menu() # Submenu for exporting
-        
+
+        ID_FLD_VGUI = wx.NewId()
+        m_fldvgui = submenuFields.Append(ID_FLD_VGUI, "Variables GUI", "Variables fields for GUI.")
+        frame.Bind(wx.EVT_MENU, self.OnDefVarsFieldsGUI, m_fldvgui)
+
         ID_FLD_GUI = wx.NewId()
-        m_fldgui = submenuFields.Append(ID_FLD_GUI, "GUI", "Fields for GUI.")
+        m_fldgui = submenuFields.Append(ID_FLD_GUI, "Redescriptions GUI", "Redescription fields for GUI.")
         frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsGUI, m_fldgui)
         ID_FLD_TXT = wx.NewId()
-        m_fldtxt = submenuFields.Append(ID_FLD_TXT, "Text export", "Fields for text export.")
+        m_fldtxt = submenuFields.Append(ID_FLD_TXT, "Redescriptions text export", "Redescription fields for text export.")
         frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTxt, m_fldtxt)
         ID_FLD_TEX = wx.NewId()
-        m_fldtex = submenuFields.Append(ID_FLD_TEX, "LaTeX export", "Fields for LaTeX export.")
+        m_fldtex = submenuFields.Append(ID_FLD_TEX, "Redescriptions LaTeX export", "Redescription fields for LaTeX export.")
         frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTex, m_fldtex)
 
         
@@ -1156,23 +1164,27 @@ class Siren():
             
     #### FIELDS DIALOG
     def OnDefRedsFieldsOutTex(self, event):
-        self.OnDefRedsFields("tex")
+        self.OnDefFields("tex", "r")
     def OnDefRedsFieldsOutTxt(self, event):
-        self.OnDefRedsFields("txt")        
+        self.OnDefFields("txt", "r")        
     def OnDefRedsFieldsGUI(self, event):
-        flk = "gui"
-        tt = self.OnDefRedsFields(flk)
-        if tt is not None:
-            self.resetFields()            
-    def resetFields(self):
-        for ti, tab in self.getTabsMatchType("r"):
-            tab["tab"].resetFields()
-            tab["tab"].loadData()
-            
-    def OnDefRedsFields(self, flk):
-        rp = Redescription.getRP()
+        self.OnDefFields("gui", "r")
+    def OnDefVarsFieldsGUI(self, event):
+        self.OnDefFields("gui", "v")
+    def OnDefFields(self, flk, tab_type="r"):
+        rp = None
+        if tab_type == "v":
+            rp = ColM.getRP()
+        elif tab_type == "r":
+            rp = Redescription.getRP()
+        if rp is None or self.dw.getData() is None:
+            return        
         modifiers = rp.getModifiersForData(self.dw.getData())
-
+        if tab_type == "v":
+            var_list = self.getAllCols()
+            types_letters = [] if self.dw.getData() is not None else None
+            modifiers = rp.updateModifiers(modifiers=modifiers, var_list=var_list, types_letters=types_letters)
+        
         choice_list = []
         for k in rp.getAllFields(flk, modifiers):
             choice_list.append((k, ChoiceElement(k, "%s" % k)))
@@ -1181,7 +1193,12 @@ class Siren():
         dlg = MultiSelectorDialog(self, choice_list, selected_ids)
         fields = dlg.showDialog()
         if fields is not None:
-            rp.setCurrentListFields(fields, flk, modifiers)
+            if fields == -1:
+                rp.dropCustListFields(flk, modifiers)
+            else:
+                rp.setCurrentListFields(fields, flk, modifiers)
+            self.dw.addReloadFields(tab_type)
+            self.refresh()
         return fields            
 
     #### DIALOGS BEFORE QUIT

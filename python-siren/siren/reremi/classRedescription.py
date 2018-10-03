@@ -8,13 +8,26 @@ import pdb
 
 class Redescription(WithEVals):
     diff_score = Query.diff_length + 1
+
+    # sameRectangles(y)    
+    # compare(y)
+    # interArea(self, redB, side):
+    # def unionArea(self, redB, side):
+    # def overlapAreaTotal(self, redB):
+    # def overlapAreaL(self, redB):
+    # def overlapAreaR(self, redB):
+    # def overlapAreaMax(self, redB):
+    # def overlapRows(self, redB):    
+    # def oneSideIdentical(self, redescription):
+    # def bothSidesIdentical(self, redescription):
+    # def equivalent(self, y):
     
     ### PROPS WHAT
     info_what_dets = {}
     # info_what_dets = {"queryLHS": "self.prepareQueryLHS",
     #                   "queryRHS": "self.prepareQueryRHS",
     #                   "queryCOND": "self.prepareQueryCOND"}
-    info_what = {} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
+    info_what = {"nb_avc": "self.nbAvailableCols()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
     ### PROPS WHICH in WithEVals class
 
@@ -118,10 +131,7 @@ class Redescription(WithEVals):
         if self.sParts is not None:
             self.dict_supp_info.toDict()
             self.sParts = None
-    def sameRectangles(self, y):
-        return self.supp(0) == y.supp(0) and self.supp(1) != y.supp(1) and \
-          self.invColsSide(0) != y.invColsSide(0) and self.invColsSide(1) != y.invColsSide(1)
-        
+
     def compare(self, y):
         if self.score() > y.score():
             return Redescription.diff_score
@@ -130,14 +140,22 @@ class Redescription(WithEVals):
         else:
             return -Redescription.diff_score
 
+    def sameRectangles(self, y):
+        return self.supp(0) == y.supp(0) and self.supp(1) != y.supp(1) and \
+          self.invColsSide(0) != y.invColsSide(0) and self.invColsSide(1) != y.invColsSide(1)
+        
     def interArea(self, redB, side):
         if redB is not None:
             return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
         return 0
+    def interAreaL(self, redB): return self.interArea(redB, 0)
+    def interAreaR(self, redB): return self.interArea(redB, 1)
     def unionArea(self, redB, side):
         if redB is not None:
             return len(redB.supp(side) | self.supp(side))* len(redB.invColsSide(side) | self.invColsSide(side))
         return 0
+    def interAreaL(self, redB): return self.unionArea(redB, 0)
+    def interAreaR(self, redB): return self.unionArea(redB, 1)
     def overlapAreaSide(self, redB, side):
         if len(redB.invColsSide(side) & self.invColsSide(side)) == 0:
             return 0
@@ -601,18 +619,57 @@ class Redescription(WithEVals):
         return self.getRSetParts(details).suppA()
     def getSuppB(self, details=None):
         return self.getRSetParts(details).suppB()
-    
-    def getProp(self, what, which=None, rset_id=None, details=None):
-        if what == "extra":
-            return self.getExtra(which, details)
-        if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
-            q = self.query(HAND_SIDE[rset_id])            
-            if q is not None:
-                dts = {"side": HAND_SIDE[rset_id]}
-                dts.update(details)
-                return q.getProp(what, which, dts)
-            return None
 
+    def getArea(self, which="I", rset_id=None, details=None):
+        if which == "L" or which == "R":
+            lq = self.getQueryProp("len", which="q", rset_id=which+"HS", details=details)
+            lsupp = self.getSPartsProp("area", which=which, rset_id=rset_id, details=details)
+            return lq*lsupp
+        if which == "A" or which == "B":
+            side = "LHS" if which == "A" else "RHS"            
+            lq = self.getQueryProp("len", which="q", rset_id=side, details=details)
+            lsupp = self.getSPartsProp("area", which="I", rset_id=rset_id, details=details)
+            return lq*lsupp
+        if which == "I":
+            lqLHS = self.getQueryProp("len", which="q", rset_id="LHS", details=details)
+            lqRHS = self.getQueryProp("len", which="q", rset_id="RHS", details=details)
+            lsupp = self.getSPartsProp("area", which=which, rset_id=rset_id, details=details)
+            return (lqLHS+lqRHS)*lsupp
+        if which == "U":
+            lqLHS = self.getQueryProp("len", which="q", rset_id="LHS", details=details)
+            lqRHS = self.getQueryProp("len", which="q", rset_id="RHS", details=details)
+            lsuppLHS = self.getSPartsProp("area", which="L", rset_id=rset_id, details=details)
+            lsuppRHS = self.getSPartsProp("area", which="R", rset_id=rset_id, details=details)
+            return lqLHS*lsuppLHS+lqRHS*lsuppRHS
+        return -1
+    def getQueryProp(self, what, which=None, rset_id=None, details=None):
+        if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
+            if type(HAND_SIDE[rset_id]) is int:
+                q = self.query(HAND_SIDE[rset_id])            
+                if q is not None:
+                    dts = {"side": HAND_SIDE[rset_id]}
+                    dts.update(details)
+                    return q.getProp(what, which, dts)
+            else:
+                sides = HAND_SIDE[rset_id] or [0, 1]
+                xps = self.getQueryProp(what, which, rset_id=sides[0], details=details)
+                for side in sides[1:]:
+                    if type(xps) is set:
+                        xps.update(self.getQueryProp(what, which, rset_id=side, details=details))
+                    else:
+                        xps += self.getQueryProp(what, which, rset_id=side, details=details)
+                return xps
+    def getSPartsProp(self, what, which=None, rset_id=None, details=None):
+        if SParts.hasPropWhat(what): ### info from supp parts
+            rset_parts = self.getRSetParts(rset_id)
+            if rset_parts is None:
+                return None
+            prp = rset_parts.getProp(what, which)
+            if what == "supp" or what == "set":
+                return mapSuppNames(prp, details)            
+            return prp
+        
+    def getRidsProp(self, what, which=None, rset_id=None, details=None):
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
@@ -625,15 +682,19 @@ class Redescription(WithEVals):
                 return tool_ratio(100.*len(rset_ids), self.nbRows())
             elif what == "ratio":
                 return tool_ratio(len(rset_ids), self.nbRows())
-
+        
+    
+    def getProp(self, what, which=None, rset_id=None, details=None):
+        if what == "extra":
+            return self.getExtra(which, details)
+        if what == "area":
+            return self.getArea(which, rset_id, details)
+        if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
+            return self.getQueryProp(what, which, rset_id, details)
+        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
+            return self.getRidsProp(what, which, rset_id, details)
         if SParts.hasPropWhat(what): ### info from supp parts
-            rset_parts = self.getRSetParts(rset_id)
-            if rset_parts is None:
-                return None
-            prp = rset_parts.getProp(what, which)
-            if what == "supp" or what == "set":
-                return mapSuppNames(prp, details)            
-            return prp
+            return self.getSPartsProp(what, which, rset_id, details)
         elif what in Redescription.info_what_dets: ### other redescription info
             methode = eval(Redescription.info_what_dets[what])
             if callable(methode):
