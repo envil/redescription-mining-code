@@ -4,7 +4,7 @@ from classContent import BatchCollection
 from classRedescription import Redescription
 from classExtension import ExtensionError, ExtensionsBatch
 from classSouvenirs import Souvenirs
-from classConstraints import Constraints
+from classConstraints import Constraints, ActionsRegistry
 from classInitialPairs import InitialPairs
 
 import numpy
@@ -100,7 +100,7 @@ class ExpMiner(object):
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        sel = rcollect.selected(self.constraints.getActions("partial"), ids="P")
+        sel = rcollect.selected(self.constraints.getActionsList("partial"), ids="P")
         if new_red is not None and new_red.getUid() in sel:
             if all([not new_red.sameRectangles(rf) for rf in rcollect.getItems("F")]):
                 rcollect.addItem(new_red, "S")
@@ -161,15 +161,16 @@ class ExpMiner(object):
 
             first_round = False
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
-            nextge_keys = rcollect.selected(self.constraints.getActions("nextge"), ids="P")
+            nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="P")
             nextge = [rcollect.getItem(i) for i in nextge_keys]
-
-            rcollect.applyFunctTo(".removeAvailables()", ids=nextge_keys, complement=True)
+            for iid in rcollect.getIids():
+                if iid not in nextge_keys:
+                    rcollect.getItem(iid).removeAvailables()
             self.logger.printL(1, {"partial": rcollect.getItems("P")}, 'result', self.ppid)
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        rcollect.selected(self.constraints.getActions("partial"), ids="P", trg_lid="S")        
+        rcollect.selected(self.constraints.getActionsList("partial"), ids="P", trg_lid="S")        
         self.logger.printL(1, {"partial": rcollect.getItems("S")}, 'result', self.ppid)
         self.logger.printL(1, "%d redescriptions selected" % rcollect.getLen("S"), 'status', self.ppid)
         for red in rcollect.getItems("S"):
@@ -229,8 +230,9 @@ class Miner(object):
         if logger is not None:
             self.logger = logger
         else:
-             self.logger = Log()       
-        self.constraints = Constraints(self.data, params)
+             self.logger = Log()
+        AR = ActionsRegistry()
+        self.constraints = Constraints(self.data, params, AR)
 
         self.charbon = self.initCharbon()
         if souvenirs is None:
@@ -284,7 +286,7 @@ class Miner(object):
 ################################
 
     def filter_run(self, redescs):
-        return BatchCollection(redescs).selectedItems(self.constraints.getActions("redundant"))
+        return BatchCollection(redescs).selectedItems(self.constraints.getActionsList("redundant"))
 
     def part_run(self, cust_params):
         if "reds" in cust_params:
@@ -345,8 +347,8 @@ class Miner(object):
             
             # self.logger.clockTic(self.getId(), "select")        
             if self.rcollect.getLen("S") > 0:
-                self.rcollect.selected(self.constraints.getActions("final"), ids=self.rcollect.getIidsList("F")+self.rcollect.getIidsList("S"), new_ids=self.rcollect.getIidsList("S"), trg_lid="F")
-            # self.final["results"] = self.final["batch"].selected(self.constraints.getActions("final"))
+                self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+self.rcollect.getIidsList("S"), new_ids=self.rcollect.getIidsList("S"), trg_lid="F")
+            # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
             # if (self.final["results"] != ttt):
             #     pdb.set_trace()
             #     print "Not same"
@@ -671,7 +673,7 @@ class MinerDistrib(Miner):
         if m["out"].getLen("S") > 0:
             for red in m["out"].getItems("S"):
                 self.rcollect.addItem(red)
-            self.rcollect.selected(self.constraints.getActions("final"), ids=self.rcollect.getIidsList("F")+m["out"].getIidsList("S"), new_ids=m["out"].getIidsList("S"), trg_lid="F")
+            self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+m["out"].getIidsList("S"), new_ids=m["out"].getIidsList("S"), trg_lid="F")
 
         if not self.constraints.getCstr("amnesic"):
             self.souvenirs.update(m["out"].getItems("P"))

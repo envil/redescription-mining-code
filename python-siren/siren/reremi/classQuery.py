@@ -1553,7 +1553,9 @@ class Query(object):
 
     ### PROPS WHAT
     elem_letters = {"L": "Literals", "T": "Terms", "C": "Cols"}
-    info_what = {"len": "len(self)", "containsOR": "self.usesOr()", "containsAND": "self.usesAnd()" , "depth": "self.max_depth()"}
+    info_what = {"len": "len(self)", "depth": "self.max_depth()",
+                 "containsOR": "self.usesOr()", "containsAND": "self.usesAnd()",
+                 "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()"}
     for ei, el in elem_letters.items():
         info_what[ei+"set"] = "self.inv%s()" % el
         info_what[ei+"nb"] = "len(self.inv%s())" % el
@@ -1728,28 +1730,28 @@ class Query(object):
     def __cmp__(self, y):
         return self.compare(y)
             
-    def compare(self, y): 
-        if y is None:
+    def compare(self, other): 
+        if other is None:
             return 1
         try:
-            if self.op == y.op and self.buk == y.buk:
+            if self.op == other.op and self.buk == other.buk:
                 return 0
         except AttributeError:
             ### Such error means the buckets are not identical...
             pass
         
-        if len(self) < len(y): ## nb of literals in the query, shorter better
+        if len(self) < len(other): ## nb of literals in the query, shorter better
             return Query.diff_length
-        elif len(self) == len(y):
-            if len(self.buk)  < len(y.buk) : ## nb of buckets in the query, shorter better
+        elif len(self) == len(other):
+            if len(self.buk)  < len(other.buk) : ## nb of buckets in the query, shorter better
                 return Query.diff_balance
-            elif len(self.buk) == len(y.buk) :
-                if self.op > y.op : ## operator
+            elif len(self.buk) == len(other.buk) :
+                if self.op > other.op : ## operator
                     return Query.diff_op
-                elif self.op == y.op :
-                    if self.invCols() > y.invCols(): ## literals in the query
+                elif self.op == other.op :
+                    if self.invCols() > other.invCols(): ## literals in the query
                         return Query.diff_cols
-                    elif self.invCols() == y.invCols():
+                    elif self.invCols() == other.invCols():
                         return Query.diff_literals
                     else:
                         return -Query.diff_cols

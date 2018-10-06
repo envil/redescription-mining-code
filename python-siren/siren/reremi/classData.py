@@ -40,7 +40,7 @@ class ExtensionPool(object):
     def getExtensionClass(self, key):
         if key in self.extensions_map:
             return self.extensions_map[key]["class"]
-    def initExtension(self, key, filenames=None, params=None, details=None):
+    def initExtension(self, key, filenames=None, params=None, details={}):
         tcl = self.getExtensionClass(key)
         if tcl is not None:
             ext = tcl(self.data, filenames, params, details)
@@ -58,7 +58,7 @@ class ExtensionPool(object):
     def getAvailableExtensionKeys(self):
         return self.extensions_map.keys()
             
-    def computeExtras(self, item, extras=None, details=None):
+    def computeExtras(self, item, extras=None, details={}):
         if extras is None:
             extras = [k for (k,kk) in self.extras_map.items() if kk in self.extensions]
         extra_values = dict([(e, None) for e in extras])
@@ -74,7 +74,7 @@ class ExtensionPool(object):
             extra_values.update(self.extensions[extension_key].computeExtras(item, extra_keys, details))
         return extra_values
 
-    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details=None):
+    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details={}):
         if len(ext_keys) == 0: ### prevent loading
             return
         
@@ -95,7 +95,7 @@ class ExtensionPool(object):
         for ek in eks:
             ext = self.initExtension(ek, filenames, params, details)
             
-    def saveExtensions(self, filenames=None, details=None):
+    def saveExtensions(self, filenames=None, details={}):
         if filenames is None:
             filenames = self.getExtensionsActiveFilesDict()
         eks = set()
@@ -138,12 +138,12 @@ class RowE(object):
         else:
             return self.data.getValue(side, col, self.rid)
 
-    def getEnabled(self, details=None):
+    def getEnabled(self, details={}):
         if self.rid not in self.data.selectedRows():
             return 1
         else:
             return 0
-    def isEnabled(self, details=None):
+    def isEnabled(self, details={}):
         return self.getEnabled(details) > 0
         
     def flipEnabled(self):
@@ -157,12 +157,12 @@ class RowE(object):
     def setDisabled(self):
         self.data.addSelectedRow(self.rid)
 
-    def getId(self, details=None):
+    def getId(self, details={}):
         return self.rid
-    def getUid(self, details=None):
+    def getUid(self, details={}):
         return self.getId()
 
-    def getRName(self, details=None):
+    def getRName(self, details={}):
         return self.data.getRName(self.rid)
 
 TYPES_SMAP = {}
@@ -247,10 +247,10 @@ class Data(ContentCollection):
             if col is not None:
                 col.recompute(self)    
                 
-    def computeExtras(self, item, extras=None, details=None):
+    def computeExtras(self, item, extras=None, details={}):
         return self.extensions.computeExtras(item, extras, details)
 
-    def initExtension(self, key, filenames=None, params=None, details=None):
+    def initExtension(self, key, filenames=None, params=None, details={}):
         self.extensions.initExtension(key, filenames, params, details)
     def getExtension(self, key):
         return self.extensions.getExtension(key)
@@ -262,9 +262,9 @@ class Data(ContentCollection):
         return self.extensions.getActiveExtensionKeys()
     def getAvailableExtensionKeys(self):
         return self.extensions.getAvailableExtensionKeys()
-    def saveExtensions(self, filenames=None, details=None):
+    def saveExtensions(self, filenames=None, details={}):
         self.extensions.saveExtensions(filenames, details)
-    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details=None):
+    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details={}):
         self.extensions.loadExtensions(ext_keys, filenames, params, details)
     def getExtensionsFilesDict(self, exts=None):
         return self.extensions.getExtensionsFilesDict(exts)
@@ -722,14 +722,14 @@ class Data(ContentCollection):
     def selectedRows(self):
         return self.selected_rows
 
-    def getVizRows(self, details=None):
+    def getVizRows(self, details={}):
         if details is not None and details.get("rset_id", None) in self.getLT():
             if len(self.selected_rows) == 0:
                 return set(self.getLT()[details["rset_id"]])
             return set(self.getLT()[details["rset_id"]])  - self.selected_rows
         return self.nonselectedRows()
 
-    def getUnvizRows(self, details=None):
+    def getUnvizRows(self, details={}):
         if details is not None and details.get("rset_id", None) in self.getLT():
             return self.selected_rows.union(*[s for (k,s) in self.getLT().items() if k != details["rset_id"]])
         return self.selected_rows

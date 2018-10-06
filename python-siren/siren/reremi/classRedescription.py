@@ -8,35 +8,36 @@ import pdb
 
 class Redescription(WithEVals):
     diff_score = Query.diff_length + 1
-
-    # sameRectangles(y)    
-    # compare(y)
-    # interArea(self, redB, side):
-    # def unionArea(self, redB, side):
-    # def overlapAreaTotal(self, redB):
-    # def overlapAreaL(self, redB):
-    # def overlapAreaR(self, redB):
-    # def overlapAreaMax(self, redB):
-    # def overlapRows(self, redB):    
-    # def oneSideIdentical(self, redescription):
-    # def bothSidesIdentical(self, redescription):
-    # def equivalent(self, y):
     
     ### PROPS WHAT
     info_what_dets = {}
     # info_what_dets = {"queryLHS": "self.prepareQueryLHS",
     #                   "queryRHS": "self.prepareQueryRHS",
     #                   "queryCOND": "self.prepareQueryCOND"}
-    info_what = {"nb_avc": "self.nbAvailableCols()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
+    info_what = {"nbAvC": "self.nbAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
+                 "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()",
+                 "isBasis": "self.isBasis()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
-    ### PROPS WHICH in WithEVals class
 
+
+    pair_map_side = {"L": 0, "R": 1}
+    pair_map_how = {"areaU": "union", "areaI": "inter", "areaR": "ratio", "areaF": "fractmin", "overlap": "ratio",
+                    "rowsU": ("rows", "union"), "rowsI": ("rows", "inter"), "rowsR": ("rows", "ratio"), "rowsF": ("rows", "fractmin")}
+    info_pair_what_dets = {"oneSideIdentical": "self.oneSideIdentical", "bothSidesIdentical": "self.bothSidesIdentical",
+                           "equivalent": "self.equivalent", "identical": "self.identical", "compare": "self.compare",
+                           "sameRectangles": "self.sameRectangles",
+                           "overlapAreaTotal": "self.overlapAreaTotal", "overlapAreaMax": "self.overlapAreaMax",
+                           "overlapRows": "self.overlapRows"}
+    info_pair_what_side = {"interAreaSide": "self.interArea", "unionAreaSide": "self.unionArea", "overlapAreaSide": "self.overlapAreaSide"}
+    Pwhat_pair_match = "("+ "|".join(pair_map_how.keys()+info_pair_what_side.keys()+info_pair_what_dets.keys()) +")"
+    
     RP = None
     @classmethod
     def setupRP(tcl, fields_fns=None):
         elems_typs = [("q", Query), ("s", SParts), ("r", Redescription)]
         RedProps.setupProps(Query, Redescription, elems_typs)
         tcl.RP = RedProps(fields_fns)
+    ### getRP(tcl, rp=None) is defined in WithEVals class 
 
     next_uid = -1
     @classmethod
@@ -132,59 +133,6 @@ class Redescription(WithEVals):
             self.dict_supp_info.toDict()
             self.sParts = None
 
-    def compare(self, y):
-        if self.score() > y.score():
-            return Redescription.diff_score
-        elif self.score() == y.score():
-            return Query.comparePair(self.queries[0], self.queries[1], y.queries[0], y.queries[1])
-        else:
-            return -Redescription.diff_score
-
-    def sameRectangles(self, y):
-        return self.supp(0) == y.supp(0) and self.supp(1) != y.supp(1) and \
-          self.invColsSide(0) != y.invColsSide(0) and self.invColsSide(1) != y.invColsSide(1)
-        
-    def interArea(self, redB, side):
-        if redB is not None:
-            return len(redB.supp(side) & self.supp(side))* len(redB.invColsSide(side) & self.invColsSide(side))
-        return 0
-    def interAreaL(self, redB): return self.interArea(redB, 0)
-    def interAreaR(self, redB): return self.interArea(redB, 1)
-    def unionArea(self, redB, side):
-        if redB is not None:
-            return len(redB.supp(side) | self.supp(side))* len(redB.invColsSide(side) | self.invColsSide(side))
-        return 0
-    def interAreaL(self, redB): return self.unionArea(redB, 0)
-    def interAreaR(self, redB): return self.unionArea(redB, 1)
-    def overlapAreaSide(self, redB, side):
-        if len(redB.invColsSide(side) & self.invColsSide(side)) == 0:
-            return 0
-        areaU = self.unionArea(redB, side)
-        return tool_ratio(self.interArea(redB, side), areaU)
-    def overlapAreaTotal(self, redB):
-        areaUL = self.unionArea(redB, 0)
-        areaUR = self.unionArea(redB, 1)
-        return tool_ratio(self.interArea(redB, 0) + self.interArea(redB, 1),areaUL+areaUR)
-    def overlapAreaL(self, redB):
-        return self.overlapAreaSide(redB, 0)
-    def overlapAreaR(self, redB):
-        return self.overlapAreaSide(redB, 1)
-    def overlapAreaMax(self, redB):
-        return max(self.overlapAreaSide(redB, 0), self.overlapAreaSide(redB, 1))
-
-    def overlapRows(self, redB):
-        if redB is not None:
-            return tool_ratio(len(redB.getSuppI() & self.getSuppI()), min(redB.getLenI(), self.getLenI()))
-        return 0
-    
-    def oneSideIdentical(self, redescription):
-        return self.queries[0] == redescription.queries[0] or self.queries[1] == redescription.queries[1]
-    def bothSidesIdentical(self, redescription):
-        return self.queries[0] == redescription.queries[0] and self.queries[1] == redescription.queries[1]
-
-    def equivalent(self, y):
-       return abs(self.compare(y)) < Query.diff_balance
-        
     # def __hash__(self):
     #      return int(hash(self.queries[0])+ hash(self.queries[1])*100*self.score())
         
@@ -199,16 +147,23 @@ class Redescription(WithEVals):
         if side is not None:
             return self.queries[side].isTreeCompatible()
         return self.queries[0].isTreeCompatible() and self.queries[1].isTreeCompatible()
-        
-    
-    def supp(self, side):
-        return self.supports().supp(side)
-
-    def miss(self, side):
-        return self.supports().miss(side)
             
-    def score(self):
-        return self.getAcc()
+    def supp(self, side, rset_det=None):
+        if rset_det is None:
+            return self.supports().supp(side)
+        set_parts = self.getRSetParts(rset_det)
+        if set_parts is not None:
+            return set_parts.supp(side)
+        
+    def miss(self, side, rset_det=None):
+        if rset_det is None:
+            return self.supports().miss(side)
+        set_parts = self.getRSetParts(rset_det)
+        if set_parts is not None:
+            return set_parts.miss(side)
+            
+    def score(self, rset_det=None):
+        return self.getAcc(rset_det)
 
     def supports(self):
         return self.sParts
@@ -287,7 +242,9 @@ class Redescription(WithEVals):
     
     def length(self, side):
         return len(self.queries[side])
-        
+    def diffLengthQs(self):
+        return abs(self.length(0) - self.length(1))
+    
     def availableColsSide(self, side, data=None, single_dataset=False):
         if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
             tt = set(self.lAvailableCols[side])
@@ -426,9 +383,9 @@ class Redescription(WithEVals):
         return self.extras["status"]
     def setStatus(self, status):
         self.extras["status"] = status
-    def getEnabled(self, details=None):
+    def getEnabled(self, details={}):
         return 1*(self.getStatus()>0)
-    def isEnabled(self, details=None):
+    def isEnabled(self, details={}):
         return self.getStatus()>0
 
     def flipEnabled(self):
@@ -442,19 +399,19 @@ class Redescription(WithEVals):
         self.setStatus(-2)
 
     ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
-    def getQueriesU(self, details=None):
+    def getQueriesU(self, details={}):
         if details is not None and "names" in details:
             return self.queries[0].disp(details["names"][0], style="U") + "---" + self.queries[1].disp(details["names"][1], style="U")
         else:
             return self.queries[0].disp(style="U") + "---" + self.queries[1].disp(style="U")
 
-    def getQueryLU(self, details=None):
+    def getQueryLU(self, details={}):
         if details is not None and "names" in details:
             return self.queries[0].disp(details["names"][0], style="U") #, unicd=True)
         else:
             return self.queries[0].disp(style="U")
 
-    def getQueryRU(self, details=None):
+    def getQueryRU(self, details={}):
         if details is not None and "names" in details:
             return self.queries[1].disp(details["names"][1], style="U") #, unicd=True)
         else:
@@ -470,28 +427,28 @@ class Redescription(WithEVals):
     def extendTrack(self, track=[]):
         self.extras["track"].extend(track)
 
-    def getTrack(self, details=None):
+    def getTrack(self, details={}):
         if details is not None and ( details.get("aim", None) == "list" or details.get("format", None) == "str"):
             return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.getTrack()])
         else:
             return self.extras["track"]
 
-    def getSortAble(self, details=None):
-        if details.get("aim") == "sort":
+    def getSortAble(self, details={}):
+        if details is not None and details.get("aim") == "sort":
             return (self.getStatus(), details.get("id", "?"))
         return ""
 
-    def getShortRid(self, details=None):
+    def getShortRid(self, details={}):
         return "r%s" % details.get("id", "?")
 
-    # def getCohesion(self, details=None):
+    # def getCohesion(self, details={}):
     #     return self.getDetail("cohesion")
-    # def getCohesionNat(self, details=None):
+    # def getCohesionNat(self, details={}):
     #     return self.getDetail("cohesion_nat")
 
-    def getTypeParts(self, details=None):
+    def getTypeParts(self, details={}):
         return self.supports().getTypeParts()
-    def getMethodPVal(self, details=None):
+    def getMethodPVal(self, details={}):
         return self.supports().getMethodPVal()    
 
 
@@ -533,7 +490,7 @@ class Redescription(WithEVals):
             return True
         return False
            
-    def getRSet(self, details=None):
+    def getRSet(self, details={}):
         if type(details) is dict:
             rset_id = details.get("rset_id")
         else:
@@ -550,17 +507,17 @@ class Redescription(WithEVals):
         #     return self.restricted_sets[ACTIVE_RSET_ID]
         else:            
             return {"sParts": self.supports()}
-    def getRSetParts(self, details=None):
+    def getRSetParts(self, details={}):
         rset = self.getRSet(details)
         if rset is not None:
             return rset.get("sParts")
        
-    def getRSetABCD(self, details=None):
+    def getRSetABCD(self, details={}):
         ssp = self.getRSetParts(details)
         if ssp is not None:
             return ssp.get("sParts").getVectorABCD(force_list=True, rest_ids=ssp.get("rids"))
         
-    def getAccRatio(self, details=None):
+    def getAccRatio(self, details={}):
         if details is not None and (details.get("rset_id_num") in self.restricted_sets \
                or details.get("rset_id_den") in self.restricted_sets):
             acc_num = self.getRSetParts(details.get("rset_id_num")).acc()
@@ -568,7 +525,7 @@ class Redescription(WithEVals):
             return tool_ratio(acc_num, acc_den)
         return 1.
 
-    def getLenRatio(self, details=None):
+    def getLenRatio(self, details={}):
         if details is not None and (details.get("rset_id_num") in self.restricted_sets \
                or details.get("rset_id_den") in self.restricted_sets):
             len_num = self.getRSetParts(details.get("rset_id_num")).lenI()
@@ -576,79 +533,81 @@ class Redescription(WithEVals):
             return tool_ratio(len_num, len_den)
         return 1.
     
-    def getAcc(self, details=None):
+    def getAcc(self, details={}):
         return self.getRSetParts(details).acc()
-    def getPVal(self, details=None):
+    def getPVal(self, details={}):
         return self.getRSetParts(details).pVal()
 
-    def getLenP(self, details=None):
+    def getLenP(self, details={}):
         if "part_id" in details:
             return self.getRSetParts(details).lenP(details["part_id"])
         return -1
 
-    def getLenI(self, details=None):
+    def getLenI(self, details={}):
         return self.getRSetParts(details).lenI()
-    def getLenU(self, details=None):
+    def getLenU(self, details={}):
         return self.getRSetParts(details).lenU()
-    def getLenL(self, details=None):
+    def getLenL(self, details={}):
         return self.getRSetParts(details).lenL()
-    def getLenR(self, details=None):
+    def getLenR(self, details={}):
         return self.getRSetParts(details).lenR()
-    def getLenO(self, details=None):
+    def getLenO(self, details={}):
         return self.getRSetParts(details).lenO()
-    def getLenN(self, details=None):
+    def getLenN(self, details={}):
         return self.getRSetParts(details).lenN()
-    def getLenA(self, details=None):
+    def getLenA(self, details={}):
         return self.getRSetParts(details).lenA()
-    def getLenB(self, details=None):
+    def getLenB(self, details={}):
         return self.getRSetParts(details).lenB()
     
-    def getSuppI(self, details=None):
+    def getSuppI(self, details={}):
         return self.getRSetParts(details).suppI()
-    def getSuppU(self, details=None):
+    def getSuppU(self, details={}):
         return self.getRSetParts(details).suppU()
-    def getSuppL(self, details=None):
+    def getSuppL(self, details={}):
         return self.getRSetParts(details).suppL()
-    def getSuppR(self, details=None):
+    def getSuppR(self, details={}):
         return self.getRSetParts(details).suppR()
-    def getSuppO(self, details=None):
+    def getSuppO(self, details={}):
         return self.getRSetParts(details).suppO()
-    def getSuppN(self, details=None):
+    def getSuppN(self, details={}):
         return self.getRSetParts(details).suppN()
-    def getSuppA(self, details=None):
+    def getSuppA(self, details={}):
         return self.getRSetParts(details).suppA()
-    def getSuppB(self, details=None):
+    def getSuppB(self, details={}):
         return self.getRSetParts(details).suppB()
-
-    def getArea(self, which="I", rset_id=None, details=None):
-        if which == "L" or which == "R":
-            lq = self.getQueryProp("len", which="q", rset_id=which+"HS", details=details)
-            lsupp = self.getSPartsProp("area", which=which, rset_id=rset_id, details=details)
-            return lq*lsupp
-        if which == "A" or which == "B":
-            side = "LHS" if which == "A" else "RHS"            
+    
+    def getArea(self, which="I", rset_id=None, details={}):
+        if which == "L" or which == "R" or which == "A" or which == "B":
+            if which == "A":
+                side, which_supp = "LHS", "I"
+            elif which == "B":
+                side, which_supp = "RHS", "I"
+            else:
+                side, which_supp = which+"HS", which
             lq = self.getQueryProp("len", which="q", rset_id=side, details=details)
-            lsupp = self.getSPartsProp("area", which="I", rset_id=rset_id, details=details)
+            lsupp = self.getSPartsProp("area", which=which_supp, rset_id=rset_id, details=details)
             return lq*lsupp
-        if which == "I":
+        if which == "I" or which == "U":
             lqLHS = self.getQueryProp("len", which="q", rset_id="LHS", details=details)
             lqRHS = self.getQueryProp("len", which="q", rset_id="RHS", details=details)
             lsupp = self.getSPartsProp("area", which=which, rset_id=rset_id, details=details)
             return (lqLHS+lqRHS)*lsupp
-        if which == "U":
+        if which == "P":
             lqLHS = self.getQueryProp("len", which="q", rset_id="LHS", details=details)
             lqRHS = self.getQueryProp("len", which="q", rset_id="RHS", details=details)
             lsuppLHS = self.getSPartsProp("area", which="L", rset_id=rset_id, details=details)
             lsuppRHS = self.getSPartsProp("area", which="R", rset_id=rset_id, details=details)
             return lqLHS*lsuppLHS+lqRHS*lsuppRHS
         return -1
-    def getQueryProp(self, what, which=None, rset_id=None, details=None):
+    def getQueryProp(self, what, which=None, rset_id=None, details={}):
         if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
             if type(HAND_SIDE[rset_id]) is int:
                 q = self.query(HAND_SIDE[rset_id])            
                 if q is not None:
                     dts = {"side": HAND_SIDE[rset_id]}
-                    dts.update(details)
+                    if details is not None:
+                        dts.update(details)
                     return q.getProp(what, which, dts)
             else:
                 sides = HAND_SIDE[rset_id] or [0, 1]
@@ -659,7 +618,7 @@ class Redescription(WithEVals):
                     else:
                         xps += self.getQueryProp(what, which, rset_id=side, details=details)
                 return xps
-    def getSPartsProp(self, what, which=None, rset_id=None, details=None):
+    def getSPartsProp(self, what, which=None, rset_id=None, details={}):
         if SParts.hasPropWhat(what): ### info from supp parts
             rset_parts = self.getRSetParts(rset_id)
             if rset_parts is None:
@@ -669,7 +628,7 @@ class Redescription(WithEVals):
                 return mapSuppNames(prp, details)            
             return prp
         
-    def getRidsProp(self, what, which=None, rset_id=None, details=None):
+    def getRidsProp(self, what, which=None, rset_id=None, details={}):
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
@@ -682,9 +641,8 @@ class Redescription(WithEVals):
                 return tool_ratio(100.*len(rset_ids), self.nbRows())
             elif what == "ratio":
                 return tool_ratio(len(rset_ids), self.nbRows())
-        
-    
-    def getProp(self, what, which=None, rset_id=None, details=None):
+           
+    def getProp(self, what, which=None, rset_id=None, details={}):
         if what == "extra":
             return self.getExtra(which, details)
         if what == "area":
@@ -701,7 +659,181 @@ class Redescription(WithEVals):
                 return methode(details)
         elif what in Redescription.info_what: ### other redescription info
             return eval(Redescription.info_what[what])
+
+    def getExpProp(self, exp, details={}):
+        ws =self.getRP().getPrimitiveWs(exp)
+        if ws[0] is not None:
+            return self.getProp(ws[0], ws[1], ws[2], details)
+
+
+    ###############################################        
+    #### METHODS FOR COMPARING TWO REDESCRIPTIONS
+    def compare(self, other, details={}):
+        if self.score(details) > other.score(details):
+            return Redescription.diff_score
+        elif self.score(details) == other.score(details):
+            return Query.comparePair(self.queries[0], self.queries[1], other.queries[0], other.queries[1])
+        else:
+            return -Redescription.diff_score
+
+    def sameRectangles(self, other, details={}):
+        return self.supp(0, details) == other.supp(0, details) and self.supp(1, details) != other.supp(1, details) and \
+          self.invColsSide(0) != other.invColsSide(0) and self.invColsSide(1) != other.invColsSide(1)
     
+    def interArea(self, other, side, details={}):
+        if other is not None:
+            return len(other.supp(side, details) & self.supp(side, details))* len(other.invColsSide(side) & self.invColsSide(side))
+        return 0
+    def unionArea(self, other, side, details={}):
+        if other is not None:
+            return len(other.supp(side, details) | self.supp(side, details))* len(other.invColsSide(side) | self.invColsSide(side))
+        return 0
+    def overlapAreaSide(self, other, side, details={}):
+        if len(other.invColsSide(side) & self.invColsSide(side)) == 0:
+            return 0
+        areaU = self.unionArea(other, side, details)
+        return tool_ratio(self.interArea(other, side, details), areaU)
+    def overlapAreaTotal(self, other, details={}):
+        areaUL = self.unionArea(other, 0, details)
+        areaUR = self.unionArea(other, 1, details)
+        return tool_ratio(self.interArea(other, 0) + self.interArea(other, 1),areaUL+areaUR)
+    def overlapAreaMax(self, other, details={}):
+        return max(self.overlapAreaSide(other, 0, details), self.overlapAreaSide(other, 1, details))
+
+    def overlapRows(self, other, details={}):
+        if other is not None:
+            return tool_ratio(len(other.getSuppI(details) & self.getSuppI(details)), min(other.getLenI(details), self.getLenI(details)))
+        return 0
+    
+    def oneSideIdentical(self, other, details={}):
+        return self.queries[0] == other.queries[0] or self.queries[1] == other.queries[1]
+    def bothSidesIdentical(self, other, details={}):
+        return self.queries[0] == other.queries[0] and self.queries[1] == other.queries[1]
+
+    def equivalent(self, other, details={}):
+        return abs(self.compare(other, details)) < Query.diff_balance
+    def identical(self, other, details={}):
+        return (self.oneSideIdentical(other) and not self.equivalent(other)) or self.bothSidesIdentical(other)
+   
+    def getAreaPair(self, other, how="ratio", which="I", rset_id=None, details={}):
+        rows = False
+        if type(how) is tuple:
+            rows = how[0] == "rows"
+            how = how[1]
+        if which == "L" or which == "R" or which == "A" or which == "B":
+            if which == "A":
+                side, which_supp = "LHS", "I"
+            elif which == "B":
+                side, which_supp = "RHS", "I"
+            else:
+                side, which_supp = which+"HS", which
+            if rows:
+                own_sq, other_sq = set([1]), set([1])
+            else:
+                own_sq = self.getQueryProp("Cset", which="q", rset_id=side, details=details)
+                other_sq = other.getQueryProp("Cset", which="q", rset_id=side, details=details)
+            own_ssupp = self.getSPartsProp("set", which=which_supp, rset_id=rset_id, details=details)
+            other_ssupp = other.getSPartsProp("set", which=which_supp, rset_id=rset_id, details=details)
+            if how == "inter":
+                return len(own_sq & other_sq)* len(own_ssupp & other_ssupp)
+            elif how == "union":
+                return len(own_sq | other_sq)* len(own_ssupp | other_ssupp)
+            elif how == "ratio":
+                areaI = len(own_sq & other_sq)* len(own_ssupp & other_ssupp)
+                areaU = len(own_sq | other_sq)* len(own_ssupp | other_ssupp)
+                return tool_ratio(areaI, areaU)
+            elif how == "fractmin":
+                areaI = len(own_sq & other_sq)* len(own_ssupp & other_ssupp)
+                areaU = min(len(own_sq)*len(own_ssupp), len(other_sq)*len(other_ssupp))
+                return tool_ratio(areaI, areaU)
+
+        if which == "I" or which == "U":
+            if rows:
+                own_sqLHS, own_sqRHS, other_sqLHS, other_sqRHS, = set([1]), set([1]), set([1]), set([1])
+            else:
+                own_sqLHS = self.getQueryProp("Cset", which="q", rset_id="LHS", details=details)
+                own_sqRHS = self.getQueryProp("Cset", which="q", rset_id="RHS", details=details)
+                other_sqLHS = other.getQueryProp("Cset", which="q", rset_id="LHS", details=details)
+                other_sqRHS = other.getQueryProp("Cset", which="q", rset_id="RHS", details=details)
+            own_ssupp = self.getSPartsProp("set", which=which, rset_id=rset_id, details=details)
+            other_ssupp = other.getSPartsProp("set", which=which, rset_id=rset_id, details=details)
+            if how == "inter":
+                return (len(own_sqLHS & other_sqLHS)+len(own_sqRHS & other_sqRHS))*len(own_ssupp & other_ssupp)
+            elif how == "union":
+                return (len(own_sqLHS | other_sqLHS)+len(own_sqRHS | other_sqRHS))*len(own_ssupp | other_ssupp)
+            elif how == "ratio":
+                areaI = (len(own_sqLHS & other_sqLHS)+len(own_sqRHS & other_sqRHS))*len(own_ssupp & other_ssupp)
+                areaU = (len(own_sqLHS | other_sqLHS)+len(own_sqRHS | other_sqRHS))*len(own_ssupp | other_ssupp)
+                return tool_ratio(areaI, areaU)
+            elif how == "fractmin":
+                areaI = (len(own_sqLHS & other_sqLHS)+len(own_sqRHS & other_sqRHS))*len(own_ssupp & other_ssupp)
+                areaU = min((len(own_sqLHS)+len(own_sqRHS))*len(own_ssupp),
+                             (len(other_sqLHS)+len(other_sqRHS))*len(other_ssupp))
+                return tool_ratio(areaI, areaU)
+
+        if which == "P":
+            if rows:
+                own_sqLHS, own_sqRHS, other_sqLHS, other_sqRHS, = set([1]), set([1]), set([1]), set([1])
+            else:
+                own_sqLHS = self.getQueryProp("Cset", which="q", rset_id="LHS", details=details)
+                own_sqRHS = self.getQueryProp("Cset", which="q", rset_id="RHS", details=details)
+                other_sqLHS = other.getQueryProp("Cset", which="q", rset_id="LHS", details=details)
+                other_sqRHS = other.getQueryProp("Cset", which="q", rset_id="RHS", details=details)
+            own_ssuppLHS = self.getSPartsProp("set", which="L", rset_id=rset_id, details=details)
+            own_ssuppRHS = self.getSPartsProp("set", which="R", rset_id=rset_id, details=details)
+            other_ssuppLHS = other.getSPartsProp("set", which="L", rset_id=rset_id, details=details)
+            other_ssuppRHS = other.getSPartsProp("set", which="R", rset_id=rset_id, details=details)
+            if how == "inter":
+                return len(own_sqLHS & other_sqLHS)*len(own_ssuppLHS & other_ssuppLHS) + \
+                       len(own_sqRHS & other_sqRHS)*len(own_ssuppRHS & other_ssuppRHS)
+            elif how == "union":
+                return len(own_sqLHS | other_sqLHS)*len(own_ssuppLHS | other_ssuppLHS) + \
+                       len(own_sqRHS | other_sqRHS)*len(own_ssuppRHS | other_ssuppRHS)
+            elif how == "ratio":
+                areaI = len(own_sqLHS & other_sqLHS)*len(own_ssuppLHS & other_ssuppLHS) + \
+                       len(own_sqRHS & other_sqRHS)*len(own_ssuppRHS & other_ssuppRHS)
+                areaU = len(own_sqLHS | other_sqLHS)*len(own_ssuppLHS | other_ssuppLHS) + \
+                       len(own_sqRHS | other_sqRHS)*len(own_ssuppRHS | other_ssuppRHS)
+                return tool_ratio(areaI, areaU)
+            elif how == "fractmin":
+                areaI = len(own_sqLHS & other_sqLHS)*len(own_ssuppLHS & other_ssuppLHS) + \
+                       len(own_sqRHS & other_sqRHS)*len(own_ssuppRHS & other_ssuppRHS)
+                areaU = min(len(own_sqLHS)*len(own_ssuppLHS)+len(own_sqRHS)*len(own_ssuppRHS),
+                            len(other_sqLHS)*len(other_ssuppLHS)+len(other_sqRHS)*len(other_ssuppRHS))
+                return tool_ratio(areaI, areaU)
+        return -1
+   
+    def getPairProp(self, other, what, which=None, rset_id=None, details={}):
+        if what in Redescription.pair_map_how:
+            # xps = self.getAreaPair(other, Redescription.pair_map_how[what], which, rset_id, details)
+            # print ">>>", self.disp()
+            # print "<<<", other.disp()
+            # x = self.overlapRows(other)
+            # print what, which, rset_id, xps, x
+            # return xps
+            return self.getAreaPair(other, Redescription.pair_map_how[what], which, rset_id, details)
+
+        if rset_id is not None and rset_id != "all":
+            if details is None:                    
+                details = {"rset_id": rset_id}
+            else:
+                details.update({"rset_id": rset_id})
+
+        if what in Redescription.info_pair_what_dets: ### other redescription info
+            methode = eval(Redescription.info_pair_what_dets[what])
+            if callable(methode):
+                return methode(other, details)
+        elif what in Redescription.info_pair_what_side and which in Redescription.pair_map_side: ### other redescription info
+            methode = eval(Redescription.info_pair_what_side[what])
+            if callable(methode):
+                return methode(other, Redescription.pair_map_side[which], details)
+
+    def getExpPairProp(self, other, exp, details={}):
+        ws = self.getRP().getPairPrimitiveWs(exp)
+        if ws[0] is not None:
+            return self.getPairProp(other, ws[0], ws[1], ws[2], details)
+   ###############################################        
+        
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
     def __str__(self):

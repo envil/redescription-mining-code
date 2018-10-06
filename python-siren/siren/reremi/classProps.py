@@ -58,7 +58,7 @@ class WithEVals(Item):
             self.setRestrictedSupp(data)
         self.computeExtras(data)
 
-    def getProp(self, what, which=None, rset_id=None, details=None):
+    def getProp(self, what, which=None, rset_id=None, details={}):
         if what == "extra":
             return self.getExtra(which, details)
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
@@ -92,13 +92,13 @@ class WithEVals(Item):
     #######################
     def setExtra(self, key, val):
         self.extras[key] = val
-    def getExtra(self, key=None, details=None):
+    def getExtra(self, key=None, details={}):
         if key is None:
             return self.extras
         return self.extras.get(key)
     def copyExtras(self):
         return copy.deepcopy(self.extras)
-    def computeExtras(self, data, extras=None, details=None):
+    def computeExtras(self, data, extras=None, details={}):
         self.resetCacheEVals(only_keys=[Props.XTRKS])
         self.extras.update(data.computeExtras(self, extras, details))
         
@@ -146,7 +146,7 @@ class WithEVals(Item):
     def hasRSets(self):
         return len(self.restricted_sets) > 0
 
-    def getRestrictedRids(self, details=None, all_none=False, as_list=False):
+    def getRestrictedRids(self, details={}, all_none=False, as_list=False):
         if type(details) is dict:
             rset_id = details.get("rset_id")
         else:
@@ -410,11 +410,10 @@ class Props(object):
         tcl.match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.what_match+"):(?P<which>"+tcl.which_match+")?)"
         tcl.all_what_match = "("+ "|".join(["(?P<"+ preff +"what>"+cc.Pwhat_match+")" for (preff, cc) in tcl.elems_typs]) +")"
         tcl.all_which_match = "("+ "|".join(["(?P<"+ preff +"which>"+cc.Pwhich_match+")" for (preff, cc) in tcl.elems_typs]) +")"   
-        tcl.all_match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.all_what_match+"):(?P<which>"+tcl.all_which_match+")?)"
+        # tcl.all_match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.all_what_match+"):(?P<which>"+tcl.all_which_match+")?)"
         tcl.lbl_match = "(?P<what>"+tcl.all_what_match+")[_]?(?P<which>"+tcl.all_which_match+")[_]?(?P<rset_id>"+tcl.rset_match+")?"
         tcl.rsets_patt = "(?P<rset_id>"+tcl.rset_sub_match+"):.+:"
         tcl.test_containing_kp = {tcl.XTRKS: tcl.extra_patt, tcl.RSKS: tcl.rsets_patt}
-
     
     modifiers_defaults = {"wsplits": False, "wmissing": False}
     @classmethod
@@ -868,7 +867,7 @@ class VarProps(Props):
     rset_match = "("+ "|".join(["all","learn","test","active"]) +")"
     what_match = "\w+"
     which_match = "\w+" 
-    match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
+    # match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
 
     lbl_patts = {}
     lbl_patts.update(Props.lbl_patts)
@@ -936,12 +935,12 @@ class RedProps(Props):
     rset_match = "("+ "|".join(["all","learn","test","cond","active"] + HAND_SIDE.keys()) +")"
     what_match = "\w+"
     which_match = "\w+" 
-    match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
+    # match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
         
-    all_what_match = ""
-    all_which_match = ""
-    all_match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+all_what_match+"):(?P<which>"+all_which_match+")?)"
-    lbl_match = "(?P<what>"+all_what_match+")[_]?(?P<which>"+all_which_match+")[_]?(?P<rset_id>"+rset_match+")?"
+    # all_what_match = ""
+    # all_which_match = ""
+    # all_match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+all_what_match+"):(?P<which>"+all_which_match+")?)"
+    # lbl_match = "(?P<what>"+all_what_match+")[_]?(?P<which>"+all_which_match+")[_]?(?P<rset_id>"+rset_match+")?"
 
 
     #### The classes provided below should have the following methods: 
@@ -952,6 +951,12 @@ class RedProps(Props):
         tcl.Rclass = Rclass
         tcl.elems_typs = elems_typs
         tcl.setupPMatches()
+        tcl.setupPPairMatches()
+
+    @classmethod
+    def setupPPairMatches(tcl):        
+        tcl.match_pair_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.Rclass.Pwhat_pair_match+"):(?P<which>"+tcl.which_match+")?)"
+
         
     substs = [("queryLHS", "query_LHS"), ("queryRHS", "query_RHS"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
     
@@ -1013,7 +1018,21 @@ class RedProps(Props):
             if len(xtr) > 0:
                 b += ":"+xtr
         return b
-    
+
+    ##############################################
+    ####        PAIRS
+    ##############################################
+    @classmethod
+    def isPairPrimitive(tcl, exp):
+        return re.match(tcl.match_pair_primitive, exp) is not None
+    @classmethod
+    def getPairPrimitiveWs(tcl, exp):
+        # all_mtch = re.match(tcl.all_match_primitive, exp)
+        mtch = re.match(tcl.match_pair_primitive, exp)
+        if mtch is not None:
+            return (mtch.group("what"), mtch.group("which") or "", mtch.group("rset_id") or "all")
+        return (None, None, None)
+
     
     ##############################################
     ####        PRINTING

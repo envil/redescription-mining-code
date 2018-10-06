@@ -129,11 +129,20 @@
     <section>
       <name>Additional filtering</name>
       <parameter>
-	<name>max_overlaparea</name>
+	<name>max_overlap_area</name>
 	<label>Max Area Overlap</label>
 	<parameter_type>open</parameter_type>
 	<value_type>float</value_type>
 	<legend>Maximum overlap of the area of two redescriptions to be considered redundant.</legend>
+	<length>5</length>
+	<default><value>0.5</value></default>
+      </parameter>
+      <parameter>
+	<name>max_overlap_rows</name>
+	<label>Max Rows Overlap</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Maximum overlap of the rows of two redescriptions to be considered redundant.</legend>
 	<length>5</length>
 	<default><value>0.5</value></default>
       </parameter>

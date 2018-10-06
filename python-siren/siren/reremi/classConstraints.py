@@ -1,12 +1,14 @@
-from classRedescription import  Redescription
+import re, os.path
 import numpy
+
 import pdb
 
 class Constraints(object):
     
     special_cstrs = {}
     
-    def __init__(self, data, params):
+    def __init__(self, data, params, AR):
+        self.AR = AR
         self.deps = []
         self.folds = None
         self._pv = {}
@@ -46,22 +48,6 @@ class Constraints(object):
                                  "pval_red": self.getCstr("score.pval_red", default=0),
                                  "pval_query": self.getCstr("score.pval_query", default=0),
                                  "pval_fact": self.getCstr("score.pval_fact", default=0)}
-
-
-        #### preparing action registry
-        self._actions = {
-        "nextge": [("filtersingle", {"filter_funct": self.filter_nextge}),
-                   ("sort", {"sort_funct": self.sort_nextge, "sort_reverse": True }),
-                   ("cut", { "cutoff_nb": self.getCstr("batch_cap"), "cutoff_direct": 0})],
-        "partial":[("filtersingle", {"filter_funct": self.filter_partial}),
-                   ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-                   ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0}),
-                   ("cut", { "cutoff_nb": self.getCstr("batch_out"), "cutoff_direct": 1, "equal_funct": self.sort_partial})],
-        "final":  [("filtersingle", {"filter_funct": self.filter_final}),
-                   ("sort", {"sort_funct": self.sort_partial, "sort_reverse": True }),
-                   ("filterpairs", {"filter_funct": self.pair_filter_partial, "filter_max": 0})],
-        "redundant": [("filterpairs", self.getFilterParams("redundant"))],
-        "folds": [("filtersingle", {"filter_funct": self.filter_folds})]}
 
         
     def setFolds(self, data):
@@ -186,115 +172,34 @@ class Constraints(object):
         return False
     special_cstrs["neg_query_init"] = "neg_query_init"
     
-    def getActions(self, k):
-        return self._actions.get(k, [])
-        
-    def getFilterParams(self, k):
-        if k == "redundant":                 
-            if self.getCstr("max_overlaparea") < 0:
-                return {"filter_funct": self.pair_filter_redundant_rows, "filter_thres": -(self.getCstr("max_overlaparea") or 1), "filter_max":0}
-            return {"filter_funct": self.pair_filter_redundant, "filter_thres": (self.getCstr("max_overlaparea") or 1), "filter_max":0}
-       # possibly useful functions for reds comparison:
-       # they should be symmetric
-       #     .oneSideIdentical(self.batch[compare])
-       #     .equivalent(self.batch[compare])
-       #     .redundantArea(self.batch[compare])
-
-        
-    ##### filtering and sorting primitives   
-    def filter_nextge(self, red):
-        ### could add check disabled
-        return red.nbAvailableCols() == 0
-
-    def sort_nextge(self, red):
-        return red.getAcc()
-
-    def sort_partial(self, red):
-        return (red.getAcc(), -(red.length(0) + red.length(1)), -abs(red.length(0) - red.length(1)))  
-                 
-    def filter_partial(self,red):
-        # print "filter partial", red
-        # print {'min_itm_out': red.getLenO() >= self.getCstr("min_itm_out"),
-        #        'min_itm_in': red.getLenI() >= self.getCstr("min_itm_in"),
-        #        'max_fin_pval': red.getPVal() <= self.getCstr("max_fin_pval")}
-        # print {'min_itm_out': (red.getLenO(), self.getCstr("min_itm_out")),
-        #        'min_itm_in': (red.getLenI(), self.getCstr("min_itm_in")),
-        #        'max_fin_pval': (red.getPVal(), self.getCstr("max_fin_pval"))}
-
-        if red.getLenO() >= self.getCstr("min_itm_out")\
-               and red.getLenI() >= self.getCstr("min_itm_in") \
-               and red.getPVal() <= self.getCstr("max_fin_pval"):
-            # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
-            # print "--------- RED KEEP"
-            return False
-        else:
-            # if red.getLenI() > 0:
-            #     print "---------- filter_partial"
-            #     print red.disp()
-            #     print ( red.getLenO(), ">=", self.getCstr("min_itm_out") ), (red.getLenI(), ">=",  self.getCstr("min_itm_in")), (red.getPVal(), "<=", self.getCstr("max_fin_pval"))
-
-            # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
-            return True
-
-    def filter_final(self,red):
-        # print "filter final", red
-        # print {'min_fin_var': red.length(0) + red.length(1) >= self.getCstr("min_fin_var"),
-        #        'min_fin_out': red.getLenO() >= self.getCstr("min_fin_out"),
-        #        'min_fin_in': red.getLenI() >= self.getCstr("min_fin_in"),
-        #        'min_fin_acc': red.getAcc()  >= self.getCstr("min_fin_acc"),
-        #        'max_fin_pval': red.getPVal() <= self.getCstr("max_fin_pval")}
-        # print {'min_fin_var': (red.length(0) + red.length(1), self.getCstr("min_fin_var")),
-        #        'min_fin_out': (red.getLenO(), self.getCstr("min_fin_out")),
-        #        'min_fin_in': (red.getLenI(), self.getCstr("min_fin_in")),
-        #        'min_fin_acc': (red.getAcc(), self.getCstr("min_fin_acc")),
-        #        'max_fin_pval': (red.getPVal(), self.getCstr("max_fin_pval"))}
-
-
-        if red.length(0) + red.length(1) >= self.getCstr("min_fin_var") \
-                   and red.getLenO() >= self.getCstr("min_fin_out")\
-                   and red.getLenI() >= self.getCstr("min_fin_in") \
-                   and red.getAcc()  >= self.getCstr("min_fin_acc") \
-                   and red.getPVal() <= self.getCstr("max_fin_pval"):
-            # Constraints.logger.printL(3, 'Redescription complies with final constraints ... (%s)' %(red))
-            # print "--------- RED KEEP"
-            return False
-        else:
-            # Constraints.logger.printL(3, 'Redescription non compliant with final constraints ...(%s)' % (red))
-            return True
-
-    def pair_filter_partial(self, redA, redB):
-        return (redA.oneSideIdentical(redB) and not redA.equivalent(redB)) or redA.bothSidesIdentical(redB)
-
-    def pair_filter_redundant(self, redA, redB):
-        return redA.overlapAreaMax(redB)
-
-    def pair_filter_redundant_rows(self, redA, redB):
-        return redA.overlapRows(redB)
+    def getActionsList(self, k, action_substitute=None):
+        return self.AR.getActionsListToGo(k, self, action_substitute)
     
-   
-    def filter_folds(self, red):
-       if self.folds is None:
-           return False
 
-       bcountI = numpy.bincount(self.folds["folds"][list(red.getSuppI())], minlength=self.folds["nb_folds"])
-       bcountU = numpy.bincount(self.folds["folds"][list(red.getSuppU())], minlength=self.folds["nb_folds"])
-       bcountU[bcountU == 0] = 1
-       accs = bcountI/(1.*bcountU)
-       print "--------------------"
-       print red.disp()
-       print accs
-       if len(numpy.where(accs >= red.getAcc())[0]) > 1:
-           return False
-           bb = accs # bcount/self.folds["counts_folds"]
-           # bpr = bcount/float(numpy.sum(bcount))
-           # entropS = -numpy.sum(numpy.log(bpr)*bpr)
-           bpr = bb/numpy.max(bb)
-           score = numpy.sum(bpr)
-           print score
-           # entropM = -numpy.sum(numpy.log(bpr)*bpr)
-           if score > 1.5:
-               return False
-       return True
+ ########### FOLDS
+    # def filter_folds(self, red):
+    #    if self.folds is None:
+    #        return False
+
+    #    bcountI = numpy.bincount(self.folds["folds"][list(red.getSuppI())], minlength=self.folds["nb_folds"])
+    #    bcountU = numpy.bincount(self.folds["folds"][list(red.getSuppU())], minlength=self.folds["nb_folds"])
+    #    bcountU[bcountU == 0] = 1
+    #    accs = bcountI/(1.*bcountU)
+    #    print "--------------------"
+    #    print red.disp()
+    #    print accs
+    #    if len(numpy.where(accs >= red.getAcc())[0]) > 1:
+    #        return False
+    #        bb = accs # bcount/self.folds["counts_folds"]
+    #        # bpr = bcount/float(numpy.sum(bcount))
+    #        # entropS = -numpy.sum(numpy.log(bpr)*bpr)
+    #        bpr = bb/numpy.max(bb)
+    #        score = numpy.sum(bpr)
+    #        print score
+    #        # entropM = -numpy.sum(numpy.log(bpr)*bpr)
+    #        if score > 1.5:
+    #            return False
+    #    return True
 
    
     #### Dependencies between variables (ex, single dataset)
@@ -310,4 +215,384 @@ class Constraints(object):
     def hasDeps(self):
         return len(self.deps) > 0
 
+   
+############################################################
+############################################################
+def flipValue(v):
+    nv = v
+    if type(v) is bool:
+        v = not nv
+    elif nv is not None:
+        try:
+            v = -nv
+        except TypeError:
+            try:
+                v = reversed(nv)
+            except TypeError:
+                v = nv
+    return v
+
+def doComparison(vA, cop, vB):
+    if cop == "<": return vA < vB
+    if cop == ">": return vA > vB
+    if cop == "=": return vA == vB            
+    if cop == "<>": return vA != vB
+    if cop == ">=": return vA >= vB
+    if cop == "<=": return vA <= vB            
+    return False
+
+class ActionsRegistry:
+
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
+    def_file_basic = pref_dir+"/actions_rdefs_basic.txt"
+    default_def_files = [def_file_basic]
+
+    def __init__(self, actions_fns=None):
+        self.setupFDefs(actions_fns)
+    def setupFDefs(self, actions_fns=None):
+        if actions_fns is None:
+            actions_fns = self.default_def_files
+        self.actions_lists = {}
+        for ff in actions_fns:
+            try:
+                with open(ff) as fp:            
+                    self.readActionsFile(fp)
+            except IOError:
+                print "Cannot read actions defs from file %s!" % ff
+                
+    def setActionsList(self, fk, flist):
+        self.actions_lists[fk] = flist
+    def delActionsList(self, fk):
+        if fk in self.actions_lists:
+            del self.actions_lists[fk]        
+    def getActionsKeys(self, public_only=True):
+        if public_only:
+            return [k for k in self.actions_lists.keys() if not re.match("_", k)]
+        return self.actions_lists.keys()
+
+    def getActionsKeysSimple(self, public_only=True, patt=None):
+        ks = []
+        for k in self.getActionsKeys(public_only):
+            l = self.getActionsListRecurse(k)
+            if len(l) == 1 and (patt is None or re.match(patt, l[0]["action"])):
+                ks.append(k)
+        return ks
+    def getActionsKeysMulti(self, public_only=True, patt=None):
+        ks = []
+        for k in self.getActionsKeys(public_only):
+            l = self.getActionsListRecurse(k)
+            if len(l) > 1 and (patt is None or re.match(patt, l[0]["action"])):
+                ks.append(k)
+        return ks
+        
+    def clearActions(self):
+        self.actions_lists = {}
+       
+    def hasActionsList(self, fk):
+        return fk in self.actions_lists
+    def getActionsList(self, fk):
+        priv = "_"+fk
+        if fk not in self.actions_lists and priv in self.actions_lists:
+            return self.actions_lists[priv]
+        return self.actions_lists.get(fk, [])
+    def getActionsListRecurse(self, fk):
+        actions = []
+        for action in self.getActionsList(fk):
+            if "actions" in action:
+                actions.extend(self.getActionsListRecurse(action["actions"]))
+            else:
+                actions.append(action)
+        return actions
+    def getActionsListToGo(self, fk, constraints, action_substitute=None):
+        actions = []
+        for action in self.getActionsList(fk):
+            if "actions" in action:
+                actions.extend(self.getActionsListToGo(action["actions"], constraints))
+            else:
+                actions.append(self.fillActionConstraints(action, constraints))
+        if action_substitute is not None and len(actions) == 1:
+            if actions[0]["action"] == action_substitute[0]:
+                actions[0]["action"] = action_substitute[1]        
+        return actions    
+
+    def fillBlockConstraints(self, block, constraints):
+        if block[0]["typic"] == "CSTR":
+            v = constraints.getCstr(block[0]["exp"])
+            if block[0].get("flip"):
+                v = flipValue(v)
+            bA = {"typic": None, "exp": v}
+        else:
+            bA = {"typic": block[0]["typic"], "exp": block[0]["exp"]}
+            if block[0].get("flip"):
+                bA["flip"] = True
+        if len(block) > 2:
+            if block[2]["typic"] == "CSTR":
+                v = constraints.getCstr(block[2]["exp"])
+                if block[2].get("flip"):
+                    v = flipValue(v)
+                bB = {"typic": None, "exp": v}
+            else:
+                bB = {"typic": block[2]["typic"], "exp": block[2]["exp"]}
+                if block[2].get("flip"):
+                    bB["flip"] = True
+            bb = (bA, block[1], bB)
+        else:
+            bb = (bA,)
+        return bb
+    def fillActionConstraints(self, action, constraints=None):
+        filled = {}
+        for k,v in action.items():
+            if k == "action":
+                filled[k] = v
+            elif k == "blocks":
+                filled[k] = [self.fillBlockConstraints(block, constraints) for block in v]
+            else:
+                if v[0] == "CSTR":
+                    val = constraints.getCstr(v[1])
+                    if val is None:
+                        val = self.getArgDefault(k, action["action"])
+                    else:
+                        val = self.getArgType(k, action["action"])(val)
+                    filled[k] = ("V", val)
+                else:
+                    filled[k] = v
+        return filled
+    
+    def getArgDefault(self, arg, action):
+        if action in self.basic_actions and arg in self.basic_actions[action]["args"]:
+            return self.basic_actions[action]["args"][arg]
+    def getArgType(self, arg, action):
+        v = self.getArgDefault(arg, action)
+        if v is not None:
+            return type(v)
+        
+    ###### PRINT
+    def disp(self, fks=None):
+        if fks is None:
+            fks = self.getActionsKeys()
+        k_str = {}
+
+        while len(fks) > 0:
+            fk = fks.pop(0)
+            strs = []
+            for action in self.getActionsList(fk):
+                if "actions" in action:
+                    strs.append("list\t%s" % action["actions"])
+                    if action["actions"] not in k_str and action["actions"] not in fks:
+                        fks.append(action["actions"])
+                else:
+                    strs.append(self.action2str(action))
+            k_str[fk] = strs
+        xps = ""
+        for fk, lines in k_str.items():
+            if len(lines) > 0:
+                xps += "\n".join(["actionlist\t%s" % fk]+lines)+"\n"
+        return xps
+
+    @classmethod
+    def block2str(tcl, block):
+        m = "-" if block[0].get("flip") else ""
+        t = "%s:%s%s" % (block[0].get("typic"), m, block[0].get("exp"))
+        if len(block) > 2:
+            m = "-" if block[2].get("flip") else ""
+            t += "%s%s:%s%s" % (block[1], block[2].get("typic"), m, block[2].get("exp"))
+        return t
+    @classmethod
+    def action2str(tcl, action):
+        t = ["%s" % action["action"]]
+        b = []
+        for k, v in action.items():
+            if k == "blocks":
+                b = [tcl.block2str(block) for block in v]
+            elif k != "action":
+                if v[0] == "CSTR":
+                    t.append("%s=%s:%s" % (k, v[0], v[1]))
+                else:
+                    t.append("%s=%s" % (k, v[1]))
+        return "\t".join(t+b)
+    @classmethod
+    def dispAction(tcl, action):
+        t = []
+        b = []
+        for k, v in action.items():
+            if k == "blocks":
+                b = [tcl.block2str(block) for block in v]
+            elif k != "action":
+                if v[0] == "CSTR":
+                    t.append("%s=%s:%s" % (k, v[0], v[1]))
+                else:
+                    t.append("%s=%s" % (k, v[1]))
+        return "%s\t%s%s\n" % (action["action"], " ".join(t), "\n\t".join([""]+b))
+
+    ##############################
+    ##############################
+    def getItemVal(exp, item, other=None, constraints=None, details={}, swap=False):
+        if other is not None and swap:
+            return other.getExpProp(exp, details)
+        if item is not None:
+            return item.getExpProp(exp, details)
+    def getPairVal(exp, item, other=None, constraints=None, details={}, swap=False):
+        if other is None:
+            raise Exception("Pair comparison missing other item")
+        if item is not None and other is not None:
+            if swap:
+                (item, other) = (other, item)
+            return item.getExpPairProp(other, exp, details)
+    def getCstrVal(exp, item, other=None, constraints=None, details={}, swap=False):
+        if constraints is None:
+            raise Exception("No constraints can't evaluate %s" % exp)
+        return constraints.getCstr(exp)
+    
+    types_static = {"str": str, "int": int, "float": float, "tuple": tuple, "bool": bool}
+    types_dynamic = {"ITEM": getItemVal , "PAIR": getPairVal, "CSTR": getCstrVal}
+    ##############################
+    ##############################
+
+    ###### PARSING
+    basic_actions = {"apply": {"parity": 1, "args": {"function": "identity", "reverse": False}}, 
+                     "sort": {"parity": 1, "args": {"reverse": False}},
+                     "cut": {"parity": 2, "args": {"max": 0, "direction": 0, "reverse": False}},
+                     "filterSingle": {"parity": 1, "args": {"reverse": False}},
+                     "filterToFirst": {"parity": 2, "args": {"reverse": False}},
+                     "filterLast": {"parity": 2, "args": {"reverse": False}},
+                     "filterPairs": {"parity": 2, "args": {"max": 0, "reverse": False}}}    
+    cops = "<>="
+    typic_patt = "("+ "|".join(types_static.keys()+types_dynamic.keys())+")"
+    block_patt = "(?P<block>(?P<typicA>"+typic_patt+"):(?P<modA>-?)(?P<expA>[^-"+cops+"][^"+cops+"]*)((?P<cop>"+"".join([c+"?" for c in cops])+")(?P<typicB>"+typic_patt+"):(?P<modB>-?)(?P<expB>[^-"+cops+"][^"+cops+"]*))?)$"
+    @classmethod
+    def parseComparisonBlock(tcl, block):
+        mtch = re.match(tcl.block_patt, block)
+        if mtch is not None:
+            bA = {"typic": mtch.group("typicA"), "exp": mtch.group("expA")}
+            if mtch.group("modA") is not None and len(mtch.group("modA")) > 0:
+                if bA["typic"] in tcl.types_static:
+                    bA["exp"] = mtch.group("modA")+bA["exp"]
+                else:
+                    bA["flip"] = True
+            if mtch.group("cop") is not None and len(mtch.group("cop")) > 0:
+                bB = {"typic": mtch.group("typicB"), "exp": mtch.group("expB")}
+                if mtch.group("modB") is not None and len(mtch.group("modB")) > 0:
+                    if bB["typic"] in tcl.types_static:
+                        bB["exp"] = mtch.group("modB")+bB["exp"]
+                    else:
+                        bB["flip"] = True
+                bb = (bA, mtch.group("cop"), bB)
+            else:
+                bb = (bA,)
+            return bb
+    
+    def readActionsFile(self, actions_fp):
+        current_list_actions = []
+        current_list_name = None        
+        for line in actions_fp:
+            prts = line.strip().split("\t")
+            if prts[0] in self.basic_actions and current_list_name is not None:
+                action_dets = self.parseActionParts(prts)
+                current_list_actions.append(action_dets)
+            elif prts[0] == "list" and len(prts) == 2:
+                current_list_actions.append({"actions": prts[1]})
+            elif prts[0] == "actionlist" and len(prts) == 2:
+                if current_list_name is not None and len(current_list_actions) > 0:
+                    self.setActionsList(current_list_name, current_list_actions)
+                current_list_name = prts[1]
+                current_list_actions = []
+        if current_list_name is not None and len(current_list_actions) > 0:
+            self.setActionsList(current_list_name, current_list_actions)
+
+    def parseActionParts(self, prts):
+        if prts[0] in self.basic_actions:
+            action_dets = {"action": prts[0]}
+            if self.basic_actions[prts[0]].get("parity", 0) > 0:
+                action_dets["blocks"] = []
+            def_args = dict([(k, ("V", v)) for k,v in self.basic_actions[prts[0]].get("args", {}).items()])
+            action_dets.update(def_args)
+            args_patt = "(?P<arg>("+"|".join(def_args.keys())+"))=(?P<cstr>CSTR:)?(?P<val>.*)$"
+            for prt in prts[1:]:
+                mtch_arg = re.match(args_patt, prt)
+                if mtch_arg is not None:
+                    arg = mtch_arg.group("arg")
+                    if mtch_arg.group("cstr") is not None:
+                        action_dets[arg] = ("CSTR", mtch_arg.group("val"))
+                    else:
+                        val = self.getArgType(arg, prts[0])(mtch_arg.group("val"))
+                        action_dets[arg] = ("V", val)
+                else:
+                    block = self.parseComparisonBlock(prt)
+                    if block is not None and "blocks" in action_dets:
+                        if self.getParityBlock(block) == 1 and len(block) == 1 and self.basic_actions[prts[0]].get("parity", 0) == 2:
+                            #### 
+                            block = (block[0],"=", block[0])
+                        if self.getParityBlock(block) <= self.basic_actions[prts[0]].get("parity", 0):
+                            action_dets["blocks"].append(block)
+                        else:
+                            raise Exception("Parity does not match! (%s vs. %s)" % (self.getParityBlock(block), self.basic_actions[prts[0]].get("parity", 0)))
+            return action_dets
+
+
+    ###### ACCESS
+    @classmethod
+    def getValElem(tcl, block, item, other=None, constraints=None, swap=False):
+        if block["typic"] in tcl.types_dynamic:
+            v = tcl.types_dynamic[block["typic"]](block["exp"], item, other, constraints, swap=swap)
+            if block.get("flip"):
+                v = flipValue(v)
+            return v
+        elif block["typic"] in tcl.types_static:
+            return tcl.types_static[block["typic"]](block["exp"])
+        elif block["typic"] is None:
+            return block["exp"]
+    @classmethod
+    def evalBlock(tcl, block, item, other=None, constraints=None):
+        (bA, cop, bB) = (tcl.getBlockElem("A", block), tcl.getBlockElem("cop", block), tcl.getBlockElem("B", block))
+        vA = tcl.getValElem(bA, item, other, constraints, swap=False)
+        if bB is not None:
+            vB = tcl.getValElem(bB, item, other, constraints, swap=True)
+            return doComparison(vA, cop, vB)
+        return vA
+    @classmethod
+    def getBlocks(tcl, action):
+        return action.get("blocks", [])
+    @classmethod
+    def getArg(tcl, arg, action, constraints=None):
+        if arg in action:
+            if action[arg][0] == "CSTR":
+                if constraints is None:
+                    raise Exception("No constraints can't evaluate %s" % exp)
+                return constraints.getCstr(action[arg][1])
+            return action[arg][1]
+        return None
+
+    @classmethod
+    def getParityBlock(tcl, block):               
+        if tcl.getBlockElem("typicA", block) == "PAIR" or tcl.getBlockElem("typicB", block) == "PAIR" or \
+            (tcl.getBlockElem("typicA", block) == "ITEM" and tcl.getBlockElem("typicB", block) == "ITEM"):
+            return 2
+        return 1*(tcl.getBlockElem("typicA", block) == "ITEM" or tcl.getBlockElem("typicB", block) == "ITEM")
+    @classmethod
+    def getBlockElem(tcl, k, block):
+        bb, kk = (None, "")
+        if k == "cop":
+            if len(block) > 1:
+                return block[1]
+        elif k[-1] == "B":
+            if len(block) > 2:
+                bb, kk = (block[2], k[:-1])
+        elif k[-1] == "A":
+            bb, kk = (block[0], k[:-1])
+        else:
+            bb, kk = (block, k)
+        if bb is None or kk == "":
+            return bb
+        else:
+            return bb.get(kk)
+    
+
+# c = Constraints(data=None, params={})
+# AR = ActionsRegistry()
+# for k in AR.getActionsKeys():
+#     print "ACTION LIST", k
+#     for action in AR.getActionsListToGo(k, c):
+#         print AR.dispAction(action)
+# # # print AR.actions2str()
+    
     

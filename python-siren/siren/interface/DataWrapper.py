@@ -17,7 +17,7 @@ from ..reremi.classData import Data
 
 from ..reremi.classQuery import Query, Literal
 from ..reremi.classRedescription import Redescription
-from ..reremi.classConstraints import Constraints
+from ..reremi.classConstraints import Constraints, ActionsRegistry
 
 from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 from ..reremi.classPackage import Package, writePreferences, writeRedescriptions, getPrintParams
@@ -62,7 +62,7 @@ class DataWrapper(object):
         self.data = None
         self.reds = StoredRCollection()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
-        self.constraints = self.resetConstraints()
+        self.resetARAndCstr()
         self.package = None
         self._isChanged = False
         self._isFromPackage = False
@@ -196,7 +196,8 @@ class DataWrapper(object):
              
     def getPreferences(self):
         return self.preferences
-
+    def getActionsRegistry(self):
+        return self.AR
     def getPreference(self, param_id):
         if self.preferences is not None and param_id in self.preferences:
             return self.preferences[param_id]["data"]
@@ -269,6 +270,7 @@ class DataWrapper(object):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
             dtv = self.getDiffPrefs(params)
+            print dtv
             self.preferences.update(params)
             if len(SSETTS_PARAMS.intersection(dtv)) > 0:
                 self.resetSSetts()
@@ -317,8 +319,15 @@ class DataWrapper(object):
             self.getData().getSSetts().reset(parts_type, pval_meth)
             self.addReloadAll()
     def resetConstraints(self):
-        self.constraints = Constraints(self.getData(), self.getPreferences())
-
+        self.constraints = Constraints(self.getData(), self.getPreferences(), self.getActionsRegistry())
+    def resetARAndCstr(self, AR=None):
+        if AR is None:
+            self.AR = ActionsRegistry()
+        else:
+            self.AR = AR
+        self.resetConstraints()
+        self.setupFilterActs()
+        
     def recompute(self):
         self.doneReloadRecompute()
         self.recomputeReds()
@@ -408,7 +417,7 @@ class DataWrapper(object):
             if src_lid != trg_lid and self.reds.showingLid(trg_lid):
                 self.addReloadListContent(trg_lid, "r", iids)
                 
-    def process(self, parameters, lid, iids):
+    def process(self, actions, lid, iids):
         if lid is not None and iids is not None and len(iids) > 0:
             before_iids = self.reds.getIidsListAbove(lid, iids[0])
             if len(iids) == 1:
@@ -424,7 +433,7 @@ class DataWrapper(object):
             bottom_iids = [i for i in compare_iids if not self.reds.getItem(i).isEnabled()]
 
             # print "IIDS MID", current_iids, bottom_iids
-            selected_iids = self.reds.selected(parameters, current_iids)
+            selected_iids = self.reds.selected(actions, current_iids)
             # print "IIDS SELECTED", selected_iids
             middle_iids = []
             for i in current_iids:
@@ -915,61 +924,27 @@ class DataWrapper(object):
                       "label": "&Normalize", "legend": "Normalize current redescription."})
 
     ## FILTER REDS
-    def actFilterToOne(self, info):
+    def actFilter(self, info, action_key="redundant_area", action_substitute=None):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
-            parameters = self.constraints.getFilterParams("redundant")
             if info["nb"] == 1:
                 compare_iids = self.reds.getIidsListBelow(info["active_lid"], info["iids"][0])
             else:
                 compare_iids = info["iids"]
-            disable_iids = self.reds.filtertofirstIds(compare_iids, parameters, complement=True)
+            actions = self.constraints.getActionsList(action_key, action_substitute)
+            disable_iids = self.reds.doActions(actions, compare_iids, complement=True)
             if len(disable_iids) > 0:
                 for iid in disable_iids:
                     self.reds.getItem(iid).setDisabled()                
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
-    acts_list.append({"key": "FilterToOne", "group": "redsFilter", "method": actFilterToOne,
-                      "label": "&Filter redundant to one\tCtrl+R",
-                      "legend": "Disable redescriptions redundant to current downwards."})
-    def actFilterAll(self, info):
-        if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
-            parameters = self.constraints.getFilterParams("redundant")
-            if info["nb"] == 1:
-                compare_iids = self.reds.getIidsListBelow(info["active_lid"], info["iids"][0])
-            else:
-                compare_iids = info["iids"]
-            disable_iids = self.reds.filterpairsIds(compare_iids, parameters, complement=True)
-            if len(disable_iids) > 0:
-                for iid in disable_iids:
-                    self.reds.getItem(iid).setDisabled()                
-                self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
-    acts_list.append({"key": "FilterAll", "group": "redsFilter", "method": actFilterAll,
-                      "label": "Filter red&undant all\tShift+Ctrl+R",
-                      "legend": "Disable redescriptions redundant to previous encountered."})    
-    def actProcessAll(self, info):
+    def actProcess(self, info, action_key="process"):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
             ll = self.reds.getList(info["active_lid"])
             if ll is not None:
-                parameters = self.constraints.getActions("final")
-                before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(parameters, info["active_lid"], info["iids"])
+                actions = self.constraints.getActionsList(action_key)
+                before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"])
                 if selected_iids is not None:
                     ll.setIids(before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
                     self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
-    acts_list.append({"key": "ProcessAll", "group": "redsFilter", "method": actProcessAll,
-                      "label": "&Process redescriptions\tCtrl+P",
-                      "legend": "Sort and filter current redescription list."})
-    def actFilterFolds(self, info):
-        if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
-            ll = self.reds.getList(info["active_lid"])
-            if ll is not None:
-                self.constraints.setFolds(self.dw.getData())
-                parameters = self.constraints.getActions("folds")
-                before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(parameters, info["active_lid"], info["iids"])
-                if selected_iids is not None:
-                    ll.setIids(before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
-                    self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
-    acts_list.append({"key": "FilterFolds", "group": "redsFilter", "method": actFilterFolds,
-                      "label": "Filter on folds cover",
-                      "legend": "Disable redescriptions that do not adequately cover several folds."})
 
     ## FILTER EXTRAS
     def actExtraAddDelListToPack(self, info):
@@ -991,6 +966,7 @@ class DataWrapper(object):
     #####################################################
 
     acts_meths_dict = dict([(c["key"], c["method"]) for c in acts_list])
+    acts_params_dict = {}
     acts_groups = {}
     acts_extras = {}
     for c in acts_list:
@@ -1001,18 +977,64 @@ class DataWrapper(object):
             if cgroup not in acts_groups:
                 acts_groups[cgroup] = []
             acts_groups[cgroup].append({"key": c["key"], "label": c["label"], "legend": c["legend"]})
-    
-    @classmethod
-    def getGroupActs(tcl, group=None):
-        return tcl.acts_groups.get(group, [])
-    @classmethod
-    def getExtraAct(tcl, key):
-        return tcl.acts_extras.get(key)
 
+    def setupFilterActs(self):
+        prev_acts = self.acts_groups.pop("redsFilter", [])
+        for act in prev_acts:
+            self.acts_meths_dict.pop(act)
+            self.acts_params_dict.pop(act)
+        AR = self.getActionsRegistry()
+
+        acts_filter = []
+        for filter_single in AR.getActionsKeysSimple(patt="filterSingle"):
+            name = re.sub("_", " ", filter_single)
+            key = "FilterSingle:%s" % filter_single
+            acts_filter.append({"key": key, 
+                                "label": "Filter %s" % name, 
+                                "legend": "Filters redescriptions individually according to criteria '%s'." % name })            
+            self.acts_meths_dict[key] = self.actFilter
+            self.acts_params_dict[key] = {"action_key": filter_single}
+
+        for filter_pairs in AR.getActionsKeysSimple(patt="filterPairs"):
+            name = re.sub("_", " ", filter_pairs)
+            key = "FilterToFirst:%s" % filter_pairs
+            acts_filter.append({"key": key, 
+                                "label": "Filter %s to first" % name, 
+                                "legend": "Filter redescriptions comparing to first selected according to criteria '%s'." % name })            
+            self.acts_meths_dict[key] = self.actFilter
+            self.acts_params_dict[key] = {"action_key": filter_pairs,
+                                     "action_substitute": ("filterPairs", "filterToFirst")}
+            key = "FilterAll:%s" % filter_pairs
+            acts_filter.append({"key": key, 
+                                "label": "Filter %s pairwise" % name, 
+                                "legend": "Filter redescriptions pairwise according to criteria '%s'." % name })            
+            self.acts_meths_dict[key] = self.actFilter
+            self.acts_params_dict[key] = {"action_key": filter_pairs}
+            
+        for process in AR.getActionsKeysMulti():
+            name = re.sub("_", " ", process)
+            key = "ProcessAll:%s" % process
+            acts_filter.append({"key": key, 
+                                "label": "Do %s" % name, 
+                                "legend": "Sort and filter current redescription list according to criteria '%s'." % name })            
+            self.acts_meths_dict[key] = self.actProcess
+            self.acts_params_dict[key] = {"action_key": process}
+
+        self.acts_groups["redsFilter"] = acts_filter
+
+    def getGroupActs(self, group=None):
+        return self.acts_groups.get(group, [])
+    def getExtraAct(self, key):
+        return self.acts_extras.get(key)
+        
+    
     def OnActContent(self, event, info):        
         ## print "ACT CONTENT", event, info
         if event in self.acts_meths_dict:
-            self.acts_meths_dict[event](self, info)
+            if event in self.acts_params_dict: ### those methods are bound
+                self.acts_meths_dict[event](info, **self.acts_params_dict[event])
+            else:
+                self.acts_meths_dict[event](self, info)
 
 
     

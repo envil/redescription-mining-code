@@ -49,11 +49,11 @@ class Log(object):
         elif (id, name) in self.tics:
             return (self.tics[(id,name)], datetime.datetime.now())
 
-    def clockTic(self, id, name=None, details=None):
+    def clockTic(self, id, name=None, details={}):
         tic = self.setTic(id,name)
         if name is None: name = "\t"
         mess = "Start %s\t((at %s))" % (name, tic)
-        if details is not None:
+        if details is not None and len(details) > 0:
             mess += ("\t%s" % details)
         self.printL(1, mess, "time", id)
 
@@ -94,8 +94,8 @@ class Log(object):
         if level > -1:
             self.printL(level, self.getProgress(), 'progress', id)
 
-    def updateProgress(self, details=None, level=-1, id=None):
-        if details is not None:
+    def updateProgress(self, details={}, level=-1, id=None):
+        if details is not None and len(details) > 0:
             if "pload" in details:
                 self.progress_ss["current"] += details["pload"]
             elif len(details) == 1:

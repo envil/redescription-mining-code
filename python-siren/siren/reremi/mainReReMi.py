@@ -12,7 +12,7 @@ from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
 from classData import Data
 from classRedescription import Redescription
-from classConstraints import Constraints
+from classConstraints import Constraints, ActionsRegistry
 from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
 ## from classMinerFolds import instMiner, StatsMiner
@@ -289,7 +289,7 @@ def run(args):
 
     outputResults(filenames, miner.rcollect.getItems("F"), data)
     logger.clockTac(0, None)
-
+        
 ###############################
  # def run_filterRM(args):
     
@@ -329,15 +329,32 @@ def run_filter(args):
 
     loaded = loadAll(args)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
-                                             loaded["filenames"], loaded["reds"]) 
+                                             loaded["filenames"], loaded["reds"])
+    AR = ActionsRegistry()
+    constraints = Constraints(data, params, AR)
+    all_reds = []
+    for r in reds:
+        all_reds.extend(r["items"])
+    bc = BatchCollection(all_reds)
+    iids = bc.getIids()
+    OLDids = bc.OLDselected(constraints.getActions("final"), ids=iids[:10], new_ids=iids[:4])
+    ids = bc.selected(constraints.getActionsList("final"), ids=iids[:10], new_ids=iids[:4])
 
-    constraints = Constraints(data, params)
-    rp = Redescription.getRP()
-    reds = []
-    with open("/home/egalbrun/short/redescriptions.csv") as fd:
-        rp.parseRedList(fd, data, reds)
+    # pdb.set_trace()
+    # for j in range(1, len(all_reds)):
+    #     for i in range(j):
+    #         print "----------------------"
+    #         print ">>", i, all_reds[i].disp()
+    #         print "<<", j, all_reds[j].disp()
+    #         for prop in [":oneSideIdentical:", ":overlap:L", ":interAreaSide:L", ":overlap:P", ":overlapAreaTotal:"]:
+    #             print prop, all_reds[j].getExpPairProp(all_reds[i], prop)
+    # constraints = Constraints(data, params)
+    # rp = Redescription.getRP()
+    # reds = []
+    # with open("/home/egalbrun/short/redescriptions.csv") as fd:
+    #     rp.parseRedList(fd, data, reds)
 
-    return BatchCollection(reds).selectedItems(constraints.getActions("redundant"))
+    # return BatchCollection(reds).selectedItems(constraints.getActionsList("redundant"))
 
     # rr_tests = [[1, 32, 6, 5, 29, 94], [23, 12], [7, 66, 11, 29]]
     # rr_tests = [[73]] ## [2]
@@ -346,15 +363,15 @@ def run_filter(args):
     #     include_redids = [84, 77, 53, 29, 94]
 
     #     bbatch = Batch([reds[i] for i in include_redids]+[reds[i] for i in add_redids])
-    #     org_ids = bbatch.selected(constraints.getActions("final"))
+    #     org_ids = bbatch.selected(constraints.getActionsList("final"))
         
     #     batch = Batch([reds[i] for i in include_redids])
-    #     pids = batch.selected(constraints.getActions("final"))
+    #     pids = batch.selected(constraints.getActionsList("final"))
     #     batch.extend([reds[i] for i in add_redids])
-    #     # tmp_ids = batch.selected(self.constraints.getActions("redundant"))
+    #     # tmp_ids = batch.selected(self.constraints.getActionsList("redundant"))
     #     ticc = datetime.datetime.now()
     #     new_ids = range(len(include_redids), len(include_redids)+len(add_redids))
-    #     tmp_ids = batch.selected(constraints.getActions("final"), ids= pids+new_ids, new_ids=new_ids)
+    #     tmp_ids = batch.selected(constraints.getActionsList("final"), ids= pids+new_ids, new_ids=new_ids)
     #     tacc = datetime.datetime.now()
     #     print "Elapsed ", ri, tacc-ticc
     #     if tmp_ids != org_ids:
@@ -563,7 +580,7 @@ def run_rnd(args):
 ###########
     
 if __name__ == "__main__":
-    
+
     if re.match("printout", sys.argv[-1]):
         run_printout(sys.argv)
     elif re.match("rnd", sys.argv[-1]):

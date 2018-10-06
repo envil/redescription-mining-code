@@ -639,7 +639,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
             params = k(params)
         return params
 
-    def setRedInfo(self, red = None, details=None):
+    def setRedInfo(self, red = None, details={}):
         blocks = self.infos_details
         if self.withCond():
             blocks = self.infos_details + self.infos_details_cond

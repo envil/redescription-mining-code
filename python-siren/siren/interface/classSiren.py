@@ -695,11 +695,11 @@ class Siren():
             menuCon.AppendSeparator()
         if self.matchTabType("evr"):
             self.makeEditMenu(frame, menuCon)
-        if menuCon.GetMenuItemCount() > ct:
-            ct = menuCon.GetMenuItemCount()
-            menuCon.AppendSeparator()
-        if self.matchTabType("evr"):
-            self.makeVizMenu(frame, menuCon)
+        # if menuCon.GetMenuItemCount() > ct:
+        #     ct = menuCon.GetMenuItemCount()
+        #     menuCon.AppendSeparator()
+        # if self.matchTabType("evr"):
+        #     self.makeVizMenu(frame, menuCon)
         frame.PopupMenu(menuCon)
         menuCon.Destroy()
 
@@ -806,7 +806,11 @@ class Siren():
 
                 if self.selectedTab["tab"].nbSelected() == 1:
 
-                    for act_details in self.dw.getGroupActs("redMod"):
+                    acts_details = self.dw.getGroupActs("redMod")
+                    if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
+                        menuEdit.AppendSeparator()
+
+                    for act_details in acts_details:
                         ID_AC = wx.NewId()
                         m_ac = menuEdit.Append(ID_AC, act_details["label"], act_details["legend"])
                         self.ids_contentAct[ID_AC] = act_details["key"]
@@ -817,8 +821,10 @@ class Siren():
                     frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)                    
 
                 if self.selectedTab["tab"].GetNumberRows() > 0:
-
-                    for act_details in self.dw.getGroupActs("redsFilter"):
+                    acts_details = self.dw.getGroupActs("redsFilter")
+                    if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
+                        menuEdit.AppendSeparator()                    
+                    for act_details in acts_details:
                         ID_AC = wx.NewId()
                         m_ac = menuEdit.Append(ID_AC, act_details["label"], act_details["legend"])
                         self.ids_contentAct[ID_AC] = act_details["key"]

@@ -76,7 +76,7 @@ class ColM(WithEVals):
         tcl.RP = VarProps(fields_fns)
 
     ##### filtering
-    def getProp(self, what, which=None, rset_id=None, details=None):
+    def getProp(self, what, which=None, rset_id=None, details={}):
         if what == "extra":
             return self.getExtra(which, details)
         if which == self.which_rids: ### ids details for split sets            
@@ -109,7 +109,11 @@ class ColM(WithEVals):
                 return methode(details)
         elif what in self.info_what: ### other redescription info
             return eval(self.info_what[what])
-    
+    def getExpProp(self, exp, details={}):
+        ws =self.getRP().getPrimitiveWs(exp)
+        if ws[0] is not None:
+            return self.getProp(ws[0], ws[1], ws[2], details)
+
     def setRestrictedSuppSets(self, data, supp_sets=None):
         resets_ids = []
         if supp_sets is None:
@@ -211,7 +215,7 @@ class ColM(WithEVals):
     
     def areDataEquiv(self, vA, vB):
         return vA == vB
-    def getPrec(self, details=None):
+    def getPrec(self, details={}):
         return 0
 
     def density(self):
@@ -225,7 +229,7 @@ class ColM(WithEVals):
             thres = 0.5
         return self.density() > thres
 
-    def getName(self, details=None):
+    def getName(self, details={}):
         if self.hasName():
             return self.extras["name"]
         else:
@@ -234,10 +238,10 @@ class ColM(WithEVals):
     def hasName(self):
         return self.extras.get("name") is not None
         
-    def getSide(self, details=None):
+    def getSide(self, details={}):
         return self.extras.get("side")
 
-    def getId(self, details=None):
+    def getId(self, details={}):
         return self.extras.get("id")
 
     def getAnonTerm(self):
@@ -268,25 +272,25 @@ class ColM(WithEVals):
             return tmp
         return self.vect
 
-    def getSortAble(self, details=None):
+    def getSortAble(self, details={}):
         if details.get("aim") == "sort":
             return (self.getEnabled(), self.getId())
         return ""
-    def getType(self, details=None):
+    def getType(self, details={}):
         return self.type_name
-    def getDensity(self, details=None):
+    def getDensity(self, details={}):
         return None
-    def getCategories(self, details=None):
+    def getCategories(self, details={}):
         return None
-    def getMin(self, details=None):
+    def getMin(self, details={}):
         return None
-    def getMax(self, details=None):
+    def getMax(self, details={}):
         return None
-    def getMissInfo(self, details=None):
+    def getMissInfo(self, details={}):
         return "%1.2f%%: %d"% (self.nbMissing()/float(self.N), self.nbMissing())
     def getRange(self):
         return []
-    # def getCohesion(self, details=None):
+    # def getCohesion(self, details={}):
     #     return "%1.4f" % self.cohesion
     def getVect(self, mask=None, details={}):
         vect = self.getVector()
@@ -327,9 +331,9 @@ class ColM(WithEVals):
             else:
                 return len(self.suppTerm(literal.getTerm()))
 
-    def getEnabled(self, details=None):
+    def getEnabled(self, details={}):
         return self.extras["status"]
-    def isEnabled(self, details=None):
+    def isEnabled(self, details={}):
         return self.getEnabled() > 0
 
     def flipEnabled(self):
@@ -483,7 +487,7 @@ class BoolColM(ColM):
         self.vect[list(self.missing)] = self.NA
         self.vect[list(self.hold)] = self.numEquiv(True)
 
-    def getDensity(self, details=None):
+    def getDensity(self, details={}):
         if self.N > 0:
             return self.density()
             # return "%1.4f" % self.density()
@@ -670,7 +674,7 @@ class CatColM(ColM):
     def getNbValues(self):
         return self.nbCats()
 
-    def getCategories(self, details=None):
+    def getCategories(self, details={}):
         if self.nbCats() < 5:
             return ("%d [" %  self.nbCats()) + ', '.join(["%s:%d" % (catL, len(self.sCats[catL])) for catL in self.cats()]) + "]"
         else:
@@ -1017,13 +1021,13 @@ class NumColM(ColM):
             self.vect[list(ids)] = vals
         ### mode rows HERE
                    
-    def getRange(self, details=None):
+    def getRange(self, details={}):
         return (self.getMin(details), self.getMax(details))
-    def getMin(self, details=None):
+    def getMin(self, details={}):
         if len(self.sVals) > 0:
             return self.sVals[0][0]
         return MODE_VALUE ### DEBUG
-    def getMax(self, details=None):
+    def getMax(self, details={}):
         if len(self.sVals) > 0:
             return self.sVals[-1][0]
         return MODE_VALUE
@@ -1032,12 +1036,12 @@ class NumColM(ColM):
             self.nbUniq = numpy.unique([v[0] for v in self.sVals]).shape[0]
         return self.nbUniq
 
-    def compPrec(self, details=None):
+    def compPrec(self, details={}):
         for (v,i) in self.sVals:
             if len(str(v % 1))-2 > self.prec:
                 self.prec = len(str(v % 1))-2
         
-    def getPrec(self, details=None):
+    def getPrec(self, details={}):
         if self.prec is None:
             self.compPrec()
         return self.prec

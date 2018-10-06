@@ -17,7 +17,7 @@ class DataExtension(object):
     filing = []
     params_keys = []
 
-    def __init__(self, data, filenames=None, params=None, details=None):
+    def __init__(self, data, filenames=None, params=None, details={}):
         self.parent_data = data
         self.own_data = {}
         self.params_changed = set()
@@ -107,12 +107,12 @@ class DataExtension(object):
                     self.params_changed.add(k)
 
         
-    def closeFp(self, fp, details=None):
+    def closeFp(self, fp, details={}):
         if details is None or details.get("package") is None:
             fp.close()
 
         
-    def getFp(self, fk, filenames=None, details=None, mode="r"):
+    def getFp(self, fk, filenames=None, details={}, mode="r"):
         fn, folder, pck = (None, "", None)
         if filenames is None or fk not in filenames:
             fn = self.getFilesDict().get(fk)
@@ -120,7 +120,7 @@ class DataExtension(object):
             fn = filenames[fk]
             
         if fn is not None:
-            if details is not None:
+            if details is not None and len(details) > 0:
                 if "tmp_dir" in details:
                     folder = details["tmp_dir"]
                 if "dir" in details:
@@ -135,7 +135,7 @@ class DataExtension(object):
             else:
                 return open(fn, mode)
             
-    def computeExtras(self, item, extra_keys=None, details=None):
+    def computeExtras(self, item, extra_keys=None, details={}):
         if extra_keys is None:
             extra_keys = self.extras_map.keys()
         out = dict([(e, None) for e in extra_keys])
@@ -152,15 +152,15 @@ class DataExtension(object):
                 out[ek] = tmp[ek]
         return out
 
-    def computeExtra(self, item, extra_key=None, details=None):
+    def computeExtra(self, item, extra_key=None, details={}):
         out = {}
         if extra_key in self.extras_map:
             out = self.call_meth(self.extras_map[extra_key], item, details)
         return out.get(extra_key)
-    def call_meth(self, method_name, item, details=None):
+    def call_meth(self, method_name, item, details={}):
         return getattr(self, method_name)(item, details)
     
-    def doWithFiles(self, action="save", filenames={}, details=None):
+    def doWithFiles(self, action="save", filenames={}, details={}):
         set_fks = None
         if filenames is not None:
             set_fks = set(filenames.keys())
@@ -238,7 +238,7 @@ class GeoPlusExtension(DataExtension):
         ## print "NBS", org_nb, len(PointsMap)
         return PointsMap, PointsIds
         
-    def computeEdges(self, details=None, force=False):
+    def computeEdges(self, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -255,7 +255,7 @@ class GeoPlusExtension(DataExtension):
             self.updateElements(dets)
         return {"list_edges": self.getElement("list_edges")}
 
-    def prepNodePairs(self, details=None, force=False):
+    def prepNodePairs(self, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -265,7 +265,7 @@ class GeoPlusExtension(DataExtension):
             self.setElement("node_pairs", node_pairs)
         return {"node_pairs": self.getElement("node_pairs")}
 
-    def getEdgesCoordsFlatten(self, seids=None, details=None, force=False):
+    def getEdgesCoordsFlatten(self, seids=None, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -273,7 +273,7 @@ class GeoPlusExtension(DataExtension):
             self.computeEdges(details=details, force=force)
         return prep_polys.get_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
         
-    def computeAreasData(self, cells_colors, details=None, force=False):
+    def computeAreasData(self, cells_colors, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -291,7 +291,7 @@ class GeoPlusExtension(DataExtension):
         return {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
 
         
-    def computeCohesion(self, item, details=None, force=False):
+    def computeCohesion(self, item, details={}, force=False):
         if details is None:
             details = {}
         cohesion = -1
@@ -320,7 +320,7 @@ class GeoPlusExtension(DataExtension):
         return {"cohesion": cohesion}
     extras_map["cohesion"] = "computeCohesion"
     
-    def computeVectorCohesion(self, vec_org, back_v=None, details=None, force=False):
+    def computeVectorCohesion(self, vec_org, back_v=None, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -344,12 +344,12 @@ class GeoPlusExtension(DataExtension):
                    "save": "writeBckgCoords", "load": "readBckgCoords", "active": "containsBckgCoords"})
     def containsBckgCoords(self):
         return self.hasElement("coords_bckg")
-    def writeBckgCoords(self, filenames, details=None):
+    def writeBckgCoords(self, filenames, details={}):
         if self.hasElement("coords_bckg"):
             fp = self.getFp("extf_"+self.F_COORD_BCKG, filenames, details, "w")        
             csv_reader.write_coords_csv(fp, self.getElement("coords_bckg"), self.getElement("rnames_bckg"))
             self.closeFp(fp, details)
-    def readBckgCoords(self, filenames, details=None):
+    def readBckgCoords(self, filenames, details={}):
         fp = self.getFp("extf_"+self.F_COORD_BCKG, filenames, details, "r")
         coords_bckg, rnames_bckg = csv_reader.read_coords_csv(fp)
         self.closeFp(fp, details)
@@ -364,12 +364,12 @@ class GeoPlusExtension(DataExtension):
                    "save": "writeEdges", "load": "readEdges", "active": "containsEdges"})    
     def containsEdges(self):
         return self.hasElement("list_edges")
-    def writeEdges(self, filenames, details=None):
+    def writeEdges(self, filenames, details={}):
         if self.hasElement("list_edges"):
             fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "w")
             prep_polys.write_edges(fp, self.getElement("list_edges"))
             self.closeFp(fp, details)
-    def readEdges(self, filenames, details=None):
+    def readEdges(self, filenames, details={}):
         fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "r")
         ## id_int = details.get("id_int", False)
         map_edges, list_edges, polys, polys_cut = prep_polys.read_edges_and_co(fp)

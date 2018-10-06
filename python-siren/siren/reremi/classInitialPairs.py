@@ -132,10 +132,10 @@ class InitialPairs(object):
     def __str__(self):
         return "Initial Pairs %d" % len(self.pairs_store)
 
-    def add(self, literalL, literalR, details=None):       
+    def add(self, literalL, literalR, details={}):       
         self.saved = False
         self.pairs_store[self.next_id] = (literalL, literalR)
-        if details is not None:
+        if details is not None and len(details) > 0:
             self.pairs_details[self.next_id] = details
         else:
             self.pairs_details[self.next_id] = self.next_id
