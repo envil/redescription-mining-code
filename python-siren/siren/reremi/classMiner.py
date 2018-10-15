@@ -515,7 +515,7 @@ class Miner(object):
 ####################################################
 #####      REDS EXPANSIONS
 ####################################################
-    def expandRedescriptions(self, nextge, rcollect):
+    def expandRedescriptions(self, nextge, rcollect=None):
         return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
         
         

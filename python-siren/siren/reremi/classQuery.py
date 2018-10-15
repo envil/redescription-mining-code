@@ -8,6 +8,13 @@ import pdb
 VARIABLE_MARK = 'v'
 MTCH_TIME = "_time$"
 
+def getNameCol(cid, names):
+    try:
+        return names[cid]
+    except IndexError:
+        raise Warning("Names does not contains this column cid=%d vs. len(names)=%d" % (cid, len(names)))
+    return Term.pattVName % cid
+
 def format_time(v):
     time_struct = time.localtime(v)
     date_fmt = "%d-%b-%Y"
@@ -498,7 +505,7 @@ class BoolTerm(Term):
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
+            lab = ('%s%'+slenIndex+'s') % (neg, getNameCol(self.col, names))
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
             return lab + ' '
@@ -514,7 +521,7 @@ class BoolTerm(Term):
             neg = neg.dispTex()
 
         if type(names) == list  and len(names) > 0:
-            return '%s%s' % ( neg, names[self.col])
+            return '%s%s' % ( neg, getNameCol(self.col, names))
         else:
             return ('%s$'+Term.pattVName+'$') % ( neg, self.col)
 
@@ -527,7 +534,7 @@ class BoolTerm(Term):
             neg = neg.dispU()
 
         if type(names) == list  and len(names) > 0:
-            return u'%s%s' % ( neg, names[self.col])
+            return u'%s%s' % ( neg, getNameCol(self.col, names))
         else:
             return (u'%s'+Term.pattVName) % ( neg, self.col)
             
@@ -585,7 +592,7 @@ class CatTermONE(Term): ## LEGACY
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
+            lab = ('%s%'+slenIndex+'s') % (neg, getNameCol(self.col, names))
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
             return lab + strcat
@@ -604,19 +611,21 @@ class CatTermONE(Term): ## LEGACY
                 symbIn = '\\not\\in'
                 
             if type(names) == list  and len(names) > 0:
-                if re.match("\$", names[self.col]):
-                    xx = '%s $%s \\text{%s}$' % (names[self.col], symbIn, self.cat)
+                nc = getNameCol(self.col, names)
+                if re.match("\$", ):
+                    xx = '%s $%s \\text{%s}$' % (nc, symbIn, self.cat)
                 else:
-                    xx = '$\\text{%s} %s \\text{%s}$' % (names[self.col], symbIn, self.cat)
+                    xx = '$\\text{%s} %s \\text{%s}$' % (nc, symbIn, self.cat)
             else:
                 xx = ('$'+Term.pattVName+' %s \\text{%s}$') % (self.col, symbIn, self.cat)
             return xx 
 
         if type(names) == list  and len(names) > 0:
-            if re.match("\$", names[self.col]):
-                xx = '%s%s $%s \\text{%s}$' % (neg, names[self.col], symbIn, self.cat)
+            nc = getNameCol(self.col, names)
+            if re.match("\$", nc):
+                xx = '%s%s $%s \\text{%s}$' % (neg, nc, symbIn, self.cat)
             else:
-                xx = '%s$\\text{%s} %s \\text{%s}$' % (neg, names[self.col], symbIn, self.cat)
+                xx = '%s$\\text{%s} %s \\text{%s}$' % (neg, nc, symbIn, self.cat)
         else:
             xx = ('%s$'+Term.pattVName+' %s \\text{%s}$') % (neg, self.col, symbIn, self.cat)
         return xx 
@@ -632,12 +641,12 @@ class CatTermONE(Term): ## LEGACY
                 symbIn = SYM.SYM_NEQ
 
             if type(names) == list  and len(names) > 0:
-                return ('[%s '+symbIn+' %s]') % (names[self.col], self.getCat())
+                return ('[%s '+symbIn+' %s]') % (getNameCol(self.col, names), self.getCat())
             else:
                 return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, self.getCat())
 
         if type(names) == list  and len(names) > 0:
-            return ('%s[%s '+symbIn+' %s]') % (neg, names[self.col], self.getCat())
+            return ('%s[%s '+symbIn+' %s]') % (neg, getNameCol(self.col, names), self.getCat())
         else:
             return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, self.getCat())
 
@@ -714,7 +723,7 @@ class CatTerm(Term):
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%s%'+slenIndex+'s') % (neg, names[self.col])
+            lab = ('%s%'+slenIndex+'s') % (neg, getNameCol(self.col, names))
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
             return lab + strcat
@@ -734,19 +743,21 @@ class CatTerm(Term):
                 symbIn = '\\not\\in'
                 
             if type(names) == list  and len(names) > 0:
-                if re.match("\$", names[self.col]):
-                    xx = '%s $%s %s$' % (names[self.col], symbIn, cat_str)
+                nc = getNameCol(self.col, names)
+                if re.match("\$", nc):
+                    xx = '%s $%s %s$' % (nc, symbIn, cat_str)
                 else:
-                    xx = '$\\text{%s} %s %s$' % (names[self.col], symbIn, cat_str)
+                    xx = '$\\text{%s} %s %s$' % (nc, symbIn, cat_str)
             else:
                 xx = ('$'+Term.pattVName+' %s %s$') % (self.col, symbIn, cat_str)
             return xx 
 
         if type(names) == list  and len(names) > 0:
-            if re.match("\$", names[self.col]):
-                xx = '%s%s $%s %s$' % (neg, names[self.col], symbIn, cat_str)
+            nc = getNameCol(self.col, names)
+            if re.match("\$", nc):
+                xx = '%s%s $%s %s$' % (neg, nc, symbIn, cat_str)
             else:
-                xx = '%s$\\text{%s} %s %s$' % (neg, names[self.col], symbIn, cat_str)
+                xx = '%s$\\text{%s} %s %s$' % (neg, nc, symbIn, cat_str)
         else:
             xx = ('%s$'+Term.pattVName+' %s %s$') % (neg, self.col, symbIn, cat_str)
         return xx 
@@ -763,12 +774,12 @@ class CatTerm(Term):
                 symbIn = SYM.SYM_NEQ
 
             if type(names) == list  and len(names) > 0:
-                return ('[%s '+symbIn+' %s]') % (names[self.col], cat_str)
+                return ('[%s '+symbIn+' %s]') % (getNameCol(self.col, names), cat_str)
             else:
                 return ('['+Term.pattVName+' '+symbIn+' %s]') % (self.col, cat_str)
 
         if type(names) == list  and len(names) > 0:
-            return ('%s[%s '+symbIn+' %s]') % (neg, names[self.col], cat_str)
+            return ('%s[%s '+symbIn+' %s]') % (neg, getNameCol(self.col, names), cat_str)
         else:
             return ('%s['+Term.pattVName+' '+symbIn+' %s]') % (neg, self.col, cat_str)
 
@@ -907,7 +918,7 @@ class NumTerm(Term):
             neg = neg.disp()
 
         ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
         lb = self.dispLowBound(timeInterp=timeInterp)
         ub = self.dispUpBound(timeInterp=timeInterp)
         if lenIndex > 0 :
@@ -916,7 +927,7 @@ class NumTerm(Term):
         else:
             slenIndex = ''
         if type(names) == list  and len(names) > 0:
-            lab = ('%'+slenIndex+'s') % names[self.col]
+            lab = ('%'+slenIndex+'s') % getNameCol(self.col, names)
             if len(lab) > lenIndex & lenIndex > 0:
                 lab = lab[:lenIndex]
         else: 
@@ -937,11 +948,11 @@ class NumTerm(Term):
             dets = {"trimm": True, "prec": ""}
             
         ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
         lb = '$['+self.dispLowBound(style="tex", details=dets, timeInterp=timeInterp)
         ub = self.dispUpBound(style="tex", details=dets, timeInterp=timeInterp)+']$'
         if type(names) == list  and len(names) > 0:
-            idcol = '$ %s $' % names[self.col]
+            idcol = '$ %s $' % getNameCol(self.col, names)
         else:
             idcol = Term.pattVName % self.col
         return ''+neg+lb+idcol+ub+''
@@ -955,11 +966,11 @@ class NumTerm(Term):
             neg = neg.dispU()
             
         ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, names[self.col]))
+        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
         lb = '['+self.dispLowBound(style="U", timeInterp=timeInterp)
         ub = self.dispUpBound(style="U", timeInterp=timeInterp)+']'
         if type(names) == list  and len(names) > 0:
-            idcol = '%s' % names[self.col]
+            idcol = '%s' % getNameCol(self.col, names)
         else:
             idcol = Term.pattVName % self.col
         try:

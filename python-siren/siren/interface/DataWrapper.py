@@ -270,7 +270,6 @@ class DataWrapper(object):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
             dtv = self.getDiffPrefs(params)
-            print dtv
             self.preferences.update(params)
             if len(SSETTS_PARAMS.intersection(dtv)) > 0:
                 self.resetSSetts()
@@ -288,9 +287,11 @@ class DataWrapper(object):
     def addSuppCol(self, suppVect, name, side=1):
         self.getData().addSuppCol(suppVect, name, side)
         self.addReloadData("v")
+        self.addReloadFields("r")
     def addSelCol(self, lids, name, side=1):
         self.getData().addSelCol(lids, name, side)
         self.addReloadData("v")
+        self.addReloadFields("r")
     ### HANDLING FOLDS
     def addFoldsCol(self):
         self.getData().addFoldsCol()

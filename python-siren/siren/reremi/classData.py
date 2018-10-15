@@ -204,6 +204,7 @@ class Data(ContentCollection):
         if type(name) is list:
             return tid in tcl.getTidForName(name)
         return tcl.getTidForName(name) == tid
+    @classmethod
     def getColClassForName(tcl, name):
         if type(name) is list:
             return [TYPES_SMAP.get(tcl.real_types_name_to_id.get(n)) for n in name]
@@ -420,12 +421,9 @@ class Data(ContentCollection):
         return numpy.hstack([col.getVector(bincats, nans).reshape((nb_rows,-1)) for col in cols]).T    
     
     def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
-        compare_cols = None
+        compare_cols = None            
         if store and self.as_array[0] == (side_cols, types, only_able, bincats):
-            if only_able:
-                compare_cols = sorted(self.as_array[1][-1].keys())
-            else:
-                return self.as_array[1]
+            compare_cols = sorted(self.as_array[1][-1].keys())
 
         if store:
             self.as_array[0] = (side_cols, types, only_able, bincats)
