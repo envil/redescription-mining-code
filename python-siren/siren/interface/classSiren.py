@@ -1590,9 +1590,9 @@ class Siren():
             self.getVTab().load(rfields=vars_rneeds.get("fields", rall))
             rdatainfo = True
         else:
-            for (lid, selected_iids) in vars_rneeds.get("lists_content", []):
+            for (lid, selected_iids, new_lid) in vars_rneeds.get("lists_content", []):
                 rdatainfo = True
-                self.getVTab().refreshListContent(lid, selected_iids)
+                self.getVTab().refreshListContent(lid, selected_iids, new_lid)
             for lid in vars_rneeds.get("lists", []):
                 rdatainfo = True
                 self.getVTab().refreshList(lid)
@@ -1611,8 +1611,8 @@ class Siren():
                 self.getRTab().resetDetails(details)
             self.getRTab().load(rfields=reds_rneeds.get("fields", rall))
         else:
-            for (lid, selected_iids) in reds_rneeds.get("lists_content", []):
-                self.getRTab().refreshListContent(lid, selected_iids)
+            for (lid, selected_iids, new_lid) in reds_rneeds.get("lists_content", []):
+                self.getRTab().refreshListContent(lid, selected_iids, new_lid)
             for lid in reds_rneeds.get("lists", []):
                 self.getRTab().refreshList(lid)
             for iid in reds_rneeds.get("items", []):
@@ -1650,7 +1650,9 @@ class Siren():
             info_in.update(more_info)            
         elif info_in["tab_type"] == "r" or info_in["tab_type"] == "v":
             info_in["active_lid"] = tab.getActiveLid()
-            if tab.hasFocusItemsL():
+            if "iids" in more_info:
+                info_in["iids"] = more_info["iids"]
+            elif tab.hasFocusItemsL():
                 info_in["iids"] = tab.getSelectedIids()
             elif tab.hasFocusContainersL():
                 info_in["lids"] = tab.getSelectedLids()

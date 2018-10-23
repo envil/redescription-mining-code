@@ -1,5 +1,7 @@
 field	cohesion	:extra:cohesion	.2f
 fieldlist	gui
+cohesion	[wxtr_geoplus]
+fieldlist	std
 :extra:name
 :type:	
 :missing:	[wmissing]

@@ -107,9 +107,12 @@ class DrawerClustTD(DrawerEntitiesTD):
         left = [norm_bins[i] for i in range(nbc)]
         width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
 
-
-        nbr = vec_dets["more"][0]["occ_cnt"].shape[0]
-        h_occ = (fracts[0]*(x1-x0))/nbr
+        if vec_dets.get("blocks", False):
+            nbr = vec_dets["more"][0]["occ_cnt"].shape[0]
+            h_occ = (fracts[0]*(x1-x0))/nbr
+        else:
+            nbr = 0
+            h_occ = 0
         h_hist = fracts[1]*(x1-x0)+2*bx
         bottom_occ = x1
         bottom_hist = bottom_occ+nbr*h_occ
@@ -130,10 +133,10 @@ class DrawerClustTD(DrawerEntitiesTD):
         axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         
-
-        for pi, i in enumerate(vec_dets["more"]["orids"]):
-            clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j,v in enumerate(vec_dets["more"][i]["occ_avg"])]
-            axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckc, linewidth=0)
+        if nbr > 0:
+            for pi, i in enumerate(vec_dets["more"]["orids"]):
+                clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j,v in enumerate(vec_dets["more"][i]["occ_avg"])]
+                axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckc, linewidth=0)
         
         x1 += nbr*h_occ+h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
 

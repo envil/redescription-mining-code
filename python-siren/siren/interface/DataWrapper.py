@@ -388,7 +388,7 @@ class DataWrapper(object):
         if set_changed is not None:
             self.reds.getList(trg_lid).isChanged = set_changed
         if len(iids) > 0:
-            self.addReloadListContent(trg_lid, "r")
+            self.addReloadListContent(trg_lid, "r", new_lid=org_lid is None)
         return trg_lid, iids, org_lid is None
 
     def prepareRedsPackage(self):
@@ -768,13 +768,13 @@ class DataWrapper(object):
             if "lists" not in self._needsReload[tab_type]:
                 self._needsReload[tab_type]["lists"] = []
             self._needsReload[tab_type]["lists"].append(lid)
-    def addReloadListContent(self, lid, tab_type="r", selected_iids=None):
+    def addReloadListContent(self, lid, tab_type="r", selected_iids=None, new_lid=False):
         if tab_type == "e" or (tab_type in "rv" and lid is not None):
             if tab_type not in self._needsReload:
                 self._needsReload[tab_type] = {}
             if "lists_content" not in self._needsReload[tab_type]:
                 self._needsReload[tab_type]["lists_content"] = []
-            self._needsReload[tab_type]["lists_content"].append((lid, selected_iids))
+            self._needsReload[tab_type]["lists_content"].append((lid, selected_iids, new_lid))
     def addReloadFields(self, tab_type="r"):
         if tab_type not in "rvez":
             return

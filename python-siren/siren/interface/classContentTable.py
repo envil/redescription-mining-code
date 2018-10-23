@@ -1,4 +1,4 @@
-import re
+import re, datetime
 import wx
 import wx.lib.mixins.listctrl  as  listmix
 from ..reremi.classQuery import SYM
@@ -332,12 +332,16 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         return self.cm
 
     def loadData(self, rows_data, cols_info=[], select_ids=[], refresh_cols=False):
-        if self.GetItemCount() > 0:
+        nbI = self.GetItemCount()
+        if nbI > 0 and (nbI > len(rows_data) or refresh_cols or len(cols_info) != self.GetColumnCount()):
             self.DeleteAllItems()
-        self.initColumns(cols_info, refresh_cols)        
+            nbI = 0
+        self.initColumns(cols_info, refresh_cols)
+
         for (i, ll) in enumerate(rows_data):
-            self.initRow(i, ll)
-            self.upItem(i, ll, ll.get("id") in select_ids)
+            self.upItem(i, ll, ll.get("id") in select_ids, init=(i >= nbI))
+
+            
     def RefreshItem(self, row):
         rdt = self.getCManager().getRowData(self, row)
         self.upItem(row, rdt, self.IsSelected(row))
@@ -346,7 +350,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         pass       
     def initRow(self, row, rdt):
         self.InsertStringItem(row, "")
-    def upItem(self, row, rdt, selected=False):
+    def upItem(self, row, rdt, selected=False, init=False):
         pass
     
     def OnItemActivated(self, event):
@@ -481,8 +485,11 @@ class ListCtrlContainers(ListCtrlBasis): #, MyTextEditMixin):
 
     def initColumns(self, cols_info=[], refresh=False):
         pass       
-    def upItem(self, row, rdt, selected=False):
-        self.SetStringItem(row, 0, rdt.get("name", ""))
+    def upItem(self, row, rdt, selected=False, init=False):
+        if init:
+            self.Append([rdt.get("name", "")])
+        else:
+            self.SetStringItem(row, 0, rdt.get("name", ""))
         if self.getCManager().withListIcons():
             self.SetItemImage(row, rdt.get("src_typid", 0))
         if selected:
@@ -532,9 +539,12 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
                 tmp.SetText(col["title"])
                 self.SetColumn(cid, tmp)   
 
-    def upItem(self, row, rdt, selected=False):
-        for (cid, cv) in enumerate(rdt["cols"]):
-            self.SetStringItem(row, cid, cv)
+    def upItem(self, row, rdt, selected=False, init=False):
+        if init:
+            self.Append(rdt["cols"])
+        else:
+            for (cid, cv) in enumerate(rdt["cols"]):
+                self.SetStringItem(row, cid, cv)
         if "checked" in rdt:
             self.upck = False
             self.CheckItem(row, rdt["checked"])
@@ -826,7 +836,7 @@ class ContentTable:
         pos = self.getContentData().getPosForLid(lid)
         if pos is not None:
             self.getLCC().RefreshItem(pos)    
-    def refreshListContent(self, lid, selected_iids=None):
+    def refreshListContent(self, lid, selected_iids=None, new_lid=False):
         if not self.hasContentData():
             return
         if lid == self.getActiveLid():
@@ -834,6 +844,8 @@ class ContentTable:
                 selected_iids = self.getSelectedIids()
             self.loadData(lid, select_iids=selected_iids)
         else:
+            if new_lid:
+                self.loadData()
             self.refreshList(lid)
 
     ########## HANDLING ACTIONS START
@@ -974,7 +986,9 @@ class VarsTable(FindContentTable):
     str_item = 'item'
     ###################### FIELDS VARS
     FIRST_FIELDS = [('', str_item+'.getSortAble', None, ContentTable.width_colcheck, wx.LIST_FORMAT_LEFT),
-                    ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT)]
+                    ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT),
+                    ('name', str_item+'.getName', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
+                    ('type', str_item+'.getType', None, ContentTable.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
     LAST_FIELDS = []
     # fields_def = [('',str_item+'.getSortAble', None, ContentTable.width_colcheck, wx.LIST_FORMAT_LEFT),
     #               ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT),
@@ -982,11 +996,11 @@ class VarsTable(FindContentTable):
     #               ('name', str_item+'.getName', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
     #               ('type', str_item+'.getType', None, ContentTable.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
     #               # ('cohesion', str_item+'.getCohesion', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
-    # fields_miss = [('missing', str_item+'.getMissInfo', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
-    # fields_var = {1: [('density', str_item+'.getDensity', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
-    #               2:[('categories', str_item+'.getCategories', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
-    #               3:[('min', str_item+'.getMin', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT),
-    #                  ('max', str_item+'.getMax', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]}
+    fields_miss = [('missing', str_item+'.getMissInfo', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
+    fields_var = {1: [('density', str_item+'.getDensity', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
+                  2:[('categories', str_item+'.getCategories', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
+                  3:[('min', str_item+'.getMin', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT),
+                     ('max', str_item+'.getMax', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]}
 
     name_m = str_item+'.getName'
     check_m = str_item+'.getEnabled'
@@ -1014,21 +1028,22 @@ class VarsTable(FindContentTable):
                 if re.search("name", lbl):
                     width = ContentTable.width_colnamew
                 tmp.append((lbl, self.str_item+".getEValGUI", {"k": fk}, width, align))
-        return self.FIRST_FIELDS + tmp + self.LAST_FIELDS        
+        return tmp
+        
         
     def resetFields(self):
-        self.setCDetail("rp", ColM.getRP())
-        self.fields = self.getFieldsList()
+        self.fields = []        
+        if self.hasContentData() and self.getActiveLid() is not None:
+            self.fields.extend(self.FIRST_FIELDS)
+            if self.getContentData().hasMissing():
+                self.fields.extend(self.fields_miss)
+            for tyid in self.getContentData().getAllTypes(self.getActiveLid()):
+                self.fields.extend(self.fields_var[tyid])
+                
+            self.setCDetail("rp", ColM.getRP())
+            self.fields.extend(self.getFieldsList())
 
-        
-    # def resetFields(self):
-    #     self.fields = []
-    #     if self.hasContentData() and self.getActiveLid() is not None:
-    #         self.fields.extend(self.fields_def)
-    #         if self.getContentData().hasMissing():
-    #             self.fields.extend(self.fields_miss)
-    #         for tyid in self.getContentData().getAllTypes(self.getActiveLid()):
-    #             self.fields.extend(self.fields_var[tyid])
+            self.fields.extend(self.LAST_FIELDS)
 
         
 class RedsTable(FindContentTable):

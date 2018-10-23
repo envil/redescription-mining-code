@@ -197,7 +197,10 @@ class PltDtHandlerListClust(PltDtHandlerListBlocks):
         etor = self.getEtoR()
         ddER = self.getDeduplicateER()
         clusters = self.getClusters()
-        
+
+        blocks =  False
+        if set(1*numpy.unique(etor)) <= set([0, 1]):
+            blocks =  True
         if clusters is not None:
             max_dist = 0
             v_out = -1           
@@ -228,7 +231,7 @@ class PltDtHandlerListClust(PltDtHandlerListBlocks):
             else:
                 vec = clusters["order"][assign_rprt]
 
-        vec_dets = {"typeId": 2, "single": True} ### HERE bin lbls        
+        vec_dets = {"typeId": 2, "single": True, "blocks": blocks} ### HERE bin lbls        
         vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
         vec_dets["binLbls"] = ["c%d %d" % (b,numpy.sum(vec==b)) for b in vec_dets["binVals"]]
         
