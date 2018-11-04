@@ -417,6 +417,13 @@ class SSetts(object):
          #### END WITH MISSING VALUES
          ############################################################################
 
+        self.IDS_num = []
+        self.IDS_den = []
+        for op in [0,1]:
+            self.IDS_num.append([x[1] for x in self.IDS_varnum[op]+self.IDS_fixnum[op]])
+            self.IDS_den.append([x[1] for x in self.IDS_varden[op]+self.IDS_fixden[op]])
+
+            
     ### return part label
     def getLabels(self):
         return self.labels
@@ -473,18 +480,18 @@ class SSetts(object):
         return [parts[self.negatedPartId(p, side)] for p in range(len(parts))]
 
     # compute the ratio of BLUE/RED parts depending on intersection with X
-    def advRatioVar(self, side, op, parts):
+    def advRatioVar(self, side, op, parts, offsets=(0,0)):
         den = self.sumPartsId(side, self.IDS_varden[op], parts)
         num = self.sumPartsId(side, self.IDS_varnum[op], parts)
-        return tool_ratio(num, den)
+        return tool_ratio(offsets[0]+num, offsets[1]+den)
 
     # compute the accuracy resulting of appending X on given side with given operator and negation
     # from intersections of X with parts (clp)
-    def advAcc(self, side, op, neg, lparts, lmiss, lin):
+    def advAcc(self, side, op, neg, lparts, lmiss, lin, offsets=(0,0)):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
-        return tool_ratio(self.sumPartsIdInOut(side, neg, self.IDS_varnum[op] + self.IDS_fixnum[op], clp),
-                          self.sumPartsIdInOut(side, neg, self.IDS_varden[op] + self.IDS_fixden[op], clp))
+        return tool_ratio(offsets[0]+self.sumPartsIdInOut(side, neg, self.IDS_varnum[op] + self.IDS_fixnum[op], clp),
+                          offsets[1]+self.sumPartsIdInOut(side, neg, self.IDS_varden[op] + self.IDS_fixden[op], clp))
 
     # sets the method to compute p-values
     def setMethodPVal(self, methodpVal='Marg'):
@@ -1057,6 +1064,18 @@ class SParts(object):
         self.sParts[self.ssetts.partId(id_to, side)] |= (self.sParts[self.ssetts.partId(id_from,side)] & supp)
         self.sParts[self.ssetts.partId(id_from,side)] -= supp
 
+    def moveInterAllOut(self, side, supp):
+        out_id = self.getSSetts().Eoo
+        lparts = []        
+        for i in range(len(self.sParts)):
+            lparts.append(len(self.sParts[i] & supp))
+            if i != out_id:
+                self.sParts[i].difference_update(supp)
+            else:
+                self.sParts[i].update(supp)
+        if len(lparts) == out_id:
+            lparts.append(len(supp)-sum(lparts)) 
+        return lparts
     # update support probabilities
     def updateProba(prA, prB, OR):
         if type(prA) == int and prA == -1:

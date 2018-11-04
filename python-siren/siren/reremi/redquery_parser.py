@@ -12,7 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '18.258.12.17.51'
+__version__ = '18.298.14.45.43'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -189,7 +189,8 @@ class RedQueryParser(Parser):
             self._neg_()
             self.ast['neg'] = self.last_node
         with self._group():
-            self._anonva_name_()
+            self._token('?')
+            self._variable_name_()
             self.ast['variable_name'] = self.last_node
 
     @rule_def
@@ -328,10 +329,6 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._pattern(r'v\d+')
                 self._error('expecting one of: v\\d+')
-
-    @rule_def
-    def _anonva_name_(self):
-        self._pattern(r'v\?\d+')
 
     @rule_def
     def _categories_(self):
@@ -556,9 +553,6 @@ class RedQuerySemantics(object):
         return ast
 
     def variable_name(self, ast):
-        return ast
-
-    def anonva_name(self, ast):
         return ast
 
     def categories(self, ast):

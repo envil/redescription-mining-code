@@ -213,12 +213,19 @@ class Extension(object):
         
     
 class ExtensionsBatch(object):
-    def __init__(self, N=0, coeffs=None, current=None):
+    def __init__(self, N=0, constraints=None, current=None):
         self.current = current
         self.base_acc = self.current.getAcc()
         self.N = N
         self.prs = self.current.probas()
-        self.coeffs = coeffs
+        
+        if constraints is not None:
+            self.coeffs = constraints.getCstr("score_coeffs")
+            self.min_impr = constraints.getCstr("min_impr")
+            self.max_var = [constraints.getCstr("max_var", side=0), constraints.getCstr("max_var", side=1)]
+        else:
+            self.coeffs, self.min_impr, self.max_var = (None, 0, [-1, -1])
+            
         self.bests = {}
         self.tmpsco = {}
     def scoreCand(self, cand):
@@ -253,16 +260,16 @@ class ExtensionsBatch(object):
                 self.bests[pos] = cand
                 self.tmpsco[pos] = -top[0]
 
-    def improving(self, min_impr=0):
+    def improving(self):
         return dict([(pos, cand)  for (pos, cand) in self.bests.items() \
-                     if self.scoreCand(cand) >= min_impr])
+                     if self.scoreCand(cand) >= self.min_impr])
 
-    def improvingKids(self, data, min_impr=0, max_var=[-1,-1]):
+    def improvingKids(self, data):
         kids = []
         for (pos, cand) in self.bests.items():
-            if self.scoreCand(cand) >= min_impr:
+            if self.scoreCand(cand) >= self.min_impr:
                 kid = cand.kid(self.current, data)
-                kid.setFull(max_var)
+                kid.setFull(self.max_var)
                 if kid.getAcc() != cand.getAcc():
                     raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
                 if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
@@ -271,15 +278,15 @@ class ExtensionsBatch(object):
         return kids
     
 
-    def improvingKidsDL(self, data, min_impr=0, max_var=[-1,-1], rm=None):
+    def improvingKidsDL(self, data, rm=None):
         tc = rm.getTopDeltaRed(self.current, data)
         min_impr = -tc[0]
         # print "DL impr---", min_impr, self.tmpsco
         kids = []
         for (pos, cand) in self.bests.items():
-            if self.tmpsco[pos] >= min_impr:
+            if self.tmpsco[pos] >= self.min_impr:
                 kid = cand.kid(self.current, data)
-                kid.setFull(max_var)
+                kid.setFull(self.max_var)
                 if kid.getAcc() != cand.getAcc():
                     raise ExtensionError("[in Extension.improvingKidsDL]\n%s\n\t%s\n\t~> %s" % (self.current, cand, kid))
             
@@ -288,7 +295,7 @@ class ExtensionsBatch(object):
 
         
     def __str__(self):
-        dsp  = 'Extensions Batch:\n' 
+        dsp  = 'Extensions Batch: (min_imprv=%f, max_var=%d:%d)\n' % (self.min_impr, self.max_var[0], self.max_var[1]) 
         dsp += 'Redescription: %s' % self.current
         dsp += '\n\t  %20s        %20s        %20s' \
                   % ('LHS extension', 'RHS extension', 'Condition')
@@ -299,3 +306,61 @@ class ExtensionsBatch(object):
         for k,cand in self.bests.items(): ## Do not print the last: current redescription
             dsp += '\n\t%s' % cand.disp(self.base_acc, self.N, self.prs, self.coeffs)
         return dsp
+
+
+
+class ExtPairsBatch(object):
+    def __init__(self, N=0, constraints=None, current=None):
+        self.N = N
+        self.current = current
+        self.pairs = []
+
+        if constraints is not None:
+            self.min_pairscore = constraints.getCstr("min_pairscore")
+        else:
+            self.min_pairscore = 0
+
+        
+    def scoreCand(self, cand):
+        if type(cand) is dict:
+            return cand.get("score", -1.)
+        return -1.
+
+    def get(self, pos):
+        if pos >= -1 and pos < len(self.pairs):
+            return self.pairs[pos]
+        else:
+            return None
+        
+    def update(self, cands):
+        self.pairs.extend(cands)
+
+    def improving(self):
+        return dict([(pos, cand)  for (pos, cand) in enumerate(self.pairs) \
+                     if self.scoreCand(cand) >= self.min_pairscore])
+
+    def improvingKids(self, data):
+        kids = []
+        for (pos, cand) in enumerate(self.pairs):
+            if self.scoreCand(cand) >= self.min_pairscore:
+                kid = Redescription.fromInitialPair((cand["litL"], cand["litR"]), data)
+                if self.current is not None:
+                    for side in [0, 1]:
+                        kid.restrictAvailable(side, self.current.lAvailableCols[side])
+                kids.append(kid)
+        return kids
+            
+    def __str__(self):
+        dsp  = 'ExtPairs Batch: (%f)\n' % self.min_pairscore   
+        dsp += '\t\t%10s \t%s \t%s' % ('score', 'litLHS',  'litRHS')
+            
+        for k,cand in enumerate(self.pairs): ## Do not print the last: current redescription
+            dsp += '\n\t%10s \t%s \t%s' % (cand["score"], cand["litL"], cand["litR"])
+        return dsp
+
+
+def newExtensionsBatch(N=0, constraints=None, current=None):
+    if current is not None and len(current) == 0:
+        return ExtPairsBatch(N, constraints, current)
+    else:
+        return ExtensionsBatch(N, constraints, current)

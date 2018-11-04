@@ -816,11 +816,16 @@ class Siren():
                         self.ids_contentAct[ID_AC] = act_details["key"]
                         frame.Bind(wx.EVT_MENU, self.OnActContent, m_ac)
 
-                    ID_EXPAND = wx.NewId()
-                    m_expand = menuEdit.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription.")
-                    frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)                    
-
                 if self.selectedTab["tab"].GetNumberRows() > 0:
+
+                    ID_EXPAND = wx.NewId()
+                    m_expand = menuEdit.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription(s).")
+                    frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+                    
+                    ID_IMPROVE = wx.NewId()
+                    m_improve = menuEdit.Append(ID_IMPROVE, "Improve", "Improve redescription(s).")
+                    frame.Bind(wx.EVT_MENU, self.OnImprove, m_improve)                    
+                    
                     acts_details = self.dw.getGroupActs("redsFilter")
                     if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
                         menuEdit.AppendSeparator()                    
@@ -1350,7 +1355,7 @@ class Siren():
         if params is None:
             params = {}
         self.progress_bar.Show()
-        if "red" in params and params["red"] is not None and params["red"].length(0) + params["red"].length(1) > 0:
+        if len(params.get("reds", [])) > 0 or (params.get("red") is not None and params["red"].length(0) + params["red"].length(1) > 0):
             self.plant.getWP().addWorker("expander", self, params,
                                  {"results_track":0,
                                   "batch_type": "partial",
@@ -1496,12 +1501,14 @@ class Siren():
         self.dw.OnActContent(event, info)
         self.refresh()
                         
-    def OnExpand(self, event):
+    def OnExpand(self, event, what="expansion"):
         if self.matchTabType("r"):
-            red = self.getSelectedItem()
-            if red is not None:
-                params = {"red": red.copy()}
+            reds = self.selectedTab["tab"].getSelectedItems()
+            if len(reds) > 0:
+                params = {"reds": [red.copy() for (rid, red) in reds], "what": what}
                 self.expand(params)
+    def OnImprove(self, event):
+        self.OnExpand(event, what="improve")
             
     def OnMineAll(self, event):
         self.expand()

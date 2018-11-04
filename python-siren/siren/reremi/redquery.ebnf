@@ -13,7 +13,7 @@ categorical_literal = ( op_braket variable_name:variable_name cat_test:cat_test 
 categorical_literal = ( variable_name:variable_name cat_test:cat_test >> categories:categories ) ;
 categorical_literal = neg:neg ( op_braket variable_name:variable_name cat_true >> categories:categories cl_braket ) ;
 categorical_literal = neg:neg ( variable_name:variable_name cat_true >> categories:categories ) ;
-anonymous_literal = [ neg:neg ] ( variable_name:anonva_name ) ;
+anonymous_literal = [ neg:neg ] ( "?" variable_name:variable_name ) ;
 realvalued_literal = [ neg:neg ] ( op_braket ( 
 		   ( [ lower_bound:variable_value lth >> ] variable_name:variable_name lth >> upper_bound:variable_value ) | 
 		   ( [ upper_bound:variable_value gth >> ] variable_name:variable_name gth >> lower_bound:variable_value ) | 
@@ -29,7 +29,6 @@ realvalued_literal = [ neg:neg ] (
 boolean_literal = [ neg:neg ] ( op_braket variable_name:variable_name cl_braket ) ;
 boolean_literal = [ neg:neg ] ( variable_name:variable_name ) ;
 variable_name = ( STRING | ?/v\d+/? ) ;
-anonva_name = ?/v\?\d+/? ;
 categories = ( category:category | op_curl catlist:catlist cl_curl ) ;
 catlist = @+:category { list_sep >> @+:category }* ;
 category = (STRING | ?/\d+([.])?\d*/? ) ;

@@ -132,10 +132,11 @@ class Constraints(object):
         status["cond"] = True
         return status
     @classmethod
-    def getStatusRed(tcl, red=None, side=None):
+    def getStatusRed(tcl, red=None, side=None, force_ops=None):
         if red is not None and side is not None:
             status = tcl.expandDefStatus()
             status["init"] = (red.length(side) == 0)
+            status["force_ops"] = force_ops
             status["contains_OR"] = red.usesOr(side)
             status["other_contains_OR"] = red.usesOr(1-side)
             if red.length(1-side) == 1:
@@ -144,7 +145,7 @@ class Constraints(object):
                 status["type_id"] = red.query(side).invTerms().pop().typeId()
             return status
         return 0
-        
+    
     #### special constraints (not just lookup)    
     def allw_ops(self, side, currentRStatus=0):
         if self.isStatusCond(currentRStatus):
@@ -153,6 +154,8 @@ class Constraints(object):
             return [True]
         else:
             xpd = self.getExpandedStatus(currentRStatus)
+            if xpd.get("force_ops") is not None:
+                return xpd.get("force_ops")
             tmp = self.getCstr("ops_query", side=side)
             if xpd["other_contains_OR"] and self._pv["single_side_or"]=="yes":
                 tmp = [o for o in tmp if not o]
@@ -449,7 +452,8 @@ class ActionsRegistry:
     ##############################
 
     ###### PARSING
-    basic_actions = {"apply": {"parity": 1, "args": {"function": "identity", "reverse": False}}, 
+    basic_actions = {"apply": {"parity": 1, "args": {"function": "identity", "reverse": False}},
+                     "applyBulk": {"parity": 1, "args": {"function": "identity", "data": None}}, 
                      "sort": {"parity": 1, "args": {"reverse": False}},
                      "cut": {"parity": 2, "args": {"max": 0, "direction": 0, "reverse": False}},
                      "filterSingle": {"parity": 1, "args": {"reverse": False}},

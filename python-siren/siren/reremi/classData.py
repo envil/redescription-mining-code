@@ -416,10 +416,23 @@ class Data(ContentCollection):
 
     @classmethod
     def getMatrixCols(tcl, cols, nb_rows=None, bincats=False, nans=None):
-        if nb_rows is None:
-            nb_rows = cols[0].nbRows()
-        return numpy.hstack([col.getVector(bincats, nans).reshape((nb_rows,-1)) for col in cols]).T    
-    
+        if len(cols) > 0:
+            if nb_rows is None:
+                nb_rows = cols[0].nbRows()               
+            return numpy.hstack([col.getVector(bincats, nans).reshape((nb_rows,-1)) for col in cols]).T    
+        return numpy.array([])
+
+    def getMatLitK(self, side, lit, bincats=False):
+        term, cid,  off = lit, lit, 0
+        if isinstance(lit, Literal):
+            term = lit.getTerm()
+        if isinstance(term, Term):
+            cid = term.colId()
+            col = self.col(side, cid)
+            if bincats and col is not None and col.typeId() == 2:
+                off = col.numEquiv(term.getCat())
+        return (side, cid, off)
+        
     def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
         compare_cols = None            
         if store and self.as_array[0] == (side_cols, types, only_able, bincats):
@@ -459,10 +472,8 @@ class Data(ContentCollection):
         if compare_cols is not None and compare_cols == sorted(mcols.keys()):
             return self.as_array[1]
 
-        if len(details) > 0:
-            cols = [self.col(d["side"], d["col"]) for d in details]
-            mat = self.getMatrixCols(cols, nb_rows=self.nbRows(), bincats=bincats, nans=nans)
-            ## print "MAT", len(details), self.nbRows(), mat.shape            
+        cols = [self.col(d["side"], d["col"]) for d in details]
+        mat = self.getMatrixCols(cols, nb_rows=self.nbRows(), bincats=bincats, nans=nans)
         if store:
             self.as_array[1] = (mat, details, mcols)
         return mat, details, mcols

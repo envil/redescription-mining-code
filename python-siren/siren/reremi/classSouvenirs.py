@@ -56,6 +56,8 @@ class Souvenirs(object):
         return indexes
     
     def extOneStep(self, red, side):
+        if red.containsAnon():
+            return red.invColsSide(side, ex_anon=True)
         cols_ext = red.invColsSide(side)
         if not self.isAmnesic():
             other_side = 1-side

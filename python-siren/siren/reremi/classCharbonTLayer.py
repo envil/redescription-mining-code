@@ -139,27 +139,24 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3, split
     # print sum(ttt-split_vector), sum(ttt), "vs", sum(split_vector) 
     return split_tree
 
-def init_tree(data, side, vid=None, more={}, cols_info=None):
-    #### TEST INIT
+def init_tree(data, side, more={}, cols_info=None):
+    #### TODO CHECK!
     parent_tree = {"id": None,
                    "branch": None,
                    "candidates": range(data[side].shape[1]),
                    "involv": []}
-    if vid is not None:
-        invol = more.get("involved", [vid])
-        if cols_info is not None:
-            ttm = [cols_info[side][c][1] for c in invol]
-            invol = [kk for (kk,vv) in cols_info[side].items() if vv[1] in ttm]
+    if cols_info is not None:
+        vid = None
+        invol_narrow = more.get("involved", [])
+        if len(invol_narrow) == 1:
+            vid = invol_narrow[0]
+        ttm = [cols_info[side][c][1] for c in invol_narrow]
+        invol = [kk for (kk,vv) in cols_info[side].items() if vv[1] in ttm]
 
         parent_tree["involv"] = invol
         for vv in invol:
             parent_tree["candidates"].remove(vv)
-        if "supp" in more:
-            supp_pos = more["supp"]
-            split = vid
-        else:
-            supp_pos = data[side][:,vid] > 0.5
-            split = (vid, vid, 0.5, -1)
+        supp_pos = more["target"]
         parent_tree["over_supp"] = supp_pos
         
         nidt = next_nid()
@@ -167,7 +164,7 @@ def init_tree(data, side, vid=None, more={}, cols_info=None):
         nidr = next_nid()
         parent_tree["root"] = nidt
         parent_tree["leaves"] = [nidl, nidr]
-        parent_tree["nodes"] = {nidt: {"id": nidt, "split": split, "parent": None, "children": [nidl,nidr]},
+        parent_tree["nodes"] = {nidt: {"id": nidt, "split": more.get("src"), "parent": None, "children": [nidl,nidr]},
                                 nidl: {"id": nidl, "support": supp_pos, "parent": nidt},
                                 nidr: {"id": nidr, "support": np.logical_not(supp_pos), "parent": nidt}}
     else:
@@ -179,7 +176,7 @@ def init_tree(data, side, vid=None, more={}, cols_info=None):
                                     
     return parent_tree
 
-def initialize_treepile(data, side_ini, vid, more={}, cols_info=None):
+def initialize_treepile(data, side_ini, more={}, cols_info=None):
     trees_pile = [[[]],[[]]]
     trees_store = {}
 
@@ -191,7 +188,7 @@ def initialize_treepile(data, side_ini, vid, more={}, cols_info=None):
     trees_store[PID] = anc_tree
     PID += 1
 
-    parent_tree = init_tree(data, side_ini, vid, more, cols_info)
+    parent_tree = init_tree(data, side_ini, more, cols_info)
     parent_tree["id"] = PID
     trees_pile[side_ini][-1].append(PID)
     trees_store[PID] = parent_tree
@@ -249,8 +246,11 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                     for vv in trees_store[ggid]["involv"]:
                         candidates.remove(vv)
 
-            dt = data[current_side][:, candidates]
-            for leaf in gp_tree["leaves"]:            
+            leaves, dt = [], None
+            if len(candidates) > 0:
+                leaves = gp_tree["leaves"]
+                dt = data[current_side][:, candidates]
+            for leaf in leaves:            
                 mask = gp_tree["nodes"][leaf]["support"]
                 # print "BRANCH\t(%d,%d)\t%d %d\t%d:%d/%d"  % (current_side, len(trees_pile[current_side]),
                 #                                              gp_tree["id"], leaf, sum(mask),
@@ -292,7 +292,7 @@ def extract_reds(trees_pile, trees_store, data, cols_map):
         supps = (gather_supp(trees_store[outids[0]]), gather_supp(trees_store[outids[1]]))
         trees = (trees_store[outids[0]], trees_store[outids[1]])
         return qus, supps, trees
-    return None
+    return None        
 
 def make_lits(side, tree_exp, data, cols_info):
     def recurse_lits(side, tree_exp, node_id, data, cols_info, which=0):
@@ -300,10 +300,7 @@ def make_lits(side, tree_exp, data, cols_info):
         if "split" in tree_exp[node_id]:
             lit = make_literal(side, tree_exp[node_id]["split"], data, cols_info)
             for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][0], data, cols_info, which=0):
-                try:
-                    lls.append([lit.copy()]+l)
-                except AttributeError:
-                    pdb.set_trace()
+                lls.append([lit.copy()]+l)
             lit.flip()
             for l in recurse_lits(side, tree_exp, tree_exp[node_id]["children"][1], data, cols_info, which=1):
                 lls.append([lit.copy()]+l)
@@ -311,13 +308,21 @@ def make_lits(side, tree_exp, data, cols_info):
             lls.append([])
         return lls
     tmp = recurse_lits(side, tree_exp["nodes"], tree_exp["root"], data, cols_info)
-    return Query(True, tmp)
+    q = Query(True, tmp)
+    q.unfold()
+    return q
 
 def make_literal(side, node, data, cols_info):
     lit=None
     ### HERE test for literal
     if isinstance(node, Literal):
         lit = node
+    elif isinstance(node, Term):
+        pdb.set_trace()
+        lit = Literal(False, node)
+    elif isinstance(node, Query):        
+        return node.asDisLit()
+
     elif len(node) > 2:
         if node[-3] in cols_info:
             side, cid, cbin = cols_info[node[-3]]
@@ -328,9 +333,9 @@ def make_literal(side, node, data, cols_info):
         direct = node[-1]
 
         if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
-            lit = Literal(neg, BoolTerm(cid))
+            lit = Literal(direct > 0, BoolTerm(cid))
         elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
-            lit = Literal(neg, CatTerm(cid, data.col(side, cid).getValFromNum(cbin)))
+            lit = Literal(direct > 0, CatTerm(cid, data.col(side, cid).getValFromNum(cbin)))
         elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
             # ###################################
             # if direct > 0:
@@ -354,40 +359,11 @@ def make_literal(side, node, data, cols_info):
 
     
 class CharbonTLayer(CharbonTree):
-
+    
     name = "TreeLayer"
-    def getTreeCandidates(self, side, data, red):
-        if side not in [0,1]:
-            side = 1
-            if len(red.queries[0]) == 1:
-                side = 0
-        if len(red.queries[side]) != 1:
-            return None
-
-        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], only_able=True, bincats=True)
-        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], only_able=True, bincats=True)
-
-        cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
-                     dict([(i,d) for (d,i) in tcols_r.items() if len(d) == 3])]
-
-        llt = red.queries[side].listLiterals()[0].copy()
-        ss = data.supp(side, llt)
-        data_tt = [in_data_l.T, in_data_r.T]
-
-        supp = np.zeros(data.nbRows(), dtype=bool)
-        supp[list(ss)] = True
-        if side == 0:
-            mmap = tcols_l
-        else:
-            mmap = tcols_r
-        if llt.typeId() == 2:
-            off = data.col(side, llt.colId()).numEquiv(llt.getTerm().getCat())
-        else:
-            off = 0
-        vid = mmap[(side, llt.colId(), off)]
-        more = {"involved": [vid], "supp": supp}
-        trees_pile, trees_store, PID = initialize_treepile(data_tt, side, llt, more, cols_info=cols_info)
-        trees_pile, trees_store, PID = get_trees_pair(data_tt, trees_pile, trees_store, side,
+    def getTreeCandidates(self, side, data, more, in_data, cols_info):
+        trees_pile, trees_store, PID = initialize_treepile(in_data, side, more, cols_info=cols_info)
+        trees_pile, trees_store, PID = get_trees_pair(in_data, trees_pile, trees_store, side,
                                                       max_level=self.constraints.getCstr("max_depth"),
                                                       min_bucket=self.constraints.getCstr("min_node_size"),
                                                       split_criterion=self.constraints.getCstr("split_criterion"),

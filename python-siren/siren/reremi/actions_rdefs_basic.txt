@@ -11,9 +11,13 @@ filterSingle	reverse=1	ITEM::len:O>=CSTR:min_itm_out	ITEM::len:I>=CSTR:min_itm_i
 sort	reverse=1	ITEM::acc:	ITEM:-BOTH:len:q	ITEM:-:diffLengthQs:
 filterPairs	max=0	PAIR::identical:
 cut	max=CSTR:batch_out	direction=1	ITEM::acc:	ITEM:-BOTH:len:q	ITEM:-:diffLengthQs:
+actionlist	_tree_rectangles
+filterPairs	max=0	PAIR::sameRectangles:
 actionlist	_final
 filterSingle	reverse=1	ITEM:BOTH:len:q>=CSTR:min_fin_var	ITEM::len:O>=CSTR:min_fin_out	ITEM::len:I>=CSTR:min_fin_in	ITEM::acc:>=CSTR:max_fin_acc	ITEM::pval:<=CSTR:max_fin_pval
 sort	reverse=1	ITEM::acc:	ITEM:-BOTH:len:q	ITEM:-:diffLengthQs:
 filterPairs	max=0	PAIR::identical:
 actionlist	final_selection
 list	_final
+actionlist	prune
+applyBulk	function=.prune(kwargs["data"])	

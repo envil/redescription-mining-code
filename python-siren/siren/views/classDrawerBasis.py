@@ -590,7 +590,7 @@ class DrawerEntitiesTD(DrawerBasis):
     def hoverCoordsActive(self):
         return self.getSettV('hover_coords') and not self.hasToolbActive()    
     def clickActive(self):
-        return self.getSettV('click_entities') and not self.hasToolbActive()
+        return self.getSettV('click_entities') and not self.hasToolbActive() and not self.q_active_poly()
 
     def getLidAt(self, x, y):
         if self.drawPoly():

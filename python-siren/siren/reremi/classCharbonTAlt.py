@@ -11,42 +11,16 @@ import pdb
 class CharbonTCW(CharbonTree):
     name = "TreeCartWheel"
 
-    def initializeData(self, side, data):
-        in_data_l, tmp, tcols_l = data.getMatrix([(0, None)], only_able=True, bincats=True)
-        in_data_r, tmp, tcols_r = data.getMatrix([(1, None)], only_able=True, bincats=True)
-
-        in_data = [in_data_l.T, in_data_r.T]
-        cols_info = [dict([(i,d) for (d,i) in tcols_l.items() if len(d) == 3]),
-                     dict([(i,d) for (d,i) in tcols_r.items() if len(d) == 3])]
-        return in_data, cols_info
-
-    def initializeTrg(self, side, data, red):
-        if red is None or len(red.queries[0]) + len(red.queries[1]) == 0:
-            nsupp = np.random.randint(self.constraints.getCstr("min_node_size"), data.nbRows()-self.constraints.getCstr("min_node_size"))
-            tmp = np.random.choice(range(data.nbRows()), nsupp, replace=False)
-        elif side == -1: # and len(red.queries[0]) * len(red.queries[1]) != 0:
-            side = 1
-            if len(red.queries[side]) == 0:
-                side = 1-side
-            tmp = red.supp(side)
-        else:
-            tmp = red.getSuppI()
-        target = np.zeros(data.nbRows())
-        target[list(tmp)] = 1
-        return target, side
-
-    def getTreeCandidates(self, side, data, red):
-        in_data, cols_info = self.initializeData(side, data)
-        target, side = self.initializeTrg(side, data, red)
+    def getTreeCandidates(self, side, data, more, in_data, cols_info):
         if side is None:
-            jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
-            jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
+            jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
+            jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
             if jj0 > jj1:
                 jj, suppvs, dtcs = (jj0, suppvs0, dtcs0)
             else:
                 jj, suppvs, dtcs = (jj1, suppvs1, dtcs1)
         else:
-            jj, suppvs, dtcs = self.getSplit(side, in_data, target, singleD=data.isSingleD(), cols_info=cols_info)
+            jj, suppvs, dtcs = self.getSplit(side, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
 
         if dtcs[0] is not None and dtcs[1] is not None:
             redex = self.get_redescription(dtcs, suppvs, data, cols_info)
@@ -253,11 +227,8 @@ class CharbonTSprit(CharbonTCW):
 class CharbonTSplit(CharbonTCW):
 
     name = "TreeSplit"
-    def getTreeCandidates(self, side, data, red):
-        in_data, cols_info = self.initializeData(side, data)
-        target, side = self.initializeTrg(side, data, red)
-
-        current_split_result = self.getSplit(in_data[0], in_data[1], target, 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
+    def getTreeCandidates(self, side, data, more, in_data, cols_info):
+        current_split_result = self.getSplit(in_data[0], in_data[1], more["target"], 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
         if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
             # pdb.set_trace()
             redex = self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
@@ -265,9 +236,7 @@ class CharbonTSplit(CharbonTCW):
                                           data, cols_info)
             ## print red.queries[side], "-->\t", redex.disp()
             return redex
-
         return None
-
 
     def getSplit(self, in_data_l, in_data_r, target, depth, in_min_bucket, singleD=False, cols_info=None):
         current_split_result = {'data_rpart_l': None, 'data_rpart_r': None}

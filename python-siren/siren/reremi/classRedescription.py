@@ -47,6 +47,8 @@ class Redescription(WithEVals):
 
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
         WithEVals.__init__(self)
+        if nqueryL is None: nqueryL = Query()
+        if nqueryR is None: nqueryR = Query()
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
             self.sParts = SParts(ssetts, nN, nsupps, nPrs)
@@ -124,6 +126,27 @@ class Redescription(WithEVals):
             return self.query(0).containsAnon() or self.query(1).containsAnon()
         else:
             return self.query(side).containsAnon()
+    def minusAnon(self, side=None):
+        if side is None:
+            q0noan, l0an = self.query(0).minusAnon()
+            q1noan, l1an = self.query(1).minusAnon()
+            return [q0noan, q1noan], [l0an, l1an]
+        else:
+            return self.query(side).minusAnon()
+    def minusAnonRed(self, data):
+        r, modr = self, 0
+        if len(self) == 0:
+            return r, [[],[]], modr 
+        qsNoan, lsAnon = self.minusAnon()
+        if (len(lsAnon[0]) + len(lsAnon[1])) > 0: ### NO anon, standard list of one-step extensions
+            if (len(qsNoan[0]) + len(qsNoan[1])) == 0: ### only anon, need to start by mining pairs...
+                modr = -1
+                r = Redescription()
+            else:
+                modr = 1
+                r = Redescription.fromQueriesPair(qsNoan, data)
+        return r, lsAnon, modr
+    
     def typeId(self):
         if self.isBasis():
             return self.query(0).typeId() or self.query(1).typeId()
@@ -245,8 +268,29 @@ class Redescription(WithEVals):
     def diffLengthQs(self):
         return abs(self.length(0) - self.length(1))
     
-    def availableColsSide(self, side, data=None, single_dataset=False):
-        if self.lAvailableCols[side] is not None and self.length(1-side) != 0:
+    def prepareExtElems(self, data=None, single_dataset=False):
+        r, lsAnon, modr = self.minusAnonRed(data)
+        if modr != 0:
+            for side, lits in enumerate(lsAnon):
+                if len(lits) > 0 or modr == 1:
+                    still_available=[l[1].colId() for l in lits]
+                else:
+                    still_available=None
+                r.restrictAvailable(side, self.lAvailableCols[side], still_available)
+        exts = []
+        if modr == -1:
+            for vLHS in r.lAvailableCols[0]:
+                for vRHS in r.lAvailableCols[1]:
+                    if (not single_dataset or vLHS != vRHS) and (not data.hasGroups(0) or not data.hasGroups(1) or data.areGroupCompat(vLHS, vRHS, 0, 1)):
+                        exts.append((0, vLHS, data.col(1, vRHS)))
+        elif len(r) > 0:
+            for side in [0,1]:
+                exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset)])
+        # print "EXTS", exts, self.disp(), r.disp()
+        return exts, r, modr
+    
+    def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True):
+        if self.lAvailableCols[side] is not None and (not check_empty or self.length(1-side) != 0):
             tt = set(self.lAvailableCols[side])
             if single_dataset:
                 tt &= set(self.lAvailableCols[1-side])
@@ -262,12 +306,29 @@ class Redescription(WithEVals):
             return len(self.lAvailableCols[0]) + len(self.lAvailableCols[1])
         return -1
     def updateAvailable(self, souvenirs):
-        nb_extensions = 0
         for side in [0, 1]:
-            if self.lAvailableCols[side] is None or len(self.lAvailableCols[side]) != 0:
-                self.lAvailableCols[side] =  souvenirs.availableMo[side] - souvenirs.extOneStep(self, side)
-                nb_extensions += len(souvenirs.availableMo[side]) - self.length(side) - len(self.lAvailableCols[side])
-        return nb_extensions
+            if self.lAvailableCols[side] is None:
+                self.lAvailableCols[side] =  set(souvenirs.availableMo[side])
+            self.lAvailableCols[side].difference_update(souvenirs.extOneStep(self, side))
+    def restrictAvailable(self, side=None, org_available=None, still_available=None, not_available=None):
+        if side is None:
+            if still_available is None:
+                still_available = [None, None]
+            if org_available is None:
+                org_available = [None, None]
+            if not_available is None:
+                not_available = [None, None]
+            for side in [0,1]:
+                self.restrictAvailable(side, org_available[side], still_available[side], not_available[side])
+        else:
+            if org_available is not None:
+                if still_available is not None:
+                    self.lAvailableCols[side] = org_available.intersection(still_available)
+                else:
+                    self.lAvailableCols[side] = set(org_available)
+                if not_available is not None:
+                    self.lAvailableCols[side].difference_update(not_available)
+
     def removeAvailables(self):
         self.lAvailableCols = [set(),set()]
             
@@ -312,17 +373,17 @@ class Redescription(WithEVals):
     def recomputeQuery(self, side, data= None, restrict=None):
         return self.queries[side].recompute(side, data, restrict)
     
-    def invLiteralsSide(self, side):
-        return self.queries[side].invLiterals()
+    def invLiteralsSide(self, side, ex_anon=False):
+        return self.queries[side].invLiterals(ex_anon)
 
-    def invLiterals(self):
-        return [self.invLiteralsSide(0), self.invLiteralsSide(1)]
+    def invLiterals(self, ex_anon=False):
+        return [self.invLiteralsSide(0, ex_anon), self.invLiteralsSide(1, ex_anon)]
     
-    def invColsSide(self, side):
-        return self.queries[side].invCols()
+    def invColsSide(self, side, ex_anon=False):
+        return self.queries[side].invCols(ex_anon)
 
-    def invCols(self):
-        return [self.invColsSide(0), self.invColsSide(1)]
+    def invCols(self, ex_anon=False):
+        return [self.invColsSide(0, ex_anon), self.invColsSide(1, ex_anon)]
                     
     def getNormalized(self, data=None, side=None):
         if side is not None:
@@ -342,6 +403,24 @@ class Redescription(WithEVals):
             return red, True            
         else:
             return self, False
+
+    def prune(self, data):
+        r, modr = self, False
+        best_score = self.score()
+        for side in [0,1]:
+            if self.length(side) > 1:
+                queries = [self.query(0), self.query(1)]
+                for (ls, q) in self.query(side).minusOneLiteral():	
+                    queries[side] = q
+                    cand = Redescription.fromQueriesPair(queries, data)
+                    if cand.score() >= best_score:
+                        r, modr, best_score = (cand, True, cand.score())
+        if modr:
+            r, modb = r.prune(data)
+        return r, modr
+
+    def normalize(self, data=None):
+        return self.getNormalized(data)
         
     def recompute(self, data):
         (nsuppL, missL) = self.recomputeQuery(0, data)

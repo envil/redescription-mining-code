@@ -434,7 +434,7 @@ class DataWrapper(object):
             bottom_iids = [i for i in compare_iids if not self.reds.getItem(i).isEnabled()]
 
             # print "IIDS MID", current_iids, bottom_iids
-            selected_iids = self.reds.selected(actions, current_iids)
+            selected_iids = self.reds.selected(actions, current_iids, data=self.getData())
             # print "IIDS SELECTED", selected_iids
             middle_iids = []
             for i in current_iids:
@@ -939,13 +939,11 @@ class DataWrapper(object):
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
     def actProcess(self, info, action_key="process"):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
-            ll = self.reds.getList(info["active_lid"])
-            if ll is not None:
-                actions = self.constraints.getActionsList(action_key)
-                before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"])
-                if selected_iids is not None:
-                    ll.setIids(before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
-                    self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
+            actions = self.constraints.getActionsList(action_key)
+            before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"])
+            if selected_iids is not None:
+                self.reds.setIids(info["active_lid"], before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
+                self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), selected_iids)
 
     ## FILTER EXTRAS
     def actExtraAddDelListToPack(self, info):
@@ -986,7 +984,7 @@ class DataWrapper(object):
             self.acts_params_dict.pop(act)
         AR = self.getActionsRegistry()
 
-        acts_filter = []
+        acts_filter = []        
         for filter_single in AR.getActionsKeysSimple(patt="filterSingle"):
             name = re.sub("_", " ", filter_single)
             key = "FilterSingle:%s" % filter_single
@@ -1021,6 +1019,17 @@ class DataWrapper(object):
             self.acts_meths_dict[key] = self.actProcess
             self.acts_params_dict[key] = {"action_key": process}
 
+        #######################
+        for apply_bulk in AR.getActionsKeysSimple(patt="applyBulk"):
+            name = re.sub("_", " ", apply_bulk)
+            key = "ApplyBulk:%s" % apply_bulk
+            acts_filter.append({"key": key, 
+                                "label": "%s" % name.capitalize(), 
+                                "legend": "%s the redescriptions." % name.capitalize() })            
+            self.acts_meths_dict[key] = self.actProcess
+            self.acts_params_dict[key] = {"action_key": apply_bulk}
+        #######################
+            
         self.acts_groups["redsFilter"] = acts_filter
 
     def getGroupActs(self, group=None):

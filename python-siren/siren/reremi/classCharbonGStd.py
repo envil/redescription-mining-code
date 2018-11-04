@@ -2,7 +2,7 @@ from classData import Data
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
-from classSParts import SParts, tool_ratio
+from classSParts import SParts
 from classQuery import  *
 import numpy
 import pdb
@@ -11,7 +11,8 @@ class CharbonGStd(CharbonGreedy):
 
     name = "GreedyStd"
     
-    def getCandidates(self, side, col, supports, red, colsC=None):
+    def getCandidates(self, side, col, red, colsC=None):
+        supports = red.supports()
         currentRStatus = Constraints.getStatusRed(red, side)
         method_string = 'self.getCandidates%i' % col.typeId()
         try:
@@ -35,7 +36,20 @@ class CharbonGStd(CharbonGreedy):
                 cand.setCondition(self.getCondition(colsC, ss))
         # print "================="
         return cands
-        
+
+
+    def getCandidatesImprov(self, side, col, red, op, supports, offsets):
+        self.setOffsets(offsets)
+        currentRStatus = Constraints.getStatusRed(red, side, [op])
+        method_string = 'self.getCandidates%i' % col.typeId()
+        try:
+            method_compute =  eval(method_string)
+        except AttributeError:
+              raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
+        cands = method_compute(side, col, supports, currentRStatus)
+        self.setOffsets()
+        return cands
+    
     def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
 
@@ -343,7 +357,7 @@ class CharbonGStd(CharbonGreedy):
                     cands.append(Extension(self.constraints.getSSetts(), bests[neg]))
         return cands
 
-    def findNegativeCover(self, side, op, col, segments, fixed_colors, currentRStatus=0):
+    def findNegativeCover(self, side, op, col, segments, fixed_colors, currentRStatus=0):        
         is_cond = self.isCond(currentRStatus)
         
         cands = []
@@ -968,8 +982,8 @@ class CharbonGStd(CharbonGreedy):
 
     def advRatioVar(self, var_colors, is_cond=False):
         if is_cond:
-            return tool_ratio(var_colors[0], var_colors[0]+var_colors[1])
-        return tool_ratio(var_colors[0], var_colors[1])
+            return self.ratio(var_colors[0], var_colors[0]+var_colors[1])
+        return self.ratio(var_colors[0], var_colors[1])
                 
     def getAdv(self, side, op, neg, fixed_colors, var_colors, is_cond=False, no_const=False):
         fix_num = None
@@ -984,7 +998,7 @@ class CharbonGStd(CharbonGreedy):
             # if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
             #    and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
             #    and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
-            if no_const or (tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
+            if self.unconstrained(no_const) or (tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
                 contri = tmp_var[0]
                 fix_num, fix_den = (0, 0)
                 # if self.constraints.getCstr("constraint_score") == "comp_acc":
@@ -1005,7 +1019,7 @@ class CharbonGStd(CharbonGreedy):
             
         elif op:
             #OR
-            if no_const or (tmp_var[0] >= self.constraints.getCstr("min_itm_c") \
+            if self.unconstrained(no_const) or (tmp_var[0] >= self.constraints.getCstr("min_itm_c") \
                and fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out") \
                and fixed_colors[1-op][0] + tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
                 contri = tmp_var[0]
@@ -1017,7 +1031,7 @@ class CharbonGStd(CharbonGreedy):
                 # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
         else:
             # AND
-            if no_const or (fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
+            if self.unconstrained(no_const) or (fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
                and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
                and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out")):
                 contri = fixed_colors[op][1] - tmp_var[1]
@@ -1029,7 +1043,7 @@ class CharbonGStd(CharbonGreedy):
                 # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
 
         if fix_num is not None:
-            acc = tool_ratio(fix_num + var_num, fix_den + var_den)
+            acc = self.offset_ratio(fix_num + var_num, fix_den + var_den)
             return (acc, var_num, var_den, contri, fix_num, fix_den)
         return None
                 

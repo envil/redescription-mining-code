@@ -81,12 +81,9 @@ class WithEVals(Item):
         elif what in self.info_what: ### other redescription info
             return eval(self.info_what[what])
     def getEValGUI(self, details):
-        val = None
         if "rp" in details:
-            val = details["rp"].getEValGUI(self, details)
-        if val is None:
-            val = details.get('replace_none')
-        return val
+            return details["rp"].getEValGUI(self, details)
+        return None
         
     #### EXTRAS
     #######################

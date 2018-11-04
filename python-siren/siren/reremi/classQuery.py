@@ -980,7 +980,7 @@ class NumTerm(Term):
 
 class AnonTerm(Term):
 
-    pattVName = VARIABLE_MARK+"?%d"
+    pattVName = "?"+VARIABLE_MARK+"%d"
     type_id = -1
     type_letter = '?'
     type_name = '?'
@@ -1031,7 +1031,8 @@ class AnonTerm(Term):
     def truthEval(self, variableV):
         return False
 
-    def disp(self, neg=None, names=None, lenIndex=0):
+
+    def disp(self, neg=None, names = None, lenIndex=0):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -1039,8 +1040,19 @@ class AnonTerm(Term):
         if type(neg) is Neg:
             neg = neg.disp()
 
-        return ('%s'+AnonTerm.pattVName+' ') % (neg, self.col)
-        
+        if lenIndex > 0 :
+            lenIndex = max(lenIndex-1,3)
+            slenIndex = str(lenIndex)
+        else:
+            slenIndex = ''
+        if type(names) == list  and len(names) > 0:
+            lab = ('%s?%'+slenIndex+'s') % (neg, getNameCol(self.col, names))
+            if len(lab) > lenIndex & lenIndex > 0:
+                lab = lab[:lenIndex]
+            return lab + ' '
+        else:
+            return ('%s'+AnonTerm.pattVName) % (neg, self.col)
+
     def dispTex(self, neg=None, names = None):
         if neg is None:
             neg = ""
@@ -1048,7 +1060,11 @@ class AnonTerm(Term):
             neg = Neg(neg)
         if type(neg) is Neg:
             neg = neg.dispTex()
-        return ('%s$'+AnonTerm.pattVName+' $') % ( neg, self.col)
+
+        if type(names) == list  and len(names) > 0:
+            return '%s?%s' % ( neg, getNameCol(self.col, names))
+        else:
+            return ('%s$'+ AnonTerm.pattVName+'$') % ( neg, self.col)
 
     def dispU(self, neg=None, names = None):
         if neg is None:
@@ -1057,7 +1073,40 @@ class AnonTerm(Term):
             neg = Neg(neg)
         if type(neg) is Neg:
             neg = neg.dispU()
-        return (u'%s'+AnonTerm.pattVName+' ') % ( neg, self.col)
+
+        if type(names) == list  and len(names) > 0:
+            return u'%s?%s' % ( neg, getNameCol(self.col, names))
+        else:
+            return (u'%s'+AnonTerm.pattVName) % ( neg, self.col)
+
+    
+    # def disp(self, neg=None, names=None, lenIndex=0):
+    #     if neg is None:
+    #         neg = ""
+    #     if type(neg) == bool:
+    #         neg = Neg(neg)
+    #     if type(neg) is Neg:
+    #         neg = neg.disp()
+
+    #     return ('%s'+AnonTerm.pattVName+' ') % (neg, self.col)
+        
+    # def dispTex(self, neg=None, names = None):
+    #     if neg is None:
+    #         neg = ""
+    #     if type(neg) == bool:
+    #         neg = Neg(neg)
+    #     if type(neg) is Neg:
+    #         neg = neg.dispTex()
+    #     return ('%s$'+AnonTerm.pattVName+' $') % ( neg, self.col)
+
+    # def dispU(self, neg=None, names = None):
+    #     if neg is None:
+    #         neg = ""
+    #     if type(neg) == bool:
+    #         neg = Neg(neg)
+    #     if type(neg) is Neg:
+    #         neg = neg.dispU()
+    #     return (u'%s'+AnonTerm.pattVName+' ') % ( neg, self.col)
 
         
 class Literal(object):
@@ -1588,6 +1637,15 @@ class Query(object):
             except TypeError:
                 pass
         return False
+
+    @classmethod
+    def dispBuk(tcl, buk):
+        if isinstance(buk, Literal) or isinstance(buk, Neg):
+            return "%s" % buk
+        else:
+            return "[" + "; ".join([tcl.dispBuk(b) for b in buk])+"]"
+        return "-"
+
     
     def __init__(self, OR=True, buk=None):
         self.op = Op(OR)
@@ -1595,7 +1653,7 @@ class Query(object):
             self.buk = buk
         else:
             self.buk = []
-
+            
     def __len__(self):
         if len(self.buk) == 0:
             return 0
@@ -1655,11 +1713,14 @@ class Query(object):
             i = 0
         if buk is None:
             buk = self.buk
-        if type(buk) is list and path[i] < len(buk):
-            if i == len(path)-1:
-                return buk[path[i]]
-            else:
-                return self.getBukElemAt(path, buk[path[i]], i+1)
+        if type(buk) is list:
+            if len(path) == 0:
+                return buk
+            elif path[i] < len(buk):
+                if i == len(path)-1:
+                    return buk[path[i]]
+                else:
+                    return self.getBukElemAt(path, buk[path[i]], i+1)
         return None
     
     def setBukElemAtR(self, newE, path, buk=None, i=None): ## starting pos from end of path
@@ -1667,6 +1728,8 @@ class Query(object):
             i = len(path)-1
         if buk is None:
             buk = self.buk
+        if len(path) == 0:
+            return buk
         if path[i] < len(buk):
             if i == 0:
                 tmp = buk[path[i]]
@@ -1726,6 +1789,9 @@ class Query(object):
         # pdb.set_trace()
         # print "-------"
 
+    def flip(self):
+        self.negate()
+            
     def negate(self):
         if len(self) == 0:
             return
@@ -1810,14 +1876,23 @@ class Query(object):
         return -Query.diff_length
     comparePair = staticmethod(comparePair)
     
-    def invCols(self):
-        return set(recurse_list(self.buk, function =lambda lit: lit.colId()))
+    def invCols(self, ex_anon=False):
+        def getCol(lit, ex_anon):
+            if (not ex_anon or not lit.isAnon()):
+                return lit.colId()
+        return set(recurse_list(self.buk, function=getCol, args={"ex_anon": ex_anon}))
 
-    def invLiterals(self):
-        return set(recurse_list(self.buk, function =lambda lit: lit))
+    def invLiterals(self, ex_anon=False):
+        def getLit(lit, ex_anon):
+            if (not ex_anon or not lit.isAnon()):
+                return lit
+        return set(recurse_list(self.buk, function=getLit, args={"ex_anon": ex_anon}))
 
-    def invTerms(self):
-        return set(recurse_list(self.buk, function =lambda lit: lit.getTerm()))
+    def invTerms(self, ex_anon=False):
+        def getTerm(lit, ex_anon):
+            if (not ex_anon or not lit.isAnon()):
+                return lit.getTerm()
+        return set(recurse_list(self.buk, function=getTerm, args={"ex_anon": ex_anon}))
     
     def posLiterals(self, buk=None, op=None, preff=[], mdepth=None):
         if buk is None:
@@ -1835,11 +1910,13 @@ class Query(object):
             tmp.extend(self.posLiterals(buk[i], opp, [i]+preff, mdepth))
         return tmp
 
-    def replace(self, depth_ind, replacement):
+    def replace(self, depth_ind, replacement, init=None):
         if len(depth_ind) == 0:
             return replacement
         inr = depth_ind.pop()
-        src = self.buk
+        if init is None:
+            init = self.buk
+        src = init
         for i in depth_ind:
             src = src[i]
         tmp = [l for l in src]
@@ -1847,34 +1924,90 @@ class Query(object):
             tmp.pop(inr)
         else:
             tmp[inr] = replacement
-        return self.replace(depth_ind, tmp)
+        return self.replace(depth_ind, tmp, init=init)
 
-    def minusOneRec(self, depth_ind, current_el):
+    def indsLit(self, depth_ind=[], current_el=None, only_anon=False):
+        if current_el is None and len(depth_ind) == 0:
+            current_el = self.buk
         results = []
         if type(current_el) is list:
             for ni,next_el in enumerate(current_el):
-                results.extend(self.minusOneRec(depth_ind+[ni], next_el))
-        elif isinstance(current_el, Literal):
-            qq = Query(self.op.isOr(), self.replace(list(depth_ind), None))
-            qq.unfold()
-            results.append((tuple(depth_ind), qq))
+                results.extend(self.indsLit(depth_ind+[ni], next_el, only_anon))
+        elif isinstance(current_el, Literal) and (not only_anon or current_el.isAnon()):
+            results.append((tuple(depth_ind), current_el))
         return results
+
+    def minusInd(self, depth_ind):
+        qq = Query(self.op.isOr(), self.replace(list(depth_ind), None))
+        qq.unfold()
+        return qq
+
+    def minusInds(self, depth_inds):
+        src = self.buk
+        for ind in sorted(depth_inds, reverse=True):
+            src = self.replace(list(ind), None, src)
+        qq = Query(self.op.isOr(), src)
+        qq.unfold()
+        return qq
     
     def minusOneLiteral(self):
-        return self.minusOneRec([], self.buk)
+        xps = []
+        for ind, lit in self.indsLit():
+            q = self.minusInd(ind)
+            xps.append((ind, q))
+        return xps
+    
+    def minusAnon(self, keep_inds=None):
+        q, dropped, drop_inds = self, [], []
+        if self.containsAnon():
+            inds = self.indsLit()
+            for (ind, lit) in inds:
+                if lit.isAnon() or (keep_inds is not None and ind in keep_inds):
+                    drop_inds.append(ind)
+                    dropped.append((ind, lit))
+            if len(drop_inds) == len(inds):
+                q = Query()
+            elif len(drop_inds) > 0:
+                q = self.minusInds(drop_inds)                        
+        return q, dropped
 
+    def minusAnonButOne(self):
+        dropped, drop_inds = [], []
+        if self.containsAnon():
+            inds = self.indsLit()
+            for (ind, lit) in inds:
+                if lit.isAnon():
+                    drop_inds.append(ind)
+                    dropped.append((ind, lit))                
+        xps = []
+        for i in range(len(drop_inds)):
+            mq = self.minusInds(drop_inds[:i]+drop_inds[i+1:])
+            minds = mq.indsLit(only_anon=True)
+            if len(minds) == 1:
+                xps.append((mq, dropped[i][0], dropped[i][1], minds[0][0]))
+            else:
+                pdb.set_trace()                
+        return xps
+        
     def unfoldRec(self, buk):
+        if isinstance(buk, Query):
+            return buk.unfoldRec(buk.buk)
+
         if isinstance(buk, Literal):
             return buk, False
         tmp = []
         for bi, bb in enumerate(buk):
             tpb, fl = self.unfoldRec(bb)
-            if fl:
-                tmp.extend(tpb)
-            else:
-                tmp.append(tpb)
-        if type(tmp) is list and len(tmp) == 1:
-            return tmp[0], not isinstance(tmp[0], Literal)
+            if fl is not None:
+                if fl:
+                    tmp.extend(tpb)
+                else:
+                    tmp.append(tpb)
+        if type(tmp) is list:
+            if len(tmp) == 1:
+                return tmp[0], not isinstance(tmp[0], Literal)
+            elif len(tmp) == 0:
+                return tmp, None
         return tmp, False
 
     def unfold(self):
@@ -1887,7 +2020,38 @@ class Query(object):
             self.op = Op()
         elif opflip:
             self.op.flip()
-        
+
+    def partsOCD(self, depth_ind):
+        op = self.opBuk(len(depth_ind)-1)
+        conj_part = []
+        disj_part = []        
+        if len(depth_ind) > 1:
+            up_to = len(depth_ind)-1
+            if op.isOr():
+                disj_part = list(self.getBukElemAt(depth_ind[:up_to]))
+                disj_part.pop(depth_ind[up_to])
+                up_to -= 1
+                    
+            while up_to >= 0:
+                c = list(self.getBukElemAt(depth_ind[:up_to]))
+                x = c.pop(depth_ind[up_to])
+                conj_part.extend(c)
+                up_to -= 2
+
+            qc = Query(False, conj_part)
+            qd = Query(self.op.isOr(), self.replace(list(depth_ind[:-1]), disj_part))
+        else:
+            new_buk = list(self.buk)
+            if len(depth_ind) > 0:
+                new_buk.pop(depth_ind[0])
+            if self.op.isOr():
+                disj_part = new_buk   
+            elif self.op.isAnd():
+                conj_part = new_buk
+            qc = Query(self.op.isOr(), conj_part)
+            qd = Query(self.op.isOr(), disj_part)
+        return op, qc, qd
+            
     def makeIndexesNew(self, format_str):
         if len(self) == 0:
             return ""
@@ -1960,7 +2124,7 @@ class Query(object):
                 vs = [evl(bb, op.other(), side, data) for bb in b]
                 return SParts.partsSuppMissMass(op.isOr(), vs) 
 
-        if len(self) == 0 or data==None:
+        if len(self) == 0 or data == None or self.containsAnon():
             return (set(), set())
         else:
             if side == -1:
@@ -2033,6 +2197,15 @@ class Query(object):
         if resort:
             self.doSort()
 
+    def asDisLit(self):
+        if not self.op.isOr():
+            if self.op.isAnd():
+                self.op.flip()
+                self.buk = [self.buk]
+            else:
+                return self.buk[0]
+        return self
+            
     def appendBuk(self, buk, op=None, resort=False):
         bid = None
         if op is None:
@@ -2390,7 +2563,7 @@ class QuerySemantics(object):
         return [Literal("neg" in ast, BoolTerm(self.parse_vname(ast.get("variable_name"))))]
 
     def anonymous_literal(self, ast):
-        return [Literal("neg" in ast, AnonTerm(self.parse_anonvname(ast.get("variable_name"))))]
+        return [Literal("neg" in ast, AnonTerm(self.parse_vname(ast.get("variable_name"))))]
     
     def variable_name(self, ast):
         return ast
@@ -2404,16 +2577,7 @@ class QuerySemantics(object):
         elif "catlist" in ast:
             return set(ast["catlist"])
         return set()
-
-    def parse_anonvname(self, vname):
-        tmp = re.match(VARIABLE_MARK+"\?(?P<id>\d+)$", vname)
-        if tmp is not None:
-            vv = int(tmp.group("id"))
-            if self.ids_map is not None:
-                return self.ids_map.get(vv, vv)
-            return vv
-        raise Exception("Could not parse anon variable name!")
-
+    
     def parse_vname(self, vname):
         tmp = re.match(VARIABLE_MARK+"(?P<id>\d+)$", vname)
         if tmp is not None:
@@ -2438,7 +2602,7 @@ if __name__ == '__main__':
     from classData import Data
     from classQuery import QuerySemantics ## import for Literal instance type test
     import sys
-    rep = "/home/egalbrun/short/raja_small/"
+    rep = "/home/egalbrun/short/rsmallZx/"
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     qsLHS = QuerySemantics(data.getNames(0))
     qsRHS = QuerySemantics(data.getNames(1))
@@ -2455,6 +2619,7 @@ if __name__ == '__main__':
                 print "----------"
                 print line.strip()
                 print "ORG   :", resLHS, "---", resRHS
+                print resLHS.disp(style="U", names=data.getNames(0))
                 print len(resLHS.recompute(0, data)[0])
                 print len(resRHS.recompute(1, data)[0])
 

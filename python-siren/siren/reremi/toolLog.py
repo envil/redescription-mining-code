@@ -124,6 +124,19 @@ class Log(object):
         self.out = []
         self.oqu = []
         self.verbosity = -1
+
+    def capVerbosity(self, v=0):
+        # print "BEFORE", self.oqu+self.out
+        for o in self.oqu+self.out:
+            if type(o["verbosity"]) is int and o["verbosity"] > v:
+                o["verbosity"] = v
+            elif type(o["verbosity"]) is dict:
+                ks = o["verbosity"].keys()
+                for k in ks:
+                    if o["verbosity"][k] > v:
+                        o["verbosity"][k] = v
+        # print "AFTER", self.oqu+self.out
+
         
     def addOut(self,  verbosity=1, output = '-', method_comm = None):
         # print "Adding output:\t", output, type(output), method_comm

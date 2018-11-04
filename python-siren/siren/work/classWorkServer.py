@@ -35,11 +35,6 @@ class ExpanderProcess(WorkerProcess):
     def run(self):
         self.miner.part_run(self.cust_params)
 
-class IntervalProcess(WorkerProcess):
-     def run(self):
-	pass
-        # self.miner.interval_run(self.cust_params)
-
 class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, proj={}):
         multiprocessing.Process.__init__(self)
@@ -177,7 +172,6 @@ class WorkHandler(object):
     type_workers = {"expander": {"launch": ExpanderProcess, "stop": "message"},
                     "miner": {"launch": MinerProcess, "stop": "message"},
                     "projector": {"launch": ProjectorProcess, "stop": "terminate"}}
-                    # "interval": {"launch": IntervalProcess, "stop": "message"}}
     types_reconnect = ["expander", "miner"]
         
     def __init__(self, parent_ws, portnum, authkey, max_k=MAXK):

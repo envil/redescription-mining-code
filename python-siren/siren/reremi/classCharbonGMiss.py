@@ -2,7 +2,7 @@ from classData import Data
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
 from classExtension import Extension
-from classSParts import SParts, tool_ratio
+from classSParts import SParts
 from classQuery import  *
 import numpy
 import pdb
@@ -13,7 +13,8 @@ class CharbonGMiss(CharbonGreedy):
     def handlesMiss(self):
         return True
 
-    def getCandidates(self, side, col, supports, red, colsC=None):
+    def getCandidates(self, side, col, red, colsC=None):
+        supports = red.supports()
         currentRStatus = Constraints.getStatusRed(red, side)
         method_string = 'self.getCandidates%i' % col.typeId()
         try:
@@ -38,6 +39,19 @@ class CharbonGMiss(CharbonGreedy):
             # print cand
         # print "================="            
         return cands
+
+    def getCandidatesImprov(self, side, col, red, op, supports, offsets):
+        self.setOffsets(offsets)
+        currentRStatus = Constraints.getStatusRed(red, side, [op])
+        method_string = 'self.getCandidates%i' % col.typeId()
+        try:
+            method_compute =  eval(method_string)
+        except AttributeError:
+              raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
+        cands = method_compute(side, col, supports, currentRStatus)
+        self.setOffsets()
+        return cands
+
     
     def getCandidates1(self, side, col, supports, currentRStatus=0):
         cands = []
@@ -938,12 +952,12 @@ class CharbonGMiss(CharbonGreedy):
         if is_cond:
             den = self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varden[False], lin_f)
             num = self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[False], lin_f)
-            return tool_ratio(num, den+num)
+            return self.ratio(num, den+num)
         return self.constraints.getSSetts().advRatioVar(side, op, lin_f)
     def advAcc(self, side, op, neg, lparts, lmiss, lin, is_cond=False):
         if is_cond:
             return self.getAC_cond(side, op, neg, lparts, lmiss, lin, no_const=True)
-        return self.constraints.getSSetts().advAcc(side, op, neg, lparts, lmiss, lin)
+        return self.constraints.getSSetts().advAcc(side, op, neg, lparts, lmiss, lin, offsets=self.getOffsets())
         
     def getAC_cond(self, side, op, neg, lparts, lmiss, lin, no_const=False):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
@@ -953,12 +967,12 @@ class CharbonGMiss(CharbonGreedy):
         # contriAND = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[False], clp)
         # contriOR = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[True], clp)
         # print "Contri COND=%d AND=%d OR=%d" % (contri, contriAND, contriOR)
-        if no_const or (contri >= self.constraints.getCstr("min_itm_in")):
+        if self.unconstrained(no_const) or (contri >= self.constraints.getCstr("min_itm_in")):
             # pdb.set_trace()
             fixBlue, fixRed = (0, 0)
             varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[False], clp)
             varRed = varBlue + self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[False], clp)
-            acc = tool_ratio(varBlue, varRed)
+            acc = self.offset_ratio(varBlue, varRed)
             # print "PIECES", varBlue, varRed, contri, fixBlue, fixRed
             return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp
@@ -972,15 +986,15 @@ class CharbonGMiss(CharbonGreedy):
         clp = (lin, lout, lparts, lmiss)
         
         contri = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[op], clp)        
-        if no_const or (contri >= self.constraints.getCstr("min_itm_c")):
+        if self.unconstrained(no_const) or (contri >= self.constraints.getCstr("min_itm_c")):
             varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[op], clp)
             fixBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixnum[op], clp)
-            if no_const or (varBlue+fixBlue >= self.constraints.getCstr("min_itm_in")):
+            if self.unconstrained(no_const) or (varBlue+fixBlue >= self.constraints.getCstr("min_itm_in")):
                 sout = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_out[op], clp)
-                if no_const or (sout >= self.constraints.getCstr("min_itm_out")):
+                if self.unconstrained(no_const) or (sout >= self.constraints.getCstr("min_itm_out")):
                     varRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[op], clp)
                     fixRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixden[op], clp)
-                    acc = tool_ratio(varBlue + fixBlue, varRed + fixRed)
+                    acc = self.offset_ratio(varBlue + fixBlue, varRed + fixRed)
                     # print "PIECES", sout, varBlue, varRed, contri, fixBlue, fixRed
                     return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp

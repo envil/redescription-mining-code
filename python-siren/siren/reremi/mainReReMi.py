@@ -11,6 +11,7 @@ from classContent import BatchCollection
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
 from classData import Data
+from classQuery import Query
 from classRedescription import Redescription
 from classConstraints import Constraints, ActionsRegistry
 from classPreferencesManager import PreferencesReader, getPM
@@ -476,43 +477,72 @@ def run_printout(args):
     #     clipped = nb_spc_vec[sids]
     #     print r.disp(), "\tNB_SPC", numpy.min(clipped), numpy.max(clipped), numpy.mean(clipped), numpy.median(clipped), numpy.std(clipped)
         
-    rp = Redescription.getRP()
-    qfilename = None
-    if reds is None and "queries" in filenames:
-        qfilename = filenames["queries"]        
-    if "queries_second" in filenames:
-        qfilename = filenames["queries_second"]
+    # rp = Redescription.getRP()
+    # qfilename = None
+    # if reds is None and "queries" in filenames:
+    #     qfilename = filenames["queries"]        
+    # if "queries_second" in filenames:
+    #     qfilename = filenames["queries_second"]
 
-    if qfilename is not None:
-        reds = []
-        try:
-            with open(qfilename) as fd:
-                rp.parseRedList(fd, data, reds)
-        except IOError:
-            reds = []
+    # if qfilename is not None:
+    #     reds = []
+    #     try:
+    #         with open(qfilename) as fd:
+    #             rp.parseRedList(fd, data, reds)
+    #     except IOError:
+    #         reds = []
     
-    #### OUT
-    parts = filenames["queries"].split(".")
-    if len(parts) > 1:
-        if "." in suff:
-            filename = ".".join(parts[:-2] + [parts[-2]+ suff])
-        else:
-            filename = ".".join(parts[:-2] + [parts[-2]+ suff, parts[-1]])
-    else:
-        filename = filenames["queries"] + suff
-    print "FILENAME", filename
-    if type(reds) is list and len(reds) > 0 and type(reds[0]) is dict and "items" in reds[0]:
-        red_contents = []
-        for r in reds:
-            red_contents.extend(r["items"])
-    else:
-        red_contents = reds
+    # #### OUT
+    # parts = filenames["queries"].split(".")
+    # if len(parts) > 1:
+    #     if "." in suff:
+    #         filename = ".".join(parts[:-2] + [parts[-2]+ suff])
+    #     else:
+    #         filename = ".".join(parts[:-2] + [parts[-2]+ suff, parts[-1]])
+    # else:
+    #     filename = filenames["queries"] + suff
+    # print "FILENAME", filename
+    # if type(reds) is list and len(reds) > 0 and type(reds[0]) is dict and "items" in reds[0]:
+    #     red_contents = []
+    #     for r in reds:
+    #         red_contents.extend(r["items"])
+    # else:
+    #     red_contents = reds
 
+    rp = Redescription.getRP()
+    reds = []
+    qfilename = loaded["filenames"].get("package", "~/short").strip(".siren")+"/redescriptions.csv"
+    try:
+        with open(qfilename) as fd:
+            rp.parseRedList(fd, data, reds)
+    except IOError:
+        reds = []
+
+    logger.capVerbosity(0)
+
+    if len(reds) > 0:
+        miner = instMiner(data, params, logger)
+        for red in reds:
+            print " ---------------- \n --- IN\n",  red.disp()
+            # for side in [1]: #
+            #     inds = red.query(side).indsLit()
+            #     xps = red.query(side).minusAnon()
+            #     print "Q minusAnon", xps[0]
+            #     xps = red.query(side).minusAnonButOne()
+            #     for x in xps:
+            #         print "Q b", x[0], x[1], x[2]
+            #     pdb.set_trace()
+            rc = miner.part_run({"red": red, "what": "improve"})
+            sids = rc.getIidsList("S")
+            print " --- OUT" 
+            for i in rc.getItems():
+                print "->"*(i.getUid() in sids), i.getUid(), i.disp()
+    
     # saveAsPackage("/home/egalbrun/Desktop/Z.siren", data, preferences=params, pm=loaded["pm"])        
     # data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})
-    params = getPrintParams(filename, data)
-    params["modifiers"] = rp.getModifiersForData(data)
-    writeRedescriptions(red_contents, filename, **params)
+    # params = getPrintParams(filename, data)
+    # params["modifiers"] = rp.getModifiersForData(data)
+    # writeRedescriptions(red_contents, filename, **params)
                 
 
 def run_rnd(args):

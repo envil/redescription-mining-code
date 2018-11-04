@@ -872,9 +872,13 @@ class NumColM(ColM):
     
     def getInitTerms(self, minIn=0, minOut=0):
         terms = []
+        low_idx, hi_idx = (len(self.sVals), 0)
+        if self.lenNonMode() < minIn:
+            low_idx, hi_idx = (-1, -1)
         # if self.lenMode() >= minIn and self.lenNonMode() >= minOut:
-        if self.lenNonMode() >= minIn and self.lenMode() >= minOut: 
-            idx = self.sVals.index((0,-1))
+        elif self.lenMode() > 0: # and self.lenNonMode() >= minIn: #minOut:
+            ### MAKE TERMS OUT OF LOWER than mode and GREATER than mode
+            idx = self.sVals.index((0,-1)) ## ID of the mode
             low_idx, hi_idx = (idx-1, idx+1)
             while low_idx > 0 and self.sVals[low_idx][0] == self.sVals[idx][0]:
                 low_idx -= 1
@@ -885,7 +889,23 @@ class NumColM(ColM):
             if hi_idx < len(self.sVals) and (len(self.sVals)-hi_idx) >= minIn \
                    and ( self.nbRows() - (len(self.sVals)-hi_idx) ) >= minOut :
                 terms.append((self.getAssocTermClass()(self.getId(), self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
-        else:            
+                
+        if self.lenMode() == 0 or low_idx == 0: ### every non mode is above mode
+            split_idx = (hi_idx+len(self.sVals))/2
+            while split_idx < len(self.sVals) and self.sVals[split_idx][0] == self.sVals[split_idx-1][0]:
+                split_idx += 1
+            if split_idx < len(self.sVals) and (len(self.sVals)-split_idx) >= minIn \
+                   and ( self.nbRows() - (len(self.sVals)-split_idx) ) >= minOut :
+                terms.append((self.getAssocTermClass()(self.getId(), self.sVals[split_idx][0], float("Inf")), len(self.sVals)-split_idx))
+        if self.lenMode() == 0 or hi_idx == len(self.sVals): ### every non mode is below mode
+            split_idx = low_idx/2
+            while split_idx > 0 and self.sVals[split_idx][0] == self.sVals[split_idx+1][0]:
+                split_idx -= 1
+            if split_idx >= 0 and split_idx+1 >= minIn and ( self.nbRows() - (split_idx+1) ) >= minOut and \
+              ( len(terms) == 0 or (len(self.sVals)-terms[-1][1]) != split_idx+1):
+                terms.append((self.getAssocTermClass()(self.getId(), float("-Inf"), self.sVals[split_idx][0]), split_idx+1))
+            
+        if not self.hasMoreInMode():            
             max_agg = 2*minIn #max(2*min(minIn, minOut), max(minIn, minOut)/2)
             tt = self.collapseBuckets(max_agg)
             for i in range(len(tt[0])):
@@ -1167,7 +1187,9 @@ class NumColM(ColM):
             return suppX & self.mode[1]
         else:
             return set()    
-        
+
+    def hasMoreInMode(self):
+        return self.mode[0] == 1
     def lenNonMode(self):
         if self.mode[0] == -1:
             return self.nbRows() - len(self.mode[1]) - len(self.miss())

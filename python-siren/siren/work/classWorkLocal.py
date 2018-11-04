@@ -29,10 +29,6 @@ import pdb
 #class ExpanderProcess(WorkerProcess):
 #     def run(self):
 #         self.miner.part_run(self.cust_params)
-#class IntervalProcess(WorkerProcess):
-#     def run(self):
-#        pass
-#        # self.miner.interval_run(self.cust_params)
 # class ProjectorProcess:
 #     def __init__(self, pid, boss, queue_in, proj=None):
 #         self.id = pid
@@ -87,11 +83,6 @@ class ExpanderProcess(WorkerProcess):
     def run(self):
         self.miner.part_run(self.cust_params)
 
-class IntervalProcess(WorkerProcess):
-     def run(self):
-	pass
-        # self.miner.interval_run(self.cust_params)
-
 class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, boss, queue_in, proj=None):
         multiprocessing.Process.__init__(self)
@@ -126,7 +117,7 @@ class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
     #cqueue = multiprocessing.queues.SimpleQueue
-    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess,"interval": IntervalProcess}
+    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
 
