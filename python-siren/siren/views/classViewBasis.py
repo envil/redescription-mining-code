@@ -288,14 +288,18 @@ class ViewBasis(object):
 
     def OnExpandAdv(self, event):
         if self.getPltDtH().hasQueries():
-            params = {"red": self.getPltDtH().getCopyRed()}
+            params = {"red": self.getPltDtH().getRed(), "task": "expand"}
             if event.GetId() in self.menu_map_pro:
                 params = self.getLayH().getProcessesParams(self.menu_map_pro[event.GetId()], params)
             self.getParent().expand(params)
 
     def OnExpandSimp(self, event):
         if self.getPltDtH().hasQueries():
-            params = {"red": self.getPltDtH().getCopyRed()}
+            params = {"red": self.getPltDtH().getRed()}
+            if params["red"].length(0) + params["red"].length(1) > 0:
+                params["task"] = "expand"
+            else:
+                params["task"] = "mine"
             self.getParent().expand(params)
     def getWeightCover(self, params):
         params["area"] = self.getDrawer().getHighlightedIds()

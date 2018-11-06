@@ -12,8 +12,14 @@ class WorkPlant(object):
 
     def setUpCall(self, upcall):
         self.upcall = upcall
-    def setWP(self,wp):
+    def setWP(self, wp):
+        wid_gen = None
+        if self.wp is not None:
+            wid_gen = self.wp.getWidGen()
+
         self.wp = wp
+        if wid_gen is not None and wp is not None:
+            self.wp.setWidGen(wid_gen)
         for upcall in self.upcall:
             upcall()
     def getWP(self):

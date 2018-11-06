@@ -117,17 +117,19 @@ class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
     #cqueue = multiprocessing.queues.SimpleQueue
-    type_workers = {"expander": ExpanderProcess, "miner": MinerProcess, "projector": ProjectorProcess}
+    type_workers = {"expand": ExpanderProcess, "improve": ExpanderProcess, "mine": MinerProcess, "project": ProjectorProcess}
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
-
+        
+    @classmethod
+    def getWorkClassForTask(tcl, task):        
+        return tcl.type_workers.get(task)        
     @classmethod
     def sendMessage(tcl, output, message, type_message, source):
         if type_message in tcl.type_messages and output is not None:
             output.put({"message": message, "type_message": type_message, "source": source})
 
     def __init__(self):
-        self.next_workerid = 0
         self.work_server = ("local", None, None, None)
         self.workers = {}
         self.off = {}
@@ -163,16 +165,17 @@ class WorkLocal(WorkInactive):
             except Queue.Empty:
                 break
 
-    def addWorker(self, wtype, boss, more=None, details={}):
-        if wtype in self.type_workers:
-            self.next_workerid += 1
-            self.comm_queues[self.next_workerid] = self.cqueue()
-            self.workers[self.next_workerid] = {"worker": self.type_workers[wtype](self.next_workerid, boss, self.comm_queues[self.next_workerid], more),
-                                                "wtyp": wtype,
-                                                "work_progress":0,
-                                                "work_estimate":0}          
-        self.workers[self.next_workerid].update(details)
-            
+    def addWorker(self, boss, params=None, details={}):
+        details, job = self.prepareWorkerDetails(boss, params, details)
+        w_class = self.getWorkClassForTask(job["task"])
+        if w_class is not None:
+            wid = self.generateNextWid()
+            self.comm_queues[wid] = self.cqueue()
+            job["worker"] = w_class(wid, boss, self.comm_queues[wid], params)            
+            self.workers[wid] = job
+            self.workers[wid].update(details)
+        else:
+            raise Warning("Unkown work task %s!" % job["task"])            
 
     def closeDown(self, parent, collectLater = False):
         for wid in self.workers.keys():
@@ -182,7 +185,7 @@ class WorkLocal(WorkInactive):
 
     def layOff(self, wid):
         if wid is not None and wid in self.workers:
-            if self.workers[wid]["wtyp"] == "projector" and wid in self.comm_queues:
+            if self.workers[wid]["task"] == "project" and wid in self.comm_queues:
                 #self.workers[wid]["worker"].terminate()
                 self.workers[wid]["worker"].stop()
                 #os.kill(self.workers[wid]["worker"].get_ppid(), signal.SIGTERM)

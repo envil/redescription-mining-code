@@ -453,7 +453,7 @@ class ActionsRegistry:
 
     ###### PARSING
     basic_actions = {"apply": {"parity": 1, "args": {"function": "identity", "reverse": False}},
-                     "applyBulk": {"parity": 1, "args": {"function": "identity", "data": None}}, 
+                     "applyBulk": {"parity": 1, "args": {"function": "identity"}}, 
                      "sort": {"parity": 1, "args": {"reverse": False}},
                      "cut": {"parity": 2, "args": {"max": 0, "direction": 0, "reverse": False}},
                      "filterSingle": {"parity": 1, "args": {"reverse": False}},

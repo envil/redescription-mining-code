@@ -42,7 +42,6 @@ def findFile(fname, path=['']):
 
     return None
 
-"En&able/Disable\tCtrl+D", "Enable/Disable current item."
 
 class DataWrapper(object):
     """Contains all the data
@@ -383,6 +382,13 @@ class DataWrapper(object):
         for r in reds:
             if recompute and self.getData() is not None:
                 r.recompute(self.getData())
+            if not self.reds.hasIid(r.getUid()):
+                if src[0] == "run":
+                    r.appendTrack((src[1], "W"), 0)
+                else:
+                    r.appendTrack((src[0][0],), 0)
+            else:
+                r.setDisabled()
             iids.append(self.reds.appendItemSrc(r, trg_src=src))
         trg_lid = self.reds.getUidForSrc(src)
         if set_changed is not None:
@@ -816,7 +822,7 @@ class DataWrapper(object):
                     self.addReloadRecompute()
                     self.addReloadData("v")
     acts_list.append({"key": "FlipEnabled", "group": "able", "method": actFlipEnabled,                          
-                      "label": "En&able/Disable\tCtrl+D", "legend": "Enable/Disable current item."})
+                      "label": "E&nable/Disable\tCtrl+G", "legend": "Enable/Disable current item."})
     def actEnableAll(self, info):
         items = []
         rld = False
@@ -834,7 +840,7 @@ class DataWrapper(object):
                 self.addReloadRecompute()
                 self.addReloadData("v")
     acts_list.append({"key": "EnabledAll", "group": "able", "method": actEnableAll,
-                      "label": "&Enable All", "legend": "Enable all items."})
+                      "label": "Ena&ble all\tCtrl+B", "legend": "Enable all items."})
     def actDisableAll(self, info):
         items = []
         rld = False
@@ -853,7 +859,7 @@ class DataWrapper(object):
                 self.addReloadData("r")
                 self.addReloadData("z")
     acts_list.append({"key": "DisabledAll", "group": "able", "method": actDisableAll,
-                      "label": "&Disable All", "legend": "Disable all items."})
+                      "label": "Disable all\tShift+Ctrl+B", "legend": "Disable all items."})
     
     ## COPY, CUT AND PASTE
     def actDeleteDisAll(self, info):
@@ -877,27 +883,27 @@ class DataWrapper(object):
                 non_deleted_iids = []
             self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), non_deleted_iids)
     acts_list.append({"key": "DeleteDisAll", "group": "redCCP", "method": actDeleteDisAll,
-                      "label": "Delete Disabled", "legend": "Delete all disabled items."})
+                      "label": "Delete disabled\tShift+Ctrl+D", "legend": "Delete all disabled items."})
     def actDelete(self, info):
         if info["tab_type"] == "r":
             for iid in info.get("iids", []):
                 self.reds.deleteItem(iid) 
             self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), [])
     acts_list.append({"key": "Delete", "group": "redCCP", "method": actDelete,
-                      "label": "De&lete", "legend": "Delete current redescription."})
+                      "label": "&Delete\tCtrl+D", "legend": "Delete current redescription."})
     def actCut(self, info):
         if info["tab_type"] == "r":
             if info["active_lid"] is not None and info["nb"] > 0:
                 self.reds.cutIids(src_lid=info["active_lid"], iids=info["iids"]) 
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), [])
     acts_list.append({"key": "Cut", "group": "redCCP", "method": actCut,
-                      "label": "Cu&t", "legend": "Cut current redescription."})
+                      "label": "Cu&t\tCtrl+X", "legend": "Cut current redescription."})
     def actCopy(self, info):
         if info["tab_type"] == "r":
             if info["active_lid"] is not None and info["nb"] > 0:
                 self.reds.copyToBufferIids(src_lid=info["active_lid"], iids=info["iids"]) 
     acts_list.append({"key": "Copy", "group": "redCCP", "method": actCopy,
-                      "label": "&Copy", "legend": "Copy current redescription."})
+                      "label": "&Copy\tCtrl+C", "legend": "Copy current redescription."})
     def actPaste(self, info):
         if info["tab_type"] == "r":
             if info["active_lid"] is not None:
@@ -910,19 +916,29 @@ class DataWrapper(object):
                 iids = [self.reds.getIidForLidPos(info["active_lid"], p) for p in pos]
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), iids)
     acts_list.append({"key": "Paste", "group": "redCCP", "method": actPaste,
-                      "label": "&Paste", "legend": "Paste current redescription."})
+                      "label": "&Paste\tCtrl+V", "legend": "Paste current redescription."})
 
     ## ACT ON SINGLE RED
-    def actNormalize(self, info):
-        if info["tab_type"] == "r" and len(info.get("iids", [])) == 1:
-            iid = info["iids"][0]
-            item  = self.reds.getItem(iid)
-            if item is not None:
-               itemn, changed = item.getNormalized(self.getData())
-               if changed:
-                   self.substituteRed(iid, itemn, backup=True) ### rneeds done inside
-    acts_list.append({"key": "Normalize", "group": "redMod", "method": actNormalize,
-                      "label": "&Normalize", "legend": "Normalize current redescription."})
+    # def actNormalize(self, info):
+    #     if info["tab_type"] == "r" and len(info.get("iids", [])) > 0:
+    #         for iid in info["iids"]:
+    #             item  = self.reds.getItem(iid)
+    #             if item is not None:
+    #                 itemn, changed = item.getNormalized(self.getData())
+    #                 if changed:
+    #                     self.substituteRed(iid, itemn, backup=True) ### rneeds done inside
+    # acts_list.append({"key": "Normalize", "group": "redMod", "method": actNormalize,
+    #                   "label": "Normalize", "legend": "Normalize current redescription."})
+    # def actPrune(self, info):
+    #     if info["tab_type"] == "r" and len(info.get("iids", [])) > 0:
+    #         for iid in info["iids"]:
+    #             item  = self.reds.getItem(iid)
+    #             if item is not None:
+    #                 itemn, changed = item.prune(self.getData())
+    #                 if changed:
+    #                     self.substituteRed(iid, itemn, backup=True) ### rneeds done inside
+    # acts_list.append({"key": "Prune", "group": "redMod", "method": actPrune,
+    #                   "label": "Prune", "legend": "Prune current redescription."})
 
     ## FILTER REDS
     def actFilter(self, info, action_key="redundant_area", action_substitute=None):
@@ -944,22 +960,35 @@ class DataWrapper(object):
             if selected_iids is not None:
                 self.reds.setIids(info["active_lid"], before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), selected_iids)
-
+    def actApply(self, info, action_key="prune"):
+        if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
+            actions = self.constraints.getActionsList(action_key)
+            if len(actions) == 1:
+                action = actions[0]
+                action["data"] = self.getData()
+                for iid in info["iids"]:
+                    itemn, changed = self.reds.applyAct(iid, action)
+                    if changed:
+                        self.substituteRed(iid, itemn, backup=True) ### rneeds done inside
+                    else:
+                        self.reds.getItem(iid).setDisabled()                
+            self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), info["iids"])
+            
     ## FILTER EXTRAS
     def actExtraAddDelListToPack(self, info):
         if info["tab_type"] == "r" and info.get("lid") is not None:                
             self.reds.addDelListToPack(info["lid"])
     acts_list.append({"key": "AddDelListToPack", "group": "extra", "method": actExtraAddDelListToPack,
                       "label": "Add to package", 
-                      "legend": "Add/remove package list."})
+                      "legend": "Add/Remove package list."})
     def actExtraNewList(self, info):
         if info["tab_type"] == "r":
             nlid = self.reds.newList()
             self.addReloadSwitchList(nlid, "r")
             self.addReloadListContent(nlid, "r")
     acts_list.append({"key": "NewList", "group": "extra", "method": actExtraNewList,
-                      "label": "New List\tCtrl+N",
-                      "legend": "New List."})
+                      "label": "New &list\tCtrl+N",
+                      "legend": "New list."})
 
     ################ SPECIFYING ACTION FUNCTIONS ENDS
     #####################################################
@@ -984,6 +1013,18 @@ class DataWrapper(object):
             self.acts_params_dict.pop(act)
         AR = self.getActionsRegistry()
 
+        acts_mod = []        
+        #######################
+        for apply_act in AR.getActionsKeysSimple(patt="apply"):
+            name = re.sub("_", " ", apply_act)
+            key = "Apply:%s" % apply_act
+            acts_mod.append({"key": key, 
+                             "label": "%s" % name.capitalize(), 
+                             "legend": "%s the redescriptions." % name.capitalize() })            
+            self.acts_meths_dict[key] = self.actApply
+            self.acts_params_dict[key] = {"action_key": apply_act}
+        self.acts_groups["redsMod"] = acts_mod
+        
         acts_filter = []        
         for filter_single in AR.getActionsKeysSimple(patt="filterSingle"):
             name = re.sub("_", " ", filter_single)
@@ -1018,18 +1059,7 @@ class DataWrapper(object):
                                 "legend": "Sort and filter current redescription list according to criteria '%s'." % name })            
             self.acts_meths_dict[key] = self.actProcess
             self.acts_params_dict[key] = {"action_key": process}
-
-        #######################
-        for apply_bulk in AR.getActionsKeysSimple(patt="applyBulk"):
-            name = re.sub("_", " ", apply_bulk)
-            key = "ApplyBulk:%s" % apply_bulk
-            acts_filter.append({"key": key, 
-                                "label": "%s" % name.capitalize(), 
-                                "legend": "%s the redescriptions." % name.capitalize() })            
-            self.acts_meths_dict[key] = self.actProcess
-            self.acts_params_dict[key] = {"action_key": apply_bulk}
-        #######################
-            
+        #######################            
         self.acts_groups["redsFilter"] = acts_filter
 
     def getGroupActs(self, group=None):

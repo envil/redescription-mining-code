@@ -1,6 +1,28 @@
 import pdb
 class WorkInactive:
 
+    type_workers = {}
+
+    next_wid = 0
+    step_wid = 1
+    @classmethod
+    def generateNextWid(tcl):        
+        tcl.next_wid += tcl.step_wid
+        return tcl.next_wid
+
+    @classmethod
+    def setWidGen(tcl, nv=0, step=1):
+        if type(nv) is tuple:
+            if len(nv) >= 2:
+                tcl.next_wid = nv[0]
+                tcl.step_wid = nv[1]            
+        else:
+            tcl.next_wid = nv
+            tcl.step_wid = step
+    @classmethod
+    def getWidGen(tcl):
+        return (tcl.next_wid, tcl.step_wid)
+    
     def __init__(self):
         self.work_server = (None, None, None, None)
         self.workers = {}
@@ -32,8 +54,28 @@ class WorkInactive:
         pass
     def closeDown(self, parent, collectLater = False):
         pass
-    def addWorker(self, wtype, boss, more=None, details={}):
+    def addWorker(self, boss, params=None, details={}):
         pass
+
+    def getHid(self):
+        return -1
+    
+    def getTask(self, params=None, details={}):
+        if "vid" in details:
+            return "project"
+        else:
+            return params.get("task", "mine")
+        
+    def prepareWorkerDetails(self, boss, params=None, details={}, wid=None):
+        task = self.getTask(params, details)
+        details.update({"task": task, "work_progress":0, "work_estimate":0})
+        if task != "project":
+            details.update({"results_track":0, "batch_type": "partial", "results_tab": "exp"})
+        if task == "mine":
+            details["batch_type"] = "final"
+        job = {"hid": self.getHid(), "wid": wid, "task": task, "more": params, "data": boss.getData(), "preferences": boss.getPreferences()}
+        return details, job
+    
 #### DUMMY METHODS END
 
 #### SHARED METHODS START
@@ -68,7 +110,7 @@ class WorkInactive:
     def getWorkersDetails(self):
         details = []
         for wid, worker in sorted(self.workers.items()):
-            details.append({"wid": wid, "wtyp": worker["wtyp"]})
+            details.append({"wid": wid, "task": worker["task"]})
         return details
 
     def handlePieceResult(self, note, updates, parent):
@@ -113,24 +155,23 @@ class WorkInactive:
             return
         
         worker_info = self.workers[source]
-        if worker_info["wtyp"] in ["expander", "miner"] and worker_info["batch_type"] in message:
+        if worker_info["task"] in ["project"]:
+            if parent is None:
+                print "Ready proj %s %s %s" % ((source, worker_info["task"]), worker_info["vid"], message)
+            else:
+                parent.readyProj((source, worker_info["task"]), worker_info["vid"], message)
+
+        elif worker_info.get("batch_type") is not None and worker_info.get("batch_type") in message:
             tap = message[worker_info["batch_type"]]
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:
-                tmp = []
-                for red in tap[worker_info["results_track"]:nb_tap]:
-                    redc = red.copy()
-                    #### TRACKING HERE
-                    redc.appendTrack((source, "W"), 0)
-                    tmp.append(redc)
+                latest_reds = [self.mapRid(red, source) for red in tap[worker_info["results_track"]:nb_tap]]
                 worker_info["results_track"] = nb_tap
                 if parent is None:
-                    print "Ready reds [%s] %s %s" % ((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
+                    print "Ready reds [%s] %s %s" % ((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
                 else:
-                    parent.readyReds((source, worker_info["wtyp"]), tmp, worker_info["results_tab"])
-        elif worker_info["wtyp"] in ["projector"]:
-            if parent is None:
-                print "Ready proj %s %s %s" % ((source, worker_info["wtyp"]), worker_info["vid"], message)
-            else:
-                parent.readyProj((source, worker_info["wtyp"]), worker_info["vid"], message)
+                    parent.readyReds((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
+
+    def mapRid(self, red, source):
+        return red
 #### SHARED METHODS END

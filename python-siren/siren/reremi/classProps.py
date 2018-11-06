@@ -43,10 +43,10 @@ class WithEVals(Item):
             return tcl.RP
         return rp
     
-    def __init__(self):
-        Item.__init__(self)
+    def __init__(self, iid=None):
         self.extras = {}
-        self.cache_evals = {}           
+        self.cache_evals = {}
+        Item.__init__(self, iid)
         self.resetRestrictedSuppSets()
     def nbRows(self):
         return 0

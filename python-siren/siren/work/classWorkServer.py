@@ -2,6 +2,7 @@ import multiprocessing, time, sys, os
 import getopt
 from multiprocessing.managers import SyncManager
 from ..reremi.classMiner import instMiner
+from ..reremi.classRedescription import Redescription
 from ..reremi.toolLog import Log
 
 import pdb
@@ -54,12 +55,15 @@ class ProjectorProcess(multiprocessing.Process):
         self.terminate()
 
     def run(self):
+        print "PROJECTION RUNNING"
         try:
             self.proj.do()
         except Exception as e:
+            print "PROJECTION Error"
             self.proj.clearCoords()
             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
         finally:
+            print "PROJECTION DONE"
             self.logger.printL(1, self.proj, "result", self.getId())
             self.logger.printL(1, None, "progress", self.getId())
         
@@ -84,6 +88,7 @@ class WorkServer(object):
 
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
         print "PID", os.getpid()
+        Redescription.setUidGen(nv=-1, step=-1)
         self.manager = make_server_manager(portnum, authkey)
         self.shared_job_q = self.manager.get_job_q() #queue
         self.shared_ids_d = self.manager.get_ids_d() #queue
@@ -169,11 +174,25 @@ def make_hs_manager(port, authkey):
 
 class WorkHandler(object):
 
-    type_workers = {"expander": {"launch": ExpanderProcess, "stop": "message"},
-                    "miner": {"launch": MinerProcess, "stop": "message"},
-                    "projector": {"launch": ProjectorProcess, "stop": "terminate"}}
-    types_reconnect = ["expander", "miner"]
-        
+    type_workers = {"expand": {"launch": ExpanderProcess, "stop": "message"},
+                    "mine": {"launch": MinerProcess, "stop": "message"},
+                    "project": {"launch": ProjectorProcess, "stop": "terminate"}}
+    types_reconnect = ["expand", "mine"]
+
+    @classmethod
+    def getWorkClassForTask(tcl, task):
+        if task in tcl.type_workers:
+            return tcl.type_workers[task]["launch"]
+    @classmethod
+    def getDetForTask(tcl, task):
+        if task in tcl.type_workers:
+            return tcl.type_workers.get(task)
+        return {}
+    @classmethod
+    def knownTaskWork(tcl, task):        
+        return task in tcl.type_workers
+
+    
     def __init__(self, parent_ws, portnum, authkey, max_k=MAXK):
         self.manager = make_hs_manager(portnum, authkey)
         self.shared_result_q = self.manager.get_result_q() #queue
@@ -197,7 +216,7 @@ class WorkHandler(object):
         print "HANDLING JOB", job.get("task")
         
         ### if acceptable task: launch work if there are free processes, else add job to pending 
-        if job.get("task") in self.type_workers and job.get("wid") not in self.pending and job.get("wid") not in self.working:
+        if self.knownTaskWork(job.get("task")) and job.get("wid") not in self.pending and job.get("wid") not in self.working:
             if len(self.working) < self.max_K:
                 tmp = self.launchJob(job)
                 if tmp is not None:
@@ -235,13 +254,13 @@ class WorkHandler(object):
             self.pending.pop(oldest_wid)
 
     def launchJob(self, job):
-        if job.get("task") in self.type_workers:
+        if self.knownTaskWork(job.get("task")):
             print "Launching job %d" % job["wid"]
-            if self.type_workers[job.get("task")]["stop"] == "message":
+            if self.getDetForTask(job.get("task")).get("stop") == "message":
                 queue = multiprocessing.Queue()
             else:
                 queue = None
-            p = self.type_workers[job.get("task")]["launch"](job.get("wid"), job.get("data"), job.get("preferences"), queue, self.getResultsQueue(), job.get("more"))
+            p = self.getWorkClassForTask(job.get("task"))(job.get("wid"), job.get("data"), job.get("preferences"), queue, self.getResultsQueue(), job.get("more"))
             return {"process":p, "queue": queue, "task": job.get("task")}
 
     def stopJob(self, wid):

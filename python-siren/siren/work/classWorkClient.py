@@ -37,18 +37,19 @@ def make_hc_manager(ip, port, authkey):
 
 class WorkClient(WorkInactive):
 
+    resumable_tasks = ["mine", "expand"]
     type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
-
+        
     def __init__(self, ip=IP, portnum=PORTNUM, authkey=AUTHKEY,numclient=NUMCLIENT):
         self.hid = None
+        self.map_rids = {}
         if ip == 'localhost':
             ip = IP
         self.work_server = (ip, portnum, authkey, numclient)
         self.shared_job_q = None #queue
         self.ids_d = None #queue
         self.shared_result_q = None #queue
-        self.next_workerid = 0
         self.workers = {}
         self.off = {}
         self.retired = {}
@@ -86,7 +87,7 @@ class WorkClient(WorkInactive):
         status = "KO"
         info = ""
         client_ids = []
-        if self.hid is None:
+        if self.getHid() is None:
             try:
                 manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
             except (socket.error, IOError, EOFError):
@@ -136,14 +137,14 @@ class WorkClient(WorkInactive):
         return "Server %s:%d" % (self.work_server[0], self.work_server[1])
 
     def resetHS(self, ip=None, numport=None, authkey=None, numclient=None):
-        if self.hid is not None and self.nbWorkers() == 0:
+        if self.getHid() is not None and self.nbWorkers() == 0:
             ## check results before calling this
-            self.shared_job_q.put({"hid": self.hid, "task": "layoff"})
+            self.shared_job_q.put({"hid": self.getHid(), "task": "layoff"})
             self.shared_job_q = None
             self.shared_result_q= None
             self.hid = None
         
-        if self.hid is None:
+        if self.getHid() is None:
             if ip is not None:
                 self.work_server = (ip, numport, authkey, numclient)
             manager = make_client_manager(self.work_server[0], self.work_server[1], self.work_server[2])
@@ -162,13 +163,13 @@ class WorkClient(WorkInactive):
                     counter -= 1
                 if self.ids_d.has_key(uid):                    
                     self.hid = self.ids_d.pop(uid)
-            hc_manager = make_hc_manager(self.work_server[0], self.hid, self.work_server[2])
+            hc_manager = make_hc_manager(self.work_server[0], self.getHid(), self.work_server[2])
             self.shared_result_q = hc_manager.get_result_q()
-            return self.hid, wkr_reconnect
+            return self.getHid(), wkr_reconnect
 
     ###give the order to reconnect and get the type's workers back 
     def reconnect(self, uid, manager):
-        job = {"hid": self.hid, "wid": 0, "task": "reconnect", "cid":uid}
+        job = {"hid": self.getHid(), "wid": 0, "task": "reconnect", "cid":uid}
         wkr_reconnect = []
         self.getJobsQueue().put(job)
         try:
@@ -182,11 +183,8 @@ class WorkClient(WorkInactive):
         if self.work_server[3] != NUMCLIENT: ### if there is a client id to reconnect
             hid, wkr_reconnect = self.resetHS(self.work_server[0], self.work_server[1], self.work_server[2], self.work_server[3])
             for (wid, t, stat) in wkr_reconnect:
-                if t == "miner":
-                    self.addWorker(t, boss, {}, {"results_track":0, "batch_type": "final", "results_tab": "exp"}, wid=wid)
-                elif t == "expander":
-                    self.addWorker(t, boss, {}, {"results_track":0, "batch_type": "partial", "results_tab": "exp"}, wid=wid)
-                # elif t == "projector" or t == "projector":                
+                if t in self.resumable_tasks:
+                    self.addWorker(boss, {"task": t}, wid=wid)
             
     def getOutQueue(self):
         return None
@@ -194,17 +192,17 @@ class WorkClient(WorkInactive):
         return self.shared_result_q
     def getJobsQueue(self):
         return self.shared_job_q
-
-    def addWorker(self, wtype, boss, more=None, details={}, wid=None):
-        if self.hid is None:
+    def getHid(self):
+        return self.hid
+    
+    def addWorker(self, boss, params=None, details={}, wid=None):
+        if self.getHid() is None:
             self.resetHS()
-        if self.hid is not None:
+        if self.getHid() is not None:
             if wid is None:
-                self.next_workerid += 1
-                wid = self.next_workerid
-            self.workers[wid] = {"wtyp": wtype, "work_progress":0, "work_estimate":0}
-            self.workers[wid].update(details)
-            job = {"hid": self.hid, "wid": wid, "task": wtype, "more": more, "data": boss.getData(), "preferences": boss.getPreferences()}
+                wid = self.generateNextWid()
+            wdetails, job = self.prepareWorkerDetails(boss, params, details, wid)
+            self.workers[wid] = details
             try:
                 self.getJobsQueue().put(job)
             except (socket.error, IOError, EOFError):
@@ -236,7 +234,7 @@ class WorkClient(WorkInactive):
         if self.getJobsQueue() is None: # if there isn't any job to be done
             return
         if wid is not None and wid in self.workers: # if the worker id is a number and is in the list of workers
-            job = {"hid": self.hid, "wid": wid, "task": "layoff"} # create the job
+            job = {"hid": self.getHid(), "wid": wid, "task": "layoff"} # create the job
             self.getJobsQueue().put(job) # add the job
             # self.off[wid] = self.workers.pop(wid)
             return wid
@@ -244,7 +242,7 @@ class WorkClient(WorkInactive):
 
 	##log out of the server
     def shutdown(self):
-        job={"hid":self.hid, "wid": "all", "task":"shutdownClient"}
+        job={"hid":self.getHid(), "wid": "all", "task":"shutdownClient"}
         self.getJobsQueue().put(job)
         self.active=False
         
@@ -252,7 +250,7 @@ class WorkClient(WorkInactive):
         if wid in self.off:
             self.retired[wid] = self.off.pop(wid)
         elif wid in self.workers and self.getJobsQueue() is not None:
-            job = {"hid": self.hid, "wid": wid, "task": "retire"}
+            job = {"hid": self.getHid(), "wid": wid, "task": "retire"}
             self.getJobsQueue().put(job)            
             self.retired[wid] = self.workers.pop(wid)
         return None
@@ -290,7 +288,7 @@ class WorkClient(WorkInactive):
     def finishingWki(self, wki, updates=None, parent=None):
         if wki in self.workers:
             if updates is not None:
-                if self.workers[wki]["wtyp"] in ["projector"]:
+                if self.workers[wki]["task"] in ["project"]:
                     parent.readyProj(self.workers[wki]["vid"], None)
             self.retired[wki] = self.workers.pop(wki)
 
@@ -306,3 +304,15 @@ class WorkClient(WorkInactive):
             self.updateError("WP", "Work server died!", updates)
             updates["menu"] = True
             updates["progress"] = True
+
+    def mapRid(self, red, source):
+        if red.getUid() < 0:
+            k = (red.getUid(), source)
+            if k in self.map_rids:
+                redc = red.copy(self.map_rids[k])
+            else:
+                redc = red.copy()
+                self.map_rids[k] = redc.getUid()
+        else:
+            redc = red 
+        return redc

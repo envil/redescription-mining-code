@@ -72,7 +72,7 @@ class ViewsManager:
 
     def deleteView(self, vkey, freeing=True):
         if vkey in self.view_map:
-            self.parent.plant.getWP().layOff(self.parent.plant.getWP().findWid([("wtyp", "project"), ("vid", vkey)]))
+            self.parent.plant.getWP().layOff(self.parent.plant.getWP().findWid([("task", "project"), ("vid", vkey)]))
             pos = self.view_map[vkey].getGPos()
             intab = self.view_map[vkey].isIntab()
             self.view_map[vkey].destroy()

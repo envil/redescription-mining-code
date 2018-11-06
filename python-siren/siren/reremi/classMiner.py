@@ -210,6 +210,8 @@ class ExpMiner(object):
 
                     if len(pids) > 0:
                         sids = rcollect.selected(self.constraints.getActionsList("partial"), ids=pids)
+                        if len(sids) > 0:
+                            rcollect.addItem(red.getUid(), "S")
                         for iid in sids:
                             rcollect.addItem(iid, "S")
                             
@@ -247,16 +249,21 @@ class ExpMiner(object):
 
         kid_ids = []
         desc_ids = []
-        if self.logger.verbosity >= 4:
-            self.logger.printL(4, "Improving literals got %d redescriptions" % len(bests), "log", self.ppid)
-        self.logger.printL(1, {"partial": [best["red"] for best in bests]}, 'result', self.ppid)
+        if len(bests) > 0:
+            if self.logger.verbosity >= 4:
+                self.logger.printL(4, "Improving literals got %d redescriptions" % len(bests), "log", self.ppid)
+            self.logger.printL(1, {"partial": [best["red"] for best in bests]}, 'result', self.ppid)
+        else:
+            if self.logger.verbosity >= 4:
+                self.logger.printL(4, "Improving literals got no redescription", "log", self.ppid)
 
+            
         for ci, best in enumerate(bests):
             kid_ids.append(best["red"].getUid())
             rcollect.addItem(best["red"], "P")
 
             skip_next ={(best["side"], best["ls"], round_id+1): best["red"].score()}
-            desc_ids.extend(self.improveRedescription(cand_red, rcollect, charbon, skip_next, round_id+1))
+            desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1))
         return kid_ids+desc_ids
 
 

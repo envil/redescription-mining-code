@@ -40,13 +40,20 @@ class Redescription(WithEVals):
     ### getRP(tcl, rp=None) is defined in WithEVals class 
 
     next_uid = -1
+    step_uid = 1
     @classmethod
-    def generateNextUid(tcl):
-        tcl.next_uid += 1
+    def generateNextUid(tcl):        
+        tcl.next_uid += tcl.step_uid
         return tcl.next_uid
 
-    def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None):
-        WithEVals.__init__(self)
+    @classmethod
+    def setUidGen(tcl, nv=-1, step=1):
+        tcl.next_uid = nv
+        tcl.step_uid = step
+
+    
+    def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None, iid=None):
+        WithEVals.__init__(self, iid)
         if nqueryL is None: nqueryL = Query()
         if nqueryR is None: nqueryR = Query()
         self.queries = [nqueryL, nqueryR]
@@ -355,9 +362,9 @@ class Redescription(WithEVals):
         kid.update(data, side, op, literal, suppX, missX)
         return kid
             
-    def copy(self):
+    def copy(self, iid=None):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
-                             self.supports().supparts(), self.supports().nbRows(), self.probas(), self.supports().getSSetts())
+                             self.supports().supparts(), self.supports().nbRows(), self.probas(), self.supports().getSSetts(), iid=iid)
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -404,7 +411,7 @@ class Redescription(WithEVals):
         else:
             return self, False
 
-    def prune(self, data):
+    def getPruned(self, data):
         r, modr = self, False
         best_score = self.score()
         for side in [0,1]:
@@ -416,7 +423,7 @@ class Redescription(WithEVals):
                     if cand.score() >= best_score:
                         r, modr, best_score = (cand, True, cand.score())
         if modr:
-            r, modb = r.prune(data)
+            r, modb = r.getPruned(data)
         return r, modr
 
     def normalize(self, data=None):
@@ -915,12 +922,22 @@ class Redescription(WithEVals):
         
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
-    def __str__(self):
+    def red2strLegacy(self):
         str_av = ["?", "?"]
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
         tmp = ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.dispQueries(sep=" "), self.dispStats(sep=" "), self.dispSuppL(sep=" "), self.getTrack({"format":"str"})))
+        return tmp
+
+    def __str__(self):
+        str_av = ["?", "?"]
+        for side in [0,1]:
+            if self.availableColsSide(side) is not None:
+                str_av[side] = "%d" % len(self.availableColsSide(side))
+
+        tmp = "R%s\t%s\t%s\t%s" % (self.getUid(), self.dispQueries(sep="\t"), self.dispStats(sep=" "), self.dispSuppL(sep=" "))
+        tmp += "\tlengthQs:%d nbAvC:%s+%s track:%s" % (len(self), str_av[0], str_av[1], self.getTrack({"format":"str"}))
         return tmp
 
     def dispQueries(self, names=[None, None, None], sep='\t'):

@@ -777,7 +777,6 @@ class ContentTable:
         if old_lid != self.getActiveLid():
             self.resetFields()
         self.loadData(self.getActiveLid())
-    
     def load(self, lid=None, rfields=True):
         if lid is None:
             self.setDefActiveLid()
@@ -986,21 +985,15 @@ class VarsTable(FindContentTable):
     str_item = 'item'
     ###################### FIELDS VARS
     FIRST_FIELDS = [('', str_item+'.getSortAble', None, ContentTable.width_colcheck, wx.LIST_FORMAT_LEFT),
-                    ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT),
-                    ('name', str_item+'.getName', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
-                    ('type', str_item+'.getType', None, ContentTable.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
+                    ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT),]
+                    # ('name', str_item+'.getName', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
+                    # ('type', str_item+'.getType', None, ContentTable.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
     LAST_FIELDS = []
-    # fields_def = [('',str_item+'.getSortAble', None, ContentTable.width_colcheck, wx.LIST_FORMAT_LEFT),
-    #               ('id', str_item+'.getId', None,  ContentTable.width_colid, wx.LIST_FORMAT_LEFT),
-    #               ("side", str_item+".getEValGUI", {"k": ":extra:side"}, ContentTable.width_colid, wx.LIST_FORMAT_LEFT),
-    #               ('name', str_item+'.getName', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
-    #               ('type', str_item+'.getType', None, ContentTable.width_colinfow, wx.LIST_FORMAT_LEFT)] #,
-    #               # ('cohesion', str_item+'.getCohesion', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
-    fields_miss = [('missing', str_item+'.getMissInfo', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
-    fields_var = {1: [('density', str_item+'.getDensity', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
-                  2:[('categories', str_item+'.getCategories', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
-                  3:[('min', str_item+'.getMin', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT),
-                     ('max', str_item+'.getMax', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]}
+    # fields_miss = [('missing', str_item+'.getMissInfo', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]
+    # fields_var = {1: [('density', str_item+'.getDensity', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
+    #               2:[('categories', str_item+'.getCategories', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)],
+    #               3:[('min', str_item+'.getMin', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT),
+    #                  ('max', str_item+'.getMax', None, ContentTable.width_colinfo, wx.LIST_FORMAT_RIGHT)]}
 
     name_m = str_item+'.getName'
     check_m = str_item+'.getEnabled'
@@ -1035,10 +1028,10 @@ class VarsTable(FindContentTable):
         self.fields = []        
         if self.hasContentData() and self.getActiveLid() is not None:
             self.fields.extend(self.FIRST_FIELDS)
-            if self.getContentData().hasMissing():
-                self.fields.extend(self.fields_miss)
-            for tyid in self.getContentData().getAllTypes(self.getActiveLid()):
-                self.fields.extend(self.fields_var[tyid])
+            # if self.getContentData().hasMissing():
+            #     self.fields.extend(self.fields_miss)
+            # for tyid in self.getContentData().getAllTypes(self.getActiveLid()):
+            #     self.fields.extend(self.fields_var[tyid])
                 
             self.setCDetail("rp", ColM.getRP())
             self.fields.extend(self.getFieldsList())

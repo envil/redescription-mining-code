@@ -1000,9 +1000,10 @@ class DrawerEntitiesTD(DrawerBasis):
         if xytext is None:
             xytext = self.getAnnXY()
         bckgc = numpy.around(numpy.max((1-ec[0], 1-ec[1], 1-ec[2])))
-        if len(ec) > 3:
+        if len(ec) > 3 and ec[3] < 0.3:
             whitec = (bckgc, bckgc, bckgc, ec[3])
         else:
+            ec = (ec[0], ec[1], ec[2])
             whitec = (bckgc, bckgc, bckgc)
         return [self.axe.annotate(tag, xy=xy, zorder=8,
                                 xycoords='data', xytext=xytext, textcoords='offset points',

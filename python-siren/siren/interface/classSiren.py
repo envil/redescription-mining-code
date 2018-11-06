@@ -632,7 +632,7 @@ class Siren():
     def OnQuit(self, event):
         if self.plant.getWP().isActive():  
             if isinstance(self.plant.getWP(), WorkClient) and self.plant.getWP().nbWorking()>0:
-                collectLater = self.quitReturnLaterDialog(what=self.plant.getWP().hid)
+                collectLater = self.quitReturnLaterDialog(what=self.plant.getWP().getHid())
                 if collectLater == 0:
                     return
                 self.plant.getWP().closeDown(self, collectLater > 0)   
@@ -693,7 +693,13 @@ class Siren():
         if menuCon.GetMenuItemCount() > ct:
             ct = menuCon.GetMenuItemCount()
             menuCon.AppendSeparator()
+
         if self.matchTabType("evr"):
+            submenuViz = wx.Menu()
+            self.makeVizMenu(frame, submenuViz)
+            ID_VIZ = wx.NewId()
+            menuCon.AppendMenu(ID_VIZ, "&View", submenuViz)
+
             self.makeEditMenu(frame, menuCon)
         # if menuCon.GetMenuItemCount() > ct:
         #     ct = menuCon.GetMenuItemCount()
@@ -741,25 +747,25 @@ class Siren():
                         menuEdit.Enable(ID_AC, False)
 
                 ID_SV = wx.NewId()
-                m_svl = menuEdit.Append(ID_SV, "Save List", "Save List.")
+                m_svl = menuEdit.Append(ID_SV, "Save list\tCtrl+L", "Save list.")
                 frame.Bind(wx.EVT_MENU, self.OnSaveRedList, m_svl)
                 if info["path"] is None:
                     menuEdit.Enable(ID_SV, False)
 
                 ID_SVA = wx.NewId()
-                m_svla = menuEdit.Append(ID_SVA, "Save List As...", "Save List as...")
+                m_svla = menuEdit.Append(ID_SVA, "Save list as...\tShift+Ctrl+L", "Save list as...")
                 frame.Bind(wx.EVT_MENU, self.OnSaveRedListAs, m_svla)
                 if info["is_hist"]:
                     menuEdit.Enable(ID_SVA, False)
 
             elif info["nb"] > 0:
                 ID_SVE = wx.NewId()
-                m_ex = menuEdit.Append(ID_SVE, "Export", "Export selected redescriptions")
+                m_ex = menuEdit.Append(ID_SVE, "Export\tCtrl+E", "Export selected redescriptions")
                 frame.Bind(wx.EVT_MENU, self.OnExportReds, m_ex)
 
         if self.matchTabType("vr"):
             ID_SVLP = wx.NewId()
-            m_svlp = menuEdit.Append(ID_SVLP, "Save figs As...", "Draw figures and save as...")
+            m_svlp = menuEdit.Append(ID_SVLP, "Save figs as...\tShift+Ctrl+P", "Draw figures and save as...")
             frame.Bind(wx.EVT_MENU, self.OnExportFigs, m_svlp)
                 
         if self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelected() == 1:
@@ -804,31 +810,28 @@ class Siren():
                         if self.selectedTab["tab"].GetNumberRows() == 0:
                             menuEdit.Enable(ID_AC, False)
 
-                if self.selectedTab["tab"].nbSelected() == 1:
+                if self.selectedTab["tab"].GetNumberRows() > 0:
+                    if menuEdit.GetMenuItemCount() > 0:
+                        menuEdit.AppendSeparator()                    
 
-                    acts_details = self.dw.getGroupActs("redMod")
-                    if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
-                        menuEdit.AppendSeparator()
+                    ID_EXPAND = wx.NewId()
+                    m_expand = menuEdit.Append(ID_EXPAND, "E&xpand\tCtrl+M", "Expand redescription(s).")
+                    frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
+                    
+                    ID_IMPROVE = wx.NewId()
+                    m_improve = menuEdit.Append(ID_IMPROVE, "Improve\tCtrl+I", "Improve redescription(s).")
+                    frame.Bind(wx.EVT_MENU, self.OnImprove, m_improve)                    
 
+                    acts_details = self.dw.getGroupActs("redsMod")
                     for act_details in acts_details:
                         ID_AC = wx.NewId()
                         m_ac = menuEdit.Append(ID_AC, act_details["label"], act_details["legend"])
                         self.ids_contentAct[ID_AC] = act_details["key"]
                         frame.Bind(wx.EVT_MENU, self.OnActContent, m_ac)
-
-                if self.selectedTab["tab"].GetNumberRows() > 0:
-
-                    ID_EXPAND = wx.NewId()
-                    m_expand = menuEdit.Append(ID_EXPAND, "E&xpand\tCtrl+E", "Expand redescription(s).")
-                    frame.Bind(wx.EVT_MENU, self.OnExpand, m_expand)
-                    
-                    ID_IMPROVE = wx.NewId()
-                    m_improve = menuEdit.Append(ID_IMPROVE, "Improve", "Improve redescription(s).")
-                    frame.Bind(wx.EVT_MENU, self.OnImprove, m_improve)                    
                     
                     acts_details = self.dw.getGroupActs("redsFilter")
-                    if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
-                        menuEdit.AppendSeparator()                    
+                    # if menuEdit.GetMenuItemCount() > 0 and len(acts_details) > 0:
+                    #     menuEdit.AppendSeparator()                    
                     for act_details in acts_details:
                         ID_AC = wx.NewId()
                         m_ac = menuEdit.Append(ID_AC, act_details["label"], act_details["legend"])
@@ -858,10 +861,9 @@ class Siren():
         if self.matchTabType("e") or \
           ( self.matchTabType("vr") and self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelected() == 1 ):
             what = self.selectedTab["tab"].getSelectedItem()
-            for item in self.viewsm.getViewsItems(what=what):
+            for ix, item in enumerate(self.viewsm.getViewsItems(what=what)):
                 ID_NEWV = wx.NewId()
-                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                          "Plot %s." % item["title"])
+                m_newv = menuViz.Append(ID_NEWV, "%s%s" % (item["title"], "\tCtrl+P"*(ix==0)), "Plot %s." % item["title"])
                 if not item["suitable"]:
                     m_newv.Enable(False)
                 frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
@@ -872,10 +874,9 @@ class Siren():
           (( self.selectedTab["tab"].hasFocusContainersL() and self.selectedTab["tab"].nbSelected() > 0) or \
            ( self.selectedTab["tab"].hasFocusItemsL() and self.selectedTab["tab"].nbSelected() > 1 )):
             what = self.selectedTab["tab"].getSelectedItems()
-            for item in self.viewsm.getViewsItems(what=what):
+            for ix, item in enumerate(self.viewsm.getViewsItems(what=what)):
                 ID_NEWV = wx.NewId()
-                m_newv = menuViz.Append(ID_NEWV, "%s" % item["title"],
-                                          "Plot %s." % item["title"])
+                m_newv = menuViz.Append(ID_NEWV, "%s%s" % (item["title"], "\tCtrl+P"*(ix==0)), "Plot %s." % item["title"])
                 if not item["suitable"]:
                     m_newv.Enable(False)
                 frame.Bind(wx.EVT_MENU, self.OnNewV, m_newv)
@@ -890,7 +891,7 @@ class Siren():
         if menuPro is None:
             menuPro = wx.Menu()
         ID_MINE = wx.NewId()
-        m_mine = menuPro.Append(ID_MINE, "&Mine redescriptions\tCtrl+M", "Mine redescriptions from the dataset according to current constraints.")
+        m_mine = menuPro.Append(ID_MINE, "&Mine redescriptions\tShift+Ctrl+M", "Mine redescriptions from the dataset according to current constraints.")
         if self.getData() is None:
             menuPro.Enable(ID_MINE, False)
         else:
@@ -911,10 +912,11 @@ class Siren():
             menuStop.Enable(ID_NOP, False)
 
         else:
-            for wdt in self.plant.getWP().getWorkersDetails(): 
+            for ix, wdt in enumerate(self.plant.getWP().getWorkersDetails()): 
                 ID_STOP = wx.NewId()
-                self.ids_stoppers[ID_STOP] = wdt["wid"] 
-                m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s" % (wdt["wtyp"], wdt["wid"]), "Interrupt %s process #%s." % (wdt["wtyp"], wdt["wid"]))
+                self.ids_stoppers[ID_STOP] = wdt["wid"]
+                m_stop = menuStop.Append(ID_STOP, "Stop %s #&%s%s" % (wdt["task"], wdt["wid"], "\tCtrl+K"*(ix==0)),
+                                         "Interrupt %s process #%s." % (wdt["task"], wdt["wid"]))
                 frame.Bind(wx.EVT_MENU, self.OnStop, m_stop)
         if self.plant.getWP().isActive():
             menuStop.AppendSeparator()
@@ -963,7 +965,7 @@ class Siren():
             menuFile.Enable(wx.ID_SAVE, False)
 
         ## Save As...
-        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &As...\tShift+Ctrl+S", "Save the current project as...")
+        m_saveas = menuFile.Append(wx.ID_SAVEAS, "Save &as...\tShift+Ctrl+S", "Save the current project as...")
         if self.getData() is None:
             menuFile.Enable(wx.ID_SAVEAS, False)
         else:
@@ -1034,13 +1036,13 @@ class Siren():
         ## Worker setup
         if True:
                 ID_CONN = wx.NewId()
-                m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...\tCtrl+k", "Setup worker's connection.")
+                m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...", "Setup worker's connection.")
                 frame.Bind(wx.EVT_MENU, self.OnConnectionDialog, m_conndia)
 
         ## Split setup
         if True:
                 ID_SPLT = wx.NewId()
-                m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...\tCtrl+l", "Setup learn/test data splits.")
+                m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...", "Setup learn/test data splits.")
                 frame.Bind(wx.EVT_MENU, self.OnSplitDialog, m_spltdia)
                 if not self.hasDataLoaded():
                         menuFile.Enable(ID_SPLT, False)
@@ -1048,7 +1050,7 @@ class Siren():
         ## Extensions setup
         if True:
                 ID_EXTD = wx.NewId()
-                m_extdia = menuFile.Append(ID_EXTD, "Extensions setup...\tCtrl+l", "Setup data extensions.")
+                m_extdia = menuFile.Append(ID_EXTD, "Extensions setup...", "Setup data extensions.")
                 frame.Bind(wx.EVT_MENU, self.OnExtensionsDialog, m_extdia)
                 if not self.hasDataLoaded():
                         menuFile.Enable(ID_EXTD, False)
@@ -1355,16 +1357,7 @@ class Siren():
         if params is None:
             params = {}
         self.progress_bar.Show()
-        if len(params.get("reds", [])) > 0 or (params.get("red") is not None and params["red"].length(0) + params["red"].length(1) > 0):
-            self.plant.getWP().addWorker("expander", self, params,
-                                 {"results_track":0,
-                                  "batch_type": "partial",
-                                  "results_tab": "exp"})
-        else:
-            self.plant.getWP().addWorker("miner", self, params,
-                                 {"results_track":0,
-                                  "batch_type": "final",
-                                  "results_tab": "exp"})
+        self.plant.getWP().addWorker(self, params)
         self.checkResults(menu=True)
 
     def project(self, proj=None, vid=None):
@@ -1374,16 +1367,15 @@ class Siren():
             if out == 0:
                 self.readyProj(None, vid, proj)
             elif out < 0:
-                wid = self.plant.getWP().findWid([("wtyp", "projector"), ("vid", vid)])
+                wid = self.plant.getWP().findWid([("task", "project"), ("vid", vid)])
                 if wid is None:
-                    self.plant.getWP().addWorker("projector", self, proj,
-                                         {"vid": vid})
+                    self.plant.getWP().addWorker(self, proj, {"vid": vid})
                     self.checkResults(menu=True)
             # else:
             #     print "Waiting previous proj"
 
     def checkResults(self, menu=False, once=False):
-        # print "Check results\tnb working", self.plant.getWP().infoStr(), self.plant.getWP().nbWorking()
+        # print "Check results\tnb working", self.plant.getWP().infoStr(), self.plant.getWP().nbWorking()        
         updates = self.plant.getWP().checkResults(self)
         if menu:
             updates["menu"] = True
@@ -1501,14 +1493,14 @@ class Siren():
         self.dw.OnActContent(event, info)
         self.refresh()
                         
-    def OnExpand(self, event, what="expansion"):
+    def OnExpand(self, event, task="expand"):
         if self.matchTabType("r"):
             reds = self.selectedTab["tab"].getSelectedItems()
             if len(reds) > 0:
-                params = {"reds": [red.copy() for (rid, red) in reds], "what": what}
+                params = {"reds": [red for (rid, red) in reds], "task": task}
                 self.expand(params)
     def OnImprove(self, event):
-        self.OnExpand(event, what="improve")
+        self.OnExpand(event, task="improve")
             
     def OnMineAll(self, event):
         self.expand()
