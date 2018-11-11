@@ -1610,7 +1610,8 @@ class QTree(object):
 class Query(object):
     diff_literals, diff_cols, diff_op, diff_balance, diff_length = range(1,6)
     side = 0
-
+    class_letter = "q"
+    
     ### PROPS WHAT
     elem_letters = {"L": "Literals", "T": "Terms", "C": "Cols"}
     info_what = {"len": "len(self)", "depth": "self.max_depth()",

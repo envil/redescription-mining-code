@@ -8,7 +8,7 @@ def all_subclasses(cls):
 
 class ViewFactory(object):
     
-    root_classes = [classViewBasis.ViewRed, classViewBasis.ViewList]       
+    root_classes = [classViewBasis.ViewRed, classViewBasis.ViewList]
 
     map_typeI_tids = {}
     map_tid_details = {}
@@ -26,6 +26,29 @@ class ViewFactory(object):
     for typeI in typesI:        
         map_typeI_tids[typeI] = [x[1] for x in sorted(map_typeI_tids[typeI])]
 
+    mtab_typeI_tids = {}
+    for cls in all_subclasses(classViewBasis.ViewText):
+    # for cls in all_subclasses(classViewBasis.ViewList):
+        dets = cls.getViewsDetails()
+        map_tid_details.update(dets)
+        for tid, det in dets.items():
+            for typeI in cls.getTypesI():
+                if typeI not in mtab_typeI_tids:
+                    mtab_typeI_tids[typeI] = []
+                mtab_typeI_tids[typeI].append((det.get("ord", 100), tid))
+
+    XtypesI = mtab_typeI_tids.keys()
+    for typeI in XtypesI:        
+        mtab_typeI_tids[typeI] = [x[1] for x in sorted(mtab_typeI_tids[typeI])]
+
+    @classmethod
+    def getTableViewT(tcl, typeI="r"):
+        typeI = typeI.upper()
+        if len(tcl.mtab_typeI_tids.get(typeI, [])) > 0:
+            return tcl.mtab_typeI_tids[typeI][0]
+        return None
+
+        
     @classmethod
     def typeIWhat(tcl, what):
         return classViewBasis.typeIWhat(what)

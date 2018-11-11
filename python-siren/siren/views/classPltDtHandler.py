@@ -99,7 +99,7 @@ class PltDtHandlerBasis(object):
     def isSingleVar(self):
         return False
     
-    def setCurrent(self, data):
+    def setCurrent(self, data, iid=None):
         pass
     def getWhat(self):
         return self.pltdt.get("red")
@@ -234,7 +234,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             vec = self.pltdt["suppABCD"].copy()
         return vec, vec_dets
     
-    def setCurrent(self, qr=None):
+    def setCurrent(self, qr=None, iid=None):
         red = None
         if isinstance(qr, Redescription):
             red = qr                

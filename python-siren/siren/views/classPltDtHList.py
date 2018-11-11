@@ -77,7 +77,7 @@ class PltDtHandlerList(PltDtHandlerBasis):
         else:
             return self.getReds()
     
-    def setCurrent(self, reds_map):
+    def setCurrent(self, reds_map, iid=None):
         if len(reds_map) == 0 or isinstance(reds_map[0][1], Redescription):
             self.pltdt["single_var"] = False
             self.pltdt["reds"] = reds_map
@@ -135,8 +135,8 @@ class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
         self.pltdt["vec_dets"] = vec_dets
         return vec, vec_dets
     
-    def setCurrent(self, reds_map):
-        PltDtHandlerList.setCurrent(self, reds_map)
+    def setCurrent(self, reds_map, iid=None):
+        PltDtHandlerList.setCurrent(self, reds_map, iid)
         self.getEtoR()
         self.setPreps()
         self.getDrawer().update()
@@ -247,3 +247,26 @@ class PltDtHandlerListClust(PltDtHandlerListBlocks):
         return vec, vec_dets
 
         
+class PltDtHandlerTextList(PltDtHandlerBasis):
+
+    
+    def hasQueries(self):
+        return False
+    def getCoords(self):
+        pass
+
+    def isSingleVar(self):
+        return False
+    
+    def getReds(self):
+        ### the actual queries, not copies, to test, etc. not for modifications
+        return self.pltdt.get("reds")
+
+    def getWhat(self):
+        return self.getReds()
+    def getLid(self):
+        return self.pltdt["lid"]
+    
+    def setCurrent(self, reds_map, iid=None):
+        self.pltdt["reds"] = reds_map
+        self.pltdt["lid"] = iid

@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 from ..reremi.classQuery import SYM, Query
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
+from ..interface.classContentTable import RedsTable, VarsTable
 
 import pdb
 
@@ -49,8 +50,7 @@ class CustToolbar(NavigationToolbar):
         else:
             self.set_cursor(1)
 
-            
-class LayoutHandlerBasis(object):
+class LayoutHandlerBare(object):
     #### SEC: WINDOW LAYOUT INTAB / STANDALONE
     ###########################################
     
@@ -62,8 +62,9 @@ class LayoutHandlerBasis(object):
     butt_shape = (27, 27)
     fwidth = {"i": 400, "t": 400, "s": 250}
     fheight = {"i": 400, "t": 300, "s": 200}
-
+    
     def __init__(self, view):
+        
         self.view = view
         self.layout_infos = {}
         self.layout_elements = {}
@@ -76,30 +77,22 @@ class LayoutHandlerBasis(object):
             self.setFrame(self.initExtFrame())
         self.panel = wx.Panel(self.getFrame(), -1, style=wx.RAISED_BORDER)
 
-        self.figure = Figure(None) #, facecolor='white')
-        self._canvas = FigCanvas(self.panel, -1, self.figure)
-        self._toolbar = CustToolbar(self._canvas, self)
-
     def finalize_init(self, addBoxes=[]):
         utilityBox = self.makeUtilityBox()
         innerBox = wx.BoxSizer(wx.VERTICAL)
         self.makeFrameSpecific(innerBox)
         self.arrangeAll(innerBox, utilityBox, addBoxes)
         self.layout_elements["innerBox"] = innerBox
-	self.getFrame().Layout()
-	self.initSizeRelative()
-	if not self.isInTab:
-	    self.getFrame().Show()
-        self.prepareProcesses()
-        self.hideShowOpt()
-        self._SetSize()
+        self.getFrame().Layout()
+        self.initSizeRelative()
+        if not self.isInTab:
+            self.getFrame().Show()
+            self.prepareProcesses()
+            self.hideShowOpt()
+            self._SetSize()
 
     def getPanel(self):
         return self.panel
-    def getFigure(self):
-        return self.figure
-    def getCanvas(self):
-        return self._canvas
     def getFrame(self):
         return self.frame
     def setFrame(self, value):
@@ -107,7 +100,26 @@ class LayoutHandlerBasis(object):
         if not self.isInTab:
             self.frame.Bind(wx.EVT_CLOSE, self.OnQuit)
             self.frame.Bind(wx.EVT_SIZE, self.OnSize)
-            
+
+    def getTable(self):
+        return None    
+    def getFigure(self):
+        return None
+    def getCanvas(self):
+        return None
+    def getToolbar(self):
+        return None
+
+    def hasTable(self):
+        return self.getTable() is not None
+    def hasFigure(self):
+        return self.getFigure() is not None
+    
+    def setToolbarDrawer(self, drawer=None):
+        if drawer is not None and self.hasFigure():
+            self.getToolbar().setDrawer(drawer)
+
+    
     #### SEC: PARENT ACCESS
     ###########################################
 
@@ -119,6 +131,9 @@ class LayoutHandlerBasis(object):
         return self.view.getParent()
     def getDrawer(self):
         return self.view.getDrawer()
+    def hasDrawer(self):
+        return self.view.hasDrawer()
+
     def getPltDtH(self):
         return self.view.getPltDtH()
 
@@ -139,23 +154,22 @@ class LayoutHandlerBasis(object):
         return self.view.getParentTitlePref()
     def getViewTitleDesc(self):
         return self.view.getTitleDesc()
-    
-        
+
     def makeUtilityBox(self):
-        self.layout_elements["info_title"] = wx.StaticText(self.panel, label="? ?")
+        self.layout_elements["info_title"] = wx.StaticText(self.getPanel(), label="? ?")
         self.opt_hide = []
 
         ### UTILITIES BUTTONS
-        self.layout_elements["savef"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("save"))
-        self.layout_elements["boxL"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("learn_dis"))
-        self.layout_elements["boxT"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("test_dis"))
+        self.layout_elements["savef"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("save"))
+        self.layout_elements["boxL"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("learn_dis"))
+        self.layout_elements["boxT"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("test_dis"))
 
         if self.isInTab:
-            self.layout_elements["boxPop"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("inout"))
+            self.layout_elements["boxPop"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("inout"))
         else:
-            self.layout_elements["boxPop"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("outin"))
+            self.layout_elements["boxPop"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("outin"))
 
-        self.layout_elements["boxKil"] = wx.StaticBitmap(self.panel, wx.NewId(), self.getParentIcon("kil"))
+        self.layout_elements["boxKil"] = wx.StaticBitmap(self.getPanel(), wx.NewId(), self.getParentIcon("kil"))
         if not self.hasParent() or not self.getParentVizm().hasVizIntab():
             self.layout_elements["boxPop"].Hide()
             self.layout_elements["boxKil"].Hide()
@@ -174,7 +188,8 @@ class LayoutHandlerBasis(object):
         add_boxB.Add(self.layout_elements["info_title"], 0, border=1, flag=flags, userData={"where": "ts"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
 
-        add_boxB.Add(self._toolbar, 0, border=0, userData={"where": "*"})
+        if self.getFigure():
+            add_boxB.Add(self.getToolbar(), 0, border=0, userData={"where": "*"})
         add_boxB.Add(self.layout_elements["boxL"], 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(self.layout_elements["boxT"], 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
@@ -202,14 +217,14 @@ class LayoutHandlerBasis(object):
         outerBox.Add(innerBox, 0, border=1,  flag= wx.ALIGN_CENTER)
 
         masterBox = wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
-        masterBox.Add(self._canvas, 0, border=1,  flag= wx.EXPAND)
+        self.addContentDisp(masterBox)
         masterBox.Add(outerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
-        self.panel.SetSizer(masterBox)
+        self.getPanel().SetSizer(masterBox)
         if self.isInTab:
             self.pos = self.getParentVizm().getVizPlotPos(self.getId())
-            self.frame.GetSizer().Add(self.panel, pos=self.pos, flag=wx.ALL, border=0)
+            self.frame.GetSizer().Add(self.getPanel(), pos=self.pos, flag=wx.ALL, border=0)
         else:
-            self.frame.GetSizer().Add(self.panel)
+            self.frame.GetSizer().Add(self.getPanel())
                             
     def updateTitle(self):
         if self.hasParent() and not self.isInTab:
@@ -236,9 +251,9 @@ class LayoutHandlerBasis(object):
     def getGPos(self):
         return self.pos
     def resetGPos(self, npos):
-        self.frame.GetSizer().Detach(self.panel)
+        self.frame.GetSizer().Detach(self.getPanel())
         self.pos = npos
-        self.frame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+        self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
 
     def GetRoundBitmap(self, w, h, r=10):
         maskColour = wx.Colour(0,0,0)
@@ -256,10 +271,7 @@ class LayoutHandlerBasis(object):
 
     def toTop(self):
         self.frame.Raise()
-        try:
-            self.figure.canvas.SetFocus()
-        except AttributeError:
-            self.frame.SetFocus()
+        self.setContentFocus()
     
     def hideShowOptRec(self, box, where):
         if isinstance(box, wx.SizerItem) and box.IsSizer():
@@ -315,18 +327,17 @@ class LayoutHandlerBasis(object):
             pixels = (max(self.getFWidth(), pixels[0]),
                       max(self.getFHeight(), pixels[1]))  
             ## max_size = (-1, -1)
-        self.panel.SetSize( pixels )
+        self.getPanel().SetSize( pixels )
         figsize = (pixels[0], max(pixels[1]-boxsize[1], 10))
         # self.figure.set_size_inches( float( figsize[0] )/(self.figure.get_dpi()),
         #                                 float( figsize[1] )/(self.figure.get_dpi() ))
-        self._canvas.SetMinSize(figsize)
+        self.setContentMinSize(figsize)
         self.layout_elements["innerBox"].SetMinSize((1*figsize[0], -1)) #boxsize[1]))
         self.setSizeSpec(figsize)
         self.frame.GetSizer().Layout()
-        self.figure.set_size_inches( float(figsize[0])/(self.figure.get_dpi()),
-                                        float(figsize[1])/(self.figure.get_dpi()))
+        self.setContentSize(figsize)
         ### The line below is primarily for Windows, works fine without in Linux...
-        self.panel.SetClientSizeWH(pixels[0], pixels[1])
+        self.getPanel().SetClientSizeWH(pixels[0], pixels[1])
         # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
         # self.figure.set_size_inches(1, 1)
 
@@ -339,7 +350,7 @@ class LayoutHandlerBasis(object):
             
     def OnSize(self, event=None):        
         self._SetSize()
-        if self.getDrawer() is not None:
+        if self.hasDrawer():
             self.getDrawer().adjust()
 
     def OnPop(self, event=None):
@@ -351,17 +362,17 @@ class LayoutHandlerBasis(object):
 
             self.layout_elements["boxPop"].SetBitmap(self.getParentIcon("outin"))
             self.getParentVizm().setVizcellFreeded(pos)
-            self.panel.Reparent(self.frame)
-            self.frame.GetSizer().Add(self.panel)
+            self.getPanel().Reparent(self.frame)
+            self.frame.GetSizer().Add(self.getPanel())
         else:
             self.isInTab = True
             self.frame.Destroy()
             self.setFrame(self.getParentTab("viz"))
             
             self.layout_elements["boxPop"].SetBitmap(self.getParentIcon("inout"))
-            self.panel.Reparent(self.frame)
+            self.getPanel().Reparent(self.frame)
             self.pos = self.getParentVizm().getVizPlotPos(self.getId())
-            self.frame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.ALL, border=0)
+            self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.ALL, border=0)
             
         if not self.isInTab:
 	    self.getFrame().Layout()
@@ -395,20 +406,8 @@ class LayoutHandlerBasis(object):
             new_rsets = {"rset_id": parts[which]["id"]}
             parts[which]["butt"].SetBitmap(parts[which]["act_icon"])
             parts[1-which]["butt"].SetBitmap(parts[1-which]["dis_icon"])
-        self.view.updateRSets(new_rsets)
-
-    def setToolbarDrawer(self, drawer):
-        self._toolbar.setDrawer(drawer)
-    def getToolbar(self):
-        return self._toolbar
-
-        
-    def OnSaveFig(self, event=None):
-        self._toolbar.save_figure(event)
-
-    def savefig(self, fname, **kwargs):
-        self.figure.savefig(fname, **kwargs)
-                
+        self.view.updateRSets(new_rsets)       
+            
     def OnKil(self, event=None):
         self.OnQuit()
         
@@ -424,15 +423,15 @@ class LayoutHandlerBasis(object):
             self.isInTab = False
             frame = wx.Frame(None, -1, "X")            
             self.setFrame(frame)
-            self.panel.Reparent(self.frame)
+            self.getPanel().Reparent(self.frame)
         self.frame.Destroy()
         
     def popSizer(self):
         if self.isInTab:
             self.pos = None
-            self.frame.GetSizer().Detach(self.panel)
+            self.frame.GetSizer().Detach(self.getPanel())
             self.frame.GetSizer().Layout()
-        return self.panel
+        return self.getPanel()
    
     #### SEC: MENU PROCESSES
     ###########################################
@@ -441,36 +440,123 @@ class LayoutHandlerBasis(object):
         self.processes_map = {}
     def getProcesses(self):
         return sorted(self.processes_map.items(), key=lambda x: (x[1]["order"], x[1]["label"]))
+    def setFocus(self):
+        self.setContentFocus()
     
     def kill(self):
-        self._canvas = None
+        pass
     def wasKilled(self):
-        return self._canvas is None
+        False
     def draw(self):
-        self._canvas.draw()
-    def setFocus(self):
-        self._canvas.SetFocus()
-
-        
+        pass
     def setSizeSpec(self, figsize):
         pass
     def makeFrameSpecific(self, innerBox):
         pass
     def refresh(self):
         pass
-
-
-    #### SEC: UPDATE
-    ###########################################            
-    def OnEditQuery(self, event):
-        pass            
-    def getQueryText(self, side):
-        return None       
-    def updateQueryText(self, query, side):
+    def OnSaveFig(self, event=None):
         pass
-    def updateText(self, red=None):
+    def savefig(self, fname, **kwargs):
         pass
+    def setContentMinSize(self, figsize):
+        pass
+    def setContentSize(self, figsize):
+        pass
+    def setContentFocus(self):
+        pass
+    def addContentDisp(self, masterBox):
+        pass
+    
+class LayoutHandlerText(LayoutHandlerBare):
+    def __init__(self, view):
+        LayoutHandlerBare.__init__(self, view)
+        self.content_table = RedsTable(self.getParent(), -1, "r", self.getPanel(), single=True, detached_handle=view, activate=False)
+        
+    def getTable(self):
+        return self.content_table
+    def getCanvas(self):
+        if self.hasTable():
+            return self.getTable().getSW()
 
+    def kill(self):
+        pass
+    def wasKilled(self):
+        False
+    def draw(self):
+        pass
+    def setSizeSpec(self, figsize):
+        pass
+    def makeFrameSpecific(self, innerBox):
+        pass
+    def refresh(self):
+        pass
+    def OnSaveFig(self, event=None):
+        self.getParent().saveRedListAs(self.getTable().getTab(), self.getFrame())
+    def savefig(self, fname, **kwargs):
+        print "IMPLEMENT SAVE A"
+        pass
+    def setContentSize(self, figsize):
+        self.getCanvas().SetMinSize(figsize)
+    def setContentFocus(self):
+        pass
+    def addContentDisp(self, masterBox):
+        if self.hasTable():
+            masterBox.Add(self.getCanvas(), 0, border=1,  flag= wx.EXPAND)
+
+        
+class LayoutHandlerBasis(LayoutHandlerBare):
+
+    def __init__(self, view):
+        LayoutHandlerBare.__init__(self, view)
+
+        self.figure = Figure(None) #, facecolor='white')
+        self._canvas = FigCanvas(self.getPanel(), -1, self.figure)
+        self._toolbar = CustToolbar(self._canvas, self)
+
+    def getFigure(self):
+        return self.figure
+    def getCanvas(self):
+        return self._canvas
+    def getToolbar(self):
+        return self._toolbar
+
+    def kill(self):
+        if self.hasFigure():
+            self._canvas = None
+    def wasKilled(self):
+        if self.hasFigure():
+            return not self.getCanvas() is not None
+    def draw(self):
+        if self.hasFigure():
+            self.getCanvas().draw()
+    def OnSaveFig(self, event=None):
+        if self.hasFigure() and self.getToolbar() is not None:
+            self.getToolbar().save_figure(event)
+    def savefig(self, fname, **kwargs):
+        if self.hasFigure():
+            self.getFigure().savefig(fname, **kwargs)
+    def setContentMinSize(self, figsize):
+        if self.hasFigure():
+            self.getCanvas().SetMinSize(figsize)
+    def setContentSize(self, figsize):
+        if self.hasFigure():
+            self.getFigure().set_size_inches( float(figsize[0])/(self.getFigure().get_dpi()),
+                                        float(figsize[1])/(self.getFigure().get_dpi()))
+
+    def setContentFocus(self):
+        if self.hasFigure():
+            try:
+                self.getFigure().canvas.SetFocus()
+            except AttributeError:
+                self.frame.SetFocus()
+        else:
+            self.frame.SetFocus()
+    def addContentDisp(self, masterBox):
+        if self.hasFigure():
+            masterBox.Add(self.getCanvas(), 0, border=1,  flag= wx.EXPAND)
+
+    
 class LayoutHandlerQueries(LayoutHandlerBasis):
 
     nb_cols = 4

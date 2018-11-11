@@ -39,6 +39,9 @@ class ViewsManager:
             excludeT = [vkey[0]]
         return ViewFactory.getViewsInfo(typeI, self.isGeospatial(), self.getExtensionKeys(), what, excludeT)
 
+    def getTableViewT(tcl, typeI="r"):
+        return ViewFactory.getTableViewT(typeI)
+    
     def getDefaultViewT(self, typeI="r"):
         return ViewFactory.getDefaultViewT(typeI, self.isGeospatial())
 
@@ -57,6 +60,11 @@ class ViewsManager:
         return self.view_map.items()
     def getVKeys(self):
         return self.itov.keys()
+    
+    def refreshTables(self, lids=None, iids=[]):
+        for vid, view in self.iterateViews():
+            if view.isTable():
+                view.refreshTable(lids, iids)        
     
     def getViewX(self, viewT, vid=None):
         if (viewT, vid) not in self.view_map:
@@ -106,7 +114,8 @@ class ViewsManager:
             # pdb.set_trace()
             # iid = -numpy.sum([2**k for (k,v) in what])
             # if iid < -99:
-            iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if ord(k[0]) < ord("a") and k[-1] < 0])-1
+            if iid is None or iid < 0:                
+                iid = numpy.min([0]+[k[-1] for k in self.vtoi.values() if ord(k[0]) < ord("a") and k[-1] < 0])-1
             ikey = (typeI, iid)
         else:
             ikey = ("r", iid)
@@ -117,7 +126,7 @@ class ViewsManager:
         if vid is None and mapV is not None:
             if ikey[0] != -1:
                 self.registerView(mapV.getId(), ikey, upMenu=False)
-            mapV.setCurrent(what)
+            mapV.setCurrent(what, iid)
             if ikey[0] != -1:
                 mapV.updateTitle()
                 mapV.lastStepInit()

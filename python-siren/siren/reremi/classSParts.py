@@ -641,6 +641,7 @@ class SSetts(object):
     
 class SParts(object):
 
+    class_letter = "s"
     ### PROPS WHAT
     info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
     props_what = ["len", "card", "supp", "set", "perc", "ratio", "area"]    

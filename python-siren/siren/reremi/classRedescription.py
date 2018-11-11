@@ -30,11 +30,12 @@ class Redescription(WithEVals):
                            "overlapRows": "self.overlapRows"}
     info_pair_what_side = {"interAreaSide": "self.interArea", "unionAreaSide": "self.unionArea", "overlapAreaSide": "self.overlapAreaSide"}
     Pwhat_pair_match = "("+ "|".join(pair_map_how.keys()+info_pair_what_side.keys()+info_pair_what_dets.keys()) +")"
-    
+
+    class_letter = "r"
     RP = None
     @classmethod
     def setupRP(tcl, fields_fns=None):
-        elems_typs = [("q", Query), ("s", SParts), ("r", Redescription)]
+        elems_typs = [(Query.class_letter, Query), (SParts.class_letter, SParts), (Redescription.class_letter, Redescription)]
         RedProps.setupProps(Query, Redescription, elems_typs)
         tcl.RP = RedProps(fields_fns)
     ### getRP(tcl, rp=None) is defined in WithEVals class 
@@ -521,12 +522,14 @@ class Redescription(WithEVals):
 
     def getSortAble(self, details={}):
         if details is not None and details.get("aim") == "sort":
-            return (self.getStatus(), details.get("id", "?"))
+            return (self.getStatus(), self.getUid())
         return ""
-
+    
     def getShortRid(self, details={}):
-        return "r%s" % details.get("id", "?")
-
+        if details is not None and details.get("aim") == "sort":
+            return self.getUid()
+        return "%s%s" % (self.class_letter, self.getUid())
+    
     # def getCohesion(self, details={}):
     #     return self.getDetail("cohesion")
     # def getCohesionNat(self, details={}):
@@ -936,7 +939,7 @@ class Redescription(WithEVals):
             if self.availableColsSide(side) is not None:
                 str_av[side] = "%d" % len(self.availableColsSide(side))
 
-        tmp = "R%s\t%s\t%s\t%s" % (self.getUid(), self.dispQueries(sep="\t"), self.dispStats(sep=" "), self.dispSuppL(sep=" "))
+        tmp = "%s%s\t%s\t%s\t%s" % (self.class_letter, self.getUid(), self.dispQueries(sep="\t"), self.dispStats(sep=" "), self.dispSuppL(sep=" "))
         tmp += "\tlengthQs:%d nbAvC:%s+%s track:%s" % (len(self), str_av[0], str_av[1], self.getTrack({"format":"str"}))
         return tmp
 

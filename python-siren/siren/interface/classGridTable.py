@@ -183,9 +183,6 @@ class GridTable(wx.grid.PyGridTableBase):
         self.grid.Bind(wx.grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClick)
         self.grid.Bind(wx.grid.EVT_GRID_CELL_LEFT_CLICK, self.OnMouse)
         
-    # def showPopupMenu(self, event):
-    #     self.table.highlightRow(event.GetRow())
-    #     parent.currentList = self
 
     def GetCellBackgroundColor(self, row, col):
         """Return the value of a cell"""
@@ -196,7 +193,15 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def Show(self):
         self.grid.Show()
-                
+
+    def getView(self):
+        return self.grid
+    def getSW(self):
+        return self.grid.GetGridWindow()
+    def isDetached(self):
+        return False
+
+
     ### GRID METHOD
     def GetNumberRows(self):
         """Return the number of rows in the grid"""
@@ -489,7 +494,7 @@ class GridTable(wx.grid.PyGridTableBase):
         if event.GetRow() < self.nbItems():
             if event.GetRow() not in self.getSelectedRows():
                 self.setSelectedRow(event.GetRow(), event.GetCol())
-            self.parent.makePopupMenu(self.parent.toolFrame)
+            self.parent.makePopupMenu(self)
 
     def OnKU(self, event):
         if self.grid.GetGridCursorRow() < self.nbItems():
@@ -499,7 +504,7 @@ class GridTable(wx.grid.PyGridTableBase):
     def OnViewData(self, event):        
         if event.GetRow() < self.nbItems():
             self.setSelectedRow(event.GetRow(), event.GetCol())
-            self.parent.viewOpen()
+            self.parent.OnNewV()
             return self.getIidAtRow(self.getSelectedRow())
             
     def getSelectedRowId(self):            

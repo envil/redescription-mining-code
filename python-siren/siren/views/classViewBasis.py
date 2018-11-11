@@ -6,7 +6,7 @@ from ..reremi.classCol import ColM
 from ..reremi.classData import RowE
 from ..reremi.classRedescription import Redescription
 
-from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries
+from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries, LayoutHandlerText
 
 from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from classDrawerPara import DrawerRedPara
@@ -18,13 +18,15 @@ from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 from classDrawerCorrel import DrawerRedCorrel
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
-from classPltDtHList import PltDtHandlerListClust, PltDtHandlerListBlocks
+from classPltDtHList import PltDtHandlerListClust, PltDtHandlerListBlocks, PltDtHandlerTextList
 from classProj import ProjFactory
 
 import pdb
 
 
 def typeIWhat(what):
+    if type(what) == str:
+        return what
     if isinstance(what, ColM) or isinstance(what, RowE):
         return "v"
     if isinstance(what, Redescription):
@@ -39,33 +41,18 @@ def typeIWhat(what):
             return "V"
         
 
-class ViewBasis(object):
-    """
-    The parent class of all visualizations.
-    """
-
-    colors_ord = ["color_l", "color_r", "color_i", "color_o"]
-    colors_def = {"color_l": (255,0,0), "color_r": (0,0,255), "color_i": (160,32,240), "color_o": (153, 153, 153),
-                  "grey_basic": (127,127,127), "grey_light": (153,153,153), "grey_dark": (85,85,85),
-                  "color_h": (255, 255, 0), -1: (127, 127, 127)}
-    DOT_ALPHA = 0.6
-    ## 153 -> 99, 237 -> ed
-    DOT_SHAPE = 's'
-    DOT_SIZE = 3
-
-    DELTA_ON = False
-    DEF_ZORD = 3
+class ViewBare(object):
     
     TID = "-"
     SDESC = "-"
     ordN = 0
-    title_str = "Basis View"
+    title_str = "Bare View"
     geo = False
     ext_keys = None
     typesI = ""
 
     subcl_layh = LayoutHandlerBasis
-    subcl_drawer = DrawerBasis
+    subcl_drawer = None
     subcl_pltdt = PltDtHandlerBasis
 
     @classmethod
@@ -75,24 +62,39 @@ class ViewBasis(object):
     def getTID(tcl):
         return tcl.TID
     @classmethod
+    def isTable(tcl):
+        return False
+
+    @classmethod
     def isGeoV(tcl):
         return tcl.geo
-    
+
+    def getFrame(self):
+        if self.isIntab():
+            return self.parent.getFrame()
+        return self.layH.getFrame()
+        
     def __init__(self, parent, vid, more=None):
         self.parent = parent
         self.vid = vid
         self.data = {}
         self.layH = self.subcl_layh(self)
         self.pltdtH = self.subcl_pltdt(self)
-        self.drawer = self.subcl_drawer(self)
-        self.layH.setToolbarDrawer(self.drawer)
-        boxes = self.drawer.prepareInteractive(self.layH.getPanel())
+        if self.subcl_drawer is not None:
+            self.drawer = self.subcl_drawer(self)
+            self.layH.setToolbarDrawer(self.drawer)
+            boxes = self.drawer.prepareInteractive(self.layH.getPanel())
+        else:
+            self.drawer = None
+            boxes = []
         self.layH.finalize_init(boxes)
         
     def getLayH(self):
         return self.layH
     def getDrawer(self):
         return self.drawer
+    def hasDrawer(self):
+        return self.drawer is not None
     def getPltDtH(self):
         return self.pltdtH
     def getParent(self):
@@ -155,7 +157,7 @@ class ViewBasis(object):
             return self.parent.getViewsm()
     def getParentTab(self, which):
         if self.hasParent():
-            return self.parent.getTab(which)
+            return self.parent.getTTab(which)
     def getParentData(self):
         if self.hasParent():
             return self.parent.dw.getData()
@@ -187,8 +189,6 @@ class ViewBasis(object):
         self.getLayH().destroy()
     def wasKilled(self):
         return self.getLayH().wasKilled()
-    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
-        self.getDrawer().emphasizeOnOff(turn_on, turn_off, hover, review)
     def updateRSets(self, new_rsets=None):
         self.getPltDtH().updateRSets(new_rsets)
         
@@ -216,12 +216,12 @@ class ViewBasis(object):
             return
         
         if frame is None:
-            frame = self.getLayH().frame
+            frame = self.getLayH().getFrame()
 
         menuBar = wx.MenuBar()
         if self.hasParent():
             menuBar.Append(self.parent.makeFileMenu(frame), "&File")
-        menuBar.Append(self.getDrawer().makeActionsMenu(frame), "&Edit")
+        menuBar.Append(self.makeActionsMenu(frame), "&Edit")
         menuBar.Append(self.makeVizMenu(frame), "&View")
         menuBar.Append(self.makeProcessMenu(frame), "&Process")
         
@@ -231,6 +231,14 @@ class ViewBasis(object):
         frame.SetMenuBar(menuBar)
         frame.Layout()
 
+    def makeActionsMenu(self, frame, menuAct=None):
+        if self.hasDrawer():
+            return self.getDrawer().makeActionsMenu(frame, menuAct)
+        elif menuAct is None:
+            menuAct = wx.Menu()
+            self.getParent().appendEmptyMenuEntry(menuAct, "No Actions", "There are no edit actions.")
+        return menuAct
+        
     def enumerateVizItems(self):
         if self.hasParent():
             return self.getParentViewsm().getViewsItems(vkey=self.getId(), what=self.getWhat())
@@ -285,36 +293,6 @@ class ViewBasis(object):
         if ct < menuPro.GetMenuItemCount():
             menuPro.InsertSeparator(ct)
         return menuPro
-
-    def OnExpandAdv(self, event):
-        if self.getPltDtH().hasQueries():
-            params = {"red": self.getPltDtH().getRed(), "task": "expand"}
-            if event.GetId() in self.menu_map_pro:
-                params = self.getLayH().getProcessesParams(self.menu_map_pro[event.GetId()], params)
-            self.getParent().expand(params)
-
-    def OnExpandSimp(self, event):
-        if self.getPltDtH().hasQueries():
-            params = {"red": self.getPltDtH().getRed()}
-            if params["red"].length(0) + params["red"].length(1) > 0:
-                params["task"] = "expand"
-            else:
-                params["task"] = "mine"
-            self.getParent().expand(params)
-    def getWeightCover(self, params):
-        params["area"] = self.getDrawer().getHighlightedIds()
-        return params
-    def q_expand(self, more):
-        if not self.getPltDtH().hasQueries():
-            return False
-        if more is None:
-            return True
-        res = True
-        if "side" in more:
-            res &= len(self.getPltDtH().getQuery(1-more["side"])) > 0
-        if "in_weight" in more or "out_weight" in more:
-            res &= self.getDrawer().q_has_selected()
-        return res
             
     #### SEC: HANDLING SETTINGS
     ###########################################
@@ -459,8 +437,8 @@ class ViewBasis(object):
 
     #### SEC: DATA HANDLING
     ###########################################   
-    def setCurrent(self, qr=None):
-        return self.getPltDtH().setCurrent(qr)
+    def setCurrent(self, qr=None, iid=None):
+        return self.getPltDtH().setCurrent(qr, iid)
 
     def getWhat(self):
         return self.getPltDtH().getWhat()
@@ -476,6 +454,70 @@ class ViewBasis(object):
     def addStamp(self, pref=""):
         pass
             
+
+class ViewBasis(ViewBare):
+    """
+    The parent class of all visualizations.
+    """
+
+    colors_ord = ["color_l", "color_r", "color_i", "color_o"]
+    colors_def = {"color_l": (255,0,0), "color_r": (0,0,255), "color_i": (160,32,240), "color_o": (153, 153, 153),
+                  "grey_basic": (127,127,127), "grey_light": (153,153,153), "grey_dark": (85,85,85),
+                  "color_h": (255, 255, 0), -1: (127, 127, 127)}
+    DOT_ALPHA = 0.6
+    ## 153 -> 99, 237 -> ed
+    DOT_SHAPE = 's'
+    DOT_SIZE = 3
+
+    DELTA_ON = False
+    DEF_ZORD = 3
+    
+    TID = "-"
+    SDESC = "-"
+    ordN = 0
+    title_str = "Basis View"
+    geo = False
+    ext_keys = None
+    typesI = ""
+
+    subcl_layh = LayoutHandlerBasis
+    subcl_drawer = DrawerBasis
+    subcl_pltdt = PltDtHandlerBasis
+
+    def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
+        self.getDrawer().emphasizeOnOff(turn_on, turn_off, hover, review)
+       
+    def OnExpandAdv(self, event):
+        if self.getPltDtH().hasQueries():
+            params = {"red": self.getPltDtH().getRed(), "task": "expand"}
+            if event.GetId() in self.menu_map_pro:
+                params = self.getLayH().getProcessesParams(self.menu_map_pro[event.GetId()], params)
+            self.getParent().expand(params)
+
+    def OnExpandSimp(self, event):
+        if self.getPltDtH().hasQueries():
+            params = {"red": self.getPltDtH().getRed()}
+            if params["red"].length(0) + params["red"].length(1) > 0:
+                params["task"] = "expand"
+            else:
+                params["task"] = "mine"
+            self.getParent().expand(params)
+    def getWeightCover(self, params):
+        params["area"] = self.getDrawer().getHighlightedIds()
+        return params
+    def q_expand(self, more):
+        if not self.getPltDtH().hasQueries():
+            return False
+        if more is None:
+            return True
+        res = True
+        if "side" in more:
+            res &= len(self.getPltDtH().getQuery(1-more["side"])) > 0
+        if "in_weight" in more or "out_weight" in more:
+            res &= self.getDrawer().q_has_selected()
+        return res
+
+        
 class ViewEntitiesProj(ViewBasis):
     
     TID = "-"
@@ -756,7 +798,6 @@ class ViewList(ViewBasis):
         if what is not None:
             return all([((isinstance(c[1], Redescription) or isinstance(c[1], ColM)) and DrawerBasis.isTypeId(c[1].typeId(), names, default_accept=True)) for c in what])
         return False
-
     
 class ViewClustProj(ViewEntitiesProj, ViewList):
 
@@ -829,3 +870,71 @@ class ViewBorders(ViewList):
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None):
         return tcl.suitableViewBase(geo, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
+
+class ViewText(ViewBare):
+    TID = "TXT"
+    SDESC = "Text"
+    ordN = 0
+    title_str = "Text"
+    geo = False
+    typesI = "R"
+
+    @classmethod
+    def isTable(tcl):
+        return True
+
+class ViewTextList(ViewText):
+
+    TID = "TBL"
+    SDESC = "List"
+    ordN = 0
+    title_str = "list"
+    geo = False
+    typesI = "R"
+
+    subcl_drawer = None
+    subcl_pltdt = PltDtHandlerTextList
+    subcl_layh = LayoutHandlerText
+    
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return False
+
+    def __init__(self, parent, vid, more=None):
+        self.lid = None
+        ViewText.__init__(self, parent, vid, more)
+
+    def getLid(self):
+        return self.lid
+    def getTable(self):
+        return self.getLayH().getTable()
+    
+    def refreshTable(self, lids=None, iids=[]):
+        if lids is None or self.getLid() in lids:
+            self.getTable().load(self.getLid())
+        else:
+            for iid in iids:
+                self.getTable().refreshItem(iid)
+    
+    def getListShortStr(self):
+        if self.lid is not None:
+            dt = self.getLayH().getTable().getListData(self.lid)
+            if dt is not None and "name" in dt:
+                return dt["name"]                            
+        return "?"
+        
+    def setCurrent(self, qr=None, iid=None):
+        self.lid = iid
+        self.getLayH().getTable().load(iid)
+        return self.getPltDtH().setCurrent(qr, iid)
+
+    #### SEC: MENU
+    ######################################
+    def makeMenu(self, frame=None):
+        self.getLayH().getTable().makeMenu()
+
+    def getShortDesc(self):
+        return "%s %s" % (self.SDESC, self.getListShortStr())
+
+    def getTitleDesc(self):
+        return "%s %s" % (self.title_str, self.getListShortStr())

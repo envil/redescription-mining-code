@@ -326,8 +326,9 @@ class FindDialog(object):
     """Helper class to show the dialog for finding items"""
     def __init__(self, parent, page):        
         self.parent = parent
-        self.dlg = wx.Dialog(self.parent.toolFrame, title="Find")
-        self.resetFind(page)
+        self.page = page
+        self.dlg = wx.Dialog(self.page.getFrame(), title="Find")
+        self.resetFind(self.page)
         
         self.findTxt = wx.TextCtrl(self.dlg, value='', size=(500,30))
         self.findTxt.Bind(wx.EVT_KEY_UP, self.OnKey)
@@ -350,13 +351,20 @@ class FindDialog(object):
         self.dlg.SetSizer(topSizer)
         self.dlg.Fit()
 
+    def getPage(self):
+        return self.page
+    def getFrame(self):
+        return self.page.getFrame()
+
     def resetValues(self, list_values):
         self.list_values = list_values
     def resetCallback(self, callback):
         self.callback = callback
-    def resetFind(self, page):
-        self.resetValues(page.getNamesList())
-        self.resetCallback(page.updateFind)
+    def resetFind(self, page=None):
+        if page is not None:
+            self.page = page
+        self.resetValues(self.getPage().getNamesList())
+        self.resetCallback(self.getPage().updateFind)
         
     def showDialog(self):
         self.dlg.Show()
@@ -396,7 +404,11 @@ class FindDialog(object):
         if self.callback is not None:
             self.callback(cid=None)
 
-    def OnQuit(self, event):
+    def OnQuit(self, event):        
+        self.quit()
+        
+    def quit(self):        
+        self.getPage().quitFind()
         self.parent.quitFind()
         self.dlg.Destroy()
 

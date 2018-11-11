@@ -559,9 +559,20 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
         else:
             self.SetItemTextColour(row, wx.SystemSettings_GetColour( wx.SYS_COLOUR_GRAYTEXT ))
 
-class SplitView:
+class TableView:
 
-    def __init__(self, cm, frame):
+    def __init__(self, cm, frame, detached_handle=None):
+        self.detached_handle = detached_handle
+
+    def isDetached(self):
+        return self.detached_handle is not None
+    def getDetachedHandle(self):
+        return self.detached_handle
+
+class SplitView(TableView):
+
+    def __init__(self, cm, frame, detached_handle=None):
+        TableView.__init__(self, cm, frame, detached_handle)
         self.last_foc = None
 
         self.sw = wx.SplitterWindow(frame, -1, style=wx.SP_LIVE_UPDATE) #|wx.SP_NOBORDER)
@@ -581,14 +592,7 @@ class SplitView:
         self.sw.SplitVertically(panelL, panelR, self.lcc.list_width)
         self.sw.SetSashGravity(0.)
         self.sw.SetMinimumPaneSize(1)
-
-    def getSW(self):
-        return self.sw
-    def getLCC(self):
-        return self.lcc
-    def getLCI(self):
-        return self.lci
-
+        
     def getFocusedL(self):
         ret = None
         ff = self.sw.FindFocus()
@@ -603,6 +607,54 @@ class SplitView:
             self.last_foc = foc
         else:
             self.last_foc = self.sw.FindFocus()
+        
+    def getSW(self):
+        return self.sw
+    def getLCC(self):
+        return self.lcc
+    def getLCI(self):
+        return self.lci
+    def isLCC(self, ll):
+        return self.lcc == ll
+    def isLCI(self, ll):
+        return self.lci == ll
+    def hasFocusLCC(self):
+        return self.isLCC(self.getFocusedL())
+    def hasFocusLCI(self):
+        return self.isLCI(self.getFocusedL())
+
+class SingleView(TableView):
+
+    def __init__(self, cm, frame, detached_handle=None):
+        TableView.__init__(self, cm, frame, detached_handle)
+        panelM = wx.Panel(frame, -1)        
+        self.lci = ListCtrlItems(panelM, cm, -1)
+
+        vbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        vbox1.Add(self.lci, 1, wx.EXPAND)
+        panelM.SetSizer(vbox1)
+        self.sw = panelM
+
+    def getFocusedL(self):
+        return self.lci
+
+    def markFocus(self, foc=None):
+        pass
+        
+    def getSW(self):
+        return self.sw
+    def getLCC(self):
+        return None
+    def getLCI(self):
+        return self.lci
+    def isLCC(self, ll):
+        return False
+    def isLCI(self, ll):
+        return self.lci == ll
+    def hasFocusLCC(self):
+        return len(self.getLCI().getSelection()) == 0
+    def hasFocusLCI(self):
+        return len(self.getLCI().getSelection()) > 0
 
 
 class ContentTable:
@@ -621,31 +673,59 @@ class ContentTable:
     width_colinfow = 100
     width_colinfon = 8
     
-    def __init__(self, parent, tabId, tabType, frame, short=None):
+    def __init__(self, parent, tabId, tabType, frame, short=None, single=False, detached_handle=None, activate=True):
         self.active = False
         self.active_lid = None
         self.details = {}
         self.tabId = tabId
         self.tabType = tabType
         self.parent = parent
-        self.view = SplitView(self, frame)
-        self.load()
-        self.active = True
+        if single:
+            self.view = SingleView(self, frame, detached_handle)
+        else:
+            self.view = SplitView(self, frame, detached_handle)
+        if activate:
+            self.load()
+            self.active = True
 
     def isActive(self):
         return self.active and self.hasContentData()
+    def isSingle(self):
+        return isinstance(self.view, SingleView)
+    def isDetached(self):
+        return self.view.isDetached()
+    def getHandle(self):
+        if self.isDetached():
+            return self.view.getDetachedHandle()
+        return self.parent
+    def getFrame(self):
+        return self.getHandle().getFrame()
+    def getTabId(self):
+        return self.tabId
+    def getTabType(self):
+        return self.tabType
+        
+    def getTab(self):
+        return {"id": self.getTabId(), "type": self.getTabType(), "tab": self, "detached": self.isDetached()}        
 
     def hasContentData(self):
         return self.getContentData() is not None
     def getContentData(self):
         return None
 
+    def getView(self):
+        return self.view
     def getSW(self):
         return self.view.getSW()
     def getLCC(self):
         return self.view.getLCC()
     def getLCI(self):
         return self.view.getLCI()
+    def isLCC(self, ll):
+        return self.view.isLCC(ll)
+    def isLCI(self, ll):
+        return self.view.isLCI(ll)
+
     def getActiveLid(self):
         return self.active_lid
     def setActiveLid(self, lid):
@@ -668,9 +748,9 @@ class ContentTable:
         
     #### FOR PARENT
     def hasFocusItemsL(self):
-        return self.view.getFocusedL() == self.getLCI()
+        return self.view.hasFocusLCI()
     def hasFocusContainersL(self):
-        return self.view.getFocusedL() == self.getLCC()
+        return self.view.hasFocusLCC()
     def GetNumberRows(self):
         return self.getLCI().GetNumberRows()
     def nbSelected(self):
@@ -681,6 +761,8 @@ class ContentTable:
             return [self.getContentData().getIidForLidPos(lid, pos) for pos in self.getLCI().getSelection()]
         return []
     def getSelectedLids(self):
+        if self.isSingle():
+            return [self.getActiveLid()]
         if self.hasContentData():
             return [self.getContentData().getLidForPos(pos) for pos in self.getLCC().getSelection()]
         return []
@@ -700,11 +782,16 @@ class ContentTable:
     def getSelectedItem(self):
         if self.nbSelected() == 1 and self.hasFocusItemsL():
             return self.getSelectedItems()[0][1]
-        
-    def getActiveList(self):
-        lid = self.getActiveLid()
+
+    def getItemsList(self, lid=None):
+        if lid is not None and self.hasContentData():
+            return [(iid, self.getContentData().getItem(iid)) for iid in self.getContentData().getIidsList(lid)]
+        return []
+    def getList(self, lid=None):
         if lid is not None and self.hasContentData():
             return self.getContentData().getList(lid)
+    def getActiveList(self):
+        return self.getList(self.getActiveLid())
     def isEmptyBuffer(self):
         return not self.hasContentData() or self.getContentData().lenBuffer() == 0
 
@@ -727,9 +814,23 @@ class ContentTable:
                 infos[sort_info[0]]["title"] += direct
         return infos
     #### HANDLING DATA END
+
+    def getListShortStr(self, lid=None):
+        if self.hasContentData():
+            if lid is None:
+                lid = self.getActiveLid()
+            ll = self.getContentData().getList(lid)
+            if ll is not None:
+                return ll.getShortStr()
+                if isinstance(ll, StoredContainer):
+                    dt["src_typid"] = ll.getSrcTypId()
+                return dt
         
     def getListData(self, lid, pos=None):
         if self.hasContentData():
+            if lid is None:
+                lid = self.getActiveLid()
+
             ll = self.getContentData().getList(lid)
             if ll is not None:
                 dt = {"name": ll.getShortStr(), "id": lid, "pos": pos}
@@ -790,9 +891,10 @@ class ContentTable:
         if not self.hasContentData():
             return
         self.active = False
-        llids = self.getOrdLids()
-        lists_data = [self.getListData(llid, pos) for pos, llid in enumerate(llids)]
-        self.getLCC().loadData(lists_data, select_ids=[lid])
+        if not self.isSingle():
+            llids = self.getOrdLids()
+            lists_data = [self.getListData(llid, pos) for pos, llid in enumerate(llids)]
+            self.getLCC().loadData(lists_data, select_ids=[lid])
 
         if lid is not None:
             cols_info = self.getColsInfo(lid, refresh=rfields)
@@ -803,11 +905,11 @@ class ContentTable:
     def getRowData(self, ll, row):
         if not self.hasContentData():
             return
-        if ll == self.getLCC():
+        if self.isLCC(ll):
             lid = self.getContentData().getLidForPos(row)
             if lid is not None:
                 return self.getListData(lid)
-        elif ll == self.getLCI():            
+        elif self.isLCI(ll):            
             iid = self.getContentData().getIidForLidPos(self.getActiveLid(), row)
             if iid is not None:
                 return self.getItemData(iid)
@@ -830,7 +932,7 @@ class ContentTable:
             self.refreshList(lid) ### changed status update
             self.getLCI().RefreshItem(pos)    
     def refreshList(self, lid):
-        if not self.hasContentData():
+        if not self.hasContentData() or self.isSingle():
             return
         pos = self.getContentData().getPosForLid(lid)
         if pos is not None:
@@ -850,26 +952,31 @@ class ContentTable:
     ########## HANDLING ACTIONS START
     def fwdeventLeftClick(self, lc, event):
         #### menu
-        self.parent.makeMenu(self.parent.toolFrame)
+        self.makeMenu()
 
     def fwdeventRightClick(self, lc, event):
         #### menu
         self.view.markFocus(lc)
-        self.parent.makePopupMenu(self.parent.toolFrame)
+        self.makePopupMenu()
 
+    def makeMenu(self):
+        self.parent.makeMenu(self)
+    def makePopupMenu(self):
+        self.parent.makePopupMenu(self)
+        
     def fwdeventItemActivated(self, lc, event):
-        if lc == self.getLCI():
+        if self.isLCI(lc):
             what = self.getSelectedItem()
             iid = what.getUid()
             self.parent.viewOpen(what, iid)
-        elif lc == self.getLCC():
+        elif self.isLCC(lc):
             what = self.getSelectedItems()
             iid = self.getActiveLid()
             self.parent.viewOpen(what, iid)
 
 
     def fwdeventColClick(self, lc, event):
-        if lc == self.getLCI():
+        if self.isLCI(lc):
             colS = event.GetColumn()
             ll = self.getActiveList()
             if ll is not None:
@@ -885,7 +992,7 @@ class ContentTable:
                 
 
     def fwdeventCheckItem(self, lc, index, flag):
-        if lc == self.getLCI() and self.isActive():
+        if self.isLCI(lc) and self.isActive():
             iid = self.getContentData().getIidForLidPos(self.getActiveLid(), index)
             self.parent.OnActContent("FlipEnabled", more_info={"iids": [iid]})
             # iid = self.getContentData().getIidForLidPos(self.getActiveLid(), index)
@@ -894,7 +1001,7 @@ class ContentTable:
             #     self.getLCI().RefreshItem(index)
 
     def fwdeventSelect(self, lc, event):
-        if lc == self.getLCC() and self.isActive():
+        if self.isLCC(lc) and self.isActive():
             pos = event.GetIndex()
             lid = self.getContentData().getLidForPos(pos)
             if lid is not None and lid != self.getActiveLid():
@@ -908,12 +1015,12 @@ class ContentTable:
         if len(sel) == 0:
             return
         trg_pos = None
-        if lc == self.getLCC():
+        if self.isLCC(lc):
             if trg_where['index'] != -1:
                 trg_lid = self.getContentData().getLidForPos(trg_where['index'])
                 if trg_lid != src_lid:
                     trg_pos = -1
-        elif lc == self.getLCI():
+        elif self.isLCI(lc):
             trg_lid = src_lid
             trg_pos = trg_where['index']
             if trg_where['after'] and trg_pos != -1:
@@ -928,9 +1035,9 @@ class ContentTable:
 
 class FindContentTable(ContentTable):
     #### FIND FUNCTIONS
-    
-    def __init__(self, parent, tabId, tabType, frame, short=None):
-        ContentTable.__init__(self, parent, tabId, tabType, frame, short)
+
+    def __init__(self, parent, tabId, tabType, frame, short=None, single=False, detached_handle=None, activate=True):
+        ContentTable.__init__(self, parent, tabId, tabType, frame, short, single, detached_handle, activate)
         self.matching = []
         self.curr_match = None
         self.prev_sels = None
