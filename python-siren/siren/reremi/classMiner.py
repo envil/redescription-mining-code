@@ -35,25 +35,40 @@ class DummyLog(object):
     def updateProgress(self, details, level=-1, id=None):
         pass
 
+    
 class RCollection(BatchCollection):
 
     def __init__(self):
         BatchCollection.__init__(self)
+        # self.initTracker()
         ### prepare buffer list
         self.newList(iid="F")
         self.newList(iid="P")
-        self.newList(iid="S")
+        self.newList(iid="W")
+
+    def resetWorking(self, reds=[]):
+        self.clearList("W")
+        for red in reds:
+            self.addItem(red, "W")                
         
-    def resetPartial(self, reds=None):
+    def resetPartial(self, reds=[]):
         self.clearList("P")
-        self.clearList("S")
-        if reds is not None:
-            for red in reds:
-                self.addItem(red, "P")
-
-    def resetFinal(self):
+        self.resetWorking(reds)
+                
+    def resetFinal(self, reds=[]):
         self.clearList("F")
+        self.resetPartial(reds)
 
+    def logResults(self, logger, lid, pid):
+        if self.getLen(lid) > 0:
+            logger.printL(1, {lid: self.getItems(lid)}, 'result', pid)
+            logger.printL(1, "%d redescriptions [%s]" % (self.getLen(lid), lid), 'status', pid)
+            for red in self.getItems(lid):
+                logger.printL(2, "--- %s" % red)
+        else:
+            logger.printL(1, "No redescription [%s]" % lid, 'status', pid)
+
+        
 class ExpMiner(object):
     def __init__(self, ppid, count, data, charbon, constraints, souvenirs, logger=None, question_live=None):
         self.charbon = charbon
@@ -69,6 +84,8 @@ class ExpMiner(object):
         else:
             self.logger = logger
 
+    def getId(self):
+        return self.ppid
     def questionLive(self):
         if self.question_live is None:
             return True
@@ -101,22 +118,17 @@ class ExpMiner(object):
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             kids = self.charbon.computeExpandTree(-1, self.data, red.copy())
             for kid in kids:
-                rcollect.addItem(kid, "P")
+                rcollect.addItem(kid, "W")
                 new_red = kid
 
             # self.logger.updateProgress({"rcount": self.count, "redi": redi}, 4, self.ppid)
             self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.ppid)
-
         self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
-        # self.logger.printL(1, {"partial": rcollect.getItems("P")}, 'result', self.ppid)
 
         ### extra selection step for tree-based to check not repeating itself
-        sel = rcollect.selected(self.constraints.getActionsList("partial"), ids="P")
-        Xsel = rcollect.selected(self.constraints.getActionsList("tree_rectangles"), ids=rcollect.getIidsList("F")+sel, new_ids=sel, new_only=True, trg_lid="S")
-        self.logger.printL(1, {"partial": rcollect.getItems("S")}, 'result', self.ppid)
-        self.logger.printL(1, "%d redescriptions selected" % rcollect.getLen("S"), 'status', self.ppid)
-        for red in rcollect.getItems("S"):
-            self.logger.printL(2, "--- %s" % red)
+        sel = rcollect.selected(self.constraints.getActionsList("partial"), ids="W")
+        Xsel = rcollect.selected(self.constraints.getActionsList("tree_rectangles"), ids=rcollect.getIidsList("F")+sel, new_ids=sel, new_only=True, trg_lid="P")
+        rcollect.logResults(self.logger, "P", self.getId())
         return rcollect
 
     
@@ -137,7 +149,7 @@ class ExpMiner(object):
                     exts, basis_red, modr = red.prepareExtElems(self.data, self.data.isSingleD())
                     if modr != 0:
                         if modr == 1:
-                            rcollect.addItem(basis_red, "P")
+                            rcollect.addItem(basis_red, "W")
                         red.removeAvailables()
                     bests = newExtensionsBatch(self.data.nbRows(), self.constraints, basis_red)
                         
@@ -160,7 +172,7 @@ class ExpMiner(object):
                         kids = []
 
                     for kid in kids:
-                        rcollect.addItem(kid, "P")
+                        rcollect.addItem(kid, "W")
                     ## SOUVENIRS
                     if self.upSouvenirs:
                         self.souvenirs.update(kids)
@@ -173,20 +185,17 @@ class ExpMiner(object):
 
             first_round = False
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
-            nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="P")
+            nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="W")
+
             nextge = [rcollect.getItem(i) for i in nextge_keys]
             for iid in rcollect.getIids():
                 if iid not in nextge_keys:
                     rcollect.getItem(iid).removeAvailables()
-            self.logger.printL(1, {"partial": rcollect.getItems("P")}, 'result', self.ppid)
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
-        rcollect.selected(self.constraints.getActionsList("partial"), ids="P", trg_lid="S")        
-        self.logger.printL(1, {"partial": rcollect.getItems("S")}, 'result', self.ppid)
-        self.logger.printL(1, "%d redescriptions selected" % rcollect.getLen("S"), 'status', self.ppid)
-        for red in rcollect.getItems("S"):
-            self.logger.printL(2, "--- %s" % red)
+        rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
+        rcollect.logResults(self.logger, "P", self.getId())
         return rcollect
 
     def improveRedescriptions(self, nextge, rcollect=None):
@@ -194,80 +203,73 @@ class ExpMiner(object):
             charbon = self.initGreedyCharbon()
             if rcollect is None:                
                 rcollect = RCollection()
-            rcollect.resetPartial(nextge)
+            rcollect.resetPartial()
 
+            nbS = 0
             for red in nextge:
                 if self.questionLive():
+                    rcollect.resetWorking()
+                    non_anons = [red]
                     if red.containsAnon():
-                        pids = self.setAnonRedescription(red, rcollect, charbon)
+                        pids = self.setAnonRedescription(red, rcollect, charbon, trg_lid="W")
                         non_anons = [rcollect.getItem(iid) for iid in pids]
-                    else:
-                        pids = []
-                        non_anons = [red]
+                        
                     for r in non_anons:
-                        xids = self.improveRedescription(r, rcollect, charbon)
-                        pids.extend(xids)
+                        self.improveRedescription(r, rcollect, charbon, trg_lid="W")
 
-                    if len(pids) > 0:
-                        sids = rcollect.selected(self.constraints.getActionsList("partial"), ids=pids)
-                        if len(sids) > 0:
-                            rcollect.addItem(red.getUid(), "S")
-                        for iid in sids:
-                            rcollect.addItem(iid, "S")
-                            
-            if rcollect.getLen("S") > 0:
-                self.logger.printL(1, {"partial": rcollect.getItems("S")}, 'result', self.ppid)
-                self.logger.printL(1, "%d improved redescriptions" % rcollect.getLen("S"), 'status', self.ppid)
-                for red in rcollect.getItems("S"):
-                    self.logger.printL(2, "--- %s" % red)
-            else:
-                self.logger.printL(1, "No redescription improved", 'status', self.ppid)                            
+                    rcollect.addItem(red, "P")
+                    if rcollect.getLen("W") > 0:
+                        rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
+
+                    rcollect.logResults(self.logger, "P", self.getId())
+                    # rcollect.logResults(self.logger, "W", self.getId())
         return rcollect
                     
-    def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0):
+    def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0, trg_lid=None, track_rounds=[]):
+        # print "-----------------", round_id, track_rounds
+        # print "IMPRV -(0:0)-\t%s" % red        
         bests = []
         best_score = red.score()
+        got_better = False
         for side in [0, 1]:
             queries = [red.query(0), red.query(1)]
             org_q = red.query(side)
             for (ls, q) in org_q.minusOneLiteral():
                 if (side, ls, round_id) in skip:
+                    ### no need to try improving the same element as previous round
                     continue
 
                 xps = self.improveRedescriptionElement(charbon, queries, side, org_q, ls)
+                for cand in xps:
+                    if cand["red"].score() > best_score:
+                        got_better = True
+                        bests = [cand]
+                        best_score = cand["red"].score()
+                    elif got_better and cand["red"].score() == best_score:
+                        bests.append(cand)
+                        
                 if len(q) > 0:
                     queries[side] = q
                     cand_red = Redescription.fromQueriesPair(queries, self.data)
-                    xps.append({"red": red, "side": side, "ls": ls, "lit": None})
-
-                for cand in xps:
-                    if cand["red"].score() > best_score:
-                        bests = [cand]
-                        best_score = cand["red"].score()
-                    elif len(bests) > 0 and cand["red"].score() == best_score:
-                        bests.append(cand)
-
+                    if cand_red.score() > red.score():
+                        bests.append({"red": cand_red, "side": side, "ls": ls, "lit": None})
+                        
         kid_ids = []
         desc_ids = []
-        if len(bests) > 0:
-            if self.logger.verbosity >= 4:
-                self.logger.printL(4, "Improving literals got %d redescriptions" % len(bests), "log", self.ppid)
-            self.logger.printL(1, {"partial": [best["red"] for best in bests]}, 'result', self.ppid)
-        else:
-            if self.logger.verbosity >= 4:
-                self.logger.printL(4, "Improving literals got no redescription", "log", self.ppid)
-
-            
         for ci, best in enumerate(bests):
+            # if round_id < 50:
+            #     print "%s|_ (%d:%d:%d)%s\t%s" % (" "*round_id, ci, best["lit"] is None, best["red"].getUid(), " "*(50-round_id), best["red"])
+            # else:
+            #     print "[...]"
             kid_ids.append(best["red"].getUid())
-            rcollect.addItem(best["red"], "P")
+            rcollect.addItem(best["red"], trg_lid)
 
             skip_next ={(best["side"], best["ls"], round_id+1): best["red"].score()}
-            desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1))
+            desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1, trg_lid=trg_lid, track_rounds=[ci]+track_rounds))
         return kid_ids+desc_ids
 
 
-    def setAnonRedescription(self, red, rcollect, charbon, first_round=True):
+    def setAnonRedescription(self, red, rcollect, charbon, first_round=True, trg_lid=None):
         kid_ids = []
         desc_ids = []
 
@@ -279,12 +281,8 @@ class ExpMiner(object):
             best_score = noan_red.score()
 
             if first_round:
-                if self.logger.verbosity >= 4:
-                    self.logger.printL(4, "Stripping anonymous vars", "log", self.ppid)
-                self.logger.printL(1, {"partial": [noan_red]}, 'result', self.ppid)
-
                 kid_ids.append(noan_red.getUid())
-                rcollect.addItem(noan_red, "P")
+                rcollect.addItem(noan_red, trg_lid)
 
         for side in [0, 1]:
             queries = [red.query(0), red.query(1)]
@@ -300,20 +298,17 @@ class ExpMiner(object):
                     elif len(bests) > 0 and cand["red"].score() == best_score:
                         bests.append(cand)
 
-        if self.logger.verbosity >= 4:
-            self.logger.printL(4, "Setting anonymous literals got %d redescriptions" % len(bests), "log", self.ppid)
-        self.logger.printL(1, {"partial": [best["red"] for best in bests]}, 'result', self.ppid)
 
         for ci, best in enumerate(bests):
             kid_ids.append(best["red"].getUid())
-            rcollect.addItem(best["red"], "P")
+            rcollect.addItem(best["red"], trg_lid)
             
             queries = [red.query(0), red.query(1)]
             cand_q = queries[best["side"]].copy()
             cand_q.setBukElemAt(best["lit"], best["org_ls"])
             queries[best["side"]] = cand_q
             cand_red = Redescription.fromQueriesPair(queries, self.data)                
-            desc_ids.extend(self.setAnonRedescription(cand_red, rcollect, charbon, first_round=False))
+            desc_ids.extend(self.setAnonRedescription(cand_red, rcollect, charbon, first_round=False, trg_lid=trg_lid))
         return kid_ids+desc_ids
 
     def improveRedescriptionElement(self, charbon, queries, side, org_q, ls):
@@ -483,7 +478,7 @@ class Miner(object):
         self.logger.initProgressPart(self.constraints, self.souvenirs, reds, 1, self.getId())
         self.logger.clockTic(self.getId(), "part run")        
 
-        if cust_params.get("what") == "improve":
+        if cust_params.get("task") == "improve":
             self.logger.printL(1, "Improving...", 'status', self.getId()) ### todo ID
             rcollect = self.improveRedescriptions(reds)
         else:
@@ -526,8 +521,8 @@ class Miner(object):
 
             
             # self.logger.clockTic(self.getId(), "select")        
-            if self.rcollect.getLen("S") > 0:
-                self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+self.rcollect.getIidsList("S"), new_ids=self.rcollect.getIidsList("S"), trg_lid="F")
+            if self.rcollect.getLen("P") > 0:
+                self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+self.rcollect.getIidsList("P"), new_ids=self.rcollect.getIidsList("P"), trg_lid="F")
             # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
             # if (self.final["results"] != ttt):
             #     pdb.set_trace()
@@ -536,7 +531,7 @@ class Miner(object):
             # self.logger.clockTac(self.getId(), "select")
 
             self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
-            self.logger.printL(1, {"final": self.rcollect.getItems("F")}, 'result', self.getId())
+            self.rcollect.logResults(self.logger, "F", self.getId())
             check_score = not self.charbon.isTreeBased()
             try:
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
@@ -860,7 +855,7 @@ class MinerDistrib(Miner):
         if not self.constraints.getCstr("amnesic"):
             self.souvenirs.update(m["out"].getItems("P"))
         self.logger.clockTac(self.getId(), "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
-        self.logger.printL(1, {"final": self.rcollect.getItems("F")}, 'result', self.getId())
+        self.rcollect.logResults(self.logger, "F", self.getId())
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.getId())
 
     def leftOverPairs(self):
@@ -905,7 +900,7 @@ class MinerDistrib(Miner):
             elif m["what"] == "pairs":
                 self.handlePairResult(m)
 
-            elif m["what"] == "expansion":
+            elif m["what"] == "expand":
                 self.handleExpandResult(m)
                 del self.workers[m["id"]]
                 self.initializeExpansions()
@@ -933,22 +928,22 @@ class PairsProcess(multiprocessing.Process):
         
     def isExpand(self): ### expand or init?
         return False
-    def getWhat(self):
-        return self.what
+    def getTask(self):
+        return self.task
     
     def run(self):
         for pairs, (idL, idR, pload) in enumerate(self.explore_list):
             pairs = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColsC())
-            self.queue.put({"id": self.getId(), "what": self.getWhat(), "pairs": pairs, "idL": idL, "idR": idR, "pload": pload})
+            self.queue.put({"id": self.getId(), "what": self.getTask(), "pairs": pairs, "idL": idL, "idR": idR, "pload": pload})
         self.queue.put({"id": self.getId(), "what": "done"})
 
 class ExpandProcess(multiprocessing.Process, ExpMiner):
 
     def __init__(self, sid, ppid, count, data, charbon, constraints, souvenirs, rqueue,
                  nextge, rcollect=None, logger=None,
-                 question_live=None, what = "expansion"):
+                 question_live=None, task = "expand"):
         multiprocessing.Process.__init__(self)
-        self.what = what
+        self.task = task
         self.daemon = True
         self.id = sid
         self.ppid = ppid
@@ -974,18 +969,18 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
     def getId(self):
         return self.id
     
-    def getWhat(self):
-        return self.what
+    def getTask(self):
+        return self.task
         
     def isExpand(self): ### expand or init?
         return True
 
     def run(self):
-        if self.getWhat() == "improve":
+        if self.getTask() == "improve":
             rcollect = self.improveRedescriptions(self.nextge, rcollect=self.rcollect)
         else:
             rcollect = self.expandRedescriptions(self.nextge, rcollect=self.rcollect)
-        self.queue.put({"id": self.getId(), "what": self.getWhat(), "out": rcollect, "count": self.count})
+        self.queue.put({"id": self.getId(), "what": self.getTask(), "out": rcollect, "count": self.count})
 
 #######################################################################
 ########### MINER INSTANCIATION
@@ -993,6 +988,7 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
 
 def instMiner(data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
     if params["nb_processes"]["data"] > 1:
+        Redescription.setUidGen(nv=None, step=None, mp_lock=True)
         return MinerDistrib(data, params, logger, mid, souvenirs, qin, cust_params)
     else:
         return Miner(data, params, logger, mid, souvenirs, qin, cust_params)

@@ -730,12 +730,15 @@ class ContentTable:
         return self.active_lid
     def setActiveLid(self, lid):
         self.active_lid = lid
+        if lid is None:
+            self.setDefActiveLid()
+
     def setDefActiveLid(self):
         olids = self.getOrdLids()
         if self.active_lid is None:
             if len(olids) > 0:
                 self.active_lid = olids[0]
-        elif self.active_lid >= len(olids):            
+        elif self.active_lid not in olids:            
             if len(olids) > 0:
                 self.active_lid = olids[0]
             else:
@@ -754,7 +757,9 @@ class ContentTable:
     def GetNumberRows(self):
         return self.getLCI().GetNumberRows()
     def nbSelected(self):
-        return self.view.getFocusedL().GetSelectedItemCount()
+        if self.view.getFocusedL() is not None:
+            return self.view.getFocusedL().GetSelectedItemCount()
+        return 0
     def getSelectedIids(self):
         lid = self.getActiveLid()
         if lid is not None and self.hasContentData():
@@ -940,6 +945,8 @@ class ContentTable:
     def refreshListContent(self, lid, selected_iids=None, new_lid=False):
         if not self.hasContentData():
             return
+        if lid is None:
+            lid = self.getActiveLid()
         if lid == self.getActiveLid():
             if selected_iids is None:
                 selected_iids = self.getSelectedIids()
@@ -1151,7 +1158,7 @@ class RedsTable(FindContentTable):
     str_item = 'item'
 
     FIRST_FIELDS = [('', str_item+'.getSortAble', None, ContentTable.width_colcheck, wx.LIST_FORMAT_LEFT),
-                    ('id', str_item+'.getShortRid', None, ContentTable.width_colid, wx.LIST_FORMAT_LEFT)] #,
+                    ('id', str_item+'.getShortId', None, ContentTable.width_colid, wx.LIST_FORMAT_LEFT)] #,
                     # ('query LHS', str_item+'.getQueryLU', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT),
                     # ('query RHS', str_item+'.getQueryRU', None, ContentTable.width_colnamew, wx.LIST_FORMAT_LEFT)]
     LAST_FIELDS = [] #('track', str_item+'.getTrack', None, ContentTable.width_colinfo, wx.LIST_FORMAT_LEFT)]

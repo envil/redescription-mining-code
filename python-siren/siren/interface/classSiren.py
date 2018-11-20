@@ -43,6 +43,7 @@ import pdb
 def getRandomColor():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
+Redescription.setUidGen(mp_lock=True)
 
 class ERCache():
     
@@ -830,9 +831,9 @@ class Siren():
                 frame.Bind(wx.EVT_MENU, self.OnActContent, m_ac)
                 if self.getDefaultTTab(tab=tab).GetNumberRows() == 0:
                     menuEdit.Enable(ID_AC, False)
-            
-            if self.matchTabType("r", tab=tab):
 
+        if True: #self.getDefaultTTab(tab=tab).hasFocusItemsL():
+            if self.matchTabType("r", tab=tab):
                 for act_details in self.dw.getGroupActs("redCCP"):
                     ID_AC = wx.NewId()
                     m_ac = menuEdit.Append(ID_AC, act_details["label"], act_details["legend"])
@@ -842,9 +843,12 @@ class Siren():
                         if self.getDefaultTTab(tab=tab).isEmptyBuffer():
                             menuEdit.Enable(ID_AC, False)
                     else:
-                        if self.getDefaultTTab(tab=tab).GetNumberRows() == 0:
+                        # if self.getDefaultTTab(tab=tab).GetNumberRows() == 0:
+                        if self.getDefaultTTab(tab=tab).nbSelected() == 0:
                             menuEdit.Enable(ID_AC, False)
 
+        if self.getDefaultTTab(tab=tab).hasFocusItemsL():
+            if self.matchTabType("r", tab=tab):
                 if self.getDefaultTTab(tab=tab).GetNumberRows() > 0:
                     if menuEdit.GetMenuItemCount() > 0:
                         menuEdit.AppendSeparator()                    
@@ -1649,7 +1653,7 @@ class Siren():
             
         ### RELOADING VARS
         vars_rneeds = rneeds.get("v", {})
-        if vars_rneeds.get("switch") is not None:
+        if "switch" in vars_rneeds:
             self.getVTab().setActiveLid(vars_rneeds.get("switch"))
         if vars_rneeds.get("data", rall) or vars_rneeds.get("fields"):
             self.getVTab().load(rfields=vars_rneeds.get("fields", rall))
@@ -1666,8 +1670,7 @@ class Siren():
 
         ### RELOADING REDS
         reds_rneeds = rneeds.get("r", {})
-        self.viewsm.refreshTables()
-        if reds_rneeds.get("switch") is not None:
+        if "switch" in reds_rneeds:
             self.getRTab().setActiveLid(reds_rneeds.get("switch"))
         if reds_rneeds.get("data", rall) or reds_rneeds.get("fields"):
             if reds_rneeds.get("fields", rall):

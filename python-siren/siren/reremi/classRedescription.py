@@ -40,18 +40,6 @@ class Redescription(WithEVals):
         tcl.RP = RedProps(fields_fns)
     ### getRP(tcl, rp=None) is defined in WithEVals class 
 
-    next_uid = -1
-    step_uid = 1
-    @classmethod
-    def generateNextUid(tcl):        
-        tcl.next_uid += tcl.step_uid
-        return tcl.next_uid
-
-    @classmethod
-    def setUidGen(tcl, nv=-1, step=1):
-        tcl.next_uid = nv
-        tcl.step_uid = step
-
     
     def __init__(self, nqueryL=None, nqueryR=None, nsupps = None, nN = -1, nPrs = [-1,-1], ssetts=None, iid=None):
         WithEVals.__init__(self, iid)
@@ -524,12 +512,7 @@ class Redescription(WithEVals):
         if details is not None and details.get("aim") == "sort":
             return (self.getStatus(), self.getUid())
         return ""
-    
-    def getShortRid(self, details={}):
-        if details is not None and details.get("aim") == "sort":
-            return self.getUid()
-        return "%s%s" % (self.class_letter, self.getUid())
-    
+        
     # def getCohesion(self, details={}):
     #     return self.getDetail("cohesion")
     # def getCohesionNat(self, details={}):
@@ -943,6 +926,9 @@ class Redescription(WithEVals):
         tmp += "\tlengthQs:%d nbAvC:%s+%s track:%s" % (len(self), str_av[0], str_av[1], self.getTrack({"format":"str"}))
         return tmp
 
+    # def __str__(self):
+    #     return "%s\t%s\t%s" % (self.query(0), self.query(1), self.score())
+    
     def dispQueries(self, names=[None, None, None], sep='\t'):
         sides = [0, 1]
         if self.hasCondition():

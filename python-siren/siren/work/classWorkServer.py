@@ -88,7 +88,7 @@ class WorkServer(object):
 
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
         print "PID", os.getpid()
-        Redescription.setUidGen(nv=-1, step=-1)
+        Redescription.setUidGen(nv=-1, step=-1, mp_lock=True)
         self.manager = make_server_manager(portnum, authkey)
         self.shared_job_q = self.manager.get_job_q() #queue
         self.shared_ids_d = self.manager.get_ids_d() #queue

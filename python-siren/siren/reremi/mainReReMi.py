@@ -6,7 +6,7 @@ import tempfile
 
 import codecs
 
-from classContent import BatchCollection
+from classContent import Item, Container, BatchCollection
 
 from toolLog import Log
 from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintParams
@@ -517,13 +517,12 @@ def run_printout(args):
             rp.parseRedList(fd, data, reds)
     except IOError:
         reds = []
-
+        
     logger.capVerbosity(0)
 
     if len(reds) > 0:
         miner = instMiner(data, params, logger)
         for red in reds:
-            print " ---------------- \n --- IN\n",  red.disp()
             # for side in [1]: #
             #     inds = red.query(side).indsLit()
             #     xps = red.query(side).minusAnon()
@@ -532,11 +531,14 @@ def run_printout(args):
             #     for x in xps:
             #         print "Q b", x[0], x[1], x[2]
             #     pdb.set_trace()
-            rc = miner.part_run({"red": red, "what": "improve"})
-            sids = rc.getIidsList("S")
+            rc = miner.part_run({"red": red, "task": "improve"})
+            sids = rc.getIidsList("P")
+            print " ---------------- \n --- IN\n",  red.disp()
             print " --- OUT" 
             for i in rc.getItems():
-                print "->"*(i.getUid() in sids), i.getUid(), i.disp()
+                print "->"*(i.getUid() in sids), i
+            pruned = red.getPruned(data) 
+            print " --- PRUNED", pruned[0], pruned[1]
     
     # saveAsPackage("/home/egalbrun/Desktop/Z.siren", data, preferences=params, pm=loaded["pm"])        
     # data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})

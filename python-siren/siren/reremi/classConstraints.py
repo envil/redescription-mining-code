@@ -48,7 +48,6 @@ class Constraints(object):
                                  "pval_red": self.getCstr("score.pval_red", default=0),
                                  "pval_query": self.getCstr("score.pval_query", default=0),
                                  "pval_fact": self.getCstr("score.pval_fact", default=0)}
-
         
     def setFolds(self, data):
         fcol = data.getColsByName("^folds_split_")
@@ -63,7 +62,7 @@ class Constraints(object):
         elif f >= 0 and f < 1 and self.N != 0:
             return  int(round(f*self.N))
         return 0
-    def scaleSuppParams(self, min_c, min_in=None, min_out=None):
+    def scaleSuppParams(self, min_c, min_in=None, min_out=None):        
         sc_min_c = self.scaleF(min_c)
         if min_in == -1:
             sc_min_in = sc_min_c
@@ -350,7 +349,7 @@ class ActionsRegistry:
             elif k == "blocks":
                 filled[k] = [self.fillBlockConstraints(block, constraints) for block in v]
             else:
-                if v[0] == "CSTR":
+                if v[0] == "CSTR":                    
                     val = constraints.getCstr(v[1])
                     if val is None:
                         val = self.getArgDefault(k, action["action"])
@@ -431,20 +430,24 @@ class ActionsRegistry:
     ##############################
     def getItemVal(exp, item, other=None, constraints=None, details={}, swap=False):
         if other is not None and swap:
-            return other.getExpProp(exp, details)
+            v = other.getExpProp(exp, details)
+            return v, "[%s:%s:]%s" % (other.getShortId(), exp, v)
         if item is not None:
-            return item.getExpProp(exp, details)
+            v = item.getExpProp(exp, details)
+            return v, "[%s:%s:]%s" % (item.getShortId(), exp, v)
     def getPairVal(exp, item, other=None, constraints=None, details={}, swap=False):
         if other is None:
             raise Exception("Pair comparison missing other item")
         if item is not None and other is not None:
             if swap:
                 (item, other) = (other, item)
-            return item.getExpPairProp(other, exp, details)
+            v = item.getExpPairProp(other, exp, details)
+            return v, "[%s:%s:%s]%s" % (item.getShortId(), exp, other.getShortId(), v)
     def getCstrVal(exp, item, other=None, constraints=None, details={}, swap=False):
         if constraints is None:
             raise Exception("No constraints can't evaluate %s" % exp)
-        return constraints.getCstr(exp)
+        v = constraints.getCstr(exp)
+        return v, "[%s]%s" % (exp, v)
     
     types_static = {"str": str, "int": int, "float": float, "tuple": tuple, "bool": bool}
     types_dynamic = {"ITEM": getItemVal , "PAIR": getPairVal, "CSTR": getCstrVal}
@@ -535,16 +538,22 @@ class ActionsRegistry:
 
     ###### ACCESS
     @classmethod
-    def getValElem(tcl, block, item, other=None, constraints=None, swap=False):
+    def trackValElem(tcl, block, item, other=None, constraints=None, swap=False):
         if block["typic"] in tcl.types_dynamic:
-            v = tcl.types_dynamic[block["typic"]](block["exp"], item, other, constraints, swap=swap)
+            v, t = tcl.types_dynamic[block["typic"]](block["exp"], item, other, constraints, swap=swap)
             if block.get("flip"):
                 v = flipValue(v)
-            return v
+                t = "NOT "+t
+            return v, t
         elif block["typic"] in tcl.types_static:
-            return tcl.types_static[block["typic"]](block["exp"])
+            v = tcl.types_static[block["typic"]](block["exp"])
+            return v, "%s" % v
         elif block["typic"] is None:
-            return block["exp"]
+            return block["exp"], "%s" % block["exp"]
+        return None, "??"
+    @classmethod    
+    def getValElem(tcl, block, item, other=None, constraints=None, swap=False):
+        return tcl.trackValElem(block, item, other, constraints, swap)[0]
     @classmethod
     def evalBlock(tcl, block, item, other=None, constraints=None):
         (bA, cop, bB) = (tcl.getBlockElem("A", block), tcl.getBlockElem("cop", block), tcl.getBlockElem("B", block))
@@ -553,9 +562,22 @@ class ActionsRegistry:
             vB = tcl.getValElem(bB, item, other, constraints, swap=True)
             return doComparison(vA, cop, vB)
         return vA
+    @classmethod        
+    def trackBlock(tcl, block, item, other=None, constraints=None):
+        (bA, cop, bB) = (tcl.getBlockElem("A", block), tcl.getBlockElem("cop", block), tcl.getBlockElem("B", block))
+        vA, tA = tcl.trackValElem(bA, item, other, constraints, swap=False)
+        if bB is not None:
+            vB, tB = tcl.trackValElem(bB, item, other, constraints, swap=True)
+            v = doComparison(vA, cop, vB)
+            return v, "%s%s?%s -> %s"  % (tA, cop, tB, v)
+        return vA, tA
+
     @classmethod
     def getBlocks(tcl, action):
         return action.get("blocks", [])
+    @classmethod
+    def getNbBlocks(tcl, action):
+        return len(action.get("blocks", []))
     @classmethod
     def getArg(tcl, arg, action, constraints=None):
         if arg in action:

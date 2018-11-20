@@ -424,7 +424,7 @@ class DataWrapper(object):
             if src_lid != trg_lid and self.reds.showingLid(trg_lid):
                 self.addReloadListContent(trg_lid, "r", iids)
                 
-    def process(self, actions, lid, iids):
+    def process(self, actions, lid, iids, log=None):
         if lid is not None and iids is not None and len(iids) > 0:
             before_iids = self.reds.getIidsListAbove(lid, iids[0])
             if len(iids) == 1:
@@ -440,7 +440,7 @@ class DataWrapper(object):
             bottom_iids = [i for i in compare_iids if not self.reds.getItem(i).isEnabled()]
 
             # print "IIDS MID", current_iids, bottom_iids
-            selected_iids = self.reds.selected(actions, current_iids, data=self.getData())
+            selected_iids = self.reds.selected(actions, current_iids, data=self.getData(), log=log)
             # print "IIDS SELECTED", selected_iids
             middle_iids = []
             for i in current_iids:
@@ -549,8 +549,13 @@ class DataWrapper(object):
     def _readPackageFromFile(self, filename):
         package = Package(filename, self._stopMessage)
         elements_read = package.read(self.pm)        
-
+        
         self.package_name = package.getPackagename()
+        if elements_read.get("preferences"):
+            self.preferences = ICDict(elements_read.get("preferences"))
+        else:
+            self.preferences = ICDict(self.pm.getDefaultTriplets())
+
         if elements_read.get("data") is not None:
             self.setData(elements_read.get("data"))
         else:
@@ -561,10 +566,6 @@ class DataWrapper(object):
             for rlist in elements_read.get("reds"):
                 self.appendRedsToSrc(rlist["items"], rlist["src"], recompute=False, set_changed=False)
                 
-        if elements_read.get("preferences"):
-            self.preferences = ICDict(elements_read.get("preferences"))
-        else:
-            self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.package = package
         self._isChanged = False
         self._isFromPackage = True
@@ -775,7 +776,7 @@ class DataWrapper(object):
                 self._needsReload[tab_type]["lists"] = []
             self._needsReload[tab_type]["lists"].append(lid)
     def addReloadListContent(self, lid, tab_type="r", selected_iids=None, new_lid=False):
-        if tab_type == "e" or (tab_type in "rv" and lid is not None):
+        if tab_type in "erv":
             if tab_type not in self._needsReload:
                 self._needsReload[tab_type] = {}
             if "lists_content" not in self._needsReload[tab_type]:
@@ -859,9 +860,7 @@ class DataWrapper(object):
                 self.addReloadData("r")
                 self.addReloadData("z")
     acts_list.append({"key": "DisabledAll", "group": "able", "method": actDisableAll,
-                      "label": "Disable all\tShift+Ctrl+B", "legend": "Disable all items."})
-    
-    ## COPY, CUT AND PASTE
+                      "label": "Disable all\tShift+Ctrl+B", "legend": "Disable all items."})   
     def actDeleteDisAll(self, info):
         if info["tab_type"] != "r":
             return
@@ -882,13 +881,21 @@ class DataWrapper(object):
             if info["nb"] <= 1:
                 non_deleted_iids = []
             self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), non_deleted_iids)
-    acts_list.append({"key": "DeleteDisAll", "group": "redCCP", "method": actDeleteDisAll,
+    acts_list.append({"key": "DeleteDisAll", "group": "able", "method": actDeleteDisAll,
                       "label": "Delete disabled\tShift+Ctrl+D", "legend": "Delete all disabled items."})
+
+    ## COPY, CUT AND PASTE
     def actDelete(self, info):
         if info["tab_type"] == "r":
-            for iid in info.get("iids", []):
-                self.reds.deleteItem(iid) 
-            self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), [])
+            if info.get("lid") is not None:
+                self.reds.deleteList(info.get("lid"))
+                self.addReloadSwitchList(None, "r")
+                active_lid = None
+            else:
+                for iid in info.get("iids", []):
+                    self.reds.deleteItem(iid)
+                active_lid = info.get("active_lid")
+            self.addReloadListContent(active_lid, info.get("tab_type"), [])
     acts_list.append({"key": "Delete", "group": "redCCP", "method": actDelete,
                       "label": "&Delete\tCtrl+D", "legend": "Delete current redescription."})
     def actCut(self, info):
@@ -906,15 +913,24 @@ class DataWrapper(object):
                       "label": "&Copy\tCtrl+C", "legend": "Copy current redescription."})
     def actPaste(self, info):
         if info["tab_type"] == "r":
-            if info["active_lid"] is not None:
+            lid = None
+            if info.get("lid", -1) is None and info.get("lids") is not None and len(info["lids"]) == 0:
+                lid = self.reds.newList()
+                new_lid = True
+                # self.addReloadSwitchList(lid, "r")
+            elif info["active_lid"] is not None:
+                lid = info["active_lid"]
+                new_lid = False
+
+            if lid is not None:
                 trg_pos = None
                 if info["nb"] == 1:
-                    trg_pos = self.reds.getPosForLidIid(info["active_lid"], info["iids"][0])
+                    trg_pos = self.reds.getPosForLidIid(lid, info["iids"][0])
                 if trg_pos is None:
                     trg_pos = -1
-                pos = self.reds.pasteIids(trg_lid=info["active_lid"], trg_pos=trg_pos)
-                iids = [self.reds.getIidForLidPos(info["active_lid"], p) for p in pos]
-                self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), iids)
+                pos = self.reds.pasteIids(trg_lid=lid, trg_pos=trg_pos)
+                iids = [self.reds.getIidForLidPos(lid, p) for p in pos]
+                self.addReloadListContent(lid, info.get("tab_type"), iids, new_lid)
     acts_list.append({"key": "Paste", "group": "redCCP", "method": actPaste,
                       "label": "&Paste\tCtrl+V", "legend": "Paste current redescription."})
 
@@ -947,8 +963,8 @@ class DataWrapper(object):
                 compare_iids = self.reds.getIidsListBelow(info["active_lid"], info["iids"][0])
             else:
                 compare_iids = info["iids"]
-            actions = self.constraints.getActionsList(action_key, action_substitute)
-            disable_iids = self.reds.doActions(actions, compare_iids, complement=True)
+            actions = self.constraints.getActionsList(action_key, action_substitute)            
+            disable_iids = self.reds.doActions(actions, compare_iids, complement=True, log=info.get("log"))
             if len(disable_iids) > 0:
                 for iid in disable_iids:
                     self.reds.getItem(iid).setDisabled()                
@@ -956,7 +972,7 @@ class DataWrapper(object):
     def actProcess(self, info, action_key="process"):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
             actions = self.constraints.getActionsList(action_key)
-            before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"])
+            before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"], log=info.get("log"))
             if selected_iids is not None:
                 self.reds.setIids(info["active_lid"], before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), selected_iids)
@@ -1065,19 +1081,18 @@ class DataWrapper(object):
     def getGroupActs(self, group=None):
         return self.acts_groups.get(group, [])
     def getExtraAct(self, key):
-        return self.acts_extras.get(key)
-        
+        return self.acts_extras.get(key)        
     
-    def OnActContent(self, event, info):        
-        ## print "ACT CONTENT", event, info
+    def OnActContent(self, event, info):
         if event in self.acts_meths_dict:
+            log = []
+            info["log"] = log
             if event in self.acts_params_dict: ### those methods are bound
                 self.acts_meths_dict[event](info, **self.acts_params_dict[event])
             else:
                 self.acts_meths_dict[event](self, info)
-
-
-    
+            if len(log) > 0:
+                print "LOG", log
 # def main():
 #     # print "UNCOMMENT"
 #     # pdb.set_trace()

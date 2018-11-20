@@ -3,7 +3,24 @@ import pdb
 import random
 import datetime
 import copy
-        
+
+class Tracker(object):
+    
+    def __init__(self):
+        self.reset()
+    def reset(self):
+        self.collected_tracks = []
+    def logTracks(self, tracks):
+        self.collected_tracks.append(tracks)
+    def getTracks(self, pile=-1):
+        return self.collected_tracks
+    def __str__(self):
+        xps = "----\n"
+        for track in self.getTracks():
+            print track
+        return xps
+
+
 class Log(object):
     def __init__(self, verbosity=1, output = '-', method_comm = None):
         self.tics = {None: datetime.datetime.now()}

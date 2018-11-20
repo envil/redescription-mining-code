@@ -18,7 +18,9 @@ filterSingle	reverse=1	ITEM:BOTH:len:q>=CSTR:min_fin_var	ITEM::len:O>=CSTR:min_f
 sort	reverse=1	ITEM::acc:	ITEM:-BOTH:len:q	ITEM:-:diffLengthQs:
 filterPairs	max=0	PAIR::identical:
 actionlist	final_selection
-list	_final	
+list	_final
+actionlist	partial_selection
+list	_partial	
 actionlist	prune
 applyBulk	function=getPruned
 actionlist	normalize

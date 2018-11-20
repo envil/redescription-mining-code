@@ -70,9 +70,9 @@ class WorkInactive:
         task = self.getTask(params, details)
         details.update({"task": task, "work_progress":0, "work_estimate":0})
         if task != "project":
-            details.update({"results_track":0, "batch_type": "partial", "results_tab": "exp"})
+            details.update({"results_track":0, "src_lid": "P", "results_tab": "exp"})
         if task == "mine":
-            details["batch_type"] = "final"
+            details["batch_type"] = "F"
         job = {"hid": self.getHid(), "wid": wid, "task": task, "more": params, "data": boss.getData(), "preferences": boss.getPreferences()}
         return details, job
     
@@ -161,8 +161,8 @@ class WorkInactive:
             else:
                 parent.readyProj((source, worker_info["task"]), worker_info["vid"], message)
 
-        elif worker_info.get("batch_type") is not None and worker_info.get("batch_type") in message:
-            tap = message[worker_info["batch_type"]]
+        elif worker_info.get("src_lid") is not None and worker_info.get("src_lid") in message:
+            tap = message[worker_info["src_lid"]]
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:
                 latest_reds = [self.mapRid(red, source) for red in tap[worker_info["results_track"]:nb_tap]]
