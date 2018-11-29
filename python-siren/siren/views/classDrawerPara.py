@@ -289,7 +289,7 @@ class DrawerRedPara(DrawerEntitiesTD):
 
     def getVecAndDets(self, inter_params=None):
         vec = self.getPltDtH().getSuppABCD()
-        vec_dets = self.getPltDtH().getVecDets()
+        vec_dets = self.getPltDtH().getVecDets(inter_params)
         return vec, vec_dets
     
     def update(self, more=None):

@@ -295,7 +295,7 @@ class ExtensionsBatch(object):
 
         
     def __str__(self):
-        dsp  = 'Extensions Batch: (min_imprv=%f, max_var=%d:%d)\n' % (self.min_impr, self.max_var[0], self.max_var[1]) 
+        dsp  = 'Extensions Batch:\n' #(min_imprv=%f, max_var=%d:%d)\n' % (self.min_impr, self.max_var[0], self.max_var[1]) 
         dsp += 'Redescription: %s' % self.current
         dsp += '\n\t  %20s        %20s        %20s' \
                   % ('LHS extension', 'RHS extension', 'Condition')

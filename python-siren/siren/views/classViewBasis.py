@@ -18,7 +18,7 @@ from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 from classDrawerCorrel import DrawerRedCorrel
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
-from classPltDtHList import PltDtHandlerListClust, PltDtHandlerListBlocks, PltDtHandlerTextList
+from classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListBlocks, PltDtHandlerTextList
 from classProj import ProjFactory
 
 import pdb
@@ -817,12 +817,29 @@ class ViewClustProj(ViewEntitiesProj, ViewList):
     def suitableView(tcl, geo=False, ext_keys=None, what=None):
         return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
     
+class ViewVarSplitsMap(ViewList):
+    
+    TID = "VSLM"
+    SDESC = "VSMapLViz"
+    ordN = 0
+    title_str = "Variable Split Map"
+    typesI = "R"
+    geo = True
+    
+    subcl_drawer = DrawerClustMap
+    subcl_pltdt = PltDtHandlerListVarSplits
+    subcl_layh = LayoutHandlerBasis
+
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
+
 class ViewClustMap(ViewList):
     
     TID = "CLM"
     SDESC = "CluMapLViz"
     ordN = 0
-    title_str = "Map"
+    title_str = "Cluster Map"
     typesI = "VR"
     geo = True
     
@@ -833,6 +850,7 @@ class ViewClustMap(ViewList):
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None):
         return tcl.suitableViewBase(geo, ext_keys, what) and ViewList.allCompat(what, "Boolean")
+
     
 class ViewClustMappoly(ViewList):
     

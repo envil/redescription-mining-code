@@ -21,7 +21,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         return self.prepareDotsDrawOther(vec, vec_dets, draw_settings)
     
     def getVecAndDets(self, inter_params=None):
-        vec_org, vec_dets_org = self.getPltDtH().getVecAndDets(inter_params.get("choice_nbc"))
+        vec_org, vec_dets_org = self.getPltDtH().getVecAndDets(inter_params)
         vec, vec_dets = vec_org, vec_dets_org
         uu = numpy.unique(vec_org)
         if self.redistrib_colors and len(uu) < numpy.max(vec_org)+1:
@@ -58,10 +58,6 @@ class DrawerClustTD(DrawerEntitiesTD):
 
         inter_elems = {}
         inter_elems["slide_opac"] = wx.Slider(panel, -1, 10, 0, 100, wx.DefaultPosition, (self.getLayH().sld_w, -1), wx.SL_HORIZONTAL)
-        inter_elems["choice_nbc"] = wx.Choice(panel, -1)
-        inter_elems["choice_nbc"].SetItems(["1"])
-        inter_elems["choice_nbc"].SetSelection(0)
-
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
@@ -74,12 +70,17 @@ class DrawerClustTD(DrawerEntitiesTD):
         v_box.Add(inter_elems["slide_opac"], 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
-        v_box = wx.BoxSizer(wx.VERTICAL)
-        label = wx.StaticText(panel, wx.ID_ANY, "dist. inter c")
-        label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        add_boxB.Add(label, 0, border=1, flag=flags)
-        add_boxB.Add(inter_elems["choice_nbc"], 0, border=1, flag=flags)   
+        for k, dets in self.getPltDtH().getIParamsChoices():
+            inter_elems[k] = wx.Choice(panel, -1)
+            inter_elems[k].SetItems(dets["options"])
+            if len(dets["options"]) > 0:
+                inter_elems[k].SetSelection(0)
+        
+            add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+            label = wx.StaticText(panel, wx.ID_ANY, dets["label"])
+            label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            add_boxB.Add(label, 0, border=1, flag=flags)
+            add_boxB.Add(inter_elems[k], 0, border=1, flag=flags)   
 
         add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
 
@@ -92,8 +93,13 @@ class DrawerClustTD(DrawerEntitiesTD):
         norm = matplotlib.colors.Normalize(vmin=0, vmax=1, clip=True)
         mappers = [matplotlib.cm.ScalarMappable(norm=norm, cmap="Purples"),
                    matplotlib.cm.ScalarMappable(norm=norm, cmap="binary")]
-
+        with_rlbls = True
+            
         x0, x1, y0, y1, bx, by = corners
+        y1_org = y1
+        if with_rlbls:
+            y1 = y0+(y1-y0)*.92
+            
         fracts = [.25, .05] ## ratio bars occ/fixed
         nbc = len(vec_dets["binLbls"])        
         bins_ticks = numpy.arange(nbc)
@@ -119,7 +125,8 @@ class DrawerClustTD(DrawerEntitiesTD):
         top_hist = bottom_hist+h_hist
         btms = [bottom_occ+i*h_occ for i in range(nbr)]
         
-        bckc = "white"        
+        bckc = "white"
+        bckcocc = "#999999"
         bins_lbl = vec_dets["binLbls"]
         #vvmax = int(numpy.max(vec))
         colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
@@ -132,11 +139,18 @@ class DrawerClustTD(DrawerEntitiesTD):
         axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2)
         axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
-        
+
         if nbr > 0:
-            for pi, i in enumerate(vec_dets["more"]["orids"]):
-                clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j,v in enumerate(vec_dets["more"][i]["occ_avg"])]
-                axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckc, linewidth=0)
+            for pi, i in enumerate(vec_dets["more"]["ord_cids"]):
+                # clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j, rid in vec_dets["more"]["ord_rids"]]
+                clrs = [mappers[1].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j, rid in vec_dets["more"]["ord_rids"]]
+                axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":")
+
+            if with_rlbls:
+                for jj, (j, rid) in enumerate(vec_dets["more"]["ord_rids"]):
+                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_org-.01*(y1-y0), "%s" % rid, va="top", ha="center", fontsize=8, rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.75, boxstyle='square,pad=0'))
+                    # axe.text(bottom_occ+(jj+.5)*h_occ, y0 + .05*(y1-y0) + (.9*(y1-y0)*jj)/max(1, nbr-1), "%s" % rid, bbox=dict(facecolor='white', edgecolor='white', alpha=0.75), ha="center", rotation=90)
+                
         
         x1 += nbr*h_occ+h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
 
@@ -148,7 +162,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
                             labelleft="off", labelright="on")
-        return (x0, x1, y0, y1, bx, by)
+        return (x0, x1, y0, y1_org, bx, by)
         
 
     def on_click(self, event):

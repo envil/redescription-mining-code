@@ -5,23 +5,17 @@ import datetime
 import copy
 
 class Tracker(object):
-    
-    def __init__(self):
-        self.reset()
-    def reset(self):
-        self.collected_tracks = []
-    def logTracks(self, tracks):
-        self.collected_tracks.append(tracks)
-    def getTracks(self, pile=-1):
-        return self.collected_tracks
-    def __str__(self):
-        xps = "----\n"
-        for track in self.getTracks():
-            print track
+    def resetTracks(self):
+        del self.collected_tracks[:]
+    def tracksToStr(self):
+        xps = "---- TRACKS:"
+        for ti, t in enumerate(self.collected_tracks):
+            xps += "\n%d\t%s --- %s ---> %s %s" % (ti, t.get("src", []), t.get("do", ""), t.get("trg", []), t.get("rationales", []))
+        self.resetTracks()
         return xps
 
-
-class Log(object):
+    
+class Log(Tracker):
     def __init__(self, verbosity=1, output = '-', method_comm = None):
         self.tics = {None: datetime.datetime.now()}
         self.progress_ss = {"current": 0, "total": 0}
@@ -30,7 +24,8 @@ class Log(object):
         self.oqu = []
         self.verbosity = -1
         self.addOut(verbosity, output, method_comm)
-
+        self.addTrackOut()
+        
     #### FOR PICKLING !!
     def __getstate__(self):
         tmp = {}
@@ -41,6 +36,9 @@ class Log(object):
                 tmp[k] = v
         return tmp
 
+    def append(self, destination, message, type_message=None, source=None):
+        destination.append(message)
+    
     ############ THE CLOCK PART
     def getTic(self, id, name=None):
         if name is None:
@@ -83,7 +81,7 @@ class Log(object):
         self.printL(1, mess, "time", id)
     ####### END CLOCK
         
-    ####### THE TRACKING PART
+    ####### THE PROGRESS PART
     def initProgressFull(self, constraints, souvenirs, explore_list=None, level=-1, id=None):
         if explore_list is not None:
             self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
@@ -127,7 +125,14 @@ class Log(object):
 
     def getProgress(self):
         return (self.progress_ss["total"], self.progress_ss["current"])
+    ####### END PROGRESS
+
+    ####### THE TRACKING PART
+    def addTrackOut(self):
+        self.collected_tracks = []
+        self.addOut(verbosity={"track": 1}, output=self.collected_tracks, method_comm=self.append)  
     ####### END TRACKING
+    
     
     def disp(self):
         tmp = "LOGGER"
@@ -175,7 +180,7 @@ class Log(object):
 
         ### CHECK VERBOSITY
         if type(verbosity) == int:
-            verbosity = {"*": verbosity, "progress":0, "result":0, "error":0} 
+            verbosity = {"*": verbosity, "progress":0, "result":0, "error":0, "track": 0} 
         
         if type(verbosity) == dict:
             if max(verbosity.values()) > self.verbosity:

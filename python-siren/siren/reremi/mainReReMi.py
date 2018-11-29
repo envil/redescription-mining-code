@@ -471,6 +471,46 @@ def run_printout(args):
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
 
+    
+    from classContent import StoredRCollection
+    rc = StoredRCollection()
+    for rs in reds:
+        for r in rs["items"]:
+            rc.appendItemSrc(r, trg_src=rs["src"])
+
+    iidsA = range(467, 477)
+    iidsB = range(477, 487)
+    I = numpy.zeros((len(iidsA), len(iidsB)))
+    U = numpy.zeros((len(iidsA), len(iidsB)))
+    for iA, iidA in enumerate(iidsA):
+        rA = rc.getItem(iidA)
+        for iB, iidB in enumerate(iidsB):
+            rB = rc.getItem(iidB)
+            I[iA, iB] = rA.getPairProp(rB, "rowsR", which="I")
+            U[iA, iB] = rA.getPairProp(rB, "overlap", which="I")
+        
+    print "--- rowsR I"
+    vs = sorted([(I[x[0], x[1]], iidsA[x[0]], iidsB[x[1]]) for x in zip(*numpy.where((I > 0.8)))], reverse=True)
+    for x in vs:
+        print x
+        
+    print "--- overlap I"
+    vs = sorted([(U[x[0], x[1]], iidsA[x[0]], iidsB[x[1]]) for x in zip(*numpy.where((U > 0.1)))], reverse=True)
+    for x in vs:
+        print x
+
+    # print "--- rowsF I"
+    # for x in zip(*numpy.where((U > 0.8))):
+    #     print iidsA[x[0]], iidsB[x[1]], U[x[0], x[1]]
+
+        
+    # print R
+    # import matplotlib.pyplot as plt
+    # plt.matshow(R)
+    # plt.show()
+    
+    pdb.set_trace()   
+    
     # nb_spc_vec = data.col(0, 11).getVector()
     # for r in reds[0]["items"]:       
     #     sids = list(r.getSuppI())
@@ -509,36 +549,36 @@ def run_printout(args):
     # else:
     #     red_contents = reds
 
-    rp = Redescription.getRP()
-    reds = []
-    qfilename = loaded["filenames"].get("package", "~/short").strip(".siren")+"/redescriptions.csv"
-    try:
-        with open(qfilename) as fd:
-            rp.parseRedList(fd, data, reds)
-    except IOError:
-        reds = []
+    # rp = Redescription.getRP()
+    # reds = []
+    # qfilename = loaded["filenames"].get("package", "~/short").strip(".siren")+"_redescriptions.csv"
+    # try:
+    #     with open(qfilename) as fd:
+    #         rp.parseRedList(fd, data, reds)
+    # except IOError:
+    #     reds = []
         
-    logger.capVerbosity(0)
+    # logger.capVerbosity(0)
 
-    if len(reds) > 0:
-        miner = instMiner(data, params, logger)
-        for red in reds:
-            # for side in [1]: #
-            #     inds = red.query(side).indsLit()
-            #     xps = red.query(side).minusAnon()
-            #     print "Q minusAnon", xps[0]
-            #     xps = red.query(side).minusAnonButOne()
-            #     for x in xps:
-            #         print "Q b", x[0], x[1], x[2]
-            #     pdb.set_trace()
-            rc = miner.part_run({"red": red, "task": "improve"})
-            sids = rc.getIidsList("P")
-            print " ---------------- \n --- IN\n",  red.disp()
-            print " --- OUT" 
-            for i in rc.getItems():
-                print "->"*(i.getUid() in sids), i
-            pruned = red.getPruned(data) 
-            print " --- PRUNED", pruned[0], pruned[1]
+    # if len(reds) > 0:
+    #     miner = instMiner(data, params, logger)
+    #     for red in reds:
+    #         # for side in [1]: #
+    #         #     inds = red.query(side).indsLit()
+    #         #     xps = red.query(side).minusAnon()
+    #         #     print "Q minusAnon", xps[0]
+    #         #     xps = red.query(side).minusAnonButOne()
+    #         #     for x in xps:
+    #         #         print "Q b", x[0], x[1], x[2]
+    #         #     pdb.set_trace()
+    #         rc = miner.part_run({"red": red, "task": "improve"})
+    #         sids = rc.getIidsList("P")
+    #         print " ---------------- \n --- IN\n",  red.disp()
+    #         print " --- OUT" 
+    #         for i in rc.getItems():
+    #             print "->"*(i.getUid() in sids), i
+    #         pruned = red.getPruned(data) 
+    #         print " --- PRUNED", pruned[0], pruned[1]
     
     # saveAsPackage("/home/egalbrun/Desktop/Z.siren", data, preferences=params, pm=loaded["pm"])        
     # data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})

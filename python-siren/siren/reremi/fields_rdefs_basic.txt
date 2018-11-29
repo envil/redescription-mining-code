@@ -32,6 +32,7 @@ fieldlist	statsactive
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 X:acc:	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:len:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
+X:perc:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:pval:	X=[wsplits]{test,learn}{active}[wcond]{cond}
 fieldlist	basic
 list	queries
@@ -47,5 +48,5 @@ list	statsactive
 fieldlist	tex
 list	queries
 X:acc:	X=[wsplits]{test,learn}{all}[wcond]{cond}
-X:perc:I	X=[wsplits]{test,learn}{all}[wcond]{cond}
+X:len:I	X=[wsplits]{test,learn}{all}[wcond]{cond}
 X:pval:	X=[wsplits]{test,learn}{all}[wcond]{cond}

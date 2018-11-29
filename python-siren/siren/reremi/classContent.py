@@ -3,7 +3,6 @@ from ctypes import c_bool, c_int
 
 from toolICList import ICList
 from toolICDict import ICDict
-from toolLog import Tracker
 
 import pdb
 
@@ -715,34 +714,43 @@ class ContentCollection(object):
         info.update({"lid": lid, "lids": lids, "iids": iids, "nb": len(iids)})
         return info
 
-class TrackedContentCollection(ContentCollection):
+class LoggedContentCollection(ContentCollection):
 
-    def __init__(self):
+    def __init__(self, logger=None):
         ContentCollection.__init__(self)
-        self.tracker = None
+        self.logger = logger
+    def hasLogger(self):
+        return self.logger is not None
+    def setLogger(self, logger=None):
+        self.logger = logger       
+    def getLogger(self):
+        return self.logger
 
-    def initTracker(self):
-        self.tracker = Tracker()
-    def hasTracker(self):
-        return self.tracker is not None
-    def getTracker(self):
-        return self.tracker
-    def setTracker(self, tracker=None):
-        self.tracker = tracker       
-    def logTracks(self, tracks):
-        if self.hasTracker():
-            self.tracker.logTracks(tracks)
-    def tracksToStr(self):
-        if self.hasTracker():            
-            return str(self.tracker)
-        return "-"
+    def logL(self, level, message, type_message="*", source=None):
+        if self.hasLogger():
+            self.getLogger().printL(level, message, type_message, source)
         
-class StoredContentCollection(ContentCollection):
+    def logResults(self, lid, pid):
+        if self.hasLogger():
+            if self.getLen(lid) > 0:
+                self.logL(1, {lid: self.getItems(lid)}, 'result', pid)
+                self.logL(1, "%d redescriptions [%s]" % (self.getLen(lid), lid), 'status', pid)
+                for red in self.getItems(lid):
+                    self.logL(6, "--- %s" % red)
+            else:
+                self.logL(1, "No redescription [%s]" % lid, 'status', pid)
+        
+    def logTracks(self, tracks, pid=None):
+        if self.hasLogger():
+            verbosity = tracks.get("action", {}).get("verbosity", 1)
+            self.logL(verbosity, tracks, 'track', pid)
+        
+class StoredContentCollection(LoggedContentCollection):
 
     container_class = StoredContainer
     
-    def __init__(self):
-        ContentCollection.__init__(self)
+    def __init__(self, logger=None):
+        LoggedContentCollection.__init__(self, logger)
         self.map_src_ids = {}
         ### prepare buffer list
         lstBuff = self.container_class(src=StoredContainer.NBUFF)
@@ -889,7 +897,7 @@ class StoredContentCollection(ContentCollection):
                     changed.append(lid)
         return changed 
     
-class BatchCollection(TrackedContentCollection):
+class BatchCollection(LoggedContentCollection):
 
     actions_methods = {}
     
@@ -959,12 +967,13 @@ class BatchCollection(TrackedContentCollection):
 
     def computeSatisfy(self, action, iid, other_iid=None, pair=False, restrict_track=-1):
         if pair or other_iid is not None:
-            pair = True
             out, ts = self.computeSatisfyPair(action, iid, other_iid)
+            track = {"do": "satisfy", "trg": [iid], "src": [other_iid], "out": out, "rationales": ts, "action": action}
         else:
             out, ts = self.computeSatisfySingle(action, iid)
+            track = {"do": "satisfy", "trg": [iid], "out": out, "rationales": ts, "action": action}
         if restrict_track is None or out == restrict_track:
-            self.logTracks(("sat", pair, iid, other_iid, out, ts))
+            self.logTracks(track)
         return out
     
     def applyFunct(self, funct, i, data=None, changes=False):
@@ -1052,18 +1061,19 @@ class BatchCollection(TrackedContentCollection):
     def filterLastIds(self, ids, action, new_ids=None):
         ### check last element against all previous in list
         if self.getActionNbBlocks(action) > 0 and (len(ids) >= self.getActionArg("max", action)+2):
-            filter_out = 0
+            filter_out = []
             ts_out = []
             posC = len(ids)-1
             posP = 0
-            while filter_out <= self.getActionArg("max", action) and posP < posC:
+            while len(filter_out) <= self.getActionArg("max", action) and posP < posC:
                 v, ts = self.computeSatisfyPair(action, ids[posC], ids[posP])
                 if v:
-                    filter_out += 1
+                    filter_out.append(ids[posP])
                     ts_out.append(ts)
                 posP += 1
-            if filter_out > self.getActionArg("max", action):
-                self.logTracks(("filter", ids[posC], ts_out))
+            if len(filter_out) > self.getActionArg("max", action):
+                track = {"do": "filter", "trg": [ids[posC]], "src": filter_out, "out": True, "rationales": ts, "action": action}
+                self.logTracks(track)
                 return True
         return False
     actions_methods["filterLast"] = filterLastIds
@@ -1077,7 +1087,8 @@ class BatchCollection(TrackedContentCollection):
             while posP < len(ids):
                 v, ts = self.computeSatisfyPair(action, ids[posP], ids[posC])
                 if v:
-                    self.logTracks(("filter", ids[posP], ts))
+                    track = {"do": "filter", "trg": [ids[posP]], "src": [ids[posC]], "out": True, "rationales": ts, "action": action}
+                    self.logTracks(track)
                     ids.pop(posP)
                 else:
                     posP += 1
@@ -1105,6 +1116,7 @@ class BatchCollection(TrackedContentCollection):
 
     def cutIds(self, ids, action, new_ids=None):
         cut = abs(self.getActionArg("max", action))
+        cut_org = abs(self.getActionArg("max", action))
         if cut is not None and cut < len(ids):
             ts_out = []
             if self.getActionNbBlocks(action) > 0 and self.getActionArg("direction", action) != 0:
@@ -1118,41 +1130,49 @@ class BatchCollection(TrackedContentCollection):
                     else:
                         stop = True
             if self.getActionArg("max", action) < 0:
-                self.logTracks(("cut", ids[:cut], ts_out))
+                track = {"do": "cut", "trg": ids[:cut], "src": ids[cut:cut_org+1], "out": (cut,cut_org), "rationales": ts_out, "action": action}
                 del ids[:cut]
             else:
-                self.logTracks(("cut", ids[cut:], ts_out))
+                track = {"do": "cut", "trg": ids[cut:], "src": ids[cut_org-1:cut], "out": (cut_org,cut), "rationales": ts_out, "action": action}
                 del ids[cut:]
+            self.logTracks(track)                
         return ids
     actions_methods["cut"] = cutIds
 
-    def doAction(self, action, ids=None, complement=False, new_ids=None, data=None):
+    def doAction(self, action, ids=None, complement=False, new_ids=None, data=None, verbosity=None):
+        if verbosity is not None:
+            action["verbosity"] = verbosity
         action["data"] = data
         if len(ids) > 0:
             if action["action"] in self.actions_methods:
-                return self.actions_methods[action["action"]](self,ids, action, new_ids=new_ids)
+                return self.actions_methods[action["action"]](self, ids, action, new_ids=new_ids)
             else:                
                 raise Exception('Oups action method does not exist (%s)!'  % action["action"])
         return []
         
-    def doActions(self, actions, ids=None, complement=False, new_ids=None, data=None):
+    def doActions(self, actions, ids=None, complement=False, new_ids=None, data=None, verbosity=None):
         ids = self.prepareIids(ids)
+        if new_ids is not None:
+            new_ids = self.prepareIids(new_ids)
+            ids.extend(new_ids)
+        
         before_ids = list(ids)
         for action in actions:
-            ids = self.doAction(action, ids, complement, new_ids, data)
+            ids = self.doAction(action, ids, complement, new_ids, data, verbosity)
         if complement:
             ids = (set(before_ids)-set(ids))
         return ids
         
-    def selected(self, actions=[], ids=None, complement=False, new_ids=None, trg_lid=None, new_only=False, data=None):
+    def selected(self, actions=[], ids=None, complement=False, new_ids=None, trg_lid=None, new_only=False, data=None, verbosity=None):
+        ids_org = ids            
         ## print "Batch Selected", actions_parameters
         ### applies a sequence of action to select a sequence of elements from the batch
-        ids = self.doActions(actions, ids, complement, new_ids, data)
-        print self.tracksToStr()
-        pdb.set_trace()
+        ids = self.doActions(actions, ids, complement, new_ids, data, verbosity)
         if new_only and new_ids is not None:
             ids = [i for i in ids if i in new_ids]
         if trg_lid is not None:
+            if self.hasLid(trg_lid) and trg_lid == ids_org:
+                self.clearList(trg_lid)
             for iid in ids:
                 self.addItem(iid, trg_lid)
         return ids

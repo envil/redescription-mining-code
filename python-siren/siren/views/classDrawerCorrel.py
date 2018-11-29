@@ -60,7 +60,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         return []
 
     def getVecAndDets(self, inter_params=None):
-        vec_dets = self.getPltDtH().getVecDets()
+        vec_dets = self.getPltDtH().getVecDets(inter_params)
         return vec, vec_dets
         
 

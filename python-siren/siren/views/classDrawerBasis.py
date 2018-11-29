@@ -82,7 +82,7 @@ class DrawerBasis(object):
 
     def getVecAndDets(self, inter_params=None):
         vec = self.getPltDtH().getVec()
-        vec_dets = self.getPltDtH().getVecDets()
+        vec_dets = self.getPltDtH().getVecDets(inter_params)
         return vec, vec_dets
         
     def update(self, more=None):
@@ -399,19 +399,27 @@ class DrawerBasis(object):
     def do_flip_emphasized(self, more=None):
         if self.isEntitiesPlt():
             self.sendFlipEmphasizedR()
-    def save_supp_var(self, more=None):
-        if self.hasParent():
-            self.getParent().OnSaveSuppAsVar(self.getVec(), "%s" % self.getParentViewsm().getItemId(self.getId()))
     def saveSelVar(self, side=1):
         if self.hasParent() and self.isEntitiesPlt():
-            lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
-            self.getParent().OnSaveSelAsVar(lids, "SEL%s" % self.getParentViewsm().getItemId(self.getId()), side)
+            lids = set(self.getParentViewsm().getEmphasizedR(vkey=self.getId()))
+            self.getParent().OnSaveVecAsVar(lids, "%s_selection" % self.getParentViewsm().getItemId(self.getId()), side)
     def save_sel_varLHS(self, more=None):
         self.saveSelVar(side=0)
     def save_sel_varRHS(self, more=None):
         self.saveSelVar(side=1)
 
-                 
+    def saveClusVar(self, side=1):
+        if self.hasParent() and self.isEntitiesPlt() and self.getPltDtH().hasClusters():
+            vec = self.getPltDtH().getVec()
+            if self.getPltDtH().hasQueries():
+                self.getParent().OnSaveVecAsVar(vec, "%s_support" % self.getParentViewsm().getItemId(self.getId()), side, "support")
+            else:
+                self.getParent().OnSaveVecAsVar(vec, "%s_clusters" % self.getParentViewsm().getItemId(self.getId()), side, "clusters")
+    def save_clus_varLHS(self, more=None):
+        self.saveClusVar(side=0)
+    def save_clus_varRHS(self, more=None):
+        self.saveClusVar(side=1)
+
     #### SEC: FILL and WAIT PLOTTING
     ###########################################
     def plot_void(self):
@@ -673,20 +681,28 @@ class DrawerEntitiesTD(DrawerBasis):
                                                "legend": "Save the selection as a new right-hand side data variable",
                                                "more": None,  "type": "main",
                                                "order":10, "active_q":self.q_has_selected}
-
                             }
 
 
         if self.getPltDtH().hasQueries():
-            # self.actions_map["save_supp_var"] = {"method": self.save_supp_var, "label": "Save supp as variable",
-            #                                     "legend": "Save the support as a new data variable",
-            #                                     "more": None,  "type": "main",
-            #                                     "order":11, "active_q":self.q_not_svar}
             for setk, setl, setp in self.map_select_supp:
                 self.actions_map[setk+"_set"] = {"method": self.do_set_select, "label": "(De)select "+setl,
                                                  "legend": "(De)select dots in "+setl, "more": setp, "type": "main",
-                                                 "order":2, "active_q":self.q_not_svar}
-
+                                                 "order":2, "active_q": self.q_not_svar}
+                
+        if self.getPltDtH().hasClusters():
+            w = "supports" if self.getPltDtH().hasQueries() else "clusters"
+            self.actions_map.update({
+                            "xave_clus_varLHS": {"method": self.save_clus_varLHS, "label": "Save %s as LHS variable" % w,
+                                               "legend": "Save the %s as a new left-hand side data variable" % w,
+                                               "more": None,  "type": "main",
+                                               "order":11, "active_q": self.q_not_svar},
+                            "yave_clus_varRHS": {"method": self.save_clus_varRHS, "label": "Save %s as RHS variable" % w,
+                                               "legend": "Save the %s as a new right-hand side data variable" % w,
+                                               "more": None,  "type": "main",
+                                               "order":11, "active_q": self.q_not_svar}
+                })
+                
         if self.hasElement("mask_creator"):
             self.actions_map["poly_set"] = {"method": self.do_select_poly, "label": "(De)select &polygon",
                                                "legend": "Select dots inside the polygon", "more": None,  "type": "main",

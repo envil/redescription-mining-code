@@ -59,7 +59,7 @@ class DataWrapper(object):
             self.logger = logger
         self.pm = PreferencesManager(conf_defs)
         self.data = None
-        self.reds = StoredRCollection()
+        self.reds = StoredRCollection(self.logger)
         self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.resetARAndCstr()
         self.package = None
@@ -283,12 +283,8 @@ class DataWrapper(object):
         self.addReloadRecompute()
         self.addReloadData("v")
 
-    def addSuppCol(self, suppVect, name, side=1):
-        self.getData().addSuppCol(suppVect, name, side)
-        self.addReloadData("v")
-        self.addReloadFields("r")
-    def addSelCol(self, lids, name, side=1):
-        self.getData().addSelCol(lids, name, side)
+    def addVecCol(self, vec, name, side=1, force_type=None):
+        self.getData().addVecCol(vec, name, side, force_type)
         self.addReloadData("v")
         self.addReloadFields("r")
     ### HANDLING FOLDS
@@ -424,7 +420,7 @@ class DataWrapper(object):
             if src_lid != trg_lid and self.reds.showingLid(trg_lid):
                 self.addReloadListContent(trg_lid, "r", iids)
                 
-    def process(self, actions, lid, iids, log=None):
+    def process(self, actions, lid, iids):
         if lid is not None and iids is not None and len(iids) > 0:
             before_iids = self.reds.getIidsListAbove(lid, iids[0])
             if len(iids) == 1:
@@ -440,7 +436,7 @@ class DataWrapper(object):
             bottom_iids = [i for i in compare_iids if not self.reds.getItem(i).isEnabled()]
 
             # print "IIDS MID", current_iids, bottom_iids
-            selected_iids = self.reds.selected(actions, current_iids, data=self.getData(), log=log)
+            selected_iids = self.reds.selected(actions, current_iids, data=self.getData())
             # print "IIDS SELECTED", selected_iids
             middle_iids = []
             for i in current_iids:
@@ -872,7 +868,7 @@ class DataWrapper(object):
         else:
             items = self.getItemsActiveLidForInfo(info)
         for ii, item in items:
-            if item is not None and item.isEnabled():
+            if item is not None and not item.isEnabled():
                 self.reds.deleteItem(ii) 
                 rld = True
             else:
@@ -964,7 +960,7 @@ class DataWrapper(object):
             else:
                 compare_iids = info["iids"]
             actions = self.constraints.getActionsList(action_key, action_substitute)            
-            disable_iids = self.reds.doActions(actions, compare_iids, complement=True, log=info.get("log"))
+            disable_iids = self.reds.doActions(actions, compare_iids, complement=True)
             if len(disable_iids) > 0:
                 for iid in disable_iids:
                     self.reds.getItem(iid).setDisabled()                
@@ -972,7 +968,7 @@ class DataWrapper(object):
     def actProcess(self, info, action_key="process"):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
             actions = self.constraints.getActionsList(action_key)
-            before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"], log=info.get("log"))
+            before_iids, selected_iids, middle_iids, bottom_iids, after_iids = self.process(actions, info["active_lid"], info["iids"])
             if selected_iids is not None:
                 self.reds.setIids(info["active_lid"], before_iids+selected_iids+middle_iids+bottom_iids+after_iids)
                 self.addReloadListContent(info.get("active_lid"), info.get("tab_type"), selected_iids)
@@ -1085,14 +1081,10 @@ class DataWrapper(object):
     
     def OnActContent(self, event, info):
         if event in self.acts_meths_dict:
-            log = []
-            info["log"] = log
             if event in self.acts_params_dict: ### those methods are bound
                 self.acts_meths_dict[event](info, **self.acts_params_dict[event])
             else:
                 self.acts_meths_dict[event](self, info)
-            if len(log) > 0:
-                print "LOG", log
 # def main():
 #     # print "UNCOMMENT"
 #     # pdb.set_trace()

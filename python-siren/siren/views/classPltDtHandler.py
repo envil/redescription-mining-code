@@ -85,13 +85,17 @@ class PltDtHandlerBasis(object):
         pass
     def getQueries(self):
         pass
+    def hasClusters(self):
+        return False
+    def getQueries(self):
+        pass
     def getCopyRed(self):
         pass
     def getCoords(self):
         pass
     def getVec(self, more=None):
         pass
-    def getVecDets(self):
+    def getVecDets(self, inter_params=None):
         pass
     def getRed(self):
         pass
@@ -104,6 +108,14 @@ class PltDtHandlerBasis(object):
     def getWhat(self):
         return self.pltdt.get("red")
 
+    def uptodateIParams(self, inter_params=None):
+        return True
+    def updatedIParams(self, inter_params=None):
+        pass
+    def getIParams(self):
+        return self.pltdt.get("inter_params")
+
+    
 class PltDtHandlerWithCoords(PltDtHandlerBasis):
 
     def __init__(self, view):
@@ -182,16 +194,18 @@ class PltDtHandlerRed(PltDtHandlerBasis):
         return self.pltdt["queries"]
     def getCopyRed(self):
         return Redescription.fromQueriesPair([self.getQuery(0).copy(), self.getQuery(1).copy()], self.getParentData())
-    
+
+    def hasClusters(self):
+        return True
     def getVec(self, more=None):
         return self.pltdt["vec"]
-    def getVecDets(self):
+    def getVecDets(self, inter_params=None):
         return self.pltdt["vec_dets"]
     def getRed(self):
         return self.pltdt["red"]
     def getSuppABCD(self):
         return self.pltdt["suppABCD"]
-    
+
     def isSingleVar(self):
         return self.getRed().isBasis()
                

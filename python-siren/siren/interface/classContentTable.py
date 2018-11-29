@@ -974,12 +974,14 @@ class ContentTable:
     def fwdeventItemActivated(self, lc, event):
         if self.isLCI(lc):
             what = self.getSelectedItem()
-            iid = what.getUid()
-            self.parent.viewOpen(what, iid)
+            if what is not None:
+                iid = what.getUid()
+                self.parent.viewOpen(what, iid)
         elif self.isLCC(lc):
             what = self.getSelectedItems()
-            iid = self.getActiveLid()
-            self.parent.viewOpen(what, iid)
+            if what is not None:
+                iid = self.getActiveLid()
+                self.parent.viewOpen(what, iid)
 
 
     def fwdeventColClick(self, lc, event):

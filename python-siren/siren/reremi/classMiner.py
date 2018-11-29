@@ -34,13 +34,11 @@ class DummyLog(object):
         pass
     def updateProgress(self, details, level=-1, id=None):
         pass
-
     
 class RCollection(BatchCollection):
 
-    def __init__(self):
-        BatchCollection.__init__(self)
-        # self.initTracker()
+    def __init__(self, tracker=None):
+        BatchCollection.__init__(self, tracker)
         ### prepare buffer list
         self.newList(iid="F")
         self.newList(iid="P")
@@ -58,15 +56,6 @@ class RCollection(BatchCollection):
     def resetFinal(self, reds=[]):
         self.clearList("F")
         self.resetPartial(reds)
-
-    def logResults(self, logger, lid, pid):
-        if self.getLen(lid) > 0:
-            logger.printL(1, {lid: self.getItems(lid)}, 'result', pid)
-            logger.printL(1, "%d redescriptions [%s]" % (self.getLen(lid), lid), 'status', pid)
-            for red in self.getItems(lid):
-                logger.printL(2, "--- %s" % red)
-        else:
-            logger.printL(1, "No redescription [%s]" % lid, 'status', pid)
 
         
 class ExpMiner(object):
@@ -105,7 +94,7 @@ class ExpMiner(object):
     def expandRedescriptions(self, nextge, rcollect=None):
         if len(nextge) > 0 and self.questionLive():
             if rcollect is None:                
-                rcollect = RCollection()
+                rcollect = RCollection(self.logger)
             rcollect.resetPartial(nextge)
             if self.charbon.isTreeBased():
                 return self.expandRedescriptionsTree(nextge, rcollect)
@@ -113,13 +102,16 @@ class ExpMiner(object):
                 return self.expandRedescriptionsGreedy(nextge, rcollect)
 
     def expandRedescriptionsTree(self, nextge, rcollect):
-        new_red = None
         for redi, red in enumerate(nextge):
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
             kids = self.charbon.computeExpandTree(-1, self.data, red.copy())
+            kid_ids = []
             for kid in kids:
                 rcollect.addItem(kid, "W")
-                new_red = kid
+                kid_ids.append(kid.getUid())
+            if len(kid_ids) > 0:
+                track = {"do": "expand-tree", "trg": kid_ids, "src": [red.getUid()], "out": "W"}
+                rcollect.logTracks(track)
 
             # self.logger.updateProgress({"rcount": self.count, "redi": redi}, 4, self.ppid)
             self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.ppid)
@@ -127,8 +119,8 @@ class ExpMiner(object):
 
         ### extra selection step for tree-based to check not repeating itself
         sel = rcollect.selected(self.constraints.getActionsList("partial"), ids="W")
-        Xsel = rcollect.selected(self.constraints.getActionsList("tree_rectangles"), ids=rcollect.getIidsList("F")+sel, new_ids=sel, new_only=True, trg_lid="P")
-        rcollect.logResults(self.logger, "P", self.getId())
+        Xsel = rcollect.selected(self.constraints.getActionsList("tree_rectangles"), ids="F", new_ids=sel, new_only=True, trg_lid="P")
+        rcollect.logResults( "P", self.getId())
         return rcollect
 
     
@@ -150,6 +142,8 @@ class ExpMiner(object):
                     if modr != 0:
                         if modr == 1:
                             rcollect.addItem(basis_red, "W")
+                            track = {"do": "prepare-greedy", "trg": [basis_red.getUid()], "src": [red.getUid()], "out": "W"}
+                            rcollect.logTracks(track)
                         red.removeAvailables()
                     bests = newExtensionsBatch(self.data.nbRows(), self.constraints, basis_red)
                         
@@ -171,8 +165,14 @@ class ExpMiner(object):
                         self.logger.printL(1,"OUILLE! Something went badly wrong during expansion of %s.%d.%d\n--------------\n%s\n--------------" % (self.count, len(red), redi, details.value), "log", self.ppid)
                         kids = []
 
+                    kid_ids = []
                     for kid in kids:
                         rcollect.addItem(kid, "W")
+                        kid_ids.append(kid.getUid())
+                    if len(kid_ids) > 0:
+                        track = {"do": "expand-greedy", "trg": kid_ids, "src": [basis_red.getUid()], "out": "W"}
+                        rcollect.logTracks(track)
+                        
                     ## SOUVENIRS
                     if self.upSouvenirs:
                         self.souvenirs.update(kids)
@@ -185,7 +185,7 @@ class ExpMiner(object):
 
             first_round = False
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
-            nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="W")
+            nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="W", verbosity=8)
 
             nextge = [rcollect.getItem(i) for i in nextge_keys]
             for iid in rcollect.getIids():
@@ -195,14 +195,14 @@ class ExpMiner(object):
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
         rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
-        rcollect.logResults(self.logger, "P", self.getId())
+        rcollect.logResults( "P", self.getId())
         return rcollect
 
     def improveRedescriptions(self, nextge, rcollect=None):
         if len(nextge) > 0 and self.questionLive():
             charbon = self.initGreedyCharbon()
             if rcollect is None:                
-                rcollect = RCollection()
+                rcollect = RCollection(self.logger)
             rcollect.resetPartial()
 
             nbS = 0
@@ -221,8 +221,8 @@ class ExpMiner(object):
                     if rcollect.getLen("W") > 0:
                         rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
 
-                    rcollect.logResults(self.logger, "P", self.getId())
-                    # rcollect.logResults(self.logger, "W", self.getId())
+                    rcollect.logResults( "P", self.getId())
+                    # rcollect.logResults( "W", self.getId())
         return rcollect
                     
     def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0, trg_lid=None, track_rounds=[]):
@@ -262,10 +262,16 @@ class ExpMiner(object):
             # else:
             #     print "[...]"
             kid_ids.append(best["red"].getUid())
+        if len(kid_ids) > 0:
+            track = {"do": "improve", "trg": kid_ids, "src": [red.getUid()], "out": trg_lid}
+            rcollect.logTracks(track)
+
+        for ci, best in enumerate(bests):
             rcollect.addItem(best["red"], trg_lid)
 
             skip_next ={(best["side"], best["ls"], round_id+1): best["red"].score()}
             desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1, trg_lid=trg_lid, track_rounds=[ci]+track_rounds))
+            
         return kid_ids+desc_ids
 
 
@@ -301,6 +307,11 @@ class ExpMiner(object):
 
         for ci, best in enumerate(bests):
             kid_ids.append(best["red"].getUid())
+        if len(kid_ids) > 0:
+            track = {"do": "set-anonymous", "trg": kid_ids, "src": [red.getUid()], "out": trg_lid}
+            rcollect.logTracks(track)
+
+        for ci, best in enumerate(bests):            
             rcollect.addItem(best["red"], trg_lid)
             
             queries = [red.query(0), red.query(1)]
@@ -415,7 +426,7 @@ class Miner(object):
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
         self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
-        self.rcollect = RCollection()
+        self.rcollect = RCollection(self.logger)
 
     def getId(self):
         return self.id
@@ -520,9 +531,10 @@ class Miner(object):
             ## SOUVENIRS self.souvenirs.update(partial["batch"])
 
             
-            # self.logger.clockTic(self.getId(), "select")        
+            # self.logger.clockTic(self.getId(), "select")
             if self.rcollect.getLen("P") > 0:
-                self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+self.rcollect.getIidsList("P"), new_ids=self.rcollect.getIidsList("P"), trg_lid="F")
+                self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
+
             # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
             # if (self.final["results"] != ttt):
             #     pdb.set_trace()
@@ -531,7 +543,7 @@ class Miner(object):
             # self.logger.clockTac(self.getId(), "select")
 
             self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
-            self.rcollect.logResults(self.logger, "F", self.getId())
+            self.rcollect.logResults( "F", self.getId())
             check_score = not self.charbon.isTreeBased()
             try:
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
@@ -544,6 +556,14 @@ class Miner(object):
         else:
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
+
+        # print "========================================="
+        # print self.logger.tracksToStr()
+        # print "----- REDS:"
+        # fids = self.rcollect.getIidsList("F")
+        # for i in self.rcollect.getItems():
+        #     prefix = "+" if i.getUid() in fids else "-"
+        #     print prefix, i
         return self.rcollect
 
 
@@ -850,12 +870,12 @@ class MinerDistrib(Miner):
         if m["out"].getLen("S") > 0:
             for red in m["out"].getItems("S"):
                 self.rcollect.addItem(red)
-            self.rcollect.selected(self.constraints.getActionsList("final"), ids=self.rcollect.getIidsList("F")+m["out"].getIidsList("S"), new_ids=m["out"].getIidsList("S"), trg_lid="F")
+            self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids=m["out"].getIidsList("S"), trg_lid="F")
 
         if not self.constraints.getCstr("amnesic"):
             self.souvenirs.update(m["out"].getItems("P"))
         self.logger.clockTac(self.getId(), "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
-        self.rcollect.logResults(self.logger, "F", self.getId())
+        self.rcollect.logResults( "F", self.getId())
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.getId())
 
     def leftOverPairs(self):

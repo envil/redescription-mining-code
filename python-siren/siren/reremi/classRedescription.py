@@ -908,7 +908,7 @@ class Redescription(WithEVals):
         
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
-    def red2strLegacy(self):
+    def __str__(self):
         str_av = ["?", "?"]
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
@@ -916,7 +916,7 @@ class Redescription(WithEVals):
         tmp = ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.dispQueries(sep=" "), self.dispStats(sep=" "), self.dispSuppL(sep=" "), self.getTrack({"format":"str"})))
         return tmp
 
-    def __str__(self):
+    def red2strLegacy(self):
         str_av = ["?", "?"]
         for side in [0,1]:
             if self.availableColsSide(side) is not None:

@@ -578,7 +578,7 @@ class Data(ContentCollection):
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
     
     def findCandsFolds(self, strict=False):
-        folds = self.getColsByName("^folds_split_")
+        folds = self.getColsByName("^(v[\d*]_)?folds_split_")
         if strict:
             return folds
         more = self.getColsMoreFolds(folds)
@@ -644,33 +644,40 @@ class Data(ContentCollection):
         if type(subsets) is list:
             subsets = dict(enumerate(subsets))
         if subsets is not None and type(subsets) is dict:
-            col = CatColM(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), self.nbRows())
-            col.setSideIdName(sito, self.nbCols(sito), "folds_split_"+suff) 
-            self.appendCol(col, sito)    
+            self.addVecCol(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), "folds_split_"+suff, sito)
     #######################
 
-    def addSuppCol(self, suppVect, name=None, sito=1):
+    def addVecCol(self, vec, name=None, sito=1, force_type=None):
         preff = "v%d_" % self.nbCols(sito)
         if name is None:
             name = "Rx"
-        ks = numpy.unique(suppVect)
-        lbl = SSetts.labels_sparts
-        if numpy.max(ks) > len(lbl):
-            lbl = ["S%d" % i for i in range(numpy.max(ks)+1)]
-        parts = {}
-        for k in ks:
-            parts[lbl[k]] = set(numpy.where(suppVect == k)[0])
-        col = CatColM(parts, self.nbRows())
-        col.setSideIdName(sito, self.nbCols(sito), preff+name)
-        self.appendCol(col, sito)
-    def addSelCol(self, lids, name=None, sito=1):
-        preff = "v%d_" % self.nbCols(sito)
-        if name is None:
-            name = "Sx"
-        col = BoolColM(set(lids), self.nbRows())
-        col.setSideIdName(sito, self.nbCols(sito), preff+name)
-        self.appendCol(col, sito)
-
+        col = None
+        if force_type == "clusters" or force_type == "support":
+            ks = numpy.unique(vec)
+            lbls = []
+            if force_type == "support":
+                lbls = SSetts.labels_sparts
+            if numpy.max(ks) > len(lbls):
+                lbls = ["S%d" % i for i in range(numpy.max(ks)+1)]
+            parts = {}
+            for k in ks:
+                parts[lbls[k]] = set(numpy.where(vec == k)[0])
+            vec, force_type = (parts, None)
+        
+        if force_type is not None:
+            cclass = self.getColClassForName(force_type)            
+            col = det["type"].parseList(vec, force=True)            
+        elif type(vec) is set:
+            col = BoolColM(vec, self.nbRows())            
+        elif type(vec) is dict:
+            col = CatColM(vec, self.nbRows())
+        else:
+            col = CatColM(vec, self.nbRows())
+            
+        if col is not None:
+            col.setSideIdName(sito, self.nbCols(sito), preff+name)
+            self.appendCol(col, sito)
+            
     def subset(self, row_ids=None, shuff_side=None):
         coords = None
         rnames = None

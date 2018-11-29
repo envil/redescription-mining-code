@@ -112,10 +112,13 @@ class ERCache():
             if self.etor is None:
                 self.gatherReds(spids)
             etor = self.etor
-            
-        #### DE-DUPLICATE REDS
+
+        org_etor = etor
+        #### DE-DUPLICATE REDS        
+        count_matches = numpy.dot(1.-etor.T, 1.-etor) + numpy.dot(etor.T*1., etor*1.)
+        nbe = etor.shape[0]
         rb = {}
-        for x,y in zip(*numpy.where(numpy.triu(numpy.dot(1.-etor.T, 1.-etor) + numpy.dot(etor.T*1., etor*1.),1)>=etor.shape[0])):
+        for x,y in zip(*numpy.where(numpy.triu(count_matches,1)>=nbe)):
             rb[x] = y
         keep_rs = numpy.array([i for i in range(etor.shape[1]) if i not in rb], dtype=int)
 
@@ -127,10 +130,10 @@ class ERCache():
 
         #### DE-DUPLICATE ENTITIES
         etor = etor[:,keep_rs]
-        c01 = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
+        count_matches = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
         nbr = etor.shape[1]
         eb = {}
-        for x,y in zip(*numpy.where(numpy.triu(c01,1)>=nbr)):
+        for x,y in zip(*numpy.where(numpy.triu(count_matches,1)>=nbr)):
             eb[x] = y            
         keep_es = numpy.array([i for i in range(etor.shape[0]) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
 
@@ -140,9 +143,18 @@ class ERCache():
             efrm, ett = zip(*eb.items())
             e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
 
-        dists = nbr - c01[keep_es,:][:,keep_es]
-        return {"e_rprt": keep_es, "r_rprt": keep_rs, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep, "dists": dists,
-                    "has_dup_r": len(rb) > 0, "has_dup_e": len(eb) > 0}
+        r_counts, e_counts = numpy.bincount(r_to_rep), numpy.bincount(e_to_rep+1)
+        e_counts = numpy.concatenate((e_counts[1:], [e_counts[0]]))
+        
+        dists = nbr - count_matches[keep_es,:][:,keep_es]
+        r_etor = org_etor[keep_es, :]
+        org_count_matches = numpy.dot(1.-r_etor, 1.-r_etor.T) + numpy.dot(r_etor*1., r_etor.T*1.)
+        ws = numpy.outer(e_counts[:-1], e_counts[:-1])
+        wdists = ws*(org_etor.shape[1] - org_count_matches)
+        
+        xps = {"e_rprt": keep_es, "r_rprt": keep_rs, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep,
+               "dists": dists, "ws": ws, "wdists": wdists, "r_counts": r_counts, "e_counts": e_counts}
+        return xps 
 
     def getDeduplicateER(self, rids=None, eids=None, spids=None):
         if self.etor is None:
@@ -1488,7 +1500,10 @@ class Siren():
             elif self.getDefaultTTab(tab=tab).nbSelected() > 0:
                 what = self.getDefaultTTab(tab=tab).getSelectedItems()
                 if what is not None and len(what) > 0:
-                    iid = -1
+                    if self.getDefaultTTab(tab=tab).hasFocusContainersL() and len(self.getDefaultTTab(tab=tab).getSelectedLids()) == 1:
+                        iid = self.getDefaultTTab().getSelectedLids()[0]
+                    else:
+                        iid = -1
         return what, iid
         
     def viewOpen(self, what=None, iid=None, viewT=None):
@@ -1764,11 +1779,8 @@ class Siren():
         dlg.showDialog()
         self.refresh()
         
-    # def OnSaveSuppAsVar(self, suppVect, name):
-    #     self.dw.addSuppCol(suppVect, name)
-    #     self.refresh()
-    def OnSaveSelAsVar(self, lids, name, side=1):
-        self.dw.addSelCol(lids, name, side)
+    def OnSaveVecAsVar(self, vec, name, side=1, force_type=None):
+        self.dw.addVecCol(vec, name, side, force_type)
         self.refresh()
 
     #### PREFERENCES
