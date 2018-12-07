@@ -124,11 +124,12 @@ class SirenApp(wx.App):
             #             mapV.savefig((fname % (i, what))+fmt, dpi=30, format=fmt)
             #     mapV.OnKil()
 
-            # tab ="reds"
-            # vw = self.frame.tabs[tab]["tab"].viewData(0, "AXE_entities")
-            iids = self.frame.getData().getIidsList((0,0))
-            what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
-            self.frame.viewOpen(self, what, iid=-1, viewT="CLBRD") #"CLM")
+            iid = 1
+            self.frame.viewOpen(self.frame.getRed(iid), iid=iid, viewT="PC") #"CLM")
+            
+            # iids = self.frame.getData().getIidsList((0,0))
+            # what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
+            # self.frame.viewOpen(self, what, iid=-1, viewT="CLBRD") #"CLM")
             
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
@@ -137,17 +138,6 @@ class SirenApp(wx.App):
             #     self.frame.tabs[tab]["tab"].viewData(i, "TR")
             # vw = self.frame.tabs[tab]["tab"].viewData((0,9), "MAP")
             #vw.updateRSets({'rset_id': 'test'})
-            # self.frame.tabs[tab]["tab"].viewData(2, "AXE_entities")
-            # -- self.frame.tabs[tab]["tab"].viewData(2, "SKpca")
-            # self.frame.tabs[tab]["tab"].viewListData(0, "SIM")
-            # self.frame.tabs[tab]["tab"].viewData(1, "TR")
-            # self.frame.tabs[tab]["tab"].viewData(7, "PC")
-            # self.frame.tabs[tab]["tab"].viewData(2, "PC")
-            # self.frame.tabs[tab]["tab"].viewData(1, "SKrand_entities")
-            # mapV = self.frame.getViewX(None, "PC")
-            # pos = self.frame.tabs[tab]["tab"].getSelectedPos()
-            # self.frame.tabs[tab]["tab"].registerView(mapV.getId(), pos)
-            # mapV.setCurrent(self.frame.tabs[tab]["tab"].getSelectedItem(), self.frame.tabs["reds"]["tab"].tabId)
 
         return True
 

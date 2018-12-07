@@ -351,6 +351,8 @@ class Op(object):
 
     def __hash__(self):
         return self.val
+    def toKey(self):
+        return (self.val, )
        
 class Neg(object):
     symb = ['', '! ']
@@ -384,6 +386,8 @@ class Neg(object):
 
     def __hash__(self):
         return self.neg
+    def toKey(self):
+        return (self.neg, )
 
     def __str__(self):
         return self.disp()
@@ -484,6 +488,8 @@ class BoolTerm(Term):
         
     def __hash__(self):
         return self.col
+    def toKey(self):
+        return (self.col, self.type_id, 0, 0)
     
     def __str__(self):
         return self.disp()
@@ -570,10 +576,20 @@ class CatTermONE(Term): ## LEGACY
 
     def truthEval(self, variableV):
         return variableV == self.cat
+
+    def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
+        return op_any + "%s" % self.cat + cl_any
+    def getCatsBin(self):
+        return 2**self.cat
+    def hashCat(self):
+        return self.getCatsBin()
     
     def __hash__(self):
-        return self.col*hash(self.cat)+(self.col-1)*(hash(self.cat)+1)
-
+        hcat = self.hashCat()
+        return self.col*hcat+(self.col-1)*(hcat+1)
+    def toKey(self):
+        return (self.col, self.type_id, 1, self.hashCat())
+    
     def __str__(self):
         return self.disp()
     
@@ -665,6 +681,8 @@ class CatTerm(Term):
 
     def getCat(self):
         return self.cat
+    def nbCats(self):
+        return len(self.cat)
 
     def valRange(self):
         return sorted(self.getCat())
@@ -691,22 +709,27 @@ class CatTerm(Term):
     def truthEval(self, variableV):
         return variableV in self.cat
 
-    def hashCat(self):
-        return hash(self.getCatsStr())
-        
-    
-    def __hash__(self):
-        hcat = self.hashCat()
-        return self.col*hcat+(self.col-1)*(hcat+1)
-
     def __str__(self):
         return self.disp()
     
     def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
-        strcat = op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
         if len(self.cat) == 1:
-            strcat = op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
-        return strcat
+            return op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
+        else:
+            return op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
+    def getCatsBin(self):
+        bincat = 0
+        for c in self.cat:
+            bincat += 2**c
+        return bincat
+    def hashCat(self):
+        return self.getCatsBin()
+        # return hash(self.getCatsStr())    
+    def __hash__(self):
+        hcat = self.hashCat()
+        return self.col*hcat+(self.col-1)*(hcat+1)
+    def toKey(self):
+        return (self.col, self.type_id, self.nbCats(), self.hashCat())
         
     def disp(self, neg=None, names = None, lenIndex=0):
         if neg is None:
@@ -869,6 +892,8 @@ class NumTerm(Term):
 
     def __hash__(self):
         return int(self.col+hash(self.lowb)+hash(self.upb))
+    def toKey(self):
+        return (self.col, self.type_id, self.lowb, self.upb)
     
     def __str__(self):
         return self.disp()
@@ -1024,6 +1049,8 @@ class AnonTerm(Term):
         
     def __hash__(self):
         return self.col*hash("??")
+    def toKey(self):
+        return (self.col, self.type_id, -1, -1)
     
     def __str__(self):
         return self.disp()
@@ -1121,16 +1148,16 @@ class Literal(object):
         self.neg = Neg(nneg)
 
     def copy(self):
-        return Literal(self.neg.boolVal(), self.term.copy())
+        return Literal(self.getNeg().boolVal(), self.term.copy())
     
     def isAnon(self):
         return self.term.isAnon()
     def getAdjusted(self, bounds):
-        return Literal(self.neg.boolVal(), self.term.getAdjusted(bounds))
+        return Literal(self.getNeg().boolVal(), self.term.getAdjusted(bounds))
     
     def valRange(self):
         if self.typeId() == 1:
-            return [not self.neg.boolVal(), not self.neg.boolVal()]
+            return [not self.getNeg().boolVal(), not self.getNeg().boolVal()]
         else:
             return self.getTerm().valRange()
 
@@ -1138,16 +1165,16 @@ class Literal(object):
         return self.disp()
 
     def disp(self, names = None, lenIndex=0):
-        return self.getTerm().disp(self.neg, names, lenIndex)
+        return self.getTerm().disp(self.getNeg(), names, lenIndex)
 
     def dispTex(self, names = None):
-        return self.getTerm().dispTex(self.neg, names)
+        return self.getTerm().dispTex(self.getNeg(), names)
     
     def dispU(self, names = None):
-        return self.getTerm().dispU(self.neg, names)
+        return self.getTerm().dispU(self.getNeg(), names)
 
     def styledDisp(self, names=None, style=""):
-        neg = self.neg.styledDisp(style)
+        neg = self.getNeg().styledDisp(style)
         if re.match("tex", style):
             return self.getTerm().dispTex(neg, names)
         elif re.match("U", style) or re.match("T", style):
@@ -1161,17 +1188,23 @@ class Literal(object):
         if other is None or not isinstance(other, Literal):
             return 1
         elif cmp(self.getTerm(), other.getTerm()) == 0:
-            return cmp(self.neg, other.neg)
-        elif self.getTerm().isComplement(other.getTerm()) and self.neg != other.neg:
+            return cmp(self.getNeg(), other.getNeg())
+        elif self.getTerm().isComplement(other.getTerm()) and self.getNeg() != other.getNeg():
             return 0
         else:
             return cmp(self.getTerm(), other.getTerm())
      
     def __hash__(self):
-        return hash(self.getTerm())+hash(self.neg)
+        return hash(self.getTerm())+hash(self.getNeg())
+    def toKey(self, side=None):
+        if side is not None:
+            return (side,)+self.toKey()
+        return self.getTerm().toKey()+self.getNeg().toKey()
 
     def getTerm(self):
         return self.term
+    def getNeg(self):
+        return self.neg
 
     def colId(self):
         return self.getTerm().colId()
@@ -1180,7 +1213,7 @@ class Literal(object):
         return self.getTerm().typeId()
     
     def isNeg(self):
-        return self.neg.boolVal()
+        return self.getNeg().boolVal()
 
     def setNeg(self, neg):
         self.neg = Neg(neg)
@@ -1192,8 +1225,8 @@ class Literal(object):
         if other is None or not isinstance(other, Literal):
             return 1
         elif cmp(self.getTerm(), other.getTerm()) == 0:
-            return 1-cmp(self.neg, other.neg)
-        elif self.getTerm().isComplement(other.getTerm()) and self.neg == other.neg:
+            return 1-cmp(self.getNeg(), other.getNeg())
+        elif self.getTerm().isComplement(other.getTerm()) and self.getNeg() == other.getNeg():
             return 0
         else:
             return cmp(self.getTerm(), other.getTerm())
@@ -1957,6 +1990,20 @@ class Query(object):
             q = self.minusInd(ind)
             xps.append((ind, q))
         return xps
+
+    def minusOneLiteralSupps(self, side, data=None, restrict=None, sm_lits=None):
+        xps = []
+        if sm_lits is None:
+            sm_lits = {} 
+        for ind, lit in self.indsLit():
+            q = self.minusInd(ind)
+            dt = {"ind": ind, "q": q, "lit": lit, "lk": lit.toKey(side)}
+            if data is not None:
+                dt["sm_q"] = q.recompute(side, data, restrict, sm_lits)
+                dt["sm_lit"] = sm_lits.get(dt["lk"])
+            xps.append(dt)
+        return xps
+
     
     def minusAnon(self, keep_inds=None):
         q, dropped, drop_inds = self, [], []
@@ -2117,12 +2164,26 @@ class Query(object):
         return evl(cp.buk, cp.op, config)
     
     ## return the support associated to a query
-    def recompute(self, side, data=None, restrict=None):
-        def evl(b, op, side, data):
+    def recompute(self, side, data=None, restrict=None, sm_lits=None):
+        def evl(b, op, side, data, restrict=None, sm_lits=None):
             if isinstance(b, Literal):
-                return data.literalSuppMiss(side, b)                    
+                if sm_lits is None:
+                    sm = data.literalSuppMiss(side, b)
+                    if restrict is None:
+                        return sm
+                    else:
+                        return sm[0] & restrict, sm[1] & restrict
+                else:
+                    bk = b.toKey(side)
+                    if bk not in sm_lits:
+                        sm = data.literalSuppMiss(side, b)
+                        if restrict is not None:
+                            sm = (sm[0] & restrict, sm[1] & restrict)
+                        sm_lits[bk] = sm
+                    return sm_lits[bk]
+
             else:
-                vs = [evl(bb, op.other(), side, data) for bb in b]
+                vs = [evl(bb, op.other(), side, data, restrict, sm_lits) for bb in b]
                 return SParts.partsSuppMissMass(op.isOr(), vs) 
 
         if len(self) == 0 or data == None or self.containsAnon():
@@ -2138,11 +2199,7 @@ class Query(object):
             
             cp = self.copy()
             cp.push_negation()
-            sm = evl(cp.buk, cp.op, side, data) 
-            if restrict is None:
-                return sm
-            else:
-                return sm[0] & restrict, sm[1] & restrict
+            return evl(cp.buk, cp.op, side, data, restrict, sm_lits)            
 
     def proba(self, side, data= None, restrict=None):
         def evl(b, op, side, data, restrict=None):

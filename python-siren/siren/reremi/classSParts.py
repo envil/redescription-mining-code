@@ -533,11 +533,15 @@ class SSetts(object):
         else:
             lInter = self.sumPartsId(side, self.IDS_supp, lParts[self.inOutId(self.into, neg)])
             lsupp = self.sumPartsId(side, self.IDS_supp, lParts[self.inOutId(self.tot, neg)])
-            lX = float(sum(lParts[self.inOutId(self.into, neg)]))     
+            lX = float(sum(lParts[self.inOutId(self.into, neg)]))
             if op:
-                return 1-tool_pValSupp(N, lInter, lsupp*lX/(N*N))
+                # return 1-tool_pValSupp(N, lInter, lsupp*lX/(N*N))
+                vv =  1-tool_pValSupp(N, lInter, lsupp*lX/(N*N))
             else: 
-                return tool_pValSupp(N, lInter, lsupp*lX/(N*N))
+                # return tool_pValSupp(N, lInter, lsupp*lX/(N*N))
+                vv = tool_pValSupp(N, lInter, lsupp*lX/(N*N))
+            # print "---- pVal Marg Query", lInter, lsupp, lX, N, lsupp*lX/(N*N), "-->", vv
+            return vv
 
     # query p-value using support sizes (hypergeom), for candidates
     def pValOverQueryCand(self, side, op, neg, lParts, N, prs = None):

@@ -262,28 +262,17 @@ class DrawerRedPara(DrawerEntitiesTD):
         lits = [[],[]]
         map_q = {}
         org_abcd = numpy.array(red.supports().getVectorABCD())
+        minuses = red.minusOneLiteralSupps(self.getParentData())
+        for minus in minuses:
+            side = minus["side"]
+            lits[side].append((minus['lit'], [(minus["ind"], False, not minus['lit'].isNeg()),]))
+            r_abcd = numpy.array(minus["sparts"].getVectorABCD())            
+            diff = numpy.where(org_abcd != r_abcd)[0]
+            dv = 10*org_abcd[diff]+r_abcd[diff]
+            subs = dict([((int(v/10), v % 10), diff[numpy.where(dv==v)[0]]) for v in numpy.unique(dv)])
+            lsubs = dict([(k, len(v)) for (k,v) in subs.items()])
+            map_q[(side, minus["ind"])] = {"query": minus["q"], "acc": minus["acc"], "subsets": subs}
         for side in [0,1]:
-            for (ls, q) in red.queries[side].minusOneLiteral():
-                queries = [red.queries[0], red.queries[1]]
-                queries[side] = q
-                elem = red.queries[side].getBukElemAt(ls)
-                r = Redescription.fromQueriesPair(queries, self.getParentData())
-                direct = 0
-                if len(r.supp(side)) > len(red.supp(side)):
-                    direct = -1
-                elif len(r.supp(side)) < len(red.supp(side)):
-                    direct = 1
-                r_abcd = numpy.array(r.supports().getVectorABCD())
-                diff = numpy.where(org_abcd != r_abcd)[0]
-                subs = {}
-                for  d in diff:
-                    tx = (r_abcd[d], org_abcd[d])
-                    if tx not in subs:
-                        subs[tx] = set()
-                    subs[tx].add(d)
-                lsubs = dict([(k,len(v)) for (k,v) in subs.items()])
-                lits[side].append((elem, [(ls, False, not elem.isNeg()),]))
-                map_q[(side, ls)] = {"query": q, "acc": r.getAcc(), "subsets": subs, "lsubsets": lsubs, "direct": direct}
             lits[side].sort(key=lambda x:x[1])
         return lits, map_q
 
@@ -438,36 +427,44 @@ class DrawerRedPara(DrawerEntitiesTD):
         
         corners = numpy.vstack([tx*numpy.array([-1., 1., 0., 0.])+pos, ty*numpy.array([0., 0., 1., -1.])+1.25]).T        
         dets = map_q[(side, lits[side][idx][1][0][0])]
+        direct = 0
         if side == 0:
             arrow = [(SSetts.Exo, SSetts.Exx), (SSetts.Eoo, SSetts.Eox)]
+            if (SSetts.Eox, SSetts.Exx) in dets["subsets"] or (SSetts.Eoo, SSetts.Exo) in dets["subsets"]:
+                direct = 1
+            elif (SSetts.Exx, SSetts.Eox) in dets["subsets"] or (SSetts.Exo, SSetts.Eoo) in dets["subsets"]:
+                direct = -1
+                arrow = [arrow[1], arrow[0]]                
         else:
             arrow = [(SSetts.Eox, SSetts.Exx), (SSetts.Eoo, SSetts.Exo)]
-        if dets["direct"] > 0:
-            arrow = [arrow[1], arrow[0]]
-            
-
-        for i in arrow[0]+arrow[1]:
+            if (SSetts.Exo, SSetts.Exx) in dets["subsets"] or (SSetts.Eoo, SSetts.Eox) in dets["subsets"]:
+                direct = 1
+            elif (SSetts.Exx, SSetts.Exo) in dets["subsets"] or (SSetts.Eox, SSetts.Eoo) in dets["subsets"]:
+                direct = -1
+                arrow = [arrow[1], arrow[0]]                
+                       
+        for i in [SSetts.Eoo, SSetts.Exo, SSetts.Eox, SSetts.Exx]:
             self.axe.plot(corners[i,0], corners[i,1], color=draw_settings[i]["color_e"], marker="o")
 
         a_xy = numpy.mean(corners[arrow[0],:], axis=0)
         a_dxy = numpy.mean(corners[arrow[1],:], axis=0) - numpy.mean(corners[arrow[0],:], axis=0)
-        if dets["direct"] != 0:
+        head_width = 0
+        if direct != 0:
             head_width = 0.25*numpy.sqrt(a_dxy[0]**2+a_dxy[1]**2)/1.25
-            self.axe.arrow(a_xy[0], a_xy[1], a_dxy[0], a_dxy[1], color="k", length_includes_head=True, head_width=head_width)
-        else:
-            self.axe.plot([a_xy[0], a_xy[0]+a_dxy[0]], [a_xy[1], a_xy[1]+a_dxy[1]], '-k')
+        self.axe.arrow(a_xy[0], a_xy[1], a_dxy[0], a_dxy[1], color="k", length_includes_head=True, head_width=head_width)
 
+        
         if "pos_hids" not in self.prepared_data:
             self.prepared_data["pos_hids"] = {}
-        for si, ss in enumerate([(arrow[0][0],arrow[1][0]), (arrow[0][1],arrow[1][1])]):
+        ## for si, ss in enumerate([(arrow[0][0],arrow[1][0]), (arrow[0][1],arrow[1][1])]):
+        for ss, lids in dets["subsets"].items():
+            if max(ss) > SSetts.Eoo: continue            
             xy = (numpy.mean(corners[ss,0]), numpy.mean(corners[ss,1]))
-            ha = "left"
-            if si == side:
+            ha = "left"            
+            if (side == 0 and SSetts.Eoo in ss) or (side == 1 and SSetts.Eoo not in ss):
                 ha = "right"
-            self.axe.annotate("%d" % dets["lsubsets"].get(ss, 0), xy, ha=ha, va="center", picker=60,**self.view.getFontProps())
-            lids = dets["subsets"].get(ss)
-            if lids is not None:
-                self.prepared_data["pos_hids"][(pos, xy[1] < 1.2)] = lids
+            self.axe.annotate("%d" % len(lids), xy, ha=ha, va="center", picker=60,**self.view.getFontProps())
+            self.prepared_data["pos_hids"][(pos, xy[1] < 1.2)] = lids
         #pdb.set_trace()
         self.axe.annotate("J = %.3f" % dets["acc"],  (corners[SSetts.Exx,0], corners[SSetts.Exx,1]+0.05), ha="center", va="bottom", **self.view.getFontProps())
 
@@ -540,7 +537,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                 side = 1
             c = self.getParentData().col(side, self.prepared_data["qcols"][rid].colId())
             if c is not None:
-                return c.getCatFromNum(v)
+                return c.getValFromNum(v)
 
     def getPosInfo(self, x, y):
         rid = int(numpy.rint(x))

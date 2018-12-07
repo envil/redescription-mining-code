@@ -736,7 +736,7 @@ class LoggedContentCollection(ContentCollection):
                 self.logL(1, {lid: self.getItems(lid)}, 'result', pid)
                 self.logL(1, "%d redescriptions [%s]" % (self.getLen(lid), lid), 'status', pid)
                 for red in self.getItems(lid):
-                    self.logL(6, "--- %s" % red)
+                    self.logL(10, "--- %s" % red)
             else:
                 self.logL(1, "No redescription [%s]" % lid, 'status', pid)
         

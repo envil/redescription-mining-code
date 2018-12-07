@@ -58,7 +58,7 @@ data"""
 
     def do_motion(self, event):
         """on motion we will move the rect if the mouse is over us"""
-        if event.button not in self.buttons_t:
+        if event.button not in self.buttons_t or self.press is None:
             return
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
         self.dx = event.xdata - xpress

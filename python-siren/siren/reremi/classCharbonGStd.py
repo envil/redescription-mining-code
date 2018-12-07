@@ -1,7 +1,7 @@
 from classData import Data
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
-from classExtension import Extension
+from classExtension import Extension, ExtensionComb
 from classSParts import SParts
 from classQuery import  *
 import numpy
@@ -10,6 +10,44 @@ import pdb
 class CharbonGStd(CharbonGreedy):
 
     name = "GreedyStd"
+
+    def getCombinedPairs(self, ls, rs, col):
+        cid, side, tid = col.getId(), col.getSide(), col.typeId()
+
+        lA, lB = ls
+        lARng = lA.getTerm().valRange()
+        lBRng = lB.getTerm().valRange()
+
+        intert, unit = None, None
+        if Data.isTypeId(tid, "Numerical"):
+            if lARng[0] == lBRng[0] and lARng[1] == lBRng[1]:
+                intert = NumTerm(cid, lARng[0], lARng[1])
+            else:
+                interv = [numpy.maximum(lARng[0], lBRng[0]), numpy.minimum(lARng[1], lBRng[1])]
+                if interv[0] <= interv[1]:
+                    intert = NumTerm(cid, interv[0], interv[1])
+                univ = [numpy.minimum(lARng[0], lBRng[0]), numpy.maximum(lARng[1], lBRng[1])]
+                if univ[0] > col.getMin() or univ[1] < col.getMax():
+                    unit = NumTerm(cid, univ[0], univ[1])
+        elif Data.isTypeId(tid, "Categorical"):
+            if lARng == lBRng:
+                intert = CatTerm(cid, set(lARng))
+            else:
+                interv = set(lARng).intersection(lBRng)
+                if len(interv) > 0:
+                    intert = CatTerm(cid, interv)
+                univ = set(lARng).union(lBRng)
+                if len(univ) < col.nbCats():
+                    unit = CatTerm(cid, univ)
+        else:
+            intert = BoolTerm(cid)
+
+        cands = []
+        ## for ii, (t, op) in enumerate([(intert, False), (intert, True), (unit, False), (unit, True)]):
+        for ii, (t, op) in enumerate([(intert, False), (unit, True)]):
+            if t is not None:
+                cands.append(ExtensionComb(self.constraints.getSSetts(), 1-side, op, Literal(lA.isNeg(), t), rs, ii))
+        return cands
     
     def getCandidates(self, side, col, red, colsC=None):
         supports = red.supports()

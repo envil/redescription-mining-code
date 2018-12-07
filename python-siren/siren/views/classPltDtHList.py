@@ -166,7 +166,7 @@ class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
         return self.pltdt["vec"]
 
     def getVecDets(self, inter_params=None):
-        if "vec_dets" not in self.pltdt or not self.uptodateIParams(inter_params):
+        if "vec_dets" not in self.pltdt or not self.uptodateIParams(inter_params):            
             vec, dets = self.getVecAndDets(inter_params)
             return dets
         return self.pltdt["vec_dets"]
@@ -250,6 +250,8 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
  
         occs_list = []
         uvals = sorted(set(numpy.unique(vec)).difference([-1]))
+        # if len(uvals) == 12:
+        #     uvals = [0, 2, 8, 10, 7, 3, 11, 4, 9, 5, 6, 1]
         vec_dets = {"typeId": 2, "single": True, "blocks": True,
                     "binLbls": [], "binVals": uvals}                           
 
@@ -265,7 +267,17 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
                 vec_dets["binLbls"].append("c%d %d" % (i, len(nodes)))
 
         ### FIXING THE ORDER AND LABELS OF REDS
-        if self.pltdt.get("srids") is not None:
+        if False: #True: # for custom order
+            tmp = []
+            for ri in reversed([10,1,7,15,9,4,14,2,19,8,5,18,17,6,0,11,13,3,16,12]):
+                rid = self.pltdt.get("srids")[ri]
+                if rid >= 10:
+                    tmp.append((ri, "r2.%d" % (rid-9)))
+                else:
+                    tmp.append((ri, "r1.%d" % (rid+1)))
+            details["ord_rids"] = tmp
+            occs_list = []
+        elif self.pltdt.get("srids") is not None:
             details["ord_rids"] = [(ri, "r%s" % self.pltdt.get("srids")[ri]) for ri in range(etor.shape[1])]
         else:
             details["ord_rids"] = [(ri, "#%d" % ri) for ri in range(etor.shape[1])]

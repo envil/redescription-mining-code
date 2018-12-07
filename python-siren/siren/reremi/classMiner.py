@@ -100,7 +100,8 @@ class ExpMiner(object):
                 return self.expandRedescriptionsTree(nextge, rcollect)
             else:
                 return self.expandRedescriptionsGreedy(nextge, rcollect)
-
+        return rcollect
+            
     def expandRedescriptionsTree(self, nextge, rcollect):
         for redi, red in enumerate(nextge):
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
@@ -198,34 +199,112 @@ class ExpMiner(object):
         rcollect.logResults( "P", self.getId())
         return rcollect
 
-    def improveRedescriptions(self, nextge, rcollect=None):
-        if len(nextge) > 0 and self.questionLive():
-            charbon = self.initGreedyCharbon()
-            if rcollect is None:                
-                rcollect = RCollection(self.logger)
-            rcollect.resetPartial()
+    def combineRedescriptions(self, nextge, rcollect=None):
+        if len(nextge) == 0 or not self.questionLive():
+            return rcollect
 
-            nbS = 0
-            for red in nextge:
-                if self.questionLive():
-                    rcollect.resetWorking()
-                    non_anons = [red]
-                    if red.containsAnon():
-                        pids = self.setAnonRedescription(red, rcollect, charbon, trg_lid="W")
-                        non_anons = [rcollect.getItem(iid) for iid in pids]
+        charbon = self.initGreedyCharbon()
+        if rcollect is None:                
+            rcollect = RCollection(self.logger)
+        rcollect.resetPartial()
+        
+        map_v = {}
+        inds_lits = []
+        for ii, red in enumerate(nextge):
+            inds_lits.append([(0, ind, l) for (ind, l) in red.query(0).indsLit()]+[(1, ind, l) for (ind, l) in red.query(1).indsLit()])
+            inds_lits[-1].sort(key=lambda x: (x[0], x[-1].colId(), x[-1].isNeg(), x[-1].valRange()))
+
+            elems = [(x[0], x[-1].colId(), x[-1].isNeg()) for x in inds_lits[-1]]
+            for i in range(len(elems)):
+                k = tuple(elems[:i]+elems[i+1:])
+                if k not in map_v:
+                    map_v[k] = []
+                map_v[k].append((ii, i))
+
+        for ii, (k, rs) in enumerate(map_v.items()):
+            self.logger.printL(4, "Combining on basis %d/%d (%s)" % (ii+1, len(map_v), k), 'status', self.ppid)
+            # if ii > 2:
+            #     continue
+            if len(k) != 1:
+                continue
+            (side, cid, nn) = k[0]
+            ## for iA in range(min(5, len(rs))):
+            for iA in range(len(rs)):
+                for iB in range(iA):
+                    if not self.questionLive():
+                        return rcollect
+                    riA, liA = rs[iA]
+                    riB, liB = rs[iB]
+
+                    litsA = inds_lits[riA][:liA]+inds_lits[riA][liA+1:]
+                    litsB = inds_lits[riB][:liB]+inds_lits[riB][liB+1:]
+
+                    if riA == riB or len(litsA) != 1 or len(litsB) != 1 or inds_lits[riA][liA][-1].colId() == inds_lits[riB][liB][-1].colId(): continue
+
+                    A = (nextge[riA], litsA[0][-1], inds_lits[riA][liA][-1])
+                    B = (nextge[riB], litsB[0][-1], inds_lits[riB][liB][-1])
+
+                    if B[0].getAcc() > A[0].getAcc():
+                        A, B = B, A
+
+                    bests = newExtensionsBatch(self.data.nbRows(), self.constraints, [B[0], A[0]])
+                    cands = charbon.getCombinedPairs([A[1], B[1]], [A[2], B[2]], self.data.col(side, cid))
+                    rawkid_ids = []
+                    for cand in cands:
+                        if not self.questionLive():
+                            return rcollect
+
+                        r = cand.kid(A[0], self.data)
+                        if True: #r.getAcc() > A[0].getAcc():
+                        ## if r.getAcc() > A[0].getAcc():
+                            rawkid_ids.append(r.getUid())
+                            nrids = self.improveRedescription(r, rcollect, charbon, try_shorten=False)
+                            cand.replaceBetter([rcollect.getItem(sid) for sid in rcollect.selected(self.constraints.getActionsList("partial"), ids=nrids)])
+
+                    if len(rawkid_ids) > 0:
+                        track = {"do": "expand-combine", "trg": rawkid_ids, "src": [A[0].getUid(), B[0].getUid()], "out": "W"}
+                        rcollect.logTracks(track)
                         
-                    for r in non_anons:
-                        self.improveRedescription(r, rcollect, charbon, trg_lid="W")
+                    if len(cands) > 0:
+                        bests.update(cands, self.data)
+                        if self.logger.verbosity >= 4:
+                            self.logger.printL(4, bests, "log", self.ppid)
 
-                    rcollect.addItem(red, "P")
-                    if rcollect.getLen("W") > 0:
-                        rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
-
-                    rcollect.logResults( "P", self.getId())
-                    # rcollect.logResults( "W", self.getId())
+                        k_ids = [k.getUid() for k in bests.improvingKids(self.data)]
+                        rcollect.selected(self.constraints.getActionsList("partial"), ids=k_ids, trg_lid="P")
+                        rcollect.logResults( "P", self.getId())
         return rcollect
                     
-    def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0, trg_lid=None, track_rounds=[]):
+    def improveRedescriptions(self, nextge, rcollect=None):
+        if len(nextge) == 0 or not self.questionLive():
+            return rcollect
+
+        charbon = self.initGreedyCharbon()
+        if rcollect is None:                
+            rcollect = RCollection(self.logger)
+        rcollect.resetPartial()
+
+        nbS = 0
+        for red in nextge:
+            if self.questionLive():
+                rcollect.resetWorking()
+                non_anons = [red]
+                if red.containsAnon():
+                    pids = self.setAnonRedescription(red, rcollect, charbon, trg_lid="W")
+                    non_anons = [rcollect.getItem(iid) for iid in pids]
+                    
+                for r in non_anons:
+                    self.improveRedescription(r, rcollect, charbon, trg_lid="W")
+
+                rcollect.addItem(red, "P")
+                if rcollect.getLen("W") > 0:
+                    rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
+
+                rcollect.logResults( "P", self.getId())
+                # rcollect.logResults( "W", self.getId())
+        return rcollect
+                    
+    def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0, trg_lid=None, track_rounds=[], try_shorten=True):
         # print "-----------------", round_id, track_rounds
         # print "IMPRV -(0:0)-\t%s" % red        
         bests = []
@@ -248,7 +327,7 @@ class ExpMiner(object):
                     elif got_better and cand["red"].score() == best_score:
                         bests.append(cand)
                         
-                if len(q) > 0:
+                if len(q) > 0 and try_shorten:
                     queries[side] = q
                     cand_red = Redescription.fromQueriesPair(queries, self.data)
                     if cand_red.score() > red.score():
@@ -270,7 +349,7 @@ class ExpMiner(object):
             rcollect.addItem(best["red"], trg_lid)
 
             skip_next ={(best["side"], best["ls"], round_id+1): best["red"].score()}
-            desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1, trg_lid=trg_lid, track_rounds=[ci]+track_rounds))
+            desc_ids.extend(self.improveRedescription(best["red"], rcollect, charbon, skip_next, round_id+1, trg_lid=trg_lid, track_rounds=[ci]+track_rounds, try_shorten=try_shorten))
             
         return kid_ids+desc_ids
 
@@ -366,6 +445,7 @@ class Miner(object):
 ### INITIALIZATION
 ##################
     def __init__(self, data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
+        self.count = "-"
         self.qin = qin
         self.org_data = None
         self.want_to_live = True
@@ -557,13 +637,13 @@ class Miner(object):
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
 
-        # print "========================================="
-        # print self.logger.tracksToStr()
-        # print "----- REDS:"
-        # fids = self.rcollect.getIidsList("F")
-        # for i in self.rcollect.getItems():
-        #     prefix = "+" if i.getUid() in fids else "-"
-        #     print prefix, i
+        self.logger.printL(1, "=========================================", "log", self.getId())
+        self.logger.printL(1, self.logger.tracksToStr(), "log", self.getId())
+        self.logger.printL(1, "----- REDS:", "log", self.getId())
+        fids = self.rcollect.getIidsList("F")
+        for i in self.rcollect.getItems():
+            prefix = "+" if i.getUid() in fids else "-"
+            self.logger.printL(1, "%s %s" % (prefix, i), "log", self.getId())
         return self.rcollect
 
 
@@ -714,7 +794,8 @@ class Miner(object):
         return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
     def improveRedescriptions(self, nextge, rcollect=None):
         return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).improveRedescriptions(nextge, rcollect)
-        
+    def combineRedescriptions(self, nextge, rcollect=None):
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).combineRedescriptions(nextge, rcollect)
         
 #######################################################################
 ########### MULTIPROCESSING MINER

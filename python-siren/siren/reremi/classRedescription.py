@@ -47,7 +47,10 @@ class Redescription(WithEVals):
         if nqueryR is None: nqueryR = Query()
         self.queries = [nqueryL, nqueryR]
         if nsupps is not None:
-            self.sParts = SParts(ssetts, nN, nsupps, nPrs)
+            if isinstance(nsupps, SParts):
+                self.sParts = nsupps
+            else:
+                self.sParts = SParts(ssetts, nN, nsupps, nPrs)
             self.dict_supp_info = None
         else:
             self.sParts = None
@@ -380,7 +383,7 @@ class Redescription(WithEVals):
 
     def invCols(self, ex_anon=False):
         return [self.invColsSide(0, ex_anon), self.invColsSide(1, ex_anon)]
-                    
+    
     def getNormalized(self, data=None, side=None):
         if side is not None:
             sides = [side]
@@ -400,19 +403,38 @@ class Redescription(WithEVals):
         else:
             return self, False
 
+    def minusOneLiteralSupps(self, data, restrict=None):
+        sm_lits = [{}, {}]
+        supp_sets_org = [None, None, None, None]
+        for side in [0,1]:
+            sm = self.query(side).recompute(side, data, restrict, sm_lits[side])
+            supp_sets_org[side] = sm[0]
+            supp_sets_org[2+side] = sm[1]
+
+        minuses = []
+        for side in [0,1]:
+            supp_sets = [set(s) for s in supp_sets_org]
+            for minus in self.query(side).minusOneLiteralSupps(side, data, restrict, sm_lits[side]):
+                supp_sets[side] = minus["sm_q"][0]
+                supp_sets[2+side] = minus["sm_q"][1]                    
+                minus["sparts"] = SParts(data.getSSetts(), data.nbRows(), supp_sets)
+                minus["acc"] = minus["sparts"].acc()
+                minus["side"] = side
+                minuses.append(minus)
+        return minuses
+    
     def getPruned(self, data):
         r, modr = self, False
-        best_score = self.score()
-        for side in [0,1]:
-            if self.length(side) > 1:
-                queries = [self.query(0), self.query(1)]
-                for (ls, q) in self.query(side).minusOneLiteral():	
-                    queries[side] = q
-                    cand = Redescription.fromQueriesPair(queries, data)
-                    if cand.score() >= best_score:
-                        r, modr, best_score = (cand, True, cand.score())
-        if modr:
-            r, modb = r.getPruned(data)
+        minuses = self.minusOneLiteralSupps(data)
+        best_pos = numpy.argmax([m["acc"] for m in minuses])        
+        if minuses[best_pos]["acc"] > self.score():
+            best = minuses[best_pos]
+            queries = [None, None]
+            queries[best["side"]] = best["q"]
+            queries[1-best["side"]] = self.query(1-best["side"]).copy()
+            cand = Redescription(queries[0], queries[1], best["sparts"])
+            r, modb = cand.getPruned(data)
+            modr = True
         return r, modr
 
     def normalize(self, data=None):
@@ -423,10 +445,7 @@ class Redescription(WithEVals):
         (nsuppR, missR) = self.recomputeQuery(1, data)
 #        print self.disp()
 #        print ' '.join(map(str, nsuppL)) + ' \t' + ' '.join(map(str, nsuppR))
-        if len(missL) + len(missR) > 0:
-            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR, missL, missR])
-        else:
-            self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR]) #TODO: recompute
+        self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR, missL, missR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         if self.hasCondition():
             qC = self.getQueryC()
@@ -908,7 +927,7 @@ class Redescription(WithEVals):
         
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
-    def __str__(self):
+    def red2strLegacy(self):
         str_av = ["?", "?"]
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
@@ -916,7 +935,7 @@ class Redescription(WithEVals):
         tmp = ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.dispQueries(sep=" "), self.dispStats(sep=" "), self.dispSuppL(sep=" "), self.getTrack({"format":"str"})))
         return tmp
 
-    def red2strLegacy(self):
+    def __str__(self):
         str_av = ["?", "?"]
         for side in [0,1]:
             if self.availableColsSide(side) is not None:
@@ -935,17 +954,32 @@ class Redescription(WithEVals):
             sides.append(-1)
         return sep.join(["q%s:%s" % (side, self.query(side).disp(names[side])) for side in sides])
     def dispStats(self, sep="\t"):
+        supp_str = ""
+        if self.supports() is not None:
+            supp_str += self.supports().dispStats(sep)
         if self.hasCondition():
-            return self.supports().dispStats(sep)+sep+"COND:"+self.getSupportsC().dispStats(sep)
-        return self.supports().dispStats(sep)
+            supp_str += sep+"COND:"
+            if self.getSupportsC() is not None:
+                supp_str += self.getSupportsC().dispStats(sep)
+        return supp_str
     def dispSupp(self, sep="\t"):
+        supp_str = ""
+        if self.supports() is not None:
+            supp_str += self.supports().dispSupp(sep)
         if self.hasCondition():
-            return self.supports().dispSupp(sep)+sep+"COND:"+self.getSupportsC().dispSupp(sep)
-        return self.supports().dispSupp(sep)        
+            supp_str += sep+"COND:"
+            if self.getSupportsC() is not None:
+                supp_str += self.getSupportsC().dispSupp(sep)
+        return supp_str
     def dispSuppL(self, sep="\t"):
+        supp_str = ""
+        if self.supports() is not None:
+            supp_str += self.supports().dispSuppL(sep)
         if self.hasCondition():
-            return self.supports().dispSuppL(sep)+sep+"COND:"+self.getSupportsC().dispSuppL(sep)
-        return self.supports().dispSuppL(sep)
+            supp_str += sep+"COND:"
+            if self.getSupportsC() is not None:
+                supp_str += self.getSupportsC().dispSuppL(sep)
+        return supp_str
     
     def prepareQuery(self, side, details={}, named=False):
         style=details.get("style", "")
@@ -969,7 +1003,6 @@ class Redescription(WithEVals):
             names = data.getNames()
         else:
             names = [None, None]
-        pdb.set_trace()
         (queryL, queryR, lpartsList) = tcl.getRP(rp).parseQueries(stringQueries, names=names)
         supportsS = None
         if data is not None and stringSupp is not None and type(stringSupp) == str and re.search('\t', stringSupp):
