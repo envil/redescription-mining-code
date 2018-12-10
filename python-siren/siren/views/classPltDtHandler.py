@@ -18,7 +18,9 @@ class PltDtHandlerBasis(object):
         return self.view.getDrawer()
     def getLayH(self):
         return self.view.getLayH()
-    
+    def getSettV(self, key, default=False):
+        return self.view.getSettV(key, default)    
+
     #### SEC: PARENT ACCESS
     ###########################################
 
@@ -28,10 +30,6 @@ class PltDtHandlerBasis(object):
         return self.view.hasParent()
     def getParent(self):
         return self.view.getParent()
-    def getParentPreferences(self):
-        if self.hasParent():
-            return self.view.getParentPreferences()
-        return {}
     def getParentTab(self, which):
         return self.view.getParentTab(which)
     def getParentViewsm(self):

@@ -152,7 +152,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.axe.barh(numpy.arange(len(sids))+.025, Rin[sids]/Nbin, left=.33, height=.95, color=cmap(100))
         self.axe.barh(numpy.arange(len(sids))+.025, Rout[sids]/Nbout, left=-Rout[sids]/Nbout-.33, height=.95, color=cmap(0))
         for ii, i in enumerate(sids):
-            self.axe.text(0, ii+.5, details[i]["name"], va="center", ha="center")
+            self.axe.text(0, ii+.5, details[i]["name"], va="center", ha="center", **self.view.getFontProps())
         self.axe.set_ylim([0, len(sids)])
         self.axe.set_xlim([-1.33, 1.33])
         ticks = [0, .25, .5, .75, 1.]
@@ -192,12 +192,12 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             if i > 0:
                 xys = numpy.dot(numpy.array([[-1, i], [-margband_top, i-width_band], [-margband_top, i+width_band], [(i-1)+margband_bot, i+width_band], [(i-1)+margband_bot, i-width_band]]), rot)
                 self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
-                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=-numpy.degrees(angle), ha="right", va="bottom")
+                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=-numpy.degrees(angle), ha="right", va="bottom", **self.view.getFontProps())
 
             if i < len(labels)-1:
                 xys = numpy.dot(numpy.array([[i, Rout.shape[0]], [i-width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (Rout.shape[0]-1)+margband_top], [i+width_band, (i+1)-margband_bot], [i-width_band, (i+1)-margband_bot]]), rot)
                 self.axe.fill(xys[1:, 0], xys[1:, 1], color=cline, alpha=.7, zorder=1)
-                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=numpy.degrees(angle), ha="left", va="bottom")
+                self.axe.text(xys[0, 0], xys[0, 1], lbl, rotation=numpy.degrees(angle), ha="left", va="bottom", **self.view.getFontProps())
 
         if self.fixed_radius:
             rads = .44*numpy.ones(flt_Rin.shape)
@@ -218,8 +218,8 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         for i in range(nb_bins):
             self.axe.fill([i*width_bin, (i+1)*width_bin, (i+1)*width_bin, i*width_bin], [-.75, -.75, -1.25, -1.25], color=cmap(i/(nb_bins-1.)))
 
-        self.axe.text(-1, -1., "-1", ha="center", va="center")
-        self.axe.text(diag_size+1, -1., "+1", ha="center", va="center")
+        self.axe.text(-1, -1., "-1", ha="center", va="center", **self.view.getFontProps())
+        self.axe.text(diag_size+1, -1., "+1", ha="center", va="center", **self.view.getFontProps())
                 
         self.axe.set_xlim([0-.2*Rout.shape[0], diag_size+.2*Rout.shape[0]])
         self.axe.set_ylim([-2, diag_size/2+.2*Rout.shape[0]])

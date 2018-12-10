@@ -376,7 +376,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             ### Labels
             self.axe.set_xticks(self.prepared_data["xticks"])
             self.axe.set_xticklabels(["" for i in self.prepared_data["xlabels"]])
-            self.axe.tick_params(labelsize=self.view.getFontProps().get("size"))
+            self.axe.tick_params(labelsize=self.view.getFontSizeProp())
 
             side = 0
             ticks_ann = []

@@ -751,11 +751,14 @@ class DrawerEntitiesTD(DrawerBasis):
     def emphasizeOnOff(self, turn_on=set(), turn_off=set(), hover=False, review=True):
         self.emphasizeOff(turn_off, hover)
         self.emphasizeOn(turn_on, hover)
+        self.emphasizeSpecial(turn_on, turn_off, hover)
         # if hover:
         self.draw()
         if not hover:
             self.view.makeMenu()
-         
+            
+    def emphasizeSpecial(self, turn_on=set(), turn_off=set(), hover=False):
+        pass
     
     def emphasizeOff(self, lids=None, hover=False):
         self.removeHighlighted(lids, hover)
@@ -974,7 +977,7 @@ class DrawerEntitiesTD(DrawerBasis):
         axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
-                            labelleft="off", labelright="on", labelsize=self.view.getFontProps().get("size"))
+                            labelleft="off", labelright="on", labelsize=self.view.getFontSizeProp())
         return (x0, x1, y0, y1, bx, by)
         
     def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):

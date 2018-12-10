@@ -13,6 +13,12 @@ import pdb
 class DrawerClustTD(DrawerEntitiesTD):
 
     redistrib_colors = True
+
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=1, clip=True)
+    mapper_occ = matplotlib.cm.ScalarMappable(norm=norm, cmap="binary")
+    
+    frac_top = .1
+    frac_lbls = .05
     cmap_name = "rainbow"
     def drawPoly(self):
         return False
@@ -89,16 +95,35 @@ class DrawerClustTD(DrawerEntitiesTD):
         return [add_boxB]
 
 
-    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
-        norm = matplotlib.colors.Normalize(vmin=0, vmax=1, clip=True)
-        mappers = [matplotlib.cm.ScalarMappable(norm=norm, cmap="Purples"),
-                   matplotlib.cm.ScalarMappable(norm=norm, cmap="binary")]
-        with_rlbls = True
+    def plot_block(self, axe, pi, block_data, ord_rids, sizes):
+        bckcocc = "#999999"
+        # mapper = matplotlib.cm.ScalarMappable(norm=norm, cmap="Purples")
+
+        nbr = len(ord_rids)
+        clrs = [self.mapper_occ.to_rgba(block_data["occ_avg"][j]) for j, rid in ord_rids]
+        
+        e_drawn = []
+        e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":"))
+        ## y, width, height, left
+        if self.getSettV("blocks_show_values", False):
+            for j, rid in ord_rids:
+                c = self.mapper_occ.to_rgba(numpy.around(1-block_data["occ_avg"][j]))
+                e_drawn.append(axe.text(sizes["btms"][j]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, **self.view.getFontProps()))
+        return e_drawn
+
+    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):                
+        with_rlbls = self.getSettV("blocks_show_rids", True)
+
             
         x0, x1, y0, y1, bx, by = corners
-        y1_org = y1
+        y1_top, y1_lbls = y1, y1
+        f_top = 0
         if with_rlbls:
-            y1 = y0+(y1-y0)*.92
+            f_top += self.frac_lbls
+            y1_lbls = y0+(y1_top-y0)*(1-f_top)
+        if self.getSettV("blocks_show_emph", True):
+            f_top += self.frac_top
+        y1 = y0+(y1_top-y0)*(1-f_top)
             
         fracts = [.25, .05] ## ratio bars occ/fixed
         nbc = len(vec_dets["binLbls"])        
@@ -114,7 +139,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
 
         if vec_dets.get("blocks", False):
-            nbr = vec_dets["more"][0]["occ_cnt"].shape[0]
+            nbr = len(vec_dets["cols"])
             h_occ = (fracts[0]*(x1-x0))/nbr
         else:
             nbr = 0
@@ -126,7 +151,6 @@ class DrawerClustTD(DrawerEntitiesTD):
         btms = [bottom_occ+i*h_occ for i in range(nbr)]
         
         bckc = "white"
-        bckcocc = "#999999"
         bins_lbl = vec_dets["binLbls"]
         #vvmax = int(numpy.max(vec))
         colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
@@ -140,29 +164,31 @@ class DrawerClustTD(DrawerEntitiesTD):
         axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
 
+        sizes = {"left": left, "h_occ": h_occ, "width": width, "btms": btms}
         if nbr > 0:
             for pi, i in enumerate(vec_dets["more"]["ord_cids"]):
-                # clrs = [mappers[int(vec_dets["more"][i]["occ_cnt"][j])].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j, rid in vec_dets["more"]["ord_rids"]]
-                clrs = [mappers[1].to_rgba(vec_dets["more"][i]["occ_avg"][j]) for j, rid in vec_dets["more"]["ord_rids"]]
-                axe.barh(numpy.ones(nbr)*left[pi], numpy.ones(nbr)*h_occ, numpy.ones(nbr)*width[pi], btms, color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":")
+                self.plot_block(axe, pi, vec_dets["more"][i], vec_dets["more"]["ord_rids"], sizes)
 
             if with_rlbls:
                 for jj, (j, rid) in enumerate(vec_dets["more"]["ord_rids"]):
-                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_org-.01*(y1-y0), "%s" % rid, va="top", ha="center", fontsize=8, rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.75, boxstyle='square,pad=0'))
+                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_top-.01*(y1_top-y0), "%s" % rid, va="top", ha="center", rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.75, boxstyle='square,pad=0'), **self.view.getFontProps())
                     # axe.text(bottom_occ+(jj+.5)*h_occ, y0 + .05*(y1-y0) + (.9*(y1-y0)*jj)/max(1, nbr-1), "%s" % rid, bbox=dict(facecolor='white', edgecolor='white', alpha=0.75), ha="center", rotation=90)
                 
         
         x1 += nbr*h_occ+h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
 
         self.hist_click_info = {"left_edge_map": x0, "right_edge_map": bottom_occ, "right_edge_occ": bottom_hist, "right_edge_hist": x1,
-                                 "hedges_hist": norm_bins, "vedges_occ": btms}
+                                 "hedges_hist": norm_bins, "vedges_occ": btms, "h_occ": h_occ,
+                                 "y1_top": y1_top, "y1_lbls": y1_lbls, "y1_blocks": y1,
+                                 "axe": axe}
+
         
         axe.set_yticks(norm_bins_ticks)
         axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
                             labelleft="off", labelright="on")
-        return (x0, x1, y0, y1_org, bx, by)
+        return (x0, x1, y0, y1_top, bx, by)
         
 
     def on_click(self, event):
@@ -212,3 +238,20 @@ class DrawerClustTD(DrawerEntitiesTD):
             if c >= 0:
                 tag += ": c%s" % c
         return tag
+
+
+    def emphasizeSpecial(self, turn_on=set(), turn_off=set(), hover=False):
+        lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
+        if self.hasElement("emph_blocks"):
+            for e in self.getElement("emph_blocks"):
+                e.remove()
+
+        if len(lids) > 0 and "axe" in self.hist_click_info and (self.hist_click_info["y1_lbls"] > self.hist_click_info["y1_blocks"]):
+            nodes = sorted(lids)
+            cols = self.getElement("vec_dets")["cols"]
+            ord_rids = self.getElement("vec_dets")["more"]["ord_rids"]
+            etor = self.getPltDtH().getEtoR()
+            block_emph = self.getPltDtH().getClustDetails(nodes, etor, cols)
+            sizes = {"left": [self.hist_click_info["y1_blocks"]], "h_occ": self.hist_click_info["h_occ"], "width": [self.hist_click_info["y1_lbls"]-self.hist_click_info["y1_blocks"]], "btms": self.hist_click_info["vedges_occ"]}
+            emph_blocks = self.plot_block(self.hist_click_info["axe"], -1, block_emph, ord_rids, sizes)
+            self.setElement("emph_blocks", emph_blocks)

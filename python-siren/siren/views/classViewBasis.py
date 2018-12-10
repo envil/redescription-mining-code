@@ -305,7 +305,10 @@ class ViewBare(object):
         return v
 
     def getFontProps(self):
-        return {"size": self.getSettV("plot_fontsize")}
+        return {"fontsize": self.getSettV("plot_fontsize")}
+    def getFontSizeProp(self):
+        return self.getSettV("plot_fontsize")
+
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
             dsetts = self.getParentPreferences()

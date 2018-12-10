@@ -87,7 +87,6 @@
 	<legend>Show coordinates on hover.</legend>
 	<default><value>0</value></default>
       </parameter>
-
     <parameter>
 	<name>plot_fontsize</name>
 	<label>Font size</label>
@@ -189,6 +188,44 @@
     <default><value>0</value></default>
 	<options><value>Exx</value><value>Exo</value><value>Eox</value><value>Eoo</value></options>
 	<legend>Support parts to use in computing clusters.</legend>
+      </parameter>
+      <parameter>
+	<name>blocks_disp_values</name>
+	<label>Values for blocks</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Property to use as value for blocks.</legend>
+	<default><value>0</value></default>
+	<options><value>Fractions</value><value>Percentages</value><value>Counts</value>
+    </options>
+      </parameter>
+      <parameter>
+	<name>blocks_reorder_rids</name>
+	<label>Re-order r.ids for blocks</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Reorder redescriptions for blocks.</legend>
+	<default><value>1</value></default>
+      </parameter>
+     <parameter>
+	<name>blocks_show_rids</name>
+	<label>Show r.ids for blocks</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Show redescriptions ids for blocks.</legend>
+	<default><value>1</value></default>
+      </parameter>
+     <parameter>
+	<name>blocks_show_values</name>
+	<label>Show values for blocks</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Show values for blocks.</legend>
+	<default><value>0</value></default>
+     </parameter>
+          <parameter>
+	<name>blocks_show_emph</name>
+	<label>Draw selection block</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Draw special block for selection.</legend>
+	<default><value>0</value></default>
       </parameter>
     </section>
   </section>

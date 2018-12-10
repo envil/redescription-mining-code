@@ -94,11 +94,7 @@ class PltDtHandlerList(PltDtHandlerBasis):
         return None
     
     def getSettSuppParts(self):
-        t = self.getParentPreferences()
-        try:
-            v = t["supp_part_clus"]["data"]
-        except:            
-            v = self.SPARTS_DEF
+        v = self.getSettV("supp_part_clus", self.SPARTS_DEF)
         return [self.parts_map[x] for x in v]
 
     def hasQueries(self):
@@ -235,6 +231,21 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
             
     def setPreps(self):
         self.setInterParams()
+
+    def getClustDetails(self, nodes, etor, cols=None):
+        disp_values = self.getSettV("blocks_disp_values")
+        if cols is None:
+            cols = range(etor.shape[1])
+        occ_avg = numpy.average(1*etor[nodes,:][:,cols], axis=0)
+        if disp_values == "Counts":
+            occ_cc = numpy.sum(etor[nodes,:][:,cols], axis=0)
+            occ_str = ["%d" % v for v in occ_cc]
+        elif disp_values == "Percentages":
+            occ_str = ["%d" % 100*v for v in occ_avg]
+        else:
+            occ_str = ["%.2f" % v for v in occ_avg]
+        return {"occ_avg": occ_avg, "occ_str": occ_str}
+
         
     def getVecAndDets(self, inter_params=None):           
         details = {}
@@ -253,14 +264,13 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
         # if len(uvals) == 12:
         #     uvals = [0, 2, 8, 10, 7, 3, 11, 4, 9, 5, 6, 1]
         vec_dets = {"typeId": 2, "single": True, "blocks": True,
-                    "binLbls": [], "binVals": uvals}                           
+                    "binLbls": [], "binVals": uvals, "cols": range(etor.shape[1])}                           
 
         for i in uvals:
-            nodes = numpy.where(vec==i)[0]       
-            occ_avg = numpy.average(1*etor[nodes,:], axis=0)
-            occ_cnt = numpy.around(occ_avg)
-            occs_list.append(occ_avg)
-            details[i] = {"occ_avg": occ_avg, "occ_cnt": occ_cnt}
+            nodes = numpy.where(vec==i)[0]
+            details[i] = self.getClustDetails(nodes, etor)
+            if self.getSettV("blocks_reorder_rids", True):
+                occs_list.append(details[i]["occ_avg"])
             if col is not None:
                 vec_dets["binLbls"].append("%s %d" % (col.getValFromNum(i), len(nodes)))
             else:
@@ -317,12 +327,7 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         return True
     
     def getSettMaxClust(self):
-        t = self.getParentPreferences()
-        try:
-            v = t["max_clus"]["data"]
-        except:            
-            v = self.MAXC_DEF
-        return v
+        return self.getSettV("supp_part_clus", self.MAXC_DEF)
     
     def uptodateIParams(self, inter_params=None):
         if inter_params is None:
@@ -367,6 +372,40 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         self.getClusters()
         self.setInterParams()
 
+    def getClustDetails(self, nodes, etor, cols=None, ddER=None, weighted=True):
+        disp_values = self.getSettV("blocks_disp_values")
+        if cols is None:
+            if ddER is not None:
+                cols = ddER["r_rprt"]
+            else:
+                cols = range(etor.shape[1])
+                
+        if ddER is not None:
+            normm = 1+len(nodes)*numpy.max(ddER["dists"][nodes,:][:,nodes])
+            center = numpy.argmin(numpy.max(ddER["dists"][nodes,:][:,nodes], axis=0)+numpy.sum(ddER["dists"][nodes,:][:,nodes], axis=0)/normm)
+            max_d = numpy.max(ddER["dists"][nodes[center],nodes])
+            nn = ddER["e_rprt"][nodes]
+        else:
+            center, max_d = None, 0.
+            nn = nodes
+            weighted = False
+            
+        if weighted:
+            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0, weights=ddER["e_counts"][nodes])
+            sumw = numpy.sum(ddER["e_counts"][nodes])
+        else:
+            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0)
+            sumw = len(nodes)
+            
+        if disp_values == "Counts":
+            occ_str = ["%d" % int(sumw*v) for v in occ_avg]
+        elif disp_values == "Percentages":
+            occ_str = ["%d" % 100*v for v in occ_avg]
+        else:
+            occ_str = ["%.2f" % v for v in occ_avg]
+        return {"center": center, "max_d": max_d, "occ_avg": occ_avg, "occ_str": occ_str}
+
+        
     def getVecAndDets(self, inter_params=None):
         if inter_params is None:
             inter_params = self.getIParams()
@@ -410,16 +449,9 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             weighted = isWeightedAgg(choice_agg)
             for i in range(numpy.max(assign_rprt)+1):
                 nodes = numpy.where(assign_rprt==i)[0]
-                normm = 1+len(nodes)*numpy.max(ddER["dists"][nodes,:][:,nodes])
-                center = numpy.argmin(numpy.max(ddER["dists"][nodes,:][:,nodes], axis=0)+numpy.sum(ddER["dists"][nodes,:][:,nodes], axis=0)/normm)
-                max_d = numpy.max(ddER["dists"][nodes[center],nodes])
-                if weighted:
-                    occ_avg = numpy.average(1*etor[ddER["e_rprt"][nodes],:][:, ddER["r_rprt"]], axis=0, weights=ddER["e_counts"][nodes])
-                else:
-                    occ_avg = numpy.average(1*etor[ddER["e_rprt"][nodes],:][:, ddER["r_rprt"]], axis=0)
-                occ_cnt = 1*etor[ddER["e_rprt"][nodes[center]], ddER["r_rprt"]]
-                occs_list.append(occ_avg)
-                details[i] = {"center": center, "max_d": max_d, "occ_avg": occ_avg, "occ_cnt": occ_cnt}
+                details[i] = self.getClustDetails(nodes, etor, ddER=ddER, weighted=weighted)
+                if self.getSettV("blocks_reorder_rids", True):
+                    occs_list.append(details[i]["occ_avg"])                
                 # print i, max_d, nodes[center_n]
 
             ### FIXING THE ORDER AND LABELS OF REDS
@@ -454,7 +486,7 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             else:
                 vec = clusters["order"][assign_rprt]
 
-        vec_dets = {"typeId": 2, "single": True, "blocks": blocks} ### HERE bin lbls        
+        vec_dets = {"typeId": 2, "single": True, "blocks": blocks, "cols": ddER["r_rprt"]} ### HERE bin lbls        
         vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
         vec_dets["binLbls"] = ["c%d %d" % (b,numpy.sum(vec==b)) for b in vec_dets["binVals"]]
         
