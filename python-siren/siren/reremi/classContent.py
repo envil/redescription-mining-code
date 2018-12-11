@@ -716,41 +716,28 @@ class ContentCollection(object):
 
 class LoggedContentCollection(ContentCollection):
 
-    def __init__(self, logger=None):
-        ContentCollection.__init__(self)
-        self.logger = logger
-    def hasLogger(self):
-        return self.logger is not None
-    def setLogger(self, logger=None):
-        self.logger = logger       
-    def getLogger(self):
-        return self.logger
-
-    def logL(self, level, message, type_message="*", source=None):
-        if self.hasLogger():
-            self.getLogger().printL(level, message, type_message, source)
-        
-    def logResults(self, lid, pid):
-        if self.hasLogger():
-            if self.getLen(lid) > 0:
-                self.logL(1, {lid: self.getItems(lid)}, 'result', pid)
-                self.logL(1, "%d redescriptions [%s]" % (self.getLen(lid), lid), 'status', pid)
-                for red in self.getItems(lid):
-                    self.logL(10, "--- %s" % red)
-            else:
-                self.logL(1, "No redescription [%s]" % lid, 'status', pid)
-        
+    # def __init__(self, logger=None):
+    #     ContentCollection.__init__(self)
+    #     self.logger = logger
+    # def hasLogger(self):
+    #     return self.logger is not None
+    # def setLogger(self, logger=None):
+    #     self.logger = logger       
+    # def getLogger(self):
+    #     return self.logger
+                
     def logTracks(self, tracks, pid=None):
-        if self.hasLogger():
-            verbosity = tracks.get("action", {}).get("verbosity", 1)
-            self.logL(verbosity, tracks, 'track', pid)
+        pass
+        # if self.hasLogger():
+        #     verbosity = tracks.get("action", {}).get("verbosity", 1)
+        #     self.logL(verbosity, tracks, 'track', pid)
         
 class StoredContentCollection(LoggedContentCollection):
 
     container_class = StoredContainer
     
-    def __init__(self, logger=None):
-        LoggedContentCollection.__init__(self, logger)
+    def __init__(self):
+        LoggedContentCollection.__init__(self)
         self.map_src_ids = {}
         ### prepare buffer list
         lstBuff = self.container_class(src=StoredContainer.NBUFF)

@@ -435,9 +435,13 @@ class Siren():
     def getRed(self, iid):
         if self.dw is not None:
             return self.dw.getRed(iid)
-    def getReds(self):
+    def getReds(self, lid=None):
         if self.dw is not None:
-            return self.dw.getReds()
+            return self.dw.getReds(lid)
+        return []
+    def getRedLists(self):
+        if self.dw is not None:
+            return self.dw.getRedLists()
         return []
     def getAllReds(self):
         if self.dw is not None:

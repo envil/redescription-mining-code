@@ -166,7 +166,8 @@ class WorkInactive:
             nb_tap = len(tap)
             if nb_tap > worker_info["results_track"]:
                 latest_reds = [self.mapRid(red, source) for red in tap[worker_info["results_track"]:nb_tap]]
-                worker_info["results_track"] = nb_tap
+                if worker_info["src_lid"] != "P": ### WARNING!!!
+                    worker_info["results_track"] = nb_tap
                 if parent is None:
                     print "Ready reds [%s] %s %s" % ((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
                 else:

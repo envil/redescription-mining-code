@@ -242,7 +242,11 @@ class Data(ContentCollection):
         if cid is None:
             for side in self.getSides(side):
                 for col in self.colsSide(side):
-                    col.recompute(self)
+                    try:
+                        col.recompute(self)
+                    except KeyError:
+                        pdb.set_trace()
+                        col.recompute(self)
         else:
             col = self.col(side, cid)
             if col is not None:

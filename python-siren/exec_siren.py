@@ -124,12 +124,14 @@ class SirenApp(wx.App):
             #             mapV.savefig((fname % (i, what))+fmt, dpi=30, format=fmt)
             #     mapV.OnKil()
 
-            iid = 1
-            self.frame.viewOpen(self.frame.getRed(iid), iid=iid, viewT="PC") #"CLM")
+            # iid = 1
+            # self.frame.viewOpen(self.frame.getRed(iid), iid=iid, viewT="PC") #"CLM")
             
             # iids = self.frame.getData().getIidsList((0,0))
             # what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
-            # self.frame.viewOpen(self, what, iid=-1, viewT="CLBRD") #"CLM")
+            iids = self.frame.getRedLists().getIidsList(6)
+            what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
+            self.frame.viewOpen(what, iid=-1, viewT="CLM") #"CLBRD")
             
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()

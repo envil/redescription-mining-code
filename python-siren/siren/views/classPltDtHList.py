@@ -25,14 +25,16 @@ def get_cover_far(dists, nb=0, choice_agg=None, dets=None):
     if weighted and dets is not None and "wdists" in dets:
         dists = dets["wdists"]
     
-    nodesc = numpy.zeros(dists.shape[0], dtype=int)
-    dds = numpy.zeros(dists.shape[0], dtype=int)
     uniq_dds = []
-    if dists.shape[0] == 1:
-        nodesc[0] = 1
-        order = numpy.zeros(1)
+    if dists.shape[0] < 2:
+        nodesc = numpy.ones(1, dtype=int)
+        dds = numpy.zeros(1, dtype=int)
+        order = numpy.zeros(1, dtype=int)
         return nodesc, order, dds, uniq_dds
     ### find the two representatives further apart
+    nodesc = numpy.zeros(dists.shape[0], dtype=int)
+    dds = numpy.zeros(dists.shape[0], dtype=int)
+
     x,y = numpy.unravel_index(numpy.argmax(dists), dists.shape)
     nodesc[x] = 1
     nodesc[y] = 2
@@ -70,7 +72,8 @@ def get_cover_far(dists, nb=0, choice_agg=None, dets=None):
 class PltDtHandlerList(PltDtHandlerBasis):
 
     
-    parts_map = {"Exx": SSetts.Exx, "Exo": SSetts.Exo, "Eox": SSetts.Eox, "Eoo": SSetts.Eoo}
+    parts_map = {"Exx": SSetts.Exx, "Exo": SSetts.Exo, "Eox": SSetts.Eox, "Eoo": SSetts.Eoo,
+                 "Emx": SSetts.Emx, "Exm": SSetts.Exm, "Emo": SSetts.Emo, "Eom": SSetts.Eom, "Emm": SSetts.Emm}
     SPARTS_DEF = ["Exx"]
 
     CHOICES = {}
@@ -95,7 +98,8 @@ class PltDtHandlerList(PltDtHandlerBasis):
     
     def getSettSuppParts(self):
         v = self.getSettV("supp_part_clus", self.SPARTS_DEF)
-        return [self.parts_map[x] for x in v]
+        m = self.getSettV("miss_part_clus", [])
+        return [self.parts_map[x] for x in v+m]
 
     def hasQueries(self):
         return False
@@ -300,7 +304,7 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
                 for jj in range(ii):
                     D[jj,ii] = numpy.sqrt(numpy.sum((occ_tots[ii, :]-occ_tots[jj, :])**2))
                     D[ii, jj] = D[jj,ii] 
-            xx = get_cover_far(D)
+            xx = get_cover_far(D) ### for ordering the redescriptions
             #details["ord_rids"].sort(key=lambda x: tuple(occ_tots[x[0],:]))
             details["ord_rids"] = [details["ord_rids"][ii] for ii in xx[1][:-1]]
 
@@ -374,6 +378,8 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
     def getClustDetails(self, nodes, etor, cols=None, ddER=None, weighted=True):
         disp_values = self.getSettV("blocks_disp_values")
+        if len(nodes) == 0:
+            return {"center": None, "max_d": 0, "occ_avg": [], "occ_str": []}
         if cols is None:
             if ddER is not None:
                 cols = ddER["r_rprt"]
@@ -442,7 +448,10 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             # print "NBC", v_out, nb, len(nn), nn
             ### nn contains the representative entities to use as cluster center
             ### next, assign representative entities to the closest entity center
-            assign_rprt = numpy.argmin(ddER["dists"][:, nn], axis=1)
+            if ddER["dists"].shape[0] < 2:
+                assign_rprt = [0]
+            else:
+                assign_rprt = numpy.argmin(ddER["dists"][:, nn], axis=1)
             ## for i, v in enumerate(assign_rprt):
             occs_list = []
             choice_agg = self.getChoice("choice_agg", inter_params)
@@ -457,6 +466,8 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             ### FIXING THE ORDER AND LABELS OF REDS
             if self.pltdt.get("srids") is not None:
                 details["ord_rids"] = [(ri, " ".join(["r%s" % self.pltdt.get("srids")[rx] for rx in numpy.where(ddER["r_to_rep"] == ri)[0]])) for ri, rii in enumerate(ddER["r_rprt"])]
+                ## ll = ["r%d.%d" % (1+x/10, abs(x%10-10)) for x in self.pltdt.get("srids")]
+                ## details["ord_rids"] = [(ri, " ".join([ll[rx] for rx in numpy.where(ddER["r_to_rep"] == ri)[0]])) for ri, rii in enumerate(ddER["r_rprt"])]
             else:
                 details["ord_rids"] = [(ri, "#%d" % rii) for ri, rii in enumerate(ddER["r_rprt"])]
 
@@ -489,10 +500,11 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         vec_dets = {"typeId": 2, "single": True, "blocks": blocks, "cols": ddER["r_rprt"]} ### HERE bin lbls        
         vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
         vec_dets["binLbls"] = ["c%d %d" % (b,numpy.sum(vec==b)) for b in vec_dets["binVals"]]
-        
+
         nb = [v-0.5 for v in vec_dets["binVals"]]
-        nb.append(nb[-1]+1)
-        
+        if len(nb) > 0:
+            nb.append(nb[-1]+1)
+
         vec_dets["binHist"] = nb        
         vec_dets["more"] = details
         vec_dets["min_max"] = (0, numpy.max(clusters["order"])) 

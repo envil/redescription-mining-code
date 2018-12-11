@@ -224,3 +224,11 @@ class Log(Tracker):
                     out["method"](out["destination"], message, type_message, source)
         
         
+    def logResults(self, rcollect, lid, pid):        
+        if rcollect.getLen(lid) > 0:
+            self.printL(1, {lid: rcollect.getItems(lid)}, 'result', pid)
+            self.printL(1, "%d redescriptions [%s]" % (rcollect.getLen(lid), lid), 'status', pid)
+            for red in rcollect.getItems(lid):
+                self.printL(10, "--- %s" % red)
+            else:
+                self.printL(1, "No redescription [%s]" % lid, 'status', pid)

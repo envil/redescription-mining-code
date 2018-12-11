@@ -106,16 +106,25 @@ class DrawerClustTD(DrawerEntitiesTD):
         e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":"))
         ## y, width, height, left
         if self.getSettV("blocks_show_values", False):
-            for j, rid in ord_rids:
+            for jj, (j, rid) in enumerate(ord_rids):
                 c = self.mapper_occ.to_rgba(numpy.around(1-block_data["occ_avg"][j]))
-                e_drawn.append(axe.text(sizes["btms"][j]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, **self.view.getFontProps()))
+                e_drawn.append(axe.text(sizes["btms"][jj]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, **self.view.getFontProps()))
         return e_drawn
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):                
         with_rlbls = self.getSettV("blocks_show_rids", True)
-
-            
         x0, x1, y0, y1, bx, by = corners
+        nbc = len(vec_dets["binLbls"])
+        
+        if nbc == 0:       
+            self.hist_click_info = {"left_edge_map": x0, "right_edge_map": x1,
+                                    "right_edge_occ": x1, "right_edge_hist": x1,
+                                    "hedges_hist": [], "vedges_occ": [], "h_occ": 0,
+                                    "y1_top": y1, "y1_lbls": y1, "y1_blocks": y1,
+                                    "axe": axe}
+            return (x0, x1, y0, y1, bx, by)
+            
+        
         y1_top, y1_lbls = y1, y1
         f_top = 0
         if with_rlbls:
@@ -126,7 +135,6 @@ class DrawerClustTD(DrawerEntitiesTD):
         y1 = y0+(y1_top-y0)*(1-f_top)
             
         fracts = [.25, .05] ## ratio bars occ/fixed
-        nbc = len(vec_dets["binLbls"])        
         bins_ticks = numpy.arange(nbc)
         tmpb = [b-0.5 for b in bins_ticks]
         tmpb.append(tmpb[-1]+1)
@@ -171,7 +179,7 @@ class DrawerClustTD(DrawerEntitiesTD):
 
             if with_rlbls:
                 for jj, (j, rid) in enumerate(vec_dets["more"]["ord_rids"]):
-                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_top-.01*(y1_top-y0), "%s" % rid, va="top", ha="center", rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.75, boxstyle='square,pad=0'), **self.view.getFontProps())
+                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_top-.01*(y1_top-y0), "%s" % rid, va="top", ha="center", rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.85, boxstyle='square,pad=0.1'), **self.view.getFontProps())
                     # axe.text(bottom_occ+(jj+.5)*h_occ, y0 + .05*(y1-y0) + (.9*(y1-y0)*jj)/max(1, nbr-1), "%s" % rid, bbox=dict(facecolor='white', edgecolor='white', alpha=0.75), ha="center", rotation=90)
                 
         
@@ -236,15 +244,20 @@ class DrawerClustTD(DrawerEntitiesTD):
         if self.getElement("vec") is not None:
             c = self.getElement("vec")[lid]
             if c >= 0:
-                tag += ": c%s" % c
+                x = self.getElement("vec_dets")["binLbls"][c]
+                tag += ": %s" % x.split()[0] 
         return tag
 
 
     def emphasizeSpecial(self, turn_on=set(), turn_off=set(), hover=False):
         lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
         if self.hasElement("emph_blocks"):
-            for e in self.getElement("emph_blocks"):
-                e.remove()
+            while len(self.getElement("emph_blocks")) > 0:
+                e = self.getElement("emph_blocks").pop()
+                try:
+                    e.remove()
+                except ValueError:
+                    pass ## was already removed by a redraw or such
 
         if len(lids) > 0 and "axe" in self.hist_click_info and (self.hist_click_info["y1_lbls"] > self.hist_click_info["y1_blocks"]):
             nodes = sorted(lids)

@@ -34,11 +34,13 @@ class DummyLog(object):
         pass
     def updateProgress(self, details, level=-1, id=None):
         pass
+    def logResults(self, rcollect, lid, pid):
+        pass
     
 class RCollection(BatchCollection):
 
-    def __init__(self, tracker=None):
-        BatchCollection.__init__(self, tracker)
+    def __init__(self):
+        BatchCollection.__init__(self)
         ### prepare buffer list
         self.newList(iid="F")
         self.newList(iid="P")
@@ -94,7 +96,7 @@ class ExpMiner(object):
     def expandRedescriptions(self, nextge, rcollect=None):
         if len(nextge) > 0 and self.questionLive():
             if rcollect is None:                
-                rcollect = RCollection(self.logger)
+                rcollect = RCollection()
             rcollect.resetPartial(nextge)
             if self.charbon.isTreeBased():
                 return self.expandRedescriptionsTree(nextge, rcollect)
@@ -121,7 +123,7 @@ class ExpMiner(object):
         ### extra selection step for tree-based to check not repeating itself
         sel = rcollect.selected(self.constraints.getActionsList("partial"), ids="W")
         Xsel = rcollect.selected(self.constraints.getActionsList("tree_rectangles"), ids="F", new_ids=sel, new_only=True, trg_lid="P")
-        rcollect.logResults( "P", self.getId())
+        self.logger.logResults(rcollect, "P", self.ppid)
         return rcollect
 
     
@@ -196,7 +198,7 @@ class ExpMiner(object):
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
         rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
-        rcollect.logResults( "P", self.getId())
+        self.logger.logResults(rcollect, "P", self.ppid)
         return rcollect
 
     def combineRedescriptions(self, nextge, rcollect=None):
@@ -205,7 +207,7 @@ class ExpMiner(object):
 
         charbon = self.initGreedyCharbon()
         if rcollect is None:                
-            rcollect = RCollection(self.logger)
+            rcollect = RCollection()
         rcollect.resetPartial()
         
         map_v = {}
@@ -272,7 +274,7 @@ class ExpMiner(object):
 
                         k_ids = [k.getUid() for k in bests.improvingKids(self.data)]
                         rcollect.selected(self.constraints.getActionsList("partial"), ids=k_ids, trg_lid="P")
-                        rcollect.logResults( "P", self.getId())
+                        self.logger.logResults(rcollect, "P", self.ppid)
         return rcollect
                     
     def improveRedescriptions(self, nextge, rcollect=None):
@@ -281,7 +283,7 @@ class ExpMiner(object):
 
         charbon = self.initGreedyCharbon()
         if rcollect is None:                
-            rcollect = RCollection(self.logger)
+            rcollect = RCollection()
         rcollect.resetPartial()
 
         nbS = 0
@@ -300,7 +302,7 @@ class ExpMiner(object):
                 if rcollect.getLen("W") > 0:
                     rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
 
-                rcollect.logResults( "P", self.getId())
+                self.logger.logResults(rcollect, "P", self.ppid)
                 # rcollect.logResults( "W", self.getId())
         return rcollect
                     
@@ -506,7 +508,7 @@ class Miner(object):
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
         self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
-        self.rcollect = RCollection(self.logger)
+        self.rcollect = RCollection()
 
     def getId(self):
         return self.id
@@ -623,7 +625,7 @@ class Miner(object):
             # self.logger.clockTac(self.getId(), "select")
 
             self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
-            self.rcollect.logResults( "F", self.getId())
+            self.logger.logResults(self.rcollect, "F", self.getId())
             check_score = not self.charbon.isTreeBased()
             try:
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
@@ -833,9 +835,10 @@ class MinerDistrib(Miner):
         return self.rcollect
 
     def shareLogger(self):
-        if not self.logger.usesOutMethods():
-            return self.logger
-        return None
+        return self.logger
+        # if not self.logger.usesOutMethods():
+        #     return self.logger
+        # return None
         
     def initializeRedescriptionsGreedy(self, ids=None):
         self.initial_pairs.reset()
@@ -956,7 +959,7 @@ class MinerDistrib(Miner):
         if not self.constraints.getCstr("amnesic"):
             self.souvenirs.update(m["out"].getItems("P"))
         self.logger.clockTac(self.getId(), "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
-        self.rcollect.logResults( "F", self.getId())
+        self.logger.logResults(self.rcollect, "F", self.getId())
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.getId())
 
     def leftOverPairs(self):
@@ -1013,7 +1016,7 @@ class MinerDistrib(Miner):
 
     
 class PairsProcess(multiprocessing.Process):
-    what = "pairs"
+    task = "pairs"
     def __init__(self, sid, explore_list, charbon, data, rqueue):
         multiprocessing.Process.__init__(self)
         self.daemon = True

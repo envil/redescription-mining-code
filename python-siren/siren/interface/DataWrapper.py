@@ -59,7 +59,7 @@ class DataWrapper(object):
             self.logger = logger
         self.pm = PreferencesManager(conf_defs)
         self.data = None
-        self.reds = StoredRCollection(self.logger)
+        self.reds = StoredRCollection()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.resetARAndCstr()
         self.package = None
@@ -181,6 +181,8 @@ class DataWrapper(object):
 
     def getAllReds(self):
         return [(iid, self.reds.getItem(iid)) for iid in self.reds.getIids()]
+    def getRedLists(self):
+        return self.reds
     def getReds(self, lid=None):
         return self.reds.getItems(lid)
     def getRed(self, iid=None):

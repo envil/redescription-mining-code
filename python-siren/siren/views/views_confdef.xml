@@ -190,6 +190,15 @@
 	<legend>Support parts to use in computing clusters.</legend>
       </parameter>
       <parameter>
+	<name>miss_part_clus</name>
+	<label>Missing support parts</label>
+    <parameter_type>multiple_options</parameter_type>
+	<value_type>text</value_type>
+	<default></default>
+    <options><value>Exm</value><value>Emx</value><value>Eom</value><value>Emo</value><value>Emm</value></options>
+	<legend>Missing support parts to use in computing clusters.</legend>
+      </parameter>
+      <parameter>
 	<name>blocks_disp_values</name>
 	<label>Values for blocks</label>
 	<parameter_type>single_options</parameter_type>
@@ -218,14 +227,14 @@
 	<label>Show values for blocks</label>
 	<parameter_type>boolean</parameter_type>
 	<legend>Show values for blocks.</legend>
-	<default><value>0</value></default>
+	<default><value>1</value></default>
      </parameter>
           <parameter>
 	<name>blocks_show_emph</name>
 	<label>Draw selection block</label>
 	<parameter_type>boolean</parameter_type>
 	<legend>Draw special block for selection.</legend>
-	<default><value>0</value></default>
+	<default><value>1</value></default>
       </parameter>
     </section>
   </section>
