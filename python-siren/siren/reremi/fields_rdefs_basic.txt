@@ -42,6 +42,7 @@ cohesion	[wxtr_geoplus]
 list	cards
 fieldlist	gui
 list	queries
+:supp:Exm
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]
 list	statsactive

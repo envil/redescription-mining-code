@@ -165,7 +165,6 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         
         x1 += h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
 
-        self.hist_click_info = None
         axe.set_yticks(norm_bins_ticks)
         axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()

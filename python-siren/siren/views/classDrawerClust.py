@@ -116,12 +116,10 @@ class DrawerClustTD(DrawerEntitiesTD):
         x0, x1, y0, y1, bx, by = corners
         nbc = len(vec_dets["binLbls"])
         
-        if nbc == 0:       
-            self.hist_click_info = {"left_edge_map": x0, "right_edge_map": x1,
-                                    "right_edge_occ": x1, "right_edge_hist": x1,
-                                    "hedges_hist": [], "vedges_occ": [], "h_occ": 0,
-                                    "y1_top": y1, "y1_lbls": y1, "y1_blocks": y1,
-                                    "axe": axe}
+        if nbc == 0:
+            hci = {"left_edge_map": x0, "right_edge_map": x1, "right_edge_occ": x1, "right_edge_hist": x1,
+                   "hedges_hist": [], "vedges_occ": [], "h_occ": 0, "y1_top": y1, "y1_lbls": y1, "y1_blocks": y1, "axe": axe}
+            self.setElement("hist_click_info", hci)
             return (x0, x1, y0, y1, bx, by)
             
         
@@ -184,11 +182,9 @@ class DrawerClustTD(DrawerEntitiesTD):
                 
         
         x1 += nbr*h_occ+h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
-
-        self.hist_click_info = {"left_edge_map": x0, "right_edge_map": bottom_occ, "right_edge_occ": bottom_hist, "right_edge_hist": x1,
-                                 "hedges_hist": norm_bins, "vedges_occ": btms, "h_occ": h_occ,
-                                 "y1_top": y1_top, "y1_lbls": y1_lbls, "y1_blocks": y1,
-                                 "axe": axe}
+        hci = {"left_edge_map": x0, "right_edge_map": bottom_occ, "right_edge_occ": bottom_hist, "right_edge_hist": x1,
+               "hedges_hist": norm_bins, "vedges_occ": btms, "h_occ": h_occ, "y1_top": y1_top, "y1_lbls": y1_lbls, "y1_blocks": y1, "axe": axe}
+        self.setElement("hist_click_info", hci)
 
         
         axe.set_yticks(norm_bins_ticks)
@@ -201,48 +197,57 @@ class DrawerClustTD(DrawerEntitiesTD):
 
     def on_click(self, event):
         # print "Event location:", event.xdata, event.ydata
-        if self.clickActive() and self.inCapture(event) and self.hist_click_info is not None:
-            if event.xdata > self.hist_click_info['right_edge_occ'] and event.xdata < self.hist_click_info['right_edge_hist'] and \
-              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+        if self.clickActive() and self.inCapture(event) and self.hasElement("hist_click_info"):
+            hci = self.getElement("hist_click_info")
+            if event.xdata > hci['right_edge_occ'] and event.xdata < hci['right_edge_hist'] and \
+              event.ydata > hci['hedges_hist'][0] and event.ydata < hci['hedges_hist'][-1]:
                 self.on_click_hist(event)
-            elif event.xdata > self.hist_click_info['right_edge_map'] and event.xdata < self.hist_click_info['right_edge_occ'] and \
-              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+            elif event.xdata > hci['right_edge_map'] and event.xdata < hci['right_edge_occ'] and \
+              event.ydata > hci['hedges_hist'][0] and event.ydata < hci['hedges_hist'][-1]:
                 self.on_click_occ(event)
-            elif event.xdata > self.hist_click_info['left_edge_map'] and event.xdata < self.hist_click_info['right_edge_map'] and \
-              event.ydata > self.hist_click_info['hedges_hist'][0] and event.ydata < self.hist_click_info['hedges_hist'][-1]:
+            elif event.xdata > hci['left_edge_map'] and event.xdata < hci['right_edge_map'] and \
+              event.ydata > hci['hedges_hist'][0] and event.ydata < hci['hedges_hist'][-1]:
                 lid = self.getLidAt(event.xdata, event.ydata)
                 if lid is not None:
                     self.sendEmphasize([lid])
 
     def on_click_hist(self, event):
-        bini = 0
-        while event.ydata > self.hist_click_info['hedges_hist'][bini]:
-            bini += 1
-        bval = self.getElement("vec_dets")["binVals"][bini-1]
-        lids = numpy.where(self.getElement("vec") == bval)[0]
-        if len(lids) > 0:
-            self.sendEmphasize(lids)
+        if self.hasElement("hist_click_info"):
+            hci = self.getElement("hist_click_info")
+            bini = 0
+            while event.ydata > hci['hedges_hist'][bini]:
+                bini += 1
+            bval = self.getElement("vec_dets")["binVals"][bini-1]
+            lids = numpy.where(self.getElement("vec") == bval)[0]
+            if len(lids) > 0:
+                self.sendEmphasize(lids)
 
     def on_click_occ(self, event):
-        bini = 0
-        while bini < len(self.hist_click_info['hedges_hist']) and event.ydata > self.hist_click_info['hedges_hist'][bini]:
-            bini += 1
-        ri = 0
-        while ri < len(self.hist_click_info['vedges_occ']) and event.xdata > self.hist_click_info['vedges_occ'][ri]:
-            ri += 1
-        # status = 1
-        # if event.ydata < (self.hist_click_info['hedges_hist'][bini]+self.hist_click_info['hedges_hist'][bini-1])/2.:
-        #     status = 0
-        bval = self.getElement("vec_dets")["binVals"][bini-1]
-        etor = self.getPltDtH().getEtoR()
-        lids = numpy.where(etor[:,ri-1] & (self.getElement("vec") == bval))[0]
-        if len(lids) > 0:
-            self.sendEmphasize(lids)
+        if self.hasElement("hist_click_info"):
+            hci = self.getElement("hist_click_info")
+            bini = 0
+            while bini < len(hci['hedges_hist']) and event.ydata > hci['hedges_hist'][bini]:
+                bini += 1
+            ri = 0
+            while ri < len(hci['vedges_occ']) and event.xdata > hci['vedges_occ'][ri]:
+                ri += 1
+            # status = 1
+            # if event.ydata < (hci['hedges_hist'][bini]+hci['hedges_hist'][bini-1])/2.:
+            #     status = 0
+            bval = self.getElement("vec_dets")["binVals"][bini-1]
+            etor = self.getPltDtH().getEtoR()
+            lids = numpy.where(etor[:,ri-1] & (self.getElement("vec") == bval))[0]
+            if len(lids) > 0:
+                self.sendEmphasize(lids)
             
     def makeEmphTag(self, lid):
         tag = "%s" % self.getParentData().getRName(lid)
         if self.getElement("vec") is not None:
             c = self.getElement("vec")[lid]
+            if "ddER" in self.getElement("vec_dets"):
+                ddE = self.getElement("vec_dets")["ddER"]["E"]
+                erep = ddE["rprt"][ddE["to_rep"][lid]]
+                tag += "[%d:%d]" % (lid, erep)
             if c >= 0:
                 x = self.getElement("vec_dets")["binLbls"][c]
                 tag += ": %s" % x.split()[0] 
@@ -259,12 +264,76 @@ class DrawerClustTD(DrawerEntitiesTD):
                 except ValueError:
                     pass ## was already removed by a redraw or such
 
-        if len(lids) > 0 and "axe" in self.hist_click_info and (self.hist_click_info["y1_lbls"] > self.hist_click_info["y1_blocks"]):
-            nodes = sorted(lids)
-            cols = self.getElement("vec_dets")["cols"]
-            ord_rids = self.getElement("vec_dets")["more"]["ord_rids"]
-            etor = self.getPltDtH().getEtoR()
-            block_emph = self.getPltDtH().getClustDetails(nodes, etor, cols)
-            sizes = {"left": [self.hist_click_info["y1_blocks"]], "h_occ": self.hist_click_info["h_occ"], "width": [self.hist_click_info["y1_lbls"]-self.hist_click_info["y1_blocks"]], "btms": self.hist_click_info["vedges_occ"]}
-            emph_blocks = self.plot_block(self.hist_click_info["axe"], -1, block_emph, ord_rids, sizes)
-            self.setElement("emph_blocks", emph_blocks)
+        if len(lids) > 0 and self.hasElement("hist_click_info"):
+            hci = self.getElement("hist_click_info")
+            if "axe" in hci and (hci["y1_lbls"] > hci["y1_blocks"]):
+                nodes = sorted(lids)
+                cols = self.getElement("vec_dets")["cols"]
+                ord_rids = self.getElement("vec_dets")["more"]["ord_rids"]
+                etor = self.getPltDtH().getEtoR()
+                block_emph = self.getPltDtH().getClustDetails(nodes, etor, cols)
+                sizes = {"left": [hci["y1_blocks"]], "h_occ": hci["h_occ"], "width": [hci["y1_lbls"]-hci["y1_blocks"]], "btms": hci["vedges_occ"]}
+                emph_blocks = self.plot_block(hci["axe"], -1, block_emph, ord_rids, sizes)
+                self.setElement("emph_blocks", emph_blocks)
+
+
+    # def update(self, more=None):
+    #     if self.view.wasKilled():
+    #         return
+
+    #     if self.isReadyPlot():
+
+    #         inter_params = self.getParamsInter()
+    #         if inter_params.get("choice_agg", 0) > 2:
+    #             DrawerEntitiesTD.update(self, more)
+    #             return
+            
+    #         self.clearPlot()
+    #         inter_params = self.getParamsInter()
+    #         vec, vec_dets = self.getVecAndDets(inter_params)
+    #         draw_settings = self.getDrawSettings()
+    #         selected = self.getPltDtH().getUnvizRows()
+
+    #         cpos = vec_dets["clusters"]["clust_pos"]
+    #         pairs = vec_dets["clusters"]["pairs"]
+    #         ddER = vec_dets["ddER"]
+    #         etor = vec_dets["etor"]
+           
+    #         na, nb, ds = pairs[0]
+    #         ncounts = {na: 1, nb:1}
+    #         mid = (cpos[na]+cpos[nb])/2.
+    #         self.axe.plot([mid, cpos[na]], [0, ncounts[na]], "b-", linewidth=.1)
+    #         self.axe.plot([mid, cpos[nb]], [0, ncounts[nb]], "b-", linewidth=.1)
+    #         self.axe.text(mid, 0, "%s" % ds[1], fontsize=2, ha="left", va="bottom", rotation=30)
+    #         # self.axe.text(mid, 0, "[0 %s %s]" % (ds[1], ds[2]), fontsize=2, ha="left", va="bottom", rotation=30)            
+    #         # self.axe.text(mid, 0, "%d" % ds[3], fontsize=2, ha="right", va="top", rotation=90)
+    #         self.axe.text(cpos[na], ncounts[na], "c:%d" % na, fontsize=2, ha="right", va="top", rotation=90)
+    #         self.axe.text(cpos[nb], ncounts[nb], "c:%d" % nb, fontsize=2, ha="right", va="top", rotation=90)
+
+    #         for pi, pair in enumerate(pairs[1:]):
+    #             na, nb, ds = pair
+
+    #             self.axe.plot([cpos[na], cpos[na]], [ncounts[na], ncounts[na]+1], "b-", linewidth=.1)
+    #             self.axe.plot([cpos[na], cpos[nb]], [ncounts[na], ncounts[na]+1], "b-", linewidth=.1)
+    #             # self.axe.text(cpos[na], ncounts[na], "[%d %s %s]" % (pi+1, ds[1], ds[2]), fontsize=2, ha="left", va="bottom", rotation=30)
+    #             # self.axe.text(cpos[na], ncounts[na], "%d" % ds[3], fontsize=2, ha="right", va="top", rotation=90)
+
+    #             self.axe.text(cpos[na], ncounts[na], "%s" % ds[1], fontsize=2, ha="left", va="bottom", rotation=30)
+    #             self.axe.text(cpos[nb], ncounts[na]+1, "c:%d" % nb, fontsize=2, ha="right", va="top", rotation=90)
+                
+    #             ncounts[na] += 1
+    #             ncounts[nb] = ncounts[na]
+
+    #         mx = numpy.max(ncounts.values())            
+    #         for na, ncount in ncounts.items():
+    #             self.axe.plot([cpos[na], cpos[na]], [ncounts[na], mx], "k-", linewidth=.05)
+    #             self.axe.text(cpos[na], mx, " %04d %s %s" % (ddER["E"]["rprt"][na], "".join(["%d" % xx for xx in etor[ddER["E"]["rprt"][na], :]]), ddER["E"]["counts"][na]), fontsize=2, ha="center", va="bottom", rotation=90)
+
+    #         corners = (-3, len(cpos)+2, -1, mx+4, 1, 1)
+            
+    #         self.makeFinish(corners[:4], corners[4:])   
+    #         self.updateEmphasize(review=False)
+    #         self.draw()
+    #         self.setFocus()
+    #     else:
+    #         self.plot_void()      

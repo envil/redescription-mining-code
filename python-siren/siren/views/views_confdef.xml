@@ -227,7 +227,7 @@
 	<label>Show values for blocks</label>
 	<parameter_type>boolean</parameter_type>
 	<legend>Show values for blocks.</legend>
-	<default><value>1</value></default>
+	<default><value>0</value></default>
      </parameter>
           <parameter>
 	<name>blocks_show_emph</name>

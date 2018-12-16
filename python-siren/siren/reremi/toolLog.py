@@ -196,6 +196,7 @@ class Log(Tracker):
         return len(self.out)+len(self.oqu)-1
 
     def usesOutMethods(self):
+        pdb.set_trace()
         for out in self.out+self.oqu:
             if out["method"] is not None:
                 return True

@@ -113,47 +113,45 @@ class ERCache():
                 self.gatherReds(spids)
             etor = self.etor
 
-        org_etor = etor
-        #### DE-DUPLICATE REDS        
-        count_matches = numpy.dot(1.-etor.T, 1.-etor) + numpy.dot(etor.T*1., etor*1.)
-        nbe = etor.shape[0]
+        nbE, nbR = etor.shape
+        matches_R_ones = numpy.dot(1*etor.T, 1*etor)
+        matches_R_zeroes = numpy.dot(1-etor.T, 1-etor)
+        matches_E_ones = numpy.dot(1*etor, 1*etor.T)
+        matches_E_zeroes = numpy.dot(1-etor, 1-etor.T)
+        
+        #### DE-DUPLICATE REDS
         rb = {}
-        for x,y in zip(*numpy.where(numpy.triu(count_matches,1)>=nbe)):
+        for x,y in zip(*numpy.where(numpy.triu(matches_R_zeroes + matches_R_ones, 1) >= nbE)):
             rb[x] = y
-        keep_rs = numpy.array([i for i in range(etor.shape[1]) if i not in rb], dtype=int)
+        keep_rs = numpy.array([i for i in range(nbR) if i not in rb], dtype=int)
 
-        r_to_rep = -numpy.ones(etor.shape[1], dtype=int)
+        r_to_rep = -numpy.ones(nbR, dtype=int)
         r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
         if len(rb) > 0:
             rfrm, rtt = zip(*rb.items())
             r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
-
+            
         #### DE-DUPLICATE ENTITIES
-        etor = etor[:,keep_rs]
-        count_matches = numpy.dot(1.-etor, 1.-etor.T) + numpy.dot(etor*1., etor.T*1.)
-        nbr = etor.shape[1]
+        ### e_to_rep == -1 -> entity does not support any red        
         eb = {}
-        for x,y in zip(*numpy.where(numpy.triu(count_matches,1)>=nbr)):
+        for x,y in zip(*numpy.where(numpy.triu(matches_E_zeroes + matches_E_ones, 1) >= nbR)):
             eb[x] = y            
-        keep_es = numpy.array([i for i in range(etor.shape[0]) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
+        keep_es = numpy.array([i for i in range(nbE) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
 
-        e_to_rep = -numpy.ones(etor.shape[0], dtype=int)
+        e_to_rep = -numpy.ones(nbE, dtype=int)
         e_to_rep[keep_es] = numpy.arange(len(keep_es))
         if len(eb) > 0:
             efrm, ett = zip(*eb.items())
             e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
 
         r_counts, e_counts = numpy.bincount(r_to_rep), numpy.bincount(e_to_rep+1)
-        e_counts = numpy.concatenate((e_counts[1:], [e_counts[0]]))
-        
-        dists = nbr - count_matches[keep_es,:][:,keep_es]
-        r_etor = org_etor[keep_es, :]
-        org_count_matches = numpy.dot(1.-r_etor, 1.-r_etor.T) + numpy.dot(r_etor*1., r_etor.T*1.)
-        ws = numpy.outer(e_counts[:-1], e_counts[:-1])
-        wdists = ws*(org_etor.shape[1] - org_count_matches)
-        
-        xps = {"e_rprt": keep_es, "r_rprt": keep_rs, "r_to_rep": r_to_rep, "e_to_rep": e_to_rep,
-               "dists": dists, "ws": ws, "wdists": wdists, "r_counts": r_counts, "e_counts": e_counts}
+        # e_counts = numpy.concatenate((e_counts[1:], [e_counts[0]])) ### put -1 counts to end
+        xps = {"E": {"nb": nbE, "nb_other": nbR, "rprt": keep_es, "to_rep": e_to_rep, "counts": e_counts[1:],
+              "matches_ones": matches_E_ones[keep_es,:][:, keep_es],
+              "matches_zeroes": matches_E_zeroes[keep_es,:][:, keep_es]},
+              "R": {"nb": nbR, "nb_other": nbE, "rprt": keep_rs, "to_rep": r_to_rep, "counts": r_counts,
+              "matches_ones": matches_R_ones[keep_rs,:][:, keep_rs],
+              "matches_zeroes": matches_R_zeroes[keep_rs,:][:, keep_rs]}}
         return xps 
 
     def getDeduplicateER(self, rids=None, eids=None, spids=None):

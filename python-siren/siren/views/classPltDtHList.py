@@ -9,64 +9,162 @@ from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords
 
 import pdb
 
-def isWeightedAgg(choice_agg=None):
-    if choice_agg is None:
-        return False
-    return re.match("w", choice_agg)
-def getOpAgg(choice_agg=None):
-    if choice_agg is not None and re.search("sum", choice_agg):
-        return "sum"
-    return "min"
+def vect_avg(x, y):
+    return numpy.add(x,y)/2.
+
+def mat_min(x, y):
+    return numpy.vstack([numpy.minimum(y,xx) for xx in x])
+def mat_max(x, y):
+    return numpy.vstack([numpy.maximum(y,xx) for xx in x])
+
+def mat_sum(x, y):
+    return numpy.vstack([y+xx for xx in x])
+def mat_avg(x, y):
+    return mat_sum(x,y)/2.
+
+def div_min_max(x,y):
+    return numpy.minimum(x, y)/(1.*numpy.maximum(1, numpy.maximum(x, y)))
+
+def mm_div(x, y):
+    return numpy.min(x)/numpy.maximum(numpy.max(x), 1.)
+def mat_div(x, y):
+    return numpy.vstack([div_min_max(xx, y) for xx in x])
+def vect_div(x, y):
+    return div_min_max(x, y)
 
 
-def get_cover_far(dists, nb=0, choice_agg=None, dets=None):
-    weighted = isWeightedAgg(choice_agg)
-    op = getOpAgg(choice_agg)
-    if weighted and dets is not None and "wdists" in dets:
-        dists = dets["wdists"]
-    
-    uniq_dds = []
-    if dists.shape[0] < 2:
-        nodesc = numpy.ones(1, dtype=int)
-        dds = numpy.zeros(1, dtype=int)
-        order = numpy.zeros(1, dtype=int)
-        return nodesc, order, dds, uniq_dds
-    ### find the two representatives further apart
-    nodesc = numpy.zeros(dists.shape[0], dtype=int)
-    dds = numpy.zeros(dists.shape[0], dtype=int)
+### takes one vector or matrix
+compare_funs = {"max": numpy.max, "min": numpy.min}
 
-    x,y = numpy.unravel_index(numpy.argmax(dists), dists.shape)
-    nodesc[x] = 1
-    nodesc[y] = 2
-    dds[x] = dists[x,y]
-    dds[y] = dists[x,y]
-    ordns = [x, y] 
-    uniq_dds.append(dds[x])
-    i = 2
-    while numpy.sum(nodesc==0) > 0 and (len(uniq_dds) < nb or nb == 0):
-        i+=1
-        cands = numpy.where(nodesc==0)[0]
-        if op == "sum":
-            cz = numpy.argmax(numpy.sum(dists[nodesc>0,:][:, cands], axis=0))
-            z = cands[cz]
-        else:
-            z = numpy.argmax(numpy.min(dists[nodesc>0,:], axis=0))
-        dds[z] = numpy.min(dists[nodesc>0,z])
-        if dds[z] < uniq_dds[-1]:
-            uniq_dds.append(dds[z])
-        ## print "ASSIGNED", numpy.sum(nodesc==0), z, numpy.min(dists[nodesc>0,z])
-        if nodesc[z] > 0:
-            print "OUPS! Already picked", z, numpy.where(nodesc>0)
-            pdb.set_trace()
-        else:
-            xsor = numpy.argsort(dists[ordns,z])
-            if xsor[1] < xsor[0]:
-                ordns.insert(xsor[0], z)
+### takes a matrix and return value
+merge_mm_funs = {"sum": numpy.sum, "prod": numpy.prod, "div": mm_div, "avg": numpy.mean, "min": numpy.min, "max": numpy.max}
+### takes two vectors and return matrix
+merge_mat_funs = {"sum": mat_sum, "prod": numpy.outer, "div": mat_div, "avg": mat_avg, "min": mat_min, "max": mat_max}
+### takes two vectors and return vector, or two values and return value
+merge_vect_funs = {"sum": numpy.add, "prod": numpy.multiply, "div": vect_div, "avg": vect_avg, "min": numpy.minimum, "max": numpy.maximum}
+
+def get_bests(scoring, cxs=None, cys=None, init_ids=None):
+    dt = None
+    if cxs is None:
+        if "matrix" in scoring:
+            if init_ids is not None:
+                dt = scoring["matrix"][init_ids, :][:, init_ids]
             else:
-                ordns.insert(xsor[0]+1, z)
-            nodesc[z] = i
-    ordns.append(len(ordns))
-    return nodesc, ordns, dds, uniq_dds
+                dt = scoring["matrix"]
+        elif "vector" in scoring:
+            if scoring["combine"] in mat_functions_map:
+                if init_ids is not None:
+                    dt = merge_mat_funs[scoring["combine"]](scoring["vector"][init_ids], scoring["vector"][init_ids])
+                else:
+                    dt = merge_mat_funs[scoring["combine"]](scoring["vector"], scoring["vector"])
+        if dt is not None:
+            bv = compare_funs[scoring["compare"]](dt)
+            xids, yids = numpy.where(dt == bv)
+            if init_ids is not None:
+                return init_ids[xids], init_ids[yids], bv
+            else:
+                return xids, yids, bv
+    elif len(cxs) > 1:
+        if "matrix" in scoring:
+            dt = scoring["matrix"][cxs, cys]
+        elif "vector" in scoring:
+            if scoring["combine"] in merge_vect_funs:
+                dt = merge_vect_funs[scoring["combine"]](scoring["vector"][cxs], scoring["vector"][cys])
+        if dt is not None:
+            bv = compare_funs[scoring["compare"]](dt)
+            ids = numpy.where(dt == bv)
+            return cxs[ids], cys[ids], bv
+    elif len(cxs) == 1:
+        if "matrix" in scoring:
+            return cxs, cys, scoring["matrix"][cxs[0], cys[0]]
+        elif "vector" in scoring:
+            if scoring["combine"] in merge_vect_funs:
+                return cxs, cys, merge_vect_funs[scoring["combine"]](scoring["vector"][cxs[0]], scoring["vector"][cys[0]])
+    return cxs, cys, scoring["null"]
+
+def merge(scorings, cx, cy):
+    for scoring in scorings:
+        if "matrix" in scoring:
+            d = scoring["matrix"][cx, cx]
+            scoring["matrix"][cx, :] = merge_vect_funs[scoring["merge"]](scoring["matrix"][cx, :], scoring["matrix"][cy, :])
+            scoring["matrix"][:, cx] = merge_vect_funs[scoring["merge"]](scoring["matrix"][:, cx], scoring["matrix"][:, cy])
+            scoring["matrix"][cy, :] = scoring["null"]
+            scoring["matrix"][:, cy] = scoring["null"]
+            scoring["matrix"][cx, cx] = d
+        elif "vector" in scoring:
+            scoring["vector"][cx] = merge_vect_funs[scoring["merge"]](scoring["vector"][cx], scoring["vector"][cy])
+            scoring["vector"][cy] = scoring["null"]
+        
+def next_best(scorings, init_cands=None):
+    init_ids = numpy.where(init_cands)[0]
+    score = [scoring["null"] for scoring in scorings]
+    cxs, cys, score[0] = get_bests(scorings[0], init_ids=init_ids)
+    # print "best", 0, cxs, cys, score[0]
+    for i in range(1, len(scorings)):
+        cxs, cys, score[i] = get_bests(scorings[i], cxs, cys)
+        # print "best", i, cxs, cys, score[i]
+    if cxs[0] ==  cys[0]:
+        pdb.set_trace()
+    return cxs[0], cys[0], score
+    
+def agg_bottom_up(scorings, dists, init_cands):
+    pairs = []
+    assignment = numpy.arange(init_cands.shape[0])
+    ass_store = [assignment.copy()]
+    distances = numpy.zeros(init_cands.shape[0], dtype=int)
+    while numpy.sum(init_cands) > 1:
+        cx, cy, sc = next_best(scorings, init_cands)
+
+        gy = numpy.where(assignment == cy)[0]
+        gx = numpy.where(assignment == cx)[0]
+        d = numpy.sum([numpy.sum([dists[ix, iy] for ix in gx]) for iy in gy])
+
+        gd = distances[cx] + distances[cy] + d
+        distances[cx] = gd
+        distances[cy] = 0
+        totd = numpy.sum(distances)
+        
+        pairs.append((cx, cy, (sc, d, gd, totd)))
+        assignment[gy] = assignment[cx]        
+        ass_store.append(assignment.copy())
+        init_cands[cy] = False
+        merge(scorings, cx, cy)
+    return pairs[::-1], ass_store[-2::-1]
+
+def order_clusts(pairs, ass_store, scoring):
+    clust_ord = [pairs[0][0], pairs[0][1]]
+    clust_pos = -numpy.ones(ass_store[0].shape, dtype=int)
+    clust_pos[pairs[0][0]] = 0
+    clust_pos[pairs[0][1]] = 1
+    for i in range(1, len(pairs)):
+        x, y, _ = pairs[i]
+        gx = (ass_store[i] == x)
+        gy = (ass_store[i] == y)
+
+        pos_x = clust_pos[x]
+        prev_dx, prev_dy, next_dx, next_dy = (0,0,0,0)
+        if pos_x > 0:
+            prev_n = clust_ord[pos_x-1]        
+            gn = (ass_store[i] == prev_n)
+            prev_dx = merge_mm_funs[scoring["merge"]](scoring["matrix"][gx, :][:, gn])
+            prev_dy = merge_mm_funs[scoring["merge"]](scoring["matrix"][gy, :][:, gn])
+
+        if pos_x+1 < len(clust_ord):
+            next_n = clust_ord[pos_x+1]        
+            gn = (ass_store[i] == next_n)
+            next_dx = merge_mm_funs[scoring["merge"]](scoring["matrix"][gx, :][:, gn])
+            next_dy = merge_mm_funs[scoring["merge"]](scoring["matrix"][gy, :][:, gn])
+
+        clust_pos[clust_ord[pos_x+1:]] += 1
+        dt = [prev_dy + next_dx, prev_dx + next_dy]
+        if compare_funs[scoring["compare"]](dt) == dt[0]: ### insert y before x
+            clust_pos[y] = pos_x
+            clust_pos[x] += 1
+            clust_ord.insert(pos_x, y)
+        else:  ### insert y after x
+            clust_pos[y] = pos_x+1
+            clust_ord.insert(pos_x+1, y)                
+    return clust_pos
 
 
 class PltDtHandlerList(PltDtHandlerBasis):
@@ -236,20 +334,32 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
     def setPreps(self):
         self.setInterParams()
 
-    def getClustDetails(self, nodes, etor, cols=None):
+    def getClustDetails(self, nodes, etor, cols=None, rows=None, counts=None):
         disp_values = self.getSettV("blocks_disp_values")
+        if len(nodes) == 0:
+            return {"occ_avg": [], "occ_str": []}
         if cols is None:
             cols = range(etor.shape[1])
-        occ_avg = numpy.average(1*etor[nodes,:][:,cols], axis=0)
+
+        if rows is not None:
+            nn = rows[nodes]
+        else:
+            nn = nodes
+                            
+        if counts is not None:
+            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0, weights=counts[nodes])
+            sumw = numpy.sum(counts[nodes])
+        else:
+            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0)
+            sumw = len(nodes)
+            
         if disp_values == "Counts":
-            occ_cc = numpy.sum(etor[nodes,:][:,cols], axis=0)
-            occ_str = ["%d" % v for v in occ_cc]
+            occ_str = ["%d" % int(sumw*v) for v in occ_avg]
         elif disp_values == "Percentages":
             occ_str = ["%d" % 100*v for v in occ_avg]
         else:
             occ_str = ["%.2f" % v for v in occ_avg]
         return {"occ_avg": occ_avg, "occ_str": occ_str}
-
         
     def getVecAndDets(self, inter_params=None):           
         details = {}
@@ -263,18 +373,15 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
             col = None
             vec = numpy.ones(data.nbRows())
  
-        occs_list = []
         uvals = sorted(set(numpy.unique(vec)).difference([-1]))
         # if len(uvals) == 12:
         #     uvals = [0, 2, 8, 10, 7, 3, 11, 4, 9, 5, 6, 1]
         vec_dets = {"typeId": 2, "single": True, "blocks": True,
-                    "binLbls": [], "binVals": uvals, "cols": range(etor.shape[1])}                           
-
+                    "binLbls": [], "binVals": uvals, "cols": range(etor.shape[1])}
+            
         for i in uvals:
             nodes = numpy.where(vec==i)[0]
             details[i] = self.getClustDetails(nodes, etor)
-            if self.getSettV("blocks_reorder_rids", True):
-                occs_list.append(details[i]["occ_avg"])
             if col is not None:
                 vec_dets["binLbls"].append("%s %d" % (col.getValFromNum(i), len(nodes)))
             else:
@@ -282,6 +389,7 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
 
         ### FIXING THE ORDER AND LABELS OF REDS
         if False: #True: # for custom order
+            # if self.getSettV("blocks_reorder_rids", True):
             tmp = []
             for ri in reversed([10,1,7,15,9,4,14,2,19,8,5,18,17,6,0,11,13,3,16,12]):
                 rid = self.pltdt.get("srids")[ri]
@@ -290,31 +398,19 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
                 else:
                     tmp.append((ri, "r1.%d" % (rid+1)))
             details["ord_rids"] = tmp
-            occs_list = []
         elif self.pltdt.get("srids") is not None:
             details["ord_rids"] = [(ri, "r%s" % self.pltdt.get("srids")[ri]) for ri in range(etor.shape[1])]
         else:
             details["ord_rids"] = [(ri, "#%d" % ri) for ri in range(etor.shape[1])]
         details["ord_cids"] = uvals
-
-        if len(occs_list) > 0:                
-            occ_tots = numpy.array(occs_list).T
-            D = numpy.zeros((occ_tots.shape[0], occ_tots.shape[0]))
-            for ii in range(occ_tots.shape[0]):
-                for jj in range(ii):
-                    D[jj,ii] = numpy.sqrt(numpy.sum((occ_tots[ii, :]-occ_tots[jj, :])**2))
-                    D[ii, jj] = D[jj,ii] 
-            xx = get_cover_far(D) ### for ordering the redescriptions
-            #details["ord_rids"].sort(key=lambda x: tuple(occ_tots[x[0],:]))
-            details["ord_rids"] = [details["ord_rids"][ii] for ii in xx[1][:-1]]
-
+        
         nb = [v-0.5 for v in vec_dets["binVals"]]
         nb.append(nb[-1]+1)
         
         vec_dets["binHist"] = nb        
         vec_dets["more"] = details
         vec_dets["min_max"] = (numpy.min(uvals), numpy.max(uvals)) 
-
+        
         self.pltdt["vec"] = vec
         self.pltdt["vec_dets"] = vec_dets
         return vec, vec_dets
@@ -322,16 +418,65 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
     
 class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
+    @classmethod
+    def computeDists(tcl, data, weighted=False):
+        d = data["nb_other"] - (data["matches_ones"] + data["matches_zeroes"])
+        if weighted and "counts" in data:
+            d *= numpy.outer(data["counts"], data["counts"])
+        return d
+
+    SCORING_METHS = {}
+    @classmethod
+    def computeScoringsAgg(tcl, data, choice_agg="default_agg"):
+        if choice_agg in tcl.SCORING_METHS:
+            return tcl.SCORING_METHS[choice_agg](data)
+        return tcl.SCORING_METHS["default_agg"](data)
+    @classmethod
+    def computeScoringOrd(tcl, data, choice_ord="default_ord"):
+        ### expects a matrix scoring
+        if choice_ord in tcl.SCORING_METHS:
+            return tcl.SCORING_METHS[choice_ord](data)[0]
+        return tcl.SCORING_METHS["default_ord"](data)[0]
+    
+    def getScoringsWDist(data):
+        #### simple edit distances accounting for cluster sizes
+        wdist = float(data["nb_other"]) - (data["matches_ones"] + data["matches_zeroes"])
+        wdist *= numpy.outer(data["counts"], data["counts"])
+        numpy.fill_diagonal(wdist, float("inf"))
+        return [{"matrix": wdist, "compare": "min", "merge": "sum", "null":  float("inf")}]
+    
+    def getScoringsDistOnes(data):
+        #### simple edit distances, favoring common ones
+        wdist = float(data["nb_other"]) - (data["matches_ones"] + data["matches_zeroes"])
+        numpy.fill_diagonal(wdist, float("inf"))
+        return [{"matrix": wdist, "compare": "min", "merge": "max", "null":  float("inf")},
+                {"matrix": data["matches_ones"].copy(), "compare": "max", "merge": "min", "null": -1},
+                {"vector": data["counts"].copy(), "combine": "div", "compare": "min", "merge": "sum", "null": data["nb"]+1}]
+    
+    def getScoringsDistSizes(data):
+        #### simple edit distances first, sizes diff second
+        wdist = float(data["nb_other"]) - (data["matches_ones"] + data["matches_zeroes"])
+        numpy.fill_diagonal(wdist, float("inf"))
+        return [{"matrix": wdist, "compare": "min", "merge": "max", "null":  float("inf")},
+                {"vector": data["counts"].copy(), "combine": "div", "compare": "min", "merge": "sum", "null": data["nb"]+1}]
+
+    SCORING_METHS_L = [("dist-ones", getScoringsDistOnes),
+                       ("dist-sizes", getScoringsDistSizes),
+                       ("wdist", getScoringsWDist)]
+    SCORING_METHS = {"default_agg": SCORING_METHS_L[0][1],
+                     "default_ord": SCORING_METHS_L[-1][1]}
+    SCORING_METHS.update(dict(SCORING_METHS_L))    
+    
     NBC_DEF = 2
     MAXC_DEF = 12
-    CHOICES = {"choice_agg": {"label": "agg.", "options": ["wmin", "wsum", "min", "sum"]},
+    CHOICES = {"choice_agg": {"label": "agg.", "options": [l[0] for l in SCORING_METHS_L]},
                "choice_nbc": {"label": "dist.", "options": []}}
-    
+        
     def hasClusters(self):
         return True
     
     def getSettMaxClust(self):
-        return self.getSettV("supp_part_clus", self.MAXC_DEF)
+        return self.getSettV("max_clus", self.MAXC_DEF)
     
     def uptodateIParams(self, inter_params=None):
         if inter_params is None:
@@ -343,19 +488,33 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
     def updatedIParams(self, inter_params=None):
         self.pltdt["inter_params"] = inter_params
         self.setInterParams()
-    
+        
     def getClusters(self, inter_params=None):
         if self.pltdt.get("clusters") is None or not self.uptodateIParams(inter_params):
             self.pltdt["clusters"] = self.computeClusters(inter_params)
             self.updatedIParams(inter_params)
         return self.pltdt["clusters"]
-        
+    
     def computeClusters(self, inter_params=None):
         choice_agg = self.getChoice("choice_agg", inter_params)
+        choice_agg = choice_agg.split("_")[0]
         ddER = self.getDeduplicateER()
-        nodesc, order, dds, uniq_dds = get_cover_far(ddER["dists"], self.getSettMaxClust(), choice_agg, ddER)
-        return {"nodesc": nodesc, "order": order, "dds": dds, "uniq_dds": uniq_dds, "nbc_max": numpy.sum(nodesc>0)}    
-    
+        dists = self.computeDists(ddER["E"], weighted=True)
+        scorings = self.computeScoringsAgg(ddER["E"], choice_agg)
+        sc_ord = self.computeScoringOrd(ddER["E"])
+        init_cands = numpy.ones(ddER["E"]["rprt"].shape[0], dtype=bool)
+        pairs, ass_store = agg_bottom_up(scorings, dists, init_cands)
+        clust_pos = order_clusts(pairs, ass_store, sc_ord)
+
+        rdists = self.computeDists(ddER["R"], weighted=True)
+        rscorings = self.computeScoringsAgg(ddER["R"], choice_agg)
+        rsc_ord = self.computeScoringOrd(ddER["R"])
+        rinit_cands = numpy.ones(ddER["R"]["rprt"].shape[0], dtype=bool)
+        rpairs, rass_store = agg_bottom_up(rscorings, rdists, rinit_cands)
+        r_pos = order_clusts(rpairs, rass_store, rsc_ord)
+        
+        return {"pairs": pairs, "assignments": ass_store, "clust_pos": clust_pos, "r_pos": r_pos}
+      
     def setInterParams(self):
         ielems = self.getDrawer().getInterElements()
         if "choice_nbc" in ielems:
@@ -366,51 +525,13 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             
     def getDistOpts(self):
         if self.pltdt.get("clusters") is not None:
-            nb = numpy.max(self.pltdt["clusters"]["nodesc"])+1
-            # return ["%d" % d for d in range(1,nb)]
-            return ["%d" % d for d in self.pltdt["clusters"]["uniq_dds"]]
+            return ["%d" % d[-1][-1] for d in self.pltdt["clusters"]["pairs"]]
         else:
             return ["%d" % d for d in range(1,3)]
         
     def setPreps(self):
         self.getClusters()
         self.setInterParams()
-
-    def getClustDetails(self, nodes, etor, cols=None, ddER=None, weighted=True):
-        disp_values = self.getSettV("blocks_disp_values")
-        if len(nodes) == 0:
-            return {"center": None, "max_d": 0, "occ_avg": [], "occ_str": []}
-        if cols is None:
-            if ddER is not None:
-                cols = ddER["r_rprt"]
-            else:
-                cols = range(etor.shape[1])
-                
-        if ddER is not None:
-            normm = 1+len(nodes)*numpy.max(ddER["dists"][nodes,:][:,nodes])
-            center = numpy.argmin(numpy.max(ddER["dists"][nodes,:][:,nodes], axis=0)+numpy.sum(ddER["dists"][nodes,:][:,nodes], axis=0)/normm)
-            max_d = numpy.max(ddER["dists"][nodes[center],nodes])
-            nn = ddER["e_rprt"][nodes]
-        else:
-            center, max_d = None, 0.
-            nn = nodes
-            weighted = False
-            
-        if weighted:
-            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0, weights=ddER["e_counts"][nodes])
-            sumw = numpy.sum(ddER["e_counts"][nodes])
-        else:
-            occ_avg = numpy.average(1*etor[nn,:][:, cols], axis=0)
-            sumw = len(nodes)
-            
-        if disp_values == "Counts":
-            occ_str = ["%d" % int(sumw*v) for v in occ_avg]
-        elif disp_values == "Percentages":
-            occ_str = ["%d" % 100*v for v in occ_avg]
-        else:
-            occ_str = ["%.2f" % v for v in occ_avg]
-        return {"center": center, "max_d": max_d, "occ_avg": occ_avg, "occ_str": occ_str}
-
         
     def getVecAndDets(self, inter_params=None):
         if inter_params is None:
@@ -431,75 +552,41 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         ### TESTS WHETHER etor really is a membership matrix, containing only [0,1]
         if set(1*numpy.unique(etor)) <= set([0, 1]):
             blocks =  True
-        if clusters is not None:
-            max_dist = 0
-            v_out = -1
-            ### HAND FIXING THE ORDER, COLORS AND LABELS OF CLUSTERS
-            # clusters["order"] = [49, 115, 85, 86, 84]+ [99, 281, 195, 208, 210, 325, 319, 259, 241, 374, 306, 406, 279, 427, 407, 296, 21] 
-
-            if len(clusters.get("uniq_dds", [])) > 0:
-                nnb = numpy.min([nbc, len(clusters["uniq_dds"])-1])
-                max_dist = clusters["uniq_dds"][nnb]
-            nn = sorted(numpy.where(clusters["dds"]>=max_dist)[0], key=lambda x: clusters["nodesc"][x])
-            ## nn = sorted(numpy.where((self.clusters["nodesc"]>0) & (self.clusters["nodesc"]<nb+2))[0], key=lambda x: self.clusters["nodesc"][x])
-            ord_cids = sorted(range(len(nn)), key=lambda x: clusters["order"][x])
-            details["ord_cids"] = ord_cids
             
-            # print "NBC", v_out, nb, len(nn), nn
-            ### nn contains the representative entities to use as cluster center
-            ### next, assign representative entities to the closest entity center
-            if ddER["dists"].shape[0] < 2:
-                assign_rprt = [0]
-            else:
-                assign_rprt = numpy.argmin(ddER["dists"][:, nn], axis=1)
-            ## for i, v in enumerate(assign_rprt):
-            occs_list = []
-            choice_agg = self.getChoice("choice_agg", inter_params)
-            weighted = isWeightedAgg(choice_agg)
-            for i in range(numpy.max(assign_rprt)+1):
-                nodes = numpy.where(assign_rprt==i)[0]
-                details[i] = self.getClustDetails(nodes, etor, ddER=ddER, weighted=weighted)
-                if self.getSettV("blocks_reorder_rids", True):
-                    occs_list.append(details[i]["occ_avg"])                
-                # print i, max_d, nodes[center_n]
+        if clusters is not None:
+            v_out = -1
+            vec = v_out*numpy.ones(ddER["E"]["to_rep"].shape, dtype=int)
+            vvec = v_out*numpy.ones(ddER["E"]["to_rep"].shape, dtype=int)
+
+            assign = clusters["assignments"][nbc]
+            pair = clusters["pairs"][nbc]
+            bs = sorted(numpy.unique(assign), key=lambda x: clusters["clust_pos"][x])
+            details["ord_cids"] = bs
+
+            for i, bid in enumerate(bs):
+                nodes = numpy.where(assign==bid)[0]
+                vvec[ddER["E"]["rprt"][nodes]] = i
+                for n in nodes:
+                    vec[ddER["E"]["to_rep"] == n] = i
+
+                details[bid] = self.getClustDetails(nodes, etor, cols=ddER["R"]["rprt"], rows=ddER["E"]["rprt"], counts=ddER["E"]["counts"])
 
             ### FIXING THE ORDER AND LABELS OF REDS
-            if self.pltdt.get("srids") is not None:
-                details["ord_rids"] = [(ri, " ".join(["r%s" % self.pltdt.get("srids")[rx] for rx in numpy.where(ddER["r_to_rep"] == ri)[0]])) for ri, rii in enumerate(ddER["r_rprt"])]
-                ## ll = ["r%d.%d" % (1+x/10, abs(x%10-10)) for x in self.pltdt.get("srids")]
-                ## details["ord_rids"] = [(ri, " ".join([ll[rx] for rx in numpy.where(ddER["r_to_rep"] == ri)[0]])) for ri, rii in enumerate(ddER["r_rprt"])]
+            if self.getSettV("blocks_reorder_rids", True):
+                Rs = numpy.argsort(clusters["r_pos"])
             else:
-                details["ord_rids"] = [(ri, "#%d" % rii) for ri, rii in enumerate(ddER["r_rprt"])]
+                Rs = range(len(ddER["R"]["rprt"]))
+            if self.pltdt.get("srids") is not None:
+                details["ord_rids"] = [(ri, " ".join(["r%s" % self.pltdt.get("srids")[rx] for rx in numpy.where(ddER["R"]["to_rep"] == ri)[0]])) for ri in Rs]
+            else:
+                details["ord_rids"] = [(ri, "#%d" % ddER["R"]["rprt"][ri]) for ri in Rs]
 
             # ### SPECIFIC ORDERINGS
-            # if self.pltdt["lid"] == -1:
-            #     details["ord_rids"] = [(ii, ("r1.%02d" % (ii+1))) for ii in [1, 7, 4, 9, 2, 0, 8, 6, 5, 3]]
-            # elif self.pltdt["lid"] == -2:
-            #     details["ord_rids"] = [(ii, ("r2.%02d" % (ii+1))) for ii in [0, 5, 4, 9, 8, 7, 1, 3, 6, 2]]
-            # elif self.pltdt["lid"] == -3:
-            #     details["ord_rids"] = [(ii, "r%d.%02d" % (1+(ii>9), (ii%10)+1)) for ii in [12, 16, 3, 13, 11, 0, 6, 17, 18, 5, 8, 19, 2, 14, 4, 9, 15, 7, 1, 10]]
-            # elif len(occs_list) > 0:                
-            if len(occs_list) > 0:                
-                occ_tots = numpy.array(occs_list).T
-                D = numpy.zeros((occ_tots.shape[0], occ_tots.shape[0]))
-                for ii in range(occ_tots.shape[0]):
-                    for jj in range(ii):
-                        D[jj,ii] = numpy.sqrt(numpy.sum((occ_tots[ii, :]-occ_tots[jj, :])**2))
-                        D[ii, jj] = D[jj,ii] 
-                xx = get_cover_far(D)
-                #details["ord_rids"].sort(key=lambda x: tuple(occ_tots[x[0],:]))
-                details["ord_rids"] = [details["ord_rids"][ii] for ii in xx[1][:-1]]
-
-            if ddER["e_to_rep"] is not None:
-                vec = v_out*numpy.ones(ddER["e_to_rep"].shape, dtype=int)
-                for i,v in enumerate(assign_rprt):
-                    vec[ddER["e_to_rep"] == i] = clusters["order"][v]
-            else:
-                vec = clusters["order"][assign_rprt]
-
-        vec_dets = {"typeId": 2, "single": True, "blocks": blocks, "cols": ddER["r_rprt"]} ### HERE bin lbls        
+            # details["ord_rids"] = [(ii, "r%d.%02d" % (1+(ii>9), (ii%10)+1)) for ii in [12, 16, 3, 13, 11, 0, 6, 17, 18, 5, 8, 19, 2, 14, 4, 9, 15, 7, 1, 10]]
+            
+        vec_dets = {"typeId": 2, "single": True, "blocks": blocks, "cols": ddER["R"]["rprt"]} ### HERE bin lbls        
         vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
-        vec_dets["binLbls"] = ["c%d %d" % (b,numpy.sum(vec==b)) for b in vec_dets["binVals"]]
+        vec_dets["binLbls"] = ["c%d %d" % (details["ord_cids"][b], numpy.sum(vec==b)) for b in vec_dets["binVals"]]
 
         nb = [v-0.5 for v in vec_dets["binVals"]]
         if len(nb) > 0:
@@ -507,8 +594,13 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
         vec_dets["binHist"] = nb        
         vec_dets["more"] = details
-        vec_dets["min_max"] = (0, numpy.max(clusters["order"])) 
+        vec_dets["min_max"] = (0, len(details["ord_cids"])-1) 
 
+        ### debugging: for drawing clustering tree
+        # vec_dets["clusters"] = clusters  ### for debugging
+        # vec_dets["ddER"] = ddER  ### for debugging
+        # vec_dets["etor"] = etor  ### for debugging
+        
         self.pltdt["vec"] = vec
         self.pltdt["vec_dets"] = vec_dets
         return vec, vec_dets
