@@ -16,9 +16,10 @@ from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, Drawer
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 
 from classDrawerCorrel import DrawerRedCorrel
+from classDrawerRanges import DrawerRanges
 
 from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
-from classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListBlocks, PltDtHandlerTextList
+from classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListRanges, PltDtHandlerListBlocksCoords, PltDtHandlerTextList
 from classProj import ProjFactory
 
 import pdb
@@ -885,13 +886,33 @@ class ViewBorders(ViewList):
     ext_keys = ["geoplus"]
         
     subcl_drawer = DrawerBorders
-    subcl_pltdt = PltDtHandlerListBlocks
+    subcl_pltdt = PltDtHandlerListBlocksCoords
     subcl_layh = LayoutHandlerBasis
 
     @classmethod
     def suitableView(tcl, geo=False, ext_keys=None, what=None):
         return tcl.suitableViewBase(geo, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
 
+
+class ViewRanges(ViewList):
+    
+    TID = "LRNG"
+    SDESC = "RangesLViz"
+    ordN = 5
+    title_str = "Var Ranges"
+    typesI = "R"
+    geo = False
+    ext_keys = None
+        
+    subcl_drawer = DrawerRanges
+    subcl_pltdt = PltDtHandlerListRanges
+    subcl_layh = LayoutHandlerBasis
+
+    @classmethod
+    def suitableView(tcl, geo=False, ext_keys=None, what=None):
+        return tcl.suitableViewBase(geo, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
+
+    
 class ViewText(ViewBare):
     TID = "TXT"
     SDESC = "Text"

@@ -3,6 +3,8 @@ import wx, numpy, re
 import matplotlib
 matplotlib.use('WXAgg')
 
+from matplotlib.collections import LineCollection
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import mpl_toolkits.basemap
@@ -409,6 +411,11 @@ class DrawerMap(DrawerBasis):
         return (xx[0], xx[1], yy[0], yy[1])
 
     def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
+        ### DRAWING EDGES PREVIOUSLY STORED
+        # edges = self.getParent().getTmpStore("edges")
+        # if edges is not None:
+        #     line_segments = LineCollection(edges, colors="red", linewidths=2, zorder=30)
+        #     self.axe.add_collection(line_segments)        
         DrawerBasis.makeFinish(self, xylims, xybs)
         self.drawCondionArea()
         

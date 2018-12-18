@@ -9,6 +9,7 @@ import numpy
 # matplotlib.use('WXAgg')
 from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
 from classDrawerClust import DrawerClustTD
+from classProj import AxesProj
 
 import pdb
 
@@ -88,8 +89,20 @@ class DrawerProj(DrawerBasis):
     def getCoordsXYA(self, idp):
         return self.getCoordsXY(idp)
 
-class DrawerEntitiesProj(DrawerProj, DrawerEntitiesTD): pass
+class DrawerEntitiesProj(DrawerProj, DrawerEntitiesTD):
 
+    def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
+        # if isinstance(self.getProj(), AxesProj) and self.getProj().getAxVars() is not None:
+        #     xvar, yvar = self.getProj().getAxVars()
+        #     # self.getParentData()
+        #     # data.col(side, l.colId()).numEquiv()
+        #     # self.isTypeId(l.typeId(), "Categorical"):
+
+        #     # pdb.set_trace()
+        #     # print "PROJ V", self.getProj()
+        DrawerEntitiesTD.plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings)
+    
+    
 class DrawerClustProj(DrawerProj, DrawerClustTD):
     
     def makeAdditionalElements(self, panel=None):

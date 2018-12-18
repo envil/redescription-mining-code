@@ -305,8 +305,15 @@ class Siren():
     cfiles_io = [('inout_confdef.xml', 'reremi')]
     
     results_delay = 1000
-         
+
+    def addTmpStore(self, k,v):
+        self.tmp_store[k] = v
+    def getTmpStore(self, k):
+        return self.tmp_store.get(k)
+        
+    
     def __init__(self):
+        self.tmp_store = {}
         self.initialized = True
         self.busyDlg = None
         self.findDlg = None

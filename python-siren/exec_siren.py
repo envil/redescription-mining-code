@@ -125,13 +125,16 @@ class SirenApp(wx.App):
             #     mapV.OnKil()
 
             # iid = 1
-            # self.frame.viewOpen(self.frame.getRed(iid), iid=iid, viewT="PC") #"CLM")
+            # # self.frame.viewOpen(self.frame.getRed(iid), iid=iid, viewT="AXE_entities") #"CLM")
+            # iid = (1, 33)
+            # # self.frame.viewOpen(self.frame.getData().getItem(iid), iid=iid, viewT="AXE_entities")
+            # self.frame.viewOpen(self.frame.getData().getItem(iid), iid=iid, viewT="MAP")
             
             # iids = self.frame.getData().getIidsList((0,0))
             # what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
-            iids = self.frame.getRedLists().getIidsList(6)
+            iids = self.frame.getRedLists().getIidsList(3)
             what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
-            self.frame.viewOpen(what, iid=-1, viewT="CLM") #"CLBRD")
+            self.frame.viewOpen(what, iid=-1, viewT="LRNG") 
             
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()

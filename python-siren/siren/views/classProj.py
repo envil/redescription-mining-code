@@ -128,7 +128,11 @@ class Proj(object):
     def getAxisLims(self):
         if self.coords_proj is None:
             return (0,1,0,1)
-        return (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+        hspan = .95
+        corners = (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
+        xm, ym = (corners[1]+corners[0])/2., (corners[3]+corners[2])/2.
+        nc = ((xm-(xm-corners[0])/hspan), (xm+(corners[1]-xm)/hspan), (ym-(ym-corners[2])/hspan), (ym+(corners[3]-ym)/hspan))
+        return nc
 
     def do(self):
         self.pids_ex = set(get_children(os.getpid()))
@@ -273,6 +277,10 @@ class AxesProj(Proj):
     fix_parameters = {"types": Data.real_types_name_to_id.values(), "only_able":False}
     dyn_f = []
 
+    def __init__(self, data, params=None, what="entities", transpose=True):
+        self.ax_vars = None
+        Proj.__init__(self, data, params, what, transpose)
+    
     def addParamsRandrep(self, more={}):
         self.params.update(more)
 
@@ -285,6 +293,7 @@ class AxesProj(Proj):
         if "vids" in self.params:
             if len(self.params["vids"]) == 1:
                 scs[1] = self.params["vids"][0]
+                scs[0] = (1, 32) ## debug
 
             elif len(self.params["vids"]) > 1:
                 scs = random.sample(self.params["vids"], 2)
@@ -306,10 +315,13 @@ class AxesProj(Proj):
             self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
         self.mcols = mcols
         for side in [0,1]:
-            if Data.isTypeId(details[mcols[scs[side]]]["type"], "Numerical"):
+            if not Data.isTypeId(details[mcols[scs[side]]]["type"], "Numerical"):
                 self.coords_proj[side] = 1.*self.coords_proj[side] + 0.33*numpy.random.rand(len(self.coords_proj[side]))
+        self.ax_vars = scs
     def getAxisLabel(self, axi):
         return "%s" % self.labels[axi]
+    def getAxVars(self):
+        return self.ax_vars
 
 class VrsProj(Proj):
 

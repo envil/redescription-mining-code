@@ -374,13 +374,11 @@ class Redescription(WithEVals):
     
     def invLiteralsSide(self, side, ex_anon=False):
         return self.queries[side].invLiterals(ex_anon)
-
     def invLiterals(self, ex_anon=False):
         return [self.invLiteralsSide(0, ex_anon), self.invLiteralsSide(1, ex_anon)]
-    
+       
     def invColsSide(self, side, ex_anon=False):
         return self.queries[side].invCols(ex_anon)
-
     def invCols(self, ex_anon=False):
         return [self.invColsSide(0, ex_anon), self.invColsSide(1, ex_anon)]
     

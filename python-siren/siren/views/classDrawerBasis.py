@@ -40,6 +40,12 @@ class DrawerBasis(object):
     cmap_name = None
     cmap_default = "jet"
 
+    CMAP_DEF_COLOR = "#aaaaaa"
+    CUSTOM_CMAP_COLORS = None
+
+    # CUSTOM_CMAP_COLORS = {"E:1": "#00b000", "E:2": "#becd00", "E:3": "#92fe0f", "E:4": "#02822c", "E:5": "#007c81", "E:6": "#86e78c", "E:7": "#fb9d08", "E:8": "#ffdf02", "E:9": "#73feb9", "E:10": "#cca760", "E:11": "#bdff71", "E:12": "#fb0200", "E:13": "#f75f61", "E:14": "#f906d9", "E:-1": "#000000", "E:-2": "#111111"}
+
+    
     @classmethod
     def getNamesTids(tcl):
         return Data.getNamesTids()
@@ -54,6 +60,8 @@ class DrawerBasis(object):
     @classmethod
     def getCMap(tcl, ltid=0, name_over=None):
         if name_over is not None:
+            if isinstance(name_over, matplotlib.colors.Colormap):
+                return name_over
             return plt.get_cmap(name_over)
         if tcl.cmap_name is not None:
             return plt.get_cmap(tcl.cmap_name)
@@ -226,6 +234,7 @@ class DrawerBasis(object):
     ###########################################
 
     def prepareInteractive(self, panel=None):
+        self.setElement("buttons", [])
         self.setElement("inter_elems", {})
         boxes = self.makeAdditionalElements(panel)
         self.interBind()
@@ -886,11 +895,21 @@ class DrawerEntitiesTD(DrawerBasis):
             vec = numpy.zeros(re_vec.shape[0], dtype=int)
             for b in SPECIAL_BINS[1:]:
                 vec += 1*(re_vec >= b)
-        
+
+        name_over = None
         vmin, vmax = (numpy.nanmin(vec), numpy.nanmax(vec))
         if vec_dets.get("min_max") is not None:
             vmin, vmax = vec_dets["min_max"]
-        mapper = self.prepMapper(vmin, vmax, vec_dets["typeId"])
+            
+        if self.CUSTOM_CMAP_COLORS is not None: #### CUSTOM CMAP
+            lbls = [l.split()[0] for l in vec_dets.get("binLbls")]
+            if len(set(lbls).intersection(self.CUSTOM_CMAP_COLORS.keys())) > 0:
+                vls = sorted(zip(vec_dets.get("binVals"), lbls))
+                colors_list = [self.CUSTOM_CMAP_COLORS.get(c, self.CMAP_DEF_COLOR) for v,c in vls]
+                vmin, vmax = vls[0][0], vls[-1][0]
+                name_over = matplotlib.colors.ListedColormap(colors_list)
+        mapper = self.prepMapper(vmin, vmax, vec_dets["typeId"], name_over)
+        
         # if min_max is not None:
         #     mmp = dict([(v, mapper.to_rgba(v, alpha=draw_settings["default"]["color_e"][-1])) for v in numpy.arange(vmin, vmax+1)])
         #     ec_dots = numpy.array([mmp[v] for v in vec])
@@ -922,7 +941,8 @@ class DrawerEntitiesTD(DrawerBasis):
                 vec += 1*(re_vec >= b)
 
         x0, x1, y0, y1, bx, by = corners
-        fracts = [.1, .03] ## ratio bars adjusted/fixed
+        fracts = [.1, .03] ## width of hist, ratio bars adjusted/fixed
+        hspan = 0.95 ## height of hist (also used in proj to decide axis lims)
         nb = nb_bins
         idsan = numpy.where(~numpy.isnan(vec))[0]
         uniq = numpy.unique(vec[idsan])
@@ -953,14 +973,13 @@ class DrawerEntitiesTD(DrawerBasis):
             tmpb = [b-0.5 for b in bins_ticks]
             tmpb.append(tmpb[-1]+1)
 
-            norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
-            norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
-            
+            norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * hspan*float(y1-y0) + y0 + (.5-hspan/2.)*float(y1-y0) for bi in bins_ticks]
+            norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * hspan*float(y1-y0) + y0 + (.5-hspan/2.)*float(y1-y0) for bi in tmpb]
             bins_lbl = vec_dets["binLbls"]
             colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]
         else:
 
-            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins]            
+            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * hspan*float(y1-y0) + y0 + (.5-hspan/2.)*float(y1-y0) for bi in bins]            
             norm_bins_ticks = norm_bins
             bins_lbl = bins
             colors = [mapper.to_rgba(numpy.mean(bins[i:i+2])) for i in range(len(n))]

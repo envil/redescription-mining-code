@@ -995,7 +995,7 @@ class ContentTable:
                     iids_org = self.getSelectedIids()
                     resort = ll.setSort(colS)
                     if resort:
-                        ll.updateSort(fields, self.getCDetails())
+                        self.getContentData().updateSort(lid, fields, self.getCDetails())
                         self.loadData(lid, select_iids=iids_org)
         event.Skip()
                 

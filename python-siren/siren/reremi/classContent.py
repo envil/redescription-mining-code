@@ -312,6 +312,12 @@ class ContentCollection(object):
         elif lists is not None:
             self.initLists(lists)
 
+    def updateSort(self, lid, fields=[], details={}):
+        if lid in self.containers:
+            self.containers[lid].updateSort(fields, details)
+            for pos, iid in enumerate(self.containers[lid]):
+                self.map_iids[iid][lid] = pos
+            
     def initItems(self, items):
         self.clear()
         if type(items) is list:

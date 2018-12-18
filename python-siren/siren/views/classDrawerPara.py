@@ -19,7 +19,7 @@ from classDrawerBasis import DrawerEntitiesTD
 from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 #### TODO: label on slide rectangle for categories seems broken
-#### Recongnize numerical categories?
+#### Recognize numerical categories?
 
 import pdb
 

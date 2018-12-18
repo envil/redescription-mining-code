@@ -104,7 +104,7 @@ def next_best(scorings, init_cands=None):
         cxs, cys, score[i] = get_bests(scorings[i], cxs, cys)
         # print "best", i, cxs, cys, score[i]
     if cxs[0] ==  cys[0]:
-        pdb.set_trace()
+        raise Warning("Pair of same element %s!" % cxs[0])
     return cxs[0], cys[0], score
     
 def agg_bottom_up(scorings, dists, init_cands):
@@ -169,7 +169,6 @@ def order_clusts(pairs, ass_store, scoring):
 
 class PltDtHandlerList(PltDtHandlerBasis):
 
-    
     parts_map = {"Exx": SSetts.Exx, "Exo": SSetts.Exo, "Eox": SSetts.Eox, "Eoo": SSetts.Eoo,
                  "Emx": SSetts.Emx, "Exm": SSetts.Exm, "Emo": SSetts.Emo, "Eom": SSetts.Eom, "Emm": SSetts.Emm}
     SPARTS_DEF = ["Exx"]
@@ -251,11 +250,10 @@ class PltDtHandlerList(PltDtHandlerBasis):
                 self.pltdt["ddER"] = self.view.parent.getERCache().getDeduplicateER(self.pltdt["srids"], spids=self.pltdt["spids"])
         return self.pltdt.get("ddER")
 
-    
-class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
 
-    def __init__(self, view):
-        PltDtHandlerWithCoords.__init__(self, view)    
+    
+class PltDtHandlerListBlocks(PltDtHandlerList):
+
 
     def getVec(self, inter_params=None):
         if "vec" not in self.pltdt or not self.uptodateIParams(inter_params):
@@ -288,9 +286,68 @@ class PltDtHandlerListBlocks(PltDtHandlerWithCoords, PltDtHandlerList):
     def setPreps(self):
         pass
 
+class PltDtHandlerListRanges(PltDtHandlerListBlocks):
 
-class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
+    def getVRanges(self):  #### HERE
+        if self.pltdt.get("ranges") is None:
+            side_proj = 1
+            supp_part = ["x", "x"]
+            supp_part[side_proj] = "m"
+            spp = "E"+"".join(supp_part)
+            supp_id = self.parts_map[spp]
+            supp_proj = set()
+            if not self.isSingleVar():
+                data = self.getParentData()
+                map_vars = {}
+                for rid, r in self.getReds():
+                  supp = r.supports().part(supp_id)
+                  supp_proj.update(supp)
+                  for li, l in enumerate(r.invLiteralsSide(side_proj, ex_anon=True)):
+                    cid = l.colId()
+                    col = data.col(side_proj, cid)
+                    k = (side_proj, cid)
+                    if Data.isTypeId(l.typeId(), "Numerical"):
+                        if k not in map_vars:
+                            map_vars[k] = {"tid": l.typeId(), "minv": col.getMin(), "maxv": col.getMax(),
+                                           "ranges": [], "ranges_neg": [], "name": col.getName()}
+                        rng = tuple(l.valRange())
+                        if l.isNeg():
+                            map_vars[k]["ranges_neg"].append((rng, rid, li, supp))
+                        else:
+                            map_vars[k]["ranges"].append((rng, rid, li, supp))
+                    elif Data.isTypeId(l.typeId(), ["Boolean", "Categorical"]):
+                        if k not in map_vars:
+                            values = col.getRange()
+                            ranges = dict([(v, []) for v in values.values()])
+                            ranges_neg = dict([(v, []) for v in values.values()])
+                            map_vars[k] = {"tid": l.typeId(), "values": values,
+                                           "ranges": ranges, "ranges_neg": ranges_neg, "name": col.getName()}
+                        for v in l.valRange():
+                            if l.isNeg():
+                                map_vars[k]["ranges_neg"].append((rid, li, supp))
+                            else:
+                                map_vars[k]["ranges"].append((rid, li, supp))
+            map_vars[None] = supp_proj
+            self.pltdt["ranges"] = map_vars
+        return self.pltdt.get("ranges")
+    
+    def getVecAndDets(self, inter_params=None):
+        ranges = self.getVRanges()
+        self.pltdt["vec"] = None
+        self.pltdt["vec_dets"] = {"ranges": ranges}
+        return None, ranges
 
+    
+class PltDtHandlerListBlocksCoords(PltDtHandlerWithCoords, PltDtHandlerListBlocks):
+
+    def __init__(self, view):
+        PltDtHandlerWithCoords.__init__(self, view)    
+   
+class PltDtHandlerListVarSplits(PltDtHandlerListBlocksCoords):
+    
+    CUSTOM_ORD_CIDS = None #[0, 2, 8, 10, 7, 6, 1, 9, 4, 5, 3, 11]
+    CUSTOM_ORD_RIDS = None #[(ii, "r%d.%02d" % (1+(ii>9), (ii%10)+1)) for ii in [12, 16, 2, 13, 11, 0, 17, 8, 6, 18, 5, 19, 3, 14, 9, 4, 15, 7, 1, 10]]
+    
     CHOICES = {"choice_var": {"label": "var.", "options": []}}
     def getChoices(self, key):
         if key == "choice_var":
@@ -374,11 +431,12 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
             vec = numpy.ones(data.nbRows())
  
         uvals = sorted(set(numpy.unique(vec)).difference([-1]))
-        # if len(uvals) == 12:
-        #     uvals = [0, 2, 8, 10, 7, 3, 11, 4, 9, 5, 6, 1]
+        if self.CUSTOM_ORD_CIDS is not None and len(self.CUSTOM_ORD_CIDS) == len(uvals): # for custom order
+            uvals = self.CUSTOM_ORD_CIDS
+
         vec_dets = {"typeId": 2, "single": True, "blocks": True,
                     "binLbls": [], "binVals": uvals, "cols": range(etor.shape[1])}
-            
+
         for i in uvals:
             nodes = numpy.where(vec==i)[0]
             details[i] = self.getClustDetails(nodes, etor)
@@ -388,16 +446,8 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
                 vec_dets["binLbls"].append("c%d %d" % (i, len(nodes)))
 
         ### FIXING THE ORDER AND LABELS OF REDS
-        if False: #True: # for custom order
-            # if self.getSettV("blocks_reorder_rids", True):
-            tmp = []
-            for ri in reversed([10,1,7,15,9,4,14,2,19,8,5,18,17,6,0,11,13,3,16,12]):
-                rid = self.pltdt.get("srids")[ri]
-                if rid >= 10:
-                    tmp.append((ri, "r2.%d" % (rid-9)))
-                else:
-                    tmp.append((ri, "r1.%d" % (rid+1)))
-            details["ord_rids"] = tmp
+        if self.CUSTOM_ORD_RIDS is not None and len(self.CUSTOM_ORD_RIDS) == etor.shape[1]: # for custom order
+            details["ord_rids"] = self.CUSTOM_ORD_RIDS
         elif self.pltdt.get("srids") is not None:
             details["ord_rids"] = [(ri, "r%s" % self.pltdt.get("srids")[ri]) for ri in range(etor.shape[1])]
         else:
@@ -418,6 +468,9 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocks):
     
 class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
+    CUSTOM_ORD_CIDS = None #[49, 0, 1, 36, 43, 23]
+    CUSTOM_ORD_CIDS = None #[0, 1, 36, 43, 23]
+    
     @classmethod
     def computeDists(tcl, data, weighted=False):
         d = data["nb_other"] - (data["matches_ones"] + data["matches_zeroes"])
@@ -460,14 +513,14 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         return [{"matrix": wdist, "compare": "min", "merge": "max", "null":  float("inf")},
                 {"vector": data["counts"].copy(), "combine": "div", "compare": "min", "merge": "sum", "null": data["nb"]+1}]
 
-    SCORING_METHS_L = [("dist-ones", getScoringsDistOnes),
-                       ("dist-sizes", getScoringsDistSizes),
-                       ("wdist", getScoringsWDist)]
-    SCORING_METHS = {"default_agg": SCORING_METHS_L[0][1],
-                     "default_ord": SCORING_METHS_L[-1][1]}
+    SCORING_METHS_L = [("wdist", getScoringsWDist),
+                       ("dist-ones", getScoringsDistOnes),
+                       ("dist-sizes", getScoringsDistSizes)]
+    SCORING_METHS = {"default_agg": getScoringsWDist,
+                     "default_ord": getScoringsWDist}
     SCORING_METHS.update(dict(SCORING_METHS_L))    
     
-    NBC_DEF = 2
+    NBC_DEF = 3
     MAXC_DEF = 12
     CHOICES = {"choice_agg": {"label": "agg.", "options": [l[0] for l in SCORING_METHS_L]},
                "choice_nbc": {"label": "dist.", "options": []}}
@@ -560,10 +613,13 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
             assign = clusters["assignments"][nbc]
             pair = clusters["pairs"][nbc]
-            bs = sorted(numpy.unique(assign), key=lambda x: clusters["clust_pos"][x])
-            details["ord_cids"] = bs
 
-            for i, bid in enumerate(bs):
+            details["ord_cids"] = sorted(numpy.unique(assign), key=lambda x: clusters["clust_pos"][x])
+            if self.CUSTOM_ORD_CIDS is not None and len(self.CUSTOM_ORD_CIDS) == len(details["ord_cids"]): # for custom order
+                details["ord_cids"] = self.CUSTOM_ORD_CIDS
+
+
+            for i, bid in enumerate(details["ord_cids"]):
                 nodes = numpy.where(assign==bid)[0]
                 vvec[ddER["E"]["rprt"][nodes]] = i
                 for n in nodes:
@@ -576,14 +632,13 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
                 Rs = numpy.argsort(clusters["r_pos"])
             else:
                 Rs = range(len(ddER["R"]["rprt"]))
-            if self.pltdt.get("srids") is not None:
+            if self.CUSTOM_ORD_RIDS is not None and len(self.CUSTOM_ORD_RIDS) == len(Rs): # for custom order
+                details["ord_rids"] = self.CUSTOM_ORD_RIDS                
+            elif self.pltdt.get("srids") is not None:
                 details["ord_rids"] = [(ri, " ".join(["r%s" % self.pltdt.get("srids")[rx] for rx in numpy.where(ddER["R"]["to_rep"] == ri)[0]])) for ri in Rs]
             else:
                 details["ord_rids"] = [(ri, "#%d" % ddER["R"]["rprt"][ri]) for ri in Rs]
 
-            # ### SPECIFIC ORDERINGS
-            # details["ord_rids"] = [(ii, "r%d.%02d" % (1+(ii>9), (ii%10)+1)) for ii in [12, 16, 3, 13, 11, 0, 6, 17, 18, 5, 8, 19, 2, 14, 4, 9, 15, 7, 1, 10]]
-            
         vec_dets = {"typeId": 2, "single": True, "blocks": blocks, "cols": ddER["R"]["rprt"]} ### HERE bin lbls        
         vec_dets["binVals"] = numpy.unique(vec[vec>=0]) #numpy.concatenate([numpy.unique(vec[vec>=0]),[-1]])
         vec_dets["binLbls"] = ["c%d %d" % (details["ord_cids"][b], numpy.sum(vec==b)) for b in vec_dets["binVals"]]

@@ -109,6 +109,9 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                 vcs = numpy.sum(numpy.abs(etor[inner[:,1], :] - etor[inner[:,2], :]) / rng, axis=1)
                 name_over = "Purples"
 
+            ### STORE EDGES FOR LATER USE
+            # self.getParent().addTmpStore("edges", edges_inner[vals>0, :, :])
+            
             top_vcs = numpy.max(vcs)
             step = numpy.maximum(1, int(top_vcs)/10)
             binVals = numpy.arange(0, top_vcs+step, step)
@@ -116,6 +119,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                  
             mapper = self.prepMapper(vmin=0, vmax=numpy.max(vcs), ltid=1, name_over=name_over)
             colors = mapper.to_rgba(vcs, alpha=draw_settings["default"]["color_e"][-1])
+
             dots_draw = {"edges_inner": edges_inner, "edges_outer": edges_outer,
                           "vals": vals, "colors": colors}
             vec_dets.update({"binLbls": binLbls, "binVals": binVals})
