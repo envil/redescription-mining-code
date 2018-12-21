@@ -899,7 +899,7 @@ class ViewRanges(ViewList):
     TID = "LRNG"
     SDESC = "RangesLViz"
     ordN = 5
-    title_str = "Var Ranges"
+    title_str = "Variables Ranges"
     typesI = "R"
     geo = False
     ext_keys = None

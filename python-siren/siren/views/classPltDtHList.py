@@ -289,45 +289,78 @@ class PltDtHandlerListBlocks(PltDtHandlerList):
 class PltDtHandlerListRanges(PltDtHandlerListBlocks):
 
     def getVRanges(self):  #### HERE
-        if self.pltdt.get("ranges") is None:
+        if self.pltdt.get("ranges") is None and not self.isSingleVar():
             side_proj = 1
             supp_part = ["x", "x"]
             supp_part[side_proj] = "m"
-            spp = "E"+"".join(supp_part)
-            supp_id = self.parts_map[spp]
-            supp_proj = set()
-            if not self.isSingleVar():
-                data = self.getParentData()
-                map_vars = {}
-                for rid, r in self.getReds():
-                  supp = r.supports().part(supp_id)
-                  supp_proj.update(supp)
-                  for li, l in enumerate(r.invLiteralsSide(side_proj, ex_anon=True)):
-                    cid = l.colId()
-                    col = data.col(side_proj, cid)
-                    k = (side_proj, cid)
-                    if Data.isTypeId(l.typeId(), "Numerical"):
+            supp_id = "E"+"".join(supp_part)
+            sides = [side_proj]
+
+            # supp_id = "I"
+            # sides = [0, 1]
+            data = self.getParentData()
+            map_vars = {}
+            for rid, r in self.getReds():
+                supp = r.supports().getProp("supp", supp_id)
+                for side in sides:
+                    for li, l in enumerate(r.invLiteralsSide(side, ex_anon=True)):
+                        cid = l.colId()
+                        k = (side, cid)
                         if k not in map_vars:
-                            map_vars[k] = {"tid": l.typeId(), "minv": col.getMin(), "maxv": col.getMax(),
-                                           "ranges": [], "ranges_neg": [], "name": col.getName()}
-                        rng = tuple(l.valRange())
+                            map_vars[k] = {"ranges": [], "ranges_neg": [], "rids": []}
                         if l.isNeg():
-                            map_vars[k]["ranges_neg"].append((rng, rid, li, supp))
+                            map_vars[k]["ranges_neg"].append((l.values(), rid, li, supp))
                         else:
-                            map_vars[k]["ranges"].append((rng, rid, li, supp))
-                    elif Data.isTypeId(l.typeId(), ["Boolean", "Categorical"]):
-                        if k not in map_vars:
-                            values = col.getRange()
-                            ranges = dict([(v, []) for v in values.values()])
-                            ranges_neg = dict([(v, []) for v in values.values()])
-                            map_vars[k] = {"tid": l.typeId(), "values": values,
-                                           "ranges": ranges, "ranges_neg": ranges_neg, "name": col.getName()}
-                        for v in l.valRange():
-                            if l.isNeg():
-                                map_vars[k]["ranges_neg"].append((rid, li, supp))
-                            else:
-                                map_vars[k]["ranges"].append((rid, li, supp))
-            map_vars[None] = supp_proj
+                            map_vars[k]["ranges"].append((l.values(), rid, li, supp))
+                        map_vars[k]["rids"].append(rid)
+
+            ks = map_vars.keys()
+            for k in ks:
+                values = None
+                col = data.col(k[0], k[1])
+                if Data.isTypeId(col.typeId(), "Numerical"):
+                    minv, maxv = (col.getMin(), col.getMax())
+                    splits = [{"v": minv, "ids": []}, {"v": maxv, "ids": []}]
+                    for i in range(len(map_vars[k]["ranges"])):
+                        low, high = map_vars[k]["ranges"][i][0]
+                        lowi = 0
+                        if not numpy.isinf(low):
+                            while splits[lowi]["v"] < low:
+                                lowi += 1
+                            if splits[lowi]["v"] > low:
+                                if lowi == 0: pdb.set_trace()
+                                splits.insert(lowi, {"v": low, "ids": list(splits[lowi-1]["ids"])})
+                        if numpy.isinf(high):
+                            highi = len(splits)-1
+                        else:
+                            highi = lowi
+                            while splits[highi]["v"] < high:
+                                highi += 1
+                            if splits[highi]["v"] > high:
+                                splits.insert(highi, {"v": high, "ids": list(splits[highi-1]["ids"])})
+                        for j in range(lowi, highi):
+                            splits[j]["ids"].append(i)
+                    w = float(maxv-minv)
+                    map_vars[k]["ticks"] = [(splt["v"]-minv)/w for splt in splits]
+                    map_vars[k]["map_values"] = dict([(vv["v"],vvi) for (vvi,vv) in enumerate(splits)])
+                    map_vars[k]["map_values"][float("-inf")] = 0
+                    map_vars[k]["map_values"][float("inf")] = len(splits)-1
+
+                if Data.isTypeId(col.typeId(), ["Categorical", "Boolean"]):
+                    values = col.getOrd()
+                    step = 1./len(values)
+                    map_vs = dict([(vv,vvi) for (vvi,vv) in enumerate(values)])
+                    splits = [{"v": v, "ids": []} for v in range(len(values))]
+                    for i in range(len(map_vars[k]["ranges"])):
+                        for j in map_vars[k]["ranges"][i][0]:
+                            splits[map_vs[j]]["ids"].append(i)
+                    map_vars[k]["values"] = values
+                    map_vars[k]["ticks"] = [(i+.5)*step for i in range(len(values))]
+                    map_vars[k]["map_values"] = map_vs
+                            
+                map_vars[k]["splits"] = splits
+                map_vars[k]["vname"] = col.getName()
+                map_vars[k]["tid"] = col.typeId()
             self.pltdt["ranges"] = map_vars
         return self.pltdt.get("ranges")
     

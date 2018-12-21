@@ -22,6 +22,12 @@ from classDrawerBasis import DrawerBasis
 import pdb
 
 class DrawerRanges(DrawerBasis):
+
+    BOXH = .66
+    RH = .45
+    ALPHA_BARS = .25
+    WSERIES = 1.3
+    HSERIES = 1.
     
     def update(self, update_trees=True):        
         if self.view.wasKilled():
@@ -34,34 +40,186 @@ class DrawerRanges(DrawerBasis):
             vec, vec_dets = self.getVecAndDets(inter_params)
             draw_settings = self.getDrawSettings()
 
-            hunit = 1.
             ranges = vec_dets["ranges"]
-            univ_supp = ranges[None]
-            Nr = numpy.maximum(len(univ_supp), 1)
-            vs = sorted([k for k in ranges.keys() if k is not None])
-            for vi, v in enumerate(vs):
-                rngs = ranges[v]
-                if "values" in rngs: ### Boolean or categorical
-                    pass
-                else: ### numerical
-                    w = float(rngs["maxv"]-rngs["minv"])
-                    self.axe.plot([0, 1], [vi, vi], '--', color="#aaaaaa")
-                    self.axe.text(0, vi, '%s' % rngs["minv"], color="#333333", ha="left")
-                    self.axe.text(1, vi, '%s' % rngs["maxv"], color="#333333", ha="right")
-                    self.axe.text(1, vi+.5, 'v%d.%d %s' % (v[0], v[1], rngs["name"]), color="#333333", va="center", ha="left")
-                    for rng in rngs["ranges"]:
-                        low, high = rng[0]
-                        if numpy.isinf(low): low = rngs["minv"]
-                        if numpy.isinf(high): high = rngs["maxv"]
-                        low, high = (low-rngs["minv"])/w, (high-rngs["minv"])/w
-                        h = (hunit*len(rng[-1]))/Nr
-                        self.axe.fill([low, low, high, high], [vi, vi+h, vi+h, vi], 'b-', alpha=.6)
-                        self.axe.fill([low, low, high, high], [vi+h, vi+hunit, vi+hunit, vi+h], 'r-', alpha=.6)
-            corners = (0., 1., 0., 1.+vi, .05, .05)
+            def_ticks = [0, .5, 1]
+            reds_map = dict(self.getPltDtH().getReds())
 
+            # subsets = [("", None)]
+            subsets = [("Baode-30", set([4416, 4417])), ("Baode-49", set([4418, 4419])),
+                       ("Lantian-42", set([4420, 4421, 4422, 4423])), ("Lantian-6", set([4424, 4425]))]
+            vs = sorted(ranges.keys())
+            vs = [(1,0), (1,9), (1,4), (1,17)]
+            
+            xticks, xlbls = [], []
+            for si, (slbl, subset) in enumerate(subsets):
+                if subset is not None: ## 
+                    self.axe.text(-.2, si*self.HSERIES, '%s (%d)' % (slbl, len(subset)), color="#333333", va="center",ha="center", rotation=90, **self.view.getFontProps())
+                if self.ALPHA_BARS > 0:
+                    self.draw_bars_subset(ranges, subset, vs, reds_map, si)
+                self.draw_ranges_subset(ranges, subset, vs, reds_map, si)
+
+            for vi, v in enumerate(vs):
+                if v in ranges:
+                    self.axe.text(vi*self.WSERIES+.5, (len(subsets)-.5)*self.HSERIES, '%s' % (ranges[v]["vname"]), color="#333333", ha="center", va="bottom", **self.view.getFontProps())
+                    ## self.axe.text(-.66, vi-.01, '%s' % ranges[v]["vrng"], color="#333333", ha="center", va="top", **self.view.getFontProps())
+            
+            # corners = (-1.2, wseries*(len(subsets)-1)+1.1, -0.5, len(vs)-.2, .05, .05)
+            corners = (-.5, self.WSERIES*len(vs), -0.8, self.HSERIES*len(subsets), .05, .05)
+                      
+            # self.axe.set_xticks(xticks)        
+            # self.axe.set_xticklabels(xlbls, **self.view.getFontProps())
+            self.axe.set_xticks([])        
+            self.axe.set_yticks([])        
+            
             self.makeFinish(corners[:4], corners[4:])   
             self.updateEmphasize(review=False)
             self.draw()
             self.setFocus()
         else:
             self.plot_void()      
+
+
+    def draw_bars_subset(self, ranges, subset_rows=None, vs=None, reds_map={}, si=0):
+        offset_v = si*self.HSERIES
+        if vs is None:
+            vs = sorted(ranges.keys())
+        if subset_rows is None:            
+            Nr =  self.getParentData().nbRows()
+        else:
+            Nr = len(subset_rows)
+        if Nr < 1:
+            Nr = 1
+
+        max_rng_nb = numpy.max([len(rngs["rids"]) for k,rngs in ranges.items()])
+        box_h = self.BOXH
+        wunit = box_h/max_rng_nb
+        wh = self.RH*wunit
+
+        for vi, v in enumerate(vs):
+            offset_h = vi*self.WSERIES
+            if v not in ranges:
+                continue
+            rngs = ranges[v]
+            self.axe.plot([offset_h+0, offset_h+0, offset_h+1, offset_h+1, offset_h+0],
+                          [offset_v-.5*box_h, offset_v+.5*box_h, offset_v+.5*box_h, offset_v-.5*box_h, offset_v-.5*box_h], '-', color="#aaaaaa")
+            
+            c0 = offset_v - ((len(rngs["rids"])-1)*wunit)/2.                    
+            if rngs.get("values") is not None: ### Boolean or categorical
+                tck_lbls = rngs["values"]
+                nb_vals = len(rngs["values"])
+                w = 1./nb_vals
+
+                for rni, rng in enumerate(rngs["ranges"]):
+                    for point in rng[0]:
+                        pi = rngs["map_values"][point]                    
+                        # rni = rng[1]
+                        cx = c0+rni*wunit
+                        low, high = pi*w, (pi+1)*w
+                        self.plot_rng(high, low, cx, wh, offset_h, Nr, rng[1], rng[-1], subset_rows, reds_map)
+                        
+            else: ### numerical
+                tck_lbls = [rr["v"] for rr in rngs["splits"]]
+                # self.axe.text(offset_h+0, offset_v+.5*(.05+box_h), '%s' % rngs["minv"], color="#333333", ha="center", **self.view.getFontProps())
+                # self.axe.text(offset_h+1, offset_v+.5*(.05+box_h), '%s' % rngs["maxv"], color="#333333", ha="center", **self.view.getFontProps())
+
+                minv, maxv = (rngs["splits"][0]["v"], rngs["splits"][-1]["v"])
+
+                for rni, rng in enumerate(rngs["ranges"]):
+                    cx = c0+rni*wunit
+                    low = rngs["ticks"][rngs["map_values"][rng[0][0]]]
+                    high = rngs["ticks"][rngs["map_values"][rng[0][1]]]                    
+                    self.plot_rng(high, low, cx, wh, offset_h, Nr, rng[1], rng[-1], subset_rows, reds_map)
+
+            # for ti, t in enumerate(rngs["ticks"]):
+            #     self.axe.text(offset_h+t, offset_v-.5*box_h, '%s' % tck_lbls[ti], color="#333333", ha="center", va="top", **self.view.getFontProps())
+
+
+    def plot_rng(self, high, low, cx, wh, offset_h, Nr, rid, rows_in, subset_rows=None, reds_map={}):
+        if subset_rows is not None:
+            rows_in = subset_rows.intersection(rows_in)
+        nb_rows_in =  len(rows_in)
+        
+        bottom, top = (cx-wh, cx+wh)                       
+        if nb_rows_in == 0:
+            self.axe.fill([offset_h+low, offset_h+low, offset_h+high, offset_h+high],
+                          [bottom, top, top, bottom], "#aaaaaa", linewidth=0, alpha=self.ALPHA_BARS)
+        elif nb_rows_in == Nr:
+            self.axe.fill([offset_h+low, offset_h+low, offset_h+high, offset_h+high],
+                          [bottom, top, top, bottom], "#222222", linewidth=0, alpha=self.ALPHA_BARS)
+        else:
+            mid = cx+((2.*nb_rows_in)/Nr-1)*wh
+            self.axe.fill([offset_h+low, offset_h+low, offset_h+high, offset_h+high],
+                          [mid, top, top, mid], "#aaaaaa", linewidth=0, alpha=self.ALPHA_BARS)
+            self.axe.fill([offset_h+low, offset_h+low, offset_h+high, offset_h+high],
+                          [bottom, mid, mid, bottom], "#222222", linewidth=0, alpha=self.ALPHA_BARS)
+            
+        if rid is not None: #offset_h == 0 and           
+            acc = ""
+            if rid in reds_map:
+                acc = " (%.2f)" % reds_map[rid].getAcc()
+            self.axe.text(offset_h+high, cx, ' r%s%s' % (rid, acc), color="#333333", ha="left", va="center", alpha=self.ALPHA_BARS, **self.view.getFontProps())
+
+        
+    def draw_ranges_subset(self, ranges, subset_rows=None, vs=None, reds_map={}, si=0):
+        offset_v = si*self.HSERIES
+        if vs is None:
+            vs = sorted(ranges.keys())
+        if subset_rows is None:            
+            Nr =  self.getParentData().nbRows()
+        else:
+            Nr = len(subset_rows)
+        if Nr < 1:
+            Nr = 1
+
+        max_rng_nb = numpy.max([len(rngs["rids"]) for k,rngs in ranges.items()])
+        box_h = self.BOXH
+        wunit = box_h/max_rng_nb
+        wh = self.RH*wunit
+
+        for vi, v in enumerate(vs):
+            offset_h = vi*self.WSERIES
+            if v not in ranges:
+                continue
+            rngs = ranges[v]
+            self.axe.plot([offset_h+0, offset_h+0, offset_h+1, offset_h+1, offset_h+0],
+                          [offset_v-.5*box_h, offset_v+.5*box_h, offset_v+.5*box_h, offset_v-.5*box_h, offset_v-.5*box_h], '-', color="#aaaaaa")
+            self.axe.plot([offset_h+0, offset_h+1], [offset_v, offset_v], ':', color="#aaaaaa")
+            
+            if rngs.get("values") is not None: ### Boolean or categorical
+                tck_lbls = rngs["values"]
+                last = 0
+            else:
+                tck_lbls = [rr["v"] for rr in rngs["splits"]]
+                last = 1
+
+            xs, ys = [], []
+            for si in range(len(rngs["splits"])-last):
+                h = 0.
+                for rri in rngs["splits"][si]["ids"]:
+                    red = reds_map[rngs["ranges"][rri][1]]
+                    acc = red.getAcc()
+                    rows_in = rngs["ranges"][rri][-1]
+                    if subset_rows is not None:
+                        rows_in = subset_rows.intersection(rows_in)
+                    fsupp = float(len(rows_in))/Nr-.5
+                    h += fsupp*acc
+
+                if rngs.get("values") is not None: ### Boolean or categorical
+                    xs.extend([rngs["splits"][si]["v"]-.5, rngs["splits"][si]["v"]+.5])
+                else:
+                    xs.extend([rngs["splits"][si]["v"], rngs["splits"][si+1]["v"]])
+                ys.extend([h, h])
+
+            xs = numpy.array(xs)
+            ys = numpy.array(ys)
+            minv, maxv = numpy.min(xs), numpy.max(xs)
+            xs = (xs-minv)/float(maxv-minv)
+            ys = ys/float(len(rngs["ranges"]))
+            # if numpy.max(numpy.abs(ys)) > 0:
+            #     ys = ys/(numpy.max(numpy.abs(ys)))
+            self.axe.plot(offset_h+xs, offset_v+.5*box_h*ys, "#0000A0") 
+
+            if offset_v == 0:
+                for ti, t in enumerate(ranges[v]["ticks"]):
+                    self.axe.plot([offset_h+t, offset_h+t], [offset_v-.5*box_h-.01, offset_v-.5*box_h+.01], '-', color='#333333')
+                    self.axe.text(offset_h+t, offset_v-.5*box_h-.02, '%s' % tck_lbls[ti], color="#333333", ha="center", va="top", rotation=90, **self.view.getFontProps())

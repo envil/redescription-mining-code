@@ -423,6 +423,8 @@ class Term(object):
 
     def valRange(self):
         return [None, None]
+    def values(self):
+        return []
     
     def isAnon(self):
         return False
@@ -476,7 +478,9 @@ class BoolTerm(Term):
 
     def valRange(self):
         return [True, True]
-        
+    def values(self):
+        return [True]
+            
     def copy(self):
         return BoolTerm(self.col)
     
@@ -558,6 +562,8 @@ class CatTermONE(Term): ## LEGACY
     
     def valRange(self):
         return [self.getCat(), self.getCat()]
+    def values(self):
+        return [self.getCat()]   
 
     def setRange(self, cat):
         self.cat = cat #codecs.encode(cat, 'utf-8','replace')
@@ -579,10 +585,12 @@ class CatTermONE(Term): ## LEGACY
 
     def getCatsStr(self, op_curl="{", cl_curl="}", sep=",", op_any="", cl_any=""):
         return op_any + "%s" % self.cat + cl_any
-    def getCatsBin(self):
-        return 2**self.cat
+    # def getCatsBin(self):
+    #     return 2**self.cat
     def hashCat(self):
         return self.getCatsBin()
+        return hash(self.getCatsStr())    
+
     
     def __hash__(self):
         hcat = self.hashCat()
@@ -686,7 +694,9 @@ class CatTerm(Term):
 
     def valRange(self):
         return sorted(self.getCat())
-
+    def values(self):
+        return self.valRange()        
+    
     def setRange(self, cat):
         if type(cat) in [list, set]:
             self.cat = cat
@@ -717,14 +727,14 @@ class CatTerm(Term):
             return op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
         else:
             return op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
-    def getCatsBin(self):
-        bincat = 0
-        for c in self.cat:
-            bincat += 2**c
-        return bincat
+    # def getCatsBin(self):
+    #     bincat = 0
+    #     for c in self.cat:
+    #         bincat += 2**c
+    #     return bincat
     def hashCat(self):
-        return self.getCatsBin()
-        # return hash(self.getCatsStr())    
+        # return self.getCatsBin()
+        return hash(self.getCatsStr())    
     def __hash__(self):
         hcat = self.hashCat()
         return self.col*hcat+(self.col-1)*(hcat+1)
@@ -846,7 +856,10 @@ class NumTerm(Term):
 
     def valRange(self):
         return [self.lowb, self.upb]
+    def values(self):
+        return self.valRange()
 
+    
     def setRange(self, bounds):
         if numpy.isinf(bounds[0]) and numpy.isinf(bounds[1]) or bounds[0] > bounds[1]:
             raise Warning('Unbounded numerical term !')
@@ -1154,13 +1167,19 @@ class Literal(object):
         return self.term.isAnon()
     def getAdjusted(self, bounds):
         return Literal(self.getNeg().boolVal(), self.term.getAdjusted(bounds))
-    
+
     def valRange(self):
         if self.typeId() == 1:
-            return [not self.getNeg().boolVal(), not self.getNeg().boolVal()]
+            return [not self.neg.boolVal(), not self.neg.boolVal()]
         else:
             return self.getTerm().valRange()
+    def values(self):
+        if self.typeId() == 1:
+            return [not self.neg.boolVal()]
+        else:
+            return self.getTerm().values()
 
+        
     def __str__(self):
         return self.disp()
 
@@ -2356,7 +2375,7 @@ class Query(object):
         if b is None:
             b = self.buk
         if isinstance(b, Literal):
-            return ((b.colId(), b.isNeg(), b.valRange()), b)
+            return ((b.colId(), b.isNeg(), b.getTerm().valRange()), b)
         elif isinstance(b, Neg):
             return (-1, b)
         else:

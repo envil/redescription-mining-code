@@ -15,8 +15,8 @@ class CharbonGStd(CharbonGreedy):
         cid, side, tid = col.getId(), col.getSide(), col.typeId()
 
         lA, lB = ls
-        lARng = lA.getTerm().valRange()
-        lBRng = lB.getTerm().valRange()
+        lARng = lA.valRange()
+        lBRng = lB.valRange()
 
         intert, unit = None, None
         if Data.isTypeId(tid, "Numerical"):

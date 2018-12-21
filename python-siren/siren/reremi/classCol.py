@@ -289,8 +289,11 @@ class ColM(WithEVals):
         return None
     def getMissInfo(self, details={}):
         return "%1.2f%%: %d"% (self.nbMissing()/float(self.N), self.nbMissing())
-    def getRange(self):
+    def getOrd(self):
         return []
+    def getRange(self):
+        return dict([(k,v) for (v,k) in enumerate(self.getOrd())])
+
     # def getCohesion(self, details={}):
     #     return "%1.4f" % self.cohesion
     def getVect(self, mask=None, details={}):
@@ -477,8 +480,8 @@ class BoolColM(ColM):
     def sumCol(self):
         return len(self.hold)
 
-    def getRange(self):
-        return dict([(k,v) for (v,k) in enumerate([True, False])])
+    def getOrd(self):
+        return [False, True]
 
     def getNbValues(self):
         return 2
@@ -669,8 +672,8 @@ class CatColM(ColM):
     def __str__(self):
         return ColM.__str__(self)+ ( ", %i categories" % self.nbCats())
 
-    def getRange(self):
-        return dict([(k,v) for (v,k) in enumerate(self.ord_cats)])
+    def getOrd(self):
+        return list(self.ord_cats)
 
     def getNbValues(self):
         return self.nbCats()
@@ -1041,7 +1044,7 @@ class NumColM(ColM):
             vals, ids = zip(*self.sVals)
             self.vect[list(ids)] = vals
         ### mode rows HERE
-                   
+
     def getRange(self, details={}):
         return (self.getMin(details), self.getMax(details))
     def getMin(self, details={}):
