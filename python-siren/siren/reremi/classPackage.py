@@ -8,6 +8,8 @@ import re
 
 import pdb
 
+from classConstraints import ActionsRegistry
+from classCol import ColM
 from classRedescription import Redescription
 from classData import Data
 from classQuery import Query
@@ -24,6 +26,9 @@ class Package(object):
 
     REDESCRIPTIONS_FILENAME = 'redescriptions.csv'
     PREFERENCES_FILENAME = 'preferences.xml'
+    FDEFS_FILENAME = {'fields_vdefs': 'fields_vdefs_custom.txt',
+                      'fields_rdefs': 'fields_rdefs_custom.txt',
+                      'actions_rdefs': 'actions_rdefs_custom.txt'}
     PLIST_FILE = 'info.plist'
     PACKAGE_NAME = 'siren_package'
 
@@ -108,6 +113,42 @@ class Package(object):
             preferences = self.readPreferences(pm, options_args)
             if preferences is not None:
                 elements_read["preferences"] = preferences
+                
+            if 'actions_rdefs' in self.plist:
+                ar_fns = []
+                for f in self.plist["actions_rdefs"].split(";"):
+                    ff = f.strip()
+                    if len(ff) > 0:
+                        ar_fns.append(self.package.open(ff))
+                if len(ar_fns) > 0:
+                    AR = ActionsRegistry(ar_fns)
+                    if "preferences" in elements_read:
+                        elements_read["preferences"]["AR"] = AR
+                    else:
+                        elements_read["preferences"] = {"AR": AR}
+                for fn in ar_fns:
+                    fn.close()                   
+                    
+            if 'fields_vdefs' in self.plist:
+                fields_fns = []
+                for f in self.plist['fields_vdefs'].split(";"):
+                    ff = f.strip()
+                    if len(ff) > 0:
+                        fields_fns.append(self.package.open(ff))                    
+                ColM.extendRP(fields_fns)
+                for fn in fields_fns:
+                    fn.close()
+                    
+            if 'fields_rdefs' in self.plist:
+                fields_fns = []
+                for f in self.plist['fields_rdefs'].split(";"):
+                    ff = f.strip()
+                    if len(ff) > 0:
+                        fields_fns.append(self.package.open(ff))                    
+                Redescription.extendRP(fields_fns)
+                for fn in fields_fns:
+                    fn.close()
+                
             data = self.readData()
             if data is not None:
                 if 'ext_keys' in self.plist:
@@ -243,6 +284,18 @@ class Package(object):
                 self.raiseMess()
                 raise
 
+        for k in self.FDEFS_FILENAME.keys():
+            if k in contents:
+                fn  = os.path.join(tmp_dir, plist[k])
+                try:
+                    with open(fn, 'w') as f:
+                        f.write(contents[k])
+                except IOError:
+                    shutil.rmtree(tmp_dir)
+                    self.filename = old_package_filename
+                    self.raiseMess()
+                    raise
+            
         # All's there, so pack
         try:
             package = zipfile.ZipFile(self.filename, 'w')
@@ -291,6 +344,9 @@ class Package(object):
                                 
         if "preferences" in contents:
             fns['preferences_filename'] = self.PREFERENCES_FILENAME
+        for k, fn in self.FDEFS_FILENAME.items():
+            if k in contents:
+                fns[k] = fn
         d.update(fns)
         
         if "redescriptions" in contents and len(contents["redescriptions"]) > 0:
@@ -334,7 +390,7 @@ def writeDataExtensions(data, plist=None, tmp_dir="./"):
     if plist is not None:
         data.saveExtensions(plist, {"tmp_dir": tmp_dir})
 
-def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
+def saveAsPackage(filename, data, preferences=None, pm=None, reds=None, AR=None):
     package = Package(None, None, mode="w")
 
     (filename, suffix) = os.path.splitext(filename)
@@ -349,6 +405,18 @@ def saveAsPackage(filename, data, preferences=None, pm=None, reds=None):
         contents['preferences'] = preferences
         contents['pm'] = pm
 
+    ### definitions
+    vdefs = ColM.getRP().fieldsToStr()
+    if len(vdefs) > 0:
+        contents['fields_vdefs'] = vdefs
+    rdefs = Redescription.getRP().fieldsToStr()
+    if len(rdefs) > 0:
+        contents['fields_rdefs'] = rdefs
+    if AR is not None:
+        adefs = AR.actionsToStr()
+        if len(adefs) > 0:
+            contents['actions_rdefs'] = adefs
+        
     package.writeToFile(filename+suffix, contents)
 
     

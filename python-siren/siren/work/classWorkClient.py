@@ -38,7 +38,8 @@ def make_hc_manager(ip, port, authkey):
 class WorkClient(WorkInactive):
 
     resumable_tasks = ["mine", "expand"]
-    type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
+    type_messages = {'tracks': None, 'result': None, 
+                     'log': "self.updateLog", 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
         
     def __init__(self, ip=IP, portnum=PORTNUM, authkey=AUTHKEY,numclient=NUMCLIENT):
@@ -316,3 +317,20 @@ class WorkClient(WorkInactive):
         else:
             redc = red 
         return redc
+
+    def mappedRid(self, iid, source):
+        if iid < 0:
+            return self.map_rids.get((iid, source), iid)
+        return iid 
+    
+    def mapTracks(self, in_tracks, source):
+        tracks = []
+        for t in in_tracks:                
+            tracks.append({"@": source})
+            tracks[-1].update(t)
+            if "src" in t:
+                tracks[-1]["src"] = [self.mappedRid(iid, source) for iid in t["src"]]
+            if "trg" in t:
+                tracks[-1]["trg"] = [self.mappedRid(iid, source) for iid in t["trg"]]
+        return tracks
+

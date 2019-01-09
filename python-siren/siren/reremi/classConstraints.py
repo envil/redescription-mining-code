@@ -1,20 +1,107 @@
 import re, os.path
 import numpy
+from csv_reader import getFp
 
 import pdb
 
 class Constraints(object):
+
+    @classmethod
+    def paramsToDict(tcl, params):
+        params_l = {}
+        for k, v in params.items():
+            if type(v) is dict and "data" in v:
+                params_l[k] = v["data"]
+        return params_l
+    
+    @classmethod
+    def getParamData(tcl, params, k, default=None):
+        if k in params:
+            return params[k]["data"]
+        return default
+    @classmethod
+    def getParamValue(tcl, params, k, default=None):
+        if k in params:
+            return params[k]["value"]
+        return default
+    @classmethod
+    def getParamText(tcl, params, k, default=None):
+        if k in params:
+            return params[k]["text"]
+        return default
+    
+    @classmethod
+    def applyVarsMask(tcl, data, params):
+        return data.applyDisableMasks(tcl.getParamData(params, "mask_vars_LHS"),
+                                      tcl.getParamData(params, "mask_vars_RHS"),
+                                      tcl.getParamData(params, "mask_rows"))
     
     special_cstrs = {}
-    
-    def __init__(self, data, params, AR):
-        self.AR = AR
+
+    params_sets = {"data": set(["parts_type","method_pval"])}
+        
+    def __init__(self, params, data=None, AR=None):
         self.deps = []
         self.folds = None
-        self._pv = {}
-        for k, v in params.items():            
-            self._pv[k] = v["data"]
+        if AR is None:
+            AR = params.get("AR")
 
+        self._pv = self.paramsToDict(params)
+        
+        self._pv.update(self.prepareValues(params))
+        self.resetAR(AR)
+        self.resetDataDependent(data, params)
+
+
+    ## SSETTS_PARAMS = set(["parts_type", "method_pval"])
+    def reset(self, params, data=None, AR=-1, dtv=None):
+        changed = {}
+        self._pv.update(self.paramsToDict(params))
+        self._pv.update(self.prepareValues(params))
+        
+        if not isinstance(AR, ActionsRegistry):
+            AR = params.get("AR", -1)
+        changedAR = self.resetAR(AR)
+        if changedAR:
+            changed["actions_filters"] = True
+        if data is not None and (dtv is None or len(self.params_sets["data"].intersection(dtv)) > 0):
+            self.resetDataDetails(data)
+            changed["reset_all"] = True
+        self._pv.update(self.prepareValuesDataDependent(params))
+        return changed
+        
+    def prepareValues(self, params, vals=None):
+        #### preparing query types        
+        if vals is None:
+            vvs = {}
+        else:
+            vvs = vals
+        for side_id in [0, 1]:
+            for type_id in [1, 2, 3]:
+                kp = "neg_query_s%d_%d" % (side_id, type_id)
+                if vals is None or kp in params:
+                    vvs[kp] = [bool(v) for v in self.getParamValue(params, kp, default=[])]
+                    
+            kp = "ops_query_s%d" % side_id
+            if vals is None or kp in params:
+                vvs[kp] = [bool(v) for v in self.getParamValue(params, kp, default=[])]
+
+        #### preparing score coeffs
+        if vals is None:
+            vvs["score_coeffs"] = {}
+        for k in ["impacc", "rel_impacc", "pval_red", "pval_query", "pval_fact"]:
+            if vals is None or k in params:
+                vvs["score_coeffs"][k] = self.getParamValue(params, "score.%s" % k, default=0)
+        return vvs
+        
+    def prepareValuesDataDependent(self, params):
+        #### scaling support thresholds
+        min_itm_c, min_itm_in, min_itm_out = self.scaleSuppParams(self.getParamValue(params,"min_itm_c"), self.getParamValue(params,"min_itm_in"), self.getParamValue(params,"min_itm_out"))
+        _, min_fin_in, min_fin_out = self.scaleSuppParams(-1, self.getParamValue(params,"min_fin_in"), self.getParamValue(params,"min_fin_out"))
+        return {"min_itm_c": min_itm_c, "min_itm_in": min_itm_in, "min_itm_out": min_itm_out,
+                 "min_fin_in": min_fin_in, "min_fin_out": min_fin_out}
+    
+    def resetDataDetails(self, data):
         if data is not None:
             self.N = data.nbRows()
             if data.hasMissing() is False and self._pv.get("parts_type") != "exclu":
@@ -24,31 +111,33 @@ class Constraints(object):
         else:
             self.N = -1
             self.ssetts = None
-            
-        #### scaling support thresholds
-        self._pv["min_itm_c"], self._pv["min_itm_in"], self._pv["min_itm_out"] = self.scaleSuppParams(self.getCstr("min_itm_c"), self.getCstr("min_itm_in"), self.getCstr("min_itm_out"))
-        _, self._pv["min_fin_in"], self._pv["min_fin_out"] = self.scaleSuppParams(-1, self.getCstr("min_fin_in"), self.getCstr("min_fin_out"))
-        
-        #### preparing query types
-        for side_id in [0, 1]:
-            for type_id in [1,2,3]:
-                kp = "neg_query_s%d_%d" % (side_id, type_id)
-                self._pv[kp] = []
-                for v in params.get(kp, {"value": []})["value"]:
-                    self._pv[kp].append(bool(v))
-                    
-            kp = "ops_query_s%d" % side_id
-            self._pv[kp] = []
-            for v in params.get(kp, {"value": []})["value"]:
-                self._pv[kp].append(bool(v))
 
-        #### preparing score coeffs
-        self._pv["score_coeffs"] = {"impacc": self.getCstr("score.impacc", default=0),
-                                 "rel_impacc": self.getCstr("score.rel_impacc", default=0),
-                                 "pval_red": self.getCstr("score.pval_red", default=0),
-                                 "pval_query": self.getCstr("score.pval_query", default=0),
-                                 "pval_fact": self.getCstr("score.pval_fact", default=0)}
+    def resetDataDependent(self, data, params):
+        self.resetDataDetails(data)
+        self._pv.update(self.prepareValuesDataDependent(params))
+                
+    def resetAR(self, AR=None):
+        ar_fns = []
+        for f in self._pv.get("actions_rdefs", "").split(";"):
+            ff = f.strip()
+            if len(ff) > 0:
+                ar_fns.append(ff)
         
+        if AR is None:
+            self.AR = ActionsRegistry()
+            changed = True
+        elif isinstance(AR, ActionsRegistry):
+            self.AR = AR
+            ar_fns = []
+            changed = True
+        else:
+            changed = False
+            
+        if len(ar_fns) > 0:
+            self.AR.extend(ar_fns)
+            changed = True
+        return changed
+            
     def setFolds(self, data):
         fcol = data.getColsByName("^folds_split_")
         if len(fcol) == 1:
@@ -176,6 +265,8 @@ class Constraints(object):
     
     def getActionsList(self, k, action_substitute=None):
         return self.AR.getActionsListToGo(k, self, action_substitute)
+    def getActionsRegistry(self):
+        return self.AR
     
 
  ########### FOLDS
@@ -249,21 +340,52 @@ class ActionsRegistry:
     def_file_basic = pref_dir+"/actions_rdefs_basic.txt"
     default_def_files = [def_file_basic]
 
-    def __init__(self, actions_fns=None):
-        self.setupFDefs(actions_fns)
-    def setupFDefs(self, actions_fns=None):
-        if actions_fns is None:
-            actions_fns = self.default_def_files
+    def __init__(self, actions_fns=[], strict=False):
+        if not strict:
+            actions_fns = self.default_def_files + actions_fns
         self.actions_lists = {}
-        for ff in actions_fns:
+        self.actions_compact = {}
+        self.parsed_fns = []
+        self.setupFDefsFiles(actions_fns)
+
+    def actionsToStr(self):
+        xps = ""
+        for k,v in self.actions_compact.items():
+            if v is not None:                
+                xps += "actionlist\t%s\n" % k
+                for ff in v:
+                    xps += "%s\n" % ff
+        if len(xps) > 0:
+            head = "# Action definitions read from %s\n" % ";".join(self.parsed_fns)
+            xps = head + xps
+        return xps
+
+        
+    def setupFDefsFiles(self, actions_fns):        
+        for actions_fn in actions_fns:
+            default = actions_fn in self.default_def_files
             try:
-                with open(ff) as fp:            
-                    self.readActionsFile(fp)
+                fp, fcl = getFp(actions_fn)
+                self.readActionsFile(fp, default)
+                if fcl:
+                    fp.close()
+                    if not default:
+                        self.parsed_fns.append(actions_fn)
+                else:
+                    self.parsed_fns.append("package")
             except IOError:
                 print "Cannot read actions defs from file %s!" % ff
+
+    def extend(self, actions_fns=[]):
+        self.setupFDefsFiles(actions_fns)
                 
-    def setActionsList(self, fk, flist):
+    def setActionsList(self, fk, flist, fcompact=None, default=False):
         self.actions_lists[fk] = flist
+        if not default:
+            self.actions_compact[fk] = fcompact
+        else:
+            self.actions_compact[fk] = None
+            
     def delActionsList(self, fk):
         if fk in self.actions_lists:
             del self.actions_lists[fk]        
@@ -488,23 +610,30 @@ class ActionsRegistry:
                 bb = (bA,)
             return bb
     
-    def readActionsFile(self, actions_fp):
+    def readActionsFile(self, actions_fp, default=False):
         current_list_actions = []
+        current_list_compact = []
         current_list_name = None        
         for line in actions_fp:
-            prts = line.strip().split("\t")
+            ll = re.sub("\s*#.*$", "", line).strip()
+            if len(ll) == 0:
+                continue
+            prts = ll.split("\t")
             if prts[0] in self.basic_actions and current_list_name is not None:
                 action_dets = self.parseActionParts(prts)
                 current_list_actions.append(action_dets)
+                current_list_compact.append(line.strip())
             elif prts[0] == "list" and len(prts) == 2:
                 current_list_actions.append({"actions": prts[1]})
+                current_list_compact.append(line.strip())
             elif prts[0] == "actionlist" and len(prts) == 2:
                 if current_list_name is not None and len(current_list_actions) > 0:
-                    self.setActionsList(current_list_name, current_list_actions)
+                    self.setActionsList(current_list_name, current_list_actions, current_list_compact, default)
                 current_list_name = prts[1]
                 current_list_actions = []
+                current_list_compact = []
         if current_list_name is not None and len(current_list_actions) > 0:
-            self.setActionsList(current_list_name, current_list_actions)
+            self.setActionsList(current_list_name, current_list_actions, current_list_compact, default)
 
     def parseActionParts(self, prts):
         if prts[0] in self.basic_actions:
@@ -613,7 +742,7 @@ class ActionsRegistry:
             return bb.get(kk)
     
 
-# c = Constraints(data=None, params={})
+# c = Constraints(params={})
 # AR = ActionsRegistry()
 # for k in AR.getActionsKeys():
 #     print "ACTION LIST", k

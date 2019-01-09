@@ -118,7 +118,8 @@ class WorkLocal(WorkInactive):
     cqueue = multiprocessing.Queue
     #cqueue = multiprocessing.queues.SimpleQueue
     type_workers = {"expand": ExpanderProcess, "improve": ExpanderProcess, "mine": MinerProcess, "project": ProjectorProcess}
-    type_messages = {'log': "self.updateLog", 'result': None, 'progress': "self.updateProgress",
+    type_messages = {'tracks': None, 'result': None,
+                     'log': "self.updateLog", 'progress': "self.updateProgress",
                      'status': "self.updateStatus", 'error': "self.updateError"}
         
     @classmethod

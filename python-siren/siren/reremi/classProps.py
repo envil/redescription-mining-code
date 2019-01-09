@@ -2,6 +2,7 @@ from classQuery import SYM
 import re, string, numpy, codecs, copy, itertools, os.path
 from classSParts import SSetts, tool_ratio
 from classContent import Item
+from csv_reader import getFp
 import pdb
 
 ACTIVE_RSET_ID = "active"
@@ -35,6 +36,11 @@ class WithEVals(Item):
     def setupRP(tcl, fields_fns=None):
         pass
 
+    @classmethod
+    def extendRP(tcl, fields_fns=[], rp=None):
+        rp = tcl.getRP(rp)
+        rp.setupFDefsFiles(fields_fns)
+    
     @classmethod
     def getRP(tcl, rp=None):
         if rp is None:
@@ -634,32 +640,67 @@ class Props(object):
         return None
     
     def __init__(self, Rclass, fields_fns=None):
-        self.derivatives = {}
         self.setupFDefs(fields_fns)
 
+    def fieldsToStr(self):
+        xps = ""
+        for k,v in self.derivatives.items():
+            if not self.derivatives_default[k]:
+                if "sep" in v:
+                    fmt = "set"
+                else:
+                    fmt = v["fmt"]
+                xps += "field\t%s\t%s\t%s\n" % (k, v["exp"], fmt)
+        for k,v in self.field_compact.items():
+            if v is not None:                
+                xps += "fieldlist\t%s\n" % k
+                for ff in v:
+                    xps += "%s\n" % ff
+        if len(xps) > 0:
+            head = "# Field definitions read from %s\n" % ";".join(self.parsed_fns)
+            xps = head + xps
+        return xps
+
     def setupFDefs(self, fields_fns=None):
+        self.parsed_fns = []
+        self.derivatives = {}
+        self.derivatives_default = {}
+        self.field_lists = {}
+        self.field_compact = {}        
         if fields_fns is None:
             fields_fns = self.default_def_files
-        self.field_lists = {}
-        for ff in fields_fns:
-            current_list_name, current_list_fields = (None, None)
+        self.setupFDefsFiles(fields_fns)
+
+    def setupFDefsFiles(self, fields_fns):
+        for fields_fn in fields_fns:
+            current_list_name, current_list_fields, current_list_fcompact = (None, None, None)
+            default = fields_fn in self.default_def_files
             try:
-                with open(ff) as fp:            
-                    current_list_name, current_list_fields = self.readFieldsFile(fp)
+                fp, fcl = getFp(fields_fn)
+                current_list_name, current_list_fields, current_list_fcompact = self.readFieldsFile(fp, default)
+                if fcl:
+                    fp.close()
+                    if not default:
+                        self.parsed_fns.append(fields_fn)
+                else:
+                    self.parsed_fns.append("package")
             except IOError:
-                print "Cannot read fields defs from file %s!" % ff
+                print "Cannot read fields defs from file %s!" % fields_fn
 
             else:
                 if current_list_name is not None:
-                    self.setFieldsList(current_list_name, current_list_fields)
-
+                    self.setFieldsList(current_list_name, current_list_fields, current_list_fcompact, default)
 
                 
-    def readFieldsFile(self, fields_fp):
+    def readFieldsFile(self, fields_fp, default=False):
         current_list_fields = []
+        current_list_fcompact = []
         current_list_name = None        
         for line in fields_fp:
-            prts = line.strip().split("\t")
+            ll = re.sub("\s*#.*$", "", line).strip()
+            if len(ll) == 0:
+                continue
+            prts = ll.split("\t")
             if prts[0] == "field" and len(prts) > 2:
                 dets = {"exp": prts[2], "fmt": "s"}
                 if prts[3] == "set":
@@ -669,15 +710,19 @@ class Props(object):
                     mtc = re.search("\.(?P<rnd>[0-9]+)f", prts[3])
                     if mtc is not None:
                         dets["rnd"] = int(mtc.group("rnd"))
-                self.addDerivativeField(prts[1], dets)
+                self.addDerivativeField(prts[1], dets, default)
             if prts[0] == "fieldlist" and len(prts) == 2:
                 if current_list_name is not None:
-                    self.setFieldsList(current_list_name, current_list_fields)
+                    self.setFieldsList(current_list_name, current_list_fields, current_list_fcompact, default)
                 current_list_name = prts[1]
                 current_list_fields = []
+                current_list_fcompact = []
             elif current_list_name is not None:
-                current_list_fields.extend(self.parseFieldsLine(line))
-        return current_list_name, current_list_fields
+                fields = self.parseFieldsLine(ll)
+                if len(fields) > 0:
+                    current_list_fields.extend(fields)
+                    current_list_fcompact.append(line.strip())
+        return current_list_name, current_list_fields, current_list_fcompact
         
                 
     modifiers_mtch = "((\[(?P<modify>[^\]]*)\])|((?P<plc_hld>\w)\=)|(\{(?P<vals>[^}]*)\})|(?P<spc> +))"
@@ -739,8 +784,9 @@ class Props(object):
             return fields
         return []
     
-    def addDerivativeField(self, fk, ff):
+    def addDerivativeField(self, fk, ff, default=False):
         self.derivatives[fk] = ff
+        self.derivatives_default[fk] = default
     def hasDerivativeField(self, fk):
         return fk in self.derivatives
     def getDerivativeField(self, fk):
@@ -751,8 +797,12 @@ class Props(object):
         return fk in self.field_lists
     def getFieldsList(self, fk):
         return self.field_lists.get(fk, [])
-    def setFieldsList(self, fk, flist):
+    def setFieldsList(self, fk, flist, fcompact=None, default=False):
         self.field_lists[fk] = flist
+        if not default:
+            self.field_compact[fk] = fcompact
+        else:
+            self.field_compact[fk] = None
     def delFieldsList(self, fk):
         if fk in self.field_lists:
             del self.field_lists[fk]        

@@ -18,7 +18,8 @@ def sendMessage(output, message, type_message, source):
 class WorkerProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, cust_params={}):
         multiprocessing.Process.__init__(self)
-        logger = Log({"*": preferences.get("verbosity", 0), "error":1, "progress":2, "result":1}, result_q, sendMessage)
+        verbosity = preferences.get("verbosity", {"data": 0})["data"]
+        logger = Log("inter", verbosity, output = result_q, method_comm = sendMessage)
         self.miner = instMiner(data, preferences, logger, pid, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
         self.start()
@@ -40,7 +41,8 @@ class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, proj={}):
         multiprocessing.Process.__init__(self)
         self.id = pid
-        self.logger = Log({"*": preferences.get("verbosity", 0), "error":1, "progress":2, "result":1}, result_q, sendMessage)
+        verbosity = preferences.get("verbosity", {"data": 0})["data"]
+        self.logger = Log("inter", verbosity, output = result_q, method_comm = sendMessage)
         if proj is not None:
             self.proj = proj
             self.start()

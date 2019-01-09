@@ -248,6 +248,33 @@
 	<length>250</length>
 	<default><value></value></default>
       </parameter>
+      <parameter>
+	<name>fields_rdefs</name>
+	<label>Files defining reds fields</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Files defining extra redescriptions fields.</legend>
+	<length>250</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
+	<name>fields_vdefs</name>
+	<label>Files defining vars fields</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Files defining extra variables fields.</legend>
+	<length>250</length>
+	<default><value></value></default>
+      </parameter>
+      <parameter>
+	<name>actions_rdefs</name>
+	<label>Files defining reds actions</label>
+	<parameter_type>open</parameter_type>
+	<value_type>text</value_type>
+	<legend>Files defining extra redescriptions actions.</legend>
+	<length>250</length>
+	<default><value></value></default>
+      </parameter>
     </section>
   </section>
 </root>

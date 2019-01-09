@@ -1,13 +1,17 @@
 field	acc_ratioTL	test:acc:/learn:acc:	.2f
+### XX
 field	len_I_ratioTA	test:len:I/(1.*all:len:I)	.2f
 field	cohesion	:extra:cohesion	.2f
 fieldlist	queries
-LHS:query:
+LHS:query: ### NN
 RHS:query:
 COND:query:	[wcond]
+ ### NN
+ ### NN
+ ### NN
 fieldlist	cardsall
-all:card:Y	Y={Ex*}[wmissing]{Em*}
-fieldlist	cards
+all:card:Y	Y={Ex*}[wmissing]{Em*}	 ### NN
+fieldlist	cards ### NN
 X:card:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	percsall
 all:perc:Y	Y={Ex*}[wmissing]{Em*}
@@ -42,7 +46,6 @@ cohesion	[wxtr_geoplus]
 list	cards
 fieldlist	gui
 list	queries
-:supp:Exm
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]
 list	statsactive

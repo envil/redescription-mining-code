@@ -4,7 +4,7 @@ from classContent import BatchCollection
 from classRedescription import Redescription
 from classExtension import ExtensionError, newExtensionsBatch
 from classSouvenirs import Souvenirs
-from classConstraints import Constraints, ActionsRegistry
+from classConstraints import Constraints
 from classInitialPairs import InitialPairs
 
 import numpy
@@ -114,7 +114,7 @@ class ExpMiner(object):
                 kid_ids.append(kid.getUid())
             if len(kid_ids) > 0:
                 track = {"do": "expand-tree", "trg": kid_ids, "src": [red.getUid()], "out": "W"}
-                rcollect.logTracks(track)
+                rcollect.addTrack(track)
 
             # self.logger.updateProgress({"rcount": self.count, "redi": redi}, 4, self.ppid)
             self.logger.printL(4, "Candidate %s.%d.%d grown" % (self.count, len(red), redi), 'status', self.ppid)
@@ -146,7 +146,7 @@ class ExpMiner(object):
                         if modr == 1:
                             rcollect.addItem(basis_red, "W")
                             track = {"do": "prepare-greedy", "trg": [basis_red.getUid()], "src": [red.getUid()], "out": "W"}
-                            rcollect.logTracks(track)
+                            rcollect.addTrack(track)
                         red.removeAvailables()
                     bests = newExtensionsBatch(self.data.nbRows(), self.constraints, basis_red)
                         
@@ -174,7 +174,7 @@ class ExpMiner(object):
                         kid_ids.append(kid.getUid())
                     if len(kid_ids) > 0:
                         track = {"do": "expand-greedy", "trg": kid_ids, "src": [basis_red.getUid()], "out": "W"}
-                        rcollect.logTracks(track)
+                        rcollect.addTrack(track)
                         
                     ## SOUVENIRS
                     if self.upSouvenirs:
@@ -257,15 +257,14 @@ class ExpMiner(object):
                             return rcollect
 
                         r = cand.kid(A[0], self.data)
-                        if True: #r.getAcc() > A[0].getAcc():
-                        ## if r.getAcc() > A[0].getAcc():
+                        if r.getAcc() >= self.constraints.getCstr("min_itm_acc"):
                             rawkid_ids.append(r.getUid())
                             nrids = self.improveRedescription(r, rcollect, charbon, try_shorten=False)
                             cand.replaceBetter([rcollect.getItem(sid) for sid in rcollect.selected(self.constraints.getActionsList("partial"), ids=nrids)])
 
                     if len(rawkid_ids) > 0:
                         track = {"do": "expand-combine", "trg": rawkid_ids, "src": [A[0].getUid(), B[0].getUid()], "out": "W"}
-                        rcollect.logTracks(track)
+                        rcollect.addTrack(track)
                         
                     if len(cands) > 0:
                         bests.update(cands, self.data)
@@ -345,7 +344,7 @@ class ExpMiner(object):
             kid_ids.append(best["red"].getUid())
         if len(kid_ids) > 0:
             track = {"do": "improve", "trg": kid_ids, "src": [red.getUid()], "out": trg_lid}
-            rcollect.logTracks(track)
+            rcollect.addTrack(track)
 
         for ci, best in enumerate(bests):
             rcollect.addItem(best["red"], trg_lid)
@@ -390,7 +389,7 @@ class ExpMiner(object):
             kid_ids.append(best["red"].getUid())
         if len(kid_ids) > 0:
             track = {"do": "set-anonymous", "trg": kid_ids, "src": [red.getUid()], "out": trg_lid}
-            rcollect.logTracks(track)
+            rcollect.addTrack(track)
 
         for ci, best in enumerate(bests):            
             rcollect.addItem(best["red"], trg_lid)
@@ -495,8 +494,7 @@ class Miner(object):
             self.logger = logger
         else:
              self.logger = Log()
-        AR = ActionsRegistry()
-        self.constraints = Constraints(self.data, params, AR)
+        self.constraints = Constraints(params, self.data)
 
         self.charbon = self.initCharbon()
         if souvenirs is None:
@@ -640,7 +638,7 @@ class Miner(object):
         self.logger.sendCompleted(self.getId())
 
         self.logger.printL(1, "=========================================", "log", self.getId())
-        self.logger.printL(1, self.logger.tracksToStr(), "log", self.getId())
+        self.logger.printL(1, self.rcollect.tracksToStr(), "log", self.getId())
         self.logger.printL(1, "----- REDS:", "log", self.getId())
         fids = self.rcollect.getIidsList("F")
         for i in self.rcollect.getItems():

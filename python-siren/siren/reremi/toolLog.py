@@ -4,27 +4,33 @@ import random
 import datetime
 import copy
 
-class Tracker(object):
-    def resetTracks(self):
-        del self.collected_tracks[:]
-    def tracksToStr(self):
-        xps = "---- TRACKS:"
-        for ti, t in enumerate(self.collected_tracks):
-            xps += "\n%d\t%s --- %s ---> %s %s" % (ti, t.get("src", []), t.get("do", ""), t.get("trg", []), t.get("rationales", []))
-        self.resetTracks()
-        return xps
+class Log(object):
 
+    verbs = {"std": {"*": 1, "progress":0, "result":0, "error":0, "tracks":0},
+             "inter" : {"log":1, "error":0, "status":1, "time":0, "progress":2, "result":1, "tracks": 1},
+             "quiet": {"*":1,  "error":1, "status":0, "result":0, "progress":0},
+             "error": {"error":1},
+             "shut": {}}
     
-class Log(Tracker):
-    def __init__(self, verbosity=1, output = '-', method_comm = None):
+    @classmethod
+    def get_verbs(tcl, k="std", verb=None):
+        v = tcl.verbs.get(k, {})
+        if type(verb) is dict:
+            v.update(verb)
+        elif verb is not None:
+            if "*" in v:
+                v["*"] = verb
+            if "log" in v:
+                v["log"] = verb
+        return v        
+    
+    def __init__(self, k="std", verbosity=1, output = '-', method_comm = None):
         self.tics = {None: datetime.datetime.now()}
         self.progress_ss = {"current": 0, "total": 0}
-        self.bit = 1
         self.out = []
         self.oqu = []
         self.verbosity = -1
-        self.addOut(verbosity, output, method_comm)
-        self.addTrackOut()
+        self.addOut(k, verbosity, output, method_comm)
         
     #### FOR PICKLING !!
     def __getstate__(self):
@@ -126,14 +132,7 @@ class Log(Tracker):
     def getProgress(self):
         return (self.progress_ss["total"], self.progress_ss["current"])
     ####### END PROGRESS
-
-    ####### THE TRACKING PART
-    def addTrackOut(self):
-        self.collected_tracks = []
-        self.addOut(verbosity={"track": 1}, output=self.collected_tracks, method_comm=self.append)  
-    ####### END TRACKING
-    
-    
+        
     def disp(self):
         tmp = "LOGGER"
         for out in self.out:
@@ -160,10 +159,8 @@ class Log(Tracker):
         # print "AFTER", self.oqu+self.out
 
         
-    def addOut(self,  verbosity=1, output = '-', method_comm = None):
-        # print "Adding output:\t", output, type(output), method_comm
+    def addOut(self,  k="std", verbosity=None, output = '-', method_comm = None):
         ### CHECK OUTPUT
-        self.bit = 0
         if type(output) == str:
             if output in ['-', "stdout"]:
                 tmp_dest = sys.stdout
@@ -177,26 +174,19 @@ class Log(Tracker):
         else:
             tmp_dest = output
             
-
-        ### CHECK VERBOSITY
-        if type(verbosity) == int:
-            verbosity = {"*": verbosity, "progress":0, "result":0, "error":0, "track": 0} 
-        
-        if type(verbosity) == dict:
-            if max(verbosity.values()) > self.verbosity:
-                self.verbosity = max(verbosity.values())
-        else:
-            return
+        verbs = self.get_verbs(k, verbosity)
+        max_v = max(verbs.values())
+        if max_v > self.verbosity:
+            self.verbosity = max_v
 
         ### OK ADD OUTPUT
         if output is not None and type(output) is not str:
-             self.oqu.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
+             self.oqu.append({"verbosity": verbs, "destination": tmp_dest, "method": method_comm})
         else:
-            self.out.append({"verbosity": verbosity, "destination": tmp_dest, "method": method_comm})
+            self.out.append({"verbosity": verbs, "destination": tmp_dest, "method": method_comm})
         return len(self.out)+len(self.oqu)-1
 
     def usesOutMethods(self):
-        pdb.set_trace()
         for out in self.out+self.oqu:
             if out["method"] is not None:
                 return True
@@ -204,6 +194,8 @@ class Log(Tracker):
 
     def printL(self, level, message, type_message="*", source=None):
         for out in self.out+self.oqu:
+            # if type_message == "tracks":
+            #     print "Tracks to ", out["verbosity"]
             if ( type_message in out["verbosity"].keys() and level <= out["verbosity"][type_message]) \
                    or  ( type_message not in out["verbosity"].keys() and "*" in out["verbosity"].keys() and level <= out["verbosity"]["*"]):
                 
@@ -228,6 +220,7 @@ class Log(Tracker):
     def logResults(self, rcollect, lid, pid):        
         if rcollect.getLen(lid) > 0:
             self.printL(1, {lid: rcollect.getItems(lid)}, 'result', pid)
+            self.printL(1, rcollect.getLatestTracks(), 'tracks', pid)
             self.printL(1, "%d redescriptions [%s]" % (rcollect.getLen(lid), lid), 'status', pid)
             for red in rcollect.getItems(lid):
                 self.printL(10, "--- %s" % red)

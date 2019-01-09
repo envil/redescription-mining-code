@@ -337,7 +337,7 @@ class ContentCollection(object):
                 self.addItem(ll, lid)
 
     def __str__(self):
-        return "Collection: %d items in %d/%d lists" % (len(self.items), len(self.clist), len(self.containers))
+        return "Collection: %d items in %d/%d lists" % (self.nbItems(), self.nbDispLists(), self.nbTotLists())
                 
     def dispDetails(self):
         print "Items: ", self.items
@@ -637,6 +637,11 @@ class ContentCollection(object):
     def nbItems(self):
         return len(self.items)
 
+    def nbTotLists(self):
+        return len(self.containers)
+    def nbDispLists(self):
+        return len(self.clist)
+    
     def getIidsList(self, lid=None):
         if lid in self.containers:
             return list(self.containers[lid])
@@ -720,30 +725,60 @@ class ContentCollection(object):
         info.update({"lid": lid, "lids": lids, "iids": iids, "nb": len(iids)})
         return info
 
-class LoggedContentCollection(ContentCollection):
+class TrackedContentCollection(ContentCollection):
 
-    # def __init__(self, logger=None):
-    #     ContentCollection.__init__(self)
-    #     self.logger = logger
-    # def hasLogger(self):
-    #     return self.logger is not None
-    # def setLogger(self, logger=None):
-    #     self.logger = logger       
-    # def getLogger(self):
-    #     return self.logger
-                
-    def logTracks(self, tracks, pid=None):
-        pass
-        # if self.hasLogger():
-        #     verbosity = tracks.get("action", {}).get("verbosity", 1)
-        #     self.logL(verbosity, tracks, 'track', pid)
+    def __init__(self):
+        self.last_t = 0
+        self.stored_tracks = []
+        ContentCollection.__init__(self)
+
+    def getLatestTracks(self):
+        t = self.last_t
+        self.last_t = len(self.stored_tracks)
+        return self.stored_tracks[t:]
         
-class StoredContentCollection(LoggedContentCollection):
+    def getTracks(self):
+        return self.stored_tracks
+
+    def clearTracks(self):
+        del self.stored_tracks[:]
+
+    def appendTracks(self, tracks):
+        self.stored_tracks.extend(tracks)
+
+    def addTrack(self, track):
+        self.stored_tracks.append(track)
+
+    def tracksToStr(self):
+        xps = "---- TRACKS:"
+        for ti, t in enumerate(self.stored_tracks):
+            at = ""
+            if "@" in t:
+                at = " {@%s}" % t["@"]
+            xps += "\n%d%s\t%s --- %s ---> %s %s" % (ti, at, t.get("src", []), t.get("do", ""), t.get("trg", []), t.get("rationales", []))
+        return xps
+        
+    def nbTracks(self):
+        return len(self.stored_tracks)
+        
+    def __str__(self):
+        return "Tracked %s, %d tracks" % ( ContentCollection.__str__(self), self.nbTracks() )
+     
+    def dispDetails(self):
+        ContentCollection.dispDetails(self)
+        print "Tracks: ", self.nbTracks()
+        
+    def clear(self):
+        self.clearTracks()
+        ContentCollection.clear(self)
+        
+        
+class StoredContentCollection(TrackedContentCollection):
 
     container_class = StoredContainer
     
     def __init__(self):
-        LoggedContentCollection.__init__(self)
+        TrackedContentCollection.__init__(self)
         self.map_src_ids = {}
         ### prepare buffer list
         lstBuff = self.container_class(src=StoredContainer.NBUFF)
@@ -890,7 +925,7 @@ class StoredContentCollection(LoggedContentCollection):
                     changed.append(lid)
         return changed 
     
-class BatchCollection(LoggedContentCollection):
+class BatchCollection(TrackedContentCollection):
 
     actions_methods = {}
     
@@ -966,7 +1001,7 @@ class BatchCollection(LoggedContentCollection):
             out, ts = self.computeSatisfySingle(action, iid)
             track = {"do": "satisfy", "trg": [iid], "out": out, "rationales": ts, "action": action}
         if restrict_track is None or out == restrict_track:
-            self.logTracks(track)
+            self.addTrack(track)
         return out
     
     def applyFunct(self, funct, i, data=None, changes=False):
@@ -1066,7 +1101,7 @@ class BatchCollection(LoggedContentCollection):
                 posP += 1
             if len(filter_out) > self.getActionArg("max", action):
                 track = {"do": "filter", "trg": [ids[posC]], "src": filter_out, "out": True, "rationales": ts, "action": action}
-                self.logTracks(track)
+                self.addTrack(track)
                 return True
         return False
     actions_methods["filterLast"] = filterLastIds
@@ -1081,7 +1116,7 @@ class BatchCollection(LoggedContentCollection):
                 v, ts = self.computeSatisfyPair(action, ids[posP], ids[posC])
                 if v:
                     track = {"do": "filter", "trg": [ids[posP]], "src": [ids[posC]], "out": True, "rationales": ts, "action": action}
-                    self.logTracks(track)
+                    self.addTrack(track)
                     ids.pop(posP)
                 else:
                     posP += 1
@@ -1128,7 +1163,7 @@ class BatchCollection(LoggedContentCollection):
             else:
                 track = {"do": "cut", "trg": ids[cut:], "src": ids[cut_org-1:cut], "out": (cut_org,cut), "rationales": ts_out, "action": action}
                 del ids[cut:]
-            self.logTracks(track)                
+            self.addTrack(track)                
         return ids
     actions_methods["cut"] = cutIds
 

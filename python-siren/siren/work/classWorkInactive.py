@@ -70,7 +70,7 @@ class WorkInactive:
         task = self.getTask(params, details)
         details.update({"task": task, "work_progress":0, "work_estimate":0})
         if task != "project":
-            details.update({"results_track":0, "src_lid": "P", "results_tab": "exp"})
+            details.update({"results_last": 0, "src_lid": "P", "results_tab": "exp"})
         if task == "mine":
             details["batch_type"] = "F"
         job = {"hid": self.getHid(), "wid": wid, "task": task, "more": params, "data": boss.getData(), "preferences": boss.getPreferences()}
@@ -117,6 +117,8 @@ class WorkInactive:
         if note["type_message"] in self.type_messages:
             if note["type_message"] == "result":
                 self.sendResult(note["source"], note["message"], updates, parent)
+            elif note["type_message"] == "tracks":
+                self.sendTracks(note["source"], note["message"], updates, parent)
             else:
                 method = eval(self.type_messages[note["type_message"]])
                 if callable(method):
@@ -150,6 +152,12 @@ class WorkInactive:
             updates["menu"] = True
             updates["progress"] = True
             
+    def sendTracks(self, source, message, updates, parent):
+        if source not in self.workers or parent is None:
+            return        
+        latest_tracks = self.mapTracks(message, source)
+        parent.readyTracks(latest_tracks)
+
     def sendResult(self, source, message, updates, parent):
         if source not in self.workers:
             return
@@ -164,15 +172,22 @@ class WorkInactive:
         elif worker_info.get("src_lid") is not None and worker_info.get("src_lid") in message:
             tap = message[worker_info["src_lid"]]
             nb_tap = len(tap)
-            if nb_tap > worker_info["results_track"]:
-                latest_reds = [self.mapRid(red, source) for red in tap[worker_info["results_track"]:nb_tap]]
+            if nb_tap > worker_info["results_last"]:
+                latest_reds = [self.mapRid(red, source) for red in tap[worker_info["results_last"]:nb_tap]]
                 if worker_info["src_lid"] != "P": ### WARNING!!!
-                    worker_info["results_track"] = nb_tap
+                    worker_info["results_last"] = nb_tap                                       
                 if parent is None:
                     print "Ready reds [%s] %s %s" % ((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
                 else:
                     parent.readyReds((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
-
+                    
     def mapRid(self, red, source):
         return red
+
+    def mapTracks(self, in_tracks, source):
+        tracks = []
+        for t in in_tracks:
+            tracks.append({"@": source})
+            tracks[-1].update(t)
+        return tracks
 #### SHARED METHODS END

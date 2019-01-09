@@ -17,14 +17,12 @@ from ..reremi.classData import Data
 
 from ..reremi.classQuery import Query, Literal
 from ..reremi.classRedescription import Redescription
-from ..reremi.classConstraints import Constraints, ActionsRegistry
+from ..reremi.classConstraints import Constraints
 
 from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
 from ..reremi.classPackage import Package, writePreferences, writeRedescriptions, getPrintParams
 
 #from findFiles import findFile
-
-SSETTS_PARAMS = set(["parts_type", "method_pval"])
 
 def findFile(fname, path=['']):
     """Finds file from path (always including the current working directory) and returns
@@ -61,7 +59,8 @@ class DataWrapper(object):
         self.data = None
         self.reds = StoredRCollection()
         self.preferences = ICDict(self.pm.getDefaultTriplets())
-        self.resetARAndCstr()
+        self.resetConstraints()
+        self.setupFilterActs()
         self.package = None
         self._isChanged = False
         self._isFromPackage = False
@@ -198,7 +197,7 @@ class DataWrapper(object):
     def getPreferences(self):
         return self.preferences
     def getActionsRegistry(self):
-        return self.AR
+        return self.constraints.getActionsRegistry()
     def getPreference(self, param_id):
         if self.preferences is not None and param_id in self.preferences:
             return self.preferences[param_id]["data"]
@@ -264,18 +263,14 @@ class DataWrapper(object):
         else:
             raise TypeError("The isFromPackage property accepts only Boolean attributes")
 
-    def getDiffPrefs(self, vdict):
-        return [item_id for (item_id, trip) in vdict.items() if trip["data"] != self.getPreference(item_id)]
         
     def updatePreferencesDict(self, params):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
-            dtv = self.getDiffPrefs(params)
+            params_l = Constraints.paramsToDict(params)
+            dtv = [item_id for (item_id, trip) in params_l.items() if trip != self.getPreference(item_id)]
             self.preferences.update(params)
-            if len(SSETTS_PARAMS.intersection(dtv)) > 0:
-                self.resetSSetts()
-            self.resetConstraints()
-            self.addReloadRecompute()
+            self.resetConstraints(dtv=dtv)
             
     def loadExtension(self, ek, filenames={}):
         if len(filenames) == 0 and ek in self.getExtensionKeys():
@@ -303,28 +298,17 @@ class DataWrapper(object):
         self.addReloadRecompute()
     def setData(self, data):
         self.data = data
-        self.resetSSetts()
-        self.resetConstraints()
+        self.constraints.resetDataDependent(data, self.getPreferences())
         self.addReloadAll()
 
-    def resetSSetts(self):
-        if self.getData() is not None:
-            if self.getData().hasMissing() is False:
-                parts_type = "grounded"
-            else:
-                parts_type = self.preferences.get("parts_type", {"data": None})["data"]
-            pval_meth = self.preferences.get("method_pval", {"data": None})["data"]
-            self.getData().getSSetts().reset(parts_type, pval_meth)
-            self.addReloadAll()
-    def resetConstraints(self):
-        self.constraints = Constraints(self.getData(), self.getPreferences(), self.getActionsRegistry())
-    def resetARAndCstr(self, AR=None):
-        if AR is None:
-            self.AR = ActionsRegistry()
+    def resetConstraints(self, AR=None, dtv=None):
+        if dtv is None:
+            self.constraints = Constraints(self.getPreferences(), data=self.getData(), AR=AR)
+            changed = {"reset_all": True}
         else:
-            self.AR = AR
-        self.resetConstraints()
-        self.setupFilterActs()
+            changed = self.constraints.reset(self.getPreferences(), data=self.getData(), AR=AR, dtv=dtv)
+        self.addReloadFromDict(changed)
+        return changed
         
     def recompute(self):
         self.doneReloadRecompute()
@@ -374,6 +358,9 @@ class DataWrapper(object):
                 self.addReloadSwitchList(trg_lid, "r")
         return trg_lid, iids, newl
 
+    def appendTracks(self, tracks):
+        self.reds.appendTracks(tracks)
+    
     def appendRedsToSrc(self, reds, src, recompute=True, set_changed=None):
         iids = []
         org_lid = self.reds.getUidForSrc(src)
@@ -449,7 +436,19 @@ class DataWrapper(object):
             return before_iids, selected_iids, middle_iids, bottom_iids, after_iids
         return iids, None, None, None, None
             
-#################### IMPORTS            
+#################### IMPORTS
+    def loadDefsFromFile(self, path, fld_type="fields_rdefs"):
+        if fld_type == "fields_vdefs":
+            ColM.extendRP([path])
+            self.addReloadFields("v")
+        elif fld_type == "fields_rdefs":
+            Redescription.extendRP([path])
+            self.addReloadFields("r")
+        elif fld_type == "actions_rdefs":
+            AR = self.getActionsRegistry()
+            AR.extend([path])
+            self.resetConstraints(AR, [])
+            
     def importDataFromCSVFiles(self, data_filenames):
         fnames = list(data_filenames[:2])
         self._startMessage('importing', fnames)        
@@ -546,20 +545,24 @@ class DataWrapper(object):
 
     def _readPackageFromFile(self, filename):
         package = Package(filename, self._stopMessage)
-        elements_read = package.read(self.pm)        
+        elements_read = package.read(self.pm)
+        self.data = None
+        self.clearRedescriptions()
         
         self.package_name = package.getPackagename()
+        AR = None
         if elements_read.get("preferences"):
-            self.preferences = ICDict(elements_read.get("preferences"))
+            preferences = elements_read.get("preferences")
+            if "AR" in preferences:
+                AR = preferences.pop("AR")
+            self.preferences = ICDict(preferences)
         else:
             self.preferences = ICDict(self.pm.getDefaultTriplets())
-
+        self.resetConstraints(AR)
+            
         if elements_read.get("data") is not None:
             self.setData(elements_read.get("data"))
-        else:
-            self.data = None
 
-        self.clearRedescriptions()
         if elements_read.get("reds") is not None:            
             for rlist in elements_read.get("reds"):
                 self.appendRedsToSrc(rlist["items"], rlist["src"], recompute=False, set_changed=False)
@@ -578,6 +581,19 @@ class DataWrapper(object):
         if self.preferences is not None:
             contents['preferences'] = self.preferences
             contents['pm'] = self.pm
+
+        ### definitions
+        vdefs = ColM.getRP().fieldsToStr()
+        if len(vdefs) > 0:
+            contents['fields_vdefs'] = vdefs
+        rdefs = Redescription.getRP().fieldsToStr()
+        if len(rdefs) > 0:
+            contents['fields_rdefs'] = rdefs
+        AR = self.getActionsRegistry()
+        if AR is not None:
+            adefs = AR.actionsToStr()
+            if len(adefs) > 0:
+                contents['actions_rdefs'] = adefs
         return contents
 
 
@@ -594,10 +610,10 @@ class DataWrapper(object):
             self.logger.printL(1,"Cannot open file for package %s" % filename, "dw_error", "DW")
             self._stopMessage()
             raise
-        except Exception:
-            self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "dw_error", "DW")
-            self._stopMessage()
-            raise
+        # except Exception:
+        #     self.logger.printL(1,"Unexpected error while writing package!\n%s" % sys.exc_info()[1], "dw_error", "DW")
+        #     self._stopMessage()
+        #     raise
         for lid in self.reds.getOrdLids():
             self.addReloadList(lid, "r")
 
@@ -801,13 +817,23 @@ class DataWrapper(object):
         if tab_type not in "rve":
             return
         self._needsReload["switch"] = tab_type
+    def addReloadFilters(self):
+        self._needsReload["actions_filters"] = True
     def addReloadRecompute(self):
         self._needsReload["recompute"] = True
     def doneReloadRecompute(self):
         self._needsReload["recompute"] = False
     def addReloadAll(self):
         self._needsReload["reset_all"] = True
-
+    def addReloadFromDict(self, rdict):
+        try:
+            for k, v in rdict.items():
+                if v:
+                    self._needsReload[k] = v
+        except AttributeError:
+            pass
+                
+        
     ################ SPECIFYING ACTION FUNCTIONS START
     #####################################################
     acts_list = []    
@@ -1023,8 +1049,8 @@ class DataWrapper(object):
     def setupFilterActs(self):
         prev_acts = self.acts_groups.pop("redsFilter", [])
         for act in prev_acts:
-            self.acts_meths_dict.pop(act)
-            self.acts_params_dict.pop(act)
+            self.acts_meths_dict.pop(act["key"])
+            self.acts_params_dict.pop(act["key"])
         AR = self.getActionsRegistry()
 
         acts_mod = []        

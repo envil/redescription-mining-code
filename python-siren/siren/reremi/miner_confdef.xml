@@ -50,6 +50,15 @@
       <name>Filtering</name>
     <section>
       <name>Intermediate supports of queries</name>
+    <parameter>
+	<name>min_itm_acc</name>
+	<label>Min accuracy</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>Minimum intermediate accuracy for a candidate.</legend>
+    <length>5</length>
+	<default><value>0.3</value></default>
+      </parameter>
       <parameter>
 	<name>min_itm_c</name>
 	<label>Min contribution</label>

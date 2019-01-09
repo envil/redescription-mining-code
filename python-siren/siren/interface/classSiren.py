@@ -1002,6 +1002,10 @@ class Siren():
         if menuTabs is None:
             menuTabs = wx.Menu()
 
+        ID_AC = wx.NewId()
+        m_ac = menuTabs.Append(ID_AC, "Print tracks", "Debug")
+        frame.Bind(wx.EVT_MENU, self.OnPrintTracks, m_ac)
+            
         for tab_id in self.tabs_keys:
             tab_prop = self.tabs[tab_id]
             ID_CHECK = wx.NewId()
@@ -1131,6 +1135,16 @@ class Siren():
         ID_FLD_TEX = wx.NewId()
         m_fldtex = submenuFields.Append(ID_FLD_TEX, "Redescriptions LaTeX export", "Redescription fields for LaTeX export.")
         frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsOutTex, m_fldtex)
+
+        ID_VDEFS_FILE = wx.NewId()
+        m_vdefs = submenuFields.Append(ID_VDEFS_FILE, "Load fields for variables", "Load definitions of fields for variables from file.")
+        frame.Bind(wx.EVT_MENU, self.OnDefVarsFieldsFile, m_vdefs)
+        ID_RDEFS_FILE = wx.NewId()
+        m_rdefs = submenuFields.Append(ID_RDEFS_FILE, "Load fields for redescriptions", "Load definitions of fields for redescriptions from file.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsFieldsFile, m_rdefs)
+        ID_RACTS_FILE = wx.NewId()
+        m_racts = submenuFields.Append(ID_RACTS_FILE, "Load actions for redescriptions", "Load definitions of actions for redescriptions from file.")
+        frame.Bind(wx.EVT_MENU, self.OnDefRedsActionsFile, m_racts)
 
         
         ID_FLD = wx.NewId()
@@ -1286,6 +1300,27 @@ class Siren():
             self.refresh()
         return fields            
 
+    def OnDefVarsFieldsFile(self, event):
+        self.OnDefFile("fields_vdefs")
+    def OnDefRedsFieldsFile(self, event):
+        self.OnDefFile("fields_rdefs")
+    def OnDefRedsActionsFile(self, event):
+        self.OnDefFile("actions_rdefs")
+    #### HERE
+    def OnDefFile(self, fld_type="fields_rdefs"):
+        dir_name = os.path.expanduser('~/')
+        open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
+                                 style = wx.OPEN|wx.CHANGE_DIR)
+        if open_dlg.ShowModal() == wx.ID_OK:
+            path = open_dlg.GetPath()
+            try:
+                self.dw.loadDefsFromFile(path, fld_type)
+            except:
+                pass
+        open_dlg.Destroy()
+        self.refresh()
+
+    
     #### DIALOGS BEFORE QUIT
     def quitReturnLaterDialog(self, test=None, what="continue"):
         reponse = -1
@@ -1465,6 +1500,11 @@ class Siren():
         self.doUpdates(updates) ## To update the worker stoppers
 
     ##### receiving results
+    def OnPrintTracks(self, event):
+        print self.dw.reds.tracksToStr()
+    def readyTracks(self, tracks):
+        if len(tracks) > 0:            
+            self.dw.appendTracks(tracks)
     def readyReds(self, wid, reds, tab):
         self.appendMinedReds(wid, reds)
 
@@ -1694,6 +1734,8 @@ class Siren():
 
         ### RELOADING REDS
         reds_rneeds = rneeds.get("r", {})
+        if rneeds.get("actions_filters", rall):
+            self.dw.setupFilterActs()
         if "switch" in reds_rneeds:
             self.getRTab().setActiveLid(reds_rneeds.get("switch"))
         if reds_rneeds.get("data", rall) or reds_rneeds.get("fields"):
@@ -1726,17 +1768,17 @@ class Siren():
             self.updateMenus()
         
     def resetLogger(self):
-        verb = 1
+        vlog = None
         if self.dw.getPreferences() is not None and self.dw.getPreference('verbosity') is not None:
-            verb = self.dw.getPreference('verbosity')
+            vlog = self.dw.getPreference('verbosity')
 
         self.logger.resetOut()
         if self.plant.getWP().isActive() and self.plant.getWP().getOutQueue() is not None:
-            self.logger.addOut({"log": verb, "error": 0, "status":1, "time":0, "progress":2, "result":1}, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
+            self.logger.addOut("inter", vlog, self.plant.getWP().getOutQueue(), self.plant.getWP().sendMessage)
         else:
-            self.logger.addOut({"*": verb,  "error":1,  "status":0, "result":0, "progress":0}, None, self.loggingLogTab)
-        self.logger.addOut({"error":1, "dw_error":1}, "stderr")
-        self.logger.addOut({"dw_error":1}, None, self.loggingDWError)
+            self.logger.addOut("quiet", vlog, None, self.loggingLogTab)
+        self.logger.addOut("error", {"dw_error":1}, "stderr")
+        self.logger.addOut("shut", {"dw_error":1}, None, self.loggingDWError)
 
     def getContentInfo(self, more_info={}, tab=None):
         tt = self.getDefaultTab(tab=tab)

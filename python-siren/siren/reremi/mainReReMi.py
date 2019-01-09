@@ -13,7 +13,7 @@ from classPackage import Package, saveAsPackage, writeRedescriptions, getPrintPa
 from classData import Data
 from classQuery import Query
 from classRedescription import Redescription
-from classConstraints import Constraints, ActionsRegistry
+from classConstraints import Constraints
 from classPreferencesManager import PreferencesReader, getPM
 from classMiner import instMiner, StatsMiner
 ## from classMinerFolds import instMiner, StatsMiner
@@ -80,12 +80,12 @@ def loadAll(arguments=[], conf_defs=None):
         print 'ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0]
         print '(Type "%s --config" to generate a default configuration file' % arguments[0]
         sys.exit(2)
-    
-    params_l = turnToDict(params)
+
+    params_l = Constraints.paramsToDict(params)
     filenames = prepareFilenames(params_l, tmp_dir, src_folder)
     if queries_second is not None:
         filenames["queries_second"] = queries_second
-    logger = Log(params_l['verbosity'], filenames["logfile"])
+    logger = Log(verbosity=params_l['verbosity'], output=filenames["logfile"])
 
     if pack_filename is None:
         data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
@@ -98,11 +98,6 @@ def loadAll(arguments=[], conf_defs=None):
     return {"params": params, "data": data, "logger": logger,
             "filenames": filenames, "reds": reds, "pm": pm, "package": package}
 
-def turnToDict(params):
-    params_l = {}
-    for k, v in  params.items():
-        params_l[k] = v["data"]
-    return params_l
 
 def getDataAddInfo(params_l={}):
     return [{}, params_l.get('NA_str', Data.NA_str_def)]
@@ -257,25 +252,6 @@ def outputResults(filenames, results, data=None, with_headers=True, mode="w", da
         if ffp is not None and filenames.get(ffi, "") != "-":
             ffp.close()
 
-def loadPackage(filename, pm):
-
-    package = Package(filename)
-    elements_read = package.read(pm)        
-
-    if elements_read.get("data") is not None:
-        data = elements_read.get("data")
-    else:
-        data = None
-    if elements_read.get("preferences"):
-        params = elements_read.get("preferences")
-    else:
-        params = None
-
-    return params, data
-
-def applyVarsMask(data, params):
-    params_l = turnToDict(params)
-    return data.applyDisableMasks(params_l.get("mask_vars_LHS"), params_l.get("mask_vars_RHS"), params_l.get("mask_rows"))
 
 def run(args):
     
@@ -298,7 +274,7 @@ def run(args):
  #    params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
  #                                             loaded["filenames"], loaded["reds"]) 
 
- #    constraints = Constraints(data, params)
+ #    constraints = Constraints(params, data)
 
  #    candidate_ids = range(len(reds))
  #    scores = numpy.zeros((len(reds)+2, len(reds)))
@@ -331,8 +307,7 @@ def run_filter(args):
     loaded = loadAll(args)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
-    AR = ActionsRegistry()
-    constraints = Constraints(data, params, AR)
+    constraints = Constraints(params, data)
     all_reds = []
     for r in reds:
         all_reds.extend(r["items"])
@@ -349,7 +324,7 @@ def run_filter(args):
     #         print "<<", j, all_reds[j].disp()
     #         for prop in [":oneSideIdentical:", ":overlap:L", ":interAreaSide:L", ":overlap:P", ":overlapAreaTotal:"]:
     #             print prop, all_reds[j].getExpPairProp(all_reds[i], prop)
-    # constraints = Constraints(data, params)
+    # constraints = Constraints(params, data)
     # rp = Redescription.getRP()
     # reds = []
     # with open("/home/egalbrun/short/redescriptions.csv") as fd:
@@ -520,7 +495,7 @@ def run_rnd(args):
     loaded = loadAll(args, conf_defs)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
 
-    params_l = turnToDict(params)
+    params_l = Constraints.paramsToDict(params)
     select_red = None 
     if len(params_l.get("select_red", "")) > 0:
         select_red = params_l["select_red"]
