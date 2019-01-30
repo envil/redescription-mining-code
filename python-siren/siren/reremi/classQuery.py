@@ -346,6 +346,8 @@ class Op(object):
     def __cmp__(self, other):
         if other is None:
             return 1
+        if type(other) is bool:
+            return self.isOr() == other
         else:
             return cmp(self.val, other.val)
 
@@ -1678,6 +1680,34 @@ class Query(object):
     @classmethod
     def hasPropWhat(tcl, what):
         return re.match(tcl.Pwhat_match, what) is not None
+
+    @classmethod
+    def pieceTogether(tcl, op, pieces, resort=True):
+        if len(pieces) == 0:
+            return tcl(0, [])
+        elif len(pieces) == 1:
+            return tcl(0, [pieces[0][1]])
+        
+        pp = dict(pieces)
+        max_len = max([len(k) for k in pp.keys()])
+        by_len = [[] for i in range(max_len+1)]
+        for k, l in pp.items():
+            by_len[len(k)].append(k)
+        if len(by_len) > 2: pdb.set_trace()
+        while len(by_len) > 1:
+            tmp = by_len.pop()
+            tmp.sort(key=lambda x: (x[-1] < 0, x[-1]))
+            for t in tmp:
+                if t[:-1] not in pp:
+                    pp[t[:-1]] = []
+                    by_len[-1].append(t[:-1])
+                pp[t[:-1]].append(pp.pop(t))
+        buk = pp[by_len[0][0]]
+        q = tcl(op, buk)
+        if resort:
+            q.doSort()
+        return q
+
     
     ### PROPS WHICH
     Pwhich_match = "([0-9q]*)"
@@ -1700,7 +1730,7 @@ class Query(object):
         return "-"
 
     
-    def __init__(self, OR=True, buk=None):
+    def __init__(self, OR=0, buk=None):
         self.op = Op(OR)
         if buk is not None:
             self.buk = buk
@@ -1737,12 +1767,16 @@ class Query(object):
             return 0
         return max(recurse_list(self.buk, function =lambda x, trace: len(trace), args = {"trace":[]}))
 
+    def getOp(self): 
+        return self.op
     def usesOr(self): # Does the query involve some disjunction?
         max_d = self.max_depth()
         return max_d > 1 or ( len(self) > 1  and self.op.isOr() )
-    def usesAnd(self): # Does the query involve some disjunction?
+    def usesAnd(self): # Does the query involve some conjunction?
         max_d = self.max_depth()
         return max_d > 1 or ( len(self) > 1  and not self.op.isOr() )
+    def getOuterOp(self):
+        return self.op
     
     def opBuk(self, nb): # get operator for bucket nb (need not exist yet).
         if nb % 2 == 0: # even bucket: query operator, else other
@@ -2262,18 +2296,23 @@ class Query(object):
     #### RESORT TODO FOR DEBUGGING
     def extend(self, op, literal, resort = True):
         if len(self) == 0:
-            self.buk.append(literal)
+            self.append(literal)
         elif len(self) == 1:
-            self.buk.append(literal)
+            self.append(literal)
+            if type(op) is bool:
+                op = Op(op)
             self.op = op
         elif op == self.op:
-            self.buk.append(literal)
+            self.append(literal)
         else:
             self.op = self.op.other()
             self.buk = [self.buk, literal]
         if resort:
             self.doSort()
 
+    def append(self, literal):
+        self.buk.append(literal)
+            
     def asDisLit(self):
         if not self.op.isOr():
             if self.op.isAnd():
@@ -2690,9 +2729,9 @@ if __name__ == '__main__':
         for line in f:
             if header is None:
                 header = line.strip().split("\t")
-            elif len(line.strip().split("\t")) >= 2:
-                resLHS = parser.parse(line.strip().split("\t")[0], "query", semantics=qsLHS)
-                resRHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsRHS)
+            elif len(line.strip().split("\t")) >= 3:
+                resLHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsLHS)
+                resRHS = parser.parse(line.strip().split("\t")[2], "query", semantics=qsRHS)
                 print "----------"
                 print line.strip()
                 print "ORG   :", resLHS, "---", resRHS

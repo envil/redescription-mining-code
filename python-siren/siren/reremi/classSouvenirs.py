@@ -1,3 +1,4 @@
+from classContent import ContentCollection
 from classQuery import *
 import pdb
 
@@ -5,16 +6,31 @@ class Souvenirs(object):
 
     format_index_pref = ':%(lengthL)i:%(lengthR)i:%(side)i:%(op)i:'
     format_index_suff = '%(buk)i:%(col)i:'
-    def __init__(self,  nAvailableMo, nAmnesic = False):
-        self.queriesList = []
+    def __init__(self, nAvailableMo=None, nAmnesic=False):
         self.indexes = {}
-        self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
-        self.amnesic = nAmnesic
+        if nAvailableMo is None:
+            self.active = False
+            self.availableMo = [set(), set()]
+            self.amnesic = True
+        else:
+            self.active = True
+            self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
+            self.amnesic = nAmnesic
+
+    def isActive(self):
+        return self.active
+
+    def getAvailableMo(self, side=None):
+        if side is None:
+            return [set(self.availableMo[0]), set(self.availableMo[1])]
+        return self.availableMo[side]
 
     def cutOffSide(self, side):
         self.availableMo[side] = set()
 
-    def nbCols(self, side):
+    def nbCols(self, side=None):
+        if side is None:
+            return [len(self.availableMo[0]), len(self.availableMo[1])]
         return len(self.availableMo[side])
 
     def isAmnesic(self):
@@ -22,29 +38,22 @@ class Souvenirs(object):
     
     def __str__(self):
         if self.isAmnesic():
-            return 'Amnesic, Availables :%i x %i' % (len(self.availableMo[0]), len(self.availableMo[1]))
+            x = 'amnesic'
         else :
-            return '%i souvenirs, %i indexes, Availables :%i x %i' \
-                   % (len(self.queriesList), len(self.indexes), len(self.availableMo[0]), len(self.availableMo[1]))
-    
-    def count(self):
-        return len(self.queriesList)
-    
-    def nextId(self):
-        return len(self.queriesList)
-        
+            x = '%i indexes' % len(self.indexes)
+        return "%s, Availables: %i + %i" % (x, len(self.availableMo[0]), len(self.availableMo[1]))
+                   
     def add(self, red):
         if len(red) > 2:
         # TODO CHECK: if ( red.nbAvailableCols() > 0 and len(red) > 2 ) or (red.fullLength(0) and red.fullLength(1)):
             #print 'ADDED SOUVENIR----' + red.queries[0].dispIds() + '<=>' + red.queries[1].dispIds()
     
-            ix = self.nextId()
+            ix = red.getUid()
             for indx in self.makeOwnIndexes(red):
                 if indx in self.indexes:
                     self.indexes[indx].add(ix)
                 else:
                     self.indexes[indx] = set([ix])
-            self.queriesList.append((red.queries[0], red.queries[1], red.score()))
         
     def makeIndexes(self, red, lengthL, lengthR, side, op):
         return red.queries[side].makeIndexes((self.format_index_pref % {'lengthL': lengthL, 'lengthR': lengthR, 'side': side, 'op': op}) + self.format_index_suff)
@@ -88,39 +97,6 @@ class Souvenirs(object):
         
         return cols_ext   
                 
-#     def extOneStepFromInitial(self, initialPair, side):
-#         cols_ext = set([initialPair[side+1]])
-#         nb_cols_own = 1
-#         if not self.amnesic:
-#             other_side = 1-side
-#             lengthL = 1+(1-side)
-#             lengthR = 1+side
-#             col_side = query_colX(initialPair[side+1], initialPair[side+3])
-#             col_other = query_colX(initialPair[other_side+1], initialPair[other_side+3])
-
-#             indexes_other_side = [(self.format_index_pref + self.format_index_suff) % {'lengthL': lengthL, 'lengthR': lengthR, 'side': other_side, 'op': -1, 'col': col_other, 'buk': 1} ]
-#             indexes_OR = [(self.format_index_pref + self.format_index_suff) % {'lengthL': lengthL, 'lengthR': lengthR, 'side': side, 'op': 1, 'col': col_side, 'buk': 1} ]
-#             indexes_AND = [(self.format_index_pref + self.format_index_suff) % {'lengthL': lengthL, 'lengthR': lengthR, 'side': side, 'op': 0, 'col': col_side, 'buk': 1} ]
-
-#             queries_ids_other_side = self.lookForQueries(indexes_other_side)
-#             if len(queries_ids_other_side ) > 0:
-#                 #pdb.set_trace()
-#                 queries_ids = self.lookForQueries(indexes_OR)
-#                 queries_ids |= self.lookForQueries(indexes_AND)
-#                 queries_ids &= queries_ids_other_side
-#                 if len(queries_ids) > 0:
-                    
-#                    #  print 'EXTENSIONS-%i-----%s--------' % (side, initialPair)
-# #                     for i in queries_ids:
-# #                         print self.queriesList[i][0].dispIds() + '<=>' + self.queriesList[i][1].dispIds()
-# #                     print '------------------------'
-                    
-#                     cols_ext = self.colsExtending(queries_ids, side) ## includes already used cols
-#             # if len(cols_ext) > 1 :
-# #                 print 'EXCLUDED-%i-------------' % side
-# #                 print cols_ext
-# #             print '------------------------'
-#         return cols_ext
     
     def initialAvailable(self, initialPairRed):
         return [self.availableMo[0] - self.extOneStep(initialPairRed, 0), \
@@ -130,7 +106,7 @@ class Souvenirs(object):
     def colsExtending(self, queries_ids, side):
         cols = set()
         for idr in queries_ids:
-            cols |= self.queriesList[idr][side].invCols()
+            cols |= self.getItem(idr).invColsSide(side)
         return cols  
 
     def lookForQueries(self, indexes_p):
@@ -149,9 +125,28 @@ class Souvenirs(object):
         else:
             return set()
         
-    def update(self, redList):
+    def updateSeen(self, redList):
         for red in redList:
             if not self.isAmnesic():
                 self.add(red)
 
+    def hasSeen(self, red):
+        lengthL = red.length(0)
+        lengthR = red.length(1)
+
+        indices = self.makeIndexes(red, lengthL, lengthR, 0, red.query(0).opBuk(0))
+        indices += self.makeIndexes(red, lengthL, lengthR, 1, red.query(1).opBuk(0))
+
+        matches = list(self.lookForQueries(indices))
+        seen = False
+        mi = 0
+        while not seen and mi < len(matches):
+            if self.getItem(matches[mi]).bothSidesIdentical(red):
+                seen = True
+            else:
+                mi += 1
+            
+        if not seen and not self.isAmnesic():
+            self.add(red)
+        return seen
         

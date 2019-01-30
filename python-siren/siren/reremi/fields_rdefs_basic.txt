@@ -39,6 +39,7 @@ X:len:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:perc:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:pval:	X=[wsplits]{test,learn}{active}[wcond]{cond}
 fieldlist	basic
+:rid:
 list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}

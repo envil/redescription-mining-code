@@ -14,7 +14,8 @@ class Redescription(WithEVals):
     # info_what_dets = {"queryLHS": "self.prepareQueryLHS",
     #                   "queryRHS": "self.prepareQueryRHS",
     #                   "queryCOND": "self.prepareQueryCOND"}
-    info_what = {"nbAvC": "self.nbAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
+    info_what = {"uid": "self.getUid()", "rid": "self.getShortId()",
+                 "nbAvC": "self.nbAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
                  "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()",
                  "isBasis": "self.isBasis()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
@@ -140,10 +141,9 @@ class Redescription(WithEVals):
         if (len(lsAnon[0]) + len(lsAnon[1])) > 0: ### NO anon, standard list of one-step extensions
             if (len(qsNoan[0]) + len(qsNoan[1])) == 0: ### only anon, need to start by mining pairs...
                 modr = -1
-                r = Redescription()
             else:
                 modr = 1
-                r = Redescription.fromQueriesPair(qsNoan, data)
+            r = Redescription.fromQueriesPair(qsNoan, data)
         return r, lsAnon, modr
     
     def typeId(self):
@@ -307,7 +307,7 @@ class Redescription(WithEVals):
     def updateAvailable(self, souvenirs):
         for side in [0, 1]:
             if self.lAvailableCols[side] is None:
-                self.lAvailableCols[side] =  set(souvenirs.availableMo[side])
+                self.lAvailableCols[side] =  set(souvenirs.getAvailableMo(side))
             self.lAvailableCols[side].difference_update(souvenirs.extOneStep(self, side))
     def restrictAvailable(self, side=None, org_available=None, still_available=None, not_available=None):
         if side is None:
@@ -589,7 +589,8 @@ class Redescription(WithEVals):
                 return {"sParts": self.getSupportsC()}
             elif rset_id in self.restricted_sets:
                 return self.restricted_sets[rset_id]
-            elif rset_id == "all" or rset_id == ACTIVE_RSET_ID:
+            # elif rset_id == "all" or rset_id == ACTIVE_RSET_ID:
+            else:
                 return {"sParts": self.supports()}
             return None
         # elif ACTIVE_RSET_ID in self.restricted_sets:

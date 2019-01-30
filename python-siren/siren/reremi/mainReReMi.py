@@ -4,6 +4,9 @@ import sys, re, os.path, datetime, glob
 import numpy
 import tempfile
 
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
 import codecs
 
 from classContent import Item, Container, BatchCollection
@@ -256,17 +259,59 @@ def outputResults(filenames, results, data=None, with_headers=True, mode="w", da
 def run(args):
     
     loaded = loadAll(args)
-    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
+    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
+    
     miner = instMiner(data, params, logger)
     try:
         miner.full_run()
     except KeyboardInterrupt:
-        miner.initial_pairs.saveToFile()
+        ## miner.initial_pairs.saveToFile()
         logger.printL(1, 'Stopped...', "log")
 
     outputResults(filenames, miner.rcollect.getItems("F"), data)
     logger.clockTac(0, None)
+
+
+    # ############################### PLOT TRACKS
+    # ecolors_map =  {"-": "#aaaaaa",
+    #                 "expand-greedy": "#00ff00", "expand-combine": "#00ff00", "improve": "#229922", 
+    #                 "cut": "#ff0000", "filter": "#ff8000", "satisfy": "#ff00ff"}
+    # ncolors_map =  {True: "#000000", False: "#ffffff"}
+
+    # dots_xy = {}
+    # tracks = miner.rcollect.getTracks()
+    # fig, ax = plt.subplots()
+    # for t in tracks:
+    #     for trg in t.get("trg", []):
+    #         if trg not in dots_xy:
+    #             dots_xy[trg] = make_dot(ax, trg, miner.rcollect, ncolors_map, dots_xy)
+    #         if "src" in t:
+    #             for src in t["src"]:
+    #                 if src not in dots_xy:
+    #                     dots_xy[src] = make_dot(ax, src, miner.rcollect, ncolors_map, dots_xy)
+    #                 plot_edge(ax, dots_xy[src], dots_xy[trg], ecolors_map[t["do"]])
+    #         else:
+    #             ax.plot(dots_xy[trg][0], dots_xy[trg][1], marker="o", mec="red", mfc="#aaaaaa", zorder=11)
+    # plt.show()
         
+def plot_edge(ax, xy_src, xy_trg, ecolor):
+    # plt.plot([xy_src[0], xy_trg[0]], [xy_src[1], xy_trg[1]], color=ecolor)
+
+    pth = PathPatch(Path([xy_src, (.05*xy_src[0]+.95*xy_trg[0], .5*xy_src[1]+.5*xy_trg[1]), xy_trg],
+                         [Path.MOVETO, Path.CURVE3, Path.CURVE3]), facecolor='none', lw=1, edgecolor=ecolor)
+    ax.add_patch(pth)
+
+def make_dot(ax, rid, rcollect, ncolors_map, dots_xy):
+    red = rcollect.getItem(rid)
+    if red is None:
+        pdb.set_trace()
+        return 0,0
+    inout = rid in rcollect.getIidsList("F")
+    y = red.getAcc()
+    x = rid
+    ax.plot(x, y, marker="o", mfc=ncolors_map[inout], zorder=10)
+    return x,y
+    
 ###############################
  # def run_filterRM(args):
     
@@ -533,12 +578,12 @@ def run_rnd(args):
             Dsub, sids, back, store = rf.makeupRndData(rnd_meth=rnd_meth, with_traits=with_traits, count_vname=count_vname, select_red=select_red, prec_all=prec_all)
             logger.printL(2, "STARTING Random series %s %d" % (rnd_meth, i), "log")
             logger.printL(2, Dsub, "log")
-
+                        
             miner = instMiner(Dsub, params, logger)
             try:
                 miner.full_run()
             except KeyboardInterrupt:
-                miner.initial_pairs.saveToFile()
+                ## miner.initial_pairs.saveToFile()
                 logger.printL(1, 'Stopped...', "log")
                 stop = True
                 

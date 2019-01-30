@@ -1502,9 +1502,9 @@ class Siren():
     ##### receiving results
     def OnPrintTracks(self, event):
         print self.dw.reds.tracksToStr()
-    def readyTracks(self, tracks):
+    def readyTracks(self, tracks, source):
         if len(tracks) > 0:            
-            self.dw.appendTracks(tracks)
+            self.dw.importTracks(tracks, source)
     def readyReds(self, wid, reds, tab):
         self.appendMinedReds(wid, reds)
 

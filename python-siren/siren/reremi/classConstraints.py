@@ -32,9 +32,10 @@ class Constraints(object):
     
     @classmethod
     def applyVarsMask(tcl, data, params):
-        return data.applyDisableMasks(tcl.getParamData(params, "mask_vars_LHS"),
-                                      tcl.getParamData(params, "mask_vars_RHS"),
-                                      tcl.getParamData(params, "mask_rows"))
+        if data is not None:
+            return data.applyDisableMasks(tcl.getParamData(params, "mask_vars_LHS"),
+                                        tcl.getParamData(params, "mask_vars_RHS"),
+                                        tcl.getParamData(params, "mask_rows"))
     
     special_cstrs = {}
 
@@ -113,6 +114,7 @@ class Constraints(object):
             self.ssetts = None
 
     def resetDataDependent(self, data, params):
+        self.applyVarsMask(data, params)
         self.resetDataDetails(data)
         self._pv.update(self.prepareValuesDataDependent(params))
                 

@@ -299,7 +299,10 @@ class StoredContainer(Container):
 from classConstraints import ActionsRegistry
 class ContentCollection(object):
 
+    name_class = "Content"
     container_class = Container
+    def nbTracks(self):
+        return -1
     
     def __init__(self, items=None, lists=None):
         self.items = ICDict()                
@@ -336,8 +339,11 @@ class ContentCollection(object):
             for ll in lls:
                 self.addItem(ll, lid)
 
+    def getClassName(self):
+        return "%s collection" % self.name_class
     def __str__(self):
-        return "Collection: %d items in %d/%d lists" % (self.nbItems(), self.nbDispLists(), self.nbTotLists())
+        return "%s: %d items in %d/%d lists" % (self.getClassName(), self.nbItems(), self.nbDispLists(), self.nbTotLists())
+    ### hex(id(self))
                 
     def dispDetails(self):
         print "Items: ", self.items
@@ -726,20 +732,36 @@ class ContentCollection(object):
         return info
 
 class TrackedContentCollection(ContentCollection):
-
+    
+    name_class = "Tracked content"
     def __init__(self):
         self.last_t = 0
         self.stored_tracks = []
+        self.track_on = True
         ContentCollection.__init__(self)
 
+    def turnTrackOff(self):
+        self.track_on = False
+    def turnTrackOn(self):
+        self.track_on = True
+    def isTrackOn(self):
+        return self.track_on
+        
     def getLatestTracks(self):
         t = self.last_t
         self.last_t = len(self.stored_tracks)
         return self.stored_tracks[t:]
-        
+    
     def getTracks(self):
         return self.stored_tracks
-
+    def importTracks(self, tracks, source=None):        
+        for t in tracks:
+            if "@" not in t:
+                t["@"] = source
+                self.stored_tracks.append(t)
+            else:
+                pdb.set_trace()
+    
     def clearTracks(self):
         del self.stored_tracks[:]
 
@@ -747,7 +769,8 @@ class TrackedContentCollection(ContentCollection):
         self.stored_tracks.extend(tracks)
 
     def addTrack(self, track):
-        self.stored_tracks.append(track)
+        if self.isTrackOn():
+            self.stored_tracks.append(track)
 
     def tracksToStr(self):
         xps = "---- TRACKS:"
@@ -762,7 +785,7 @@ class TrackedContentCollection(ContentCollection):
         return len(self.stored_tracks)
         
     def __str__(self):
-        return "Tracked %s, %d tracks" % ( ContentCollection.__str__(self), self.nbTracks() )
+        return "%s, %d tracks" % ( ContentCollection.__str__(self), self.nbTracks() )
      
     def dispDetails(self):
         ContentCollection.dispDetails(self)
@@ -775,6 +798,7 @@ class TrackedContentCollection(ContentCollection):
         
 class StoredContentCollection(TrackedContentCollection):
 
+    name_class = "Stored content"
     container_class = StoredContainer
     
     def __init__(self):
@@ -926,7 +950,8 @@ class StoredContentCollection(TrackedContentCollection):
         return changed 
     
 class BatchCollection(TrackedContentCollection):
-
+    
+    name_class = "Batch"
     actions_methods = {}
     
     def prepareIids(self, ids=None):
@@ -1209,8 +1234,8 @@ class BatchCollection(TrackedContentCollection):
         return [self.getItem(iid) for iid in self.selected(actions_parameters, ids, complement, new_ids)]
 
     
-class StoredRCollection(StoredContentCollection, BatchCollection): pass
-
+class StoredRCollection(StoredContentCollection, BatchCollection):
+    name_class = "StoredR content"
     
     # def __init__(self):
     #     StoredContentCollection.__init__(self)

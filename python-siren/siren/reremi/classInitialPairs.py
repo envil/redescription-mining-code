@@ -66,6 +66,7 @@ class InitialPairs(object):
         return self.save_filename
 
     def saveToFile(self): # TODO: also save condition
+        pdb.set_trace()
         if self.save_filename is not None and not self.saved:
             try:
                 with open(self.save_filename, "w") as f:
@@ -101,6 +102,33 @@ class InitialPairs(object):
                                 self.add(l0, l1, {"score": -1, 0: l0.colId(), 1: l1.colId()})
             loaded = True
         return loaded, done
+
+    def loadFromLogFile(self, data=None):
+        loaded = 0
+
+        log_patt = "\[\[log@[0-9]+\s+\]\]\s+"
+        ip_patt = log_patt+"Score:(?P<score>\d\.\d+) (?P<LHS>.*) <=> (?P<RHS>.*) -"
+        end_patt = log_patt+"Found \d+ pairs,"
+        
+        done = set()
+        if self.save_filename is not None and os.path.isfile(self.save_filename):
+            with open(self.save_filename) as f:
+                done = None
+                for line in f:
+                    if re.match(end_patt, line):
+                        return loaded > 0, done
+                    tmp = re.match(ip_patt, line)
+                    if tmp is not None:
+                        LHS, RHS = (tmp.group("LHS"), tmp.group("RHS"))
+                        q0 = Query.parse(LHS)
+                        q1 = Query.parse(RHS)
+                        if len(q0) == 1 and len(q1) == 1:
+                            l0 = q0.getBukElemAt([0])
+                            l1 = q1.getBukElemAt([0])
+                            if data is None or (data.col(0, l0.colId()).isEnabled() and data.col(1, l1.colId()).isEnabled()):
+                                self.add(l0, l1, {"score": float(tmp.group("score")), 0: l0.colId(), 1: l1.colId()})
+                                loaded += 1
+        return loaded > 0, done
     
     def reset(self):
         self.list_out = []
@@ -176,6 +204,19 @@ class InitialPairs(object):
                 raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
 
             return red
+
+    def getAll(self, data, min_score=0, cond=None, check_score=True):
+        reds = []
+        for nid, dt in self.pairs_details.items():
+            if dt["score"] >= min_score:
+                pair = self.pairs_store[nid]
+                red = Redescription.fromInitialPair(pair, data, dt)
+                if check_score and (red.score() - dt["score"])**2 > 0.0001:
+                    raise ExtensionError("[in InitialPairs.get]\nexpected score=%s\t~> %s" % (dt["score"], red))
+                if check_score and red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
+                    raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
+                reds.append(red)
+        return reds
         
     def getLatestDetails(self):
         nid = self.list_out[-1]

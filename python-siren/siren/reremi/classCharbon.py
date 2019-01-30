@@ -1,7 +1,10 @@
+from classData import Data
 from classCol import ColM
-from classQuery import Literal
+from classQuery import  *
 from classRedescription import  Redescription
 from classSParts import tool_ratio
+from classExtension import ExtensionComb
+from classConstraints import Constraints
 
 import numpy
 import pdb
@@ -54,6 +57,113 @@ class CharbonGreedy(Charbon):
 
     def offset_ratio(self, num, den):
         return tool_ratio(num+self.offsets[0], den+self.offsets[1])
+
+    def getCombinedCands(self, ext_lits, common, reds, cols):
+        ### basic check that the queries are compatible,
+        ### same side, same neg for all common literals
+        compatible = len(common[0]) == len(common[1]) and all([(common[0][i][0] == common[1][i][0]) and (common[0][i][2].isNeg() == common[1][i][2].isNeg()) for i in range(len(common[0]))])
+
+        ext_side = ext_lits[1][0]
+        currentRStatus = Constraints.getStatusRed(reds[0], ext_side)
+        cand_ops = self.constraints.getCstr("allw_ops", side=ext_side, currentRStatus=currentRStatus)
+
+        ### in maps, True stands for "OR", "disjunction", "union"
+        ###          False stands for "AND", "conjunction", "intersection"
+        #### allowing "mixed-combinations" means trying conjunctive extension with union of literals' ranges and vice-versa (where relevant)
+        ext_elems = {} ### conj-inter, disj-union, disj-inter, conj-union
+        ext_op0 = reds[0].query(ext_side).getOuterOp()
+        ext_op1 = reds[1].query(ext_side).getOuterOp()
+        ext_ops_inds = []
+        if ext_lits[0][0] != ext_side or ext_op1 == ext_op0:
+            ### extension elements are not on the same side, or operators are equal (possibly not defined)
+            if ext_op1.isSet():
+                if ext_op1.isOr() in cand_ops:
+                    ext_ops_inds = [(ext_op1.isOr(), (-1,))]
+            else:
+                ext_ops_inds = [(op, (-1,)) for op in cand_ops]                
+        else:
+            ### on same side, different operators
+            if ext_op0.isSet():
+                if ext_op1.isSet(): ### both ops are set, but different
+                    if ext_op1.isOr() in cand_ops:
+                        ext_ops_inds.append((ext_op1.isOr(), (None,)))
+                else:
+                    op = ext_op0.isOr()
+                    if op in cand_ops:
+                        ext_ops_inds.append((op, (-1,)))
+                    op = not op
+                    if op in cand_ops:
+                        ext_ops_inds.append((op, (None,)))
+
+            elif ext_op1.isOr() in cand_ops:
+                ext_ops_inds.append((ext_op1.isOr(), (-1,)))
+
+        for ext_op, ind in ext_ops_inds:
+            ext_elems[(ext_op, ext_op)] = {"ind": ind, "lits": []}
+            if self.constraints.getCstr("mixed_combinations"):
+                ext_elems[(ext_op, not ext_op)] = {"ind": ind, "lits": []}
+                
+        if len(ext_elems) == 0:
+            return []
+                
+        same_uandi = True
+        for cci, col in enumerate(cols):
+            cid, side, tid = col.getId(), col.getSide(), col.typeId()
+
+            lA, lB = common[0][cci][-1], common[1][cci][-1]
+            lARng = lA.valRange()
+            lBRng = lB.valRange()
+
+            lit = {True: None, False: None}
+            if Data.isTypeId(tid, "Numerical"):
+                if lARng[0] == lBRng[0] and lARng[1] == lBRng[1]:
+                    lit[False] = NumTerm(cid, lARng[0], lARng[1])
+                    lit[True] = NumTerm(cid, lARng[0], lARng[1])
+                else:
+                    same_uandi = False
+                    interv = [numpy.maximum(lARng[0], lBRng[0]), numpy.minimum(lARng[1], lBRng[1])]
+                    if interv[0] <= interv[1]:
+                        lit[False] = NumTerm(cid, interv[0], interv[1])
+                    univ = [numpy.minimum(lARng[0], lBRng[0]), numpy.maximum(lARng[1], lBRng[1])]
+                    if univ[0] > col.getMin() or univ[1] < col.getMax():
+                        lit[True] = NumTerm(cid, univ[0], univ[1])
+            elif Data.isTypeId(tid, "Categorical"):
+                if lARng == lBRng:
+                    lit[False] = CatTerm(cid, set(lARng))
+                    lit[True] = CatTerm(cid, set(lARng))
+                else:
+                    same_uandi = False
+                    interv = set(lARng).intersection(lBRng)
+                    if len(interv) > 0:
+                        lit[False] = CatTerm(cid, interv)
+                    univ = set(lARng).union(lBRng)
+                    if len(univ) < col.nbCats():
+                        lit[True] = CatTerm(cid, univ)
+            else:
+                lit[False] = BoolTerm(cid)
+                lit[True] = BoolTerm(cid)
+
+            for k in ext_elems.keys():
+                if ext_elems[k]["lits"] is not None:                                        
+                    if lit[k[1]] is not None:
+                        ext_elems[k]["lits"].append((common[0][cci][0], common[0][cci][1], Literal(lA.isNeg(), lit[k[1]])))
+                    else:
+                        ext_elems[k]["lits"] = None
+                        
+            if all([v["lits"] is None for v in ext_elems.values()]):
+                return []
+
+        if same_uandi: ### unions and intersections of literals' ranges are all same, no need to try mixed           
+            ext_elems.pop((True, False), None)
+            ext_elems.pop((False, True), None)
+
+        cands = []
+        for k, ext_elem in ext_elems.items():
+            if ext_elem["lits"] is not None:
+                lits = ext_elem["lits"]+[(ext_lits[0][0], ext_lits[0][1], ext_lits[0][2].copy()),
+                                        (ext_lits[1][0], ext_elem["ind"], ext_lits[1][2].copy())]               
+                cands.append(ExtensionComb(self.constraints.getSSetts(), reds[0], lits, k[0], 2*(k[0]==k[1])+k[0]))
+        return cands
 
     
 class CharbonTree(Charbon):

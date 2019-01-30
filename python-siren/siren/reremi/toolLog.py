@@ -8,7 +8,7 @@ class Log(object):
 
     verbs = {"std": {"*": 1, "progress":0, "result":0, "error":0, "tracks":0},
              "inter" : {"log":1, "error":0, "status":1, "time":0, "progress":2, "result":1, "tracks": 1},
-             "quiet": {"*":1,  "error":1, "status":0, "result":0, "progress":0},
+             "quiet": {"*":1, "error":1, "status":0, "result":0, "progress":0},
              "error": {"error":1},
              "shut": {}}
     
@@ -88,14 +88,14 @@ class Log(object):
     ####### END CLOCK
         
     ####### THE PROGRESS PART
-    def initProgressFull(self, constraints, souvenirs, explore_list=None, level=-1, id=None):
+    def initProgressFull(self, constraints, explore_list=None, nbCols=[0,0], level=-1, id=None):
         if explore_list is not None:
             self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
         else:
             self.progress_ss["pairs_gen"] = 0
         self.progress_ss["cand_var"] = 1
-        self.progress_ss["cand_side"] = [souvenirs.nbCols(0)*self.progress_ss["cand_var"],
-                                         souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
+        self.progress_ss["cand_side"] = [nbCols[0]*self.progress_ss["cand_var"],
+                                         nbCols[1]*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
         self.progress_ss["expansion"] = (constraints.getCstr("max_var", side=0)+constraints.getCstr("max_var", side=0)-2)*2*self.progress_ss["generation"]
         self.progress_ss["total"] = self.progress_ss["pairs_gen"] + constraints.getCstr("max_red")*self.progress_ss["expansion"]
@@ -103,10 +103,10 @@ class Log(object):
         if level > -1:
             self.printL(level, self.getProgress(), 'progress', id)
 
-    def initProgressPart(self, constraints, souvenirs, reds, level=-1, id=None):
+    def initProgressPart(self, constraints, reds, nbCols=[0,0], level=-1, id=None):
         self.progress_ss["cand_var"] = 1
-        self.progress_ss["cand_side"] = [souvenirs.nbCols(0)*self.progress_ss["cand_var"],
-                                         souvenirs.nbCols(1)*self.progress_ss["cand_var"]]
+        self.progress_ss["cand_side"] = [nbCols[0]*self.progress_ss["cand_var"],
+                                         nbCols[1]*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
         self.progress_ss["expansion"] = (constraints.getCstr("max_var", side=0)-min([constraints.getCstr("max_var", side=0)]+[len(r.queries[0]) for r in reds])+
                                          constraints.getCstr("max_var", side=1)-min([constraints.getCstr("max_var", side=1)]+[len(r.queries[1]) for r in reds]))*self.progress_ss["generation"]
@@ -168,7 +168,7 @@ class Log(object):
                 tmp_dest = sys.stderr
             else:
                 try:
-                    tmp_dest = open(output, 'a')
+                    tmp_dest = open(output, 'w')
                 except IOError:
                     return
         else:

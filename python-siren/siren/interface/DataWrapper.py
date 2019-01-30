@@ -358,8 +358,8 @@ class DataWrapper(object):
                 self.addReloadSwitchList(trg_lid, "r")
         return trg_lid, iids, newl
 
-    def appendTracks(self, tracks):
-        self.reds.appendTracks(tracks)
+    def importTracks(self, tracks, source=None):
+        self.reds.importTracks(tracks, source)
     
     def appendRedsToSrc(self, reds, src, recompute=True, set_changed=None):
         iids = []

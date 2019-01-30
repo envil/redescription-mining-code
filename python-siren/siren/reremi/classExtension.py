@@ -220,58 +220,50 @@ class Extension(object):
 
 class ExtensionComb(Extension):
 
-    def __init__(self, ssetts, side, op, l, rs, pos=0):
+    def __init__(self, ssetts, red, lits, op=None, pos=0):
         ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
         self.ssetts = ssetts
+        self.pos = pos
         self.condition = None
         self.adv = None
         self.clp = None
+        self.org_qs = [red.query(0).copy(), red.query(1).copy()]
+        self.exts = []
+        for lit in lits:
+            if lit[1][0] == -1 or lit[1][0] is None:
+                #### side, pos, literal
+                self.exts.append(lit)
+            else:
+                self.org_qs[lit[0]].setBukElemAt(lit[-1], lit[1])
+        self.op = op
+        if len(self.exts) == 1:
+            self.side, _, self.literal = self.exts[0]
         self.red = None
-        self.rs = rs
-        self.side, self.op, self.literal = (side, op, l)
-        self.pos = pos
-
-    def replaceBetter(self, variants):
-        replaced = None
-        for vi, variant in enumerate(variants):
-            if variant.getUid() != self.red.getUid() and variant.getAcc() > self.red.getAcc():
-                rs = variant.query(self.side).getBukElemAt(())
-                if len(rs) > 1:
-                    replaced = vi
-                    self.rs = rs               
-                    self.literal = variant.query(1-self.side).getBukElemAt((0,))
-                    self.red = variant               
-                else:
-                    pdb.set_trace()
-        if replaced is not None:
-            self.clearDets()
-        return replaced
+                
+    def replaceBetter(self, variant):
+        self.red = variant               
+        self.clearDets()
 
     def reval(self, red, data):
-        if data is not None:
+        if data is not None and len(self.exts) == 1:
             self.clearDets()
             new_red = self.kid(red, data)
+            cmp_red = self.prepareRed(data, extended=False)
 
-            qs = [Query(buk=[self.literal]),
-                Query(self.op, self.rs[:-1])]
-            cmp_red = Redescription(qs[1-self.side], qs[self.side])
-            cmp_red.recompute(data)            
+            #### side, pos, literal
+            side1, ind1, lit1 = self.exts[0]
+            supp = data.supp(side1, lit1)
 
-            supp = data.supp(self.side, self.rs[-1])
-            suppX = data.supp(self.side, self.rs[0])            
             supports = cmp_red.supports()
             lparts = supports.lparts()
             lin = supports.lpartsInterX(supp)
-            self.setClp([lin, lparts], self.rs[-1].isNeg())
+            self.setClp([lin, lparts], lit1.isNeg())
 
             acc, dU, dI = (new_red.getAcc(), cmp_red.getLenU() - new_red.getLenU(), cmp_red.getLenI() - new_red.getLenI())
             if self.op: ### DISJ
                 self.adv = [acc, -dU, -dI, -dI]
             else:
                 self.adv = [acc, dU, dI, dI]
-                ### self.adv is a tuple: acc, varBlue, varRed, contrib, fixBlue, fixRed
-            # print "----- score", self.red
-            # print "lens", len(supp), len(suppX), len(supp.intersection(suppX))
                 
     def getPos(self):
         if self.isValid():
@@ -282,37 +274,50 @@ class ExtensionComb(Extension):
         self.clp = None
     def kid(self, red, data):
         if self.red is None:
-            qs = [Query(buk=[self.literal]),
-                Query(self.op, self.rs)]
-            new_red = Redescription(qs[1-self.side], qs[self.side])
-            new_red.recompute(data)            
-            self.red = new_red
+            self.red = self.prepareRed(data)
         return self.red
 
+    def prepareRed(self, data, extended=True):
+        if extended:
+            ext_qs = [self.org_qs[0].copy(), self.org_qs[1].copy()]
+            for ext in self.exts:
+                ext_qs[ext[0]].extend(self.op, ext[-1], resort=False)
+            red = Redescription(ext_qs[0], ext_qs[1])
+            red.recompute(data)
+            return red
+        else:
+            red = Redescription(self.org_qs[0], self.org_qs[1])
+            red.recompute(data)
+            return red
+
+
     def __str__(self):
-        tmp = "Empty extension"
+        qs_str = [self.org_qs[0].disp(), self.org_qs[1].disp()]
+        for ext in self.exts:
+            qs_str[ext[0]] += "+ %s %s" % (ext[1], ext[-1])
+        tmp = "Ext combination:\n%s\t%s" % (qs_str[0], qs_str[1])
         if self.isValid():
-            tmp = ("Extension:\t (%d, %s, %s) -> %f CLP:%s ADV:%s" % (self.getSide(), Op(self.getOp()), self.dispLiteral(), self.getAcc(), str(self.clp), str(self.adv)))
-            if self.hasCondition():
-                tmp += "\nCOND_%s" % self.getCondition()
+            tmp += "\n\t\tACC:%f CLP:%s ADV:%s" % (self.getAcc(), str(self.clp), str(self.adv))
+        if self.hasCondition():
+            tmp += "\n\t\tCOND_%s" % self.getCondition()
         return tmp 
 
     def disp(self, base_acc=None, N=0, prs=None, coeffs=None):
-        strPieces = ["", "", ""]
         score_of = self
+        stats = ""
         if self.isValid():
-            strPieces[self.getSide()] = "%s\t%s" % (Op(self.getOp()), " ".join(["%s" % l for l in self.rs]))
-            strPieces[1-self.getSide()] = "%s" % self.dispLiteral()
-
             if base_acc is None:
-                strPieces[-1] = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
+                stats = '----\t%1.7f\t----\t----\t% 5i\t% 5i' \
                                 % (score_of.getAcc(), score_of.getVarBlue(), score_of.getVarRed())
             else:
-                strPieces[-1] = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
+                stats = '\t\t%+1.7f \t%1.7f \t%1.7f \t%1.7f\t% 5i\t% 5i' \
                                 % (score_of.score(base_acc, N, prs, coeffs), score_of.getAcc(), \
                                    score_of.pValQuery(N, prs), score_of.pValRed(N, prs) , score_of.getVarBlue(), score_of.getVarRed())
 
-        return '%25s <==> %25s %s' % tuple(strPieces) # + "\n\tCLP:%s" % str(self.clp)
+        qs_str = [self.org_qs[0].disp(), self.org_qs[1].disp()]
+        for ext in self.exts:
+            qs_str[ext[0]] += "+ %s %s" % (ext[1], ext[-1])
+        return '%25s <==> %25s %s' % (qs_str[0], qs_str[1], stats)
        
 class ExtensionsBatch(object):
     def __init__(self, N=0, constraints=None, current=None):
@@ -416,9 +421,9 @@ class ExtensionsBatch(object):
 
 class ExtensionsCombBatch(ExtensionsBatch):
     def getCurrentR(self):
-        return self.current[-1]
+        return self.current[0]
     def setCurrent(self, current):
-        self.current = sorted(current, key=lambda x: x.getAcc())
+        self.current = current
 
     def __str__(self):
         dsp  = 'Extensions Comb Batch:\n' #(min_imprv=%f, max_var=%d:%d)\n' % (self.min_impr, self.max_var[0], self.max_var[1]) 
@@ -445,8 +450,10 @@ class ExtPairsBatch(object):
             self.min_pairscore = constraints.getCstr("min_pairscore")
         else:
             self.min_pairscore = 0
+            
+    def getCurrentR(self):
+        return self.current
 
-        
     def scoreCand(self, cand):
         if type(cand) is dict:
             return cand.get("score", -1.)
@@ -486,9 +493,12 @@ class ExtPairsBatch(object):
 
 
 def newExtensionsBatch(N=0, constraints=None, current=None):
-    if type(current) is list:
-        return ExtensionsCombBatch(N, constraints, current)
-    elif current is not None and len(current) == 0:
-        return ExtPairsBatch(N, constraints, current)
-    else:
+    if current is None:
         return ExtensionsBatch(N, constraints, current)
+    elif isinstance(current, Redescription):
+        if len(current) == 0: ### empty redescription, eg. starting from anon lits -> actually yields pairs
+            return ExtPairsBatch(N, constraints, current)
+        else:
+            return ExtensionsBatch(N, constraints, current)
+    else:
+        return ExtensionsCombBatch(N, constraints, current)

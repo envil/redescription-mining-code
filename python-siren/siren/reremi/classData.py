@@ -773,7 +773,7 @@ class Data(ContentCollection):
         miss_str = ""
         if self.hasMissing():
             miss_str = " (some entries missing)"
-        return "%s x %s data%s" % (self.rowsInfo(), self.colsInfo(), miss_str)
+        return "Data: %s x %s%s" % (self.rowsInfo(), self.colsInfo(), miss_str)
         # if self.nbRowsEnabled() == self.nbRows() and \
         #   self.nbColsEnabled(0) == self.nbCols(0) and self.nbColsEnabled(1) == self.nbCols(1):
         #     return "%i x %i+%i data" % ( self.nbRows(), self.nbCols(0), self.nbCols(1))

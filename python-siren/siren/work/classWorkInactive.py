@@ -155,8 +155,8 @@ class WorkInactive:
     def sendTracks(self, source, message, updates, parent):
         if source not in self.workers or parent is None:
             return        
-        latest_tracks = self.mapTracks(message, source)
-        parent.readyTracks(latest_tracks)
+        latest_tracks = self.mapTracks(message)
+        parent.readyTracks(latest_tracks, source)
 
     def sendResult(self, source, message, updates, parent):
         if source not in self.workers:
@@ -184,10 +184,6 @@ class WorkInactive:
     def mapRid(self, red, source):
         return red
 
-    def mapTracks(self, in_tracks, source):
-        tracks = []
-        for t in in_tracks:
-            tracks.append({"@": source})
-            tracks[-1].update(t)
-        return tracks
+    def mapTracks(self, in_tracks):
+        return in_tracks
 #### SHARED METHODS END

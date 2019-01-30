@@ -37,15 +37,25 @@ class DummyLog(object):
     def logResults(self, rcollect, lid, pid):
         pass
     
-class RCollection(BatchCollection):
-
-    def __init__(self):
+class RCollection(BatchCollection, Souvenirs):
+    name_class = "R"
+    def __init__(self, nAvailableMo=None, nAmnesic=False):
+        Souvenirs.__init__(self, nAvailableMo, nAmnesic)
         BatchCollection.__init__(self)
         ### prepare buffer list
         self.newList(iid="F")
         self.newList(iid="P")
         self.newList(iid="W")
 
+    def toShare(self):
+        return RCollection(self.getAvailableMo(), self.isAmnesic())
+        
+    def __str__(self):
+        svrs = ""
+        if self.isActive():
+            svrs = ", " + Souvenirs.__str__(self)
+        return "RCollection: %d items in W=%d/P=%d/F=%d, %d tracks%s" % (self.nbItems(), self.getLen("W"), self.getLen("P"), self.getLen("F"), self.nbTracks(), svrs)
+        
     def resetWorking(self, reds=[]):
         self.clearList("W")
         for red in reds:
@@ -59,15 +69,24 @@ class RCollection(BatchCollection):
         self.clearList("F")
         self.resetPartial(reds)
 
+def dispTracksEnd(logger, rcollect, pid):
+    logger.printL(1, "=========================================", "log", pid)
+    logger.printL(1, rcollect.tracksToStr(), "log", pid)
+    logger.printL(1, "----- REDS:", "log", pid)
+    fids = rcollect.getIidsList("F")
+    for i in rcollect.getItems():
+        prefix = "+" if i.getUid() in fids else "-"
+        logger.printL(1, "%s %s" % (prefix, i), "log", pid)
+
+        
         
 class ExpMiner(object):
-    def __init__(self, ppid, count, data, charbon, constraints, souvenirs, logger=None, question_live=None):
+    def __init__(self, ppid, count, data, charbon, constraints, logger=None, question_live=None):
         self.charbon = charbon
         self.data = data
         self.count = count
         self.ppid = ppid
         self.constraints = constraints
-        self.souvenirs = souvenirs
         self.upSouvenirs = False
         self.question_live = question_live
         if logger is None:
@@ -138,7 +157,7 @@ class ExpMiner(object):
                 if first_round:
                     self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
                 ### To know whether some of its extensions were found already
-                red.updateAvailable(self.souvenirs)
+                red.updateAvailable(rcollect)
 
                 if red.nbAvailableCols() > 0:
                     exts, basis_red, modr = red.prepareExtElems(self.data, self.data.isSingleD())
@@ -178,7 +197,7 @@ class ExpMiner(object):
                         
                     ## SOUVENIRS
                     if self.upSouvenirs:
-                        self.souvenirs.update(kids)
+                        rcollect.updateSeen(kids)
 
                     ### parent has been used remove availables
                     basis_red.removeAvailables()
@@ -188,7 +207,9 @@ class ExpMiner(object):
 
             first_round = False
             self.logger.printL(4, "Generation %s.%d expanded" % (self.count, len(red)), 'status', self.ppid)
+            rcollect.turnTrackOff()
             nextge_keys = rcollect.selected(self.constraints.getActionsList("nextge"), ids="W", verbosity=8)
+            rcollect.turnTrackOn()
 
             nextge = [rcollect.getItem(i) for i in nextge_keys]
             for iid in rcollect.getIids():
@@ -218,18 +239,17 @@ class ExpMiner(object):
 
             elems = [(x[0], x[-1].colId(), x[-1].isNeg()) for x in inds_lits[-1]]
             for i in range(len(elems)):
-                k = tuple(elems[:i]+elems[i+1:])
-                if k not in map_v:
-                    map_v[k] = []
-                map_v[k].append((ii, i))
+                if len(inds_lits[-1][i][1]) == 1: ### only literals in outer-most buk
+                    k = tuple(elems[:i]+elems[i+1:])
+                    if k not in map_v:
+                        map_v[k] = []
+                    map_v[k].append((ii, i))
 
+        ### pdb.set_trace()
+        print "NEXTGEN", len(nextge), len([ni for ni, n in enumerate(nextge) if n.query(0).usesOr()]), len([ni for ni, n in enumerate(nextge) if n.query(1).usesOr()])
         for ii, (k, rs) in enumerate(map_v.items()):
             self.logger.printL(4, "Combining on basis %d/%d (%s)" % (ii+1, len(map_v), k), 'status', self.ppid)
-            # if ii > 2:
-            #     continue
-            if len(k) != 1:
-                continue
-            (side, cid, nn) = k[0]
+
             ## for iA in range(min(5, len(rs))):
             for iA in range(len(rs)):
                 for iB in range(iA):
@@ -238,40 +258,54 @@ class ExpMiner(object):
                     riA, liA = rs[iA]
                     riB, liB = rs[iB]
 
-                    litsA = inds_lits[riA][:liA]+inds_lits[riA][liA+1:]
-                    litsB = inds_lits[riB][:liB]+inds_lits[riB][liB+1:]
+                    if riA == riB or inds_lits[riA][liA][-1].colId() == inds_lits[riB][liB][-1].colId():
+                        ### if elements to combine are actually the same...
+                        continue
 
-                    if riA == riB or len(litsA) != 1 or len(litsB) != 1 or inds_lits[riA][liA][-1].colId() == inds_lits[riB][liB][-1].colId(): continue
+                    if nextge[riB].getAcc() > nextge[riA].getAcc():
+                        cmb_data = { "ri": (riB, riA), "li": (liB, liA), "rid": (nextge[riB].getUid(), nextge[riA].getUid()),
+                                     "red": (nextge[riB], nextge[riA]), "lit": (inds_lits[riB][liB], inds_lits[riA][liA]),
+                                     "common": (inds_lits[riB][:liB]+inds_lits[riB][liB+1:],
+                                                inds_lits[riA][:liA]+inds_lits[riA][liA+1:]) }
+                    else:
+                        cmb_data = { "ri": (riA, riB), "li": (liA, liB), "rid": (nextge[riA].getUid(), nextge[riB].getUid()),
+                                     "red": (nextge[riA], nextge[riB]), "lit": (inds_lits[riA][liA], inds_lits[riB][liB]),
+                                     "common": (inds_lits[riA][:liA]+inds_lits[riA][liA+1:],
+                                                inds_lits[riB][:liB]+inds_lits[riB][liB+1:]) }
 
-                    A = (nextge[riA], litsA[0][-1], inds_lits[riA][liA][-1])
-                    B = (nextge[riB], litsB[0][-1], inds_lits[riB][liB][-1])
-
-                    if B[0].getAcc() > A[0].getAcc():
-                        A, B = B, A
-
-                    bests = newExtensionsBatch(self.data.nbRows(), self.constraints, [B[0], A[0]])
-                    cands = charbon.getCombinedPairs([A[1], B[1]], [A[2], B[2]], self.data.col(side, cid))
-                    rawkid_ids = []
-                    for cand in cands:
-                        if not self.questionLive():
-                            return rcollect
-
-                        r = cand.kid(A[0], self.data)
-                        if r.getAcc() >= self.constraints.getCstr("min_itm_acc"):
-                            rawkid_ids.append(r.getUid())
-                            nrids = self.improveRedescription(r, rcollect, charbon, try_shorten=False)
-                            cand.replaceBetter([rcollect.getItem(sid) for sid in rcollect.selected(self.constraints.getActionsList("partial"), ids=nrids)])
-
-                    if len(rawkid_ids) > 0:
-                        track = {"do": "expand-combine", "trg": rawkid_ids, "src": [A[0].getUid(), B[0].getUid()], "out": "W"}
-                        rcollect.addTrack(track)
-                        
+                    cmb_data["cols"] = [self.data.col(side, cid) for (side, cid, _) in k]
+                    
+                    cands = charbon.getCombinedCands(cmb_data["lit"], cmb_data["common"], cmb_data["red"], cmb_data["cols"])
                     if len(cands) > 0:
+                        bests = newExtensionsBatch(self.data.nbRows(), self.constraints, cmb_data["red"])
+                        rawkid_ids = []
+                        for cand in cands:
+                            if not self.questionLive():
+                                return rcollect
+
+                            r = cand.kid(cmb_data["red"][0], self.data)                            
+                            if r.getAcc() >= self.constraints.getCstr("min_itm_acc") and not rcollect.hasSeen(r):
+                                rcollect.addItem(r)
+                                rawkid_ids.append(r.getUid())
+                                if self.constraints.getCstr("optimize_combinations"):
+                                    nrids = self.improveRedescription(r, rcollect, charbon, try_shorten=False)
+                                    variants = [rcollect.getItem(sid) for sid in rcollect.selected(self.constraints.getActionsList("partial"), ids=nrids)]
+                                    variants.sort(key=lambda x: x.getAcc())
+                                    if len(variants) > 0 and variants[-1].getUid() != r.getUid() and not rcollect.hasSeen(variants[-1]):
+                                        self.logger.printL(4, "Found improvement\n\t>%s\n\t<%s" % (r, variants[-1]), 'log', self.ppid)
+                                        cand.replaceBetter(variants[-1])
+                                    else:
+                                        self.logger.printL(4, "No improvement\n\t=%s" % r, 'log', self.ppid)
+                                
+                        if len(rawkid_ids) > 0:
+                            track = {"do": "expand-combine", "trg": rawkid_ids, "src": cmb_data["rid"], "out": "W"}
+                            rcollect.addTrack(track)
+                        
                         bests.update(cands, self.data)
                         if self.logger.verbosity >= 4:
                             self.logger.printL(4, bests, "log", self.ppid)
 
-                        k_ids = [k.getUid() for k in bests.improvingKids(self.data)]
+                        k_ids = [kk.getUid() for kk in bests.improvingKids(self.data)]
                         rcollect.selected(self.constraints.getActionsList("partial"), ids=k_ids, trg_lid="P")
                         self.logger.logResults(rcollect, "P", self.ppid)
         return rcollect
@@ -445,7 +479,7 @@ class Miner(object):
 
 ### INITIALIZATION
 ##################
-    def __init__(self, data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
+    def __init__(self, data, params, logger=None, mid=None, qin=None, cust_params={}):
         self.count = "-"
         self.qin = qin
         self.org_data = None
@@ -497,20 +531,26 @@ class Miner(object):
         self.constraints = Constraints(params, self.data)
 
         self.charbon = self.initCharbon()
-        if souvenirs is None:
-            self.souvenirs = Souvenirs(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
-        else:
-            self.souvenirs = souvenirs
-
         pairs_store = None
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
         self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
-        self.rcollect = RCollection()
+        self.rcollect = RCollection(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
+        self.logger.printL(1, "Miner set up...\n\t%s\n\t%s" % (self.data, self.rcollect), 'log', self.getId())
+        
 
     def getId(self):
         return self.id
 
+    def shareRCollect(self):
+        return self.rcollect.toShare()
+
+    def shareLogger(self):
+        return self.logger
+        # if not self.logger.usesOutMethods():
+        #     return self.logger
+        # return None
+    
     def initGreedyCharbon(self):
         if self.constraints.getCstr("add_condition"):
             if not self.data.isConditional() and self.data.isGeospatial():
@@ -561,20 +601,21 @@ class Miner(object):
             for red in reds:
                 red.recompute(self.data)
 
+        rcollect = self.shareRCollect()
         if "side" in cust_params:
-            self.souvenirs.cutOffSide(1-cust_params["side"])
+            rcollect.cutOffSide(1-cust_params["side"])
 
         self.count = "C"
 
-        self.logger.initProgressPart(self.constraints, self.souvenirs, reds, 1, self.getId())
+        self.logger.initProgressPart(self.constraints, reds, rcollect.nbCols(), 1, self.getId())
         self.logger.clockTic(self.getId(), "part run")        
 
         if cust_params.get("task") == "improve":
             self.logger.printL(1, "Improving...", 'status', self.getId()) ### todo ID
-            rcollect = self.improveRedescriptions(reds)
+            rcollect = self.improveRedescriptions(reds, rcollect)
         else:
             self.logger.printL(1, "Expanding...", 'status', self.getId()) ### todo ID
-            rcollect = self.expandRedescriptions(reds)
+            rcollect = self.expandRedescriptions(reds, rcollect)
 
         self.logger.clockTac(self.getId(), "part run", "%s" % self.questionLive())        
         if not self.questionLive():
@@ -582,6 +623,7 @@ class Miner(object):
         else:
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
+        print rcollect
         return rcollect
 
     def full_run(self, cust_params={}):
@@ -594,41 +636,74 @@ class Miner(object):
         self.initializeRedescriptions()
         self.logger.clockTac(self.getId(), "pairs")
         self.logger.clockTic(self.getId(), "full run")
-        initial_red = None
         check_score = not self.charbon.isTreeBased()
-        try:
-            initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
-        except ExtensionError as details:
-            self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
-        # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
-        while initial_red is not None and self.questionLive():
-            self.count += 1
-            
-            self.logger.clockTic(self.getId(), "expansion_%d-%d" % (self.count,0))
-            self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
-            self.expandRedescriptions([initial_red], self.rcollect)
-            self.logger.updateProgress({"rcount": self.count}, 1, self.getId())
-            ## SOUVENIRS self.souvenirs.update(partial["batch"])
+        nb_round = 0
+        if self.constraints.getCstr("algo_family") == "combine":
 
-            
-            # self.logger.clockTic(self.getId(), "select")
+            nextge = self.initial_pairs.getAll(self.data, self.constraints.getCstr("min_itm_acc"), check_score=check_score)
+            if self.constraints.getCstr("optimize_combinations"):
+                self.logger.clockTic(self.getId(), "impr_pairs")
+                self.logger.printL(1,"Improving initial pairs %d" % len(nextge), "log", self.getId())
+                self.improveRedescriptions(nextge, self.rcollect)            
+                prevge = self.rcollect.getItems("P")
+                self.logger.printL(1,"Obtained %d improved initial pairs" % len(prevge), "log", self.getId())
+                self.logger.clockTac(self.getId(), "impr_pairs")
+            else:
+                prevge = nextge
+                self.logger.printL(1,"Obtained %d initial pairs" % len(prevge), "log", self.getId())
+                
             if self.rcollect.getLen("P") > 0:
                 self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
+                
+            while len(prevge) > 0 and self.questionLive():
+                nb_round += 1
 
-            # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
-            # if (self.final["results"] != ttt):
-            #     pdb.set_trace()
-            #     print "Not same"
-            ### DEBUG self.final["results"] = range(len(self.final["batch"]))
-            # self.logger.clockTac(self.getId(), "select")
+                self.logger.clockTic(self.getId(), "combination_%d-%d" % (nb_round, 0))
+                self.logger.printL(1,"Combination %d, with %d reds" % (nb_round, len(prevge)), "log", self.getId())
 
-            self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
+                self.combineRedescriptions(prevge, self.rcollect)
+                prevge = [r for r in self.rcollect.getItems("P") if r.getAcc() >= self.constraints.getCstr("min_itm_acc")]
+
+                if self.rcollect.getLen("P") > 0:
+                    self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
+
+                self.logger.clockTac(self.getId(), "combination_%d-%d" % (nb_round, 0), "%s" % self.questionLive())
             self.logger.logResults(self.rcollect, "F", self.getId())
-            check_score = not self.charbon.isTreeBased()
+            
+        else:
+            initial_red = None
             try:
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
             except ExtensionError as details:
                 self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
+            # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
+            while initial_red is not None and self.questionLive():
+                self.count += 1
+            
+                self.logger.clockTic(self.getId(), "expansion_%d-%d" % (self.count,0))
+                self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
+                self.expandRedescriptions([initial_red], self.rcollect)
+                self.logger.updateProgress({"rcount": self.count}, 1, self.getId())
+            
+                # self.logger.clockTic(self.getId(), "select")
+                if self.rcollect.getLen("P") > 0:
+                    self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
+
+                # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
+                # if (self.final["results"] != ttt):
+                #     pdb.set_trace()
+                #     print "Not same"ImportError: cannot import name newExtenionsBatch
+
+                ### DEBUG self.final["results"] = range(len(self.final["batch"]))
+                # self.logger.clockTac(self.getId(), "select")
+
+                self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
+                self.logger.logResults(self.rcollect, "F", self.getId())
+                check_score = not self.charbon.isTreeBased()
+                try:
+                    initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
+                except ExtensionError as details:
+                    self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
 
         self.logger.clockTac(self.getId(), "full run", "%s" % self.questionLive())        
         if not self.questionLive():
@@ -636,14 +711,7 @@ class Miner(object):
         else:
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
-
-        self.logger.printL(1, "=========================================", "log", self.getId())
-        self.logger.printL(1, self.rcollect.tracksToStr(), "log", self.getId())
-        self.logger.printL(1, "----- REDS:", "log", self.getId())
-        fids = self.rcollect.getIidsList("F")
-        for i in self.rcollect.getItems():
-            prefix = "+" if i.getUid() in fids else "-"
-            self.logger.printL(1, "%s %s" % (prefix, i), "log", self.getId())
+        dispTracksEnd(self.logger, self.rcollect, self.getId())
         return self.rcollect
 
 
@@ -663,7 +731,7 @@ class Miner(object):
 
     def initializeRedescriptionsTree(self, ids=None):
         self.logger.printL(1, 'Searching for initial literals...', 'status', self.getId())
-        self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.getId())
+        self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
         
         if ids is None:
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
@@ -692,18 +760,18 @@ class Miner(object):
         # nb_folds = len(counts_folds)
         
         ### Loading pairs from file if filename provided
-        loaded, done = self.initial_pairs.loadFromFile()
+        loaded, done = self.initial_pairs.loadFromLogFile(self.data)
         if not loaded or done is not None:
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.getId())
             explore_list = self.getInitExploreList(ids, done)
-            self.logger.initProgressFull(self.constraints, self.souvenirs, explore_list, 1, self.getId())
+            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.nbCols(), 1, self.getId())
 
             self.initial_pairs.setExploreList(explore_list, done=done)
             total_pairs = len(explore_list)
             for pairs, (idL, idR, pload) in enumerate(explore_list):
                 if not self.questionLive():
-                    self.initial_pairs.saveToFile()
+                    ## self.initial_pairs.saveToFile()
                     return
 
                 self.logger.updateProgress({"rcount": self.count, "pair": pairs, "pload": pload})
@@ -749,9 +817,9 @@ class Miner(object):
 
             ### Saving pairs to file if filename provided
             self.initial_pairs.setExploredDone()
-            self.initial_pairs.saveToFile()
+            ## self.initial_pairs.saveToFile()
         else:
-            self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.getId())
+            self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
             self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
         return self.initial_pairs
     
@@ -791,11 +859,11 @@ class Miner(object):
 #####      REDS EXPANSIONS
 ####################################################
     def expandRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
     def improveRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).improveRedescriptions(nextge, rcollect)
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).improveRedescriptions(nextge, rcollect)
     def combineRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.souvenirs, self.logger, self.questionLive).combineRedescriptions(nextge, rcollect)
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).combineRedescriptions(nextge, rcollect)
         
 #######################################################################
 ########### MULTIPROCESSING MINER
@@ -830,24 +898,19 @@ class MinerDistrib(Miner):
         else:
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
+        dispTracksEnd(self.logger, self.rcollect, self.getId())
         return self.rcollect
-
-    def shareLogger(self):
-        return self.logger
-        # if not self.logger.usesOutMethods():
-        #     return self.logger
-        # return None
         
     def initializeRedescriptionsGreedy(self, ids=None):
         self.initial_pairs.reset()
         self.pairs = 0
         ### Loading pairs from file if filename provided
-        loaded, done = self.initial_pairs.loadFromFile()
+        loaded, done = self.initial_pairs.loadFromLogFile(self.data)
         if not loaded or done is not None:
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.getId())
             explore_list = self.getInitExploreList(ids, done)
-            self.logger.initProgressFull(self.constraints, self.souvenirs, explore_list, 1, self.getId())
+            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.nbCols(), 1, self.getId())
             self.total_pairs = len(explore_list)
 
             min_bsize = 25
@@ -897,7 +960,7 @@ class MinerDistrib(Miner):
             self.initial_pairs.setExplorePointer(pointer)
         else:
             self.initial_pairs.setExploredDone()
-            self.logger.initProgressFull(self.constraints, self.souvenirs, None, 1, self.getId())
+            self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
             self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
         return self.initial_pairs
 
@@ -921,8 +984,8 @@ class MinerDistrib(Miner):
                     ## print "Init ExpandProcess ", k, self.count
                     self.workers[k] = ExpandProcess(k, self.getId(), self.count, self.data,
                                                     self.charbon, self.constraints,
-                                                    self.souvenirs, self.rqueue, [initial_red],
-                                                    rcollect=self.rcollect, logger=self.shareLogger())
+                                                    self.rqueue, [initial_red],
+                                                    rcollect=self.shareRCollect(), logger=self.shareLogger())
        
     def handlePairResult(self, m):
         pairs, idL, idR, pload = m["pairs"], m["idL"], m["idR"], m["pload"]
@@ -949,13 +1012,15 @@ class MinerDistrib(Miner):
             self.initializeExpansions()
 
     def handleExpandResult(self, m):
-        if m["out"].getLen("S") > 0:
-            for red in m["out"].getItems("S"):
-                self.rcollect.addItem(red)
-            self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids=m["out"].getIidsList("S"), trg_lid="F")
+        for red in m["out"].getItems():
+            self.rcollect.addItem(red)
+
+        if m["out"].getLen("P") > 0:
+            self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids=m["out"].getIidsList("P"), trg_lid="F")
+        self.rcollect.importTracks(m["out"].getTracks(), m["id"])
 
         if not self.constraints.getCstr("amnesic"):
-            self.souvenirs.update(m["out"].getItems("P"))
+            self.rcollect.updateSeen(m["out"].getItems("P"))
         self.logger.clockTac(self.getId(), "expansion_%d-%d" % (m["count"], m["id"]), "%s" % self.questionLive())
         self.logger.logResults(self.rcollect, "F", self.getId())
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.getId())
@@ -993,7 +1058,7 @@ class MinerDistrib(Miner):
                     self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
                     self.logger.updateProgress(level=1, id=self.getId())
                     self.initial_pairs.setExploredDone()
-                    self.initial_pairs.saveToFile()
+                    ## self.initial_pairs.saveToFile()
                     if self.pe_balance == 0:
                         self.initializeExpansions()
                         ## print "All pairs complete, launching expansion..."
@@ -1009,7 +1074,7 @@ class MinerDistrib(Miner):
 
             if self.leftOverPairs():
                 self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
-                self.initial_pairs.saveToFile()
+                ## self.initial_pairs.saveToFile()
                 break
 
     
@@ -1041,7 +1106,7 @@ class PairsProcess(multiprocessing.Process):
 
 class ExpandProcess(multiprocessing.Process, ExpMiner):
 
-    def __init__(self, sid, ppid, count, data, charbon, constraints, souvenirs, rqueue,
+    def __init__(self, sid, ppid, count, data, charbon, constraints, rqueue,
                  nextge, rcollect=None, logger=None,
                  question_live=None, task = "expand"):
         multiprocessing.Process.__init__(self)
@@ -1056,7 +1121,6 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
         self.queue = rqueue
 
         self.constraints = constraints
-        self.souvenirs = souvenirs
         self.upSouvenirs = False
         self.question_live = question_live
         if logger is None:
@@ -1065,7 +1129,10 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
             self.logger = logger
 
         self.nextge= nextge
-        self.rcollect = rcollect
+        if rcollect is None:
+            self.rcollect = RCollection()
+        else:
+            self.rcollect = rcollect
         self.start()
 
     def getId(self):
@@ -1088,12 +1155,12 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
 ########### MINER INSTANCIATION
 #######################################################################
 
-def instMiner(data, params, logger=None, mid=None, souvenirs=None, qin=None, cust_params={}):
+def instMiner(data, params, logger=None, mid=None, qin=None, cust_params={}):
     if params["nb_processes"]["data"] > 1:
         Redescription.setUidGen(nv=None, step=None, mp_lock=True)
-        return MinerDistrib(data, params, logger, mid, souvenirs, qin, cust_params)
+        return MinerDistrib(data, params, logger, mid, qin, cust_params)
     else:
-        return Miner(data, params, logger, mid, souvenirs, qin, cust_params)
+        return Miner(data, params, logger, mid, qin, cust_params)
 
 class StatsMiner:
     def __init__(self, data, params, logger=None, cust_params={}):

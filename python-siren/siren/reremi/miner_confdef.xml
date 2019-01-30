@@ -13,7 +13,7 @@
 	<value_type>text</value_type>
 	<legend>CORE Type of mining algorithm to use.</legend>
 	<default><value>0</value></default>
-	<options><value>greedy</value><value>trees</value></options>
+	<options><value>greedy</value><value>trees</value><value>combine</value></options>
       </parameter>
       <parameter>
 	<name>nb_processes</name>
@@ -271,6 +271,20 @@
 	<parameter_type>boolean</parameter_type>
 	<legend>Allow making conditional redescription, if suitable data is provided.</legend>
 	<default><value>0</value></default>
+    </parameter>
+    <parameter>
+	<name>mixed_combinations</name>
+	<label>Mixed combinations</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Allow trying mixed combinations, i.e. comjunction with union ranges and disjunction with intersection of ranges.</legend>
+	<default><value>0</value></default>
+    </parameter>
+    <parameter>
+	<name>optimize_combinations</name>
+	<label>Optimize combinations</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Try to optimize ranges in candidate combinations.</legend>
+	<default><value>1</value></default>
       </parameter>
     </section>
 </section>

@@ -323,10 +323,10 @@ class WorkClient(WorkInactive):
             return self.map_rids.get((iid, source), iid)
         return iid 
     
-    def mapTracks(self, in_tracks, source):
+    def mapTracks(self, in_tracks):
         tracks = []
         for t in in_tracks:                
-            tracks.append({"@": source})
+            tracks.append({})
             tracks[-1].update(t)
             if "src" in t:
                 tracks[-1]["src"] = [self.mappedRid(iid, source) for iid in t["src"]]
