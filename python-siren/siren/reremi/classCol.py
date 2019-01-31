@@ -1041,7 +1041,10 @@ class NumColM(ColM):
             self.vect[list(self.missing)] = self.NA
 
         if len(self.sVals) > 0:
-            vals, ids = zip(*self.sVals)
+            if self.mode[1] is not None:
+                vals, ids = zip(*[(vv,ii) for (vv, ii) in self.sVals if ii != -1])
+            else:
+                vals, ids = zip(*self.sVals)
             self.vect[list(ids)] = vals
         ### mode rows HERE
 
@@ -1127,17 +1130,11 @@ class NumColM(ColM):
     def setMode(self, force=False):
         ### The mode is indicated by a special entry in sVals with row id -1,
         ### all rows which are not listed in either sVals or missing take that value
-        ## if len([i for v,i in self.sVals if v == 0]) > 0.1*self.N:
-        ##     self.sVals = [(v,i) for (v,i) in self.sVals if v != 0]
-        ## if force or (len(self.sVals)+self.nbMissing() > 0 and len(self.sVals)+self.nbMissing() != self.N ):
         tmpV = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
-        # if len([i for v,i in self.sVals if v == MODE_VALUE]) > 0.1*self.N compute vector
-        #     self.sVals = [(v,i) for (v,i) in self.sVals if v != MODE_VALUE]
         if force or ( len(self.sVals)+self.nbMissing() > 0 and len(tmpV)+self.nbMissing() != self.N \
            and ( len(self.sVals)+self.nbMissing() < self.N  or len(self.sVals) - len(tmpV)  > 0.1*self.N)):
-           ### THIS CONDITION LAST CONDITION: either is already sparse or turning to sparse would bring gain
-            self.sVals = tmpV    ## gather row ids for which
-            ## gather row ids for which
+           ### LAST CONDITIONS: either is already sparse or turning to sparse would bring gain (more than 10% of values equal to mode)
+            self.sVals = tmpV
             if len(self.sVals) > 0:
                 rids = set(zip(*self.sVals)[1])
             else:
@@ -1147,7 +1144,7 @@ class NumColM(ColM):
             has_mv = -1 in rids
             if has_mv:
                 rids.discard(-1)
-            if 2*len(rids) > self.N:
+            if 2*len(rids) > self.N: ## less than half of rows in mode -> record ids of rows outside mode
                 self.mode = (-1, set(range(self.N)) - rids - self.missing)
             else:
                 self.mode = (1, rids)

@@ -157,6 +157,7 @@ class GridTable(wx.grid.PyGridTableBase):
         self.matching = [] ### for find function
         
         #### GRID
+        self.frame = frame
         self.grid = wx.grid.Grid(frame)
         self.grid.SetTable(self)
         self.setSelectedRow(0)
@@ -188,6 +189,9 @@ class GridTable(wx.grid.PyGridTableBase):
         """Return the value of a cell"""
         return wx.Colour(100,100,100)
 
+    def getFrame(self):
+        return self.frame
+    
     def Hide(self):
         self.grid.Hide()
 

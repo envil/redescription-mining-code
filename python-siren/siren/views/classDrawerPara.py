@@ -111,6 +111,7 @@ class DrawerRedPara(DrawerEntitiesTD):
     missing_yy = -0.1
     missing_w = -0.05
 
+    ann_to_right = True 
     ann_xy = (10,0)
 
     def __init__(self, view):
@@ -296,6 +297,9 @@ class DrawerRedPara(DrawerEntitiesTD):
             suppABCD = self.getPltDtH().getSuppABCD()
             draw_settings = self.getDrawSettings()
             selected = self.getPltDtH().getUnvizRows()
+            # ### SPECIAL PLOTTING
+            # selected = list(numpy.where(suppABCD <= 3)[0])
+            # foc_points = list(numpy.where(suppABCD > 3)[0])
             self.dots_draw = self.prepareDotsDrawSupp(vec, vec_dets, draw_settings)
             
             #### Contribs of literals
@@ -305,7 +309,6 @@ class DrawerRedPara(DrawerEntitiesTD):
                 lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
                 map_q = None
 
-            
             self.prepared_data.update(self.prepareData(lits, draw_ppos = draw_settings["draw_ppos"]))
 
             ### SAMPLING ENTITIES
@@ -313,7 +316,6 @@ class DrawerRedPara(DrawerEntitiesTD):
             reps = list(self.prepared_data["sampling_ord"][:ind])
             reps.sort(key=lambda x: draw_settings["draw_pord"][suppABCD[x]])
             self.setElement("reps", reps)
-            #self.reps = set(self.prepared_data["sampling_ord"])
 
             ### SELECTED DATA
             if len(selected) > 0:
@@ -321,6 +323,18 @@ class DrawerRedPara(DrawerEntitiesTD):
                 self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] *= selp
                 self.dots_draw["ec_dots"][numpy.array(list(selected)), -1] *= selp
 
+            # ### SPECIAL PLOTTING
+            # reps = list(set(self.prepared_data["sampling_ord"][:ind]).difference(foc_points))
+            # reps.sort(key=lambda x: draw_settings["draw_pord"][suppABCD[x]])
+            # reps.extend(foc_points)
+            # self.setElement("reps", reps)
+            
+            # self.dots_draw["fc_dots"][foc_points, :] = numpy.tile((0,.4,0,1.), (len(foc_points), 1))
+            # self.dots_draw["ec_dots"][foc_points, :] = numpy.tile((0,.4,0,1.), (len(foc_points), 1))
+            # self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] = .05
+            # self.dots_draw["ec_dots"][numpy.array(list(selected)), -1] = .05
+
+                
             ### PLOTTING
             ### Lines
             for r in self.getElement("reps"):
@@ -410,7 +424,9 @@ class DrawerRedPara(DrawerEntitiesTD):
             self.draw()
             self.adjust()
             self.setFocus()
-
+            # ### SPECIAL PLOTTING
+            # self.sendEmphasize(foc_points)
+            
     def makeEffPlot(self, pos, lits, map_q, draw_settings):
         pos_axis = self.prepared_data["pos_axis"]
         ty, tx = (1/8., 1/8.) #(2.*len(self.prepared_data["ranges"]))
@@ -623,16 +639,20 @@ class DrawerRedPara(DrawerEntitiesTD):
     def getCoordsXY(self, idp):
         return (self.prepared_data["xs"], self.prepared_data["pos_lids"][self.prepared_data["ycols"],idp])
     def getCoordsXYA(self, idp):
-        return (self.prepared_data["xs"][-1]+self.margins_sides, self.prepared_data["pos_lids"][self.prepared_data["ycols"][-1],idp])
+        if self.ann_to_right:
+            return (self.prepared_data["xs"][-1]+self.margins_sides, self.prepared_data["pos_lids"][self.prepared_data["ycols"][-1],idp])
+        else:
+            return (self.prepared_data["xs"][0]-self.margins_sides, self.prepared_data["pos_lids"][self.prepared_data["ycols"][0],idp])
             
     def drawEntity(self, idp, fc, ec=None, sz=1, zo=4, dsetts={}):
         x, y = self.getCoordsXY(idp)
         suppABCD = self.getPltDtH().getSuppABCD()
-        if suppABCD[idp] == SSetts.Emm and zo >= 4:
-            return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dotted", zorder=zo)
-        elif suppABCD[idp] > SSetts.Eoo and zo >= 4:
-            return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dashed", zorder=zo)
-        else:
+        # if suppABCD[idp] == SSetts.Emm and zo >= 4:
+        #     return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dotted", zorder=zo)
+        # elif suppABCD[idp] > SSetts.Eoo and zo >= 4:
+        #     return self.axe.plot(x, y, color=fc, linewidth=1, linestyle="dashed", zorder=zo)
+        # else:
+        if True:
             return self.axe.plot(x, y, color=fc, linewidth=1, zorder=zo)
             
     def makeAdditionalElements(self, panel=None):
@@ -640,7 +660,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             panel = self.getLayH().getPanel()
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
         
-        nb_def = self.view.getSettV("details_level")
+        nb_def = self.view.getParentData().nbRows()*self.view.getSettV("details_level")/100.
         tds = [td for td in range(0, 105,5) if sliderPos_to_ENumber(self.view.getParentData().nbRows(), td) > nb_def]
         if len(tds) > 0:
             td_def = tds[0]

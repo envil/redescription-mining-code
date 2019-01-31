@@ -1439,14 +1439,11 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     col = det["type"].parseList(values, indices[side], force=True)
                     if col is None:
                         print "DID NOT MANAGE COL TYPE FORCE PARSING..."
-                        
             if col is None:
                 type_ids = list(type_ids_org)
-                # if sito == 1 and len(cols[sito]) == 2:
-                #      pdb.set_trace()
                 while col is None and len(type_ids) >= 1:
                     col = type_ids.pop().parseList(values, indices[side])
-
+                    
             if col is not None and col.N == N:                
                 if not det.get("enabled", True) or \
                        (csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None \

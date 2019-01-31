@@ -31,7 +31,7 @@ SPECIAL_BINS, SPECIAL_LBLS, SPECIAL_CMAP = None, None, None
 class DrawerBasis(object):
 
     wait_delay = 300
-    max_emphlbl = 5
+    ann_to_right = True
     ann_xy = (-10, 15)
     info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
     
@@ -540,7 +540,6 @@ class DrawerEntitiesTD(DrawerBasis):
     
     NBBINS = 20
     MAP_POLY = False
-    max_emphlbl = 5
     map_select_supp = [("l", "|E"+SSetts.sym_sparts[SSetts.Exo]+"|", [SSetts.Exo]),
                        ("r", "|E"+SSetts.sym_sparts[SSetts.Eox]+"|", [SSetts.Eox]),
                        ("i", "|E"+SSetts.sym_sparts[SSetts.Exx]+"|", [SSetts.Exx]),
@@ -791,7 +790,8 @@ class DrawerEntitiesTD(DrawerBasis):
     def isHighLbl(self, iid):
         return iid in self.high_lbl
     def needingHighLbl(self, iids):
-        if len(iids) <= self.max_emphlbl:
+        max_emphlbl = self.getSettV('max_emphlbl', 5)
+        if max_emphlbl or len(iids) <= max_emphlbl:
             return [iid for iid in iids if not self.isHighLbl(iid)]
         return []
     def needingHighlight(self, iids):
@@ -1030,7 +1030,16 @@ class DrawerEntitiesTD(DrawerBasis):
             return [self.axe.scatter([x], [y], c=fc, edgecolors=ec, s=5*sz, marker=dsetts["shape"], zorder=zo)]
             
     def getAnnXY(self):
-        return self.ann_xy
+        if self.ann_to_right:
+            return self.ann_xy
+        else:
+            return (-1*self.ann_xy[0], self.ann_xy[1])
+    def getAnnAlign(self):
+        if self.ann_to_right:
+            return "left"
+        else:
+            return "right"
+
     def getInfoDets(self):
         return self.info_dets
     
@@ -1045,7 +1054,7 @@ class DrawerEntitiesTD(DrawerBasis):
             whitec = (bckgc, bckgc, bckgc)
         return [self.axe.annotate(tag, xy=xy, zorder=8,
                                 xycoords='data', xytext=xytext, textcoords='offset points',
-                                color=ec, va="center", backgroundcolor=whitec,
+                                color=ec, va="center", backgroundcolor=whitec, ha=self.getAnnAlign(),
                                 bbox=dict(boxstyle="round", facecolor=whitec, ec=ec),
                                 arrowprops=dict(arrowstyle="wedge,tail_width=1.", fc=whitec, ec=ec,
                                                     patchA=None, patchB=self.getElement("ellipse"), relpos=(0.2, 0.5)),**self.view.getFontProps())]

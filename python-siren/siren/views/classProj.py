@@ -293,7 +293,7 @@ class AxesProj(Proj):
         if "vids" in self.params:
             if len(self.params["vids"]) == 1:
                 scs[1] = self.params["vids"][0]
-                scs[0] = (1, 32) ## debug
+                # scs[0] = (1, 32) ## debug
 
             elif len(self.params["vids"]) > 1:
                 scs = random.sample(self.params["vids"], 2)

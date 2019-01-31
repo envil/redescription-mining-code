@@ -107,6 +107,16 @@
 	<range_max>100</range_max>
 	<default><value>50</value></default>
       </parameter>
+            <parameter>
+	<name>max_emphlbl</name>
+	<label>Max emph lbls</label>
+	<parameter_type>range</parameter_type>
+	<value_type>integer</value_type>
+	<legend>More that this number of entities selected at once will not get individual labels.</legend>
+	<range_min>-1</range_min>
+	<range_max>20</range_max>
+	<default><value>5</value></default>
+      </parameter>
           <parameter>
 	<name>literals_contrib</name>
 	<label>Show literals contribution</label>

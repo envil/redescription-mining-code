@@ -394,6 +394,9 @@ class ViewBare(object):
         dd = numpy.nan*numpy.ones(numpy.max(draw_pord.keys())+1)
         for (p,v) in enumerate([SSetts.Eoo, SSetts.Eox, SSetts.Exo, SSetts.Exx]):
             dd[v] = p
+        for (v, veq) in [(SSetts.Eom, SSetts.Eoo), (SSetts.Exm, SSetts.Exo)]:
+            dd[v] = dd[veq]
+
 
         css = {"fontprops": fontprops, "draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
                "delta_on": self.getSettV('draw_delta', self.DELTA_ON)}
