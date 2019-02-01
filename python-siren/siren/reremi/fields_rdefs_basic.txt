@@ -1,17 +1,14 @@
+#### field specifications for displaying redescriptions
 field	acc_ratioTL	test:acc:/learn:acc:	.2f
-### XX
 field	len_I_ratioTA	test:len:I/(1.*all:len:I)	.2f
 field	cohesion	:extra:cohesion	.2f
 fieldlist	queries
-LHS:query: ### NN
+LHS:query:
 RHS:query:
 COND:query:	[wcond]
- ### NN
- ### NN
- ### NN
 fieldlist	cardsall
-all:card:Y	Y={Ex*}[wmissing]{Em*}	 ### NN
-fieldlist	cards ### NN
+all:card:Y	Y={Ex*}[wmissing]{Em*}
+fieldlist	cards
 X:card:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	percsall
 all:perc:Y	Y={Ex*}[wmissing]{Em*}
@@ -38,7 +35,7 @@ X:acc:	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:len:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:perc:I	X=[wsplits]{test,learn}{active}[wcond]{cond}
 X:pval:	X=[wsplits]{test,learn}{active}[wcond]{cond}
-fieldlist	basic
+fieldlist	basic #### fields list for text export
 :rid:
 list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}

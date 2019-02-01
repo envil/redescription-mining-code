@@ -441,5 +441,5 @@ def getPrintParams(filename, data=None):
     if named and data is not None:
         params["names"] = data.getNames()            
     if supp_names:
-        params["supp_names"] = data.getRNames()            
+        params["supp_names"] = data.getRNames()
     return params

@@ -1168,8 +1168,10 @@ class RedProps(Props):
                 all_fields.extend(fields[1:])
             else:
                 all_fields = fields
-        if full_supp:
-            all_fields.extend(self.getListFields("supps", modifiers))
+        if full_supp: ### if full supports are demanded and no support field is included, add them all
+            supp_fields = self.getListFields("supps", modifiers)
+            if len(set([re.sub("^[a-z]*:", "", f) for f in all_fields]).intersection([re.sub("^[a-z]*:", "", f) for f in supp_fields])) == 0:
+                all_fields.extend(supp_fields)
 
         if style == "tex":
             return self.printTexRedList(reds=reds, names=names, list_fields=all_fields, nblines=nblines)

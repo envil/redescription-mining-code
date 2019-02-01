@@ -342,6 +342,10 @@ class PltDtHandlerListRanges(PltDtHandlerListBlocks):
                             splits[j]["ids"].append(i)
                     w = float(maxv-minv)
                     map_vars[k]["ticks"] = [(splt["v"]-minv)/w for splt in splits]
+                    
+                    lminv, lmaxv = 0, numpy.log10(maxv-minv+1)
+                    lw = lmaxv - lminv
+                    map_vars[k]["log_ticks"] = [(numpy.log10(splt["v"]-minv+1)-lminv)/lw for splt in splits]
                     map_vars[k]["map_values"] = dict([(vv["v"],vvi) for (vvi,vv) in enumerate(splits)])
                     map_vars[k]["map_values"][float("-inf")] = 0
                     map_vars[k]["map_values"][float("inf")] = len(splits)-1
