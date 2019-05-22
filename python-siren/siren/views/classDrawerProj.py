@@ -67,6 +67,9 @@ class DrawerProj(DrawerBasis):
                 self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
             if self.getProj().getAxisLabel(1) is not None:
                 self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
+            # xx, yy = self.getProj().getCoords()
+            # print "CORR %s vs. %s = %.4f" % (self.getProj().getAxisLabel(0), self.getProj().getAxisLabel(1), numpy.corrcoef(xx, yy)[0,1])
+            # self.axe.plot([xylims[0]-xybs[0], xylims[1]+xybs[0]], [xylims[0]-xybs[0], xylims[1]+xybs[0]], "k--")
             self.axe.axis([xylims[0]-xybs[0], xylims[1]+xybs[0], xylims[2]-xybs[1], xylims[3]+xybs[1]])
 
     def isReadyPlot(self):

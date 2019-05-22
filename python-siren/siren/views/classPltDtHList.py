@@ -340,7 +340,16 @@ class PltDtHandlerListRanges(PltDtHandlerListBlocks):
                                 splits.insert(highi, {"v": high, "ids": list(splits[highi-1]["ids"])})
                         for j in range(lowi, highi):
                             splits[j]["ids"].append(i)
-                    w = float(maxv-minv)
+                            
+                    # #### cap values to 500
+                    # if maxv > 500:
+                    #     maxv = 500
+                    #     splits = [sss for ssi, sss in enumerate(splits) if ssi == 0 or splits[ssi-1]["v"] < 500]                        
+                    #     splits[-1]["v"] = 500
+                    #     print "range", col, [sss["v"] for sss in splits]
+                    
+                    
+                    w = float(maxv-minv)                    
                     map_vars[k]["ticks"] = [(splt["v"]-minv)/w for splt in splits]
                     
                     lminv, lmaxv = 0, numpy.log10(maxv-minv+1)

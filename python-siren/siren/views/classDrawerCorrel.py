@@ -47,6 +47,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
         self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
         self.types_in = dict([(tid, True) for (name, tid) in self.getNamesTids()])
+        self.sides_in = {0: True, 1: True}
         # self.types_in[self.getTidForName("Boolean")] = False
         # self.types_in[self.getTidForName("Categorical")] = False
         # self.parts_in = {SSetts.Exx: False, SSetts.Exo: True, SSetts.Eox: False, SSetts.Eoo: False}
@@ -91,6 +92,15 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                         self.types_in[i] = True
                     else:
                         self.types_in[i] = False
+
+            for i, lbl in enumerate(["LHS", "RHS"]):
+                ll = "sides_%d" % i
+                if ll in elems:
+                    if elems[ll].IsChecked():
+                        self.sides_in[i] = True
+                    else:
+                        self.sides_in[i] = False
+
             if "fixed_radius" in elems:
                 if elems["fixed_radius"].IsChecked():
                     self.fixed_radius = True
@@ -108,9 +118,12 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             
             vec = self.getPltDtH().getSuppABCD()
             tt = [k for (k,v) in self.types_in.items() if v]
+            side_cols = [(k,None) for (k,v) in self.sides_in.items() if v]
             if len(tt) == 0:
                 tt = None
-            mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan, types=tt, only_able=True)
+            if len(side_cols) == 0:
+                side_cols = None
+            mat, details, mcols = self.getParentData().getMatrix(side_cols=side_cols, nans=numpy.nan, types=tt, only_able=True)
             self.clearPlot()
 
             pos_in = numpy.zeros(vec.shape, dtype=bool)
@@ -162,16 +175,49 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         # pdb.set_trace()
             
     def makeCorrelPlot(self, mat, pos_in, pos_out, details):
+        extra_v = 1.1
         Rall = numpy.corrcoef(mat)
         if numpy.sum(pos_in) > 0:
-            Rin = numpy.corrcoef(mat[:, pos_in])
+            variant = numpy.max(mat[:, pos_in], axis=1) != numpy.min(mat[:, pos_in], axis=1)
+            if numpy.all(variant):
+                Rin = numpy.corrcoef(mat[:, pos_in])
+            else:
+                Rin = -extra_v*numpy.ones((variant.shape[0], variant.shape[0]))
+                CC = numpy.corrcoef(mat[variant,:][:, pos_in])
+                for i,p in enumerate(numpy.where(variant)[0]):
+                    Rin[p,variant] = CC[i,:]
         else:
             Rin = Rall
         if numpy.sum(pos_out) > 0:
-            Rout = numpy.corrcoef(mat[:, pos_out])
+            variant = numpy.max(mat[:, pos_out], axis=1) != numpy.min(mat[:, pos_out], axis=1)
+            if numpy.all(variant):
+                Rout = numpy.corrcoef(mat[:, pos_out])
+            else:
+                Rout = -extra_v*numpy.ones((variant.shape[0], variant.shape[0]))
+                CC = numpy.corrcoef(mat[variant,:][:, pos_out])
+                for i,p in enumerate(numpy.where(variant)[0]):
+                    Rout[p,variant] = CC[i,:]
         else:
-            Rout = Rout
+            Rout = Rall
 
+        # #### store the corrcoeffs to file(s)
+        # import re
+        # filename = "/home/egalbrun/corr_values_%s.csv" % self.view.getItemId()
+        # vnames = [d["name"] for d in details]
+        # keep_ids = [i for i,v in enumerate(vnames) if re.match("bio", v)]
+        # header = ",".join([vnames[i] for i in keep_ids])
+        # keep_ids = numpy.array(keep_ids)
+        # # numpy.savetxt(filename, Rin[keep_ids,:][:,keep_ids], fmt=str("%.6f"), delimiter=",", header=header)
+        # # if self.view.getItemId() == "r20":
+        # #     filename = "/home/egalbrun/corr_values_overall.csv"
+        # #     numpy.savetxt(filename, Rall[keep_ids,:][:,keep_ids], fmt=str("%.6f"), delimiter=",", header=header)
+        # # filename = "/home/egalbrun/corr_values_globe.csv"
+        # # numpy.savetxt(filename, Rall[keep_ids,:][:,keep_ids], fmt=str("%.6f"), delimiter=",", header=header)
+        
+        # self.drawCorrelPlotTriangle(Rin, Rout, details, extra_v)
+        self.drawCorrelPlotSquare(Rin, Rout, details, extra_v)
+
+    def drawCorrelPlotTriangle(self, Rin, Rout, details, extra_v):
         cmap = cm.get_cmap('PuOr')
         xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
         flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
@@ -206,8 +252,8 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         
         patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
         ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
-        fcolors = [cmap(.5*(flt_Rin[i]+1)) for i in range(flt_Rin.shape[0])]
-        ecolors = [cmap(.5*(flt_Rout[i]+1)) for i in range(flt_Rin.shape[0])]
+        fcolors = [cmap((flt_Rin[i]+extra_v)/(2*extra_v)) for i in range(flt_Rin.shape[0])]
+        ecolors = [cmap((flt_Rout[i]+extra_v)/(2*extra_v)) for i in range(flt_Rin.shape[0])]
         # ecolors = [ecmap(.5*numpy.abs(flt_Rin[i]-flt_Rout[i])) for i in range(flt_Rin.shape[0])]
         p = PatchCollection(patches, alpha=1., zorder=10, facecolors = fcolors, edgecolors = ecolors, linewidths=(2.,))
         self.axe.add_collection(p)
@@ -223,6 +269,51 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                 
         self.axe.set_xlim([0-.2*Rout.shape[0], diag_size+.2*Rout.shape[0]])
         self.axe.set_ylim([-2, diag_size/2+.2*Rout.shape[0]])
+        self.axe.set_xticks([])
+        self.axe.set_yticks([])
+
+    def drawCorrelPlotSquare(self, Rin, Rout, details, extra_v):
+        # cmap = cm.get_cmap('PuOr')
+        cmap = cm.get_cmap('PiYG')
+        xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
+        flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
+        # ids_under = (flt_ys == 0) | (flt_xs == Rout.shape[0]-1)
+        # ids_under = flt_ys > flt_xs
+        # flt_xs, flt_ys, flt_Rout, flt_Rin = flt_xs[ids_under], flt_ys[ids_under], flt_Rout[ids_under], flt_Rin[ids_under]
+        # angle = 0 #numpy.pi*1/4
+        # rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
+        # rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)
+        rot_xys = numpy.vstack([flt_xs, flt_ys]).T
+
+        labels = [d["name"] for d in details]        
+        for i, lbl in enumerate(labels):
+            self.axe.text(Rout.shape[0]+.2, i, lbl, ha="left", va="center", **self.view.getFontProps())
+            self.axe.text(i-.5, Rout.shape[0]+.2, lbl, rotation=60, va="bottom", **self.view.getFontProps())
+
+        if self.fixed_radius:
+            rads = .44*numpy.ones(flt_Rin.shape)
+        else:
+            rads = .48*numpy.abs(flt_Rin)
+        
+        patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
+        ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
+        fcolors = [cmap((flt_Rin[i]+extra_v)/(2*extra_v)) for i in range(flt_Rin.shape[0])]
+        ecolors = [cmap((flt_Rout[i]+extra_v)/(2*extra_v)) for i in range(flt_Rin.shape[0])]
+        # ecolors = [ecmap(.5*numpy.abs(flt_Rin[i]-flt_Rout[i])) for i in range(flt_Rin.shape[0])]
+        p = PatchCollection(patches, alpha=1., zorder=10, facecolors = fcolors, edgecolors = ecolors, linewidths=(2.,))
+        self.axe.add_collection(p)
+
+        diag_size = float(Rout.shape[0]-1)
+        nb_bins = 100
+        width_bin = diag_size/(nb_bins+3)
+        for i in range(nb_bins):
+            self.axe.fill([(i+1)*width_bin, (i+2)*width_bin, (i+2)*width_bin, (i+1)*width_bin], [-1.75, -1.75, -2.25, -2.25], color=cmap(i/(nb_bins-1.)))
+
+        self.axe.text(0, -2., "-1", ha="right", va="center", **self.view.getFontProps())
+        self.axe.text(diag_size, -2., "+1", ha="left", va="center", **self.view.getFontProps())
+                
+        self.axe.set_xlim([-.1*Rout.shape[0], 1.4*Rout.shape[0]])
+        self.axe.set_ylim([-3, 1.4*Rout.shape[0]])
         self.axe.set_xticks([])
         self.axe.set_yticks([])
 
@@ -261,6 +352,16 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             add_boxA.Add(label, 0, border=0, flag=flags)
             add_boxA.Add(inter_elems["types_%d" % i], 0, border=0, flag=flags)
 
+        for i, lbl in enumerate(["LHS", "RHS"]):
+            inter_elems["sides_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
+            inter_elems["sides_%d" % i].SetValue(self.sides_in[i])
+
+            label = wx.StaticText(panel, wx.ID_ANY, "%s:" % lbl)
+            label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            add_boxA.Add(label, 0, border=0, flag=flags)
+            add_boxA.Add(inter_elems["sides_%d" % i], 0, border=0, flag=flags)
+
+            
         add_boxA.AddSpacer((self.getLayH().getSpacerWn(),-1))
         inter_elems["fixed_radius"] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
         inter_elems["fixed_radius"].SetValue(self.fixed_radius)

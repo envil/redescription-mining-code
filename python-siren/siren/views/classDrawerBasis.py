@@ -364,6 +364,13 @@ class DrawerBasis(object):
 
     def q_not_svar(self):
         return not self.getPltDtH().isSingleVar()
+    def q_not_basis(self):
+        if self.getPltDtH().isSingleVar():
+            if self.getPltDtH().getRed() is not None:
+                return self.getPltDtH().getRed().isXpr()
+            return True
+        return False
+
     def q_has_selected(self):
         return len(self.getHighlightedIds()) > 0
 
@@ -418,12 +425,22 @@ class DrawerBasis(object):
         self.saveSelVar(side=1)
 
     def saveClusVar(self, side=1):
-        if self.hasParent() and self.isEntitiesPlt() and self.getPltDtH().hasClusters():
-            vec = self.getPltDtH().getVec()
-            if self.getPltDtH().hasQueries():
-                self.getParent().OnSaveVecAsVar(vec, "%s_support" % self.getParentViewsm().getItemId(self.getId()), side, "support")
-            else:
-                self.getParent().OnSaveVecAsVar(vec, "%s_clusters" % self.getParentViewsm().getItemId(self.getId()), side, "clusters")
+        if self.hasParent() and self.isEntitiesPlt():
+            if self.getPltDtH().hasQueries() and self.getPltDtH().isSingleVar():
+                r = self.getPltDtH().getRed()
+                if r is not None and r.isXpr():
+                    t = r.getXprTerm()
+                    vname = t.getName()
+                    if vname is None:
+                        vname = "eval"
+                    col = t.getCol()
+                    self.getParent().OnSaveVecAsVar(col, vname, side, "values")
+            elif self.getPltDtH().hasClusters():
+                vec = self.getPltDtH().getVec()
+                if self.getPltDtH().hasQueries():
+                    self.getParent().OnSaveVecAsVar(vec, "%s_support" % self.getParentViewsm().getItemId(self.getId()), side, "support")
+                else:
+                    self.getParent().OnSaveVecAsVar(vec, "%s_clusters" % self.getParentViewsm().getItemId(self.getId()), side, "clusters")
     def save_clus_varLHS(self, more=None):
         self.saveClusVar(side=0)
     def save_clus_varRHS(self, more=None):
@@ -699,16 +716,19 @@ class DrawerEntitiesTD(DrawerBasis):
                                                  "order":2, "active_q": self.q_not_svar}
                 
         if self.getPltDtH().hasClusters():
-            w = "supports" if self.getPltDtH().hasQueries() else "clusters"
+            w = "clusters"
+            if self.getPltDtH().hasQueries():
+                w = "supports"
+
             self.actions_map.update({
                             "xave_clus_varLHS": {"method": self.save_clus_varLHS, "label": "Save %s as LHS variable" % w,
                                                "legend": "Save the %s as a new left-hand side data variable" % w,
                                                "more": None,  "type": "main",
-                                               "order":11, "active_q": self.q_not_svar},
+                                               "order":11, "active_q": self.q_not_basis},
                             "yave_clus_varRHS": {"method": self.save_clus_varRHS, "label": "Save %s as RHS variable" % w,
                                                "legend": "Save the %s as a new right-hand side data variable" % w,
                                                "more": None,  "type": "main",
-                                               "order":11, "active_q": self.q_not_svar}
+                                               "order":11, "active_q": self.q_not_basis}
                 })
                 
         if self.hasElement("mask_creator"):
@@ -951,11 +971,13 @@ class DrawerEntitiesTD(DrawerBasis):
             if vec_dets.get("binHist") is not None:
                 nb = vec_dets["binHist"]
             else:
-                df = max(numpy.diff(vec_dets["binVals"]))
-                nb = [vec_dets["binVals"][0]]+[(vec_dets["binVals"][i]+vec_dets["binVals"][i+1])/2. for i in range(len(vec_dets["binVals"])-1)]+[vec_dets["binVals"][-1]]
-                nb[0] -= df/2.
-                nb[-1] += df/2.
-            
+                if len(vec_dets["binVals"]) > 1:
+                    df = max(numpy.diff(vec_dets["binVals"]))
+                    nb = [vec_dets["binVals"][0]]+[(vec_dets["binVals"][i]+vec_dets["binVals"][i+1])/2. for i in range(len(vec_dets["binVals"])-1)]+[vec_dets["binVals"][-1]]
+                    nb[0] -= df/2.
+                    nb[-1] += df/2.
+                else:
+                    nb = 1
         # else: vec_dets["typeId"] == 2: ### Categorical
         #     nb = [b-0.5 for b in numpy.unique(vec[idsan])]
         #     nb.append(nb[-1]+1)

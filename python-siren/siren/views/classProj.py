@@ -293,6 +293,11 @@ class AxesProj(Proj):
         if "vids" in self.params:
             if len(self.params["vids"]) == 1:
                 scs[1] = self.params["vids"][0]
+                # #### DEBUG
+                # map_vars = {(0, 12): (1, 0), (0, 13): (1, 4), (0, 14): (1, 11), (0, 15): (1, 20)}
+                # if scs[1] in map_vars:
+                #     scs[0] = map_vars[scs[1]]
+                #     print "VARS", scs
                 # scs[0] = (1, 32) ## debug
 
             elif len(self.params["vids"]) > 1:

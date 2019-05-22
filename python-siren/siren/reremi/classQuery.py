@@ -6,6 +6,7 @@ from grako.exceptions import * # @UnusedWildImport
 import pdb
 
 VARIABLE_MARK = 'v'
+XPR_MARK = "="
 MTCH_TIME = "_time$"
 
 def getNameCol(cid, names):
@@ -1039,6 +1040,9 @@ class AnonTerm(Term):
             
     def isAnon(self):
         return True
+    def isXpr(self):
+        return False
+
     def setTypeId(self, type_id):
         self.type_id = type_id
 
@@ -1058,10 +1062,19 @@ class AnonTerm(Term):
     
     def __cmp__(self, other):
         if self.cmpCol(other) == 0:
-            return self.cmpType(other)
+            if other.isAnon():
+                if self.isXpr() and other.isXpr():
+                        return self.cmpXpr(other)
+                elif self.isXpr() or other.isXpr():
+                    return -1 if self.isXpr() else 1
+                else:
+                    return self.cmpType(other)
+            return -1 if self.isAnon() else 1
         else:
             return self.cmpCol(other)
-        
+
+    def cmpXpr(self, other):
+        return 0
     def __hash__(self):
         return self.col*hash("??")
     def toKey(self):
@@ -1150,7 +1163,108 @@ class AnonTerm(Term):
     #         neg = neg.dispU()
     #     return (u'%s'+AnonTerm.pattVName+' ') % ( neg, self.col)
 
+class XprTerm(AnonTerm):
+
+    pattVName = XPR_MARK+" %s"
+    type_id = -1
+    type_letter = 'X'
+    type_name = 'Xpr'
         
+    def __init__(self, xpr, val_col, name_col=None):
+        self.val_col = val_col
+        self.name_col = name_col
+        self.xpr = xpr
+        self.col = val_col.getId()
+        self.type_id = val_col.typeId()
+        
+    def isAnon(self):
+        return True
+    def isXpr(self):
+        return True
+        
+    def copy(self):
+        return XprTerm(self.xpr, self.val_col, self.name_col)
+
+    def getName(self):
+        return self.name_col
+    def getCol(self):
+        return self.val_col
+    def getXpr(self):
+        return self.xpr
+        
+    def getAdjusted(self, bounds):
+        tmp = self.copy()
+        return tmp
+
+    def cmpXpr(self, other):
+        if other.isAnon() and other.isXpr():
+            if cmp(self.xpr, other.xpr) == 0:
+                return cmp(self.name_col, other.name_col)
+            return cmp(self.xpr, other.xpr)
+        return -1
+    def __hash__(self):
+        return hash(self.xpr)
+    def toKey(self):
+        return ("X", self.type_id, -1, -1)
+    
+    def __str__(self):
+        return self.disp()
+
+    def truthEval(self, variableV):
+        return False
+
+    def disp(self, neg=None, names = None, lenIndex=0):
+        tmp = XprTerm.pattVName % self.xpr
+        if self.name_col is not None:
+            tmp += " # %s" % self.name_col
+        return tmp
+
+    def dispTex(self, neg=None, names = None):
+        return self.disp(neg, names)
+
+    def dispU(self, neg=None, names = None):
+        return self.disp(neg, names)
+
+    @classmethod
+    def hasXpr(tcl, xxpr):
+        return re.match(XPR_MARK, xxpr)
+    @classmethod
+    def parseXpr(tcl, xxpr, side, data):
+        parts = xxpr.split("#")
+        
+        xx = parts[0].lstrip(XPR_MARK).strip()
+        if len(xx) == 0:
+            return None
+
+        xname = None
+        if len(parts) > 1:
+            xname = re.sub(" ","_", "#".join(parts[1:]).strip())            
+            
+        xpr = re.sub(VARIABLE_MARK+"([0-9]+)", "row.getValue(side,\\1)", xx)
+        vals = []
+        for rid, row in enumerate(data.getRows()):
+            try:
+                v = eval(xpr, {}, {"row": row, "side": side, "rid": rid, "numpy": numpy})
+            except:
+                v = None
+            vals.append(v)
+        distinct_values = set(vals)
+        col = None
+        if len(distinct_values.difference([None])) > 0:
+            if len(distinct_values.difference([True, False, None])) == 0:
+                col = data.getColClassForName("Boolean").parseList(vals)
+            else:
+                try:
+                    col = data.getColClassForName("Numerical").parseList(vals)
+                except ValueError:
+                    try:
+                        col = data.getColClassForName("Categorical").parseList(vals)
+                    except ValueError:
+                        col = None
+        if col is not None:
+            return tcl(xx, col, xname)    
+        return None
+    
 class Literal(object):
 
     ### types ordered for parsing
@@ -1167,6 +1281,8 @@ class Literal(object):
     
     def isAnon(self):
         return self.term.isAnon()
+    def isXpr(self):
+        return self.term.isAnon() and self.term.isXpr()
     def getAdjusted(self, bounds):
         return Literal(self.getNeg().boolVal(), self.term.getAdjusted(bounds))
 
@@ -2597,7 +2713,24 @@ class Query(object):
                 return tmp, False
             else:
                 return tmp, True
-
+    def isXpr(self):
+        return len(self.buk) == 1 and isinstance(self.buk[0], Literal) and self.buk[0].isXpr()
+    def getXprTerm(self):
+        if self.isXpr():
+            return self.buk[0].getTerm()
+    
+    def hasXpr(part):
+        return XprTerm.hasXpr(part)
+    hasXpr = staticmethod(hasXpr)
+        
+    def parseXpr(part, side, data):
+        if XprTerm.hasXpr(part):
+            xpr_term = XprTerm.parseXpr(part, side, data)
+            if xpr_term is not None:
+                return Query(buk=[Literal(False, xpr_term)])
+        return None
+    parseXpr = staticmethod(parseXpr)
+            
     def parse(part, names = None, ids_map=None):
         if len(part.strip()) == 0 or part.strip() == "[]":
             return Query()

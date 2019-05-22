@@ -121,6 +121,13 @@ class Redescription(WithEVals):
     def isBasis(self):        
         return (len(self.query(0)) == 0 and self.query(1).isBasis()) or \
                (len(self.query(1)) == 0 and self.query(0).isBasis())
+    def isXpr(self):        
+        return (len(self.query(0)) == 0 and self.query(1).isXpr()) or \
+               (len(self.query(1)) == 0 and self.query(0).isXpr())
+    def getXprTerm(self):
+        if self.isXpr():
+            return self.query(0).getXprTerm() if self.query(0).isXpr() else self.query(1).getXprTerm()
+               
     def containsAnon(self, side=None):
         if side is None:
             return self.query(0).containsAnon() or self.query(1).containsAnon()

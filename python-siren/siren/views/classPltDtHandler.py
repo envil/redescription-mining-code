@@ -1,4 +1,5 @@
 import wx, numpy
+import re
 
 from ..reremi.classData import NA_str_c
 from ..reremi.classSParts import SSetts
@@ -187,40 +188,46 @@ class PltDtHandlerRed(PltDtHandlerBasis):
     def hasQueries(self):
         return True
     def getQuery(self, side):
-        return self.pltdt["queries"][side]
+        return self.pltdt.get("queries", {side: None})[side]
     def getQueries(self):
-        return self.pltdt["queries"]
+        return self.pltdt.get("queries")
     def getCopyRed(self):
         return Redescription.fromQueriesPair([self.getQuery(0).copy(), self.getQuery(1).copy()], self.getParentData())
 
     def hasClusters(self):
         return True
     def getVec(self, more=None):
-        return self.pltdt["vec"]
+        return self.pltdt.get("vec")
     def getVecDets(self, inter_params=None):
-        return self.pltdt["vec_dets"]
+        return self.pltdt.get("vec_dets")
     def getRed(self):
-        return self.pltdt["red"]
+        return self.pltdt.get("red")
     def getSuppABCD(self):
-        return self.pltdt["suppABCD"]
+        return self.pltdt.get("suppABCD")
 
     def isSingleVar(self):
-        return self.getRed().isBasis()
+        r = self.getRed()
+        return r is not None and r.isBasis()
                
     def getQCols(self):
         return [(0,c) for c in self.getQuery(0).invCols()]+[(1,c) for c in self.getQuery(1).invCols()]
     
     def getCol(self, side, c):
+        if c == -1 and self.getQuery(side).isXpr():            
+            return self.getQuery(side).getXprTerm().getCol()
         return self.getParentData().col(side, c)
 
     def sendEditBack(self, red=None):
         if red is not None:
             self.getParentViewsm().dispatchEdit(red, vkey=self.getId())
-    
+
     def parseQuery(self, side):
         stringQ = self.getLayH().getQueryText(side)
         try:
-            query = Query.parse(stringQ, self.getParentData().getNames(side))
+            if Query.hasXpr(stringQ):
+                query = Query.parseXpr(stringQ, side, self.getParentData())
+            else:
+                query = Query.parse(stringQ, self.getParentData().getNames(side))
         except:
             query = None
         if query is not None and (len(stringQ) > 0 and len(query) == 0):
@@ -292,7 +299,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 red = None
                 self.pltdt["queries"] = old
         if red is not None:
-            #### SEND BACK 
+            #### SEND BACK
             self.sendEditBack(red)
             # if self.getParentData().hasLT():
             #     red.setRestrictedSupp(self.getParentData())

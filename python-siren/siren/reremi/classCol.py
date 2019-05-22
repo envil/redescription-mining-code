@@ -372,6 +372,10 @@ class BoolColM(ColM):
     
     @classmethod
     def parseList(tcl, listV, indices=None, force=False):
+        if type(listV) is list and len(set(listV).difference([True, False, None])) == 0:
+            miss = set([i for (i, v) in enumerate(listV) if v is None])
+            trues = set([i for (i, v) in enumerate(listV) if v == True])
+            return BoolColM(trues, len(listV), miss)
         miss = set()
         if force:
             if type(listV) is list:
@@ -799,28 +803,29 @@ class NumColM(ColM):
         if (matchMiss is not False and v == matchMiss) or v == str(tcl.NA):
             miss.add(j)
             return v, prec
+        if type(v) not in [str, unicode]:
+            v = "%s" % v
+        tmatch = re.match(tcl.p_patt, v)
+        if not tmatch:
+            atmatch = re.match(tcl.alt_patt, v)
+            if not atmatch:
+                if matchMiss is False:
+                    miss.add(j)
+                return v, prec
         else:
-            tmatch = re.match(tcl.p_patt, v)
-            if not tmatch:
-                atmatch = re.match(tcl.alt_patt, v)
-                if not atmatch:
-                    if matchMiss is False:
-                        miss.add(j)
-                    return v, prec
-            else:
-                pprec = 0
-                mtch = re.match(tcl.prec_patt, str(float(v)))
-                if mtch is not None:
-                    if mtch.group("dec") is not None:
-                        pprec = len(mtch.group("dec"))
-                    elif mtch.group("epw") is not None:
-                        pprec = int(mtch.group("epw"))
-                if pprec > prec:
-                    prec = pprec
-                    
-            val = float(v)
-            if exclude is False or val != exclude:
-                vals.append((val, j))
+            pprec = 0
+            mtch = re.match(tcl.prec_patt, str(float(v)))
+            if mtch is not None:
+                if mtch.group("dec") is not None:
+                    pprec = len(mtch.group("dec"))
+                elif mtch.group("epw") is not None:
+                    pprec = int(mtch.group("epw"))
+            if pprec > prec:
+                prec = pprec
+                
+        val = float(v)
+        if exclude is False or val != exclude:
+            vals.append((val, j))
         return val, prec
 
     @classmethod

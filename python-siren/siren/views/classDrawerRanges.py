@@ -21,15 +21,31 @@ from classDrawerBasis import DrawerBasis
 
 import pdb
 
-LOG_VALS = [3,4,5]
+LOG_VALS = [] #(1,11), (1, 12), (1, 17), (1,18)]
+
+TIKCS_PS = {}
+# TIKCS_PS = {(1, 0): [(0.0, -11.9), (0.15571776155717762, -5.5), (0.43309002433090027, 5.9), (0.6545012165450121, 15.0), (0.8710462287104622, 23.9), (0.9562043795620437, 27.4), (1.0, 29.2)],
+# (1, 5): [(0.0, -31.3), (0.5801104972375691, 0.2), (0.6685082872928176, 5.0), (1.0, 23.0)],
+# (1, 11): [(0.0, 17.0), (0.47381099044411079, 82.0), (0.66937185331655447, 388.0), (0.69819779642869051, 496.0), (0.95967738368698297, 4862.0), (1.0, 6938.0)],
+# (1, 20): [(0.0, 33.67), (0.2307398416968004, 631.57), (0.2390139045935714, 653.01), (0.9938600587365845, 2608.99), (1.0, 2624.9)],
+# (1, 2): [(0.0, 21.0), (0.21052631578947367, 33.0), (0.22807017543859648, 34.0), (0.24561403508771928, 35.0), (0.3508771929824561, 41.0), (0.45614035087719296, 47.0), (1.0, 78.0)],
+# (1, 7): [(0.0, -11.6), (0.6832971800433839, 19.9), (0.8937093275488069, 29.6), (1.0, 34.5)],
+# (1, 9): [(0.0, -0.7), (0.11716621253405993, 3.6), (0.1880108991825613, 6.2), (0.5068119891008174, 17.9), (0.7602179836512261, 27.2), (0.7956403269754767, 28.5), (0.8201634877384195, 29.4), (0.8474114441416892, 30.4), (1.0, 36.0)],
+# (1, 12): [(0.0, 6.0), (0.55484291289568766, 67.0), (0.62945547351957132, 113.0), (0.63672415240012281, 119.0), (0.69510855068901689, 181.0), (0.76084840112108465, 292.0), (1.0, 1705.0)],
+# (1, 17): [(0.0, 13.0), (0.56926906312133441, 116.0), (0.67871829887490076, 266.0), (0.68391477795216826, 277.0), (0.89993468300786106, 1556.0), (1.0, 3505.0)],
+# (1, 18): [(0.0, 0.0), (0.29732298497335419, 10.0), (0.33578012283654246, 14.0), (0.37750043101169095, 20.0), (0.4850647025551445, 49.0), (0.58055297421764585, 107.0), (1.0, 3180.0)]}
+
 
 class DrawerRanges(DrawerBasis):
 
     BOXH = .8 #66
     RH = .45
-    ALPHA_BARS = .25
-    WSERIES = 1.1
+    ALPHA_BARS = 0. #25
+    VERT_OFFRATIO = 0. #25
+    WSERIES = 1.2
     HSERIES = 1.
+
+    map_vars = {} #(1, 0): (0, 12), (1, 5): (0, 13), (1, 11): (0, 14), (1, 20): (0, 15)}
     
     def update(self, update_trees=True):        
         if self.view.wasKilled():
@@ -49,8 +65,12 @@ class DrawerRanges(DrawerBasis):
             # subsets = [("", None)]
             subsets = [("Baode-30", set([4416, 4417])), ("Baode-49", set([4418, 4419])),
                        ("Lantian-42", set([4420, 4421, 4422, 4423])), ("Lantian-6", set([4424, 4425]))]
-            vs = sorted(ranges.keys())
-            vs = [(1, 2), (1, 7), (1, 9), (1, 12), (1, 17), (1,18)]
+            # vs = sorted(ranges.keys())
+            if len(self.map_vars) > 0:
+                vs = sorted(self.map_vars.keys())
+            else:
+                vs = [(1, 2), (1, 7), (1, 9), (1, 12), (1, 17), (1,18)]
+            # vs = [(1, 11), (1, 12), (1, 17), (1,18)]
             # vs = [(1, 7), (1, 8), (1, 9), (1, 10), (1, 11)]
             # vs = [(1, 12), (1, 13), (1, 15), (1, 17), (1, 20)]
             # vs = [(1,0), (1,9), (1,4), (1,17)]
@@ -64,11 +84,11 @@ class DrawerRanges(DrawerBasis):
                     self.draw_bars_subset(ranges, subset, vs, reds_map, si)
                 self.draw_ranges_subset(ranges, subset, vs, reds_map, si)
 
-            self.draw_reds_lbls(ranges, subset, vs, reds_map, si+1)
+            # self.draw_reds_lbls(ranges, subset, vs, reds_map, si+1)
                 
             for vi, v in enumerate(vs):
                 if v in ranges:
-                    self.axe.text(vi*self.WSERIES+.5, (len(subsets)+.5)*self.HSERIES, '%s' % (ranges[v]["vname"]), color="#333333", ha="center", va="bottom", **self.view.getFontProps())
+                    self.axe.text(vi*self.WSERIES+.5, (len(subsets)-.5)*self.HSERIES, '%s' % (ranges[v]["vname"]), color="#333333", ha="center", va="bottom", **self.view.getFontProps())
                     ## self.axe.text(-.66, vi-.01, '%s' % ranges[v]["vrng"], color="#333333", ha="center", va="top", **self.view.getFontProps())
 
         # if rid is not None: #offset_h == 0 and           
@@ -79,7 +99,7 @@ class DrawerRanges(DrawerBasis):
 
                     
             # corners = (-1.2, wseries*(len(subsets)-1)+1.1, -0.5, len(vs)-.2, .05, .05)
-            corners = (-.3, self.WSERIES*len(vs), -0.8, self.HSERIES*(len(subsets)+1), .05, .05)
+            corners = (-.3, self.WSERIES*len(vs), -0.8, self.HSERIES*(len(subsets)+0), .05, .05)
                       
             # self.axe.set_xticks(xticks)        
             # self.axe.set_xticklabels(xlbls, **self.view.getFontProps())
@@ -140,7 +160,7 @@ class DrawerRanges(DrawerBasis):
 
         max_rng_nb = numpy.max([len(rngs["rids"]) for k,rngs in ranges.items()])
         box_h = self.BOXH
-        wunit = .5*box_h/max_rng_nb
+        wunit = (1-2.*self.VERT_OFFRATIO)*box_h/max_rng_nb
         wh = self.RH*wunit
 
         for vi, v in enumerate(vs):
@@ -151,7 +171,7 @@ class DrawerRanges(DrawerBasis):
             self.axe.plot([offset_h+0, offset_h+0, offset_h+1, offset_h+1, offset_h+0],
                           [offset_v-.5*box_h, offset_v+.5*box_h, offset_v+.5*box_h, offset_v-.5*box_h, offset_v-.5*box_h], '-', color="#aaaaaa")
             
-            c0 = offset_v - .25*box_h - ((len(rngs["rids"])-1)*wunit)/2.                    
+            c0 = offset_v - self.VERT_OFFRATIO*box_h - ((len(rngs["rids"])-1)*wunit)/2.                    
             if rngs.get("values") is not None: ### Boolean or categorical
                 tck_lbls = rngs["values"]
                 nb_vals = len(rngs["values"])
@@ -171,7 +191,7 @@ class DrawerRanges(DrawerBasis):
                 for rni, rng in enumerate(rngs["ranges"]):
                     cx = c0+rni*wunit
                     ttk = "ticks"
-                    if vi in LOG_VALS and "log_ticks" in rngs:
+                    if v in LOG_VALS and "log_ticks" in rngs:
                         ttk = "log_ticks"
                     low = rngs[ttk][rngs["map_values"][rng[0][0]]]
                     high = rngs[ttk][rngs["map_values"][rng[0][1]]]
@@ -271,7 +291,7 @@ class DrawerRanges(DrawerBasis):
 
             xs = numpy.array(xs)
             ys = numpy.array(ys)
-            if vi in LOG_VALS and "log_ticks" in rngs:
+            if v in LOG_VALS and "log_ticks" in rngs:
                 xs = numpy.log10(xs-numpy.min(xs)+1)
             minv, maxv = numpy.min(xs), numpy.max(xs)
             xs = (xs-minv)/float(maxv-minv)
@@ -280,16 +300,30 @@ class DrawerRanges(DrawerBasis):
             #     ys = ys/(numpy.max(numpy.abs(ys)))
 
             xxs = offset_h+xs
-            y1s = offset_v+.25*box_h+.5*box_h*ys
-            y2s = offset_v*numpy.ones(ys.shape)+.25*box_h
-            self.axe.fill_between(xxs, y1s, y2s, where=y2s >= y1s, facecolor='#aaaaaa', linewidth=0, alpha=self.ALPHA_BARS)
-            self.axe.fill_between(xxs, y1s, y2s, where=y2s <= y1s, facecolor='#222222', linewidth=0, alpha=self.ALPHA_BARS)
+            y1s = offset_v+(1-2.*self.VERT_OFFRATIO)*box_h*ys+self.VERT_OFFRATIO*box_h
+            y2s = offset_v*numpy.ones(ys.shape)+self.VERT_OFFRATIO*box_h
+            self.axe.fill_between(xxs, y1s, y2s, where=y2s >= y1s, facecolor='#aaaaaa', linewidth=0, alpha=.25) #self.ALPHA_BARS)
+            self.axe.fill_between(xxs, y1s, y2s, where=y2s <= y1s, facecolor='#222222', linewidth=0, alpha=.25) #self.ALPHA_BARS)
             self.axe.plot(xxs, y1s, "#000000") 
 
+            mv = self.map_vars.get(v)
+            colors_cols = {0: "r", 1: "g", 2: "b", 3: "c"}
+            if mv is not None and subset_rows is not None:
+                vals = numpy.array([self.getParentData().getNumValue(mv[0], mv[1], rid) for rid in subset_rows])
+                yys = offset_v*numpy.ones(vals.shape)+self.VERT_OFFRATIO*box_h
+                if v in LOG_VALS and "log_ticks" in rngs:
+                    vals = numpy.log10(vals-numpy.min(xs)+1)
+                vvs = (vals-minv)/float(maxv-minv)
+                self.axe.plot(offset_h+vvs, yys, colors_cols[int(offset_h)]+"+") 
+            
             if offset_v == 0:
                 ttk = "ticks"
-                if vi in LOG_VALS and "log_ticks" in rngs:
+                if v in LOG_VALS and "log_ticks" in rngs:
                     ttk = "log_ticks"
-                for ti, t in enumerate(ranges[v][ttk]):
+                if v in TIKCS_PS:
+                    xs_lbls = TIKCS_PS[v]
+                else:
+                    xs_lbls = zip(*[ranges[v][ttk], tck_lbls])
+                for t, tlbl in xs_lbls:
                     self.axe.plot([offset_h+t, offset_h+t], [offset_v-.5*box_h-.01, offset_v-.5*box_h+.01], '-', color='#333333')
-                    self.axe.text(offset_h+t, offset_v-.5*box_h-.02, '%s' % tck_lbls[ti], color="#333333", ha="center", va="top", rotation=90, **self.view.getFontProps())
+                    self.axe.text(offset_h+t, offset_v-.5*box_h-.02, '%s' % tlbl, color="#333333", ha="center", va="top", rotation=50, **self.view.getFontProps())

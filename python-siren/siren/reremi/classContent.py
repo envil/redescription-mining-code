@@ -445,7 +445,6 @@ class ContentCollection(object):
         old_item = None
         if self.hasIid(iid):
             old_item = self.getItem(iid)
-
             if old_item is not None and item is not None and old_item.compare(item) != 0:
                 old_item.setUid()
                 item.setUid(iid)

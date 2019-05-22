@@ -652,9 +652,9 @@ class Data(ContentCollection):
     #######################
 
     def addVecCol(self, vec, name=None, sito=1, force_type=None):
-        preff = "v%d_" % self.nbCols(sito)
-        if name is None:
-            name = "Rx"
+        vname = "v%d" % self.nbCols(sito)
+        if name is not None: 
+            vname = vname+":"+name
         col = None
         if force_type == "clusters" or force_type == "support":
             ks = numpy.unique(vec)
@@ -667,10 +667,14 @@ class Data(ContentCollection):
             for k in ks:
                 parts[lbls[k]] = set(numpy.where(vec == k)[0])
             vec, force_type = (parts, None)
-        
-        if force_type is not None:
-            cclass = self.getColClassForName(force_type)            
-            col = det["type"].parseList(vec, force=True)            
+
+        if force_type == "values" and isinstance(vec, ColM):
+            if name is not None: 
+                vname = name
+            col = vec
+        elif force_type is not None:
+            cclass = self.getColClassForName(force_type)
+            col = cclass.parseList(vec, force=True)            
         elif type(vec) is set:
             col = BoolColM(vec, self.nbRows())            
         elif type(vec) is dict:
@@ -679,7 +683,7 @@ class Data(ContentCollection):
             col = CatColM(vec, self.nbRows())
             
         if col is not None:
-            col.setSideIdName(sito, self.nbCols(sito), preff+name)
+            col.setSideIdName(sito, self.nbCols(sito), vname)
             self.appendCol(col, sito)
             
     def subset(self, row_ids=None, shuff_side=None):
@@ -1462,6 +1466,31 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         
 
 def main():
+    rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
+    print data
+
+    vs = []
+    ### MAT (bio1) = 27 - 28.5 AL
+    vs.append(("modeled_bio1", 27 - 28.5*data.col(0, 3).getVector()))
+    # ### MINT (bio5) = 18 - 42.9 AL
+    vs.append(("modeled_bio5", 18 - 42.9*data.col(0, 3).getVector()))
+    # ### MAP (bio12) = 2491 - 289 HYP - 841 LOP
+    vs.append(("modeled_bio12", 2491 - 289.*data.col(0, 0).getVector()-841*data.col(0, 1).getVector()))
+    # ### NPP = 2601 - 144 HYP - 935 LOP
+    vs.append(("modeled_NPP", 2601 - 144.*data.col(0, 0).getVector()-935*data.col(0, 1).getVector()))
+
+
+    for (name, v) in vs:
+        new_col = NumColM.parseList(v, force=True)
+        new_col.setDisabled()
+        new_col.setSideIdName(0, data.nbCols(0), name)
+        data.appendCol(new_col, 0)
+    pdb.set_trace()        
+    data.writeCSV([rep+"out_LHS.csv", rep+"out_RHS.csv"])
+   
+    exit()
+    
     # rep = "/home/egalbrun/TKTL/redescriptors/current/dblp_miss/miss/"
     # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
     # print data

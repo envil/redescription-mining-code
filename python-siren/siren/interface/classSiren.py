@@ -114,37 +114,66 @@ class ERCache():
             etor = self.etor
 
         nbE, nbR = etor.shape
-        matches_R_ones = numpy.dot(1*etor.T, 1*etor)
-        matches_R_zeroes = numpy.dot(1-etor.T, 1-etor)
-        matches_E_ones = numpy.dot(1*etor, 1*etor.T)
-        matches_E_zeroes = numpy.dot(1-etor, 1-etor.T)
-        
-        #### DE-DUPLICATE REDS
-        rb = {}
-        for x,y in zip(*numpy.where(numpy.triu(matches_R_zeroes + matches_R_ones, 1) >= nbE)):
-            rb[x] = y
-        keep_rs = numpy.array([i for i in range(nbR) if i not in rb], dtype=int)
+        if etor.dtype.kind == "b":
+            matches_R_ones = numpy.dot(1*etor.T, 1*etor)        
+            matches_R_zeroes = numpy.dot(1-etor.T, 1-etor)
+            matches_E_ones = numpy.dot(1*etor, 1*etor.T)
+            matches_E_zeroes = numpy.dot(1-etor, 1-etor.T)
 
-        r_to_rep = -numpy.ones(nbR, dtype=int)
-        r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
-        if len(rb) > 0:
-            rfrm, rtt = zip(*rb.items())
-            r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
+            #### DE-DUPLICATE REDS
+            rb = {}
+            for x,y in zip(*numpy.where(numpy.triu(matches_R_zeroes + matches_R_ones, 1) >= nbE)):
+                rb[x] = y
+            keep_rs = numpy.array([i for i in range(nbR) if i not in rb], dtype=int)
             
-        #### DE-DUPLICATE ENTITIES
-        ### e_to_rep == -1 -> entity does not support any red        
-        eb = {}
-        for x,y in zip(*numpy.where(numpy.triu(matches_E_zeroes + matches_E_ones, 1) >= nbR)):
-            eb[x] = y            
-        keep_es = numpy.array([i for i in range(nbE) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
+            r_to_rep = -numpy.ones(nbR, dtype=int)
+            r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
+            if len(rb) > 0:
+                rfrm, rtt = zip(*rb.items())
+                r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
+                
+            #### DE-DUPLICATE ENTITIES
+            ### e_to_rep == -1 -> entity does not support any red        
+            eb = {}
+            for x,y in zip(*numpy.where(numpy.triu(matches_E_zeroes + matches_E_ones, 1) >= nbR)):
+                eb[x] = y            
+            keep_es = numpy.array([i for i in range(nbE) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
+    
+            e_to_rep = -numpy.ones(nbE, dtype=int)
+            e_to_rep[keep_es] = numpy.arange(len(keep_es))
+            if len(eb) > 0:
+                efrm, ett = zip(*eb.items())
+                e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
+                
+            r_counts, e_counts = numpy.bincount(r_to_rep), numpy.bincount(e_to_rep+1)
 
-        e_to_rep = -numpy.ones(nbE, dtype=int)
-        e_to_rep[keep_es] = numpy.arange(len(keep_es))
-        if len(eb) > 0:
-            efrm, ett = zip(*eb.items())
-            e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
+        else:
+            CCR = numpy.corrcoef(etor.T)
+            matches_R_ones = numpy.array(numpy.maximum(0,CCR)*nbE, dtype=int)
+            matches_R_zeroes = numpy.array(numpy.maximum(0,-CCR)*nbE, dtype=int)
 
-        r_counts, e_counts = numpy.bincount(r_to_rep), numpy.bincount(e_to_rep+1)
+            CCE = numpy.corrcoef(etor)
+            matches_E_ones = numpy.array(numpy.maximum(0,CCE)*nbR, dtype=int)
+            matches_E_zeroes = numpy.array(numpy.maximum(0,-CCE)*nbR, dtype=int)
+            # matches_R_ones = numpy.zeros((etor.shape[1], etor.shape[1]), dtype=int)
+            # matches_E_ones = numpy.zeros((etor.shape[0], etor.shape[0]), dtype=int)
+            # for i in range(etor.shape[1]):
+            #     matches_R_ones[i,i] = nbE
+            #     for j in range(i):
+            #         matches_R_ones[i,j] = numpy.sum(etor[:,i]==etor[:,j])
+            # for i in range(etor.shape[0]):
+            #     matches_E_ones[i,i] = nbR
+            #     for j in range(i):
+            #         matches_E_ones[i,j] = numpy.sum(etor[i,:]==etor[j,:])
+            # matches_R_zeroes = numpy.zeros(matches_R_ones.shape, dtype=int)
+            # matches_E_zeroes = numpy.zeros(matches_E_ones.shape, dtype=int)
+
+            keep_rs = numpy.arange(nbR)
+            r_to_rep = numpy.arange(nbR)
+            keep_es = numpy.arange(nbE)
+            e_to_rep = numpy.arange(nbE)
+            r_counts, e_counts = numpy.ones(nbR, dtype=int), numpy.ones(nbE+1, dtype=int)
+            
         # e_counts = numpy.concatenate((e_counts[1:], [e_counts[0]])) ### put -1 counts to end
         xps = {"E": {"nb": nbE, "nb_other": nbR, "rprt": keep_es, "to_rep": e_to_rep, "counts": e_counts[1:],
               "matches_ones": matches_E_ones[keep_es,:][:, keep_es],
