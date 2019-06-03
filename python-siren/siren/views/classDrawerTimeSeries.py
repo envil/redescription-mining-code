@@ -7,11 +7,18 @@ import numpy
 # The recommended way to use wx with mpl is with the WXAgg backend. 
 # import matplotlib
 # matplotlib.use('WXAgg')
-from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
+
+from ..reremi.classRedescription import Redescription
+from ..reremi.classSParts import SSetts
+from classDrawerBasis import DrawerEntitiesTD
+from classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
 
 class DrawerRedTimeSeries(DrawerEntitiesTD):
+
+    def getCoordsY(self):
+        return self.getPltDtH().getCoordsY()
 
     def getCoordsXYA(self, idp):
         return self.getPltDtH().getCoordsXYA(idp)
@@ -23,25 +30,18 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
     def getAxisLims(self):
         return self.getPltDtH().getCoordsExtrema()[:-1]+(1.2,)
 
-    rect_halfwidth = 0.05
     rect_alpha = 0.7
     rect_color = "0.7"
     rect_ecolor = "0.3"
 
-    org_spreadL = 0.49 #(2/3.-0.5)
-    org_spreadR = 0.49
-    flat_space = 0.06
-    maj_space = 0.05
-    max_group_clustering = 2**8
-    nb_clusters = 5
     margins_sides = 0.05
     margins_tb = 0.05
     margin_hov = 0.01
     missing_yy = -0.1
     missing_w = -0.05
 
-    ann_to_right = True 
-    ann_xy = (10,0)
+    ann_to_right = True
+    ann_xy = (-15, -15)
 
     def __init__(self, view):
         self.view = view
@@ -208,17 +208,17 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                         elif self.isTypeId(self.prepared_data["qcols"][i].typeId(), ["Boolean", "Categorical"]):
                             rects_drag[i] = rects[0]
 
-            # self.drs = []
-            # self.ri = None
-            # for rid, rect in rects_rez.items():
-            #     dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
-            #                                       pinf=self.getPinvalue, annotation=None) #self.annotation)
-            #     self.drs.append(dr)
+            self.drs = []
+            self.ri = None
+            for rid, rect in rects_rez.items():
+                dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
+                self.drs.append(dr)
 
-            # for rid, rect in rects_drag.items():
-            #     dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
-            #                                       pinf=self.getPinvalue, annotation=None) #self.annotation)
-            #     self.drs.append(dr)
+            for rid, rect in rects_drag.items():
+                dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
+                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
+                self.drs.append(dr)
 
             #########
             # if self.getParentData().hasMissing():
@@ -269,25 +269,155 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             # self.sendEmphasize(foc_points)
                         
     def on_press(self, event):
-        return
-    def on_release(self, event):
-        return
-    def on_axes_out(self, event):
-        return
-    def on_motion_all(self, event):
-        return
+        if self.inCapture(event):
+            i = 0
+            while self.ri is None and i < len(self.drs):
+                contains, attrd = self.drs[i].contains(event)
+                if contains:
+                    self.ri = i
+                i+=1
+            if self.ri is not None:
+                self.delInfoText()
+                self.drs[self.ri].do_press(event)
 
-    def receive_release(self, rid, rect):
-        return
+    def on_release(self, event):
+        if self.inCapture(event):
+            if self.ri is not None:
+                self.drs[self.ri].do_release(event)
+            else:
+                self.on_click(event)
+            self.ri = None
+        
+    def on_axes_out(self, event):
+        if self.ri is not None:
+            self.drs[self.ri].do_release(event)
+        self.ri = None
+
+    def on_motion_all(self, event):
+        if self.inCapture(event) and self.ri is not None:
+            self.drs[self.ri].do_motion(event)
+        else:
+            self.on_motion(event)
             
     def getVforY(self, rid, y):
-        return (rid+self.prepared_data["limits"][0,rid] + y*(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid]))/len(self.prepared_data["labels"])
+        return (y*len(self.prepared_data["labels"])-rid)*(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid])+self.prepared_data["limits"][0,rid] #-direc*0.5*self.prepared_data["limits"][-1,rid]
     def getYforV(self, rid, v, direc=0):
         return (rid+(v-self.prepared_data["limits"][0,rid]+direc*0.5*self.prepared_data["limits"][-1,rid])/(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid]))/len(self.prepared_data["labels"])
     def getYsforRange(self, rid, range):
         ### HERE fix CAT
         return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[-1], direc=1)]
+     
+    def getPinvalue(self, rid, b, direc=0):
+        if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
+            return 0
+        elif self.isTypeId(self.prepared_data["qcols"][rid].typeId(), "Numerical"):
+            v = self.getVforY(rid, b)
+            prec = int(-numpy.log10(self.prepared_data["limits"][2, rid]))
+            #tmp = 10**-prec*numpy.around(v*10**prec)
+            if direc < 0:
+                tmp = 10**-prec*numpy.ceil(v*10**prec)
+            elif direc > 0:
+                tmp = 10**-prec*numpy.floor(v*10**prec)
+            else:
+                tmp = numpy.around(v, prec)            
+            if tmp >= self.prepared_data["limits"][1, rid]:
+                tmp = float("Inf")
+            elif tmp <= self.prepared_data["limits"][0, rid]:
+                tmp = float("-Inf")
+            return tmp
+        elif self.isTypeId(self.prepared_data["qcols"][rid].typeId(), ["Boolean", "Categorical"]):
+            v = int(round(b*(self.prepared_data["limits"][1, rid]-self.prepared_data["limits"][0,rid])+self.prepared_data["limits"][0, rid]))
+            if v > self.prepared_data["limits"][1, rid]:
+                v = self.prepared_data["limits"][1, rid]
+            elif v < self.prepared_data["limits"][0, rid]:
+                v = self.prepared_data["limits"][0, rid]
+            side = 0
+            if self.prepared_data["pos_axis"] < rid:
+                side = 1
+            c = self.getParentData().col(side, self.prepared_data["qcols"][rid].colId())
+            if c is not None:
+                return c.getValFromNum(v)
+
+    def getPosInfo(self, x, y):
+        rid = int(numpy.rint(x))
+        if "qcols" in self.prepared_data and rid >= 0 and rid < len(self.prepared_data["qcols"]) and self.prepared_data["qcols"][rid] is not None:
+            return self.prepared_data["xlabels"][rid], self.getPinvalue(rid, y)
+        return rid, None
+    def getPosInfoTxt(self, x, y):
+        k,v = self.getPosInfo(x, y)
+        if v is not None:
+            return "%s=%s" % (k,v)
+
             
+    def receive_release(self, rid, rect):
+        if self.isReadyPlot() and "pos_axis" in self.prepared_data:
+            pos_axis = self.prepared_data["pos_axis"]
+            side = 0
+            pos = rid
+            if rid >= pos_axis:
+                side = 1
+                pos -= pos_axis
+            copied = self.getPltDtH().getRed().queries[side].copy()
+            ### HERE RELEASE
+            l, dets = self.prepared_data["lits"][side][pos]
+            alright = False
+            upAll = False
+
+            if l.isAnon():
+                bounds = None 
+                if self.isTypeId(l.typeId(), "Numerical"):
+                    ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                    bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
+                else:
+                    cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                    if cat is not None:
+                        bounds = set([cat])
+                if bounds is not None:
+                    upAll = True
+                    for path, comp, neg in dets:
+                        ll = copied.getBukElemAt(path)
+                        newE = ll.getAdjusted(bounds)
+                        if newE is not None:
+                            copied.setBukElemAt(newE, path)
+                        self.prepared_data["lits"][side][pos] = (newE, self.prepared_data["lits"][side][pos][1])
+                alright = True
+
+                
+            elif self.isTypeId(l.typeId(), "Numerical"):
+                ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
+                upAll = (l.valRange() != bounds)
+                if upAll:
+                    for path, comp, neg in dets:
+                        ll = copied.getBukElemAt(path)
+                        ll.getTerm().setRange(bounds)
+                        if comp:
+                            ll.flip()
+                alright = True
+            elif self.isTypeId(l.typeId(), "Categorical"):
+                cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                if cat is not None:
+                    upAll = (l.getTerm().getCat() != cat)
+                    if upAll:
+                        for path, comp, neg in dets:
+                            ### HERE CAT FIX
+                            copied.getBukElemAt(path).getTerm().setRange(set([cat]))
+                alright = True
+            elif self.isTypeId(l.typeId(), "Boolean"):
+                bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                if bl is not None:
+                    upAll = bl != dets[0][-1]
+                    if upAll:
+                        for path, comp, neg in dets:
+                            copied.getBukElemAt(path).flip()
+                    alright = True                    
+                    
+            if alright:
+                self.prepared_data["ranges"][rid] = [self.getParentData().col(side, l.colId()).numEquiv(r) for r in l.valRange()]
+                if upAll:
+                    self.getPltDtH().updateQuery(side, copied, force=True, upAll=upAll)
+                else:
+                    self.update()       
     def makeAdditionalElements(self, panel=None):
         if panel is None:
             panel = self.getLayH().getPanel()
@@ -314,17 +444,17 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
         return [add_boxB]
 
     def getLidAt(self, x, y):
-        # axid = int(numpy.around(x))
-        # if "pos_lids" in self.prepared_data:
-        #     rlid = numpy.argmin((self.prepared_data["pos_lids"][axid,self.getElement("reps")]-y)**2)
-        #     lid = self.getElement("reps")[rlid]
-        #     if abs(self.prepared_data["pos_lids"][axid,lid]-y) < self.margin_hov:
-        #         return lid
+        if "coord" in self.prepared_data and abs(self.getCoordsY()-y) < self.margin_hov:
+            return numpy.argmin((self.prepared_data["coord"]-x)**2)
         return None
 
     ###event when we click on label
     def onpick(self, event):
-        pass
+        artist = event.artist
+        pos = round(artist.xy[0])
+        updown = artist.xy[1] < 1.2
+        if "pos_hids" in self.prepared_data and (pos, updown) in self.prepared_data["pos_hids"]:
+            self.sendEmphasize(self.prepared_data["pos_hids"][(pos, updown)])
              
     def on_draw(self, event):
         pass

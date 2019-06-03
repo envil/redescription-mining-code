@@ -197,6 +197,9 @@ class PltDtHandlerWithTime(PltDtHandlerBasis):
             
         # self.pltdt["time"] = self.mapCoords(self.getParentCoords())
 
+    def getCoordsY(self):
+        return self.YVAL_BASE
+
     def getCoordsExtrema(self):
         coords = self.pltdt.get("time_org")
         if coords is None:
@@ -226,7 +229,7 @@ class PltDtHandlerWithTime(PltDtHandlerBasis):
             return (x, self.YVAL_BASE)
     def getCoordsXYA(self, id):
         return self.getCoordsXY(id)
-
+    
     def hasPolyCoords(self):
         return False
     
