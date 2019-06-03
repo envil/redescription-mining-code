@@ -12,7 +12,7 @@ from __future__ import print_function, division, unicode_literals
 from grako.parsing import * # @UnusedWildImport
 from grako.exceptions import * # @UnusedWildImport
 
-__version__ = '18.298.14.45.43'
+__version__ = '19.150.06.51.40'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -367,7 +367,21 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _variable_value_(self):
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._numerical_value_()
+                with self._option():
+                    self._time_value_()
+                self._error('no available options')
+
+    @rule_def
+    def _numerical_value_(self):
         self._NUMBER_()
+
+    @rule_def
+    def _time_value_(self):
+        self._pattern(r'@([^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac]*[^<>=!\[\]\(\)\{\}&|,\n\t\u2227\u2228\u2264\u2265\u2208\u2209\u2260\u00ac ])?')
 
     @rule_def
     def _NUMBER_(self):
@@ -565,6 +579,12 @@ class RedQuerySemantics(object):
         return ast
 
     def variable_value(self, ast):
+        return ast
+
+    def numerical_value(self, ast):
+        return ast
+
+    def time_value(self, ast):
         return ast
 
     def NUMBER(self, ast):

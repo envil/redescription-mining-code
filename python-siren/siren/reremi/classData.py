@@ -12,7 +12,6 @@ from toolICList import ICList
 import csv_reader
 import pdb
 
-
 FORCE_WRITE_DENSE = False
 
 def all_subclasses(cls):
@@ -235,7 +234,11 @@ class Data(ContentCollection):
             raise
         self.setCoords(coords)
 
-        self.initLists(data_cols)
+        dt_cs = list(enumerate(data_cols))
+        if self.condition_dt is not None and len(self.condition_dt["cols"]) > 0:
+            dt_cs.append((-1, self.condition_dt["cols"]))
+        self.initLists(dt_cs)
+        ## self.initLists(data_cols)
         self.ssetts = SSetts(self.hasMissing())
 
     def recomputeCols(self, side=None, cid=None):
@@ -290,25 +293,40 @@ class Data(ContentCollection):
         item.recompute(self)
         
     def colsSide(self, side):
+        # if side == -1 and self.condition_dt is not None:
+        #     return self.condition_dt.get("cols", [])
         if side in self.containers:
             return [self.items[iid] for iid in self.containers[side]]
         return []        
     def col(self, side, literal):
-        cid = None
-        if side in self.containers:
-            if type(literal) in [int, numpy.int64] and literal < self.getLen(side):
-                cid = (side, literal)
-            elif (isinstance(literal, Term) or isinstance(literal, Literal)) and literal.colId() < self.getLen(side):
-                cid = (side, literal.colId())
-                if cid not in self.items:
-                    cid = None
-                    raise DataError("This columns does not exist! CID=%s" % str(cid))
-                elif not literal.isAnon() and literal.typeId() != self.items[cid].typeId():
-                    cid = None
-                    raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (cid, literal, literal.typeId(), self.items[cid].typeId()))
+        cid, ccs = None, None
+        if False: #side == -1 and self.condition_dt is not None:
+            ccs = self.condition_dt["cols"] 
+            if type(literal) in [int, numpy.int64]:
+                cid = literal
+            elif (isinstance(literal, Term) or isinstance(literal, Literal)):
+                cid = literal.colId()
+            if cid is not None and cid > len(ccs):
+                cid = None
+                raise DataError("This columns does not exist! CID=%s" % str(cid))
 
-        if cid is not None:
-            return self.items[cid]
+        elif side in self.containers:
+            ccs = self.items
+            if type(literal) in [int, numpy.int64]:
+                cid = (side, literal)
+            elif (isinstance(literal, Term) or isinstance(literal, Literal)):
+                cid = (side, literal.colId())
+                
+            if cid is not None and (cid[1] > self.getLen(side) or cid not in ccs):
+                cid = None
+                raise DataError("This columns does not exist! CID=%s" % str(cid))
+
+        if cid is not None and ccs is not None:
+            if (isinstance(literal, Term) or isinstance(literal, Literal)) and not literal.isAnon() and literal.typeId() != ccs[cid].typeId():
+                cid = None
+                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (cid, literal, literal.typeId(), ccs[cid].typeId()))
+            else:
+                return ccs[cid]
     def getElement(self, iid):
         return self.col(iid[0], iid[1])
     def getSides(self, side=None):
@@ -1126,7 +1144,10 @@ class Data(ContentCollection):
     def isGeoConditional(self):
         return self.condition_dt is not None and self.condition_dt.get("is_geo", False)
 
-
+    def getTimeCoord(self):
+        if self.isTimeConditional() and len(self.condition_dt["cols"]) > 0:
+            return self.condition_dt["cols"][0].getVect()
+        
     def getColsC(self):
         if self.isConditional():
             return self.condition_dt["cols"]
@@ -1144,8 +1165,6 @@ class Data(ContentCollection):
         if self.isGeospatial():
             return [min(chain.from_iterable(self.coords[0])), max(chain.from_iterable(self.coords[0])), min(chain.from_iterable(self.coords[1])), max(chain.from_iterable(self.coords[1]))]
         return None
-
-        return self.coords
 
     def hasRNames(self):
         return self.rnames is not None
@@ -1207,17 +1226,21 @@ class Data(ContentCollection):
             
     def prepareGeoCond(self):        
         if self.isGeospatial():
+            geo_cols = self.prepareGeoCols("cond_geo")
+            self.condition_dt = {"cols": geo_cols, "is_geo": True}
+
+    def prepareGeoCols(self, cname="coord_geo"):
+        geo_cols = []
+        if self.isGeospatial():
             coords_points = self.getCoordPoints()
-            geo_cols = []
             for ci in range(coords_points.shape[1]):
                 ncolSupp = [(v,k) for (k,v) in enumerate(coords_points[:,ci])]
                 col = NumColM(ncolSupp, N=coords_points.shape[0])
                 col.setId(ci)
                 col.side = -1
-                col.name = "cond_geo%d" % ci
+                col.name = cname + ("%d" % ci)
                 geo_cols.append(col)
-            self.condition_dt = {"cols": geo_cols, "is_geo": True}
-
+        return geo_cols
     
     def enableAll(self):
         for side in self.getSides():
@@ -1390,13 +1413,12 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     condition_dt = None
     single_dataset = False
 
-    if csv_data.get("cond_col", None) is not None:        
+    if csv_data.get("cond_col", None) is not None:
         cond_col = NumColM.parseList(csv_data["cond_col"])
-        cond_col.setId(0)
-        cond_col.name = csv_reader.COND_COL[0]
+        cname = csv_reader.COND_COL[0]
         if csv_data.get("c_time", False):
-            cond_col.name = csv_reader.COND_COL[-1]
-        cond_col.side = -1
+            cname = csv_reader.COND_TIME
+        cond_col.setSideIdName(-1, 0, cname)
         condition_dt = {"cols": [cond_col], "is_time": csv_data.get("c_time", False)}
 
     if csv_data.get("coord", None) is not None:

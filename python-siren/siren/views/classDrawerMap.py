@@ -199,7 +199,7 @@ class MapBase:
             mbounds.update(tcl.bounds_def)
         else:
             ### get corners from data
-            mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"] = cextrema #self.getParentCoordsExtrema()
+            mbounds["llon"], mbounds["ulon"], mbounds["llat"], mbounds["ulat"] = cextrema #self.getCoordsExtrema()
             for coord in coords:
                 ### if corners coords from settings lower than 180,
                 ### replace that from data, and drop margin
@@ -385,7 +385,7 @@ class DrawerMap(DrawerBasis):
     MAP_POLY = True
     def initBM(self):
         ### return None, {}
-        return MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getParentCoordsExtrema())
+        return MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getCoordsExtrema())
     
     def initPlot(self):
         self.setMapBackZ()
@@ -396,7 +396,7 @@ class DrawerMap(DrawerBasis):
             self.setAxe(self.getFigure().add_axes([0, 0, 1, 1]))
             self.bm.ax = self.getAxe()
         else:
-            llon, ulon, llat, ulat = self.getPltDtH().getParentCoordsExtrema()
+            llon, ulon, llat, ulat = self.getPltDtH().getCoordsExtrema()
             midlon, midlat = (llon + ulon)/2, (llat + ulat)/2
             mside = max(abs(llon-midlon), abs(llat-midlat))
             self.setAxe(self.getFigure().add_subplot(111,
@@ -405,7 +405,7 @@ class DrawerMap(DrawerBasis):
 
     def getAxisLims(self):
         if self.bm is None:
-            return self.getPltDtH().getParentCoordsExtrema()
+            return self.getPltDtH().getCoordsExtrema()
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
@@ -427,7 +427,7 @@ class DrawerMap(DrawerBasis):
                 if len(qC) == 0:
                     return
                 ax_lims = list(self.getAxisLims())
-                cond_lims = list(self.getPltDtH().getParentCoordsExtrema())
+                cond_lims = list(self.getPltDtH().getCoordsExtrema())
                 for term in qC.invTerms():
                     cid = term.colId()
                     if term.isLowbounded():

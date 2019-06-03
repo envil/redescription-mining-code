@@ -6,6 +6,7 @@ import wx
 ### from wx import EVT_BUTTON, EVT_LEFT_DCLICK
 
 import numpy
+from scipy.sparse.linalg import eigsh
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 # import matplotlib
@@ -200,6 +201,16 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         else:
             Rout = Rall
 
+        labels = [d["name"] for d in details]
+
+        # A = (Rall+1)/2.
+        A = 10**(-2*Rall)
+        L = numpy.diag(numpy.sum(A, axis=1)) - A 
+        eival, eivect = eigsh(L, 2)
+        s = numpy.argsort(eivect[:,1])
+        if s[0] > s[-1]:
+            s = s[::-1]
+        
         # #### store the corrcoeffs to file(s)
         # import re
         # filename = "/home/egalbrun/corr_values_%s.csv" % self.view.getItemId()
@@ -214,10 +225,10 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         # # filename = "/home/egalbrun/corr_values_globe.csv"
         # # numpy.savetxt(filename, Rall[keep_ids,:][:,keep_ids], fmt=str("%.6f"), delimiter=",", header=header)
         
-        # self.drawCorrelPlotTriangle(Rin, Rout, details, extra_v)
-        self.drawCorrelPlotSquare(Rin, Rout, details, extra_v)
+        # self.drawCorrelPlotTriangle(Rin, Rout, labels, extra_v)
+        self.drawCorrelPlotSquare(Rin[s,:][:,s], Rout[s,:][:,s], [labels[ss] for ss in s], extra_v)
 
-    def drawCorrelPlotTriangle(self, Rin, Rout, details, extra_v):
+    def drawCorrelPlotTriangle(self, Rin, Rout, labels, extra_v):
         cmap = cm.get_cmap('PuOr')
         xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
         flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
@@ -228,7 +239,6 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
         rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)           
 
-        labels = [d["name"] for d in details]
         width_band = .45
         margband_bot = width_band
         margband_top = 1.
@@ -272,7 +282,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.axe.set_xticks([])
         self.axe.set_yticks([])
 
-    def drawCorrelPlotSquare(self, Rin, Rout, details, extra_v):
+    def drawCorrelPlotSquare(self, Rin, Rout, labels, extra_v):
         # cmap = cm.get_cmap('PuOr')
         cmap = cm.get_cmap('PiYG')
         xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
@@ -284,8 +294,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         # rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
         # rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)
         rot_xys = numpy.vstack([flt_xs, flt_ys]).T
-
-        labels = [d["name"] for d in details]        
+ 
         for i, lbl in enumerate(labels):
             self.axe.text(Rout.shape[0]+.2, i, lbl, ha="left", va="center", **self.view.getFontProps())
             self.axe.text(i-.5, Rout.shape[0]+.2, lbl, rotation=60, va="bottom", **self.view.getFontProps())

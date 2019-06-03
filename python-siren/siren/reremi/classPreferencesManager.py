@@ -234,7 +234,10 @@ class SingleOptionsCParameter(CParameter):
 class BooleanCParameter(SingleOptionsCParameter):
     type_id = "boolean"
     opts_data = [False, True]   
-    map_str = {"yes": True, "no": False}
+    map_str = {"yes": True, "no": False,
+               "true": True, "false": False,
+               "t": True, "f": False,
+               "1": True, "0": False}
     inv_str = {True: "yes", False: "no"}
     
     def __init__(self, name=None, label=None, default=None, value_type=bool, options=None, legend=None):
@@ -254,8 +257,11 @@ class BooleanCParameter(SingleOptionsCParameter):
             tmp =  toolRead.parseToType(raw_value, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return tmp
-        elif self.map_str.get(raw_value) is not None:
-            return int(self.map_str[raw_value])
+        else:
+            try:
+                return int(self.map_str[raw_value.lower()])
+            except KeyError, AttributeError:
+                return None
         return None
 
     def getParamData(self, raw_value, index=False):

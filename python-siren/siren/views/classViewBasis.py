@@ -14,11 +14,12 @@ from classDrawerTree import DrawerRedTree
 from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
 from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
 from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
+from classDrawerTimeSeries import DrawerRedTimeSeries
 
 from classDrawerCorrel import DrawerRedCorrel
 from classDrawerRanges import DrawerRanges
 
-from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords
+from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords, PltDtHandlerRedWithTime
 from classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListRanges, PltDtHandlerListBlocksCoords, PltDtHandlerTextList
 from classProj import ProjFactory
 
@@ -738,6 +739,17 @@ class ViewRedPara(ViewRed):
 
     subcl_drawer = DrawerRedPara
 
+class ViewRedTimeSeries(ViewRed):
+    
+    TID = "TS"
+    SDESC = "Time"
+    ordN = 5
+    title_str = "Time Series"
+    typesI = "vr"
+    geo = False
+    
+    subcl_drawer = DrawerRedTimeSeries
+    subcl_pltdt = PltDtHandlerRedWithTime
     
 class ViewRedCorrel(ViewRed):
     
@@ -763,7 +775,7 @@ class ViewRedTree(ViewRed):
 
     TID = "TR"
     SDESC = "Tree"
-    ordN = 5
+    ordN = 4
     title_str = "Decision Tree"
     typesI = "vr"
     geo = False

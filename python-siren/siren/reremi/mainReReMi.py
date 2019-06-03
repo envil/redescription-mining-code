@@ -591,7 +591,32 @@ def run_rnd(args):
             logger.clockTac(0, None)
             if stop:
                 exit()
-    
+
+def run_extend(args, qfilename):
+    loaded = loadAll(args)
+    params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
+
+    rp = Redescription.getRP()
+    reds = []
+    try:
+        with open(qfilename) as fd:
+            rp.parseRedList(fd, data, reds)
+    except IOError:
+        reds = []
+        
+    miner = instMiner(data, params, logger)
+    collect_reds = []
+    try:
+        for red in reds:
+            rcollect = miner.part_run({"red": red, "side": 1})
+            collect_reds.extend(rcollect.getItems("P"))
+    except KeyboardInterrupt:
+        ## miner.initial_pairs.saveToFile()
+        logger.printL(1, 'Stopped...', "log")
+    outputResults(filenames, collect_reds, data)
+    logger.clockTac(0, None)
+
+                
 ##### MAIN
 ###########
     
@@ -607,6 +632,8 @@ if __name__ == "__main__":
         run_filter(sys.argv[:-1])
     # elif sys.argv[-1] == "filterRM":
     #     run_filterRM(sys.argv[:-1])
+    elif re.match("extend", sys.argv[-1]) and len(sys.argv) > 3:
+        run_extend(sys.argv[:-2], sys.argv[-2])
     else:
         run(sys.argv)
 

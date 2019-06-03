@@ -169,7 +169,7 @@ class ExpMiner(object):
                         red.removeAvailables()
                     bests = newExtensionsBatch(self.data.nbRows(), self.constraints, basis_red)
                         
-                    ### WARNING DANGEROUS few extensions for DEBUG!                    
+                    ### WARNING DANGEROUS few extensions for DEBUG!
                     for (side, v, r) in exts:
                         if not self.questionLive():
                             nextge = []                        
@@ -215,6 +215,7 @@ class ExpMiner(object):
             for iid in rcollect.getIids():
                 if iid not in nextge_keys:
                     rcollect.getItem(iid).removeAvailables()
+            
 
         ### Do before selecting next gen to allow tuning the beam
         ### ask to update results
@@ -789,7 +790,7 @@ class Miner(object):
                 for i, pair in enumerate(pairs):
                     if pair["score"] >= self.constraints.getCstr("min_pairscore") and (pair["litL"], pair["litR"]) not in seen:
                         seen.append((pair["litL"], pair["litR"]))
-                        self.logger.printL(6, 'Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], pair.get("litC", "-")), "log", self.getId())
+                        self.logger.printL(6, 'Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], " & ".join(["%s" % l for l in pair.get("litC", ["-"])])), "log", self.getId())
                         pair.update({0: idL, 1: idR})
                         self.initial_pairs.add(pair["litL"], pair["litR"], pair)
                         # ########
@@ -833,9 +834,9 @@ class Miner(object):
         if ids is None:
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
 
-        ### WARNING DANGEROUS few pairs for DEBUG!
-        # for idL in ids[0][:2]:
-        #     for idR in ids[1][:2]:
+        # ### WARNING DANGEROUS few pairs for DEBUG!
+        # for idL in [12, 15, 23]:
+        #     for idR in [2]:
         for idL in ids[0]:
             for idR in ids[1]:
                 if self.data.areGroupCompat(idL, idR) and \

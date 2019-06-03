@@ -574,7 +574,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return self.getPltDtH().hasPolyCoords() & self.getSettV("map_poly", self.MAP_POLY)
     
     def getAxisLims(self):
-        return self.getPltDtH().getParentCoordsExtrema()
+        return self.getPltDtH().getCoordsExtrema()
 
     
     #### SEC: ACTIONS
@@ -1022,11 +1022,10 @@ class DrawerEntitiesTD(DrawerBasis):
         return (x0, x1, y0, y1, bx, by)
         
     def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
-        
         ku, kindices = numpy.unique(dots_draw["zord_dots"][draw_indices], return_inverse=True)
         ## pdb.set_trace()
         for vi, vv in enumerate(ku):
-            if vv != -1: 
+            if vv != -1:
                 axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),
                             self.getCoords(1,draw_indices[kindices==vi]),
                             c=dots_draw["fc_dots"][draw_indices[kindices==vi],:],

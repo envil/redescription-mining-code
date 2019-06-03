@@ -47,7 +47,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         return vec, vec_dets
 
     def getAxisLims(self):
-        return self.getPltDtH().getParentCoordsExtrema()
+        return self.getPltDtH().getCoordsExtrema()
 
     def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
         self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])

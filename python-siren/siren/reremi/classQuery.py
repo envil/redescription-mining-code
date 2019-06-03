@@ -1,6 +1,8 @@
 import re, random, operator, itertools, codecs, numpy, copy, time, datetime
 from classSParts import  SParts, SSetts
 from redquery_parser import RedQueryParser
+from dateutil import parser
+import time
 import scipy.spatial.distance
 from grako.exceptions import * # @UnusedWildImport
 import pdb
@@ -29,7 +31,8 @@ def format_time(v):
         else:
             fmt = date_fmt + "," + time_fmt
     return time.strftime(fmt, time_struct)
-
+def parse_time(v, dayfirst=True):
+    return time.mktime(parser.parse(v, dayfirst=dayfirst).timetuple())
 
 def foldRowsTT(tt):
     changed = False
@@ -924,7 +927,7 @@ class NumTerm(Term):
             
         if notInf:
             if timeInterp:
-                bd =  format_time(bd)
+                bd =  "@%s" % format_time(bd)
 
             if style == "tex":
                 if timeInterp:
@@ -2745,7 +2748,7 @@ class Query(object):
     parse = staticmethod(parse)
 
 # GENERATE PARSER:
-#     python -m grako -m RedQuery -o redquery_parser.py redquery.ebnf (!!! REMOVE ABSOLUTE_IMPORT FROM GENERATED FILE)
+#     python -m grako -m RedQuery -o redquery_parser.py redquery.ebnf; sed -i 's/division, absolute_import, unicode_literals/division, unicode_literals/' redquery_parser.py (!!! REMOVE ABSOLUTE_IMPORT FROM GENERATED FILE)
 # RUN:
 #     python redquery_parser.py queries.txt QUERIES
 class QuerySemantics(object):
@@ -2804,9 +2807,15 @@ class QuerySemantics(object):
                         CatTerm(self.parse_vname(ast.get("variable_name")), self.parse_categories(ast.get("categories"))))]
 
     def realvalued_literal(self, ast):
-        return [Literal("neg" in ast, NumTerm(self.parse_vname(ast.get("variable_name")),
-                                              float(ast.get("lower_bound", "-inf")),
-                                              float(ast.get("upper_bound", "inf"))))]
+        if re.match("@", ast.get("lower_bound", "")):
+            lower = parse_time(ast.get("lower_bound")[1:])
+        else:
+            lower = float(ast.get("lower_bound", "-inf"))
+        if re.match("@", ast.get("upper_bound", "")):
+            upper = parse_time(ast.get("upper_bound")[1:])
+        else:
+            upper = float(ast.get("upper_bound", "inf"))
+        return [Literal("neg" in ast, NumTerm(self.parse_vname(ast.get("variable_name")), lower, upper))]
 
     def boolean_literal(self, ast):
         return [Literal("neg" in ast, BoolTerm(self.parse_vname(ast.get("variable_name"))))]

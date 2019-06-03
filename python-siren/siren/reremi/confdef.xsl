@@ -96,6 +96,17 @@ An XML preferences file contains all non-default parameters. The ouline is as fo
 		</p>		
 		</li>
 	</xsl:for-each>
+        <xsl:for-each select="section/parameter[parameter_type='boolean']">
+		<li>  		
+		<h3 class="parameter-label"><xsl:value-of select="label"/></h3>
+		<span class="parameter-name">[<xsl:value-of select="name"/> =
+		<xsl:value-of select="default/value"/>]
+		</span>
+		<p class="parameter-legend"><xsl:value-of select="legend"/>
+		(<span class="parameter-details">Boolean, yes/no</span>)
+		</p>
+		</li>
+	</xsl:for-each>
 	<xsl:for-each select="section/parameter[parameter_type='single_options']">
 		<li>  		
 		<h3 class="parameter-label"><xsl:value-of select="label"/></h3>

@@ -331,8 +331,11 @@ class ContentCollection(object):
         self.clear()
         iter_lists = []
         if type(lists) is list:
-            iter_lists = enumerate(lists)
-        elif type(lists, dict):
+            if len(lists) > 0 and type(lists[0]) is tuple:
+                iter_lists = lists
+            else:
+                iter_lists = enumerate(lists)
+        elif type(lists) is dict:
             iter_lists = lists.items()
         for lid, lls in iter_lists:
             self.newList(iid=lid)
@@ -759,7 +762,8 @@ class TrackedContentCollection(ContentCollection):
                 t["@"] = source
                 self.stored_tracks.append(t)
             else:
-                pdb.set_trace()
+                print ">>> Check tracks!!"
+                # pdb.set_trace()
     
     def clearTracks(self):
         del self.stored_tracks[:]

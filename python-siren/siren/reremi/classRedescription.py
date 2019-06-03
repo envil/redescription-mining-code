@@ -60,7 +60,7 @@ class Redescription(WithEVals):
         self.extras["status"] = 1
         self.extras["track"] = []
         self.condition = None
-
+        
     @classmethod
     def fromInitialPair(tcl, initialPair, data, dt={}):
         if initialPair[0] is None and initialPair[1] is None:
@@ -83,6 +83,7 @@ class Redescription(WithEVals):
         r = tcl(queries[0], queries[1], supps_miss, data.nbRows(), [len(supps_miss[0])/float(data.nbRows()),len(supps_miss[1])/float(data.nbRows())], data.getSSetts())
         r.setTrack([(-1, -1)])
 
+        qC = None
         if dt.get("litC") is not None:
             litC = dt["litC"]
             if type(litC) is list:
@@ -90,31 +91,44 @@ class Redescription(WithEVals):
                 qC = Query(OR=False, buk=litC) 
             else:                
                 qC = Query(buk=[litC])                
+        elif len(initialPair) > 2 and type(initialPair[-1]) is Query:
+            qC = initialPair[-1]
+
+        if qC is not None:
             supp_cond, miss_cond = qC.recompute(-1, data)
             r.setCondition(qC, supp_cond)
         WithEVals.recompute(r, data)
         return r
 
     @classmethod
-    def fromQueriesPair(tcl, queries, data):
-        r = tcl(queries[0].copy(), queries[1].copy())
+    def fromQueriesPair(tcl, queries, data, copyQ=True):
+        if copyQ:
+            r = tcl(queries[0].copy(), queries[1].copy())
+        else:
+            r = tcl(queries[0], queries[1])
         r.recompute(data)        
         r.setTrack([tuple([0] + sorted(r.queries[0].invCols())), tuple([1] + sorted(r.queries[1].invCols()))])
         if len(queries) > 2 and queries[2] is not None:
-            qC = queries[2]
+            if copyQ:
+                qC = queries[2].copy()
+            else:
+                qC = queries[2]
             supp_cond, miss_cond = qC.recompute(-1, data)
-            r.setCondition(qC, supp_cond)            
+            r.setCondition(qC, supp_cond)
         return r
 
     @classmethod
     def fromCol(tcl, col, data):
         queries = [Query(), Query()]
+        if col.getSide() == -1:
+            queries.append(Query())
         track = []
         if isinstance(col, ColM):
             queries[col.getSide()].extend(-1, Literal(False, col.getAnonTerm()))
             track.append((col.getSide(), col.getId()))
-        r = tcl(queries[0], queries[1])
-        r.recompute(data)        
+        r = tcl.fromQueriesPair(queries, data, copyQ=False)
+        # r = tcl(queries[0], queries[1])
+        # r.recompute(data)        
         r.setTrack(track)
         return r
     
@@ -234,7 +248,7 @@ class Redescription(WithEVals):
 
     def hasCondition(self):
         return self.condition is not None
-    def setCondition(self, qC=None, supp_cond=None): ### here
+    def setCondition(self, qC=None, supp_cond=None):
         self.condition = None
         if qC is not None:
             if supp_cond is None:
@@ -298,8 +312,11 @@ class Redescription(WithEVals):
     def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True):
         if self.lAvailableCols[side] is not None and (not check_empty or self.length(1-side) != 0):
             tt = set(self.lAvailableCols[side])
-            if single_dataset:
-                tt &= set(self.lAvailableCols[1-side])
+            if single_dataset and self.lAvailableCols[1-side] is not None:
+                if len(self.lAvailableCols[1-side]) > 0: ### other side might have been deactivated, don't intersect
+                    tt &= set(self.lAvailableCols[1-side])
+                else:
+                    tt.difference_update(self.queries[1-side].invCols())
             if data is not None:
                 for ss in [0,1]:
                     if data.hasGroups(ss):
@@ -329,7 +346,10 @@ class Redescription(WithEVals):
         else:
             if org_available is not None:
                 if still_available is not None:
-                    self.lAvailableCols[side] = org_available.intersection(still_available)
+                    if len(org_available) == 0:
+                        self.lAvailableCols[side] = set(still_available)
+                    else:
+                        self.lAvailableCols[side] = org_available.intersection(still_available)
                 else:
                     self.lAvailableCols[side] = set(org_available)
                 if not_available is not None:
@@ -364,6 +384,9 @@ class Redescription(WithEVals):
     def copy(self, iid=None):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              self.supports().supparts(), self.supports().nbRows(), self.probas(), self.supports().getSSetts(), iid=iid)
+        if self.hasCondition():
+            r.setCondition(self.getQueryC().copy(), self.getSuppC().copy())                        
+
         for side in [0,1]:
             if self.lAvailableCols[side] is not None:
                 r.lAvailableCols[side] = set(self.lAvailableCols[side])
@@ -769,7 +792,14 @@ class Redescription(WithEVals):
         if self.score(details) > other.score(details):
             return Redescription.diff_score
         elif self.score(details) == other.score(details):
-            return Query.comparePair(self.queries[0], self.queries[1], other.queries[0], other.queries[1])
+            cpair = Query.comparePair(self.queries[0], self.queries[1], other.queries[0], other.queries[1])
+            if cpair == 0 and (self.hasCondition() or other.hasCondition()):
+                if self.hasCondition() and other.hasCondition():
+                    return self.getQueryC().compare(other.getQueryC())/10.
+                elif other.hasCondition():
+                    return -.5
+                return .5
+            return cpair
         else:
             return -Redescription.diff_score
 

@@ -2,15 +2,14 @@ import csv
 import sys, codecs, re
 import pdb
 from StringIO import StringIO
-from classQuery import Term
-from dateutil import parser
-import time
+from classQuery import Term, parse_time
 import numpy as np
 
 LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
 LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
 IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
-COND_COL = ('cond_var', 'cond_col', 'cond_time')
+COND_TIME = 'cond_time'
+COND_COL = ('cond_var', 'cond_col', 'timeid', COND_TIME)
 
 
 ENABLED_ROWS = ('enabled_row', 'enabled_rows')
@@ -434,7 +433,7 @@ def has_condition(D):
                     condIds = np.copy(col)
                 if re.search("time", s):
                     try:
-                        col = ["%d" % time.mktime(parser.parse(v, dayfirst=True).timetuple()) for v in col]
+                        col = ["%d" % parse_time(v, dayfirst=True) for v in col]
                         isTime = True
                     except TypeError:
                         col = D['data'][s]

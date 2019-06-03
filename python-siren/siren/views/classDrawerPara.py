@@ -159,7 +159,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             precisions = [10**numpy.floor(numpy.log10(self.getParentData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None]
             precisions.insert(pos_axis, 1)
             precisions = numpy.array(precisions)
-        
+
             mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan)
             mcols[None] = -1
             cids = [mcols[sc] for sc in side_cols]

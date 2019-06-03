@@ -41,7 +41,7 @@ class PltDtHandlerBasis(object):
         if self.hasParent():
             return self.view.parent.dw.getCoords()
         return [[[0]],[[0]]]
-    def getParentCoordsExtrema(self):
+    def getCoordsExtrema(self):
         if self.hasParent():
             return self.view.parent.dw.getCoordsExtrema()
         return (-1., 1., -1., 1.)
@@ -183,6 +183,53 @@ class PltDtHandlerWithCoords(PltDtHandlerBasis):
         return proj_coords
     
 
+class PltDtHandlerWithTime(PltDtHandlerBasis):
+
+
+    YVAL_LOW, YVAL_HIGH = (-.2, 0.)
+    YVAL_BASE = (YVAL_HIGH+YVAL_LOW)/2.
+    
+    def __init__(self, view):
+        PltDtHandlerBasis.__init__(self, view)
+        self.pltdt["time_org"] = None
+        if self.getParentData().isTimeConditional():
+            self.pltdt["time_org"] = self.getParentData().getTimeCoord()
+            
+        # self.pltdt["time"] = self.mapCoords(self.getParentCoords())
+
+    def getCoordsExtrema(self):
+        coords = self.pltdt.get("time_org")
+        if coords is None:
+            return (-1., 1., -1., 1.)
+        return (numpy.min(coords), numpy.max(coords), self.YVAL_LOW, self.YVAL_HIGH)
+            
+    def getCoords(self, axi=None, ids=None):
+        coords = self.pltdt.get("time_org")
+        # if coords is None and "coords" in self.pltdt:
+        #     coords = self.pltdt["coords"]
+        if coords is None:
+            return coords
+        if ids is None:
+            if axi == 1:
+                return 0*coords+self.YVAL_BASE
+            return coords
+        if axi == 1:
+            return 0*coords[ids]+self.YVAL_BASE
+        return coords[ids]
+    def getCoordsP(self, id):
+        return self.getCoords(ids=id)
+    def getCoordsXY(self, id):
+        x = self.getCoordsP(id)
+        if x is None:
+            return (0,self.YVAL_BASE)
+        else:
+            return (x, self.YVAL_BASE)
+    def getCoordsXYA(self, id):
+        return self.getCoordsXY(id)
+
+    def hasPolyCoords(self):
+        return False
+    
 class PltDtHandlerRed(PltDtHandlerBasis):
      
     def hasQueries(self):
@@ -271,7 +318,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             return red
 
     def updateQuery(self, sd=None, query=None, force=False, upAll=True, update_trees=True):
-        sides = [0,1]
+        # sides = [0,1]
         sides = [0,1,-1]
         if sd is None:
             queries = [self.parseQuery(0), self.parseQuery(1), None]
@@ -291,13 +338,15 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 changed = True
 
         red = None
+
         if changed or force:
-            try:                
+            try:
                 red = Redescription.fromQueriesPair(self.pltdt["queries"], self.getParentData())
             except Exception:
                 ### Query could be parsed but not recomputed
                 red = None
                 self.pltdt["queries"] = old
+
         if red is not None:
             #### SEND BACK
             self.sendEditBack(red)
@@ -324,4 +373,9 @@ class PltDtHandlerRedWithCoords(PltDtHandlerWithCoords, PltDtHandlerRed):
 
     def __init__(self, view):
         PltDtHandlerWithCoords.__init__(self, view)
+        
+class PltDtHandlerRedWithTime(PltDtHandlerWithTime, PltDtHandlerRed):
+
+    def __init__(self, view):
+        PltDtHandlerWithTime.__init__(self, view)
     

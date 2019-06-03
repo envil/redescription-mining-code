@@ -1220,29 +1220,30 @@ class RedProps(Props):
                 return fields, ss
         return None, None
 
-    def parseQueries(self, string, list_fields=None, sep="\t", names=[None, None]):
+    def parseQueries(self, string, list_fields=None, sep="\t", names=[None, None], modifiers={}):
         if type(string) is str:
             string = codecs.decode(string, 'utf-8','replace')
 
         if list_fields is None:
-            list_fields = self.getListFields("basic", {})
-        default_queries_fields = self.getListFields("queries", {})
+            list_fields = self.getListFields("basic", modifiers)
+        default_queries_fields = self.getListFields("queries", modifiers)
         poplist_fields = list(list_fields) ### to pop out the query fields...
         map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
-
         queries = [None, None, None]
         lpartsList = {}
         parts = [s.strip() for s in string.rsplit(sep)]
         for side, fldu in enumerate(default_queries_fields):
-            flds = [(fldu, False)]
-            if names[side] is not None:
-                flds.append((fldu, True))
+            flds = []
+            if fldu in map_fields:
+                flds = [(fldu, False)]
+                if names[side] is not None:
+                    flds.append((fldu, True))
             while len(flds) > 0:
                 (fld, named) = flds.pop(0)
                 poplist_fields[map_fields[fld]] = None
                 if map_fields[fld] >= len(parts):
                     raise Warning("Did not find expected query field for side %d (field %s expected at %d, found only %d fields)!" % (side, fld, map_fields[fld], len(parts)))
-                else:
+                elif parts[map_fields[fld]] != '-':
                     try:
                         if named:
                             query = self.Qclass.parse(parts[map_fields[fld]], names[side])
@@ -1288,7 +1289,8 @@ class RedProps(Props):
             names = data.getNames()
         else:
             names = [None, None]
-        
+        modifiers = self.getModifiersForData(data)
+            
         list_fields = None
         sep = None
         more = []
@@ -1301,7 +1303,7 @@ class RedProps(Props):
                 if list_fields is None:
                     list_fields, sep = self.parseHeader(line)
                 else:
-                    (queryL, queryR, lpartsList) = self.parseQueries(line, list_fields, sep, names)
+                    (queryL, queryR, lpartsList) = self.parseQueries(line, list_fields, sep, names, modifiers)
                     r = self.Rclass.initParsed(queryL, queryR, lpartsList, data)
                     if r is not None:
                         reds.append(r)
