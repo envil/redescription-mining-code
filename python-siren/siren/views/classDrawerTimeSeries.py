@@ -65,23 +65,22 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                 ('axes_leave_event', self.on_axes_out),
                 ('pick_event', self.onpick)]
 
-    def prepareData(self, lits):
-
+    def prepareData(self, lits, sides=[0,1]):
         pos_axis = len(lits[0])
-        ranges = self.updateRanges(lits)
+        ranges = self.updateRanges(lits, sides)
         
         side_cols = []
         lit_str = []
-        for side in [0,1]:
+        for side in sides:
             for l, dets in lits[side]:
                 side_cols.append((side, l.colId()))
-                lit_str.append(self.getParentData().getNames(side)[l.colId()])
+                if side != -1:
+                    lit_str.append(self.getParentData().getNames(side)[l.colId()])
         
         suppABCD = self.getPltDtH().getSuppABCD()
 
         precisions = numpy.array([10**numpy.floor(numpy.log10(self.getParentData().col(sc[0], sc[1]).minGap())) for sc in side_cols if sc is not None])
-
-
+        
         mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan)
         cids = [mcols[sc] for sc in side_cols]
         data_m = mat[cids]
@@ -91,8 +90,10 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
         denoms = limits[1,:]-limits[0,:]
         denoms[denoms==0] = 1.
         scaled_m = numpy.vstack([(data_m[i,:]-limits[0,i])/denoms[i] for i in range(data_m.shape[0])])
-        
-        qcols = [l[0] for l in lits[0]]+[l[0] for l in lits[1]]
+
+        qcols = []
+        for side in sides:
+            qcols.extend([l[0] for l in lits[side]])
 
         #### ORDERING LINES FOR DETAILS SUBSAMPLING BY GETTING CLUSTERS
         return {"pos_axis": pos_axis, "N": data_m.shape[1],
@@ -101,10 +102,10 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                 "data_m": data_m, "scaled_m": scaled_m}
 
 
-    def updateRanges(self, lits):
+    def updateRanges(self, lits, sides=[0,1]):
         ranges = []
         data = self.getParentData()
-        for side in [0,1]:
+        for side in sides:
             for l, dets in lits[side]:
                 if l.isAnon():
                     #### ANONYMOUS
@@ -166,13 +167,16 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             if self.plotSimple(): ##  #### NO PICKER, FASTER PLOTTING.
                 self.plotDotsSimple(self.getAxe(), self.dots_draw, draw_indices, draw_settings)
             
-            lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
-
-            self.prepared_data.update(self.prepareData(lits))
+            sides = [0,1]
+            if red.hasCondition() and len(red.getQueryC()) == 1:
+                sides.append(-1)
+            lits = [sorted(red.query(side).listLiteralsDetails().items(), key=lambda x:x[1]) for side in sides]
+            
+            self.prepared_data.update(self.prepareData(lits, sides))
             coord = self.getPltDtH().getCoords()
             self.prepared_data["coord"] = coord
             self.prepared_data["ord_ids"] = numpy.argsort(coord)
-
+            
             ### PLOTTING
             ### Lines
             nbv = len(self.prepared_data["labels"])
@@ -183,43 +187,49 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             ### Labels
             self.axe.set_yticks(yticks)
             self.axe.set_yticklabels(self.prepared_data["labels"])
-
-            if red.hasCondition():
-                qC = red.getQueryC()
-                if len(qC) == 1:
-                    rC = [lC.valRange() for lC  in qC.invLiterals()][0]
-                    bot, top = numpy.maximum(x0, rC[0]), numpy.minimum(x1, rC[1])
-                    rects = self.axe.bar(bot, y1-y0, top-bot, y0,
-                                         edgecolor=self.rect_ecolor, linewidth=0, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
-                    
-            
+                                
             ### Bars slidable/draggable rectangles
             rects_drag = {}
             rects_rez = {}
             for i, rg in enumerate(self.prepared_data["ranges"]):
-                if rg[0] is not None:
+                ci = i
+                if i < len(self.prepared_data["labels"]):
                     bds = self.getYsforRange(i, rg)
                     rects = self.axe.bar(x1-x0, bds[1]-bds[0], x0, bds[0],
                                          edgecolor=self.rect_ecolor, linewidth=0, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
-
-                    if self.prepared_data["qcols"][i] is not None:
-                        if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
-                            rects_rez[i] = rects[0]
-                        elif self.isTypeId(self.prepared_data["qcols"][i].typeId(), ["Boolean", "Categorical"]):
-                            rects_drag[i] = rects[0]
-
+                else:
+                    ci = -1
+                    bot, top = numpy.maximum(x0, rg[0]), numpy.minimum(x1, rg[1])
+                    rects = self.axe.bar(bot, y1-y0, top-bot, y0,
+                                         edgecolor=self.rect_ecolor, linewidth=0, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
+                    
+                if self.prepared_data["qcols"][i] is not None:
+                    if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
+                        rects_rez[ci] = rects[0]
+                    elif self.isTypeId(self.prepared_data["qcols"][i].typeId(), ["Boolean", "Categorical"]):
+                        rects_drag[ci] = rects[0]
+                            
             self.drs = []
             self.ri = None
             for rid, rect in rects_rez.items():
+                if rid < 0:                    
+                    lbl_off, moving_sides= by, "lr"
+                else:
+                    lbl_off, moving_sides= bx, "tb"
                 dr = ResizeableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None, lbl_off=lbl_off, moving_sides=moving_sides)
                 self.drs.append(dr)
 
             for rid, rect in rects_drag.items():
+                if rid < 0:                    
+                    lbl_off, moving_sides= by, "lr"
+                else:
+                    lbl_off, moving_sides= bx, "tb"
                 dr = DraggableRectangle(rect, rid=rid, callback=self.receive_release, \
-                                                  pinf=self.getPinvalue, annotation=None) #self.annotation)
+                                                  pinf=self.getPinvalue, annotation=None, lbl_off=lbl_off, moving_sides=moving_sides)
                 self.drs.append(dr)
 
+                
             #########
             # if self.getParentData().hasMissing():
             #     bot = self.missing_yy-self.margins_tb
@@ -300,8 +310,12 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             self.on_motion(event)
             
     def getVforY(self, rid, y):
+        if rid == -1:
+            return y
         return (y*len(self.prepared_data["labels"])-rid)*(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid])+self.prepared_data["limits"][0,rid] #-direc*0.5*self.prepared_data["limits"][-1,rid]
     def getYforV(self, rid, v, direc=0):
+        if rid == -1:
+            return y
         return (rid+(v-self.prepared_data["limits"][0,rid]+direc*0.5*self.prepared_data["limits"][-1,rid])/(self.prepared_data["limits"][1,rid]-self.prepared_data["limits"][0,rid]))/len(self.prepared_data["labels"])
     def getYsforRange(self, rid, range):
         ### HERE fix CAT
@@ -338,26 +352,35 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             if c is not None:
                 return c.getValFromNum(v)
 
+    def getTimeInfo(self, x):
+        return x
     def getPosInfo(self, x, y):
-        rid = int(numpy.rint(x))
-        if "qcols" in self.prepared_data and rid >= 0 and rid < len(self.prepared_data["qcols"]) and self.prepared_data["qcols"][rid] is not None:
-            return self.prepared_data["xlabels"][rid], self.getPinvalue(rid, y)
-        return rid, None
+        if "labels" in self.prepared_data:            
+            rid = int(numpy.floor(y*len(self.prepared_data["labels"])))
+            if "qcols" in self.prepared_data and rid >= 0 and rid < len(self.prepared_data["qcols"]) and self.prepared_data["qcols"][rid] is not None:
+                return self.prepared_data["labels"][rid], self.getPinvalue(rid, y)
+            return rid, None
+        return None, None
     def getPosInfoTxt(self, x, y):
         k,v = self.getPosInfo(x, y)
         if v is not None:
+            t = self.getTimeInfo(x)
+            if t is not None:
+                return "%s=%s @%s" % (k,v,t)
             return "%s=%s" % (k,v)
-
             
-    def receive_release(self, rid, rect):
+    def receive_release(self, rid, dims):
         if self.isReadyPlot() and "pos_axis" in self.prepared_data:
             pos_axis = self.prepared_data["pos_axis"]
             side = 0
             pos = rid
-            if rid >= pos_axis:
+            if rid == -1:
+                side = -1
+                pos = 0
+            elif rid >= pos_axis:
                 side = 1
                 pos -= pos_axis
-            copied = self.getPltDtH().getRed().queries[side].copy()
+            copied = self.getPltDtH().getRed().query(side).copy()
             ### HERE RELEASE
             l, dets = self.prepared_data["lits"][side][pos]
             alright = False
@@ -366,10 +389,10 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             if l.isAnon():
                 bounds = None 
                 if self.isTypeId(l.typeId(), "Numerical"):
-                    ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                    ys = [(dims["d0"], -1), (dims["d1"], 1)]
                     bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 else:
-                    cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                    cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                     if cat is not None:
                         bounds = set([cat])
                 if bounds is not None:
@@ -384,7 +407,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
 
                 
             elif self.isTypeId(l.typeId(), "Numerical"):
-                ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                ys = [(dims["d0"], -1), (dims["d1"], 1)]
                 bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
                 if upAll:
@@ -395,7 +418,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                             ll.flip()
                 alright = True
             elif self.isTypeId(l.typeId(), "Categorical"):
-                cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if cat is not None:
                     upAll = (l.getTerm().getCat() != cat)
                     if upAll:
@@ -404,7 +427,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                             copied.getBukElemAt(path).getTerm().setRange(set([cat]))
                 alright = True
             elif self.isTypeId(l.typeId(), "Boolean"):
-                bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                bl = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if bl is not None:
                     upAll = bl != dets[0][-1]
                     if upAll:

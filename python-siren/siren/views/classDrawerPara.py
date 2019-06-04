@@ -565,8 +565,7 @@ class DrawerRedPara(DrawerEntitiesTD):
         if v is not None:
             return "%s=%s" % (k,v)
 
-            
-    def receive_release(self, rid, rect):
+    def receive_release(self, rid, dims):
         if self.isReadyPlot() and "pos_axis" in self.prepared_data:
             pos_axis = self.prepared_data["pos_axis"]
             side = 0
@@ -583,10 +582,10 @@ class DrawerRedPara(DrawerEntitiesTD):
             if l.isAnon():
                 bounds = None 
                 if self.isTypeId(l.typeId(), "Numerical"):
-                    ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                    ys = [(dims["d0"], -1), (dims["d1"], 1)]
                     bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 else:
-                    cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                    cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                     if cat is not None:
                         bounds = set([cat])
                 if bounds is not None:
@@ -601,7 +600,7 @@ class DrawerRedPara(DrawerEntitiesTD):
 
                 
             elif self.isTypeId(l.typeId(), "Numerical"):
-                ys = [(rect.get_y(), -1), (rect.get_y() + rect.get_height(), 1)]
+                ys = [(dims["d0"], -1), (dims["d1"], 1)]
                 bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
                 if upAll:
@@ -612,7 +611,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                             ll.flip()
                 alright = True
             elif self.isTypeId(l.typeId(), "Categorical"):
-                cat = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if cat is not None:
                     upAll = (l.getTerm().getCat() != cat)
                     if upAll:
@@ -621,7 +620,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                             copied.getBukElemAt(path).getTerm().setRange(set([cat]))
                 alright = True
             elif self.isTypeId(l.typeId(), "Boolean"):
-                bl = self.getPinvalue(rid, rect.get_y() + rect.get_height()/2.0, 1)
+                bl = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if bl is not None:
                     upAll = bl != dets[0][-1]
                     if upAll:

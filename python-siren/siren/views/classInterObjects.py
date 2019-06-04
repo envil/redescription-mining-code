@@ -21,7 +21,7 @@ http://matplotlib.sourceforge.net/users/event_handling.html
     the recatngle keeps its aspect ratio during resize operations.
     """
     lock = None  # only one can be animated at a time
-    def __init__(self, rect, border_tol=.15, rid=None, callback=None, pinf=None, annotation=None, buttons_t=[3]):
+    def __init__(self, rect, border_tol=.15, rid=None, callback=None, pinf=None, annotation=None, buttons_t=[3], lbl_off=None, moving_sides="tb"):
         self.buttons_t = buttons_t
         self.callback = callback
         self.pinf = pinf
@@ -31,6 +31,8 @@ http://matplotlib.sourceforge.net/users/event_handling.html
         self.border_tol = border_tol
         self.press = None
         self.background = None
+        self.lbl_off = lbl_off
+        self.moving_sides = moving_sides
 
     def do_press(self, event):
         """on button press we will see if the mouse is over us and store some 
@@ -39,22 +41,25 @@ data"""
             return
         #print 'event contains', self.rect.xy
         x0, y0 = self.rect.xy
-        w0, h0 = self.rect.get_width(), self.rect.get_height()
-        aspect_ratio = np.true_divide(w0, h0)
-        self.press = x0, y0, w0, h0, aspect_ratio, event.xdata, event.ydata
+        w0, h0 = self.rect.get_width(), self.rect.get_height()        
+        if self.touches_side((x0, y0, w0, h0), event.xdata, event.ydata, self.moving_sides):
+        # if abs(y0-ypress)<bt*h0 or abs(y0+h0-ypress)<bt*h0:
+            self.press = x0, y0, w0, h0, np.true_divide(w0, h0), event.xdata, event.ydata
 
-        # draw everything but the selected rectangle and store the pixel buffer
-        canvas = self.rect.figure.canvas
-        axes = self.rect.axes
-        self.rect.set_animated(True)
-        canvas.draw()
-        self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
+            # draw everything but the selected rectangle and store the pixel buffer
+            canvas = self.rect.figure.canvas
+            axes = self.rect.axes
+            self.rect.set_animated(True)
+            canvas.draw()
+            self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
 
-        # now redraw just the rectangle
-        axes.draw_artist(self.rect)
+            # now redraw just the rectangle
+            axes.draw_artist(self.rect)
 
-        # and blit just the redrawn area
-        canvas.blit(axes.bbox)
+            # and blit just the redrawn area
+            canvas.blit(axes.bbox)
+        else:
+            self.press = None
 
     def do_motion(self, event):
         """on motion we will move the rect if the mouse is over us"""
@@ -97,7 +102,15 @@ data"""
             return
         self.press = None
         if self.callback is not None:
-            self.callback(self.rid, self.rect)
+            dims = {"b": self.rect.get_y(), "h": self.rect.get_height(),
+                    "l": self.rect.get_x(), "w": self.rect.get_width()}
+            dims["t"] = dims["b"]+dims["h"]
+            dims["r"] = dims["l"]+dims["w"]
+            if "l" in self.moving_sides and "r" in self.moving_sides:
+                dims.update({"d0": dims["l"], "d1": dims["r"], "dd": dims["w"]})
+            else:
+                dims.update({"d0": dims["b"], "d1": dims["t"], "dd": dims["h"]})
+            self.callback(self.rid, dims)
 
         # turn off the rect animation property and reset the background
         self.rect.set_animated(False)
@@ -106,61 +119,84 @@ data"""
         # redraw the full figure
         self.rect.figure.canvas.draw()
 
+    def touches_side(self, rect, xpress=None, ypress=None, which=None, bt=None):
+        if rect is None or len(rect) < 4:
+            return False
+        
+        if xpress is None and ypress is None and len(rect) == 7:
+            x0, y0, w0, h0, aspect_ratio, xpress, ypress = rect
+        else:
+            x0, y0, w0, h0 = rect[:4]
+        if bt is None:
+            bt = self.border_tol
+        if bt < 0:
+            margv, margh = abs(bt), abs(bt)
+        else:
+            margv, margh = bt*h0, bt*w0
+        if abs(y0-ypress)<margv and (which is None or "b" in which):
+            return True
+        if abs(y0+h0-ypress)<margv and (which is None or "t" in which):
+            return True
+        if abs(x0-xpress)<margh and (which is None or "l" in which):
+            return True
+        if abs(x0+w0-xpress)<margh and (which is None or "r" in which):
+            return True
+        return False
+
+    def annotate(self, value, pos_xy, direc=0):
+        if self.pinf is not None:
+            lbl = "%s" % self.pinf(self.rid, value, direc)
+        else:
+            lbl = "%s" % value
+        
+        if self.annotation is not None:
+            self.annotation.set_text(lbl)
+            self.annotation.xytext = pos_xy
+            self.annotation.xy = pos_xy
+        else:
+            self.annotation = self.rect.axes.annotate(lbl, xy=pos_xy, xytext=pos_xy, backgroundcolor="w")
+        
     def update_rect(self):
         if self.press is None:
             return
         #### to force redraw of annotation, somehow blit ceased to function
         self.annotation = None
-        
+        dy, dx = self.dy, self.dx
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        dy = self.dy
-        bt = self.border_tol
-        if abs(y0-ypress)<bt*h0:
+        if self.lbl_off is None:
+            xlbl = x0+0.25
+            ylbl = y0+0.25
+        else:
+            xlbl = xpress+self.lbl_off
+            ylbl = ypress+self.lbl_off
+        if "b" in self.moving_sides and self.touches_side(self.press, which="b"):
             if h0-dy > 0:
-                self.rect.set_y(y0+dy)
+                yv = y0+dy
+                self.rect.set_y(yv)
                 self.rect.set_height(h0-dy)
+                self.annotate(yv, (xlbl, yv), -1)
 
-                if self.annotation is not None:
-                    b = y0+dy
-                    if self.pinf is not None:
-                        self.annotation.set_text("%s" % self.pinf(self.rid, b, -1))
-                    else:
-                        self.annotation.set_text("%s" % b)
-                    self.annotation.xytext = (x0+0.25, b)
-                    self.annotation.xy = (x0+0.25, b)
-
-                else:
-                    b = y0+dy
-                    if self.pinf is not None:
-                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-                    else:
-                        self.annotation = self.rect.axes.annotate("%s" % b,
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-
-        elif abs(y0+h0-ypress)<bt*h0:
+        elif "t" in self.moving_sides and self.touches_side(self.press, which="t"):
             if h0+dy > 0:
+                yv = y0+h0+dy
                 self.rect.set_height(h0+dy)
+                self.annotate(yv, (xlbl, yv), 1)
 
-                if self.annotation is not None:
-                    b = y0+h0+dy
-                    if self.pinf is not None:
-                        self.annotation.set_text("%s" % self.pinf(self.rid, b, 1))
-                    else:
-                        self.annotation.set_text("%s" % b)
-                    self.annotation.xytext = (x0+0.25, b)
-                    self.annotation.xy = (x0+0.25, b)
-
-                else:
-                    b = y0+h0+dy
-                    if self.pinf is not None:
-                        self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-                    else:
-                        self.annotation = self.rect.axes.annotate("%s" % b,
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-
-
+        elif "l" in self.moving_sides and self.touches_side(self.press, which="l"):
+            if w0-dx > 0:
+                xv = x0+dx
+                self.rect.set_x(xv)
+                self.rect.set_width(w0-dx)
+                self.annotate(xv, (xv, ylbl), -1)
+                
+        elif "r" in self.moving_sides and self.touches_side(self.press, which="r"):
+            if w0+dx > 0:
+                xv = x0+w0+dx
+                self.rect.set_width(w0+dx)
+                self.annotate(xv, (xv, ylbl), 1)
+        else:
+            print "Update neither", y0, h0, ypress
+            
 class DraggableRectangle(ResizeableRectangle):
 
     def update_rect(self):
@@ -169,45 +205,30 @@ class DraggableRectangle(ResizeableRectangle):
         self.annotation = None
 
         x0, y0, w0, h0, aspect_ratio, xpress, ypress = self.press
-        dy = self.dy
-        bt = 1
-        if abs(y0-ypress)<bt*h0:
+        dy, dx = self.dy, self.dx
+        yv = y0+dy+h0/2.0
+        xv = x0+dx+w0/2.0
+        if self.lbl_off is None:
+            xlbl = x0+0.25
+            ylbl = y0+0.25
+        else:
+            xlbl = xpress+self.lbl_off
+            ylbl = ypress+self.lbl_off
+        if "b" in self.moving_sides and self.touches_side(self.press, which="b", bt=1):
             self.rect.set_y(y0+dy)
+            self.annotate(yv, (xlbl, yv), -1)
 
-            if self.annotation is not None:
-                b = y0+dy+h0/2.0
-                if self.pinf is not None:
-                    self.annotation.set_text("%s" % self.pinf(self.rid, b, -1))
-                else:
-                    self.annotation.set_text("%s" % b)
-                self.annotation.xytext = (x0+0.25, b)
-            else:
-                b = y0+dy+h0/2.0
-                if self.pinf is not None:
-                    self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, -1),
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-                else:
-                    self.annotation = self.rect.axes.annotate("%s" % b,
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-
-        elif abs(y0+h0-ypress)<bt*h0:
+        elif "t" in self.moving_sides and self.touches_side(self.press, which="t", bt=1):
             self.rect.set_y(y0+dy)
-            
-            if self.annotation is not None:
-                b = y0+dy+h0/2.0
-                if self.pinf is not None:
-                    self.annotation.set_text("%s" % self.pinf(self.rid, b, 1))
-                else:
-                    self.annotation.set_text("%s" % b)
-                self.annotation.xytext = (x0+0.25, b)
-            else:
-                b = y0+dy+h0/2.0
-                if self.pinf is not None:
-                    self.annotation = self.rect.axes.annotate("%s" % self.pinf(self.rid, b, 1),
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
-                else:
-                    self.annotation = self.rect.axes.annotate("%s" % b,
-                                                            xy=(x0+0.25, b), xytext=(x0+0.25, b), backgroundcolor="w")
+            self.annotate(yv, (xlbl, yv), 1)
+
+        elif "l" in self.moving_sides and self.touches_side(self.press, which="l", bt=1):
+            self.rect.set_x(x0+dx)
+            self.annotate(xv, (xv, ylbl), -1)
+
+        elif "r" in self.moving_sides and self.touches_side(self.press, which="r", bt=1):
+            self.rect.set_x(x0+dx)
+            self.annotate(xv, (xv, ylbl), 1)
 
 
 class MaskCreator(object):
