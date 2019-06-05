@@ -1147,6 +1147,9 @@ class Data(ContentCollection):
     def getTimeCoord(self):
         if self.isTimeConditional() and len(self.condition_dt["cols"]) > 0:
             return self.condition_dt["cols"][0].getVect()
+    def getTimeCoordCol(self):
+        if self.isTimeConditional() and len(self.condition_dt["cols"]) > 0:
+            return self.condition_dt["cols"][0]
         
     def getColsC(self):
         if self.isConditional():
@@ -1176,26 +1179,27 @@ class Data(ContentCollection):
                     return True
         return False
 
+    def getFmts(self, side=None):
+        if side is None:
+            return [[col.getFmt() for col in self.colsSide(side)] for side in self.getSides()]
+        else:
+            return [col.getFmt() for col in self.colsSide(side)]    
     def getNames(self, side=None):
         if side is None:
-            tmp = [[col.getName() for col in self.colsSide(side)] for side in self.getSides()]
-            if self.isConditional():
-                tmp.append([colC.getName() for colC in self.getColsC()])
-            return tmp
+            return [[col.getName() for col in self.colsSide(side)] for side in self.getSides()]
         else:
-            if side == -1 and self.isConditional():
-                return [colC.getName() for colC in self.getColsC()]
             return [col.getName() for col in self.colsSide(side)]
 
     def setNames(self, names):
-        if len(names) == 2:
-            for side in self.getSides():
-                if names[side] is not None:
-                    if len(names) == self.nbCols(side):
-                        for i, col in enumerate(self.colsSide(side)):
-                            col.name = names[i]
-                    else:
-                        raise DataError('Number of names does not match number of variables!')
+        for side in self.getSides():
+            try:
+                if len(names[side]) == self.nbCols(side):
+                    for i, col in enumerate(self.colsSide(side)):
+                        col.name = names[side][i]
+                else:
+                    raise DataError('Number of names does not match number of variables!')
+            except IndexError:
+                raise DataError('Number of names does not match number of sides!')
 
     
     def setCoords(self, coords):

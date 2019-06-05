@@ -3,7 +3,7 @@ import numpy
 import codecs, re
 
 from toolRead import BOOL_MAP
-from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal
+from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools
 from classSParts import tool_ratio
 from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
 import pdb
@@ -218,6 +218,10 @@ class ColM(WithEVals):
         return vA == vB
     def getPrec(self, details={}):
         return 0
+    def getTimePrec(self, details={}):
+        return -1
+    def getFmt(self, details={}):
+        return {"prec": self.getPrec(details), "time_prec": self.getTimePrec(details)}
 
     def density(self):
         return 1.0
@@ -1071,18 +1075,28 @@ class NumColM(ColM):
     def compPrec(self, details={}):
         for (v,i) in self.sVals:
             if len(str(v % 1))-2 > self.prec:
-                self.prec = len(str(v % 1))-2
-        
+                self.prec = len(str(v % 1))-2       
     def getPrec(self, details={}):
         if self.prec is None:
             self.compPrec()
         return self.prec
-
+    def compTimePrec(self, details={}):
+        ii = [si for si, ss in enumerate(zip(*[re.split("[:,-]", TimeTools.format_time(v, time_prec=1)) for (v,i) in self.sVals])) if len(set(ss)) > 1]
+        if len(ii) > 1:
+             self.tprec = TimeTools.range_to_time_prec(numpy.min(ii), numpy.max(ii))
+        else:
+            self.tprec = TimeTools.TIME_FMT # + ", %H:%M"
+    def getTimePrec(self, details={}):
+        if TimeTools.isTimeVarName(self.getName()) and self.tprec is None:
+            self.compTimePrec()
+        return self.tprec
+    
     def __init__(self, ncolSupp=[], N=-1, nmiss=set(), prec=None, force=False, mode=None):
         ColM.__init__(self, N, nmiss)
         self.nbUniq = None
         self.uniqvs = None
         self.prec = prec
+        self.tprec = None
         self.sVals = ncolSupp
         self.buk = None
         self.colbuk = None

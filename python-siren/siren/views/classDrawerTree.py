@@ -230,9 +230,9 @@ class DrawerRedTree(DrawerEntitiesTD):
             red = self.getPltDtH().getRed()
 
             if update_trees:
-                red.queries[0].side = 0
-                red.queries[1].side = 1
-                self.trees = [red.queries[0].toTree(self.getParentData()), red.queries[1].toTree(self.getParentData())]
+                red.query(0).side = 0
+                red.query(1).side = 1
+                self.trees = [red.query(0).toTree(self.getParentData()), red.query(1).toTree(self.getParentData())]
 
             for butt in self.getElement("buttons"):
                 if not self.okTrees():
@@ -261,8 +261,8 @@ class DrawerRedTree(DrawerEntitiesTD):
                 draw_settings = self.getDrawSettings()
                 ### for highlights
                 self.dots_draw = self.prepareDotsDrawSupp(vec, vec_dets, draw_settings)
-                # print "========= LEFT =======\n%s\n%s\n" % (red.queries[0], self.trees[0])
-                # print "========= RIGHT =======\n%s\n%s\n" % ( red.queries[1], self.trees[1])
+                # print "========= LEFT =======\n%s\n%s\n" % (red.query(0), self.trees[0])
+                # print "========= RIGHT =======\n%s\n%s\n" % ( red.query(1), self.trees[1])
                 self.plotTrees(self.trees, rids)
 
                 self.axe.set_xlim([-self.all_width-self.margins_sides, self.all_width+self.margins_sides])

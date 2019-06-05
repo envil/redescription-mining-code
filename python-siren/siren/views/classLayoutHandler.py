@@ -765,7 +765,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
         
     def updateQueryText(self, query, side):
         if query is not None:
-            self.layout_elements["queries_text"][side].ChangeValue(query.disp(style="U", names=self.getParentData().getNames(side)))
+            self.layout_elements["queries_text"][side].ChangeValue(query.disp(style="U", names=self.getParentData().getNames(side), fmts=self.getParentData().getFmts(side)))
 
     def updateText(self, red=None):
         """ Reset red fields and info

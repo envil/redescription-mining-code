@@ -532,7 +532,7 @@ class DrawerBasis(object):
             tex_fields.extend(["acc_ratioTL", "len_I_ratioTA"])
             headers.extend(["J$_{I/O}$=", "supp$_{I/A}$="])
         rr = pref
-        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="T") #, rid=rr)
+        tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="T", fmts=self.getParentData().getFmts()) #, rid=rr)
         if not self.hasElement("red_stamp"):
             red_stamp = {"old_pos": old_pos}
             old_pos = self.getAxe().get_position()
@@ -1023,7 +1023,6 @@ class DrawerEntitiesTD(DrawerBasis):
         
     def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
         ku, kindices = numpy.unique(dots_draw["zord_dots"][draw_indices], return_inverse=True)
-        ## pdb.set_trace()
         for vi, vv in enumerate(ku):
             if vv != -1:
                 axe.scatter(self.getCoords(0,draw_indices[kindices==vi]),

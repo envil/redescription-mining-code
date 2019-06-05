@@ -2,7 +2,7 @@ import csv
 import sys, codecs, re
 import pdb
 from StringIO import StringIO
-from classQuery import Term, parse_time
+from classQuery import Term, TimeTools
 import numpy as np
 
 LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
@@ -433,7 +433,7 @@ def has_condition(D):
                     condIds = np.copy(col)
                 if re.search("time", s):
                     try:
-                        col = ["%d" % parse_time(v, dayfirst=True) for v in col]
+                        col = ["%d" % TimeTools.parse_time(v) for v in col]
                         isTime = True
                     except TypeError:
                         col = D['data'][s]

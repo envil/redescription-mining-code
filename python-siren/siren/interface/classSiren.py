@@ -1772,6 +1772,7 @@ class Siren():
                 details = {}
                 if self.dw.getData() is not None:
                     details["names"] = self.dw.getData().getNames()
+                    details["fmts"] = self.dw.getData().getFmts()
                 self.getRTab().resetDetails(details)
             self.getRTab().load(rfields=reds_rneeds.get("fields", rall))
             self.viewsm.refreshTables()

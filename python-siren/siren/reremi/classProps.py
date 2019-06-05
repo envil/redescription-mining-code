@@ -65,6 +65,7 @@ class WithEVals(Item):
         self.computeExtras(data)
 
     def getProp(self, what, which=None, rset_id=None, details={}):
+        print "Prop", what, which, rset_id, details.keys()
         if what == "extra":
             return self.getExtra(which, details)
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
@@ -635,6 +636,8 @@ class Props(object):
         return self.getEVal(red, k, exp=exp, fresh=fresh, default=default, details=details)
     def getEValGUI(self, red, details):
         if "k" in details:
+            # if re.search(":query:", details["k"]):
+            #     pdb.set_trace()
             val = self.getEValF(red, details["k"], details=details)
             return self.formatVal(val, details["k"], to_str=details.get("to_str", False), replace_none=details.get("replace_none", "-"))
         return None
@@ -1100,7 +1103,7 @@ class RedProps(Props):
         return self.dispHeaderFields(list_fields, style, sep)
 
     
-    def disp(self, red, names=[None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None):
+    def disp(self, red, names=[None, None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, fmts=[None, None, None]):
         dstyle, qstyle = self.getStyles(style)
         if not type(list_fields) is list:
             list_fields = self.getListFields(list_fields, modifiers)
@@ -1113,6 +1116,8 @@ class RedProps(Props):
         if names[0] is not None or names[1] is not None:
             details["names"] = names
             details["named"] = True
+        if fmts[0] is not None or fmts[1] is not None:
+            details["fmts"] = fmts
         if row_names is not None:
             details["row_names"] = row_names
             details["named"] = True

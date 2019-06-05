@@ -62,7 +62,7 @@ class Item(object):
             return self.getUid()
         return "%s%s" % (self.class_letter, self.getUid())
     
-    def getFieldV(self, field="uid", details={}):
+    def getFieldV(self, field="uid", details={}):        
         if field == "uid":
             return self.getUid()
         tmp = None

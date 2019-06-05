@@ -521,23 +521,23 @@ class Redescription(WithEVals):
         self.setStatus(-2)
 
     ##### GET FIELDS INFO INVOLVING ADDITIONAL DETAILS (PRIMARILY FOR SIREN)
-    def getQueriesU(self, details={}):
-        if details is not None and "names" in details:
-            return self.queries[0].disp(details["names"][0], style="U") + "---" + self.queries[1].disp(details["names"][1], style="U")
-        else:
-            return self.queries[0].disp(style="U") + "---" + self.queries[1].disp(style="U")
-
+    def getQueryU(self, side, details={}):
+        q = self.query(side)
+        if q is None: return ""
+        names = None
+        fmts = None
+        if details is not None:
+            if "names" in details:
+                names = details["names"][side]
+            if "fmts" in details:
+                fmts = details["fmts"][side]                
+        return q.disp(names=names, fmts=fmts, style="U")
     def getQueryLU(self, details={}):
-        if details is not None and "names" in details:
-            return self.queries[0].disp(details["names"][0], style="U") #, unicd=True)
-        else:
-            return self.queries[0].disp(style="U")
-
+        return self.getQueryU(0, details)
     def getQueryRU(self, details={}):
-        if details is not None and "names" in details:
-            return self.queries[1].disp(details["names"][1], style="U") #, unicd=True)
-        else:
-            return self.queries[1].disp(style="U")
+        return self.getQueryU(1, details)
+    def getQueriesU(self, details={}):
+        return self.getQueryLU(details) + "---" + self.getQueryRU(details)
 
     def setTrack(self, track=[]):
         self.extras["track"] = track
@@ -984,11 +984,11 @@ class Redescription(WithEVals):
     # def __str__(self):
     #     return "%s\t%s\t%s" % (self.query(0), self.query(1), self.score())
     
-    def dispQueries(self, names=[None, None, None], sep='\t'):
+    def dispQueries(self, names=[None, None, None], sep='\t', fmts=[None, None, None]):
         sides = [0, 1]
         if self.hasCondition():
             sides.append(-1)
-        return sep.join(["q%s:%s" % (side, self.query(side).disp(names[side])) for side in sides])
+        return sep.join(["q%s:%s" % (side, self.query(side).disp(names=names[side], fmts=fmts[side])) for side in sides])
     def dispStats(self, sep="\t"):
         supp_str = ""
         if self.supports() is not None:
@@ -1018,12 +1018,17 @@ class Redescription(WithEVals):
         return supp_str
     
     def prepareQuery(self, side, details={}, named=False):
-        style=details.get("style", "")
         q = self.query(side)
         if q is None: return ""
-        if (named or details.get("named", False)) and "names" in details:
-            return q.disp(names=details["names"][side], style=style)
-        return q.disp(style=style)        
+        style=details.get("style", "")
+        names = None
+        fmts = None
+        if details is not None:
+            if "names" in details:
+                names = details["names"][side]
+            if "fmts" in details:
+                fmts = details["fmts"][side]                
+        return q.disp(names=names, fmts=fmts, style=style)
     def prepareQueryRHS(self, details):
         return self.prepareQuery(1, details)
     def prepareQueryLHS(self, details):
@@ -1031,8 +1036,8 @@ class Redescription(WithEVals):
     def prepareQueryCOND(self, details):
         return self.prepareQuery(-1, details)    
    
-    def disp(self, names=[None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, rp=None):
-        return self.getRP(rp).disp(self, names, row_names, with_fname, rid, nblines, delim, last_one, list_fields, modifiers, style, sep)
+    def disp(self, names=[None, None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, rp=None, fmts=[None, None, None]):
+        return self.getRP(rp).disp(self, names, row_names, with_fname, rid, nblines, delim, last_one, list_fields, modifiers, style, sep, fmts)
     @classmethod   
     def parse(tcl, stringQueries, stringSupp=None, data=None, rp=None):
         if data is not None and data.hasNames():

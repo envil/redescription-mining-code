@@ -4,8 +4,7 @@ import re
 from ..reremi.classData import NA_str_c
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from ..reremi.classQuery import Query
-
+from ..reremi.classQuery import Query, TimeTools
 
 import pdb
 
@@ -201,11 +200,31 @@ class PltDtHandlerWithTime(PltDtHandlerBasis):
         return self.YVAL_BASE
 
     def getCoordsExtrema(self):
-        coords = self.pltdt.get("time_org")
-        if coords is None:
+        coord = self.pltdt["time_org"]
+        if coord is None:
             return (-1., 1., -1., 1.)
-        return (numpy.min(coords), numpy.max(coords), self.YVAL_LOW, self.YVAL_HIGH)
-            
+        return (numpy.min(coord), numpy.max(coord), self.YVAL_LOW, self.YVAL_HIGH)
+
+    def getCoordTicks(self, nb=10, nb_min=3):
+        cc = self.getParentData().getTimeCoordCol()
+        if cc is None:
+            return numpy.arange(-1,1,0.1)
+        time_prec = cc.getTimePrec()
+        cmin, cmax = (cc.getMin(), cc.getMax())
+        vals = numpy.linspace(cmin, cmax, nb)
+
+        ll = TimeTools.lower_time_prec(time_prec)
+        llbls = [TimeTools.format_time(val, ll) for val in vals]
+        if len(set(llbls)) >= nb_min:
+            vvals = [TimeTools.parse_time(lll) for lll in set(llbls)]
+            vvals = sorted([v for v in vvals if v >= cmin and v <= cmax])
+            if len(vvals) >= nb_min:
+                lbls = [TimeTools.format_time(val, time_prec) for val in vvals]
+                return vvals, lbls
+                
+        lbls = [TimeTools.format_time(val, time_prec) for val in vals]
+        return vals, lbls
+
     def getCoords(self, axi=None, ids=None):
         coords = self.pltdt.get("time_org")
         # if coords is None and "coords" in self.pltdt:

@@ -178,6 +178,8 @@ class DrawerRedPara(DrawerEntitiesTD):
             pos_lids = self.getPos(scaled_m, data_m, limits, denoms, pos_axis)
 
             qcols = [l[0] for l in lits[0]]+[None]+[l[0] for l in lits[1]]
+            fmts = [self.getParentData().col(0, l[0].colId()).getFmt() for l in lits[0]]+[None]+\
+                   [self.getParentData().col(1, l[0].colId()).getFmt() for l in lits[1]]
             xlabels = lit_str
             xticks = [x for x,v in enumerate(side_cols)]# if v is not None]
             lit_str.insert(pos_axis, None)
@@ -191,7 +193,7 @@ class DrawerRedPara(DrawerEntitiesTD):
 
             #### ORDERING LINES FOR DETAILS SUBSAMPLING BY GETTING CLUSTERS
             sampling_ord = getSamplingOrd(scaled_m, pos_axis, self.nb_clusters, self.max_group_clustering)
-            return {"pos_axis": pos_axis, "N": data_m.shape[1],
+            return {"pos_axis": pos_axis, "N": data_m.shape[1], "fmts": fmts,
                     "side_cols": side_cols, "qcols": qcols, "lits": lits,
                     "xlabels": xlabels, "xticks": xticks, "ycols": ycols, "xs": xs,
                     "limits": limits, "ranges": ranges, "sampling_ord": sampling_ord,
@@ -306,7 +308,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             if self.getSettV('literals_contrib'):
                 lits, map_q = self.literalsEffect(red)
             else:
-                lits = [sorted(red.queries[side].listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
+                lits = [sorted(red.query(side).listLiteralsDetails().items(), key=lambda x:x[1]) for side in [0,1]]
                 map_q = None
 
             self.prepared_data.update(self.prepareData(lits, draw_ppos = draw_settings["draw_ppos"]))
@@ -523,8 +525,13 @@ class DrawerRedPara(DrawerEntitiesTD):
     def getYsforRange(self, rid, range):
         ### HERE fix CAT
         return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[-1], direc=1)]
-        
+
     def getPinvalue(self, rid, b, direc=0):
+        val = self.getPinvalueRaw(rid, b, direc)
+        # self.getParentData().col(self.prepared_data["qcols"][rid].colId(), self.prepared_data["qcols"][rid].colId())
+        pdb.set_trace()
+        return val
+    def getPinvalueRaw(self, rid, b, direc=0):
         if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
             return 0
         elif self.isTypeId(self.prepared_data["qcols"][rid].typeId(), "Numerical"):
@@ -573,7 +580,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             if rid > pos_axis:
                 side = 1
                 pos -= (pos_axis+1)
-            copied = self.getPltDtH().getRed().queries[side].copy()
+            copied = self.getPltDtH().getRed().query(side).copy()
             ### HERE RELEASE
             l, dets = self.prepared_data["lits"][side][pos]
             alright = False
@@ -583,9 +590,9 @@ class DrawerRedPara(DrawerEntitiesTD):
                 bounds = None 
                 if self.isTypeId(l.typeId(), "Numerical"):
                     ys = [(dims["d0"], -1), (dims["d1"], 1)]
-                    bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
+                    bounds = [self.getPinvalueRaw(rid, b, direc) for (b, direc) in ys]
                 else:
-                    cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
+                    cat = self.getPinvalueRaw(rid, dims["d0"] + dims["dd"]/2.0, 1)
                     if cat is not None:
                         bounds = set([cat])
                 if bounds is not None:
@@ -601,7 +608,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                 
             elif self.isTypeId(l.typeId(), "Numerical"):
                 ys = [(dims["d0"], -1), (dims["d1"], 1)]
-                bounds = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
+                bounds = [self.getPinvalueRaw(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
                 if upAll:
                     for path, comp, neg in dets:
@@ -611,7 +618,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                             ll.flip()
                 alright = True
             elif self.isTypeId(l.typeId(), "Categorical"):
-                cat = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
+                cat = self.getPinvalueRaw(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if cat is not None:
                     upAll = (l.getTerm().getCat() != cat)
                     if upAll:
@@ -620,7 +627,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                             copied.getBukElemAt(path).getTerm().setRange(set([cat]))
                 alright = True
             elif self.isTypeId(l.typeId(), "Boolean"):
-                bl = self.getPinvalue(rid, dims["d0"] + dims["dd"]/2.0, 1)
+                bl = self.getPinvalueRaw(rid, dims["d0"] + dims["dd"]/2.0, 1)
                 if bl is not None:
                     upAll = bl != dets[0][-1]
                     if upAll:

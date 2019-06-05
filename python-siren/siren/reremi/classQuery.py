@@ -9,7 +9,6 @@ import pdb
 
 VARIABLE_MARK = 'v'
 XPR_MARK = "="
-MTCH_TIME = "_time$"
 
 def getNameCol(cid, names):
     try:
@@ -17,22 +16,79 @@ def getNameCol(cid, names):
     except IndexError:
         raise Warning("Names does not contains this column cid=%d vs. len(names)=%d" % (cid, len(names)))
     return Term.pattVName % cid
+def getFmtCol(cid, fmts):
+    try:
+        return fmts[cid]
+    except:
+        pass
+    return {}
+########################
 
-def format_time(v):
-    time_struct = time.localtime(v)
-    date_fmt = "%d-%b-%Y"
-    time_fmt = "%H:%M:%S"
-    fmt = date_fmt
-    if time_struct.tm_hour + time_struct.tm_min + time_struct.tm_sec == 0:
-        fmt = date_fmt
-    else:
-        if time_struct.tm_year == 0:
-            "%s" % datetime.timedelta(seconds=v)
+class TimeTools:
+    MTCH_TIME = "_time$"
+    TIME_FMT = "%Y-%b-%d,%H:%M:%S"
+    TIME_ELEMS = [TIME_FMT[i] for i in range(1, len(TIME_FMT), 3)]
+
+    @classmethod
+    def time_prec_to_range(tcl, time_prec):
+        if time_prec is None:
+            return (None, None)
+        ii = [i for i,l in enumerate(tcl.TIME_ELEMS) if ("%"+l) in time_prec]
+        return numpy.min(ii), numpy.max(ii)
+    @classmethod
+    def range_to_time_prec(tcl, tmin=None, tmax=None):
+        if tmin is None:
+            low = 0
         else:
-            fmt = date_fmt + "," + time_fmt
-    return time.strftime(fmt, time_struct)
-def parse_time(v, dayfirst=True):
-    return time.mktime(parser.parse(v, dayfirst=dayfirst).timetuple())
+            low = 3*tmin
+        if tmax is None:        
+            up = len(tcl.TIME_FMT)
+        else:
+            up = 3*(tmax+1)-1
+            if up >= len(tcl.TIME_FMT):
+                up = len(tcl.TIME_FMT)
+        return tcl.TIME_FMT[low:up]
+    @classmethod
+    def lower_time_prec(tcl, time_prec):
+        rng = tcl.time_prec_to_range(time_prec)
+        if rng[0] < rng[1]:
+            return tcl.range_to_time_prec(rng[0], rng[1]-1)
+        return tcl.range_to_time_prec(rng[0], rng[1])
+    @classmethod
+    def higher_time_prec(tcl, time_prec):
+        rng = tcl.time_prec_to_range(time_prec)
+        return tcl.range_to_time_prec(rng[0], rng[1]+1)
+    @classmethod
+    def isTimeVarName(tcl, var_name):
+        return re.search(tcl.MTCH_TIME, var_name) is not None
+    @classmethod
+    def asTimeVar(tcl, cid, names, fmts):
+        return type(names) == list and (tcl.isTimeVarName(getNameCol(cid, names)) or getFmtCol(cid, fmts).get("time_prec") is not None)
+    @classmethod
+    def get_time_prec(tcl, time_struct):
+        parts = [time_struct.tm_year, time_struct.tm_mon, time_struct.tm_mday, time_struct.tm_hour, time_struct.tm_min, time_struct.tm_sec]
+        ii = [i for i,l in enumerate(parts) if l > 0]
+        return tcl.range_to_time_prec(numpy.min(ii), numpy.max(ii))
+    @classmethod    
+    def format_time(tcl, v, time_prec=None):    
+        time_struct = time.localtime(v)
+        if time_prec == 1:
+            time_prec = TimeTools.TIME_FMT
+        if time_prec is None:
+            time_prec = tcl.get_time_prec(time_struct)
+            # if time_struct.tm_hour + time_struct.tm_min + time_struct.tm_sec == 0:
+            #     time_prec = DATE_FMT
+            # else:
+            #     if time_struct.tm_year == 0:
+            #         time_prec = 0
+            #     else:
+            #         time_prec = DATE_FMT + "," + TIME_FMT
+        if time_prec == 0:
+            return "%s" % datetime.timedelta(seconds=v)
+        return time.strftime(time_prec, time_struct)
+    @classmethod
+    def parse_time(tcl, v, dayfirst=True, yearfirst=True):
+        return time.mktime(parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).timetuple())
 
 def foldRowsTT(tt):
     changed = False
@@ -507,7 +563,7 @@ class BoolTerm(Term):
     def truthEval(self, variableV):
         return variableV
 
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -528,7 +584,7 @@ class BoolTerm(Term):
         else:
             return ('%s'+Term.pattVName) % (neg, self.col)
 
-    def dispTex(self, neg=None, names = None):
+    def dispTex(self, neg=None, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -541,7 +597,7 @@ class BoolTerm(Term):
         else:
             return ('%s$'+Term.pattVName+'$') % ( neg, self.col)
 
-    def dispU(self, neg=None, names = None):
+    def dispU(self, neg=None, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -607,7 +663,7 @@ class CatTermONE(Term): ## LEGACY
     def __str__(self):
         return self.disp()
     
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -629,7 +685,7 @@ class CatTermONE(Term): ## LEGACY
         else:
             return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
 
-    def dispTex(self, neg=None, names = None):
+    def dispTex(self, neg=None, names=None, fmts=None):
         # neg = False
         symbIn = '\\in'
         if neg is None:
@@ -660,7 +716,7 @@ class CatTermONE(Term): ## LEGACY
             xx = ('%s$'+Term.pattVName+' %s \\text{%s}$') % (neg, self.col, symbIn, self.cat)
         return xx 
 
-    def dispU(self, neg, names = None):
+    def dispU(self, neg, names=None, fmts=None):
         symbIn = '='
         if neg is None:
             neg = ""
@@ -747,7 +803,7 @@ class CatTerm(Term):
     def toKey(self):
         return (self.col, self.type_id, self.nbCats(), self.hashCat())
         
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -769,7 +825,7 @@ class CatTerm(Term):
         else:
             return (('%s'+Term.pattVName) % (neg, self.col)) + strcat
 
-    def dispTex(self, neg=None, names = None):
+    def dispTex(self, neg=None, names=None, fmts=None):
         # neg = False
         cat_str = self.getCatsStr(op_curl="\\{", cl_curl="\\}", op_any="\\text{", cl_any="}")
         symbIn = '\\in'
@@ -801,7 +857,7 @@ class CatTerm(Term):
             xx = ('%s$'+Term.pattVName+' %s %s$') % (neg, self.col, symbIn, cat_str)
         return xx 
 
-    def dispU(self, neg, names = None):
+    def dispU(self, neg, names=None, fmts=None):
         cat_str = self.getCatsStr()
         symbIn = '='
         if neg is None:
@@ -917,7 +973,7 @@ class NumTerm(Term):
     def __str__(self):
         return self.disp()
 
-    def dispBound(self, low=True, style=None, details={}, timeInterp=False):
+    def dispBound(self, low=True, style=None, details={}):
         if low:
             notInf = self.lowb > float('-Inf')
             bd = float(self.lowb)
@@ -926,11 +982,11 @@ class NumTerm(Term):
             bd = float(self.upb)
             
         if notInf:
-            if timeInterp:
-                bd =  "@%s" % format_time(bd)
+            if details.get("as_time", False):
+                bd =  "@%s" % TimeTools.format_time(bd, time_prec=details.get("fmt", {}).get("time_prec"))
 
             if style == "tex":
-                if timeInterp:
+                if details.get("as_time", False):
                     val = bd
                 else:
                     val = ('%'+details.get("prec", "")+'f') % bd
@@ -948,12 +1004,12 @@ class NumTerm(Term):
                     return '%s<' % bd
                 return '<%s' % bd
         return ''
-    def dispLowBound(self, low=True, style=None, details={}, timeInterp=False):
-        return self.dispBound(True, style, details, timeInterp)
-    def dispUpBound(self, low=True, style=None, details={}, timeInterp=False):
-        return self.dispBound(False, style, details, timeInterp)
+    def dispLowBound(self, low=True, style=None, details={}):
+        return self.dispBound(True, style, details)
+    def dispUpBound(self, low=True, style=None, details={}):
+        return self.dispBound(False, style, details)
     
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -962,9 +1018,11 @@ class NumTerm(Term):
             neg = neg.disp()
 
         ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
-        lb = self.dispLowBound(timeInterp=timeInterp)
-        ub = self.dispUpBound(timeInterp=timeInterp)
+        dets = {"as_time": TimeTools.asTimeVar(self.col, names, fmts)}
+        if fmts is not None:
+            dets["fmt"] = getFmtCol(self.col, fmts)
+        lb = self.dispLowBound(details=dets)
+        ub = self.dispUpBound(details=dets)
         if lenIndex > 0 :
             lenIndex = max(lenIndex-len(lb)-len(ub),3)
             slenIndex = str(lenIndex)
@@ -978,7 +1036,7 @@ class NumTerm(Term):
             lab = Term.pattVName % self.col 
         return neg + lb + lab + ub
 
-    def dispTex(self, neg=None, names = None, prec=None):
+    def dispTex(self, neg=None, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -986,33 +1044,31 @@ class NumTerm(Term):
         if type(neg) is Neg:
             neg = neg.dispTex()
 
-        # prec = "0.4"
-        dets = {"prec": prec}
-        if prec is None:
-            dets = {"trimm": True, "prec": ""}
-            
-        ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
-        lb = '$['+self.dispLowBound(style="tex", details=dets, timeInterp=timeInterp)
-        ub = self.dispUpBound(style="tex", details=dets, timeInterp=timeInterp)+']$'
+        dets = {"trimm": True, "as_time": TimeTools.asTimeVar(self.col, names, fmts)}
+        if fmts is not None:
+            dets["fmt"] = getFmtCol(self.col, fmts)
+        lb = '$['+self.dispLowBound(style="tex", details=dets)
+        ub = self.dispUpBound(style="tex", details=dets)+']$'
         if type(names) == list  and len(names) > 0:
             idcol = '$ %s $' % getNameCol(self.col, names)
         else:
             idcol = Term.pattVName % self.col
         return ''+neg+lb+idcol+ub+''
 
-    def dispU(self, neg, names = None):
+    def dispU(self, neg, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
             neg = Neg(neg)
         if type(neg) is Neg:
             neg = neg.dispU()
-            
+
         ### force float to make sure we have dots in the output
-        timeInterp = (type(names) == list  and len(names) > 0 and re.search(MTCH_TIME, getNameCol(self.col, names)))
-        lb = '['+self.dispLowBound(style="U", timeInterp=timeInterp)
-        ub = self.dispUpBound(style="U", timeInterp=timeInterp)+']'
+        dets = {"as_time": TimeTools.asTimeVar(self.col, names, fmts)}
+        if fmts is not None:
+            dets["fmt"] = getFmtCol(self.col, fmts)
+        lb = '['+self.dispLowBound(style="U", details=dets)
+        ub = self.dispUpBound(style="U", details=dets)+']'
         if type(names) == list  and len(names) > 0:
             idcol = '%s' % getNameCol(self.col, names)
         else:
@@ -1090,7 +1146,7 @@ class AnonTerm(Term):
         return False
 
 
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -1111,7 +1167,7 @@ class AnonTerm(Term):
         else:
             return ('%s'+AnonTerm.pattVName) % (neg, self.col)
 
-    def dispTex(self, neg=None, names = None):
+    def dispTex(self, neg=None, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -1124,7 +1180,7 @@ class AnonTerm(Term):
         else:
             return ('%s$'+ AnonTerm.pattVName+'$') % ( neg, self.col)
 
-    def dispU(self, neg=None, names = None):
+    def dispU(self, neg=None, names=None, fmts=None):
         if neg is None:
             neg = ""
         if type(neg) == bool:
@@ -1136,35 +1192,6 @@ class AnonTerm(Term):
             return u'%s?%s' % ( neg, getNameCol(self.col, names))
         else:
             return (u'%s'+AnonTerm.pattVName) % ( neg, self.col)
-
-    
-    # def disp(self, neg=None, names=None, lenIndex=0):
-    #     if neg is None:
-    #         neg = ""
-    #     if type(neg) == bool:
-    #         neg = Neg(neg)
-    #     if type(neg) is Neg:
-    #         neg = neg.disp()
-
-    #     return ('%s'+AnonTerm.pattVName+' ') % (neg, self.col)
-        
-    # def dispTex(self, neg=None, names = None):
-    #     if neg is None:
-    #         neg = ""
-    #     if type(neg) == bool:
-    #         neg = Neg(neg)
-    #     if type(neg) is Neg:
-    #         neg = neg.dispTex()
-    #     return ('%s$'+AnonTerm.pattVName+' $') % ( neg, self.col)
-
-    # def dispU(self, neg=None, names = None):
-    #     if neg is None:
-    #         neg = ""
-    #     if type(neg) == bool:
-    #         neg = Neg(neg)
-    #     if type(neg) is Neg:
-    #         neg = neg.dispU()
-    #     return (u'%s'+AnonTerm.pattVName+' ') % ( neg, self.col)
 
 class XprTerm(AnonTerm):
 
@@ -1216,16 +1243,16 @@ class XprTerm(AnonTerm):
     def truthEval(self, variableV):
         return False
 
-    def disp(self, neg=None, names = None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0):
         tmp = XprTerm.pattVName % self.xpr
         if self.name_col is not None:
             tmp += " # %s" % self.name_col
         return tmp
 
-    def dispTex(self, neg=None, names = None):
+    def dispTex(self, neg=None, names=None):
         return self.disp(neg, names)
 
-    def dispU(self, neg=None, names = None):
+    def dispU(self, neg=None, names=None):
         return self.disp(neg, names)
 
     @classmethod
@@ -1304,24 +1331,24 @@ class Literal(object):
     def __str__(self):
         return self.disp()
 
-    def disp(self, names = None, lenIndex=0):
+    def disp(self, names=None, lenIndex=0):
         return self.getTerm().disp(self.getNeg(), names, lenIndex)
 
-    def dispTex(self, names = None):
-        return self.getTerm().dispTex(self.getNeg(), names)
+    def dispTex(self, names=None, fmts=None):
+        return self.getTerm().dispTex(self.getNeg(), names, fmts)
     
-    def dispU(self, names = None):
-        return self.getTerm().dispU(self.getNeg(), names)
+    def dispU(self, names=None, fmts=None):
+        return self.getTerm().dispU(self.getNeg(), names, fmts)
 
-    def styledDisp(self, names=None, style=""):
+    def styledDisp(self, names=None, style="", fmts=None):
         neg = self.getNeg().styledDisp(style)
         if re.match("tex", style):
-            return self.getTerm().dispTex(neg, names)
+            return self.getTerm().dispTex(neg, names, fmts)
         elif re.match("U", style) or re.match("T", style):
-            return self.getTerm().dispU(neg, names)
-        return self.getTerm().disp(neg, names)
+            return self.getTerm().dispU(neg, names, fmts)
+        return self.getTerm().disp(neg, names, fmts)
 
-    def tInfo(self, names = None):
+    def tInfo(self, names=None):
         return self.getTerm().tInfo(names)
 
     def __cmp__(self, other):
@@ -2547,14 +2574,14 @@ class Query(object):
         if len(self) > 0:
             self.buk = self.reorderedLits()[1]
 
-    def disp(self, names = None, lenIndex=0, style=""):
-        def evl(b, op, names, lenIndex, style):
+    def disp(self, names=None, lenIndex=0, style="", fmts=None):
+        def evl(b, op, names, lenIndex, style, fmts=None):
             if isinstance(b, Literal):
-                return b.styledDisp(names, style)
+                return b.styledDisp(names, style, fmts)
             if isinstance(b, Neg):
                 return "!NEG!"
             else:
-                vs = [evl(bb, op.other(), names, lenIndex, style) for bb in b]
+                vs = [evl(bb, op.other(), names, lenIndex, style, fmts) for bb in b]
                 if len(vs) == 1:
                     return vs[0]
                 else:
@@ -2580,7 +2607,7 @@ class Query(object):
             else:
                 return ""
         else:                
-            vs = [evl(bb, self.op.other(), names, lenIndex, style) for bb in self.buk]
+            vs = [evl(bb, self.op.other(), names, lenIndex, style, fmts) for bb in self.buk]
             if len(vs) == 1:
                 return vs[0]
             else:
@@ -2602,9 +2629,14 @@ class Query(object):
     def prepareQuery(self, details={}):
         style=details.get("style", "")
         side=details.get("side")
-        if side is not None and details.get("named", False) and "names" in details:
-            return self.disp(names=details["names"][side], style=style)
-        return self.disp(style=style)        
+        names = None
+        fmts = None
+        if side is not None:
+            if details.get("named", False) and "names" in details:
+                names = details["names"][side]
+            if "fmts" in details:
+                fmts = details["fmts"][side]
+        return self.disp(names=names, style=style, fmts=fmts)
             
     def algExp(self):
         def evl(b, op, tmap):
@@ -2734,7 +2766,7 @@ class Query(object):
         return None
     parseXpr = staticmethod(parseXpr)
             
-    def parse(part, names = None, ids_map=None):
+    def parse(part, names=None, ids_map=None):
         if len(part.strip()) == 0 or part.strip() == "[]":
             return Query()
         qs = QuerySemantics(names, ids_map)
@@ -2808,11 +2840,11 @@ class QuerySemantics(object):
 
     def realvalued_literal(self, ast):
         if re.match("@", ast.get("lower_bound", "")):
-            lower = parse_time(ast.get("lower_bound")[1:])
+            lower = TimeTools.parse_time(ast.get("lower_bound")[1:])
         else:
             lower = float(ast.get("lower_bound", "-inf"))
         if re.match("@", ast.get("upper_bound", "")):
-            upper = parse_time(ast.get("upper_bound")[1:])
+            upper = TimeTools.parse_time(ast.get("upper_bound")[1:])
         else:
             upper = float(ast.get("upper_bound", "inf"))
         return [Literal("neg" in ast, NumTerm(self.parse_vname(ast.get("variable_name")), lower, upper))]
