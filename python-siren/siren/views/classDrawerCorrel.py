@@ -26,6 +26,8 @@ from classDrawerBasis import DrawerEntitiesTD
 
 import pdb
 
+MAP_SIDES = ["LHS", "RHS"]
+
 class DrawerRedCorrel(DrawerEntitiesTD):
     
     # all_width = 1.
@@ -48,7 +50,8 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.parts_in = {SSetts.Exx: True, SSetts.Exo: False, SSetts.Eox: False, SSetts.Eoo: False}
         self.parts_out = {SSetts.Exx: True, SSetts.Exo: True, SSetts.Eox: True, SSetts.Eoo: True}
         self.types_in = dict([(tid, True) for (name, tid) in self.getNamesTids()])
-        self.sides_in = {0: True, 1: True}
+        ## self.sides_in = {"rows_LHS": True, "rows_RHS": True, "cols_LHS": True, "cols_RHS": True}
+        self.sides_in = {"rows_LHS": True, "rows_RHS": False, "cols_LHS": False, "cols_RHS": True}
         # self.types_in[self.getTidForName("Boolean")] = False
         # self.types_in[self.getTidForName("Categorical")] = False
         # self.parts_in = {SSetts.Exx: False, SSetts.Exo: True, SSetts.Eox: False, SSetts.Eoo: False}
@@ -94,13 +97,12 @@ class DrawerRedCorrel(DrawerEntitiesTD):
                     else:
                         self.types_in[i] = False
 
-            for i, lbl in enumerate(["LHS", "RHS"]):
-                ll = "sides_%d" % i
+            for ll in self.sides_in.keys():
                 if ll in elems:
                     if elems[ll].IsChecked():
-                        self.sides_in[i] = True
+                        self.sides_in[ll] = True
                     else:
-                        self.sides_in[i] = False
+                        self.sides_in[ll] = False
 
             if "fixed_radius" in elems:
                 if elems["fixed_radius"].IsChecked():
@@ -119,12 +121,17 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             
             vec = self.getPltDtH().getSuppABCD()
             tt = [k for (k,v) in self.types_in.items() if v]
-            side_cols = [(k,None) for (k,v) in self.sides_in.items() if v]
+            side_cols = [(k,None) for (k,v) in enumerate(MAP_SIDES) if (self.sides_in["rows_%s" %v] or self.sides_in["cols_%s" %v])]            
+            
             if len(tt) == 0:
                 tt = None
             if len(side_cols) == 0:
                 side_cols = None
             mat, details, mcols = self.getParentData().getMatrix(side_cols=side_cols, nans=numpy.nan, types=tt, only_able=True)
+            ids_rc = {}
+            for rc in ["rows", "cols"]:
+                ssides = [k for k,v in enumerate(MAP_SIDES) if self.sides_in["%s_%s" % (rc, v)]]
+                ids_rc[rc] = [i for i,v in enumerate(details) if (len(ssides) == 0 or v["side"] in ssides)]
             self.clearPlot()
 
             pos_in = numpy.zeros(vec.shape, dtype=bool)
@@ -140,7 +147,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             # if tt == self.getTidForName(["Boolean"]):
             #     self.makeCountsPlot(mat, pos_in, pos_out, details)
             # else:
-            self.makeCorrelPlot(mat, pos_in, pos_out, details)
+            self.makeCorrelPlot(mat, pos_in, pos_out, details, ids_rc)
             self.draw()
             self.setFocus()
         else:
@@ -175,7 +182,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.axe.set_yticks([])
         # pdb.set_trace()
             
-    def makeCorrelPlot(self, mat, pos_in, pos_out, details):
+    def makeCorrelPlot(self, mat, pos_in, pos_out, details, ids_rc):
         extra_v = 1.1
         Rall = numpy.corrcoef(mat)
         if numpy.sum(pos_in) > 0:
@@ -201,8 +208,9 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         else:
             Rout = Rall
 
-        labels = [d["name"] for d in details]
-
+        # labels = [d["name"] for d in details]
+        # self.drawCorrelPlotTriangle(Rin, Rout, labels, extra_v)
+            
         # A = (Rall+1)/2.
         A = 10**(-2*Rall)
         L = numpy.diag(numpy.sum(A, axis=1)) - A 
@@ -210,7 +218,16 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         s = numpy.argsort(eivect[:,1])
         if s[0] > s[-1]:
             s = s[::-1]
-        
+
+        ids_rows = [i for i in s if i in ids_rc["rows"]]
+        ids_cols = [i for i in s if i in ids_rc["cols"]]
+            
+        Rin = Rin[ids_cols, :][:, ids_rows]
+        Rout = Rout[ids_cols, :][:, ids_rows]
+        Rall = Rall[ids_cols, :][:, ids_rows]
+        labels_rows = [details[d]["name"] for d in ids_rows]
+        labels_cols = [details[d]["name"] for d in ids_cols]
+        #pdb.set_trace()        
         # #### store the corrcoeffs to file(s)
         # import re
         # filename = "/home/egalbrun/corr_values_%s.csv" % self.view.getItemId()
@@ -225,8 +242,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         # # filename = "/home/egalbrun/corr_values_globe.csv"
         # # numpy.savetxt(filename, Rall[keep_ids,:][:,keep_ids], fmt=str("%.6f"), delimiter=",", header=header)
         
-        # self.drawCorrelPlotTriangle(Rin, Rout, labels, extra_v)
-        self.drawCorrelPlotSquare(Rin[s,:][:,s], Rout[s,:][:,s], [labels[ss] for ss in s], extra_v)
+        self.drawCorrelPlotSquare(Rin, Rout, labels_rows, labels_cols, extra_v)
 
     def drawCorrelPlotTriangle(self, Rin, Rout, labels, extra_v):
         cmap = cm.get_cmap('PuOr')
@@ -282,10 +298,10 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.axe.set_xticks([])
         self.axe.set_yticks([])
 
-    def drawCorrelPlotSquare(self, Rin, Rout, labels, extra_v):
+    def drawCorrelPlotSquare(self, Rin, Rout, labels_rows, labels_cols, extra_v):
         # cmap = cm.get_cmap('PuOr')
         cmap = cm.get_cmap('PiYG')
-        xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[0]))
+        xs, ys = numpy.meshgrid(numpy.arange(Rout.shape[0]), numpy.arange(Rout.shape[1]))
         flt_xs, flt_ys, flt_Rout, flt_Rin = numpy.ravel(xs), numpy.ravel(ys), numpy.ravel(Rout), numpy.ravel(Rin)
         # ids_under = (flt_ys == 0) | (flt_xs == Rout.shape[0]-1)
         # ids_under = flt_ys > flt_xs
@@ -294,15 +310,16 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         # rot = numpy.array([[numpy.cos(angle), -numpy.sin(angle)],[numpy.sin(angle), numpy.cos(angle)]])
         # rot_xys = numpy.dot(numpy.vstack([flt_xs, flt_ys]).T, rot)
         rot_xys = numpy.vstack([flt_xs, flt_ys]).T
- 
-        for i, lbl in enumerate(labels):
+
+        for i, lbl in enumerate(labels_rows):
             self.axe.text(Rout.shape[0]+.2, i, lbl, ha="left", va="center", **self.view.getFontProps())
-            self.axe.text(i-.5, Rout.shape[0]+.2, lbl, rotation=60, va="bottom", **self.view.getFontProps())
+        for i, lbl in enumerate(labels_cols):
+            self.axe.text(i-.5, Rout.shape[1]+.2, lbl, rotation=60, va="bottom", **self.view.getFontProps())
 
         if self.fixed_radius:
-            rads = .44*numpy.ones(flt_Rin.shape)
+            rads = .40*numpy.ones(flt_Rin.shape)
         else:
-            rads = .48*numpy.abs(flt_Rin)
+            rads = .45*numpy.abs(flt_Rin)
         
         patches = [Circle((rot_xys[i,0], rot_xys[i,1]), radius=rads[i]) for i in range(flt_Rin.shape[0])]
         ## .1+.4*numpy.abs(flt_Rin[i]-flt_Rout[i])
@@ -321,8 +338,8 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         self.axe.text(0, -2., "-1", ha="right", va="center", **self.view.getFontProps())
         self.axe.text(diag_size, -2., "+1", ha="left", va="center", **self.view.getFontProps())
                 
-        self.axe.set_xlim([-.1*Rout.shape[0], 1.4*Rout.shape[0]])
-        self.axe.set_ylim([-3, 1.4*Rout.shape[0]])
+        self.axe.set_xlim([-.1*Rout.shape[0], 1.2*Rout.shape[0]])
+        self.axe.set_ylim([-3, 1.2*Rout.shape[1]])
         self.axe.set_xticks([])
         self.axe.set_yticks([])
 
@@ -360,16 +377,6 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             add_boxA.Add(label, 0, border=0, flag=flags)
             add_boxA.Add(inter_elems["types_%d" % i], 0, border=0, flag=flags)
-
-        for i, lbl in enumerate(["LHS", "RHS"]):
-            inter_elems["sides_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
-            inter_elems["sides_%d" % i].SetValue(self.sides_in[i])
-
-            label = wx.StaticText(panel, wx.ID_ANY, "%s:" % lbl)
-            label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            add_boxA.Add(label, 0, border=0, flag=flags)
-            add_boxA.Add(inter_elems["sides_%d" % i], 0, border=0, flag=flags)
-
             
         add_boxA.AddSpacer((self.getLayH().getSpacerWn(),-1))
         inter_elems["fixed_radius"] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
@@ -378,12 +385,23 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         label = wx.StaticText(panel, wx.ID_ANY, "fix r:")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxA.Add(label, 0, border=0, flag=flags)
-        add_boxA.Add(inter_elems["fixed_radius"], 0, border=0, flag=flags)
-        
+        add_boxA.Add(inter_elems["fixed_radius"], 0, border=0, flag=flags)        
         add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
 
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
         add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        for k,v in self.sides_in.items():
+            inter_elems[k] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
+            inter_elems[k].SetValue(v)
+
+            label = wx.StaticText(panel, wx.ID_ANY, "%s:" % k)
+            label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+            add_boxB.Add(label, 0, border=0, flag=flags)
+            add_boxB.Add(inter_elems[k], 0, border=0, flag=flags)
+        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        
+        add_boxC = wx.BoxSizer(wx.HORIZONTAL)
+        add_boxC.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
 
         for part, v in self.parts_in.items():
             sub = SSetts.labels[part] 
@@ -398,18 +416,18 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
             v_box.Add(inter_elems["in_"+sub], 0, border=1, flag=flags) #, userData={"where":"*"})
             v_box.Add(inter_elems["out_"+sub], 0, border=1, flag=flags) #, userData={"where":"*"})
-            add_boxB.Add(v_box, 0, border=1, flag=flags)
+            add_boxC.Add(v_box, 0, border=1, flag=flags)
         
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
-        add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
-        add_boxB.Add(buttons[1]["element"], 0, border=1, flag=flags)
+        add_boxC.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxC.Add(buttons[0]["element"], 0, border=1, flag=flags)
+        add_boxC.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxC.Add(buttons[1]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxC.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)
-        return [add_boxA, add_boxB]
+        return [add_boxA, add_boxB, add_boxC]
 
 
     # def OnPick(self, event):

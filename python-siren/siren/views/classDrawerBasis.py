@@ -510,18 +510,16 @@ class DrawerBasis(object):
             self.delElement("info_text")
         self.draw()
             
-    def addStamp(self, pref=""):
-        if not self.getPltDtH().hasQueries():
+    def addStamp(self, pref="", force=False):
+        if not self.getPltDtH().hasQueries() or (not force and not self.getSettV("add_stamp")):
             return
         
         if not self.hasElement("red_stamp"):
             old_pos = self.getAxe().get_position()
-            # print "PosA", old_pos
             new_pos = [old_pos.x0, old_pos.y0,  old_pos.width, 7./8*old_pos.height]
             # # pos2 = [0., 0.,  1., 1.0]
             self.getAxe().set_position(new_pos)
             # pos1 = self.axe.get_position()
-            # print "PosB", pos1
 
         qrs = self.getPltDtH().getQueries()
 
@@ -535,16 +533,16 @@ class DrawerBasis(object):
         tex_str = red.disp(self.getParentData().getNames(), list_fields=tex_fields, with_fname=headers, sep=" ", delim="", nblines=3, style="T", fmts=self.getParentData().getFmts()) #, rid=rr)
         if not self.hasElement("red_stamp"):
             red_stamp = {"old_pos": old_pos}
-            old_pos = self.getAxe().get_position()
-            red_stamp["text"] = self.getAxe().text(0.5*self.getAxe().get_xlim()[1], self.getAxe().get_ylim()[1], tex_str, ha="center", va="bottom", **self.view.getFontProps())
+            red_stamp["text"] = self.getAxe().text(0.5, 1.01, tex_str, transform=self.getAxe().transAxes, ha="center", va="bottom", **self.view.getFontProps())
             self.setElement("red_stamp", red_stamp)
         else:
-            self.getElement("red_stamp")["text"].set_text(tex_str, **self.view.getFontProps())
-        self.draw()       
-
+            self.getElement("red_stamp")["text"].set_text(tex_str)
+            self.getElement("red_stamp")["text"].update(self.view.getFontProps())
+        self.draw()
 
     def delStamp(self):
         if self.hasElement("red_stamp"):
+            print "Del stamp"
             red_stamp = self.getElement("red_stamp")
             self.axe.set_position(red_stamp["old_pos"])
             red_stamp["text"].remove()
@@ -1029,7 +1027,7 @@ class DrawerEntitiesTD(DrawerBasis):
                             self.getCoords(1,draw_indices[kindices==vi]),
                             c=dots_draw["fc_dots"][draw_indices[kindices==vi],:],
                             edgecolors=dots_draw["ec_dots"][draw_indices[kindices==vi],:],
-                            s=5*dots_draw["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"], #### HERE
+                            s=5*dots_draw["sz_dots"][draw_indices[kindices==vi]], marker=draw_settings["default"]["shape"],
                             zorder=vv)
                 
     def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
@@ -1040,7 +1038,7 @@ class DrawerEntitiesTD(DrawerBasis):
                               self.getPlotProp(idp, "sz"), vv, draw_settings["default"])
                 
     def drawEntity(self, idp, fc, ec, sz=1, zo=4, dsetts={}):
-        ### HERE SAMPLE ###
+        ### SAMPLE ###
         if self.drawPoly():
             return [self.axe.add_patch(Polygon(self.getPltDtH().getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec, zorder=zo))]
         else:

@@ -1039,7 +1039,7 @@ class Redescription(WithEVals):
     def disp(self, names=[None, None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, rp=None, fmts=[None, None, None]):
         return self.getRP(rp).disp(self, names, row_names, with_fname, rid, nblines, delim, last_one, list_fields, modifiers, style, sep, fmts)
     @classmethod   
-    def parse(tcl, stringQueries, stringSupp=None, data=None, rp=None):
+    def parse(tcl, stringQueries, stringSupp=None, data=None, rp=None, sid=None):
         if data is not None and data.hasNames():
             names = data.getNames()
         else:
@@ -1048,26 +1048,56 @@ class Redescription(WithEVals):
         supportsS = None
         if data is not None and stringSupp is not None and type(stringSupp) == str and re.search('\t', stringSupp):
             supportsS = SParts.parseSupport(stringSupp, data.nbRows(), data.getSSetts())
+        if sid is not None:
+            lpartsList["sid"] = sid
         return tcl.initParsed(queryL, queryR, lpartsList, data, supportsS)
+    @classmethod   
+    def prepareRid(tcl, rid=None, sid=None):
+        if type(rid) is dict:
+            sid = rid.get("sid")
+            if "all:rid:" in rid:
+                rid = rid.get("all:rid:")
+            elif "rid" in rid:
+                rid = rid.get("rid")
+            else:
+                rid = None
+        if rid is None:
+            return tcl.generateNextUid()
+
+        try:
+            rid = rid.lstrip(tcl.class_letter)
+            rid = int(rid)
+        except (AttributeError, TypeError, ValueError):
+            pass
+        if sid is not None:
+            rid = "%s.%s" % (rid, sid)
+            parts = rid.split(".")
+            if len(parts) > 2 and parts[-1] == parts[-2]:
+                rid = ".".join(parts[:-1])
+            try:
+               rid = float(rid)
+            except (TypeError, ValueError):
+                pass                           
+        return rid
     @classmethod   
     def initParsed(tcl, queryL, queryR, lpartsList={}, data = None, supportsS=None):
         status_enabled = None
+        iid = tcl.prepareRid(lpartsList)
         if "all:extra:status" in lpartsList:
             status_enabled = int(lpartsList.pop("all:extra:status"))
         if "status_enabled" in lpartsList:
             status_enabled = int(lpartsList.pop("status_enabled"))
         r = None
         if supportsS is not None:
-            r = tcl(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)], data.getSSetts())
+            r = tcl(queryL, queryR, supportsS.supparts(), data.nbRows(), [set(),set()], [ queryL.proba(0, data), queryR.proba(1, data)], data.getSSetts(), iid=iid)
 
             for key, v in lpartsList.items():
                 tv = RedProps.getEVal(r, key)
                 if tv != v:
-                    raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" \
-                                    % (key, v, tv))
+                    raise Warning("Something wrong in the supports ! (%s: %s ~ %s)\n" % (key, v, tv))
 
         if r is None:
-            r = tcl(queryL, queryR)
+            r = tcl(queryL, queryR, iid=iid)
             if data is not None:
                 r.recompute(data)
             else:

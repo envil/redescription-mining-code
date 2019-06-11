@@ -1155,6 +1155,9 @@ class Data(ContentCollection):
         if self.isConditional():
             return self.condition_dt["cols"]
 
+    def getTypeD(self):
+        return {"geo": self.isGeospatial(), "time": self.isTimeConditional(), "cond": self.isConditional()}
+
     def isGeospatial(self):
         return self.coords is not None
             

@@ -54,14 +54,14 @@ class ViewFactory(object):
         return classViewBasis.typeIWhat(what)
                     
     @classmethod
-    def getViewsInfo(tcl, typeI="r", geo=False, ext_keys=None, what=None, excludeT=None):
+    def getViewsInfo(tcl, typeI="r", typeD={}, ext_keys=None, what=None, excludeT=None):
         infos = []
         for viewT in tcl.map_typeI_tids.get(typeI, []):
             if (excludeT is None or viewT not in excludeT):
                 details = tcl.map_tid_details[viewT]
                 infos.append({"viewT": viewT, "title": details["title"],
                                   "short_title": details.get("short_title", details["title"]),
-                                  "ord": details["ord"], "suitable": details["class"].suitableView(geo, ext_keys, what)})
+                                  "ord": details["ord"], "suitable": details["class"].suitableView(typeD, ext_keys, what)})
         # infos.sort(key=lambda x: (x["ord"], x["title"]))
         return infos
 
@@ -72,7 +72,7 @@ class ViewFactory(object):
             return view_dets["class"](parent, vid, view_dets["more"])
 
     @classmethod
-    def getDefaultViewT(tcl, typeI="r", geo=False):
+    def getDefaultViewT(tcl, typeI="r", typeD={}):
         for tid in tcl.map_typeI_tids.get(typeI):
-            if tcl.map_tid_details[tid]["class"].isGeoV() == geo:
+            if tcl.map_tid_details[tid]["class"].suitableD(typeD):
                 return tid

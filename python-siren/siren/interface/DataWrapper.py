@@ -58,6 +58,7 @@ class DataWrapper(object):
         self.pm = PreferencesManager(conf_defs)
         self.data = None
         self.reds = StoredRCollection()
+        self.count_loaded_rlists = 0
         self.preferences = ICDict(self.pm.getDefaultTriplets())
         self.resetConstraints()
         self.setupFilterActs()
@@ -75,7 +76,7 @@ class DataWrapper(object):
 
         if package_filename is not None:
             self.openPackage(package_filename)
-        
+
     def clearRedescriptions(self):
         self.reds.clear()
     def hasRedsChanged(self, inc_hist=False, inc_buffer=False):
@@ -160,6 +161,11 @@ class DataWrapper(object):
             return True
         else:
             return False
+    def getTypeD(self):
+        if self.data is not None:
+            return self.data.getTypeD()
+        else:
+            return {}
     def getExtensionKeys(self):
         if self.data is not None:
             return self.data.getActiveExtensionKeys()
@@ -301,6 +307,11 @@ class DataWrapper(object):
         self.constraints.resetDataDependent(data, self.getPreferences())
         self.addReloadAll()
 
+    def applyVarsMask(self, pdict):
+        if self.data is not None:
+            return self.data.applyDisableMasks(pdict.get("mask_vars_LHS"),
+                                        pdict.get("mask_vars_RHS"),
+                                        pdict.get("mask_rows"))
     def resetConstraints(self, AR=None, dtv=None):
         if dtv is None:
             self.constraints = Constraints(self.getPreferences(), data=self.getData(), AR=AR)
@@ -527,6 +538,7 @@ class DataWrapper(object):
         return data
 
     def _readRedescriptionsFromFile(self, filename, data=None):
+        sid = ("%s" % (self.count_loaded_rlists + 1))[::-1]
         reds = []
         if data is None:
             if self.data is None:
@@ -536,7 +548,9 @@ class DataWrapper(object):
         if os.path.isfile(filename):
             rp = Redescription.getRP()
             filep = open(filename, mode='r')
-            rp.parseRedList(filep, data, reds)
+            rp.parseRedList(filep, data, reds, sid=sid)
+        if len(reds) > 0:
+            self.count_loaded_rlists += 1
         return reds
 
     def _readPreferencesFromFile(self, filename):
@@ -718,8 +732,7 @@ class DataWrapper(object):
                 mapV = parent.viewOpen(item, iid=iid, viewT=viewT)
                 mapV.lastStepInit(blocking=True)
                 mapV.getLayH().getFrame().SetClientSizeWH(dims[0], dims[1])
-                if stamp:
-                    mapV.addStamp(viewT)
+                mapV.addStamp(viewT, force=stamp)
                 mapV.getLayH().savefig(filename % str(iid), format=fmt)
                 mapV.getLayH().OnKil()
                 

@@ -1157,7 +1157,7 @@ class RedProps(Props):
     ##############################################
     ####        PRINTING
     ##############################################
-    def printRedList(self, reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, modifiers={}, style="txt"):
+    def printRedList(self, reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, modifiers={}, style="txt", fmts=[None, None, None]):
         # print "PRINT RED LIST", modifiers
         try:
             red_list = sorted(reds.items())
@@ -1179,13 +1179,13 @@ class RedProps(Props):
                 all_fields.extend(supp_fields)
 
         if style == "tex":
-            return self.printTexRedList(reds=reds, names=names, list_fields=all_fields, nblines=nblines)
+            return self.printTexRedList(reds=reds, names=names, list_fields=all_fields, nblines=nblines, fmts=fmts)
         str_out = self.dispHeader(all_fields, sep="\t", style=style) 
         for ri, red in red_list:
-            str_out += "\n" + self.disp(red, names=names, row_names=supp_names, nblines=nblines, list_fields=all_fields, sep="\t", style=style)
+            str_out += "\n" + self.disp(red, names=names, row_names=supp_names, nblines=nblines, list_fields=all_fields, sep="\t", style=style, fmts=fmts)
         return str_out
 
-    def printTexRedList(self, reds, names=[None, None], list_fields=None, nblines=1, standalone=False, modifiers={}):
+    def printTexRedList(self, reds, names=[None, None], list_fields=None, nblines=1, standalone=False, modifiers={}, fmts=[None, None, None]):
         # print "PRINT RED TEX LIST", modifiers
         standalone = True
         try:
@@ -1204,7 +1204,7 @@ class RedProps(Props):
         str_reds = ""
         for ri, red in red_list:
             ridstr = "\RName{%s}" %ri
-            str_reds += self.disp(red, names_alts, list_fields=list_fields, style="tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri)) + "\n" 
+            str_reds += self.disp(red, names_alts, list_fields=list_fields, style="tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri), fmts=fmts) + "\n" 
         str_cth = closeTexTabular()
         str_cdoc = closeTexDocument(standalone)
         return str_odoc + str_oth + str_reds + str_cth + str_cdoc
@@ -1225,7 +1225,7 @@ class RedProps(Props):
                 return fields, ss
         return None, None
 
-    def parseQueries(self, string, list_fields=None, sep="\t", names=[None, None], modifiers={}):
+    def parseQueries(self, string, list_fields=None, sep="\t", names=[None, None], modifiers={}, sid=None):
         if type(string) is str:
             string = codecs.decode(string, 'utf-8','replace')
 
@@ -1262,7 +1262,6 @@ class RedProps(Props):
                         queries[side] = query
                         flds = []
 
-
         for pi, fk in enumerate(poplist_fields):
             if fk is not None and pi < len(parts):
                 vs = parts[pi]
@@ -1287,9 +1286,11 @@ class RedProps(Props):
                 queries[side] =  self.Qclass()
         if queries[-1] is not None:
             lpartsList["queryCOND"] = queries[-1]
+        if sid is not None and "sid" not in lpartsList:
+            lpartsList["sid"] = sid            
         return (queries[0], queries[1], lpartsList)
 
-    def parseRedList(self, fp, data, reds=None):
+    def parseRedList(self, fp, data, reds=None, sid=None):
         if data is not None and data.hasNames():
             names = data.getNames()
         else:
@@ -1308,7 +1309,7 @@ class RedProps(Props):
                 if list_fields is None:
                     list_fields, sep = self.parseHeader(line)
                 else:
-                    (queryL, queryR, lpartsList) = self.parseQueries(line, list_fields, sep, names, modifiers)
+                    (queryL, queryR, lpartsList) = self.parseQueries(line, list_fields, sep, names, modifiers, sid=sid)
                     r = self.Rclass.initParsed(queryL, queryR, lpartsList, data)
                     if r is not None:
                         reds.append(r)

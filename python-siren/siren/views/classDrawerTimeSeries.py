@@ -208,9 +208,11 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             ### Bars slidable/draggable rectangles
             rects_drag = {}
             rects_rez = {}
-            for i, rg in enumerate(self.prepared_data["ranges"]):
+            for i, rg in enumerate(self.prepared_data["ranges"]):                
                 ci = i
-                if i < len(self.prepared_data["labels"]):
+                if rg[0] is None or rg[1] is None:
+                    rects = None
+                elif i < len(self.prepared_data["labels"]):
                     bds = self.getYsforRange(i, rg)
                     rects = self.axe.bar(x1-x0, bds[1]-bds[0], x0, bds[0],
                                          edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
@@ -220,7 +222,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
                     rects = self.axe.bar(bot, y1-y0, top-bot, y0,
                                          edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
                     
-                if self.prepared_data["qcols"][i] is not None:
+                if self.prepared_data["qcols"][i] is not None and rects is not None:
                     if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
                         rects_rez[ci] = rects[0]
                     elif self.isTypeId(self.prepared_data["qcols"][i].typeId(), ["Boolean", "Categorical"]):
@@ -304,8 +306,9 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
         return (y*len(self.prepared_data["labels"])-rid)*self.prepared_data["min_max"][2,rid]+self.prepared_data["min_max"][0,rid] #-direc*0.5*self.prepared_data["limits"][-1,rid]
     def getYforV(self, rid, v, direc=0):
         if rid == -1:
-            return y       
+            return y
         return (rid+(v-self.prepared_data["min_max"][0,rid]+direc*0.5*self.prepared_data["limits"][-1,rid])/self.prepared_data["min_max"][2,rid])/len(self.prepared_data["labels"])
+        
     def getYsforRange(self, rid, range):
         ### HERE fix CAT
         return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[-1], direc=1)]

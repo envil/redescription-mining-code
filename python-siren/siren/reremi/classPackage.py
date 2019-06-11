@@ -209,11 +209,12 @@ class Package(object):
         # Load redescriptions
         rp = Redescription.getRP()
         if 'redescriptions_filename' in self.plist:
-            for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):            
+            for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):
+                sid = ("%s" % (len(reds) + 1))[::-1]
                 try:
                     fd = self.package.open(file_red, 'r')
                     rs = []
-                    rp.parseRedList(fd, data, rs)
+                    rp.parseRedList(fd, data, rs, sid=sid)
                 except Exception:
                     self.raiseMess()
                     raise
@@ -357,7 +358,7 @@ class Package(object):
         return d, fns
 
 
-def writeRedescriptions(reds, filename, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}):
+def writeRedescriptions(reds, filename, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}, fmts=[None, None, None]):
     if names is False:
         names = [None, None]
     red_list = [red for red in reds if red.isEnabled() or with_disabled]
@@ -369,9 +370,9 @@ def writeRedescriptions(reds, filename, names = [None, None], with_disabled=Fals
     with open(filename, mode='w') as f:
         rp = Redescription.getRP()
         if style == "tex":
-            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines, modifiers=modifiers), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines, modifiers=modifiers, fmts=fmts), 'utf-8','replace'))
         else:
-            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines, modifiers=modifiers), 'utf-8','replace'))
+            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines, modifiers=modifiers, fmts=fmts), 'utf-8','replace'))
             
 def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, core=False):
     sections = True
@@ -439,7 +440,8 @@ def getPrintParams(filename, data=None):
         params["nblines"] = int(tmp.group("nbl"))
 
     if named and data is not None:
-        params["names"] = data.getNames()            
+        params["names"] = data.getNames()
+        params["fmts"] = data.getFmts()       
     if supp_names:
         params["supp_names"] = data.getRNames()
     return params

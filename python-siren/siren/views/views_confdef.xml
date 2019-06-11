@@ -52,6 +52,13 @@
 	<legend>Turn transparency off.</legend>
 	<default><value>0</value></default>
       </parameter>
+    <parameter>
+	<name>add_stamp</name>
+	<label>Add stamp</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Stamp redescription above the figure.</legend>
+	<default><value>0</value></default>
+      </parameter>
       <parameter>
 	<name>miss_details</name>
 	<label>Detailed missing</label>

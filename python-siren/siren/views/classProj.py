@@ -285,7 +285,7 @@ class AxesProj(Proj):
         self.params.update(more)
 
     def comp(self):
-        mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+        mat, details, mcols = self.data.getMatrix(side_cols=[(0, None),(1, None)], types=self.getParameter("types"), only_able=self.getParameter("only_able"))
         mm = [m for m in mcols.keys() if len(m)==2]
         if len(mm) == 0:
             return

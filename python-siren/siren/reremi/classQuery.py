@@ -13,13 +13,13 @@ XPR_MARK = "="
 def getNameCol(cid, names):
     try:
         return names[cid]
-    except IndexError:
+    except (IndexError, TypeError):
         raise Warning("Names does not contains this column cid=%d vs. len(names)=%d" % (cid, len(names)))
     return Term.pattVName % cid
 def getFmtCol(cid, fmts):
     try:
         return fmts[cid]
-    except:
+    except (IndexError, TypeError):
         pass
     return {}
 ########################
@@ -63,7 +63,11 @@ class TimeTools:
         return re.search(tcl.MTCH_TIME, var_name) is not None
     @classmethod
     def asTimeVar(tcl, cid, names, fmts):
-        return type(names) == list and (tcl.isTimeVarName(getNameCol(cid, names)) or getFmtCol(cid, fmts).get("time_prec") is not None)
+        try:
+            return type(names) == list and (tcl.isTimeVarName(getNameCol(cid, names)) or getFmtCol(cid, fmts).get("time_prec") is not None)
+        except:
+            pdb.set_trace()
+            print fmts
     @classmethod
     def get_time_prec(tcl, time_struct):
         parts = [time_struct.tm_year, time_struct.tm_mon, time_struct.tm_mday, time_struct.tm_hour, time_struct.tm_min, time_struct.tm_sec]
@@ -1243,17 +1247,17 @@ class XprTerm(AnonTerm):
     def truthEval(self, variableV):
         return False
 
-    def disp(self, neg=None, names=None, lenIndex=0):
+    def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         tmp = XprTerm.pattVName % self.xpr
         if self.name_col is not None:
             tmp += " # %s" % self.name_col
         return tmp
 
-    def dispTex(self, neg=None, names=None):
-        return self.disp(neg, names)
+    def dispTex(self, neg=None, names=None, fmts=None):
+        return self.disp(neg, names, fmts=fmts)
 
-    def dispU(self, neg=None, names=None):
-        return self.disp(neg, names)
+    def dispU(self, neg=None, names=None, fmts=None):
+        return self.disp(neg, names, fmts=fmts)
 
     @classmethod
     def hasXpr(tcl, xxpr):
@@ -1343,10 +1347,10 @@ class Literal(object):
     def styledDisp(self, names=None, style="", fmts=None):
         neg = self.getNeg().styledDisp(style)
         if re.match("tex", style):
-            return self.getTerm().dispTex(neg, names, fmts)
+            return self.getTerm().dispTex(neg, names, fmts=fmts)
         elif re.match("U", style) or re.match("T", style):
-            return self.getTerm().dispU(neg, names, fmts)
-        return self.getTerm().disp(neg, names, fmts)
+            return self.getTerm().dispU(neg, names, fmts=fmts)
+        return self.getTerm().disp(neg, names, fmts=fmts)
 
     def tInfo(self, names=None):
         return self.getTerm().tInfo(names)
@@ -2577,7 +2581,7 @@ class Query(object):
     def disp(self, names=None, lenIndex=0, style="", fmts=None):
         def evl(b, op, names, lenIndex, style, fmts=None):
             if isinstance(b, Literal):
-                return b.styledDisp(names, style, fmts)
+                return b.styledDisp(names, style, fmts=fmts)
             if isinstance(b, Neg):
                 return "!NEG!"
             else:

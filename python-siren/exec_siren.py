@@ -51,12 +51,14 @@ class SirenApp(wx.App):
                     pos_fn += 1
                 elif ext in [".conf", ".xml"]:
                     self.frame.dw.importPreferencesFromFile(filename)
-                    pm = getPM()  
+                    pm = getPM()
+                    #### in/out params are not read and accounted for in Siren, load separately
                     params = PreferencesReader(pm).getParametersDict(filename, pv={})
                     src_folder = os.path.dirname(os.path.abspath(filename))
                     filenames = prepareFilenames(params, src_folder=src_folder)
                     if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
                         self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
+                        self.frame.dw.applyVarsMask(params)
                     if filenames["queries"] != "-":
                         self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
                         

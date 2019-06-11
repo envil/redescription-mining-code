@@ -22,10 +22,10 @@ class ViewsManager:
         
         self.selectedViewX = -1
 
-    def isGeospatial(self):
+    def getTypeD(self):
         if self.parent.dw is not None:
-            return self.parent.dw.isGeospatial()
-        return False
+            return self.parent.dw.getTypeD()
+        return {}
     def getExtensionKeys(self):
         if self.parent.dw is not None:
             return self.parent.dw.getExtensionKeys()
@@ -37,13 +37,13 @@ class ViewsManager:
         if vkey in self.vtoi:
             typeI = self.vtoi[vkey][0]
             excludeT = [vkey[0]]
-        return ViewFactory.getViewsInfo(typeI, self.isGeospatial(), self.getExtensionKeys(), what, excludeT)
+        return ViewFactory.getViewsInfo(typeI, self.getTypeD(), self.getExtensionKeys(), what, excludeT)
 
     def getTableViewT(tcl, typeI="r"):
         return ViewFactory.getTableViewT(typeI)
     
     def getDefaultViewT(self, typeI="r"):
-        return ViewFactory.getDefaultViewT(typeI, self.isGeospatial())
+        return ViewFactory.getDefaultViewT(typeI, self.getTypeD())
 
     def getNbViews(self):
         return len(self.view_map)
@@ -130,6 +130,7 @@ class ViewsManager:
             if ikey[0] != -1:
                 mapV.updateTitle()
                 mapV.lastStepInit()
+                mapV.addStamp(viewT)
                 self.parent.updateMenus()
         return mapV
             
