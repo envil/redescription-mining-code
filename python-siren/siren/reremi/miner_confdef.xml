@@ -452,8 +452,26 @@
 	<legend>Maximum number of segments.</legend>
 	<length>3</length>
 	<default><value>20</value></default>
-      </parameter>
-      <parameter>
+     </parameter>
+    <parameter>
+	<name>lower_tail_agg</name>
+	<label>Lower tail aggregate</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>For aggregating keeping only extreme values, lower tail threshold.</legend>
+	<length>3</length>
+	<default><value>0</value></default>
+    </parameter>
+    <parameter>
+	<name>upper_tail_agg</name>
+	<label>Upper tail aggregate</label>
+	<parameter_type>open</parameter_type>
+	<value_type>float</value_type>
+	<legend>For aggregating keeping only extreme values, upper tail threshold.</legend>
+	<length>3</length>
+	<default><value>0</value></default>
+    </parameter>
+    <parameter>
 	<name>max_agg</name>
 	<label>Max aggregation</label>
 	<parameter_type>open</parameter_type>
@@ -463,21 +481,12 @@
 	<default><value>15</value></default>
       </parameter>
       <parameter>
-	<name>max_sidebuckets</name>
-	<label>Max number buckets per side</label>
-	<parameter_type>open</parameter_type>
-	<value_type>integer</value_type>
-	<legend>Maximum number of buckets on one side.</legend>
-	<length>4</length>
-	<default><value>20</value></default>
-      </parameter>
-      <parameter>
 	<name>max_prodbuckets</name>
 	<label>Max product buckets</label>
 	<parameter_type>open</parameter_type>
 	<value_type>integer</value_type>
 	<legend>Maximum product of the number of buckets on either side.</legend>
-	<length>4</length>
+	<length>6</length>
 	<default><value>5000</value></default>
       </parameter>
     </section>

@@ -14,25 +14,55 @@ class Souvenirs(object):
             self.amnesic = True
         else:
             self.active = True
-            self.availableMo = [set(nAvailableMo[0]), set(nAvailableMo[1])]
+            self.availableMo = nAvailableMo
             self.amnesic = nAmnesic
 
     def isActive(self):
         return self.active
 
-    def getAvailableMo(self, side=None):
-        if side is None:
-            return [set(self.availableMo[0]), set(self.availableMo[1])]
-        return self.availableMo[side]
-
     def cutOffSide(self, side):
-        self.availableMo[side] = set()
-
-    def nbCols(self, side=None):
+        self.availableMo[side] = None
+    def wasCutOff(self, side):
+        return self.availableMo[side] is None
+    
+    def getAvailableS(self):
+        return range(len(self.availableMo))
+    def copyAvailableCols(self, side=None):
         if side is None:
-            return [len(self.availableMo[0]), len(self.availableMo[1])]
-        return len(self.availableMo[side])
-
+            return [self.copyAvailableCols(side) for side in self.getAvailableS()]
+        else:
+            if self.availableMo[side] is None:
+                return None
+            else:
+                return set(self.availableMo[side])
+    def getAvailableCols(self, side=None):
+        if side is None:
+            return [self.getAvailableCols(side) for side in self.getAvailableS()]
+        else:
+            if self.availableMo[side] is None:
+                return set()
+            else:
+                return self.availableMo[side]
+    def getNbAvailableCols(self, side=None):
+        if side is None:
+            return [self.getNbAvailableCols(side) for side in self.getAvailableS()]
+        else:
+            if self.availableMo[side] is None:
+                return 0
+            else:
+                return len(self.availableMo[side])
+    def getCommonAvailableCols(self, sides=[0,1]):
+        common = None
+        for side in sides:
+            if self.availableMo[side] is not None:
+                if common is None:
+                    common = set(self.availableMo[side])
+                else:
+                    common.intersection_update(self.availableMo[side])
+        if common is None:
+            return set()
+        return common
+            
     def isAmnesic(self):
         return self.amnesic
     
@@ -41,13 +71,10 @@ class Souvenirs(object):
             x = 'amnesic'
         else :
             x = '%i indexes' % len(self.indexes)
-        return "%s, Availables: %i + %i" % (x, len(self.availableMo[0]), len(self.availableMo[1]))
+        return x+", Availables: " + " + ".join(["%i" % i for i in self.getNbAvailableCols()])
                    
     def add(self, red):
         if len(red) > 2:
-        # TODO CHECK: if ( red.nbAvailableCols() > 0 and len(red) > 2 ) or (red.fullLength(0) and red.fullLength(1)):
-            #print 'ADDED SOUVENIR----' + red.queries[0].dispIds() + '<=>' + red.queries[1].dispIds()
-    
             ix = red.getUid()
             for indx in self.makeOwnIndexes(red):
                 if indx in self.indexes:
@@ -99,8 +126,8 @@ class Souvenirs(object):
                 
     
     def initialAvailable(self, initialPairRed):
-        return [self.availableMo[0] - self.extOneStep(initialPairRed, 0), \
-                self.availableMo[1] - self.extOneStep(initialPairRed, 1)]
+        return [self.getAvailableCols(0) - self.extOneStep(initialPairRed, 0), \
+                self.getAvailableCols(1) - self.extOneStep(initialPairRed, 1)]
 
         
     def colsExtending(self, queries_ids, side):

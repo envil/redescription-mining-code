@@ -66,7 +66,6 @@ class InitialPairs(object):
         return self.save_filename
 
     def saveToFile(self): # TODO: also save condition
-        pdb.set_trace()
         if self.save_filename is not None and not self.saved:
             try:
                 with open(self.save_filename, "w") as f:
@@ -202,7 +201,6 @@ class InitialPairs(object):
                 raise ExtensionError("[in InitialPairs.get]\nexpected score=%s\t~> %s" % (dt["score"], red))
             if check_score and red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
                 raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
-
             return red
 
     def getAll(self, data, min_score=0, cond=None, check_score=True):

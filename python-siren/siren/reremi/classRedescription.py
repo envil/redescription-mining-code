@@ -15,7 +15,7 @@ class Redescription(WithEVals):
     #                   "queryRHS": "self.prepareQueryRHS",
     #                   "queryCOND": "self.prepareQueryCOND"}
     info_what = {"uid": "self.getUid()", "rid": "self.getShortId()",
-                 "nbAvC": "self.nbAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
+                 "hasAvC": "self.hasAvailableCols()", "nbAvC": "self.totAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
                  "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()",
                  "isBasis": "self.isBasis()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
@@ -287,8 +287,8 @@ class Redescription(WithEVals):
         return len(self.queries[side])
     def diffLengthQs(self):
         return abs(self.length(0) - self.length(1))
-    
-    def prepareExtElems(self, data=None, single_dataset=False):
+        
+    def prepareExtElems(self, data=None, single_dataset=False, souvenirs=None):
         r, lsAnon, modr = self.minusAnonRed(data)
         if modr != 0:
             for side, lits in enumerate(lsAnon):
@@ -305,44 +305,60 @@ class Redescription(WithEVals):
                         exts.append((0, vLHS, data.col(1, vRHS)))
         elif len(r) > 0:
             for side in [0,1]:
-                exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset)])
+                exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset, souvenirs=souvenirs)])
         # print "EXTS", exts, self.disp(), r.disp()
         return exts, r, modr
-    
-    def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True):
+
+    def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True, souvenirs=None):
         if self.lAvailableCols[side] is not None and (not check_empty or self.length(1-side) != 0):
             tt = set(self.lAvailableCols[side])
-            if single_dataset and self.lAvailableCols[1-side] is not None:
-                if len(self.lAvailableCols[1-side]) > 0: ### other side might have been deactivated, don't intersect
-                    tt &= set(self.lAvailableCols[1-side])
-                else:
-                    tt.difference_update(self.queries[1-side].invCols())
+            if single_dataset: # and self.lAvailableCols[1-side] is not None:
+                tt.difference_update(self.queries[1-side].invCols())
+            # if single_dataset and self.lAvailableCols[1-side] is not None:
+            #     if len(self.lAvailableCols[1-side]) > 0: ### other side might have been deactivated, don't intersect
+            #         tt &= set(self.lAvailableCols[1-side])
+            #     else:
+            #         tt.difference_update(self.queries[1-side].invCols())
             if data is not None:
                 for ss in [0,1]:
                     if data.hasGroups(ss):
                         for c in self.queries[ss].invCols():
                             tt = [t for t in tt if data.areGroupCompat(t, c, side, ss)]
             return tt
-        return set() 
-    def nbAvailableCols(self):
-        if self.lAvailableCols[0] is not None and self.lAvailableCols[1] is not None:
-            return len(self.lAvailableCols[0]) + len(self.lAvailableCols[1])
-        return -1
-    def updateAvailable(self, souvenirs):
+        return set()    
+    def hasAvailableCols(self):
+        return any([(ss is not None and len(ss) > 0) for ss in self.lAvailableCols])
+    def totAvailableCols(self):
+        return sum([len(ss) if ss is not None else 0 for ss in self.lAvailableCols])
+    def getNbAvC(self, details={}):
+        if details.get("format") == "str":
+            return " + ".join(["?" if self.lAvailableCols[side] is None else "%i" % len(self.lAvailableCols[side]) for side in self.getAvailableS()])
+        else:
+            return [0 if self.lAvailableCols[side] is None else len(self.lAvailableCols[side]) for side in self.getAvailableS()]
+    def getAvailableS(self):
+        return range(len(self.lAvailableCols))
+    def copyAvailableCols(self, side=None):
+        if side is None:
+            return [self.copyAvailableCols(side) for side in self.getAvailableS()]
+        else:
+            if self.lAvailableCols[side] is None:
+                return None
+            else:
+                return set(self.lAvailableCols[side])
+    def initAvailable(self, souvenirs, max_var=None):
         for side in [0, 1]:
             if self.lAvailableCols[side] is None:
-                self.lAvailableCols[side] =  set(souvenirs.getAvailableMo(side))
-            self.lAvailableCols[side].difference_update(souvenirs.extOneStep(self, side))
+                self.lAvailableCols[side] = souvenirs.copyAvailableCols(side)
+            self.setFull(max_var)
+    def updateAvailable(self, souvenirs):
+        for side in [0, 1]:
+            if self.lAvailableCols[side] is not None:
+                self.lAvailableCols[side].difference_update(souvenirs.extOneStep(self, side))
     def restrictAvailable(self, side=None, org_available=None, still_available=None, not_available=None):
         if side is None:
-            if still_available is None:
-                still_available = [None, None]
-            if org_available is None:
-                org_available = [None, None]
-            if not_available is None:
-                not_available = [None, None]
-            for side in [0,1]:
-                self.restrictAvailable(side, org_available[side], still_available[side], not_available[side])
+            for side in self.getAvailableS():
+                ss = [subs[side] if subs is not None else None for subs in [org_available, still_available, not_available]]
+                self.restrictAvailable(side, *ss)                
         else:
             if org_available is not None:
                 if still_available is not None:
@@ -352,15 +368,20 @@ class Redescription(WithEVals):
                         self.lAvailableCols[side] = org_available.intersection(still_available)
                 else:
                     self.lAvailableCols[side] = set(org_available)
-                if not_available is not None:
+                if not_available is not None and self.lAvailableCols[side] is not None:
                     self.lAvailableCols[side].difference_update(not_available)
 
-    def removeAvailables(self):
-        self.lAvailableCols = [set(),set()]
-            
+    def cutOffAvailables(self, side=None):
+        if side is None:
+            self.lAvailableCols = [None, None]
+        else:
+            self.lAvailableCols[side] = None
+    def wasCutOffAvailables(self, side):
+        return self.lAvailableCols[side] is None
+        
     def update(self, data=None, side= -1, opBool = None, literal= None, suppX=None, missX=None):
         if side == -1 :
-            self.removeAvailables()
+            self.cutOffAvailables()
         else:
             op = Op(opBool)
             self.queries[side].extend(op, literal)
@@ -374,7 +395,7 @@ class Redescription(WithEVals):
         if max_var is not None:
             for side in [0,1]:
                 if self.length(side) >= max_var[side]:
-                    self.lAvailableCols[side] = set()
+                    self.cutOffAvailables(side)
                 
     def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):
         kid = self.copy()        
@@ -387,9 +408,7 @@ class Redescription(WithEVals):
         if self.hasCondition():
             r.setCondition(self.getQueryC().copy(), self.getSuppC().copy())                        
 
-        for side in [0,1]:
-            if self.lAvailableCols[side] is not None:
-                r.lAvailableCols[side] = set(self.lAvailableCols[side])
+        r.lAvailableCols = self.copyAvailableCols()
         r.extras = self.copyExtras()
         r.restricted_sets = {}
         for sid, rst in self.restricted_sets.items():
@@ -964,22 +983,10 @@ class Redescription(WithEVals):
 ##### PRINTING AND PARSING METHODS
     #### FROM HERE ALL PRINTING AND READING
     def red2strLegacy(self):
-        str_av = ["?", "?"]
-        for side in [0,1]:
-            if self.availableColsSide(side) is not None:
-                str_av[side] = "%d" % len(self.availableColsSide(side))
-        tmp = ('%s + %s terms:' % tuple(str_av)) + ('\t (%i): %s\t%s\t%s\t%s' % (len(self), self.dispQueries(sep=" "), self.dispStats(sep=" "), self.dispSuppL(sep=" "), self.getTrack({"format":"str"})))
-        return tmp
+        return '%s terms:\t (%i): %s\t%s\t%s\t%s' % (self.getNbAvC({"format":"str"}), len(self), self.dispQueries(sep=" "), self.dispStats(sep=" "), self.dispSuppL(sep=" "), self.getTrack({"format":"str"}))
 
     def __str__(self):
-        str_av = ["?", "?"]
-        for side in [0,1]:
-            if self.availableColsSide(side) is not None:
-                str_av[side] = "%d" % len(self.availableColsSide(side))
-
-        tmp = "%s%s\t%s\t%s\t%s" % (self.class_letter, self.getUid(), self.dispQueries(sep="\t"), self.dispStats(sep=" "), self.dispSuppL(sep=" "))
-        tmp += "\tlengthQs:%d nbAvC:%s+%s track:%s" % (len(self), str_av[0], str_av[1], self.getTrack({"format":"str"}))
-        return tmp
+        return "%s%s\t%s\t%s\t%s\tlengthQs:%d nbAvC:%s track:%s" % (self.class_letter, self.getUid(), self.dispQueries(sep="\t"), self.dispStats(sep=" "), self.dispSuppL(sep=" "), len(self), self.getNbAvC({"format":"str"}), self.getTrack({"format":"str"}))
 
     # def __str__(self):
     #     return "%s\t%s\t%s" % (self.query(0), self.query(1), self.score())

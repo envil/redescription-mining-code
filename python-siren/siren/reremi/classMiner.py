@@ -48,7 +48,7 @@ class RCollection(BatchCollection, Souvenirs):
         self.newList(iid="W")
 
     def toShare(self):
-        return RCollection(self.getAvailableMo(), self.isAmnesic())
+        return RCollection(self.copyAvailableCols(), self.isAmnesic())
         
     def __str__(self):
         svrs = ""
@@ -148,6 +148,10 @@ class ExpMiner(object):
     
     def expandRedescriptionsGreedy(self, nextge, rcollect):
         first_round = True
+        max_var = [self.constraints.getCstr("max_var", side=0), self.constraints.getCstr("max_var", side=1)]
+        for r in nextge:
+            r.initAvailable(rcollect, max_var)
+        
         while len(nextge) > 0:
             kids = set()
             redi = 0
@@ -159,14 +163,14 @@ class ExpMiner(object):
                 ### To know whether some of its extensions were found already
                 red.updateAvailable(rcollect)
 
-                if red.nbAvailableCols() > 0:
-                    exts, basis_red, modr = red.prepareExtElems(self.data, self.data.isSingleD())
+                if red.hasAvailableCols():
+                    exts, basis_red, modr = red.prepareExtElems(self.data, self.data.isSingleD(), souvenirs=rcollect)
                     if modr != 0:
                         if modr == 1:
                             rcollect.addItem(basis_red, "W")
                             track = {"do": "prepare-greedy", "trg": [basis_red.getUid()], "src": [red.getUid()], "out": "W"}
                             rcollect.addTrack(track)
-                        red.removeAvailables()
+                        red.cutOffAvailables()
                     bests = newExtensionsBatch(self.data.nbRows(), self.constraints, basis_red)
                         
                     ### WARNING DANGEROUS few extensions for DEBUG!
@@ -200,7 +204,7 @@ class ExpMiner(object):
                         rcollect.updateSeen(kids)
 
                     ### parent has been used remove availables
-                    basis_red.removeAvailables()
+                    basis_red.cutOffAvailables()
                 # self.logger.updateProgress({"rcount": self.count, "generation": len(red), "cand": redi}, 4, self.ppid)
                 self.logger.printL(4, "Candidate %s.%d.%d expanded" % (self.count, len(red), redi), 'status', self.ppid)
                 redi += 1
@@ -214,7 +218,7 @@ class ExpMiner(object):
             nextge = [rcollect.getItem(i) for i in nextge_keys]
             for iid in rcollect.getIids():
                 if iid not in nextge_keys:
-                    rcollect.getItem(iid).removeAvailables()
+                    rcollect.getItem(iid).cutOffAvailables()
             
 
         ### Do before selecting next gen to allow tuning the beam
@@ -608,7 +612,7 @@ class Miner(object):
 
         self.count = "C"
 
-        self.logger.initProgressPart(self.constraints, reds, rcollect.nbCols(), 1, self.getId())
+        self.logger.initProgressPart(self.constraints, reds, rcollect.getNbAvailableCols(), 1, self.getId())
         self.logger.clockTic(self.getId(), "part run")        
 
         if cust_params.get("task") == "improve":
@@ -732,7 +736,7 @@ class Miner(object):
 
     def initializeRedescriptionsTree(self, ids=None):
         self.logger.printL(1, 'Searching for initial literals...', 'status', self.getId())
-        self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
+        self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
         
         if ids is None:
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
@@ -766,7 +770,7 @@ class Miner(object):
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.getId())
             explore_list = self.getInitExploreList(ids, done)
-            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.nbCols(), 1, self.getId())
+            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.getNbAvailableCols(), 1, self.getId())
 
             self.initial_pairs.setExploreList(explore_list, done=done)
             total_pairs = len(explore_list)
@@ -820,7 +824,7 @@ class Miner(object):
             self.initial_pairs.setExploredDone()
             ## self.initial_pairs.saveToFile()
         else:
-            self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
+            self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
             self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
         return self.initial_pairs
     
@@ -833,10 +837,10 @@ class Miner(object):
         explore_list = []
         if ids is None:
             ids = self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c"))
-
+            
         # ### WARNING DANGEROUS few pairs for DEBUG!
-        # for idL in [12, 15, 23]:
-        #     for idR in [2]:
+        # if self.data.nbCols(0) > 100:
+        #     ids = [[136, 176, 238], [108]]
         for idL in ids[0]:
             for idR in ids[1]:
                 if self.data.areGroupCompat(idL, idR) and \
@@ -911,7 +915,7 @@ class MinerDistrib(Miner):
 
             self.logger.printL(1, 'Searching for initial pairs...', 'status', self.getId())
             explore_list = self.getInitExploreList(ids, done)
-            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.nbCols(), 1, self.getId())
+            self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.getNbAvailableCols(), 1, self.getId())
             self.total_pairs = len(explore_list)
 
             min_bsize = 25
@@ -961,7 +965,7 @@ class MinerDistrib(Miner):
             self.initial_pairs.setExplorePointer(pointer)
         else:
             self.initial_pairs.setExploredDone()
-            self.logger.initProgressFull(self.constraints, None, self.rcollect.nbCols(), 1, self.getId())
+            self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
             self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
         return self.initial_pairs
 

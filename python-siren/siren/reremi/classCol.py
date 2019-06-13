@@ -1098,9 +1098,7 @@ class NumColM(ColM):
         self.prec = prec
         self.tprec = None
         self.sVals = ncolSupp
-        self.buk = None
-        self.colbuk = None
-        self.max_agg = None
+        self.buk_data = {}
         if mode is None:
             self.sVals.sort()
             self.mode = {}
@@ -1249,44 +1247,32 @@ class NumColM(ColM):
             self.infofull["out"]= (min_out, self.lenNonMode() >= min_out)
         return (self.infofull["in"][1] or self.infofull["out"][1]) 
 
-
-    def collapsedBuckets(self, max_agg, nbb=None):
-        if nbb is not None:
-            max_agg = self.nbRows()/float(nbb)
-        if self.colbuk is None or (max_agg is not None and self.max_agg != max_agg):
-            self.max_agg = max_agg
-            self.colbuk = self.collapseBuckets(self.max_agg, checknext=True)
-        return self.colbuk
+    @classmethod
+    def buk_ind_maxes(tcl, buckets): ## in case of collapsed bucket the threshold is different
+        if len(buckets) > 3 and buckets[3] is not None:
+            return 3
+        return 1
+    @classmethod
+    def buk_excl_bi(tcl, buckets): ## in case of collapsed bucket the threshold is different
+        if len(buckets) > 4:
+            return buckets[4]
+        return None
     
-    def collapseBuckets(self, max_agg, checknext=False):
-        #### collapsing from low to up, could do reverse...
-        tmp = self.buckets()
-        tmp_supp=set([])
-        bucket_min=tmp[1][0]
-        colB_supp = []
-        colB_min= []
-        colB_max= []
-        # colB_max= [None]
-        for i in range(len(tmp[1])):
-            # if len(tmp[0][i]) > max_agg:
-            #     print "POTENTIAL DIFF", self
-            if len(tmp_supp) > max_agg or (checknext and i > 0 and len(tmp[0][i]) > max_agg):
-                colB_supp.append(tmp_supp)
-                colB_min.append(bucket_min)
-                colB_max.append(tmp[1][i-1])
-                bucket_min=tmp[1][i]
-                tmp_supp=set([])
-            tmp_supp.update(tmp[0][i])
-        colB_supp.append(tmp_supp)
-        colB_min.append(bucket_min)
-        colB_max.append(tmp[1][-1])
-        # colB_max[0] = colB_max[1]
-        return (colB_supp, colB_min, 0, colB_max)    
-
-    def buckets(self):
-        if self.buk is None:
-            self.buk = self.makeBuckets()
-        return self.buk
+    def hasBuckets(self, which=None):
+        return which in self.buk_data
+    def buckets(self, which=None, params=None):
+        params = self.prepareBucketsParams(which, params)
+        if not self.hasBuckets(which) or (params is not None and self.buk_data[which].get("params") != params):
+            self.buk_data[which] = {"buks": self.makeBucketsMore(which, params), "params": params}
+        return self.buk_data[which]["buks"]
+    def prepareBucketsParams(self, which, params):
+        if params is None: return None
+        if params.get("nbb") is not None:
+            params["max_agg"] = self.nbRows()/float(params.pop("nbb"))
+        if which == "collapsed":
+            params["checknext"] = True
+            params["base_buckets"] = "tails"
+        return params
 
     def makeBuckets(self):
         if self.sVals[0][1] != -1 :
@@ -1308,7 +1294,117 @@ class NumColM(ColM):
                     bucketsVal.append(val)
                     bucketsSupp.append(set([row]))
         return (bucketsSupp, bucketsVal, bukMode)
+    
+    def makeBucketsMore(self, which, params):
+        if params is None: params = {}
+        if which == "collapsed":
+            return self.collapseBuckets(**params)
+        elif which == "tails":
+            return self.tailsBuckets(**params)        
+        return self.makeBuckets()
 
+    def tailsBuckets(self, lower_tail_agg=0, upper_tail_agg=1, base_buckets=None):
+        if self.hasBuckets(base_buckets):
+            tmp = self.buckets(base_buckets)
+        else:
+            tmp = self.buckets()
+        if lower_tail_agg == 0 or upper_tail_agg == 0:
+            return tmp
+        nbs = [0, 0]
+        counts = [len(x) for x in tmp[0]]
+        if tmp[2] is not None:
+            counts[tmp[2]] += self.lenMode()
+        for i, v in enumerate([lower_tail_agg, upper_tail_agg]):
+            ### v==0: don't cut, v==-1: cut off entirely
+            if v ==0 or v==-1:
+                nbs[i] = v
+            elif v <= 0:
+                if v < -1: ### nb of distinct values
+                    nbs[i] = -v
+                else: ### fraction of distinct values
+                    nbs[i] = int(-v*len(tmp[0]))
+            else:
+                if v >= 1: ### number of distinct rows
+                    nbv = v
+                else: ### fraction of distinct rows, quantile
+                    nbv = v*(self.nbRows()-self.nbMissing())
+                ccounts = numpy.cumsum(counts[::(-i*2+1)]) ## iterate in reverse order for upper tail
+                while nbs[i] < len(ccounts) and ccounts[nbs[i]] < nbv:
+                    nbs[i] += 1
+
+
+        bottom_mid = max(0, nbs[0])
+        top_mid = min(len(tmp[0]), len(tmp[0])-nbs[1]-1)
+        if bottom_mid >= top_mid:
+            return tmp
+
+        mode_buk = tmp[2]
+        if tmp[2] is not None:
+            if tmp[2] > top_mid: ### mode is above the merge middle
+                mode_buk = tmp[2]-(top_mid-bottom_mid)+1
+            elif tmp[2] >= bottom_mid: ### mode is in the merge middle
+                mode_buk = bottom_mid
+        
+        colB_supp = []
+        colB_min = []
+        colB_max = []
+        ### the lower tail
+        colB_supp.extend(tmp[0][:bottom_mid])
+        colB_min.extend(tmp[1][:bottom_mid])
+        colB_max.extend(tmp[1][:bottom_mid])
+        ### the aggregated part
+        standalone_buk = len(colB_supp)
+        colB_supp.append(set([]).union(*tmp[0][bottom_mid:top_mid]))
+        colB_min.append(tmp[1][bottom_mid])
+        colB_max.append(tmp[1][top_mid-1])
+        ### the lower tail
+        colB_supp.extend(tmp[0][top_mid:])
+        colB_min.extend(tmp[1][top_mid:])
+        colB_max.extend(tmp[1][top_mid:])
+        # print self, colB_min[standalone_buk], colB_max[standalone_buk], len(colB_supp[standalone_buk])
+        # if mode_buk is not None:
+        #     print "Mode", colB_min[mode_buk], colB_max[mode_buk], colB_supp[mode_buk]
+        return (colB_supp, colB_min, mode_buk, colB_max, standalone_buk)    
+    def collapseBuckets(self, max_agg, base_buckets=None, checknext=False):
+        #### collapsing from low to up, could do reverse...
+        if self.hasBuckets(base_buckets):
+            tmp = self.buckets(base_buckets)
+        else:
+            tmp = self.buckets()
+        tmp_supp = set([])
+        bucket_min = tmp[1][0]
+        colB_supp = []
+        colB_min = []
+        colB_max = []
+        bukMode = None
+        max_id = self.buk_ind_maxes(tmp)
+        standalone_buk = tmp[2]
+        if len(tmp) > 4 and tmp[4] is not None:
+            standalone_buk = tmp[4]
+        new_standalone_buk = None
+        # colB_max= [None]
+        for i in range(len(tmp[1])):
+            ## would exceed aggregated size
+            if len(tmp_supp) > max_agg or (checknext and i > 0 and len(tmp[0][i]) > max_agg) or \
+              (standalone_buk is not None and (standalone_buk == i or standalone_buk == i-1)): ## if there is mode bucket, leave it alone
+                colB_supp.append(tmp_supp)
+                colB_min.append(bucket_min)
+                colB_max.append(tmp[max_id][i-1])
+                bucket_min = tmp[1][i]
+                tmp_supp = set([])
+            tmp_supp.update(tmp[0][i])
+            if tmp[2] is not None and tmp[2] == i:
+                bukMode = len(colB_supp)
+            if standalone_buk is not None and standalone_buk == i:
+                new_standalone_buk = len(colB_supp)
+
+        colB_supp.append(tmp_supp)
+        colB_min.append(bucket_min)
+        colB_max.append(tmp[max_id][-1])
+        # colB_max[0] = colB_max[1]
+        return (colB_supp, colB_min, bukMode, colB_max, new_standalone_buk)    
+
+    
     def suppTerm(self, term):
         if term.isAnon():
             return set()

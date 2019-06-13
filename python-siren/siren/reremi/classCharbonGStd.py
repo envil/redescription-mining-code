@@ -1,3 +1,4 @@
+from classCol import NumColM
 from classData import Data
 from classConstraints import Constraints
 from classCharbon import CharbonGreedy
@@ -6,6 +7,7 @@ from classSParts import SParts
 from classQuery import  *
 import numpy
 import pdb
+
 
 class CharbonGStd(CharbonGreedy):
 
@@ -64,11 +66,7 @@ class CharbonGStd(CharbonGreedy):
 
         for op in self.constraints.getCstr("allw_ops", side=side, currentRStatus=currentRStatus):
             for neg in self.constraints.getCstr("allw_negs", side=side, type_id=col.typeId(), currentRStatus=currentRStatus):
-                try:
-                    adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
-                except TypeError:
-                    pdb.set_trace()
-                    print side, op, neg, fixed_colors, var_colors[op]
+                adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                 if adv is not None :
                     cands.append(Extension(self.constraints.getSSetts(), adv, None, (side, op, neg, Literal(neg, BoolTerm(col.getId())))))
         return cands
@@ -433,7 +431,6 @@ class CharbonGStd(CharbonGreedy):
         var_colors_b = [0.0, 0]
         nb_seg_b = 0
         best_b = (None, None, None)
-
         for i in range(len(segments[op])-1):
             # FORWARD
             if i > 0 and self.getAdv(side, op, False, fixed_colors, segments[op][i][2], is_cond=is_cond, no_const=True)[0] < self.advRatioVar(var_colors_f, is_cond):
@@ -446,7 +443,7 @@ class CharbonGStd(CharbonGreedy):
                 nb_seg_f = 0
                 
             best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f, is_cond)
-
+            
             # BACKWARD
             if i > 0 and self.getAdv(side, op, False, fixed_colors, segments[op][-(i+1)][2], is_cond=is_cond, no_const=True)[0] < self.advRatioVar(var_colors_b, is_cond):
                 var_colors_b[0] += segments[op][-(i+1)][2][0]
@@ -512,7 +509,7 @@ class CharbonGStd(CharbonGreedy):
                 suppL = colL.suppLiteral(pair["litL"])
                 suppR = colR.suppLiteral(pair["litR"])
                 cond_sparts = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL.intersection(suppR), suppL.union(suppR)])
-                lparts = cond_sparts.lparts()        
+                lparts = cond_sparts.lparts()
                 cond_cand = self.getConditionCand(colsC, cond_sparts, lparts)
                 if cond_cand is not None:
                     pair["litC"] = cond_cand.getLiteral()
@@ -604,11 +601,15 @@ class CharbonGStd(CharbonGreedy):
         ## print "SUBDO 33 FULL", colL.getId(), colR.getId()
         org_side = side
         best = []
-        bUpE=1
-        bUpF=1
         interMat = []
-        bucketsL = colL.buckets()
-        bucketsR = colR.buckets()
+        tails_params = {"lower_tail_agg": self.constraints.getCstr("lower_tail_agg"),
+                        "upper_tail_agg": self.constraints.getCstr("upper_tail_agg")}
+        if tails_params["lower_tail_agg"] != 0 or tails_params["upper_tail_agg"]:
+            bucketsL = colL.buckets("tails", tails_params)
+            bucketsR = colR.buckets("tails", tails_params)
+        else:
+            bucketsL = colL.buckets()
+            bucketsR = colR.buckets()
 
         if len(bucketsL[0]) > len(bucketsR[0]):
             bucketsF = bucketsR; colF = colR; bucketsE = bucketsL; colE = colL; side = 1-side; flip_side = True
@@ -623,24 +624,25 @@ class CharbonGStd(CharbonGreedy):
         if len(bucketsE[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
 
             if len(bucketsE[1])/nbb < self.constraints.getCstr("max_agg"):
+                # print "Collapsing just E"
                 ### collapsing buckets on the largest side is enough to get within the reasonable size
-                bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
-                bUpE=3 ## in case of collapsed bucket the threshold is different
+                bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
 
             else:
                 ### collapsing buckets on the largest side is NOT enough to get within the reasonable size
                 bucketsE = None
-
+                
                 #### try cats
+                exclL = NumColM.buk_excl_bi(bucketsL)
+                exclR = NumColM.buk_excl_bi(bucketsR)
                 bbs = [dict([(bi, es) for (bi, es) in enumerate(bucketsL[0]) \
                                  if ( len(es) > self.constraints.getCstr("min_itm_in") and \
-                                          colL.nbRows() - len(es) > self.constraints.getCstr("min_itm_out"))]),
+                                          colL.nbRows() - len(es) > self.constraints.getCstr("min_itm_out") and (exclL is None or bi != exclL))]),
                        dict([(bi, es) for (bi, es) in enumerate(bucketsR[0]) \
                                  if ( len(es) > self.constraints.getCstr("min_itm_in") and \
-                                          colR.nbRows() - len(es) > self.constraints.getCstr("min_itm_out"))])]
+                                          colR.nbRows() - len(es) > self.constraints.getCstr("min_itm_out") and (exclR is None or bi != exclR))])]
 
                 ## if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or len(bbs[0])/float(len(bucketsL[0])) < len(bbs[1])/float(len(bucketsR[0]))):
-
                 nbes = [float(max(sum([len(v) for (k,v) in bbs[s].items()]), .5)) for s in [0,1]]
                 side = None
                 if len(bbs[0]) > 0 and ( len(bbs[1]) == 0 or nbes[0]/len(bbs[0]) > nbes[1]/len(bbs[1]) ):
@@ -650,7 +652,7 @@ class CharbonGStd(CharbonGreedy):
 
                 if side is not None:
                     #### working with on variable as categories is workable
-                    ## print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
+                    # print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
                     (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side, try_comb=False)
                     if side == 1:
                         literalsL = []
@@ -659,8 +661,9 @@ class CharbonGStd(CharbonGreedy):
                             c = ltc.getTerm().getCat()
                             if type(c) is set and len(c) > 0:
                                 c = sorted(c)[0]
-                            val = bucketsL[1][c]
-                            literalsL.append( Literal(ltc.isNeg(), NumTerm(colL.getId(), val, val)) )
+                            valLow = bucketsL[1][c]
+                            valUp = bucketsL[NumColM.buk_ind_maxes(bucketsL)][c]
+                            literalsL.append( Literal(ltc.isNeg(), NumTerm(colL.getId(), valLow, valUp)) )
                     else:
                         literalsL = literalsExt                    
                         literalsR = []
@@ -668,8 +671,9 @@ class CharbonGStd(CharbonGreedy):
                             c = ltc.getTerm().getCat()
                             if type(c) is set and len(c) > 0:
                                 c = sorted(c)[0]
-                            val = bucketsR[1][c]
-                            literalsR.append( Literal(ltc.isNeg(), NumTerm(colR.getId(), val, val)) )
+                            valLow = bucketsR[1][c]
+                            valUp = bucketsR[NumColM.buk_ind_maxes(bucketsR)][c]
+                            literalsR.append( Literal(ltc.isNeg(), NumTerm(colR.getId(), valLow, valUp)) )
 
                     return (scores, literalsL, literalsR)
 
@@ -677,12 +681,10 @@ class CharbonGStd(CharbonGreedy):
                     #### working with on variable as categories is NOT workable
                     ### the only remaining solution is aggressive collapse of buckets on both sides
                     nbb = numpy.sqrt(self.constraints.getCstr("max_prodbuckets"))
-                    bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
-                    bUpE=3 ## in case of collapsed bucket the threshold is different
-                    bucketsF = colF.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
-                    bUpF=3 ## in case of collapsed bucket the threshold is different
+                    bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})         
+                    bucketsF = colF.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                     side = org_side
-                    ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])
+                    # print "Last resort solution... Collapsing both E and F", nbb, len(bucketsL[0]), len(bucketsR[0])
                     
         ## print "buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.getId(), len(bucketsL[1]), colR.getId(), len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1]))
         if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
@@ -725,13 +727,23 @@ class CharbonGStd(CharbonGreedy):
 
 #             if totE != totF or totE != colE.nbRows():
 #                 raise Error('Error in computing the marginals (3)')
-
+                
+            exclF = NumColM.buk_excl_bi(bucketsF)
+            exclE = NumColM.buk_excl_bi(bucketsE)
 
             belowF = 0
             lowF = 0
             while lowF < len(interMat) and totInt - belowF >= self.constraints.getCstr("min_itm_in"):
                 aboveF = 0
                 upF = len(interMat)-1
+                
+                if exclF is not None:
+                    if lowF == exclF: ## basically, skip this value
+                        upF = lowF-1
+                    elif lowF < exclF:
+                        upF = exclF-1
+                        aboveF = numpy.sum(margF[upF+1:])
+                
                 while upF >= lowF and totInt - belowF - aboveF >= self.constraints.getCstr("min_itm_in"):
                     if belowF + aboveF  >= self.constraints.getCstr("min_itm_out"):
                         EinF = [sum([interMat[iF][iE] for iF in range(lowF,upF+1)]) for iE in range(len(interMat[lowF]))]
@@ -742,11 +754,20 @@ class CharbonGStd(CharbonGreedy):
 
                         belowEF = 0
                         outBelowEF = 0
-                        lowE = 0
+                        lowE = 0                        
                         while lowE < len(interMat[lowF]) and totInt - belowF - aboveF - belowEF >= self.constraints.getCstr("min_itm_in"):
                             aboveEF = 0
                             outAboveEF = 0
                             upE = len(interMat[lowF])-1
+                            
+                            if exclE is not None:
+                                if lowE == exclE: ## basically, skip this value
+                                    upE = lowE-1
+                                elif lowE < exclE:
+                                    upE = exclE-1
+                                    aboveEF = numpy.sum(EinF[upE+1:])
+                                    outAboveEF = numpy.sum(EoutF[upE+1:])
+                            
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.getCstr("min_itm_in"):
                                 var_colors = [totInt - belowF - aboveF - belowEF - aboveEF, belowF + aboveF - outAboveEF - outBelowEF]
                                 best = self.updateACTColorsP33(best, (lowF, upF, lowE, upE), side, True, False, fixed_colors, var_colors)
@@ -761,6 +782,8 @@ class CharbonGStd(CharbonGreedy):
                 belowF+=margF[lowF]
                 lowF+=1
 
+        bUpE = NumColM.buk_ind_maxes(bucketsE)
+        bUpF = NumColM.buk_ind_maxes(bucketsF)
         for b in best:            
             tF = colF.getLiteralBuk(False, bucketsF[1], b[-1][-1][0:2], bucketsF[bUpF])
             tE = colE.getLiteralBuk(False, bucketsE[1], b[-1][-1][2:], bucketsE[bUpE])
@@ -865,12 +888,9 @@ class CharbonGStd(CharbonGreedy):
         best = [[] for c in configs]
 
         buckets = colE.buckets()
-        bUp = 1
         nbb = self.constraints.getCstr("max_prodbuckets") / float(len(colF.cats()))
         if len(buckets[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
-             bUp=3 ## in case of collapsed bucket the threshold is different
-             buckets = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
-             #pdb.set_trace()
+             buckets = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
 
         ### TODO DOABLE
         if buckets is not None and ( len(buckets[1]) * len(colF.cats()) <= self.constraints.getCstr("max_prodbuckets")): 
@@ -930,6 +950,7 @@ class CharbonGStd(CharbonGreedy):
                     low+=1
         
         (scores, literalsFix, literalsExt) = ([], [], [])
+        bUp = NumColM.buk_ind_maxes(buckets)
         if try_comb and self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
             # if len(scores) > 0:
@@ -998,25 +1019,15 @@ class CharbonGStd(CharbonGreedy):
             # if fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
             #    and tmp_var[0] >= self.constraints.getCstr("min_itm_in") \
             #    and fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_out"):
-            if self.unconstrained(no_const) or (tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
+            # if self.unconstrained(no_const) or (tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
+            if (tmp_var[0] >= self.constraints.getCstr("min_itm_in")):
                 contri = tmp_var[0]
                 fix_num, fix_den = (0, 0)
-                # if self.constraints.getCstr("constraint_score") == "comp_acc":
-                #     ### COMP ACC
-                #     var_num = float(tmp_var[0])/(tmp_var[1] + tmp_var[0])
-                #     tt = (fixed_colors[False][1]-tmp_var[1] + fixed_colors[False][0]-tmp_var[0])
-                #     if tt > 0:
-                #         var_den = float(fixed_colors[False][0]-tmp_var[0])/tt
-                #     else:
-                #         var_den = 0
-                                            
-                # else:
-                if True:
-                    #### ACCURACY
-                    var_num, var_den = (tmp_var[0], tmp_var[1] + tmp_var[0])
-                # print "PIECES", var_num, var_den, contri, fix_num, fix_den
-                # print "%d/%d : %d/%d" % (tmp_var[0], tmp_var[1] + tmp_var[0], fixed_colors[False][0]-tmp_var[0], tt)
-            
+                var_num, var_den = (tmp_var[0], tmp_var[1] + tmp_var[0])
+            elif self.unconstrained(no_const):
+                contri = 0
+                fix_num, fix_den = (0, 0)
+                var_num, var_den = (0, 0)
         elif op:
             #OR
             if self.unconstrained(no_const) or (tmp_var[0] >= self.constraints.getCstr("min_itm_c") \

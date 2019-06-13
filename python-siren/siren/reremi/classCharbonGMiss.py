@@ -567,7 +567,7 @@ class CharbonGMiss(CharbonGreedy):
 
             if len(bucketsE[1])/nbb < self.constraints.getCstr("max_agg"):
                 ### collapsing buckets on the largest side is enough to get within the reasonable size
-                bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
+                bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                 bUpE=3 ## in case of collapsed bucket the threshold is different
 
             else:
@@ -620,9 +620,9 @@ class CharbonGMiss(CharbonGreedy):
                     #### working with on variable as categories is NOT workable
                     ### the only remaining solution is aggressive collapse of buckets on both sides
                     nbb = numpy.sqrt(self.constraints.getCstr("max_prodbuckets"))
-                    bucketsE = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
+                    bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                     bUpE=3 ## in case of collapsed bucket the threshold is different
-                    bucketsF = colF.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
+                    bucketsF = colF.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                     bUpF=3 ## in case of collapsed bucket the threshold is different
                     side = org_side
                     ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])                    
@@ -839,7 +839,7 @@ class CharbonGMiss(CharbonGreedy):
         nbb = self.constraints.getCstr("max_prodbuckets") / float(len(colF.cats()))
         if len(buckets[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
              bUp=3 ## in case of collapsed bucket the threshold is different
-             buckets = colE.collapsedBuckets(self.constraints.getCstr("max_agg"), nbb)
+             buckets = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
              #pdb.set_trace()
 
         ### TODO DOABLE

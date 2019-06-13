@@ -260,7 +260,7 @@ def run(args):
     
     loaded = loadAll(args)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
-    
+
     miner = instMiner(data, params, logger)
     try:
         miner.full_run()
