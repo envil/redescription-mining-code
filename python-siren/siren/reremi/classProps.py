@@ -1,8 +1,15 @@
-from classQuery import SYM
-import re, string, numpy, codecs, copy, itertools, os.path
-from classSParts import SSetts, tool_ratio
-from classContent import Item
-from csv_reader import getFp
+import re, string, numpy, copy, itertools, os.path
+try:
+    from classQuery import SYM
+    from classSParts import SSetts, tool_ratio
+    from classContent import Item
+    from csv_reader import getFp
+except ModuleNotFoundError:
+    from .classQuery import SYM
+    from .classSParts import SSetts, tool_ratio
+    from .classContent import Item
+    from .csv_reader import getFp
+
 import pdb
 
 ACTIVE_RSET_ID = "active"
@@ -65,7 +72,7 @@ class WithEVals(Item):
         self.computeExtras(data)
 
     def getProp(self, what, which=None, rset_id=None, details={}):
-        print "Prop", what, which, rset_id, details.keys()
+        print("Prop", what, which, rset_id, details.keys())
         if what == "extra":
             return self.getExtra(which, details)
         if rset_id is not None and which == self.which_rids: ### ids details for split sets            
@@ -115,11 +122,15 @@ class WithEVals(Item):
             self.cache_evals[key].update(ks)
     def resetCacheEVals(self, only_keys=None):
         if only_keys is True:
-            only_keys = Props.test_containing_kp.keys()
+            only_keys = list(Props.test_containing_kp.keys())
         if type(only_keys) is list:
             for key in only_keys:
-                for k in self.cache_evals.get(key, []):
-                    del self.cache_evals[k]
+                ks = self.cache_evals.get(key, [])
+                for k in ks:
+                    try:
+                        del self.cache_evals[k]
+                    except KeyError:
+                        pass
         else:
             self.cache_evals = {}
     def setCacheEVals(self, cevs):
@@ -144,7 +155,7 @@ class WithEVals(Item):
         self.restricted_sets = {}
         self.resetCacheEVals(only_keys=[Props.RSKS])
     def getRSKeys(self):
-        return self.restricted_sets.keys()
+        return list(self.restricted_sets.keys())
     def hasActiveRS(self):        
         return ACTIVE_RSET_ID in self.getRSKeys()
     def hasRSets(self):
@@ -180,7 +191,7 @@ def digit_to_char(n, pad=None):
         tmp = "".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=25)])
     else:
         tmp = ("z"*pad+"".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=25)]))[-pad:]
-    # print "%s -> %s" % (n, tmp)
+    # print("%s -> %s" % (n, tmp))
     return tmp
 
 def side_ltx_cmd(sid, padss=None):
@@ -688,7 +699,7 @@ class Props(object):
                 else:
                     self.parsed_fns.append("package")
             except IOError:
-                print "Cannot read fields defs from file %s!" % fields_fn
+                print("Cannot read fields defs from file %s!" % fields_fn)
 
             else:
                 if current_list_name is not None:
@@ -795,7 +806,7 @@ class Props(object):
     def getDerivativeField(self, fk):
         return self.derivatives[fk]
     def getAllDerivativeFields(self):
-        return self.derivatives.keys()
+        return list(self.derivatives.keys())
     def hasFieldsList(self, fk):
         return fk in self.field_lists
     def getFieldsList(self, fk):
@@ -810,8 +821,7 @@ class Props(object):
         if fk in self.field_lists:
             del self.field_lists[fk]        
     def getListsKeys(self):
-        return self.field_lists.keys()
-
+        return list(self.field_lists.keys())
 
     def getFieldExp(self, ff):
         if self.hasDerivativeField(ff):
@@ -899,9 +909,7 @@ class Props(object):
             if field not in all_fields:
                 all_fields[field] = [1,.1]
 
-        afs = all_fields.keys()
-        afs.sort(key=lambda x: all_fields[x][0]/all_fields[x][1])
-        return afs
+        return sorted(all_fields.keys(), key=lambda x: all_fields[x][0]/all_fields[x][1])
         
     def getExpDict(self, lfields):
         return dict([(f, self.getFieldExp(f)) for f in lfields])
@@ -982,7 +990,7 @@ class RedProps(Props):
     default_def_files = [def_file_basic]
 
     rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
-    rset_match = "("+ "|".join(["all","learn","test","cond","active"] + HAND_SIDE.keys()) +")"
+    rset_match = "("+ "|".join(["all","learn","test","cond","active"] + list(HAND_SIDE.keys())) +")"
     what_match = "\w+"
     which_match = "\w+" 
     # match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
@@ -1158,7 +1166,7 @@ class RedProps(Props):
     ####        PRINTING
     ##############################################
     def printRedList(self, reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, modifiers={}, style="txt", fmts=[None, None, None]):
-        # print "PRINT RED LIST", modifiers
+        # print("PRINT RED LIST", modifiers)
         try:
             red_list = sorted(reds.items())
         except AttributeError:
@@ -1186,7 +1194,7 @@ class RedProps(Props):
         return str_out
 
     def printTexRedList(self, reds, names=[None, None], list_fields=None, nblines=1, standalone=False, modifiers={}, fmts=[None, None, None]):
-        # print "PRINT RED TEX LIST", modifiers
+        # print("PRINT RED TEX LIST", modifiers)
         standalone = True
         try:
             red_list = sorted(reds.items())
@@ -1198,7 +1206,7 @@ class RedProps(Props):
         if list_fields is None:
             modifiers = self.updateModifiers(red_list, modifiers)
             list_fields = self.getCurrentListFields("tex", modifiers)
-        # print "LIST FIELDS", list_fields
+        # print("LIST FIELDS", list_fields)
         str_odoc, names_alts = openTexDocument(names, standalone)
         str_oth, with_fname = openTexTabular(list_fields, nblines)
         str_reds = ""
@@ -1226,9 +1234,6 @@ class RedProps(Props):
         return None, None
 
     def parseQueries(self, string, list_fields=None, sep="\t", names=[None, None], modifiers={}, sid=None):
-        if type(string) is str:
-            string = codecs.decode(string, 'utf-8','replace')
-
         if list_fields is None:
             list_fields = self.getListFields("basic", modifiers)
         default_queries_fields = self.getListFields("queries", modifiers)

@@ -7,9 +7,9 @@ import numpy
 # The recommended way to use wx with mpl is with the WXAgg backend. 
 # import matplotlib
 # matplotlib.use('WXAgg')
-from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
-from classDrawerClust import DrawerClustTD
-from classProj import AxesProj
+from .classDrawerBasis import DrawerEntitiesTD, DrawerBasis
+from .classDrawerClust import DrawerClustTD
+from .classProj import AxesProj
 
 import pdb
 
@@ -37,7 +37,7 @@ class DrawerProj(DrawerBasis):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY,u"- opac. disabled +")
@@ -46,12 +46,12 @@ class DrawerProj(DrawerBasis):
         v_box.Add(inter_elems["slide_opac"], 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[1]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)
@@ -63,10 +63,11 @@ class DrawerProj(DrawerBasis):
                         
     def makeFinish(self, xylims, xybs):
         if self.getProj().getCoords() is not None:
+            fs = self.view.getFontSizeProp()
             if self.getProj().getAxisLabel(0) is not None:
-                self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=12)
+                self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=fs)
             if self.getProj().getAxisLabel(1) is not None:
-                self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=12)
+                self.axe.set_ylabel(self.getProj().getAxisLabel(1),fontsize=fs)
             # xx, yy = self.getProj().getCoords()
             # print "CORR %s vs. %s = %.4f" % (self.getProj().getAxisLabel(0), self.getProj().getAxisLabel(1), numpy.corrcoef(xx, yy)[0,1])
             # self.axe.plot([xylims[0]-xybs[0], xylims[1]+xybs[0]], [xylims[0]-xybs[0], xylims[1]+xybs[0]], "k--")
@@ -128,7 +129,7 @@ class DrawerClustProj(DrawerProj, DrawerClustTD):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY,u"- opac. disabled +")
@@ -137,17 +138,17 @@ class DrawerClustProj(DrawerProj, DrawerClustTD):
         v_box.Add(inter_elems["slide_opac"], 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY, "dist. inter c")
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxB.Add(label, 0, border=1, flag=flags)
         add_boxB.Add(inter_elems["choice_nbc"], 0, border=1, flag=flags)
         
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)

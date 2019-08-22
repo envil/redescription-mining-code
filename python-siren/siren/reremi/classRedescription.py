@@ -1,8 +1,15 @@
-import re, string, numpy, codecs
-from classCol import  ColM
-from classQuery import  *
-from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
-from classProps import WithEVals, RedProps, mapSuppNames, ACTIVE_RSET_ID, HAND_SIDE
+import re, string, numpy
+try:
+    from classCol import  ColM
+    from classQuery import  *
+    from classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
+    from classProps import WithEVals, RedProps, mapSuppNames, ACTIVE_RSET_ID, HAND_SIDE
+except ModuleNotFoundError:
+    from .classCol import  ColM
+    from .classQuery import  *
+    from .classSParts import  SParts, tool_pValSupp, tool_pValOver, tool_ratio, SSetts
+    from .classProps import WithEVals, RedProps, mapSuppNames, ACTIVE_RSET_ID, HAND_SIDE
+
 import pdb
 
 
@@ -18,19 +25,19 @@ class Redescription(WithEVals):
                  "hasAvC": "self.hasAvailableCols()", "nbAvC": "self.totAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
                  "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()",
                  "isBasis": "self.isBasis()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
-    Pwhat_match = "("+ "|".join(["extra"]+info_what.keys()+info_what_dets.keys()) +")"
+    Pwhat_match = "("+ "|".join(["extra"]+list(info_what.keys())+list(info_what_dets.keys())) +")"
 
 
     pair_map_side = {"L": 0, "R": 1}
     pair_map_how = {"areaU": "union", "areaI": "inter", "areaR": "ratio", "areaF": "fractmin", "overlap": "ratio",
                     "rowsU": ("rows", "union"), "rowsI": ("rows", "inter"), "rowsR": ("rows", "ratio"), "rowsF": ("rows", "fractmin")}
     info_pair_what_dets = {"oneSideIdentical": "self.oneSideIdentical", "bothSidesIdentical": "self.bothSidesIdentical",
-                           "equivalent": "self.equivalent", "identical": "self.identical", "compare": "self.compare",
+                           "equivalent": "self.equivalent", "superceding": "self.superceding", "compare": "self.compare",
                            "sameRectangles": "self.sameRectangles",
                            "overlapAreaTotal": "self.overlapAreaTotal", "overlapAreaMax": "self.overlapAreaMax",
                            "overlapRows": "self.overlapRows"}
     info_pair_what_side = {"interAreaSide": "self.interArea", "unionAreaSide": "self.unionArea", "overlapAreaSide": "self.overlapAreaSide"}
-    Pwhat_pair_match = "("+ "|".join(pair_map_how.keys()+info_pair_what_side.keys()+info_pair_what_dets.keys()) +")"
+    Pwhat_pair_match = "("+ "|".join(list(pair_map_how.keys())+list(info_pair_what_side.keys())+list(info_pair_what_dets.keys())) +")"
 
     class_letter = "r"
     RP = None
@@ -306,7 +313,7 @@ class Redescription(WithEVals):
         elif len(r) > 0:
             for side in [0,1]:
                 exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset, souvenirs=souvenirs)])
-        # print "EXTS", exts, self.disp(), r.disp()
+        # print("EXTS", exts, self.disp(), r.disp())
         return exts, r, modr
 
     def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True, souvenirs=None):
@@ -444,7 +451,7 @@ class Redescription(WithEVals):
             red = Redescription.fromQueriesPair(queries, data)
             ### check that support is same
             # if self.supports() != red.supports():
-            #     print "ERROR ! SUPPORT CHANGED WHEN NORMALIZING..."
+            #     print("ERROR ! SUPPORT CHANGED WHEN NORMALIZING...")
             #     pdb.set_trace()
             return red, True            
         else:
@@ -490,8 +497,8 @@ class Redescription(WithEVals):
     def recompute(self, data):
         (nsuppL, missL) = self.recomputeQuery(0, data)
         (nsuppR, missR) = self.recomputeQuery(1, data)
-#        print self.disp()
-#        print ' '.join(map(str, nsuppL)) + ' \t' + ' '.join(map(str, nsuppR))
+#        print(self.disp())
+#        print(' '.join(map(str, nsuppL)) + ' \t' + ' '.join(map(str, nsuppR)))
         self.sParts = SParts(data.getSSetts(), data.nbRows(), [nsuppL, nsuppR, missL, missR])
         self.prs = [self.queries[0].proba(0, data), self.queries[1].proba(1, data)]
         if self.hasCondition():
@@ -858,7 +865,7 @@ class Redescription(WithEVals):
 
     def equivalent(self, other, details={}):
         return abs(self.compare(other, details)) < Query.diff_balance
-    def identical(self, other, details={}):
+    def superceding(self, other, details={}):
         return (self.oneSideIdentical(other) and not self.equivalent(other)) or self.bothSidesIdentical(other)
    
     def getAreaPair(self, other, how="ratio", which="I", rset_id=None, details={}):
@@ -952,10 +959,10 @@ class Redescription(WithEVals):
     def getPairProp(self, other, what, which=None, rset_id=None, details={}):
         if what in Redescription.pair_map_how:
             # xps = self.getAreaPair(other, Redescription.pair_map_how[what], which, rset_id, details)
-            # print ">>>", self.disp()
-            # print "<<<", other.disp()
+            # print(">>>", self.disp())
+            # print("<<<", other.disp())
             # x = self.overlapRows(other)
-            # print what, which, rset_id, xps, x
+            # print(what, which, rset_id, xps, x)
             # return xps
             return self.getAreaPair(other, Redescription.pair_map_how[what], which, rset_id, details)
 
@@ -1122,7 +1129,7 @@ class Redescription(WithEVals):
     
         
 if __name__ == '__main__':
-    # print Redescription.exp_details.keys()
+    # print(Redescription.exp_details.keys())
     from classData import Data
     import sys
 
@@ -1146,7 +1153,7 @@ if __name__ == '__main__':
     # data = Data([rep+"vaalikone_profiles_test.csv", rep+"vaalikone_questions_test.csv", {}, "NA"], "csv")
 
     # reds = []
-    # with codecs.open("../../bazar/queries.txt", encoding='utf-8', mode='r') as f:
+    # with open("../../bazar/queries.txt") as f:
     #     for line in f:
     #         if len(line.strip().split("\t")) >= 2:
     #             try:
@@ -1157,11 +1164,11 @@ if __name__ == '__main__':
     #             r = Redescription.fromQueriesPair([tmpLHS, tmpRHS], data)
     #             reds.append(r)
 
-    # with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='w') as f:
+    # with open("../../bazar/queries_list2.txt", mode='w') as f:
     #     f.write(rp.printRedList(reds))
 
-    # with codecs.open("../../bazar/queries_list2.txt", encoding='utf-8', mode='r') as f:
+    # with open("../../bazar/queries_list2.txt", mode='r') as f:
     #     reds, _ = rp.parseRedList(f, data)
 
     # for red in reds:
-    #     print red.disp()
+    #     print(red.disp())

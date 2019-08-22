@@ -1,18 +1,22 @@
-import os.path, time, copy
+import os.path, time, copy, re
 import numpy
-import codecs, re
 
-from toolRead import BOOL_MAP
-from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools
-from classSParts import tool_ratio
-from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
+try:
+    from toolXML import BOOL_MAP
+    from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools, NA_str_c
+    from classSParts import tool_ratio, cmp_vals, cmp_lists
+    from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
+except ModuleNotFoundError:
+    from .toolXML import BOOL_MAP
+    from .classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools, NA_str_c
+    from .classSParts import tool_ratio, cmp_vals, cmp_lists
+    from .classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
+
 import pdb
 
 NA_num  = numpy.nan
 NA_bool  = -1
 NA_cat  = -1
-
-NA_str_c = "nan"
 
 MODE_VALUE = 0
 
@@ -22,12 +26,6 @@ def associate_term_class(col_class, term_class=None):
         col_class.type_id = term_class.type_id
         col_class.type_letter = term_class.type_letter
         col_class.type_name = term_class.type_name        
-
-def valToTimeStr(val):
-    try:
-        return time.ctime(val)
-    except:
-        return NA_str_c
 
 def getValSpec(param, i):
     out = param
@@ -63,11 +61,11 @@ class ColM(WithEVals):
                  "density": "self.getDensity()",
                  "categories": "self.getCategories()",
                  "min": "self.getMin()", "max": "self.getMax()"}
-    Pwhat_match = "("+ "|".join(["[a-zA-Z]+", "extra"]+info_what.keys()+info_what_dets.keys()+info_what_mask.keys()) +")"
+    Pwhat_match = "("+ "|".join(["[a-zA-Z]+", "extra"]+list(info_what.keys())+list(info_what_dets.keys())+list(info_what_mask.keys())) +")"
 
     info_which_mask = {"vect":"self.getVect", "vals": "self.getVals"}
     ### PROPS WHICH
-    Pwhich_match = "("+ "|".join(info_which_mask.keys()+[WithEVals.which_rids]) +")"    
+    Pwhich_match = "("+ "|".join(list(info_which_mask.keys())+[WithEVals.which_rids]) +")"    
     
     RP = None
     @classmethod
@@ -168,8 +166,26 @@ class ColM(WithEVals):
         self.infofull = {"in": (-1, True), "out": (-1, True)}
         self.vect = None
         self.extras.update({"status": 1, "side": -1, "id": -1, "gid": -1})
-        
-        
+
+    def cmpCol(self, other):
+        if other is None or not isinstance(other, ColM):
+            return 1
+        else:
+            return cmp_vals(self.getId(), other.getId())
+    def cmpType(self, other):
+        if other is None or not isinstance(other, ColM):
+            return 1
+        else:
+            return cmp_vals(self.typeId(), other.typeId())
+    def cmpVals(self, other):
+        if other is None or not isinstance(other, ColM):
+            return 3
+        if self.N == other.N:
+            return cmp_lists(self.getVect(), other.getVect())
+        elif self.N < other.N:
+            return -2
+        return 2
+    
     def getUid(self):
         return (self.getSide(), self.getId())
     def setUid(self, iid=None):
@@ -551,7 +567,7 @@ class BoolColM(ColM):
         return self.hold
     
     def suppTerm(self, term):
-        if term.isAnon():
+        if term is not None and term.isAnon():
             return set()
         return set(self.hold)
 
@@ -614,7 +630,7 @@ class CatColM(ColM):
                     cats[v] = set([j])
         if len(cats) > 0:
             if len(cats) == 1:
-                print "Only one category %s, this is suspect!.." % (cats.keys())
+                print("Only one category %s, this is suspect!.." % (cats.keys()))
             return tcl(cats, max(indices.values())+1, miss)
         else:
             return None
@@ -730,8 +746,6 @@ class CatColM(ColM):
             return -0.5 # len(self.ord_cats)-1
 
         try:
-            if type(v) is str and type(self.ord_cats[0]) is unicode:
-                v = codecs.decode(v, 'utf-8','replace')
             return self.ord_cats.index(v)
         except:
             return self.NA
@@ -807,7 +821,7 @@ class NumColM(ColM):
         if (matchMiss is not False and v == matchMiss) or v == str(tcl.NA):
             miss.add(j)
             return v, prec
-        if type(v) not in [str, unicode]:
+        if type(v) != str:
             v = "%s" % v
         tmatch = re.match(tcl.p_patt, v)
         if not tmatch:
@@ -824,7 +838,7 @@ class NumColM(ColM):
                     pprec = len(mtch.group("dec"))
                 elif mtch.group("epw") is not None:
                     pprec = int(mtch.group("epw"))
-            if pprec > prec:
+            if prec is None or pprec > prec:
                 prec = pprec
                 
         val = float(v)
@@ -904,35 +918,37 @@ class NumColM(ColM):
                 terms.append((self.getAssocTermClass()(self.getId(), self.sVals[hi_idx][0], float("Inf")), len(self.sVals)-hi_idx))
                 
         if self.lenMode() == 0 or low_idx == 0: ### every non mode is above mode
-            split_idx = (hi_idx+len(self.sVals))/2
+            ### MAKE TERMS top half
+            split_idx = (hi_idx+len(self.sVals))//2
             while split_idx < len(self.sVals) and self.sVals[split_idx][0] == self.sVals[split_idx-1][0]:
                 split_idx += 1
             if split_idx < len(self.sVals) and (len(self.sVals)-split_idx) >= minIn \
                    and ( self.nbRows() - (len(self.sVals)-split_idx) ) >= minOut :
                 terms.append((self.getAssocTermClass()(self.getId(), self.sVals[split_idx][0], float("Inf")), len(self.sVals)-split_idx))
         if self.lenMode() == 0 or hi_idx == len(self.sVals): ### every non mode is below mode
-            split_idx = low_idx/2
+            ### MAKE TERMS bottom half
+            split_idx = low_idx//2
             while split_idx > 0 and self.sVals[split_idx][0] == self.sVals[split_idx+1][0]:
                 split_idx -= 1
             if split_idx >= 0 and split_idx+1 >= minIn and ( self.nbRows() - (split_idx+1) ) >= minOut and \
               ( len(terms) == 0 or (len(self.sVals)-terms[-1][1]) != split_idx+1):
                 terms.append((self.getAssocTermClass()(self.getId(), float("-Inf"), self.sVals[split_idx][0]), split_idx+1))
             
-        if not self.hasMoreInMode():            
+        if not self.hasMoreInMode():
             max_agg = 2*minIn #max(2*min(minIn, minOut), max(minIn, minOut)/2)
             tt = self.collapseBuckets(max_agg)
             for i in range(len(tt[0])):
-                count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-1][i])
+                count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-2][i])
                 if count >= minIn and ( self.nbRows() - count ) >= minOut :
                     if i == 0:
                         lowb = float("-Inf")
                     elif i == len(tt[0])-1:
                         upb = float("Inf")
                     terms.append((self.getAssocTermClass()(self.getId(), lowb, upb), i))
-                    # print "Found term\t", terms[-1][0], terms[-1][1], count 
+                    # print("Found term\t", terms[-1][0], terms[-1][1], count) 
 
         # if len(terms) == 0:
-        #     print "Nothing found %s" % self
+        #     print("Nothing found %s" % self)
         return terms
 
     def getRoundThres(self, thres, which):
@@ -941,10 +957,10 @@ class NumColM(ColM):
         while i < len(self.sVals) -1 and self.sVals[i][0] < thres:
             i+= 1
         if which == "high":
-            ## print thres, which, self.sVals[i-1][0] 
+            ## print(thres, which, self.sVals[i-1][0])
             return self.sVals[i-1][0]
         else:
-            ## print thres, which, self.sVals[i][0] 
+            ## print(thres, which, self.sVals[i][0])
             return self.sVals[i][0]
 
     def __str__(self):
@@ -981,18 +997,25 @@ class NumColM(ColM):
             return self.vect[rid]
 
     def valToStr(self, val):
+    #     if (numpy.isnan(val) and numpy.isnan(self.NA)) or \
+    #            val == self.NA:
+    #         return NA_str_c
+    #     return val
+    # def valToTimeStr(self, val):
         if (numpy.isnan(val) and numpy.isnan(self.NA)) or \
                val == self.NA:
             return NA_str_c
+        if self.getTimePrec() is not None:
+            return  TimeTools.format_time(val, time_prec=self.getTimePrec())
         return val
-
+    
     def getNumValue(self, rid):
         return self.getValue(rid)
 
     def areDataEquiv(self, vA, vB):
         if self.uniqvs is None:
             self.uniqvs = sorted(set([self.sVals[x][0] for x in range(len(self.sVals))]))
-        # print "DataEquiv? %s vs. %s [%s]" % (vA, vB, list(enumerate(self.uniqvs[:10])))
+        # print("DataEquiv? %s vs. %s [%s]" % (vA, vB, list(enumerate(self.uniqvs[:10]))))
         if vA == vB:
             return True
         icurrent, iAe, iBe, iAg, iBg = (0, None, None, None, None)
@@ -1006,7 +1029,7 @@ class NumColM(ColM):
             if iBe is None and self.uniqvs[icurrent] >= vB:
                 iBe = icurrent
             icurrent += 1
-        # print "iAe=%s iBe=%s iAg=%s iBg=%s" % (iAe, iBe, iAg, iBg)
+        # print("iAe=%s iBe=%s iAg=%s iBg=%s" % (iAe, iBe, iAg, iBg))
         ans = (False, False)
         if iAe!=iAg and iBe!=iBg: # if both values are in the data
             if iAe == iBe and iAg == iBg: # if they are equal
@@ -1019,7 +1042,7 @@ class NumColM(ColM):
             ans = ((iAe == iBg), (iAe == iBe))
         elif iBe==iBg: # and iAe!=iAg: # if A is in the data but not B
             ans = ((iBe == iAg), (iBe == iAe))
-        # print "A in data %s\tB in data %s\tA ~ B %s" % (iAe!=iAg, iBe!=iBg, ans)
+        # print("A in data %s\tB in data %s\tA ~ B %s" % (iAe!=iAg, iBe!=iBg, ans))
         return ans[0], ans[1], iAe!=iAg, iBe!=iBg
     
     def numEquiv(self, v):
@@ -1153,7 +1176,7 @@ class NumColM(ColM):
            ### LAST CONDITIONS: either is already sparse or turning to sparse would bring gain (more than 10% of values equal to mode)
             self.sVals = tmpV
             if len(self.sVals) > 0:
-                rids = set(zip(*self.sVals)[1])
+                rids = set(list(zip(*self.sVals))[1])
             else:
                 rids = set()
             if len(rids) != len(self.sVals):
@@ -1361,9 +1384,9 @@ class NumColM(ColM):
         colB_supp.extend(tmp[0][top_mid:])
         colB_min.extend(tmp[1][top_mid:])
         colB_max.extend(tmp[1][top_mid:])
-        # print self, colB_min[standalone_buk], colB_max[standalone_buk], len(colB_supp[standalone_buk])
+        # print(self, colB_min[standalone_buk], colB_max[standalone_buk], len(colB_supp[standalone_buk]))
         # if mode_buk is not None:
-        #     print "Mode", colB_min[mode_buk], colB_max[mode_buk], colB_supp[mode_buk]
+        #     print("Mode", colB_min[mode_buk], colB_max[mode_buk], colB_supp[mode_buk])
         return (colB_supp, colB_min, mode_buk, colB_max, standalone_buk)    
     def collapseBuckets(self, max_agg, base_buckets=None, checknext=False):
         #### collapsing from low to up, could do reverse...

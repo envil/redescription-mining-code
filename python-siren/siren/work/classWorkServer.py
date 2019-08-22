@@ -1,6 +1,6 @@
-import multiprocessing, time, sys, os
-import getopt
+import multiprocessing, time, sys, os, getopt
 from multiprocessing.managers import SyncManager
+
 from ..reremi.classMiner import instMiner
 from ..reremi.classRedescription import Redescription
 from ..reremi.toolLog import Log
@@ -57,48 +57,50 @@ class ProjectorProcess(multiprocessing.Process):
         self.terminate()
 
     def run(self):
-        print "PROJECTION RUNNING"
+        print("PROJECTION RUNNING")
         try:
             self.proj.do()
         except Exception as e:
-            print "PROJECTION Error"
+            print("PROJECTION Error")
             self.proj.clearCoords()
             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
         finally:
-            print "PROJECTION DONE"
+            print("PROJECTION DONE")
             self.logger.printL(1, self.proj, "result", self.getId())
             self.logger.printL(1, None, "progress", self.getId())
         
 def make_server_manager(port, authkey):
+
     job_q = multiprocessing.Queue()
-    ids_d = dict()
     reconnect_q = multiprocessing.Queue()
+    ids_d = dict()
 
     class JobQueueManager(SyncManager):
         pass
 
     JobQueueManager.register('get_job_q', callable=lambda: job_q)
-    JobQueueManager.register('get_ids_d', callable=lambda: ids_d)
     JobQueueManager.register('get_reconnect_q', callable=lambda: reconnect_q)
-
-    manager = JobQueueManager(address=("", port), authkey=authkey)
+    JobQueueManager.register('get_ids_d', callable=lambda: ids_d)
+    
+    manager = JobQueueManager(address=("", port), authkey=authkey.encode('ascii'))
     manager.start()
-    print 'Central server started at port %s' % port
+    
+    print('Central server started at port %s' % port)
     return manager
 
 class WorkServer(object):
 
     def __init__(self, portnum=PORTNUM, authkey=AUTHKEY, max_k=MAXK):
-        print "PID", os.getpid()
+        print("PID", os.getpid())
         Redescription.setUidGen(nv=-1, step=-1, mp_lock=True)
+        self.handlers = {}
         self.manager = make_server_manager(portnum, authkey)
         self.shared_job_q = self.manager.get_job_q() #queue
-        self.shared_ids_d = self.manager.get_ids_d() #queue
-        self.shared_reconnect_q = self.manager.get_reconnect_q()
+        self.shared_ids_d = self.manager.get_ids_d() #dict
+        self.shared_reconnect_q = self.manager.get_reconnect_q() #queue
 
         self.authkey = authkey
         self.nextHandlerId = 0
-        self.handlers = {}
         
 #        try:
         if True:
@@ -106,20 +108,21 @@ class WorkServer(object):
                 ## read tasks from queue
                 job = self.getJobsQueue().get()
                 if type(job) is dict:
-                    print "HANDLING", job["task"], job.get("hid"), job.get("wid")
+                    print("HANDLING", job["task"], job.get("hid"), job.get("wid"))
                     if job.get("task") == "startup":
                         ## create new handler
                         self.nextHandlerId += 1
                         hid = portnum + self.nextHandlerId
                         self.handlers[hid] = WorkHandler(self, hid, self.authkey)
                         self.shared_ids_d.update({job.get("cid"): hid})
-                        print "new HID %s -> %s" % (job.get("cid"), hid) 
+                        print(type(self.shared_ids_d))
+                        print("new HID %s -> %s" % (job.get("cid"), hid))
                     
                     elif job.get("task") == "info":
                         ## create new handler
                         hid = portnum + self.nextHandlerId
                         self.shared_ids_d.update({job.get("cid"): self.getLoadStr()})
-                        print "sent INFO %s" % job.get("cid") 
+                        print("sent INFO %s" % job.get("cid"))
 
                     elif job.get("task") == "reconnect":
                         if job.get("hid") in self.handlers:
@@ -129,7 +132,7 @@ class WorkServer(object):
                             rwids = [w for w in wids if w[1] in WorkHandler.types_reconnect]
                             nwids = [w for w in wids if w[1] not in WorkHandler.types_reconnect]
                             #### TODO: laying off nwids
-                            print "reconnection HID %s -> %s\t%s" % (job.get("cid"), hid, rwids)
+                            print("reconnection HID %s -> %s\t%s" % (job.get("cid"), hid, rwids))
                             self.shared_ids_d.update({job.get("cid"): hid})
                             self.shared_reconnect_q.put(rwids, False)     
 
@@ -168,9 +171,9 @@ def make_hs_manager(port, authkey):
     HSQueueManager.register('get_job_q', callable=lambda: job_q)
     HSQueueManager.register('get_result_q', callable=lambda: result_q)
 
-    manager = HSQueueManager(address=("", port), authkey=authkey)
+    manager = HSQueueManager(address=("", port), authkey=authkey.encode('ascii'))
     manager.start()
-    print 'Work server started at port %s' % port
+    print("Work server started at port %s" % port)
     return manager
 
 
@@ -215,7 +218,7 @@ class WorkHandler(object):
         return "%d:w%d+p%d+r%d" % (self.getId(), len(self.working), len(self.pending), len(self.retired))
 
     def handleJob(self, job):
-        print "HANDLING JOB", job.get("task")
+        print("HANDLING JOB", job.get("task"))
         
         ### if acceptable task: launch work if there are free processes, else add job to pending 
         if self.knownTaskWork(job.get("task")) and job.get("wid") not in self.pending and job.get("wid") not in self.working:
@@ -257,7 +260,7 @@ class WorkHandler(object):
 
     def launchJob(self, job):
         if self.knownTaskWork(job.get("task")):
-            print "Launching job %d" % job["wid"]
+            print("Launching job %d" % job["wid"])
             if self.getDetForTask(job.get("task")).get("stop") == "message":
                 queue = multiprocessing.Queue()
             else:
@@ -274,14 +277,14 @@ class WorkHandler(object):
 
     def shutDown(self):
         self.shutDownClient()
-        print "Work server shutting down..."
+        print("Work server shutting down...")
         sys.exit()
 
     ##close this handler
     def shutDownClient(self):
         del self.pending
         del self.retired
-        workers = self.working.keys()
+        workers = list(self.working.keys())
         for wid in workers:
             self.stopJob(wid)
             self.working.pop(wid)
@@ -290,23 +293,25 @@ class WorkHandler(object):
         self.manager.shutdown()
         self.parent.unregister(self.getId())
 
-if __name__ == '__main__':
+def run_server(sargv):
     args = {}
-    if len(sys.argv) > 1:
-        args = dict([(k.strip("-"), v) for (k,v) in getopt.getopt(sys.argv[1:], "", ["portnum=", "authkey=", "max_k=", "chroot=","setuid="])[0]])
-    for k in ["portnum", "max_k", "setuid"]:
+    if len(sargv) > 1:
+        args = dict([(k.strip("-"), v) for (k,v) in getopt.getopt(sargv[1:], "", ["portnum=", "authkey=", "max_k=", "chroot=","setuid=","setgid="])[0]])
+    for k in ["portnum", "max_k", "setuid", "setgid"]:
         if k in args:
             try:
                 args[k] = int(args[k])
             except ValueError:
                 del args[k]
     if "setuid" in args:
+        if "setgid" in args:
+            # We need to drop GID before we drop UID
+            os.setgid(args.pop("setgid"))
         os.setuid(args.pop("setuid"))
-    if "chroot" in args:
-        os.chroot(args.pop("chroot"))
+    else: # setuid not in args
+        if "setgid" in args:
+            os.setgid(args.pop("setgid"))
+        if "chroot" in args:
+            os.chroot(args.pop("chroot"))
     WorkServer(**args)
-
-
-
-
 

@@ -6,7 +6,7 @@ matplotlib.use('WXAgg')
 import matplotlib.pyplot as plt
 import matplotlib.colors
 
-from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
+from .classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 import pdb
 
     
@@ -67,7 +67,7 @@ class DrawerClustTD(DrawerEntitiesTD):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY,u"- opac. disabled +")
@@ -82,13 +82,13 @@ class DrawerClustTD(DrawerEntitiesTD):
             if len(dets["options"]) > 0:
                 inter_elems[k].SetSelection(0)
         
-            add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+            add_boxB.AddSpacer(self.getLayH().getSpacerWn())
             label = wx.StaticText(panel, wx.ID_ANY, dets["label"])
             label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             add_boxB.Add(label, 0, border=1, flag=flags)
             add_boxB.Add(inter_elems[k], 0, border=1, flag=flags)   
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)        
@@ -103,7 +103,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         clrs = [self.mapper_occ.to_rgba(block_data["occ_avg"][j]) for j, rid in ord_rids]
         
         e_drawn = []
-        e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":"))
+        e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":", align="edge"))
         ## y, width, height, left
         if self.getSettV("blocks_show_values", False):
             for jj, (j, rid) in enumerate(ord_rids):
@@ -162,11 +162,11 @@ class DrawerClustTD(DrawerEntitiesTD):
         colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
         # colors[-1] = draw_settings["default"]["color_f"]
         
-        axe.barh(y0, nbr*h_occ+h_hist, y1-y0, x1, color=bckc, edgecolor=bckc)
+        axe.barh(y0, nbr*h_occ+h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge")
         # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
         # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
         # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
-        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2)
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge")
         axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
 

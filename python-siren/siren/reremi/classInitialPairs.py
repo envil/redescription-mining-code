@@ -1,7 +1,12 @@
 import re, string, itertools, os.path
-from classRedescription import  Redescription
-from classExtension import ExtensionError
-from classQuery import  Query
+try:
+    from classRedescription import Redescription
+    from classExtension import ExtensionError
+    from classQuery import Query
+except ModuleNotFoundError:
+    from .classRedescription import Redescription
+    from .classExtension import ExtensionError
+    from .classQuery import Query
 
 import pdb
 
@@ -32,7 +37,7 @@ def alternate_sort(pairs_store, pairs_details, drop_set=set()):
         for c, vs in best_sides[side].items():
             for pp, v in enumerate(vs):
                 pairs_details[v]["rank_%d"%side] = pp
-    ord_ids = sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get("score")-max(pairs_details[x].get("rank_0"), pairs_details[x].get("rank_1")))
+    ord_ids = sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get("score")-max(pairs_details[x].get("rank_0", -1), pairs_details[x].get("rank_1", -1)))
     return ord_ids
 
 SORT_METHODS= {"overall": overall_sort,

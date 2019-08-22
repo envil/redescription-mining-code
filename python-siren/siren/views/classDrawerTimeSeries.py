@@ -11,8 +11,8 @@ import numpy
 from ..reremi.classRedescription import Redescription
 from ..reremi.classSParts import SSetts
 from ..reremi.classQuery import TimeTools
-from classDrawerBasis import DrawerEntitiesTD
-from classInterObjects import ResizeableRectangle, DraggableRectangle
+from .classDrawerBasis import DrawerEntitiesTD
+from .classInterObjects import ResizeableRectangle, DraggableRectangle
 
 import pdb
 
@@ -208,19 +208,19 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             ### Bars slidable/draggable rectangles
             rects_drag = {}
             rects_rez = {}
-            for i, rg in enumerate(self.prepared_data["ranges"]):                
+            for i, rg in enumerate(self.prepared_data["ranges"]):
                 ci = i
                 if rg[0] is None or rg[1] is None:
                     rects = None
                 elif i < len(self.prepared_data["labels"]):
                     bds = self.getYsforRange(i, rg)
                     rects = self.axe.bar(x1-x0, bds[1]-bds[0], x0, bds[0],
-                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
+                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1, align='edge')
                 else:
                     ci = -1
                     bot, top = numpy.maximum(x0, rg[0]), numpy.minimum(x1, rg[1])
                     rects = self.axe.bar(bot, y1-y0, top-bot, y0,
-                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1)
+                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=-1, align='edge')
                     
                 if self.prepared_data["qcols"][i] is not None and rects is not None:
                     if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
@@ -256,7 +256,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
 
             # height = 1.
 
-            # ### Labels
+            ### Labels
             xticks, xtlbls = self.getPltDtH().getCoordTicks()
             self.axe.set_xticks(xticks)
             self.axe.set_xticklabels(xtlbls)
@@ -312,7 +312,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
     def getYsforRange(self, rid, range):
         ### HERE fix CAT
         return [self.getYforV(rid, range[0], direc=-1), self.getYforV(rid, range[-1], direc=1)]
-     
+
     def getPinvalue(self, rid, b, direc=0):
         val = self.getPinvalueRaw(rid, b, direc)
         if "fmts" in self.prepared_data:
@@ -408,6 +408,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             elif self.isTypeId(l.typeId(), "Numerical"):
                 ys = [(dims["d0"], -1), (dims["d1"], 1)]
                 bounds = [self.getPinvalueRaw(rid, b, direc) for (b, direc) in ys]
+                boundsStr = [self.getPinvalue(rid, b, direc) for (b, direc) in ys]
                 upAll = (l.valRange() != bounds)
                 if upAll:
                     for path, comp, neg in dets:
@@ -454,12 +455,12 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
-        #add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        #add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[-1]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)        

@@ -6,22 +6,27 @@ from ..reremi.classCol import ColM
 from ..reremi.classData import RowE
 from ..reremi.classRedescription import Redescription
 
-from classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries, LayoutHandlerText
+from .classProj import ProjFactory
 
-from classDrawerBasis import DrawerBasis, DrawerEntitiesTD
-from classDrawerPara import DrawerRedPara
-from classDrawerTree import DrawerRedTree
-from classDrawerMap import DrawerEntitiesMap, DrawerClustMap
-from classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
-from classDrawerProj import DrawerEntitiesProj, DrawerClustProj
-from classDrawerTimeSeries import DrawerRedTimeSeries
+#### Classes for preparing the data
+####################################################
+from .classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords, PltDtHandlerRedWithTime
+from .classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListBlocksCoords, PltDtHandlerTextList
 
-from classDrawerCorrel import DrawerRedCorrel
-from classDrawerRanges import DrawerRanges
+#### Classes for laying out the window
+####################################################
+from .classLayoutHandler import LayoutHandlerBasis, LayoutHandlerQueries, LayoutHandlerText
 
-from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerRed, PltDtHandlerRedWithCoords, PltDtHandlerRedWithTime
-from classPltDtHList import PltDtHandlerListVarSplits, PltDtHandlerListClust, PltDtHandlerListRanges, PltDtHandlerListBlocksCoords, PltDtHandlerTextList
-from classProj import ProjFactory
+#### Classes for drawing the figure
+####################################################
+from .classDrawerBasis import DrawerBasis, DrawerEntitiesTD
+from .classDrawerProj import DrawerEntitiesProj, DrawerClustProj
+from .classDrawerPara import DrawerRedPara
+from .classDrawerTree import DrawerRedTree
+from .classDrawerMap import DrawerEntitiesMap, DrawerClustMap
+from .classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
+from .classDrawerTimeSeries import DrawerRedTimeSeries
+from .classDrawerCorrel import DrawerRedCorrel
 
 import pdb
 
@@ -246,17 +251,6 @@ class ViewBare(object):
             return self.getParentViewsm().getViewsItems(vkey=self.getId(), what=self.getWhat())
         return []
     def makeVizMenu(self, frame, menuViz=None):
-        """
-        Prepare the visualization sub-menu for this view.
-
-        @type  frame: wx.Frame
-        @param frame: The frame in which the menu resides
-        @type  menuViz: wx.Menu
-        @param menuViz: Existing menu, if any, where entries will be appended
-        @rtype:   wx.Menu
-        @return:  the sub-menu, menuViz extended
-        """
-
         self.ids_viewT = {}
         if menuViz is None:
             menuViz = wx.Menu()
@@ -392,7 +386,7 @@ class ViewBare(object):
                                                         SSetts.Eoo, SSetts.Eox,
                                                         SSetts.Exo, SSetts.Exx])])
             
-        dd = numpy.nan*numpy.ones(numpy.max(draw_pord.keys())+1)
+        dd = numpy.nan*numpy.ones(numpy.max(list(draw_pord.keys()))+1)
         for (p,v) in enumerate([SSetts.Eoo, SSetts.Eox, SSetts.Exo, SSetts.Exx]):
             dd[v] = p
         for (v, veq) in [(SSetts.Eom, SSetts.Eoo), (SSetts.Exm, SSetts.Exo)]:
@@ -435,12 +429,12 @@ class ViewBare(object):
         css[SSetts.Eox]["zord"] += 1
         css[SSetts.Exx]["zord"] += 2
         css[SSetts.Eoo]["zord"] -= 1
-        # print "---- COLOR SETTINGS"
+        # print("---- COLOR SETTINGS")
         # for k,v in css.items():
         #     if type(k) is int:
-        #         print "* %s" % k
+        #         print("* %s" % k)
         #         for kk,vv in v.items():
-        #             print "\t%s\t%s" % (kk,vv)
+        #             print("\t%s\t%s" % (kk,vv))
         return css
 
     #### SEC: DATA HANDLING
@@ -525,7 +519,11 @@ class ViewBasis(ViewBare):
             res &= self.getDrawer().q_has_selected()
         return res
 
-        
+
+###############################################################################################################
+######################################## DEFINING THE DIFFERENT VIEWS
+###############################################################################################################               
+
 class ViewEntitiesProj(ViewBasis):
     
     TID = "-"
@@ -534,7 +532,7 @@ class ViewEntitiesProj(ViewBasis):
     what = "entities"
     title_str = "Entities Projection"
     typesI = "vr"
-    defaultViewT = ProjFactory.defaultView.PID + "_" + what
+    defaultViewT = ProjFactory.defaultView.getTPIDw(what)
 
     subcl_drawer = DrawerEntitiesProj
     
@@ -562,7 +560,7 @@ class ViewEntitiesProj(ViewBasis):
         return "%s %s" % (self.getItemId(), self.getProj().getTitle())
 
     def getId(self):
-        return (self.getProj().PID, self.vid)
+        return (self.getProj().getTPID(), self.vid)
             
     def lastStepInit(self, blocking=False):
         if not self.wasKilled():
@@ -585,7 +583,7 @@ class ViewEntitiesProj(ViewBasis):
         self.runProject(blocking)
 
     def initProject(self, rid=None):
-        ### print ProjFactory.dispProjsInfo()
+        ### print(ProjFactory.dispProjsInfo())
         self.proj = ProjFactory.getProj(self.getParentData(), rid)
         
     def runProject(self, blocking=False):
@@ -635,10 +633,9 @@ class ViewEntitiesProj(ViewBasis):
                     ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
                     ctrls[-1].SetValue(v in value)
             elif kp in proj.options_parameters:
-                type_ctrl = "choice" 
-                ctrls.append(wx.Choice(frame, wx.NewId()))
+                type_ctrl = "choice"
                 strs = [k for k,v in proj.options_parameters[kp]]
-                ctrls[-1].AppendItems(strings=strs)
+                ctrls.append(wx.Choice(frame, wx.NewId(), choices=strs))
                 try:
                     ind = strs.index(value)
                     ctrls[-1].SetSelection(ind)
@@ -660,7 +657,7 @@ class ViewEntitiesProj(ViewBasis):
             block_w = box["label"].GetBestSize()[0] + sum([c.GetBestSize()[0] for c in box["ctrls"]])
             if current_w + block_w + 10 > max_w:
                 setts_boxes.append(wx.BoxSizer(wx.HORIZONTAL))
-                setts_boxes[-1].AddSpacer((10,-1))
+                setts_boxes[-1].AddSpacer(10)
                 current_w = 10
             current_w += block_w + 10
             box["label"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
@@ -668,11 +665,12 @@ class ViewEntitiesProj(ViewBasis):
             for c in box["ctrls"]:
                 c.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
                 setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
-            setts_boxes[-1].AddSpacer((10,-1))
+            setts_boxes[-1].AddSpacer(10)
 
         self.nbadd_boxes = len(setts_boxes) 
         return setts_boxes
-            
+
+    
 class ViewRed(ViewBasis):
 
     TID = None
@@ -814,7 +812,7 @@ class ViewList(ViewBasis):
 
     @classmethod
     def allCompat(tcl, what, names):
-        if what is not None:
+        if what is not None and not isinstance(what, Redescription) and not isinstance(what, ColM):
             return all([((isinstance(c[1], Redescription) or isinstance(c[1], ColM)) and DrawerBasis.isTypeId(c[1].typeId(), names, default_accept=True)) for c in what])
         return False
     
@@ -907,26 +905,6 @@ class ViewBorders(ViewList):
     @classmethod
     def suitableView(tcl, typeD={}, ext_keys=None, what=None):
         return tcl.suitableViewBase(typeD, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
-
-
-class ViewRanges(ViewList):
-    
-    TID = "LRNG"
-    SDESC = "RangesLViz"
-    ordN = 5
-    title_str = "Variables Ranges"
-    typesI = "R"
-    typeD = {}
-    ext_keys = None
-        
-    subcl_drawer = DrawerRanges
-    subcl_pltdt = PltDtHandlerListRanges
-    subcl_layh = LayoutHandlerBasis
-
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        return tcl.suitableViewBase(typeD, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
-
     
 class ViewText(ViewBare):
     TID = "TXT"
@@ -995,3 +973,27 @@ class ViewTextList(ViewText):
 
     def getTitleDesc(self):
         return "%s %s" % (self.title_str, self.getListShortStr())
+
+# #############################################################################
+# from .classPltDtHList import PltDtHandlerListRanges
+# from .classDrawerRanges import DrawerRanges
+
+# class ViewRanges(ViewList):
+    
+#     TID = "LRNG"
+#     SDESC = "RangesLViz"
+#     ordN = 5
+#     title_str = "Variables Ranges"
+#     typesI = "R"
+#     typeD = {}
+#     ext_keys = None
+        
+#     subcl_drawer = DrawerRanges
+#     subcl_pltdt = PltDtHandlerListRanges
+#     subcl_layh = LayoutHandlerBasis
+
+#     @classmethod
+#     def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+#         return tcl.suitableViewBase(typeD, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
+# #############################################################################
+    

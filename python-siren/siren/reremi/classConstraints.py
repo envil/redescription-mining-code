@@ -1,18 +1,18 @@
 import re, os.path
 import numpy
-from csv_reader import getFp
+
+try:
+    from classSParts import cmp_lower,cmp_greater, cmp_leq, cmp_geq
+    from classPreferencesManager import PreferencesReader
+    from csv_reader import getFp
+except ModuleNotFoundError:
+    from .classSParts import cmp_lower,cmp_greater, cmp_leq, cmp_geq
+    from .classPreferencesManager import PreferencesReader
+    from .csv_reader import getFp
 
 import pdb
 
 class Constraints(object):
-
-    @classmethod
-    def paramsToDict(tcl, params):
-        params_l = {}
-        for k, v in params.items():
-            if type(v) is dict and "data" in v:
-                params_l[k] = v["data"]
-        return params_l
     
     @classmethod
     def getParamData(tcl, params, k, default=None):
@@ -47,7 +47,7 @@ class Constraints(object):
         if AR is None:
             AR = params.get("AR")
 
-        self._pv = self.paramsToDict(params)
+        self._pv = PreferencesReader.paramsToDict(params)
         
         self._pv.update(self.prepareValues(params))
         self.resetAR(AR)
@@ -57,7 +57,7 @@ class Constraints(object):
     ## SSETTS_PARAMS = set(["parts_type", "method_pval"])
     def reset(self, params, data=None, AR=-1, dtv=None):
         changed = {}
-        self._pv.update(self.paramsToDict(params))
+        self._pv.update(PreferencesReader.paramsToDict(params))
         self._pv.update(self.prepareValues(params))
         
         if not isinstance(AR, ActionsRegistry):
@@ -193,14 +193,14 @@ class Constraints(object):
         if type(status) is dict:
             return status
         xpd = tcl.expandDefStatus()
-        if status < 0:
+        if cmp_lower(status, 0):
             xpd["init"] = True
         return xpd
     @classmethod
     def isStatusInitStage(tcl, status):
         if type(status) is dict:
             return status.get("init", False)
-        return status < 0
+        return cmp_lower(status, 0)
     @classmethod
     def isStatusCond(tcl, status):
         if type(status) is dict:
@@ -328,12 +328,12 @@ def flipValue(v):
     return v
 
 def doComparison(vA, cop, vB):
-    if cop == "<": return vA < vB
-    if cop == ">": return vA > vB
+    if cop == "<": return cmp_lower(vA, vB)
+    if cop == ">": return cmp_greater(vA, vB)
     if cop == "=": return vA == vB            
     if cop == "<>": return vA != vB
-    if cop == ">=": return vA >= vB
-    if cop == "<=": return vA <= vB            
+    if cop == ">=": return cmp_geq(vA, vB)
+    if cop == "<=": return cmp_leq(vA, vB)            
     return False
 
 class ActionsRegistry:
@@ -376,7 +376,7 @@ class ActionsRegistry:
                 else:
                     self.parsed_fns.append("package")
             except IOError:
-                print "Cannot read actions defs from file %s!" % ff
+                print("Cannot read actions defs from file %s!" % actions_fn)
 
     def extend(self, actions_fns=[]):
         self.setupFDefsFiles(actions_fns)
@@ -394,7 +394,7 @@ class ActionsRegistry:
     def getActionsKeys(self, public_only=True):
         if public_only:
             return [k for k in self.actions_lists.keys() if not re.match("_", k)]
-        return self.actions_lists.keys()
+        return list(self.actions_lists.keys())
 
     def getActionsKeysSimple(self, public_only=True, patt=None):
         ks = []
@@ -588,7 +588,7 @@ class ActionsRegistry:
                      "filterLast": {"parity": 2, "args": {"reverse": False}},
                      "filterPairs": {"parity": 2, "args": {"max": 0, "reverse": False}}}    
     cops = "<>="
-    typic_patt = "("+ "|".join(types_static.keys()+types_dynamic.keys())+")"
+    typic_patt = "("+ "|".join(list(types_static.keys())+list(types_dynamic.keys()))+")"
     block_patt = "(?P<block>(?P<typicA>"+typic_patt+"):(?P<modA>-?)(?P<expA>[^-"+cops+"][^"+cops+"]*)((?P<cop>"+"".join([c+"?" for c in cops])+")(?P<typicB>"+typic_patt+"):(?P<modB>-?)(?P<expB>[^-"+cops+"][^"+cops+"]*))?)$"
     @classmethod
     def parseComparisonBlock(tcl, block):
@@ -644,7 +644,7 @@ class ActionsRegistry:
                 action_dets["blocks"] = []
             def_args = dict([(k, ("V", v)) for k,v in self.basic_actions[prts[0]].get("args", {}).items()])
             action_dets.update(def_args)
-            args_patt = "(?P<arg>("+"|".join(def_args.keys())+"))=(?P<cstr>CSTR:)?(?P<val>.*)$"
+            args_patt = "(?P<arg>("+"|".join(list(def_args.keys()))+"))=(?P<cstr>CSTR:)?(?P<val>.*)$"
             for prt in prts[1:]:
                 mtch_arg = re.match(args_patt, prt)
                 if mtch_arg is not None:
@@ -693,7 +693,7 @@ class ActionsRegistry:
             vB = tcl.getValElem(bB, item, other, constraints, swap=True)
             return doComparison(vA, cop, vB)
         return vA
-    @classmethod        
+    @classmethod
     def trackBlock(tcl, block, item, other=None, constraints=None):
         (bA, cop, bB) = (tcl.getBlockElem("A", block), tcl.getBlockElem("cop", block), tcl.getBlockElem("B", block))
         vA, tA = tcl.trackValElem(bA, item, other, constraints, swap=False)

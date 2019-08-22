@@ -1,11 +1,18 @@
-import re, random, operator, itertools, codecs, numpy, copy, time, datetime
-from classSParts import  SParts, SSetts
-from redquery_parser import RedQueryParser
+import re, random, operator, itertools, numpy, copy, time, datetime
 from dateutil import parser
 import time
 import scipy.spatial.distance
-from grako.exceptions import * # @UnusedWildImport
+
+try:
+    from classSParts import SParts, SSetts, cmp_vals, cmp_reclists
+    from redquery_parser import RedQueryParser
+except ModuleNotFoundError:
+    from .classSParts import SParts, SSetts, cmp_vals, cmp_reclists
+    from .redquery_parser import RedQueryParser
+# from .grako.exceptions import * # @UnusedWildImport
 import pdb
+
+NA_str_c = "nan"
 
 VARIABLE_MARK = 'v'
 XPR_MARK = "="
@@ -24,9 +31,11 @@ def getFmtCol(cid, fmts):
     return {}
 ########################
 
+TIME_FMT = "%Y-%b-%d,%H:%M:%S"
 class TimeTools:
+    
     MTCH_TIME = "_time$"
-    TIME_FMT = "%Y-%b-%d,%H:%M:%S"
+    TIME_FMT =  TIME_FMT
     TIME_ELEMS = [TIME_FMT[i] for i in range(1, len(TIME_FMT), 3)]
 
     @classmethod
@@ -67,7 +76,7 @@ class TimeTools:
             return type(names) == list and (tcl.isTimeVarName(getNameCol(cid, names)) or getFmtCol(cid, fmts).get("time_prec") is not None)
         except:
             pdb.set_trace()
-            print fmts
+            print(fmts)
     @classmethod
     def get_time_prec(tcl, time_struct):
         parts = [time_struct.tm_year, time_struct.tm_mon, time_struct.tm_mday, time_struct.tm_hour, time_struct.tm_min, time_struct.tm_sec]
@@ -76,9 +85,11 @@ class TimeTools:
     @classmethod    
     def format_time(tcl, v, time_prec=None):    
         time_struct = time.localtime(v)
+        if time_prec is None:
+            return "%s" % v
         if time_prec == 1:
             time_prec = TimeTools.TIME_FMT
-        if time_prec is None:
+        if time_prec == -1:
             time_prec = tcl.get_time_prec(time_struct)
             # if time_struct.tm_hour + time_struct.tm_min + time_struct.tm_sec == 0:
             #     time_prec = DATE_FMT
@@ -91,9 +102,10 @@ class TimeTools:
             return "%s" % datetime.timedelta(seconds=v)
         return time.strftime(time_prec, time_struct)
     @classmethod
-    def parse_time(tcl, v, dayfirst=True, yearfirst=True):
+    def parse_time(tcl, v, dayfirst=False, yearfirst=True):
         return time.mktime(parser.parse(v, dayfirst=dayfirst, yearfirst=yearfirst).timetuple())
 
+#### truth table (TT) manipulation tools
 def foldRowsTT(tt):
     changed = False
     tts = numpy.argsort(numpy.abs(0.5*tt.shape[0] - tt.sum(axis=0)))
@@ -156,7 +168,7 @@ def triplesRowsTT(tt):
     pairs = []
     for row in tts:
         # if row == 2:
-        #     print tt
+        #     print(tt)
         #     pdb.set_trace()
         cmask = tt[row, :] == -1
         ps = zip(*numpy.where(scipy.spatial.distance.squareform((scipy.spatial.distance.pdist(tt[:,cmask]==-1, 'hamming') == 0))))
@@ -186,10 +198,10 @@ def triplesRowsTT(tt):
 
     if len(pivots) > 0:
         if len(pivots) > 1:
-            print "More than one pivot", pivots, pairs
+            print("More than one pivot", pivots, pairs)
             pdb.set_trace()
         keep[pivots] = False
-        # print "Found triple"
+        # print("Found triple")
     return tt[keep,:], numpy.sum(~keep)>0
 
 
@@ -206,8 +218,7 @@ def simplerTT(tt):
             tt, changed[3] = triplesRowsTT(tt)
     #         ttchanged += sum(changed)
     # if ttchanged > 0:
-    #     print "SIMPLIFY FROM (%d, %d) TO (%d, %d)" % (nbrows, nbnn, tt.shape[0], numpy.sum(tt>-1))
-    #     # print tt
+    #     print("SIMPLIFY FROM (%d, %d) TO (%d, %d)" % (nbrows, nbnn, tt.shape[0], numpy.sum(tt>-1)))
     return tt
 
 def recurse_numeric(b, function, args={}):
@@ -257,32 +268,31 @@ def recurse_deep(b, function, args={}):
 
 class SYM(object):
 
-    SYMU_OR = ur'\u2228'
-    SYMU_AND = ur'\u2227'
-    SYMU_NOT = ur'\u00ac '
-    SYMU_LEQ = ur'\u2264'
-    SYMU_EIN = ur'\u2208'
-    SYMU_NIN = ur'\u2209'
-    SYMU_NEQ = ur'\u2260'
+    SYMU_OR = '\u2228'
+    SYMU_AND = '\u2227'
+    SYMU_NOT = '\u00ac '
+    SYMU_LEQ = '\u2264'
+    SYMU_EIN = '\u2208'
+    SYMU_NIN = '\u2209'
+    SYMU_NEQ = '\u2260'
     
-    SYMU_SETMIN=u"\u2216"
+    SYMU_SETMIN="\u2216"
 
-    SYMU_ARRTOP=u"\u2191"
-    SYMU_ARRBOT=u"\u2193"
-    # SYMU_LEARN = ur'\u25e9'
-    # SYMU_TEST = ur'\u25ea'
-    # SYMU_LEARN = ur'\u25d6'
-    # SYMU_TEST = ur'\u25d7'
-    # SYMU_LEARN = ur'\u25d0'
-    # SYMU_TEST = ur'\u25d1'
-    SYMU_LEARN = ur'\u25d5'
-    SYMU_TEST = ur'\u25d4'
-    SYMU_RATIO = ur'\u2298'
-    # SYMU_CROSS = ur'\u274c'
-    SYMU_CROSS = ur'\u2715'
-    SYMU_INOUT = ur'\u21d7'
-    SYMU_OUTIN = ur'\u21d8'
-    
+    SYMU_ARRTOP="\u2191"
+    SYMU_ARRBOT="\u2193"
+    # SYMU_LEARN = '\u25e9'
+    # SYMU_TEST = '\u25ea'
+    # SYMU_LEARN = '\u25d6'
+    # SYMU_TEST = '\u25d7'
+    # SYMU_LEARN = '\u25d0'
+    # SYMU_TEST = '\u25d1'
+    SYMU_LEARN = '\u25d5'
+    SYMU_TEST = '\u25d4'
+    SYMU_RATIO = '\u2298'
+    # SYMU_CROSS = '\u274c'
+    SYMU_CROSS = '\u2715'
+    SYMU_INOUT = '\u21d7'
+    SYMU_OUTIN = '\u21d8'
     
     SYMO_OR = 'OR'
     SYMO_AND = 'AND'
@@ -345,18 +355,16 @@ class SYM(object):
 
 
 class Op(object):
-    
+
+    opsBool = {True: 1, False: -1}
     ops = {0: 'X', 1: '|', -1: '&'}
     opsTex = {0: 'X', 1: '$\lor$', -1: '$\land$'}
     opsU = {0: 'X', 1: SYM.SYM_OR, -1: SYM.SYM_AND}
     opsTxt = {0: 'X', 1: 'or', -1: 'and'}
     
     def __init__(self, nval=0):
-        if type(nval) == bool :
-            if nval:
-                self.val = 1
-            else:
-                self.val = -1
+        if type(nval) == bool:
+            self.val = self.opsBool[nval]
         elif nval in Op.ops:
             self.val = nval
         elif isinstance(nval, Op):
@@ -406,15 +414,14 @@ class Op(object):
             return Op.opsU[self.val]
         return Op.ops[self.val]
 
-    
-    def __cmp__(self, other):
-        if other is None:
-            return 1
+    def compare(self, other):
         if type(other) is bool:
-            return self.isOr() == other
-        else:
-            return cmp(self.val, other.val)
-
+            return cmp_vals(self.val, self.opsBool[other])
+        if other is None or not isinstance(other, Op):
+            return 1
+        return cmp_vals(self.val, other.val)
+    def __eq__(self, other):
+        return self.compare(other) == 0
     def __hash__(self):
         return self.val
     def toKey(self):
@@ -444,12 +451,6 @@ class Neg(object):
     def __int__(self):
         return self.neg
     
-    def __cmp__(self, other):
-        if other is None:
-            return 1
-        else:
-            return cmp(self.neg, other.neg)
-
     def __hash__(self):
         return self.neg
     def toKey(self):
@@ -487,6 +488,11 @@ class Term(object):
     def __init__(self, ncol, vX=None, vY=None):
         self.col = ncol
 
+    def toKey(self):
+        return (self.colId(), self.typeId(), -1, -1)
+    def __eq__(self,other):
+        return isinstance(other, Term) and self.toKey() == other.toKey()
+        
     def valRange(self):
         return [None, None]
     def values(self):
@@ -515,24 +521,20 @@ class Term(object):
     def copy(self):
         return Term(self.col)
 
-    def cmpType(self, other):
-        if other is None:
-            return 1
-        else:
-            return cmp(self.typeId(), other.typeId())
-    
     def colId(self):
         return self.col
-
     def typeId(self):
         return self.type_id
     
     def cmpCol(self, other):
-        if other is None:
+        if other is None or not isinstance(other, Term):
             return 1
-        else:
-            return cmp(self.col, other.col)
-    
+        return cmp_vals(self.col, other.col)
+    def cmpType(self, other):
+        if other is None or not isinstance(other, Term):
+            return 1
+        return cmp_vals(self.typeId(), other.typeId())    
+        
     def __str__(self):
         return (Term.pattVName + ' ') % self.col
 
@@ -549,17 +551,11 @@ class BoolTerm(Term):
             
     def copy(self):
         return BoolTerm(self.col)
-    
-    def __cmp__(self, other):
-        if self.cmpCol(other) == 0:
-            return self.cmpType(other)
-        else:
-            return self.cmpCol(other)
-        
+            
     def __hash__(self):
         return self.col
     def toKey(self):
-        return (self.col, self.type_id, 0, 0)
+        return (self.colId(), self.typeId(), 0, 0)
     
     def __str__(self):
         return self.disp()
@@ -610,9 +606,9 @@ class BoolTerm(Term):
             neg = neg.dispU()
 
         if type(names) == list  and len(names) > 0:
-            return u'%s%s' % ( neg, getNameCol(self.col, names))
+            return '%s%s' % ( neg, getNameCol(self.col, names))
         else:
-            return (u'%s'+Term.pattVName) % ( neg, self.col)
+            return ('%s'+Term.pattVName) % ( neg, self.col)
             
 class CatTermONE(Term): ## LEGACY
     type_id = 2
@@ -632,20 +628,11 @@ class CatTermONE(Term): ## LEGACY
         return [self.getCat()]   
 
     def setRange(self, cat):
-        self.cat = cat #codecs.encode(cat, 'utf-8','replace')
+        self.cat = cat
             
     def copy(self):
         return CatTerm(self.col, self.cat)
     
-    def __cmp__(self, other):
-        if self.cmpCol(other) == 0:
-            if self.cmpType(other) == 0:
-                return cmp(self.cat, other.cat)
-            else:
-                return self.cmpType(other)
-        else:
-            return self.cmpCol(other)
-
     def truthEval(self, variableV):
         return variableV == self.cat
 
@@ -656,13 +643,12 @@ class CatTermONE(Term): ## LEGACY
     def hashCat(self):
         return self.getCatsBin()
         return hash(self.getCatsStr())    
-
     
     def __hash__(self):
         hcat = self.hashCat()
         return self.col*hcat+(self.col-1)*(hcat+1)
     def toKey(self):
-        return (self.col, self.type_id, 1, self.hashCat())
+        return (self.colId(), self.typeId(), 1, self.hashCat())
     
     def __str__(self):
         return self.disp()
@@ -767,21 +753,11 @@ class CatTerm(Term):
         if type(cat) in [list, set]:
             self.cat = cat
         else:
-            self.cat = set([cat])            
-            #codecs.encode(cat, 'utf-8','replace')
+            self.cat = set([cat])
             
     def copy(self):
         return CatTerm(self.col, self.cat)
     
-    def __cmp__(self, other):
-        if self.cmpCol(other) == 0:
-            if self.cmpType(other) == 0:
-                return cmp(self.hashCat(), other.hashCat())
-            else:
-                return self.cmpType(other)
-        else:
-            return self.cmpCol(other)
-
     def truthEval(self, variableV):
         return variableV in self.cat
 
@@ -805,7 +781,7 @@ class CatTerm(Term):
         hcat = self.hashCat()
         return self.col*hcat+(self.col-1)*(hcat+1)
     def toKey(self):
-        return (self.col, self.type_id, self.nbCats(), self.hashCat())
+        return (self.colId(), self.typeId(), self.nbCats(), self.hashCat())
         
     def disp(self, neg=None, names=None, lenIndex=0, fmts=None):
         if neg is None:
@@ -924,7 +900,6 @@ class NumTerm(Term):
         return [self.lowb, self.upb]
     def values(self):
         return self.valRange()
-
     
     def setRange(self, bounds):
         if numpy.isinf(bounds[0]) and numpy.isinf(bounds[1]) or bounds[0] > bounds[1]:
@@ -947,32 +922,10 @@ class NumTerm(Term):
     def truthEval(self, variableV):
         return self.lowb <= variableV and variableV <= self.upb
                         
-    def __cmp__(self, other):
-        if self.cmpCol(other) == 0:
-            if self.cmpType(other) == 0:
-                if cmp(self.lowb, other.lowb) == 0:
-                    return cmp(self.upb, other.upb)
-                else:
-                    return cmp(self.lowb, other.lowb)
-            else:
-                return self.cmpType(other)
-        else:
-            return self.cmpCol(other)
-        
-        if other is None:
-            return 1
-        elif cmp(self.col, other.col) == 0:
-            if cmp(self.lowb, other.lowb) == 0:
-                return cmp(self.upb, other.upb)
-            else:
-                return cmp(self.lowb, other.lowb)
-        else:
-            return cmp(self.col, other.col)
-
     def __hash__(self):
         return int(self.col+hash(self.lowb)+hash(self.upb))
     def toKey(self):
-        return (self.col, self.type_id, self.lowb, self.upb)
+        return (self.colId(), self.typeId(), self.lowb, self.upb)
     
     def __str__(self):
         return self.disp()
@@ -1077,10 +1030,7 @@ class NumTerm(Term):
             idcol = '%s' % getNameCol(self.col, names)
         else:
             idcol = Term.pattVName % self.col
-        try:
-            return neg+lb+idcol+ub
-        except UnicodeDecodeError:
-            return neg+lb+"v"+str(self.col)+ub
+        return neg+lb+idcol+ub
 
 class AnonTerm(Term):
 
@@ -1121,27 +1071,11 @@ class AnonTerm(Term):
             tmp = self.types_classes[self.typeId()](self.colId(), 0, 1)
             tmp.setRange(bounds)
         return tmp
-
-    
-    def __cmp__(self, other):
-        if self.cmpCol(other) == 0:
-            if other.isAnon():
-                if self.isXpr() and other.isXpr():
-                        return self.cmpXpr(other)
-                elif self.isXpr() or other.isXpr():
-                    return -1 if self.isXpr() else 1
-                else:
-                    return self.cmpType(other)
-            return -1 if self.isAnon() else 1
-        else:
-            return self.cmpCol(other)
-
-    def cmpXpr(self, other):
-        return 0
+   
     def __hash__(self):
         return self.col*hash("??")
     def toKey(self):
-        return (self.col, self.type_id, -1, -1)
+        return (self.colId(), self.typeId(), -1, -1)
     
     def __str__(self):
         return self.disp()
@@ -1230,16 +1164,10 @@ class XprTerm(AnonTerm):
         tmp = self.copy()
         return tmp
 
-    def cmpXpr(self, other):
-        if other.isAnon() and other.isXpr():
-            if cmp(self.xpr, other.xpr) == 0:
-                return cmp(self.name_col, other.name_col)
-            return cmp(self.xpr, other.xpr)
-        return -1
     def __hash__(self):
         return hash(self.xpr)
     def toKey(self):
-        return ("X", self.type_id, -1, -1)
+        return (-99.99, self.typeId(), -1, -1)
     
     def __str__(self):
         return self.disp()
@@ -1354,16 +1282,6 @@ class Literal(object):
 
     def tInfo(self, names=None):
         return self.getTerm().tInfo(names)
-
-    def __cmp__(self, other):
-        if other is None or not isinstance(other, Literal):
-            return 1
-        elif cmp(self.getTerm(), other.getTerm()) == 0:
-            return cmp(self.getNeg(), other.getNeg())
-        elif self.getTerm().isComplement(other.getTerm()) and self.getNeg() != other.getNeg():
-            return 0
-        else:
-            return cmp(self.getTerm(), other.getTerm())
      
     def __hash__(self):
         return hash(self.getTerm())+hash(self.getNeg())
@@ -1372,6 +1290,19 @@ class Literal(object):
             return (side,)+self.toKey()
         return self.getTerm().toKey()+self.getNeg().toKey()
 
+    def __eq__(self,other):
+        return isinstance(other, Literal) and self.toKey() == other.toKey()
+    def __ne__(self,other):
+        return not isinstance(other, Literal) or self.toKey() != other.toKey()
+    def __lt__(self,other):
+        return isinstance(other, Literal) and self.toKey() < other.toKey()
+    def __le__(self,other):
+        return isinstance(other, Literal) and self.toKey() <= other.toKey()
+    def __gt__(self,other):
+        return not isinstance(other, Literal) or self.toKey() > other.toKey()
+    def __ge__(self,other):
+        return not isinstance(other, Literal) or self.toKey() >= other.toKey()
+    
     def getTerm(self):
         return self.term
     def getNeg(self):
@@ -1379,13 +1310,11 @@ class Literal(object):
 
     def colId(self):
         return self.getTerm().colId()
-
     def typeId(self):
         return self.getTerm().typeId()
     
     def isNeg(self):
         return self.getNeg().boolVal()
-
     def setNeg(self, neg):
         self.neg = Neg(neg)
 
@@ -1395,12 +1324,12 @@ class Literal(object):
     def cmpFlip(self, term):
         if other is None or not isinstance(other, Literal):
             return 1
-        elif cmp(self.getTerm(), other.getTerm()) == 0:
-            return 1-cmp(self.getNeg(), other.getNeg())
+        elif cmp_vals(self.getTerm(), other.getTerm()) == 0:
+            return 1-cmp_vals(self.getNeg(), other.getNeg())
         elif self.getTerm().isComplement(other.getTerm()) and self.getNeg() == other.getNeg():
             return 0
         else:
-            return cmp(self.getTerm(), other.getTerm())
+            return cmp_vals(self.getTerm(), other.getTerm())
 
     def truthEval(self, variableV):
         if self.isNeg():
@@ -1482,7 +1411,7 @@ class QTree(object):
                                                     "\t" * self.max_depth, suppsn, yn)
             except TypeError:
                 pdb.set_trace()
-                print self.max_depth
+                print(self.max_depth)
         return strn
 
     def hasNode(self, node):
@@ -1546,10 +1475,10 @@ class QTree(object):
             tmp = self.getNodeSplit(prt)
             if neg and tmp.type_id == NumTerm.type_id and tmp.getComplement() is not None:
                 buk.insert(0, Literal(not neg, tmp.getComplement()))
-                ## print neg, tmp, "=>", buk[0]
+                ## print(neg, tmp, "=>", buk[0])
             else:
                 buk.insert(0, Literal(neg, tmp))
-                ## print neg, tmp, "->", buk[0]
+                ## print(neg, tmp, "->", buk[0])
             cn = prt
         return buk
 
@@ -1679,7 +1608,7 @@ class QTree(object):
         # if len(kks) > 1:
         #     pdb.set_trace()
         # pdb.set_trace()
-        pick = sorted(kks)[0]
+        pick = sorted(kks, key= lambda x: (commons[x], x.toKey()))[0]
 
         split_commons = [{},{},{}]
         to_ynbs = [[v[0] for v in commons[pick][0]], [v[0] for v in commons[pick][1]]]
@@ -1707,18 +1636,18 @@ class QTree(object):
                 if len(to_ynbs[ynb]) == 1:
                     bid = to_ynbs[ynb][0]
                 else:
-                    print "Not exactly one branch ending in %d: %s!" % (tid, to_ynbs[ynb])
+                    print("Not exactly one branch ending in %d: %s!" % (tid, to_ynbs[ynb]))
                     bid = None
                 self.addLeafNode(tid, ynb, bid)
 
         if len(split_commons[2]) > 0:
             self.recTree(to_ynbs[2], split_commons[2], pid, fynb)
         elif len(to_ynbs[2]) > 0:
-            print "Unexpected something"
+            print("Unexpected something")
             # pdb.set_trace()
 
     def fill(self):
-        basic_nodes = self.tree.keys()
+        basic_nodes = list(self.tree.keys())
         for ni in basic_nodes:
             if "children" in self.tree[ni] and ni != self.root_id:
                 for ynb in [0,1]:
@@ -1730,8 +1659,8 @@ class QTree(object):
         if subsets is None:
             subsets = [data.rows()]
         self.recSupps(side, data, self.root_id, subsets)
-        # print "SUPPORT %d" % side
-        # print [(n, s) for (n, s) in self.supps.items() if type(n) is int]
+        # print("SUPPORT %d" % side)
+        # print([(n, s) for (n, s) in self.supps.items() if type(n) is int])
         # pdb.set_trace()
 
     def recSupps(self, side, data, node, subsets):
@@ -1824,9 +1753,9 @@ class Query(object):
     for ei, el in elem_letters.items():
         info_what[ei+"set"] = "self.inv%s()" % el
         info_what[ei+"nb"] = "len(self.inv%s())" % el
-    mtch_contain = "contains(?P<typ>["+"".join(elem_letters.keys())+"])"
+    mtch_contain = "contains(?P<typ>["+"".join(list(elem_letters.keys()))+"])"
 
-    Pwhat_match = "("+ "|".join(["query", mtch_contain]+info_what.keys()) +")"
+    Pwhat_match = "("+ "|".join(["query", mtch_contain]+list(info_what.keys())) +")"
     @classmethod
     def hasPropWhat(tcl, what):
         return re.match(tcl.Pwhat_match, what) is not None
@@ -2022,9 +1951,9 @@ class Query(object):
         self.buk = res
         if sfliped:
             self.op.flip()
-        # print self
+        # print(self)
         # pdb.set_trace()
-        # print "-------"
+        # print("-------")
 
     def flip(self):
         self.negate()
@@ -2040,15 +1969,15 @@ class Query(object):
         self.push_negation()
         # self.op.flip()
         # recurse_list(self.buk, function =lambda x: x.flip())
+
+    def __eq__(self, other):
+        return self.compare(other) == 0
         
-    def __cmp__(self, y):
-        return self.compare(y)
-            
     def compare(self, other): 
-        if other is None:
+        if other is None or not isinstance(other, Query):
             return 1
         try:
-            if self.op == other.op and self.buk == other.buk:
+            if self.op.compare(other.op) == 0 and cmp_reclists(self.buk, other.buk) == 0:
                 return 0
         except AttributeError:
             ### Such error means the buckets are not identical...
@@ -2057,12 +1986,12 @@ class Query(object):
         if len(self) < len(other): ## nb of literals in the query, shorter better
             return Query.diff_length
         elif len(self) == len(other):
-            if len(self.buk)  < len(other.buk) : ## nb of buckets in the query, shorter better
+            if len(self.buk)  < len(other.buk): ## nb of buckets in the query, shorter better
                 return Query.diff_balance
-            elif len(self.buk) == len(other.buk) :
-                if self.op > other.op : ## operator
+            elif len(self.buk) == len(other.buk):
+                if self.op.compare(other.op) > 0: ## operator
                     return Query.diff_op
-                elif self.op == other.op :
+                elif self.op.compare(other.op) == 0:
                     if self.invCols() > other.invCols(): ## literals in the query
                         return Query.diff_cols
                     elif self.invCols() == other.invCols():
@@ -2075,9 +2004,10 @@ class Query(object):
                 return -Query.diff_balance
         else:
             return -Query.diff_length
-    
-    def comparePair(x0, x1, y0, y1): ## combined compare for pair
-        if ( x0.op == y0.op and x0.buk == y0.buk and x1.op == y1.op and x1.buk == y1.buk ):
+
+    @classmethod
+    def comparePair(tcl, x0, x1, y0, y1): ## combined compare for pair
+        if ( x0.op.compare(y0.op) == 0 and x0.buk == y0.buk and x1.op.compare(y1.op) == 0 and x1.buk == y1.buk ):
             return 0
 
         if len(x0) + len(x1) < len(y0) + len(y1): ## nb of terms in the query, shorter better
@@ -2094,12 +2024,12 @@ class Query(object):
                         return Query.diff_balance
                     
                     elif max(len(x0.buk), len(x1.buk) ) == max(len(y0.buk), len(y1.buk)):
-                        if x0.op > y0.op : ## operator on the left
+                        if x0.op.compare(y0.op) > 0: ## operator on the left
                             return Query.diff_op
-                        elif x0.op == y0.op:
-                            if x1.op > y1.op : ## operator on the right
+                        elif x0.op.compare(y0.op) == 0:
+                            if x1.op.compare(y1.op) > 0: ## operator on the right
                                 return Query.diff_op
-                            elif x1.op == y1.op:
+                            elif x1.op.compare(y1.op) == 0:
                                 if x0.invCols() > y0.invCols() :
                                     return Query.diff_cols
                                 elif x0.invCols() == y0.invCols() :
@@ -2111,7 +2041,6 @@ class Query(object):
                         return -Query.diff_op
             return -Query.diff_balance
         return -Query.diff_length
-    comparePair = staticmethod(comparePair)
     
     def invCols(self, ex_anon=False):
         def getCol(lit, ex_anon):
@@ -2342,7 +2271,7 @@ class Query(object):
                  (len(self.buk) == 1 and isinstance(self.buk[0], Literal)):
             branches.append(list(self.buk))
         else:
-            print "Not a tree form!", self.disp(), self.buk
+            print("Not a tree form!", self.disp(), self.buk)
             broken = True
             #raise Warning("Not tree form!")
 
@@ -2357,9 +2286,9 @@ class Query(object):
             else:
                 vs = [evl(bb, op.other(), config) for bb in b]
                 if op.isOr():
-                    return  sum(vs) > 0
+                    return numpy.sum(vs) > 0
                 else:
-                    return reduce(operator.mul, vs) > 0
+                    return numpy.prod(vs) > 0
         if len(self) == 0:
             return True
         cp = self.copy()
@@ -2723,7 +2652,7 @@ class Query(object):
                 branches.append([Literal(1-stt[bi,ti], tlist[ti]) for ti in range(stt.shape[1]) if stt[bi,ti] != -1])
             if len(branches) > 0:
                 # for b in branches:
-                #     print [t.disp() for t in b]
+                #     print([t.disp() for t in b])
                 #pdb.set_trace()
                 qt = QTree(branches=branches)
                 tmp = qt.getQuery()
@@ -2731,9 +2660,9 @@ class Query(object):
                 try:
                     idsc = [tmap[l] for l in tmapo.keys()]
                 except KeyError:
-                    print "--- OUPS"
-                    print "---", ["%s" % s for s in tmap.keys()]
-                    print "---", ["%s" % s for s in tmapo.keys()]
+                    print("--- OUPS")
+                    print("---", ["%s" % s for s in tmap.keys()])
+                    print("---", ["%s" % s for s in tmapo.keys()])
                     pdb.set_trace()
                 dropC = [i for (l,i) in tmap.items() if l not in tmapo]
                 ctt = tt
@@ -2741,7 +2670,7 @@ class Query(object):
                     keep_rows = numpy.all(tt[:, dropC]==1, axis=1)
                     ctt = tt[keep_rows,:][:,idsc]
                 if numpy.sum(ctt != tto) >0:
-                    print "----- SOMETHING WENT WRONG !"
+                    print("----- SOMETHING WENT WRONG !")
                     pdb.set_trace()
         if len(self) == 0 and len(tmp) == 0:
             return tmp, False
@@ -2757,20 +2686,21 @@ class Query(object):
     def getXprTerm(self):
         if self.isXpr():
             return self.buk[0].getTerm()
-    
-    def hasXpr(part):
+
+    @classmethod
+    def hasXpr(tcl, part):
         return XprTerm.hasXpr(part)
-    hasXpr = staticmethod(hasXpr)
-        
-    def parseXpr(part, side, data):
+
+    @classmethod
+    def parseXpr(tcl, part, side, data):
         if XprTerm.hasXpr(part):
             xpr_term = XprTerm.parseXpr(part, side, data)
             if xpr_term is not None:
                 return Query(buk=[Literal(False, xpr_term)])
         return None
-    parseXpr = staticmethod(parseXpr)
-            
-    def parse(part, names=None, ids_map=None):
+
+    @classmethod
+    def parse(tcl, part, names=None, ids_map=None):
         if len(part.strip()) == 0 or part.strip() == "[]":
             return Query()
         qs = QuerySemantics(names, ids_map)
@@ -2781,7 +2711,6 @@ class Query(object):
             tmp = Query()
             raise Exception("Failed parsing query %s!\n\t%s" % (part, e))
         return tmp
-    parse = staticmethod(parse)
 
 # GENERATE PARSER:
 #     python -m grako -m RedQuery -o redquery_parser.py redquery.ebnf; sed -i 's/division, absolute_import, unicode_literals/division, unicode_literals/' redquery_parser.py (!!! REMOVE ABSOLUTE_IMPORT FROM GENERATED FILE)
@@ -2803,7 +2732,7 @@ class QuerySemantics(object):
             buk = ast["disjunction"]
             OR = True
         elif "literal" in ast:
-            buk = ast["literal"].values()[0]
+            buk = list(ast["literal"].values())[0]
         if "mass_neg" in ast:
             buk.insert(0,Neg(True))
         return Query(OR, buk)
@@ -2827,16 +2756,16 @@ class QuerySemantics(object):
         return tmp
 
     def conj_item(self, ast):
-        if "mass_neg" in ast.keys():
+        if "mass_neg" in ast:
             del ast["mass_neg"]
-            return [Neg(True)]+ast.values()[0]
-        return ast.values()[0]
+            return [Neg(True)]+list(ast.values())[0]
+        return list(ast.values())[0]
 
     def disj_item(self, ast):
-        if "mass_neg" in ast.keys():
+        if "mass_neg" in ast:
             del ast["mass_neg"]
-            return [Neg(True)]+ast.values()[0]
-        return ast.values()[0]
+            return [Neg(True)]+list(ast.values())[0]
+        return list(ast.values())[0]
 
     def categorical_literal(self, ast):
         return [Literal(("neg" in ast) ^ ("cat_false" in ast.get("cat_test", {})),
@@ -2880,19 +2809,16 @@ class QuerySemantics(object):
                 return self.ids_map.get(vv, vv)
             return vv
         elif self.names is not None:
-            if type(vname) is str and type(self.names[0]) is unicode:
-                vname = codecs.decode(v, 'utf-8','replace')
             if vname in self.names:
                 return self.names.index(vname)
-            #print "No match"
+            # print("No match")
             raise Exception("No matching variable")
         else:
-            print vname
+            print(vname)
             # pdb.set_trace()
             raise Exception("No variables names provided when needed!")
-
-if __name__ == '__main__':
-    import codecs
+        
+if __name__ == '__main__':    
     from classData import Data
     from classQuery import QuerySemantics ## import for Literal instance type test
     import sys
@@ -2910,29 +2836,29 @@ if __name__ == '__main__':
             elif len(line.strip().split("\t")) >= 3:
                 resLHS = parser.parse(line.strip().split("\t")[1], "query", semantics=qsLHS)
                 resRHS = parser.parse(line.strip().split("\t")[2], "query", semantics=qsRHS)
-                print "----------"
-                print line.strip()
-                print "ORG   :", resLHS, "---", resRHS
-                print resLHS.disp(style="U", names=data.getNames(0))
-                print len(resLHS.recompute(0, data)[0])
-                print len(resRHS.recompute(1, data)[0])
+                print("----------")
+                print(line.strip())
+                print("ORG   :", resLHS, "---", resRHS)
+                print(resLHS.disp(style="U", names=data.getNames(0)))
+                print(len(resLHS.recompute(0, data)[0]))
+                print(len(resRHS.recompute(1, data)[0]))
 
                 # cp = resLHS.copy()
                 # resLHS.push_negation()
-                # print "COPY  :", cp
-                # print "PUSHED:", resLHS
+                # print("COPY  :", cp)
+                # print("PUSHED:", resLHS)
                 # cp.negate()
-                # print "NEG   :", cp
-                # print resLHS.recompute(0, data)
-                # print resRHS.recompute(1, data)
+                # print("NEG   :", cp)
+                # print(resLHS.recompute(0, data))
+                # print(resRHS.recompute(1, data))
                 # pdb.set_trace()
-                # print len(resLHS)
-                # print resLHS.listLiterals()
+                # print(len(resLHS))
+                # print(resLHS.listLiterals())
                 # tmp = resLHS.copy()
-                # print tmp
+                # print(tmp)
                 # tmp.negate()
-                # print tmp
-                # print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
-                # print resLHS.makeIndexesNew('%(buk)s:%(col)i:')
+                # print(tmp)
+                # print(resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U"))
+                # print(resLHS.makeIndexesNew('%(buk)s:%(col)i:'))
                 # resLHS.reorderLits()
-                # print resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U")
+                # print(resLHS.disp(style="U", names=data.getNames(0)), "\t", resRHS.disp(style="U"))

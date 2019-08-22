@@ -1,10 +1,15 @@
 import copy
-import numpy as np
+import numpy
 from sklearn import tree
 
-from classCharbon import CharbonTree
-from classQuery import  *
-from classRedescription import  *
+try:
+    from classCharbon import CharbonTree
+    from classQuery import  *
+    from classRedescription import  *
+except ModuleNotFoundError:
+    from .classCharbon import CharbonTree
+    from .classQuery import  *
+    from .classRedescription import  *
 
 import pdb
 
@@ -25,12 +30,12 @@ class CharbonTCW(CharbonTree):
         if dtcs[0] is not None and dtcs[1] is not None:
             redex = self.get_redescription(dtcs, suppvs, data, cols_info)
             # if True: ## check
-            #     sL = set(np.where(np.array(suppvs[0]))[0])
-            #     sR = set(np.where(np.array(suppvs[1]))[0])
+            #     sL = set(numpy.where(numpy.array(suppvs[0]))[0])
+            #     sR = set(numpy.where(numpy.array(suppvs[1]))[0])
             #     if sL != red.supp(0) or sR != red.supp(1):
-            #         print "OUPS!"
+            #         print("OUPS!")
             #         pdb.set_trace()
-            # print red.queries[side], "-->\t", redex.disp()
+            # print(red.queries[side], "-->\t", redex.disp())
             return redex
         return None
 
@@ -102,7 +107,7 @@ class CharbonTCW(CharbonTree):
                 # try:
                 #     todo.pop(count_c[to_parent[tn][1]])
                 # except IndexError:
-                #     print "Popping error !", len(todo), tn, to_parent[tn][1], count_c[to_parent[tn][1]]  
+                #     print("Popping error !", len(todo), tn, to_parent[tn][1], count_c[to_parent[tn][1]])
                 #     pdb.set_trace()                    
                 ii -= 1
             else:
@@ -145,9 +150,9 @@ class CharbonTCW(CharbonTree):
                 dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], self.constraints.getCstr("max_depth"), self.constraints.getCstr("min_node_size"))
             except IndexError:
                 pdb.set_trace()
-                print current_side
+                print(current_side)
             if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
-                               and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
+                               and suppvs[current_side] is not None and numpy.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
                 rounds = -1
             else:
@@ -161,17 +166,17 @@ class CharbonTCW(CharbonTree):
         return best
 
     def getJacc(self, supps):
-        lL = np.sum(supps[0])
-        lR = np.sum(supps[1])
-        lI = np.sum(supps[0] * supps[1])
+        lL = numpy.sum(supps[0])
+        lR = numpy.sum(supps[1])
+        lI = numpy.sum(supps[0] * supps[1])
         return lI/(lL+lR-lI)
 
     def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket,  split_criterion="gini"):
         dtc = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         dtc = dtc.fit(in_data, in_target)
-        ## print "FIT D", in_data.shape, in_target.sum()
-        #Form Vectors for computing Jaccard. The same vectors are used to form new targets
-        suppv = dtc.predict(in_data) #Binary vector of the left tree for Jaccard
+        ## print("FIT D", in_data.shape, in_target.sum())
+        # Form Vectors for computing Jaccard. The same vectors are used to form new targets
+        suppv = dtc.predict(in_data) # Binary vector of the left tree for Jaccard
     
         if sum(suppv) < in_min_bucket or len(suppv)-sum(suppv) < in_min_bucket:
             return None, None
@@ -208,7 +213,7 @@ class CharbonTSprit(CharbonTCW):
 
             dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.getCstr("min_node_size"), split_criterion=self.constraints.getCstr("split_criterion"))
             if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
-                               and suppvs[current_side] is not None and np.sum((suppvs[current_side] - suppv)**2) == 0):
+                               and suppvs[current_side] is not None and numpy.sum((suppvs[current_side] - suppv)**2) == 0):
             ### nothing found or no change
                 rounds = -1
                 depth[current_side] = self.constraints.getCstr("max_depth")+1
@@ -234,42 +239,42 @@ class CharbonTSplit(CharbonTCW):
             redex = self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
                                           [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
                                           data, cols_info)
-            ## print red.queries[side], "-->\t", redex.disp()
+            ## print(red.queries[side], "-->\t", redex.disp())
             return redex
         return None
 
     def getSplit(self, in_data_l, in_data_r, target, depth, in_min_bucket, singleD=False, cols_info=None):
         current_split_result = {'data_rpart_l': None, 'data_rpart_r': None}
-        if np.count_nonzero(target) > in_min_bucket:
+        if numpy.count_nonzero(target) > in_min_bucket:
             flag = True
             
             while flag:
                 if depth <= self.constraints.getCstr("max_depth"):
                     current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result, split_criterion=self.constraints.getCstr("split_criterion"))
-                    # print "Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
-                    #Check if we have both vectors (split was successful on the left and right matrix) 
+                    # print("Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature)
+                    # Check if we have both vectors (split was successful on the left and right matrix) 
                     if current_split_result['data_rpart_l'] is None or current_split_result['data_rpart_r'] is None:
                         if depth != 2:
-                            #Check if left tree was able to split
+                            # Check if left tree was able to split
                             if current_split_result['split_vector_l'] is None:
                                 current_split_result['split_vector_l'] = copy.deepcopy(previous_split_result['split_vector_l'])
                                 current_split_result['data_rpart_l'] = copy.deepcopy(previous_split_result['data_rpart_l'])
-                                #print("split_vector_l didn't split")
-                            #Check if right tree was able to split 
+                                # print("split_vector_l didn't split")
+                            # Check if right tree was able to split 
                             if current_split_result['split_vector_r'] is None:
                                 current_split_result['split_vector_r'] = copy.deepcopy(previous_split_result['split_vector_r'])
                                 current_split_result['data_rpart_r'] = copy.deepcopy(previous_split_result['data_rpart_r'])
-                                #print("split_vector_r didn't split")
+                                # print("split_vector_r didn't split")
                             previous_split_result = None
                         flag = False
                     else:
-                        if depth==2: #depth = 2 means the first iteration, no previous results exist here. Thus, no additional checks are available
+                        if depth==2: # depth = 2 means the first iteration, no previous results exist here. Thus, no additional checks are available
                             previous_split_result = copy.deepcopy(current_split_result)
                             depth = depth + 1
                         else:
-                            #Here we have successful splits and have to check wethere trees has changed          
+                            # Here we have successful splits and have to check wethere trees has changed          
                             if (set(previous_split_result['split_vector_l']) == set(current_split_result['split_vector_l'])) or (set(previous_split_result['split_vector_r']) == set(current_split_result['split_vector_r'])):
-                                #print("one of trees doesn't change anymore")
+                                # print("one of trees doesn't change anymore")
                                 previous_split_result = None
                                 flag = False
                             else:
@@ -277,7 +282,7 @@ class CharbonTSplit(CharbonTCW):
                                 depth = depth + 1
                 else:
                     flag = False
-        # print "Result", current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature
+        # print("Result", current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature)
         # pdb.set_trace()
         return current_split_result
 
@@ -288,16 +293,16 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
         if cols_info is None:
             tt = [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
         else:
-            # print "R", current_split_result['data_rpart_r'].tree_.feature, [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
+            # print("R", current_split_result['data_rpart_r'].tree_.feature, [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0])
             ttm = [cols_info[1][c][1] for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
             tt = [kk for (kk,vv) in cols_info[1].items() if vv[1] in ttm]
         feed_data[:,tt] = 0.
     
     data_rpart_l = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
     data_rpart_l = data_rpart_l.fit(feed_data, in_target)
-    ## print "FIT DBa", feed_data.shape, in_target.sum()
-    #Form Vectors for computing Jaccard. The same vectors are used to form new targets
-    split_vector_l = data_rpart_l.predict(in_data_l) #Binary vector of the left tree for Jaccard
+    ## print("FIT DBa", feed_data.shape, in_target.sum())
+    # Form Vectors for computing Jaccard. The same vectors are used to form new targets
+    split_vector_l = data_rpart_l.predict(in_data_l) # Binary vector of the left tree for Jaccard
     
     if (len(set(split_vector_l)) <= 1):
         split_vector_l = None
@@ -311,7 +316,7 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
             if cols_info is None:
                 tt = [c for c in data_rpart_l.tree_.feature if c >= 0]
             else:
-                # print "L", data_rpart_l.tree_.feature, [c for c in data_rpart_l.tree_.feature if c >= 0]
+                # print("L", data_rpart_l.tree_.feature, [c for c in data_rpart_l.tree_.feature if c >= 0])
                 ttm = [cols_info[0][c][1] for c in data_rpart_l.tree_.feature if c >= 0]
                 tt = [kk for (kk,vv) in cols_info[0].items() if vv[1] in ttm]
             feed_data[:,tt] = 0.
@@ -319,9 +324,9 @@ def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_
     
         data_rpart_r = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
         data_rpart_r = data_rpart_r.fit(feed_data, target)
-        ## print "FIT DBb", feed_data.shape, in_target.sum()
-        #Form Vectors for computing Jaccard. The same vectors are used to form new targets
-        split_vector_r = data_rpart_r.predict(in_data_r) #Binary vector of the left tree for Jaccard
+        ## print("FIT DBb", feed_data.shape, in_target.sum())
+        # Form Vectors for computing Jaccard. The same vectors are used to form new targets
+        split_vector_r = data_rpart_r.predict(in_data_r) # Binary vector of the left tree for Jaccard
     
         if (len(set(split_vector_r)) <= 1):
             split_vector_r = None

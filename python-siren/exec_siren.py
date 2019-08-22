@@ -15,7 +15,7 @@ import pdb
 from siren.interface.classSiren import Siren
 from siren.interface.classGridTable import CustRenderer
 from siren.reremi.classPreferencesManager import PreferencesReader, getPM
-from siren.reremi.mainReReMi import prepareFilenames, getDataAddInfo
+from siren.reremi.classPackage import IOTools
 
 import time
 
@@ -55,7 +55,7 @@ class SirenApp(wx.App):
                     #### in/out params are not read and accounted for in Siren, load separately
                     params = PreferencesReader(pm).getParametersDict(filename, pv={})
                     src_folder = os.path.dirname(os.path.abspath(filename))
-                    filenames = prepareFilenames(params, src_folder=src_folder)
+                    filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
                     if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
                         self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
                         self.frame.dw.applyVarsMask(params)
@@ -74,7 +74,7 @@ class SirenApp(wx.App):
                             pos_fn += 1
                             RHfile = sys.argv[pos_fn]                            
 
-                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+getDataAddInfo())
+                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+IOTools.getDataAddInfo())
                     pos_fn += 1
                 else:
                     pos_fn *= -1
@@ -175,7 +175,7 @@ class SirenApp(wx.App):
                 self.frame.LoadFile(filename)
             elif ext == '.csv':
 
-                self.frame.dw.importDataFromCSVFiles([filename, filename]+getDataAddInfo())
+                self.frame.dw.importDataFromCSVFiles([filename, filename]+IOTools.getDataAddInfo())
                 self.frame.refresh()
             else:
                  wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()
@@ -193,15 +193,18 @@ class SirenApp(wx.App):
 def siren_run():
     app = SirenApp(False)
 
-    CustRenderer.BACKGROUND_SELECTED = wx.SystemSettings_GetColour( wx.SYS_COLOUR_HIGHLIGHT )
-    CustRenderer.TEXT_SELECTED = wx.SystemSettings_GetColour( wx.SYS_COLOUR_HIGHLIGHTTEXT )
-    CustRenderer.BACKGROUND = wx.SystemSettings_GetColour( wx.SYS_COLOUR_WINDOW  )
-    CustRenderer.TEXT = wx.SystemSettings_GetColour( wx.SYS_COLOUR_WINDOWTEXT  )
+    CustRenderer.BACKGROUND_SELECTED = wx.SystemSettings.GetColour( wx.SYS_COLOUR_HIGHLIGHT )
+    CustRenderer.TEXT_SELECTED = wx.SystemSettings.GetColour( wx.SYS_COLOUR_HIGHLIGHTTEXT )
+    CustRenderer.BACKGROUND = wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW  )
+    CustRenderer.TEXT = wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOWTEXT  )
 
     #app.frame = Siren()
     app.MainLoop()
 
-
-if __name__ == '__main__':
+def main():
     multiprocessing.freeze_support()
     siren_run()
+
+if __name__ == '__main__':
+    main()
+

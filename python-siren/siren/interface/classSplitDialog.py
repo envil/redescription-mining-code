@@ -4,7 +4,7 @@ import wx
 ### from wx import EVT_BUTTON, EVT_CHECKBOX, EVT_CHOICE, EVT_CLOSE, EVT_TEXT   
 
 import pdb
-from classPreferencesDialog import PreferencesDialog
+from .classPreferencesDialog import PreferencesDialog
 
 class SplitDialog(PreferencesDialog):
     """
@@ -62,8 +62,6 @@ class SplitDialog(PreferencesDialog):
             self.dispInfo(conf, top_sizer)
             self.makeButtons(sec_id, conf, top_sizer)
             self.getSplitsIDS()
-            # pdb.set_trace()
-            # print self.controls_map["add"]["learn"]
             self.makeAssignBoxes(conf, top_sizer)
             conf.SetSizer(top_sizer)
             top_sizer.Fit(conf)
@@ -71,20 +69,19 @@ class SplitDialog(PreferencesDialog):
             self.conf = conf
 
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
-            ### DEBUG
             self.controls_map[self.sec_id]["button"]["prepare"].Disable()
             self.controls_map[self.sec_id]["button"]["save_col"].Disable()
             
-            for txtctrl in self.controls_map[sec_id]["open"].itervalues():
+            for txtctrl in self.controls_map[sec_id]["open"].values():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for txtctrl in self.controls_map[sec_id]["range"].itervalues():
+            for txtctrl in self.controls_map[sec_id]["range"].values():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for choix in self.controls_map[sec_id]["boolean"].itervalues():
+            for choix in self.controls_map[sec_id]["boolean"].values():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for choix in self.controls_map[sec_id]["single_options"].itervalues():
+            for choix in self.controls_map[sec_id]["single_options"].values():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
-                for chkbox in chkset.itervalues():
+            for chkset in self.controls_map[sec_id]["multiple_options"].values():
+                for chkbox in chkset.values():
                     self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
         self.setSelectedSource()
         self.Centre()
@@ -107,8 +104,7 @@ class SplitDialog(PreferencesDialog):
         ctrl_id = wx.NewId()
         item_id = "source"
         label = wx.StaticText(frame, wx.ID_ANY, "Source:")
-        self.controls_map[sec_id][item_id] = wx.Choice(frame, ctrl_id)
-        self.controls_map[sec_id][item_id].AppendItems(strings=self.source_cands)
+        self.controls_map[sec_id][item_id] = wx.Choice(frame, ctrl_id, choices=self.source_cands)
         self.objects_map[ctrl_id]= (sec_id, "single_options", item_id)
         self.Bind(wx.EVT_CHOICE, self.changeSource, self.controls_map[sec_id][item_id])
 
@@ -196,7 +192,7 @@ class SplitDialog(PreferencesDialog):
     def destroyAssignBoxes(self, frame, top_sizer, sec_id="add"):
         for item_id in ["test", "learn"]:
             self.boxes_sizers[item_id].Clear()
-            keys = self.controls_map[sec_id][item_id].keys()
+            keys = list(self.controls_map[sec_id][item_id].keys())
             for key in keys:
                 self.controls_map[sec_id][item_id][key].Destroy()
                 del self.controls_map[sec_id][item_id][key]

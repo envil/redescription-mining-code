@@ -1,21 +1,16 @@
-import numpy as np
+import numpy
 from sklearn import tree
 
-from classCharbon import CharbonTree
-from classQuery import  *
-from classRedescription import  *
-
+try:
+    from classCharbon import CharbonTree
+    from classQuery import  *
+    from classRedescription import  *
+except ModuleNotFoundError:
+    from .classCharbon import CharbonTree
+    from .classQuery import  *
+    from .classRedescription import  *
 
 import pdb
-
-#########################################################################
-################# from trees_m2
-#########################################################################
-# from sklearn import tree
-# import numpy as np
-# from classQuery import  *
-### import sys
-
 
 NID = 0
 def next_nid():
@@ -33,7 +28,7 @@ def gather_supp(tree_exp):
                 support_vs.append(tree_exp[node_id]["support"])
     support_vs = []
     recurse_gather(tree_exp["nodes"], tree_exp["root"], support_vs)
-    return np.sum(support_vs,axis=0)
+    return numpy.sum(support_vs,axis=0)
 
 def set_supp(tree_exp, data_in, mask=None):
     def recurse_supp(tree_exp, data_in, node_id, support_v, over_supp, which=0):
@@ -43,16 +38,16 @@ def set_supp(tree_exp, data_in, mask=None):
             else:
                 Ev = data_in[:,tree_exp[node_id]["split"][0]] > tree_exp[node_id]["split"][-2]
             recurse_supp(tree_exp, data_in, tree_exp[node_id]["children"][0], support_v*Ev, over_supp, 0)
-            recurse_supp(tree_exp, data_in, tree_exp[node_id]["children"][1], support_v*np.logical_not(Ev), over_supp, 1)
+            recurse_supp(tree_exp, data_in, tree_exp[node_id]["children"][1], support_v*numpy.logical_not(Ev), over_supp, 1)
         else:
-            tree_exp[node_id]["support"] = np.zeros(mask.shape[0], dtype=bool)
+            tree_exp[node_id]["support"] = numpy.zeros(mask.shape[0], dtype=bool)
             tree_exp[node_id]["support"][mask] = support_v
             if which == 0:
                 over_supp += tree_exp[node_id]["support"]
     if mask is None:
-        mask = np.ones(data_in.shape[0], dtype=bool)
-    over_supp = np.zeros(mask.shape[0], dtype=bool)
-    recurse_supp(tree_exp["nodes"], data_in, tree_exp["root"], np.ones(data_in.shape[0], dtype=bool), over_supp)
+        mask = numpy.ones(data_in.shape[0], dtype=bool)
+    over_supp = numpy.zeros(mask.shape[0], dtype=bool)
+    recurse_supp(tree_exp["nodes"], data_in, tree_exp["root"], numpy.ones(data_in.shape[0], dtype=bool), over_supp)
     tree_exp["over_supp"] = over_supp
     return over_supp    
 
@@ -81,7 +76,7 @@ def get_tree(decision_tree, candidates):
                     nvar = candidates[nvar]
                 except IndexError:
                     pdb.set_trace()
-                    print nvar, candidates
+                    print(nvar, candidates)
             lcid, rcid = (decision_tree.children_left[node_id], decision_tree.children_right[node_id])
             dl = decision_tree.value[lcid][0]
             dr = decision_tree.value[rcid][0]
@@ -127,16 +122,16 @@ def splitting(in_target, in_data, candidates, max_depth= 1,  min_bucket=3, split
         return {"root": None}
 
     data_rpart = tree.DecisionTreeClassifier(criterion=split_criterion, max_depth = 1, min_samples_leaf = min_bucket, random_state=0).fit(in_data, in_target)
-    ## print "FIT ", in_data.shape, in_target.sum()
+    ## print("FIT ", in_data.shape, in_target.sum())
     # split_vector = data_rpart.predict(in_data) #Binary vectoFile "/home/r/NetBeansProjects/RedescriptionTrees/src/redescriptiontrees_method2.py", line 201, in <module>r of the tree for Jaccard
     split_tree = get_tree(data_rpart.tree_, candidates)
-    # print "SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]]
+    # print("SPLIT", data_rpart.tree_.feature[0], candidates[data_rpart.tree_.feature[0]], data_rpart.tree_.threshold[0], in_data.shape, in_data[:,data_rpart.tree_.feature[0]])
     # ttt = set_supp(split_tree, in_data)
     # if sum(ttt-split_vector) > 0:
-    #     print "Something smells bad around here splitting..."
+    #     print("Something smells bad around here splitting...")
     #     pdb.set_trace()
     #     ttt = set_supp(split_tree, in_data)
-    # print sum(ttt-split_vector), sum(ttt), "vs", sum(split_vector) 
+    # print(sum(ttt-split_vector), sum(ttt), "vs", sum(split_vector))
     return split_tree
 
 def init_tree(data, side, more={}, cols_info=None):
@@ -166,13 +161,13 @@ def init_tree(data, side, more={}, cols_info=None):
         parent_tree["leaves"] = [nidl, nidr]
         parent_tree["nodes"] = {nidt: {"id": nidt, "split": more.get("src"), "parent": None, "children": [nidl,nidr]},
                                 nidl: {"id": nidl, "support": supp_pos, "parent": nidt},
-                                nidr: {"id": nidr, "support": np.logical_not(supp_pos), "parent": nidt}}
+                                nidr: {"id": nidr, "support": numpy.logical_not(supp_pos), "parent": nidt}}
     else:
         nidt = next_nid()
         parent_tree["root"] = nidt
         parent_tree["init"] = True
         parent_tree["leaves"] = [nidt]
-        parent_tree["nodes"] = {nidt: {"id": nidt, "support": np.ones(data[side].shape[0], dtype=bool)}}
+        parent_tree["nodes"] = {nidt: {"id": nidt, "support": numpy.ones(data[side].shape[0], dtype=bool)}}
                                     
     return parent_tree
 
@@ -209,7 +204,7 @@ def piece_together(trees_store, trees_pile_side):
         current_layer = trees_pile_side.pop()
         for tree in current_layer:
             toplug = trees_store[tree]["branch"]
-            # print "PLUG: ", toplug
+            # print("PLUG: ", toplug)
             pnid = trees_store[toplug[0]]["nodes"][toplug[1]]["parent"]
             rp = trees_store[toplug[0]]["nodes"][pnid]["children"].index(toplug[1])
             trees_store[toplug[0]]["nodes"][pnid]["children"][rp] = trees_store[tree]["root"] 
@@ -220,7 +215,7 @@ def piece_together(trees_store, trees_pile_side):
             trees_store[toplug[0]]["leaves"].extend(trees_store[tree]["leaves"])
             del trees_store[tree]
     if len(trees_pile_side[0]) > 1:
-        print "Many trees left..."
+        print("Many trees left...")
     for treeid in trees_pile_side.pop():
         for field in ["candidates", "over_supp", "branch", "id"]:
             del trees_store[treeid][field]
@@ -232,9 +227,9 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
     current_side = side_ini
     #### account for dummy tree on other side when counting levels
     while min(len(trees_pile[side_ini]),len(trees_pile[1-side_ini])-1) < max_level and len(trees_pile[current_side][-1]) > 0:
-        # print side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1])
-        target = np.sum([trees_store[tree]["over_supp"] for tree in trees_pile[current_side][-1]], axis=0)
-        # print "TARGET", current_side, sum(target)
+        # print(side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1]))
+        target = numpy.sum([trees_store[tree]["over_supp"] for tree in trees_pile[current_side][-1]], axis=0)
+        # print("TARGET", current_side, sum(target))
         current_side = 1-current_side
         trees_pile[current_side].append([])
 
@@ -252,15 +247,15 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                 dt = data[current_side][:, candidates]
             for leaf in leaves:            
                 mask = gp_tree["nodes"][leaf]["support"]
-                # print "BRANCH\t(%d,%d)\t%d %d\t%d:%d/%d"  % (current_side, len(trees_pile[current_side]),
+                # print("BRANCH\t(%d,%d)\t%d %d\t%d:%d/%d"  % (current_side, len(trees_pile[current_side]),
                 #                                              gp_tree["id"], leaf, sum(mask),
-                #                                              sum(target[mask]), sum(mask)-sum(target[mask]))
-                # print current_side, dt[mask,:].shape
+                #                                              sum(target[mask]), sum(mask)-sum(target[mask])))
+                # print(current_side, dt[mask,:].shape)
                 split_tree = splitting(target[mask], dt[mask,:], candidates,
                                        max_depth=1, min_bucket=min_bucket, split_criterion=split_criterion)
                 if split_tree["root"] is not None:
                     set_supp(split_tree, dt[mask,:], mask)
-                    # print "\tX", split_tree["nodes"][split_tree["root"]]["split"], [sum(split_tree["nodes"][lf]["support"]) for lf in split_tree["leaves"]], sum(split_tree["over_supp"])
+                    # print("\tX", split_tree["nodes"][split_tree["root"]]["split"], [sum(split_tree["nodes"][lf]["support"]) for lf in split_tree["leaves"]], sum(split_tree["over_supp"]))
                     
                     split_tree["branch"] = (gp_tree["id"], leaf)
                     vrs = get_variables(split_tree["nodes"], split_tree["root"])
@@ -273,15 +268,15 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                         ncandidates = [vvi for vvi in candidates if cols_info[current_side][vvi][1] not in ttm]
                         ninvolved = [vvi for (vvi, vv) in cols_info[current_side].items() if vv[1] in ttm]
 
-                    # print "involved", ninvolved, "ncands", ncandidates
+                    # print("involved", ninvolved, "ncands", ncandidates)
                     split_tree["candidates"] = list(ncandidates)
                     split_tree["involv"] = list(ninvolved)
-                    # print "CANDIDATES", current_side, vrs
+                    # print("CANDIDATES", current_side, vrs)
                     split_tree["id"] = PID
                     trees_pile[current_side][-1].append(PID)
                     trees_store[PID] = split_tree
                     PID += 1
-    # print side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1])
+    # print(side_ini, len(trees_pile[side_ini]), len(trees_pile[1-side_ini]), len(trees_pile[current_side][-1]))
     # pdb.set_trace()
     return trees_pile, trees_store, PID
 
@@ -372,10 +367,10 @@ class CharbonTLayer(CharbonTree):
         redt = extract_reds(trees_pile, trees_store, data, cols_info)
         if redt is not None:
             redex = Redescription.fromQueriesPair(redt[0], data)
-            # if np.sum(redt[1][0]*redt[1][1]) != red.sParts.lenI():
-            #     print np.sum(redt[1][0]*redt[1][1])
+            # if numpy.sum(redt[1][0]*redt[1][1]) != red.sParts.lenI():
+            #     print(numpy.sum(redt[1][0]*redt[1][1]))
             #     pdb.set_trace()
-            ## print red.queries[side], "-->\t", redex.disp()
+            ## print(red.queries[side], "-->\t", redex.disp())
             return redex
         return None
 

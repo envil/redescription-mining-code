@@ -20,7 +20,7 @@ from ..reremi.classRedescription import Redescription
 from ..reremi.classConstraints import Constraints
 
 from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-from ..reremi.classPackage import Package, writePreferences, writeRedescriptions, getPrintParams
+from ..reremi.classPackage import Package, IOTools
 
 #from findFiles import findFile
 
@@ -44,8 +44,6 @@ def findFile(fname, path=['']):
 class DataWrapper(object):
     """Contains all the data
     """
-
-
     def __init__(self, logger=None, package_filename = None, conf_defs=[]):
         """Inits the class. Either package_filename or the others should be given.
         """
@@ -298,9 +296,9 @@ class DataWrapper(object):
         self.getData().extractFolds(side, colid)
     def assignLT(self, ids_learn=None, ids_test=None):
         if ids_learn is None or ids_test is None:
-            self.data_handle.getData().dropLT()
+            self.getData().dropLT()
         else:
-            self.data_handle.getData().assignLT(ids_learn, ids_test)
+            self.getData().assignLT(ids_learn, ids_test)
         self.addReloadRecompute()
     def setData(self, data):
         self.data = data
@@ -429,21 +427,16 @@ class DataWrapper(object):
             else:
                 compare_iids = iids
                 after_iids = [iid for iid in self.reds.getIidsListBelow(lid, iids[0]) if iid not in iids]
-
-            # print "IIDS PRE", before_iids, compare_iids, after_iids
                 
             current_iids = [i for i in compare_iids if self.reds.getItem(i).isEnabled()]
             bottom_iids = [i for i in compare_iids if not self.reds.getItem(i).isEnabled()]
 
-            # print "IIDS MID", current_iids, bottom_iids
             selected_iids = self.reds.selected(actions, current_iids, data=self.getData())
-            # print "IIDS SELECTED", selected_iids
             middle_iids = []
             for i in current_iids:
                 if i not in selected_iids:
                     self.reds.getItem(i).setDisabled()
                     middle_iids.append(i)
-            # print "IIDS DONE", before_iids, selected_iids, middle_iids, bottom_iids, after_iids
             return before_iids, selected_iids, middle_iids, bottom_iids, after_iids
         return iids, None, None, None, None
             
@@ -686,7 +679,7 @@ class DataWrapper(object):
 
         self._startMessage('exporting prefs', filename)
         try:
-            writePreferences(prefs, pm, filename, False, inc_def, core)
+            IOTools.writePreferences(prefs, pm, filename, False, inc_def, core)
         except Exception:
             self._stopMessage()
             raise
@@ -698,11 +691,11 @@ class DataWrapper(object):
         else:
             return
         self._startMessage('exporting', filename)
-        params = getPrintParams(filename, self.data)
+        params = IOTools.getPrintParams(filename, self.data)
         rp = Redescription.getRP()
         params["modifiers"] = rp.getModifiersForData(self.data)
         try:
-            writeRedescriptions(reds, filename, **params)
+            IOTools.writeRedescriptions(reds, filename, **params)
         except Exception:
             self._stopMessage()
             raise
@@ -731,7 +724,7 @@ class DataWrapper(object):
                     continue
                 mapV = parent.viewOpen(item, iid=iid, viewT=viewT)
                 mapV.lastStepInit(blocking=True)
-                mapV.getLayH().getFrame().SetClientSizeWH(dims[0], dims[1])
+                mapV.getLayH().getFrame().SetClientSize(dims[0], dims[1])
                 mapV.addStamp(viewT, force=stamp)
                 mapV.getLayH().savefig(filename % str(iid), format=fmt)
                 mapV.getLayH().OnKil()
@@ -1126,18 +1119,3 @@ class DataWrapper(object):
                 self.acts_meths_dict[event](info, **self.acts_params_dict[event])
             else:
                 self.acts_meths_dict[event](self, info)
-# def main():
-#     # print "UNCOMMENT"
-#     # pdb.set_trace()
-#     pref_dir = os.path.dirname(__file__)
-#     conf_defs = [findFile('miner_confdef.xml', ['../reremi', os.path.split(pref_dir)[0]+'/reremi', './confs']),
-#                  findFile('ui_confdef.xml', [pref_dir, './confs'])]
-
-#     dw = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja.siren", conf_defs)
-#     dw.savePackage()
-#     dw_new = DataWrapper(None,"/home/galbrun/TKTL/redescriptors/sandbox/runs/rajapaja_basic/rajapaja_new.siren")
-#     for red in dw_new.reds:
-#         print red
-
-# if __name__ == '__main__':
-#     main()

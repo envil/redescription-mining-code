@@ -31,7 +31,7 @@ class WorkInactive:
 
 #### DUMMY METHODS START, inactive
     def __trunc__(self):
-            return 100000
+        return 100000
 
     def isActive(self):
         return False
@@ -155,7 +155,7 @@ class WorkInactive:
     def sendTracks(self, source, message, updates, parent):
         if source not in self.workers or parent is None:
             return        
-        latest_tracks = self.mapTracks(message)
+        latest_tracks = self.mapTracks(message, source)
         parent.readyTracks(latest_tracks, source)
 
     def sendResult(self, source, message, updates, parent):
@@ -165,7 +165,7 @@ class WorkInactive:
         worker_info = self.workers[source]
         if worker_info["task"] in ["project"]:
             if parent is None:
-                print "Ready proj %s %s %s" % ((source, worker_info["task"]), worker_info["vid"], message)
+                print("Ready proj %s %s %s" % ((source, worker_info["task"]), worker_info["vid"], message))
             else:
                 parent.readyProj((source, worker_info["task"]), worker_info["vid"], message)
 
@@ -177,13 +177,13 @@ class WorkInactive:
                 if worker_info["src_lid"] != "P": ### WARNING!!!
                     worker_info["results_last"] = nb_tap                                       
                 if parent is None:
-                    print "Ready reds [%s] %s %s" % ((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
+                    print("Ready reds [%s] %s %s" % ((source, worker_info["task"]), latest_reds, worker_info["results_tab"]))
                 else:
                     parent.readyReds((source, worker_info["task"]), latest_reds, worker_info["results_tab"])
                     
     def mapRid(self, red, source):
         return red
 
-    def mapTracks(self, in_tracks):
+    def mapTracks(self, in_tracks, source=None):
         return in_tracks
 #### SHARED METHODS END

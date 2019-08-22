@@ -1,9 +1,9 @@
 import multiprocessing
 import multiprocessing.queues
-import Queue
+import queue
 
 from ..reremi.classMiner import instMiner
-from classWorkInactive import WorkInactive
+from .classWorkInactive import WorkInactive
 
 import pdb
 
@@ -12,7 +12,7 @@ import pdb
 
 #class WorkerProcess:
 #    def __init__(self, id, boss, queue_in, cust_params={}):
-#         # print "WProcess logs to:", boss.getLogger().disp()
+#         # print("WProcess logs to:", boss.getLogger().disp())
 #         self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
 #         self.cust_params = cust_params
 #         self.start()
@@ -67,7 +67,7 @@ import pdb
 class WorkerProcess(multiprocessing.Process):
     def __init__(self, id, boss, queue_in, cust_params={}):
         multiprocessing.Process.__init__(self)
-        # print "WProcess logs to:", boss.getLogger().disp()
+        # print("WProcess logs to:", boss.getLogger().disp())
         self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
         self.start()
@@ -163,7 +163,7 @@ class WorkLocal(WorkInactive):
         while True:
             try:
                 self.comm_queues[qid].get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
     def addWorker(self, boss, params=None, details={}):
@@ -179,7 +179,8 @@ class WorkLocal(WorkInactive):
             raise Warning("Unkown work task %s!" % job["task"])            
 
     def closeDown(self, parent, collectLater = False):
-        for wid in self.workers.keys():
+        wks = self.workers.keys()
+        for wid in wks:
             self.layOff(wid)
         self.checkResults(parent)
         self.cleanUp("out")
@@ -215,6 +216,6 @@ class WorkLocal(WorkInactive):
                 self.handlePieceResult(piece_result, updates, parent)
                 # else:
                 #     print piece_result
-            except Queue.Empty:
+            except queue.Empty:
                 break
         return updates

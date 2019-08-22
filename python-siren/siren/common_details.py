@@ -58,6 +58,18 @@ version, changes = getVersion()
 home_eg = "https://members.loria.fr/EGalbrun/"
 home_siren = "http://siren.gforge.inria.fr/"
 
+dependencies = [("numpy", "python3-numpy", "(>= 1.13.0)"),
+                ("scipy", "python3-scipy", "(>= 0.19.0)"),
+                ("scikit-learn", "python3-sklearn", "(>= 0.19.0)"),
+                ("matplotlib", "python3-matplotlib", "(>= 2.1.0)"),
+                ("basemap", "python3-mpltoolkits.basemap", "(>= 1.1.0)")]
+
+dependencies_deb = ["python3-wxgtk4.0 (>= 4.0.0)",]
+dependencies_pip = []
+for pname, dname, v in dependencies:
+    dependencies_pip.append("%s %s" % (pname, v))
+    dependencies_deb.append("%s %s" % (dname, v))
+
 common_variables = {
     "PROJECT_NAME": "Siren",
     "PROJECT_NAMELOW": "siren",
@@ -66,9 +78,13 @@ common_variables = {
     "VERSION": version,
     "VERSION_MAC": version,
     "VERSION_MAC_UNDERSC": version,
+    "DEPENDENCIES_PIP_LIST": dependencies_pip,
+    "DEPENDENCIES_PIP_STR": "* " + "\n* ".join(dependencies_pip),
+    "DEPENDENCIES_DEB_LIST": dependencies_deb,
+    "DEPENDENCIES_DEB_STR": ", ".join(dependencies_deb),
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Wed, 10 Jan 2018 10:00:00 +0200",
+    "LAST_CHANGES_DATE": "Fri, 23 Aug 2019 10:00:00 +0100",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
     "MAINTAINER_LOGIN": "egalbrun",
@@ -85,7 +101,7 @@ common_variables = {
     "PROJECT_DESCRIPTION_LINE": "Siren is an interactive tool for visual and interactive redescription mining.",
     "PROJECT_DESCRIPTION_LONG": """This provides the ReReMi redescription mining algorithm and the Siren interface for interactive mining and visualization of redescriptions.""",
     "COPYRIGHT_YEAR_FROM": "2012",
-    "COPYRIGHT_YEAR_TO": "2018"}
+    "COPYRIGHT_YEAR_TO": "2019"}
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 
@@ -95,4 +111,4 @@ common_variables = {
 # release = cv["VERSION"]
 
 # cv["SPEC_RELEASE"] = release
-# print getExtLinks(cv)
+# print(getExtLinks(cv))

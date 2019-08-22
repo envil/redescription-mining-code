@@ -6,7 +6,8 @@ import wx
 ### from wx import ID_ANY, ID_APPLY, ID_FIND, ID_OK
 
 import os.path, re
-from ..reremi.classData import DataError, NA_str_c
+from ..reremi.classQuery import NA_str_c
+from ..reremi.classData import DataError
 
 import pdb
 
@@ -91,7 +92,7 @@ import pdb
 #             wcd = self.wcd
 #         open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
 #                                  defaultDir=self.open_dir, wildcard=wcd,
-#                                  style=wx.OPEN|wx.CHANGE_DIR)
+#                                  style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
 #         if open_dlg.ShowModal() == wx.ID_OK:
 #             path = open_dlg.GetPath()
 #             self.open_dir = os.path.dirname(path)
@@ -140,8 +141,7 @@ class ImportDataCSVDialog(object):
         for item, details in self.dialect_options.items():
             ctrl_id = wx.NewId()
             label = wx.StaticText(self.dlg, wx.ID_ANY, details['label']+":")
-            self.dialect_ctrl[item] = wx.Choice(self.dlg, ctrl_id)
-            self.dialect_ctrl[item].AppendItems(strings=[v[1] for v in details['opts']])
+            self.dialect_ctrl[item] = wx.Choice(self.dlg, ctrl_id, choices=[v[1] for v in details['opts']])
             self.dialect_ctrl[item].SetSelection(0)
             so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
             so_sizer.Add(self.dialect_ctrl[item], 0)
@@ -201,7 +201,7 @@ class ImportDataCSVDialog(object):
         wcd = self.wcd
         open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
                                  defaultDir=self.open_dir, wildcard=wcd,
-                                 style=wx.OPEN|wx.CHANGE_DIR)
+                                 style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             self.open_dir = os.path.dirname(path)
@@ -249,8 +249,7 @@ class ExportFigsDialog(object):
             details = self.format_options[item]
             ctrl_id = wx.NewId()
             label = wx.StaticText(self.dlg, wx.ID_ANY, details['label']+":")
-            self.format_ctrl[item] = wx.Choice(self.dlg, ctrl_id)
-            self.format_ctrl[item].AppendItems(strings=[v[1] for v in details['opts']])
+            self.format_ctrl[item] = wx.Choice(self.dlg, ctrl_id, choices=[v[1] for v in details['opts']])
             self.format_ctrl[item].SetSelection(0)
             so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
             so_sizer.Add(self.format_ctrl[item], 0)
@@ -313,7 +312,7 @@ class ExportFigsDialog(object):
         wcd = self.wcd
         open_dlg = wx.FileDialog(self.parent.toolFrame, message="Choose "+btnName+" file",
                                  defaultDir=self.open_dir, wildcard=wcd,
-                                 style=wx.OPEN|wx.CHANGE_DIR)
+                                 style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             self.open_dir = os.path.dirname(path)
@@ -398,7 +397,6 @@ class FindDialog(object):
                 non_matching.append(x)
         if self.callback is not None:
             self.callback(matching, non_matching, -1)
-            ## print self.callback, matching, non_matching
 
     def doNext(self):
         if self.callback is not None:

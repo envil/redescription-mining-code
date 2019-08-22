@@ -1,9 +1,9 @@
 import numpy
 from matplotlib.collections import LineCollection
 
-from classDrawerMap import DrawerMap
-from classDrawerBasis import DrawerEntitiesTD
-from classDrawerClust import DrawerClustTD
+from .classDrawerMap import DrawerMap
+from .classDrawerBasis import DrawerEntitiesTD
+from .classDrawerClust import DrawerClustTD
 
 import pdb
 
@@ -160,11 +160,11 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
         # colors[-1] = draw_settings["default"]["color_f"]
         
-        axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc)
+        axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge")
         # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
         # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
         # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
-        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2)
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge")
         axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
         
         x1 += h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx

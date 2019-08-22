@@ -1,11 +1,21 @@
-from classCol import NumColM
-from classData import Data
-from classConstraints import Constraints
-from classCharbon import CharbonGreedy
-from classExtension import Extension
-from classSParts import SParts
-from classQuery import  *
 import numpy
+try:
+    from classCol import NumColM
+    from classData import Data
+    from classConstraints import Constraints
+    from classCharbon import CharbonGreedy
+    from classExtension import Extension
+    from classSParts import SParts, cmp_lower,cmp_greater, cmp_leq, cmp_geq
+    from classQuery import  *
+except ModuleNotFoundError:
+    from .classCol import NumColM
+    from .classData import Data
+    from .classConstraints import Constraints
+    from .classCharbon import CharbonGreedy
+    from .classExtension import Extension
+    from .classSParts import SParts, cmp_lower,cmp_greater, cmp_leq, cmp_geq
+    from .classQuery import  *
+
 import pdb
 
 
@@ -22,21 +32,21 @@ class CharbonGStd(CharbonGreedy):
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
         cands = method_compute(side, col, supports, currentRStatus)
-        # print "======STD==========="
+        # print("======STD===========")
         for cand in cands:
             supp = col.suppLiteral(cand.getLiteral())
             # pdb.set_trace()
             lparts = supports.lparts()
             lin = supports.lpartsInterX(supp)
-            # print cand.getLiteral(), cand.isNeg()
-            # print lparts, lin, len(supp)
+            # print(cand.getLiteral(), cand.isNeg())
+            # print(lparts, lin, len(supp))
             cand.setClp([lin, lparts], cand.isNeg())
-            # print cand
+            # print(cand)
             if colsC is not None and self.constraints.getCstr("add_condition"):
                 ss = supports.copy()
                 ss.update(side, cand.getOp(), supp)
                 cand.setCondition(self.getCondition(colsC, ss))
-        # print "================="
+        # print("=================")
         return cands
 
 
@@ -110,7 +120,7 @@ class CharbonGStd(CharbonGreedy):
                 cands = self.findCover(1, colsC[ci], lparts, cond_sparts, Constraints.getStatusCond())
                 if len(cands) == 1:
                     cand = cands[0][1]
-                    if best[1] < cand.getAcc():
+                    if cmp_lower(best[1], cand.getAcc()):
                         best = ([len(current)], cand.getAcc())
                     elif best[1] == cand.getAcc():
                         best[0].append(len(current))
@@ -220,9 +230,9 @@ class CharbonGStd(CharbonGreedy):
                     # best = self.updateACTColors(best, , side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                     ###################### 
                     tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
-                    if best[0] < tmp_adv:
-                        best = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                     if tmp_adv is not None:
+                        if cmp_lower(best[0], tmp_adv):
+                            best = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                         collect_goods.append((tmp_adv, cat, fixed_colors, var_colors[op]))
                     ######################
                     
@@ -236,9 +246,9 @@ class CharbonGStd(CharbonGreedy):
                         # bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
                         ######################
                         tmp_adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op], self.isCond(currentRStatus))
-                        if bestNeg[0] < tmp_adv:
-                            bestNeg = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                         if tmp_adv is not None:
+                            if cmp_lower(bestNeg[0], tmp_adv):
+                                bestNeg = (tmp_adv, None, [side, op, neg, Literal(neg, CatTerm(col.getId(), cat))]) ## [fixed_colors, tuple(var_colors)]
                             collect_goodsNeg.append((tmp_adv, cat, nfixed_colors, nvar_colors[op]))
                         ######################
                         
@@ -265,11 +275,11 @@ class CharbonGStd(CharbonGreedy):
                            [lparts[1][0]-(nextc[-2][0][0]+nextc[-2][0][1]+nextc[-2][1][1]), lparts[1][1]+nextc[-2][1][1]]]
             ccum_lin = [lin[0]-nextc[-1][1], lin[1]+nextc[-1][1]]
             
-        # print "--- SUM", other_side
-        # print lparts, lin
-        # print nextc[-2], nextc[-1]
-        # print ">>"
-        # print ccum_lparts, ccum_lin
+        # print("--- SUM", other_side)
+        # print(lparts, lin)
+        # print(nextc[-2], nextc[-1])
+        # print(">>")
+        # print(ccum_lparts, ccum_lin)
         return ccum_lparts, ccum_lin
     
     def combCats(self, best, allw_neg, side, op, neg, col, collected, other_side=0, currentRStatus=0):
@@ -284,7 +294,7 @@ class CharbonGStd(CharbonGreedy):
             nextc = collected.pop()
             ccum_lparts, ccum_lin = self.additionsLParts(cum_lparts, cum_lin, nextc, other_side)
             tmp_adv = self.getAdv(side, op, neg, ccum_lparts, ccum_lin, self.isCond(currentRStatus))
-            if best_score < tmp_adv:
+            if cmp_lower(best_score,tmp_adv):
                 best_cat.append(nextc[1])
                 cum_lparts = ccum_lparts
                 cum_lin = ccum_lin
@@ -372,7 +382,7 @@ class CharbonGStd(CharbonGreedy):
             # FORWARD
             var_colors_f[0] += segments[op][i][2][0]
             var_colors_f[1] += segments[op][i][2][1]
-            if self.advRatioVar(var_colors_f, is_cond) > bests_f[-1][0]:
+            if cmp_greater(self.advRatioVar(var_colors_f, is_cond), bests_f[-1][0]):
                 var_colors_f[0] += bests_f[-1][2][0]
                 var_colors_f[1] += bests_f[-1][2][1]
 
@@ -384,7 +394,7 @@ class CharbonGStd(CharbonGreedy):
             var_colors_b[0] += segments[op][-(i+1)][2][0]
             var_colors_b[1] += segments[op][-(i+1)][2][1]
 
-            if self.advRatioVar(var_colors_b, is_cond) > bests_b[-1][0]:
+            if cmp_greater(self.advRatioVar(var_colors_b, is_cond), bests_b[-1][0]):
                 var_colors_b[0] += bests_b[-1][2][0]
                 var_colors_b[1] += bests_b[-1][2][1]
 
@@ -399,7 +409,7 @@ class CharbonGStd(CharbonGreedy):
                 f = bests_f[0]
             else:
                 f = bests_f[best_track_f[len(segments[op])-(b[1]+1)]]
-            if self.advRatioVar(f[2], is_cond) > b[0]:
+            if cmp_greater(self.advRatioVar(f[2], is_cond), b[0]):
                 best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]], self.isCond(currentRStatus))
             else:
                 best_t = self.updateACTColors(best_t, (0, len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, b[2], self.isCond(currentRStatus))
@@ -409,7 +419,7 @@ class CharbonGStd(CharbonGreedy):
                 b = bests_b[0]
             else:
                 b = bests_b[best_track_b[len(segments[op])-(f[1]+1)]]
-            if self.advRatioVar(b[2], is_cond) > f[0]: 
+            if cmp_greater(self.advRatioVar(b[2], is_cond), f[0]): 
                 best_t = self.updateACTColors(best_t, (f[1], len(segments[op]) - (b[1]+1)), side, op, False, fixed_colors, [f[2][0] + b[2][0], f[2][1] + b[2][1]], self.isCond(currentRStatus))
             else:
                 best_t = self.updateACTColors(best_t, (f[1], len(segments[op])-1), side, op, False, fixed_colors, f[2], self.isCond(currentRStatus))
@@ -433,7 +443,7 @@ class CharbonGStd(CharbonGreedy):
         best_b = (None, None, None)
         for i in range(len(segments[op])-1):
             # FORWARD
-            if i > 0 and self.getAdv(side, op, False, fixed_colors, segments[op][i][2], is_cond=is_cond, no_const=True)[0] < self.advRatioVar(var_colors_f, is_cond):
+            if i > 0 and cmp_lower(self.getAdv(side, op, False, fixed_colors, segments[op][i][2], is_cond=is_cond, no_const=True)[0], self.advRatioVar(var_colors_f, is_cond)):
                 var_colors_f[0] += segments[op][i][2][0]
                 var_colors_f[1] += segments[op][i][2][1]
                 nb_seg_f += 1
@@ -445,7 +455,7 @@ class CharbonGStd(CharbonGreedy):
             best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f, is_cond)
             
             # BACKWARD
-            if i > 0 and self.getAdv(side, op, False, fixed_colors, segments[op][-(i+1)][2], is_cond=is_cond, no_const=True)[0] < self.advRatioVar(var_colors_b, is_cond):
+            if i > 0 and cmp_lower(self.getAdv(side, op, False, fixed_colors, segments[op][-(i+1)][2], is_cond=is_cond, no_const=True)[0], self.advRatioVar(var_colors_b, is_cond)):
                 var_colors_b[0] += segments[op][-(i+1)][2][0]
                 var_colors_b[1] += segments[op][-(i+1)][2][1]
                 nb_seg_b += 1
@@ -460,7 +470,7 @@ class CharbonGStd(CharbonGreedy):
         if best_b[0] is not None and best_f[0] is not None:
             bests = [best_b, best_f]
 
-            if best_b[-1][-1][0] > best_f[-1][-1][0] and best_b[-1][-1][1] > best_f[-1][-1][1] and best_b[-1][-1][0] <= best_f[-1][-1][1]:
+            if cmp_greater(best_b[-1][-1][0], best_f[-1][-1][0]) and cmp_greater(best_b[-1][-1][1], best_f[-1][-1][1]) and cmp_leq(best_b[-1][-1][0], best_f[-1][-1][1]):
                 var_colors_m = [0,0]
                 for seg in segments[op][best_b[-1][-1][0]:best_f[-1][-1][1]+1]:
                     var_colors_m[0] += seg[2][0]
@@ -577,7 +587,7 @@ class CharbonGStd(CharbonGreedy):
                 supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [suppL, set()])
                 (scoresR, literalsFixR, literalsExtR) = self.fit(colR, supports, 1, tL)
                 for i in range(len(scoresR)):
-                    if scoresR[i] > bestScore:
+                    if cmp_greater(scoresR[i], bestScore):
                         (scores, literalsL, literalsR) = ([scoresR[i]], [literalsFixR[i]], [literalsExtR[i]])
                         bestScore = scoresR[i]
                         
@@ -589,16 +599,16 @@ class CharbonGStd(CharbonGreedy):
                 supports = SParts(self.constraints.getSSetts(), colL.nbRows(), [set(), suppR])
                 (scoresL, literalsFixL, literalsExtL) = self.fit(colL, supports, 0, tR)
                 for i in range(len(scoresL)):
-                    if scoresL[i] > bestScore:
+                    if cmp_greater(scoresL[i], bestScore):
                         (scores, literalsL, literalsR) = ([scoresR[i]], [literalsExtL[i]], [literalsFixL[i]])
                         bestScore = scoresL[i]
                         
 #             if len(scores) > 0:
-#                print "%f: %s <-> %s" % (scores[0], literalsA[0], literalsB[0])
+#                print("%f: %s <-> %s" % (scores[0], literalsA[0], literalsB[0]))
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
-        ## print "SUBDO 33 FULL", colL.getId(), colR.getId()
+        ## print("SUBDO 33 FULL", colL.getId(), colR.getId())
         org_side = side
         best = []
         interMat = []
@@ -618,13 +628,13 @@ class CharbonGStd(CharbonGreedy):
             
         (scores, literalsF, literalsE) = ([], [], [])
         ## DOABLE
-        # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
+        # print("Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1])))
         # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.getCstr("max_prodbuckets") ): 
         nbb = self.constraints.getCstr("max_prodbuckets") / float(len(bucketsF[1]))
         if len(bucketsE[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
 
             if len(bucketsE[1])/nbb < self.constraints.getCstr("max_agg"):
-                # print "Collapsing just E"
+                # print("Collapsing just E")
                 ### collapsing buckets on the largest side is enough to get within the reasonable size
                 bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
 
@@ -652,7 +662,7 @@ class CharbonGStd(CharbonGreedy):
 
                 if side is not None:
                     #### working with on variable as categories is workable
-                    # print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
+                    # print("Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1]))
                     (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side, try_comb=False)
                     if side == 1:
                         literalsL = []
@@ -684,11 +694,11 @@ class CharbonGStd(CharbonGreedy):
                     bucketsE = colE.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})         
                     bucketsF = colF.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                     side = org_side
-                    # print "Last resort solution... Collapsing both E and F", nbb, len(bucketsL[0]), len(bucketsR[0])
+                    # print("Last resort solution... Collapsing both E and F", nbb, len(bucketsL[0]), len(bucketsR[0]))
                     
-        ## print "buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.getId(), len(bucketsL[1]), colR.getId(), len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1]))
+        ## print("buckets lengths\t(0,%d) %d\t(1,%d) %d\tcollapsed %d -- product %d" % (colL.getId(), len(bucketsL[1]), colR.getId(), len(bucketsR[1]), len(bucketsE[1]), len(bucketsF[1]) * len(bucketsE[1])))
         if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
-            ## print "Trying buckets...", len(bucketsF[0]), len(bucketsE[0])
+            ## print("Trying buckets...", len(bucketsF[0]), len(bucketsE[0]))
             totInt = colE.nbRows()
             #margE = [len(intE) for intE in bucketsE[0]]
             
@@ -747,7 +757,7 @@ class CharbonGStd(CharbonGreedy):
                 while upF >= lowF and totInt - belowF - aboveF >= self.constraints.getCstr("min_itm_in"):
                     if belowF + aboveF  >= self.constraints.getCstr("min_itm_out"):
                         EinF = [sum([interMat[iF][iE] for iF in range(lowF,upF+1)]) for iE in range(len(interMat[lowF]))]
-                        EoutF = [sum([interMat[iF][iE] for iF in range(0,lowF)+range(upF+1,len(interMat))]) for iE in range(len(interMat[lowF]))]
+                        EoutF = [sum([interMat[iF][iE] for iF in list(range(0,lowF))+list(range(upF+1,len(interMat)))]) for iE in range(len(interMat[lowF]))]
                         #totEinF = sum(EinF)
                         
                         fixed_colors = [[0, 0],[totInt - aboveF - belowF, aboveF + belowF]]
@@ -829,9 +839,9 @@ class CharbonGStd(CharbonGreedy):
         if self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
             # if len(scores) > 0:
-            #     print "---- Multi cats:"
+            #     print("---- Multi cats:")
             #     for ii in range(len(scores)):
-            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
 
         for (i, nL, nR) in configs:
             for b in best[i]:
@@ -954,9 +964,9 @@ class CharbonGStd(CharbonGreedy):
         if try_comb and self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
             # if len(scores) > 0:
-            #     print "---- Multi cats:"
+            #     print("---- Multi cats:")
             #     for ii in range(len(scores)):
-            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
 
         for (i, nF, nE) in configs:
             for b in best[i]:
@@ -1039,7 +1049,7 @@ class CharbonGStd(CharbonGreedy):
                 fix_den = fixed_colors[1-op][0] + fixed_colors[1-op][1] + fixed_colors[op][0]
                 var_den = tmp_var[1]
                 # sout = fixed_colors[op][1] - tmp_var[1]
-                # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
+                # print("PIECES", sout, var_num, var_den, contri, fix_num, fix_den)
         else:
             # AND
             if self.unconstrained(no_const) or (fixed_colors[op][1] - tmp_var[1] >= self.constraints.getCstr("min_itm_c") \
@@ -1051,7 +1061,7 @@ class CharbonGStd(CharbonGreedy):
                 fix_den = fixed_colors[op][0] + fixed_colors[1-op][0]
                 var_den = tmp_var[1]
                 # sout = fixed_colors[1-op][1] + fixed_colors[op][1] - tmp_var[1]
-                # print "PIECES", sout, var_num, var_den, contri, fix_num, fix_den
+                # print("PIECES", sout, var_num, var_den, contri, fix_num, fix_den)
 
         if fix_num is not None:
             acc = self.offset_ratio(fix_num + var_num, fix_den + var_den)
@@ -1077,7 +1087,7 @@ class CharbonGStd(CharbonGreedy):
         
     def updateACTColors(self, best, lit, side, op, neg, fixed_colors, var_colors, is_cond=False):
         tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors, is_cond)
-        if best[0] < tmp_adv:
+        if cmp_lower(best[0], tmp_adv):
             return tmp_adv, None, [side, op, neg, lit] ## [fixed_colors, tuple(var_colors)]
         else:
             return best
@@ -1089,7 +1099,7 @@ class CharbonGStd(CharbonGreedy):
         inserted = False
         i = 0
         while i < len(best):
-            if best[i][0] > tmp_adv:
+            if cmp_greater(best[i][0], tmp_adv):
                 if conflictF(best[i][-1][-1], lit):  ## Best already contains conflicting of better quality 
                     return best
             else:

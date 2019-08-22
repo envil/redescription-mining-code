@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import wx
 ### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL, ID_ANY, SL_HORIZONTAL, VERTICAL
 ### from wx import EVT_BUTTON, EVT_SCROLL_THUMBRELEASE, FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
@@ -15,8 +14,8 @@ import scipy.cluster
 
 from ..reremi.classRedescription import Redescription
 from ..reremi.classSParts import SSetts
-from classDrawerBasis import DrawerEntitiesTD
-from classInterObjects import ResizeableRectangle, DraggableRectangle
+from .classDrawerBasis import DrawerEntitiesTD
+from .classInterObjects import ResizeableRectangle, DraggableRectangle
 
 #### TODO: label on slide rectangle for categories seems broken
 #### Recognize numerical categories?
@@ -67,7 +66,7 @@ def assignBlockOrd(sorting_samples, subids, nb_clusters, scaled_m, v=0, i=0, nbb
     T = scipy.cluster.hierarchy.fcluster(Z, nb_clusters, criterion="maxclust")        
     for cc in numpy.unique(T):
         ci = shuffle_ids(numpy.where(T==cc)[0], i, cc)
-        sorting_samples[subids[ci]] = -0.1*v+float(i)/nbb+10*numpy.arange(1., ci.shape[0]+1)
+        sorting_samples[subids[ci]] = -0.1*v+i/nbb+10*numpy.arange(1., ci.shape[0]+1)
 
 def getSamplingOrd(scaled_m, pos_axis, nb_clusters, max_group):
     sorting_samples = numpy.zeros(scaled_m[0,:].shape)
@@ -77,7 +76,7 @@ def getSamplingOrd(scaled_m, pos_axis, nb_clusters, max_group):
         if ids.shape[0] < nb_clusters:
             sorting_samples[ids] = -0.1*v
         else:
-            block_ft = [i*max_group for i in range(ids.shape[0]/max_group+1)]+[ids.shape[0]]
+            block_ft = [i*max_group for i in range(ids.shape[0]//max_group+1)]+[ids.shape[0]]
             if (block_ft[-1] - block_ft[-2]) < 3 and block_ft[-2] > 0:
                 ### if the last block is not the first and contains less than 3 elements, merge with previous
                 block_ft.pop(-2)
@@ -161,6 +160,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             precisions = numpy.array(precisions)
 
             mat, details, mcols = self.getParentData().getMatrix(nans=numpy.nan)
+            mcols = dict(mcols)
             mcols[None] = -1
             cids = [mcols[sc] for sc in side_cols]
             if draw_ppos is not None:
@@ -351,7 +351,7 @@ class DrawerRedPara(DrawerEntitiesTD):
                 if rg[0] is not None:
                     bds = self.getYsforRange(i, rg)
                     rects = self.axe.bar(i-self.rect_halfwidth, bds[1]-bds[0], 2*self.rect_halfwidth, bds[0],
-                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=10)
+                                         edgecolor=self.rect_ecolor, color=self.rect_color, alpha=self.rect_alpha, zorder=10, align='edge')
 
                     if self.prepared_data["qcols"][i] is not None:
                         if self.isTypeId(self.prepared_data["qcols"][i].typeId(), "Numerical"):
@@ -440,7 +440,7 @@ class DrawerRedPara(DrawerEntitiesTD):
             side = 1
             idx -= (pos_axis+1)
         if (side, lits[side][idx][1][0][0]) not in map_q:
-            pdb.set_trace()
+            print("OUPS!", (side, lits[side][idx][1][0][0]), map_q)
             return
         
         corners = numpy.vstack([tx*numpy.array([-1., 1., 0., 0.])+pos, ty*numpy.array([0., 0., 1., -1.])+1.25]).T        
@@ -529,7 +529,6 @@ class DrawerRedPara(DrawerEntitiesTD):
     def getPinvalue(self, rid, b, direc=0):
         val = self.getPinvalueRaw(rid, b, direc)
         # self.getParentData().col(self.prepared_data["qcols"][rid].colId(), self.prepared_data["qcols"][rid].colId())
-        pdb.set_trace()
         return val
     def getPinvalueRaw(self, rid, b, direc=0):
         if "qcols" not in self.prepared_data or self.prepared_data["qcols"][rid] is None:
@@ -684,7 +683,7 @@ class DrawerRedPara(DrawerEntitiesTD):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY,u"- opac. disabled +")
@@ -692,7 +691,7 @@ class DrawerRedPara(DrawerEntitiesTD):
         v_box.Add(label, 0, border=1, flag=flags) #, userData={"where": "*"})
         v_box.Add(inter_elems["slide_opac"], 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY, "-        details       +")
@@ -701,10 +700,10 @@ class DrawerRedPara(DrawerEntitiesTD):
         v_box.Add(inter_elems["slide_details"], 0, border=1, flag=flags) #, userData={"where": "*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)   
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[-1]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)        

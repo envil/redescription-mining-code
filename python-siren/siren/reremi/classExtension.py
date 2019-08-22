@@ -1,5 +1,10 @@
-from classQuery import Op, Query
-from classRedescription import Redescription
+try:
+    from classQuery import Op, Query
+    from classRedescription import Redescription
+except ModuleNotFoundError:
+    from .classQuery import Op, Query
+    from .classRedescription import Redescription
+
 import pdb
 
 class ExtensionError(Exception):
@@ -195,7 +200,7 @@ class Extension(object):
             except IndexError:                
                 pdb.set_trace()
                 return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
-                print self
+                print(self)
 
     def __cmp__(self, other):
         return self.compare(other)
@@ -372,13 +377,21 @@ class ExtensionsBatch(object):
                 self.bests[pos] = cand
                 self.tmpsco[pos] = -top[0]
 
+    def items(self):
+        return self.bests.items()
+        # x = []
+        # for k in [(0, True), (1, False), (0, False), (1, True)]:
+        #     if k in self.bests:
+        #         x.append((k, self.bests[k]))
+        # return x
+                
     def improving(self):
-        return dict([(pos, cand)  for (pos, cand) in self.bests.items() \
+        return dict([(pos, cand)  for (pos, cand) in self.items() \
                      if self.scoreCand(cand) >= self.getMinImpr()])
 
     def improvingKids(self, data):
         kids = []
-        for (pos, cand) in self.bests.items():
+        for (pos, cand) in self.items():
             if self.scoreCand(cand) >= self.getMinImpr():
                 kid = cand.kid(self.getCurrentR(), data)
                 kid.setFull(self.max_var)
@@ -393,9 +406,9 @@ class ExtensionsBatch(object):
     def improvingKidsDL(self, data, rm=None):
         tc = rm.getTopDeltaRed(self.getCurrentR(), data)
         min_impr = -tc[0]
-        # print "DL impr---", min_impr, self.tmpsco
+        # print("DL impr---", min_impr, self.tmpsco)
         kids = []
-        for (pos, cand) in self.bests.items():
+        for (pos, cand) in self.items():
             if self.tmpsco[pos] >= self.getMinImpr():
                 kid = cand.kid(self.getCurrentR(), data)
                 kid.setFull(self.max_var)
@@ -415,7 +428,7 @@ class ExtensionsBatch(object):
         dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
                       % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')
             
-        for k,cand in self.bests.items(): ## Do not print the last: current redescription
+        for k,cand in self.items(): ## Do not print the last: current redescription
             dsp += '\n\t%s' % cand.disp(self.base_acc, self.N, self.prs, self.coeffs)
         return dsp
 
@@ -434,7 +447,7 @@ class ExtensionsCombBatch(ExtensionsBatch):
         dsp += '\t\t%10s \t%9s \t%9s \t%9s\t% 5s\t% 5s' \
                       % ('score', 'Accuracy',  'Query pV','Red pV', 'toBlue', 'toRed')
             
-        for k,cand in self.bests.items(): ## Do not print the last: current redescription
+        for k,cand in self.items(): ## Do not print the last: current redescription
             dsp += '\n\t%s' % cand.disp(self.base_acc, self.N, self.prs, self.coeffs)
         return dsp
 

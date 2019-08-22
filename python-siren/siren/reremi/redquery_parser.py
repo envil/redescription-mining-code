@@ -8,11 +8,15 @@
 # next time the file is generated.
 #
 
-from __future__ import print_function, division, unicode_literals
-from grako.parsing import * # @UnusedWildImport
-from grako.exceptions import * # @UnusedWildImport
-
-__version__ = '19.155.17.59.47'
+from __future__ import print_function, division, absolute_import, unicode_literals
+try:
+    from grako.parsing import * # @UnusedWildImport
+    from grako.exceptions import * # @UnusedWildImport
+except ModuleNotFoundError:
+    from .grako.parsing import * # @UnusedWildImport
+    from .grako.exceptions import * # @UnusedWildImport
+    
+__version__ = '19.226.07.24.34'
 
 class RedQueryParser(Parser):
     def __init__(self, whitespace=None, nameguard=True, **kwargs):
@@ -426,8 +430,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('&')
                 with self._option():
-                    self._token('\u2227')
-                self._error('expecting one of: & \u2227')
+                    self._token('∧')
+                self._error('expecting one of: & ∧')
 
     @rule_def
     def _disj_op_(self):
@@ -436,8 +440,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('|')
                 with self._option():
-                    self._token('\u2228')
-                self._error('expecting one of: | \u2228')
+                    self._token('∨')
+                self._error('expecting one of: ∨ |')
 
     @rule_def
     def _lth_(self):
@@ -446,8 +450,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('<')
                 with self._option():
-                    self._token('\u2264')
-                self._error('expecting one of: < \u2264')
+                    self._token('≤')
+                self._error('expecting one of: < ≤')
 
     @rule_def
     def _gth_(self):
@@ -456,8 +460,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('>')
                 with self._option():
-                    self._token('\u2265')
-                self._error('expecting one of: > \u2265')
+                    self._token('≥')
+                self._error('expecting one of: ≥ >')
 
     @rule_def
     def _cat_test_(self):
@@ -497,7 +501,7 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _in_(self):
-        self._token('\u2208')
+        self._token('∈')
 
     @rule_def
     def _neq_(self):
@@ -506,12 +510,12 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('!=')
                 with self._option():
-                    self._token('\u2260')
-                self._error('expecting one of: \u2260 !=')
+                    self._token('≠')
+                self._error('expecting one of: != ≠')
 
     @rule_def
     def _nin_(self):
-        self._token('\u2209')
+        self._token('∉')
 
     @rule_def
     def _neg_(self):
@@ -520,8 +524,8 @@ class RedQueryParser(Parser):
                 with self._option():
                     self._token('!')
                 with self._option():
-                    self._token('\xac')
-                self._error('expecting one of: ! \xac')
+                    self._token('¬')
+                self._error('expecting one of: ¬ !')
 
 
 

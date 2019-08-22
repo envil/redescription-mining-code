@@ -24,19 +24,19 @@ def makeContainersIL(icons):
     return il
 
 ###### DRAG AND DROP UTILITY
-class ListDrop(wx.PyDropTarget):
+class ListDrop(wx.DropTarget):
     """ Drop target for simple lists. """
 
     def __init__(self, setFn):
         """ Arguments:
          - setFn: Function to call on drop.
         """
-        wx.PyDropTarget.__init__(self)
+        wx.DropTarget.__init__(self)
 
         self.setFn = setFn
 
         # specify the type of data we will accept
-        self.data = wx.PyTextDataObject()
+        self.data = wx.TextDataObject()
         self.SetDataObject(self.data)
 
     # Called when OnDrop returns True.  We need to get the data and
@@ -282,7 +282,7 @@ class MyTextEditMixin:
             #     # data source
             #     self.SetVirtualData(self.curRow, self.curCol, text)
             # else:
-            #     self.SetStringItem(self.curRow, self.curCol, text)
+            #     self.SetItem(self.curRow, self.curCol, text)
         self.RefreshItem(self.curRow)
 
     def _SelectIndex(self, row):
@@ -401,13 +401,13 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         self.Focus(row)
     def setFoundRow(self, row):
         self.Focus(row)
-        # #self.SetItemBackgroundColour(0, wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        # #self.SetItemBackgroundColour(0, wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
         # if self.IsSelected(row):
         #     self.SetItemTextColour(row, wx.Colour(0,222,222))
         # else:
         self.SetItemTextColour(row, wx.Colour(139,0,0))
     def setUnfoundRow(self, row):
-        self.SetItemTextColour(row, wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        self.SetItemTextColour(row, wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
 
     def clearSelection(self):
         sels = self.getSelection()
@@ -423,7 +423,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         """ Put together a data object for drag-and-drop _from_ this list. """
         # Create the data object: Just use plain text.        
         txt = ",".join(map(str, self.getSelection()))
-        data = wx.PyTextDataObject()
+        data = wx.TextDataObject()
         data.SetText(txt)
 
         ### single item select
@@ -454,7 +454,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         if self.GetItemCount()>0:
             for x in range(self.GetItemCount()):
                 if x % 2==0:
-                    self.SetItemBackgroundColour(x,wx.SystemSettings_GetColour(wx.SYS_COLOUR_3DLIGHT))
+                    self.SetItemBackgroundColour(x,wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DLIGHT))
                 else:
                     self.SetItemBackgroundColour(x,wx.WHITE)
 
@@ -489,7 +489,7 @@ class ListCtrlContainers(ListCtrlBasis): #, MyTextEditMixin):
         if init:
             self.Append([rdt.get("name", "")])
         else:
-            self.SetStringItem(row, 0, rdt.get("name", ""))
+            self.SetItem(row, 0, rdt.get("name", ""))
         if self.getCManager().withListIcons():
             self.SetItemImage(row, rdt.get("src_typid", 0))
         if selected:
@@ -544,7 +544,7 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             self.Append(rdt["cols"])
         else:
             for (cid, cv) in enumerate(rdt["cols"]):
-                self.SetStringItem(row, cid, cv)
+                self.SetItem(row, cid, cv)
         if "checked" in rdt:
             self.upck = False
             self.CheckItem(row, rdt["checked"])
@@ -555,9 +555,9 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
                     
     def setBckColor(self, row, checked=False):
         if checked:
-            self.SetItemTextColour(row, wx.SystemSettings_GetColour( wx.SYS_COLOUR_WINDOWTEXT ))
+            self.SetItemTextColour(row, wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOWTEXT ))
         else:
-            self.SetItemTextColour(row, wx.SystemSettings_GetColour( wx.SYS_COLOUR_GRAYTEXT ))
+            self.SetItemTextColour(row, wx.SystemSettings.GetColour( wx.SYS_COLOUR_GRAYTEXT ))
 
 class TableView:
 
@@ -1065,19 +1065,21 @@ class FindContentTable(ContentTable):
                 self.getLCI().setUnfoundRow(self.matching[self.curr_match])
             self.curr_match = None
             self.matching = matching
-
+        
         if matching is None or len(matching) > 0:
             self.getNextMatch()
-            if self.curr_match == -1:
+            if self.curr_match is None or self.curr_match == -1:
                 if self.prev_sels is None:
                     self.prev_sels = self.getLCI().clearSelection()
                 self.getLCI().setSelection(self.matching)
             elif self.curr_match == 0:
                 self.getLCI().clearSelection()
-            if self.curr_match >= 0:
+            if self.curr_match is not None and self.curr_match >= 0:
                 self.getLCI().setFoundRow(self.matching[self.curr_match])
                 if self.matching[self.curr_match-1] != self.matching[self.curr_match]:
                     self.getLCI().setUnfoundRow(self.matching[self.curr_match-1])
+        elif len(matching) == 0:
+            self.prev_sels = self.getLCI().clearSelection()
             
     def getNextMatch(self, n=None):
         if len(self.matching) > 0:
@@ -1089,7 +1091,7 @@ class FindContentTable(ContentTable):
                     self.curr_match = 0
 
     def quitFind(self, matching=None, non_matching=None, cid=None):
-        if self.curr_match >=0 and self.curr_match < len(self.matching):
+        if self.curr_match is not None and self.curr_match >=0 and self.curr_match < len(self.matching):
             self.getLCI().setUnfoundRow(self.matching[self.curr_match])
         if self.prev_sels is not None and self.curr_match != -1:
             self.getLCI().setSelection(self.prev_sels)

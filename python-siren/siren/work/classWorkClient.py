@@ -1,8 +1,11 @@
 import multiprocessing, time, socket, uuid, re
 from multiprocessing.managers import SyncManager
-import Queue
+import queue
 
-from classWorkInactive import WorkInactive
+try:
+    from classWorkInactive import WorkInactive
+except ModuleNotFoundError:
+    from .classWorkInactive import WorkInactive
 
 import pdb
 
@@ -19,7 +22,7 @@ def make_client_manager(ip, port, authkey):
     ServerQueueManager.register('get_ids_d')
     ServerQueueManager.register('get_reconnect_q')
 
-    manager = ServerQueueManager(address=(ip, port), authkey=authkey)
+    manager = ServerQueueManager(address=(ip, port), authkey=authkey.encode('ascii'))
     manager.connect()
     return manager
 
@@ -31,7 +34,7 @@ def make_hc_manager(ip, port, authkey):
     HCQueueManager.register('get_job_q', callable=lambda: job_q)
     HCQueueManager.register('get_result_q', callable=lambda: result_q)
     
-    manager = HCQueueManager(address=(ip, port), authkey=authkey)
+    manager = HCQueueManager(address=(ip, port), authkey=authkey.encode('ascii'))
     manager.connect()
     return manager
 
@@ -73,7 +76,6 @@ class WorkClient(WorkInactive):
         
     def __del__(self):
         if self.hid is not None:
-            # print "delete"
             self.shared_job_q.put({"hid": self.hid, "task": "layoff"})
 
     def testConnect(self):
@@ -106,12 +108,11 @@ class WorkClient(WorkInactive):
                 self.onServerDeath()
                 info = "Maybe the server died, in any case, it did not respond...\n"
                 counter = 0
-            
-        while counter > 0 and not self.ids_d.has_key(uid):
+        while counter > 0 and uid not in self.ids_d._callmethod("keys"):
             time.sleep(1)
             counter -= 1
-        if counter > 0 and self.ids_d.has_key(uid):
-            tmp = self.ids_d.pop(uid)
+        if counter > 0 and uid in self.ids_d._callmethod("keys"):
+            tmp = self.ids_d._callmethod("pop", (uid,))
             parts = tmp.strip().split()
             if len(parts) == 0:
                 status = "OK"
@@ -159,11 +160,11 @@ class WorkClient(WorkInactive):
             if len(wkr_reconnect) == 0:
                 self.shared_job_q.put({"task": "startup", "cid": uid})
                 counter = 10
-                while not self.ids_d.has_key(uid) and counter > 0:
+                while uid not in self.ids_d._callmethod("keys") and counter > 0:
                     time.sleep(1)
                     counter -= 1
-                if self.ids_d.has_key(uid):                    
-                    self.hid = self.ids_d.pop(uid)
+                if uid in self.ids_d._callmethod("keys"):                    
+                    self.hid = self.ids_d._callmethod("pop", (uid,))
             hc_manager = make_hc_manager(self.work_server[0], self.getHid(), self.work_server[2])
             self.shared_result_q = hc_manager.get_result_q()
             return self.getHid(), wkr_reconnect
@@ -176,7 +177,7 @@ class WorkClient(WorkInactive):
         try:
             shared_reconnect_q = manager.get_reconnect_q()
             wkr_reconnect = shared_reconnect_q.get()
-        except Queue.Empty:
+        except queue.Empty:
             wkr_reconnect = []
         return wkr_reconnect
 
@@ -216,7 +217,7 @@ class WorkClient(WorkInactive):
             try:
                 # self.getResultsQueue().get_nowait()
                 self.getResultsQueue().get(False, 1)
-            except Queue.Empty:
+            except queue.Empty:
                 break
             except (socket.error, IOError, EOFError):
                 self.onServerDeath()
@@ -265,7 +266,7 @@ class WorkClient(WorkInactive):
                     if piece_result is not None:
                         self.handlePieceResult(piece_result, updates, parent)
                         if "status"in updates:
-                            print updates["status"]
+                            print(updates["status"])
                 except (socket.error, IOError, EOFError):
                     self.onServerDeath(parent)
 
@@ -280,7 +281,7 @@ class WorkClient(WorkInactive):
                     piece_result = self.getResultsQueue().get(False, 1)
                     if piece_result is not None:
                         self.handlePieceResult(piece_result, updates, parent)
-                except Queue.Empty:
+                except queue.Empty:
                     break
                 except (IOError, EOFError, socket.error):
                     self.onServerDeath(updates, parent)
@@ -323,7 +324,7 @@ class WorkClient(WorkInactive):
             return self.map_rids.get((iid, source), iid)
         return iid 
     
-    def mapTracks(self, in_tracks):
+    def mapTracks(self, in_tracks, source=None):
         tracks = []
         for t in in_tracks:                
             tracks.append({})
@@ -334,3 +335,9 @@ class WorkClient(WorkInactive):
                 tracks[-1]["trg"] = [self.mappedRid(iid, source) for iid in t["trg"]]
         return tracks
 
+
+if __name__ == '__main__':
+    wp = WorkClient(IP, PORTNUM, AUTHKEY, NUMCLIENT)
+    wp.testConnect()
+    print(wp.getDetailedInfos())
+    wp.shutdown()

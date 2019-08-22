@@ -127,3 +127,15 @@ class ICList(list):
     def __str__(self):
         return 'ICList: '+list.__repr__(self)+', isChanged = ' + str(self.isChanged)
  
+# def unitTest():
+#     d = ICList()
+#     assert(d.isChanged == False)
+#     d.append(3)
+#     assert(d.isChanged == True)
+#     d.extend([4, 6])
+#     assert(3 in d)
+#     assert(5 not in d)
+#     print(d)
+    
+# if __name__ == '__main__':
+#     unitTest()

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import wx
 ### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL
 ### from wx import FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
@@ -14,7 +13,7 @@ import numpy
 from ..reremi.classQuery import QTree
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classDrawerBasis import DrawerEntitiesTD
+from .classDrawerBasis import DrawerEntitiesTD
 
 import pdb
 
@@ -305,13 +304,13 @@ class DrawerRedTree(DrawerEntitiesTD):
             
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
         add_boxB.Add(buttons[1]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[2]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[0]["element"], 0, border=1, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
         
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", {})

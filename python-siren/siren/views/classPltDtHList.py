@@ -5,7 +5,7 @@ from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
 
 
-from classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords
+from .classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords
 
 import pdb
 
@@ -99,10 +99,10 @@ def next_best(scorings, init_cands=None):
     init_ids = numpy.where(init_cands)[0]
     score = [scoring["null"] for scoring in scorings]
     cxs, cys, score[0] = get_bests(scorings[0], init_ids=init_ids)
-    # print "best", 0, cxs, cys, score[0]
+    # print("best", 0, cxs, cys, score[0])
     for i in range(1, len(scorings)):
         cxs, cys, score[i] = get_bests(scorings[i], cxs, cys)
-        # print "best", i, cxs, cys, score[i]
+        # print("best", i, cxs, cys, score[i])
     if cxs[0] ==  cys[0]:
         raise Warning("Pair of same element %s!" % cxs[0])
     return cxs[0], cys[0], score
@@ -187,7 +187,7 @@ class PltDtHandlerList(PltDtHandlerBasis):
         if type(i) is str:
             return i
         choices = self.getChoices(key)
-        if i >= -1 and i < len(choices):
+        if type(i) is int and i >= -1 and i < len(choices):
             return choices[i]
         elif len(choices) > 0:
             return choices[0]
@@ -346,7 +346,7 @@ class PltDtHandlerListRanges(PltDtHandlerListBlocks):
                     #     maxv = 500
                     #     splits = [sss for ssi, sss in enumerate(splits) if ssi == 0 or splits[ssi-1]["v"] < 500]                        
                     #     splits[-1]["v"] = 500
-                    #     print "range", col, [sss["v"] for sss in splits]
+                    #     print("range", col, [sss["v"] for sss in splits])
                     
                     
                     w = float(maxv-minv)                    

@@ -5,6 +5,22 @@ First, remember to edit setup.py and Manifest.in to include new files and siren/
 Also update help pages accordingly.
 Run prepare_pck_files.py (src|deb|win) to generate info files.
 
+For PyPI (Python Package Index)
+================================
+python prepare_pck_files.py src
+python setup.py sdist bdist_wheel
+python -m twine upload dist/*
+
+For testing purposes, upload on test.pypi.org and install in virtual environment:
+python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+virtualenv --clear --system-site-packages  TEST
+source TEST/bin/activate
+python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps python-siren
+
+
+----------------------------
+OTHER OPTIONS NEED UPDATING
+
 For Linux:
 ===========
 run package_deb.sh

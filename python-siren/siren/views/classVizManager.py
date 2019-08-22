@@ -1,5 +1,5 @@
 import wx
-from classFiller import Filler
+from .classFiller import Filler
 
 import pdb
 
@@ -49,13 +49,13 @@ class VizManager:
             if self.parent.sysTLin():
                 self.getSW().Show()
             if self.viz_postab >= len(self.parent.tabs_keys) or self.parent.tabs_keys[self.viz_postab] != "viz":
-                # print "In Viz"
+                # print("In Viz")
                 self.parent.tabs_keys.insert(self.viz_postab, "viz")
 
         else:
             self.getSW().Hide()
             if self.viz_postab < len(self.parent.tabs_keys) and self.parent.tabs_keys[self.viz_postab] == "viz":
-                # print "Pop Viz"
+                # print("Pop Viz")
                 self.parent.tabs_keys.pop(self.viz_postab)
 
     def getTitle(self):
@@ -229,7 +229,7 @@ class VizManager:
                     self.vused_ids[nel] = self.vused_ids.pop(sel)
                     
         ### adjust buttons
-        bis = self.buttons.keys()
+        bis = list(self.buttons.keys())
         for bi in bis:
             but = self.buttons[bi]
             if but["action"][1] == -1:
@@ -278,9 +278,9 @@ class VizManager:
 
     # def OnPrintName(self, event=None):
     #     if event.GetId() in self.buttons:
-    #         print "button", self.buttons[event.GetId()]["action"]
+    #         print("button", self.buttons[event.GetId()]["action"])
     #     else:
-    #         print "button", event.GetId(), "not there"
+    #         print("button", event.GetId(), "not there")
     #     event.Skip()
 
     def OnChangeGridViz(self, event=None):
@@ -309,7 +309,7 @@ class VizManager:
         if self.isReadyVizIntab():
             for (vid, view) in self.parent.viewsm.iterateViews():
                 if view.isIntab():
-                    view.hideShowOpt()
+                    view.getLayH().hideShowOpt()
                     # view._SetSize()
             # for (vid, view) in self.vfiller_ids.items():
             #     view._SetSize()
@@ -327,7 +327,7 @@ class VizManager:
         if not self.parent.hasSplit():
             return
         self.parent.tabbed.RemovePage(self.viz_postab)
-        # print "Pop viz tab key"
+        # print("Pop viz tab key")
         self.parent.tabs_keys.pop(self.viz_postab)
         self.getSW().Reparent(self.parent.splitter)
         self.parent.splitter.SplitHorizontally(self.parent.tabbed, self.getSW())
@@ -341,7 +341,7 @@ class VizManager:
         self.parent.tabbed.InsertPage(self.viz_postab, self.getSW(), self.getTitle())
         if self.parent.sysTLin():
             self.getSW().Show()
-        # print "Insert viz tab key"
+        # print("Insert viz tab key")
         self.parent.tabs_keys.insert(self.viz_postab, "viz")
         
 

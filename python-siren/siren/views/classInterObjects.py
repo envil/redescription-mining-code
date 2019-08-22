@@ -1,10 +1,10 @@
-import numpy as np
-
-import pdb
+import numpy
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.mlab import dist_point_to_segment
+
+import pdb
 
 class ResizeableRectangle(object):
     # draggable rectangle with the animation blit techniques; see
@@ -39,12 +39,12 @@ http://matplotlib.sourceforge.net/users/event_handling.html
 data"""
         if event.button not in self.buttons_t:
             return
-        #print 'event contains', self.rect.xy
+        #print('event contains', self.rect.xy)
         x0, y0 = self.rect.xy
         w0, h0 = self.rect.get_width(), self.rect.get_height()        
         if self.touches_side((x0, y0, w0, h0), event.xdata, event.ydata, self.moving_sides):
         # if abs(y0-ypress)<bt*h0 or abs(y0+h0-ypress)<bt*h0:
-            self.press = x0, y0, w0, h0, np.true_divide(w0, h0), event.xdata, event.ydata
+            self.press = x0, y0, w0, h0, numpy.true_divide(w0, h0), event.xdata, event.ydata
 
             # draw everything but the selected rectangle and store the pixel buffer
             canvas = self.rect.figure.canvas
@@ -88,7 +88,7 @@ data"""
         #     try:
         #         canvas.blit(self.annotation.get_bbox_patch())
         #     except AttributeError:
-        #         print "Failed blit"
+        #         print("Failed blit")
 
     def contains(self, event):
         if event.button in self.buttons_t:
@@ -194,8 +194,8 @@ data"""
                 xv = x0+w0+dx
                 self.rect.set_width(w0+dx)
                 self.annotate(xv, (xv, ylbl), 1)
-        else:
-            print "Update neither", y0, h0, ypress
+        # else:
+        #     print("Update neither", y0, h0, ypress)
             
 class DraggableRectangle(ResizeableRectangle):
 
@@ -412,12 +412,12 @@ class MaskCreator(object):
             xdpos, ydpos = (event.xdata, event.ydata)
             xpos, ypos = (event.x, event.y)
         if self.poly is None:
-            self.createPoly(np.array([(xdpos, ydpos)]))
+            self.createPoly(numpy.array([(xdpos, ydpos)]))
             return 0
             
         if self.poly.xy.shape[0] < 4:
             i = 0
-            self.poly.xy = np.array(
+            self.poly.xy = numpy.array(
                     list(self.poly.xy[:i+1]) +
                     [(xdpos, ydpos)] +
                     list(self.poly.xy[i+1:]))
@@ -430,7 +430,7 @@ class MaskCreator(object):
             s1 = xys[i+1]
             d = dist_point_to_segment((xpos, ypos), s0, s1)
             if d <= self.max_ds:
-                self.poly.xy = np.array(
+                self.poly.xy = numpy.array(
                     list(self.poly.xy[:i+1]) +
                     [(xdpos, ydpos)] +
                     list(self.poly.xy[i+1:]))
@@ -438,7 +438,7 @@ class MaskCreator(object):
                 return i+1
 
         i= 0
-        self.poly.xy = np.array(
+        self.poly.xy = numpy.array(
             list(self.poly.xy[:i+1]) +
             [(xdpos, ydpos)] +
             list(self.poly.xy[i+1:]))
@@ -478,8 +478,8 @@ class MaskCreator(object):
 
     def _update_line(self):
         # save verts because polygon gets deleted when figure is closed
-        if self.poly.xy.shape[0] == 1 or np.sum((self.poly.xy[0,:] - self.poly.xy[-1:,])**2) > 0:
-            self.poly.xy = np.vstack((self.poly.xy, self.poly.xy[0,:]))
+        if self.poly.xy.shape[0] == 1 or numpy.sum((self.poly.xy[0,:] - self.poly.xy[-1:,])**2) > 0:
+            self.poly.xy = numpy.vstack((self.poly.xy, self.poly.xy[0,:]))
         self.verts = self.poly.xy
         self.last_vert_ind = len(self.poly.xy) - 1
         self.line.set_data(zip(*self.poly.xy))
@@ -501,11 +501,11 @@ class MaskCreator(object):
                 self.canvas.draw()
                 return
             
-        xy = np.asarray(self.poly.xy)
+        xy = numpy.asarray(self.poly.xy)
         xyt = self.poly.get_transform().transform(xy)
         xt, yt = xyt[:, 0], xyt[:, 1]
-        d = np.sqrt((xt - xpos)**2 + (yt - ypos)**2)
-        indseq = np.nonzero(np.equal(d, np.amin(d)))[0]
+        d = numpy.sqrt((xt - xpos)**2 + (yt - ypos)**2)
+        indseq = numpy.nonzero(numpy.equal(d, numpy.amin(d)))[0]
         ind = indseq[0]
         if d[ind] >= self.max_ds:
             ind = self.do_add(event)

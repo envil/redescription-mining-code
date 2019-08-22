@@ -1,9 +1,14 @@
+import sys, re, io, numpy
 import csv
-import sys, codecs, re
+
+try:
+    from classQuery import Term, TimeTools, NA_str_c
+    from toolICDict import first_value
+except ModuleNotFoundError:
+    from .classQuery import Term, TimeTools, NA_str_c
+    from .toolICDict import first_value
+
 import pdb
-from StringIO import StringIO
-from classQuery import Term, TimeTools
-import numpy as np
 
 LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
 LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
@@ -51,25 +56,23 @@ def start_out(fp):
     return csv.writer(fp, quoting=csv.QUOTE_MINIMAL) #, delimiter=';', quotechar='"'
     # return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
 def write_row(csvf, row_data):
-    for i in range(len(row_data)):
-        if type(row_data[i]) is unicode:
-            row_data[i] = codecs.encode(row_data[i], 'utf-8','replace')
     csvf.writerow(row_data)
 
 def getFp(filename, write=False):
     fcl = False
     f = None
-    if type(filename) is str or type(filename) is unicode:
+    if type(filename) is str: # or type(filename) is unicode:
         if write:
             f = open(filename, 'w')
         else:
-            f = open(filename, 'rU')
+            f = open(filename, 'r')
         fcl = True
-    elif isinstance(filename, file):
+    elif isinstance(filename, io.TextIOBase):
         f = filename
-    else:        
-        ### Because ZIPext files don't have a seek method...
-        f = StringIO(filename.read())
+    # else:
+    #     pdb.set_trace()
+    #     ### Because ZIPext files don't have a seek method...
+    #     f = io.StringIO(filename.read())
     return f, fcl
     
 def read_coords_csv(filename, csv_params={}, unknown_string=None):
@@ -84,7 +87,7 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
         #f.seek(0)
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
-        head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+        head = [h for h in next(csvreader)]
        
         cpos = {}
         for i, h in enumerate(head):
@@ -113,8 +116,6 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
             if rnames is not None:
                 tmp = row[cpos[IDENTIFIERS[0]]].strip()
                 if tmp != type(tmp)(unknown_string):
-                    if type(tmp) is str:
-                        tmp = codecs.decode(tmp, 'utf-8','replace')
                     rnames.append(tmp)
                 else:
                     rnames.append(None)        
@@ -152,7 +153,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
         #f.seek(0)
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
         ### Try to read headers
-        head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+        head = [h for h in next(csvreader)]
 
         tmp = re.search('#*\s*"?type=(?P<type>\w)"?', head[-1])
         if tmp is not None:
@@ -161,7 +162,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                 head.append(tt)
             type_all = tmp.group('type')
             if len(head) == 0:
-                head = [codecs.decode(h, 'utf-8','replace') for h in csvreader.next()]
+                head = [h for h in next(csvreader)]
                 skipfirst = True
 
         if test_some_numbers(head):
@@ -194,7 +195,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if re.match("\s*#", row[0]):
                 continue
             if len(row) == no_of_columns+1 and ((row[0] in GROUPS_COLS) or (row[0] in ENABLED_COLS)):
-                specials[row.pop(0)] = len(data.values()[0])
+                specials[row.pop(0)] = len(first_value(data))
             if len(row) != no_of_columns:
                 raise ValueError('number of columns does not match (is '+
                                  str(len(row))+', should be '+
@@ -202,11 +203,9 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             for i in range(len(row)):
                 tmp = row[i].strip()
                 if tmp != type(tmp)(unknown_string):
-                    if type(tmp) is str:
-                        tmp = codecs.decode(tmp, 'utf-8','replace')
                     data[head[i]].append(tmp)
                 else:
-                    # print "Turned to None (in csv_reader)", tmp
+                    # print("Turned to None (in csv_reader)", tmp)
                     data[head[i]].append(None)        
     if fcl:
         f.close()
@@ -265,7 +264,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 dictLL = dict([(k,v+sub) for (k, v) in dictLL.items()])
             # if max(dictLL.values()) > 2*len(dictLL):
             if max(dictLL.values()) > 10*len(dictLL):
-                print "Too large ids compared to number of rows (>10x)!..."
+                print("Too large ids compared to number of rows (>10x)!...")
                 numerical_ids = False
         if numerical_ids:        
             nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
@@ -376,8 +375,8 @@ def has_coord(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = ( [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][s]],
-                              [map(float, (p or "-361").strip(" :").split(":")) for p in D['data'][t]])
+                    coord = ( [list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][s]],
+                              [list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][t]])
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -421,7 +420,11 @@ def has_ids(D):
             break
     return (hasIds, ids)
 
-def has_condition(D):
+def has_condition(D, other_params={}):
+    date_fmt = {}
+    for t,f in [("time_yearfirst", "yearfirst"), ("time_dayfirst", "dayfirst")]:
+        if other_params.get(t) is not None:
+            date_fmt[f] = other_params.get(t)
     col = None
     condIds = None
     isTime = False
@@ -430,12 +433,12 @@ def has_condition(D):
             if col is None:
                 col = D['data'][s]
                 if len(set(col)):
-                    condIds = np.copy(col)
+                    condIds = numpy.copy(col)
                 if re.search("time", s):
                     try:
-                        col = ["%d" % TimeTools.parse_time(v) for v in col]
+                        col = ["%d" % TimeTools.parse_time(v, **date_fmt) for v in col]
                         isTime = True
-                    except TypeError:
+                    except (TypeError, ValueError):
                         col = D['data'][s]
             del D['data'][s]
             D['headers'].remove(s)
@@ -491,9 +494,9 @@ def is_sparse(D):
 def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
     rtn = None
     if Lfull:
-        nb_rowsL = len(L["data"].values()[0])
+        nb_rowsL = len(first_value(L["data"]))
         if Rfull:
-            nb_rowsR = len(R["data"].values()[0])
+            nb_rowsR = len(first_value(R["data"]))
             if nb_rowsL == nb_rowsR:
                 rtn = (nb_rowsL, 0, 0)
             else:
@@ -519,7 +522,7 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
         nrMinL, nrMaxL = min(tt), max(tt)
 
         if Rfull:
-            nb_rowsR = len(R["data"].values()[0])            
+            nb_rowsR = len(first_value(R["data"]))
             if nb_rowsR == nrMaxL+1:
                 rtn = (nb_rowsR, 0, 0)
             elif nb_rowsR == nrMaxL and nrMinL > 0:
@@ -550,23 +553,12 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
                 rtn = (None, nrMaxL, nrMaxR)
     return rtn
     
-def row_order(L, R):
+def row_order(L, R, other_params={}):
     ### TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
     (RhasIds, Rids) = has_ids(R)
     (Lvarcol, Lvalcol) = is_sparse(L)
     (Rvarcol, Rvalcol) = is_sparse(R)
-
-    (Lcond_col, LcondIds, LisTime) = has_condition(L)
-    (Rcond_col, RcondIds, RisTime) = has_condition(R)
-
-    if not LhasIds and not RhasIds:
-        if LcondIds is not None:
-            LhasIds = True
-            Lids = LcondIds
-        if RcondIds is not None:
-            RhasIds = True
-            Rids = RcondIds
 
     if Lvarcol is None:
         if LhasIds:
@@ -583,6 +575,18 @@ def row_order(L, R):
         elif len(R["specials"]) > 0:
             R[ENABLED_COLS[0]] = get_discol(R, R["specials"])
             R[GROUPS_COLS[0]] = get_groupcol(R, R["specials"])
+    
+    (Lcond_col, LcondIds, LisTime) = has_condition(L, other_params)
+    (Rcond_col, RcondIds, RisTime) = has_condition(R, other_params)
+
+    if not LhasIds and not RhasIds:
+        if LcondIds is not None:
+            LhasIds = True
+            Lids = LcondIds
+        if RcondIds is not None:
+            RhasIds = True
+            Rids = RcondIds
+
 
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
@@ -668,7 +672,7 @@ def row_order(L, R):
         Rll = [formatR % p for p in zip(*order_keys[1])]
         # Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
         if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
-            print 'Those ids are no real ids, they are not unique!..'
+            print('Those ids are no real ids, they are not unique!..')
 
         Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
         Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
@@ -737,20 +741,20 @@ def row_order(L, R):
         if Lids is not None: ### e.g. from sparse
             nbrowsL = len(Lids)
         else:
-            nbrowsL = len(L['data'].values()[0])
+            nbrowsL = len(first_value(L["data"]))
 
         if Rids is not None: ### e.g. from sparse
             nbrowsR = len(Rids)
         else:
-            nbrowsR = len(R['data'].values()[0])
+            nbrowsR = len(first_value(R["data"]))
 
         data = L['data']
         head = L['headers']
         # extract the coordinates
         if LhasCoord:
-            coord = zip(*Lcoord)
+            coord = list(zip(*Lcoord))
         elif RhasCoord:
-            coord = zip(*Rcoord)
+            coord = list(zip(*Rcoord))
         else:
             coord = None
 
@@ -779,16 +783,11 @@ def row_order(L, R):
 
         return (L, R, range(nbrowsL), range(nbrowsR), coord, ids, cond_col, CisTime)
 
-def row_order_single(L):
+def row_order_single(L, other_params={}):
     ### TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
     (Lvarcol, Lvalcol) = is_sparse(L)
-
-    (Lcond_col, LcondIds, LisTime) = has_condition(L)
-    if LcondIds is not None and not LhasIds:
-        LhasIds = True
-        Lids = LcondIds
-
+     
     if Lvarcol is None:
         if LhasIds:
             L[ENABLED_COLS[0]] = get_discol(L, Lids)
@@ -796,6 +795,11 @@ def row_order_single(L):
         elif len(L["specials"]) > 0:
             L[ENABLED_COLS[0]] = get_discol(L, L["specials"])
             L[GROUPS_COLS[0]] = get_groupcol(L, L["specials"])
+     
+    (Lcond_col, LcondIds, LisTime) = has_condition(L, other_params)
+    if LcondIds is not None and not LhasIds:
+        LhasIds = True
+        Lids = LcondIds
 
     (LhasCoord, Lcoord) = has_coord(L)
 
@@ -808,7 +812,7 @@ def row_order_single(L):
         #     raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
         if LhasCoord:
-            coord = zip(*Lcoord)
+            coord = list(zip(*Lcoord))
         else:
             coord = None
         ids = Lids
@@ -832,13 +836,13 @@ def row_order_single(L):
         if Lids is not None: ### e.g. from sparse
             nbrowsL = len(Lids)
         else:
-            nbrowsL = len(L['data'].values()[0])
+            nbrowsL = len(first_value(L["data"]))
 
         data = L['data']
         head = L['headers']
         # extract the coordinates
         if LhasCoord:
-            coord = zip(*Lcoord)
+            coord = list(zip(*Lcoord))
         else:
             coord = None
 
@@ -858,17 +862,19 @@ def row_order_single(L):
 
         return (L, range(nbrowsL), coord, ids, cond_col, CisTime)
 
-def readTransCSV(trans_filename, csv_params={}, unknown_string=None):
+def readTransCSV(trans_filename, csv_params={}, other_params={}):
+    unknown_string = other_params.get("NA_str", NA_str_c)
     (Th, Td, Ttype, Tspecials) = read_csv(trans_filename, csv_params, unknown_string)
     T = {'data': Td, 'headers': Th, "sparse": False, "type_all": Ttype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Tspecials}
 
-    (T, Torder, coord, ids, cond_col, CisTime) = row_order_single(T)
+    (T, Torder, coord, ids, cond_col, CisTime) = row_order_single(T, other_params)
     T['order'] = Torder
     T["type_all"]= Ttype
     return T, ids
 
-def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None):
+def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
     single_dataset = (left_filename == right_filename) or (right_filename is None)
+    unknown_string = other_params.get("NA_str", NA_str_c)
     try:
         (Lh, Ld, Ltype, Lspecials) = read_csv(left_filename, csv_params, unknown_string)
     except ValueError as arg:
@@ -878,7 +884,7 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
     L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Lspecials}
 
     if single_dataset:
-        (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L)
+        (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L, other_params)
         L['order'] = Lorder
         L["type_all"]= Ltype
         R = None
@@ -890,13 +896,13 @@ def importCSV(left_filename, right_filename, csv_params={}, unknown_string=None)
         except csv.Error as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
         R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Rspecials}
-        (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R)
+        (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R, other_params)
         L['order'] = Lorder
         R['order'] = Rorder
         L["type_all"]= Ltype
         R["type_all"]= Rtype
 
-    return {'data': (L,R), 'coord': coord, "ids": ids, 'cond_col': cond_col, "c_time": CisTime}, single_dataset
+    return {'data': (L,R), 'coord': coord, "ids": ids, 'cond_col': cond_col, "c_time": CisTime}, single_dataset, unknown_string
 
 def print_out(data):
     keysL = sorted(data['data'][0]['headers'])
@@ -918,7 +924,7 @@ def print_out(data):
     line += " || "
     line += "; ".join(["%s" % k for k in keysR])
     line += " |"
-    print line
+    print(line)
     
     for row in range(len(data['data'][0]['order'])):
         line = "%d; " % row
@@ -946,35 +952,11 @@ def print_out(data):
         else:
             line += "; ".join(["%s" % data['data'][1]['data'][k][data['data'][1]['order'][row]] for k in keysR])
         line += " |"
-        print line
+        print(line)
 
-def main(argv=[]):
-    # print "COMMENT OUT!"
-    # rep = "/home/galbrun/"
-    # res = importCSV(rep+"data1.csv", rep+"data2.csv", unknown_string='NA')
-    # print res.keys()
-
-    # rep = "/home/galbrun/TKTL/redescriptors/data/vaalikone/tmp/"
-    # res = importCSV(rep+"vaalikone_profiles_all.txt", rep+"vaalikone_questions_all.txt", unknown_string='Na')
-    
+def main(argv=[]):    
     rep = "/home/egalbrun/short/raja_small/"
-    res, single = importCSV(rep+"data_RHSk.csv", rep+"data_RHSo.csv")
-
-    # res, single = importCSV(rep+"data_LHS.csv", rep+"data_RHS.csv", unknown_string='NA')
-    pdb.set_trace()
-    # res = importCSV(rep+"vaalikone_profiles_test_listopo.csv", rep+"vaalikone_questions_test.csv", unknown_string='NA')
-    # # res = importCSV(rep+"vaalikone_profiles_test_list.csv", rep+"vaalikone_profiles_test_listopo.csv", unknown_string='NA')
-    # # rep = "/home/galbrun/TKTL/redescriptors/data/rajapaja/"
-    # # res = importCSV(rep+'mammals_sparse.csv', rep+'worldclim_poly.csv', unknown_string='NA')
-    # print res.keys()
-    # print res['data'][0].keys()
-    # print "Left data has %d rows ( %d actually )" %(len(res['data'][0]['data'][res['data'][0]['headers'][0]]), len(res['data'][0]['order']))
-    # print "Right data has %d rows ( %d actually )" %(len(res['data'][1]['data'][res['data'][1]['headers'][0]]), len(res['data'][1]['order']))
-    # # pdb.set_trace()
-    # if res['coord'] is not None:
-    #     print "Coord has", len(res['coord']), "rows"
-    # if res['ids'] is not None:
-    #     print "Ids has", len(res['ids']), "rows"
+    res, single, unknown_str = importCSV(rep+"data_RHSk.csv", rep+"data_RHSo.csv")
     print_out(res)
 
 if __name__ == '__main__':

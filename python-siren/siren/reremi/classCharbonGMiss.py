@@ -1,9 +1,17 @@
-from classData import Data
-from classConstraints import Constraints
-from classCharbon import CharbonGreedy
-from classExtension import Extension
-from classSParts import SParts
-from classQuery import  *
+try:
+    from classData import Data
+    from classConstraints import Constraints
+    from classCharbon import CharbonGreedy
+    from classExtension import Extension
+    from classSParts import SParts
+    from classQuery import  *
+except ModuleNotFoundError:
+    from .classData import Data
+    from .classConstraints import Constraints
+    from .classCharbon import CharbonGreedy
+    from .classExtension import Extension
+    from .classSParts import SParts
+    from .classQuery import  *
 import numpy
 import pdb
 
@@ -22,22 +30,22 @@ class CharbonGMiss(CharbonGreedy):
         except AttributeError:
               raise Exception('Oups No candidates method for this type of data (%i)!'  % col.typeId())
         cands = method_compute(side, col, supports, currentRStatus)
-        # print "=======MISS=========="
+        # print("=======MISS==========")
         for cand in cands:            
             supp = col.suppLiteral(cand.getLiteral())
             lparts = supports.lparts()
             lin = supports.lpartsInterX(supp)
-            # print cand.getLiteral(), cand.isNeg()
-            # print lparts, lin, len(supp)
-            # print "Before", cand
-            # # print "CLP \tB: %s\tA:%s" % (cand.clp, [lin, lparts])
+            # print(cand.getLiteral(), cand.isNeg())
+            # print(lparts, lin, len(supp))
+            # print("Before", cand)
+            # # print("CLP \tB: %s\tA:%s" % (cand.clp, [lin, lparts]))
             cand.setClp([lin, lparts], cand.isNeg())
             if colsC is not None and self.constraints.getCstr("add_condition"):
                 ss = supports.copy()
                 ss.update(side, cand.getOp(), supp)
                 cand.setCondition(self.getCondition(colsC, ss))
-            # print cand
-        # print "================="            
+            # print(cand)
+        # print("=================")
         return cands
 
     def getCandidatesImprov(self, side, col, red, op, supports, offsets):
@@ -231,11 +239,11 @@ class CharbonGMiss(CharbonGreedy):
             ccum_lmiss = self.constraints.getSSetts().additionOtherSide(lmiss, nextc[-2], other_side < 0)       
             ccum_lin = self.constraints.getSSetts().additionOtherSide(lin, nextc[-1], other_side < 0)
             
-        # print "--- SUM", other_side
-        # print lparts, lmiss, lin
-        # print nextc[-3], nextc[-2], nextc[-1]
-        # print ">>"
-        # print ccum_lparts, ccum_lmiss, ccum_lin
+        # print("--- SUM", other_side)
+        # print(lparts, lmiss, lin)
+        # print(nextc[-3], nextc[-2], nextc[-1])
+        # print(">>")
+        # print(ccum_lparts, ccum_lmiss, ccum_lin)
         return ccum_lparts, ccum_lmiss, ccum_lin
             
     def combCats(self, best, allw_neg, side, op, neg, col, collected, other_side=0, currentRStatus=0):
@@ -540,7 +548,7 @@ class CharbonGMiss(CharbonGreedy):
                         bestScore = scoresL[i]
                         
 #             if len(scores) > 0:
-#                print "%f: %s <-> %s" % (scores[0], literalsA[0], literalsB[0])
+#                print("%f: %s <-> %s" % (scores[0], literalsA[0], literalsB[0]))
         return (scores, literalsL, literalsR)
 
     def subdo33Full(self, colL, colR, side):
@@ -560,7 +568,7 @@ class CharbonGMiss(CharbonGreedy):
         (scores, literalsF, literalsE) = ([], [], [])
         ## DOABLE
         
-        # print "Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1]))
+        # print("Nb buckets: %i x %i"% (len(bucketsF[1]), len(bucketsE[1])))
         # if ( len(bucketsF[1]) * len(bucketsE[1]) > self.constraints.getCstr("max_prodbuckets") ): 
         nbb = self.constraints.getCstr("max_prodbuckets") / float(len(bucketsF[1]))
         if len(bucketsE[1]) > nbb: ## self.constraints.getCstr("max_sidebuckets"):
@@ -593,7 +601,7 @@ class CharbonGMiss(CharbonGreedy):
 
                 if side is not None:
                     #### working with on variable as categories is workable
-                    ## print "Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1])
+                    ## print("Trying cats...", len(bucketsL[0]), len(bucketsR[0]), len(bbs[0]), len(bbs[1]))
                     (scores, literalsFix, literalsExt) = self.subdo23Full(ccL, ccR, side, try_comb=False)
                     if side == 1:
                         literalsL = []
@@ -625,7 +633,7 @@ class CharbonGMiss(CharbonGreedy):
                     bucketsF = colF.buckets("collapsed", {"max_agg": self.constraints.getCstr("max_agg"), "nbb": nbb})
                     bUpF=3 ## in case of collapsed bucket the threshold is different
                     side = org_side
-                    ## print "Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0])                    
+                    ## print("Last resort solution...", nbb, len(bucketsL[0]), len(bucketsR[0]))
 
         if bucketsE is not None and ( len(bucketsF[1]) * len(bucketsE[1]) < self.constraints.getCstr("max_prodbuckets") ):
             partsMubB = len(colF.miss())
@@ -740,12 +748,12 @@ class CharbonGMiss(CharbonGreedy):
             allw_neg = False
         best = [[] for c in configs]
 
-        # print "--------------------------------------"
-        # print "\t".join(["", ""]+[catR for catR in colR.cats()])
-        # print "\t".join(["", ""]+["%d" % len(colR.suppCat(catR)) for catR in colR.cats()])
+        # print("--------------------------------------")
+        # print("\t".join(["", ""]+[catR for catR in colR.cats()]))
+        # print("\t".join(["", ""]+["%d" % len(colR.suppCat(catR)) for catR in colR.cats()]))
         # for catL in colL.cats():
-        #     print "\t".join([catL, "%d" % len(colL.suppCat(catL))]+["%d" % len(colL.suppCat(catL).intersection(colR.suppCat(catR))) for catR in colR.cats()])
-        # print "--------------------------------------"
+        #     print("\t".join([catL, "%d" % len(colL.suppCat(catL))]+["%d" % len(colL.suppCat(catL).intersection(colR.suppCat(catR))) for catR in colR.cats()]))
+        # print("--------------------------------------")
         
         for catL in colL.cats():
             ### TODO DOABLE
@@ -765,18 +773,18 @@ class CharbonGMiss(CharbonGreedy):
                         tmp_lmiss = lmiss
                         tmp_lin = lin
 
-                    # print "--", catL, catR, nL, nR
-                    # print tmp_lparts, tmp_lmiss, tmp_lin
+                    # print("--", catL, catR, nL, nR)
+                    # print(tmp_lparts, tmp_lmiss, tmp_lin)
                     best[i] = self.updateACTP22(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
 
         (scores, literalsFix, literalsExt) = ([], [], [])
         if self.constraints.getCstr("multi_cats"):
-            # print "PAIR ----", colL, colR
+            # print("PAIR ----", colL, colR)
             (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
             # if len(scores) > 0:
-            #     print "---- Multi cats:"
+            #     print("---- Multi cats:")
             #     for ii in range(len(scores)):
-            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
             
         for (i, nL, nR) in configs:
             for b in best[i]:
@@ -805,8 +813,8 @@ class CharbonGMiss(CharbonGreedy):
                         if (ss==1):
                             other_side = 1
                             if nL: other_side = -1
-                        # print "==============="
-                        # print "GO", k, nR, nL, other_side, "\n*".join([""]+[str(mm) for mm in map_cat[ss][k]])
+                        # print("===============")
+                        # print("GO", k, nR, nL, other_side, "\n*".join([""]+[str(mm) for mm in map_cat[ss][k]]))
                         bb = self.combCats(None, allw_neg, 1, True, nR, None, map_cat[ss][k], other_side=other_side)
                         if bb is not None:
                             tmp_cats = [tmp_cat for tmp_cat in tmp_cats if tmp_cat[1] not in bb[-1][-1]]
@@ -898,9 +906,9 @@ class CharbonGMiss(CharbonGreedy):
         if try_comb and self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
             # if len(scores) > 0:
-            #     print "---- Multi cats:"
+            #     print("---- Multi cats:")
             #     for ii in range(len(scores)):
-            #         print scores[ii], literalsFix[ii], literalsExt[ii]
+            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
 
         for (i, nF, nE) in configs:
             for b in best[i]:
@@ -966,14 +974,14 @@ class CharbonGMiss(CharbonGreedy):
         contri = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[False], clp)
         # contriAND = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[False], clp)
         # contriOR = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_cont[True], clp)
-        # print "Contri COND=%d AND=%d OR=%d" % (contri, contriAND, contriOR)
+        # print("Contri COND=%d AND=%d OR=%d" % (contri, contriAND, contriOR))
         if self.unconstrained(no_const) or (contri >= self.constraints.getCstr("min_itm_in")):
             # pdb.set_trace()
             fixBlue, fixRed = (0, 0)
             varBlue = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varnum[False], clp)
             varRed = varBlue + self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[False], clp)
             acc = self.offset_ratio(varBlue, varRed)
-            # print "PIECES", varBlue, varRed, contri, fixBlue, fixRed
+            # print("PIECES", varBlue, varRed, contri, fixBlue, fixRed)
             return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp
 
@@ -995,7 +1003,7 @@ class CharbonGMiss(CharbonGreedy):
                     varRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_varden[op], clp)
                     fixRed = self.constraints.getSSetts().sumPartsIdInOut(side, neg, self.constraints.getSSetts().IDS_fixden[op], clp)
                     acc = self.offset_ratio(varBlue + fixBlue, varRed + fixRed)
-                    # print "PIECES", sout, varBlue, varRed, contri, fixBlue, fixRed
+                    # print("PIECES", sout, varBlue, varRed, contri, fixBlue, fixRed)
                     return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp
 

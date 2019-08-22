@@ -15,7 +15,7 @@ from ..reremi.classData import Data
 from ..reremi.classQuery import SYM, Query
 from ..reremi.classRedescription import Redescription
 from ..reremi.classSParts import SSetts
-from classInterObjects import MaskCreator
+from .classInterObjects import MaskCreator
 
 import pdb
 
@@ -542,7 +542,6 @@ class DrawerBasis(object):
 
     def delStamp(self):
         if self.hasElement("red_stamp"):
-            print "Del stamp"
             red_stamp = self.getElement("red_stamp")
             self.axe.set_position(red_stamp["old_pos"])
             red_stamp["text"].remove()
@@ -592,7 +591,7 @@ class DrawerEntitiesTD(DrawerBasis):
 
         ##############################################
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         v_box = wx.BoxSizer(wx.VERTICAL)
         label = wx.StaticText(panel, wx.ID_ANY,u"- opac. disabled +")
@@ -601,10 +600,10 @@ class DrawerEntitiesTD(DrawerBasis):
         v_box.Add(inter_elems["slide_opac"], 0, border=1, flag=flags) #, userData={"where":"*"})
         add_boxB.Add(v_box, 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn())
         add_boxB.Add(buttons[-1]["element"], 0, border=1, flag=flags)
 
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)        
@@ -748,7 +747,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return self.getPltDtH().getCoords(axi, ids)
 
     def makeEmphTag(self, lid):
-        # print self.getParentData().getRName(lid), ">", self.getPltDtH().pltdt.get("coords")[0][:,lid,0]
+        # print(self.getParentData().getRName(lid), ">", self.getPltDtH().pltdt.get("coords")[0][:,lid,0])
         return self.getParentData().getRName(lid)
     
     def emphasizeOn(self, lids, hover=False):
@@ -809,7 +808,7 @@ class DrawerEntitiesTD(DrawerBasis):
         return iid in self.high_lbl
     def needingHighLbl(self, iids):
         max_emphlbl = self.getSettV('max_emphlbl', 5)
-        if max_emphlbl or len(iids) <= max_emphlbl:
+        if max_emphlbl < 0 or len(iids) <= max_emphlbl:
             return [iid for iid in iids if not self.isHighLbl(iid)]
         return []
     def needingHighlight(self, iids):
@@ -985,7 +984,7 @@ class DrawerEntitiesTD(DrawerBasis):
             nb = nb_distinct-1
 
         n, bins, patches = plt.hist(vec[idsan], bins=nb)
-
+        
         sum_h = numpy.max(n)
         norm_h = [ni*fracts[0]*float(x1-x0)/sum_h+fracts[1]*float(x1-x0) for ni in n]
         if vec_dets["binLbls"] is not None:            
@@ -998,18 +997,18 @@ class DrawerEntitiesTD(DrawerBasis):
             bins_lbl = vec_dets["binLbls"]
             colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]
         else:
-
-            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * hspan*float(y1-y0) + y0 + (.5-hspan/2.)*float(y1-y0) for bi in bins]            
-            norm_bins_ticks = norm_bins
+            # norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * hspan*float(y1-y0) + y0  + (.5-hspan/2.)*float(y1-y0) for bi in bins]
+            norm_bins = [(bi-bins[0])/float(bins[-1]-bins[0]) * hspan*float(y1-y0) + y0  + (.5-hspan/2.)*float(y1-y0) for bi in bins]            
+            norm_bins_ticks = [(bi-bins[0])/float(bins[-1]-bins[0]) * hspan*float(y1-y0) + y0  + (.5-hspan/2.)*float(y1-y0) for bi in bins]
             bins_lbl = bins
             colors = [mapper.to_rgba(numpy.mean(bins[i:i+2])) for i in range(len(n))]
+        # left = [norm_bins[i]+(norm_bins[i+1]-norm_bins[i])/2 for i in range(len(n))]
         left = [norm_bins[i] for i in range(len(n))]
-        width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]
-        
+        width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]        
         
         bckc = "white" 
-        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc)
-        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2)
+        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc, align="edge")
+        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2, align="edge")
         axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
         x1 += (fracts[0]+fracts[1])*(x1-x0)+2*bx
         axe.set_yticks(norm_bins_ticks)        
@@ -1042,7 +1041,7 @@ class DrawerEntitiesTD(DrawerBasis):
         if self.drawPoly():
             return [self.axe.add_patch(Polygon(self.getPltDtH().getCoordsP(idp), closed=True, fill=True, fc=fc, ec=ec, zorder=zo))]
         else:
-            ## print idp, fc, ec
+            # print(idp, fc, ec)
             x, y = self.getCoordsXY(idp)
             # return self.axe.plot(x, y, mfc=fc, mec=ec, marker=dsetts["shape"], markersize=sz, linestyle='None', zorder=zo)
             return [self.axe.scatter([x], [y], c=fc, edgecolors=ec, s=5*sz, marker=dsetts["shape"], zorder=zo)]

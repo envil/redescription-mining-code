@@ -1,14 +1,112 @@
-##### RENAMED PARTS
-## grep -E "gamma|beta|alpha|delta|mua|mub|muaB|mubB|mud" ../reremi/*.py
-## sed -i -e 's/alpha/Exo/g' -e 's/beta/Eox/g' -e 's/gamma/Exx/g' -e 's/delta/Eoo/g' -e 's/mua/Exm/g' -e 's/mub/Emx/g' -e 's/muaB/Eom/g' -e 's/mubB/Emo/g' -e 's/mud/Emm/g' ../reremi/*.py
-## grep -E "SSetts.gamma|SSetts.beta|SSetts.alpha|SSetts.delta|SSetts.mua|SSetts.mub|SSetts.muaB|SSetts.mubB|SSetts.mud" ../views/*.py
-## sed -i -e 's/SSetts.alpha/SSetts.Exo/g' -e 's/SSetts.beta/SSetts.Eox/g' -e 's/SSetts.gamma/SSetts.Exx/g' -e 's/SSetts.delta/SSetts.Eoo/g' -e 's/SSetts.mua/SSetts.Exm/g' -e 's/SSetts.mub/SSetts.Emx/g' -e 's/SSetts.muaB/SSetts.Eom/g' -e 's/SSetts.mubB/SSetts.Emo/g' -e 's/SSetts.mud/SSetts.Emm/g' ../views/*.py
-## sed -i -e 's/ExmB/Eom/g' -e 's/EmxB/Emo/g' ../*/*.py
-
+from functools import reduce
 from scipy.special import gammaln
 from scipy.stats import binom
 import numpy, random, re
 import pdb
+
+def cmp_lower(a, b):
+    if b is not None:
+        if a is None:
+            return True
+        return a < b
+    return False
+def cmp_greater(a, b):
+    if a is not None:
+        if b is None:
+            return True
+        return a > b
+    return False
+def cmp_leq(a, b):
+    if a is not None:
+        if b is None:
+            return False
+        return a <= b
+    return True
+def cmp_geq(a, b):
+    if b is not None:
+        if a is None:
+            return False
+        return a >= b
+    return True
+def cmp_vals(a, b):
+    if a == b:
+        return 0
+    if a < b:
+        return -1
+    return 1
+def cmp_lists(A, B):
+    #### comparing two sets
+    #### 1. compare sizes of sets
+    if len(A) < len(B):
+        return -2
+    elif len(A) > len(B):
+        return 2
+    #### 2. compare elements of sets
+    for a,b in zip(A, B):
+        if a < b:
+            return -1
+        elif a > b:
+            return 1
+    return 0
+def cmp_sets(A, B):
+    #### comparing two sets
+    #### 1. compare sizes of sets
+    if len(A) < len(B):
+        return -2
+    elif len(A) > len(B):
+        return 2
+    #### 2. compare elements of sets
+    for a,b in zip(sorted(A), sorted(B)):
+        if a < b:
+            return -1
+        elif a > b:
+            return 1
+    return 0
+def cmp_listsets(AA, BB):
+    #### comparing two lists of sets
+    #### 1. compare length of lists
+    if len(AA) < len(BB):
+        return -3
+    elif len(AA) > len(BB):
+        return 3
+    #### 2. compare sizes of sets
+    for A, B in zip(AA, BB):
+        if len(A) < len(B):
+            return -2
+        elif len(A) > len(B):
+            return 2
+    #### 3. compare elements of sets
+    for a, b in zip(AA, BB):
+        for a,b in zip(sorted(A), sorted(B)):
+            if a < b:
+                return -1
+            elif a > b:
+                return 1
+    return 0
+def cmp_reclists(A, B):
+    #### comparing two sets
+    #### 1. compare sizes of sets
+    if len(A) < len(B):
+        return -3
+    elif len(A) > len(B):
+        return 3
+    #### 2. compare elements of sets
+    for a,b in zip(A, B):
+        if type(a) is list:
+            if type(b) is list:
+                tmp = cmp_reclists(a, b)
+                if tmp != 0:
+                    return tmp
+            else:
+                return -2
+        else:
+            if type(b) is list:
+                return 2
+            else:
+                tmp = cmp_vals(a, b)
+                if tmp != 0:
+                    return tmp
+    return 0
 
 def tool_ratio(num, den):
     if num is None or den is None:
@@ -44,25 +142,21 @@ def tool_pValSupp(nbRows, supp, pr, lU=None):
     else:
         return binom.cdf(lU-supp, nbRows, pr)         
 
+status = [(True, False), (False, True), (True, True), (False, False),
+              (True, None), (None, True), (False, None), (None, False), (None, None)]
+labels_status = {True:"1", False:"0", None:"?"}
+labelsm_status = {True:"x", False:"o", None:"m"}
+labelsu_status = {True:"x", False:"o", None:"?"}
+# labelsu_status = {True:u"\u2081", False:u"\u2080", None:u"\u2098"}
+## WITH UNICODE
+sym_status = labelsu_status
+# ## WITHOUT UNICODE
+# sym_status = labels_status
 
 class SSetts(object):
 
-    # labels = ['\t|  \n', '\t  |\n', '\t| |\n', '\t   \n', '\t| :\n', '\t: |\n', '\t  :\n', '\t:  \n', '\t: :\n' ]
-    # labels = ['**', '__', '==', '  ', '*.', '"_', '..', '""', '::' ]
-
-    status = [(True, False), (False, True), (True, True), (False, False),
-              (True, None), (None, True), (False, None), (None, False), (None, None)]
-    labels_status = {True:"1", False:"0", None:"?"}
-    labelsu_status = {True:"x", False:"o", None:"?"}
-    labelsm_status = {True:"x", False:"o", None:"m"}
     labels = ["E%s%s" % (labelsm_status[slhs], labelsm_status[srhs]) for (slhs, srhs) in status]
-    # labelsu_status = {True:u"\u2081", False:u"\u2080", None:u"\u2098"}
-    labels_sparts = ["E%s%s" % (labels_status[slhs], labels_status[srhs]) for (slhs, srhs) in status]
-    ## WITH UNICODE
-    sym_status = labelsu_status
-    # ## WITHOUT UNICODE
-    # sym_status = labels_status
-    
+    labels_sparts = ["E%s%s" % (labels_status[slhs], labels_status[srhs]) for (slhs, srhs) in status]    
     sym_sparts = [sym_status[slhs]+sym_status[srhs] for (slhs, srhs) in status]
     
     ### define the numerical values for the parts
@@ -169,10 +263,11 @@ class SSetts(object):
 
         ## and same for initializing relative parts
         for i, l in enumerate(self.labels):
-            exec("%s = %d" % (l,i))
-        for i, l in enumerate(self.io_labels):
-            exec("%s = %d" % (l,i))
+            exec("global %s; %s = %d" % (l, l,i))
 
+        for i, l in enumerate(self.io_labels):
+            exec("global %s; %s = %d" % (l, l,i))        
+            
         # (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm) = range(9)
         self.last_nonmiss = Eoo
 
@@ -540,7 +635,7 @@ class SSetts(object):
             else: 
                 # return tool_pValSupp(N, lInter, lsupp*lX/(N*N))
                 vv = tool_pValSupp(N, lInter, lsupp*lX/(N*N))
-            # print "---- pVal Marg Query", lInter, lsupp, lX, N, lsupp*lX/(N*N), "-->", vv
+            # print("---- pVal Marg Query", lInter, lsupp, lX, N, lsupp*lX/(N*N), "-->", vv)
             return vv
 
     # query p-value using support sizes (hypergeom), for candidates
@@ -649,14 +744,14 @@ class SParts(object):
     ### PROPS WHAT
     info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
     props_what = ["len", "card", "supp", "set", "perc", "ratio", "area"]    
-    Pwhat_match = "("+ "|".join(info_what.keys()+ props_what) +")"
+    Pwhat_match = "("+ "|".join(list(info_what.keys())+ props_what) +")"
     @classmethod
     def hasPropWhat(tcl, what):
         return re.match(tcl.Pwhat_match, what) is not None
 
     ### PROPS WHICH
     sets_letters = "PIULROABN"        
-    Pwhich_match = "("+ "|".join(["["+sets_letters+"]"] + SSetts.map_label_part.keys()) +")"    
+    Pwhich_match = "("+ "|".join(["["+sets_letters+"]"] + list(SSetts.map_label_part.keys())) +")"    
     @classmethod
     def hasPropWhich(tcl, which):
         return re.match(tcl.Pwhich_match, which) is not None
@@ -672,7 +767,6 @@ class SParts(object):
             self.sParts = [set() for i in range(len(self.ssetts.getLabels()))]
             self.prs = [-1, -1]
             self.N = 0
-            supp_keys = sdict.keys()
             for i, supp_key in enumerate(self.ssetts.getLabels()):
                 if supp_key in sdict:
                     if i > 3 and len(sdict[supp_key]) > 0:
@@ -748,27 +842,32 @@ class SParts(object):
     def copy(self):        
         return SParts(self.ssetts, self.N, self.sParts, prs = list(self.prs))
         
-    # def __eq__(self, other):
-    #     print "Calling EQ"
-    #     if isinstance(other, SParts) and len(other.sParts) == len(self.sParts):
-    #         for i, p in enumerate(self.sParts):
-    #             if other.sParts[i] != p:                    
-    #                 return False
-    #         return True
-    #     return False
-
-    def __cmp__(self, other):
-        if isinstance(other, SParts) and len(other.sParts) == len(self.sParts):
-            lps = [len(p) for p in self.sParts]
-            lpo = [len(p) for p in other.sParts]
-            if lps == lpo:
-                for i, p in enumerate(self.sParts):
-                    if other.sParts[i] != p:                    
-                        return cmp(p, other.sParts[i])
-                return 0
-            return cmp(lps, lpo)
-        return -1
-
+    def __eq__(self,other):
+        return isinstance(other, SParts) and self.N == other.N and cmp_listsets(self.sParts, other.sParts) == 0
+    def __ne__(self,other):
+        return not isinstance(other, SParts) or self.N != other.N or cmp_listsets(self.sParts, other.sParts) != 0
+    ### !! if not the same length or not the same total, set lists are not comparable
+    def __lt__(self,other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c > -3 and c < 0
+        return False
+    def __le__(self,other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c > -3 and c <= 0
+        return False
+    def __gt__(self,other):        
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c < 3 and c > 0
+        return False
+    def __ge__(self,other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c < 3 and c >= 0
+        return False
+    
     def getTypeParts(self):
         return self.ssetts.getTypeParts()
     def getMethodPVal(self):
@@ -1307,8 +1406,19 @@ class SParts(object):
         for i in string.strip().rsplit():
             try:
                 nsupp.add(int(i))
-            except TypeError, detail:
+            except TypeError as detail:
                 raise Exception('Unexpected element in the support: %s\n' %i)
         return nsupp
     parseSupportPart = staticmethod(parseSupportPart)
 
+# def unitTest():
+#     ssetts = SSetts()
+#     spartsA = SParts(ssetts, 200, [range(50), range(50, 100), range(100, 150)])
+#     spartsB = SParts(ssetts, 300, [range(50), range(50, 100), range(100, 150)])
+#     spartsC = SParts(ssetts, 200, [range(10), range(10, 100), range(100, 150)])
+#     assert(spartsA==spartsA)
+#     assert(not spartsA>=spartsB); assert(not spartsA<spartsB) # not comparable
+#     assert(not spartsA<spartsC); assert(spartsA>spartsC) # comparable
+    
+# if __name__ == '__main__':
+#     unitTest()

@@ -10,14 +10,17 @@ fieldlist	cardsall
 all:card:Y	Y={Ex*}[wmissing]{Em*}
 fieldlist	cards
 X:card:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
+X:card:Y	Y={L,R,A,B,U,I} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	percsall
 all:perc:Y	Y={Ex*}[wmissing]{Em*}
 fieldlist	percs
 X:perc:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
+X:perc:Y	Y={L,R,A,B,U,I} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	suppsall
 all:supp:Y	Y={Ex*}[wmissing]{Em*}
 fieldlist	supps
 X:supp:Y	Y={Ex*}[wmissing]{Em*} X=[wsplits]{test,learn}{all}[wcond]{cond}
+X:supp:Y	Y={L,R,A,B,U,I} X=[wsplits]{test,learn}{all}[wcond]{cond}
 fieldlist	areas
 X:area:Y	Y={L,R,A,B,U,I} X=[wsplits]{test,learn}{all,active}
 fieldlist	statsall
@@ -41,7 +44,7 @@ list	queries
 X:Y:	Y={acc,pval} X=[wsplits]{test,learn}{all}[wcond]{cond}
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}
 cohesion	[wxtr_geoplus]
-list	cards
+list	cardsall
 fieldlist	gui
 list	queries
 X	[wsplits] X={acc_ratioTL,len_I_ratioTA}

@@ -1,20 +1,34 @@
-import random, os.path, re
-from toolLog import Log
-from classContent import BatchCollection
-from classRedescription import Redescription
-from classExtension import ExtensionError, newExtensionsBatch
-from classSouvenirs import Souvenirs
-from classConstraints import Constraints
-from classInitialPairs import InitialPairs
+import random, numpy, os.path, re
 
-import numpy
+try:
+    from toolLog import Log
+    from classContent import BatchCollection
+    from classRedescription import Redescription
+    from classExtension import ExtensionError, newExtensionsBatch
+    from classSouvenirs import Souvenirs
+    from classConstraints import Constraints
+    from classInitialPairs import InitialPairs
+
+    from classCharbonGMiss import CharbonGMiss
+    from classCharbonGStd import CharbonGStd
+    from classCharbonTAlt import CharbonTCW, CharbonTSprit, CharbonTSplit
+    from classCharbonTLayer import CharbonTLayer
+except ModuleNotFoundError:
+    from .toolLog import Log
+    from .classContent import BatchCollection
+    from .classRedescription import Redescription
+    from .classExtension import ExtensionError, newExtensionsBatch
+    from .classSouvenirs import Souvenirs
+    from .classConstraints import Constraints
+    from .classInitialPairs import InitialPairs
+
+    from .classCharbonGMiss import CharbonGMiss
+    from .classCharbonGStd import CharbonGStd
+    from .classCharbonTAlt import CharbonTCW, CharbonTSprit, CharbonTSplit
+    from .classCharbonTLayer import CharbonTLayer
 
 import pdb
 
-from classCharbonGMiss import CharbonGMiss
-from classCharbonGStd import CharbonGStd
-from classCharbonTAlt import CharbonTCW, CharbonTSprit, CharbonTSplit
-from classCharbonTLayer import CharbonTLayer
 
 TREE_CLASSES = { "layeredtrees": CharbonTLayer,
                  "cartwheel": CharbonTCW,
@@ -251,7 +265,7 @@ class ExpMiner(object):
                     map_v[k].append((ii, i))
 
         ### pdb.set_trace()
-        print "NEXTGEN", len(nextge), len([ni for ni, n in enumerate(nextge) if n.query(0).usesOr()]), len([ni for ni, n in enumerate(nextge) if n.query(1).usesOr()])
+        # print("NEXTGEN", len(nextge), len([ni for ni, n in enumerate(nextge) if n.query(0).usesOr()]), len([ni for ni, n in enumerate(nextge) if n.query(1).usesOr()]))
         for ii, (k, rs) in enumerate(map_v.items()):
             self.logger.printL(4, "Combining on basis %d/%d (%s)" % (ii+1, len(map_v), k), 'status', self.ppid)
 
@@ -345,8 +359,8 @@ class ExpMiner(object):
         return rcollect
                     
     def improveRedescription(self, red, rcollect, charbon, skip={}, round_id=0, trg_lid=None, track_rounds=[], try_shorten=True):
-        # print "-----------------", round_id, track_rounds
-        # print "IMPRV -(0:0)-\t%s" % red        
+        # print("-----------------", round_id, track_rounds)
+        # print("IMPRV -(0:0)-\t%s" % red)
         bests = []
         best_score = red.score()
         got_better = False
@@ -377,9 +391,9 @@ class ExpMiner(object):
         desc_ids = []
         for ci, best in enumerate(bests):
             # if round_id < 50:
-            #     print "%s|_ (%d:%d:%d)%s\t%s" % (" "*round_id, ci, best["lit"] is None, best["red"].getUid(), " "*(50-round_id), best["red"])
+            #     print("%s|_ (%d:%d:%d)%s\t%s" % (" "*round_id, ci, best["lit"] is None, best["red"].getUid(), " "*(50-round_id), best["red"]))
             # else:
-            #     print "[...]"
+            #     print("[...]")
             kid_ids.append(best["red"].getUid())
         if len(kid_ids) > 0:
             track = {"do": "improve", "trg": kid_ids, "src": [red.getUid()], "out": trg_lid}
@@ -469,7 +483,7 @@ class ExpMiner(object):
         col = self.data.col(side, lit.colId())
         tmp_cands = charbon.getCandidatesImprov(side, col, red_basis, ext_op, supports, offsets)
         if len(tmp_cands) > 1:
-            print "Multi"
+            print("Multi")
             pdb.set_trace()
 
         for cand in tmp_cands:
@@ -628,7 +642,7 @@ class Miner(object):
         else:
             self.logger.printL(1, 'Done...', 'status', self.getId())
         self.logger.sendCompleted(self.getId())
-        print rcollect
+        # print(rcollect)
         return rcollect
 
     def full_run(self, cust_params={}):
@@ -681,7 +695,7 @@ class Miner(object):
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
             except ExtensionError as details:
                 self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
-            # print "THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
+            # print("THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out")))
             while initial_red is not None and self.questionLive():
                 self.count += 1
             
@@ -697,7 +711,7 @@ class Miner(object):
                 # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
                 # if (self.final["results"] != ttt):
                 #     pdb.set_trace()
-                #     print "Not same"ImportError: cannot import name newExtenionsBatch
+                #     print("Not same")
 
                 ### DEBUG self.final["results"] = range(len(self.final["batch"]))
                 # self.logger.clockTac(self.getId(), "select")
@@ -853,7 +867,7 @@ class Miner(object):
 
     def getPairLoad(self, idL, idR):
         # pdb.set_trace()
-        # print idL, idR, eval("0b"+"".join(["%d" %(((idL+idR)%10)%i ==0) for i in [8,4,2]]))
+        # print(idL, idR, eval("0b"+"".join(["%d" %(((idL+idR)%10)%i ==0) for i in [8,4,2]])))
         ## + ((idL + idR)%10)/1000.0
         return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50) + 1./(1+((idL + idR)%10))
         ## return max(1, self.data.col(0, idL).getNbValues()* self.data.col(1, idR).getNbValues()/50)
@@ -923,8 +937,8 @@ class MinerDistrib(Miner):
                 #### Finish all pairs before exhausting,
                 #### split in fixed sized batches, not sorted by cost
                 K = self.max_processes
-                batch_size = max(self.total_pairs/(5*K), min_bsize) #self.total_pairs / (self.max_processes-1)
-                ## print "Batch size=", batch_size
+                batch_size = max(self.total_pairs//(5*K), min_bsize) #self.total_pairs / (self.max_processes-1)
+                ## print("Batch size=", batch_size)
                 pointer = 0
             else:
                 #### Sort from easiest to most expensive
@@ -939,13 +953,13 @@ class MinerDistrib(Miner):
                     cost += explore_list[-off][-1]
                 if len(self.initial_pairs) > off:
                     off = 0
-                ## print "OFF", off
+                ## print("OFF", off)
                 K = self.max_processes-1
-                batch_size = max((self.total_pairs-off) / K, min_bsize)
+                batch_size = max((self.total_pairs-off) // K, min_bsize)
 
                 ### Launch last worker
                 if K*batch_size < len(explore_list):
-                    ## print "Init PairsProcess ", K, len(explore_list[K*batch_size:])
+                    ## print("Init PairsProcess ", K, len(explore_list[K*batch_size:]))
                     self.workers[K] = PairsProcess(K, explore_list[K*batch_size:], self.charbon, self.data, self.rqueue)
                 pointer = -1
                 
@@ -954,7 +968,7 @@ class MinerDistrib(Miner):
             for k in range(K):
                 ll = self.initial_pairs.getExploreNextBatch(pointer=k)
                 if len(ll) > 0:
-                    ## print "Init PairsProcess ", k, len(ll)
+                    ## print("Init PairsProcess ", k, len(ll))
                     self.workers[k] = PairsProcess(k, ll, self.charbon, self.data, self.rqueue)
                 else:
                     pointer = -1
@@ -986,7 +1000,7 @@ class MinerDistrib(Miner):
                     
                     self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
                     self.logger.clockTic(self.getId(), "expansion_%d-%d" % (self.count,k))
-                    ## print "Init ExpandProcess ", k, self.count
+                    ## print("Init ExpandProcess ", k, self.count)
                     self.workers[k] = ExpandProcess(k, self.getId(), self.count, self.data,
                                                     self.charbon, self.constraints,
                                                     self.rqueue, [initial_red],
@@ -1031,20 +1045,20 @@ class MinerDistrib(Miner):
         self.logger.updateProgress({"rcount": m["count"]}, 1, self.getId())
 
     def leftOverPairs(self):
-        # print "LEFTOVER", self.workers
+        # print("LEFTOVER", self.workers)
         return self.initial_pairs.exhausted() and len(self.workers) > 0 and len([(wi, ww) for (wi, ww) in self.workers.items() if ww.isExpand()]) == 0
         
     def keepWatchDispatch(self):
         while len(self.workers) > 0 and self.questionLive():
             m = self.rqueue.get()
             if m["what"] == "done":
-                ## print "Worker done", m["id"]
+                ## print("Worker done", m["id"])
                 del self.workers[m["id"]]
 
                 if self.initial_pairs.getExplorePointer() >= 0:
                     ll = self.initial_pairs.getExploreNextBatch()
                     if len(ll) > 0:
-                        ## print "Init Additional PairsProcess ", m["id"], self.explore_pairs["pointer"], len(ll)
+                        ## print("Init Additional PairsProcess ", m["id"], self.explore_pairs["pointer"], len(ll))
                         self.workers[m["id"]] = PairsProcess(m["id"], ll, self.charbon, self.data, self.rqueue)
                         self.initial_pairs.incrementExplorePointer()
                     else:
@@ -1055,7 +1069,7 @@ class MinerDistrib(Miner):
                     if self.pe_balance > 0:
                         self.initializeExpansions()
                     # else:
-                    #     print "Waiting for all pairs to complete..."
+                    #     print("Waiting for all pairs to complete...")
 
                 if self.pairWorkers == 0:
                     self.logger.updateProgress({"rcount": 0}, 1, self.getId())
@@ -1066,7 +1080,7 @@ class MinerDistrib(Miner):
                     ## self.initial_pairs.saveToFile()
                     if self.pe_balance == 0:
                         self.initializeExpansions()
-                        ## print "All pairs complete, launching expansion..."
+                        ## print("All pairs complete, launching expansion...")
 
                 
             elif m["what"] == "pairs":

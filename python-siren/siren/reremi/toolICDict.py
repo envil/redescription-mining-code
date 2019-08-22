@@ -1,5 +1,12 @@
 import collections
 
+def first_value(d):
+    try:
+        k, *_ = d
+        return d[k]
+    except ValueError:
+        return None
+
 class ICDict(collections.MutableMapping):
     """
     A dict like object that keeps track of the changes.
@@ -69,10 +76,6 @@ class ICDict(collections.MutableMapping):
         new.isChanged = self._isChanged
         return new
 
-    def has_key(self, key):
-        print "has_key() has been deprecated, use 'key in ICDict' instead"
-        return key in self.data
-
     def reset(self):
         self.data.clear()
         self._isChanged = True
@@ -95,4 +98,15 @@ class ICDict(collections.MutableMapping):
 
     def __str__(self):
         return 'ICDict: '+ str(self.data)+', isChanged = ' + str(self._isChanged)
-        
+
+# def unitTest():
+#     d = ICDict()
+#     assert(d.isChanged == False)
+#     d[3] = "three"
+#     assert(d.isChanged == True)
+#     assert(3 in d)
+#     assert(4 not in d)
+#     print(d)
+    
+# if __name__ == '__main__':
+#     unitTest()

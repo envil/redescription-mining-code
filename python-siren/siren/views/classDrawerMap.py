@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import mpl_toolkits.basemap
 
-from classDrawerBasis import DrawerEntitiesTD, DrawerBasis
-from classDrawerClust import DrawerClustTD
+from .classDrawerBasis import DrawerEntitiesTD, DrawerBasis
+from .classDrawerClust import DrawerClustTD
 
 import pdb
 
@@ -242,7 +242,7 @@ class MapBase:
         if proj is None:
             return None, None
         mbounds = tcl.getBasemapCorners(prefs, cextrema)
-        ## print "MBOUNDS", "\n".join(["%s:%s" % (k,v) for (k,v) in mbounds.items()])
+        ## print("MBOUNDS", "\n".join(["%s:%s" % (k,v) for (k,v) in mbounds.items()]))
 
         llcrnrlon = numpy.max([-180., mbounds["llon"]-mbounds["marg_llon"]])
         urcrnrlon = numpy.min([180., mbounds["ulon"]+mbounds["marg_ulon"]])
@@ -308,17 +308,17 @@ class MapBase:
                 args_p["projection"] = proj[2:]
         for param_k in tcl.proj_pk[args_p["projection"]]:
             args_p[param_k] = args_all[param_k]
-        # print "Proj", args_p["projection"], "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat) #, "args", args_all
-        # print "--- ARGS ALL\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_all.items()])
-        # print "--- ARGS P\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_p.items()])
+        # print("Proj", args_p["projection"], "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat) #, "args", args_all)
+        # print("--- ARGS ALL\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_all.items()]))
+        # print("--- ARGS P\n", "\n".join(["%s:%s" % (k,v) for (k,v) in args_p.items()]))
         try:
             bm = mpl_toolkits.basemap.Basemap(**args_p)
-            # print "<< Basemap init succeded!", args_p
+            # print("<< Basemap init succeded!", args_p)
         except ValueError:
-            # print ">> Basemap init failed!", args_p
-            # print "H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat), "args", args_all
+            # print(">> Basemap init failed!", args_p)
+            # print("H", height, "W", width, "Corners", (llcrnrlon, llcrnrlat), (urcrnrlon, urcrnrlat), "args", args_all)
             bm = None 
-        ### print "BM Corners", (bm.llcrnrlon, bm.llcrnrlat), (bm.urcrnrlon, bm.urcrnrlat)
+        ### print("BM Corners", (bm.llcrnrlon, bm.llcrnrlat), (bm.urcrnrlon, bm.urcrnrlat))
         return bm, args_all
 
     @classmethod
@@ -348,11 +348,9 @@ class MapBase:
             
         if draws["parallels"]:
             tt = tcl.getParallelsRange(bm_args)
-            # print "parallels", tt
             bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1], zorder=tcl.background_zorder)
         if draws["meridians"]:
             tt = tcl.getMeridiansRange(bm_args)
-            # print "meridians", tt
             bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0], zorder=tcl.background_zorder)
 
         func_map = {1: bm.shadedrelief, 2: bm.etopo, 3: bm.bluemarble}
@@ -364,7 +362,7 @@ class MapBase:
                 bd = True
             except IndexError:
                 bd = False
-                print "Impossible to draw the image map background!"
+                print("Impossible to draw the image map background!")
         if not bd:
             if bounds_color != colors["none"] or sea_color != colors["none"]:
                 bm.drawmapboundary(color=bounds_color, fill_color=sea_color) #, zorder=tcl.background_zorder)

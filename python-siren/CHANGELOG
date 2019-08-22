@@ -1,5 +1,11 @@
 CHANGELOG for Siren
 ===================
+v5.0.0
+------
+* Migrated to Python3
+* Conditional variable and time-series view
+* Various bug fixes
+
 v4.3.0
 ------
 * Adding view for list of redescriptions (with clustering by support differences)

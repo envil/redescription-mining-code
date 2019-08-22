@@ -4,7 +4,7 @@ import re
 ### from wx import EVT_BUTTON, EVT_CHECKBOX, EVT_CHOICE, EVT_CLOSE, EVT_TEXT, ID_ANY
 ### from wx import BoxSizer, Button, NewId, Panel, StaticText
 import pdb
-from classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
+from .classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
 
 ### USAGE this class provides a wx Modal dialog to modify a dictionary of preferences managed with the PreferenceManager
 ## It is launched with the following command:
@@ -78,16 +78,16 @@ class ConnectionDialog(PreferencesDialog):
             self.updateInfo(type_wp+" --- "+msg, color)
             self.controls_map[sec_id]["button"]["reset"].Disable()
             
-            for txtctrl in self.controls_map[sec_id]["open"].itervalues():
+            for txtctrl in self.controls_map[sec_id]["open"].values():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for txtctrl in self.controls_map[sec_id]["range"].itervalues():
+            for txtctrl in self.controls_map[sec_id]["range"].values():
                 self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-            for choix in self.controls_map[sec_id]["boolean"].itervalues():
+            for choix in self.controls_map[sec_id]["boolean"].values():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for choix in self.controls_map[sec_id]["single_options"].itervalues():
+            for choix in self.controls_map[sec_id]["single_options"].values():
                 self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-            for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
-                for chkbox in chkset.itervalues():
+            for chkset in self.controls_map[sec_id]["multiple_options"].values():
+                for chkbox in chkset.values():
                     self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
             self.sec_id = sec_id
             ipkn = self.getIPKN_WP()
@@ -198,7 +198,6 @@ class ConnectionDialog(PreferencesDialog):
         
     def onAction(self, event):
         action = self.controls_map[self.sec_id]["button"]["action"].GetLabel()
-        # print "onAction", action
         if action == self.BTN_LABELS["ping"]:
             self.actPing()
         elif action == self.BTN_LABELS["start"]:

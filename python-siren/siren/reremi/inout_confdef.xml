@@ -88,6 +88,24 @@
     <options><value>(auto)</value><value>TAB</value><value>;</value>
         <value>,</value><value>SPC</value></options>
       </parameter>
+<parameter>
+	<name>time_yearfirst</name>
+	<label>Time year first</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Whether to interpret the first value in an ambiguous 3-integer date as the year (dateutils).</legend>
+	<default><value>0</value></default>
+    <options><value>(auto)</value><value>yes</value><value>no</value></options>
+      </parameter>
+      <parameter>
+	<name>time_dayfirst</name>
+	<label>Time day first</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Whether to interpret the first value in an ambiguous 3-integer date as the day (dateutils).</legend>
+	<default><value>0</value></default>
+    <options><value>(auto)</value><value>yes</value><value>no</value></options>
+      </parameter>
     </section>
     <section>
       <name>Results Output</name>

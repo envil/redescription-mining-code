@@ -17,7 +17,7 @@ def parseXML(filename):
         doc = xml.dom.minidom.parse(filename)
     except Exception as inst:
         doc = None
-        print "File %s could not be read! (%s)" % (filename, inst)
+        print("File %s could not be read! (%s)" % (filename, inst))
     return doc
 
 def getChildrenText(element):
@@ -30,10 +30,9 @@ def getNodesText(nodelist):
             rc = rc + node.data
         if node.nodeType == node.CDATA_SECTION_NODE:
             rc = rc + node.data.strip("\"")
-    try:
-        return str(rc)
-    except UnicodeEncodeError as e:
-        return  unicode(rc)
+    return str(rc)
+    # except UnicodeEncodeError as e:
+    #     return  unicode(rc)
 
 def parseToType(raw_value, value_type=None):
     if value_type is not None and type(raw_value) != value_type:

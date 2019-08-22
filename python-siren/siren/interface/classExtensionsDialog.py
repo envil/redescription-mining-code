@@ -3,7 +3,7 @@ import wx
 
 import pdb
 
-from classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
+from .classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
 
 class ExtensionsDialog(PreferencesDialog):
     """
@@ -30,7 +30,7 @@ class ExtensionsDialog(PreferencesDialog):
         self.files_changed = True
         
     def changeActivate(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self.upButtons(sec_id, on_action=None)
     
@@ -150,7 +150,7 @@ class ExtensionsDialog(PreferencesDialog):
             self.upButtons(sec_id, on_action="off")
 
     def onFileChoice(self, e):
-        if e.GetId() in self.objects_map.keys():
+        if e.GetId() in self.objects_map:
             sec_id = self.objects_map[e.GetId()][0]
 
             button = e.GetEventObject()
@@ -159,7 +159,7 @@ class ExtensionsDialog(PreferencesDialog):
             wcd = self.wcd
             open_dlg = wx.FileDialog(self.nb, message="Choose "+btnName+" file",
                                  defaultDir=self.loc_open_dir, wildcard=wcd,
-                                 style=wx.OPEN|wx.CHANGE_DIR)
+                                 style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
             if open_dlg.ShowModal() == wx.ID_OK:
                 path = open_dlg.GetPath()
                 self.loc_open_dir = os.path.dirname(path)

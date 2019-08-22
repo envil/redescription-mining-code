@@ -1,6 +1,6 @@
 import wx
 import numpy
-from factView import ViewFactory
+from .factView import ViewFactory
 
 import pdb
 
@@ -57,9 +57,9 @@ class ViewsManager:
         if vkey in self.view_map:
             return self.view_map[vkey]
     def iterateViews(self):
-        return self.view_map.items()
+        return list(self.view_map.items())
     def getVKeys(self):
-        return self.itov.keys()
+        return list(self.itov.keys())
     
     def refreshTables(self, lids=None, iids=[]):
         for vid, view in self.iterateViews():
@@ -91,7 +91,7 @@ class ViewsManager:
 
     def deleteAllViews(self):
         self.selectedViewX = -1
-        vkeys = self.view_map.keys()
+        vkeys = list(self.view_map.keys())
         for vkey in vkeys:
             self.view_map[vkey].OnQuit(None, upMenu=False)
         self.view_map = {}
@@ -119,6 +119,7 @@ class ViewsManager:
             ikey = (typeI, iid)
         else:
             ikey = ("r", iid)
+            
         if ikey in self.itov and viewT in self.itov[ikey]:
             vid = self.itov[ikey][viewT]
             
@@ -145,6 +146,7 @@ class ViewsManager:
     def unregisterView(self, vkey, upMenu=True):
         if vkey in self.vtoi:
             ikey = self.vtoi[vkey]
+
             del self.vtoi[vkey]
             del self.itov[ikey][vkey[0]]
 
@@ -170,7 +172,7 @@ class ViewsManager:
         self.parent.toTop()
 
     def closeViews(self):
-        vkeys = self.view_map.keys()
+        vkeys = list(self.view_map.keys())
         for vkey in vkeys:
             if not self.view_map[vkey].isIntab():
                 self.view_map[vkey].OnQuit()

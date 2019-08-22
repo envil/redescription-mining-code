@@ -3,18 +3,29 @@ import os.path
 import plistlib
 import shutil
 import zipfile
-import codecs
 import re
+import io
 
 import pdb
 
-from classConstraints import ActionsRegistry
-from classCol import ColM
-from classRedescription import Redescription
-from classData import Data
-from classQuery import Query
-from classPreferencesManager import PreferencesReader, getPM
+try:
+    from toolLog import Log
+    from classCol import ColM
+    from classRedescription import Redescription
+    from classData import Data
+    from classQuery import Query
+    from classConstraints import Constraints, ActionsRegistry
+    from classPreferencesManager import PreferencesReader, getPM
+except ModuleNotFoundError:
+    from .toolLog import Log
+    from .classCol import ColM
+    from .classRedescription import Redescription
+    from .classData import Data
+    from .classQuery import Query
+    from .classConstraints import Constraints, ActionsRegistry
+    from .classPreferencesManager import PreferencesReader, getPM
 
+    
 class Package(object):
     """Class to handle the zip packages that contain data, preferences, results, etc. for redescription mining.
     """
@@ -35,7 +46,6 @@ class Package(object):
     FILETYPE_VERSION = 6
     XML_FILETYPE_VERSION = 3
 
-    NA_str = Data.NA_str_def
     RED_FN_SEP = ";"
 
     CREATOR = "ReReMi/Siren Package"
@@ -95,8 +105,10 @@ class Package(object):
     def openPack(self):
         try:
             self.package = zipfile.ZipFile(self.filename, 'r')
-            plist_fd = self.package.open(self.PLIST_FILE, 'r')
-            self.plist = plistlib.readPlist(plist_fd)
+            # plist_fd = self.package.open(self.PLIST_FILE, 'r')
+            # self.plist = plistlib.readPlist(plist_fd)
+            plist_ffd = self.package.read(self.PLIST_FILE)
+            self.plist = plistlib.loads(plist_ffd)
         except Exception:
             self.package = None
             self.plist = {}
@@ -148,8 +160,10 @@ class Package(object):
                 Redescription.extendRP(fields_fns)
                 for fn in fields_fns:
                     fn.close()
-                
-            data = self.readData()
+
+            params_l = PreferencesReader.paramsToDict(preferences)
+            add_info = IOTools.getDataAddInfo(params_l, plist=self.plist, version=self.getFormatV())  
+            data = self.readData(add_info)
             if data is not None:
                 if 'ext_keys' in self.plist:
                     ext_keys = self.plist['ext_keys'].strip().split(";")
@@ -179,21 +193,20 @@ class Package(object):
         return preferences
 
 
-    def readData(self):
+    def readData(self, add_info):
         data = None
+        if add_info is None:
+            add_info = [{}, Data.NA_str]
         # Load data
         if 'data_LHS_filename' in self.plist:
             try:
-                fdLHS = self.package.open(self.plist['data_LHS_filename'], 'r')
+                fdLHS = io.TextIOWrapper(io.BytesIO(self.package.read(self.plist['data_LHS_filename'])))
                 if self.plist.get('data_RHS_filename', self.plist['data_LHS_filename']) != self.plist['data_LHS_filename']:
-                    fdRHS = self.package.open(self.plist['data_RHS_filename'], 'r')
+                    fdRHS = io.TextIOWrapper(io.BytesIO(self.package.read(self.plist['data_RHS_filename'])))
                 else:
-                    fdRHS = None
-                NA_str = self.plist.get('NA_str', None)
-                if NA_str is None and self.getFormatV() <= 4:
-                    NA_str = Package.NA_str
+                    fdRHS = None                    
                 # pdb.set_trace()    
-                data = Data([fdLHS, fdRHS, {}, NA_str], "csv")
+                data = Data([fdLHS, fdRHS]+add_info, "csv")
             except Exception:
                 data = None
                 self.raiseMess()
@@ -212,7 +225,8 @@ class Package(object):
             for file_red in self.plist['redescriptions_filename'].split(self.RED_FN_SEP):
                 sid = ("%s" % (len(reds) + 1))[::-1]
                 try:
-                    fd = self.package.open(file_red, 'r')
+                    fd = io.TextIOWrapper(io.BytesIO(self.package.read(file_red)))
+                    # fd = self.package.open(file_red, 'r')
                     rs = []
                     rp.parseRedList(fd, data, rs, sid=sid)
                 except Exception:
@@ -357,91 +371,337 @@ class Package(object):
                 fns['redescriptions_filename_%d' %ci] = c
         return d, fns
 
+class IOTools:
+    NA_FILETYPE_VERSION = 4
+    map_data_params = [{"trg": 0, "from": "delim_in", "to": "delimiter",
+                        "vmap": {"(auto)": None, "TAB": '\t', "SPC": ' '}},
+                        {"trg": 1, "from": "NA_str", "to": "NA_str"},
+                       {"trg": 1, "from": "time_dayfirst", "to": "time_dayfirst",
+                        "vmap": {"(auto)": None, "yes": True, "no": False}},
+                       {"trg": 1, "from": "time_yearfirst", "to": "time_yearfirst",
+                        "vmap": {"(auto)": None, "yes": True, "no": False}}]
+    @classmethod
+    def getDataAddInfo(tcl, params_l={}, plist={}, version=None, add_info=None):
+        if add_info is None:
+            add_info = [{}, {'NA_str': Data.NA_str_def}]
 
-def writeRedescriptions(reds, filename, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}, fmts=[None, None, None]):
-    if names is False:
-        names = [None, None]
-    red_list = [red for red in reds if red.isEnabled() or with_disabled]
-    if toPackage:
-        fields_supp = [-1, ":extra:status"]
-    else:
-        fields_supp = None
-        # with codecs.open(filename, encoding='utf-8', mode='w') as f:
-    with open(filename, mode='w') as f:
-        rp = Redescription.getRP()
-        if style == "tex":
-            f.write(codecs.encode(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines, modifiers=modifiers, fmts=fmts), 'utf-8','replace'))
-        else:
-            f.write(codecs.encode(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines, modifiers=modifiers, fmts=fmts), 'utf-8','replace'))
-            
-def writePreferences(preferences, pm, filename, toPackage=False, inc_def=False, core=False):
-    sections = True
-    helps = False
-    if toPackage:
-        sections = False
-    if preferences is None or inc_def:
-        helps = True
-    with open(filename, 'w') as f:
-        f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
-
-def writeData(data, filenames, toPackage = False):
-    data.writeCSV(filenames)
-
-def writeDataExtensions(data, plist=None, tmp_dir="./"):
-    if plist is not None:
-        data.saveExtensions(plist, {"tmp_dir": tmp_dir})
-
-def saveAsPackage(filename, data, preferences=None, pm=None, reds=None, AR=None):
-    package = Package(None, None, mode="w")
-
-    (filename, suffix) = os.path.splitext(filename)
-    contents = {}
-    if data is not None:
-        contents['data'] = data                                
-    if reds is not None and len(reds) > 0:
-        contents['redescriptions'] = (self.REDESCRIPTIONS_FILENAME, reds, range(len(reds)))
-    if preferences is not None:
-        if pm is None:
-            pm = getPM()
-        contents['preferences'] = preferences
-        contents['pm'] = pm
-
-    ### definitions
-    vdefs = ColM.getRP().fieldsToStr()
-    if len(vdefs) > 0:
-        contents['fields_vdefs'] = vdefs
-    rdefs = Redescription.getRP().fieldsToStr()
-    if len(rdefs) > 0:
-        contents['fields_rdefs'] = rdefs
-    if AR is not None:
-        adefs = AR.actionsToStr()
-        if len(adefs) > 0:
-            contents['actions_rdefs'] = adefs
-        
-    package.writeToFile(filename+suffix, contents)
-
+        for p in tcl.map_data_params:
+            for src in [params_l, plist]:
+                if p["from"] in src:
+                    val = src[p["from"]]
+                    if "vmap" in p:
+                        val = p["vmap"].get(val, val)
+                        if val is not None:
+                            add_info[p["trg"]][p["to"]] = val
+                    else:
+                        add_info[p["trg"]][p["to"]] = val
+        if add_info[1]['NA_str'] is None and (version is not None and version <= tcl.NA_FILETYPE_VERSION):
+            add_info[1]['NA_str'] = Data.NA_str_def
+        # print("ADD_INFO", add_info)
+        return add_info
     
-def getPrintParams(filename, data=None):
-    params = {"with_disabled": False, "style": "", "full_supp":False, "nblines":1,
-              "names": [None, None], "supp_names": None}
+    @classmethod
+    def writeRedescriptions(tcl, reds, filename, names = [None, None], with_disabled=False, toPackage = False, style="", full_supp=False, nblines=1, supp_names=None, modifiers={}, fmts=[None, None, None]):
+        if names is False:
+            names = [None, None]
+        red_list = [red for red in reds if red.isEnabled() or with_disabled]
+        if toPackage:
+            fields_supp = [-1, ":extra:status"]
+        else:
+            fields_supp = None
+        with open(filename, mode='w') as f:
+            rp = Redescription.getRP()
+            if style == "tex":
+                f.write(rp.printTexRedList(red_list, names, fields_supp, nblines=nblines, modifiers=modifiers, fmts=fmts))
+            else:
+                f.write(rp.printRedList(red_list, names, fields_supp, full_supp=full_supp, supp_names=supp_names, nblines=nblines, modifiers=modifiers, fmts=fmts))
 
-    named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
-    supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or \
-                 ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
+    @classmethod
+    def writePreferences(tcl, preferences, pm, filename, toPackage=False, inc_def=False, core=False):
+        sections = True
+        helps = False
+        if toPackage:
+            sections = False
+        if preferences is None or inc_def:
+            helps = True
+        with open(filename, 'w') as f:
+            f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
 
-    params["with_disabled"] = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
-    params["full_supp"] = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
+    @classmethod
+    def writeData(tcl, data, filenames, toPackage = False):
+        data.writeCSV(filenames)
+    @classmethod
+    def writeDataExtensions(tcl, data, plist=None, tmp_dir="./"):
+        if plist is not None:
+            data.saveExtensions(plist, {"tmp_dir": tmp_dir})
+    @classmethod
+    def saveAsPackage(tcl, filename, data, preferences=None, pm=None, reds=None, AR=None):
+        package = Package(None, None, mode="w")
+    
+        (filename, suffix) = os.path.splitext(filename)
+        contents = {}
+        if data is not None:
+            contents['data'] = data                                
+        if reds is not None and len(reds) > 0:
+            contents['redescriptions'] = (self.REDESCRIPTIONS_FILENAME, reds, range(len(reds)))
+        if preferences is not None:
+            if pm is None:
+                pm = getPM()
+            contents['preferences'] = preferences
+            contents['pm'] = pm
+    
+        ### definitions
+        vdefs = ColM.getRP().fieldsToStr()
+        if len(vdefs) > 0:
+            contents['fields_vdefs'] = vdefs
+        rdefs = Redescription.getRP().fieldsToStr()
+        if len(rdefs) > 0:
+            contents['fields_rdefs'] = rdefs
+        if AR is not None:
+            adefs = AR.actionsToStr()
+            if len(adefs) > 0:
+                contents['actions_rdefs'] = adefs
             
-    if re.search(".tex$", filename):
-        params["style"] = "tex"
+        package.writeToFile(filename+suffix, contents)
+    
+    @classmethod
+    def getPrintParams(tcl, filename, data=None):
+        params = {"with_disabled": False, "style": "", "full_supp":False, "nblines":1,
+                  "names": [None, None], "supp_names": None}
+    
+        named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
+        supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or \
+                     ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
+    
+        params["with_disabled"] = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
+        params["full_supp"] = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
+                
+        if re.search(".tex$", filename):
+            params["style"] = "tex"
+    
+        tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).[a-z]*$", filename)
+        if tmp is not None:
+            params["nblines"] = int(tmp.group("nbl"))
+    
+        if named and data is not None:
+            params["names"] = data.getNames()
+            params["fmts"] = data.getFmts()       
+        if supp_names:
+            params["supp_names"] = data.getRNames()
+        return params
 
-    tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).[a-z]*$", filename)
-    if tmp is not None:
-        params["nblines"] = int(tmp.group("nbl"))
-
-    if named and data is not None:
-        params["names"] = data.getNames()
-        params["fmts"] = data.getFmts()       
-    if supp_names:
-        params["supp_names"] = data.getRNames()
-    return params
+    @classmethod
+    def prepareFilenames(tcl, params_l, tmp_dir=None, src_folder=None):
+        filenames = {"queries": "-",
+                     "style_data": "csv",
+                     "add_info": tcl.getDataAddInfo(params_l)
+                     }
+        
+        for p in ['result_rep', 'data_rep', 'extensions_rep']:
+            if p not in params_l:
+                params_l[p] = ""
+            if src_folder is not None and re.match("./", params_l[p]):
+                params_l[p] = src_folder+params_l[p][1:]
+            elif params_l[p] == "__TMP_DIR__":
+                if tmp_dir is None:
+                    tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
+                params_l[p] = tmp_dir + "/"
+            elif sys.platform != 'darwin':
+                params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+    
+        ### Make data file names
+        filenames["LHS_data"] = ""
+        if len(params_l.get("LHS_data", "")) != 0:
+            filenames["LHS_data"] = params_l['LHS_data']
+        elif len(params_l.get('data_l', "")) != 0:
+            filenames["LHS_data"] = params_l['data_rep']+params_l['data_l']+params_l.get('ext_l', "")
+    
+        filenames["RHS_data"] = ""
+        if len(params_l.get("RHS_data", "")) != 0 :
+            filenames["RHS_data"] = params_l['RHS_data']
+        elif len(params_l.get('data_r', "")) != 0:
+            filenames["RHS_data"] = params_l['data_rep']+params_l['data_r']+params_l.get('ext_r', "")
+    
+        if len(params_l.get("trait_data", "")) != 0 :
+            filenames["traits_data"] = params_l['traits_data']
+        elif len(params_l.get('data_t', "")) != 0:
+            filenames["traits_data"] = params_l['data_rep']+params_l['data_t']+params_l.get('ext_t', "")
+    
+            
+        if os.path.splitext(filenames["LHS_data"])[1] != ".csv" or os.path.splitext(filenames["RHS_data"])[1] != ".csv":
+            filenames["style_data"] = "multiple"
+            filenames["add_info"] = []
+    
+        if len(params_l.get("extensions_names", "")) != 0:
+            filenames["extensions"] = {}
+            extkf = params_l.get("extensions_names", "")
+            for blck in extkf.strip().split(";"):
+                parts = [p.strip() for p in blck.split("=")]
+                if len(parts) == 2:
+                    filenames["extensions"]["extf_"+parts[0]] = params_l["extensions_rep"] + parts[1]
+    
+            
+        ### Make queries file names
+        if len(params_l.get("queries_file", "")) != 0 :
+            filenames["queries"] = params_l["queries_file"]
+        elif params_l.get('out_base', "-") != "-"  and len(params_l['out_base']) > 0 and len(params_l.get('ext_queries', ".queries")) > 0:
+            filenames["queries"] = params_l['result_rep']+params_l['out_base']+params_l.get('ext_queries', ".queries")
+    
+        if filenames["queries"] != "-":
+            if not os.path.isfile(filenames["queries"]):
+                try:
+                    tfs = open(filenames["queries"], "a")
+                    tfs.close()
+                except IOError:
+                    print("Queries output file not writable, using stdout instead...")
+                    filenames["queries"] = "-"
+        parts = filenames["queries"].split(".")
+        basis = ".".join(parts[:-1])
+        filenames["basis"] = basis
+    
+        ### Make named queries file name
+        if filenames["queries"] != "-" and params_l.get("queries_named_file", "") == "+":
+            filenames["queries_named"] = basis+"_named."+parts[-1]
+        elif len(params_l.get("queries_named_file", "")) > 0:
+            filenames["queries_named"] = params_l["queries_named_file"]
+    
+        ### Make support file name
+        if filenames["queries"] != "-" and params_l.get("support_file", "") == "+" and len(params_l.get('ext_support', "")) > 0:
+            filenames["support"] = basis+params_l['ext_support']
+        elif len(params_l.get("support_file", "")) > 0:
+            filenames["support"] = params_l["support_file"]
+    
+        ### Make log file name
+        if filenames["queries"] != "-" and params_l.get('logfile', "") == "+" and len(params_l.get('ext_log', "")) > 0:
+            filenames["logfile"] = basis+params_l['ext_log']
+        elif len(params_l.get('logfile', "")) > 0:
+            filenames["logfile"] = params_l['logfile']
+    
+        if len(params_l.get("series_id", "")) > 0:
+            for k in filenames.keys():
+                if type(filenames[k]) is str:
+                    filenames[k] = filenames[k].replace("__SID__", params_l["series_id"])
+    
+        return filenames
+    @classmethod
+    def outputResults(tcl, filenames, results, data=None, with_headers=True, mode="w", data_recompute=None):
+        rp = Redescription.getRP()
+        modifiers, modifiers_recompute = {}, {}
+        if data is not None:
+            modifiers = rp.getModifiersForData(data)
+        if data_recompute is not None:
+            modifiers_recompute = rp.getModifiersForData(data_recompute)
+        fstyle = "basic"
+        
+        header_recompute = ""
+        if data_recompute is not None:
+            fields_recompute = rp.getListFields("stats", modifiers_recompute)
+            header_recompute = rp.dispHeaderFields(fields_recompute) + "\tacc_diff"
+    
+        filesfp = {"queries": None, "queries_named": None, "support": None}
+        if filenames["queries"] == "-":
+            filesfp["queries"] = sys.stdout
+        else:
+            filesfp["queries"] = open(filenames["queries"], mode)
+        all_fields = rp.getListFields(fstyle, modifiers)
+        if with_headers:
+            filesfp["queries"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
+    
+        names = None
+        if data is not None and data.hasNames() and "queries_named" in filenames:
+            names = data.getNames()
+            filesfp["queries_named"] = open(filenames["queries_named"], mode)
+            if with_headers:
+                filesfp["queries_named"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
+        
+        if "support" in filenames:
+            filesfp["support"] = open(filenames["support"], mode)
+            
+        #### TO DEBUG: output all shown in siren, i.e. no filtering
+        addto = ""
+        for org in results:
+            
+            if data_recompute is not None:
+                red = org.copy()
+                red.recompute(data_recompute)
+                acc_diff = (red.getAcc()-org.getAcc())/org.getAcc()
+                addto = "\t"+red.disp(list_fields=fields_recompute)+"\t%f" % acc_diff
+            filesfp["queries"].write(org.disp(list_fields=all_fields)+addto+'\n')
+            if filesfp["queries_named"] is not None:
+                filesfp["queries_named"].write(org.disp(names, list_fields=all_fields_named)+addto+'\n')
+            if filesfp["support"] is not None:
+                filesfp["support"].write(org.dispSupp()+'\n')
+    
+        for (ffi, ffp) in filesfp.items():
+            if ffp is not None and filenames.get(ffi, "") != "-":
+                ffp.close()
+    @classmethod
+    def loadAll(tcl, arguments=[], conf_defs=None):
+        pm = getPM(conf_defs)
+    
+        exec_folder = os.path.dirname(os.path.abspath(__file__))
+        src_folder = exec_folder
+    
+        package = None
+        pack_filename = None
+        config_filename = None
+        tmp_dir = None
+        params = None
+        reds = None
+        options_args = arguments[1:]
+    
+        if len(arguments) > 1:
+            if arguments[1] == "--config":
+                print(PreferencesReader(pm).dispParameters(None, True, True, True))
+                sys.exit(2)
+            if os.path.isfile(arguments[1]):
+                if os.path.splitext(arguments[1])[1] == Package.DEFAULT_EXT:
+                    pack_filename = arguments[1]
+                    if len(arguments) > 2 and os.path.isfile(arguments[2]):
+                        config_filename = arguments[2]
+                        options_args = arguments[3:]
+                    else:
+                        options_args = arguments[2:]
+                else:
+                    config_filename = arguments[1]
+                    options_args = arguments[2:]
+    
+        if pack_filename is not None:
+            src_folder = os.path.dirname(os.path.abspath(pack_filename))
+            package = Package(pack_filename)
+            elements_read = package.read(pm)        
+            data = elements_read.get("data", None)
+            reds = elements_read.get("reds", None)
+            params = elements_read.get("preferences", None)
+            tmp_dir = package.getTmpDir()
+            
+        elif config_filename is not None:
+            src_folder = os.path.dirname(os.path.abspath(config_filename))
+    
+        queries_second = None
+        try:
+            params = PreferencesReader(pm).getParameters(config_filename, options_args, params)        
+        except AttributeError:
+            queries_second = config_filename
+            
+        if params is None:
+            print('ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0])
+            print('(Type "%s --config" to generate a default configuration file' % arguments[0])
+            sys.exit(2)
+    
+        params_l = PreferencesReader.paramsToDict(params)
+        filenames = tcl.prepareFilenames(params_l, tmp_dir, src_folder)
+        if queries_second is not None:
+            filenames["queries_second"] = queries_second
+        logger = Log(verbosity=params_l['verbosity'], output=filenames["logfile"])
+    
+        if pack_filename is None:
+            data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
+            data.loadExtensions(ext_keys=params_l.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params_l)
+        logger.printL(2, data, "log")
+    
+        if pack_filename is not None:
+            filenames["package"] = os.path.abspath(pack_filename)
+        print(filenames)
+        return {"params": params, "data": data, "logger": logger,
+                "filenames": filenames, "reds": reds, "pm": pm, "package": package}

@@ -1,8 +1,12 @@
 import sys, os.path, re, multiprocessing
 from ctypes import c_bool, c_int
 
-from toolICList import ICList
-from toolICDict import ICDict
+try:
+    from toolICList import ICList
+    from toolICDict import ICDict
+except ModuleNotFoundError:
+    from .toolICList import ICList
+    from .toolICDict import ICDict
 
 import pdb
 
@@ -295,8 +299,12 @@ class StoredContainer(Container):
     def setSrc(self, src_typ, src_info=None, inpck=False):
         self.src = (src_typ, src_info, inpck)
         self.makeName()
-        
-from classConstraints import ActionsRegistry
+
+try:
+    from classConstraints import ActionsRegistry
+except ModuleNotFoundError:
+    from .classConstraints import ActionsRegistry
+    
 class ContentCollection(object):
 
     name_class = "Content"
@@ -349,10 +357,10 @@ class ContentCollection(object):
     ### hex(id(self))
                 
     def dispDetails(self):
-        print "Items: ", self.items
-        print "Containers: ", self.containers
-        print "CList: ", self.clist
-        print "Map: ", self.map_iids
+        print("Items: ", self.items)
+        print("Containers: ", self.containers)
+        print("CList: ", self.clist)
+        print("Map: ", self.map_iids)
         
     def clear(self):
         self.items.reset()
@@ -762,7 +770,7 @@ class TrackedContentCollection(ContentCollection):
                 t["@"] = source
                 self.stored_tracks.append(t)
             else:
-                print ">>> Check tracks!!"
+                print(">>> Check tracks!!")
                 # pdb.set_trace()
     
     def clearTracks(self):
@@ -792,7 +800,7 @@ class TrackedContentCollection(ContentCollection):
      
     def dispDetails(self):
         ContentCollection.dispDetails(self)
-        print "Tracks: ", self.nbTracks()
+        print("Tracks: ", self.nbTracks())
         
     def clear(self):
         self.clearTracks()
@@ -1061,7 +1069,7 @@ class BatchCollection(TrackedContentCollection):
             try:
                 if len(xps) >= 2 and isinstance(xps[0], Item) and type(xps[1]) is bool:
                     xps_item, modi = xps[0], xps[1]
-            except ValueError, IndexError:
+            except (ValueError, IndexError):
                 xps_item, modi = xps, False
                 
         if modi and changes:
@@ -1213,7 +1221,7 @@ class BatchCollection(TrackedContentCollection):
             ids.extend(new_ids)
         
         before_ids = list(ids)
-        for action in actions:
+        for action in actions:            
             ids = self.doAction(action, ids, complement, new_ids, data, verbosity)
         if complement:
             ids = (set(before_ids)-set(ids))
@@ -1244,20 +1252,25 @@ class StoredRCollection(StoredContentCollection, BatchCollection):
     #     StoredContentCollection.__init__(self)
     
     
-if __name__ == '__main__':
+def unitTest():
     items = [Item() for i in range(4)]
     content = dict([(item.getUid(), item) for item in items])
     x = StoredContainer()
     x.extend(content.keys())
-    print x
-    print x.getSortInfo()
+    print("List:", x)
+    print("List sort info:", x.getSortInfo())
+    print("List elements:")
     for iid in x:
-        print iid, content[iid]
-    
-    x.setSort("k", direct=True)
-    print x.getSortInfo()
+        print(iid, content[iid])
 
+    print("List set sort k")
+    x.setSort("k", direct=True)
+    print("List sort info:", x.getSortInfo())
+    print("List elements:")
     for iid in x:
-        print iid, content[iid]
-    print x.getPosIid(items[0].getUid())
-    print x.getShortStr()
+        print(iid, content[iid])
+    print("Locate first element:", x.getPosIid(items[0].getUid()))
+    print("List shortStr:", x.getShortStr())
+    
+if __name__ == '__main__':
+    unitTest()

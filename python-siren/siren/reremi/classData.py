@@ -1,18 +1,30 @@
-import os.path, time
-import numpy
-import codecs, re
+import os.path, time, re
 from itertools import chain
+import numpy
 
-from classContent import Container, ContentCollection
-from classCol import DataError, ColM, BoolColM, CatColM, NumColM, NA_str_c
-from classDataExtension import DataExtension
-from classQuery import Op, Term, Literal, Query 
-from classSParts import SSetts
-from toolICList import ICList
-import csv_reader
+try:
+    from classContent import Container, ContentCollection
+    from classCol import DataError, ColM, BoolColM, CatColM, NumColM
+    # from classDataExtension import DataExtension
+    from classQuery import Op, Term, Literal, Query, NA_str_c
+    from classSParts import SSetts
+    from toolICList import ICList
+    import csv_reader
+except ModuleNotFoundError:
+    from .classContent import Container, ContentCollection
+    from .classCol import DataError, ColM, BoolColM, CatColM, NumColM
+    # from .classDataExtension import DataExtension
+    from .classQuery import Op, Term, Literal, Query, NA_str_c
+    from .classSParts import SSetts
+    from .toolICList import ICList
+    from . import csv_reader
+
 import pdb
 
 FORCE_WRITE_DENSE = False
+
+class DataExtension:
+    pass
 
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
@@ -180,7 +192,6 @@ class Data(ContentCollection):
     enabled_codes = {(0,0): "F", (1,1): "T", 0: "F", 1: "T", (0,1): "L", (1,0): "R"}
     enabled_codes_rev_simple = {"F": 0, "T": 1}
     enabled_codes_rev_double = {"F": (0,0), "T": (1,1), "L": (0,1), "R": (1,0)}
-    separator_str = "[;, \t]"
     var_types = [None, BoolColM, CatColM, NumColM]
     all_types_map = dict([(None, None)]+[(v.type_letter, v) for v in var_types[1:]])
     real_types = var_types[1:]
@@ -224,12 +235,12 @@ class Data(ContentCollection):
             self.rnames = rnames
         elif type(N) == str:
             try:
-                data_cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols, Data.NA_str)
+                data_cols, self.N, coords, self.rnames, self.selected_rows, self.condition_dt, self.single_dataset, Data.NA_str = readDNCFromCSVFiles(cols)
             except DataError:
                 data_cols, self.N, coords, self.rnames = [[],[]], 0, None, None
                 raise
         else:
-            print "Input non recognized!"
+            print("Input non recognized!")
             data_cols, self.N, coords, self.rnames = [[],[]], 0, None, None
             raise
         self.setCoords(coords)
@@ -241,10 +252,30 @@ class Data(ContentCollection):
         ## self.initLists(data_cols)
         self.ssetts = SSetts(self.hasMissing())
 
+    def sameAs(self, other, side=None, cid=None):
+        if not isinstance(other, Data):
+            return False
+        if cid is None:
+            if self.getSides(side) == other.getSides(side) and \
+                all([len(self.colsSide(sside)) == len(other.colsSide(sside)) for sside in self.getSides(side)]):
+                for sside in self.getSides(side):
+                    for colA, colB in zip(self.colsSide(sside), other.colsSide(sside)):
+                        if colA.cmpType(colB) != 0 or colA.cmpVals(colB) != 0:
+                            return False
+                return True
+        else:
+            colA = self.col(side, cid)
+            colB = other.col(side, cid)
+            if colA is None and colB is None:
+                return True
+            elif colA is not None and colB is not None:
+                return colA.cmpType(colB) == 0 and colA.cmpVals(colB) == 0
+        return False
+        
     def recomputeCols(self, side=None, cid=None):
         if cid is None:
-            for side in self.getSides(side):
-                for col in self.colsSide(side):
+            for sside in self.getSides(side):
+                for col in self.colsSide(sside):
                     try:
                         col.recompute(self)
                     except KeyError:
@@ -489,7 +520,7 @@ class Data(ContentCollection):
                     for bid in bids:
                         mcols[(side, col, bid)] = off
                         off += 1
-                    details.append({"side": side, "col": col, "type": self.col(side, col).typeId(), "name":self.col(side, col).getName(), "enabled":self.col(side, c).getEnabled(), "bincats": bids})
+                    details.append({"side": side, "col": col, "type": self.col(side, col).typeId(), "name":self.col(side, col).getName(), "enabled":self.col(side, col).getEnabled(), "bincats": bids})
 
         if compare_cols is not None and compare_cols == sorted(mcols.keys()):
             return self.as_array[1]
@@ -633,7 +664,7 @@ class Data(ContentCollection):
             if len(uv) > nbsubs:
                 nv = numpy.floor(split_vals*grain)
                 uv, uids = numpy.unique(nv, return_inverse=True)
-                sizes = [(len(uv)/nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)/nbsubs+1, len(uv)%nbsubs)]
+                sizes = [(len(uv)//nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)//nbsubs+1, len(uv)%nbsubs)]
                 maps_to = numpy.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
                 numpy.random.shuffle(maps_to)
                 subsets_ids = [set() for i in range(nbsubs)]
@@ -642,7 +673,7 @@ class Data(ContentCollection):
             else:
                 subsets_ids = [set(numpy.where(uids==i)[0]) for i in range(len(uv))]
         else:
-            sizes = [(self.nbRows()/nbsubs, nbsubs - self.nbRows()%nbsubs), (self.nbRows()/nbsubs+1, self.nbRows()%nbsubs)]
+            sizes = [(self.nbRows()//nbsubs, nbsubs - self.nbRows()%nbsubs), (self.nbRows()//nbsubs+1, self.nbRows()%nbsubs)]
             maps_to = numpy.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
             numpy.random.shuffle(maps_to)
             subsets_ids = [set() for i in range(nbsubs)]
@@ -872,7 +903,7 @@ class Data(ContentCollection):
             styles[0]["details"] = True
             styles[0]["single_dataset"] = True
         for side in sides:
-    #### check whether some column name is worth storing
+            #### check whether some column name is worth storing
             cids = {}
             if sum([col.getName() != col.getId() or not col.isEnabled() or col.hasGroupId() for col in self.colsSide(side)]) > 0:
                 type_smap = None
@@ -880,7 +911,7 @@ class Data(ContentCollection):
                     type_smap = {}
                 cids = dict(enumerate([prepareColumnName(col, type_smap) for col in self.colsSide(side)]))
                 meth = meths[styles[side].pop("meth")]
-            with open(outputs[side], "wb") as fp:
+            with open(outputs[side], "w") as fp:
                 csvf = csv_reader.start_out(fp)
                 meth(side, csvf, rids=rids, cids=cids, **styles[side])
 
@@ -931,7 +962,7 @@ class Data(ContentCollection):
             header.append(csv_reader.LONGITUDE[0])
             header.append(csv_reader.LATITUDE[0])
         if details and self.isConditional() and not self.isGeoConditional():
-            header.append([colC.getName() for colC in self.getColsC()])
+            header.extend([colC.getName() for colC in self.getColsC()])
 
         for col in self.colsSide(side):
             col.getVector()
@@ -962,14 +993,15 @@ class Data(ContentCollection):
             if details and self.isGeospatial():
                 row.append(":".join(map(str, self.coords[0][n])))
                 row.append(":".join(map(str, self.coords[1][n])))
-            if colsC is not None:
-                for colC in colsC:
-                    v = colC.getValue(n, pref="bnum")
-                    if self.isTimeConditional():
-                        row.append("%s" % valToTimeStr(v))
-                    else:
-                        row.append("%s" % colC.valToStr(v))
 
+            if details and self.isConditional() and not self.isGeoConditional():
+                for colC in self.getColsC():
+                    v = colC.getValue(n, pref="bnum")
+                    row.append("%s" % colC.valToStr(v))
+                    # if self.isTimeConditional():
+                    #     row.append("TTA%s" % colC.valToTimeStr(v))
+                    # else:
+                    #     row.append("TTB%s" % colC.valToStr(v))
 
             for col in self.colsSide(side):
                 row.append("%s" % col.valToStr(col.getValue(n, pref="bnum")))
@@ -1219,7 +1251,7 @@ class Data(ContentCollection):
                 # keys_cc = ["%s:%s" % (coords_points_tmp[v,0], coords_points_tmp[v,1]) for v in ids_pres]
                 # pdb.set_trace()
                 # if len(ids_pres) > len(set(keys_cc)):
-                #     print len(ids_pres), len(set(keys_cc))
+                #     print(len(ids_pres), len(set(keys_cc)))
                 miss_cc = (numpy.min(coords_points_tmp[ids_pres,0]), numpy.min(coords_points_tmp[ids_pres,1]))
                 coords_points_tmp[ids_miss,0] = miss_cc[0]
                 coords_points_tmp[ids_miss,1] = miss_cc[1]
@@ -1335,19 +1367,24 @@ class Data(ContentCollection):
 ############################################################################
 ############## READING METHODS
 ############################################################################
-def readDNCFromCSVFiles(filenames, unknown_string = None):
-    cols, N, coords, rnames, cond_col = [[],[]], 0, None, None, None
-    csv_params={}; 
+def readDNCFromCSVFiles(filenames):
+    cols, N, coords, rnames, cond_col = [[],[]], 0, None, None, None   
+    csv_params = {}
+    other_params = {}
     single_dataset = False
+    unknown_string = NA_str_c
     if len(filenames) >= 2:
         left_filename = filenames[0]
         right_filename = filenames[1]
         if len(filenames) >= 3:
             csv_params = filenames[2]
             if len(filenames) >= 4 and filenames[3] is not None:
-                unknown_string = filenames[3]
+                if type(filenames[3]) is dict:
+                    other_params = filenames[3]
+                else:
+                    other_params["NA_str"] = filenames[3]
         try:
-            tmp_data, single_dataset = csv_reader.importCSV(left_filename, right_filename, csv_params, unknown_string)
+            tmp_data, single_dataset, unknown_str = csv_reader.importCSV(left_filename, right_filename, csv_params, other_params)
         except ValueError as arg:
             raise DataError('Data error reading csv: %s' % arg)
         # except csv_reader.CSVRError as arg:
@@ -1430,7 +1467,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
     if csv_data.get("coord", None) is not None:
         try:
-            tmp = zip(*csv_data["coord"])
+            tmp = list(zip(*csv_data["coord"]))
             coords = numpy.array([tmp[1], tmp[0]])
         except Exception:
             coords = None
@@ -1466,12 +1503,12 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
                 col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
                 if col is None:
-                    print "DID NOT MANAGE GLOBAL TYPE FORCE PARSING..."
+                    print("DID NOT MANAGE GLOBAL TYPE FORCE PARSING...")
             if col is None:
                 if "type" in det:
                     col = det["type"].parseList(values, indices[side], force=True)
                     if col is None:
-                        print "DID NOT MANAGE COL TYPE FORCE PARSING..."
+                        print("DID NOT MANAGE COL TYPE FORCE PARSING...")
             if col is None:
                 type_ids = list(type_ids_org)
                 while col is None and len(type_ids) >= 1:
@@ -1497,27 +1534,31 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 def main():
     rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
     data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
-    print data
+    print(data)
+    # pdb.set_trace()
 
-    vs = []
-    ### MAT (bio1) = 27 - 28.5 AL
-    vs.append(("modeled_bio1", 27 - 28.5*data.col(0, 3).getVector()))
-    # ### MINT (bio5) = 18 - 42.9 AL
-    vs.append(("modeled_bio5", 18 - 42.9*data.col(0, 3).getVector()))
-    # ### MAP (bio12) = 2491 - 289 HYP - 841 LOP
-    vs.append(("modeled_bio12", 2491 - 289.*data.col(0, 0).getVector()-841*data.col(0, 1).getVector()))
-    # ### NPP = 2601 - 144 HYP - 935 LOP
-    vs.append(("modeled_NPP", 2601 - 144.*data.col(0, 0).getVector()-935*data.col(0, 1).getVector()))
+    # vs = []
+    # ### MAT (bio1) = 27 - 28.5 AL
+    # vs.append(("modeled_bio1", 27 - 28.5*data.col(0, 3).getVector()))
+    # # ### MINT (bio5) = 18 - 42.9 AL
+    # vs.append(("modeled_bio5", 18 - 42.9*data.col(0, 3).getVector()))
+    # # ### MAP (bio12) = 2491 - 289 HYP - 841 LOP
+    # vs.append(("modeled_bio12", 2491 - 289.*data.col(0, 0).getVector()-841*data.col(0, 1).getVector()))
+    # # ### NPP = 2601 - 144 HYP - 935 LOP
+    # vs.append(("modeled_NPP", 2601 - 144.*data.col(0, 0).getVector()-935*data.col(0, 1).getVector()))
 
 
-    for (name, v) in vs:
-        new_col = NumColM.parseList(v, force=True)
-        new_col.setDisabled()
-        new_col.setSideIdName(0, data.nbCols(0), name)
-        data.appendCol(new_col, 0)
-    pdb.set_trace()        
-    data.writeCSV([rep+"out_LHS.csv", rep+"out_RHS.csv"])
-   
+    # for (name, v) in vs:
+    #     new_col = NumColM.parseList(v, force=True)
+    #     new_col.setDisabled()
+    #     new_col.setSideIdName(0, data.nbCols(0), name)
+    #     data.appendCol(new_col, 0)
+    # data.writeCSV([rep+"out_LHS.csv", rep+"out_RHS.csv"])
+    # dataX = Data([rep+"out_LHS.csv", rep+"out_RHS.csv", {}, "nan"], "csv")
+    # print(data)
+    # print(dataX)
+    # print(dataX.sameAs(data, side=0))
+    # print(dataX.sameAs(data, side=1))
     exit()
     
     # rep = "/home/egalbrun/TKTL/redescriptors/current/dblp_miss/miss/"

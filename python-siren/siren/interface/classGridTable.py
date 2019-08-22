@@ -6,8 +6,8 @@ import wx.grid
 
 import re, colorsys, random, datetime, math
 from ..reremi.toolICList import ICList
-from ..reremi.classCol import ColM, NA_str_c
-from ..reremi.classQuery import SYM, Query, Literal
+from ..reremi.classCol import ColM
+from ..reremi.classQuery import SYM, Query, Literal, NA_str_c
 from ..reremi.classRedescription import Redescription
 
 import pdb
@@ -21,7 +21,7 @@ def getRGB(h,l, s):
     return Brgb, Frgb
 
 
-class CustRenderer(wx.grid.PyGridCellRenderer):
+class CustRenderer(wx.grid.GridCellRenderer):
 
     BACKGROUND = wx.Colour(255, 255, 255, 255) # wx.Colour(100,100,100)
     TEXT = wx.Colour(76, 76, 76, 255)  #wx.Colour(100,100,100)
@@ -52,19 +52,19 @@ class CustRenderer(wx.grid.PyGridCellRenderer):
         elif not grid.GetTable().isEnabled(row):
             back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
         try:
-            dc.SetTextForeground( fore )
-            dc.SetTextBackground( back)
-            dc.SetBrush( wx.Brush( back, bstyle) )
+            dc.SetTextForeground(fore)
+            dc.SetTextBackground(back)
+            dc.SetBrush( wx.Brush(back, bstyle))
             dc.SetPen(wx.TRANSPARENT_PEN)
-            dc.DrawRectangle( rect.x, rect.y, rect.width, rect.height )
-            dc.SetFont( wx.NORMAL_FONT )
-            dc.DrawText( value, rect.x+2,rect.y+2 )
+            dc.DrawRectangle(rect.x, rect.y, rect.width, rect.height)
+            dc.SetFont(wx.NORMAL_FONT)
+            dc.DrawText(value, rect.x+2,rect.y+2)
         finally:
-            dc.SetTextForeground( self.TEXT)
-            dc.SetTextBackground( self.BACKGROUND)
-            dc.SetPen( wx.NullPen )
-            dc.SetBrush( wx.NullBrush )
-            dc.DestroyClippingRegion( )
+            dc.SetTextForeground(self.TEXT)
+            dc.SetTextBackground(self.BACKGROUND)
+            dc.SetPen(wx.NullPen)
+            dc.SetBrush(wx.NullBrush)
+            dc.DestroyClippingRegion()
 
     # def GetBestSize(self, grid, attr, dc, row, col):
     #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
@@ -83,9 +83,9 @@ class ColorRenderer(CustRenderer):
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         """Customisation Point: Draw the data from grid in the rectangle with attributes using the dc"""
 
-        dc.SetClippingRegion( rect.x, rect.y, rect.width, rect.height )
+        dc.SetClippingRegion(rect.x, rect.y, rect.width, rect.height)
         back, fore, bstyle = self.BACKGROUND, self.TEXT, self.SBRUSH
-        value = grid.GetCellValue( row, col )
+        value = grid.GetCellValue(row, col)
         
         tmp = re.match("^#h(?P<h>[0-9]*)l(?P<l>[0-9]*)#(?P<val>.*)$", value)
         if tmp is not None:
@@ -100,19 +100,19 @@ class ColorRenderer(CustRenderer):
         elif not grid.GetTable().isEnabled(row):
             back, fore, bstyle = self.BACKGROUND_GREY, self.TEXT_GREY, self.SBRUSH_GREY
         try:
-            dc.SetTextForeground( fore )
-            dc.SetTextBackground( back)
-            dc.SetBrush( wx.Brush( back, bstyle) )
+            dc.SetTextForeground(fore)
+            dc.SetTextBackground(back)
+            dc.SetBrush( wx.Brush(back, bstyle))
             dc.SetPen(wx.TRANSPARENT_PEN)
-            dc.DrawRectangle( rect.x, rect.y, rect.width, rect.height )
-            dc.SetFont( wx.NORMAL_FONT )
-            dc.DrawText( value, rect.x+2,rect.y+2 )
+            dc.DrawRectangle(rect.x, rect.y, rect.width, rect.height)
+            dc.SetFont(wx.NORMAL_FONT)
+            dc.DrawText(value, rect.x+2,rect.y+2)
         finally:
-            dc.SetTextForeground( self.TEXT)
-            dc.SetTextBackground( self.BACKGROUND)
-            dc.SetPen( wx.NullPen )
-            dc.SetBrush( wx.NullBrush )
-            dc.DestroyClippingRegion( )
+            dc.SetTextForeground(self.TEXT)
+            dc.SetTextBackground(self.BACKGROUND)
+            dc.SetPen(wx.NullPen)
+            dc.SetBrush(wx.NullBrush)
+            dc.DestroyClippingRegion()
 
     # def GetBestSize(self, grid, attr, dc, row, col):
     #     """Customisation Point: Determine the appropriate (best) size for the control, return as wxSize
@@ -125,7 +125,7 @@ class ColorRenderer(CustRenderer):
     #     return wx.Size( min(x, 10), min(y, 10))
 
 
-class GridTable(wx.grid.PyGridTableBase):
+class GridTable(wx.grid.GridTableBase):
 
     fields_def = []
     renderer = CustRenderer
@@ -142,7 +142,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
 
     def __init__(self, parent, tabId, frame, short=None):
-        wx.grid.PyGridTableBase.__init__(self)
+        wx.grid.GridTableBase.__init__(self)
         self.details = {}
         self.short = short
         self.sc = set() # show column (for collapsed/expanded columns)
@@ -187,7 +187,7 @@ class GridTable(wx.grid.PyGridTableBase):
 
     def GetCellBackgroundColor(self, row, col):
         """Return the value of a cell"""
-        return wx.Colour(100,100,100)
+        return wx.Colour(100, 100, 100)
 
     def getFrame(self):
         return self.frame
@@ -262,8 +262,6 @@ class GridTable(wx.grid.PyGridTableBase):
         if row >= 0 and row < self.nbItems() and col >= 0 and col < len(self.fields):
             details = {"aim": "list"}
             details.update(self.details)
-            # print "Here!", self.tabId, self.parent.selectedTab['id']#, self.sortids, row, self.fields, col
-            #pdb.set_trace()
             return "%s" % self.getFieldV(self.sortids[row], self.fields[col], details)
         else:
             return None
@@ -639,11 +637,11 @@ class RowTable(GridTable):
                     try:
                         return "#h%dl%d#%s" % (h,l,"")
                     except TypeError:
-                        print h,l, tmp, self.fields[col][2]["range"], self.fields[col][2]["NA"]
+                        print(h,l, tmp, self.fields[col][2]["range"], self.fields[col][2]["NA"])
             else:
                 return tmp
         else:
-            # print "Get Value RowTable", row, col
+            # print("Get Value RowTable", row, col)
             return None
 
     ### GRID METHOD

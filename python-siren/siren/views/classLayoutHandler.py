@@ -183,35 +183,35 @@ class LayoutHandlerBare(object):
             
         flags = wx.ALIGN_CENTER | wx.ALL # | wx.EXPAND
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getSpacerWn()/2.,-1), userData={"where": "*"})
+        add_boxB.AddSpacer(self.getSpcWnHalf()) #, userData={"where": "*"})
         
         add_boxB.Add(self.layout_elements["info_title"], 0, border=1, flag=flags, userData={"where": "ts"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "ts"})
+        add_boxB.AddSpacer(self.getSpcWnTwo()) #, userData={"where": "ts"})
 
         if self.getFigure():
             add_boxB.Add(self.getToolbar(), 0, border=0, userData={"where": "*"})
         add_boxB.Add(self.layout_elements["boxL"], 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(self.layout_elements["boxT"], 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1), userData={"where": "*"})
+        add_boxB.AddSpacer(self.getSpcWnTwo()) #, userData={"where": "*"})
 
         add_boxB.Add(self.layout_elements["boxPop"], 0, border=0, flag=flags, userData={"where": "*"})
         add_boxB.Add(self.layout_elements["boxKil"], 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getSpcWnTwo())
 
         add_boxB.Add(self.layout_elements["savef"], 0, border=0, flag=flags, userData={"where": "*"})
         ## add_boxB.Add(self.stamp, 0, border=0, flag=flags, userData={"where": "*"})
-        add_boxB.AddSpacer((2*self.getSpacerWn(),-1))
+        add_boxB.AddSpacer(self.getSpcWnTwo())
         return add_boxB
 
     def arrangeAll(self, innerBox, utilityBox, addBoxes=[]):
         if len(addBoxes) > 0:
-            innerBox.AddSpacer((-1,self.getSpacerH()), userData={"where": "it"})
+            innerBox.AddSpacer(self.getSpcH()) #, userData={"where": "it"})
             for add in addBoxes:
                 innerBox.Add(add, 0, border=1,  flag= wx.ALIGN_CENTER)
 
-        innerBox.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "it"})
+        innerBox.AddSpacer(self.getSpcHHalf()) #, userData={"where": "it"})
         innerBox.Add(utilityBox, 0, border=1,  flag= wx.ALIGN_CENTER)
-        innerBox.AddSpacer((-1,self.getSpacerH()/2), userData={"where": "*"})
+        innerBox.AddSpacer(self.getSpcHHalf()) #, userData={"where": "*"})
 
         outerBox = wx.BoxSizer(wx.HORIZONTAL)
         outerBox.Add(innerBox, 0, border=1,  flag= wx.ALIGN_CENTER)
@@ -238,6 +238,33 @@ class LayoutHandlerBare(object):
         return self.spacer_w/4.
     def getSpacerH(self):
         return self.spacer_h
+
+    def getSpcWnHalf(self):
+        return self.getSpacerWn()/2
+    def getSpcWn(self):
+        return self.getSpacerWn()
+    def getSpcWnTwo(self):
+        return 2*self.getSpacerWn()
+    def getSpcH(self):
+        return self.getSpacerH()
+    def getSpcHHalf(self):
+        return self.getSpacerH()/2
+    def getSpcTen(self):
+        return 10
+    # def getSpcWnHalf(self):
+    #     return (self.getSpacerWn()/2.,-1)
+    # def getSpcWn(self):
+    #     return (self.getSpacerWn(),-1)
+    # def getSpcWnTwo(self):
+    #     return (2*self.getSpacerWn(),-1)
+    # def getSpcH(self):
+    #     return (-1,self.getSpacerH())
+    # def getSpcHHalf(self):
+    #     return (-1,self.getSpacerH()/2)
+    # def getSpcTen(self):
+    #     return (10,-1)
+
+    
     def getVizType(self):
         if self.isInTab:
             if self.getParentVizm().isVizSplit():
@@ -302,7 +329,7 @@ class LayoutHandlerBare(object):
 
     def initSizeRelative(self):
         ds = wx.DisplaySize()
-        self.frame.SetClientSizeWH(ds[0]/2.5, ds[1]/1.5)
+        self.frame.SetClientSize(ds[0]/2.5, ds[1]/1.5)
             
     def _SetSize(self, initSize=None): 
         if initSize is None:
@@ -322,7 +349,7 @@ class LayoutHandlerBare(object):
             ##             (pixels[1]-2*self.getParentVizm().getVizBb())/float(sz[0]))
             pixels = (max(self.getFWidth(), (pixels[0]-2*self.getParentVizm().getVizBb())/float(sz[1])),
                       max(self.getFHeight(), (pixels[1]-2*self.getParentVizm().getVizBb())/float(sz[0])))
-            ## print "Redraw", pixels, tuple(self.frame.GetClientSize())
+            ## print("Redraw", pixels, tuple(self.frame.GetClientSize()))
         else:
             pixels = (max(self.getFWidth(), pixels[0]),
                       max(self.getFHeight(), pixels[1]))  
@@ -337,8 +364,8 @@ class LayoutHandlerBare(object):
         self.frame.GetSizer().Layout()
         self.setContentSize(figsize)
         ### The line below is primarily for Windows, works fine without in Linux...
-        self.getPanel().SetClientSizeWH(pixels[0], pixels[1])
-        # print "Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1])
+        self.panel.SetClientSize(pixels[0], pixels[1])
+        # print("Height\tmin=%.2f\tmax=%.2f\tactual=%.2f\tfig=%.2f\tbox=%.2f" % ( min_size[1], max_size[1], pixels[1], figsize[1], boxsize[1]))
         # self.figure.set_size_inches(1, 1)
 
     def initExtFrame(self):
@@ -375,8 +402,8 @@ class LayoutHandlerBare(object):
             self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.ALL, border=0)
             
         if not self.isInTab:
-	    self.getFrame().Layout()
-	    self.initSizeRelative()
+            self.getFrame().Layout()
+            self.initSizeRelative()
             self.getFrame().Show()
         self.hideShowOpt()
         self._SetSize()
@@ -494,7 +521,7 @@ class LayoutHandlerText(LayoutHandlerBare):
     def OnSaveFig(self, event=None):
         self.getParent().saveRedListAs(self.getTable().getTab(), self.getFrame())
     def savefig(self, fname, **kwargs):
-        print "IMPLEMENT SAVE A"
+        print("IMPLEMENT SAVE AS")
         pass
     def setContentSize(self, figsize):
         self.getCanvas().SetMinSize(figsize)
@@ -682,7 +709,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
             blocks.append(self.infos_details_cond)
             
         for bi, block in enumerate(blocks):
-            innerBox.AddSpacer((-1,self.getSpacerH()), userData={"where": "*"})
+            innerBox.AddSpacer(self.getSpacerH()) #, userData={"where": "*"})
             if bi > 0:
                 # innerBox.Add(wx.StaticLine(self.panel), 0, wx.EXPAND|wx.ALL, 5)
                 innerBox.Add(wx.StaticText(self.panel, label="Conditional"), 0, wx.ALIGN_CENTER)
@@ -698,9 +725,9 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
 
             lineB = wx.BoxSizer(wx.HORIZONTAL)
             for ci, col in enumerate(cols):
-                lineB.Add(col, 0, border=1,  flag= wx.ALIGN_CENTER|wx.EXPAND)
+                lineB.Add(col, 0, border=1,  flag=wx.EXPAND) # wx.ALIGN_CENTER|
                 if ci % 2 == 1 and ci < len(cols)-1:
-                    lineB.AddSpacer((self.getSpacerW(),-1), userData={"where": "it"})
+                    lineB.AddSpacer(self.getSpcWnTwo()) #, userData={"where": "it"})                    
             innerBox.Add(lineB, 0, border=1,  flag= wx.ALIGN_CENTER)
         
     def prepareProcesses(self):

@@ -1,5 +1,8 @@
 import getopt, re, os.path
-import toolRead
+try:
+    import toolXML
+except ModuleNotFoundError:
+    from . import toolXML
 import pdb
 
 ### EACH parameter is a triplet (text, data, value)
@@ -66,15 +69,15 @@ class CParameter(object):
         return self._label
 
     def parseNode(self, node):
-        self._name = toolRead.getTagData(node, "name")
-        self._legend = toolRead.getTagData(node, "legend")
+        self._name = toolXML.getTagData(node, "name")
+        self._legend = toolXML.getTagData(node, "legend")
         if self._name is None:
             raise Exception("Name for param undefined!")
-        self._label = toolRead.getTagData(node, "label")
+        self._label = toolXML.getTagData(node, "label")
         if self._label is None:
             raise Exception("Label for param %s undefined!"% self._name)
-        tmp_vt = toolRead.getTagData(node, "value_type")
-        if tmp_vt in self.value_types.keys():
+        tmp_vt = toolXML.getTagData(node, "value_type")
+        if tmp_vt in self.value_types:
             self._value_type = self.value_types[tmp_vt]
         if self._value_type is None:
             raise Exception("Value type for param %s undefined!"% self._name)
@@ -83,19 +86,19 @@ class CParameter(object):
         return "Parameter (%s): %s" % (self.type_id, self._name)
 
     def getParamValue(self, raw_value):
-        return toolRead.parseToType(raw_value, self._value_type)
+        return toolXML.parseToType(raw_value, self._value_type)
 
     def getParamData(self, raw_value):
         return self.getParamValue(raw_value)
 
     def getParamText(self, raw_value):
-        tmp = toolRead.parseToType(raw_value, self._value_type)
+        tmp = toolXML.parseToType(raw_value, self._value_type)
         if tmp is not None:
             return str(tmp)
         return None
         
     def getParamTriplet(self, raw_value):
-        tmp = toolRead.parseToType(raw_value, self._value_type)
+        tmp = toolXML.parseToType(raw_value, self._value_type)
         if tmp is not None:
             return {"value": tmp, "data": tmp, "text": str(tmp)}
         else:
@@ -110,10 +113,10 @@ class OpenCParameter(CParameter):
 
     def parseNode(self, node):
         CParameter.parseNode(self, node)
-        self._length = toolRead.getTagData(node, "length", int)
+        self._length = toolXML.getTagData(node, "length", int)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            self._default = toolRead.getValue(et[0], self._value_type)
+            self._default = toolXML.getValue(et[0], self._value_type)
         if self._default is None:
             raise Exception("Default value for param %s undefined!"% self._name)
 
@@ -127,11 +130,11 @@ class RangeCParameter(CParameter):
 
     def parseNode(self, node):
         CParameter.parseNode(self, node)
-        self._range_min = toolRead.getTagData(node, "range_min", self._value_type)
-        self._range_max = toolRead.getTagData(node, "range_max", self._value_type)
+        self._range_min = toolXML.getTagData(node, "range_min", self._value_type)
+        self._range_max = toolXML.getTagData(node, "range_max", self._value_type)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            self._default = toolRead.getValue(et[0], self._value_type)
+            self._default = toolXML.getValue(et[0], self._value_type)
         if self._default is None or self._range_min is None or self._range_max is None \
                or self._default < self._range_min or self._default > self._range_max:
             raise Exception("Default value for param %s not in range!"% self._name)
@@ -142,7 +145,7 @@ class RangeCParameter(CParameter):
         return strd
 
     def getParamValue(self, raw_value):
-        tmp =  toolRead.parseToType(raw_value, self._value_type)
+        tmp =  toolXML.parseToType(raw_value, self._value_type)
         if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
             return tmp
         return None
@@ -151,13 +154,13 @@ class RangeCParameter(CParameter):
         return self.getParamValue(raw_value)
 
     def getParamText(self, raw_value):
-        tmp = toolRead.parseToType(raw_value, self._value_type)
+        tmp = toolXML.parseToType(raw_value, self._value_type)
         if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
             return str(tmp)
         return None
         
     def getParamTriplet(self, raw_value):
-        tmp = toolRead.parseToType(raw_value, self._value_type)
+        tmp = toolXML.parseToType(raw_value, self._value_type)
         if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
             return {"value": tmp, "data": tmp, "text": str(tmp)}
         else:
@@ -174,10 +177,10 @@ class SingleOptionsCParameter(CParameter):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("options")
         if len(et) > 0:
-            self._options = toolRead.getValues(et[0], self._value_type)
+            self._options = toolXML.getValues(et[0], self._value_type)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            self._default = toolRead.getValue(et[0], int)
+            self._default = toolXML.getValue(et[0], int)
         if self._default is None or self._default < 0 or self._default >= len(self._options):
             raise Exception("Default value for param %s not among options!"% self._name)
 
@@ -188,22 +191,22 @@ class SingleOptionsCParameter(CParameter):
 
     def getParamValue(self, raw_value, index=False):
         if index:
-            tmp =  toolRead.parseToType(raw_value, int)
+            tmp =  toolXML.parseToType(raw_value, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return tmp
         else:
-            tmp =  toolRead.parseToType(raw_value, self._value_type)
+            tmp =  toolXML.parseToType(raw_value, self._value_type)
             if tmp is not None and tmp in self._options:
                 return self._options.index(tmp)
         return None
 
     def getParamData(self, raw_value, index=False):
         if index:
-            tmp =  toolRead.parseToType(raw_value, int)
+            tmp =  toolXML.parseToType(raw_value, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return self._options[tmp]
         else:
-            tmp =  toolRead.parseToType(raw_value, self._value_type)
+            tmp =  toolXML.parseToType(raw_value, self._value_type)
             if tmp is not None and tmp in self._options:
                 return tmp
         return None
@@ -222,7 +225,7 @@ class SingleOptionsCParameter(CParameter):
             return None
 
     def getOptionsText(self):
-        return map(str, self._options)
+        return list(map(str, self._options))
 
     def getDefaultText(self):
         return str(self._options[self._default])
@@ -248,25 +251,25 @@ class BooleanCParameter(SingleOptionsCParameter):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            self._default = toolRead.getValue(et[0], bool)
+            self._default = toolXML.getValue(et[0], bool)
         if self._default is None:
             raise Exception("Default value for param %s not among options!"% self._name)
 
     def getParamValue(self, raw_value, index=False):
         if index:
-            tmp =  toolRead.parseToType(raw_value, int)
+            tmp =  toolXML.parseToType(raw_value, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return tmp
         else:
             try:
                 return int(self.map_str[raw_value.lower()])
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 return None
         return None
 
     def getParamData(self, raw_value, index=False):
         if index:
-            tmp =  toolRead.parseToType(raw_value, int)
+            tmp =  toolXML.parseToType(raw_value, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return self._options[tmp]
         return self.map_str.get(raw_value)
@@ -304,10 +307,10 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("options")
         if len(et) > 0:
-            self._options = toolRead.getValues(et[0], self._value_type)
+            self._options = toolXML.getValues(et[0], self._value_type)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            self._default = toolRead.getValues(et[0], int)
+            self._default = toolXML.getValues(et[0], int)
         if self._default is None or ( len(self._default) > 0 and (min(self._default) < 0 or max(self._default) >= len(self._options) ) ):
             raise Exception("Some default value for param %s not among options!"% self._name)        
     def getEmptyTriplet(self):
@@ -330,7 +333,7 @@ class ColorCParameter(CParameter):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("default")
         if len(et) > 0:
-            tmp = toolRead.getValue(et[0], self._value_type)
+            tmp = toolXML.getValue(et[0], self._value_type)
             self._default = self.txtToCol(tmp)
 
         if self._default is None:
@@ -342,7 +345,7 @@ class ColorCParameter(CParameter):
         return strd
 
     def getParamValue(self, raw_value):
-        tmp =  toolRead.parseToType(raw_value, self._value_type)
+        tmp =  toolXML.parseToType(raw_value, self._value_type)
         return self.txtToCol(tmp)
 
     def getParamData(self, raw_value):
@@ -352,7 +355,7 @@ class ColorCParameter(CParameter):
         if type(raw_value) is tuple:
             return self.colToTxt(raw_value)
         else:
-            tmp =  toolRead.parseToType(raw_value, self._value_type)
+            tmp =  toolXML.parseToType(raw_value, self._value_type)
             if tmp is not None and re.match(self.match_p, tmp):
                 return tmp
         return None
@@ -362,7 +365,7 @@ class ColorCParameter(CParameter):
             v = raw_value
             tmp = self.colToTxt(raw_value)
         else:
-            tmp = toolRead.parseToType(raw_value, self._value_type)
+            tmp = toolXML.parseToType(raw_value, self._value_type)
             v = self.txtToCol(tmp)
         if tmp is not None and v is not None:
             return {"value": v, "data": v, "text": tmp}
@@ -399,10 +402,10 @@ class PreferencesManager(object):
             filenames = [filenames]
         for filename in filenames:
              if filename is not None:
-                doc = toolRead.parseXML(filename)
+                doc = toolXML.parseXML(filename)
                 if doc is not None:
                     params = self.processDom(doc.documentElement)
-                    if type(params) == dict and params.keys() == ["subsections"]:
+                    if type(params) == dict and len(params) == 1 and "subsections" in params:
                                self.subsections.extend(params["subsections"])
 
     def __str__(self):
@@ -466,15 +469,15 @@ class PreferencesManager(object):
     def processDom(self, current, sects=[]):
         parameters = None
         name = None
-        if toolRead.isElementNode(current):
-            if toolRead.tagName(current) in ["root", "section"]:
+        if toolXML.isElementNode(current):
+            if toolXML.tagName(current) in ["root", "section"]:
                 parameters = {"subsections": []}
-                if toolRead.tagName(current) == "section":
-                    parameters["name"] = toolRead.getTagData(current, "name")
+                if toolXML.tagName(current) == "section":
+                    parameters["name"] = toolXML.getTagData(current, "name")
                     for k in self.parameter_types.keys():
                         parameters[k] = []
                     sects = list(sects + [parameters["name"]])
-                for child in toolRead.children(current):
+                for child in toolXML.children(current):
                     tmp = self.processDom(child, sects)
                     if tmp is not None:
                         if type(tmp) == dict:
@@ -486,9 +489,9 @@ class PreferencesManager(object):
                             else:
                                 self.pdict[tmp_id] = tmp  
                                 parameters[tmp.type_id].append(tmp_id)
-            if toolRead.tagName(current) == "parameter":
-                name = toolRead.getTagData(current, "name")
-                parameter_type = toolRead.getTagData(current, "parameter_type")
+            if toolXML.tagName(current) == "parameter":
+                name = toolXML.getTagData(current, "name")
+                parameter_type = toolXML.getTagData(current, "parameter_type")
                 if parameter_type in self.parameter_types.keys():
                     parameters = self.parameter_types[parameter_type]()
                     parameters.parseNode(current)
@@ -501,14 +504,19 @@ class PreferencesReader(object):
     def __init__(self, pm):
         self.pm = pm
 
-    def getParametersDict(self, filename=None, arguments=None, pv=None):
+    @classmethod
+    def paramsToDict(tcl, params, with_num=False):
         params_l = {}
-        tmp_params = self.getParameters(filename, arguments, pv)
-        for k, v in tmp_params.items():
-            if v["data"] != v["value"]:
-                params_l[k+":NUM"] = v["value"]
-            params_l[k] = v["data"]
+        if type(params) is dict:
+            for k, v in params.items():
+                if type(v) is dict and "data" in v:
+                    params_l[k] = v["data"]
+                    if with_num and "value" in v and v["data"] != v["value"]:
+                        params_l[k+":NUM"] = v["value"]                
         return params_l
+        
+    def getParametersDict(self, filename=None, arguments=None, pv=None):
+        return self.paramsToDict(self.getParameters(filename, arguments, pv), with_num=True)
     
     def getParameters(self, filename=None, arguments=None, pv=None):
         if pv is None:
@@ -530,13 +538,13 @@ class PreferencesReader(object):
         tmp = {}
         if filename is not None:
             try:
-                doc = toolRead.parseXML(filename)
+                doc = toolXML.parseXML(filename)
             except Exception as inst:
-                print "%s is not a valid configuration file! (%s)" % (filename, inst)
+                print("%s is not a valid configuration file! (%s)" % (filename, inst))
             else:
                 for current in doc.documentElement.getElementsByTagName("parameter"):
-                    name = toolRead.getTagData(current, "name")
-                    values = toolRead.getValues(current)
+                    name = toolXML.getTagData(current, "name")
+                    values = toolXML.getValues(current)
                     tmp[name] = values
         return tmp
     
@@ -566,7 +574,7 @@ class PreferencesReader(object):
                 for elem in bb_matched[cbasis]:
                     if (elem[1] == cside or elem[1] == -1 or -1 == cside) and (elem[2] == ctyp or elem[2] == -1 or -1 == ctyp):
                         fill_matched[elem[0]] = k
-            # print "fill_matched", fill_matched
+            # print("fill_matched", fill_matched)
             for name, nn in fill_matched.items():
                 values = params_dict[nn]
                 item = self.pm.getItem(name)
@@ -641,7 +649,7 @@ class PreferencesReader(object):
     def dispParameters(self, pv=None, sections=True, helps=False, defaults=False, core=False):            
         strd = ""
         for subsection in self.pm.subsections:
-            ## print "---SUBSECTION:", subsection.get("name")            
+            ## print("---SUBSECTION:", subsection.get("name"))
             strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults, core)
         if len(strd) == 0:
             strd = "<!-- Using only default parameters --> "
@@ -668,7 +676,7 @@ def getParams(arguments, conf_defs):
 
     if len(arguments) > 1:
         if arguments[1] == "--config":
-            print pr.dispParameters(None,True, True, True)
+            print(pr.dispParameters(None,True, True, True))
             sys.exit(2)
         if os.path.isfile(arguments[1]):
             config_filename = arguments[1]
@@ -676,8 +684,8 @@ def getParams(arguments, conf_defs):
 
     params = pr.getParametersDict(config_filename, options_args)
     if params is None:
-        print 'usage: "%s [config_file] [additional_parameters]"' % arguments[0]
-        print '(Type "%s --config" to generate a default configuration file' % arguments[0]
+        print('usage: "%s [config_file] [additional_parameters]"' % arguments[0])
+        print('(Type "%s --config" to generate a default configuration file' % arguments[0])
         sys.exit(2)
 
     return params
@@ -693,4 +701,4 @@ if __name__ == "__main__":
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
     params = getParams(sys.argv, conf_defs)
-    print params
+    print(params)

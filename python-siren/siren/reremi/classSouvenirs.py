@@ -1,5 +1,10 @@
-from classContent import ContentCollection
-from classQuery import *
+try:
+    from classContent import ContentCollection
+    from classQuery import *
+except ModuleNotFoundError:
+    from .classContent import ContentCollection
+    from .classQuery import *
+
 import pdb
 
 class Souvenirs(object):
@@ -112,15 +117,15 @@ class Souvenirs(object):
                 queries_ids &= queries_ids_other_side
                 if len(queries_ids) > 0:
                     
-                    # print 'EXTENSIONS-%i------%s <=> %s -------' % (side, red.queries[0].dispIds(),red.queries[1].dispIds())
+                    # print('EXTENSIONS-%i------%s <=> %s -------' % (side, red.queries[0].dispIds(),red.queries[1].dispIds()))
 #                     for i in queries_ids:
-#                         print self.queriesList[i][0].dispIds() + '<=>' + self.queriesList[i][1].dispIds() 
-#                     print '------------------------'
+#                         print(self.queriesList[i][0].dispIds() + '<=>' + self.queriesList[i][1].dispIds())
+#                     print('------------------------')
                     cols_ext = self.colsExtending(queries_ids, side) ## includes already used cols
 #             if len(cols_ext) > red.queries[side].length() :
-#                 print 'EXCLUDED-%i-------------' % side
-#                 print cols_ext
-#                 print '------------------------'
+#                 print('EXCLUDED-%i-------------' % side)
+#                 print(cols_ext)
+#                 print('------------------------')
         
         return cols_ext   
                 

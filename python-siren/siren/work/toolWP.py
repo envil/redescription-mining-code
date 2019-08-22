@@ -1,6 +1,6 @@
-from classWorkInactive import WorkInactive
-from classWorkLocal import WorkLocal
-from classWorkClient import WorkClient
+from .classWorkInactive import WorkInactive
+from .classWorkLocal import WorkLocal
+from .classWorkClient import WorkClient
 import pdb
 
 class WorkPlant(object):

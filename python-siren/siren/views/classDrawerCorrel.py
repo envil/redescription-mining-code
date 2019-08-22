@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import wx
 ### from wx import ALIGN_CENTER, ALL, EXPAND, HORIZONTAL
 ### from wx import FONTFAMILY_DEFAULT, FONTSTYLE_NORMAL, FONTWEIGHT_NORMAL
@@ -22,7 +21,7 @@ from matplotlib.collections import PatchCollection
 
 from ..reremi.classSParts import SSetts
 from ..reremi.classRedescription import Redescription
-from classDrawerBasis import DrawerEntitiesTD
+from .classDrawerBasis import DrawerEntitiesTD
 
 import pdb
 
@@ -170,8 +169,8 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         nnz_ids = numpy.where(Rin > (numpy.sum(pos_in)/10.))[0]
         sids = nnz_ids[numpy.argsort(Rin[nnz_ids])]
         cmap = cm.get_cmap('PuOr')
-        self.axe.barh(numpy.arange(len(sids))+.025, Rin[sids]/Nbin, left=.33, height=.95, color=cmap(100))
-        self.axe.barh(numpy.arange(len(sids))+.025, Rout[sids]/Nbout, left=-Rout[sids]/Nbout-.33, height=.95, color=cmap(0))
+        self.axe.barh(numpy.arange(len(sids))+.025, Rin[sids]/Nbin, left=.33, height=.95, color=cmap(100), align="edge")
+        self.axe.barh(numpy.arange(len(sids))+.025, Rout[sids]/Nbout, left=-Rout[sids]/Nbout-.33, height=.95, color=cmap(0), align="edge")
         for ii, i in enumerate(sids):
             self.axe.text(0, ii+.5, details[i]["name"], va="center", ha="center", **self.view.getFontProps())
         self.axe.set_ylim([0, len(sids)])
@@ -368,7 +367,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
 
         ##############################################
         add_boxA = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxA.AddSpacer(self.getLayH().getSpacerWn()/2)
         for lbl, i in self.getNamesTids():
             inter_elems["types_%d" % i] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
             inter_elems["types_%d" % i].SetValue(self.types_in[i])
@@ -378,7 +377,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             add_boxA.Add(label, 0, border=0, flag=flags)
             add_boxA.Add(inter_elems["types_%d" % i], 0, border=0, flag=flags)
             
-        add_boxA.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxA.AddSpacer(self.getLayH().getSpacerWn())
         inter_elems["fixed_radius"] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
         inter_elems["fixed_radius"].SetValue(self.fixed_radius)
 
@@ -386,10 +385,10 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
         add_boxA.Add(label, 0, border=0, flag=flags)
         add_boxA.Add(inter_elems["fixed_radius"], 0, border=0, flag=flags)        
-        add_boxA.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxA.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         add_boxB = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
         for k,v in self.sides_in.items():
             inter_elems[k] = wx.CheckBox(panel, wx.NewId(), "", style=wx.ALIGN_RIGHT)
             inter_elems[k].SetValue(v)
@@ -398,10 +397,10 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             label.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
             add_boxB.Add(label, 0, border=0, flag=flags)
             add_boxB.Add(inter_elems[k], 0, border=0, flag=flags)
-        add_boxB.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxB.AddSpacer(self.getLayH().getSpacerWn()/2)
         
         add_boxC = wx.BoxSizer(wx.HORIZONTAL)
-        add_boxC.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxC.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         for part, v in self.parts_in.items():
             sub = SSetts.labels[part] 
@@ -418,12 +417,12 @@ class DrawerRedCorrel(DrawerEntitiesTD):
             v_box.Add(inter_elems["out_"+sub], 0, border=1, flag=flags) #, userData={"where":"*"})
             add_boxC.Add(v_box, 0, border=1, flag=flags)
         
-        add_boxC.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxC.AddSpacer(self.getLayH().getSpacerWn())
         add_boxC.Add(buttons[0]["element"], 0, border=1, flag=flags)
-        add_boxC.AddSpacer((self.getLayH().getSpacerWn(),-1))
+        add_boxC.AddSpacer(self.getLayH().getSpacerWn())
         add_boxC.Add(buttons[1]["element"], 0, border=1, flag=flags)
 
-        add_boxC.AddSpacer((self.getLayH().getSpacerWn()/2.,-1))
+        add_boxC.AddSpacer(self.getLayH().getSpacerWn()/2)
 
         self.setElement("buttons", buttons)
         self.setElement("inter_elems", inter_elems)

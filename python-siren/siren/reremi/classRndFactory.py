@@ -1,8 +1,13 @@
 import os.path, time, re
 import numpy
 
-from classData import Data
-from classRedescription import Redescription
+try:
+    from classData import Data
+    from classRedescription import Redescription
+except ModuleNotFoundError:
+    from .classData import Data
+    from .classRedescription import Redescription
+
 import pdb
 
 def getPrec(counts):
@@ -43,7 +48,7 @@ def swap_binary(mat, attempts=None):
             mat[rows[posB], cols[posA]], mat[rows[posA], cols[posB]] = (1, 1)
             # rows[posA], rows[posB], cols[posA], cols[posB] = rows[posA], rows[posB], cols[posA], cols[posB]
             cols[posA], cols[posB] = cols[posB], cols[posA]
-    # print "SWAPPED", swapped, attempts
+    # print("SWAPPED", swapped, attempts)
     return mat
 
 
@@ -141,9 +146,9 @@ def prepareRndAggData(data, dT, rnd_meth="permute_LHS", select_red=None, select_
         occs_changed = True
         Xt = swap_binary(X.copy())
         store["random"] = {"meth": rnd_meth, "where": numpy.where(X!=Xt)}
-        # print "Col-dist", numpy.sum((numpy.sum(X, axis=0) - numpy.sum(Xt, axis=0)) !=0)
-        # print "Row-dist", numpy.sum((numpy.sum(X, axis=1) - numpy.sum(Xt, axis=1)) !=0)
-        # print "Nb diffs", len(numpy.where(X!=Xt)[0]), len(numpy.where(X!=Xt)[0])/4.
+        # print("Col-dist", numpy.sum((numpy.sum(X, axis=0) - numpy.sum(Xt, axis=0)) !=0))
+        # print("Row-dist", numpy.sum((numpy.sum(X, axis=1) - numpy.sum(Xt, axis=1)) !=0))
+        # print("Nb diffs", len(numpy.where(X!=Xt)[0]), len(numpy.where(X!=Xt)[0])/4.)
         X = Xt        
 
     Z = dotProduct(X, Y, Trids, Lsids)
@@ -258,7 +263,7 @@ def main():
     
     rf.readTraits(rep+"traits_IUCN_all.csv", csv_params, unknown_string)
     # Dsub, sids, back, store = rf.makeupData(with_traits=True, count_vname="NB_SPC", select_red=select_red, prec_all=3)
-    # print Dsub
+    # print(Dsub)
     # suff = "orgX"
     # Dsub.writeCSV([rep_out+"data_LHSvT_"+suff+".csv", rep_out+"data_RHSvT_"+suff+".csv"])
 
@@ -266,7 +271,7 @@ def main():
         for i in range(10):
             Dsub, sids, back, store = rf.makeupRndData(rnd_meth=rnd_meth, with_traits=True, count_vname="NB_SPC", select_red=select_red, prec_all=3)            
             
-            print Dsub
+            print(Dsub)
             suff = "%s-%dY" % (rnd_meth, i)
             Dsub.writeCSV([rep_out+"data_LHSvT_"+suff+".csv", rep_out+"data_RHSvT_"+suff+".csv"])
             

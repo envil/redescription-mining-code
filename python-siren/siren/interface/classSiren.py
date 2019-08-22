@@ -3,7 +3,7 @@ import time, math
 import sys
 import pickle
 
-import wx
+import wx, wx.adv
 # import wx.lib.agw.pybusyinfo as PBI
 
 ### from wx import AboutBox, AboutDialogInfo, Bitmap, BoxSizer, BusyInfo, Button, CallLater, DefaultPosition, DisplaySize, FileDialog, Frame, Gauge, GridBagSizer, GridSizer, Icon
@@ -16,26 +16,28 @@ import wx
 
 import wx.lib.dialogs
 
+WITHVIEWS = True #False
+
 from ..reremi.toolLog import Log
 from ..reremi.classRedescription import Redescription
 from ..reremi.classCol import DataError, ColM
 from ..reremi.classQuery import Literal, Query
 from ..reremi.classData import RowE, Data
 
-from DataWrapper import DataWrapper, findFile
-from classGridTable import RowTable
-from classContentTable import RedsTable, VarsTable
-from classPreferencesDialog import PreferencesDialog
-from classConnectionDialog import ConnectionDialog
-from classSplitDialog import SplitDialog
-from classExtensionsDialog import ExtensionsDialog
-from miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog, MultiSelectorDialog, ChoiceElement
-from ..views.factView import ViewFactory
-from ..views.classVizManager import VizManager
-from ..views.classViewsManager import ViewsManager
+from .DataWrapper import DataWrapper, findFile
+from .classGridTable import RowTable
+from .classContentTable import RedsTable, VarsTable
+from .classPreferencesDialog import PreferencesDialog
+from .classConnectionDialog import ConnectionDialog
+from .classSplitDialog import SplitDialog
+from .classExtensionsDialog import ExtensionsDialog
+from .miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog, MultiSelectorDialog, ChoiceElement
 from ..work.toolWP import WorkPlant
 from ..work.classWorkClient import WorkClient
 from ..common_details import common_variables
+if WITHVIEWS:
+    from ..views.classVizManager import VizManager
+    from ..views.classViewsManager import ViewsManager
 
 import pdb
 
@@ -254,14 +256,14 @@ class Siren():
         # tmp = findFile(filen, ff)
         # if tmp is None:
         #    raise Exception("findFile %s %s\t-->\t%s" % (filen, path+ff, tmp))
-        #    printz "findFile %s %s\t-->\t%s" % (filen, ff, tmp)
+        #    print("findFile %s %s\t-->\t%s" % (filen, ff, tmp))
         # return tmp
     
     @classmethod
     def initIcons(tcl, icons_setts, path=[]):
         icons = {}
         for icon_name, icon_file in icons_setts.items():
-            tmp = tcl.searchData(icon_file+".png", 'icons', path)
+            tmp = tcl.searchData(icon_file+".png", "icons", path)
             if tmp is not None:    
                 icons[icon_name] = wx.Bitmap(tmp)
             else:
@@ -330,7 +332,9 @@ class Siren():
     vffiles = [('fields_vdefs_basic.txt', 'reremi')]
     rff_mtch = 'fields_rdefs_*.txt'
     vff_mtch = 'fields_vdefs_*.txt'
-    cfiles = [('miner_confdef.xml', 'reremi'), ('views_confdef.xml', 'views'), ('ui_confdef.xml', 'interface'), ('dataext_confdef.xml', 'reremi')]
+    cfiles = [('miner_confdef.xml', 'reremi'), ('dataext_confdef.xml', 'reremi'), ('ui_confdef.xml', 'interface')]
+    if WITHVIEWS:
+        cfiles.append(('views_confdef.xml', 'views'))
     cfiles_io = [('inout_confdef.xml', 'reremi')]
     
     results_delay = 1000
@@ -351,7 +355,10 @@ class Siren():
         self.dw = None
         self.vizm = None
         self.plant = WorkPlant()
-        self.viewsm = ViewsManager(self)
+        if WITHVIEWS:
+            self.viewsm = ViewsManager(self)
+        else:
+            self.viewsm = None
 
         self.conf_defs = Siren.initConfs(self.cfiles)
         self.conf_defs_io = Siren.initConfs(self.cfiles_io)
@@ -370,15 +377,17 @@ class Siren():
                      "short": "Vars", "type":"v", "style":None},
                     {"id": self.getDefaultTabId("r"), "title":"Redescriptions",
                      "short": "Reds", "type":"r", "style":None},
-                    {"id": self.getDefaultTabId("z"), "title":"Visualizations",
-                     "short": "Viz", "type":"z", "style":None},
                     {"id": self.getDefaultTabId("t"), "title":"Log",
                      "short": "Log", "type":"t", "style": wx.TE_READONLY|wx.TE_MULTILINE},
-            ]
-
+                    ]
+        if self.withViews():
+            tmp_tabs.insert(3, {"id": self.getDefaultTabId("z"), "title":"Visualizations",
+                "short": "Viz", "type":"z", "style":None})
+            
+            
         self.tabs = dict([(p["id"], p) for p in tmp_tabs])
         self.tabs_keys = [p["id"] for p in tmp_tabs]
-        stn = self.tabs.keys()[0]
+        stn = list(self.tabs.keys())[0]
         if self.getDefaultTabId("v") in self.tabs:
             stn = self.getDefaultTabId("v")
         elif self.getDefaultTabId("e") in self.tabs:
@@ -406,7 +415,7 @@ class Siren():
         self.changePage(stn)       
 
         ### About dialog
-        self.info =  wx.AboutDialogInfo()
+        self.info =  wx.adv.AboutDialogInfo()
         self.info.SetName(self.name)
         self.info.SetWebSite(self.programURL)
         self.info.SetCopyright(self.cpyright)
@@ -454,6 +463,9 @@ class Siren():
     def getFrame(self):
         return self.toolFrame
 
+    def withViews(self):
+        return self.viewsm is not None
+    
     def hasDataLoaded(self):
         if self.dw is not None:
             return self.dw.getData() is not None
@@ -705,8 +717,9 @@ class Siren():
                 self.plant.getWP().closeDown(self)        
         if not self.checkAndProceedWithUnsavedChanges(what="quit"):
             return
-        self.viewsm.deleteAllViews()
-        if self.vizm is not None:
+        if self.withViews():
+            self.viewsm.deleteAllViews()
+        if self.getVizm() is not None:
             self.vizm.OnQuit()
         self.toolFrame.Destroy()
         sys.exit()
@@ -735,7 +748,7 @@ class Siren():
             work_estimate, work_progress = (0, 0)
         else:
             work_estimate, work_progress = self.plant.getWP().getWorkEstimate()
-        # print "PROGRESS", work_estimate, work_progress, type(work_estimate)
+        # print("PROGRESS", work_estimate, work_progress, type(work_estimate))
         if work_estimate > 0:
             self.progress_bar.SetRange(10**5)
             self.progress_bar.SetValue(math.floor(10**5*(work_progress/float(work_estimate))))
@@ -767,10 +780,11 @@ class Siren():
             menuCon.AppendSeparator()
 
         if self.matchTabType("evr", tab=tab):
-            submenuViz = wx.Menu()
-            self.makeVizMenu(frame, submenuViz, tab=tab)
-            ID_VIZ = wx.NewId()
-            menuCon.AppendMenu(ID_VIZ, "&View", submenuViz)
+            if self.withViews():
+                submenuViz = wx.Menu()
+                self.makeVizMenu(frame, submenuViz, tab=tab)
+                ID_VIZ = wx.NewId()
+                menuCon.Append(ID_VIZ, "&View", submenuViz)
 
             self.makeEditMenu(frame, menuCon, tab=tab)
         # if menuCon.GetMenuItemCount() > ct:
@@ -806,8 +820,8 @@ class Siren():
                     self.ids_contentAct[ID_AC] = (tab, act_details["key"])
 
                 ### POP LIST
-                if self.getDefaultTTab(tab=tab).nbSelected() > 0 and tab is None:
-                    dets_tbl = self.viewsm.getTableViewT(typeI="r")
+                if self.getDefaultTTab(tab=tab).nbSelected() > 0 and tab is None:                    
+                    dets_tbl = self.viewsm.getTableViewT(typeI="r") if self.withViews() else None
                     if dets_tbl is not None:
                         ID_POPL = wx.NewId()
                         m_popl = menuEdit.Append(ID_POPL, "Pop list", "Pop list.")
@@ -852,7 +866,7 @@ class Siren():
             frame.Bind(wx.EVT_MENU, self.OnExportFigs, m_svlp)
             self.ids_evTabs[ID_SVLP] = tab
                 
-        if self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() == 1:
+        if self.withViews() and self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() == 1:
             if self.matchTabType("vr", tab=tab):
                 ID_DETAILS = wx.NewId()
                 m_details = menuEdit.Append(ID_DETAILS, "View details", "View variable values.")
@@ -945,10 +959,10 @@ class Siren():
                 menuViz.AppendSeparator()
 
         countIts = menuViz.GetMenuItemCount()
-        
+
         ### MENU VIZ FOR SINGLE ITEMS 
-        if self.matchTabType("e", tab=tab) or \
-          ( self.matchTabType("vr", tab=tab) and self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() == 1 ):
+        if self.withViews() and (self.matchTabType("e", tab=tab) or \
+          ( self.matchTabType("vr", tab=tab) and self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() == 1 )):
             what = self.getDefaultTTab(tab=tab).getSelectedItem()
             for ix, item in enumerate(self.viewsm.getViewsItems(what=what)):
                 ID_NEWV = wx.NewId()
@@ -959,9 +973,9 @@ class Siren():
                 self.ids_viewT[ID_NEWV] = (tab, item["viewT"])
 
         ### MENU VIZ FOR MULTIPLE ITEMS 
-        if self.matchTabType("vr", tab=tab) and \
+        if self.withViews() and (self.matchTabType("vr", tab=tab) and \
           (( self.getDefaultTTab(tab=tab).hasFocusContainersL() and self.getDefaultTTab(tab=tab).nbSelected() > 0) or \
-           ( self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() > 1 )):
+           ( self.getDefaultTTab(tab=tab).hasFocusItemsL() and self.getDefaultTTab(tab=tab).nbSelected() > 1 ))):
             what = self.getDefaultTTab(tab=tab).getSelectedItems()
             for ix, item in enumerate(self.viewsm.getViewsItems(what=what)):
                 ID_NEWV = wx.NewId()
@@ -1019,21 +1033,22 @@ class Siren():
         if menuViews is None:
             menuViews = wx.Menu()
 
-        menuViews.AppendMenu(wx.NewId(), "&Tabs", self.makeTabsMenu(frame, tab=tab))
+        menuViews.Append(wx.NewId(), "&Tabs", self.makeTabsMenu(frame, tab=tab))
         # self.makeTabsMenu(frame, menuViews)
         # if menuViews.GetMenuItemCount() > 0:
         #     menuViews.AppendSeparator()
 
-        self.viewsm.makeViewsMenu(frame, menuViews) 
+        if self.withViews():
+            self.viewsm.makeViewsMenu(frame, menuViews) 
         return menuViews
 
     def makeTabsMenu(self, frame, menuTabs=None, tab=None):
         if menuTabs is None:
             menuTabs = wx.Menu()
 
-        ID_AC = wx.NewId()
-        m_ac = menuTabs.Append(ID_AC, "Print tracks", "Debug")
-        frame.Bind(wx.EVT_MENU, self.OnPrintTracks, m_ac)
+        # ID_AC = wx.NewId()
+        # m_ac = menuTabs.Append(ID_AC, "Print tracks", "Debug")
+        # frame.Bind(wx.EVT_MENU, self.OnPrintTracks, m_ac)
             
         for tab_id in self.tabs_keys:
             tab_prop = self.tabs[tab_id]
@@ -1078,7 +1093,7 @@ class Siren():
         # frame.Bind(wx.EVT_MENU, self.OnImportData, m_impDataTriple)
         
         # ID_IMPORT_DATA = wx.NewId()
-        # m_impData = submenuImport.AppendMenu(ID_IMPORT_DATA, "Import &Data", submenuImportData)
+        # m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", submenuImportData)
         #m_impData = submenuImport.Append(ID_IMPORT_DATA, "Import &Data", "Import data into the project.")
         #frame.Bind(wx.EVT_MENU, self.OnImportData, m_impData)
         
@@ -1094,7 +1109,7 @@ class Siren():
             submenuImport.Enable(ID_IMPORT_REDESCRIPTIONS, False)
 
         ID_IMPORT = wx.NewId()
-        m_import = menuFile.AppendMenu(ID_IMPORT, "&Import", submenuImport)
+        m_import = menuFile.Append(ID_IMPORT, "&Import", submenuImport)
 
         
         ## Export submenu
@@ -1119,7 +1134,7 @@ class Siren():
         frame.Bind(wx.EVT_MENU, self.OnPrintoutPreferencesDef, m_defPref)
         
         ID_EXPORT = wx.NewId()
-        m_export = menuFile.AppendMenu(ID_EXPORT, "&Export", submenuExport)
+        m_export = menuFile.Append(ID_EXPORT, "&Export", submenuExport)
             
         ## Preferences
         menuFile.AppendSeparator()
@@ -1177,7 +1192,7 @@ class Siren():
 
         
         ID_FLD = wx.NewId()
-        m_fld = menuFile.AppendMenu(ID_FLD, "Fields setup", submenuFields)
+        m_fld = menuFile.Append(ID_FLD, "Fields setup", submenuFields)
 
         menuFile.AppendSeparator()
         ## Quit
@@ -1227,7 +1242,8 @@ class Siren():
             me = self.makeMenuEmpty("edit", menuEmpty=me)
         menuBar.Append(me, "&Edit")
         ## if self.matchTabType("evr", tab=tab):
-        menuBar.Append(self.makeVizMenu(frame, tab=tab), "&View")
+        if self.withViews():
+            menuBar.Append(self.makeVizMenu(frame, tab=tab), "&View")
         ## else:
         ##     menuBar.Append(self.makeMenuEmpty("visualize"), "&View")
         menuBar.Append(self.makeProcessMenu(frame, tab=tab), "&Process")
@@ -1244,7 +1260,8 @@ class Siren():
         self.ids_stoppers = {}
         self.check_tab = {}
         self.makeMenu()
-        self.viewsm.makeMenusForViews()
+        if self.withViews():
+            self.viewsm.makeMenusForViews()
 
     ######################################################################
     ###########     DIALOGS AND BOXES
@@ -1339,7 +1356,7 @@ class Siren():
     def OnDefFile(self, fld_type="fields_rdefs"):
         dir_name = os.path.expanduser('~/')
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
+                                 style = wx.FD_OPEN|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
@@ -1418,10 +1435,9 @@ class Siren():
 
     #### LICENSE BOX
     def OnLicense(self, event):
-        import codecs # we want to be able to read UTF-8 license files
         license_text = None
         try:
-            f = codecs.open(self.license_file, 'r', encoding='utf-8', errors='replace')
+            f = open(self.license_file, 'r')
             license_text = f.read()
         except:
             wx.MessageDialog(self.toolFrame, 'No license found.', style=wx.OK, caption="No license").ShowModal()
@@ -1433,7 +1449,7 @@ class Siren():
             try:
                 lfile = Siren.searchData(lic, 'licenses')
                 if lfile is not None:
-                    f = codecs.open(lfile, 'r', encoding='utf-8', errors='replace')
+                    f = open(lfile, 'r')
                     external_license_texts += '\n\n***********************************\n\n' + f.read()
                     f.close()
             except:
@@ -1508,10 +1524,10 @@ class Siren():
                     self.plant.getWP().addWorker(self, proj, {"vid": vid})
                     self.checkResults(menu=True)
             # else:
-            #     print "Waiting previous proj"
+            #     print("Waiting previous proj")
 
     def checkResults(self, menu=False, once=False):
-        # print "Check results\tnb working", self.plant.getWP().infoStr(), self.plant.getWP().nbWorking()        
+        # print("Check results\tnb working", self.plant.getWP().infoStr(), self.plant.getWP().nbWorking())
         updates = self.plant.getWP().checkResults(self)
         if menu:
             updates["menu"] = True
@@ -1530,7 +1546,7 @@ class Siren():
 
     ##### receiving results
     def OnPrintTracks(self, event):
-        print self.dw.reds.tracksToStr()
+        print(self.dw.reds.tracksToStr())
     def readyTracks(self, tracks, source):
         if len(tracks) > 0:            
             self.dw.importTracks(tracks, source)
@@ -1538,6 +1554,8 @@ class Siren():
         self.appendMinedReds(wid, reds)
 
     def readyProj(self, wid, vid, proj):
+        if not self.withViews():
+            return
         adjunct_vps = self.proj_cache.incomingPC(proj, vid)
         vv = self.viewsm.accessViewX(vid)
         if vv is not None:
@@ -1552,6 +1570,8 @@ class Siren():
     ###########     VIEWS
     ######################################################################                       
     def OnPopList(self, event):
+        if not self.withViews():
+            return
         viewT = self.viewsm.getTableViewT(typeI=self.getTabType())
         if viewT is not None:
             if self.getDefaultTTab().hasFocusContainersL():
@@ -1560,6 +1580,8 @@ class Siren():
                     return self.viewsm.viewData(what, lid, viewT)
 
     def OnNewV(self, event=None):
+        if not self.withViews():
+            return
         tab, viewT = None, None
         if isinstance(event, wx.Event) and event.GetId() in self.ids_viewT:
             tab, viewT = self.ids_viewT[event.GetId()]
@@ -1568,6 +1590,8 @@ class Siren():
             self.viewOpen(what, iid, viewT)
 
     def getViewWhatIid(self, tab=None):
+        if not self.withViews():
+            return
         what, iid = (None, None)
         if self.matchTabType("evr", tab=tab):
             iid = None
@@ -1585,6 +1609,8 @@ class Siren():
         return what, iid
         
     def viewOpen(self, what=None, iid=None, viewT=None):
+        if not self.withViews():
+            return
         if isinstance(what, ColM) or isinstance(what, RowE):
             what = self.createRedFromCol(what)
             iid = what.getUid()
@@ -1598,7 +1624,7 @@ class Siren():
     ###########     ROWS / ENTITIES TAB HANDLING
     ######################################################################       
     def OnHigh(self, event):
-        if self.matchTabType("e"):
+        if self.matchTabType("e") and self.withViews():
             self.viewsm.setAllEmphasizedR([self.getDefaultTTab().getSelectedPos()], show_info=False, no_off=True)
             
     def OnShowCol(self, event):
@@ -1694,12 +1720,9 @@ class Siren():
         elif rneeds == 1:
             rneeds = self.dw.getNeedsReloadDone()
             if rneeds.get("recompute"):
-                # print "REFRESH INTERM", rneeds
-                # print "RECOMPUTE"
                 self.dw.recompute()
                 rneeds = self.dw.getNeedsReloadDone()
                 
-        # print "REFRESH", rneeds
         if not type(rneeds) is dict:
             return
         
@@ -1708,13 +1731,14 @@ class Siren():
         if rall:
             if self.plant is not None:
                 self.plant.getWP().closeDown(self)
-            self.viewsm.deleteAllViews()
+            if self.withViews():
+                self.viewsm.deleteAllViews()
             if self.getVizm() is not None:
                 self.getVizm().reloadVizTab()
             self.resetLogger()
 
         ### RELOADING VIEWS
-        if not rall:
+        if not rall and self.withViews():
             views_rneeds = rneeds.get("z", {})
             if views_rneeds.get("data"):
                 for ikey in self.viewsm.getVKeys():
@@ -1775,7 +1799,8 @@ class Siren():
                     details["fmts"] = self.dw.getData().getFmts()
                 self.getRTab().resetDetails(details)
             self.getRTab().load(rfields=reds_rneeds.get("fields", rall))
-            self.viewsm.refreshTables()
+            if self.withViews():
+                self.viewsm.refreshTables()
         else:
             lids, iids = set([]), set([])
             for (lid, selected_iids, new_lid) in reds_rneeds.get("lists_content", []):
@@ -1788,7 +1813,8 @@ class Siren():
             for iid in reds_rneeds.get("items", []):
                 self.getRTab().refreshItem(iid)
                 iids.add(iid)
-            self.viewsm.refreshTables(lids, iids)
+            if self.withViews():
+                self.viewsm.refreshTables(lids, iids)
             
         if rdatainfo: 
             self.updateDataInfo()
@@ -1870,7 +1896,7 @@ class Siren():
             return
         dir_name = os.path.expanduser('~/')
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
+                                 style = wx.FD_OPEN|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
@@ -1886,7 +1912,7 @@ class Siren():
         else:
             dir_name = os.path.expanduser('~/')
 
-        save_dlg = wx.FileDialog(self.toolFrame, message='Save %s template to:' % mess, defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        save_dlg = wx.FileDialog(self.toolFrame, message='Save %s template to:' % mess, defaultDir = dir_name, style = wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
@@ -1901,7 +1927,6 @@ class Siren():
         self.OnExportPreferences(mess="preferences template", conf_def=self.conf_defs+self.conf_defs_io)
     def OnPrintoutPreferencesDef(self, event):
         self.OnExportPreferences(mess="default preferences", inc_def=True)       
-
         
     #### PACKAGE
     def OnOpenPck(self, event):
@@ -1915,7 +1940,7 @@ class Siren():
             dir_name = os.path.expanduser('~/')
         path = dir_name            
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose a file', defaultDir=dir_name,  
-			wildcard=wcd, style=wx.OPEN|wx.CHANGE_DIR)
+			wildcard=wcd, style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
@@ -1943,7 +1968,7 @@ class Siren():
             dir_name = os.path.expanduser('~/')
 
         save_dlg = wx.FileDialog(self.toolFrame, message="Save as", defaultDir=dir_name,
-                                 style=wx.SAVE|wx.CHANGE_DIR)
+                                 style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
@@ -1962,7 +1987,7 @@ class Siren():
         dir_name = os.path.expanduser('~/')
 
         open_dlg = wx.FileDialog(self.toolFrame, message='Choose file', defaultDir = dir_name,
-                                 style = wx.OPEN|wx.CHANGE_DIR)
+                                 style = wx.FD_OPEN|wx.FD_CHANGE_DIR)
         if open_dlg.ShowModal() == wx.ID_OK:
             path = open_dlg.GetPath()
             try:
@@ -1987,7 +2012,7 @@ class Siren():
         else:
             dir_name = os.path.expanduser('~/')
 
-        save_dlg = wx.FileDialog(self.toolFrame, message='Save redescriptions to:', defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        save_dlg = wx.FileDialog(self.toolFrame, message='Save redescriptions to:', defaultDir = dir_name, style = wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if save_dlg.ShowModal() == wx.ID_OK:
             new_path = save_dlg.GetPath()
             try:
@@ -2033,7 +2058,7 @@ class Siren():
         else:
             dir_name = os.path.expanduser('~/')
 
-        save_dlg = wx.FileDialog(frame, message='Save redescription list to:', defaultDir = dir_name, style = wx.SAVE|wx.CHANGE_DIR)
+        save_dlg = wx.FileDialog(frame, message='Save redescription list to:', defaultDir = dir_name, style = wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if save_dlg.ShowModal() == wx.ID_OK:
             new_path = save_dlg.GetPath()
             try:
@@ -2044,6 +2069,8 @@ class Siren():
         self.refresh()
         
     def OnExportFigs(self, event):
+        if not self.withViews():
+            return
         tab = self.ids_evTabs.get(event.GetId())
         if not self.matchTabType("vr", tab=tab):
             return

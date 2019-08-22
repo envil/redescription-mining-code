@@ -51,7 +51,6 @@ class PreferencesDialog(wx.Dialog):
         self.tabs = []
 
         self.cancel_change = False # Tracks if we should cancel a page change
-
         
         for section in self.iterateSections():
             sec_id = wx.NewId()
@@ -111,8 +110,7 @@ class PreferencesDialog(wx.Dialog):
                 item = self.pref_handle.getPreferencesManager().getItem(item_id)
                 ctrl_id = wx.NewId()
                 label = wx.StaticText(frame, wx.ID_ANY, item.getLabel()+":")
-                self.controls_map[sec_id]["boolean"][item_id] = wx.Choice(frame, ctrl_id)
-                self.controls_map[sec_id]["boolean"][item_id].AppendItems(strings=item.getOptionsText())
+                self.controls_map[sec_id]["boolean"][item_id] = wx.Choice(frame, ctrl_id, choices=item.getOptionsText())
                 self.objects_map[ctrl_id]= (sec_id, "boolean", item_id)
                 so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
                 so_sizer.Add(self.controls_map[sec_id]["boolean"][item_id], 0)
@@ -129,8 +127,7 @@ class PreferencesDialog(wx.Dialog):
                 item = self.pref_handle.getPreferencesManager().getItem(item_id)
                 ctrl_id = wx.NewId()
                 label = wx.StaticText(frame, wx.ID_ANY, item.getLabel()+":")
-                self.controls_map[sec_id]["single_options"][item_id] = wx.Choice(frame, ctrl_id)
-                self.controls_map[sec_id]["single_options"][item_id].AppendItems(strings=item.getOptionsText())
+                self.controls_map[sec_id]["single_options"][item_id] = wx.Choice(frame, ctrl_id, choices=item.getOptionsText())
                 self.objects_map[ctrl_id]= (sec_id, "single_options", item_id)
                 so_sizer.Add(label, 0, wx.ALIGN_RIGHT)
                 so_sizer.Add(self.controls_map[sec_id]["single_options"][item_id], 0)
@@ -233,7 +230,7 @@ class PreferencesDialog(wx.Dialog):
         self.EndModal(0)
 
     def onReset(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self._reset(sec_id)
 
@@ -242,12 +239,12 @@ class PreferencesDialog(wx.Dialog):
         self.upButtons(sec_id, on_action="off")
 
     def onResetToDefault(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferencesManager().getDefaultTriplets())
 
     def onApply(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self._apply(sec_id)
 
@@ -258,14 +255,14 @@ class PreferencesDialog(wx.Dialog):
         self.upButtons(sec_id, on_action="off")
     
     def onOK(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self._apply(sec_id)
             vdict = self.getSecValuesDict(sec_id)
         self.onClose()
 
     def changeHappened(self, event):
-        if event.GetId() in self.objects_map.keys():
+        if event.GetId() in self.objects_map:
             sec_id = self.objects_map[event.GetId()][0]
             self.upButtons(sec_id, on_action="on")
             
@@ -305,16 +302,16 @@ class PreferencesDialog(wx.Dialog):
     def bindSec(self, sec_id):
         self.upButtons(sec_id, on_action="off")
         
-        for txtctrl in self.controls_map[sec_id]["open"].itervalues():
+        for txtctrl in self.controls_map[sec_id]["open"].values():
             self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-        for txtctrl in self.controls_map[sec_id]["range"].itervalues():
+        for txtctrl in self.controls_map[sec_id]["range"].values():
             self.Bind(wx.EVT_TEXT, self.changeHappened, txtctrl)
-        for choix in self.controls_map[sec_id]["boolean"].itervalues():
+        for choix in self.controls_map[sec_id]["boolean"].values():
             self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-        for choix in self.controls_map[sec_id]["single_options"].itervalues():
+        for choix in self.controls_map[sec_id]["single_options"].values():
             self.Bind(wx.EVT_CHOICE, self.changeHappened, choix)
-        for chkset in self.controls_map[sec_id]["multiple_options"].itervalues():
-            for chkbox in chkset.itervalues():
+        for chkset in self.controls_map[sec_id]["multiple_options"].values():
+            for chkbox in chkset.values():
                 self.Bind(wx.EVT_CHECKBOX, self.changeHappened, chkbox)
             
     def getSecValuesDict(self, sec_id):
@@ -360,7 +357,7 @@ class PreferencesDialog(wx.Dialog):
             if tmp_ok:
                 vdict[item_id] = {}
                 if len(tmp_opts) > 0:
-                    for k in tmp_opts[0].keys():
+                    for k in tmp_opts[0]:
                         vdict[item_id][k] = []
                         for t in tmp_opts:
                             vdict[item_id][k].append(t[k])

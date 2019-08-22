@@ -1,8 +1,6 @@
 import re, random, sys
 import numpy
 import inspect
-# import signal
-# import tsne
 from ..reremi.classData import Data
 import os
 
@@ -10,14 +8,14 @@ import pdb
 
 # def my_SIGTERM_handler(sign, frame):
 #     ### DIRTY BUSINESS TO KILL THE WHOLE FAMILY SPAWNED BY SCIKIT
-#     print "KILLED!", sign
+#     print("KILLED!", sign)
 #     kill_children(os.getpid())
 #     exit()
 
 # def kill_children(pid):
 #     for childp in get_children(pid):
 #         kill_children(childp)
-#         print "Killing %d..." % childp
+#         print("Killing %d..." % childp)
 #         try:
 #             os.kill(childp, signal.SIGTERM)
 #         except OSError as e:
@@ -47,8 +45,8 @@ def list_children(pid, l, level=0):
         list_children(childp, l, level+1)
 
 def all_subclasses(cls):
-    return cls.__subclasses__() + [g for s in cls.__subclasses__()
-                                   for g in all_subclasses(s)]
+    return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
+
 def argsF(f):
     if inspect.isclass(f):
         args, varargs, keywords, defaults = inspect.getargspec(f.__init__)
@@ -70,14 +68,16 @@ def applyF(f, parameters):
     return f(**args)
 
 class Proj(object):
-
+    
+    WHAT_MAP = {"entities": "", "cluster": "CL"}
+    
     xaxis_lbl = "x-axis var (side.id)"
     yaxis_lbl = "y-axis var (side.id)"
 
     rint_max = 10000
     PID = "---"
     SDESC = "---"
-    whats = ["variables", "entities", "cluster"]
+    whats = ["entities", "cluster"]
     title_str = "Projection"
     gen_parameters = {"types": Data.getTidForName(["Numerical"]), "only_able":True}
     fix_parameters = {}
@@ -95,6 +95,13 @@ class Proj(object):
         self.initParameters(params)
         self.pids_ex = set()
 
+    @classmethod
+    def getTPIDw(tcl, what="entities"):
+        return "%s%s" % (tcl.WHAT_MAP.get(what, "??"), tcl.PID)
+        
+    def getTPID(self):
+        return self.getTPIDw(self.what)
+        
     def getPid(self):
         return os.getpid()
 
@@ -139,7 +146,7 @@ class Proj(object):
         self.comp()
         
     def getCode(self):
-        tt = "%s:" % self.PID
+        tt = "%s:" % self.getTPID()
         if self.getParameter("types") is None:
             tt += "A,"
         if not self.getParameter("only_able"):
@@ -195,10 +202,9 @@ class Proj(object):
     #                 ctrls.append(wx.CheckBox(frame, wx.NewId(), k, style=wx.ALIGN_RIGHT))
     #                 ctrls[-1].SetValue(v in value)
     #         elif kp in self.options_parameters:
-    #             type_ctrl = "choice" 
-    #             ctrls.append(wx.Choice(frame, wx.NewId()))
+    #             type_ctrl = "choice"
     #             strs = [k for k,v in self.options_parameters[kp]]
-    #             ctrls[-1].AppendItems(strings=strs)
+    #             ctrls.append(wx.Choice(frame, wx.NewId(), choices=strs))
     #             try:
     #                 ind = strs.index(value)
     #                 ctrls[-1].SetSelection(ind)
@@ -256,10 +262,10 @@ class Proj(object):
 
 
     def getTunableParamsK(self):
-        return self.gen_parameters.keys()
+        return list(self.gen_parameters.keys())
 
     def getParameter(self, param):
-        return self.params.get(param, None)
+        return self.params.get(param)
 
     def setParameter(self, param, v):
         self.params[param] = v
@@ -297,7 +303,7 @@ class AxesProj(Proj):
                 # map_vars = {(0, 12): (1, 0), (0, 13): (1, 4), (0, 14): (1, 11), (0, 15): (1, 20)}
                 # if scs[1] in map_vars:
                 #     scs[0] = map_vars[scs[1]]
-                #     print "VARS", scs
+                #     print("VARS", scs)
                 # scs[0] = (1, 32) ## debug
 
             elif len(self.params["vids"]) > 1:
@@ -308,10 +314,12 @@ class AxesProj(Proj):
         self.labels = ["", ""]
         for ai, axis in enumerate([Proj.xaxis_lbl, Proj.yaxis_lbl]):
             tmp = self.getParameter(axis)
-            if tmp > 0:
+            try:
                 sc = tuple(map(int, str(tmp).split(".")[:2]))
-                if sc in mm:
+                if sc[0] > -1 and sc in mm:
                     scs[ai] = sc
+            except ValueError:
+                pass
             
             self.setParameter(axis, float("%d.%d" % scs[ai]))
             self.labels[ai] = "%s %s" % (side_lstr[scs[ai][0]], details[mcols[scs[ai]]]["name"])
@@ -328,62 +336,19 @@ class AxesProj(Proj):
     def getAxVars(self):
         return self.ax_vars
 
-class VrsProj(Proj):
-
-    PID = "VRS"
-    SDESC = "Scatter"
-    whats = ["variables"]
-    title_str = "Scatter Plot"
-    gen_parameters = dict(Proj.gen_parameters)
-    gen_parameters.update({Proj.xaxis_lbl: -1, Proj.yaxis_lbl: -1})
-    dyn_f = []
-
-    def addParamsRandrep(self, more={}):
-        if self.params.get(Proj.yaxis_lbl, -1) == -1 or self.params.get(Proj.xaxis_lbl, -1) == -1:
-            self.params["random_state"] = random.randint(0, self.rint_max)
-        self.params.update(more)
-        
-    def comp(self):
-        mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
-        if len(mcols) == 0:
-            return
-
-        rids = range(self.data.nbRows())
-        if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
-            rids = list(self.data.nonselectedRows())
-            selected = numpy.array(rids)
-            mat = mat[:,selected]
-            
-        scs = random.sample(rids, 2)
-        self.labels = ["", ""]
-        for ai, axis in enumerate([Proj.xaxis_lbl, Proj.yaxis_lbl]):
-            tmp = self.getParameter(axis)
-            if tmp > 0 and tmp in rids:
-                scs[ai] = tmp
-            self.setParameter(axis, scs[ai])
-            self.labels[ai] = "%s" % scs[ai]
-        self.coords_proj = [mat[:,rids.index(scs[0])], mat[:,rids.index(scs[1])]]
-        for side in [0,1]:
-            self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
-        self.mcols = mcols
-
-    def getAxisLabel(self, axi):
-        return "%s" % self.labels[axi]
-
-
 class ProjFactory(object):
     defaultView = AxesProj
-
+    
     @classmethod
     def getViewsDetails(tcl, bc, what="entities"):
         preff_title = "%s " % what.title()
         details = {}
         for cls in all_subclasses(Proj):
-            if (re.match("^(?P<alg>[A-Za-z*.]*)$", cls.PID) is not None) and (what in cls.whats):
+            PIDw = cls.getTPIDw(what)
+            if (re.match("^(?P<alg>[A-Za-z*.]*)$", PIDw) is not None) and (what in cls.whats):
                 short_title = re.sub("Multidimensional", "Mul.Dim.", re.sub("Projection", "Proj.", re.sub("Embedding", "Embd.", cls.title_str)))
-                short_title = re.sub("Random", "Rand.", re.sub("Randomized", "Rand.", short_title))
-                # details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "class": bc, "more": cls.PID, "ord": bc.ordN}
-                details[cls.PID+"_"+what]= {"title": preff_title + cls.title_str, "short_title": short_title, "class": bc, "more": cls.PID, "ord": bc.ordN}
+                details[PIDw]= {"title": preff_title + cls.title_str, "class": bc, "more": PIDw, "ord": bc.ordN}
+                # details[cls.PID]= {"title": preff_title + cls.title_str, "short_title": short_title, "class": bc, "more": cls.PID, "ord": bc.ordN}
         return details
 
     @classmethod
@@ -544,18 +509,18 @@ if True: #sys.platform != 'win32':
        PID =  "SKpca"
        if sys.platform == 'darwin': PID =  "-"+ PID
        SDESC = "PCA"
-       title_str = "Randomized PCA Projection"
+       title_str = "PCA Projection"
        gen_parameters = dict(Proj.gen_parameters)
-       gen_parameters.update({"iterated_power": 3 })
-       dyn_f = [decomposition.RandomizedPCA]
-       #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
+       gen_parameters.update({"iterated_power": 3, "svd_solver": "randomized"})
+       dyn_f = [decomposition.PCA]
+       #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
 
        def addParamsRandrep(self, more={}):
            self.params["random_state"] = random.randint(0, self.rint_max)
            self.params.update(more)
            
        def getX(self, X):
-           X_pca = self.applyF(decomposition.RandomizedPCA).fit_transform(X)
+           X_pca = self.applyF(decomposition.PCA).fit_transform(X)
            return X_pca, 0
 
     class SKisoProj(DynProj):
@@ -630,9 +595,9 @@ if True: #sys.platform != 'win32':
         gen_parameters = dict(DynProj.gen_parameters)
         gen_parameters.update({"max_depth":5, "n_estimators":10})
         fix_parameters = dict(DynProj.fix_parameters)
-        dyn_f = [ensemble.RandomTreesEmbedding, decomposition.RandomizedPCA]
+        dyn_f = [ensemble.RandomTreesEmbedding, decomposition.PCA]
         ### http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomTreesEmbedding.html
-        ### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.RandomizedPCA.html
+        ### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
 
         def addParamsRandrep(self, more={}):
             self.params["random_state"] = random.randint(0, self.rint_max)
@@ -640,7 +605,7 @@ if True: #sys.platform != 'win32':
 
         def getX(self, X):
             X_transformed = self.applyF(ensemble.RandomTreesEmbedding).fit_transform(X)
-            X_reduced = self.applyF(decomposition.RandomizedPCA).fit_transform(X_transformed.toarray())
+            X_reduced = self.applyF(decomposition.PCA).fit_transform(X_transformed.toarray())
             return X_reduced, 0
 
     class SKspecProj(DynProj):
@@ -658,21 +623,25 @@ if True: #sys.platform != 'win32':
             X_se = self.applyF(manifold.SpectralEmbedding).fit_transform(X)
             return X_se, 0
 
-    # class SKtsneProj(DynProj):
-    #     #----------------------------------------------------------------------
-    #     # Stochastic Neighbors embedding
+    class SKtsneProj(DynProj):
+        #----------------------------------------------------------------------
+        # Stochastic Neighbors embedding
 
-    #     ### THIS IS DISABLED "starting with minus"
-    #     PID =  "-SKtsne"
-    #     SDESC = "t-SNE"
-    #     title_str = "t-SNE Embedding"
-    #     gen_parameters = dict(DynProj.gen_parameters)
-    #     gen_parameters.update({"initial_dims":50, "perplexity":20.0})
-    #     fix_parameters = dict(DynProj.fix_parameters)
-    #     fix_parameters.update({"no_dims":2})
-    #     dyn_f = [tsne.tsne]
+        # ### THIS IS DISABLED "starting with minus"
+        # PID =  "-SKtsne"
+        PID =  "SKtsne"
+        SDESC = "t-SNE"
+        title_str = "t-SNE Embedding"
+        gen_parameters = dict(DynProj.gen_parameters)
+        gen_parameters.update({"perplexity":20.0})
+        # fix_parameters = dict(DynProj.fix_parameters)
+        # fix_parameters.update({"no_dims":2})
+        dyn_f = [manifold.TSNE]
+        ## https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
 
-    #     def getX(self, X):
-    #         X_sne, c = self.applyF(tsne.tsne, {"X":X})
-    #         return X_sne, c
+        def getX(self, X):
+            X_sne = self.applyF(manifold.TSNE).fit_transform(X)
+            return X_sne, 0
+            # X_sne, c = self.applyF(tsne.tsne, {"X":X})
+            # return X_sne, c
 

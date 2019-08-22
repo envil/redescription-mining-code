@@ -2,7 +2,7 @@ import wx
 ### from wx import ALIGN_CENTER, EVT_TOGGLEBUTTON, EXPAND, RAISED_BORDER
 ### from wx import FlexGridSizer, NewId, Panel, ToggleButton
 
-from classLayoutHandler import LayoutHandlerBasis
+from .classLayoutHandler import LayoutHandlerBasis
 
 import pdb
 
@@ -68,7 +68,7 @@ class Filler(object):
         self._SetSize()
 
     def popSizer(self):
-        self.mapFrame.GetSizer().Remove(self.panel)
+        self.mapFrame.GetSizer().Remove(self.panel.GetSizer())
         self.mapFrame.GetSizer().Layout()
         return self.panel
     def destroy(self):

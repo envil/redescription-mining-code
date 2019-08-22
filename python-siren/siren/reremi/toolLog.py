@@ -3,6 +3,7 @@ import pdb
 import random
 import datetime
 import copy
+from io import IOBase
 
 class Log(object):
 
@@ -147,7 +148,6 @@ class Log(object):
         self.verbosity = -1
 
     def capVerbosity(self, v=0):
-        # print "BEFORE", self.oqu+self.out
         for o in self.oqu+self.out:
             if type(o["verbosity"]) is int and o["verbosity"] > v:
                 o["verbosity"] = v
@@ -156,11 +156,8 @@ class Log(object):
                 for k in ks:
                     if o["verbosity"][k] > v:
                         o["verbosity"][k] = v
-        # print "AFTER", self.oqu+self.out
-
         
     def addOut(self,  k="std", verbosity=None, output = '-', method_comm = None):
-        ### CHECK OUTPUT
         if type(output) == str:
             if output in ['-', "stdout"]:
                 tmp_dest = sys.stdout
@@ -194,12 +191,10 @@ class Log(object):
 
     def printL(self, level, message, type_message="*", source=None):
         for out in self.out+self.oqu:
-            # if type_message == "tracks":
-            #     print "Tracks to ", out["verbosity"]
-            if ( type_message in out["verbosity"].keys() and level <= out["verbosity"][type_message]) \
-                   or  ( type_message not in out["verbosity"].keys() and "*" in out["verbosity"].keys() and level <= out["verbosity"]["*"]):
-                
-                if type(out["destination"]) == file:
+            if ( type_message in out["verbosity"] and level <= out["verbosity"][type_message]) \
+                   or  ( type_message not in out["verbosity"] and "*" in out["verbosity"] and level <= out["verbosity"]["*"]):
+
+                if isinstance(out["destination"], IOBase):
                     if type_message == "*":
                         header = ""
                     else:
@@ -213,7 +208,6 @@ class Log(object):
                     out["destination"].write("%s%s\n" % (header, message))
                     out["destination"].flush()
                 else:
-                    # print "Log printing:\t", type_message, message, "\n\tFrom", source ," to ", out["destination"]
                     out["method"](out["destination"], message, type_message, source)
         
         

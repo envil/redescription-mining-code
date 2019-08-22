@@ -1,11 +1,19 @@
 import os.path
 import numpy
 
-import polys.prepare_polygons as prep_polys
-from classCol import DataError, ColM, BoolColM, CatColM, NumColM
-from classRedescription import Redescription
-from classSParts import SSetts
-import csv_reader
+try:
+    import polys.prepare_polygons as prep_polys
+    from classCol import DataError, ColM, BoolColM, CatColM, NumColM
+    from classRedescription import Redescription
+    from classSParts import SSetts
+    import csv_reader
+except ModuleNotFoundError:
+    from .polys import prepare_polygons as prep_polys
+    from classCol import DataError, ColM, BoolColM, CatColM, NumColM
+    from classRedescription import Redescription
+    from classSParts import SSetts
+    from . import csv_reader
+
 import pdb
 
 # from polys.prepare_polygons import PolyMap
@@ -40,7 +48,7 @@ class DataExtension(object):
         return {}
     @classmethod
     def getExtrasKeys(tcl):
-        return tcl.extras_map.keys()
+        return list(tcl.extras_map.keys())
     @classmethod
     def getFilenamesKeys(tcl):
         fks = []
@@ -137,7 +145,7 @@ class DataExtension(object):
             
     def computeExtras(self, item, extra_keys=None, details={}):
         if extra_keys is None:
-            extra_keys = self.extras_map.keys()
+            extra_keys = list(self.extras_map.keys())
         out = dict([(e, None) for e in extra_keys])
         map_meths = {}
         for extra_key in extra_keys:
@@ -235,7 +243,7 @@ class GeoPlusExtension(DataExtension):
                     
                 PointsIds[next_id] = rname
                 PointsMap[next_id] = coord
-        ## print "NBS", org_nb, len(PointsMap)
+        ## print("NBS", org_nb, len(PointsMap))
         return PointsMap, PointsIds
         
     def computeEdges(self, details={}, force=False):
