@@ -15,6 +15,8 @@ The interface is built with the wxPython Open Source GUI toolkit, ensuring cross
 
 The matplotlib library enables to generate high quality figures, seamlessly integrated in the interface.
 
+The code is compatible with Python 3. Code from releases prior to ``5.0`` are compatible with Python 2.7.
+
 
 .. _code:
 
@@ -22,13 +24,10 @@ The matplotlib library enables to generate high quality figures, seamlessly inte
 Source code
 ============
 
+Siren is available as a python package on `PyPI <https://pypi.org/project/python-siren/>`_.
+
 The source code is hosted in a Git repository on `InriaForge <https://gforge.inria.fr/projects/siren/>`_.
 You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
-
-:src_release:`.tar.gz`
-
-The source code has been packaged using `Python distutils <http://docs.python.org/install/index.html>`_. 
-To `install <http://docs.python.org/install/index.html#the-new-standard-distutils>`_, unpack the downloaded archive and run ``python setup.py install`` from within the created folder. 
 
 *Siren* requires a number of python libraries: ``scipy``, ``numpy``, ``matplotlib``, ``wxPython``, ``mpl_toolkit.Basemap`` and ``sklearn`` (scikit-learn). Make sure they are installed and accessible before you run *Siren*.
 

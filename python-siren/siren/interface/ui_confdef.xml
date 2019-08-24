@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="../reremi/confdef.xsl"?>
 <root>
   <info>Interface preferences for the Siren algorithm. A default preferences file can be obtained by copying this file and removing the &#60;default&#62; tags around default values.</info>

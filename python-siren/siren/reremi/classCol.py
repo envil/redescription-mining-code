@@ -1073,8 +1073,11 @@ class NumColM(ColM):
             self.vect[list(self.missing)] = self.NA
 
         if len(self.sVals) > 0:
+            vals, ids = [], []
             if self.mode[1] is not None:
-                vals, ids = zip(*[(vv,ii) for (vv, ii) in self.sVals if ii != -1])
+                tmp = [(vv,ii) for (vv, ii) in self.sVals if ii != -1]
+                if len(tmp) > 0:
+                    vals, ids = zip(*tmp)                    
             else:
                 vals, ids = zip(*self.sVals)
             self.vect[list(ids)] = vals

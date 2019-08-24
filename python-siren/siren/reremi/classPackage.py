@@ -205,7 +205,6 @@ class Package(object):
                     fdRHS = io.TextIOWrapper(io.BytesIO(self.package.read(self.plist['data_RHS_filename'])))
                 else:
                     fdRHS = None                    
-                # pdb.set_trace()    
                 data = Data([fdLHS, fdRHS]+add_info, "csv")
             except Exception:
                 data = None
@@ -268,8 +267,8 @@ class Package(object):
                 filenames = [os.path.join(tmp_dir, plist['data_LHS_filename']), None]
                 if plist.get('data_RHS_filename', plist['data_LHS_filename']) != plist['data_LHS_filename']:
                     filenames[1] = os.path.join(tmp_dir, plist['data_RHS_filename'])
-                writeData(contents["data"], filenames, toPackage = True)
-                writeDataExtensions(contents["data"], plist, tmp_dir)
+                IOTools.writeData(contents["data"], filenames, toPackage = True)
+                IOTools.writeDataExtensions(contents["data"], plist, tmp_dir)
             except IOError:
                 shutil.rmtree(tmp_dir)
                 self.filename = old_package_filename
@@ -280,7 +279,7 @@ class Package(object):
         if "redescriptions" in contents:
             for rs in contents["redescriptions"]:            
                 try:
-                    writeRedescriptions(rs.get("items", []), os.path.join(tmp_dir, os.path.basename(rs["src"][1])),
+                    IOTools.writeRedescriptions(rs.get("items", []), os.path.join(tmp_dir, os.path.basename(rs["src"][1])),
                                         names=False, with_disabled=True, toPackage=True)
                 except IOError:
                     shutil.rmtree(tmp_dir)
@@ -291,7 +290,7 @@ class Package(object):
         # Write preferences
         if "preferences" in contents:
             try:
-                writePreferences(contents["preferences"], contents["pm"],
+                IOTools.writePreferences(contents["preferences"], contents["pm"],
                                  os.path.join(tmp_dir, plist['preferences_filename']), toPackage = True)
             except IOError:
                 shutil.rmtree(tmp_dir)
@@ -428,7 +427,7 @@ class IOTools:
             f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
 
     @classmethod
-    def writeData(tcl, data, filenames, toPackage = False):
+    def writeData(tcl, data, filenames, toPackage = False):        
         data.writeCSV(filenames)
     @classmethod
     def writeDataExtensions(tcl, data, plist=None, tmp_dir="./"):

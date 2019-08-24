@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Siren documentation build configuration file, created by
@@ -37,15 +38,12 @@ templates_path = ['../_templates']
 # The suffix of source filenames.
 source_suffix = '.rst'
 
-# The encoding of source files.
-#source_encoding = 'utf-8-sig'
-
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = u''+cv["PROJECT_NAME"]
-copyright = u''+cv["COPYRIGHT_YEAR_FROM"]+", "+cv["PROJECT_AUTHORS"]
+project = cv["PROJECT_NAME"]
+copyright = cv["COPYRIGHT_YEAR_FROM"]+", "+cv["PROJECT_AUTHORS"]
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -72,7 +70,7 @@ today = "June, 2014"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -132,7 +130,6 @@ html_style = "custom_sigmod.css"
 html_static_path = ['../_static']
 
 html_copy_source = False
-# html_output_encoding = 'iso-8859-1'
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -148,6 +145,7 @@ html_sidebars = {
     '**': ['globaltoc.html', # 'sidebarhelp.html', 'sourcelink.html',
            'searchbox_sigmod_wpdf.html'], #, 'sourcelink.html'],
     }
+
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 #html_additional_pages = {}
@@ -195,19 +193,14 @@ latex_elements = {
 # Additional stuff for the LaTeX preamble.
 'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}'+ \
             '{\\end{itshape}}\n' + \
-            '\\makeatother\n\n' + \
-            '\\usepackage{letltxmacro}\n\n' + \
-            '% save the meaning of \\includegraphics\n' + \
-            '\\LetLtxMacro\\latexincludegraphics\\includegraphics\n' + \
-            '\\renewcommand{\\includegraphics}[2][]{%\n' + \
-            '\\begin{center}\n\\latexincludegraphics[#1, width=0.45\\textwidth]{#2}\n\\end{center}}\n',
+            '\\makeatother\n\n',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Siren.tex', u''+cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
-   u''+cv["PROJECT_AUTHORS"], 'howto'),
+  ('index', 'Siren.tex', cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
+   cv["PROJECT_AUTHORS"], 'howto'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -236,8 +229,8 @@ latex_use_parts = False
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', cv["PROJECT_NAME"], u''+cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
-     [u''+cv["PROJECT_AUTHORS"]], 1)
+    ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
+     [cv["PROJECT_AUTHORS"]], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -250,8 +243,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', cv["PROJECT_NAME"], u''+cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
-   u''+cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
+  ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' Demo at SIGMOD 2014',
+   cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
    cv["PROJECT_DESCRIPTION"]),
 ]
 

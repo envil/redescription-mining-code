@@ -133,3 +133,22 @@ min-height:400px;
 max-height:400px; 
 }
 
+#in-three-steps p {
+ text-align: center;
+ font-size: 2.5em;
+ margin: 1.2em;
+}
+
+#in-three-steps {
+ padding:3em 1em 1em 1em;
+}
+
+#in-three-steps h1 {
+ display: none;
+}
+
+.section div.toctree-wrapper li {
+    display:inline;
+    list-style-type: circle;
+    padding: .5em;
+}

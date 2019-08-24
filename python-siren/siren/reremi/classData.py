@@ -969,7 +969,6 @@ class Data(ContentCollection):
             cid = col.getId()
             if len(header) > 0 or len(cids) > 0:
                 header.append(cids.get(cid, cid))
-
         letter = self.getCommonType(side)
         if letter is not None:
             if len(header) == 0:
@@ -983,7 +982,7 @@ class Data(ContentCollection):
             csv_reader.write_row(csvf, discol)            
         if len(groupscol) > 0:
             csv_reader.write_row(csvf, groupscol)            
-            
+
         for n in range(self.N):
             row = []
             if inc_ids:
@@ -1007,7 +1006,6 @@ class Data(ContentCollection):
                 row.append("%s" % col.valToStr(col.getValue(n, pref="bnum")))
                 ## row.append(col.valToStr(col.getValue(n, pref="bnum")))
             csv_reader.write_row(csvf, row)
-
 
     def writeCSVSparseTriples(self, side, csvf, rids={}, cids={}, details=True, inline=False, single_dataset=False):
         header = [csv_reader.IDENTIFIERS[0], csv_reader.COLVAR[0], csv_reader.COLVAL[0]]

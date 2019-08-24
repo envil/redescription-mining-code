@@ -271,7 +271,7 @@ class DataWrapper(object):
     def updatePreferencesDict(self, params):
         #if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
-            params_l = Constraints.paramsToDict(params)
+            params_l = PreferencesReader.paramsToDict(params)
             dtv = [item_id for (item_id, trip) in params_l.items() if trip != self.getPreference(item_id)]
             self.preferences.update(params)
             self.resetConstraints(dtv=dtv)

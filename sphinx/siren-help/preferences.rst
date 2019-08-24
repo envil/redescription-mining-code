@@ -1,15 +1,16 @@
 .. _preferences:
 
 **************
-Preferences
+Parameters
 **************
 
 .. note::
-   Preference parameters can be set via the interface menu :menuselection:`Edit --> Preferences`.
+   Siren allows to tune various parameters via an interface menu :menuselection:`Edit --> Preferences`.
 
    An XML preferences file stores all non-default parameters. 
 
-
+The parameters that can be set through the preference interface can be mainly divided into two categories, **mining parameters**, that pertain to the mining algorithm, and **visualization parameters**, that pertain to the interactive visualizations, each split over several tabs.
+   
 .. _mining_parameters:
 
 Mining parameters
@@ -17,36 +18,22 @@ Mining parameters
 
 Mining parameters are specified `here <../_static/miner_confdef.xml>`_ and can be set through the interface.
 
-.. image:: ../_figs/screenshots/PrefsMine.png
+Quite many parameters are available for tuning, but in general only a few of them need to be adjusted.
+In particular, the parameters setting threshold values on the support of the queries, on the accuracy of the returned redescriptions, as well as on the type of queries, are the most important ones.
 
 .. _interface_parameters:
 
-Interface parameters
+Visualization parameters
 =========================
 
-Interface parameters are specified `here <../_static/ui_confdef.xml>`_  and can be set through the interface.
+Visualization parameters are specified `here <../_static/views_confdef.xml>`_  and can be set through the interface.
+For instance, they allows to modify the appearance of the maps, choose the colors of the different support subsets, etc.
 
-.. image:: ../_figs/screenshots/PrefsInterface2.png
 
-Views parameters
+Other parameters
 =========================
 
-Views parameters are specified `here <../_static/views_confdef.xml>`_  and can be set through the interface.
-For instance, this allows to modify the appearance of the maps.
+It is possible to adjust the parameters through the interface then export them to a file.
+In particular, a template can be generated and exported which can be used to run the *ReReMi* mining algorithm from the command line, after filling in input/output parameters, which are specified `here. <../_static/inout_confdef.xml>`_ 
 
-.. image:: ../_figs/screenshots/MapVariants.png
-
-Input/output parameters
-=========================
-
-Input/output parameters, useful when running *ReReMi* from the command line, are specified `here. <../_static/inout_confdef.xml>`_ 
-
-
-.. _preferences_file:
-
-Preferences file
-=================
-
-The ouline of a preferences file for *Siren* and *ReReMi* is as follows:
-
-.. literalinclude:: ../_static/xml_prefs_example_comm.txt
+Interface parameters, such as the splits and external server parameters, set through dedicated menu in the interface are specified `here <../_static/ui_confdef.xml>`_ .

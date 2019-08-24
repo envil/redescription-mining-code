@@ -11,7 +11,7 @@ JUST_HELP=${1}
 
 SRC_REP="./python-siren"
 SPH_REP="./sphinx"
-#JUST_HELP=1
+# JUST_HELP=1
 
 YAH=$(pwd) # YOU ARE HERE
 

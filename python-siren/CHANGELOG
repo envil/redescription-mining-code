@@ -1,5 +1,9 @@
 CHANGELOG for Siren
 ===================
+v5.0.1
+------
+* Minor bug fixes
+
 v5.0.0
 ------
 * Migrated to Python3

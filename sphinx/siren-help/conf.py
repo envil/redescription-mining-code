@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Siren documentation build configuration file, created by
@@ -16,6 +17,7 @@ from datetime import datetime
 sys.path.append("__SIREN_PYTHON_PATH__")
 from common_details import common_variables, getExtLinks
 cv = common_variables
+extlinks = getExtLinks(cv)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -29,7 +31,7 @@ cv = common_variables
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax']
+extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.extlinks']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../_templates']
@@ -37,15 +39,12 @@ templates_path = ['../_templates']
 # The suffix of source filenames.
 source_suffix = '.rst'
 
-# The encoding of source files.
-#source_encoding = 'utf-8-sig'
-
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = u''+cv["PROJECT_NAME"]
-copyright = u''+cv["COPYRIGHT_YEAR_FROM"]+", "+cv["PROJECT_AUTHORS"]
+project = cv["PROJECT_NAME"]
+copyright = cv["COPYRIGHT_YEAR_FROM"]+", "+cv["PROJECT_AUTHORS"]
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -69,7 +68,7 @@ today = datetime.strptime(cv["LAST_CHANGES_DATE"].split(" +")[0], "%a, %d %b %Y 
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -93,12 +92,6 @@ pygments_style = 'sphinx'
 
 
 # -- Options for HTML output ---------------------------------------------------
-
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['../_static']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -129,8 +122,12 @@ html_style = "custom.css"
 # pixels large.
 #html_favicon = None
 
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ['../_static']
+
 html_copy_source = False
-# html_output_encoding = 'iso-8859-1'
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -197,19 +194,14 @@ latex_elements = {
 # Additional stuff for the LaTeX preamble.
 'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}'+ \
             '{\\end{itshape}}\n' + \
-            '\\makeatother\n\n' + \
-            '\\usepackage{letltxmacro}\n\n' + \
-            '% save the meaning of \\includegraphics\n' + \
-            '\\LetLtxMacro\\latexincludegraphics\\includegraphics\n' + \
-            '\\renewcommand{\\includegraphics}[2][]{%\n' + \
-            '\\begin{center}\n\\latexincludegraphics[#1, width=0.45\\textwidth]{#2}\n\\end{center}}\n',
+            '\\makeatother\n\n',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Siren.tex', u''+cv["PROJECT_NAME"]+' User Guide',
-   u''+cv["PROJECT_AUTHORS"], 'manual'),
+  ('index', 'Siren.tex', cv["PROJECT_NAME"]+' User Guide',
+   cv["PROJECT_AUTHORS"], 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -238,8 +230,8 @@ latex_use_parts = False
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', cv["PROJECT_NAME"], u''+cv["PROJECT_NAME"]+' User Guide',
-     [u''+cv["PROJECT_AUTHORS"]], 1)
+    ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' User Guide',
+     [cv["PROJECT_AUTHORS"]], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -252,8 +244,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', cv["PROJECT_NAME"], u''+cv["PROJECT_NAME"]+' User Guide',
-   u''+cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
+  ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' User Guide',
+   cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
    cv["PROJECT_DESCRIPTION"]),
 ]
 

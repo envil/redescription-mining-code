@@ -12,7 +12,10 @@ Data formats
 .. note::
    For redescription mining, one considers entities discribed by variables divided into two sets, hereafter arbitrarily called left-hand side and right-hand side.
    This can be seen as a pair of data matrices, where entities are identified with rows and variables with columns. Both sets of variables describe the same entities, hence, the matrices have the same number of rows.
-
+   
+   If you provide the same dataset for the left and right hand sides, this will be interpreted as a settings with a single datasets, where variables can appear on either side of redescriptions, but not both in the same redescription.
+   Variables can be selectively disabled on either side, to prevent them from being used in either query.
+   
 In *Siren*, data include:
    
 * **Variables**: The variables describing the entities are divided in two sets. They can be of three types: 
@@ -111,7 +114,7 @@ Redescriptions formats
 Supports
 ----------
 
-The support of a query is the set of entities for which the query holds. Any given redescription partitions the entities into four sets:
+The support of a query is the set of entities for which the query holds. Any given redescription partitions the entities into four sets (In the absence of missing entries):
 
 * E\ :sub:`10` is the set of rows for which only the left hand side query holds,
 * E\ :sub:`01` is the set of rows for which only the right hand side query holds,
@@ -119,7 +122,7 @@ The support of a query is the set of entities for which the query holds. Any giv
 * and E\ :sub:`00` is the set of rows for which neither of the queries hold.
 
 
-Redescriptions can be imported to *Siren* via the interface menu :menuselection:`File --> Import --> Import Redescriptions`. More importantly, they can be exported via the interface menu :menuselection:`File --> Export Redescriptions`. Below, we present the redescription formats supported by *Siren*.
+Redescriptions can be imported to *Siren* via the interface menu :menuselection:`File --> Import --> Import Redescriptions`. More importantly, they can be exported via the interface menu :menuselection:`File --> Export Redescriptions` and the contextual menu for a list of redescription. Below, we present the redescription formats supported by *Siren*.
 
 .. _queries:
 
@@ -174,11 +177,13 @@ Exporting Redescriptions
 
 Redescriptions from the ``Redescriptions`` tab can be exported to a file, one redescription per line, with both queries and basic statistics tab separated. Three of formatting options are available, determined by the provided filename:
 
-* **named**: Uses the names of the variables instead of variable ids in the queries. Activated if the filename matches the pattern ``*[a-zA-Z]named[a-zA-Z]*``.
-* **all** By default disabled redescriptions will not be printed when exporting redescriptions. If the filename matches the pattern ``*[a-zA-Z]all[a-zA-Z]*``, disabled redescriptions will also be printed. 
-* **tex** Rather than tab separated format, if the filename as ``.tex`` extension, a tex file is produced that can be compiled to obtain a table of the redescriptions. (Cannot be imported back)
+* **named**: Uses the names of the variables instead of variable ids in the queries. Activated if the filename matches the pattern ``*[^a-zA-Z0-9]named[^a-zA-Z0-9]*``.
+* **all** By default disabled redescriptions will not be printed when exporting redescriptions. If the filename matches the pattern ``*[^a-zA-Z0-9]all[^a-zA-Z0-9]*``, disabled redescriptions will also be printed. 
+* **tex** Rather than tab separated format, if the filename as ``.tex`` extension, a tex file is produced that can be compiled to obtain a table of the redescriptions. Three table layouts are available, where the information for each redescription is listed respectively on one, two or three rows, if the filename matches the pattern ``*[^a-zA-Z0-9][1-3].[a-z]*$``. Note that this format cannot be imported back.
 
-Inside a siren package, the redescriptions are stored in tab separated format together with disabled status.
+Inside a siren package, the redescriptions are stored in tab separated format.
+
+The fields included when exporting redescriptions and when displaying them in the interface can be set via the :menuselection:`File --> Fields setup` menu entries.
 
 .. _import:
 

@@ -30,27 +30,13 @@ def getExtLinks(cv):
                             cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
             'deb_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PACKAGE_NAME"]+"_"+cv["SPEC_RELEASE"]+"_all%s",
                             cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
-            'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.12_"+cv["SPEC_RELEASE"]+"%s",
-                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
-            'mac_cap_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.11_"+cv["SPEC_RELEASE"]+"%s",
-                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
-            'win_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file=install_"+cv["PROJECT_NAMELOW"]+"_"+cv["SPEC_RELEASE"]+"%s",
-                            cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") ")
+            'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.12_"+cv["VERSION_OLD"]+"%s",
+                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_OLD"]+") "),
+            'mac_cap_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file="+cv["PROJECT_NAME"]+"_OSX10.11_"+cv["VERSION_OLD"]+"%s",
+                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_OLD"]+") "),
+            'win_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_LOC"]+"&file=install_"+cv["PROJECT_NAMELOW"]+"_"+cv["VERSION_OLD"]+"%s",
+                            cv["PROJECT_NAME"]+" (v"+cv["VERSION_OLD"]+") ")
             }
-
-
-            # 'mac_release': (cv["DOWNLOAD_URL"]+"?loc="+cv["CODE_MAC_LOC"]+"&file="+cv["PROJECT_NAME"]+"%s",
-            #                 cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
-
-            # 'src_release': (cv["CODE_URL"]+cv["PACKAGE_NAME"]+"-"+cv["SPEC_RELEASE"]+"%s",
-            #                 cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
-            # 'deb_release': (cv["CODE_URL"]+cv["PACKAGE_NAME"]+"_"+cv["SPEC_RELEASE"]+"_all%s",
-            #                 cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") "),
-            # 'mac_release': (cv["CODE_MAC_URL"]+cv["PROJECT_NAME"]+"%s",
-            #                 cv["PROJECT_NAME"]+" (v"+cv["VERSION_MAC"]+") "),
-            # 'win_release': (cv["CODE_URL"]+"install_"+cv["PROJECT_NAMELOW"]+"_"+cv["SPEC_RELEASE"]+"%s",
-            #                 cv["PROJECT_NAME"]+" (v"+cv["SPEC_RELEASE"]+") ")
-
 
 
 version, changes = getVersion()
@@ -64,7 +50,8 @@ dependencies = [("numpy", "python3-numpy", "(>= 1.13.0)"),
                 ("matplotlib", "python3-matplotlib", "(>= 2.1.0)"),
                 ("basemap", "python3-mpltoolkits.basemap", "(>= 1.1.0)")]
 
-dependencies_deb = ["python3-wxgtk4.0 (>= 4.0.0)",]
+# "python3-wxgtk4.0 (>= 4.0.0)",
+dependencies_deb = []
 dependencies_pip = []
 for pname, dname, v in dependencies:
     dependencies_pip.append("%s %s" % (pname, v))
@@ -76,8 +63,7 @@ common_variables = {
     "PACKAGE_NAME": "python-siren",
     "MAIN_FILENAME": "exec_siren.py",
     "VERSION": version,
-    "VERSION_MAC": version,
-    "VERSION_MAC_UNDERSC": version,
+    "VERSION_OLD": "4.3.0",
     "DEPENDENCIES_PIP_LIST": dependencies_pip,
     "DEPENDENCIES_PIP_STR": "* " + "\n* ".join(dependencies_pip),
     "DEPENDENCIES_DEB_LIST": dependencies_deb,
@@ -101,7 +87,8 @@ common_variables = {
     "PROJECT_DESCRIPTION_LINE": "Siren is an interactive tool for visual and interactive redescription mining.",
     "PROJECT_DESCRIPTION_LONG": """This provides the ReReMi redescription mining algorithm and the Siren interface for interactive mining and visualization of redescriptions.""",
     "COPYRIGHT_YEAR_FROM": "2012",
-    "COPYRIGHT_YEAR_TO": "2019"}
+    "COPYRIGHT_YEAR_TO": "2019",
+    "SPEC_RELEASE": ""} ### set in conf.py of sphinx projects 
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 
