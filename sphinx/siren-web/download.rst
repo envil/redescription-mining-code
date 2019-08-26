@@ -33,31 +33,6 @@ You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
 
 You can find help under *Siren*'s Help menu or :project_url:`online <help/>`.
 
-.. _mac:
-
-For OS X
-============== 
-
-:mac_cap_release:`.dmg` (OS X 10.11, El Capitan)
-
-:mac_release:`.dmg` (macOS 10.12, Sierra)
-
-To *install*, download the above disk image and copy the file Siren to your Applications folder (or anywhere else outside the disk image). Once that is done you only have to double-click the program icon to run *Siren*.
-
-To *run* the program, double-click the program icon.
-
-You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
-
-.. warning::
-   **Note for users of OS X with Gatekeeper activated (10.7.5 and newer)**
-
-   The Siren application is not digitally signed. Therefore, users with OS X Gatekeeper active cannot run the Siren application by double-clicking it. An attempt to do so will result in an error message. In order to open Siren for the first time, you need to right-click (command-click) the Siren icon, and select "Open" from the contextual menu. You only need to do this for the first launch after every re-installation of Siren.
-
-   More information about Gatekeeper can be found at `<http://support.apple.com/kb/HT5290">`_.
-
-
-.. image:: ../_figs/screenshots/screenshot_OSX.jpg 
-
 .. _linux:
 
 For Linux
@@ -85,6 +60,31 @@ If everything went fine, you should find a Siren entry in your Applications menu
 You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
 .. image:: ../_figs/screenshots/Partscreen.png
+
+.. _mac:
+
+For OS X
+============== 
+
+:mac_cap_release:`.dmg` (OS X 10.11, El Capitan)
+
+:mac_release:`.dmg` (macOS 10.12, Sierra)
+
+To *install*, download the above disk image and copy the file Siren to your Applications folder (or anywhere else outside the disk image). Once that is done you only have to double-click the program icon to run *Siren*.
+
+To *run* the program, double-click the program icon.
+
+You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
+
+.. warning::
+   **Note for users of OS X with Gatekeeper activated (10.7.5 and newer)**
+
+   The Siren application is not digitally signed. Therefore, users with OS X Gatekeeper active cannot run the Siren application by double-clicking it. An attempt to do so will result in an error message. In order to open Siren for the first time, you need to right-click (command-click) the Siren icon, and select "Open" from the contextual menu. You only need to do this for the first launch after every re-installation of Siren.
+
+   More information about Gatekeeper can be found at `<http://support.apple.com/kb/HT5290">`_.
+
+
+.. image:: ../_figs/screenshots/screenshot_OSX.jpg 
 
 .. _windows:
 

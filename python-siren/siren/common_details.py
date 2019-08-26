@@ -1,4 +1,4 @@
-import os, re
+import os, re, time
 
 CHANGELOG_FILE = os.path.split(os.path.dirname(__file__))[0]+"/CHANGELOG"
 
@@ -6,6 +6,7 @@ def getVersion():
     version = None
     changes = []
     if os.path.isfile(CHANGELOG_FILE):
+        ctime = time.strftime("%a, %d %b %Y %T", time.localtime(os.path.getmtime(CHANGELOG_FILE)))
         with open(CHANGELOG_FILE) as fp:        
             for line in fp:
                 tmp = re.match("^v(?P<version>[0-9\.]*)$", line)
@@ -13,11 +14,11 @@ def getVersion():
                     if version is None:
                         version = tmp.group("version")
                     else:
-                        return version, changes
+                        return version, changes, ctime
                 elif version is not None and len(line.strip("[\n\*\- ]")) > 0:
                     changes.append(line.strip("[\n\*\- ]"))
                     
-    return "", []
+    return "", [], time.strftime("%a, %d %b %Y %T", time.localtime())
 
 def getExtLinks(cv):
 
@@ -39,7 +40,7 @@ def getExtLinks(cv):
             }
 
 
-version, changes = getVersion()
+version, changes, ctime = getVersion()
 
 home_eg = "https://members.loria.fr/EGalbrun/"
 home_siren = "http://siren.gforge.inria.fr/"
@@ -70,7 +71,7 @@ common_variables = {
     "DEPENDENCIES_DEB_STR": ", ".join(dependencies_deb),
     "LAST_CHANGES_LIST": changes,
     "LAST_CHANGES_STR": "    * " + "\n    * ".join(changes),
-    "LAST_CHANGES_DATE": "Fri, 23 Aug 2019 10:00:00 +0100",
+    "LAST_CHANGES_DATE": ctime + " +0200",
     "PROJECT_AUTHORS": "Esther Galbrun and Pauli Miettinen",
     "MAINTAINER_NAME": "Esther Galbrun",
     "MAINTAINER_LOGIN": "egalbrun",
