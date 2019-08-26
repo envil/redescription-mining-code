@@ -2,10 +2,12 @@ import os.path, time, re
 from itertools import chain
 import numpy
 
-try:
+import pdb
+
+try:    
     from classContent import Container, ContentCollection
     from classCol import DataError, ColM, BoolColM, CatColM, NumColM
-    # from classDataExtension import DataExtension
+    from classDataExtension import DataExtension
     from classQuery import Op, Term, Literal, Query, NA_str_c
     from classSParts import SSetts
     from toolICList import ICList
@@ -13,7 +15,7 @@ try:
 except ModuleNotFoundError:
     from .classContent import Container, ContentCollection
     from .classCol import DataError, ColM, BoolColM, CatColM, NumColM
-    # from .classDataExtension import DataExtension
+    from .classDataExtension import DataExtension
     from .classQuery import Op, Term, Literal, Query, NA_str_c
     from .classSParts import SSetts
     from .toolICList import ICList
@@ -22,9 +24,6 @@ except ModuleNotFoundError:
 import pdb
 
 FORCE_WRITE_DENSE = False
-
-class DataExtension:
-    pass
 
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
@@ -85,7 +84,7 @@ class ExtensionPool(object):
             extra_values.update(self.extensions[extension_key].computeExtras(item, extra_keys, details))
         return extra_values
 
-    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details={}):
+    def loadExtensions(self, ext_keys=[], filenames=None, params=None, details={}):
         if len(ext_keys) == 0: ### prevent loading
             return
         
@@ -303,7 +302,7 @@ class Data(ContentCollection):
         return self.extensions.getAvailableExtensionKeys()
     def saveExtensions(self, filenames=None, details={}):
         self.extensions.saveExtensions(filenames, details)
-    def loadExtensions(self, ext_keys=None, filenames=None, params=None, details={}):
+    def loadExtensions(self, ext_keys=[], filenames=None, params=None, details={}):
         self.extensions.loadExtensions(ext_keys, filenames, params, details)
     def getExtensionsFilesDict(self, exts=None):
         return self.extensions.getExtensionsFilesDict(exts)
@@ -1190,7 +1189,9 @@ class Data(ContentCollection):
 
     def isGeospatial(self):
         return self.coords is not None
-            
+
+    def hasGeoPoly(self):
+        return self.coords is not None and (min([len(cs) for cs in self.coords[0]]) > 2)
     def getCoords(self):
         return self.coords
 
@@ -1530,11 +1531,10 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         
 
 def main():
-    rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
-    print(data)
-    # pdb.set_trace()
 
+    ############# ADDING NEW VARIABLES
+    # rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
+    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     # vs = []
     # ### MAT (bio1) = 27 - 28.5 AL
     # vs.append(("modeled_bio1", 27 - 28.5*data.col(0, 3).getVector()))
@@ -1544,8 +1544,6 @@ def main():
     # vs.append(("modeled_bio12", 2491 - 289.*data.col(0, 0).getVector()-841*data.col(0, 1).getVector()))
     # # ### NPP = 2601 - 144 HYP - 935 LOP
     # vs.append(("modeled_NPP", 2601 - 144.*data.col(0, 0).getVector()-935*data.col(0, 1).getVector()))
-
-
     # for (name, v) in vs:
     #     new_col = NumColM.parseList(v, force=True)
     #     new_col.setDisabled()
@@ -1557,73 +1555,35 @@ def main():
     # print(dataX)
     # print(dataX.sameAs(data, side=0))
     # print(dataX.sameAs(data, side=1))
-    exit()
-    
-    # rep = "/home/egalbrun/TKTL/redescriptors/current/dblp_miss/miss/"
-    # data = Data([rep+"dens_data_LHS_miss-l0.75-u0.50_k2.csv", rep+"dens_data_RHS_miss-l0.75-u0.50_k2.csv", {}, "NA"], "csv")
-    # print data
 
-    # # rep = "/home/egalbrun/TKTL/misc/Hedde/"
+    ############# RANDOM SHUFFLING
     # rep = "/home/egalbrun/short/rpr/"
-    # ## for dt in ["a", "b"]: #"dblp_densBB", "EA_ethno-bio", "EA_ethnoN-bio"]:
     # for (dL, dR) in [("LHS_50", "RHS_50"), ("RHS_50", "LHS_50")]: # ("THS", "RHS"), 
     #     ## data = Data([rep+"EA_ethnoY.csv", rep+"EA_bioY.csv", {}, ""], "csv")
     #     # data = Data([rep+dt+"/data_LHSa.csv", rep+dt+"/data_RHSa.csv", {}, "NA"], "csv")
     #     data = Data([rep+"data_%s.csv" % dL, rep+"data_%s.csv" % dR, {"delimiter": ","}, "NA"], "csv")
     #     rdt, sd = data.shuffle_sides([0])
     #     pdb.set_trace()
-        # print dL, dR, data
-        ### [(-23.6, 1694), (-23.0, 1697), (-22.7, 1696), (-22.1, 2503), (-21.9, 2499), (-21.8, 2196), (-21.8, 2500), (-21.6, 2504), (-21.5, 1681), (-21.5, 2502)]
-        # print data.cols[1][1].areDataEquiv(-21.88,-21.8)
-        # print data.cols[1][1].areDataEquiv(-21.8,-21.7)
-        # print data.cols[1][1].areDataEquiv(-21.8,-21.55)
-        # print data.cols[1][1].areDataEquiv(-24.8,-24.55)
-        # print data.cols[1][1].areDataEquiv(-24.8,-23.6)
-        # print data.cols[1][1].areDataEquiv(13.4,11.3)
-        # print data.cols[1][1].areDataEquiv(11.267,11.3)
-        # print "---------------"
-        # for side in [0,1]:
-        #     for col in data.cols[side]:
-        #         print col
-
+    # print(data.cols[1][1].areDataEquiv(-21.88,-21.8))
         
-    # rep = "/home/egalbrun/short/IUCN/"
-    # data = Data([rep+"IUCN_all_nbspc3+_iav.csv", rep+"IUCN_all_nbspc3+_bio.csv", {}, ""], "csv")
-    # print data
-
-    rep_in = "/home/egalbrun/short/raja_small/"
-
-    pdb.set_trace()
+    ############# DATA EXTENSIONS
+    rep_in = "/home/egalbrun/short/geo_small/"
     data = Data([rep_in+"data_LHS.csv", rep_in+"data_RHS.csv", {}, ""], "csv")
-    data.writeCSV([rep_in+"out_LHS.csv", rep_in+"out_RHS.csv"])
-    # data.loadExtensions(filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
-    # print data.computeExtras(data.cols[0][0], extras=["cohesion"])
-    # pdb.set_trace()
-    # data.saveExtensions(details={"dir": rep_in}) #filenames={"extf_coords_bckg": rep_in+"coords_bckgX.csv"})
-    exit()
+    data.initExtension("geoplus")
+    print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
+    data.saveExtensions(details={"dir": rep_in})
+
+    # data = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
+    # data.initExtension("geoplus")
+    # print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
+    # data.saveExtensions(details={"dir": rep_in})
+
+    # data2 = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
+    # data2.loadExtensions(ext_keys=["geoplus"], filenames={"extf_list_edges": rep_in+"list_edges.csv"})
+    # print(data2.computeExtras(data2.col(0,0), extras=["cohesion"]))
+
     
-    rep_in = "/home/egalbrun/TKTL/misc/ecometrics/compare_more/v2/data/"
-    rep_out = "/home/egalbrun/short/"
-    
-    data = Data([rep_in+"IUCN_EU_nbspc3+_focus_agg-coords.csv", rep_in+"occurence_IUCN_all.csv", {}, ""], "csv")
-    data.cols[1] = [c for c in data.cols[1] if len(c.supp()) > 0]
-    data.writeCSV([rep_out+"data_agg.csv", rep_out+"data_occs.csv"])
-    exit()
-    rep = "/home/egalbrun/short/raja_small/"
-
-    # import time
-    # cpoints = data.getCoordPoints()
-    # ta = time.mktime(time.strptime("30 Nov 00", "%d %b %y"))
-    # tz = time.mktime(time.strptime("30 Nov 10", "%d %b %y"))
-
-    # norm_long = (cpoints[:,0] - numpy.min(cpoints[:,0]))/(numpy.max(cpoints[:,0]) - numpy.min(cpoints[:,0]))
-    # txs = ta+(tz-ta)*norm_long
-    # tmz = [time.strftime("%d %b %y", time.localtime(tx)) for tx in txs]
-    # col = CatColM.parseList(tmz)
-    # col.setSideIdName(sito=0, data.nbCols(0), name="timeid")
-    # data.appendCol(col, 0)
-    # data.writeCSV([rep+"data_LHS_lngtid.csv", rep+"data_RHS_lngtid.csv"])
-
+    ############# OLD DATA FORMAT
     # data = Data(["/home/galbrun/dblp_data/filtered/conference_filtered.datnum",
     #              "/home/galbrun/dblp_data/filtered/coauthor_filtered.datnum",
     #              "/home/galbrun/dblp_data/filtered/conference_filtered.names",

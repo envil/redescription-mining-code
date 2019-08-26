@@ -287,6 +287,13 @@
 	<default><value>#FFFFFF</value></default>
       </parameter>
       <parameter>
+	<name>map_lines_overlay</name>
+	<label>Overlay</label>
+	<parameter_type>boolean</parameter_type>
+	<legend>Overlay map lines on top of other plot elements.</legend>
+	<default><value>0</value></default>
+      </parameter>
+      <parameter>
 	<name>map_elem_area</name>
 	<label>Map natural areas</label>
 	<parameter_type>multiple_options</parameter_type>

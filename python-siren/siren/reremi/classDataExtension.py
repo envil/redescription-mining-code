@@ -2,21 +2,19 @@ import os.path
 import numpy
 
 try:
-    import polys.prepare_polygons as prep_polys
     from classCol import DataError, ColM, BoolColM, CatColM, NumColM
     from classRedescription import Redescription
     from classSParts import SSetts
     import csv_reader
+    import prepare_polygons
 except ModuleNotFoundError:
-    from .polys import prepare_polygons as prep_polys
-    from classCol import DataError, ColM, BoolColM, CatColM, NumColM
-    from classRedescription import Redescription
-    from classSParts import SSetts
+    from .classCol import DataError, ColM, BoolColM, CatColM, NumColM
+    from .classRedescription import Redescription
+    from .classSParts import SSetts
     from . import csv_reader
-
+    from . import prepare_polygons
+    
 import pdb
-
-# from polys.prepare_polygons import PolyMap
 
 class DataExtension(object):
 
@@ -140,8 +138,10 @@ class DataExtension(object):
                 
             if pck is not None:
                 return pck.open(fn, mode)
-            else:
+            try:
                 return open(fn, mode)
+            except FileNotFoundError:
+                return None
             
     def computeExtras(self, item, extra_keys=None, details={}):
         if extra_keys is None:
@@ -254,8 +254,11 @@ class GeoPlusExtension(DataExtension):
         if force or self.needRecomputeEdges():
             self.checkedParams(["after_cut"]+loc_params)
             PointsMap, PointsIds = self.gatherPoints()
-            
-            map_edges, list_edges, polys, polys_cut, bbox = prep_polys.prepare_edges_dst(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_percentile", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
+            #### TODO: Use data polygons if available, needs finding intersection between sides of polygons
+            if False: # self.getParentData().hasGeoPoly():
+                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_polys(PointsMap, self.getParentData().getCoords())
+            else:
+                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_dst(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_percentile", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
             dets =  {"p_ids": PointsIds, "p_map": PointsMap,
                      "map_edges": map_edges, "list_edges": list_edges,
                      "polys": polys, "polys_cut": polys_cut}
@@ -267,9 +270,12 @@ class GeoPlusExtension(DataExtension):
         if details is None:
             details = {}
         self.setParams(details)
+        recomputed = False
         if force or self.needRecomputeEdges():
             self.computeEdges(details=details, force=force)
-            node_pairs = prep_polys.compute_node_pairs(self.getElement("list_edges"), self.getParentData().nbRows(), self.getElement("after_cut", True))
+            recomputed = True
+        if recomputed or not self.hasElement("node_pairs"):
+            node_pairs = prepare_polygons.compute_node_pairs(self.getElement("list_edges"), self.getParentData().nbRows(), self.getElement("after_cut", True))
             self.setElement("node_pairs", node_pairs)
         return {"node_pairs": self.getElement("node_pairs")}
 
@@ -279,7 +285,7 @@ class GeoPlusExtension(DataExtension):
         self.setParams(details)
         if force or self.needRecomputeEdges():
             self.computeEdges(details=details, force=force)
-        return prep_polys.get_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
+        return prepare_polygons.get_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
         
     def computeAreasData(self, cells_colors, details={}, force=False):
         if details is None:
@@ -290,12 +296,12 @@ class GeoPlusExtension(DataExtension):
             self.computeEdges(details=details, force=force)
             recomputed = True
         if recomputed or not self.hasElement("nodes_graph"):
-            out_data, nodes_graph = prep_polys.prepare_areas_helpers(self.getElement("map_edges"), self.getElement("list_edges"), after_cut=self.getElement("after_cut", True))
+            out_data, nodes_graph = prepare_polygons.prepare_areas_helpers(self.getElement("map_edges"), self.getElement("list_edges"), after_cut=self.getElement("after_cut", True))
             dets = {"out_data": out_data, "nodes_graph": nodes_graph}
             self.updateElements(dets)
 
-        pp = prep_polys.prepare_areas_polys(self.getElement("polys"), self.getElement("polys_cut"), self.getElement("after_cut", True))
-        ccs_data, cks, adjacent = prep_polys.prepare_areas_data(cells_colors, self.getElement("list_edges"), pp, self.getElement("out_data"), self.getElement("nodes_graph"))
+        pp = prepare_polygons.prepare_areas_polys(self.getElement("polys"), self.getElement("polys_cut"), self.getElement("after_cut", True))
+        ccs_data, cks, adjacent = prepare_polygons.prepare_areas_data(cells_colors, self.getElement("list_edges"), pp, self.getElement("out_data"), self.getElement("nodes_graph"))
         return {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
 
         
@@ -375,14 +381,17 @@ class GeoPlusExtension(DataExtension):
     def writeEdges(self, filenames, details={}):
         if self.hasElement("list_edges"):
             fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "w")
-            prep_polys.write_edges(fp, self.getElement("list_edges"))
+            prepare_polygons.write_edges(fp, self.getElement("list_edges"))
             self.closeFp(fp, details)
     def readEdges(self, filenames, details={}):
         fp = self.getFp("extf_"+self.F_EDGES, filenames, details, "r")
-        ## id_int = details.get("id_int", False)
-        map_edges, list_edges, polys, polys_cut = prep_polys.read_edges_and_co(fp)
-        self.closeFp(fp, details)
-        dets =  {"map_edges": map_edges, "list_edges": list_edges,
-                 "polys": polys, "polys_cut": polys_cut}
-        self.updateElements(dets)
-        return {"list_edges": self.getElement("list_edges")}
+        if fp is not None:
+            ## id_int = details.get("id_int", False)
+            map_edges, list_edges, polys, polys_cut = prepare_polygons.read_edges_and_co(fp)
+            self.closeFp(fp, details)
+            dets =  {"map_edges": map_edges, "list_edges": list_edges,
+                    "polys": polys, "polys_cut": polys_cut}
+            self.updateElements(dets)
+            return {"list_edges": self.getElement("list_edges")}
+        return {}
+

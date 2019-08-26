@@ -117,7 +117,7 @@ class ExtensionsDialog(PreferencesDialog):
     def bindSec(self, sec_id):
         PreferencesDialog.bindSec(self, sec_id)
         self.Bind(wx.EVT_CHECKBOX, self.changeActivate, self.controls_map[sec_id]["activate"])
-        for fk, fctrl in self.controls_map[sec_id]["files"].iteritems():
+        for fk, fctrl in self.controls_map[sec_id]["files"].items():
             self.Bind(wx.EVT_BUTTON, self.onFileChoice, fctrl["btn"])
 
     def resetSpec(self, sec_id):

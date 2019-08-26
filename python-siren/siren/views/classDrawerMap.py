@@ -22,7 +22,6 @@ class MapBase:
     # circ_avg=2*numpy.pi*6371000.
     circ_def=2*numpy.pi*6370997.
 
-    background_zorder = 10
     marg_f = 100.0
     proj_def = "mill"
     proj_names = {"None": None,
@@ -102,7 +101,7 @@ class MapBase:
         
     bounds_def = {"llon": -180., "ulon": 180., "llat": -90., "ulat": 90.}
     # bounds_try = {"llon": -180., "ulon": 180., "llat": -90., "ulat": 90.}
-
+        
     @classmethod    
     def getBasemapProjSetts(tcl, prefs):
         proj = tcl.proj_def 
@@ -128,7 +127,9 @@ class MapBase:
 
         colors = {"line_color": "gray", "sea_color": "#F0F8FF", "land_color": "white", "none":"white"}
         more = {}
-        
+
+        zorder = 10 if prefs["map_lines_overlay"]["data"] else None
+            
         for typ_elem in ["map_elem_area", "map_elem_natural", "map_elem_geop", "map_elem_circ"]:
             if typ_elem in prefs:
                 for elem in prefs[typ_elem]["data"]:                    
@@ -148,7 +149,7 @@ class MapBase:
         for color_k in colors.keys():
             if color_k in prefs:
                 colors[color_k] = "#"+"".join([ v.replace("x", "")[-2:] for v in map(hex, prefs[color_k]["data"])]) 
-        return draws, colors, more
+        return draws, colors, zorder, more
 
     @classmethod
     def getParallelsRange(tcl, bm_args):
@@ -325,20 +326,20 @@ class MapBase:
     def makeBasemapBack(tcl, prefs, bm_args, bm=None):
         if bm is None:
             return
-        draws, colors, more = tcl.getBasemapBackSetts(prefs)
+        draws, colors, zorder, more = tcl.getBasemapBackSetts(prefs)
         bounds_color, sea_color, contin_color, lake_color = colors["none"], colors["none"], colors["none"], colors["none"]
-        
+
         if draws["rivers"]:
-            bm.drawrivers(color=colors["sea_color"], zorder=tcl.background_zorder)
+            bm.drawrivers(color=colors["sea_color"], zorder=zorder)
         if draws["coasts"]:
             bounds_color = colors["line_color"]
-            bm.drawcoastlines(color=colors["line_color"], zorder=tcl.background_zorder)
+            bm.drawcoastlines(color=colors["line_color"], zorder=zorder)
         if draws["countries"]:
             bounds_color = colors["line_color"]
-            bm.drawcountries(color=colors["line_color"], zorder=tcl.background_zorder)
+            bm.drawcountries(color=colors["line_color"], zorder=zorder)
         if draws["states"]:
             bounds_color = colors["line_color"]
-            bm.drawstates(color=colors["line_color"], zorder=tcl.background_zorder)
+            bm.drawstates(color=colors["line_color"], zorder=zorder)
         if draws["continents"]:
             contin_color = colors["land_color"]
         if draws["seas"]:
@@ -348,45 +349,36 @@ class MapBase:
             
         if draws["parallels"]:
             tt = tcl.getParallelsRange(bm_args)
-            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1], zorder=tcl.background_zorder)
+            bm.drawparallels(tt, linewidth=0.5, labels=[1,0,0,1], zorder=zorder)
         if draws["meridians"]:
             tt = tcl.getMeridiansRange(bm_args)
-            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0], zorder=tcl.background_zorder)
+            bm.drawmeridians(tt, linewidth=0.5, labels=[0,1,1,0], zorder=zorder)
 
         func_map = {1: bm.shadedrelief, 2: bm.etopo, 3: bm.bluemarble}
         bd = False
         if more.get("map_back") in func_map:
             ### HERE http://matplotlib.org/basemap/users/geography.html
             try:
-                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"]) #, zorder=tcl.background_zorder)
+                func_map[more.get("map_back")](alpha=more["map_back_alpha"], scale=more["map_back_scale"])
                 bd = True
             except IndexError:
                 bd = False
                 print("Impossible to draw the image map background!")
         if not bd:
             if bounds_color != colors["none"] or sea_color != colors["none"]:
-                bm.drawmapboundary(color=bounds_color, fill_color=sea_color) #, zorder=tcl.background_zorder)
+                bm.drawmapboundary(color=bounds_color, fill_color=sea_color)
             if contin_color != colors["none"] or lake_color != colors["none"] or sea_color != colors["none"]:
-                bm.fillcontinents(color=contin_color, lake_color=lake_color) #, zorder=tcl.background_zorder)
+                bm.fillcontinents(color=contin_color, lake_color=lake_color)
             # bm.drawlsmask(land_color=contin_color,ocean_color=sea_color,lakes=draws["lakes"])
             
 class DrawerMap(DrawerBasis):
-    def_background_zorder = None
     
-    @classmethod
-    def setMapBackZ(tcl, z=None):
-        if z is None:
-            MapBase.background_zorder = tcl.def_background_zorder
-        else:
-            MapBase.background_zorder = z
-
     MAP_POLY = True
     def initBM(self):
         ### return None, {}
         return MapBase.makeBasemapProj(self.view.getParentPreferences(), self.getPltDtH().getCoordsExtrema())
     
     def initPlot(self):
-        self.setMapBackZ()
         self.bm, self.bm_args = self.initBM()
         
         if self.bm is not None:
@@ -440,7 +432,7 @@ class DrawerMap(DrawerBasis):
                 edges.extend([self.getCoordXYtoP(cond_lims[1], cond_lims[2] + x*(cond_lims[3]-cond_lims[2])) for x in numpy.arange(1., 0., -stp)])                
                 edges.extend([self.getCoordXYtoP(cond_lims[0] + x*(cond_lims[1]-cond_lims[0]), cond_lims[2]) for x in numpy.arange(1., 0., -stp)])
 
-                self.axe.add_patch(Polygon(edges, closed=True, fill=True, fc="yellow", ec="yellow", zorder=10, alpha=.3))
+                self.axe.add_patch(Polygon(edges, closed=True, fill=True, fc="yellow", ec="yellow", zorder=9, alpha=.3))
                 # cxs, cys = zip(*corners)
                 # self.axe.plot(cxs, cys, "o", color="red", zorder=10)
                 # cxs, cys = zip(*edges)

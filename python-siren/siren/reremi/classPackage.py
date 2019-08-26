@@ -5,6 +5,7 @@ import shutil
 import zipfile
 import re
 import io
+import sys
 
 import pdb
 
@@ -514,7 +515,7 @@ class IOTools:
             filenames["LHS_data"] = params_l['LHS_data']
         elif len(params_l.get('data_l', "")) != 0:
             filenames["LHS_data"] = params_l['data_rep']+params_l['data_l']+params_l.get('ext_l', "")
-    
+                      
         filenames["RHS_data"] = ""
         if len(params_l.get("RHS_data", "")) != 0 :
             filenames["RHS_data"] = params_l['RHS_data']
@@ -524,8 +525,7 @@ class IOTools:
         if len(params_l.get("trait_data", "")) != 0 :
             filenames["traits_data"] = params_l['traits_data']
         elif len(params_l.get('data_t', "")) != 0:
-            filenames["traits_data"] = params_l['data_rep']+params_l['data_t']+params_l.get('ext_t', "")
-    
+            filenames["traits_data"] = params_l['data_rep']+params_l['data_t']+params_l.get('ext_t', "")    
             
         if os.path.splitext(filenames["LHS_data"])[1] != ".csv" or os.path.splitext(filenames["RHS_data"])[1] != ".csv":
             filenames["style_data"] = "multiple"
@@ -580,7 +580,14 @@ class IOTools:
             for k in filenames.keys():
                 if type(filenames[k]) is str:
                     filenames[k] = filenames[k].replace("__SID__", params_l["series_id"])
-    
+
+        if src_folder is not None and re.match("/", src_folder):
+            ks = list(filenames.keys()) + list(filenames.get("extensions", {}).keys())
+            for k in ks:
+                if k not in ["style_data", "add_info", "extensions"] \
+                    and len(filenames[k]) > 0 and filenames[k]!="-" and not re.match("/", filenames[k]):
+                    filenames[k] = src_folder+"/"+filenames[k]
+                        
         return filenames
     @classmethod
     def outputResults(tcl, filenames, results, data=None, with_headers=True, mode="w", data_recompute=None):
