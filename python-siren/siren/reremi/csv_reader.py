@@ -1,4 +1,4 @@
-import sys, re, io, numpy
+import sys, re, io, numpy, zipfile
 import csv
 
 try:
@@ -76,6 +76,8 @@ def getFp(filename, write=False):
     return f, fcl
     
 def read_coords_csv(filename, csv_params={}, unknown_string=None):
+    coords = []
+    rnames = None
     f, fcl = getFp(filename)
     if f is not None:
         try:
@@ -98,11 +100,8 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
         if not (LATITUDE[0] in cpos and LONGITUDE[0] in cpos):
             return None, None
         cmax = max(cpos.values())
-        coords = []
         if IDENTIFIERS[0] in cpos:
             rnames = []
-        else:
-            rnames = None
             
         for row in csvreader:
             if re.match("\s*#", row[0]) or row[0] in ENABLED_ROWS+ENABLED_COLS+GROUPS_COLS:

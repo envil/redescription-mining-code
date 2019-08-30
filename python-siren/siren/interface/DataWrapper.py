@@ -281,6 +281,10 @@ class DataWrapper(object):
             self.data.getExtension(ek).setParams(self.getPreferences())        
         else:
             self.data.initExtension(ek, filenames, self.getPreferences())
+            params_l = self.data.getExtension(ek).getParams()
+            if len(params_l) > 0:
+                params = PreferencesReader(self.pm).readParametersDict(params_l)
+                self.updatePreferencesDict(params)            
         self.addReloadRecompute()
         self.addReloadData("v")
 

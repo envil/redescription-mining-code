@@ -583,6 +583,10 @@ class PreferencesReader(object):
         return pv
 
     def prepareItemVal(self, pv, item, name, values):
+        try:
+            len(values)
+        except TypeError:
+            values = [values]
         if len(values) == 1 and item.getCardinality()=="unique":
             value = item.getParamTriplet(values[0])
             if value is not None:

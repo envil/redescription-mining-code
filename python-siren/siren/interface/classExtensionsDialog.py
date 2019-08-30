@@ -3,7 +3,7 @@ import wx
 
 import pdb
 
-from .classPreferencesDialog import PreferencesDialog, ApplyResetCancelDialog
+from .classPreferencesDialog import PreferencesDialog
 
 class ExtensionsDialog(PreferencesDialog):
     """
@@ -120,20 +120,24 @@ class ExtensionsDialog(PreferencesDialog):
         for fk, fctrl in self.controls_map[sec_id]["files"].items():
             self.Bind(wx.EVT_BUTTON, self.onFileChoice, fctrl["btn"])
 
-    def resetSpec(self, sec_id):
+    def resetSpec(self, sec_id, reset_files=True):
         active = self.pref_handle.getData().hasActiveExtension(self.controls_map[sec_id]["ext_key"])
         self.controls_map[sec_id]["activate"].SetValue(active)
-        for fk in self.controls_map[sec_id]["files"].keys():
-            self.controls_map[sec_id]["files"][fk]["txt"].SetValue("")
-            self.controls_map[sec_id]["files"][fk]["path"] = ""
+        self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
+        if reset_files:
+            for fk in self.controls_map[sec_id]["files"].keys():
+                self.controls_map[sec_id]["files"][fk]["txt"].SetValue("")
+                self.controls_map[sec_id]["files"][fk]["path"] = ""
             
     def _reset(self, sec_id):
         PreferencesDialog._reset(self, sec_id)
-        self.resetSpec(sec_id)
+        self.resetSpec(sec_id, reset_files=self.files_changed)
 
     def onResetToDefault(self, event):
         PreferencesDialog.onResetToDefault(self, event)
-        self.resetSpec(sec_id)
+        if event.GetId() in self.objects_map:
+            sec_id = self.objects_map[event.GetId()][0]
+            self.resetSpec(sec_id)
             
     def _apply(self, sec_id):
         if self.detectedChange(sec_id) or self.files_changed:
@@ -144,8 +148,9 @@ class ExtensionsDialog(PreferencesDialog):
                 fn = ctrl_txt["path"].strip()
                 if len(fn) > 0: 
                     filenames[fk] = fn
+            pdb.set_trace()
             self.pref_handle.loadExtension(ext_key, filenames)
-            self.resetSpec(sec_id)
+            self.resetSpec(sec_id, reset_files=False)
             self.files_changed = False
             self.upButtons(sec_id, on_action="off")
 

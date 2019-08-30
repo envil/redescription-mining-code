@@ -1,15 +1,22 @@
 import codecs, re, io
 import numpy
 import scipy.spatial
-from shapely.geometry import Point, Polygon
+from shapely.geometry import polygon, Point, Polygon
+from shapely.geometry.linestring import LineString
+from shapely.geometry.multilinestring import MultiLineString
+
+try:
+    from csv_reader import getFp
+except ModuleNotFoundError:
+    from .csv_reader import getFp
 
 import pdb
 
 IN_PACK = True
 if __name__=="__main__":
     IN_PACK = False
-
     
+BUFFER = 10**-6    
 TIK = "types_index"
 # TYPES legend
 # -----------
@@ -27,23 +34,8 @@ OUTER_MAP = {True: "outer", False: "inner"}
 
 LOG_ON = False
 
-def getFp(filename, write=False):
-    fcl = False
-    f = None
-    if type(filename) is str:
-        if write:
-            f = open(filename, 'w')
-        else:
-            f = open(filename, 'r')
-        fcl = True
-    elif isinstance(filename, io.TextIOBase):
-        f = filename
-    return f, fcl
-
-
 ## PLOTTING
 #####################    
-
 if IN_PACK:
     ## OFF
     def plot_nodes(coords, nids=None, marker="+", color="k"):
@@ -218,6 +210,25 @@ def getInterXH(x1, y1, x2, y2, yh):
         return numpy.nan
     ### get intersection of horizontal line y=yh, with line going through (x1, y1) and (x2, y2)
     return x1+(yh-y1)*(x2-x1)/(y2-y1)
+def add_points(polygon, points):
+    new_coords = list(polygon.boundary.coords)
+    changed = False
+    for point in points:
+        if point not in new_coords:
+            i = 1
+            while i < len(new_coords):
+                if Point(point).within(LineString((new_coords[i-1], new_coords[i])).buffer(BUFFER)):
+                    changed = True
+                    new_coords.insert(i, point)
+                    i = len(new_coords)+1
+                else:
+                    i += 1
+            # if i == len(new_coords):
+            #     raise Exception("No insertion point found!")
+    if changed:
+        # print("Changed", new_coords)
+        return Polygon(new_coords)
+    return polygon
 
 FACT_CUT = 0.8
 def getCutPoint(PointsMap, edge_data, end_cut, gridHW):
@@ -403,10 +414,12 @@ def smoothen_poly(poly, fact=1):
 def get_ordered_edge_flatten(seid, list_edges, sign=None, kedge="edge"):
     if seid == 0:
         return [0, 1, 1, 0]
-    if (sign is None and seid > 0) or (sign is not None and sign > 0):
-        return [list_edges[abs(seid)][kedge][0][0], list_edges[abs(seid)][kedge][0][1], list_edges[abs(seid)][kedge][1][0], list_edges[abs(seid)][kedge][1][1]]
-    else:
-        return [list_edges[abs(seid)][kedge][1][0], list_edges[abs(seid)][kedge][1][1], list_edges[abs(seid)][kedge][0][0], list_edges[abs(seid)][kedge][0][1]]
+    eA, eB = get_ordered_edge(seid, list_edges, sign, kedge)
+    return [eA[0], eA[1], eB[0], eB[1]]
+    # if (sign is None and seid > 0) or (sign is not None and sign > 0):
+    #     return [list_edges[abs(seid)][kedge][0][0], list_edges[abs(seid)][kedge][0][1], list_edges[abs(seid)][kedge][1][0], list_edges[abs(seid)][kedge][1][1]]
+    # else:
+    #     return [list_edges[abs(seid)][kedge][1][0], list_edges[abs(seid)][kedge][1][1], list_edges[abs(seid)][kedge][0][0], list_edges[abs(seid)][kedge][0][1]]
 def get_ordered_edge(seid, list_edges, sign=None, kedge="edge"):
     if (sign is None and seid > 0) or (sign is not None and sign > 0):
         return (list_edges[abs(seid)][kedge][0], list_edges[abs(seid)][kedge][1])
@@ -465,6 +478,13 @@ def create_new_edge(prev_point,  next_point, node, map_edges, list_edges, type_e
     list_edges[neid].update(add_data)    
     update_types(list_edges, neid, type_edge)
     return sign*neid
+def query_edge(prev_point,  next_point, map_edges):
+    new_edge, sign = order_edge(prev_point, next_point)
+    if new_edge in map_edges:
+        ## if not add_force: pdb.set_trace() ### something strange
+        neid = map_edges[new_edge]
+        return sign*neid
+    return None
 
 ##############################
 ## ACTUAL VORONOI COMPUTATION
@@ -612,7 +632,7 @@ def clip_squares(points, regions, vertices, sw, sh=None):
     vertices = numpy.array(new_vertices)
     return regions, vertices, last_existing_vertice
 
-def prepare_ebbox(bbox, bbox_ext=None, marg_ratio=100):
+def get_ebbox(bbox, bbox_ext=None, marg_ratio=100):
     # bbox = (numpy.min(vor.vertices[:,0]), numpy.min(vor.vertices[:,1]),
     #         numpy.max(vor.vertices[:,0]), numpy.max(vor.vertices[:,1]))
     dbx, dby = (bbox[2] - bbox[0])/marg_ratio, (bbox[3] - bbox[1])/marg_ratio
@@ -626,6 +646,46 @@ def prepare_ebbox(bbox, bbox_ext=None, marg_ratio=100):
                  numpy.minimum(ebbox[2], bbox_ext[2]), numpy.minimum(ebbox[3], bbox_ext[3])]        
     return ebbox
 
+def borders_exterior(poly_points, map_edges, list_edges, polys, key_nodes="nodes"):
+    O = list(polygon.orient(Polygon(poly_points)).exterior.coords)
+    oeids = [query_edge(O[i-1], O[i], map_edges) for i in range(1, len(O))]
+    if len(list_edges[abs(oeids[0])].get(key_nodes, [])) == 1:
+        peids = polys[list_edges[abs(oeids[0])][key_nodes][0]]
+        E = list(polygon.orient(Polygon(get_poly_coords(list_edges, peids))).exterior.coords)
+        i0, i1 = E.index(O[0]), E.index(O[1])
+        if abs(i1-i0) != 1:
+            if i0 == (len(E)-2): ## i0 indexes the one to last point in E (last point is repeat from first)
+                i0 = -1
+            elif i1 == (len(E)-2): ## i1 indexes the one to last point in E (last point is repeat from first)
+                i1 = -1
+    else:
+        raise Exception("Can't find the polygon for exterior edge %s!" % oeids[0])
+    return i1 > i0
+def borders_exterior_check(poly_points, map_edges, list_edges, polys, key_nodes="nodes"):
+    O = list(polygon.orient(Polygon(poly_points)).exterior.coords)
+    oeids = [query_edge(O[i-1], O[i], map_edges) for i in range(1, len(O))]
+    info_edges = []
+    for opos, oeid in enumerate(oeids):
+        if len(list_edges[abs(oeid)].get(key_nodes, [])) == 1:
+            peids = polys[list_edges[abs(oeid)][key_nodes][0]]
+            E = list(polygon.orient(Polygon(get_poly_coords(list_edges, peids))).exterior.coords)
+            i0, i1 = E.index(O[opos]), E.index(O[opos+1])
+            if abs(i1-i0) != 1:
+                if i0 == (len(E)-2): ## i0 indexes the one to last point in E (last point is repeat from first)
+                    i0 = -1
+                elif i1 == (len(E)-2): ## i1 indexes the one to last point in E (last point is repeat from first)
+                    i1 = -1
+            info_edges.append((i1-i0, i0, i1, list_edges[abs(oeid)][key_nodes]))
+              
+        else:
+            raise Exception("Can't find the polygon for exterior edge %s!" % oeid)
+    if not all([e[0] == info_edges[0][0] for e in info_edges[1:]]):
+        raise Exception("Orientation of all edges don't agree! %s" % info_edges)
+    return info_edges[0][0] > 0
+
+def get_poly_coords(list_edges, peids, kedge="edge"):
+    return [get_ordered_edge(peid, list_edges, kedge=kedge)[0] for peid in peids]
+
 def compute_voronoi(PointsMap, bbox_ext=None):
     ### MAIN FUNCTION for computing polygons from coordinates
     ### Compute the voronoi diagram
@@ -637,7 +697,7 @@ def compute_voronoi(PointsMap, bbox_ext=None):
     vor = scipy.spatial.Voronoi(points)
     
     bbox = (numpy.min(points[:,0]), numpy.min(points[:,1]), numpy.max(points[:,0]), numpy.max(points[:,1]))
-    ebbox = prepare_ebbox(bbox, bbox_ext)
+    ebbox = get_ebbox(bbox, bbox_ext)
 
     radius = numpy.sqrt((ebbox[2]-ebbox[0])**2+(ebbox[3]-ebbox[1])**2)*2
     regions, vertices, lfinite = VoronoiPolygons(coords, radius)
@@ -702,17 +762,17 @@ def compute_edges_distances(PointsMap, list_edges):
     return vert_edges, horz_edges, list_edges
 
 
-def compute_grid_size(vert_edges, horz_edges, gridh_percentile=-1, gridw_percentile=-1):
+def compute_grid_size(vert_edges, horz_edges, hgrid_percentile=-1, wgrid_percentile=-1):
     # return {'H': 0.007839320868257893, 'W': 0.0078403303939800773}
-    if gridh_percentile <= 0:
-        gridh_percentile = 50
-    if gridw_percentile <= 0:
-        gridw_percentile = gridh_percentile
+    if hgrid_percentile <= 0:
+        hgrid_percentile = 50
+    if wgrid_percentile <= 0:
+        wgrid_percentile = hgrid_percentile
         
     # gridH = numpy.mean(vert_edges)
     # gridW = numpy.mean(horz_edges)
-    gridH = numpy.percentile(vert_edges, gridh_percentile)
-    gridW = numpy.percentile(horz_edges, gridw_percentile)
+    gridH = numpy.percentile(vert_edges, hgrid_percentile)
+    gridW = numpy.percentile(horz_edges, wgrid_percentile)
     
     gridHW = {"H": gridH, "W": gridW}
     # print("GRID", gridHW)
@@ -993,11 +1053,12 @@ def make_list_cutdets(poly, eids):
     
 def assemble_recut(PointsMap, map_edges, list_edges, polys, recut_nodes, assembled={}):
     global LOG_ON
-    ND = 169 #1735 # 3274
-    if ND in recut_nodes:
-        LOG_ON = True
-        recut_nodes = {ND: recut_nodes[ND]}
-        pdb.set_trace()
+    #### DEBUG
+    # ND = 169 #1735 # 3274
+    # if ND in recut_nodes:
+    #     LOG_ON = True
+    #     recut_nodes = {ND: recut_nodes[ND]}
+    #     pdb.set_trace()
         
     for node, eids in recut_nodes.items():
         poly = polys[node]
@@ -1044,7 +1105,7 @@ def assemble_recut(PointsMap, map_edges, list_edges, polys, recut_nodes, assembl
                             if LOG_ON:
                                 print("corner cut", edge, edge_other, "->", cedge, cedge_other                )
 
-                            if cut_end == 0 or cut_end_other == 1: raise("Something unexpected during recut!")
+                            if cut_end == 0 or cut_end_other == 1: raise Exception("Something unexpected during recut!")
                                 
                             neid = create_new_edge(cedge[cut_end], cedge_other[cut_end_other], node, map_edges, list_edges, type_edge = ["residue", OUTER_MAP[False]])
 
@@ -1090,7 +1151,7 @@ def assemble_recut(PointsMap, map_edges, list_edges, polys, recut_nodes, assembl
     LOG_ON = False
     return assembled
 
-def prepare_edges(PointsMap, gridh_percentile=-1, gridw_percentile=-1, after_cut=True, bbox=None):
+def compute_edges_data(PointsMap, hgrid_percentile=-1, wgrid_percentile=-1, after_cut=True, bbox=None):
     map_edges, list_edges, polys, ebbox = compute_voronoi(PointsMap, bbox)
 
     # plot_esets_colordered(list(polys.values())[:30], list_edges)
@@ -1106,16 +1167,17 @@ def prepare_edges(PointsMap, gridh_percentile=-1, gridw_percentile=-1, after_cut
     list_edges[0]["last_org"] = len(list_edges)
     list_edges[0]["last_cut"] = len(list_edges)
     list_edges[0]["last_isolated"] = len(list_edges)
-    list_edges[0]["globe"] = False
+    list_edges[0]["dst_type"] = "flat"
     list_edges[0]["ebbox"] = ebbox
     if bbox is not None:
         list_edges[0]["bbox"] = bbox    
 
     polys_cut = {}
-    if gridh_percentile > 0 and after_cut:
+    if hgrid_percentile > 0 and after_cut:
+        list_edges[0]["grid_percentile"] = (hgrid_percentile, wgrid_percentile)
         vert_edges, horz_edges, _ = compute_edges_distances(PointsMap, list_edges)
         # gridHW = {'H': 0.0078393208682577542, 'W': 0.0078393208682577542} #
-        gridHW = compute_grid_size(vert_edges, horz_edges, gridh_percentile, gridw_percentile)
+        gridHW = compute_grid_size(vert_edges, horz_edges, hgrid_percentile, wgrid_percentile)
         update_far(PointsMap, list_edges, gridHW)
         require_cut, polys_cut_info, isolated_nodes = gather_require_cut(PointsMap, map_edges, list_edges, polys)
                 
@@ -1142,7 +1204,8 @@ def prepare_edges(PointsMap, gridh_percentile=-1, gridw_percentile=-1, after_cut
             
     return map_edges, list_edges, polys, polys_cut, ebbox
 
-def prepare_edges_dst(PointsMap, gridh_percentile=-1, gridw_percentile=-1, after_cut=True, dst_type="globe"):
+###### Compute the edges data when points coordinates are provided, using distances on globe or flat
+def prepare_edges_dst(PointsMap, hgrid_percentile=-1, wgrid_percentile=-1, after_cut=True, dst_type="globe"):
     if dst_type == "globe":
         PointsRad = coordsPointsToGlobe(PointsMap)
         deg_bbox = [-180, -90, 180, 90]
@@ -1152,32 +1215,58 @@ def prepare_edges_dst(PointsMap, gridh_percentile=-1, gridw_percentile=-1, after
         deg_bbox = None
         bbox = None
 
-    map_edges, list_edges, polys, polys_cut, ebbox = prepare_edges(PointsRad, gridh_percentile=gridh_percentile, gridw_percentile=gridw_percentile, after_cut=after_cut, bbox=bbox)
+    map_edges, list_edges, polys, polys_cut, ebbox = compute_edges_data(PointsRad, hgrid_percentile=hgrid_percentile, wgrid_percentile=wgrid_percentile, after_cut=after_cut, bbox=bbox)
     if dst_type == "globe":
         coordsEdgesFromGlobe(list_edges, clip=deg_bbox)
-        list_edges[0]["globe"] = True
-        
+        list_edges[0]["dst_type"] = "globe"
+    list_edges[0]["source"] = "voronoi"
     return map_edges, list_edges, polys, polys_cut, ebbox
 
+###### Compute the edges data when polygons coordinates are provided
 def prepare_edges_polys(PointsMap, poly_coords):
     lbls, coords = zip(*PointsMap.items())    
     points = numpy.array(coords)
-
-    map_edges = {}
-    list_edges = [{"edge": None, TIK: {}, "nb_nodes": len(points)}] ## so no real edge is indexed with 0, which has no sign and does not allow marking direction 
+    
     polys = {}
     poly_xcoords, poly_ycoords = poly_coords[0], poly_coords[1]
     assert(len(poly_xcoords) == len(poly_ycoords))
     nb_regions = len(poly_xcoords)
+    
+    polygons = [Polygon(zip(poly_xcoords[ri], poly_ycoords[ri])) for ri in range(nb_regions)]
+
+    vor = scipy.spatial.Voronoi(points)
+    for nA, nB in vor.ridge_points:
+        X = polygons[nA].intersection(polygons[nB])
+        if isinstance(X, Polygon):            
+            take_from = nA if (polygons[nA].area > polygons[nB].area) else nB
+            polytmp = polygons[take_from].difference(X)
+            if isinstance(polytmp, Polygon):
+                polygons[take_from] = polytmp
+            else:
+                raise Exception("Diff (%d \ (%d inter %d)) not a polygon!" % (take_from, nA, nB))
+            X = polygons[nA].intersection(polygons[nB])
+
+        points_inter = set()
+        if isinstance(X, MultiLineString):
+            for x in X:                
+                points_inter.update(x.coords) 
+        elif isinstance(X, Point) or isinstance(X, LineString):
+            points_inter.update(X.coords)
+        if len(points_inter) > 0:
+            for ni in [nA, nB]:
+                polygons[ni] = add_points(polygons[ni], points_inter)
+            
+    map_edges = {}
+    list_edges = [{"edge": None, TIK: {}, "nb_nodes": len(points)}] ## so no real edge is indexed with 0, which has no sign and does not allow marking direction 
     for ri in range(nb_regions):
         pids = []
-        if poly_xcoords[ri][0] == poly_xcoords[ri][-1] and poly_ycoords[ri][0] == poly_ycoords[ri][-1]:
+        polygon_xy = polygons[ri].boundary.coords
+        if polygon_xy[0] == polygon_xy[-1]:
             bottom = 1
         else:
             bottom = 0
-        for i in range(bottom, len(poly_xcoords[ri])):            
-            neid = create_new_edge((poly_xcoords[ri][i-1], poly_ycoords[ri][i-1]),
-                                   (poly_xcoords[ri][i], poly_ycoords[ri][i]),
+        for i in range(bottom, len(polygon_xy)):
+            neid = create_new_edge(polygon_xy[i-1], polygon_xy[i],
                                    ri, map_edges, list_edges, type_edge="org")
             pids.append(neid)
         polys[ri] = pids
@@ -1187,22 +1276,34 @@ def prepare_edges_polys(PointsMap, poly_coords):
     tmp_edges = list(zip(*map_edges.keys()))
     all_x, all_y = zip(*(tmp_edges[0]+tmp_edges[1]))
     bbox = (numpy.min(all_x), numpy.min(all_y), numpy.max(all_x), numpy.max(all_y))
-    ebbox = prepare_ebbox(bbox)
+    ebbox = get_ebbox(bbox)
     list_edges[0]["last_org"] = len(list_edges)
     list_edges[0]["last_cut"] = len(list_edges)
     list_edges[0]["last_isolated"] = len(list_edges)
-    list_edges[0]["globe"] = False
+    list_edges[0]["dst_type"] = "globe"
+    list_edges[0]["source"] = "polys"
     list_edges[0]["ebbox"] = ebbox
     if bbox is not None:
-        list_edges[0]["bbox"] = bbox    
+        list_edges[0]["bbox"] = bbox
+        
+    # ## FULL MAP BY TYPES
+    # bounds = [1, list_edges[0]["last_org"], list_edges[0]["last_cut"], list_edges[0]["last_isolated"], len(list_edges)]
+    # elements = [(bounds[0], bounds[1], "-", "k"), (bounds[1], bounds[2], "-", "g"), (bounds[2], bounds[3], "-", "m"), (bounds[3], bounds[4], "-", "r")]
+    # for (bdw, bup, linestyle, color) in elements:
+    #     plot_edges(range(bdw, bup), list_edges, linestyle=linestyle, color=color) #, kedge="flat_edge")
+    # xs, ys = zip(*PointsMap.values())
+    # plt.plot(xs, ys, "bo")
+    # for pi, cc in PointsMap.items():
+    #     plt.text(cc[0], cc[1], pi)
+    # plot_show()
+        
     return map_edges, list_edges, polys, polys, ebbox
 
-
-def get_edges_coords_flatten(list_edges, seids=None, after_cut=True):
+###### Compute the edges coordinates in a flattened format
+def prepare_edges_coords_flatten(list_edges, seids=None, after_cut=True):
     kedge = "edge"
-    if list_edges[0].get("globe"):
+    if list_edges[0].get("dst_type") == "globe" and "flat_edge" in list_edges[-1]:
         kedge = "flat_edge"
-    coords = []
     if seids is None:
         if after_cut:
             up_to = len(list_edges)
@@ -1211,6 +1312,7 @@ def get_edges_coords_flatten(list_edges, seids=None, after_cut=True):
         return [get_ordered_edge_flatten(eid, list_edges, kedge=kedge) for eid in range(0, up_to)]
     else:
         return [get_ordered_edge_flatten(seid, list_edges, kedge=kedge) for seid in seids]
+
         
 
 def get_all_grps(list_edges):
@@ -1257,47 +1359,9 @@ def make_edges_graph_grps(map_edges, list_edges):
 def get_ordered_pairs(v, vs):
     return [order_edge(v, vv)[0] for vv in vs]
 
-def filter_splength(source, graph, trav=[], collect=None):
-    seen={}                  # level (number of hops) when seen in BFS
-    level=0                  # the current level
-    nextlevel=set([source])  # dict of nodes to check at next level
-    while nextlevel:
-        thislevel=nextlevel  # advance to next level
-        nextlevel=set()         # and start a new list (fringe)
-        for v in thislevel:
-            if v not in seen:
-                seen[v]=level # set the level of vertex v
-                for t in trav:
-                    if collect is not None:
-                        collect.update(get_ordered_pairs(v, graph[v][t]))
-                    nextlevel.update(graph[v][t]) # add neighbors of v
-        level=level+1
-    return seen  # return all path lengths as dictionary
 
-def filter_cc(edges_graph, src_pool, trav=[]):
-    seen={}
-    for v in src_pool:
-        if v not in seen:
-            collect = set()
-            c = filter_splength(v, edges_graph, trav, collect)
-            yield list(c), collect
-            seen.update(c)
-
-def frame_cc(map_edges, list_edges):
-    edges_graph, grp_to_edges = make_edges_graph_grps(map_edges, list_edges)
-    src_points = set().union(*[list_edges[eid]["edge"] for eid in list_edges[0][TIK].get("frame", [])])
-    blocks = []
-    for cc, collect in filter_cc(edges_graph, src_points, trav=[-2]):
-        reached = [map_edges[e] for e in collect]
-        # next_layer = [map_edges[x] for x in set().union(*[get_ordered_pairs(c, edges_graph[c][-1]) for c in cc])]
-        more_edges = set().union(*[[map_edges[x]
-                                   for x in set().union(*[get_ordered_pairs(d, edges_graph[d][1])
-                                                              for d in edges_graph[c][None]])
-                                   if map_edges[x] >= list_edges[0]["last_cut"]] for c in cc])
-        blocks.append({"bckbone": cc, "reached": reached, "more_edges": more_edges})        
-    return blocks
-
-def prepare_border_data(list_edges, connect_frame=None, after_cut=True):
+###### Compute the exterior and interior border polygons
+def prepare_border_info(list_edges, map_edges, polys, after_cut=True):
     if after_cut and list_edges[0].get("last_org", 0) < list_edges[0].get("last_cut", 0):
         key_nodes = "nodes_cut"
         up_to = len(list_edges)
@@ -1308,30 +1372,20 @@ def prepare_border_data(list_edges, connect_frame=None, after_cut=True):
     beids = [eid for eid in range(1, up_to) if len(list_edges[eid].get(key_nodes, [])) == 1]    
     out = [list_edges[eids]["edge"] for eids in beids]
     fps, fpis = flatten_poly(out)
-    out_data = {}
+    border_info = {}
     for ppi, pp in enumerate(fps):
-        org_len = len(pp)
         tt = clean_poly(pp)
-        if len(tt) != 1 or len(tt[0]) != org_len:
-            pdb.set_trace()
-            # raise ValueError("Dirty polygon")
-        peids = [numpy.sign(x)*beids[abs(x)-1] for x in fpis[ppi]]
-        ci = -(len(out_data)+1)
-        interior = (connect_frame is not None and len(connect_frame.intersection(peids)) == 0)
-        out_data[ci] = {"ci": ci, "cells": [], "polys": [peids], "color": -1, "level": -int(interior)}
-    return out_data
+        for ttt in tt:
+            peids = [query_edge(ttt[i-1], ttt[i], map_edges) for i in range(1, len(ttt))]
+            if None in peids:
+                raise Exception("Edge(s) not found! %s -> %s" % (ttt, peids))
+            ci = -(len(border_info)+1)
+            bext = not borders_exterior(ttt, map_edges, list_edges, polys, key_nodes)
+            border_info[ci] = {"ci": ci, "cells": [], "polys": [peids], "color": -1, "level": -int(bext)}
+    return border_info
 
-def make_out_data(map_edges, list_edges, after_cut=True):
-    if after_cut:
-        blocks = frame_cc(map_edges, list_edges)
-        connect_frame = set().union(*[b["more_edges"] for b in blocks])
-        connect_frame.update(list_edges[0][TIK].get("isolated", []))
-        connect_frame.update(list_edges[0][TIK].get("projected",[]))        
-    else:
-        connect_frame = None
-    return prepare_border_data(list_edges, connect_frame, after_cut)
-
-def make_nodes_graph(list_edges, after_cut=True):
+###### Prepare adjacency graph
+def prepare_nodes_graph(list_edges, after_cut=True):
     nodes_graph = {}
     if after_cut and list_edges[0].get("last_org", 0) < list_edges[0].get("last_cut", 0):
         key_nodes = "nodes_cut"
@@ -1352,7 +1406,8 @@ def make_nodes_graph(list_edges, after_cut=True):
                     nodes_graph[node][nodex] = eid
     return nodes_graph               
 
-def compute_node_pairs(list_edges, max_nid=None, after_cut=True):
+###### Prepare list of adjacent nodes
+def prepare_node_pairs(list_edges, max_nid=None, after_cut=True):
     node_pairs = []
     if after_cut and (list_edges[0].get("last_org", 0) < list_edges[0].get("last_cut", 0)):
         key_nodes = "nodes_cut"
@@ -1377,7 +1432,7 @@ def compute_node_pairs(list_edges, max_nid=None, after_cut=True):
                 node_pairs.append([eid, nodes[1], -2])
     return numpy.array(node_pairs, dtype=int)
 
-def prepare_cc_polys(list_edges, nodes_sel, polys):
+def compute_cc_polys(list_edges, nodes_sel, polys):
     edge_counts = {}
     for node in nodes_sel:
         for eid in polys.get(node, []):         
@@ -1412,19 +1467,16 @@ def connected_components(nodes_graph, nodes_colors, color):
             yield list(c)
             seen.update(c)
 
-def prepare_areas_helpers(map_edges, list_edges, after_cut=True):
-    nodes_graph = make_nodes_graph(list_edges, after_cut)
-    out_data = make_out_data(map_edges, list_edges, after_cut)
-    return out_data, nodes_graph
-
+###### Collects the polygons (eids)            
 def prepare_areas_polys(polys, polys_cut, after_cut=True):
     if after_cut:
         pp = dict([(p, polys_cut.get(p) or polys[p]) for p in polys])
     else:
         pp = polys
     return pp
-            
-def prepare_areas_data(nodes_colors, list_edges, polys, out_data, nodes_graph):
+
+###### Prepare the polygons for plotting map with given nodes highlighted
+def prepare_areas_data(nodes_colors, list_edges, polys, border_info, nodes_graph):
     #### nodes_colors_bckg: contains ids of parts all nodes belong to, i.e. support part, variable value, -2 means outside support, bckg cell
     nodes_colors_bckg = -2*numpy.ones(len(polys), dtype=int)
     if type(nodes_colors) is list:
@@ -1440,9 +1492,9 @@ def prepare_areas_data(nodes_colors, list_edges, polys, out_data, nodes_graph):
     for si in set(nodes_colors_bckg):
         for cc in connected_components(nodes_graph, nodes_colors_bckg, si):
             ci = len(ccs_data)
-            cc_polys = prepare_cc_polys(list_edges, cc, polys)
+            cc_polys = compute_cc_polys(list_edges, cc, polys)
             ccs_data[ci] = {"ci": ci, "nodes": cc, "polys": cc_polys, "color": si, "level": -1}
-    ccs_data.update(out_data)
+    ccs_data.update(border_info)
 
     cis = ccs_data.keys()
     eids_to_ccs = {} 
@@ -1501,8 +1553,9 @@ EDGES_FIELDS_MAP = dict(EDGES_FIELDS_LIST)
 
 def preamble_for_edges(list_edges):
     entries = [(k,v) for (k,v) in list_edges[0].items() if re.match("last_", k) or (k == "nb_nodes")]
-    entries_more = []
-    entries_more.append(("globe", str(list_edges[0].get("globe"))))
+    entries_more = [(k, list_edges[0][k]) for k in ["dst_type", "source"]]
+    if "grid_percentile" in list_edges[0]:
+        entries_more.append(("grid_percentile", "(%s,%s)" % tuple(list_edges[0]["grid_percentile"])))
     for k in ["bbox", "ebbox"]:
         if k in list_edges[0]:
             entries_more.append((k, "(%s,%s,%s,%s)" % tuple(list_edges[0][k])))
@@ -1519,8 +1572,10 @@ def parse_preamble(line):
             pp = part.strip().split("=")
             if pp[0] in ["bbox", "ebbox"]:
                 list_edges[0][pp[0]] = numpy.array(eval(pp[1]))
-            elif pp[0] in ["globe"]:
-                list_edges[0][pp[0]] = bool(pp[1])
+            elif pp[0] in ["grid_percentile"]:
+                list_edges[0][pp[0]] = tuple(eval(pp[1]))
+            elif pp[0] in ["dst_type", "source"]:
+                list_edges[0][pp[0]] = pp[1]
             else:
                 list_edges[0][pp[0]] = int(pp[1])
     return list_edges
@@ -1673,8 +1728,8 @@ if __name__=="__main__":
 
     dst_type = "globe"
     # dst_type = "flat"
-    gridh_percentile=95
-    map_edges, list_edges, polys, polys_cut, ebbox = prepare_edges_dst(PointsMap, gridh_percentile=gridh_percentile, dst_type=dst_type)
+    hgrid_percentile=95
+    map_edges, list_edges, polys, polys_cut, ebbox = prepare_edges_dst(PointsMap, hgrid_percentile=hgrid_percentile, dst_type=dst_type)
 
     # ## FULL MAP BY TYPES
     # bounds = [1, list_edges[0]["last_org"], list_edges[0]["last_cut"], list_edges[0]["last_isolated"], len(list_edges)]
@@ -1691,7 +1746,7 @@ if __name__=="__main__":
     # write_edges(fname, list_edges)
     # rmap_edges, rlist_edges, rpolys, rpolys_cut = read_edges_and_co(fname)
 
-    # npairs = compute_node_pairs(list_edges, max_nid=200)
+    # npairs = prepare_node_pairs(list_edges, max_nid=200)
 
     after_cut=True
     pp = prepare_areas_polys(polys, polys_cut, after_cut)
@@ -1709,12 +1764,12 @@ if __name__=="__main__":
     #plot_esets_colordered(pps, list_edges, simple=False, kedge="flat_edge")
     plot_show(True)
 
-    out_data, nodes_graph = prepare_areas_helpers(map_edges, list_edges, after_cut)
-    # Xs = [o["polys"][0] for o in out_data.values()]
+    border_info, nodes_graph = prepare_areas_helpers(map_edges, list_edges, after_cut)
+    # Xs = [o["polys"][0] for o in border_info.values()]
     # plot_esets_colordered(Xs, list_edges, simple=True, kedge="flat_edge")
     # plot_show()
     
-    ccs_data, cks, adjacent = prepare_areas_data([10, 8], list_edges, pp, out_data, nodes_graph)
+    ccs_data, cks, adjacent = prepare_areas_data([10, 8], list_edges, pp, border_info, nodes_graph)
 
     colors = {-2: "#AAAAAA", -1: "white", 0: "r"}
     pp_data = {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
@@ -1738,7 +1793,7 @@ if __name__=="__main__":
                     plot_filled(pp_polys[pi], list_edges, color=colors.get(pp_data["ccs_data"][ck]["color"], "k"), kedge="flat_edge")
 
                 
-    # for ci, dt in out_data.items():
+    # for ci, dt in border_info.items():
     #     if dt["level"] == 0:
     #         linewidth = 2
     #     else:

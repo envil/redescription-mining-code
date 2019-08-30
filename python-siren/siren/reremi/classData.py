@@ -101,9 +101,13 @@ class ExtensionPool(object):
             eks = ext_keys
             if filenames is None:
                 filenames = self.getExtensionsFilesDict()
-            
+
+        params_l = {}
         for ek in eks:
             ext = self.initExtension(ek, filenames, params, details)
+            params_l.update(ext.getParams())
+        return params_l
+
             
     def saveExtensions(self, filenames=None, details={}):
         if filenames is None:
@@ -278,8 +282,9 @@ class Data(ContentCollection):
                     try:
                         col.recompute(self)
                     except KeyError:
-                        pdb.set_trace()
-                        col.recompute(self)
+                        raise Exception("Error when recomputing column! (%s,%s)" % (side, cid))
+                        # pdb.set_trace()
+                        # col.recompute(self)
         else:
             col = self.col(side, cid)
             if col is not None:
@@ -303,7 +308,7 @@ class Data(ContentCollection):
     def saveExtensions(self, filenames=None, details={}):
         self.extensions.saveExtensions(filenames, details)
     def loadExtensions(self, ext_keys=[], filenames=None, params=None, details={}):
-        self.extensions.loadExtensions(ext_keys, filenames, params, details)
+        return self.extensions.loadExtensions(ext_keys, filenames, params, details)
     def getExtensionsFilesDict(self, exts=None):
         return self.extensions.getExtensionsFilesDict(exts)
     def getExtensionsActiveFilesDict(self):
@@ -1567,10 +1572,14 @@ def main():
     # print(data.cols[1][1].areDataEquiv(-21.88,-21.8))
         
     ############# DATA EXTENSIONS
-    rep_in = "/home/egalbrun/short/geo_small/"
-    data = Data([rep_in+"data_LHS.csv", rep_in+"data_RHS.csv", {}, ""], "csv")
-    data.initExtension("geoplus")
+    # rep_in = "/home/egalbrun/short/geo_small/"
+    # data_files = [rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv"]
+    rep_in = "/home/egalbrun/x/"
+    data_files = [rep_in+"data_LHS.csv", rep_in+"data_RHS.csv"]
+    data = Data(data_files+[{}, ""], "csv")
+    data.initExtension("geoplus", params ={"wgrid_percentile": 90, "hgrid_percentile": 90})
     print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
+    data.getExtension("geoplus").prepAreasData(cells_colors=[0])
     data.saveExtensions(details={"dir": rep_in})
 
     # data = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
@@ -1578,9 +1587,9 @@ def main():
     # print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
     # data.saveExtensions(details={"dir": rep_in})
 
-    # data2 = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
-    # data2.loadExtensions(ext_keys=["geoplus"], filenames={"extf_list_edges": rep_in+"list_edges.csv"})
-    # print(data2.computeExtras(data2.col(0,0), extras=["cohesion"]))
+    data2 = Data(data_files+[{}, ""], "csv")
+    data2.loadExtensions(ext_keys=["geoplus"], filenames={"extf_list_edges": rep_in+"list_edges.csv"})
+    print(data2.computeExtras(data2.col(0,0), extras=["cohesion"]))
 
     
     ############# OLD DATA FORMAT

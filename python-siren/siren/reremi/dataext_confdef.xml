@@ -7,8 +7,8 @@
     <section>
       <name>geoplus</name>
       <parameter>
-	<name>gridh_percentile</name>
-	<label>Grid H percentile</label>
+	<name>hgrid_percentile</name>
+	<label>H grid percentile</label>
 	<parameter_type>range</parameter_type>
 	<value_type>float</value_type>
 	<legend>Percentile to determine grid height.</legend>
@@ -17,8 +17,8 @@
 	<default><value>90</value></default>
       </parameter>
       <parameter>
-	<name>gridw_percentile</name>
-	<label>Grid W percentile</label>
+	<name>wgrid_percentile</name>
+	<label>W grid percentile</label>
 	<parameter_type>range</parameter_type>
 	<value_type>float</value_type>
 	<legend>Factor to multiply grid width.</legend>

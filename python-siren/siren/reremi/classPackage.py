@@ -157,7 +157,7 @@ class Package(object):
                 for f in self.plist['fields_rdefs'].split(";"):
                     ff = f.strip()
                     if len(ff) > 0:
-                        fields_fns.append(self.package.open(ff))                    
+                        fields_fns.append(self.package.open(ff))
                 Redescription.extendRP(fields_fns)
                 for fn in fields_fns:
                     fn.close()
@@ -168,7 +168,12 @@ class Package(object):
             if data is not None:
                 if 'ext_keys' in self.plist:
                     ext_keys = self.plist['ext_keys'].strip().split(";")
-                    data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
+                    pdb.set_trace()
+                    params_l = data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
+                    if len(params_l) > 0:
+                        params = PreferencesReader(pm).readParametersDict(params_l)
+                        preferences.update(params)
+                    data.recomputeCols()
                 elements_read["data"] = data
                 reds = self.readRedescriptions(data)
                 if reds is not None and len(reds) > 0:

@@ -78,55 +78,6 @@ Exploration
 
 .. image:: ../_figs/stories/BIO/interact/Bio_OverfitResultOrgRMoose.png
 
-.. uc_us:
-
-US census and election funds
-=============================
-
-.. note:: 
-   We now present a short sample use-case with US census and election data.
-
-Data
------
-
-The US data describes the counties of continental United-States. The left hand side data contains socio-economic statistical indicators about these areas, see details `here <http://www.fedstats.gov/qf/download/DataDict.txt>`_.
-
-The right hand side consists of data about funding of the electoral campaigns in 2006, 2008 and 2010, the total funds, percentage allotted 
-to republican and to democratic party, respectively.
-
-The data has been gathered from two public websites: `FedStats <http://www.fedstats.gov/>`_ and `Open Secrets <http://www.opensecrets.org/elections/>`_.
-Logarithmic transformation was applied to variables having a log-normal distribution to obtain a better dispersion.
-
-Exploration
-------------
-
-1. Again, the first tab contains a list of entities...
-
-.. image:: ../_figs/stories/US/windows/US_Entities.png
-
-2. ... and the following two the list of left-hand side variables and right-hand side variables, respectively.
-
-.. image:: ../_figs/stories/US/windows/US_VariablesLHS.png
-	   :class: sideL
-.. image:: ../_figs/stories/US/windows/US_VariablesRHS.png
-	   :class: sideR
-
-3. Here, the *Redescriptions* tab contains redescriptions mined previously and loaded from a file.
-
-.. image:: ../_figs/stories/US/windows/US_Reds.png
-
-
-4. Now, we will recompute these redescription over a subset of the entities, say, excluding the east side of the US. To do so we plot a redescription with a variable set to its full range to see all entities on the map and draw a polygon enclosing the area we wish to exclude.
-
-.. image:: ../_figs/stories/US/interact/US_PolyDisable0.png
-
-5. Next we click :menuselection:`Edit --> (De)select polygon` (or press the corresponding key) to select the entities inside the polygon.
-
-.. image:: ../_figs/stories/US/interact/US_PolyDisable1.png
-
-6. Then clicking :menuselection:`Edit --> (Dis)able selected` (or press the corresponding key) to disable the entities. This automatically recomputes all redescriptions restricted to the remaining entities (observe the updated statistics in the list and the map). 
-
-.. image:: ../_figs/stories/US/interact/US_PolyDisable2.png
 
 .. _uc_dblp:
 

@@ -255,10 +255,7 @@ class PreferencesDialog(wx.Dialog):
         self.upButtons(sec_id, on_action="off")
     
     def onOK(self, event):
-        if event.GetId() in self.objects_map:
-            sec_id = self.objects_map[event.GetId()][0]
-            self._apply(sec_id)
-            vdict = self.getSecValuesDict(sec_id)
+        self.onApply(event)
         self.onClose()
 
     def changeHappened(self, event):

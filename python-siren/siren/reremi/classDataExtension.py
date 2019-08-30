@@ -1,4 +1,4 @@
-import os.path
+import os.path, io
 import numpy
 
 try:
@@ -27,8 +27,6 @@ class DataExtension(object):
         self.parent_data = data
         self.own_data = {}
         self.params_changed = set()
-        if filenames is not None:
-            self.doWithFiles("load", filenames, details)
         pp = {}
         if details is not None and "params" in details:
             pp.update(details["params"])
@@ -36,11 +34,21 @@ class DataExtension(object):
             pp.update(params)
         if len(pp) > 0:
             self.setParams(pp)
+        if filenames is not None:
+            self.doWithFiles("load", filenames, details)
             
     @classmethod
     def getKey(tcl):
         return tcl.extension_key
-
+    @classmethod
+    def getParamKeys(tcl):
+        return tcl.params_keys
+    def getParams(self):
+        params_kv = {}
+        for k in self.getParamKeys():
+            if self.hasElement(k):
+                params_kv[k] = self.getElement(k)
+        return params_kv
     @classmethod
     def getExtensionDetails(tcl):
         return {}
@@ -99,7 +107,7 @@ class DataExtension(object):
     def checkedParams(self, pks):
         for pk in pks:
             self.params_changed.discard(pk)        
-        
+            
     def setParams(self, params):
         if "params" in params:
             params = params.get("params")
@@ -137,7 +145,10 @@ class DataExtension(object):
                 fn = os.path.join(folder, fn)
                 
             if pck is not None:
-                return pck.open(fn, mode)
+                if mode == "r":
+                    return io.TextIOWrapper(io.BytesIO(pck.read(fn)))
+                else:
+                    return pck.open(fn, mode)
             try:
                 return open(fn, mode)
             except FileNotFoundError:
@@ -184,7 +195,7 @@ class GeoPlusExtension(DataExtension):
     extension_key = "geoplus"
     extras_map = {}
     filing = []
-    params_keys = ["gridh_percentile", "gridw_percentile", "after_cut","dst_type"]
+    params_keys = ["hgrid_percentile", "wgrid_percentile", "after_cut", "dst_type"]
     
     def reset(self):
         self.retainElements(self.params_keys)
@@ -194,7 +205,7 @@ class GeoPlusExtension(DataExtension):
         self.setElement("coords_bckg", coords_bckg)
         
     def needRecomputeEdges(self):
-        loc_params = ["gridw_percentile", "gridh_percentile", "dst_type"]
+        loc_params = ["wgrid_percentile", "hgrid_percentile", "dst_type"]
         return not self.hasElement("list_edges") or (self.getElement("after_cut", True) and self.hasChangedParams(loc_params))
         
     # ######################################
@@ -203,9 +214,10 @@ class GeoPlusExtension(DataExtension):
     def gatherPoints(self):
         PointsMap={}
         PointsIds={}
+        PointsPolys = None
         coords = self.getParentData().getCoordPoints()
         rnames = self.getParentData().getRNames()
-
+        
         map_merge = None
         key = None
         if self.hasElement("coords_bckg"):
@@ -224,6 +236,7 @@ class GeoPlusExtension(DataExtension):
                 else:
                     map_merge[PointsMap[i]] = i
         org_nb = len(PointsMap)
+        added_bckg = False
         if self.hasElement("coords_bckg"):
             i = len(PointsIds)
             rnames = self.getElement("rnames_bckg")
@@ -237,6 +250,7 @@ class GeoPlusExtension(DataExtension):
                 if kv in map_merge:
                     next_id = map_merge[kv]
                 else:
+                    added_bckg = True
                     next_id = i
                     map_merge[kv] = next_id
                     i +=1
@@ -244,21 +258,25 @@ class GeoPlusExtension(DataExtension):
                 PointsIds[next_id] = rname
                 PointsMap[next_id] = coord
         ## print("NBS", org_nb, len(PointsMap))
-        return PointsMap, PointsIds
+
+        # if self.getParentData().hasGeoPoly() and not added_bckg:
+        #     PointsPolys = self.getParentData().getCoordPoints()
+
+        return PointsMap, PointsIds, PointsPolys
         
     def computeEdges(self, details={}, force=False):
         if details is None:
             details = {}
-        self.setParams(details)
-        loc_params = ["gridw_percentile", "gridh_percentile", "dst_type"]
+        self.setParams(details)        
         if force or self.needRecomputeEdges():
+            loc_params = ["wgrid_percentile", "hgrid_percentile", "dst_type"]
             self.checkedParams(["after_cut"]+loc_params)
-            PointsMap, PointsIds = self.gatherPoints()
+            PointsMap, PointsIds, PointsPolys = self.gatherPoints()
             #### TODO: Use data polygons if available, needs finding intersection between sides of polygons
-            if False: # self.getParentData().hasGeoPoly():
-                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_polys(PointsMap, self.getParentData().getCoords())
+            if PointsPolys is not None:
+                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_polys(PointsMap, PointsPolys)
             else:
-                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_dst(PointsMap, self.getElement("gridh_percentile", -1), self.getElement("gridw_percentile", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
+                map_edges, list_edges, polys, polys_cut, bbox = prepare_polygons.prepare_edges_dst(PointsMap, self.getElement("hgrid_percentile", -1), self.getElement("wgrid_percentile", -1), self.getElement("after_cut", True), self.getElement("dst_type", "globe"))
             dets =  {"p_ids": PointsIds, "p_map": PointsMap,
                      "map_edges": map_edges, "list_edges": list_edges,
                      "polys": polys, "polys_cut": polys_cut}
@@ -275,19 +293,19 @@ class GeoPlusExtension(DataExtension):
             self.computeEdges(details=details, force=force)
             recomputed = True
         if recomputed or not self.hasElement("node_pairs"):
-            node_pairs = prepare_polygons.compute_node_pairs(self.getElement("list_edges"), self.getParentData().nbRows(), self.getElement("after_cut", True))
+            node_pairs = prepare_polygons.prepare_node_pairs(self.getElement("list_edges"), self.getParentData().nbRows(), self.getElement("after_cut", True))
             self.setElement("node_pairs", node_pairs)
         return {"node_pairs": self.getElement("node_pairs")}
 
-    def getEdgesCoordsFlatten(self, seids=None, details={}, force=False):
+    def prepEdgesCoordsFlatten(self, seids=None, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
         if force or self.needRecomputeEdges():
             self.computeEdges(details=details, force=force)
-        return prepare_polygons.get_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
+        return prepare_polygons.prepare_edges_coords_flatten(self.getElement("list_edges"), seids, after_cut=self.getElement("after_cut", True))
         
-    def computeAreasData(self, cells_colors, details={}, force=False):
+    def prepAreasData(self, cells_colors, details={}, force=False):
         if details is None:
             details = {}
         self.setParams(details)
@@ -295,13 +313,17 @@ class GeoPlusExtension(DataExtension):
         if force or self.needRecomputeEdges():
             self.computeEdges(details=details, force=force)
             recomputed = True
+            
         if recomputed or not self.hasElement("nodes_graph"):
-            out_data, nodes_graph = prepare_polygons.prepare_areas_helpers(self.getElement("map_edges"), self.getElement("list_edges"), after_cut=self.getElement("after_cut", True))
-            dets = {"out_data": out_data, "nodes_graph": nodes_graph}
-            self.updateElements(dets)
+            nodes_graph = prepare_polygons.prepare_nodes_graph(self.getElement("list_edges"), after_cut=self.getElement("after_cut", True))
+            self.updateElements({"nodes_graph": nodes_graph})
 
         pp = prepare_polygons.prepare_areas_polys(self.getElement("polys"), self.getElement("polys_cut"), self.getElement("after_cut", True))
-        ccs_data, cks, adjacent = prepare_polygons.prepare_areas_data(cells_colors, self.getElement("list_edges"), pp, self.getElement("out_data"), self.getElement("nodes_graph"))
+        if recomputed or not self.hasElement("border_info"):
+            border_info = prepare_polygons.prepare_border_info(self.getElement("list_edges"), self.getElement("map_edges"), pp, after_cut=self.getElement("after_cut", True))
+            self.updateElements({"border_info": border_info})
+
+        ccs_data, cks, adjacent = prepare_polygons.prepare_areas_data(cells_colors, self.getElement("list_edges"), pp, self.getElement("border_info"), self.getElement("nodes_graph"))
         return {"ccs_data": ccs_data, "cks": cks, "adjacent": adjacent}
 
         
@@ -388,10 +410,22 @@ class GeoPlusExtension(DataExtension):
         if fp is not None:
             ## id_int = details.get("id_int", False)
             map_edges, list_edges, polys, polys_cut = prepare_polygons.read_edges_and_co(fp)
+            params_up = {}
+            if "grid_percentile" in list_edges[0]:
+                params_up["hgrid_percentile"], params_up["wgrid_percentile"] = list_edges[0]["grid_percentile"]
+            if "dst_type" in list_edges[0]:
+                params_up["dst_type"] = list_edges[0]["dst_type"]                
+            # params_up["after_cut"] = list_edges[0].get("last_org", 0) < list_edges[0].get("last_cut", 0)
+            if len(params_up) > 0:
+                self.setParams(params_up)
+            if list_edges[0].get("source") == "polys":
+                self.checkedParams(["hgrid_percentile", "wgrid_percentile", "dst_type"])
+            else:
+                self.checkedParams(params_up.keys())
             self.closeFp(fp, details)
             dets =  {"map_edges": map_edges, "list_edges": list_edges,
                     "polys": polys, "polys_cut": polys_cut}
-            self.updateElements(dets)
+            self.updateElements(dets)            
             return {"list_edges": self.getElement("list_edges")}
         return {}
 

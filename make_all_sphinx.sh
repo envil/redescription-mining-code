@@ -81,22 +81,23 @@ else
     make html
     cp -r _build/html ${OUT_REP}/main
 
-    #### MAKE CONF SPECIFIC
-    for conf in "sigmod" "icdm"; do
-        cd ${SPHINX_REP}/siren-${conf}/
-        rm -rf _build
-        make singlehtml
-        make latexpdf
-        cp -r _build/singlehtml ${OUT_REP}/${conf}
-        cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
-    done
+    # #### MAKE CONF SPECIFIC
+    # for conf in "sigmod" "icdm"; do
+    #     cd ${SPHINX_REP}/siren-${conf}/
+    #     rm -rf _build
+    #     make singlehtml
+    #     make latexpdf
+    #     cp -r _build/singlehtml ${OUT_REP}/${conf}
+    #     cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
+    # done
 
 
     cd ${OUT_REP}
     sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html
     sed -i 's:\([^/]\)_images/:\1../_images/:g' */*.html
     mkdir ./_static/ ./_images/
-    for fold in "help" "main" "sigmod" "icdm"; do
+    # for fold in "help" "main" "sigmod" "icdm"; do
+    for fold in "help" "main"; do
         mv ${fold}/_static/* ./_static/
         mv ${fold}/_images/* ./_images/
         rmdir ${fold}/_static ${fold}/_images

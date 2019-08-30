@@ -29,13 +29,13 @@ class DrawerMappoly(DrawerMap):
             if numpy.min(vec) < 0:
                 vcc -=  numpy.min(vec)
 
-            pp_data = geoplus.computeAreasData(vcc)
+            pp_data = geoplus.prepAreasData(vcc)
             if pp_data is not None and "cks" in pp_data:
                 for cii, ck in enumerate(pp_data["cks"]):
                     pp_polys = pp_data["ccs_data"][ck]["polys"]
                     
                     for pi in pp_data["ccs_data"][ck]["exterior_polys"]:
-                        cpoly = geoplus.getEdgesCoordsFlatten(seids=pp_polys[pi])
+                        cpoly = geoplus.prepEdgesCoordsFlatten(seids=pp_polys[pi])
                         if self.bm is None:
                             xs, ys, nxs, nys = zip(*cpoly)
                         else:
@@ -79,7 +79,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             etor  = vec_dets["etor"]
 
             np_data = geoplus.prepNodePairs()
-            edges_coords = numpy.array(geoplus.getEdgesCoordsFlatten())
+            edges_coords = numpy.array(geoplus.prepEdgesCoordsFlatten())
             if self.bm is None:
                 edges_tensor = numpy.array([[edges_coords[:,0], edges_coords[:,2]], [edges_coords[:,1], edges_coords[:,3]]]).T
             else:
