@@ -1,6 +1,7 @@
 import numpy
 from matplotlib.collections import LineCollection
 
+from ..reremi.classSParts import SSetts
 from .classDrawerMap import DrawerMap
 from .classDrawerBasis import DrawerEntitiesTD
 from .classDrawerClust import DrawerClustTD
@@ -92,7 +93,8 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             node_pairs = np_data["node_pairs"]
             
             # outer = node_pairs[node_pairs[:,-1] < 0, :]
-            outer = node_pairs[node_pairs[:,-1] == -2, :]
+            ## outer = node_pairs[node_pairs[:,-1] == -2, :]
+            outer = node_pairs[node_pairs[:,-1] < 0, :]
             edges_outer = edges_tensor[outer[:,0], :, :]
             
             inner = node_pairs[node_pairs[:,-1] >= 0, :]
@@ -105,6 +107,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
                 name_over = None
             else:
                 rng = numpy.max(etor, axis=0) - numpy.min(etor, axis=0)
+                rng[rng==0] = 1.
                 vals = numpy.sum(etor[inner[:,1], :] != etor[inner[:,2], :], axis=1)
                 vcs = numpy.sum(numpy.abs(etor[inner[:,1], :] - etor[inner[:,2], :]) / rng, axis=1)
                 name_over = "Purples"
@@ -126,8 +129,10 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         return dots_draw, mapper
     
     def plotDotsPoly(self, axe, dots_draw, draw_indices, draw_settings):
-        line_segments = LineCollection(dots_draw["edges_outer"], colors="#AAAAAA", linewidths=1.)
-        axe.add_collection(line_segments)
+        if draw_settings.get("delta_on", True):
+            # line_segments = LineCollection(dots_draw["edges_outer"], colors=draw_settings["default"]["color_e"], linewidths=1., alpha=0.6)
+            line_segments = LineCollection(dots_draw["edges_outer"], colors=draw_settings[SSetts.Eoo]["color_e"], linewidths=1., alpha=0.6)            
+            axe.add_collection(line_segments)
 
         mv = float(numpy.max(dots_draw["vals"]))
         if mv > 0:

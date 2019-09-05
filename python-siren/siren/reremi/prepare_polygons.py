@@ -1576,6 +1576,8 @@ def parse_preamble(line):
                 list_edges[0][pp[0]] = tuple(eval(pp[1]))
             elif pp[0] in ["dst_type", "source"]:
                 list_edges[0][pp[0]] = pp[1]
+            elif pp[0] in ["globe"]:
+                list_edges[0][pp[0]] = (pp[1] == "True")
             else:
                 list_edges[0][pp[0]] = int(pp[1])
     return list_edges

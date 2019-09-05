@@ -131,7 +131,14 @@ def agg_bottom_up(scorings, dists, init_cands):
         merge(scorings, cx, cy)
     return pairs[::-1], ass_store[-2::-1]
 
-def order_clusts(pairs, ass_store, scoring):
+def order_clusts(pairs, ass_store, scoring, nbc=0):
+    if len(pairs) == 0:
+        if nbc == 0:
+            return numpy.array([])
+        elif nbc == 1:
+            return numpy.array([1])
+        else:
+            return numpy.arange(nbc, dtype=int)//(nbc-1)
     clust_ord = [pairs[0][0], pairs[0][1]]
     clust_pos = -numpy.ones(ass_store[0].shape, dtype=int)
     clust_pos[pairs[0][0]] = 0
@@ -187,7 +194,7 @@ class PltDtHandlerList(PltDtHandlerBasis):
         if type(i) is str:
             return i
         choices = self.getChoices(key)
-        if type(i) is int and i >= -1 and i < len(choices):
+        if type(i) is int and i >= -1 and len(choices) > 0 and i < len(choices):
             return choices[i]
         elif len(choices) > 0:
             return choices[0]
@@ -474,7 +481,7 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocksCoords):
             vec = col.getVect()
         else:
             col = None
-            vec = numpy.ones(data.nbRows())
+            vec = numpy.ones(data.nbRows(), dtype=int)
  
         uvals = sorted(set(numpy.unique(vec)).difference([-1]))
         if self.CUSTOM_ORD_CIDS is not None and len(self.CUSTOM_ORD_CIDS) == len(uvals): # for custom order
@@ -598,20 +605,26 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         choice_agg = self.getChoice("choice_agg", inter_params)
         choice_agg = choice_agg.split("_")[0]
         ddER = self.getDeduplicateER()
-        dists = self.computeDists(ddER["E"], weighted=True)
-        scorings = self.computeScoringsAgg(ddER["E"], choice_agg)
-        sc_ord = self.computeScoringOrd(ddER["E"])
-        init_cands = numpy.ones(ddER["E"]["rprt"].shape[0], dtype=bool)
-        pairs, ass_store = agg_bottom_up(scorings, dists, init_cands)
-        clust_pos = order_clusts(pairs, ass_store, sc_ord)
+        if ddER is not None and len(ddER["E"]["rprt"]) > 0:
+            dists = self.computeDists(ddER["E"], weighted=True)
+            scorings = self.computeScoringsAgg(ddER["E"], choice_agg)
+            sc_ord = self.computeScoringOrd(ddER["E"])
+            init_cands = numpy.ones(ddER["E"]["rprt"].shape[0], dtype=bool)
+            pairs, ass_store = agg_bottom_up(scorings, dists, init_cands)
+            clust_pos = order_clusts(pairs, ass_store, sc_ord, init_cands.shape[0])
+        else:
+            pairs, ass_store, clust_pos = ([], [], numpy.array([]))
 
-        rdists = self.computeDists(ddER["R"], weighted=True)
-        rscorings = self.computeScoringsAgg(ddER["R"], choice_agg)
-        rsc_ord = self.computeScoringOrd(ddER["R"])
-        rinit_cands = numpy.ones(ddER["R"]["rprt"].shape[0], dtype=bool)
-        rpairs, rass_store = agg_bottom_up(rscorings, rdists, rinit_cands)
-        r_pos = order_clusts(rpairs, rass_store, rsc_ord)
-        
+        if ddER is not None and len(ddER["R"]["rprt"]) > 0:
+            rdists = self.computeDists(ddER["R"], weighted=True)
+            rscorings = self.computeScoringsAgg(ddER["R"], choice_agg)
+            rsc_ord = self.computeScoringOrd(ddER["R"])
+            rinit_cands = numpy.ones(ddER["R"]["rprt"].shape[0], dtype=bool)
+            rpairs, rass_store = agg_bottom_up(rscorings, rdists, rinit_cands)
+            r_pos = order_clusts(rpairs, rass_store, rsc_ord, rinit_cands.shape[0])
+        else:
+            r_pos = numpy.array([])
+            
         return {"pairs": pairs, "assignments": ass_store, "clust_pos": clust_pos, "r_pos": r_pos}
       
     def setInterParams(self):
@@ -657,8 +670,10 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
             vec = v_out*numpy.ones(ddER["E"]["to_rep"].shape, dtype=int)
             vvec = v_out*numpy.ones(ddER["E"]["to_rep"].shape, dtype=int)
 
-            assign = clusters["assignments"][nbc]
-            pair = clusters["pairs"][nbc]
+            if len(clusters["assignments"]) > 0:
+                assign = clusters["assignments"][nbc]
+            else:
+                assign = numpy.arange(len(clusters["clust_pos"]))
 
             details["ord_cids"] = sorted(numpy.unique(assign), key=lambda x: clusters["clust_pos"][x])
             if self.CUSTOM_ORD_CIDS is not None and len(self.CUSTOM_ORD_CIDS) == len(details["ord_cids"]): # for custom order

@@ -116,36 +116,42 @@ class ERCache():
             etor = self.etor
 
         nbE, nbR = etor.shape
-        if etor.dtype.kind == "b":
-            matches_R_ones = numpy.dot(1*etor.T, 1*etor)        
-            matches_R_zeroes = numpy.dot(1-etor.T, 1-etor)
-            matches_E_ones = numpy.dot(1*etor, 1*etor.T)
-            matches_E_zeroes = numpy.dot(1-etor, 1-etor.T)
+        if etor.dtype == "bool": ### etor is boolean
 
-            #### DE-DUPLICATE REDS
-            rb = {}
-            for x,y in zip(*numpy.where(numpy.triu(matches_R_zeroes + matches_R_ones, 1) >= nbE)):
-                rb[x] = y
-            keep_rs = numpy.array([i for i in range(nbR) if i not in rb], dtype=int)
+            eb, rb = ({}, {})
+            matches_E_ones, matches_E_zeroes = numpy.zeros((1,1), dtype=int), nbR*numpy.ones((1,1), dtype=int)
+            matches_R_ones, matches_R_zeroes = numpy.zeros((nbR,nbR), dtype=int), nbE*numpy.ones((nbR,nbR), dtype=int)
+            keep_es, e_to_rep = numpy.array([], dtype=int), -numpy.ones(nbE, dtype=int)
+            keep_rs, r_to_rep = numpy.array([nbR-1], dtype=int), -numpy.ones(nbR, dtype=int)
             
-            r_to_rep = -numpy.ones(nbR, dtype=int)
-            r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
-            if len(rb) > 0:
-                rfrm, rtt = zip(*rb.items())
-                r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
+            if not numpy.any(etor): ### etor is all empty > no need to check matches, construct results quickly
+                r_to_rep = numpy.zeros(nbR, dtype=int)
+            else: 
+                matches_R_ones = numpy.dot(1*etor.T, 1*etor)        
+                matches_R_zeroes = numpy.dot(1-etor.T, 1-etor)
+                matches_E_ones = numpy.dot(1*etor, 1*etor.T)
+                matches_E_zeroes = numpy.dot(1-etor, 1-etor.T)
+
+                #### DE-DUPLICATE REDS
+                for x,y in zip(*numpy.where(numpy.triu(matches_R_zeroes + matches_R_ones, 1) >= nbE)):
+                    rb[x] = y
+                keep_rs = numpy.array([i for i in range(nbR) if i not in rb], dtype=int)
+                            
+                #### DE-DUPLICATE ENTITIES
+                ### e_to_rep == -1 -> entity does not support any red        
+                for x,y in zip(*numpy.where(numpy.triu(matches_E_zeroes + matches_E_ones, 1) >= nbR)):
+                    eb[x] = y
+                keep_es = numpy.array([i for i in range(nbE) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
+
+                r_to_rep[keep_rs] = numpy.arange(len(keep_rs))
+                if len(rb) > 0:
+                    rfrm, rtt = zip(*rb.items())
+                    r_to_rep[numpy.array(rfrm)] = r_to_rep[numpy.array(rtt)]
                 
-            #### DE-DUPLICATE ENTITIES
-            ### e_to_rep == -1 -> entity does not support any red        
-            eb = {}
-            for x,y in zip(*numpy.where(numpy.triu(matches_E_zeroes + matches_E_ones, 1) >= nbR)):
-                eb[x] = y            
-            keep_es = numpy.array([i for i in range(nbE) if i not in eb and numpy.sum(etor[i,:])>0], dtype=int)
-    
-            e_to_rep = -numpy.ones(nbE, dtype=int)
-            e_to_rep[keep_es] = numpy.arange(len(keep_es))
-            if len(eb) > 0:
-                efrm, ett = zip(*eb.items())
-                e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
+                e_to_rep[keep_es] = numpy.arange(len(keep_es))
+                if len(eb) > 0:
+                    efrm, ett = zip(*eb.items())
+                    e_to_rep[numpy.array(efrm)] = e_to_rep[numpy.array(ett)]
                 
             r_counts, e_counts = numpy.bincount(r_to_rep), numpy.bincount(e_to_rep+1)
 

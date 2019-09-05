@@ -168,7 +168,6 @@ class Package(object):
             if data is not None:
                 if 'ext_keys' in self.plist:
                     ext_keys = self.plist['ext_keys'].strip().split(";")
-                    pdb.set_trace()
                     params_l = data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
                     if len(params_l) > 0:
                         params = PreferencesReader(pm).readParametersDict(params_l)
