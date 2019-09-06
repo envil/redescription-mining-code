@@ -779,7 +779,7 @@ class CatColM(ColM):
         return self.NA
 
     def iter_cats(self):
-        return self.sCats.iteritems()
+        return list(self.sCats.items())
     def cats(self):
         return self.ord_cats
     def nbCats(self):
