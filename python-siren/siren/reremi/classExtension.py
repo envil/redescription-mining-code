@@ -195,12 +195,7 @@ class Extension(object):
 
     def pValRed(self, N=0, prs=None):
         if self.isValid():
-            try:
-                return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
-            except IndexError:                
-                pdb.set_trace()
-                return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
-                print(self)
+            return self.ssetts.pValRedCand(self.side, self.op, self.isNeg(), self.clp, N, prs)
 
     def __cmp__(self, other):
         return self.compare(other)
@@ -396,8 +391,8 @@ class ExtensionsBatch(object):
                 kid = cand.kid(self.getCurrentR(), data)
                 kid.setFull(self.max_var)
                 if kid.getAcc() != cand.getAcc():
-                    raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.getCurrentR(), cand, kid))
-                if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc():
+                    raise ExtensionError("[in Extension.improvingKids]\n%s\n\t%s\n\t~> %s" % (self.getCurrentR(), cand, kid))                
+                if kid.hasCondition() and kid.getAcc("cond") != cand.getCondition().getAcc(): ### cand must have condition for kid to have, not inherited from parent red
                     raise ExtensionError("[in Extension.improvingKids COND]\n%s\n\t%s\n\t~> %s" % (self.getCurrentR(), cand, kid))
                 kids.append(kid)
         return kids

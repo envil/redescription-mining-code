@@ -368,11 +368,11 @@ class CharbonGStd(CharbonGreedy):
         cands = []
         var_colors_f = [0, 0]
         # bests_f = [(0, 0, [0, 0])]
-        bests_f = [(self.getAdv(side, op, False, fixed_colors, var_colors_f, is_cond=is_cond, no_const=True)[0], 0, [0, 0])]
+        bests_f = [(self.advAcc(side, op, False, fixed_colors, var_colors_f, is_cond=is_cond, no_const=True), 0, [0, 0])]
         best_track_f = [0]
         var_colors_b = [0, 0]
         # bests_b = [(0, 0, [0, 0])]
-        bests_b = [(self.getAdv(side, op, False, fixed_colors, var_colors_b, is_cond=is_cond, no_const=True)[0], 0, [0, 0])]
+        bests_b = [(self.advAcc(side, op, False, fixed_colors, var_colors_b, is_cond=is_cond, no_const=True), 0, [0, 0])]
         best_track_b = [0]
 
         for i in range(len(segments[op])):
@@ -383,7 +383,7 @@ class CharbonGStd(CharbonGreedy):
                 var_colors_f[0] += bests_f[-1][2][0]
                 var_colors_f[1] += bests_f[-1][2][1]
 
-                bests_f.append((self.getAdv(side, op, False, fixed_colors, var_colors_f, is_cond=is_cond, no_const=True)[0], i+1, var_colors_f))
+                bests_f.append((self.advAcc(side, op, False, fixed_colors, var_colors_f, is_cond=is_cond, no_const=True), i+1, var_colors_f))
                 var_colors_f = [0, 0]
             best_track_f.append(len(bests_f)-1)
 
@@ -395,7 +395,7 @@ class CharbonGStd(CharbonGreedy):
                 var_colors_b[0] += bests_b[-1][2][0]
                 var_colors_b[1] += bests_b[-1][2][1]
 
-                bests_b.append((self.getAdv(side, op, False, fixed_colors, var_colors_b, is_cond=is_cond, no_const=True)[0], i+1, var_colors_b))
+                bests_b.append((self.advAcc(side, op, False, fixed_colors, var_colors_b, is_cond=is_cond, no_const=True), i+1, var_colors_b))
                 var_colors_b = [0, 0]
             best_track_b.append(len(bests_b)-1)
 
@@ -439,7 +439,7 @@ class CharbonGStd(CharbonGreedy):
         best_b = (None, None, None)
         for i in range(len(segments[op])-1):
             # FORWARD
-            if i > 0 and cmp_lower(self.getAdv(side, op, False, fixed_colors, segments[op][i][2], is_cond=is_cond, no_const=True)[0], self.advRatioVar(var_colors_f, is_cond)):
+            if i > 0 and cmp_lower(self.advAcc(side, op, False, fixed_colors, segments[op][i][2], is_cond=is_cond, no_const=True), self.advRatioVar(var_colors_f, is_cond)):
                 var_colors_f[0] += segments[op][i][2][0]
                 var_colors_f[1] += segments[op][i][2][1]
                 nb_seg_f += 1
@@ -451,7 +451,7 @@ class CharbonGStd(CharbonGreedy):
             best_f = self.updateACTColors(best_f, (i - nb_seg_f, i), side, op, False, fixed_colors, var_colors_f, is_cond)
             
             # BACKWARD
-            if i > 0 and cmp_lower(self.getAdv(side, op, False, fixed_colors, segments[op][-(i+1)][2], is_cond=is_cond, no_const=True)[0], self.advRatioVar(var_colors_b, is_cond)):
+            if i > 0 and cmp_lower(self.advAcc(side, op, False, fixed_colors, segments[op][-(i+1)][2], is_cond=is_cond, no_const=True), self.advRatioVar(var_colors_b, is_cond)):
                 var_colors_b[0] += segments[op][-(i+1)][2][0]
                 var_colors_b[1] += segments[op][-(i+1)][2][1]
                 nb_seg_b += 1
@@ -1005,7 +1005,13 @@ class CharbonGStd(CharbonGreedy):
         if is_cond:
             return self.ratio(var_colors[0], var_colors[0]+var_colors[1])
         return self.ratio(var_colors[0], var_colors[1])
-                
+
+    def advAcc(self, side, op, neg, fixed_colors, var_colors, is_cond=False, no_const=False):
+        tmp = self.getAdv(side, op, neg, fixed_colors, var_colors, is_cond, no_const)
+        if tmp is not None:
+            return tmp[0]
+        return None
+    
     def getAdv(self, side, op, neg, fixed_colors, var_colors, is_cond=False, no_const=False):
         fix_num = None
         if neg:

@@ -391,6 +391,10 @@ class CharbonGMiss(CharbonGreedy):
         best_b = (None, None, None)
         for i in range(len(segments[op])-1):
             # FORWARD
+            try:
+                i > 0 and cmp_lower(self.advAcc(side, op, False, lparts, lmiss, segments[op][i][2], is_cond), self.advRatioVar(side, op, lin_f, is_cond))
+            except TypeError:
+                pdb.set_trace()
             if i > 0 and cmp_lower(self.advAcc(side, op, False, lparts, lmiss, segments[op][i][2], is_cond), self.advRatioVar(side, op, lin_f, is_cond)):
                 lin_f = self.constraints.getSSetts().addition(lin_f, segments[op][i][2])
                 nb_seg_f += 1
@@ -988,10 +992,13 @@ class CharbonGMiss(CharbonGreedy):
         return self.constraints.getSSetts().advRatioVar(side, op, lin_f)
     def advAcc(self, side, op, neg, lparts, lmiss, lin, is_cond=False):
         if is_cond:
-            return self.getAC_cond(side, op, neg, lparts, lmiss, lin, no_const=True)
+            tmp = self.getACcond(side, op, neg, lparts, lmiss, lin, no_const=True)[0]
+            if tmp is not None:
+                return tmp[0]
+            return None
         return self.constraints.getSSetts().advAcc(side, op, neg, lparts, lmiss, lin, offsets=self.getOffsets())
         
-    def getAC_cond(self, side, op, neg, lparts, lmiss, lin, no_const=False):
+    def getACcond(self, side, op, neg, lparts, lmiss, lin, no_const=False):
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
 
@@ -1012,7 +1019,7 @@ class CharbonGMiss(CharbonGreedy):
     
     def getAC(self, side, op, neg, lparts, lmiss, lin, is_cond=False, no_const=False):
         if is_cond:
-            return self.getAC_cond(side, op, neg, lparts, lmiss, lin, no_const)
+            return self.getACcond(side, op, neg, lparts, lmiss, lin, no_const)
         lout = [lparts[i] - lmiss[i] - lin[i] for i in range(len(lparts))]
         clp = (lin, lout, lparts, lmiss)
         

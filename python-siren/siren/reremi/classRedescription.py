@@ -405,14 +405,14 @@ class Redescription(WithEVals):
                     self.cutOffAvailables(side)
                 
     def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):
-        kid = self.copy()        
+        kid = self.copy(with_cond = False)  ### condition is not inherited from parent red, adjusted separately
         kid.update(data, side, op, literal, suppX, missX)
         return kid
             
-    def copy(self, iid=None):
+    def copy(self, iid=None, with_cond=True):
         r = Redescription(self.queries[0].copy(), self.queries[1].copy(), \
                              self.supports().supparts(), self.supports().nbRows(), self.probas(), self.supports().getSSetts(), iid=iid)
-        if self.hasCondition():
+        if self.hasCondition() and with_cond:
             r.setCondition(self.getQueryC().copy(), self.getSuppC().copy())                        
 
         r.lAvailableCols = self.copyAvailableCols()
