@@ -768,7 +768,7 @@ class CatTerm(Term):
         if len(self.cat) == 1:
             return op_any + sep.join(["%s" % c for c in self.cat]) + cl_any
         else:
-            return op_curl + op_any + sep.join(["%s" % c for c in self.cat]) + cl_any + cl_curl
+            return op_curl + op_any + sep.join(sorted(["%s" % c for c in self.cat])) + cl_any + cl_curl
     # def getCatsBin(self):
     #     bincat = 0
     #     for c in self.cat:

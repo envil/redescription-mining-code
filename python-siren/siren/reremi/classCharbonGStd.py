@@ -609,7 +609,6 @@ class CharbonGStd(CharbonGreedy):
         tails_params = {"lower_tail_agg": self.constraints.getCstr("lower_tail_agg"),
                         "upper_tail_agg": self.constraints.getCstr("upper_tail_agg")}
         if tails_params["lower_tail_agg"] != 0 or tails_params["upper_tail_agg"]:
-            print("TAILS")
             bucketsL = colL.buckets("tails", tails_params)
             bucketsR = colR.buckets("tails", tails_params)
         else:
