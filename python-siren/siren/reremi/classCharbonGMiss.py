@@ -197,7 +197,6 @@ class CharbonGMiss(CharbonGreedy):
                 collect_goodsNeg = []
                 for (cat, supp) in col.iter_cats():
                     lin = supports.lpartsInterX(supp)
-                    ## best = self.updateACT(best, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, lparts, lmiss, lin)
                     ######################
                     tmp_adv, tmp_clp = self.getAC(side, op, neg, lparts, lmiss, lin, self.isCond(currentRStatus))
                     if tmp_adv is not None:
@@ -208,8 +207,6 @@ class CharbonGMiss(CharbonGreedy):
                     
                     ### to negate the other side when looking for initial pairs
                     if self.constraints.getCstr("neg_query_init", side=side, currentRStatus=currentRStatus):
-                        # bestNeg = self.updateACT(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, \
-                        #                       self.constraints.getSSetts().negateParts(1-side, lparts), self.constraints.getSSetts().negateParts(1-side, lmiss), self.constraints.getSSetts().negateParts(1-side, lin))
                         ######################
                         Nlparts = self.constraints.getSSetts().negateParts(1-side, lparts)
                         Nlmiss = self.constraints.getSSetts().negateParts(1-side, lmiss)
@@ -746,7 +743,7 @@ class CharbonGMiss(CharbonGreedy):
                                                          (self.constraints.getSSetts().partId(self.constraints.getSSetts().Emo, 1-side), lmissF ), \
                                                          (self.constraints.getSSetts().partId(self.constraints.getSSetts().Eoo, 1-side), belowF + aboveF - outAboveEF - outBelowEF)], 0)
 
-                                best = self.updateACTP33(best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
+                                best = self.updateACTList(33, best, (lowF, upF, lowE, upE), side, True, False, lparts, lmiss, lin)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
                                 upE-=1
@@ -808,15 +805,12 @@ class CharbonGMiss(CharbonGreedy):
 
                     # print("--", catL, catR, nL, nR)
                     # print(tmp_lparts, tmp_lmiss, tmp_lin)
-                    best[i] = self.updateACTP22(best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
+                    best[i] = self.updateACTList(22, best[i], (catL, catR), side, True, nR, tmp_lparts, tmp_lmiss, tmp_lin)
 
         (scores, literalsFix, literalsExt) = ([], [], [])
         if self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
-            # if len(scores) > 0:
-            #     print("---- Multi cats:")
-            #     for ii in range(len(scores)):
-            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
+            self.updateBests(22, best, with_multi=False)
             
         for (i, nL, nR) in configs:
             for b in best[i]:
@@ -921,7 +915,7 @@ class CharbonGMiss(CharbonGreedy):
                                 tmp_lmiss = lmiss
                                 tmp_lin = lin
 
-                            best[i] = self.updateACTP23(best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
+                            best[i] = self.updateACTList(23, best[i], (cat, low, up), side, True, nE, tmp_lparts, tmp_lmiss, tmp_lin)
                             
                         above+=interMat[up]
                         missAbove+=missMat[up]
@@ -934,10 +928,7 @@ class CharbonGMiss(CharbonGreedy):
         bUp = NumColM.buk_ind_maxes(buckets)
         if try_comb and self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
-            # if len(scores) > 0:
-            #     print("---- Multi cats:")
-            #     for ii in range(len(scores)):
-            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
+            self.updateBests(23, best, with_multi=False)
 
         for (i, nF, nE) in configs:
             for b in best[i]:
@@ -1036,7 +1027,11 @@ class CharbonGMiss(CharbonGreedy):
                     # print("PIECES", sout, varBlue, varRed, contri, fixBlue, fixRed)
                     return (acc, varBlue, varRed, contri, fixBlue, fixRed), clp
         return None, clp
-
+    
+    def inSuppBounds(self, side, op, lparts):
+        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.getCstr("min_itm_in") \
+               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.getCstr("min_itm_c")
+    
     def updateACT(self, best, lit, side, op, neg, lparts, lmiss, lin, is_cond=False):
         tmp_adv, tmp_clp = self.getAC(side, op, neg, lparts, lmiss, lin, is_cond)
         if cmp_lower(best[0], tmp_adv):
@@ -1045,52 +1040,74 @@ class CharbonGMiss(CharbonGreedy):
             return best
         ### EX: best = self.updateACT(best, Literal(neg, BoolTerm(col.getId())), side, op, neg, lparts, lmiss, lin, col.nbRows())
 
-    def updateACTP(self, best, lit, side, op, neg, lparts, lmiss, lin, conflictF):
+    def updateACTList(self, typs, best, lit, side, op, neg, lparts, lmiss, lin):
         tmp_adv, tmp_clp = self.getAC(side, op, neg, lparts, lmiss, lin)
         if tmp_adv is None:
             return best
+        return self.insertBest(typs, best, tmp_adv, tmp_clp, lit, side, op, neg)
+
+    def insertBest(self, typs, best, adv, clp, lit, side, op, neg, with_multi=True): 
         inserted = False
         i = 0
         while i < len(best):
-            if cmp_greater(best[i][0], tmp_adv):
-                if conflictF(best[i][-1][-1], lit):  ## Best already contains conflicting of better quality 
+            if cmp_greater(best[i][0], adv):
+                if self.conflictPair(typs, best[i][-1][-1], lit, with_multi):  ## Best already contains conflicting of better quality 
                     return best
             else:
-                if not inserted: 
-                    best.insert(i,(tmp_adv, tmp_clp, [side, op, neg, lit]))
+                if not inserted:
+                    best.insert(i, (adv, clp, [side, op, neg, lit]))
                     inserted = True
-                elif conflictF(best[i][-1][-1], lit): ## Best contains conflicting of lesser quality than inserted, remove
+                elif self.conflictPair(typs, lit, best[i][-1][-1], with_multi): ## Best contains conflicting of lesser quality than inserted, remove
                     best.pop(i)
                     i -=1
             i+=1
         if not inserted:
-            best.append((tmp_adv, tmp_clp, [side, op, neg, lit]))
+            best.append((adv, clp, [side, op, neg, lit]))
+        return best
+    def updateBests(self, typs, best, with_multi=True):
+        if self.constraints.getCstr("pairs_productivity") == "high":
+            return best
+        elif self.constraints.getCstr("pairs_productivity") == "low":
+            for i in range(len(best)): ## type of series
+                while len(best[i]) > 1:
+                    best[i].pop(1)
+            return best
+        # print("BEST BEFORE", " ".join(["%s:%s" % (i, len(best[i])) for i in range(len(best))]))
+        for i in range(len(best)): ## type of series
+            ia = 1
+            while ia < len(best[i]):
+                ib = ia-1
+                while ib >= 0:
+                    if self.conflictPair(typs, best[i][ib][-1][-1], best[i][ia][-1][-1], with_multi): ## Best contains conflicting of lesser quality than inserted, remove
+                        best[i].pop(ia)
+                        ia -= 1
+                        ib = 0
+                    ib -= 1
+                ia+=1
+        # print("BEST AFTER", " ".join(["%s:%s" % (i, len(best[i])) for i in range(len(best))]))
         return best
 
-    def conflictP22(self, litA, litB):
-        # return True
-        if self.constraints.getCstr("multi_cats"):
-            return (litA[0] == litB[0]) and (litA[1] == litB[1])
-        else:
-            return (litA[0] == litB[0]) or (litA[1] == litB[1])
-    def conflictP23(self, litA, litB):
-        # return True
-        if self.constraints.getCstr("multi_cats"):
-            return (litA[0] == litB[0]) and not (litA[1] > litB[2] or litB[1] > litA[2])
-        else:
-            return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
-    def conflictP33(self, litA, litB):
-        # return True
-        return not ((litA[0] > litB[1] or litB[0] > litA[1]) and (litA[2] > litB[3] or litB[2] > litA[3]))
-
-    def updateACTP22(self, best, lit, side, op, neg, lparts, lmiss, lin):
-        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP22)
-    def updateACTP23(self, best, lit, side, op, neg, lparts, lmiss, lin):
-        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP23)
-    def updateACTP33(self, best, lit, side, op, neg, lparts, lmiss, lin):
-        return self.updateACTP(best, lit, side, op, neg, lparts, lmiss, lin, self.conflictP33)
-
-
-    def inSuppBounds(self, side, op, lparts):
-        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.getCstr("min_itm_in") \
-               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.getCstr("min_itm_c")
+    def conflictPair(self, typs, litA, litB, with_multi=True):
+    #     r = self.conflictPairX(typs, litA, litB, with_multi)
+    #     print("PAIR", r, "\t", litA, litB, "\t", self.constraints.getCstr("pairs_productivity"), typs, with_multi,self.constraints.getCstr("multi_cats"))
+    #     return r
+    # def conflictPairX(self, typs, litA, litB, with_multi=True):
+        prod = self.constraints.getCstr("pairs_productivity")
+        if typs == 22:
+            if prod == "high" or (with_multi and self.constraints.getCstr("multi_cats")):
+                return (litA[0] == litB[0]) and (litA[1] == litB[1])
+            elif prod == "medium":
+                return (litA[0] == litB[0]) or (litA[1] == litB[1])
+        elif typs == 23:
+            if prod == "high" or (with_multi and self.constraints.getCstr("multi_cats")):
+                return (litA[0] == litB[0]) and (litA[1] <= litB[2] and litB[1] <= litA[2])
+            elif prod == "medium":
+                return (litA[0] == litB[0]) or (litA[1] <= litB[2] and litB[1] <= litA[2])    
+        elif typs == 33:
+            if prod == "high":
+                return (litA[0] <= litB[1] and litB[0] <= litA[1]) and (litA[2] <= litB[3] and litB[2] <= litA[3])
+            elif prod == "medium":
+                return (litA[0] <= litB[1] and litB[0] <= litA[1]) or (litA[2] <= litB[3] and litB[2] <= litA[3])
+        return True
+    
+               

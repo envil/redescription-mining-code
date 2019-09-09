@@ -792,7 +792,6 @@ class Miner(object):
                 if not self.questionLive():
                     ## self.initial_pairs.saveToFile()
                     return
-
                 self.logger.updateProgress({"rcount": self.count, "pair": pairs, "pload": pload})
                 if pairs % 100 == 0:
                     self.logger.printL(3, 'Searching pair %d/%d (%i <=> %i) ...' %(pairs, total_pairs, idL, idR), 'status', self.getId())
@@ -829,6 +828,8 @@ class Miner(object):
                         #         self.initial_pairs.add(literalsL[i], literalsR[i], {"score": score, 0: idL, 1: idR})
                         # # if pairs % 50 == 0 and pairs > 0:
                         # #     exit()
+                    elif (idL, idR) == (0,3):
+                        self.logger.printL(6, '---- Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], " & ".join(["%s" % l for l in pair.get("litC", ["-"])])), "log", self.getId())
                 self.initial_pairs.addExploredPair((idL, idR))
 
             self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())

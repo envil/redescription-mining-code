@@ -72,7 +72,7 @@ class Constraints(object):
         return changed
         
     def prepareValues(self, params, vals=None):
-        #### preparing query types        
+        #### preparing query types
         if vals is None:
             vvs = {}
         else:

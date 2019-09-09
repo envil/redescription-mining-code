@@ -259,6 +259,15 @@
 	<default><value>1</value></default>
     </parameter>
     <parameter>
+	<name>pairs_productivity</name>
+	<label>Pairs productivity</label>
+    <parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Productivity when creating initial queries from a pair of non-Boolean variables.</legend>
+	<default><value>1</value></default>
+	<options><value>low</value><value>medium</value><value>high</value></options>
+    </parameter>
+    <parameter>
 	<name>multi_cats</name>
 	<label>Multi categories</label>
 	<parameter_type>boolean</parameter_type>

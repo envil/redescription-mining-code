@@ -225,7 +225,6 @@ class CharbonGStd(CharbonGreedy):
                     else:
                         var_colors = [[lin[2], lin[0]], [lin[1], lin[3]]]
 
-                    # best = self.updateACTColors(best, , side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                     ###################### 
                     tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors[op], self.isCond(currentRStatus))
                     if tmp_adv is not None:
@@ -241,7 +240,6 @@ class CharbonGStd(CharbonGreedy):
                         else:
                             nvar_colors = [[lin[0], lin[2]], [lin[3], lin[1]]]
 
-                        # bestNeg = self.updateACTColors(bestNeg, Literal(neg, CatTerm(col.getId(), cat)), side, op, neg, nfixed_colors, nvar_colors[op])
                         ######################
                         tmp_adv = self.getAdv(side, op, neg, nfixed_colors, nvar_colors[op], self.isCond(currentRStatus))
                         if tmp_adv is not None:
@@ -399,7 +397,6 @@ class CharbonGStd(CharbonGreedy):
                 var_colors_b = [0, 0]
             best_track_b.append(len(bests_b)-1)
 
-        # pdb.set_trace()
         best_t = (None, None, None)
         for b in bests_b:
             if b[1] == len(segments[op]):
@@ -772,7 +769,7 @@ class CharbonGStd(CharbonGreedy):
                             
                             while upE >= lowE and totInt - belowF - aboveF - belowEF - aboveEF >= self.constraints.getCstr("min_itm_in"):
                                 var_colors = [totInt - belowF - aboveF - belowEF - aboveEF, belowF + aboveF - outAboveEF - outBelowEF]
-                                best = self.updateACTColorsP33(best, (lowF, upF, lowE, upE), side, True, False, fixed_colors, var_colors)
+                                best = self.updateACTList(33, best, (lowF, upF, lowE, upE), side, True, False, fixed_colors, var_colors)
                                 aboveEF+=EinF[upE]
                                 outAboveEF+=EoutF[upE]
                                 upE-=1
@@ -825,16 +822,13 @@ class CharbonGStd(CharbonGreedy):
                         fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
                         var_colors = [lin[1], lin[3]]                            
                     
-                    best[i] = self.updateACTColorsP22(best[i], (catL, catR), 0, True, nR, fixed_colors, var_colors)
+                    best[i] = self.updateACTList(22, best[i], (catL, catR), 0, True, nR, fixed_colors, var_colors)
 
         (scores, literalsFix, literalsExt) = ([], [], [])
         if self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combPairsCats(best, [colL, colR], configs, allw_neg)
-            # if len(scores) > 0:
-            #     print("---- Multi cats:")
-            #     for ii in range(len(scores)):
-            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
-
+        self.updateBests(22, best, with_multi=False)
+             
         for (i, nL, nR) in configs:
             for b in best[i]:
                 scores.append(b[0][0])
@@ -928,36 +922,19 @@ class CharbonGStd(CharbonGreedy):
                                 fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
                                 var_colors = [lin[1], lin[3]]                            
 
-                        # for (i, nF, nE) in configs:
-                        #     if nF and nE:
-                        #         fixed_colors = [[lparts[3], lparts[1]], [lparts[0], lparts[2]]]
-                        #         var_colors = [lin[0], lin[2]]                            
-                        #     elif nE:
-                        #         fixed_colors = [[lparts[1], lparts[3]], [lparts[2], lparts[0]]]
-                        #         var_colors = [lin[2], lin[0]]
-                        #     elif nF:
-                        #         fixed_colors = [[lparts[0], lparts[2]], [lparts[3], lparts[1]]]
-                        #         var_colors = [lin[3], lin[1]]                            
-                        #     else:
-                        #         fixed_colors = [[lparts[2], lparts[0]], [lparts[1], lparts[3]]]
-                        #         var_colors = [lin[1], lin[3]]                            
-
-                            best[i] = self.updateACTColorsP23(best[i], (cat, low, up), side, True, nE, fixed_colors, var_colors)
+                            best[i] = self.updateACTList(23, best[i], (cat, low, up), side, True, nE, fixed_colors, var_colors)
                             
                         above+=interMat[up]
                         up-=1
                     below+=interMat[low]
                     low+=1
-        
+
         (scores, literalsFix, literalsExt) = ([], [], [])
         bUp = NumColM.buk_ind_maxes(buckets)
         if try_comb and self.constraints.getCstr("multi_cats"):
             (scores, literalsFix, literalsExt) = self.combNumCats(best, [colF, colE], configs, allw_neg, side, buckets, bUp)
-            # if len(scores) > 0:
-            #     print("---- Multi cats:")
-            #     for ii in range(len(scores)):
-            #         print(scores[ii], literalsFix[ii], literalsExt[ii])
-
+        self.updateBests(23, best, with_multi=False)
+            
         for (i, nF, nE) in configs:
             for b in best[i]:
                 tE = colE.getLiteralBuk(nE, buckets[1], b[-1][-1][1:], buckets[bUp])
@@ -966,7 +943,6 @@ class CharbonGStd(CharbonGreedy):
                     literalsFix.append(colF.makeCatLit(b[-1][-1][0], nF))
                     scores.append(b[0][0])
         return (scores, literalsFix, literalsExt)
-
 
     def combNumCats(self, best, cols, configs, allw_neg, side, buckets, bUp):
         (scores, literalsFix, literalsExt) = ([], [], [])
@@ -1080,60 +1056,84 @@ class CharbonGStd(CharbonGreedy):
 
     # def getBestClp(self, bestColors):
     #     return bestColors[0],  self.getClp(bestColors[2][0], bestColors[2][1], bestColors[2][2], bestColors[1][0], bestColors[1][1]), bestColors[2] 
-        
+
+        ### Reintegrate as well as linter
+    def inSuppBounds(self, side, op, lparts):
+        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.getCstr("min_itm_in") \
+               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.getCstr("min_itm_c")
+
     def updateACTColors(self, best, lit, side, op, neg, fixed_colors, var_colors, is_cond=False):
         tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors, is_cond)
         if cmp_lower(best[0], tmp_adv):
             return tmp_adv, None, [side, op, neg, lit] ## [fixed_colors, tuple(var_colors)]
-        else:
-            return best
+        return best
 
-    def updateACTColorsP(self, best, lit, side, op, neg, fixed_colors, var_colors, conflictF):
+    def updateACTList(self, typs, best, lit, side, op, neg, fixed_colors, var_colors):
         tmp_adv = self.getAdv(side, op, neg, fixed_colors, var_colors)
         if tmp_adv is None:
             return best
+        return self.insertBest(typs, best, tmp_adv, lit, side, op, neg, fixed_colors, var_colors)
+
+    def insertBest(self, typs, best, adv, lit, side, op, neg, fixed_colors, var_colors, with_multi=True): 
         inserted = False
         i = 0
         while i < len(best):
-            if cmp_greater(best[i][0], tmp_adv):
-                if conflictF(best[i][-1][-1], lit):  ## Best already contains conflicting of better quality 
+            if cmp_greater(best[i][0], adv):
+                if self.conflictPair(typs, best[i][-1][-1], lit, with_multi):  ## Best already contains conflicting of better quality 
                     return best
             else:
                 if not inserted: 
-                    best.insert(i,(tmp_adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
+                    best.insert(i, (adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
                     inserted = True
-                elif conflictF(best[i][-1][-1], lit): ## Best contains conflicting of lesser quality than inserted, remove
+                elif self.conflictPair(typs, lit, best[i][-1][-1], with_multi): ## Best contains conflicting of lesser quality than inserted, remove
                     best.pop(i)
                     i -=1
             i+=1
         if not inserted:
-            best.append((tmp_adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
+            best.append((adv, (tuple(fixed_colors), tuple(var_colors)), [side, op, neg, lit]))
+        return best
+    def updateBests(self, typs, best, with_multi=True):
+        if self.constraints.getCstr("pairs_productivity") == "high":
+            return best
+        elif self.constraints.getCstr("pairs_productivity") == "low":
+            for i in range(len(best)): ## type of series
+                while len(best[i]) > 1:
+                    best[i].pop(1)
+            return best
+        for i in range(len(best)): ## type of series
+            ia = 1
+            while ia < len(best[i]):
+                ib = ia-1
+                while ib >= 0:
+                    if self.conflictPair(typs, best[i][ib][-1][-1], best[i][ia][-1][-1], with_multi): ## Best contains conflicting of lesser quality than inserted, remove
+                        best[i].pop(ia)
+                        ia -= 1
+                        ib = 0
+                    ib -= 1
+                ia+=1
         return best
 
-    def conflictP22(self, litA, litB):
-        # return True
-        if self.constraints.getCstr("multi_cats"):
-            return (litA[0] == litB[0]) and (litA[1] == litB[1])
-        else:
-            return (litA[0] == litB[0]) or (litA[1] == litB[1])
-    def conflictP23(self, litA, litB):
-        # return True
-        if self.constraints.getCstr("multi_cats"):
-            return (litA[0] == litB[0]) and not (litA[1] > litB[2] or litB[1] > litA[2])
-        else:
-            return (litA[0] == litB[0]) or not (litA[1] > litB[2] or litB[1] > litA[2])
-    def conflictP33(self, litA, litB):
-        # return True
-        return not ((litA[0] > litB[1] or litB[0] > litA[1]) and (litA[2] > litB[3] or litB[2] > litA[3]))
-
-    def updateACTColorsP22(self, best, lit, side, op, neg, fixed_colors, var_colors):
-        return self.updateACTColorsP(best, lit, side, op, neg, fixed_colors, var_colors, self.conflictP22)            
-    def updateACTColorsP23(self, best, lit, side, op, neg, fixed_colors, var_colors):
-        return self.updateACTColorsP(best, lit, side, op, neg, fixed_colors, var_colors, self.conflictP23)
-    def updateACTColorsP33(self, best, lit, side, op, neg, fixed_colors, var_colors):
-        return self.updateACTColorsP(best, lit, side, op, neg, fixed_colors, var_colors, self.conflictP33)
-
-### Reintegrate as well as linter
-    def inSuppBounds(self, side, op, lparts):
-        return self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_varnum[op] + self.constraints.getSSetts().IDS_fixnum[op], lparts) >= self.constraints.getCstr("min_itm_in") \
-               and self.constraints.getSSetts().sumPartsId(side, self.constraints.getSSetts().IDS_cont[op], lparts) >= self.constraints.getCstr("min_itm_c")
+    def conflictPair(self, typs, litA, litB, with_multi=True):
+    #     r = self.conflictPairX(typs, litA, litB, with_multi)
+    #     print("PAIR", r, "\t", litA, litB, "\t", self.constraints.getCstr("pairs_productivity"), typs, with_multi,self.constraints.getCstr("multi_cats"))
+    #     return r
+    # def conflictPairX(self, typs, litA, litB, with_multi=True):
+        prod = self.constraints.getCstr("pairs_productivity")
+        if typs == 22:
+            if prod == "high" or (with_multi and self.constraints.getCstr("multi_cats")):
+                return (litA[0] == litB[0]) and (litA[1] == litB[1])
+            elif prod == "medium":
+                return (litA[0] == litB[0]) or (litA[1] == litB[1])
+        elif typs == 23:
+            if prod == "high" or (with_multi and self.constraints.getCstr("multi_cats")):
+                return (litA[0] == litB[0]) and (litA[1] <= litB[2] and litB[1] <= litA[2])
+            elif prod == "medium":
+                return (litA[0] == litB[0]) or (litA[1] <= litB[2] and litB[1] <= litA[2])    
+        elif typs == 33:
+            if prod == "high":
+                return (litA[0] <= litB[1] and litB[0] <= litA[1]) and (litA[2] <= litB[3] and litB[2] <= litA[3])
+            elif prod == "medium":
+                return (litA[0] <= litB[1] and litB[0] <= litA[1]) or (litA[2] <= litB[3] and litB[2] <= litA[3])
+        return True
+    
+               
