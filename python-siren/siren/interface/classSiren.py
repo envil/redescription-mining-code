@@ -19,12 +19,13 @@ import wx.lib.dialogs
 WITHVIEWS = True #False
 
 from ..reremi.toolLog import Log
+from ..reremi.classProps import findFile
 from ..reremi.classRedescription import Redescription
 from ..reremi.classCol import DataError, ColM
 from ..reremi.classQuery import Literal, Query
 from ..reremi.classData import RowE, Data
 
-from .DataWrapper import DataWrapper, findFile
+from .DataWrapper import DataWrapper
 from .classGridTable import RowTable
 from .classContentTable import RedsTable, VarsTable
 from .classPreferencesDialog import PreferencesDialog

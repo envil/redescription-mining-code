@@ -34,7 +34,16 @@
 	<range_max>10</range_max>
 	<default><value>4</value></default>
     </parameter>
-      <parameter>
+    <parameter>
+	<name>var_compat</name>
+	<label>Var group compatibility</label>
+	<parameter_type>single_options</parameter_type>
+	<value_type>text</value_type>
+	<legend>Fixes whether group ids should differ or match for variables to be considered compatible (gid=-1 is universally compatible).</legend>
+	<default><value>0</value></default>
+	<options><value>differ</value><value>match</value></options>
+    </parameter>
+    <parameter>
 	<name>verbosity</name>
 	<label>Log verbosity</label>
 	<parameter_type>range</parameter_type>

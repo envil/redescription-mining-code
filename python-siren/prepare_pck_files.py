@@ -66,7 +66,7 @@ __PROJECT_DESCRIPTION_LINE__
 ### Installation
 
 #### Dependencies
-`python-siren` requires several other Python utilities, including wxPython Phoenix (for the GUI), Numpy, Scipy, Scikit-learn, Matplotlib, and Basemap.
+`python-siren` requires several other Python utilities, including wxPython Phoenix (for the GUI), Numpy, Scipy, Scikit-learn, Matplotlib, and Cartopy.
 
 * wxgtk4.0 (>= 4.0.0), see https://wxpython.org/
 __DEPENDENCIES_PIP_STR__
@@ -97,7 +97,7 @@ __PROJECT_DESCRIPTION_LINE__
 
 
 ### Installation
-python-siren requires several other python utilities, including wxPython Phoenix (GUI), Numpy, Scipy, Scikit-learn, and Matplotlib (+basemap).
+python-siren requires several other python utilities, including wxPython Phoenix (GUI), Numpy, Scipy, Scikit-learn, and Matplotlib (+Cartopy).
 
 With a debian-based distribution run the following commands as root to install:
 dpkg -i the_latest___PROJECT_NAMELOW___deb_package.deb

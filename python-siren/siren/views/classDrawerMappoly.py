@@ -2,7 +2,8 @@ import numpy
 from matplotlib.collections import LineCollection
 
 from ..reremi.classSParts import SSetts
-from .classDrawerMap import DrawerMap
+# from .classDrawerMap import DrawerMap
+from .classDrawerMapCarto import DrawerMap
 from .classDrawerBasis import DrawerEntitiesTD
 from .classDrawerClust import DrawerClustTD
 

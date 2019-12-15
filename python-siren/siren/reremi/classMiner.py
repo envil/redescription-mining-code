@@ -164,7 +164,7 @@ class ExpMiner(object):
         first_round = True
         max_var = [self.constraints.getCstr("max_var", side=0), self.constraints.getCstr("max_var", side=1)]
         for r in nextge:
-            r.initAvailable(rcollect, max_var)
+            r.initAvailable(rcollect, self.data, max_var)
         
         while len(nextge) > 0:
             kids = set()

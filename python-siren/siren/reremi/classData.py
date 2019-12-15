@@ -201,7 +201,18 @@ class Data(ContentCollection):
     real_types_name_to_id = dict([(c.type_name, c.type_id) for c in real_types])
     NA_str_def = NA_str_c
     NA_str = NA_str_c
-
+    NA_str = NA_str_c
+    compat_diff = True
+    
+    @classmethod
+    def setCompat(tcl, var_compat=True):
+        if type(var_compat) is bool:
+            tcl.compat_diff = var_compat
+        elif type(var_compat) is str:
+            tcl.compat_diff = var_compat.startswith("d")
+    @classmethod
+    def isCompatD(tcl):
+        return tcl.compat_diff
     @classmethod
     def getNamesTids(tcl):
         return [(c.type_name, c.type_id) for c in tcl.real_types]
@@ -417,24 +428,36 @@ class Data(ContentCollection):
         if side is None:            
             return any([self.hasGroups(sside) for sside in self.getSides(side)])
         return any([col.hasGroup() for col in self.colsSide(side)])
-    def getCidsGroup(self, gid=-1, side=None):
-        if side is None:
-            group = []
-            for sside in self.getSides(side):
-                group.extend([(sside, cid) for cid in self.getCidsGroup(gid, sside)])
-            return group
-        return [col.getId() for col in self.colsSide(side) if col.getGroupId() == gid]
-    def getCidsGroupForCid(self, side, cid, other_side=False):
-        gid = self.col(side, cid).getGroupId()
-        if other_side:
-            return self.getCidsGroup(gid, 1-side)
-        return self.getCidsGroup(gid, side)
+    def diffGid(self, gidA, gidB):
+        return gidA == -1 or gidB == -1 or gidA != gidB
+    def sameGid(self, gidA, gidB):
+        return gidA == -1 or gidB == -1 or gidA == gidB
     def areGroupCompat(self, cidA, cidB, sideA=0, sideB=1):
         gidA = self.col(sideA, cidA).getGroupId()
         gidB = self.col(sideB, cidB).getGroupId()
-        return gidA == -1 or gidB == -1 or gidA != gidB
+        if self.isCompatD():
+            return self.diffGid(gidA, gidB)
+        return self.sameGid(gidA, gidB)
+    def upColsCompat(self, cAv, side, cids, other_side=False):
+        if cAv is None or len(cAv) == 0:
+            return
+        seen_groups = set([-1])
+        if other_side:
+            ss = 1-side
+        else:
+            ss = side
+            cAv.difference_update(cids)
+
+        for cid in cids:
+            gid = self.col(side, cid).getGroupId()
+            if gid not in seen_groups:
+                seen_groups.add(gid)
+                if self.isCompatD():
+                    cAv.difference_update([c for c in cAv if self.col(ss, c).getGroupId() == gid])
+                else:
+                    cAv.intersection_update([c for c in cAv if self.col(ss, c).getGroupId() == gid or self.col(ss, c).getGroupId() == -1])
+        return cAv
     
-        
     def getSSetts(self):
         return self.ssetts
 
@@ -940,7 +963,7 @@ class Data(ContentCollection):
                 else:
                     discol.append(Data.enabled_codes[col.getEnabled()])
                     
-        if self.hasGroups(side)  or (single_dataset and self.hasGroups()):
+        if self.hasGroups(side) or (single_dataset and self.hasGroups()):
             groupscol.append(csv_reader.GROUPS_COLS[0])
             ### ADD VALUES IN THE ENABLED COL TO FILL FOR SPECIAL COLS
             if details and self.hasSelectedRows():
@@ -1518,12 +1541,11 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 while col is None and len(type_ids) >= 1:
                     col = type_ids.pop().parseList(values, indices[side])
                     
-            if col is not None and col.N == N:                
+            if col is not None and col.N == N:
                 if not det.get("enabled", True) or \
-                       (csv_data["data"][side][csv_reader.ENABLED_COLS[0]] is not None \
-                        and not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito] ):
+                        not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito]:
                     col.flipEnabled()
-                if csv_data["data"][side][csv_reader.GROUPS_COLS[0]] is not None: 
+                if len(csv_data["data"][side][csv_reader.GROUPS_COLS[0]]) > 0:
                     gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
                     col.setGroupId(gid)
                 ## if not det.get("enabled", True) or \
@@ -1531,12 +1553,12 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 cols[sito].append(col)
             else:
                 # pdb.set_trace()
-                raise DataError('Unrecognized variable type!')            
+                raise DataError('Unrecognized variable type!')
     return (cols, N, coords, rnames, disabled_rows, condition_dt)
         
 
 def main():
-
+    
     ############# ADDING NEW VARIABLES
     # rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
     # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")

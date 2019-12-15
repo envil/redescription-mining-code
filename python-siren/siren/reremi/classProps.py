@@ -19,6 +19,21 @@ NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii
 
 WIDTH_MID = .5
 
+def findFile(fname, path=['']):
+    """Finds file from path (always including the current working directory) and returns
+    its path or 'None' if the file does not exist.
+    If path is not given or an empty list, only checks if the file is present locally.
+
+    On Windows, this also changes forward slashes to backward slashes in the path."""
+    # if os.path.exists(fname):
+    #     return fname
+
+    for p in path:
+        testpath = os.path.join(os.path.normpath(p), fname)
+        if os.path.exists(testpath):
+            return testpath
+    return None
+
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
                                    for g in all_subclasses(s)]    
@@ -918,9 +933,9 @@ class Props(object):
 class VarProps(Props):
    
     pref_dir = os.path.dirname(os.path.abspath(__file__))
-    def_file_basic = pref_dir+"/fields_vdefs_basic.txt"
+    def_file_basic = findFile("fields_vdefs_basic.txt", ["", pref_dir])
     default_def_files = [def_file_basic]
-
+    
     rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
     rset_match = "("+ "|".join(["all","learn","test","active"]) +")"
     what_match = "\w+"
@@ -986,7 +1001,7 @@ class VarProps(Props):
 class RedProps(Props):
    
     pref_dir = os.path.dirname(os.path.abspath(__file__))
-    def_file_basic = pref_dir+"/fields_rdefs_basic.txt"
+    def_file_basic = findFile("fields_rdefs_basic.txt", ["", pref_dir])
     default_def_files = [def_file_basic]
 
     rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"

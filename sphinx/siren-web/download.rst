@@ -29,7 +29,7 @@ Siren is available as a python package on `PyPI <https://pypi.org/project/python
 The source code is hosted in a Git repository on `InriaForge <https://gforge.inria.fr/projects/siren/>`_.
 You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
 
-*Siren* requires a number of python libraries: ``scipy``, ``numpy``, ``matplotlib``, ``wxPython``, ``mpl_toolkit.Basemap`` and ``sklearn`` (scikit-learn). Make sure they are installed and accessible before you run *Siren*.
+*Siren* requires a number of python libraries: ``scipy``, ``numpy``, ``matplotlib``, ``wxPython``, ``cartopy`` (``mpl_toolkit.Basemap`` for releases prior to ``5.0.3``) and ``sklearn`` (scikit-learn). Make sure they are installed and accessible before you run *Siren*.
 
 You can find help under *Siren*'s Help menu or :project_url:`online <help/>`.
 

@@ -23,7 +23,8 @@ from .classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from .classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 from .classDrawerPara import DrawerRedPara
 from .classDrawerTree import DrawerRedTree
-from .classDrawerMap import DrawerEntitiesMap, DrawerClustMap
+# from .classDrawerMap import DrawerEntitiesMap, DrawerClustMap
+from .classDrawerMapCarto import DrawerEntitiesMap, DrawerClustMap
 from .classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
 from .classDrawerTimeSeries import DrawerRedTimeSeries
 from .classDrawerCorrel import DrawerRedCorrel

@@ -49,7 +49,7 @@ dependencies = [("numpy", "python3-numpy", "(>= 1.13.0)"),
                 ("scipy", "python3-scipy", "(>= 0.19.0)"),
                 ("scikit-learn", "python3-sklearn", "(>= 0.19.0)"),
                 ("matplotlib", "python3-matplotlib", "(>= 2.1.0)"),
-                ("basemap", "python3-mpltoolkits.basemap", "(>= 1.1.0)")]
+                ("cartopy", "python3-cartopy", "(>= 0.14)")]
 
 # "python3-wxgtk4.0 (>= 4.0.0)",
 dependencies_deb = []

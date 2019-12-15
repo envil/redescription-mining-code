@@ -138,7 +138,7 @@ def init_tree(data, side, more={}, cols_info=None):
     #### TODO CHECK!
     parent_tree = {"id": None,
                    "branch": None,
-                   "candidates": range(data[side].shape[1]),
+                   "candidates": list(range(data[side].shape[1])),
                    "involv": []}
     if cols_info is not None:
         vid = None

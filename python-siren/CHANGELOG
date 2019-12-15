@@ -1,5 +1,14 @@
 CHANGELOG for Siren
 ===================
+v5.0.4
+------
+* Switch map plotting to Cartopy
+* Find file rdefs and vdefs
+
+v5.0.3
+------
+* Various bug fixes
+
 v5.0.2
 ------
 * Reincorporated data extensions and polygons

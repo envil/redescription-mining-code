@@ -103,12 +103,12 @@ class DrawerClustTD(DrawerEntitiesTD):
         clrs = [self.mapper_occ.to_rgba(block_data["occ_avg"][j]) for j, rid in ord_rids]
         
         e_drawn = []
-        e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":", align="edge"))
+        e_drawn.append(axe.barh(numpy.ones(nbr)*sizes["left"][pi], numpy.ones(nbr)*sizes["h_occ"], numpy.ones(nbr)*sizes["width"][pi], sizes["btms"], color=clrs, edgecolor=bckcocc, linewidth=.5, linestyle=":", align="edge", zorder=self.zorder_sideplot))
         ## y, width, height, left
         if self.getSettV("blocks_show_values", False):
             for jj, (j, rid) in enumerate(ord_rids):
                 c = self.mapper_occ.to_rgba(numpy.around(1-block_data["occ_avg"][j]))
-                e_drawn.append(axe.text(sizes["btms"][jj]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, **self.view.getFontProps()))
+                e_drawn.append(axe.text(sizes["btms"][jj]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, zorder=self.zorder_sideplot, **self.view.getFontProps()))
         return e_drawn
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):                
@@ -162,13 +162,13 @@ class DrawerClustTD(DrawerEntitiesTD):
         colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
         # colors[-1] = draw_settings["default"]["color_f"]
         
-        axe.barh(y0, nbr*h_occ+h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge")
+        axe.barh(y0, nbr*h_occ+h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge", zorder=self.zorder_sideplot)
         # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
         # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
         # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
-        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge")
-        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
-        axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge", zorder=self.zorder_sideplot)
+        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2, zorder=self.zorder_sideplot)
+        axe.plot([bottom_occ, bottom_occ], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2, zorder=self.zorder_sideplot)
 
         sizes = {"left": left, "h_occ": h_occ, "width": width, "btms": btms}
         if nbr > 0:
@@ -177,7 +177,7 @@ class DrawerClustTD(DrawerEntitiesTD):
 
             if with_rlbls:
                 for jj, (j, rid) in enumerate(vec_dets["more"]["ord_rids"]):
-                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_top-.01*(y1_top-y0), "%s" % rid, va="top", ha="center", rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.85, boxstyle='square,pad=0.1'), **self.view.getFontProps())
+                    axe.text(bottom_occ+(jj+.5)*h_occ, y1_top-.01*(y1_top-y0), "%s" % rid, va="top", ha="center", rotation=90, bbox=dict(facecolor='white', linewidth=0, alpha=0.85, boxstyle='square,pad=0.1'), zorder=self.zorder_sideplot, **self.view.getFontProps())
                     # axe.text(bottom_occ+(jj+.5)*h_occ, y0 + .05*(y1-y0) + (.9*(y1-y0)*jj)/max(1, nbr-1), "%s" % rid, bbox=dict(facecolor='white', edgecolor='white', alpha=0.75), ha="center", rotation=90)
                 
         

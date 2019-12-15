@@ -166,7 +166,7 @@ class Redescription(WithEVals):
         if len(self) == 0:
             return r, [[],[]], modr 
         qsNoan, lsAnon = self.minusAnon()
-        if (len(lsAnon[0]) + len(lsAnon[1])) > 0: ### NO anon, standard list of one-step extensions
+        if (len(lsAnon[0]) + len(lsAnon[1])) > 0: ### contains anon, standard list of one-step extensions
             if (len(qsNoan[0]) + len(qsNoan[1])) == 0: ### only anon, need to start by mining pairs...
                 modr = -1
             else:
@@ -297,42 +297,26 @@ class Redescription(WithEVals):
         
     def prepareExtElems(self, data=None, single_dataset=False, souvenirs=None):
         r, lsAnon, modr = self.minusAnonRed(data)
-        if modr != 0:
+        if modr != 0: ### contains anon, use to restrict available vars
             for side, lits in enumerate(lsAnon):
                 if len(lits) > 0 or modr == 1:
-                    still_available=[l[1].colId() for l in lits]
+                    still_available = [l[1].colId() for l in lits]
                 else:
-                    still_available=None
+                    still_available = None
                 r.restrictAvailable(side, self.lAvailableCols[side], still_available)
-        exts = []
-        if modr == -1:
+        exts = []        
+        if modr == -1: ### only anon, need to start by mining pairs...
             for vLHS in r.lAvailableCols[0]:
                 for vRHS in r.lAvailableCols[1]:
                     if (not single_dataset or vLHS != vRHS) and (not data.hasGroups(0) or not data.hasGroups(1) or data.areGroupCompat(vLHS, vRHS, 0, 1)):
                         exts.append((0, vLHS, data.col(1, vRHS)))
         elif len(r) > 0:
             for side in [0,1]:
-                exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset, souvenirs=souvenirs)])
-        # print("EXTS", exts, self.disp(), r.disp())
+                if self.lAvailableCols[side] is not None and self.length(1-side) != 0: # if other side is empty, that should be extended first
+                    df = self.queries[1-side].invCols() if single_dataset else set() # and self.lAvailableCols[1-side] is not None
+                    # exts.extend([(side, v, r) for v in r.availableColsSide(side, data, single_dataset, souvenirs=souvenirs)])
+                    exts.extend([(side, v, r) for v in r.lAvailableCols[side].difference(df)])
         return exts, r, modr
-
-    def availableColsSide(self, side, data=None, single_dataset=False, check_empty=True, souvenirs=None):
-        if self.lAvailableCols[side] is not None and (not check_empty or self.length(1-side) != 0):
-            tt = set(self.lAvailableCols[side])
-            if single_dataset: # and self.lAvailableCols[1-side] is not None:
-                tt.difference_update(self.queries[1-side].invCols())
-            # if single_dataset and self.lAvailableCols[1-side] is not None:
-            #     if len(self.lAvailableCols[1-side]) > 0: ### other side might have been deactivated, don't intersect
-            #         tt &= set(self.lAvailableCols[1-side])
-            #     else:
-            #         tt.difference_update(self.queries[1-side].invCols())
-            if data is not None:
-                for ss in [0,1]:
-                    if data.hasGroups(ss):
-                        for c in self.queries[ss].invCols():
-                            tt = [t for t in tt if data.areGroupCompat(t, c, side, ss)]
-            return tt
-        return set()    
     def hasAvailableCols(self):
         return any([(ss is not None and len(ss) > 0) for ss in self.lAvailableCols])
     def totAvailableCols(self):
@@ -352,10 +336,13 @@ class Redescription(WithEVals):
                 return None
             else:
                 return set(self.lAvailableCols[side])
-    def initAvailable(self, souvenirs, max_var=None):
+    def initAvailable(self, souvenirs, data, max_var=None):
+        invs = (self.invColsSide(0), self.invColsSide(1))
         for side in [0, 1]:
             if self.lAvailableCols[side] is None:
                 self.lAvailableCols[side] = souvenirs.copyAvailableCols(side)
+                for ss in [0, 1]:
+                    data.upColsCompat(self.lAvailableCols[side], ss, invs[ss], side!=ss)
             self.setFull(max_var)
     def updateAvailable(self, souvenirs):
         for side in [0, 1]:
@@ -377,7 +364,6 @@ class Redescription(WithEVals):
                     self.lAvailableCols[side] = set(org_available)
                 if not_available is not None and self.lAvailableCols[side] is not None:
                     self.lAvailableCols[side].difference_update(not_available)
-
     def cutOffAvailables(self, side=None):
         if side is None:
             self.lAvailableCols = [None, None]
@@ -394,10 +380,13 @@ class Redescription(WithEVals):
             self.queries[side].extend(op, literal)
             self.supports().update(side, op.isOr(), suppX, missX)
             self.dict_supp_info = None
-            if self.lAvailableCols[side] is not None:
-                self.lAvailableCols[side].remove(literal.colId())
+            if data is None:
+                if self.lAvailableCols[side] is not None:
+                    self.lAvailableCols[side].remove(literal.colId())
+            else:
+                for ss in [0, 1]:
+                    data.upColsCompat(self.lAvailableCols[ss], side, [literal.colId()], side!=ss)
             self.appendTrack(((1-side) * 1-2*int(op.isOr()), literal.colId()))
-
     def setFull(self, max_var=None):
         if max_var is not None:
             for side in [0,1]:

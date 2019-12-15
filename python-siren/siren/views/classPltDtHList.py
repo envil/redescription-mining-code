@@ -521,8 +521,9 @@ class PltDtHandlerListVarSplits(PltDtHandlerListBlocksCoords):
     
 class PltDtHandlerListClust(PltDtHandlerListVarSplits):
 
-    CUSTOM_ORD_CIDS = None #[49, 0, 1, 36, 43, 23]
-    CUSTOM_ORD_CIDS = None #[0, 1, 36, 43, 23]
+    #[49, 0, 1, 36, 43, 23]
+    #[0, 1, 36, 43, 23] China teeth
+    CUSTOM_ORD_CIDS = None
     
     @classmethod
     def computeDists(tcl, data, weighted=False):

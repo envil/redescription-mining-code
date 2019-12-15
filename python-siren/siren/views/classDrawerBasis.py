@@ -30,6 +30,7 @@ SPECIAL_BINS, SPECIAL_LBLS, SPECIAL_CMAP = None, None, None
 
 class DrawerBasis(object):
 
+    zorder_sideplot = 5
     wait_delay = 300
     ann_to_right = True
     ann_xy = (-10, 15)
@@ -111,7 +112,6 @@ class DrawerBasis(object):
             corners = (x0, x1, y0, y1, bx, by)
 
             self.dots_draw, mapper = self.prepareDotsDraw(vec, vec_dets, draw_settings)
-            
             if len(selected) > 0 and "fc_dots" in self.dots_draw:
                 selp = inter_params.get("slide_opac", 50)/100.
                 self.dots_draw["fc_dots"][numpy.array(list(selected)), -1] *= selp
@@ -370,7 +370,8 @@ class DrawerBasis(object):
                 return self.getPltDtH().getRed().isXpr()
             return True
         return False
-
+    def q_has_clusters(self):
+        return self.getPltDtH().hasClusters()
     def q_has_selected(self):
         return len(self.getHighlightedIds()) > 0
 
@@ -721,11 +722,11 @@ class DrawerEntitiesTD(DrawerBasis):
                             "xave_clus_varLHS": {"method": self.save_clus_varLHS, "label": "Save %s as LHS variable" % w,
                                                "legend": "Save the %s as a new left-hand side data variable" % w,
                                                "more": None,  "type": "main",
-                                               "order":11, "active_q": self.q_not_basis},
+                                               "order":11, "active_q": self.q_has_clusters},
                             "yave_clus_varRHS": {"method": self.save_clus_varRHS, "label": "Save %s as RHS variable" % w,
                                                "legend": "Save the %s as a new right-hand side data variable" % w,
                                                "more": None,  "type": "main",
-                                               "order":11, "active_q": self.q_not_basis}
+                                               "order":11, "active_q": self.q_has_clusters}
                 })
                 
         if self.hasElement("mask_creator"):
@@ -948,7 +949,6 @@ class DrawerEntitiesTD(DrawerBasis):
         return dots_draw, mapper
 
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
-
         if SPECIAL_BINS is not None:
             re_vec, re_vec_dets = vec, vec_dets
             vec_dets = {'typeId': 2, 'single': True, 'binVals': range(len(SPECIAL_BINS)), 'binLbls': SPECIAL_LBLS}
@@ -1007,9 +1007,9 @@ class DrawerEntitiesTD(DrawerBasis):
         width = [norm_bins[i+1]-norm_bins[i] for i in range(len(n))]        
         
         bckc = "white" 
-        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc, align="edge")
-        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2, align="edge")
-        axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2)
+        axe.barh(y0, -((fracts[0]+fracts[1])*(x1-x0)+bx), y1-y0, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=bckc, edgecolor=bckc, align="edge", zorder=self.zorder_sideplot)
+        axe.barh(left, -numpy.array(norm_h), width, x1+(fracts[0]+fracts[1])*(x1-x0)+2*bx, color=colors, edgecolor=bckc, linewidth=2, align="edge", zorder=self.zorder_sideplot)
+        axe.plot([x1+2*bx+fracts[0]*(x1-x0), x1+2*bx+fracts[0]*(x1-x0)], [norm_bins[0], norm_bins[-1]], color=bckc, linewidth=2, zorder=self.zorder_sideplot)
         x1 += (fracts[0]+fracts[1])*(x1-x0)+2*bx
         axe.set_yticks(norm_bins_ticks)        
         axe.set_yticklabels(bins_lbl, **self.view.getFontProps())

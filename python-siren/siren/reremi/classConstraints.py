@@ -115,6 +115,8 @@ class Constraints(object):
 
     def resetDataDependent(self, data, params):
         self.applyVarsMask(data, params)
+        if data is not None:
+            data.setCompat(self.getCstr("var_compat"))
         self.resetDataDetails(data)
         self._pv.update(self.prepareValuesDataDependent(params))
                 

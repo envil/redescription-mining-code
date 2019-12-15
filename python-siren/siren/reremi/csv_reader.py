@@ -163,7 +163,6 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if len(head) == 0:
                 head = [h for h in next(csvreader)]
                 skipfirst = True
-
         if test_some_numbers(head):
             ### If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
@@ -194,6 +193,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if re.match("\s*#", row[0]):
                 continue
             if len(row) == no_of_columns+1 and ((row[0] in GROUPS_COLS) or (row[0] in ENABLED_COLS)):
+                ### these would be for data not including ids
                 specials[row.pop(0)] = len(first_value(data))
             if len(row) != no_of_columns:
                 raise ValueError('number of columns does not match (is '+
@@ -208,7 +208,6 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                     data[head[i]].append(None)        
     if fcl:
         f.close()
-    ## HERE DEBUG UTF-8
     return head, data, type_all, specials
 
 def parse_sparse(D, coord, ids, varcol, valcol, off=None):
@@ -472,7 +471,6 @@ def get_groupcol(D, ids):
             break
     return groupcol
 
-
 def is_sparse(D):
     colid = list(COLVAR)
     colv = list(COLVAL)
@@ -574,7 +572,6 @@ def row_order(L, R, other_params={}):
         elif len(R["specials"]) > 0:
             R[ENABLED_COLS[0]] = get_discol(R, R["specials"])
             R[GROUPS_COLS[0]] = get_groupcol(R, R["specials"])
-    
     (Lcond_col, LcondIds, LisTime) = has_condition(L, other_params)
     (Rcond_col, RcondIds, RisTime) = has_condition(R, other_params)
 
@@ -644,7 +641,6 @@ def row_order(L, R, other_params={}):
             raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
 
     order_keys = [[],[]]
-    # pdb.set_trace()
     if (LhasIds and RhasIds):
         order_keys[0].append(Lids)
         order_keys[1].append(Rids)
@@ -880,7 +876,7 @@ def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
         raise CSVRError("Error reading the left hand side data: %s" % arg)
     except csv.Error as arg:
         raise CSVRError("Error reading the left hand side data: %s" % arg)
-    L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Lspecials}
+    L = {'data': Ld, 'headers': Lh, "sparse": False, "type_all": Ltype, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}, "specials": Lspecials}
 
     if single_dataset:
         (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L, other_params)
@@ -894,7 +890,7 @@ def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
             raise CSVRError("Error reading the right hand side data: %s" % arg)
         except csv.Error as arg:
             raise CSVRError("Error reading the right hand side data: %s" % arg)
-        R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Rspecials}
+        R = {'data': Rd, 'headers': Rh, "sparse": False, "type_all": Rtype, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}, "specials": Rspecials}
         (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R, other_params)
         L['order'] = Lorder
         R['order'] = Rorder
