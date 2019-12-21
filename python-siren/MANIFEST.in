@@ -1,6 +1,7 @@
 include siren/reremi/*.py 
 include siren/reremi/*.xml
 include siren/reremi/*.xsl
+include siren/reremi/*.txt
 include siren/reremi/grako/*.py
 include siren/interface/*.py 
 include siren/interface/*.xml
