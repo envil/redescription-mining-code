@@ -629,8 +629,7 @@ class IOTools:
             
         #### TO DEBUG: output all shown in siren, i.e. no filtering
         addto = ""
-        for org in results:
-            
+        for org in results:            
             if data_recompute is not None:
                 red = org.copy()
                 red.recompute(data_recompute)
@@ -638,7 +637,7 @@ class IOTools:
                 addto = "\t"+red.disp(list_fields=fields_recompute)+"\t%f" % acc_diff
             filesfp["queries"].write(org.disp(list_fields=all_fields)+addto+'\n')
             if filesfp["queries_named"] is not None:
-                filesfp["queries_named"].write(org.disp(names, list_fields=all_fields_named)+addto+'\n')
+                filesfp["queries_named"].write(org.disp(names, list_fields=all_fields)+addto+'\n')
             if filesfp["support"] is not None:
                 filesfp["support"].write(org.dispSupp()+'\n')
     

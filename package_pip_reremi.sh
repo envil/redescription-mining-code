@@ -21,5 +21,5 @@ rm ${ROOT_REP}/prepare_pck_reremi.py
 
 ### ... and make the package
 cd ${ROOT_REP}
-#python setup.py sdist bdist_wheel
+python setup.py sdist bdist_wheel
 # python -m twine upload dist/*
