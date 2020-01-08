@@ -2,9 +2,40 @@ import numpy
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-from matplotlib.mlab import dist_point_to_segment
 
 import pdb
+
+def dist_point_to_segment(p, s0, s1):
+    """
+    Get the distance of a point to a segment.
+
+      *p*, *s0*, *s1* are *xy* sequences
+
+    This algorithm from
+    http://geomalgorithms.com/a02-_lines.html
+    """
+    p = numpy.asarray(p, float)
+    s0 = numpy.asarray(s0, float)
+    s1 = numpy.asarray(s1, float)
+    v = s1 - s0
+    w = p - s0
+
+    c1 = numpy.dot(w, v)
+    if c1 <= 0:
+        return dist(p, s0)
+
+    c2 = numpy.dot(v, v)
+    if c2 <= c1:
+        return dist(p, s1)
+
+    b = c1 / c2
+    pb = s0 + b * v
+    return dist(p, pb)
+
+def dist(x,y):
+    d = x-y
+    return numpy.sqrt(numpy.dot(d, d))
+
 
 class ResizeableRectangle(object):
     # draggable rectangle with the animation blit techniques; see
