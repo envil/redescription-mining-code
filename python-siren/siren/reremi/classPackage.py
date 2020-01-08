@@ -504,14 +504,15 @@ class IOTools:
         for p in ['result_rep', 'data_rep', 'extensions_rep']:
             if p not in params_l:
                 params_l[p] = ""
-            if src_folder is not None and re.match("./", params_l[p]):
-                params_l[p] = src_folder+params_l[p][1:]
-            elif params_l[p] == "__TMP_DIR__":
-                if tmp_dir is None:
-                    tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
-                params_l[p] = tmp_dir + "/"
-            elif sys.platform != 'darwin':
-                params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+            if sys.platform != 'win32':
+                if src_folder is not None and re.match("./", params_l[p]):
+                    params_l[p] = src_folder+params_l[p][1:]
+                elif params_l[p] == "__TMP_DIR__":
+                    if tmp_dir is None:
+                        tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
+                    params_l[p] = tmp_dir + "/"
+                elif sys.platform != 'darwin':
+                    params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
     
         ### Make data file names
         filenames["LHS_data"] = ""
