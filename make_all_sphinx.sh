@@ -17,7 +17,7 @@ YAH=$(pwd) # YOU ARE HERE
 
 #PACK_REP=${YAH}/${3}
 
-PACK_REP=${YAH}/sphinx_current_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_sphinx_$(date "+%Y%m%d%H%M%S")
 #PACK_REP=${YAH}/sphinx_current_D
 SPHINX_REP=${PACK_REP}"/sphinx"
 OUT_REP=${PACK_REP}"/out"
