@@ -1,8 +1,8 @@
 import getopt, re, os.path
 try:
-    import toolXML
+    import toolXML, toolICDict
 except ModuleNotFoundError:
-    from . import toolXML
+    from . import toolXML, toolICDict
 import pdb
 
 ### EACH parameter is a triplet (text, data, value)
@@ -507,7 +507,7 @@ class PreferencesReader(object):
     @classmethod
     def paramsToDict(tcl, params, with_num=False):
         params_l = {}
-        if type(params) is dict:
+        if type(params) in [dict, toolICDict.ICDict]:
             for k, v in params.items():
                 if type(v) is dict and "data" in v:
                     params_l[k] = v["data"]

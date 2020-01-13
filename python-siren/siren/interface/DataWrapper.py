@@ -481,7 +481,8 @@ class DataWrapper(object):
             raise
         else:
             self.preferences = tmp_preferences
-            self.preferences.isChanged = True 
+            self.preferences.isChanged = True
+            self.resetConstraints()
         finally:
             self.addReloadAll()
             self._stopMessage('importing')

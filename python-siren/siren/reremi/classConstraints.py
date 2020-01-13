@@ -46,13 +46,11 @@ class Constraints(object):
         self.folds = None
         if AR is None:
             AR = params.get("AR")
-
         self._pv = PreferencesReader.paramsToDict(params)
         
         self._pv.update(self.prepareValues(params))
         self.resetAR(AR)
         self.resetDataDependent(data, params)
-
 
     ## SSETTS_PARAMS = set(["parts_type", "method_pval"])
     def reset(self, params, data=None, AR=-1, dtv=None):
@@ -431,7 +429,7 @@ class ActionsRegistry:
             else:
                 actions.append(action)
         return actions
-    def getActionsListToGo(self, fk, constraints, action_substitute=None):
+    def getActionsListToGo(self, fk, constraints, action_substitute=None):        
         actions = []
         for action in self.getActionsList(fk):
             if "actions" in action:
@@ -440,7 +438,7 @@ class ActionsRegistry:
                 actions.append(self.fillActionConstraints(action, constraints))
         if action_substitute is not None and len(actions) == 1:
             if actions[0]["action"] == action_substitute[0]:
-                actions[0]["action"] = action_substitute[1]        
+                actions[0]["action"] = action_substitute[1]
         return actions    
 
     def fillBlockConstraints(self, block, constraints):
