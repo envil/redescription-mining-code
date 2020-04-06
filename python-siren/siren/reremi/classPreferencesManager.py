@@ -521,10 +521,12 @@ class PreferencesReader(object):
     def getParameters(self, filename=None, arguments=None, pv=None):
         if pv is None:
             pv = self.pm.getDefaultTriplets()
-        tmp = self.readParametersDict(self.readParametersFromFile(filename))
-        pv.update(tmp)
-        tmp = self.readParametersDict(self.readParametersFromArguments(arguments))
-        pv.update(tmp)
+        if filename is not None:
+            tmp = self.readParametersDict(self.readParametersFromFile(filename))
+            pv.update(tmp)
+        if arguments is not None:
+            tmp = self.readParametersDict(self.readParametersFromArguments(arguments))
+            pv.update(tmp)
         return pv
 
     def readParametersFromArguments(self, arguments):
@@ -694,11 +696,14 @@ def getParams(arguments, conf_defs):
 
     return params
 
+
+conf_names = {"miner": 0, "inout": 0, "dataext": 1, "rnd": 1}
 def getPM(conf_defs=None):
     if conf_defs is None:
-        pref_dir = os.path.dirname(os.path.abspath(__file__))
-        conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml"]
-    return PreferencesManager(conf_defs)
+        conf_defs = [k for (k,v) in conf_names.items() if v == 0]
+    pref_dir = os.path.dirname(os.path.abspath(__file__))
+    conf_files = ["%s/%s_confdef.xml" % (pref_dir, c) if c in conf_names else c for c in conf_defs]
+    return PreferencesManager(conf_files)
 
 if __name__ == "__main__":
     import glob, os.path, sys

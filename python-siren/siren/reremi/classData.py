@@ -353,8 +353,9 @@ class Data(ContentCollection):
             elif (isinstance(literal, Term) or isinstance(literal, Literal)):
                 cid = literal.colId()
             if cid is not None and cid > len(ccs):
+                err_cid = cid
                 cid = None
-                raise DataError("This columns does not exist! CID=%s" % str(cid))
+                raise DataError("This columns does not exist! CID=%s" % str(err_cid))
 
         elif side in self.containers:
             ccs = self.items
@@ -364,13 +365,15 @@ class Data(ContentCollection):
                 cid = (side, literal.colId())
                 
             if cid is not None and (cid[1] > self.getLen(side) or cid not in ccs):
-                cid = None
-                raise DataError("This columns does not exist! CID=%s" % str(cid))
+                err_cid = cid
+                cid = None               
+                raise DataError("This columns does not exist! CID=%s" % str(err_cid))
 
         if cid is not None and ccs is not None:
             if (isinstance(literal, Term) or isinstance(literal, Literal)) and not literal.isAnon() and literal.typeId() != ccs[cid].typeId():
+                err_cid = cid
                 cid = None
-                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (cid, literal, literal.typeId(), ccs[cid].typeId()))
+                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (err_cid, literal, literal.typeId(), ccs[err_cid].typeId()))
             else:
                 return ccs[cid]
     def getElement(self, iid):
@@ -1521,8 +1524,10 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 for i,v in tmp:
                     if not Data.enabled_codes_rev_simple[v]:
                         disabled_rows.add(indices[side][i])
+
     for sito, side in enumerate(sides):
-        for name, det in [parseColumnName(header, types_smap) for header in csv_data['data'][side]["headers"]]:
+        for header in csv_data['data'][side]["headers"]:
+            name, det = parseColumnName(header, types_smap)
             if len(name) == 0:
                 continue
             values = csv_data['data'][side]["data"][name]
@@ -1543,7 +1548,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                     
             if col is not None and col.N == N:
                 if not det.get("enabled", True) or \
-                        not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito]:
+                  not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1,1))[sito]:
                     col.flipEnabled()
                 if len(csv_data["data"][side][csv_reader.GROUPS_COLS[0]]) > 0:
                     gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
@@ -1558,6 +1563,9 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         
 
 def main():
+
+    rep = "/home/egalbrun/TKTL/redescriptors/dp/test/dblp_pickedBB_empty/"
+    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     
     ############# ADDING NEW VARIABLES
     # rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"
@@ -1593,25 +1601,25 @@ def main():
     #     pdb.set_trace()
     # print(data.cols[1][1].areDataEquiv(-21.88,-21.8))
         
-    ############# DATA EXTENSIONS
-    # rep_in = "/home/egalbrun/short/geo_small/"
-    # data_files = [rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv"]
-    rep_in = "/home/egalbrun/x/"
-    data_files = [rep_in+"data_LHS.csv", rep_in+"data_RHS.csv"]
-    data = Data(data_files+[{}, ""], "csv")
-    data.initExtension("geoplus", params ={"wgrid_percentile": 90, "hgrid_percentile": 90})
-    print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
-    data.getExtension("geoplus").prepAreasData(cells_colors=[0])
-    data.saveExtensions(details={"dir": rep_in})
-
-    # data = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
-    # data.initExtension("geoplus")
+    # ############# DATA EXTENSIONS
+    # # rep_in = "/home/egalbrun/short/geo_small/"
+    # # data_files = [rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv"]
+    # rep_in = "/home/egalbrun/x/"
+    # data_files = [rep_in+"data_LHS.csv", rep_in+"data_RHS.csv"]
+    # data = Data(data_files+[{}, ""], "csv")
+    # data.initExtension("geoplus", params ={"wgrid_percentile": 90, "hgrid_percentile": 90})
     # print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
+    # data.getExtension("geoplus").prepAreasData(cells_colors=[0])
     # data.saveExtensions(details={"dir": rep_in})
 
-    data2 = Data(data_files+[{}, ""], "csv")
-    data2.loadExtensions(ext_keys=["geoplus"], filenames={"extf_list_edges": rep_in+"list_edges.csv"})
-    print(data2.computeExtras(data2.col(0,0), extras=["cohesion"]))
+    # # data = Data([rep_in+"ecoEu_teeth.csv", rep_in+"ecoEu_clim.csv", {}, ""], "csv")
+    # # data.initExtension("geoplus")
+    # # print(data.computeExtras(data.col(0,0), extras=["cohesion"]))
+    # # data.saveExtensions(details={"dir": rep_in})
+
+    # data2 = Data(data_files+[{}, ""], "csv")
+    # data2.loadExtensions(ext_keys=["geoplus"], filenames={"extf_list_edges": rep_in+"list_edges.csv"})
+    # print(data2.computeExtras(data2.col(0,0), extras=["cohesion"]))
 
     
     ############# OLD DATA FORMAT

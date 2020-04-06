@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, re, os.path, datetime
+import sys, re, datetime
 import numpy
 import tempfile
 
@@ -24,6 +24,8 @@ except ModuleNotFoundError:
     from .classRndFactory import RndFactory
 
 import pdb
+
+
 
 def run(args):
 
@@ -123,10 +125,7 @@ def run_printout(args):
     if len(suff) == 0:
         suff = "_reprint"
 
-    pref_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml",
-                 pref_dir + "/dataext_confdef.xml"]
-        
+    conf_defs = ["miner", "inout", "dataext"]
     loaded = IOTools.loadAll(args[:-1], conf_defs)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
@@ -163,7 +162,6 @@ def run_printout(args):
     else:
         red_contents = reds
 
-    
     # IOTools.saveAsPackage("/home/egalbrun/Desktop/Z.siren", data, preferences=params, pm=loaded["pm"])        
     # data.saveExtensions(details={"dir": "/home/egalbrun/Desktop/"})
     params = IOTools.getPrintParams(filename, data)
@@ -173,10 +171,7 @@ def run_printout(args):
 
 def run_rnd(args):
 
-    pref_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_defs = [pref_dir + "/miner_confdef.xml", pref_dir + "/inout_confdef.xml",
-                 pref_dir + "/dataext_confdef.xml", pref_dir + "/rnd_confdef.xml"]
-    
+    conf_defs = ["miner", "inout", "dataext", "rnd"]
     loaded = IOTools.loadAll(args, conf_defs)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
 

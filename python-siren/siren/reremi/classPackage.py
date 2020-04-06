@@ -556,6 +556,7 @@ class IOTools:
                 try:
                     tfs = open(filenames["queries"], "a")
                     tfs.close()
+                    os.remove(filenames["queries"])
                 except IOError:
                     print("Queries output file not writable, using stdout instead...")
                     filenames["queries"] = "-"

@@ -53,14 +53,19 @@ class SirenApp(wx.App):
                     self.frame.dw.importPreferencesFromFile(filename)
                     pm = getPM()
                     #### in/out params are not read and accounted for in Siren, load separately
-                    params = PreferencesReader(pm).getParametersDict(filename, pv={})
+                    default_params = PreferencesReader(pm).getParametersDict()
+                    params = PreferencesReader(pm).getParametersDict(filename)
                     src_folder = os.path.dirname(os.path.abspath(filename))
+                    default_filenames = IOTools.prepareFilenames(default_params, src_folder=src_folder)
                     filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
-                    if filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and filenames["style_data"] == "csv":
+                    ### First check whether there are non-default filenames in params, then reread params with defaults
+                    if filenames["style_data"] == "csv" and filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and \
+                       filenames["RHS_data"] != default_filenames["RHS_data"] and \
+                       filenames["LHS_data"] != default_filenames["LHS_data"]:
                         self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
                         self.frame.dw.applyVarsMask(params)
-                    if filenames["queries"] != "-":
-                        self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
+                        if filenames["queries"] != "-" and os.path.isfile(filenames["queries"]):
+                            self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
                         
                     pos_fn += 1
                 elif ext == '.csv':

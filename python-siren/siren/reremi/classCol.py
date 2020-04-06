@@ -308,7 +308,7 @@ class ColM(WithEVals):
     def getMax(self, details={}):
         return None
     def getMissInfo(self, details={}):
-        return "%1.2f%%: %d"% (self.nbMissing()/float(self.N), self.nbMissing())
+        return "%d%%: %d"% (100*self.nbMissing()/float(self.N), self.nbMissing())
     def getOrd(self):
         return []
     def getRange(self):
@@ -1100,7 +1100,7 @@ class NumColM(ColM):
 
     def compPrec(self, details={}):
         for (v,i) in self.sVals:
-            if len(str(v % 1))-2 > self.prec:
+            if self.prec is None or len(str(v % 1))-2 > self.prec:
                 self.prec = len(str(v % 1))-2       
     def getPrec(self, details={}):
         if self.prec is None:

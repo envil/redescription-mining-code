@@ -1,336 +1,211 @@
-import copy
-import numpy
-from sklearn import tree
-
 try:
     from classCharbon import CharbonTree
-    from classQuery import  *
-    from classRedescription import  *
+    from classDTreeTools import DTreeToolsSKL as DTT
+    # from classDTreeToolsDP import DTreeToolsDP as DTT
+    from classQuery import *
+    from classRedescription import Redescription
 except ModuleNotFoundError:
     from .classCharbon import CharbonTree
-    from .classQuery import  *
-    from .classRedescription import  *
+    from .classDTreeTools import DTreeToolsSKL as DTT
+    # from .classDTreeToolsDP import DTreeToolsDP as DTT
+    from .classQuery import *
+    from .classRedescription import Redescription
 
 import pdb
 
+
 class CharbonTCW(CharbonTree):
     name = "TreeCartWheel"
-
+    
     def getTreeCandidates(self, side, data, more, in_data, cols_info):
         if side is None:
-            jj0, suppvs0, dtcs0 = self.getSplit(0, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
-            jj1, suppvs1, dtcs1 = self.getSplit(1, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
+            jj0, results0 = self.getSplit(0, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
+            jj1, results1 = self.getSplit(1, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
             if jj0 > jj1:
-                jj, suppvs, dtcs = (jj0, suppvs0, dtcs0)
+                jj, results = (jj0, results0)
             else:
-                jj, suppvs, dtcs = (jj1, suppvs1, dtcs1)
+                jj, results = (jj1, results1)
         else:
-            jj, suppvs, dtcs = self.getSplit(side, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
+            jj, results = self.getSplit(side, in_data, more["target"], singleD=data.isSingleD(), cols_info=cols_info)
 
-        if dtcs[0] is not None and dtcs[1] is not None:
-            redex = self.get_redescription(dtcs, suppvs, data, cols_info)
-            # if True: ## check
-            #     sL = set(numpy.where(numpy.array(suppvs[0]))[0])
-            #     sR = set(numpy.where(numpy.array(suppvs[1]))[0])
-            #     if sL != red.supp(0) or sR != red.supp(1):
-            #         print("OUPS!")
-            #         pdb.set_trace()
-            # print(red.queries[side], "-->\t", redex.disp())
+        if results is not None and results[0].get("tree") is not None and results[1].get("tree") is not None:
+            redex = self.get_redescription(results, data, cols_info)
             return redex
         return None
 
-    def get_redescription(self, dtcs, suppvs, data, cols_info):
-        left_query = self.get_pathway(0, dtcs[0], data, cols_info)
-        right_query = self.get_pathway(1, dtcs[1], data, cols_info)
-        return Redescription.fromQueriesPair((left_query, right_query), data)
 
-    def get_pathway(self, side, tree, data, cols_info):
-        def get_branch(side, left, right, child, features, threshold, data, cols_info):
-            branch = []
-            while child is not None:
-                parent = None
-                if child in left:
-                    neg = True
-                    parent = left.index(child)
-                elif child in right:
-                    neg = False
-                    parent = right.index(child)
-                if parent is not None:
-                    if features[parent] in cols_info:
-                        side, cid, cbin = cols_info[features[parent]]
-                    else:
-                        raise Warning("Literal cannot be parsed !")
-                        cid = features[parent]
-                    if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
-                        lit = Literal(neg, BoolTerm(cid))
-                    elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
-                        lit = Literal(neg, CatTerm(cid, data.col(side, cid).getValFromNum(cbin)))
-                    elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
-                        # ###################################
-                        # if neg:
-                        #     # rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold[parent], "high"))
-                        #     rng = (float("-inf"), threshold[parent])
-                        # else:
-                        #     # rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
-                        #     rng = (threshold[parent], float("inf")) 
-                        # lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
-                        # ###################################
-                        rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
-                        lit = Literal(neg, NumTerm(cid, rng[0], rng[1]))
+    def getJacc(self, suppL=None, suppR=None):
+        if suppL is None or suppR is None:
+            return -1
+        lL = sum(suppL)
+        lR = sum(suppR)
+        lI = sum(suppL * suppR)
+        return lI/(lL+lR-lI)
 
-                    else:
-                        raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.col(side, cid).typeId())
-                    branch.append(lit)
-                child = parent
-            return branch
-
-        left      = list(tree.tree_.children_left)
-        right     = list(tree.tree_.children_right)
-        to_parent = {}
-        for tside, dt in enumerate([left, right]):
-            for ii, ni in enumerate(dt):
-                if ni > 0:
-                    to_parent[ni] = (tside, ii)
-        to_parent[0] = (None, None)
-        threshold = tree.tree_.threshold
-        features  = [i for i in tree.tree_.feature]
-        mclass  = [i[0][0]<i[0][1] for i in tree.tree_.value]
-        todo = [i for i in range(len(left)) if left[i] == -1 and mclass[i]]
-        count_c = {}
-        ii = 0
-        while ii < len(todo):
-            if to_parent[todo[ii]][1] in count_c:
-                todo.append(to_parent[todo[ii]][1])
-                tn = todo.pop(ii)
-                todo.pop(count_c[to_parent[tn][1]])
-                ### BUG IN HIDING...
-                # try:
-                #     todo.pop(count_c[to_parent[tn][1]])
-                # except IndexError:
-                #     print("Popping error !", len(todo), tn, to_parent[tn][1], count_c[to_parent[tn][1]])
-                #     pdb.set_trace()                    
-                ii -= 1
-            else:
-                count_c[to_parent[todo[ii]][1]] = ii
-                ii += 1
-
-        buks = []
-        for child in todo:
-            tmp = get_branch(side, left, right, child, features, threshold, data, cols_info[side])
-            if tmp is not None:
-                buks.append(tmp)
-        qu = Query(True, buks)
-        return qu
+    def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket,  split_criterion="gini"):
+        dtc = DTT.fitTree(in_data, in_target, in_depth, in_min_bucket, split_criterion, random_state=0)
+        suppv = dtc.getSupportVect(in_data)
+        if sum(suppv) < in_min_bucket or len(suppv)-sum(suppv) < in_min_bucket:
+            return None, None
+        return dtc, suppv
 
     def getSplit(self, side, in_data, target, singleD=False, cols_info=None):
-        suppvs = [None, None]
-        dtcs = [None, None]
-        best = (0, suppvs, dtcs)
+        best = (0, None)
+        results = {0: {}, 1: {}}
+        current_tids = [0, 1]
         current_side = 1-side
         if sum(target) >= self.constraints.getCstr("min_node_size") and len(target)-sum(target) >= self.constraints.getCstr("min_node_size"):
-            suppvs[side] = target
+            results[current_tids[side]]["support"] = target
             rounds = 0
         else:
             rounds = -1
 
         while rounds < self.constraints.getCstr("max_rounds") and rounds >= 0:            
             rounds += 1
-            try:
-                if dtcs[1-current_side] is not None and singleD:
-                    if cols_info is None:
-                        tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]
-                    else:
-                        ttm = [cols_info[current_side][c][1] for c in dtcs[1-current_side].tree_.feature if c >= 0]
-                        tt = [kk for (kk,vv) in cols_info[current_side].items() if vv[1] in ttm]
-                    feed_data = in_data[current_side].copy()
-                    feed_data[:,tt] = 0.
+            if results[current_tids[1-current_side]].get("tree") is not None and singleD:
+                vrs = results[current_tids[1-current_side]]["tree"].getFeatures()
+                if cols_info is None:
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if vvi not in vrs]
                 else:
-                    feed_data = in_data[current_side]
+                    ttm = [cols_info[current_side][c][1] for c in vrs]
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if cols_info[current_side][vvi][1] not in ttm]
+                feed_data = in_data[current_side][:, ncandidates]
+            else:
+                ncandidates = None
+                feed_data = in_data[current_side]
 
-                dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], self.constraints.getCstr("max_depth"), self.constraints.getCstr("min_node_size"))
-            except IndexError:
-                pdb.set_trace()
-                print(current_side)
-            if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
-                               and suppvs[current_side] is not None and numpy.sum((suppvs[current_side] - suppv)**2) == 0):
-            ### nothing found or no change
+            dtc, suppv = self.splitting_with_depth(feed_data, results[current_tids[1-current_side]].get("support"),
+                                                   self.constraints.getCstr("max_depth"), self.constraints.getCstr("min_node_size"),
+                                                   split_criterion=self.constraints.getCstr("split_criterion"))
+
+            if dtc is None or (results[current_tids[current_side]].get("tree") is not None and results[current_tids[1-current_side]].get("tree") is not None \
+                               and results[current_tids[current_side]].get("support") is not None and all(results[current_tids[current_side]].get("support") == suppv)):
+                ### nothing found or no change
                 rounds = -1
             else:
-                suppvs[current_side] = suppv
-                dtcs[current_side] = dtc
+                current_dt = {"support": suppv, "tree": dtc, "candidates": ncandidates}
+                current_tids[current_side] = len(results)                
+                results[current_tids[current_side]] = current_dt
                 current_side = 1-current_side
-                if suppvs[0] is not None and suppvs[1] is not None:
-                    jj = self.getJacc(suppvs)
-                    if jj > best[0] and dtcs[current_side] is not None:
-                        best = (jj, list(suppvs), list(dtcs))
+                jj = self.getJacc(results[current_tids[0]].get("support"), results[current_tids[1]].get("support"))
+                if jj > best[0] and results[current_tids[current_side]].get("tree") is not None:
+                    best = (jj, (current_tids[0], current_tids[1]))
+        if best[1] is not None:
+            return (best[0], {0: results[best[1][0]], 1: results[best[1][1]]})
         return best
-
-    def getJacc(self, supps):
-        lL = numpy.sum(supps[0])
-        lR = numpy.sum(supps[1])
-        lI = numpy.sum(supps[0] * supps[1])
-        return lI/(lL+lR-lI)
-
-    def splitting_with_depth(self, in_data, in_target, in_depth, in_min_bucket,  split_criterion="gini"):
-        dtc = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
-        dtc = dtc.fit(in_data, in_target)
-        ## print("FIT D", in_data.shape, in_target.sum())
-        # Form Vectors for computing Jaccard. The same vectors are used to form new targets
-        suppv = dtc.predict(in_data) # Binary vector of the left tree for Jaccard
-    
-        if sum(suppv) < in_min_bucket or len(suppv)-sum(suppv) < in_min_bucket:
-            return None, None
-        return dtc, suppv
-
 
 class CharbonTSprit(CharbonTCW):
     name = "TreeSprit"
+
     def getSplit(self, side, in_data, target, singleD=False, cols_info=None):
-        suppvs = [None, None]
-        dtcs = [None, None]
-        best = (0, suppvs, dtcs)
+        best = (0, None)
+        results = {0: {}, 1: {}}
+        current_tids = [0, 1]
         current_side = 1-side
         if sum(target) >= self.constraints.getCstr("min_node_size") and len(target)-sum(target) >= self.constraints.getCstr("min_node_size"):
-            suppvs[side] = target
+            results[current_tids[side]]["support"] = target
             rounds = 0
         else:
             rounds = -1
 
         depth = [2,2]
-        while depth[0] <= self.constraints.getCstr("max_depth") or depth[1] <= self.constraints.getCstr("max_depth"):
-        # while rounds < 30 and rounds >= 0:            
+        while rounds >=0 and (depth[0] <= self.constraints.getCstr("max_depth") or depth[1] <= self.constraints.getCstr("max_depth")):
             rounds += 1
-            if dtcs[1-current_side] is not None and singleD:
+            if results[current_tids[1-current_side]].get("tree") is not None and singleD:
+                vrs = results[current_tids[1-current_side]]["tree"].getFeatures()
                 if cols_info is None:
-                    tt = [c for c in dtcs[1-current_side].tree_.feature if c >= 0]
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if vvi not in vrs]
                 else:
-                    ttm = [cols_info[current_side][c][1] for c in dtcs[1-current_side].tree_.feature if c >= 0]
-                    tt = [kk for (kk,vv) in cols_info[current_side].items() if vv[1] in ttm]
-                feed_data = in_data[current_side].copy()
-                feed_data[:,tt] = 0.
+                    ttm = [cols_info[current_side][c][1] for c in vrs]
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if cols_info[current_side][vvi][1] not in ttm]
+                feed_data = in_data[current_side][:, ncandidates]
             else:
+                ncandidates = None
                 feed_data = in_data[current_side]
 
-            dtc, suppv = self.splitting_with_depth(feed_data, suppvs[1-current_side], depth[current_side], self.constraints.getCstr("min_node_size"), split_criterion=self.constraints.getCstr("split_criterion"))
-            if dtc is None or (dtcs[current_side] is not None and dtcs[1-current_side] is not None \
-                               and suppvs[current_side] is not None and numpy.sum((suppvs[current_side] - suppv)**2) == 0):
-            ### nothing found or no change
+            dtc, suppv = self.splitting_with_depth(feed_data, results[current_tids[1-current_side]].get("support"),
+                                                   depth[current_side], self.constraints.getCstr("min_node_size"),
+                                                   split_criterion=self.constraints.getCstr("split_criterion"))
+
+            if dtc is None or (results[current_tids[current_side]].get("tree") is not None and results[current_tids[1-current_side]].get("tree") is not None \
+                               and results[current_tids[current_side]].get("support") is not None and all(results[current_tids[current_side]].get("support") == suppv)):
+                ### nothing found or no change
                 rounds = -1
-                depth[current_side] = self.constraints.getCstr("max_depth")+1
-                depth[1-current_side] = self.constraints.getCstr("max_depth")+1
             else:
                 depth[current_side] += 1
-                suppvs[current_side] = suppv
-                dtcs[current_side] = dtc
+                current_dt = {"support": suppv, "tree": dtc, "candidates": ncandidates}
+                current_tids[current_side] = len(results)                
+                results[current_tids[current_side]] = current_dt
                 current_side = 1-current_side
-                if suppvs[0] is not None and suppvs[1] is not None:
-                    jj = self.getJacc(suppvs)
-                    if jj > best[0] and dtcs[current_side] is not None:
-                        best = (jj, list(suppvs), list(dtcs))
+                jj = self.getJacc(results[current_tids[0]].get("support"), results[current_tids[1]].get("support"))
+                if jj > best[0] and results[current_tids[current_side]].get("tree") is not None:
+                    best = (jj, (current_tids[0], current_tids[1]))
+        if best[1] is not None:
+            return (best[0], {0: results[best[1][0]], 1: results[best[1][1]]})
         return best
+    
 
 class CharbonTSplit(CharbonTCW):
 
     name = "TreeSplit"
     def getTreeCandidates(self, side, data, more, in_data, cols_info):
-        current_split_result = self.getSplit(in_data[0], in_data[1], more["target"], 2, self.constraints.getCstr("min_node_size"), data.isSingleD(), cols_info)
-        if current_split_result['data_rpart_l'] is not None and current_split_result['data_rpart_r'] is not None:
-            # pdb.set_trace()
-            redex = self.get_redescription([current_split_result['data_rpart_l'], current_split_result['data_rpart_r']],
-                                          [current_split_result['split_vector_l'], current_split_result['split_vector_l']],
-                                          data, cols_info)
-            ## print(red.queries[side], "-->\t", redex.disp())
-            return redex
+        results = self.getSplit(in_data, more["target"], data.isSingleD(), cols_info)
+        if results is not None and results[0].get("tree") is not None and results[1].get("tree") is not None:
+            return self.get_redescription(results, data, cols_info)
         return None
 
-    def getSplit(self, in_data_l, in_data_r, target, depth, in_min_bucket, singleD=False, cols_info=None):
-        current_split_result = {'data_rpart_l': None, 'data_rpart_r': None}
-        if numpy.count_nonzero(target) > in_min_bucket:
-            flag = True
+    def getSplit(self, in_data, target, singleD=False, cols_info=None):
+        depth = 2
+        prev_results = None
+        if sum(target) >= self.constraints.getCstr("min_node_size") and len(target)-sum(target) >= self.constraints.getCstr("min_node_size"):
             
-            while flag:
-                if depth <= self.constraints.getCstr("max_depth"):
-                    current_split_result = splitting_with_depth_both(in_data_l, in_data_r, target, depth, in_min_bucket, singleD, cols_info, current_split_result, split_criterion=self.constraints.getCstr("split_criterion"))
-                    # print("Round", depth, current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature)
-                    # Check if we have both vectors (split was successful on the left and right matrix) 
-                    if current_split_result['data_rpart_l'] is None or current_split_result['data_rpart_r'] is None:
-                        if depth != 2:
-                            # Check if left tree was able to split
-                            if current_split_result['split_vector_l'] is None:
-                                current_split_result['split_vector_l'] = copy.deepcopy(previous_split_result['split_vector_l'])
-                                current_split_result['data_rpart_l'] = copy.deepcopy(previous_split_result['data_rpart_l'])
-                                # print("split_vector_l didn't split")
-                            # Check if right tree was able to split 
-                            if current_split_result['split_vector_r'] is None:
-                                current_split_result['split_vector_r'] = copy.deepcopy(previous_split_result['split_vector_r'])
-                                current_split_result['data_rpart_r'] = copy.deepcopy(previous_split_result['data_rpart_r'])
-                                # print("split_vector_r didn't split")
-                            previous_split_result = None
-                        flag = False
-                    else:
-                        if depth==2: # depth = 2 means the first iteration, no previous results exist here. Thus, no additional checks are available
-                            previous_split_result = copy.deepcopy(current_split_result)
-                            depth = depth + 1
-                        else:
-                            # Here we have successful splits and have to check wethere trees has changed          
-                            if (set(previous_split_result['split_vector_l']) == set(current_split_result['split_vector_l'])) or (set(previous_split_result['split_vector_r']) == set(current_split_result['split_vector_r'])):
-                                # print("one of trees doesn't change anymore")
-                                previous_split_result = None
-                                flag = False
-                            else:
-                                previous_split_result = copy.deepcopy(current_split_result)
-                                depth = depth + 1
+            while depth > 0 and depth <= self.constraints.getCstr("max_depth"):
+                results = self.splitting_with_depth_both(in_data, target, singleD, cols_info,
+                                                    in_depth=depth, in_min_bucket=self.constraints.getCstr("min_node_size"),
+                                                    split_criterion=self.constraints.getCstr("split_criterion"))
+
+                # Check if we have both vectors (split was successful on the left and right matrix)
+                if results[0].get("tree") is None or results[1].get("tree") is None:                    
+                    if prev_results is not None:
+                        # Check if left tree was able to split
+                        if results[0].get("tree") is None:
+                            results[0] = prev_results[0]
+                        if results[1].get("tree") is None:
+                            results[1] = prev_results[1]
+                    depth = 0
                 else:
-                    flag = False
-        # print("Result", current_split_result['data_rpart_l'].tree_.feature, current_split_result['data_rpart_r'].tree_.feature)
-        # pdb.set_trace()
-        return current_split_result
+                    # Either have no previous results or have successful splits and have to check whether trees changed
+                    if prev_results is None or \
+                        ((prev_results[0].get("support") is None or any(prev_results[0].get("support") != results[0].get("support"))) and \
+                         (prev_results[1].get("support") is None or any(prev_results[1].get("support") != results[1].get("support")))):
+                        prev_results = results
+                        depth += 1
+                    else:
+                        depth = 0
+        return results
 
 
-def splitting_with_depth_both(in_data_l, in_data_r, in_target, in_depth, in_min_bucket, singleD=False, cols_info=None, current_split_result=None, split_criterion="gini"):
-    feed_data = in_data_l.copy()
-    if singleD and current_split_result['data_rpart_r'] is not None:
-        if cols_info is None:
-            tt = [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
-        else:
-            # print("R", current_split_result['data_rpart_r'].tree_.feature, [c for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0])
-            ttm = [cols_info[1][c][1] for c in current_split_result['data_rpart_r'].tree_.feature if c >= 0]
-            tt = [kk for (kk,vv) in cols_info[1].items() if vv[1] in ttm]
-        feed_data[:,tt] = 0.
-    
-    data_rpart_l = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
-    data_rpart_l = data_rpart_l.fit(feed_data, in_target)
-    ## print("FIT DBa", feed_data.shape, in_target.sum())
-    # Form Vectors for computing Jaccard. The same vectors are used to form new targets
-    split_vector_l = data_rpart_l.predict(in_data_l) # Binary vector of the left tree for Jaccard
-    
-    if (len(set(split_vector_l)) <= 1):
-        split_vector_l = None
-        split_vector_r = None
-        data_rpart_l = None
-        data_rpart_r = None
-    else:
-
-        feed_data = in_data_r.copy()
-        if singleD:
-            if cols_info is None:
-                tt = [c for c in data_rpart_l.tree_.feature if c >= 0]
+    def splitting_with_depth_both(self, in_data, in_target, singleD=False, cols_info=None, in_depth=1, in_min_bucket=0, split_criterion="gini"):
+        trg = in_target
+        results = {0: {}, 1: {}}
+        for current_side in [0, 1]:
+            if results[1-current_side].get("tree") is not None and singleD:
+                vrs = results[1-current_side]["tree"].getFeatures()
+                if cols_info is None:
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if vvi not in vrs]
+                else:
+                    ttm = [cols_info[current_side][c][1] for c in vrs]
+                    ncandidates = [vvi for vvi in range(in_data[current_side].shape[1]) if cols_info[current_side][vvi][1] not in ttm]
+                feed_data = in_data[current_side][:, ncandidates]
             else:
-                # print("L", data_rpart_l.tree_.feature, [c for c in data_rpart_l.tree_.feature if c >= 0])
-                ttm = [cols_info[0][c][1] for c in data_rpart_l.tree_.feature if c >= 0]
-                tt = [kk for (kk,vv) in cols_info[0].items() if vv[1] in ttm]
-            feed_data[:,tt] = 0.
-        target = split_vector_l
+                ncandidates = None
+                feed_data = in_data[current_side]
+
+            dtc, suppv = self.splitting_with_depth(feed_data, trg, in_depth, in_min_bucket, split_criterion)
+            if dtc is None:
+                return {0: {}, 1: {}}
+            
+            results[current_side] = {"support": suppv, "tree": dtc, "candidates": ncandidates}
+            trg = suppv
+        return results
     
-        data_rpart_r = tree.DecisionTreeClassifier(criterion= split_criterion, max_depth = in_depth, min_samples_leaf = in_min_bucket, random_state=0)
-        data_rpart_r = data_rpart_r.fit(feed_data, target)
-        ## print("FIT DBb", feed_data.shape, in_target.sum())
-        # Form Vectors for computing Jaccard. The same vectors are used to form new targets
-        split_vector_r = data_rpart_r.predict(in_data_r) # Binary vector of the left tree for Jaccard
-    
-        if (len(set(split_vector_r)) <= 1):
-            split_vector_r = None
-            data_rpart_r = None
-    result = {'split_vector_l': split_vector_l, 'split_vector_r' : split_vector_r,
-              'data_rpart_l' : data_rpart_l, 'data_rpart_r' : data_rpart_r}
-    return result 

@@ -224,8 +224,8 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         numerical_ids = True
         col_names = None
         row_named = False
-        col_enabled = None
-        col_group = None
+        col_enabled = {} #None
+        col_group = {} #None
         sub = 1
         
         if valcol is not None and "-1" in nll:
@@ -276,7 +276,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
                     
-    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None}
+    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}}
     if valcol is None:
         nD['bool'] = True
         ### Turning the data from list of ids to sets, Boolean
@@ -393,8 +393,8 @@ def has_coord_sparse(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = (dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][s].items()]),
-                             dict([(k, map(float, (v or "-361").strip(" :").split(":"))) for (k,v) in D['data'][t].items()]))
+                    coord = (dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k,v) in D['data'][s].items()]),
+                             dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k,v) in D['data'][t].items()]))
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -499,7 +499,7 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
             else:
                 rtn = (None, nb_rowsL, nb_rowsR)
         else:
-            tt = map(int, set(Rids) - set(["-1"]))
+            tt = list(map(int, set(Rids) - set(["-1"])))
             nrMinR, nrMaxR = min(tt), max(tt)
             if nb_rowsL == nrMaxR+1:
                 rtn = (nb_rowsL, 0, 0)
@@ -617,7 +617,7 @@ def row_order(L, R, other_params={}):
             Rvarcol = R["headers"][0]
             if len(R["headers"]) == 2:
                 Rvalcol = R["headers"][1]
-                
+
         nbrTT, offLTT, offRTT = get_size_hint(L, Lids, Lvarcol is None, R, Rids, Rvarcol is None)
         if nbrTT is None and not (LhasIds and RhasIds):
             raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (offL, offR))            
@@ -860,7 +860,7 @@ def row_order_single(L, other_params={}):
 def readTransCSV(trans_filename, csv_params={}, other_params={}):
     unknown_string = other_params.get("NA_str", NA_str_c)
     (Th, Td, Ttype, Tspecials) = read_csv(trans_filename, csv_params, unknown_string)
-    T = {'data': Td, 'headers': Th, "sparse": False, "type_all": Ttype, ENABLED_COLS[0]: None, GROUPS_COLS[0]: None, "specials": Tspecials}
+    T = {'data': Td, 'headers': Th, "sparse": False, "type_all": Ttype, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}, "specials": Tspecials}
 
     (T, Torder, coord, ids, cond_col, CisTime) = row_order_single(T, other_params)
     T['order'] = Torder

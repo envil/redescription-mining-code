@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     from .classSParts import tool_ratio
     from .classExtension import ExtensionComb
     from .classConstraints import Constraints
-
+    
 import pdb
 
 class Charbon(object):
@@ -174,6 +174,62 @@ class CharbonGreedy(Charbon):
                 cands.append(ExtensionComb(self.constraints.getSSetts(), reds[0], lits, k[0], 2*(k[0]==k[1])+k[0]))
         return cands
 
+
+def mk_lit(side, bchild, feat, threshold, candidates, data, cols_info):
+    if isinstance(feat, Query):
+        f = feat.copy()
+        if bchild == 0:
+            f.negate()
+        buk = f.getBukElemAt([])
+        if f.getOuterOp().isOr():
+            return [buk]
+        else:
+            return buk
+    if feat is None or isinstance(feat, Literal) or isinstance(feat, Term):
+        pdb.set_trace()
+        return feat
+    neg = (bchild == 0)
+    if candidates is not None:
+        feat = candidates[feat]
+    if feat in cols_info:
+        side, cid, cbin = cols_info[feat]
+    else:
+        cid = feat
+        raise Warning("Literal cannot be parsed !")
+    lit = None
+    if data.isTypeId(data.col(side, cid).typeId(), "Boolean"):
+        lit = Literal(neg, BoolTerm(cid))
+    elif data.isTypeId(data.col(side, cid).typeId(), "Categorical"):
+        lit = Literal(neg, CatTerm(cid, data.col(side, cid).getValFromNum(cbin)))
+    elif data.isTypeId(data.col(side, cid).typeId(), "Numerical"):
+        # ###################################
+        # if neg:
+        #     # rng = (float("-inf"), data.col(side, cid).getRoundThres(threshold[parent], "high"))
+        #     rng = (float("-inf"), threshold[parent])
+        # else:
+        #     # rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+        #     rng = (threshold[parent], float("inf")) 
+        # lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
+        # ###################################
+        rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+        lit = Literal(neg, NumTerm(cid, rng[0], rng[1]))
+    else:
+        raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.col(side, cid).typeId())
+    return lit
+def get_pathway(side, tree, candidates, data, cols_info):
+    buks = []
+    for branch in tree.collectBranches(only_class=1):
+        b = []
+        for bchild, node_id in branch:
+            if bchild is not None:
+                lit = mk_lit(side, bchild, tree.getFeature(node_id), tree.getThreshold(node_id), candidates, data, cols_info[side])
+                if type(lit) is list:
+                    b.extend(lit)
+                elif lit is not None:
+                    b.append(lit)
+        buks.append(b)
+    return Query(True, buks)
+
     
 class CharbonTree(Charbon):
 
@@ -249,6 +305,19 @@ class CharbonTree(Charbon):
                         targets.append({"side": side, "target": supp, "involved": involved, "src": lit})
         return targets, in_data, cols_info, basis_red
 
+    def get_redescription(self, results, data, cols_info):        
+        left_query = get_pathway(0, results[0].get("tree"), results[0].get("candidates"), data, cols_info)
+        right_query = get_pathway(1, results[1].get("tree"), results[1].get("candidates"), data, cols_info)
+        redex = Redescription.fromQueriesPair((left_query, right_query), data)
+        ## check DEBUG
+        sL = set([k for k,v in enumerate(results[0].get("support")) if v > 0])
+        sR = set([k for k,v in enumerate(results[1].get("support")) if v > 0])
+        if sL != redex.supp(0) or sR != redex.supp(1):
+            print("OUPS!")
+            pdb.set_trace()
+        return redex
+
+    
     # def initializeTrg(self, side, data, red):
     #     if red is None or len(red.queries[0]) + len(red.queries[1]) == 0:
     #         nsupp = np.random.randint(self.constraints.getCstr("min_node_size"), data.nbRows()-self.constraints.getCstr("min_node_size"))
