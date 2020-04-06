@@ -305,16 +305,16 @@ class CharbonTree(Charbon):
                         targets.append({"side": side, "target": supp, "involved": involved, "src": lit})
         return targets, in_data, cols_info, basis_red
 
-    def get_redescription(self, results, data, cols_info):        
+    def get_redescription(self, results, data, cols_info):
         left_query = get_pathway(0, results[0].get("tree"), results[0].get("candidates"), data, cols_info)
         right_query = get_pathway(1, results[1].get("tree"), results[1].get("candidates"), data, cols_info)
         redex = Redescription.fromQueriesPair((left_query, right_query), data)
-        ## check DEBUG
-        sL = set([k for k,v in enumerate(results[0].get("support")) if v > 0])
-        sR = set([k for k,v in enumerate(results[1].get("support")) if v > 0])
-        if sL != redex.supp(0) or sR != redex.supp(1):
-            print("OUPS!")
-            pdb.set_trace()
+        # ## check DEBUG
+        # sL = set([k for k,v in enumerate(results[0].get("support")) if v > 0])
+        # sR = set([k for k,v in enumerate(results[1].get("support")) if v > 0])
+        # if sL != redex.supp(0) or sR != redex.supp(1):
+        #     print("OUPS!")
+        #     pdb.set_trace()
         return redex
 
     

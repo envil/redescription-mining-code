@@ -157,6 +157,7 @@ class DTree:
                 lids = list(set(range(data.shape[0])).difference(ids))
                 rids = list(ids)
             else:
+                if thres is None: pdb.set_trace()
                 lids = [ids[x] for x in numpy.where(data[ids, feat] <= thres)[0]]
                 rids = [ids[x] for x in numpy.where(data[ids, feat] > thres)[0]]
             # print("---", node_id, feat, len(lids), len(rids))
@@ -260,10 +261,11 @@ class DTree:
                 self.feature[node["parent"]] = node["attribute"]
                 if self.testValue(node["value"]):
                     self.threshold[node["parent"]] = node["value"] - 0.5 #
-                    self.children_left[node["parent"]] = ni
+                    self.children_right[node["parent"]] = ni
                     # self.counts[node["parent"]][0] = node["size"]
                 else:
-                    self.children_right[node["parent"]] = ni
+                    self.threshold[node["parent"]] = node["value"] + 0.5 #
+                    self.children_left[node["parent"]] = ni
                     # self.counts[node["parent"]][1] = node["size"]
 
     def initBasic(self, supp_pos=None, feat=None, n=0):
@@ -314,21 +316,4 @@ class DTreeToolsSKL:
             skl_dtc.tree_.value = numpy.array([[[numpy.sum(in_target==0), numpy.sum(in_target==1)]]])        
         dt = DTree(tcl.getNodes(skl_dtc), in_data, in_target)
         dtt = dt.pruneDeadBranches(in_data, in_target)
-
-        ###############################
-        ### DEBUGGING TESTS
-        X = dt.computeSupp(data=in_data, target=in_target)
-        T = skl_dtc.predict(in_data)
-        if not all(X==T):
-            pdb.set_trace()
-        if not dtt.isEmpty():
-            if dtt.supp_sets[0] is None:
-                pdb.set_trace()
-                dt.pruneDeadBranches(in_data, in_target)
-                print("SUPP SET::", dt.supp_sets)
-            Z = dtt.computeSupp(data=in_data, target=in_target)
-            if not all(X==Z):
-                pdb.set_trace()
-        ###############################
-
         return dtt
