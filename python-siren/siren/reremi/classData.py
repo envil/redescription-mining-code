@@ -2,8 +2,6 @@ import os.path, time, re
 from itertools import chain
 import numpy
 
-import pdb
-
 try:    
     from classContent import Container, ContentCollection
     from classCol import DataError, ColM, BoolColM, CatColM, NumColM
@@ -513,7 +511,8 @@ class Data(ContentCollection):
             cid = term.colId()
             col = self.col(side, cid)
             if bincats and col is not None and col.typeId() == 2:
-                off = col.numEquiv(term.getCat())
+                for cc in term.getCat():
+                    off = col.numEquiv(cc)
         return (side, cid, off)
         
     def getMatrix(self, side_cols=None, store=True, types=None, only_able=False, bincats=False, nans=None):
@@ -1564,8 +1563,13 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
 
 def main():
 
-    rep = "/home/egalbrun/TKTL/redescriptors/dp/test/dblp_pickedBB_empty/"
-    data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
+    rep = "/home/egalbrun/TKTL/redescriptors/current/CSM_data/sample_2/"
+    data = Data([rep+"Patient_Claims_aggregated_Sample_2.csv", rep+"Patient_Claims_aggregated_Sample_2.csv", {"delimiter": ","}, "nan"], "csv")
+    print(data)
+    
+    
+    # rep = "/home/egalbrun/TKTL/redescriptors/dp/test/dblp_pickedBB_empty/"
+    # data = Data([rep+"data_LHS.csv", rep+"data_RHS.csv", {}, "nan"], "csv")
     
     ############# ADDING NEW VARIABLES
     # rep = "/home/egalbrun/TKTL/misc/ecometrics/china_paper/redescription_china/7_fossils/biotraits_focus+FOSS/"

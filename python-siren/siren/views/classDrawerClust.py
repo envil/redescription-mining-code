@@ -155,7 +155,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         bottom_hist = bottom_occ+nbr*h_occ
         top_hist = bottom_hist+h_hist
         btms = [bottom_occ+i*h_occ for i in range(nbr)]
-        
+
         bckc = "white"
         bins_lbl = vec_dets["binLbls"]
         #vvmax = int(numpy.max(vec))

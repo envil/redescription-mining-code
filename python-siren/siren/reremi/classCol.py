@@ -6,12 +6,14 @@ try:
     from classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools, NA_str_c
     from classSParts import tool_ratio, cmp_vals, cmp_lists
     from classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
+    #import misc_codes
 except ModuleNotFoundError:
     from .toolXML import BOOL_MAP
     from .classQuery import Op, Term, AnonTerm, BoolTerm, CatTerm, NumTerm, Literal, TimeTools, NA_str_c
     from .classSParts import tool_ratio, cmp_vals, cmp_lists
     from .classProps import WithEVals, VarProps, mapSuppNames, ACTIVE_RSET_ID
-
+    #from . import misc_codes
+    
 import pdb
 
 NA_num  = numpy.nan
@@ -48,7 +50,7 @@ class DataError(Exception):
         self.value = value
     def __str__(self):
         return repr(self.value)
-
+    
 class ColM(WithEVals):
 
     class_letter = "v"
@@ -570,7 +572,7 @@ class BoolColM(ColM):
         if term is not None and term.isAnon():
             return set()
         return set(self.hold)
-
+    
     def lTrue(self):
         return self.sumCol()
 
@@ -799,7 +801,7 @@ class CatColM(ColM):
         if term.isAnon():
             return set()
         return self.suppCat(term.cat)
-
+    
     def suppInBounds(self, min_in=-1, min_out=-1):
         if self.infofull["in"][0] != min_in:
             self.infofull["in"]= (min_in, (self.cards[-1][1] >= min_in or (self.nbRows() - self.cards[0][1]) >= min_in))
@@ -814,10 +816,10 @@ class NumColM(ColM):
 
     p_patt = "^-?\d+(?P<dec>(\.\d+)?)$"
     # alt_patt = "^[+-]?\d+.?\d*(?:[Ee][-+]\d+)?$"
-    alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]\d+)?$"
-    prec_patt = "^-?\d+((?P<dec>\.\d+)|(e-(?P<epw>\d+)))?$"
+    alt_patt = "^[+-]?\d+\.?\d*(?:[Ee][-+]?\d+)?$"
+    prec_patt = "^[+-]?\d+(?P<dec>\.\d+)?([Ee](?P<esgn>[-+])?(?P<epw>\d+))?$"
     @classmethod
-    def parseVal(tcl, v, j, vals, miss=set(), prec=None, exclude=False, matchMiss=False):
+    def parseVal(tcl, v, j=0, vals=None, miss=set(), prec=None, exclude=False, matchMiss=False):
         if (matchMiss is not False and v == matchMiss) or v == str(tcl.NA):
             miss.add(j)
             return v, prec
@@ -830,19 +832,25 @@ class NumColM(ColM):
                 if matchMiss is False:
                     miss.add(j)
                 return v, prec
+            sfv = v
         else:
-            pprec = 0
-            mtch = re.match(tcl.prec_patt, str(float(v)))
-            if mtch is not None:
-                if mtch.group("dec") is not None:
-                    pprec = len(mtch.group("dec"))
-                elif mtch.group("epw") is not None:
-                    pprec = int(mtch.group("epw"))
-            if prec is None or pprec > prec:
-                prec = pprec
+            sfv = str(float(v))
+            
+        pprec = 0
+        mtch = re.match(tcl.prec_patt, sfv)
+        if mtch is not None:
+            if mtch.group("dec") is not None:
+                pprec = len(mtch.group("dec"))-1
+            if mtch.group("epw") is not None:
+                if mtch.group("esgn") is not None and mtch.group("esgn") == "-":
+                    pprec += int(mtch.group("epw"))
+                else:
+                    pprec -= int(mtch.group("epw"))
+        if prec is None or pprec > prec:
+            prec = pprec
                 
         val = float(v)
-        if exclude is False or val != exclude:
+        if vals is not None and (exclude is False or val != exclude):
             vals.append((val, j))
         return val, prec
 
@@ -1102,10 +1110,15 @@ class NumColM(ColM):
         for (v,i) in self.sVals:
             if self.prec is None or len(str(v % 1))-2 > self.prec:
                 self.prec = len(str(v % 1))-2       
-    def getPrec(self, details={}):
+    def getPrec(self, details={}): ### Nb of decimal digits
         if self.prec is None:
             self.compPrec()
-        return self.prec
+        return max(0, self.prec)
+    def getOMagn(self, details={}): ### Order of magnitude
+        if self.prec is None:
+            self.compPrec()
+        return -self.prec
+
     def compTimePrec(self, details={}):
         ii = [si for si, ss in enumerate(zip(*[re.split("[:,-]", TimeTools.format_time(v, time_prec=1)) for (v,i) in self.sVals])) if len(set(ss)) > 1]
         if len(ii) > 1:
@@ -1436,7 +1449,7 @@ class NumColM(ColM):
             return set()
         suppIt = set()
         for (val , row) in self.sVals:
-            if val > term.upb :
+            if val > term.upb:
                 return suppIt
             elif val >= term.lowb:
                 if row == -1:
@@ -1444,7 +1457,7 @@ class NumColM(ColM):
                 else:
                     suppIt.add(row)
         return suppIt
-
+    
     def makeSegments(self, ssetts, side, supports, ops =[False, True]):
         supports.makeVectorABCD()
         segments = [[[self.sVals[0][0], None, ssetts.makeLParts()]], [[self.sVals[0][0], None, ssetts.makeLParts()]]]
@@ -1559,3 +1572,9 @@ class NumColM(ColM):
             n = neg
         return Literal(n, self.getAssocTermClass()(self.getId(), lowb, upb))
 associate_term_class(NumColM, NumTerm)
+
+
+# if __name__ == '__main__':
+#     vals = ["+4.9091", "+4.909100", "+4.9e4", "4.9e-4", "-4e-4", "+4.9e34", "4.9e-34", "-4e-34"]
+#     for v in vals:
+#         print(v, NumColM.parseVal(v))

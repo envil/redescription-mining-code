@@ -7,7 +7,8 @@ try:
     from classExtension import ExtensionError, newExtensionsBatch
     from classSouvenirs import Souvenirs
     from classConstraints import Constraints
-    from classInitialPairs import InitialPairs
+    from classInitialPairs import initPairs #InitialPairs
+    # from classColAltMdl import DataAltMdl
 
     from classCharbonGMiss import CharbonGMiss
     from classCharbonGStd import CharbonGStd
@@ -20,8 +21,9 @@ except ModuleNotFoundError:
     from .classExtension import ExtensionError, newExtensionsBatch
     from .classSouvenirs import Souvenirs
     from .classConstraints import Constraints
-    from .classInitialPairs import InitialPairs
-
+    from .classInitialPairs import initPairs #InitialPairs
+    # from .classColAltMdl import DataAltMdl
+    
     from .classCharbonGMiss import CharbonGMiss
     from .classCharbonGStd import CharbonGStd
     from .classCharbonTAlt import CharbonTCW, CharbonTSprit, CharbonTSplit
@@ -264,7 +266,7 @@ class ExpMiner(object):
                         map_v[k] = []
                     map_v[k].append((ii, i))
 
-        ### pdb.set_trace()
+        pdb.set_trace()
         # print("NEXTGEN", len(nextge), len([ni for ni, n in enumerate(nextge) if n.query(0).usesOr()]), len([ni for ni, n in enumerate(nextge) if n.query(1).usesOr()]))
         for ii, (k, rs) in enumerate(map_v.items()):
             self.logger.printL(4, "Combining on basis %d/%d (%s)" % (ii+1, len(map_v), k), 'status', self.ppid)
@@ -553,7 +555,8 @@ class Miner(object):
         pairs_store = None
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
-        self.initial_pairs = InitialPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store)
+        self.initial_pairs = initPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store,
+                                           data=self.data, mdl=params["mdl_scoring"]["data"])
         self.rcollect = RCollection(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
         self.logger.printL(1, "Miner set up...\n\t%s\n\t%s" % (self.data, self.rcollect), 'log', self.getId())
         
@@ -648,7 +651,7 @@ class Miner(object):
     def full_run(self, cust_params={}):
         self.rcollect.resetFinal()
         self.count = 0
-        
+        ### dtalts = DataAltMdl(self.data) ### !HERE
         self.logger.printL(1, "Starting mining", 'status', self.getId()) ### todo ID
         #### progress initialized after listing pairs
         self.logger.clockTic(self.getId(), "pairs")
@@ -658,8 +661,11 @@ class Miner(object):
         check_score = not self.charbon.isTreeBased()
         nb_round = 0
         if self.constraints.getCstr("algo_family") == "combine":
-
-            nextge = self.initial_pairs.getAll(self.data, self.constraints.getCstr("min_itm_acc"), check_score=check_score)
+            # ks = sorted(self.initial_pairs.pairs_details.keys(), key= lambda x: self.initial_pairs.pairs_details[x]["mdl"], reverse=True)
+            # v = self.initial_pairs.pairs_details
+            # print("#################")
+            # print("\n".join(["%f\t%s" % (v[k]["mdl"], Redescription.fromInitialPair(self.initial_pairs.pairs_store[k], self.data, v[k]).disp()) for k in ks]))
+            nextge, scs = self.initial_pairs.getAll(self.data, self.constraints.getCstr("min_itm_acc"), check_score=check_score)
             if self.constraints.getCstr("optimize_combinations"):
                 self.logger.clockTic(self.getId(), "impr_pairs")
                 self.logger.printL(1,"Improving initial pairs %d" % len(nextge), "log", self.getId())

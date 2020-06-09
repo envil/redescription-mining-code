@@ -713,6 +713,11 @@ class PltDtHandlerListClust(PltDtHandlerListVarSplits):
         vec_dets["more"] = details
         vec_dets["min_max"] = (0, len(details["ord_cids"])-1) 
 
+        #### WRITE CLUSTERS DATA OUT
+        # Ccs = numpy.array([[details[i]["occ_avg"][j] for j, rid in details["ord_rids"]] for pi, i in enumerate(details["ord_cids"])])
+        # header_str = "RIDS: "+",".join([rid for j, rid in details["ord_rids"]])+"\tCIDS: "+",".join(["%d" % cid for cid in details["ord_cids"]])
+        # numpy.savetxt("clusters.csv", Ccs, fmt='%.5f', delimiter=',', header=header_str)
+        
         ### debugging: for drawing clustering tree
         # vec_dets["clusters"] = clusters  ### for debugging
         # vec_dets["ddER"] = ddER  ### for debugging

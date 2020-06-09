@@ -211,7 +211,8 @@ def mk_lit(side, bchild, feat, threshold, candidates, data, cols_info):
         #     rng = (threshold[parent], float("inf")) 
         # lit = Literal(False, NumTerm(cid, rng[0], rng[1]))
         # ###################################
-        rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+        # rng = (data.col(side,cid).getRoundThres(threshold[parent], "low"), float("inf"))
+        rng = (data.col(side,cid).getRoundThres(threshold, "low"), float("inf"))
         lit = Literal(neg, NumTerm(cid, rng[0], rng[1]))
     else:
         raise Warning('This type of variable (%d) is not yet handled with tree mining...' % data.col(side, cid).typeId())

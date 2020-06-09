@@ -1,4 +1,4 @@
-import re, string, itertools, os.path
+import re, string, itertools, os.path, numpy
 try:
     from classRedescription import Redescription
     from classExtension import ExtensionError
@@ -10,17 +10,19 @@ except ModuleNotFoundError:
 
 import pdb
 
+DEF_SCORE = float("-inf")
+
 ### Popping out from the last
-def fifo_sort(pairs_store, pairs_details, drop_set=set()):
+def fifo_sort(pairs_store, pairs_details, drop_set=set(), sort_criterion="score"):
     return sorted(drop_set.symmetric_difference(pairs_store.keys()), reverse=True)
 
-def filo_sort(pairs_store, pairs_details, drop_set=set()):
+def filo_sort(pairs_store, pairs_details, drop_set=set(), sort_criterion="score"):
     return sorted(drop_set.symmetric_difference(pairs_store.keys()))
 
-def overall_sort(pairs_store, pairs_details, drop_set=set()):
-    return sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get("score", -1))
+def overall_sort(pairs_store, pairs_details, drop_set=set(), sort_criterion="score"):
+    return sorted(drop_set.symmetric_difference(pairs_store.keys()), key=lambda x: pairs_details[x].get(sort_criterion, DEF_SCORE))
 
-def alternate_sort(pairs_store, pairs_details, drop_set=set()):
+def alternate_sort(pairs_store, pairs_details, drop_set=set(), sort_criterion="score"):
     best_sides = [{}, {}]
     for k in pairs_store.keys():
         for side in [0,1]:
@@ -33,7 +35,7 @@ def alternate_sort(pairs_store, pairs_details, drop_set=set()):
 
     for side in [0,1]:
         for col in best_sides[side]:
-            best_sides[side][col].sort(key=lambda x: pairs_details[x].get("score", -1), reverse=True)
+            best_sides[side][col].sort(key=lambda x: pairs_details[x].get(sort_criterion, DEF_SCORE), reverse=True)
         for c, vs in best_sides[side].items():
             for pp, v in enumerate(vs):
                 pairs_details[v]["rank_%d"%side] = pp
@@ -47,7 +49,8 @@ SORT_METHODS= {"overall": overall_sort,
 DEFAULT_METHOD = overall_sort
 
 class InitialPairs(object):
-
+    sort_criterion = "score"
+    
     def __init__(self, sort_meth="overall", max_out=-1, save_filename=None):
         self.max_out = max_out
         self.list_out = []
@@ -109,7 +112,6 @@ class InitialPairs(object):
 
     def loadFromLogFile(self, data=None):
         loaded = 0
-
         log_patt = "\[\[log@[0-9]+\s+\]\]\s+"
         ip_patt = log_patt+"Score:(?P<score>\d\.\d+) (?P<LHS>.*) <=> (?P<RHS>.*) -"
         end_patt = log_patt+"Found \d+ pairs,"
@@ -176,7 +178,7 @@ class InitialPairs(object):
 
     def _sort(self):
         if self.sorted_ids is None:
-            self.sorted_ids = self.sort_meth(self.pairs_store, self.pairs_details, self.drop_set)
+            self.sorted_ids = self.sort_meth(self.pairs_store, self.pairs_details, self.drop_set, self.sort_criterion)
         
     def pop(self, cond=None):
         if len(self.pairs_store) > 0 and not self.exhausted():
@@ -210,8 +212,9 @@ class InitialPairs(object):
 
     def getAll(self, data, min_score=0, cond=None, check_score=True):
         reds = []
+        scs = []
         for nid, dt in self.pairs_details.items():
-            if dt["score"] >= min_score:
+            if dt[self.sort_criterion] >= min_score:
                 pair = self.pairs_store[nid]
                 red = Redescription.fromInitialPair(pair, data, dt)
                 if check_score and (red.score() - dt["score"])**2 > 0.0001:
@@ -219,7 +222,8 @@ class InitialPairs(object):
                 if check_score and red.hasCondition() and red.getAcc("cond") != dt["scoreC"]:
                     raise ExtensionError("[in InitialPairs.get COND]\nexpected score=%s\t~> %s" % (dt["scoreC"], red))
                 reds.append(red)
-        return reds
+                scs.append(dt[self.sort_criterion])
+        return reds, scs
         
     def getLatestDetails(self):
         nid = self.list_out[-1]
@@ -255,3 +259,7 @@ class InitialPairs(object):
         if bsize is None:
             bsize = self.explore_pairs["batch_size"]
         return self.explore_pairs["list"][pointer*bsize:(pointer+1)*bsize]
+    
+def initPairs(sort_meth="overall", max_out=-1, save_filename=None, data=None, mdl=False):
+    return InitialPairs(sort_meth, max_out, save_filename)
+        

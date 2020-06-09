@@ -175,10 +175,11 @@ class Container(Item, ICList):
         if type(field) is int and field < len(fields):
             field = fields[field]
         if field is not None and self.hasContentHandle():
-            map_v = dict([(x, strToLower(self.getItemFieldV(x, field, sdetails))) for x in self])
+            vs = [(x, strToLower(self.getItemFieldV(x, field, sdetails))) for x in self]
+            map_v = dict([(v[0], (v[1] is None, v[1] if v[1] is not None else v[0])) for v in vs])
         else:
             map_v = dict([(p, p) for p in self])
-        self.sort(key= lambda x: map_v.get(x, default_cmp), reverse=self.sortP[1])
+        self.sort(key= lambda x: map_v.get(x) or default_cmp, reverse=self.sortP[1])
     
         
 class StoredContainer(Container):
