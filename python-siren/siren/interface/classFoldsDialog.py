@@ -6,9 +6,9 @@ import wx
 import pdb
 from .classPreferencesDialog import PreferencesDialog
 
-class SplitDialog(PreferencesDialog):
+class FoldsDialog(PreferencesDialog):
     """
-    Creates a preferences dialog to setup a data split
+    Creates a preferences dialog to setup data folds
     """
     DEACTIVATED_LBL = "Deactivated"
     AUTOMATIC_LBL = "Automatic"
@@ -23,7 +23,7 @@ class SplitDialog(PreferencesDialog):
         """
         Initialize the config dialog
         """
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Splits setup') #, size=(550, 300))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Folds setup') #, size=(550, 300))
         self.parent = parent
         self.pref_handle = pref_handle
         self.data_handle = pref_handle
@@ -39,12 +39,12 @@ class SplitDialog(PreferencesDialog):
         
         self.cancel_change = False # Tracks if we should cancel a page change
 
-        section_name = "Split"
+        section_name = "Folds"
         ti, section = self.pref_handle.getPreferencesManager().getSectionByName(section_name)
-        self.splits_info = self.data_handle.getData().getFoldsInfo()
-        self.cands_splits = self.data_handle.getData().findCandsFolds()
+        self.folds_info = self.data_handle.getData().getFoldsInfo()
+        self.cands_folds = self.data_handle.getData().findCandsFolds()
         self.source_cands = [self.DEACTIVATED_LBL, self.AUTOMATIC_LBL] + \
-                    [self.data_handle.getData().col(side, colid).getName() for (side, colid) in self.cands_splits]
+                    [self.data_handle.getData().col(side, colid).getName() for (side, colid) in self.cands_folds]
         self.controls_map["add"] = {}
 
         if ti is not None:
@@ -61,7 +61,7 @@ class SplitDialog(PreferencesDialog):
             self.dispGUI(section, sec_id, conf, top_sizer)
             self.dispInfo(conf, top_sizer)
             self.makeButtons(sec_id, conf, top_sizer)
-            self.getSplitsIDS()
+            self.getFoldsIDS()
             self.makeAssignBoxes(conf, top_sizer)
             conf.SetSizer(top_sizer)
             top_sizer.Fit(conf)
@@ -137,19 +137,19 @@ class SplitDialog(PreferencesDialog):
 
         top_sizer.Add(btn_sizer, 0, wx.ALIGN_BOTTOM|wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5)
 
-    def getSplitsIDS(self):
-        if self.splits_info is None:
-            self.stored_splits_ids = []
+    def getFoldsIDS(self):
+        if self.folds_info is None:
+            self.stored_folds_ids = []
         else:
-            self.stored_splits_ids = sorted(self.splits_info["split_ids"].keys(), key=lambda x: self.splits_info["split_ids"][x])
+            self.stored_folds_ids = sorted(self.folds_info["fold_ids"].keys(), key=lambda x: self.folds_info["fold_ids"][x])
 
     def onPrepare(self, event):
-        self.getDataSplits()
-        self.getSplitsIDS()
+        self.getDataFolds()
+        self.getFoldsIDS()
         self.destroyAssignBoxes(self, self.top_sizer)
         self.makeAssignBoxes(self, self.top_sizer)
         self.controls_map[self.sec_id]["button"]["prepare"].Disable()
-        if self.data_handle.getData().hasAutoSplits():
+        if self.data_handle.getData().hasAutoFolds():
             self.controls_map[self.sec_id]["button"]["save_col"].Enable()
         self.top_sizer.Fit(self.conf)
         self.Centre()
@@ -162,29 +162,29 @@ class SplitDialog(PreferencesDialog):
         else:
             ids = {}
             for lt in ["learn", "test"]:
-                ids[lt] = [self.stored_splits_ids[bid] for bid, box in self.controls_map["add"][lt].items() if box.IsChecked()]
+                ids[lt] = [self.stored_folds_ids[bid] for bid, box in self.controls_map["add"][lt].items() if box.IsChecked()]
             self.data_handle.assignLT(ids["learn"], ids["test"])
         self.EndModal(0)
 
 
     def makeAssignBoxes(self, frame, top_sizer, sec_id = "add"):
-        splits = self.stored_splits_ids
+        folds = self.stored_folds_ids
         checked = [("learn", []), ("test", [])]
         if len(self.data_handle.getData().getLTsids()) > 0:
             ltsids = self.data_handle.getData().getLTsids()
-            checked = [(lbl, [self.splits_info["split_ids"][kk] for kk in ltsids[lbl]]) for lbl in ["learn", "test"]]
-        elif len(splits) == 1:
+            checked = [(lbl, [self.folds_info["fold_ids"][kk] for kk in ltsids[lbl]]) for lbl in ["learn", "test"]]
+        elif len(folds) == 1:
             checked = [("learn", [0]), ("test", [0])]
-        elif len(splits) > 1:
-            checked = [("learn", range(1,len(splits))), ("test", [0])]
+        elif len(folds) > 1:
+            checked = [("learn", range(1,len(folds))), ("test", [0])]
         for (item_id, cck) in checked:
-            for option_key, option_label in enumerate(splits):
+            for option_key, option_label in enumerate(folds):
                 ctrl_id = wx.NewId()
                 self.controls_map[sec_id][item_id][option_key] = wx.CheckBox(frame, ctrl_id, option_label, style=wx.ALIGN_RIGHT)
                 self.controls_map[sec_id][item_id][option_key].SetValue(option_key in cck)
                 self.objects_map[ctrl_id]= (sec_id, item_id, option_key)
                 self.boxes_sizers[item_id].Add(self.controls_map[sec_id][item_id][option_key], 0) 
-        if len(splits) > 0:
+        if len(folds) > 0:
             self.controls_map[self.sec_id]["button"]["apply"].Enable()
         else:
             self.controls_map[self.sec_id]["button"]["apply"].Disable()
@@ -217,34 +217,34 @@ class SplitDialog(PreferencesDialog):
     def onCancel(self, event):
         self.EndModal(0)
 
-    def getDataSplits(self):
+    def getDataFolds(self):
         source_pos = self.controls_map["add"]["source"].GetCurrentSelection()
         if self.source_cands[source_pos] == self.DEACTIVATED_LBL:
             pass
         elif self.source_cands[source_pos] == self.AUTOMATIC_LBL:
             vdict = self.getSecValuesDict(self.sec_id)
             self.pref_handle.updatePreferencesDict(vdict)
-            self.data_handle.getData().getSplit(self.pref_handle.getPreference("nb_folds"),
+            self.data_handle.getData().getFold(self.pref_handle.getPreference("nb_folds"),
                                 self.pref_handle.getPreference("coo_dim"),
                                 self.pref_handle.getPreference("grain"))
         else:
-            (side, colid) = self.cands_splits[source_pos-2]
+            (side, colid) = self.cands_folds[source_pos-2]
             self.data_handle.extractFolds(side, colid)
-        self.splits_info = self.data_handle.getData().getFoldsInfo()
+        self.folds_info = self.data_handle.getData().getFoldsInfo()
         self.setSelectedSource()
         
     def setSelectedSource(self):
         map_source = dict([(v,k) for (k,v) in enumerate(self.source_cands)])
-        if self.splits_info is None:
+        if self.folds_info is None:
             source_name = self.DEACTIVATED_LBL
-        elif self.splits_info["source"] != "data":
+        elif self.folds_info["source"] != "data":
             source_name = self.AUTOMATIC_LBL
         else:
-            source_name = self.splits_info["parameters"]["colname"]
+            source_name = self.folds_info["parameters"]["colname"]
         source_pos = map_source.get(source_name, -1)
         self.controls_map["add"]["source"].Select(source_pos)
 
     def onSaveToC(self, event=None):
-        if self.data_handle.getData().hasAutoSplits():
+        if self.data_handle.getData().hasAutoFolds():
             self.data_handle.addFoldsCol()
             self.controls_map[self.sec_id]["button"]["save_col"].Disable()

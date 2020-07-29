@@ -65,15 +65,15 @@ class PltDtHandlerBasis(object):
         if self.pltdt.get("rsets") != new_rsets:
             self.pltdt["rsets"] = new_rsets
             self.setCurrent(self.getRed())
-    def getDetailsSplit(self):
+    def getDetailsFolds(self):
         return self.pltdt.get("rsets")
     def getVizRows(self):
         if self.getParentData() is not None:
-            return self.getParentData().getVizRows(self.getDetailsSplit()) 
+            return self.getParentData().getVizRows(self.getDetailsFolds()) 
         return set()
     def getUnvizRows(self):
         if self.getParentData() is not None:
-            return self.getParentData().getUnvizRows(self.getDetailsSplit())
+            return self.getParentData().getUnvizRows(self.getDetailsFolds())
         return set()
 
     def hasQueries(self):
@@ -296,7 +296,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
                 query = Query.parseXpr(stringQ, side, self.getParentData())
             else:
                 query = Query.parse(stringQ, self.getParentData().getNames(side))
-        except:
+        except IOError:
             query = None
         if query is not None and (len(stringQ) > 0 and len(query) == 0):
             query = None
@@ -329,7 +329,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
         if red is not None:
             # red.setRestrictedSupp(self.getParentData())
             self.pltdt["queries"] = queries
-            # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
+            # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsFolds()), dtype=int)
             self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
             self.pltdt["red"] = red
             self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()
@@ -373,7 +373,7 @@ class PltDtHandlerRed(PltDtHandlerBasis):
             self.sendEditBack(red)
             # if self.getParentData().hasLT():
             #     red.setRestrictedSupp(self.getParentData())
-            # # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsSplit()), dtype=int)
+            # # self.pltdt["suppABCD"] = numpy.array(red.getRSetABCD(self.getDetailsFolds()), dtype=int)
             # self.pltdt["suppABCD"] = numpy.array(red.supports().getVectorABCD(), dtype=int)
             # self.pltdt["red"] = red
             # self.pltdt["vec"], self.pltdt["vec_dets"] = self.prepareValVec()

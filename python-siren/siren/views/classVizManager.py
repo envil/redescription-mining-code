@@ -321,10 +321,10 @@ class VizManager:
         self.updateVizcellSelected()
 
     def isVizSplit(self):
-        return self.parent.hasSplit() and self.parent.splitter.IsSplit()
+        return self.parent.isSplit() and self.parent.splitter.IsSplit()
     
     def vizTabToSplit(self):
-        if not self.parent.hasSplit():
+        if not self.parent.isSplit():
             return
         self.parent.tabbed.RemovePage(self.viz_postab)
         # print("Pop viz tab key")
@@ -333,7 +333,7 @@ class VizManager:
         self.parent.splitter.SplitHorizontally(self.parent.tabbed, self.getSW())
 
     def vizSplitToTab(self):
-        if not self.parent.hasSplit():
+        if not self.parent.isSplit():
             return
         if self.isVizSplit():
             self.parent.splitter.Unsplit(self.getSW())
@@ -346,7 +346,7 @@ class VizManager:
         
 
     def OnSplitchange(self):
-        if not self.parent.hasSplit():
+        if not self.parent.isSplit():
             return
 
         if self.hasVizIntab():

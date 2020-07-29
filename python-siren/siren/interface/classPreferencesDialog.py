@@ -24,7 +24,7 @@ class PreferencesDialog(wx.Dialog):
     Creates a preferences dialog to change the settings
     """
     dialog_title = "Preferences"
-    sections_skip = ["Network", "Split", "Extensions"]
+    sections_skip = ["Network", "Folds", "Extensions"]
     button_types = [{"name":"cancel", "label":"Cancel", "funct": "self.onCancel"},
              {"name":"reset", "label":"Reset", "funct": "self.onReset"},
              {"name":"rtod", "label":"ResetToDefault", "funct": "self.onResetToDefault"},

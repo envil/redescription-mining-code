@@ -23,9 +23,10 @@ class Charbon(object):
     def getAlgoName(self):
         return self.name
 
-    def __init__(self, constraints):
+    def __init__(self, constraints, logger=None):
         ### For use with no missing values
         self.constraints = constraints
+        self.logger = logger
 
 
 
@@ -48,8 +49,8 @@ class CharbonGreedy(Charbon):
             return self.getCandidates(side, col, red, colsC)
         return []
 
-    def __init__(self, constraints):
-        Charbon.__init__(self, constraints)
+    def __init__(self, constraints, logger=None):
+        Charbon.__init__(self, constraints, logger)
         self.setOffsets()
     def getOffsets(self):
         return self.offsets
@@ -259,7 +260,7 @@ class CharbonTree(Charbon):
         return tmp
     
     def prepareTreeDataTrg(self, side, data, red):
-        min_entities = min(self.constraints.getCstr("min_node_size"), self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
+        min_entities = min(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
         av_cols = data.usableIds(min_entities, min_entities)
         basis_red, lsAnon, modr = red.minusAnonRed(data)
 
@@ -321,7 +322,7 @@ class CharbonTree(Charbon):
     
     # def initializeTrg(self, side, data, red):
     #     if red is None or len(red.queries[0]) + len(red.queries[1]) == 0:
-    #         nsupp = np.random.randint(self.constraints.getCstr("min_node_size"), data.nbRows()-self.constraints.getCstr("min_node_size"))
+    #         nsupp = np.random.randint(self.constraints.getCstr("min_itm_c"), data.nbRows()-self.constraints.getCstr("min_itm_c"))
     #         tmp = np.random.choice(range(data.nbRows()), nsupp, replace=False)
     #     elif side == -1: # and len(red.queries[0]) * len(red.queries[1]) != 0:
     #         side = 1

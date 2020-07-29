@@ -389,7 +389,7 @@ class RedQueryParser(Parser):
 
     @rule_def
     def _NUMBER_(self):
-        self._pattern(r'[+-]?\d+([.])?\d*([Ee][-+]\d+)?')
+        self._pattern(r'[+-]?\d+([.])?\d*([Ee][-+]?\d+)?')
 
     @rule_def
     def _STRING_(self):

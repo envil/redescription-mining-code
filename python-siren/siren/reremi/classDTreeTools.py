@@ -308,12 +308,20 @@ class DTreeToolsSKL:
         return feats, thres, clss, chls, chrs
     
     @classmethod
-    def fitTree(tcl, in_data, in_target, in_depth, in_min_bucket, split_criterion="gini", random_state=0):
+    def fitTree(tcl, in_data, in_target, in_depth, in_min_bucket, split_criterion="gini", random_state=0, logger=None):
+        if logger is not None:
+            logger.printL(10, "FITTING TREE\tnb input data size = %s, nb positive labels = %d, depth = %d, min node size = %d" % (in_data.shape, sum(in_target), in_depth, in_min_bucket), "X")
         if len(set(in_target)) == 1:
+            if logger is not None:
+                logger.printL(10, "All target labels identical, stopping.", "X")
             return DTree([], in_data, in_target)
         skl_dtc = tree.DecisionTreeClassifier(criterion=split_criterion, max_depth=in_depth, min_samples_leaf=in_min_bucket, random_state=0).fit(in_data, in_target)
         if skl_dtc.tree_.value.shape[2] == 1: ### did not split
+            if logger is not None:
+                logger.printL(10, "Did not split", "X")
             skl_dtc.tree_.value = numpy.array([[[numpy.sum(in_target==0), numpy.sum(in_target==1)]]])        
         dt = DTree(tcl.getNodes(skl_dtc), in_data, in_target)
         dtt = dt.pruneDeadBranches(in_data, in_target)
+        if logger is not None:
+            logger.printL(10, "Output tree:\t %s" % dtt, "X")
         return dtt

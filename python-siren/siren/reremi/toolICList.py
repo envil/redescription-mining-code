@@ -120,6 +120,9 @@ class ICList(list):
     def getIds(self):
         return range(len(self))
 
+    def naturalOrder(self):
+        return sorted(self)
+    
     # Printing
     def __repr__(self):
         return 'ICList('+list.__repr__(self)+', isChanged = '+str(self.isChanged)+')'

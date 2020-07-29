@@ -81,7 +81,7 @@ def get_trees_pair(data, trees_pile, trees_store, side_ini, max_level, min_bucke
                 mask = list(gp_tree["tree"].getSuppSet(leaf))                    
                 if sum(target[mask]) > min_bucket and (len(mask)-sum(target[mask])) > min_bucket:
                     tree_rpart = DTT.fitTree(dt[mask,:], target[mask], in_depth=1, 
-                                             in_min_bucket=min_bucket, split_criterion=split_criterion, random_state=0)
+                                             in_min_bucket=min_bucket, split_criterion=split_criterion, random_state=0, logger=self.logger)
                     if not tree_rpart.isEmpty():
                         ### CHECK SUPPORT
                         # if numpy.sum(split_tree["over_supp"][mask] != tree_rpart.getSupportVect(dt[mask,:])) > 0:
@@ -159,7 +159,7 @@ class CharbonTLayer(CharbonTree):
     def getTreeCandidates(self, side, data, more, in_data, cols_info):
         trees_pile, trees_store, PID = initialize_treepile(in_data, side, more, cols_info=cols_info)
         trees_pile, trees_store, PID = get_trees_pair(in_data, trees_pile, trees_store, side,
-                                                      max_level=self.constraints.getCstr("max_depth"),
+                                                      max_level=self.constraints.getCstr("max_var", side=side),
                                                       min_bucket=self.constraints.getCstr("min_node_size"),
                                                       split_criterion=self.constraints.getCstr("split_criterion"),
                                                       PID=PID, singleD=data.isSingleD(), cols_info=cols_info)

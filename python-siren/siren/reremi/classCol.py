@@ -80,7 +80,7 @@ class ColM(WithEVals):
     def getProp(self, what, which=None, rset_id=None, details={}):
         if what == "extra":
             return self.getExtra(which, details)
-        if which == self.which_rids: ### ids details for split sets            
+        if which == self.which_rids: ### ids details for folds subsets            
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
                 return None

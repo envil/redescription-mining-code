@@ -176,7 +176,7 @@ class LayoutHandlerBare(object):
 
         ### Bind
         for (elem, meth) in [("savef", self.OnSaveFig),
-                             ("boxL", self.OnSplitsChange), ("boxT", self.OnSplitsChange),
+                             ("boxL", self.OnFoldsChange), ("boxT", self.OnFoldsChange),
                              ("boxPop", self.OnPop), ("boxKil", self.OnKil)]:
             self.layout_elements[elem].Bind(wx.EVT_LEFT_UP, meth)
 
@@ -313,19 +313,19 @@ class LayoutHandlerBare(object):
             else:
                 box.Show(False)
 
-    def showSplitsBoxes(self, show=True):
+    def showFoldsBoxes(self, show=True):
         self.layout_elements["boxL"].Show(show)
         self.layout_elements["boxT"].Show(show)
 
-    def autoShowSplitsBoxes(self):
+    def autoShowFoldsBoxes(self):
         if self.getParentData() is not None and self.getParentData().hasLT():
-            self.showSplitsBoxes(True)
+            self.showFoldsBoxes(True)
         else:
-            self.showSplitsBoxes(False)
+            self.showFoldsBoxes(False)
                  
     def hideShowOpt(self):
         self.hideShowOptRec(self.layout_elements["innerBox"], self.getVizType())
-        self.autoShowSplitsBoxes()
+        self.autoShowFoldsBoxes()
 
     def initSizeRelative(self):
         ds = wx.DisplaySize()
@@ -408,7 +408,7 @@ class LayoutHandlerBare(object):
         self.hideShowOpt()
         self._SetSize()
 
-    def OnSplitsChange(self, event):
+    def OnFoldsChange(self, event):
         new_rsets = None
         parts = [{"butt": self.layout_elements["boxL"], "id": "learn",
                   "act_icon": self.getParentIcon("learn_act"), "dis_icon": self.getParentIcon("learn_dis")},
@@ -761,7 +761,7 @@ class LayoutHandlerQueries(LayoutHandlerBasis):
             if not det.get("miss", False) or (self.getParentData() is not None and self.getParentData().hasMissing()):
                 if red is not None:
                     fk = det.get("fk")
-                    params = self.getPltDtH().getDetailsSplit()
+                    params = self.getPltDtH().getDetailsFolds()
                     fk_all = "%s%s" % ("all", fk)
                     if params is not None:
                         fk = "%s%s" % (params["rset_id"], fk)

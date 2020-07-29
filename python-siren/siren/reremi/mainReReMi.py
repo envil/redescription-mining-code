@@ -54,11 +54,11 @@ def run_filter(args):
     ids = bc.selected(constraints.getActionsList("final"), ids=iids[:10], new_ids=iids[:4])
 
 
-def run_splits(args, splt=""):
-    nb_splits = 5
-    tmp = re.match("splits(?P<nbs>[0-9]+)\s*", splt)
+def run_folds(args, flds=""):
+    nb_folds = 5
+    tmp = re.match("folds(?P<nbs>[0-9]+)\s*", flds)
     if tmp is not None:
-        nb_splits = int(tmp.group("nbs"))
+        nb_folds = int(tmp.group("nbs"))
         
     loaded = IOTools.loadAll(args)
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"]) 
@@ -78,31 +78,32 @@ def run_splits(args, splt=""):
     for fci in fold_cols:
         if fci is None:
             logger.printL(2, "Data has no folds, generating...", "log")
-            sss = data.getSplit(nbsubs=nb_splits)
+            sss = data.getFold(nbsubs=nb_folds)
             data.addFoldsCol()
             suff = "rand"
-            splt_pckgf = filenames["basis"]+ ("_split-%d:%s_empty.siren" % (nb_splits, suff))
-            IOTools.saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"])        
+            flds_pckgf = filenames["basis"]+ ("_fold-%d:%s_empty.siren" % (nb_folds, suff))
+            IOTools.saveAsPackage(flds_pckgf, data, preferences=params, pm=loaded["pm"])        
         else:
             logger.printL(2, "Using existing fold: side %s col %s" % fci, "log")
             sss = data.extractFolds(fci[0], fci[1])
-            nb_splits = len(sss)
+            nb_folds = len(sss)
             suff = data.col(fci[0],fci[1]).getName()
-        print("SIDS", suff, sorted(data.getFoldsInfo()["split_ids"].items(), key=lambda x: x[1]))
+        print("SIDS", suff, sorted(data.getFoldsInfo()["fold_ids"].items(), key=lambda x: x[1]))
         print(data)
-        splt_pckgf = filenames["basis"]+ ("_split-%d:%s.siren" % (nb_splits, suff))
-        splt_statf = filenames["basis"]+ ("_split-%d:%s.txt" % (nb_splits, suff))            
+        flds_pckgf = filenames["basis"]+ ("_fold-%d:%s.siren" % (nb_folds, suff))
+        flds_statf = filenames["basis"]+ ("_fold-%d:%s.txt" % (nb_folds, suff))            
 
         stM = StatsMiner(data, params, logger)
         reds_list, all_stats, summaries, list_fields, stats_fields = stM.run_stats()
         
-        splt_fk = filenames["basis"]+ ("_split-%d:%s-kall.txt" % (nb_splits, suff))            
-        with open(splt_fk, "w") as f:
+        rp = Redescription.getRP()
+        flds_fk = filenames["basis"]+ ("_fold-%d:%s-kall.txt" % (nb_folds, suff))            
+        with open(flds_fk, "w") as f:
             f.write(rp.printRedList(reds_list, fields=list_fields+["track"]))
-            
+
         for fk, dt in summaries.items():
-            splt_fk = filenames["basis"]+ ("_split-%d:%s-k%d.txt" % (nb_splits, suff, fk))            
-            with open(splt_fk, "w") as f:
+            flds_fk = filenames["basis"]+ ("_fold-%d:%s-k%d.txt" % (nb_folds, suff, fk))            
+            with open(flds_fk, "w") as f:
                 f.write(rp.printRedList(dt["reds"], fields=list_fields+["track"]))
                 
         nbreds = numpy.array([len(ll) for (li, ll) in all_stats.items() if li > -1])
@@ -111,10 +112,10 @@ def run_splits(args, splt=""):
             summary_mat = numpy.hstack([numpy.vstack([tot.min(axis=0), tot.max(axis=0), tot.mean(axis=0), tot.std(axis=0)]), numpy.array([[nbreds.min()], [nbreds.max()], [nbreds.mean()], [nbreds.std()]])])
 
             info_plus = "\nrows:min\tmax\tmean\tstd\tnb_folds:%d" % (len(all_stats)-1)
-            numpy.savetxt(splt_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(stats_fields+["nb reds"])+info_plus)
-            # IOTools.saveAsPackage(splt_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)
+            numpy.savetxt(flds_statf, summary_mat, fmt="%f", delimiter="\t", header="\t".join(stats_fields+["nb reds"])+info_plus)
+            # IOTools.saveAsPackage(flds_pckgf, data, preferences=params, pm=loaded["pm"], reds=reds_list)
         else:
-            with open(splt_statf, "w") as fo:
+            with open(flds_statf, "w") as fo:
                 fo.write("No redescriptions found")
         # for red in reds_list:
         #     print(red.disp())
@@ -129,7 +130,7 @@ def run_printout(args):
     loaded = IOTools.loadAll(args[:-1], conf_defs)
     params, data, logger, filenames, reds = (loaded["params"], loaded["data"], loaded["logger"],
                                              loaded["filenames"], loaded["reds"])
-        
+
     rp = Redescription.getRP()
     qfilename = None
     if reds is None and "queries" in filenames:
@@ -259,8 +260,8 @@ def main():
         run_printout(sys.argv)
     elif re.match("rnd", sys.argv[-1]):
         run_rnd(sys.argv[:-1])
-    elif re.match("splits", sys.argv[-1]):
-        run_splits(sys.argv[:-1], sys.argv[-1])
+    elif re.match("folds", sys.argv[-1]):
+        run_folds(sys.argv[:-1], sys.argv[-1])
     elif sys.argv[-1] == "filter":
         run_filter(sys.argv[:-1])
     elif re.match("extend", sys.argv[-1]) and len(sys.argv) > 3:

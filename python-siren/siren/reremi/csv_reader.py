@@ -16,7 +16,6 @@ IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Id
 COND_TIME = 'cond_time'
 COND_COL = ('cond_var', 'cond_col', 'timeid', COND_TIME)
 
-
 ENABLED_ROWS = ('enabled_row', 'enabled_rows')
 ENABLED_COLS = ('enabled_col', 'enabled_cols')
 GROUPS_COLS = ('groups_col', 'groups_cols')
@@ -24,6 +23,7 @@ GROUPS_COLS = ('groups_col', 'groups_cols')
 COLVAR = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Variables']
 COLVAL = ['value', 'Value', 'values', 'Values']
 
+FOLDS_PREF = "folds_subs_"
 
 class CSVRError(Exception):
     def __init__(self, value):

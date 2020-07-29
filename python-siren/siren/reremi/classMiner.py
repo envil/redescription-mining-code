@@ -7,8 +7,7 @@ try:
     from classExtension import ExtensionError, newExtensionsBatch
     from classSouvenirs import Souvenirs
     from classConstraints import Constraints
-    from classInitialPairs import initPairs #InitialPairs
-    # from classColAltMdl import DataAltMdl
+    from classInitialPairs import initPairs
 
     from classCharbonGMiss import CharbonGMiss
     from classCharbonGStd import CharbonGStd
@@ -21,8 +20,7 @@ except ModuleNotFoundError:
     from .classExtension import ExtensionError, newExtensionsBatch
     from .classSouvenirs import Souvenirs
     from .classConstraints import Constraints
-    from .classInitialPairs import initPairs #InitialPairs
-    # from .classColAltMdl import DataAltMdl
+    from .classInitialPairs import initPairs
     
     from .classCharbonGMiss import CharbonGMiss
     from .classCharbonGStd import CharbonGStd
@@ -124,9 +122,9 @@ class ExpMiner(object):
             ## self.charbon_alt = CharbonGMiss(self.constraints)
             ### CHARBON
         if CHARBON_MISS_FORCE or self.data.hasMissing():
-            return CharbonGMiss(self.constraints)
+            return CharbonGMiss(self.constraints, logger=self.shareLogger())
         else:
-            return CharbonGStd(self.constraints)
+            return CharbonGStd(self.constraints, logger=self.shareLogger())
     
     def expandRedescriptions(self, nextge, rcollect=None):
         if len(nextge) > 0 and self.questionLive():
@@ -142,9 +140,11 @@ class ExpMiner(object):
     def expandRedescriptionsTree(self, nextge, rcollect):
         for redi, red in enumerate(nextge):
             self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), 'status', self.ppid)
-            kids = self.charbon.computeExpandTree(-1, self.data, red.copy())
+            kids = self.charbon.computeExpandTree(-1, self.data, red)
+            self.logger.printL(2, "Expansion returned %s redescriptions" % len(kids), 'status', self.ppid)
             kid_ids = []
             for kid in kids:
+                self.logger.printL(2, kid, 'status', self.ppid)
                 rcollect.addItem(kid, "W")
                 kid_ids.append(kid.getUid())
             if len(kid_ids) > 0:
@@ -555,8 +555,8 @@ class Miner(object):
         pairs_store = None
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
-        self.initial_pairs = initPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_red"), save_filename=pairs_store,
-                                           data=self.data, mdl=params["mdl_scoring"]["data"])
+        self.initial_pairs = initPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_pairs"), save_filename=pairs_store,
+                                           data=self.data)
         self.rcollect = RCollection(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
         self.logger.printL(1, "Miner set up...\n\t%s\n\t%s" % (self.data, self.rcollect), 'log', self.getId())
         
@@ -585,12 +585,12 @@ class Miner(object):
             return CharbonGStd(self.constraints)
        
     def initCharbon(self):
-        if self.constraints.getCstr("algo_family") == "trees":
+        if self.constraints.getCstr("mining_algo") in TREE_CLASSES:
             if self.data.hasMissing():
-                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK TO GREEDY...", 'log', self.getId())
-                return CharbonGStd(self.constraints)
+                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK IN GREEDY REREMI...", 'log', self.getId())
+                return CharbonGMiss(self.constraints, logger=self.shareLogger())
             else:
-                return TREE_CLASSES.get(self.constraints.getCstr("tree_mine_algo"), TREE_DEF)(self.constraints)
+                return TREE_CLASSES.get(self.constraints.getCstr("mining_algo"), TREE_DEF)(self.constraints, logger=self.shareLogger())
         return self.initGreedyCharbon()
                             
     def kill(self):
@@ -651,7 +651,6 @@ class Miner(object):
     def full_run(self, cust_params={}):
         self.rcollect.resetFinal()
         self.count = 0
-        ### dtalts = DataAltMdl(self.data) ### !HERE
         self.logger.printL(1, "Starting mining", 'status', self.getId()) ### todo ID
         #### progress initialized after listing pairs
         self.logger.clockTic(self.getId(), "pairs")
@@ -660,75 +659,39 @@ class Miner(object):
         self.logger.clockTic(self.getId(), "full run")
         check_score = not self.charbon.isTreeBased()
         nb_round = 0
-        if self.constraints.getCstr("algo_family") == "combine":
-            # ks = sorted(self.initial_pairs.pairs_details.keys(), key= lambda x: self.initial_pairs.pairs_details[x]["mdl"], reverse=True)
-            # v = self.initial_pairs.pairs_details
-            # print("#################")
-            # print("\n".join(["%f\t%s" % (v[k]["mdl"], Redescription.fromInitialPair(self.initial_pairs.pairs_store[k], self.data, v[k]).disp()) for k in ks]))
-            nextge, scs = self.initial_pairs.getAll(self.data, self.constraints.getCstr("min_itm_acc"), check_score=check_score)
-            if self.constraints.getCstr("optimize_combinations"):
-                self.logger.clockTic(self.getId(), "impr_pairs")
-                self.logger.printL(1,"Improving initial pairs %d" % len(nextge), "log", self.getId())
-                self.improveRedescriptions(nextge, self.rcollect)            
-                prevge = self.rcollect.getItems("P")
-                self.logger.printL(1,"Obtained %d improved initial pairs" % len(prevge), "log", self.getId())
-                self.logger.clockTac(self.getId(), "impr_pairs")
-            else:
-                prevge = nextge
-                self.logger.printL(1,"Obtained %d initial pairs" % len(prevge), "log", self.getId())
-                
+        initial_red = None
+        try:
+            initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
+        except ExtensionError as details:
+            self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
+        # print("THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out")))
+        while initial_red is not None and self.questionLive():
+            self.count += 1
+        
+            self.logger.clockTic(self.getId(), "expansion_%d-%d" % (self.count,0))
+            self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
+            self.expandRedescriptions([initial_red], self.rcollect)
+            self.logger.updateProgress({"rcount": self.count}, 1, self.getId())
+        
+            # self.logger.clockTic(self.getId(), "select")
             if self.rcollect.getLen("P") > 0:
                 self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
-                
-            while len(prevge) > 0 and self.questionLive():
-                nb_round += 1
 
-                self.logger.clockTic(self.getId(), "combination_%d-%d" % (nb_round, 0))
-                self.logger.printL(1,"Combination %d, with %d reds" % (nb_round, len(prevge)), "log", self.getId())
+            # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
+            # if (self.final["results"] != ttt):
+            #     pdb.set_trace()
+            #     print("Not same")
 
-                self.combineRedescriptions(prevge, self.rcollect)
-                prevge = [r for r in self.rcollect.getItems("P") if r.getAcc() >= self.constraints.getCstr("min_itm_acc")]
+            ### DEBUG self.final["results"] = range(len(self.final["batch"]))
+            # self.logger.clockTac(self.getId(), "select")
 
-                if self.rcollect.getLen("P") > 0:
-                    self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
-
-                self.logger.clockTac(self.getId(), "combination_%d-%d" % (nb_round, 0), "%s" % self.questionLive())
+            self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
             self.logger.logResults(self.rcollect, "F", self.getId())
-            
-        else:
-            initial_red = None
+            check_score = not self.charbon.isTreeBased()
             try:
                 initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
             except ExtensionError as details:
                 self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
-            # print("THRESHOLDS [%s, %s]" % (self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out")))
-            while initial_red is not None and self.questionLive():
-                self.count += 1
-            
-                self.logger.clockTic(self.getId(), "expansion_%d-%d" % (self.count,0))
-                self.logger.printL(1,"Expansion %d" % self.count, "log", self.getId())
-                self.expandRedescriptions([initial_red], self.rcollect)
-                self.logger.updateProgress({"rcount": self.count}, 1, self.getId())
-            
-                # self.logger.clockTic(self.getId(), "select")
-                if self.rcollect.getLen("P") > 0:
-                    self.rcollect.selected(self.constraints.getActionsList("final"), ids="F", new_ids="P", trg_lid="F")
-
-                # self.final["results"] = self.final["batch"].selected(self.constraints.getActionsList("final"))
-                # if (self.final["results"] != ttt):
-                #     pdb.set_trace()
-                #     print("Not same")
-
-                ### DEBUG self.final["results"] = range(len(self.final["batch"]))
-                # self.logger.clockTac(self.getId(), "select")
-
-                self.logger.clockTac(self.getId(), "expansion_%d-%d" % (self.count,0), "%s" % self.questionLive())
-                self.logger.logResults(self.rcollect, "F", self.getId())
-                check_score = not self.charbon.isTreeBased()
-                try:
-                    initial_red = self.initial_pairs.get(self.data, self.testIni, check_score=check_score)
-                except ExtensionError as details:
-                    self.logger.printL(1,"OUILLE! Something went badly wrong with initial candidate %s\n--------------\n%s\n--------------" % (self.count, details.value), "log", self.getId())
 
         self.logger.clockTac(self.getId(), "full run", "%s" % self.questionLive())        
         if not self.questionLive():
@@ -838,7 +801,7 @@ class Miner(object):
                         self.logger.printL(6, '---- Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], " & ".join(["%s" % l for l in pair.get("litC", ["-"])])), "log", self.getId())
                 self.initial_pairs.addExploredPair((idL, idR))
 
-            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
             self.logger.updateProgress(level=1, id=self.getId())
 
             ### Saving pairs to file if filename provided
@@ -846,7 +809,7 @@ class Miner(object):
             ## self.initial_pairs.saveToFile()
         else:
             self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
-            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
         return self.initial_pairs
     
     def testIni(self, pair):
@@ -861,7 +824,7 @@ class Miner(object):
             
         # ### WARNING DANGEROUS few pairs for DEBUG!
         # if self.data.nbCols(0) > 100:
-        #     ids = [[136, 176, 238], [108]]
+        #     ids = [[4], [15]]
         for idL in ids[0]:
             for idR in ids[1]:
                 if self.data.areGroupCompat(idL, idR) and \
@@ -987,7 +950,7 @@ class MinerDistrib(Miner):
         else:
             self.initial_pairs.setExploredDone()
             self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
-            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
         return self.initial_pairs
 
 
@@ -1081,7 +1044,7 @@ class MinerDistrib(Miner):
                 if self.pairWorkers == 0:
                     self.logger.updateProgress({"rcount": 0}, 1, self.getId())
                     self.logger.clockTac(self.getId(), "pairs")
-                    self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+                    self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
                     self.logger.updateProgress(level=1, id=self.getId())
                     self.initial_pairs.setExploredDone()
                     ## self.initial_pairs.saveToFile()
@@ -1099,7 +1062,7 @@ class MinerDistrib(Miner):
                 self.initializeExpansions()
 
             if self.leftOverPairs():
-                self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_red")), "log", self.getId())
+                self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
                 ## self.initial_pairs.saveToFile()
                 break
 
@@ -1197,23 +1160,23 @@ class StatsMiner:
         
     def run_stats(self):
         rp = Redescription.getRP()
-        modifiers = rp.getModifiersForData(data)
-        modifiers["wsplits"] = True
+        modifiers = rp.getModifiersForData(self.data)
+        modifiers["wfolds"] = True
         list_fields = rp.getListFields("basic", modifiers)
         exp_dict = rp.getExpDict(list_fields)
-        stats_fields = [f for f in list_fields if not re.search("query", f)]
+        stats_fields = [f for f in list_fields if not re.search("query", f) and not re.search("rid", f)]
 
-        splits_info = self.data.getFoldsInfo()
-        stored_splits_ids = sorted(splits_info["split_ids"].keys(), key=lambda x: splits_info["split_ids"][x])
+        folds_info = self.data.getFoldsInfo()
+        stored_folds_ids = sorted(folds_info["fold_ids"].keys(), key=lambda x: folds_info["fold_ids"][x])
         summaries = {}
-        nbfolds = len(stored_splits_ids)
+        nbfolds = len(stored_folds_ids)
         for kfold in range(nbfolds):
             ids = {"learn": [], "test": []}
             for splt in range(nbfolds):
                 if splt == kfold:
-                    ids["test"].append(stored_splits_ids[splt])
+                    ids["test"].append(stored_folds_ids[splt])
                 else:
-                    ids["learn"].append(stored_splits_ids[splt])
+                    ids["learn"].append(stored_folds_ids[splt])
             self.data.assignLT(ids["learn"], ids["test"])
             miner = instMiner(self.data, self.params, self.logger)
             try:

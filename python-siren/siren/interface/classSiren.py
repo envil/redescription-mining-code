@@ -30,7 +30,7 @@ from .classGridTable import RowTable
 from .classContentTable import RedsTable, VarsTable
 from .classPreferencesDialog import PreferencesDialog
 from .classConnectionDialog import ConnectionDialog
-from .classSplitDialog import SplitDialog
+from .classFoldsDialog import FoldsDialog
 from .classExtensionsDialog import ExtensionsDialog
 from .miscDialogs import ImportDataCSVDialog, ExportFigsDialog, FindDialog, MultiSelectorDialog, ChoiceElement
 from ..work.toolWP import WorkPlant
@@ -529,7 +529,7 @@ class Siren():
         """
         self.makeStatus(self.toolFrame)
         self.doUpdates()
-        if self.hasSplit():
+        if self.isSplit():
             self.splitter = wx.SplitterWindow(self.toolFrame)
             self.tabbed = wx.Notebook(self.splitter, -1, style=(wx.NB_TOP)) #, size=(3600, 1200))
         else:
@@ -568,7 +568,7 @@ class Siren():
                 
         self.tabbed.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         ### splitter
-        if self.hasSplit():
+        if self.isSplit():
             self.splitter.Initialize(self.tabbed)
             self.splitter.SetSashGravity(1.)
             self.splitter.SetMinimumPaneSize(0)
@@ -651,10 +651,10 @@ class Siren():
         else:
             self.statusbar.SetStatusText("No data loaded", 4)
         
-    def hasSplit(self):
+    def isSplit(self):
         return True #False
     def OnSplitchange(self, event):
-        if self.hasSplit():
+        if self.isSplit():
             ## if event.GetEventType() == 10022 or event.GetEventType() == 10029 or \
             ##        event.GetWindowBeingRemoved().GetParent().GetId() == self.splitter.GetId():
             if type(event) == wx.MouseEvent or \
@@ -1154,13 +1154,13 @@ class Siren():
                 m_conndia = menuFile.Append(ID_CONN, "Wor&ker setup...", "Setup worker's connection.")
                 frame.Bind(wx.EVT_MENU, self.OnConnectionDialog, m_conndia)
 
-        ## Split setup
+        ## Folds setup
         if True:
-                ID_SPLT = wx.NewId()
-                m_spltdia = menuFile.Append(ID_SPLT, "Sp&lits setup...", "Setup learn/test data splits.")
-                frame.Bind(wx.EVT_MENU, self.OnSplitDialog, m_spltdia)
+                ID_FLDS = wx.NewId()
+                m_fldsdia = menuFile.Append(ID_FLDS, "Fo&lds setup...", "Setup data folds for cross-tests.")
+                frame.Bind(wx.EVT_MENU, self.OnFoldsDialog, m_fldsdia)
                 if not self.hasDataLoaded():
-                        menuFile.Enable(ID_SPLT, False)
+                        menuFile.Enable(ID_FLDS, False)
 
         ## Extensions setup
         if True:
@@ -1289,8 +1289,8 @@ class Siren():
         tt = d.ShowModal()
         d.Destroy()
         self.refresh()
-    def OnSplitDialog(self, event):
-        d = SplitDialog(self.toolFrame, self.dw, self)
+    def OnFoldsDialog(self, event):
+        d = FoldsDialog(self.toolFrame, self.dw, self)
         d.ShowModal()
         d.Destroy()
         self.refresh()
@@ -1708,7 +1708,7 @@ class Siren():
         return red
     
     def applyEditToData(self, red, ikey, vkey=None): ## + forward edits to views from there?
-        old_red = self.dw.substituteRed(ikey[1], red, backup=True)        
+        old_red = self.dw.substituteRed(ikey[1], red, backup=True)
         if old_red is not None:
             self.refresh()
             

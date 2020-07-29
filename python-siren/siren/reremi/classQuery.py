@@ -6,10 +6,11 @@ import scipy.spatial.distance
 try:
     from classSParts import SParts, SSetts, cmp_vals, cmp_reclists
     from redquery_parser import RedQueryParser
+    from grako.exceptions import * # @UnusedWildImport
 except ModuleNotFoundError:
     from .classSParts import SParts, SSetts, cmp_vals, cmp_reclists
     from .redquery_parser import RedQueryParser
-# from .grako.exceptions import * # @UnusedWildImport
+    from .grako.exceptions import * # @UnusedWildImport
 import pdb
 
 NA_str_c = "nan"
@@ -1815,11 +1816,17 @@ class Query(object):
             self.buk = buk
         else:
             self.buk = []
-            
-    def __len__(self):
+
+    def length(self, ex_anon=False):
         if len(self.buk) == 0:
             return 0
-        return recurse_numeric(self.buk, function =lambda x: int(isinstance(x, Literal)))
+        if ex_anon:
+            return recurse_numeric(self.buk, function = lambda x: int(isinstance(x, Literal) and not x.isAnon()))
+        else:
+            return recurse_numeric(self.buk, function = lambda x: int(isinstance(x, Literal)))
+            
+    def __len__(self):
+        return self.length()
 
     def __hash__(self):
         if len(self) == 0:

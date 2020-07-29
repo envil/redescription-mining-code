@@ -450,7 +450,7 @@ class ViewBare(object):
         return self.getPltDtH().isSingleVar()
         
     def refresh(self):
-        self.getLayH().autoShowSplitsBoxes()
+        self.getLayH().autoShowFoldsBoxes()
         if self.isIntab():
             self.getLayH()._SetSize()
 

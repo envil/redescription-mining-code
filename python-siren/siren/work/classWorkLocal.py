@@ -7,112 +7,115 @@ from .classWorkInactive import WorkInactive
 
 import pdb
 
-# ##### WITHOUT MULTIPROCESSING --> for debugging
-# ###############################################
+DEBUG = False #True
 
-#class WorkerProcess:
-#    def __init__(self, id, boss, queue_in, cust_params={}):
-#         # print("WProcess logs to:", boss.getLogger().disp())
-#         self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
-#         self.cust_params = cust_params
-#         self.start()
-
-#     def start(self):
-#         self.run()
-#     def run(self):
-#         pass
-#
-#class MinerProcess(WorkerProcess):
-#     def run(self):
-#         self.miner.full_run(self.cust_params)
-#
-#class ExpanderProcess(WorkerProcess):
-#     def run(self):
-#         self.miner.part_run(self.cust_params)
-# class ProjectorProcess:
-#     def __init__(self, pid, boss, queue_in, proj=None):
-#         self.id = pid
-#         self.logger = boss.getLogger()
-#         if proj is not None:
-#             self.proj = proj
-#             self.start()
-#     def getId(self):
-#         return self.id
-
-#     def stop(self):
-#         self.proj.stop()
-#         self.logger.printL(1, self.proj, "result", self.getId())
-#         self.logger.printL(1, None, "progress", self.getId())
-        
-#     def start(self):
-#         self.run()
-#     def run(self):        
-#         try:
-#             self.proj.do()
-#         except ValueError as e: #Exception as e:
-#             self.proj.clearCoords()
-#             self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
-#         finally:
-#             self.logger.printL(1, self.proj, "result", self.getId())
-#             self.logger.printL(1, None, "progress", self.getId())
-
-
-##### WITH MULTIPROCESSING
+##### WITHOUT MULTIPROCESSING --> for debugging
 ###############################################
+if DEBUG:
 
-##### For THREADING
-### 1) import threading
-### 2) replace multiprocessing.Process by threading.Thread 
-
-class WorkerProcess(multiprocessing.Process):
-    def __init__(self, id, boss, queue_in, cust_params={}):
-        multiprocessing.Process.__init__(self)
-        # print("WProcess logs to:", boss.getLogger().disp())
-        self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
-        self.cust_params = cust_params
-        self.start()
-
-    def run(self):
-        pass
-
-class MinerProcess(WorkerProcess):
-    def run(self):
-        self.miner.full_run(self.cust_params)
-
-class ExpanderProcess(WorkerProcess):
-    def run(self):
-        self.miner.part_run(self.cust_params)
-
-class ProjectorProcess(multiprocessing.Process):
-    def __init__(self, pid, boss, queue_in, proj=None):
-        multiprocessing.Process.__init__(self)
-        self.id = pid
-        self.logger = boss.getLogger()
-        if proj is not None:
-            self.proj = proj
+    class WorkerProcess:
+        def __init__(self, id, boss, queue_in, cust_params={}):
+            # print("WProcess logs to:", boss.getLogger().disp())
+            self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
+            self.cust_params = cust_params
             self.start()
-    def getId(self):
-        return self.id
-
-    def stop(self):
-        self.proj.stop()
-        self.logger.printL(1, self.proj, "result", self.getId())
-        self.logger.printL(1, None, "progress", self.getId())
-
-    def run(self):        
-        try:
-            self.proj.do()
-        except ValueError as e: #Exception as e:
-            self.proj.clearCoords()
-            self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
-        finally:
+   
+        def start(self):
+            self.run()
+        def run(self):
+            pass
+   
+    class MinerProcess(WorkerProcess):
+        def run(self):
+            self.miner.full_run(self.cust_params)
+   
+    class ExpanderProcess(WorkerProcess):
+        def run(self):
+            self.miner.part_run(self.cust_params)
+    class ProjectorProcess:
+        def __init__(self, pid, boss, queue_in, proj=None):
+            self.id = pid
+            self.logger = boss.getLogger()
+            if proj is not None:
+                self.proj = proj
+                self.start()
+        def getId(self):
+            return self.id
+   
+        def stop(self):
+            self.proj.stop()
             self.logger.printL(1, self.proj, "result", self.getId())
             self.logger.printL(1, None, "progress", self.getId())
+           
+        def start(self):
+            self.run()
+        def run(self):        
+            try:
+                self.proj.do()
+            except ValueError as e: #Exception as e:
+                self.proj.clearCoords()
+                self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
+            finally:
+                self.logger.printL(1, self.proj, "result", self.getId())
+                self.logger.printL(1, None, "progress", self.getId())
+   
+else:   
+   ##### WITH MULTIPROCESSING
+   ###############################################
+   
+   ##### For THREADING
+   ### 1) import threading
+   ### 2) replace multiprocessing.Process by threading.Thread 
+   
+    class WorkerProcess(multiprocessing.Process):
+        def __init__(self, id, boss, queue_in, cust_params={}):
+            multiprocessing.Process.__init__(self)
+            # print("WProcess logs to:", boss.getLogger().disp())
+            self.miner = instMiner(boss.getData(), boss.getPreferences(), boss.getLogger(), id, qin=queue_in, cust_params=cust_params)
+            self.cust_params = cust_params
+            self.start()
+   
+        def run(self):
+            pass
+   
+    class MinerProcess(WorkerProcess):
+        def run(self):
+            self.miner.full_run(self.cust_params)
 
+    class ExpanderProcess(WorkerProcess):
+        def run(self):
+            self.miner.part_run(self.cust_params)
+   
+    class ProjectorProcess(multiprocessing.Process):
+        def __init__(self, pid, boss, queue_in, proj=None):
+            multiprocessing.Process.__init__(self)
+            self.id = pid
+            self.logger = boss.getLogger()
+            if proj is not None:
+                self.proj = proj
+                self.start()
+        def getId(self):
+            return self.id
+   
+        def stop(self):
+            self.proj.stop()
+            self.logger.printL(1, self.proj, "result", self.getId())
+            self.logger.printL(1, None, "progress", self.getId())
+   
+        def run(self):        
+            try:
+                self.proj.do()
+            except ValueError as e: #Exception as e:
+                self.proj.clearCoords()
+                self.logger.printL(1, "Projection Failed!\n[ %s ]" % e, "error", self.getId())
+            finally:
+                self.logger.printL(1, self.proj, "result", self.getId())
+                self.logger.printL(1, None, "progress", self.getId())
+                
 ############################################
 ############################################
-
-
+   
+   
 class WorkLocal(WorkInactive):
 
     cqueue = multiprocessing.Queue
@@ -179,7 +182,7 @@ class WorkLocal(WorkInactive):
             raise Warning("Unkown work task %s!" % job["task"])            
 
     def closeDown(self, parent, collectLater = False):
-        wks = self.workers.keys()
+        wks = list(self.workers.keys())
         for wid in wks:
             self.layOff(wid)
         self.checkResults(parent)

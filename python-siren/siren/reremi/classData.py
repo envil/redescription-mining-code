@@ -236,7 +236,7 @@ class Data(ContentCollection):
     def __init__(self, cols=[[],[]], N=0, coords=None, rnames=None, single_dataset=False):
         ContentCollection.__init__(self)
         self.single_dataset = single_dataset
-        self.split = None 
+        self.fold = None 
         self.as_array = [None, None, None]
         self.selected_rows = set()
         self.condition_dt = None
@@ -340,7 +340,7 @@ class Data(ContentCollection):
         # if side == -1 and self.condition_dt is not None:
         #     return self.condition_dt.get("cols", [])
         if side in self.containers:
-            return [self.items[iid] for iid in self.containers[side]]
+            return [self.items[iid] for iid in self.containers[side].naturalOrder()] ## keep the original order when enumerating columns
         return []        
     def col(self, side, literal):
         cid, ccs = None, None
@@ -371,7 +371,7 @@ class Data(ContentCollection):
             if (isinstance(literal, Term) or isinstance(literal, Literal)) and not literal.isAnon() and literal.typeId() != ccs[cid].typeId():
                 err_cid = cid
                 cid = None
-                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %d type %s ~ lit %s type %s)!" % (err_cid, literal, literal.typeId(), ccs[err_cid].typeId()))
+                raise DataError("The type of literal does not match the type of the corresponding variable (on side %s col %s type %s ~ lit %s type %s [%s])!" % (side, err_cid, ccs[err_cid].typeId(), literal.colId(), literal.typeId(), literal))
             else:
                 return ccs[cid]
     def getElement(self, iid):
@@ -561,18 +561,18 @@ class Data(ContentCollection):
         return mat, details, mcols
 
     
-    ############ SPLITS
+    ############ FOLDS
     #######################
-    def getSplit(self, nbsubs=10, coo_dim=None, grain=10., force=False):
+    def getFold(self, nbsubs=10, coo_dim=None, grain=10., force=False):
         if coo_dim is not None and \
                not (( self.isGeospatial() and coo_dim < 0 and abs(coo_dim)-1 < len(self.getCoords())) or \
                     ( coo_dim > 0 and coo_dim < self.nbCols(0)+self.nbCols(1)+1 )):
             coo_dim = None
 
-        if ( self.split is None ) or ( self.split["source"] != "auto" ) \
-                 or self.split["parameters"].get("nbsubs", None) != nbsubs \
-                 or self.split["parameters"].get("coo_dim", None) != coo_dim \
-                 or self.split["parameters"].get("grain", None) != grain :
+        if ( self.fold is None ) or ( self.fold["source"] != "auto" ) \
+                 or self.fold["parameters"].get("nbsubs", None) != nbsubs \
+                 or self.fold["parameters"].get("coo_dim", None) != coo_dim \
+                 or self.fold["parameters"].get("grain", None) != grain :
             if coo_dim is None:
                 vals = None
                 grain = None
@@ -585,73 +585,73 @@ class Data(ContentCollection):
                     col = self.col(0, coo_dim-1)
                 vals = col.getVector()
 
-            self.split = {"source": "auto",
+            self.fold = {"source": "auto",
                           "parameters": {"coo_dim": coo_dim, "grain": grain, "nbsubs": nbsubs},
-                          "splits": self.rsubsets_split(nbsubs, vals, grain)}
-            skeys = ["%d" % i for (i,v) in enumerate(self.split['splits'])]
-            self.split["split_ids"] = dict([(v,k) for (k,v) in enumerate(skeys)])
-        return self.split['splits']            
+                          "folds": self.rsubsets_fold(nbsubs, vals, grain)}
+            skeys = ["%d" % i for (i,v) in enumerate(self.fold['folds'])]
+            self.fold["fold_ids"] = dict([(v,k) for (k,v) in enumerate(skeys)])
+        return self.fold['folds']            
 
     def dropLT(self):
-        if self.split is not None:
-            if "lt_ids" in self.split:
-                del self.split["lt_ids"]
-                del self.split["lt_sids"]
+        if self.fold is not None:
+            if "lt_ids" in self.fold:
+                del self.fold["lt_ids"]
+                del self.fold["lt_sids"]
 
 
     def assignLT(self, learn_sids, test_sids):
-        if self.split is None:
+        if self.fold is None:
             return
         rids = {"learn": set(), "test": set()}
         for (which, sids) in [("learn", learn_sids), ("test", test_sids)]:
             for sid in sids:
-                if sid in self.split["split_ids"]:
-                    rids[which].update(self.split["splits"][self.split["split_ids"][sid]])
-        self.split["lt_ids"] = rids
-        self.split["lt_sids"] = {"learn": learn_sids, "test": test_sids}
+                if sid in self.fold["fold_ids"]:
+                    rids[which].update(self.fold["folds"][self.fold["fold_ids"][sid]])
+        self.fold["lt_ids"] = rids
+        self.fold["lt_sids"] = {"learn": learn_sids, "test": test_sids}
 
-    def hasSplits(self):
-        return self.split is not None
-    def hasAutoSplits(self):
-        return self.split is not None and self.split["source"] == "auto"
+    def hasFolds(self):
+        return self.fold is not None
+    def hasAutoFolds(self):
+        return self.fold is not None and self.fold["source"] == "auto"
     def hasLT(self):
-        return self.split is not None and "lt_ids" in self.split
+        return self.fold is not None and "lt_ids" in self.fold
     def getLT(self):
         if self.hasLT():
-            return self.split["lt_ids"]
+            return self.fold["lt_ids"]
         else:
             return {}
     def getLTsids(self):
         if self.hasLT():
-            return self.split["lt_sids"]
+            return self.fold["lt_sids"]
         else:
             return {}
 
     def getFoldsInfo(self):
-        return self.split
+        return self.fold
 
     def extractFolds(self, side, colid):        
-        splits = None
+        folds = None
         if self.isTypeId(self.col(side, colid).typeId(), "Categorical"):
             col = self.col(side, colid)
             col.setDisabled()
-            splits = dict([(re.sub("^F:", "", f), set(fsupp)) for (f, fsupp) in col.iter_cats()])
-            skeys = sorted(splits.keys())
-            self.split = {"source": "data",
+            folds = dict([(re.sub("^F:", "", f), set(fsupp)) for (f, fsupp) in col.iter_cats()])
+            skeys = sorted(folds.keys())
+            self.fold = {"source": "data",
                           "parameters": {"side": side, "colid": colid, "colname": col.getName()},
-                          "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
-                          "splits": [splits[k] for k in skeys]}
+                          "fold_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
+                          "folds": [folds[k] for k in skeys]}
         elif self.isTypeId(self.col(side, colid).typeId(), "Boolean"):
             col = self.col(side, colid)
             col.setDisabled()
-            splits = {"True": set(col.supp()), "False": set(col.negSuppTerm(None))}
-            skeys = sorted(splits.keys())
-            self.split = {"source": "data",
+            folds = {"True": set(col.supp()), "False": set(col.negSuppTerm(None))}
+            skeys = sorted(folds.keys())
+            self.fold = {"source": "data",
                           "parameters": {"side": side, "colid": colid, "colname": col.getName()},
-                          "split_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
-                          "splits": [splits[k] for k in skeys]}
+                          "fold_ids": dict([(v,k) for (k,v) in enumerate(skeys)]),
+                          "folds": [folds[k] for k in skeys]}
 
-        return splits
+        return folds
 
     def getFoldsStats(self, side, colid):
         folds = numpy.array(self.col(side, colid).getVector())
@@ -660,7 +660,7 @@ class Data(ContentCollection):
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
     
     def findCandsFolds(self, strict=False):
-        folds = self.getColsByName("^(v[\d*]_)?folds_split_")
+        folds = self.getColsByName("^(v[\d*]_)?"+csv_reader.FOLDS_PREF)
         if strict:
             return folds
         more = self.getColsMoreFolds(folds)
@@ -684,14 +684,14 @@ class Data(ContentCollection):
                     results.append((sito, ci))
         return results
 
-    ### creating subsets split
-    def rsubsets_split(self, nbsubs=10, split_vals=None, grain=10.):
+    ### creating folds subsets
+    def rsubsets_fold(self, nbsubs=10, fold_vals=None, grain=10.):
         # uv, uids = numpy.unique(numpy.mod(numpy.floor(self.getCoords()[0]*grain),nbsubs), return_inverse=True)
         # return [set(numpy.where(uids==uv[i])[0]) for i in range(len(uv))]
-        if split_vals is not None:
-            uv, uids = numpy.unique(split_vals, return_inverse=True)
+        if fold_vals is not None:
+            uv, uids = numpy.unique(fold_vals, return_inverse=True)
             if len(uv) > nbsubs:
-                nv = numpy.floor(split_vals*grain)
+                nv = numpy.floor(fold_vals*grain)
                 uv, uids = numpy.unique(nv, return_inverse=True)
                 sizes = [(len(uv)//nbsubs, nbsubs - len(uv)%nbsubs), (len(uv)//nbsubs+1, len(uv)%nbsubs)]
                 maps_to = numpy.hstack([[i]*sizes[0][0] for i in range(sizes[0][1])]+[[i+sizes[0][1]]*sizes[1][0] for i in range(sizes[1][1])])
@@ -710,8 +710,8 @@ class Data(ContentCollection):
                 subsets_ids[i].update(numpy.where(maps_to==i)[0])
         return subsets_ids
     
-    #### old version for reremi run subsplits
-    def get_LTsplit(self, row_idsT):
+    #### old version for reremi run subfolds
+    def get_LTfold(self, row_idsT):
         row_idsL = set(range(self.nbRows()))
         row_idsT = row_idsL.intersection(row_idsT)
         row_idsL.difference_update(row_idsT)
@@ -719,14 +719,14 @@ class Data(ContentCollection):
 
     def addFoldsCol(self, subsets=None, sito=1):
         suff = "cust"
-        if subsets is None and self.split is not None:
-            if self.split["source"] == "auto":
-                subsets = dict([(k, self.split["splits"][kk]) for (k,kk) in self.split["split_ids"].items()])
-                suff = "%d%sg%s" % (self.nbCols(sito), (self.split["parameters"]["coo_dim"] or "N"), (self.split["parameters"]["grain"] or "N"))
+        if subsets is None and self.fold is not None:
+            if self.fold["source"] == "auto":
+                subsets = dict([(k, self.fold["folds"][kk]) for (k,kk) in self.fold["fold_ids"].items()])
+                suff = "%d%sg%s" % (self.nbCols(sito), (self.fold["parameters"]["coo_dim"] or "N"), (self.fold["parameters"]["grain"] or "N"))
         if type(subsets) is list:
             subsets = dict(enumerate(subsets))
         if subsets is not None and type(subsets) is dict:
-            self.addVecCol(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), "folds_split_"+suff, sito)
+            self.addVecCol(dict([("F:%s" % i, s) for (i,s) in subsets.items()]), csv_reader.FOLDS_PREF+suff, sito)
     #######################
 
     def addVecCol(self, vec, name=None, sito=1, force_type=None):

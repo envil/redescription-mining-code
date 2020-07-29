@@ -90,7 +90,7 @@ class WithEVals(Item):
         print("Prop", what, which, rset_id, details.keys())
         if what == "extra":
             return self.getExtra(which, details)
-        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
+        if rset_id is not None and which == self.which_rids: ### ids details for folds subsets            
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
                 return None
@@ -445,7 +445,7 @@ class Props(object):
         tcl.rsets_patt = "(?P<rset_id>"+tcl.rset_sub_match+"):.+:"
         tcl.test_containing_kp = {tcl.XTRKS: tcl.extra_patt, tcl.RSKS: tcl.rsets_patt}
     
-    modifiers_defaults = {"wsplits": False, "wmissing": False}
+    modifiers_defaults = {"wfolds": False, "wmissing": False}
     @classmethod
     def compliesModifiers(tcl, f, modifiers):
         ## if re.search("wxtr_", f.get("modify", "")): pdb.set_trace()
@@ -463,14 +463,14 @@ class Props(object):
     def getModifiersForData(tcl, data):
         if data is None:
             return {}
-        tmp = {"wsplits": data.hasLT(),
+        tmp = {"wfolds": data.hasLT(),
                "wmissing": data.hasMissing()}
         for xtr in data.getActiveExtensionKeys():
             tmp["wxtr_%s" % xtr] = True
         return tmp
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
-        b = "%(wmissing)d%(wsplits)d" % modifiers
+        b = "%(wmissing)d%(wfolds)d" % modifiers
         if cust:
                 b += ":CUST"
         else:
@@ -627,7 +627,7 @@ class Props(object):
             for mtch in list(re.finditer(tcl.match_primitive, exp))[::-1]:
                 props_collect.add(mtch)
                 texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
-            trans_exps[eid] = texp        
+            trans_exps[eid] = texp
         Rd = {}
         for prop in props_collect:
             Rd[prop.group("prop")] = red.getProp(prop.group("what"), prop.group("which"), prop.group("rset_id"), details)
@@ -985,7 +985,7 @@ class VarProps(Props):
         return modifiers
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
-        b = "%(wmissing)d%(wsplits)d" % modifiers
+        b = "%(wmissing)d%(wfolds)d" % modifiers
         if cust:
                 b += ":CUST"
         else:
@@ -1062,20 +1062,20 @@ class RedProps(Props):
                                 "0" : "LHS", "1" : "RHS", "-1" : "COND",}}
     map_lbls["gui"]["specials"] = {}
     
-    modifiers_defaults = {"wsplits": False, "wmissing": False, "wcond": False}
+    modifiers_defaults = {"wfolds": False, "wmissing": False, "wcond": False}
     @classmethod
     def updateModifiers(tcl, red_list, modifiers={}):
         if ("wcond" not in modifiers) and any([red[1].hasCondition() for red in red_list]):
             modifiers["wcond"] = True
         if ("wmissing" not in modifiers) and any([red[1].hasMissing() for red in red_list]):
             modifiers["wmissing"] = True
-        if ("wsplits" not in modifiers) and any([red[1].hasRSets() for red in red_list]):
-            modifiers["wsplits"] = True
+        if ("wfolds" not in modifiers) and any([red[1].hasRSets() for red in red_list]):
+            modifiers["wfolds"] = True
         return modifiers
     def getModifiersForData(tcl, data):
         if data is None:
             return {}
-        tmp = {"wsplits": data.hasLT(),
+        tmp = {"wfolds": data.hasLT(),
                "wcond": data.isConditional(),
                "wmissing": data.hasMissing()}
         for xtr in data.getActiveExtensionKeys():
@@ -1083,7 +1083,7 @@ class RedProps(Props):
         return tmp
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
-        b = "%(wmissing)d%(wcond)d%(wsplits)d" % modifiers
+        b = "%(wmissing)d%(wcond)d%(wfolds)d" % modifiers
         if cust:
                 b += ":CUST"
         else:
@@ -1277,7 +1277,12 @@ class RedProps(Props):
                     except Exception as e:
                         query = None
                         if len(flds) == 0:
-                            raise Warning("Failed parsing query for side %d (field %s, string %s)!\n\t%s" % (side, fld, parts[map_fields[fld]], e))
+                            ### HERE! SPECIAL FIX
+                            try:
+                                query = self.Qclass.parse(parts[map_fields[fld]].replace("! ! ", ""))
+                            except Exception as e:
+                                query = None
+                                raise Warning("Failed parsing query for side %d (field %s, string %s)!\n\t%s" % (side, fld, parts[map_fields[fld]], e))
                     if query is not None:
                         queries[side] = query
                         flds = []

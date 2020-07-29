@@ -4,7 +4,7 @@ import numpy
 try:
     from classSParts import cmp_lower,cmp_greater, cmp_leq, cmp_geq
     from classPreferencesManager import PreferencesReader
-    from csv_reader import getFp
+    from csv_reader import getFp, FOLDS_PREF
 except ModuleNotFoundError:
     from .classSParts import cmp_lower,cmp_greater, cmp_leq, cmp_geq
     from .classPreferencesManager import PreferencesReader
@@ -141,7 +141,7 @@ class Constraints(object):
         return changed
             
     def setFolds(self, data):
-        fcol = data.getColsByName("^folds_split_")
+        fcol = data.getColsByName("^"+FOLDS_PREF)
         if len(fcol) == 1:
             self.folds = data.getFoldsStats(fcol[0][0], fcol[0][1])
         

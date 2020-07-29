@@ -24,7 +24,7 @@ class Redescription(WithEVals):
     info_what = {"uid": "self.getUid()", "rid": "self.getShortId()",
                  "hasAvC": "self.hasAvailableCols()", "nbAvC": "self.totAvailableCols()", "diffLengthQs": "self.diffLengthQs()",
                  "containsAnon": "self.containsAnon()", "isTreeCompatible" : "self.isTreeCompatible()",
-                 "isBasis": "self.isBasis()"} #"track": "self.getTrack()", "status_enabled": "self.getStatus()"}
+                 "isBasis": "self.isBasis()", "track": "self.getTrackStr()", "status_enabled": "self.getStatus()"}
     Pwhat_match = "("+ "|".join(["extra"]+list(info_what.keys())+list(info_what_dets.keys())) +")"
 
 
@@ -290,8 +290,8 @@ class Redescription(WithEVals):
         pvals = [tool_pValOver(self.supports().lenI(), N, int(margsPr[0]), int(margsPr[1])), tool_pValSupp(N, self.supports().lenI(), margsPr[0]*margsPr[1]/N**2)]
         return surprises, pvals
     
-    def length(self, side):
-        return len(self.queries[side])
+    def length(self, side, ex_anon=False):
+        return self.queries[side].length(ex_anon)
     def diffLengthQs(self):
         return abs(self.length(0) - self.length(1))
         
@@ -299,15 +299,17 @@ class Redescription(WithEVals):
         r, lsAnon, modr = self.minusAnonRed(data)
         if modr != 0: ### contains anon, use to restrict available vars
             for side, lits in enumerate(lsAnon):
+                org_available = self.lAvailableCols[side]
                 if len(lits) > 0 or modr == 1:
                     still_available = [l[1].colId() for l in lits]
+                    org_available = set()
                 else:
                     still_available = None
-                r.restrictAvailable(side, self.lAvailableCols[side], still_available)
-        exts = []        
+                r.restrictAvailable(side, org_available, still_available)
+        exts = []
         if modr == -1: ### only anon, need to start by mining pairs...
-            for vLHS in r.lAvailableCols[0]:
-                for vRHS in r.lAvailableCols[1]:
+            for vLHS in r.lAvailableCols[0] or []:
+                for vRHS in r.lAvailableCols[1] or []:
                     if (not single_dataset or vLHS != vRHS) and (not data.hasGroups(0) or not data.hasGroups(1) or data.areGroupCompat(vLHS, vRHS, 0, 1)):
                         exts.append((0, vLHS, data.col(1, vRHS)))
         elif len(r) > 0:
@@ -343,7 +345,7 @@ class Redescription(WithEVals):
                 self.lAvailableCols[side] = souvenirs.copyAvailableCols(side)
                 for ss in [0, 1]:
                     data.upColsCompat(self.lAvailableCols[side], ss, invs[ss], side!=ss)
-            self.setFull(max_var)
+        self.setFull(max_var)
     def updateAvailable(self, souvenirs):
         for side in [0, 1]:
             if self.lAvailableCols[side] is not None:
@@ -390,7 +392,7 @@ class Redescription(WithEVals):
     def setFull(self, max_var=None):
         if max_var is not None:
             for side in [0,1]:
-                if self.length(side) >= max_var[side]:
+                if self.length(side, ex_anon=True) >= max_var[side]:
                     self.cutOffAvailables(side)
                 
     def kid(self, data, side= -1, op = None, literal= None, suppX= None, missX=None):
@@ -569,7 +571,8 @@ class Redescription(WithEVals):
             return ";".join(["%s:%s" % (t[0], ",".join(map(str,t[1:]))) for t in self.getTrack()])
         else:
             return self.extras["track"]
-
+    def getTrackStr(self):
+        return self.getTrack({"format":"str"})
     def getSortAble(self, details={}):
         if details is not None and details.get("aim") == "sort":
             return (self.getStatus(), self.getUid())
@@ -764,7 +767,7 @@ class Redescription(WithEVals):
             return prp
         
     def getRidsProp(self, what, which=None, rset_id=None, details={}):
-        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
+        if rset_id is not None and which == self.which_rids: ### ids details for folds subsets            
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
                 return None
@@ -784,7 +787,7 @@ class Redescription(WithEVals):
             return self.getArea(which, rset_id, details)
         if Query.hasPropWhat(what) and rset_id in HAND_SIDE:
             return self.getQueryProp(what, which, rset_id, details)
-        if rset_id is not None and which == self.which_rids: ### ids details for split sets            
+        if rset_id is not None and which == self.which_rids: ### ids details for folds subsets            
             return self.getRidsProp(what, which, rset_id, details)
         if SParts.hasPropWhat(what): ### info from supp parts
             return self.getSPartsProp(what, which, rset_id, details)
