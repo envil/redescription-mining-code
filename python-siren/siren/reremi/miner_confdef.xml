@@ -291,7 +291,7 @@
         </default>
       </parameter>
       <parameter>
-        <name>Split criterion</name>
+        <name>split_criterion</name>
         <label>Split criterion</label>
         <parameter_type>single_options</parameter_type>
         <value_type>text</value_type>

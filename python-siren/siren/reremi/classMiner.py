@@ -734,7 +734,7 @@ class Miner(object):
                     else:
                         self.initial_pairs.add(None, l, {"score":v, side: idl, 1-side: -1})
         ## UNLIMITED PAIRS FOR TREES?
-        # self.initial_pairs.setMaxOut(-1)
+        self.initial_pairs.setMaxOut(-1)
         self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.getId())
         # self.logger.sendCompleted(self.getId())
 
