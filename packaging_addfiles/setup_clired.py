@@ -3,27 +3,27 @@ import setuptools
 
 import pdb
 
-from common_details import reremi_variables
+from common_details import clired_variables
 
 # Common info
-APP = reremi_variables["MAIN_FILENAME"]
-NAME = reremi_variables["PACKAGE_NAME"]
-SHORT_NAME = reremi_variables["PROJECT_NAME"]
-VERSION = reremi_variables["VERSION"]
-DESCRIPTION = reremi_variables["PROJECT_DESCRIPTION"]
-DESCRIPTION_LONG = reremi_variables["PROJECT_DESCRIPTION_LONG"]
-DEPENDENCIES = reremi_variables["DEPENDENCIES_PIP_LIST"]
-AUTHOR = reremi_variables["PROJECT_AUTHORS"]
-AUTHOR_EMAIL = reremi_variables["MAINTAINER_EMAIL"]
-URL = reremi_variables["PROJECT_URL"]
+APP = clired_variables["MAIN_FILENAME"]
+NAME = clired_variables["PACKAGE_NAME"]
+SHORT_NAME = clired_variables["PROJECT_NAME"]
+VERSION = clired_variables["VERSION"]
+DESCRIPTION = clired_variables["PROJECT_DESCRIPTION"]
+DESCRIPTION_LONG = clired_variables["PROJECT_DESCRIPTION_LONG"]
+DEPENDENCIES = clired_variables["DEPENDENCIES_PIP_LIST"]
+AUTHOR = clired_variables["PROJECT_AUTHORS"]
+AUTHOR_EMAIL = clired_variables["MAINTAINER_EMAIL"]
+URL = clired_variables["PROJECT_URL"]
 LICENSE="Apache_2.0"
-COPYRIGHT=u'\u00A9 '+reremi_variables["COPYRIGHT_YEAR_FROM"]+'-' \
-               +reremi_variables["COPYRIGHT_YEAR_FROM"]+' ' \
-               +reremi_variables["PROJECT_AUTHORS"]
+COPYRIGHT=u'\u00A9 '+clired_variables["COPYRIGHT_YEAR_FROM"]+'-' \
+               +clired_variables["COPYRIGHT_YEAR_FROM"]+' ' \
+               +clired_variables["PROJECT_AUTHORS"]
 DU_FILES = [APP[:-3]]
 # setuptools.find_packages()
-DU_PACKAGES = ['reremi', 'reremi.grako']
-PACKAGE_DATA = {'reremi': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt', 'LICENSE*']}
+DU_PACKAGES = ['clired', 'clired.grako']
+PACKAGE_DATA = {'clired': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt', 'LICENSE*']}
 
 def get_git_hash():
     git_hash = '-1'
@@ -50,7 +50,7 @@ setuptools.setup(
     # other arguments here...
     entry_points={
         'console_scripts': [
-            'exec_reremi = reremi.mainReReMi:main',
+            'exec_clired = clired.exec_clired:main',
         ],        
     },
     python_requires='>=3',

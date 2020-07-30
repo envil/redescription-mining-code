@@ -18,12 +18,12 @@ import wx.lib.dialogs
 
 WITHVIEWS = True #False
 
-from ..reremi.toolLog import Log
-from ..reremi.classProps import findFile
-from ..reremi.classRedescription import Redescription
-from ..reremi.classCol import DataError, ColM
-from ..reremi.classQuery import Literal, Query
-from ..reremi.classData import RowE, Data
+from ..clired.toolLog import Log
+from ..clired.classProps import findFile
+from ..clired.classRedescription import Redescription
+from ..clired.classCol import DataError, ColM
+from ..clired.classQuery import Literal, Query
+from ..clired.classData import RowE, Data
 
 from .DataWrapper import DataWrapper
 from .classGridTable import RowTable
@@ -335,14 +335,14 @@ class Siren():
     main_tabs_ids = {"r": "reds", "e": "rows", "t": "log", "z": "viz", "v0": 0, "v1": 1, "v": "vars"}
 
     external_licenses = ['basemap', 'matplotlib', 'python', 'wx', 'grako']
-    rffiles = [('fields_rdefs_basic.txt', 'reremi')]
-    vffiles = [('fields_vdefs_basic.txt', 'reremi')]
+    rffiles = [('fields_rdefs_basic.txt', 'clired')]
+    vffiles = [('fields_vdefs_basic.txt', 'clired')]
     rff_mtch = 'fields_rdefs_*.txt'
     vff_mtch = 'fields_vdefs_*.txt'
-    cfiles = [('miner_confdef.xml', 'reremi'), ('dataext_confdef.xml', 'reremi'), ('ui_confdef.xml', 'interface')]
+    cfiles = [('miner_confdef.xml', 'clired'), ('dataext_confdef.xml', 'clired'), ('ui_confdef.xml', 'interface')]
     if WITHVIEWS:
         cfiles.append(('views_confdef.xml', 'views'))
-    cfiles_io = [('inout_confdef.xml', 'reremi')]
+    cfiles_io = [('inout_confdef.xml', 'clired')]
     
     results_delay = 1000
 
@@ -1933,7 +1933,7 @@ class Siren():
     def OnPrintoutPreferencesTmpl(self, event):
         self.OnExportPreferences(mess="preferences template", conf_def=self.conf_defs+self.conf_defs_io)
     def OnPrintoutPreferencesDef(self, event):
-        self.OnExportPreferences(mess="default preferences", inc_def=True)       
+        self.OnExportPreferences(mess="default preferences", inc_def=True, conf_def=self.conf_defs+self.conf_defs_io)
         
     #### PACKAGE
     def OnOpenPck(self, event):

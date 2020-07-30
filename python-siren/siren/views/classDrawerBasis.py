@@ -11,10 +11,10 @@ from matplotlib.text import Text
 from matplotlib.patches import Ellipse
 from matplotlib.patches import Polygon
 
-from ..reremi.classData import Data
-from ..reremi.classQuery import SYM, Query
-from ..reremi.classRedescription import Redescription
-from ..reremi.classSParts import SSetts
+from ..clired.classData import Data
+from ..clired.classQuery import SYM, Query
+from ..clired.classRedescription import Redescription
+from ..clired.classSParts import SSetts
 from .classInterObjects import MaskCreator
 
 import pdb

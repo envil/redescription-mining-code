@@ -10,12 +10,12 @@ import multiprocessing
 #import matplotlib.pyplot as plt
 
 import pdb
-#from reremi import *
+#from clired import *
 
 from siren.interface.classSiren import Siren
 from siren.interface.classGridTable import CustRenderer
-from siren.reremi.classPreferencesManager import PreferencesReader, getPM
-from siren.reremi.classPackage import IOTools
+from siren.clired.classPreferencesManager import PreferencesReader, getPM
+from siren.clired.classPackage import IOTools
 
 import time
 

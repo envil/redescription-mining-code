@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<?xml-stylesheet type="text/xsl" href="../reremi/confdef.xsl"?>
+<?xml-stylesheet type="text/xsl" href="../clired/confdef.xsl"?>
 <root>
-  <info>Interface preferences for the Siren algorithm. A default preferences file can be obtained by copying this file and removing the &lt;default&gt; tags around default values.</info>
+  <info>Interface preferences for the Siren redescription mining tool.</info>
   <section>
     <name>Network</name>
     <section>

@@ -20,10 +20,10 @@ LICENSE="Apache_2.0"
 COPYRIGHT=u'\u00A9 '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
                +common_variables["COPYRIGHT_YEAR_FROM"]+' ' \
                +common_variables["PROJECT_AUTHORS"]
-DU_FILES = [APP[:-3], "server_siren", "exec_reremi"]
+DU_FILES = [APP[:-3], "server_siren", "exec_clired"]
 # setuptools.find_packages()
-DU_PACKAGES = ['siren', 'siren.reremi', 'siren.interface', 'siren.work', 'siren.views', 'siren.reremi.grako']
-PACKAGE_DATA = {'siren.reremi': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt'],
+DU_PACKAGES = ['siren', 'siren.clired', 'siren.interface', 'siren.work', 'siren.views', 'siren.clired.grako']
+PACKAGE_DATA = {'siren.clired': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt'],
                 'siren.views': ['views_confdef.xml'],
                 'siren.interface': ['ui_confdef.xml'],
                 'siren': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}
@@ -54,7 +54,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'server_siren = server_siren:main',
-            'exec_reremi = siren.reremi.mainReReMi:main',
+            'exec_clired = siren.clired.exec_clired:main',
         ],
         'gui_scripts': [
             'exec_siren = exec_siren:main',

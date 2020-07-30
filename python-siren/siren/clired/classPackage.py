@@ -49,7 +49,7 @@ class Package(object):
 
     RED_FN_SEP = ";"
 
-    CREATOR = "ReReMi/Siren Package"
+    CREATOR = "Clired/Siren Package"
     DEFAULT_EXT = ".siren"
     DEFAULT_TMP = "siren"
 
@@ -422,12 +422,14 @@ class IOTools:
 
     @classmethod
     def writePreferences(tcl, preferences, pm, filename, toPackage=False, inc_def=False, core=False):
-        sections = True
+        sections = False
         helps = False
-        if toPackage:
-            sections = False
-        if preferences is None or inc_def:
+        # if toPackage:
+        if preferences is None or inc_def or core:
             helps = True
+        if preferences is None or inc_def:
+            sections = True
+        print("PARAMS", sections, helps, inc_def, core)
         with open(filename, 'w') as f:
             f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
 
@@ -509,7 +511,7 @@ class IOTools:
                     params_l[p] = src_folder+params_l[p][1:]
                 elif params_l[p] == "__TMP_DIR__":
                     if tmp_dir is None:
-                        tmp_dir = tempfile.mkdtemp(prefix='ReReMi')
+                        tmp_dir = tempfile.mkdtemp(prefix='clired')
                     params_l[p] = tmp_dir + "/"
                 elif sys.platform != 'darwin':
                     params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
@@ -662,8 +664,11 @@ class IOTools:
         options_args = arguments[1:]
     
         if len(arguments) > 1:
+            if arguments[1] == "--template":
+                print(PreferencesReader(pm).dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
+                sys.exit(2)
             if arguments[1] == "--config":
-                print(PreferencesReader(pm).dispParameters(None, True, True, True))
+                print(PreferencesReader(pm).dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
                 sys.exit(2)
             if os.path.isfile(arguments[1]):
                 if os.path.splitext(arguments[1])[1] == Package.DEFAULT_EXT:
@@ -696,8 +701,10 @@ class IOTools:
             queries_second = config_filename
             
         if params is None:
-            print('ReReMi redescription mining\nusage: "%s [package] [config_file]"' % arguments[0])
-            print('(Type "%s --config" to generate a default configuration file' % arguments[0])
+            print('Clired redescription mining')
+            print('usage: "%s [config_file] [additional_parameters]"' % arguments[0])
+            print('       Type "%s --config" to generate a default configuration file' % arguments[0])
+            print('         or "%s --template" to generate a basic configuration template' % arguments[0])        
             sys.exit(2)
     
         params_l = PreferencesReader.paramsToDict(params)

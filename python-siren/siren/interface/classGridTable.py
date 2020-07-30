@@ -5,10 +5,10 @@ import wx.grid
 ### from wx import DC, EVT_KEY_UP, NORMAL_FONT, SOLID, TRANSPARENT_PEN
 
 import re, colorsys, random, datetime, math
-from ..reremi.toolICList import ICList
-from ..reremi.classCol import ColM
-from ..reremi.classQuery import SYM, Query, Literal, NA_str_c
-from ..reremi.classRedescription import Redescription
+from ..clired.toolICList import ICList
+from ..clired.classCol import ColM
+from ..clired.classQuery import SYM, Query, Literal, NA_str_c
+from ..clired.classRedescription import Redescription
 
 import pdb
 

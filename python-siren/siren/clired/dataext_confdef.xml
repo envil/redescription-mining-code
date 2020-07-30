@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="./confdef.xsl"?>
 <root>
-  <info>Data extensions preferences for the ReReMi algorithm.</info>
+  <info>Data extensions preferences for the Clired/Siren redescription mining tools.</info>
   <section>
     <name>Extensions</name>
     <section>

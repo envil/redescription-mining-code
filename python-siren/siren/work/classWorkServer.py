@@ -1,9 +1,9 @@
 import multiprocessing, time, sys, os, getopt
 from multiprocessing.managers import SyncManager
 
-from ..reremi.classMiner import instMiner
-from ..reremi.classRedescription import Redescription
-from ..reremi.toolLog import Log
+from ..clired.classMiner import instMiner
+from ..clired.classRedescription import Redescription
+from ..clired.toolLog import Log
 
 import pdb
 

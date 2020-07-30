@@ -79,7 +79,7 @@ this should provide the following commands:
 
 * `exec_siren` to launch the interface for interactively mining and visualizing redescriptions
 * `server_siren` to launch the server for off-loading computations
-* `exec_reremi` to run the command-line redescription mining algorithms
+* `exec_clired` to run the command-line redescription mining algorithms
 
 ### More information
 See __PROJECT_URL__

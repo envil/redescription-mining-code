@@ -15,8 +15,8 @@ import pdb
 
 class CParameter(object):
     type_id = "X"
+    type_str = "X"
     value_types = {"text": str, "boolean": bool, "integer": int, "float": float, "color": str}
-    reversed_types = dict([(v,k) for (k,v) in value_types.items()])
 
     def __init__(self,  name=None, label=None, default=None, value_type=None, legend=None):
         self._name = name
@@ -44,14 +44,17 @@ class CParameter(object):
     def getId(self):
         return self._name
 
+    def getTypeDets(self):
+        return self.type_str
+
     def getName(self):
         return self._name
 
     def getLegend(self):
-        return self._legend
+        return re.sub("CORE *", "", self._legend)
 
     def getInfo(self):
-        return "%s (%s)" % ( self.getLegend(), self.reversed_types[self._value_type]) 
+        return "%s (%s)" % ( self.getLegend(), self.getTypeDets() ) 
 
     def getDefaultValue(self):
         return self._default
@@ -106,6 +109,7 @@ class CParameter(object):
 
 class OpenCParameter(CParameter):
     type_id = "open"
+    type_str = "open text"
     
     def __init__(self, name=None, label=None, default=None, value_type=None, length=None, legend=None):
         CParameter.__init__(self, name, label, default, value_type, legend)
@@ -122,6 +126,7 @@ class OpenCParameter(CParameter):
 
 class RangeCParameter(CParameter):
     type_id = "range"
+    type_str = "range"
     
     def __init__(self, name=None, label=None, default=None, value_type=None, range_min=None, range_max=None, legend=None):
         CParameter.__init__(self, name, label, default, value_type, legend)
@@ -139,10 +144,8 @@ class RangeCParameter(CParameter):
                or self._default < self._range_min or self._default > self._range_max:
             raise Exception("Default value for param %s not in range!"% self._name)
 
-    def getInfo(self):
-        strd = CParameter.getInfo(self)
-        strd += " range in [%s, %s]" % (self._range_min, self._range_max)
-        return strd
+    def getTypeDets(self):
+        return "%s in [%s, %s]" % (self.type_str, self._range_min, self._range_max)
 
     def getParamValue(self, raw_value):
         tmp =  toolXML.parseToType(raw_value, self._value_type)
@@ -168,6 +171,7 @@ class RangeCParameter(CParameter):
 
 class SingleOptionsCParameter(CParameter):
     type_id = "single_options"
+    type_str = "single option"
 
     def __init__(self, name=None, label=None, default=None, value_type=None, options=None, legend=None):
         CParameter.__init__(self, name, label, default, value_type, legend)
@@ -184,10 +188,8 @@ class SingleOptionsCParameter(CParameter):
         if self._default is None or self._default < 0 or self._default >= len(self._options):
             raise Exception("Default value for param %s not among options!"% self._name)
 
-    def getInfo(self):
-        strd = CParameter.getInfo(self)
-        strd += " " + self.getCardinality()+ " options in [" + (",".join( self.getOptionsText())) +"]"
-        return strd
+    def getTypeDets(self):
+        return "%s in {%s}" % (self.type_str, ",".join( self.getOptionsText()))
 
     def getParamValue(self, raw_value, index=False):
         if index:
@@ -236,6 +238,7 @@ class SingleOptionsCParameter(CParameter):
 
 class BooleanCParameter(SingleOptionsCParameter):
     type_id = "boolean"
+    type_str = "yes/no"
     opts_data = [False, True]   
     map_str = {"yes": True, "no": False,
                "true": True, "false": False,
@@ -287,6 +290,9 @@ class BooleanCParameter(SingleOptionsCParameter):
         else:
             return None
         
+    def getTypeDets(self):
+        return self.type_str
+        
     def getDefaultValue(self):
         return int(self._default)
         
@@ -302,6 +308,7 @@ class BooleanCParameter(SingleOptionsCParameter):
         
 class MultipleOptionsCParameter(SingleOptionsCParameter):
     type_id = "multiple_options"
+    type_str = "multiple options"
 
     def parseNode(self, node):
         CParameter.parseNode(self, node)
@@ -327,6 +334,7 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
 
 class ColorCParameter(CParameter):
     type_id = "color_pick"
+    type_str = "color #RRGGBB"
     match_p = "^#(?P<rr>[0-9A-Fa-f][0-9A-Fa-f])(?P<gg>[0-9A-Fa-f][0-9A-Fa-f])(?P<bb>[0-9A-Fa-f][0-9A-Fa-f])$"
     
     def parseNode(self, node):
@@ -338,11 +346,6 @@ class ColorCParameter(CParameter):
 
         if self._default is None:
             raise Exception("Default value for param %s not correct!"% self._name)
-
-    def getInfo(self):
-        strd = CParameter.getInfo(self)
-        strd += " format #RRGGBB" 
-        return strd
 
     def getParamValue(self, raw_value):
         tmp =  toolXML.parseToType(raw_value, self._value_type)
@@ -633,10 +636,11 @@ class PreferencesReader(object):
                     vs = pv[item_id]
                 if item is not None and ((core and item.isCore()) or (defaults or not item.isDefault(vs))):
                     strd += indents+"<parameter>\n"
-                    if helps:
-                        strd += indents+"\t<label>"+ item.getLabel() +"</label>\n"
-                        strd += indents+"\t<info>"+ item.getInfo() +"</info>\n"
                     strd += indents+"\t<name>"+ item.getName() +"</name>\n"
+                    if sections:
+                        strd += indents+"\t<label>"+ item.getLabel() +"</label>\n"
+                    if helps:
+                        strd += indents+"\t<info>"+ item.getInfo() +"</info>\n"
                     if type(vs["text"]) == list:
                         for v in vs["text"]:
                             strd += indents+"\t<value>"+ v +"</value>\n"
@@ -681,8 +685,11 @@ def getParams(arguments, conf_defs):
     options_args = arguments[1:]
 
     if len(arguments) > 1:
+        if arguments[1] == "--template":
+            print(pr.dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
+            sys.exit(2)
         if arguments[1] == "--config":
-            print(pr.dispParameters(None,True, True, True))
+            print(pr.dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
             sys.exit(2)
         if os.path.isfile(arguments[1]):
             config_filename = arguments[1]
@@ -691,7 +698,8 @@ def getParams(arguments, conf_defs):
     params = pr.getParametersDict(config_filename, options_args)
     if params is None:
         print('usage: "%s [config_file] [additional_parameters]"' % arguments[0])
-        print('(Type "%s --config" to generate a default configuration file' % arguments[0])
+        print('       Type "%s --config" to generate a default configuration file' % arguments[0])
+        print('         or "%s --template" to generate a basic configuration template' % arguments[0])        
         sys.exit(2)
 
     return params

@@ -1,18 +1,18 @@
 #!/usr/bin/python
 
 import sys, re, datetime, os, os.path, random, itertools
-from siren.reremi.toolLog import Log
-from siren.reremi.classData import Data
-from siren.reremi.classMiner import Miner
-from siren.reremi.classRedescription import Redescription
-import siren.reremi.mainReReMi as reremi
+from siren.clired.toolLog import Log
+from siren.clired.classData import Data
+from siren.clired.classMiner import Miner
+from siren.clired.classRedescription import Redescription
+import siren.clired.mainclired as clired
 import pdb
  
 def run(arguments):
     multiprocessus = True
     nb_parts = 10
 
-    params = reremi.getParams(arguments)
+    params = clired.getParams(arguments)
 
     params_l = {}
     for k, v in  params.items():

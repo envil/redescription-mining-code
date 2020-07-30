@@ -27,12 +27,8 @@ mkdir ${OUT_REP}
 cp -r ${SPH_REP} ${SPHINX_REP}
 
 ### COPY FILES FROM THE SOURCE CODE TO DOC
-# svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/CHANGELOG  _static/
-# svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/ui_confdef.xml  _static/
-# svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/inout_confdef.xml  _static/
-# svn export --force https://vcs.hiit.fi/svn/redescriptors/sandbox/siren/reremi/miner_confdef.xml  _static/
 cp ${SRC_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
-sed -i 's:\./reremi/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
+sed -i 's:\./clired/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/_static/
 

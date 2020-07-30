@@ -1,7 +1,7 @@
 import re, random, sys
 import numpy
 import inspect
-from ..reremi.classData import Data
+from ..clired.classData import Data
 import os
 
 import pdb

@@ -1,10 +1,10 @@
 import wx
 import numpy
  
-from ..reremi.classSParts import SSetts
-from ..reremi.classCol import ColM
-from ..reremi.classData import RowE
-from ..reremi.classRedescription import Redescription
+from ..clired.classSParts import SSetts
+from ..clired.classCol import ColM
+from ..clired.classData import RowE
+from ..clired.classRedescription import Redescription
 
 from .classProj import ProjFactory
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet type="text/xsl" href="./confdef.xsl"?>
 <root>
-  <info>Mining preferences for the ReReMi algorithm. A default preferences file can be obtained by copying this file and removing the &lt;default&gt; tags around default values, or by calling the main mining routine: <em>mainReReMi.py --config</em>.</info>
+  <info>Mining preferences for algorithms in the Clired/Siren redescription mining tools. A default preferences file can be obtained by calling the main mining routine <em>exec_clired.py --config</em> and a basic configuration template with <em>exec_clired.py --template</em>.</info>
   <section>
     <name>Mining</name>
     <section>
@@ -11,7 +11,7 @@
         <label>Mining algorithm</label>
         <parameter_type>single_options</parameter_type>
         <value_type>text</value_type>
-        <legend>CORE Algorithm to use for mining, greedy reremi or based on classification trees (restrictions apply).</legend>
+        <legend>CORE Algorithm to use for mining, greedy ReReMi or based on classification trees (restrictions apply).</legend>
         <default>
           <value>0</value>
         </default>
@@ -20,7 +20,6 @@
           <value>layeredtrees</value>
           <value>splittrees</value>
           <value>cartwheel</value>
-          <value>sprit</value>
         </options>
       </parameter>
     </section>
@@ -31,7 +30,7 @@
         <label>LHS max number of variables</label>
         <parameter_type>open</parameter_type>
         <value_type>integer</value_type>
-        <legend>Maximum number of variables in a left-hand side query.</legend>
+        <legend>Maximum number of variables in a left-hand side query, maximum tree depth in tree-based algorithms.</legend>
         <length>2</length>
         <default>
           <value>4</value>
@@ -42,7 +41,7 @@
         <label>RHS max number of variables</label>
         <parameter_type>open</parameter_type>
         <value_type>integer</value_type>
-        <legend>Maximum number of variables in a right-hand side query.</legend>
+        <legend>Maximum number of variables in a right-hand side query, maximum tree depth in tree-based algorithms.</legend>
         <length>2</length>
         <default>
           <value>4</value>
@@ -67,7 +66,7 @@
         <label>Min contribution</label>
         <parameter_type>open</parameter_type>
         <value_type>float</value_type>
-        <legend>Minimum contribution, number of supporting entities impacted by the addition of a literal in greedy or minimum node size in tree-based. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
+        <legend>Minimum contribution, number of supporting entities impacted by the addition of a literal in ReReMi or minimum node size in tree-based algorithms. Values between 0 and 1 are interpreted as ratio of the total number of entities.</legend>
         <length>5</length>
         <default>
           <value>3</value>
@@ -307,7 +306,7 @@
     </section>
   </section>
   <section>
-    <name>Greedy</name>
+    <name>ReReMi</name>
     <section>
       <name>Queries</name>
       <parameter>
@@ -520,7 +519,7 @@
     </section>
   </section>
   <section>
-    <name>Greedy exp.</name>
+    <name>ReReMi exp.</name>
     <section>
       <name>Candidate expansion</name>
       <parameter>

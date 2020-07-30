@@ -8,9 +8,9 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 
-from ..reremi.classRedescription import Redescription
-from ..reremi.classSParts import SSetts
-from ..reremi.classQuery import TimeTools
+from ..clired.classRedescription import Redescription
+from ..clired.classSParts import SSetts
+from ..clired.classQuery import TimeTools
 from .classDrawerBasis import DrawerEntitiesTD
 from .classInterObjects import ResizeableRectangle, DraggableRectangle
 

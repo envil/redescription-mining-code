@@ -6,8 +6,8 @@ import wx
 ### from wx import ID_ANY, ID_APPLY, ID_FIND, ID_OK
 
 import os.path, re
-from ..reremi.classQuery import NA_str_c
-from ..reremi.classData import DataError
+from ..clired.classQuery import NA_str_c
+from ..clired.classData import DataError
 
 import pdb
 

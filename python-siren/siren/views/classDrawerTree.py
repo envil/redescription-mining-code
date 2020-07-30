@@ -10,9 +10,9 @@ import numpy
 # import matplotlib
 # matplotlib.use('WXAgg')
 
-from ..reremi.classQuery import QTree
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
+from ..clired.classQuery import QTree
+from ..clired.classSParts import SSetts
+from ..clired.classRedescription import Redescription
 from .classDrawerBasis import DrawerEntitiesTD
 
 import pdb

@@ -1,9 +1,9 @@
 import wx, numpy
 import re
 
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
-from ..reremi.classQuery import Query, TimeTools, NA_str_c
+from ..clired.classSParts import SSetts
+from ..clired.classRedescription import Redescription
+from ..clired.classQuery import Query, TimeTools, NA_str_c
 
 import pdb
 

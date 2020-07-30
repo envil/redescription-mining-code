@@ -8,9 +8,9 @@ from matplotlib.backends.backend_wxagg import \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.figure import Figure
 
-from ..reremi.classQuery import SYM, Query
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
+from ..clired.classQuery import SYM, Query
+from ..clired.classSParts import SSetts
+from ..clired.classRedescription import Redescription
 from ..interface.classContentTable import RedsTable, VarsTable
 
 import pdb

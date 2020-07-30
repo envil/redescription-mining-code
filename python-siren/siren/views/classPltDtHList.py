@@ -1,8 +1,8 @@
 import re, wx, numpy
 
-from ..reremi.classData import Data
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
+from ..clired.classData import Data
+from ..clired.classSParts import SSetts
+from ..clired.classRedescription import Redescription
 
 
 from .classPltDtHandler import PltDtHandlerBasis, PltDtHandlerWithCoords

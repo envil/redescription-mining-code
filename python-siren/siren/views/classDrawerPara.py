@@ -12,8 +12,8 @@ import matplotlib.transforms as mtransforms
 import scipy.spatial.distance
 import scipy.cluster
 
-from ..reremi.classRedescription import Redescription
-from ..reremi.classSParts import SSetts
+from ..clired.classRedescription import Redescription
+from ..clired.classSParts import SSetts
 from .classDrawerBasis import DrawerEntitiesTD
 from .classInterObjects import ResizeableRectangle, DraggableRectangle
 

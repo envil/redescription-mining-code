@@ -45,21 +45,23 @@ version, changes, ctime = getVersion()
 home_eg = "https://members.loria.fr/EGalbrun/"
 home_siren = "http://siren.gforge.inria.fr/"
 
-dependencies_reremi = [("numpy", "python3-numpy", "(>= 1.13.0)"),
+dependencies_clired = [("python-dateutil", "python3-dateutil", "(>= 2.8.1)"),
+                ("Shapely", "python3-shapely", "(>= 1.7.0)"),
+                ("numpy", "python3-numpy", "(>= 1.13.0)"),
                 ("scipy", "python3-scipy", "(>= 0.19.0)"),
                 ("scikit-learn", "python3-sklearn", "(>= 0.19.0)")]
 dependencies_siren = [("matplotlib", "python3-matplotlib", "(>= 2.1.0)"),
                 ("cartopy", "python3-cartopy", "(>= 0.14)")]
 
 # "python3-wxgtk4.0 (>= 4.0.0)",
-depreremi_deb = []
-depreremi_pip = []
-for pname, dname, v in dependencies_reremi:
-    depreremi_pip.append("%s %s" % (pname, v))
-    depreremi_deb.append("%s %s" % (dname, v))
+depclired_deb = []
+depclired_pip = []
+for pname, dname, v in dependencies_clired:
+    depclired_pip.append("%s %s" % (pname, v))
+    depclired_deb.append("%s %s" % (dname, v))
 dependencies_deb = []
 dependencies_pip = []
-for pname, dname, v in dependencies_reremi+dependencies_siren:
+for pname, dname, v in dependencies_clired+dependencies_siren:
     dependencies_pip.append("%s %s" % (pname, v))
     dependencies_deb.append("%s %s" % (dname, v))
 
@@ -91,25 +93,25 @@ common_variables = {
     "CODE_MAC_LOC": "2",
     "PROJECT_DESCRIPTION": "Interactive Redescription Mining",
     "PROJECT_DESCRIPTION_LINE": "Siren is an interactive tool for visual and interactive redescription mining.",
-    "PROJECT_DESCRIPTION_LONG": """This provides the ReReMi redescription mining algorithm and the Siren interface for interactive mining and visualization of redescriptions.""",
+    "PROJECT_DESCRIPTION_LONG": """This provides the Siren interface for interactive mining and visualization of redescriptions.""",
     "COPYRIGHT_YEAR_FROM": "2012",
-    "COPYRIGHT_YEAR_TO": "2019",
+    "COPYRIGHT_YEAR_TO": "2020",
     "SPEC_RELEASE": ""} ### set in conf.py of sphinx projects 
 
 
-reremi_variables = dict(common_variables)
-reremi_variables.update({
-    "PROJECT_NAME": "ReReMi",
-    "PROJECT_NAMELOW": "reremi",
-    "PACKAGE_NAME": "python-reremi",
-    "MAIN_FILENAME": "exec_reremi.py",
-    "DEPENDENCIES_PIP_LIST": depreremi_pip,
-    "DEPENDENCIES_PIP_STR": "* " + "\n* ".join(depreremi_pip),
-    "DEPENDENCIES_DEB_LIST": depreremi_deb,
-    "DEPENDENCIES_DEB_STR": ", ".join(depreremi_deb),
+clired_variables = dict(common_variables)
+clired_variables.update({
+    "PROJECT_NAME": "Clired",
+    "PROJECT_NAMELOW": "clired",
+    "PACKAGE_NAME": "python-clired",
+    "MAIN_FILENAME": "exec_clired.py",
+    "DEPENDENCIES_PIP_LIST": depclired_pip,
+    "DEPENDENCIES_PIP_STR": "* " + "\n* ".join(depclired_pip),
+    "DEPENDENCIES_DEB_LIST": depclired_deb,
+    "DEPENDENCIES_DEB_STR": ", ".join(depclired_deb),
     "PROJECT_DESCRIPTION": "Command-line Redescription Mining",
-    "PROJECT_DESCRIPTION_LINE": "ReReMi is a command-line tool for redescription mining.",
-    "PROJECT_DESCRIPTION_LONG": """This provides the ReReMi redescription mining algorithm.""",})
+    "PROJECT_DESCRIPTION_LINE": "clired is a command-line tool for redescription mining.",
+    "PROJECT_DESCRIPTION_LONG": """This provides the clired command-line tool for redescription mining including, in particular, the greedy ReReMi algorithm and tree-based algorithms.""",})
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 

@@ -22,16 +22,11 @@ HELP_TRG_REP=${ROOT_REP}"/siren/data/help"
 
 # ### checkout the code itself
 mkdir $PACK_REP
-# # svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/siren ${SIREN_REP}
 cp -r ${SRC_REP} ${ROOT_REP}
 python ${ROOT_REP}/prepare_pck_files.py deb
 
 # ### checkout the sources for the help pages
 mkdir ${SPHINX_REP}
-# # svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/siren-help ${SPHINX_REP}/siren-help
-# # svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_static ${SPHINX_REP}/_static
-# # svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_figs ${SPHINX_REP}/_figs
-# # svn co --password ${PASS}  https://vcs.hiit.fi/svn/redescriptors/sandbox/sphinx/_templates ${SPHINX_REP}/_templates
 cp -r ${SPH_REP}/siren-help ${SPHINX_REP}/siren-help
 cp -r ${SPH_REP}/_static ${SPHINX_REP}/_static
 cp -r ${SPH_REP}/_figs ${SPHINX_REP}/_figs
@@ -39,7 +34,7 @@ cp -r ${SPH_REP}/_templates ${SPHINX_REP}/_templates
 
 ### COPY FILES FROM THE SOURCE CODE TO DOC
 cp ${ROOT_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
-sed -i 's:\./reremi/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
+sed -i 's:\./clired/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${ROOT_REP}/CHANGELOG ${SPHINX_REP}/_static/
 

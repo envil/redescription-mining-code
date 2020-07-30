@@ -1,10 +1,10 @@
 import re, datetime
 import wx
 import wx.lib.mixins.listctrl  as  listmix
-from ..reremi.classQuery import SYM
-from ..reremi.classCol import ColM
-from ..reremi.classRedescription import Redescription
-from ..reremi.classContent import StoredContainer
+from ..clired.classQuery import SYM
+from ..clired.classCol import ColM
+from ..clired.classRedescription import Redescription
+from ..clired.classContent import StoredContainer
 
 import pdb
 

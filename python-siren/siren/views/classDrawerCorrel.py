@@ -19,8 +19,8 @@ import matplotlib.cm as cm
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 
-from ..reremi.classSParts import SSetts
-from ..reremi.classRedescription import Redescription
+from ..clired.classSParts import SSetts
+from ..clired.classRedescription import Redescription
 from .classDrawerBasis import DrawerEntitiesTD
 
 import pdb

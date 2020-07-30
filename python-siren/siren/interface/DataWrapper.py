@@ -7,20 +7,20 @@ import time
 
 import pdb
 
-from ..reremi.toolICList import ICList
-from ..reremi.toolICDict import ICDict
-from ..reremi.toolLog import Log
-from ..reremi.classContent import StoredRCollection
+from ..clired.toolICList import ICList
+from ..clired.toolICDict import ICDict
+from ..clired.toolLog import Log
+from ..clired.classContent import StoredRCollection
 
-from ..reremi.classCol import DataError, ColM
-from ..reremi.classData import Data
+from ..clired.classCol import DataError, ColM
+from ..clired.classData import Data
 
-from ..reremi.classQuery import Query, Literal
-from ..reremi.classRedescription import Redescription
-from ..reremi.classConstraints import Constraints
+from ..clired.classQuery import Query, Literal
+from ..clired.classRedescription import Redescription
+from ..clired.classConstraints import Constraints
 
-from ..reremi.classPreferencesManager import PreferencesManager, PreferencesReader
-from ..reremi.classPackage import Package, IOTools
+from ..clired.classPreferencesManager import PreferencesManager, PreferencesReader
+from ..clired.classPackage import Package, IOTools
 
 
 class DataWrapper(object):
@@ -657,12 +657,11 @@ class DataWrapper(object):
     def exportPreferences(self, filename, inc_def=False, conf_def=None):
         pm = self.pm
         prefs = self.preferences
-        core = False
+        core = False        
         ## prefs = pm.getDefaultTriplets()
         if conf_def is not None:
-            pm = PreferencesManager(conf_def)
-            inc_def=False
-            core = True
+            pm = PreferencesManager(conf_def)           
+            core = not inc_def
 
         self._startMessage('exporting prefs', filename)
         try:

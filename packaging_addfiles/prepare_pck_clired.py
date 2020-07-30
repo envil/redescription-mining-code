@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-### usage: python prepare_pck_reremi.py win|src|clean
+### usage: python prepare_pck_clired.py win|src|clean
 
 import sys, re, os.path, glob, subprocess
 
-from common_details import reremi_variables
+from common_details import clired_variables
 
 this_rep = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,7 +19,7 @@ if len(sys.argv) > 1:
         exit()
             
 variables = {}
-for entry, vals in reremi_variables.items():
+for entry, vals in clired_variables.items():
     variables["__"+entry+"__"] = vals
 variables.update({"__PYTHON_SRC__": sys.executable})
 variables.update({"__MAIN_FILEPREFF__": re.sub(".py", "", variables["__MAIN_FILENAME__"])})
@@ -54,15 +54,15 @@ __PROJECT_DESCRIPTION_LINE__
 ### Installation
 
 #### Dependencies
-`python-reremi` requires several other Python utilities, including Numpy, Scipy, Scikit-learn.
+`python-clired` requires several other Python utilities, including Numpy, Scipy, Scikit-learn.
 
 __DEPENDENCIES_PIP_STR__
 
 #### PIP
 with pip, installation should be as easy as running 
-`pip install python-reremi`
+`pip install python-clired`
 
-this should provide `exec_reremi` to run the command-line redescription mining algorithms
+this should provide `exec_clired` to run the command-line redescription mining algorithms
 
 ### More information
 See __PROJECT_URL__
