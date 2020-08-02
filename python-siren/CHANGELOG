@@ -1,5 +1,10 @@
-CHANGELOG for Siren
-===================
+CHANGELOG for Clired/Siren
+=============================
+v6.0.0
+------
+* Reorganised the structure to clarify the distinction between command-line tool, now named Clired, and ReRemi greedy mining algorithm
+* Rearranged parameters for clarity
+
 v5.0.6
 ------
 * Edited code for tree algorithms

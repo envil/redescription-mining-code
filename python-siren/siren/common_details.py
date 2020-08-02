@@ -111,7 +111,7 @@ clired_variables.update({
     "DEPENDENCIES_DEB_STR": ", ".join(depclired_deb),
     "PROJECT_DESCRIPTION": "Command-line Redescription Mining",
     "PROJECT_DESCRIPTION_LINE": "clired is a command-line tool for redescription mining.",
-    "PROJECT_DESCRIPTION_LONG": """This provides the clired command-line tool for redescription mining including, in particular, the greedy ReReMi algorithm and tree-based algorithms.""",})
+    "PROJECT_DESCRIPTION_LONG": """This provides the Clired command-line tool for redescription mining including, in particular, the greedy ReReMi algorithm and tree-based algorithms.""",})
 
 #    "DOWNLOAD_URL": "http://www.loria.fr/~egalbrun/log/download.php",
 

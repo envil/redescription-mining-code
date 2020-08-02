@@ -5,7 +5,9 @@ Features
 ***************
 
 .. note::
-   Using *Siren*, a user can explore data of his interest by interactively visualizing, editing and mining redescriptions.
+   *Siren* is a tool for interactive mining and visualization of redescriptions. It is based on the greedy *ReReMi* algorithm and tree-based algorithms.
+   
+   Using *Siren*, a user can explore data of his interest by interactively visualizing, editing and mining redescriptions :cite:`galbrun_mining_2018`.
 
    The main features of *Siren* can be categorized into mining, visualizing and editing.
 		 

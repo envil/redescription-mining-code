@@ -146,7 +146,8 @@ Finnish 2011 parliamentary elections (Try it out!)
 ==================================================
 
 .. note:: 
-   In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining. 
+   In this use case we consider the case of exploring open data about the candidates to a national election using redescription mining :cite:`galbrun_analysing_2016` .
+   
    The prepared dataset is available :data_link:`here <vaalikone/>`.
 
 Data

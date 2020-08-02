@@ -5,17 +5,24 @@ Download
 ***************
 
 .. note::
-   *Siren* is a multi-platform software. It has been used on OS X and Ubuntu Linux.
+   *Siren* is a multi-platform software licensed under the Apache License, Version 2.0.
 
-   Siren and ReReMi are licensed under the Apache License, Version 2.0.
+   *Siren* and the algorithms that come with it are implemented in Python.
 
-*Siren* and it's core mining algorithm *ReReMi* are implemented in Python.
+
+*Siren* is the graphical user interface that allows to mine, visualize and interactively edit redescriptions.
+*Clired* is the command-line user interface that allows to mine and preprocess redescriptions.
+They rely on a few different :ref:`mining algorithms <algorithms>`.
+   
+.. image:: ../_figs/Clired-Siren_structure.svg
+	   :width: 600px
+	   :align: center
 
 The interface is built with the wxPython Open Source GUI toolkit, ensuring cross-platform compatibility.
 
 The matplotlib library enables to generate high quality figures, seamlessly integrated in the interface.
 
-The code is compatible with Python 3. Code from releases prior to ``5.0`` are compatible with Python 2.7.
+The code is compatible with Python 3. Code from releases prior to ``5.0`` is compatible with Python 2.7.
 
 
 .. _code:
@@ -24,14 +31,14 @@ The code is compatible with Python 3. Code from releases prior to ``5.0`` are co
 Source code
 ============
 
-Siren is available as a python package on `PyPI <https://pypi.org/project/python-siren/>`_.
+*Siren* is available as a python package on `PyPI <https://pypi.org/project/python-siren/>`_. Installing the package is the simplest way to proceed.
 
 The source code is hosted in a Git repository on `InriaForge <https://gforge.inria.fr/projects/siren/>`_.
 You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
 
 *Siren* requires a number of python libraries: ``scipy``, ``numpy``, ``matplotlib``, ``wxPython``, ``cartopy`` (``mpl_toolkit.Basemap`` for releases prior to ``5.0.3``) and ``sklearn`` (scikit-learn). Make sure they are installed and accessible before you run *Siren*.
 
-You can find help under *Siren*'s Help menu or :project_url:`online <help/>`.
+You can find help :project_url:`here <help/>`.
 
 .. _linux:
 
@@ -55,9 +62,9 @@ Afterward, you might need to run, to fix dependencies, i.e., install missing req
 
 Or use a tool like Ubuntu Software Center to open the package and install the application.
 
-If everything went fine, you should find a Siren entry in your Applications menu.
+If everything went fine, you should find a *Siren* entry in your Applications menu.
 
-You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
+You can find help :project_url:`here <help/>`.
 
 .. image:: ../_figs/screenshots/Partscreen.png
 
@@ -65,6 +72,8 @@ You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
 For OS X
 ============== 
+
+**This installer is no longer maintained!**
 
 :mac_cap_release:`.dmg` (OS X 10.11, El Capitan)
 
@@ -74,14 +83,15 @@ To *install*, download the above disk image and copy the file Siren to your Appl
 
 To *run* the program, double-click the program icon.
 
-You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
+You can find help :project_url:`here <help/>`.
 
-.. warning::
-   **Note for users of OS X with Gatekeeper activated (10.7.5 and newer)**
 
-   The Siren application is not digitally signed. Therefore, users with OS X Gatekeeper active cannot run the Siren application by double-clicking it. An attempt to do so will result in an error message. In order to open Siren for the first time, you need to right-click (command-click) the Siren icon, and select "Open" from the contextual menu. You only need to do this for the first launch after every re-installation of Siren.
+Note for users of OS X with Gatekeeper activated (10.7.5 and newer):
+---------------------------------------------------------------------
 
-   More information about Gatekeeper can be found at `<http://support.apple.com/kb/HT5290">`_.
+The Siren application is not digitally signed. Therefore, users with OS X Gatekeeper active cannot run the Siren application by double-clicking it. An attempt to do so will result in an error message. In order to open Siren for the first time, you need to right-click (command-click) the Siren icon, and select "Open" from the contextual menu. You only need to do this for the first launch after every re-installation of Siren.
+
+More information about Gatekeeper can be found at `<http://support.apple.com/kb/HT5290">`_.
 
 
 .. image:: ../_figs/screenshots/screenshot_OSX.jpg 
@@ -90,6 +100,8 @@ You can find help under *Siren*'s Help menu or :project_url:`online </help/>`.
 
 For Windows
 ============
+
+**This installer is no longer maintained!**
 
 :win_release:`.exe`
 
@@ -104,6 +116,6 @@ CHANGELOG
 
 .. literalinclude:: ../_static/CHANGELOG
 
-The latest release for each platform are listed here. Previous versions can be found in :code_url:`this folder </>`.
+The latest release for each platform are listed above. Previous versions can be found in :code_url:`this folder </>`.
 
 Feel free to contact us for support or with feedback, bug reports and questions. :contact_email:`mailto:`

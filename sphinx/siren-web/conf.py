@@ -263,3 +263,277 @@ texinfo_documents = [
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
 
+
+##############################
+##############################
+
+from pybtex.style.formatting.unsrt import Style as UnsrtStyle
+from pybtex.style.labels.alpha import LabelStyle as AlphaLabelStyle
+from pybtex.plugin import register_plugin
+
+# extensions = ['sphinxcontrib.bibtex']
+# exclude_patterns = ['_build']
+
+import sys
+if sys.version_info < (2, 7):
+   from counter import Counter
+else:
+   from collections import Counter
+
+import re
+import unicodedata
+
+# from pybtex.textutils import abbreviate
+# from pybtex.style.labels import BaseLabelStyle
+## /usr/lib/python3/dist-packages/pybtex/style
+
+from pybtex.style.template import (
+    join, words, together, field, optional, first_of,
+    names, sentence, tag, optional_field, href
+)
+
+_nonalnum_pattern = re.compile('[^A-Za-z0-9]+')
+delimiter_re = re.compile(r'([\s\-])')
+
+def abbreviate(text, split=delimiter_re.split):
+   """Abbreviate the given text.
+   
+   >> abbreviate('Name')
+   'N'
+   >> abbreviate('Some words')
+   'S. w.'
+   >>> abbreviate('First-Second')
+   'F.-S.'
+   """
+   
+   def abbreviate(part):
+      if part.isalpha():
+         return part[0] + '.'
+      else:
+         tmp = _strip_nonalnum(part)
+         if tmp.isalpha():
+            return tmp[0] + '.'
+         return part
+      
+   return ''.join(abbreviate(part) for part in split(text))
+
+def _strip_accents(s):
+   return ''.join(
+       (c for c in unicodedata.normalize('NFD', s)
+        if not unicodedata.combining(c)))
+
+def _strip_nonalnum(parts):
+    """Strip all non-alphanumerical characters from a list of strings.
+
+    >>> print _strip_nonalnum([u"ÅA. B. Testing 12+}[.@~_", u" 3%"])
+    AABTesting123
+    """
+    s = ''.join(parts)
+    return _nonalnum_pattern.sub('', _strip_accents(s))
+
+def _abbr(parts):
+    return (abbreviate(part) for part in parts)
+
+
+
+class ApaStyle(UnsrtStyle):
+    default_label_style = 'number'
+    # default_sorting_style = 'author_year_title'
+    default_sorting_style = 'custa'
+
+    def format_web_refs(self, e):
+        # based on urlbst output.web.refs
+        return sentence [
+            optional [ self.format_url(e) ],
+            # optional [ self.format_eprint(e) ],
+            # optional [ self.format_pubmed(e) ],
+            optional [ self.format_doi(e) ],
+            # optional [ self.format_file(e) ],
+            # optional [ self.format_abs(e) ],
+            ]
+    
+    def format_url(self, e):
+        # based on urlbst format.url
+        return words [
+            'URL:',
+            href [
+                field('url', raw=True),
+                field('url', raw=True)
+                ]
+        ]
+    def format_file(self, e):
+        # based on urlbst format.url
+        return href [
+                join [ './pdfs/', field('file', raw=True)],
+                'pdf',
+                ]      
+    def format_abs(self, e):
+        # based on urlbst format.url
+        return join ["A::start", "Abstract", "A::mid", field('abstract'), "A::end"]
+
+    
+# class ApaLabelStyle(BaseLabelStyle):
+
+#     # def format_label(self, entry):
+#     #     return "CUSTA"
+
+#     def format_labels(self, sorted_entries):
+#         labels = [self.format_label(entry) for entry in sorted_entries]
+#         count = Counter(labels)
+#         counted = Counter()
+#         for label in labels:
+#             if count[label] == 1:
+#                 yield label
+#             else:
+#                 yield label + chr(ord('a') + counted[label])
+#                 counted.update([label])
+
+#     # note: this currently closely follows the alpha.bst code
+#     # we should eventually refactor it
+
+#     def format_label(self, entry):
+#         # see alpha.bst calc.label
+#         if entry.type == "book" or entry.type == "inbook":
+#             label = self.author_editor_key_label(entry)
+#         elif entry.type == "proceedings":
+#             label = self.editor_key_organization_label(entry)
+#         elif entry.type == "manual":
+#             label = self.author_key_organization_label(entry)
+#         else:
+#             label = self.author_key_label(entry)
+#         if "year" in entry.fields:
+#             return label + entry.fields["year"][-2:]
+#         else:
+#            return label
+#         # bst additionally sets sort.label
+
+#     def author_key_label(self, entry):
+#         # see alpha.bst author.key.label
+#         if not "author" in entry.persons:
+#             if not "key" in entry.fields:
+#                 return entry.key[:3] # entry.key is bst cite$
+#             else:
+#                 # for entry.key, bst actually uses text.prefix$
+#                 return entry.fields["key"][:3]
+#         else:
+#             return self.format_lab_names(entry.persons["author"])
+
+#     def author_editor_key_label(self, entry):
+#         # see alpha.bst author.editor.key.label
+#         if not "author" in entry.persons:
+#             if not "editor" in entry.persons:
+#                 if not "key" in entry.fields:
+#                     return entry.key[:3] # entry.key is bst cite$
+#                 else:
+#                     # for entry.key, bst actually uses text.prefix$
+#                     return entry.fields["key"][:3]
+#             else:
+#                 return self.format_lab_names(entry.persons["editor"])
+#         else:
+#             return self.format_lab_names(entry.persons["author"])
+
+#     def author_key_organization_label(self, entry):
+#         if not "author" in entry.persons:
+#             if not "key" in entry.fields:
+#                 if not "organization" in entry.fields:
+#                     return entry.key[:3] # entry.key is bst cite$
+#                 else:
+#                     result = entry.fields["organization"]
+#                     if result.startswith("The "):
+#                         result = result[4:]
+#                     return result
+#             else:
+#                 return entry.fields["key"][:3]
+#         else:
+#             return self.format_lab_names(entry.persons["author"])
+
+#     def editor_key_organization_label(self, entry):
+#         if not "editor" in entry.persons:
+#             if not "key" in entry.fields:
+#                 if not "organization" in entry.fields:
+#                     return entry.key[:3] # entry.key is bst cite$
+#                 else:
+#                     result = entry.fields["organization"]
+#                     if result.startswith("The "):
+#                         result = result[4:]
+#                     return result
+#             else:
+#                 return entry.fields["key"][:3]
+#         else:
+#             return self.format_lab_names(entry.persons["editor"])
+
+#     def format_lab_names(self, persons):
+#         # see alpha.bst format.lab.names
+#         # s = persons
+#         numnames = len(persons)
+#         if numnames > 1:
+#             if numnames > 3:
+#                person = persons[0]
+#                # result = _strip_nonalnum(person.prelast_names + person.last_names)[:3]
+#                result = _strip_nonalnum(person.last_names)[:3]
+#                result += "+"
+#             else:
+#                 namesleft = numnames
+#                 result = ""
+#                 nameptr = 1
+#                 while namesleft:
+#                    person = persons[nameptr - 1]
+#                    # tmpre = _strip_nonalnum(_abbr(
+#                    #    person.prelast_names + person.last_names))
+#                    tmpre = _strip_nonalnum(_abbr(person.last_names))
+#                    if nameptr == numnames:
+#                       if person == "others":
+#                          result += "+"
+#                       else:
+#                          result += _strip_nonalnum(_abbr(person.last_names))
+#                    else:
+#                       result += _strip_nonalnum(_abbr(person.last_names))
+#                    nameptr += 1
+#                    namesleft -= 1
+#         else:
+#             person = persons[0]
+#             result = _strip_nonalnum(_abbr(person.last_names))
+#             if len(result) < 2:
+#                 result = _strip_nonalnum(person.last_names)[:3]
+#         return result
+
+
+# inspired from Andrey Golovizin
+
+from pybtex.style.sorting import BaseSortingStyle
+
+
+class CustSortingStyle(BaseSortingStyle):
+
+    def sorting_key(self, entry):
+        if entry.type in ('book', 'inbook'):
+            author_key = self.author_editor_key(entry)
+        elif 'author' in entry.persons:
+            author_key = self.persons_key(entry.persons['author'])
+        else:
+            author_key = ''
+        return (entry.fields.get('year', ''), author_key, entry.fields.get('title', ''))
+     
+    def persons_key(self, persons):
+       if len(persons) > 3:
+          return self.person_key(persons[0])+"  et al"
+       return '   '.join(self.person_key(person) for person in persons)
+
+    def person_key(self, person):
+       return '  '.join((
+            ' '.join([_strip_nonalnum(person.prelast_names)] + [_strip_nonalnum(person.last_names)]),
+            # ' '.join(person.first_names + person.middle_names),
+            # ' '.join(person.lineage_names),
+        )).lower()
+
+    def author_editor_key(self, entry):
+        if entry.persons.get('author'):
+            return self.persons_key(entry.persons['author'])
+        elif entry.persons.get('editor'):
+            return self.persons_key(entry.persons['editor'])
+        else:
+            return ''
+
+#register_plugin('pybtex.style.labels', 'custa', LabelStyle)
+register_plugin('pybtex.style.formatting', 'custa', ApaStyle)
+register_plugin('pybtex.style.sorting', 'custa', CustSortingStyle)

@@ -1,0 +1,116 @@
+\documentclass{article}
+
+\usepackage{xcolor}
+
+
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing}
+
+\tikzset{
+node distance=.8cm,
+ghost node/.style={text width=0cm, inner sep=0pt}, %, font=\scriptsize
+root node/.style={circle, text width=0cm, inner sep=1.5pt, draw, align=center}, %, font=\scriptsize
+main node/.style={circle, text width=0cm, inner sep=1.5pt, draw, fill=black, align=center}, %, font=\scriptsize
+leaf node/.style={rectangle, text width=0cm, inner sep=1.5pt, draw, black, fill=black, align=center}, %, font=\scriptsize
+label node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.5cm, xshift=.3cm},
+lterm node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.3cm},
+prop node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.3cm, xshift=.2cm , color=darkgray},
+pterm node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.3cm, xshift=.2cm, color=darkgray},
+cprop node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.3cm, color=darkgray},
+cpterm node/.style={text width=0.5cm, inner sep=2pt, align=center, node distance=.3cm, color=darkgray},
+rep edge/.style={black, very thick},
+lghost node/.style={text width=0cm, inner sep=0pt, color=white, opacity=0}, %, font=\scriptsize
+lmain node/.style={inner sep=1pt, align=center, node distance=.35cm, fill=white, anchor=center},
+li node/.style={inner sep=0pt, anchor=west, xshift=.08cm, yshift=.15cm, node distance=0cm, fill=white},
+le node/.style={text width=1.9cm, inner sep=1pt, align=center, node distance=0cm, rotate=60, anchor=east, xshift=-1.2cm},
+lleaf node/.style={text width=1.2cm, inner sep=1pt, align=center, node distance=0cm, rotate=60, anchor=east, xshift=-.8cm},
+ptstart node/.style={inner sep=2pt, node distance=.12cm, align=left, anchor=west, font=\scriptsize\bf},
+ptend node/.style={inner sep=2pt, node distance=.12cm, align=left, anchor=west, font=\scriptsize\bf},
+dst node/.style={inner sep=1pt, align=left, text=darkgray, node distance=.05cm, anchor=west},
+info node/.style={inner sep=1pt, align=left, text=darkgray, anchor=west},
+info rec/.style={very thin, lightgray, fill=vlgray, opacity=0.25, rounded corners}
+}
+
+\definecolor{csSiren}{HTML}{332288} % blue
+\definecolor{csClired}{HTML}{4477AA} % blue
+% \definecolor{csAlgo}{HTML}{117733} % green
+% \definecolor{csCyTo}{HTML}{CC6677} % yellow
+% \definecolor{csCyA}{HTML}{AA4499} % red
+\definecolor{csAlgo}{HTML}{555555} % gray
+\definecolor{csOther}{HTML}{777777} % gray
+
+
+%% \ifpdf
+%%%% comment out to compile without caching tikz figures
+%%%% pdflatex --shell-escape standalone.tex
+% \usetikzlibrary{external}
+% \tikzexternalize[prefix=tikz/]
+%%% \tikzset{external/mode=list and make}
+%% \fi
+
+%% pdf2svg standalone-figure1.pdf patt1.svg
+
+\newenvironment{dummy}{}{}
+%%%<
+\usepackage[active,tightpage]{preview}
+%\PreviewEnvironment{tabular}
+\PreviewEnvironment{dummy}
+\setlength\PreviewBorder{1pt}%
+% %%%>
+
+\begin{document}
+
+\begin{dummy}
+\begin{tikzpicture}
+  \draw[color=csAlgo, very thin] (-2.5,-1) rectangle (-.1,1) node[pos=.5] {\texttt{reremi}};
+  \draw[color=csAlgo, very thin] (.1,-1) rectangle (2.5,-.05) node[pos=.5] {\texttt{splittrees}};
+  \draw[color=csAlgo, very thin] (.1,0.05) rectangle (2.5,1) node[pos=.5] {\texttt{layeredtrees}};
+  \node[color=csOther, font=\sffamily] at (-1.45, 1.3) {greedy};
+  \node[color=csOther, font=\sffamily] at (1.45, 1.3) {tree-based};
+  \node[color=csOther, font=\sffamily] (M) at (0, 1.7) {mining algorithms};
+  
+  \draw[color=csClired, very thick] (-2.6,-1.1) rectangle (2.6, 2.2);
+
+  \node[color=csOther, font=\sffamily, text width=4.8cm, align=center, above of= M] (P) {+};
+  \node[color=csOther, font=\sffamily, text width=4.8cm, align=center, above of= P] {visual tools\\ for plotting and interacting};
+
+  \draw[color=csSiren, very thick] (-2.7,-1.2) rectangle (2.7, 4.);
+
+  \node[align=left, anchor=west, color=csClired, font=\Large\scshape] at (2.8, 1.8)  {Clired};
+  \node[align=left, anchor=west, color=csClired, font=\small\sffamily] at (2.8, 1.4)  {command-line user interface};
+
+  \node[align=left, anchor=west, color=csSiren, font=\Large\scshape] at (2.8, 3)  {Siren};
+  \node[align=left, anchor=west, color=csSiren, font=\small\sffamily] at (2.8, 2.6)  {graphical user interface};
+
+ 
+  % \node (leg0) at (2.5,2.) [text width=10cm, align=center] {On \textcolor{csCyTo}{April 16, at 7:30 AM}, \textcolor{csCyA}{wake up}, repeat \textcolor{csCyP}{every 24 hours} for \textcolor{csCyR}{5 days}};
+\end{tikzpicture}
+\end{dummy}
+
+% \begin{dummy}
+% \begin{tikzpicture}[-,auto,node distance=1.8cm, thick]
+%   \draw[opacity=0] (-2.8,-1.2) rectangle (7.8,2.6);  
+%   \node (leg0) at (2.5,2.) [text width=10cm, align=center] {On \textcolor{csCyTo}{April 16, at 7:30 AM}, \textcolor{csCyA}{wake up}, repeat \textcolor{csCyP}{every 24 hours} for \textcolor{csCyR}{5 days}};
+
+
+%   \node[main node] (b0) at (0,0) {};
+%   \node[info node] (l0t) [above of=b0, node distance=3.5em, align=left, anchor=west] {\textcolor{csCyTo}{$C=$ 16-04-2018 7:30}};
+
+%   \node[leaf node] (b21) [right of=b0] {};
+%   \node[info node, xshift=-.8em] (l2r) [below of=b0, node distance=1.6em, align=left, anchor=west] {\textcolor{csCyR}{$L=$ 5}};
+%   \node[info node, xshift=-.8em] (l2p) [below of=b0, node distance=3.0em, align=left, anchor=west] {\textcolor{csCyP}{$p=$ 24 hours}};
+
+%   %%%% labels
+%   \node[pterm node, text width=3cm, xshift=-.8em] (p21) [right of=b21, align=left, anchor=west] {\textcolor{csCyA}{wake up}};
+%   \path
+%     (b0) edge (b21);
+% \end{tikzpicture}
+% \end{dummy}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
