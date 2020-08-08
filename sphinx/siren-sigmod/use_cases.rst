@@ -9,7 +9,7 @@ Sample Use-Cases
 Finnish 2011 parliamentary elections
 =========================================
 
-We provide a :data_link:`prepared dataset <vaalikone/vaalikone.siren>` about the Finnish 2011 parliamentary elections. Get the data (non-geospatial), try out *Siren* and learn about the finnish political scene! (More details on the :project_url:`main webpage <main/>`.)
+We provide a :data_url:`prepared dataset <vaalikone/vaalikone.siren>` about the Finnish 2011 parliamentary elections. Get the data (non-geospatial), try out *Siren* and learn about the finnish political scene! (More details on the :project_url:`main webpage <main/>`.)
 
 To illustrate the use of *Siren*, we present example use-cases from different application domains. 
 

@@ -1433,11 +1433,18 @@ class Siren():
 
     def _onHelpOutside(self):
         import webbrowser
-        try:
-            ##webbrowser.open("file://"+ self.helpURL, new=1, autoraise=True)
-            webbrowser.open(self.helpInternetURL, new=1, autoraise=True)
-        except webbrowser.Error as e:
-            self.logger.printL(1,'Cannot show help file: '+str(e)
+        helped = False
+        if self.helpURL is not None:
+            try:
+                webbrowser.open("file://"+ self.helpURL, new=1, autoraise=True)
+                helped = True
+            except webbrowser.Error as e:
+                helped = False
+        if not helped:
+            try:
+                webbrowser.open(self.helpInternetURL, new=1, autoraise=True)
+            except webbrowser.Error as e:
+                self.logger.printL(1,'Cannot show help file: '+str(e)
                                    +'\nYou can find help at '+self.helpInternetURL+'\nor '+self.helpURL, "error", "help")        
 
     #### LICENSE BOX

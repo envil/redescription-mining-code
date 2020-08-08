@@ -10,7 +10,7 @@
    We outline here some high-level interactions offered by *Siren*.
 
 
-Because examples are worth many words, :data_link:`here <toys/>` are some datasets to try your hands on. 
+Because examples are worth many words, :data_url:`here <toys/>` are some datasets to try your hands on. 
 
 .. _importing_data:
 

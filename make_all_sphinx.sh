@@ -1,12 +1,10 @@
 #!/bin/bash
 
 ##### THERE ARE A NUMBER OF BAD LINK WARNINGS IN THE COMPILATION, DUE TO SHARED FOLDERS
-# ./make_all_sphinx.sh ./python-siren ./sphinx pa
 #### To send
 ## rsync -rvv -e ssh main/ egalbrun@scm.gforge.inria.fr:/home/groups/siren/htdocs/main/
+## rsync -rvv -e ssh main/ egalbrun@loria.loria.fr:/local/hp_files/egalbrun/siren/main/
 
-# SRC_REP=${1}
-# SPH_REP=${2}
 JUST_HELP=${1}
 
 SRC_REP="./python-siren"
@@ -54,7 +52,7 @@ if [ $JUST_HELP -gt 0 ]; then
     mv _static/*.css ./
     mv _static/confdef.xsl _static/*_confdef.xml ./
     #sed -i '/Main Siren webpage/d' *.html
-    sed -i 's!../main/!http://siren.gforge.inria.fr/!g' *.html
+    sed -i 's!../main/!https://members.loria.fr/EGalbrun/siren/main/!g' *.html
     sed -i '/As a PDF/d' *.html
     sed -i 's:\([^/]\)_static/:\1:g' *.html
     sed -i 's:\([^/]\)_images/:\1:g' *.html
@@ -64,13 +62,13 @@ if [ $JUST_HELP -gt 0 ]; then
     rm .buildinfo objects.inv slidy*s
     
 else    
-    # # #### MAKE HELP
-    # cd ${SPHINX_REP}/siren-help/
-    # rm -rf _build
-    # make html
-    # make latexpdf
-    # cp -r _build/html ${OUT_REP}/help
-    # cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
+    # #### MAKE HELP
+    cd ${SPHINX_REP}/siren-help/
+    rm -rf _build
+    make html
+    make latexpdf
+    cp -r _build/html ${OUT_REP}/help
+    cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
 
     #### MAKE MAIN
     cd ${SPHINX_REP}/siren-web/
@@ -78,23 +76,22 @@ else
     make html
     cp -r _build/html ${OUT_REP}/main
 
-    # #### MAKE CONF SPECIFIC
-    # for conf in "sigmod" "icdm"; do
-    #     cd ${SPHINX_REP}/siren-${conf}/
-    #     rm -rf _build
-    #     make singlehtml
-    #     make latexpdf
-    #     cp -r _build/singlehtml ${OUT_REP}/${conf}
-    #     cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
-    # done
-
+    #### MAKE CONF SPECIFIC
+    for conf in "sigmod" "icdm"; do
+        cd ${SPHINX_REP}/siren-${conf}/
+        rm -rf _build
+        make singlehtml
+        make latexpdf
+        cp -r _build/singlehtml ${OUT_REP}/${conf}
+        cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
+    done
 
     cd ${OUT_REP}
     sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html
     sed -i 's:\([^/]\)_images/:\1../_images/:g' */*.html
     mkdir ./_static/ ./_images/
-    # for fold in "help" "main" "sigmod" "icdm"; do
-    for fold in "help" "main"; do
+    for fold in "help" "main" "sigmod" "icdm"; do
+    # for fold in "help" "main"; do
         mv ${fold}/_static/* ./_static/
         mv ${fold}/_images/* ./_images/
         rmdir ${fold}/_static ${fold}/_images

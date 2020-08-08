@@ -58,7 +58,7 @@ mv $( cat *.html | sed -n -e 's:^.*href="\([^"]*_static/[^"]*\)".*$:\1:p' -e 's:
 mv _static/*.css ./
 mv _static/confdef.xsl _static/*_confdef.xml ./
 #sed -i '/Main Siren webpage/d' *.html
-sed -i 's!../main/!http://siren.gforge.inria.fr/!g' *.html
+sed -i 's!../main/!https://members.loria.fr/EGalbrun/siren/main/!g' *.html
 sed -i '/As a PDF/d' *.html
 sed -i 's:\([^/]\)_static/:\1:g' *.html
 sed -i 's:\([^/]\)_images/:\1:g' *.html

@@ -41,8 +41,7 @@ If you do not yet have it, you will need to install `Python <https://www.python.
 Git repository
 ------------------
 
-The source code is hosted in a Git repository on `InriaForge <https://gforge.inria.fr/projects/siren/>`_.
-You can `clone it <https://gforge.inria.fr/scm/?group_id=8278>`_.
+The source code is hosted on :gitlab_url:`GitLab Inria <>`. You can :gitlab_url:`clone it <.git>`.
 
 Once you obtained the source code, *Siren* can be launched by running `python exec_siren.py` from the `python-siren` folder.
 
@@ -85,8 +84,6 @@ Installers (no longer maintained)
 ====================================
 
 **The platform-specific installation methods are no longer maintained!**
-
-Previous versions of *Siren* can be found in :code_url:`this folder <>`.
 
 .. _linux:
 
@@ -156,5 +153,7 @@ Once that is done you only have to double-click the program icon to run *Siren*.
 
 CHANGELOG
 ==========
+
+Previous versions of *Siren* can be found in :code_url:`this folder <>`.
 
 .. literalinclude:: ../_static/CHANGELOG

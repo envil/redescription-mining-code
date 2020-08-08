@@ -14,7 +14,7 @@ import pdb
 ### for color parameter, both data and value are the integer triplets representation
 
 USAGE_DEF_HEADER = "Clired redescription mining"
-USAGE_DEF_URL_HELP = "http://siren.gforge.inria.fr/help/"
+USAGE_DEF_URL_HELP = "https://members.loria.fr/EGalbrun/siren/help/"
 
 class CParameter(object):
     type_id = "X"
@@ -684,7 +684,8 @@ def getUsage(arg_zero, header=None, footer=None):
     if header is None:
         header = USAGE_DEF_HEADER +"\n"
     if footer is None:
-        footer = "\nFor more details see "+USAGE_DEF_URL_HELP
+        footer = "\nFor more details see "+USAGE_DEF_URL_HELP+"formats.html and "+USAGE_DEF_URL_HELP+"preferences.html#mining-parameters"
+
     exec_name = arg_zero.split("/")[-1].replace(".py", "")
     return (
         f'{header}'
@@ -695,7 +696,7 @@ def getUsage(arg_zero, header=None, footer=None):
 
 def processHelpArgs(arguments, pr):
     if len(arguments) > 1:
-        if arguments[1] == "--help":
+        if arguments[1] == "--help" or arguments[1] == "-h":
             return False
         elif arguments[1] == "--template":
             print(pr.dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
