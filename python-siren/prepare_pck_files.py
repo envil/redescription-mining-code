@@ -68,7 +68,6 @@ __PROJECT_DESCRIPTION_LINE__
 #### Dependencies
 `python-siren` requires several other Python utilities, including wxPython Phoenix (for the GUI), Numpy, Scipy, Scikit-learn, Matplotlib, and Cartopy.
 
-* wxgtk4.0 (>= 4.0.0), see https://wxpython.org/
 __DEPENDENCIES_PIP_STR__
 
 #### PIP

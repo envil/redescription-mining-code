@@ -12,7 +12,8 @@ YAH=$(pwd) # YOU ARE HERE
 
 #PACK_REP=${YAH}/${3}
 
-PACK_REP=${YAH}/packaging_pip_$(date "+%Y%m%d%H%M%S")
+# PACK_REP=${YAH}/packaging_pip_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_current
 ROOT_REP=${PACK_REP}"/python-siren"
 SPHINX_REP=${PACK_REP}"/sphinx"
 HELP_SRC_REP=${SPHINX_REP}"/siren-help/_build/html"
@@ -72,4 +73,8 @@ rm -rf ${SPHINX_REP}
 ### ... and make the package
 cd ${ROOT_REP}
 python setup.py sdist bdist_wheel
+
+### upload on PyPI
 # python -m twine upload dist/*
+# twine upload --repository testpypi dist/*
+# pip install -i https://test.pypi.org/simple/ python-siren

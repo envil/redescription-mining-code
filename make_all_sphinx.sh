@@ -17,8 +17,8 @@ YAH=$(pwd) # YOU ARE HERE
 
 #PACK_REP=${YAH}/${3}
 
-PACK_REP=${YAH}/packaging_sphinx_$(date "+%Y%m%d%H%M%S")
-# PACK_REP=${YAH}/packaging_sphinx_current
+# PACK_REP=${YAH}/packaging_sphinx_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_current/web
 rm -rf $PACK_REP
 SPHINX_REP=${PACK_REP}"/sphinx"
 OUT_REP=${PACK_REP}"/out"
@@ -64,13 +64,13 @@ if [ $JUST_HELP -gt 0 ]; then
     rm .buildinfo objects.inv slidy*s
     
 else    
-    # #### MAKE HELP
-    cd ${SPHINX_REP}/siren-help/
-    rm -rf _build
-    make html
-    make latexpdf
-    cp -r _build/html ${OUT_REP}/help
-    cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
+    # # #### MAKE HELP
+    # cd ${SPHINX_REP}/siren-help/
+    # rm -rf _build
+    # make html
+    # make latexpdf
+    # cp -r _build/html ${OUT_REP}/help
+    # cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
 
     #### MAKE MAIN
     cd ${SPHINX_REP}/siren-web/

@@ -556,7 +556,7 @@ class Siren():
                 self.tabs[tab_id]["text"] = wx.TextCtrl(self.tabs[tab_id]["tab"], size=(-1,-1), style=self.tabs[tab_id]["style"])
                 self.tabbed.AddPage(self.tabs[tab_id]["tab"], self.tabs[tab_id]["title"])
                 boxS = wx.BoxSizer(wx.VERTICAL)
-                boxS.Add(self.tabs[tab_id]["text"], 1, wx.ALIGN_CENTER | wx.TOP | wx.EXPAND)
+                boxS.Add(self.tabs[tab_id]["text"], 1, wx.EXPAND) # wx.ALIGN_CENTER | wx.TOP | 
                 self.tabs[tab_id]["tab"].SetSizer(boxS)
 
             elif self.tabs[tab_id]["type"] == "z":
@@ -843,7 +843,7 @@ class Siren():
                         frame.Bind(wx.EVT_MENU, self.OnActContent, m_adp)
                         self.ids_contentAct[ID_AC] = (tab, act_details["key"])
                         if info["in_pack"]:
-                            m_adp.SetText("Remove from package")
+                            m_adp.SetItemLabel("Remove from package") # SetText
                     else:
                         menuEdit.Enable(ID_AC, False)
 

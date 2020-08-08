@@ -1497,7 +1497,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     if csv_data.get("coord", None) is not None:
         try:
             tmp = list(zip(*csv_data["coord"]))
-            coords = numpy.array([tmp[1], tmp[0]])
+            coords = numpy.array([tmp[1], tmp[0]], dtype=object)
         except Exception:
             coords = None
 

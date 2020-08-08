@@ -356,7 +356,7 @@ class ListCtrlBasis(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
     def OnItemActivated(self, event):
         self.getCManager().fwdeventItemActivated(self, event)                
     def OnLeftClick(self, event):
-        self.getCManager().fwdeventLeftClick(self, event)        
+        self.getCManager().fwdeventLeftClick(self, event)
     def OnRightClick(self, event):
         self.getCManager().fwdeventRightClick(self, event)       
     def _onSelect(self, event):
@@ -498,22 +498,42 @@ class ListCtrlContainers(ListCtrlBasis): #, MyTextEditMixin):
     def _onStripe(self):
         pass
 
-class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
+
+if wx.__version__ >= "4.1.0":
+    class ListCheckBasis:
+        def __init__(self):
+            self.EnableCheckBoxes()
+            self.Bind(wx.EVT_LIST_ITEM_CHECKED, self.OnCheckItem)
+            self.Bind(wx.EVT_LIST_ITEM_UNCHECKED, self.OnCheckItem)
+
+        def OnCheckItem(self, event):
+            if self.upck:
+                self.getCManager().fwdeventCheckItem(self, event)
+            
+else:
+    class ListCheckBasis(listmix.CheckListCtrlMixin):
+        def __init__(self):
+            listmix.CheckListCtrlMixin.__init__(self)
+
+        def OnCheckItem(self, index, flag):
+            if self.upck:
+                self.getCManager().fwdeventCheckItem(self, index)
+
+class ListCtrlItems(ListCtrlBasis, ListCheckBasis):
     type_lc = "items" 
         
     def __init__(self, parent, cm, ID=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=wx.DefaultSize):
         ListCtrlBasis.__init__(self, parent, cm, ID, pos, size,
                                style=wx.LC_REPORT | wx.LC_HRULES) # | wx.LC_NO_HEADER)
-        listmix.CheckListCtrlMixin.__init__(self)
-        
+        ListCheckBasis.__init__(self)         
         self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)        
         self.Bind(wx.EVT_LIST_BEGIN_DRAG, self._startDrag)        
         self.Bind(wx.EVT_LIST_INSERT_ITEM, self._onInsert)
         self.Bind(wx.EVT_LIST_DELETE_ITEM, self._onDelete)
         self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick)
         self.upck = True
-
+        
     def isItemsL(self):
         return True
         
@@ -523,11 +543,7 @@ class ListCtrlItems(ListCtrlBasis, listmix.CheckListCtrlMixin):
             event.Skip()
         else:
             self.getCManager().fwdeventColClick(self, event)
-    def OnCheckItem(self, index, flag):
-        #### set disabled on item
-        if self.upck:
-            self.getCManager().fwdeventCheckItem(self, index, flag)                
-
+            
     def initColumns(self, cols_info=[], refresh=False):
         if refresh or len(cols_info) != self.GetColumnCount():
             self.DeleteAllColumns()
@@ -1000,9 +1016,13 @@ class ContentTable:
         event.Skip()
                 
 
-    def fwdeventCheckItem(self, lc, index, flag):
+    def fwdeventCheckItem(self, lc, event):
         if self.isLCI(lc) and self.isActive():
-            iid = self.getContentData().getIidForLidPos(self.getActiveLid(), index)
+            if type(event) is int:
+                pos = event
+            else:
+                pos = event.GetIndex()
+            iid = self.getContentData().getIidForLidPos(self.getActiveLid(), pos)
             self.parent.OnActContent("FlipEnabled", more_info={"iids": [iid]})
             # iid = self.getContentData().getIidForLidPos(self.getActiveLid(), index)
             # if iid is not None:

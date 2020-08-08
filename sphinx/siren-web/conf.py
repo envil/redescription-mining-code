@@ -366,10 +366,7 @@ class ApaStyle(UnsrtStyle):
         return href [
                 join [ './pdfs/', field('file', raw=True)],
                 'pdf',
-                ]      
-    def format_abs(self, e):
-        # based on urlbst format.url
-        return join ["A::start", "Abstract", "A::mid", field('abstract'), "A::end"]
+                ]
 
     
 # class ApaLabelStyle(BaseLabelStyle):

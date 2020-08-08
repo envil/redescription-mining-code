@@ -4,7 +4,8 @@ SRC_REP="./python-siren"
 ADD_REP="./packaging_addfiles"
 YAH=$(pwd) # YOU ARE HERE
 
-PACK_REP=${YAH}/packaging_pip-clired_$(date "+%Y%m%d%H%M%S")
+# PACK_REP=${YAH}/packaging_pip-clired_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_current
 ROOT_REP=${PACK_REP}/python-clired/
 
 # ### checkout the code itself

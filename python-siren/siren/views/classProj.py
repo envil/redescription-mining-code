@@ -4,6 +4,15 @@ import inspect
 from ..clired.classData import Data
 import os
 
+try:
+    from sklearn import (manifold, decomposition, ensemble, random_projection)
+    #sys.platform != 'win32'
+    WITHSKLEARN = True
+except ModuleNotFoundError as e:
+    print(e)
+    print("Some projection-based views will not be available!")
+    WITHSKLEARN = False
+
 import pdb
 
 # def my_SIGTERM_handler(sign, frame):
@@ -383,8 +392,7 @@ class ProjFactory(object):
         return str_info
 
 #### COMMENT OUT FROM  HERE TO GET RID OF SKLEARN
-if True: #sys.platform != 'win32':
-    from sklearn import (manifold, decomposition, ensemble, random_projection)
+if WITHSKLEARN:
 
     ### The various projections with sklearn
     #----------------------------------------------------------------------

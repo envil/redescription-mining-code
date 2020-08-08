@@ -23,9 +23,15 @@ from .classDrawerBasis import DrawerBasis, DrawerEntitiesTD
 from .classDrawerProj import DrawerEntitiesProj, DrawerClustProj
 from .classDrawerPara import DrawerRedPara
 from .classDrawerTree import DrawerRedTree
-# from .classDrawerMap import DrawerEntitiesMap, DrawerClustMap
-from .classDrawerMapCarto import DrawerEntitiesMap, DrawerClustMap
-from .classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
+try:
+    # from .classDrawerMap import DrawerEntitiesMap, DrawerClustMap
+    from .classDrawerMapCarto import DrawerEntitiesMap, DrawerClustMap
+    from .classDrawerMappoly import DrawerEntitiesMappoly, DrawerClustMappoly, DrawerBorders
+    WITHMAPS = True
+except ModuleNotFoundError as e:
+    print(e)
+    print("Map-based views will not be available!")
+    WITHMAPS = False
 from .classDrawerTimeSeries import DrawerRedTimeSeries
 from .classDrawerCorrel import DrawerRedCorrel
 
@@ -691,41 +697,48 @@ class ViewRed(ViewBasis):
     def addStamp(self, pref="", force=False):
         self.getDrawer().addStamp(pref, force=force)
 
-class ViewRedMap(ViewRed):
 
-    TID = "MAP"
-    SDESC = "Map"
-    title_str = "Map"
-    ordN = 2
-    typeD = {"geo": True}
-    typesI = "vr"
-
-    subcl_layh = LayoutHandlerQueries
-    subcl_drawer = DrawerEntitiesMap
-    subcl_pltdt = PltDtHandlerRedWithCoords
-
-class ViewRedMappoly(ViewRed):
-
-    TID = "MPP"
-    SDESC = "Map.Poly"
-    title_str = "Map Polygons"
-    ordN = 3
-    typeD = {"geo": True}
-    typesI = "vr"
-    ext_keys = ["geoplus"]
+###################
+### ENTITIES MAPS
+###################
+if WITHMAPS:
+    class ViewRedMap(ViewRed):
     
-    subcl_layh = LayoutHandlerQueries
-    subcl_drawer = DrawerEntitiesMappoly
-    subcl_pltdt = PltDtHandlerRedWithCoords
+        TID = "MAP"
+        SDESC = "Map"
+        title_str = "Map"
+        ordN = 2
+        typeD = {"geo": True}
+        typesI = "vr"
+    
+        subcl_layh = LayoutHandlerQueries
+        subcl_drawer = DrawerEntitiesMap
+        subcl_pltdt = PltDtHandlerRedWithCoords
+    
+    class ViewRedMappoly(ViewRed):
+    
+        TID = "MPP"
+        SDESC = "Map.Poly"
+        title_str = "Map Polygons"
+        ordN = 3
+        typeD = {"geo": True}
+        typesI = "vr"
+        ext_keys = ["geoplus"]
+        
+        subcl_layh = LayoutHandlerQueries
+        subcl_drawer = DrawerEntitiesMappoly
+        subcl_pltdt = PltDtHandlerRedWithCoords
+    
+        @classmethod
+        def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+            if tcl.suitableD(typeD) and tcl.suitableExts(ext_keys):
+                what_tid = None        
+                if isinstance(what, Redescription) or isinstance(what, ColM):
+                    what_tid = what.typeId()
+                return DrawerBasis.isTypeId(what_tid, ["Boolean", "Categorical"], default_accept=True)
+            return False
+############################
 
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        if tcl.suitableD(typeD) and tcl.suitableExts(ext_keys):
-            what_tid = None        
-            if isinstance(what, Redescription) or isinstance(what, ColM):
-                what_tid = what.typeId()
-            return DrawerBasis.isTypeId(what_tid, ["Boolean", "Categorical"], default_accept=True)
-        return False
     
 class ViewRedPara(ViewRed):
     
@@ -834,78 +847,86 @@ class ViewClustProj(ViewEntitiesProj, ViewList):
     @classmethod
     def suitableView(tcl, typeD={}, ext_keys=None, what=None):
         return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
-    
-class ViewVarSplitsMap(ViewList):
-    
-    TID = "VSLM"
-    SDESC = "VSMapLViz"
-    ordN = 0
-    title_str = "Variable Split Map"
-    typesI = "R"
-    typeD = {"geo": True}
-    
-    subcl_drawer = DrawerClustMap
-    subcl_pltdt = PltDtHandlerListVarSplits
-    subcl_layh = LayoutHandlerBasis
 
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
 
-class ViewClustMap(ViewList):
-    
-    TID = "CLM"
-    SDESC = "CluMapLViz"
-    ordN = 0
-    title_str = "Cluster Map"
-    typesI = "VR"
-    typeD = {"geo": True}
-    
-    subcl_drawer = DrawerClustMap
-    subcl_pltdt = PltDtHandlerListClust
-    subcl_layh = LayoutHandlerBasis
-
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
-
-    
-class ViewClustMappoly(ViewList):
-    
-    TID = "CLMPP"
-    SDESC = "CluMapPolyLViz"
-    ordN = 1
-    title_str = "Map Polygons"
-    typesI = "VR"
-    typeD = {"geo": True}
-    ext_keys = ["geoplus"]
+###################
+### CLUSTERS MAPS
+###################
+if WITHMAPS:
+    class ViewVarSplitsMap(ViewList):
         
-    subcl_drawer = DrawerClustMappoly
-    subcl_pltdt = PltDtHandlerListClust
-    subcl_layh = LayoutHandlerBasis
-
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
-
-
-class ViewBorders(ViewList):
-    
-    TID = "CLBRD"
-    SDESC = "BordersMapLViz"
-    ordN = 3
-    title_str = "Map Borders"
-    typesI = "VR"
-    typeD = {"geo": True}
-    ext_keys = ["geoplus"]
+        TID = "VSLM"
+        SDESC = "VSMapLViz"
+        ordN = 0
+        title_str = "Variable Split Map"
+        typesI = "R"
+        typeD = {"geo": True}
         
-    subcl_drawer = DrawerBorders
-    subcl_pltdt = PltDtHandlerListBlocksCoords
-    subcl_layh = LayoutHandlerBasis
+        subcl_drawer = DrawerClustMap
+        subcl_pltdt = PltDtHandlerListVarSplits
+        subcl_layh = LayoutHandlerBasis
+    
+        @classmethod
+        def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+            return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
+    
+    class ViewClustMap(ViewList):
+        
+        TID = "CLM"
+        SDESC = "CluMapLViz"
+        ordN = 0
+        title_str = "Cluster Map"
+        typesI = "VR"
+        typeD = {"geo": True}
+        
+        subcl_drawer = DrawerClustMap
+        subcl_pltdt = PltDtHandlerListClust
+        subcl_layh = LayoutHandlerBasis
+    
+        @classmethod
+        def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+            return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
+    
+        
+    class ViewClustMappoly(ViewList):
+        
+        TID = "CLMPP"
+        SDESC = "CluMapPolyLViz"
+        ordN = 1
+        title_str = "Map Polygons"
+        typesI = "VR"
+        typeD = {"geo": True}
+        ext_keys = ["geoplus"]
+            
+        subcl_drawer = DrawerClustMappoly
+        subcl_pltdt = PltDtHandlerListClust
+        subcl_layh = LayoutHandlerBasis
+    
+        @classmethod
+        def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+            return tcl.suitableViewBase(typeD, ext_keys, what) and ViewList.allCompat(what, "Boolean")
+    
+    
+    class ViewBorders(ViewList):
+        
+        TID = "CLBRD"
+        SDESC = "BordersMapLViz"
+        ordN = 3
+        title_str = "Map Borders"
+        typesI = "VR"
+        typeD = {"geo": True}
+        ext_keys = ["geoplus"]
+            
+        subcl_drawer = DrawerBorders
+        subcl_pltdt = PltDtHandlerListBlocksCoords
+        subcl_layh = LayoutHandlerBasis
+    
+        @classmethod
+        def suitableView(tcl, typeD={}, ext_keys=None, what=None):
+            return tcl.suitableViewBase(typeD, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
+############################
 
-    @classmethod
-    def suitableView(tcl, typeD={}, ext_keys=None, what=None):
-        return tcl.suitableViewBase(typeD, ext_keys, what) # and ViewList.allCompat(what, "Boolean")
+
     
 class ViewText(ViewBare):
     TID = "TXT"

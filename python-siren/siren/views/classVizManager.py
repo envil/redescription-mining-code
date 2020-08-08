@@ -179,7 +179,7 @@ class VizManager:
                 ppos, pspan = ([1, 1], [1, 1])
                 ppos[ddim] += self.getVizGridNbDim(ddim)
                 pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
-                self.getSW().GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+                self.getSW().GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND, border=0)# |wx.ALIGN_CENTER
 
         sizeb = (self.getVizBbsiz(), 1)
         bid = wx.NewId()
@@ -187,7 +187,7 @@ class VizManager:
         but.SetBackgroundColour(self.color_drop)
         posb = [0,0]
         posb[dim] = self.getVizGridNbDim(dim)
-        self.getSW().GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+        self.getSW().GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
         self.buttons[bid] = {"action": (dim, self.getVizGridNbDim(dim)), "button": but}
         but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
         ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
@@ -238,7 +238,7 @@ class VizManager:
                 ppos, pspan = ([1, 1], [1, 1])
                 ppos[ddim] += self.getVizGridNbDim(ddim)
                 pspan[1-ddim] = self.getVizGridNbDim(1-ddim)
-                self.getSW().GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+                self.getSW().GetSizer().Add(but["button"], pos=ppos, span=pspan, flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
             elif but["action"][0] == dim and but["action"][1] == self.getVizGridNbDim(dim)+1:
                 bb = self.buttons.pop(bi)
                 self.getSW().GetSizer().Detach(bb["button"])
@@ -253,7 +253,7 @@ class VizManager:
                 but = wx.Button(self.getSW(), bid, "", style=wx.NO_BORDER, size=(sizeb[which], sizeb[1-which]))
                 but.SetBackgroundColour(self.color_drop)
                 posb[which] = i
-                self.getSW().GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+                self.getSW().GetSizer().Add(but, pos=tuple(posb), flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
                 self.buttons[bid] = {"action": (which, i), "button": but}
                 but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
                 ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)
@@ -264,7 +264,7 @@ class VizManager:
             ppos, pspan = ([1, 1], [1, 1])
             ppos[which] += self.getVizGridNbDim(which)
             pspan[1-which] = self.getVizGridNbDim(1-which)
-            self.getSW().GetSizer().Add(but, pos=ppos, span=pspan, flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+            self.getSW().GetSizer().Add(but, pos=ppos, span=pspan, flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
             self.buttons[bid] = {"action": (which, -1), "button": but}
             but.Bind(wx.EVT_BUTTON, self.OnChangeGridViz)
             ## but.Bind(wx.EVT_ENTER_WINDOW, self.OnPrintName)

@@ -18,6 +18,18 @@ except ModuleNotFoundError:
     
 import pdb
 
+Charbon    classCharbon.py:21
+
+    CharbonGreedy    classCharbon.py:32
+        CharbonGMiss    classCharbonGMiss.py:21
+        CharbonGStd    classCharbonGStd.py:22
+
+    CharbonTree    classCharbon.py:235
+        CharbonTCW    classCharbonTAlt.py:17 -> "cartwheel"
+            CharbonTSprit    classCharbonTAlt.py:97 -> "sprit"
+            CharbonTSplit    classCharbonTAlt.py:148 -> "splittrees"
+        CharbonTLayer    classCharbonTLayer.py:156 -> "layeredtrees"
+
 class Charbon(object):
     name = "-"
     def getAlgoName(self):

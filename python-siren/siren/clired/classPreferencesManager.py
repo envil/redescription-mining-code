@@ -1,4 +1,4 @@
-import getopt, re, os.path
+import getopt, re, os.path, sys
 try:
     import toolXML, toolICDict
 except ModuleNotFoundError:
@@ -12,6 +12,9 @@ import pdb
 ### otherwise it is equal to data
 
 ### for color parameter, both data and value are the integer triplets representation
+
+USAGE_DEF_HEADER = "Clired redescription mining"
+USAGE_DEF_URL_HELP = "http://siren.gforge.inria.fr/help/"
 
 class CParameter(object):
     type_id = "X"
@@ -677,29 +680,50 @@ class PreferencesReader(object):
 #             strd += ("\t"*(level+1))+tmp_str+"\n"
 #     return strd
 
+def getUsage(arg_zero, header=None, footer=None):
+    if header is None:
+        header = USAGE_DEF_HEADER +"\n"
+    if footer is None:
+        footer = "\nFor more details see "+USAGE_DEF_URL_HELP
+    exec_name = arg_zero.split("/")[-1].replace(".py", "")
+    return (
+        f'{header}'
+        f'usage: "{exec_name} [config_file] [additional_parameters]"\n'
+        f'       Type "{exec_name} --config" to generate a default configuration file\n'
+        f'         or "{exec_name} --template" to generate a basic configuration template{footer}'
+        )
+
+def processHelpArgs(arguments, pr):
+    if len(arguments) > 1:
+        if arguments[1] == "--help":
+            return False
+        elif arguments[1] == "--template":
+            print(pr.dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
+            sys.exit(2)
+        elif arguments[1] == "--config":
+            print(pr.dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
+            sys.exit(2)
+        return True
+    return False
+    
 
 def getParams(arguments, conf_defs):
     pm = PreferencesManager(conf_defs)
     pr = PreferencesReader(pm)
     config_filename = None
-    options_args = arguments[1:]
+    params = None
 
-    if len(arguments) > 1:
-        if arguments[1] == "--template":
-            print(pr.dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
-            sys.exit(2)
-        if arguments[1] == "--config":
-            print(pr.dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
-            sys.exit(2)
+    proceed = processHelpArgs(arguments, pr)
+    if proceed:
         if os.path.isfile(arguments[1]):
             config_filename = arguments[1]
             options_args = arguments[2:]
-
-    params = pr.getParametersDict(config_filename, options_args)
+        else:
+            options_args = arguments[1:]
+        params = pr.getParametersDict(config_filename, options_args)
+        
     if params is None:
-        print('usage: "%s [config_file] [additional_parameters]"' % arguments[0])
-        print('       Type "%s --config" to generate a default configuration file' % arguments[0])
-        print('         or "%s --template" to generate a basic configuration template' % arguments[0])        
+        print(getUsage(arguments[0]))
         sys.exit(2)
 
     return params

@@ -12,8 +12,9 @@ YAH=$(pwd) # YOU ARE HERE
 
 #PACK_REP=${YAH}/${3}
 
-PACK_REP=${YAH}/packaging_deb_$(date "+%Y%m%d%H%M%S")
-ROOT_REP=${PACK_REP}"/python-siren"
+# PACK_REP=${YAH}/packaging_deb_$(date "+%Y%m%d%H%M%S")
+PACK_REP=${YAH}/packaging_current/deb
+ROOT_REP=${PACK_REP}"/deb"
 SPHINX_REP=${PACK_REP}"/sphinx"
 HELP_SRC_REP=${SPHINX_REP}"/siren-help/_build/html"
 HELP_TRG_REP=${ROOT_REP}"/siren/data/help"

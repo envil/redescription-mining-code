@@ -18,8 +18,36 @@ source TEST/bin/activate
 python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps python-siren
 
 
-----------------------------
-OTHER OPTIONS NEED UPDATING
+Testing the installation
+
+# https://docs.python.org/3/tutorial/venv.html
+# https://packaging.python.org/guides/using-testpypi/
+# https://pip.pypa.io/en/stable/user_guide/#running-pip
+
+cd ~/TKTL/redescriptors/siren/
+./package_pip_clired.sh
+
+cd ~/TKTL/redescriptors/siren/packaging_pip-clired_XXXXXXXXXXXXXXXX/python-clired/
+twine upload --repository testpypi dist/*
+
+cd ~/TKTL/redescriptors/siren/test_env/
+python -m venv test-siren
+source test-siren/bin/activate
+
+pip install "python-dateutil >= 2.8.1" "shapely >= 1.7.0" "numpy >= 1.13.0" "scipy >= 0.19.0" "scikit-learn >= 0.19.0"
+
+pip install --index-url https://test.pypi.org/simple/ python-clired
+deactivate
+
+
+pip install "wxPython>= 4.1.0" "matplotlib >= 2.1.0" "cartopy >= 0.14"
+pip install --index-url https://test.pypi.org/simple/ python-siren
+
+
+conda install -c conda-forge cartopy
+
+------------------------------------------------
+OTHER OPTIONS NO LONGER MAINTAINED
 
 For Linux:
 ===========

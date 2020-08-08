@@ -16,7 +16,7 @@ try:
     from classData import Data
     from classQuery import Query
     from classConstraints import Constraints, ActionsRegistry
-    from classPreferencesManager import PreferencesReader, getPM
+    from classPreferencesManager import PreferencesReader, getPM, getUsage, processHelpArgs
 except ModuleNotFoundError:
     from .toolLog import Log
     from .classCol import ColM
@@ -24,7 +24,7 @@ except ModuleNotFoundError:
     from .classData import Data
     from .classQuery import Query
     from .classConstraints import Constraints, ActionsRegistry
-    from .classPreferencesManager import PreferencesReader, getPM
+    from .classPreferencesManager import PreferencesReader, getPM, getUsage, processHelpArgs
 
     
 class Package(object):
@@ -651,7 +651,8 @@ class IOTools:
     @classmethod
     def loadAll(tcl, arguments=[], conf_defs=None):
         pm = getPM(conf_defs)
-    
+        pr = PreferencesReader(pm)
+        
         exec_folder = os.path.dirname(os.path.abspath(__file__))
         src_folder = exec_folder
     
@@ -661,15 +662,11 @@ class IOTools:
         tmp_dir = None
         params = None
         reds = None
-        options_args = arguments[1:]
-    
-        if len(arguments) > 1:
-            if arguments[1] == "--template":
-                print(PreferencesReader(pm).dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
-                sys.exit(2)
-            if arguments[1] == "--config":
-                print(PreferencesReader(pm).dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
-                sys.exit(2)
+        params = None
+        queries_second = None
+        
+        proceed = processHelpArgs(arguments, pr)
+        if proceed:
             if os.path.isfile(arguments[1]):
                 if os.path.splitext(arguments[1])[1] == Package.DEFAULT_EXT:
                     pack_filename = arguments[1]
@@ -681,30 +678,29 @@ class IOTools:
                 else:
                     config_filename = arguments[1]
                     options_args = arguments[2:]
-    
-        if pack_filename is not None:
-            src_folder = os.path.dirname(os.path.abspath(pack_filename))
-            package = Package(pack_filename)
-            elements_read = package.read(pm)        
-            data = elements_read.get("data", None)
-            reds = elements_read.get("reds", None)
-            params = elements_read.get("preferences", None)
-            tmp_dir = package.getTmpDir()
+            else:
+                options_args = arguments[1:]
+                    
+            if pack_filename is not None:
+                src_folder = os.path.dirname(os.path.abspath(pack_filename))
+                package = Package(pack_filename)
+                elements_read = package.read(pm)        
+                data = elements_read.get("data", None)
+                reds = elements_read.get("reds", None)
+                params = elements_read.get("preferences", None)
+                tmp_dir = package.getTmpDir()
             
-        elif config_filename is not None:
-            src_folder = os.path.dirname(os.path.abspath(config_filename))
+            elif config_filename is not None:
+                src_folder = os.path.dirname(os.path.abspath(config_filename))
     
-        queries_second = None
-        try:
-            params = PreferencesReader(pm).getParameters(config_filename, options_args, params)        
-        except AttributeError:
-            queries_second = config_filename
-            
+            if options_args is not None:
+                try:
+                    params = pr.getParameters(config_filename, options_args, params)        
+                except AttributeError:
+                    queries_second = config_filename
+                    
         if params is None:
-            print('Clired redescription mining')
-            print('usage: "%s [config_file] [additional_parameters]"' % arguments[0])
-            print('       Type "%s --config" to generate a default configuration file' % arguments[0])
-            print('         or "%s --template" to generate a basic configuration template' % arguments[0])        
+            print(getUsage(arguments[0]))
             sys.exit(2)
     
         params_l = PreferencesReader.paramsToDict(params)

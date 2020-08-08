@@ -256,6 +256,7 @@ def run_extend(args, qfilename):
 ##### MAIN
 ###########
 def main():
+
     if re.match("printout", sys.argv[-1]):
         run_printout(sys.argv)
     elif re.match("rnd", sys.argv[-1]):

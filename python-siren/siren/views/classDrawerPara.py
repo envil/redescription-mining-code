@@ -794,7 +794,7 @@ class DrawerRedPara(DrawerEntitiesTD):
         llboxes = []
         for ll in self.getElement("ticks_ann"):
             lbbox = ll.get_window_extent(renderer1)
-            llboxes.append(lbbox.inverse_transformed(self.getLayH().getFigure().transFigure))
+            llboxes.append(lbbox.transformed(self.getLayH().getFigure().transFigure.inverted()))
 
         if len(llboxes) > 0:
             lcbbox = mtransforms.Bbox.union(llboxes)

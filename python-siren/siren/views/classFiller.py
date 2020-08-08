@@ -37,7 +37,7 @@ class Filler(object):
     def resetGPos(self, npos):
         self.mapFrame.GetSizer().Detach(self.panel)
         self.pos = npos
-        self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+        self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
 
     def binds(self):
         self.boxSel.Bind(wx.EVT_TOGGLEBUTTON, self.OnSelect)
@@ -59,12 +59,12 @@ class Filler(object):
                 
     def drawFrame(self):
         # self.boxSel = wx.ToggleButton(self.panel, wx.NewId(), "(%d,%d)" % (self.getGPos()[0], self.getGPos()[1]), style=wx.ALIGN_CENTER, size=(50,50))
-        self.boxSel = wx.ToggleButton(self.panel, wx.NewId(), "", style=wx.ALIGN_CENTER|wx.EXPAND, size=(50,50))
+        self.boxSel = wx.ToggleButton(self.panel, wx.NewId(), "", style=wx.EXPAND, size=(50,50))#wx.ALIGN_CENTER|
         self.masterBox =  wx.FlexGridSizer(rows=1, cols=1, vgap=0, hgap=0)
         self.masterBox.Add(self.boxSel, 0, border=1,  flag=wx.ALIGN_CENTER)
 
         self.panel.SetSizer(self.masterBox)
-        self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)            
+        self.mapFrame.GetSizer().Add(self.panel, pos=self.getGPos(), flag=wx.EXPAND, border=0) #|wx.ALIGN_CENTER
         self._SetSize()
 
     def popSizer(self):

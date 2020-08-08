@@ -242,94 +242,6 @@ class ExpMiner(object):
         rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
         self.logger.logResults(rcollect, "P", self.ppid)
         return rcollect
-
-    def combineRedescriptions(self, nextge, rcollect=None):
-        if len(nextge) == 0 or not self.questionLive():
-            return rcollect
-
-        charbon = self.initGreedyCharbon()
-        if rcollect is None:                
-            rcollect = RCollection()
-        rcollect.resetPartial()
-        
-        map_v = {}
-        inds_lits = []
-        for ii, red in enumerate(nextge):
-            inds_lits.append([(0, ind, l) for (ind, l) in red.query(0).indsLit()]+[(1, ind, l) for (ind, l) in red.query(1).indsLit()])
-            inds_lits[-1].sort(key=lambda x: (x[0], x[-1].colId(), x[-1].isNeg(), x[-1].valRange()))
-
-            elems = [(x[0], x[-1].colId(), x[-1].isNeg()) for x in inds_lits[-1]]
-            for i in range(len(elems)):
-                if len(inds_lits[-1][i][1]) == 1: ### only literals in outer-most buk
-                    k = tuple(elems[:i]+elems[i+1:])
-                    if k not in map_v:
-                        map_v[k] = []
-                    map_v[k].append((ii, i))
-
-        pdb.set_trace()
-        # print("NEXTGEN", len(nextge), len([ni for ni, n in enumerate(nextge) if n.query(0).usesOr()]), len([ni for ni, n in enumerate(nextge) if n.query(1).usesOr()]))
-        for ii, (k, rs) in enumerate(map_v.items()):
-            self.logger.printL(4, "Combining on basis %d/%d (%s)" % (ii+1, len(map_v), k), 'status', self.ppid)
-
-            ## for iA in range(min(5, len(rs))):
-            for iA in range(len(rs)):
-                for iB in range(iA):
-                    if not self.questionLive():
-                        return rcollect
-                    riA, liA = rs[iA]
-                    riB, liB = rs[iB]
-
-                    if riA == riB or inds_lits[riA][liA][-1].colId() == inds_lits[riB][liB][-1].colId():
-                        ### if elements to combine are actually the same...
-                        continue
-
-                    if nextge[riB].getAcc() > nextge[riA].getAcc():
-                        cmb_data = { "ri": (riB, riA), "li": (liB, liA), "rid": (nextge[riB].getUid(), nextge[riA].getUid()),
-                                     "red": (nextge[riB], nextge[riA]), "lit": (inds_lits[riB][liB], inds_lits[riA][liA]),
-                                     "common": (inds_lits[riB][:liB]+inds_lits[riB][liB+1:],
-                                                inds_lits[riA][:liA]+inds_lits[riA][liA+1:]) }
-                    else:
-                        cmb_data = { "ri": (riA, riB), "li": (liA, liB), "rid": (nextge[riA].getUid(), nextge[riB].getUid()),
-                                     "red": (nextge[riA], nextge[riB]), "lit": (inds_lits[riA][liA], inds_lits[riB][liB]),
-                                     "common": (inds_lits[riA][:liA]+inds_lits[riA][liA+1:],
-                                                inds_lits[riB][:liB]+inds_lits[riB][liB+1:]) }
-
-                    cmb_data["cols"] = [self.data.col(side, cid) for (side, cid, _) in k]
-                    
-                    cands = charbon.getCombinedCands(cmb_data["lit"], cmb_data["common"], cmb_data["red"], cmb_data["cols"])
-                    if len(cands) > 0:
-                        bests = newExtensionsBatch(self.data.nbRows(), self.constraints, cmb_data["red"])
-                        rawkid_ids = []
-                        for cand in cands:
-                            if not self.questionLive():
-                                return rcollect
-
-                            r = cand.kid(cmb_data["red"][0], self.data)                            
-                            if r.getAcc() >= self.constraints.getCstr("min_itm_acc") and not rcollect.hasSeen(r):
-                                rcollect.addItem(r)
-                                rawkid_ids.append(r.getUid())
-                                if self.constraints.getCstr("optimize_combinations"):
-                                    nrids = self.improveRedescription(r, rcollect, charbon, try_shorten=False)
-                                    variants = [rcollect.getItem(sid) for sid in rcollect.selected(self.constraints.getActionsList("partial"), ids=nrids)]
-                                    variants.sort(key=lambda x: x.getAcc())
-                                    if len(variants) > 0 and variants[-1].getUid() != r.getUid() and not rcollect.hasSeen(variants[-1]):
-                                        self.logger.printL(4, "Found improvement\n\t>%s\n\t<%s" % (r, variants[-1]), 'log', self.ppid)
-                                        cand.replaceBetter(variants[-1])
-                                    else:
-                                        self.logger.printL(4, "No improvement\n\t=%s" % r, 'log', self.ppid)
-                                
-                        if len(rawkid_ids) > 0:
-                            track = {"do": "expand-combine", "trg": rawkid_ids, "src": cmb_data["rid"], "out": "W"}
-                            rcollect.addTrack(track)
-                        
-                        bests.update(cands, self.data)
-                        if self.logger.verbosity >= 4:
-                            self.logger.printL(4, bests, "log", self.ppid)
-
-                        k_ids = [kk.getUid() for kk in bests.improvingKids(self.data)]
-                        rcollect.selected(self.constraints.getActionsList("partial"), ids=k_ids, trg_lid="P")
-                        self.logger.logResults(rcollect, "P", self.ppid)
-        return rcollect
                     
     def improveRedescriptions(self, nextge, rcollect=None):
         if len(nextge) == 0 or not self.questionLive():
@@ -851,8 +763,6 @@ class Miner(object):
         return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
     def improveRedescriptions(self, nextge, rcollect=None):
         return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).improveRedescriptions(nextge, rcollect)
-    def combineRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).combineRedescriptions(nextge, rcollect)
         
 #######################################################################
 ########### MULTIPROCESSING MINER

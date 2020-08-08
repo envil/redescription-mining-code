@@ -39,7 +39,8 @@ class CustToolbar(NavigationToolbar):
         self.drawer = drawer
 
     def has_active_button(self):
-        return self._active is not None
+        return len("%s" % self.mode) > 0
+        # return self._active is not None
     def mouse_move(self, event=None):
         if event is not None:
             NavigationToolbar.mouse_move(self, event)
@@ -218,7 +219,7 @@ class LayoutHandlerBare(object):
 
         masterBox = wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
         self.addContentDisp(masterBox)
-        masterBox.Add(outerBox, 0, border=1, flag= wx.EXPAND| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM)
+        masterBox.Add(outerBox, 0, border=1, flag= wx.EXPAND)#| wx.ALIGN_CENTER| wx.ALIGN_BOTTOM
         self.getPanel().SetSizer(masterBox)
         if self.isInTab:
             self.pos = self.getParentVizm().getVizPlotPos(self.getId())
@@ -280,7 +281,7 @@ class LayoutHandlerBare(object):
     def resetGPos(self, npos):
         self.frame.GetSizer().Detach(self.getPanel())
         self.pos = npos
-        self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.EXPAND|wx.ALIGN_CENTER, border=0)
+        self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.EXPAND, border=0)#|wx.ALIGN_CENTER
 
     def GetRoundBitmap(self, w, h, r=10):
         maskColour = wx.Colour(0,0,0)
@@ -386,17 +387,17 @@ class LayoutHandlerBare(object):
         if self.isInTab:
             self.isInTab = False
             self.setFrame(self.initExtFrame())
-
             self.layout_elements["boxPop"].SetBitmap(self.getParentIcon("outin"))
             self.getParentVizm().setVizcellFreeded(pos)
             self.getPanel().Reparent(self.frame)
             self.frame.GetSizer().Add(self.getPanel())
         else:
             self.isInTab = True
+
             self.frame.Destroy()
             self.setFrame(self.getParentTab("viz"))
-            
             self.layout_elements["boxPop"].SetBitmap(self.getParentIcon("inout"))
+
             self.getPanel().Reparent(self.frame)
             self.pos = self.getParentVizm().getVizPlotPos(self.getId())
             self.frame.GetSizer().Add(self.getPanel(), pos=self.getGPos(), flag=wx.ALL, border=0)
@@ -454,9 +455,9 @@ class LayoutHandlerBare(object):
         self.frame.Destroy()
         
     def popSizer(self):
+        self.frame.GetSizer().Detach(self.getPanel())
         if self.isInTab:
             self.pos = None
-            self.frame.GetSizer().Detach(self.getPanel())
             self.frame.GetSizer().Layout()
         return self.getPanel()
    
