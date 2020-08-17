@@ -68,7 +68,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
         self.plot_void()
 
 
-    def isReadyPlot(self):
+    def readyPlot(self):
         return self.getPltDtH().getRed() is not None
         
     def getCanvasConnections(self):
@@ -154,7 +154,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
         if self.view.wasKilled():
             return
 
-        if self.isReadyPlot():
+        if self.readyPlot():
 
             self.clearPlot()
             self.makeBackground()
@@ -369,7 +369,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             return "%s=%s" % (k,v)
             
     def receive_release(self, rid, dims):
-        if self.isReadyPlot() and "pos_axis" in self.prepared_data:
+        if self.readyPlot() and "pos_axis" in self.prepared_data:
             pos_axis = self.prepared_data["pos_axis"]
             side = 0
             pos = rid

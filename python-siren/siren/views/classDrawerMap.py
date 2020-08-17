@@ -455,7 +455,24 @@ class DrawerMap(DrawerBasis):
             return (x, y)
         else:
             return self.bm(x, y)
-
+    def getProjP(self, cpoly):
+        ##### for polygons
+        if self.bm is None:
+            xs, ys, nxs, nys = zip(*cpoly)
+        else:
+            xs, ys = zip(*[self.bm(x,y) for (x,y,nx,ny) in cpoly])
+        return xs, ys
+    def getProjT(self, edges_coords):
+        ##### for multi-dimensional arrays
+        if self.bm is None:
+            edges_tensor = numpy.array([[edges_coords[:,0], edges_coords[:,2]], [edges_coords[:,1], edges_coords[:,3]]]).T
+        else:
+            xA, yA = self.bm(edges_coords[:,0], edges_coords[:,1])
+            xZ, yZ = self.bm(edges_coords[:,2], edges_coords[:,3])
+            edges_tensor = numpy.array([[xA, xZ], [yA, yZ]]).T
+            # edges = numpy.array([zip(*self.bm(*zip(*edge.get("cut_edge", edge["edge"])))) for edge in pp_data["edges"]])
+            # edges = numpy.array([zip(*self.bm(*zip(*edge["edge"]))) for edge in pp_data["edges"]])
+        return edges_tensor
         
     
 class DrawerEntitiesMap(DrawerMap, DrawerEntitiesTD): pass

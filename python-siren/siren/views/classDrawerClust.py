@@ -281,7 +281,7 @@ class DrawerClustTD(DrawerEntitiesTD):
     #     if self.view.wasKilled():
     #         return
 
-    #     if self.isReadyPlot():
+    #     if self.readyPlot():
 
     #         inter_params = self.getParamsInter()
     #         if inter_params.get("choice_agg", 0) > 2:

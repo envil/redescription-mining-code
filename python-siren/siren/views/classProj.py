@@ -13,6 +13,8 @@ except ModuleNotFoundError as e:
     print("Some projection-based views will not be available!")
     WITHSKLEARN = False
 
+WITH_VARS = True
+    
 import pdb
 
 # def my_SIGTERM_handler(sign, frame):
@@ -33,7 +35,7 @@ import pdb
 def withen(mat):
     tt = numpy.std(mat, 0)
     tt[numpy.where(tt == 0)] = 1
-    return (mat - numpy.tile(numpy.mean(mat, 0), (mat.shape[0], 1)))/numpy.tile(tt, (mat.shape[0], 1))
+    return (mat - numpy.tile(numpy.mean(mat, 0), (mat.shape[0], 1)))/numpy.tile(tt, (mat.shape[0], 1)), tt
 
 def withenR(mat):
     tt = numpy.std(mat, 1)
@@ -99,8 +101,9 @@ class Proj(object):
         self.what = what
         self.data = data
         self.coords_proj = None
+        self.vars_proj = None
+        self.vars_details = None
         self.code = ""
-        self.mcols = None
         self.initParameters(params)
         self.pids_ex = set()
 
@@ -119,30 +122,36 @@ class Proj(object):
         
     def clearCoords(self):
         self.coords_proj = None
+        self.vars_proj = None
 
     def getAxisLabel(self, axis=0):
         return None
     def getTitle(self):
         return self.title_str
         # return "%s %s" % (self.what.title(), self.title_str)
-
-    def getMCols(self):
-        return self.mcols
-
-    def setCoords(self, coords):
-        self.coords_proj = coords
-
+    def readyCoords(self):
+       return self.coords_proj is not None
+        
     def getCoords(self, axi=None, ids=None):
-        if self.coords_proj is None:
-            return self.coords_proj
+        if not self.readyCoords():
+            return None
         if axi is None:
             return self.coords_proj
         elif ids is None:
             return self.coords_proj[axi]
         return self.coords_proj[axi][ids]
+    def getVarsP(self, axi=None, ids=None):
+        if not self.readyCoords() or self.vars_proj is None:       
+            return None
+        if axi is None:
+            return self.vars_proj
+        elif ids is None:
+            return self.vars_proj[axi]
+        return self.vars_proj[axi][ids]
 
+    
     def getAxisLims(self):
-        if self.coords_proj is None:
+        if not self.readyCoords():
             return (0,1,0,1)
         hspan = .95
         corners = (min(self.coords_proj[0]), max(self.coords_proj[0]), min(self.coords_proj[1]), max(self.coords_proj[1]))
@@ -335,7 +344,6 @@ class AxesProj(Proj):
         self.coords_proj = [mat[mcols[scs[0]]], mat[mcols[scs[1]]]]
         for side in [0,1]:
             self.coords_proj[side][numpy.where(~numpy.isfinite(self.coords_proj[side]))] = numpy.nanmin(self.coords_proj[side]) -1
-        self.mcols = mcols
         for side in [0,1]:
             if not Data.isTypeId(details[mcols[scs[side]]]["type"], "Numerical"):
                 self.coords_proj[side] = 1.*self.coords_proj[side] + 0.33*numpy.random.rand(len(self.coords_proj[side]))
@@ -401,8 +409,11 @@ if WITHSKLEARN:
         PID =  "---"
         SDESC = "---"
         title_str = "Projection"
-
+        gen_parameters = dict(Proj.gen_parameters)
+        gen_parameters.update({"with_vars":False})
+        
         def getData(self):
+            details, mcols = (None, None)
             if type(self.data) is numpy.array or type(self.data) is numpy.ndarray:
                 if self.transpose:
                     mat = self.data.T
@@ -410,35 +421,50 @@ if WITHSKLEARN:
                     mat = self.data
                 idsNAN = numpy.where(~numpy.isfinite(mat))
                 mat[idsNAN] = numpy.nanmin(mat) -1
-                matn = withen(mat)
+                matn, tt = withen(mat)
             else:
                 if self.transpose:
-                    mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
-                    if len(self.mcols) == 0:
-                        return
+                    mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=self.getParameter("only_able"))
+                    if len(mcols) == 0:
+                        return None, None, None
                     idsNAN = numpy.where(~numpy.isfinite(mat))
                     mat[idsNAN] = numpy.nanmin(mat) -1
-                    matn = withen(mat.T)
+                    matn,tt = withen(mat.T)
                 else:
-                    mat, details, self.mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
-                    if len(self.mcols) == 0:
-                        return
+                    mat, details, mcols = self.data.getMatrix(types=self.getParameter("types"), only_able=False)
+                    if len(mcols) == 0:
+                        return None, None, None
 
                     idsNAN = numpy.where(~numpy.isfinite(mat))
                     mat[idsNAN] = numpy.nanmin(mat) -1
 
                     if self.getParameter("only_able") and len(self.data.selectedRows()) > 0:
                         selected = numpy.array(list(self.data.nonselectedRows()))
-                        matn = withen(mat[:,selected])
+                        matn,tt = withen(mat[:,selected])
                     else:
-                        matn = withen(mat)
-            return matn
+                        matn, tt = withen(mat)
+            return matn, tt, details, mcols
 
         def comp(self):
-            matn = self.getData()
+            matn, tt, data_details, mcols = self.getData()
+            org_matn = None
+            # pdb.set_trace()
             if matn is not None:
+
+                if self.getParameter("with_vars"):
+                    if len(data_details) == len(tt): # matn.shape[1]:
+                        # unit_vecs = numpy.eye(matn.shape[1])
+                        unit_vecs = numpy.diag(tt)
+                        org_matn = matn
+                        matn = numpy.vstack([matn, unit_vecs])
+                
                 X_pro, err = self.getX(matn)
-                self.coords_proj = (X_pro[:,0], X_pro[:,1])
+                if org_matn is None:
+                    self.coords_proj = (X_pro[:,0], X_pro[:,1])
+                    self.vars_proj = None
+                else:
+                    self.coords_proj = (X_pro[:org_matn.shape[0],0], X_pro[:org_matn.shape[0],1])
+                    self.vars_proj = (X_pro[org_matn.shape[0]:,0], X_pro[org_matn.shape[0]:,1], [ddt["name"] for ddt in data_details])
 
         def getX(self, X):
             pass
@@ -482,7 +508,7 @@ if WITHSKLEARN:
         #### http://docs.scipy.org/doc/numpy/reference/generated/numpy.linalg.svd.html
 
         def comp(self):
-            matn = self.getData()
+            matn, tt, data_details, mcols = self.getData()
             U, s, V = self.applyF(numpy.linalg.svd, {"a": matn.T})
             tmp = numpy.dot(U[:2], matn.T)
             self.coords_proj = (tmp[0], tmp[1])
@@ -518,7 +544,7 @@ if WITHSKLEARN:
        if sys.platform == 'darwin': PID =  "-"+ PID
        SDESC = "PCA"
        title_str = "PCA Projection"
-       gen_parameters = dict(Proj.gen_parameters)
+       gen_parameters = dict(DynProj.gen_parameters)
        gen_parameters.update({"iterated_power": 3, "svd_solver": "randomized"})
        dyn_f = [decomposition.PCA]
        #### http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html

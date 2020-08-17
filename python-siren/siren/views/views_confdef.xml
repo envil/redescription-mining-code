@@ -231,6 +231,17 @@
           <value>#FFFF00</value>
         </default>
       </parameter>
+      <parameter>
+        <name>custom_ccmap</name>
+        <label>Custom cluster colors</label>
+        <parameter_type>open</parameter_type>
+        <value_type>text</value_type>
+        <legend>Custom colors for plotting clusters (matplotlib cmap name, list or dictionnary of hexadecimal colors).</legend>
+        <length>310</length>
+        <default>
+          <value/>
+        </default>
+      </parameter>
     </section>
   </section>
   <section>

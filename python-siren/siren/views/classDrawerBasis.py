@@ -37,15 +37,11 @@ class DrawerBasis(object):
     info_dets = {"px": 0, "py":0, "dx": 10, "dy":10, "va":"bottom", "ha": "left", "ec": "#111111", "alpha": .6}
     
     NBBINS = 20
-    ltids_map = {1: "PiYG", 2: "spectral", 3: "viridis"}
+    ltids_map = {1: "PiYG", 2: "nipy_spectral", 3: "viridis"}
     cmap_name = None
     cmap_default = "jet"
 
     CMAP_DEF_COLOR = "#aaaaaa"
-    CUSTOM_CMAP_COLORS = None
-
-    # CUSTOM_CMAP_COLORS = {"E:1": "#00b000", "E:2": "#becd00", "E:3": "#92fe0f", "E:4": "#02822c", "E:5": "#007c81", "E:6": "#86e78c", "E:7": "#fb9d08", "E:8": "#ffdf02", "E:9": "#73feb9", "E:10": "#cca760", "E:11": "#bdff71", "E:12": "#fb0200", "E:13": "#f75f61", "E:14": "#f906d9", "E:-1": "#000000", "E:-2": "#111111"}
-
     
     @classmethod
     def getNamesTids(tcl):
@@ -98,7 +94,7 @@ class DrawerBasis(object):
         if self.view.wasKilled():
             return
 
-        if self.isReadyPlot():
+        if self.readyPlot():
             
             self.clearPlot()
             self.makeBackground()
@@ -127,8 +123,14 @@ class DrawerBasis(object):
                 self.plotDotsPoly(self.getAxe(), self.dots_draw, draw_indices, draw_settings)
 
             if mapper is not None:
+                ### remember original corners before adding histogram panel, for maps to avoid adding more and more space on the side...
+                if self.hasElement("prehist_corners"):
+                    corners = self.getElement("prehist_corners")
+                elif self.readyCoords():
+                    self.setElement("prehist_corners", corners)
+                ### else: don't save, not ready
                 corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners, draw_settings)
-            
+                
             self.makeFinish(corners[:4], corners[4:])   
             self.updateEmphasize(review=False)
             self.draw()
@@ -152,8 +154,10 @@ class DrawerBasis(object):
 
     def inCapture(self, event):
         return event.inaxes == self.getAxe()   
-    def isReadyPlot(self):
-        return True    
+    def readyPlot(self):
+        return True
+    def readyCoords(self):
+        return self.readyPlot()        
     def getAxisLims(self):
         return (0,1,0,1)
     def drawPoly(self):
@@ -918,14 +922,34 @@ class DrawerEntitiesTD(DrawerBasis):
         vmin, vmax = (numpy.nanmin(vec), numpy.nanmax(vec))
         if vec_dets.get("min_max") is not None:
             vmin, vmax = vec_dets["min_max"]
-            
-        if self.CUSTOM_CMAP_COLORS is not None: #### CUSTOM CMAP
-            lbls = [l.split()[0] for l in vec_dets.get("binLbls")]
-            if len(set(lbls).intersection(self.CUSTOM_CMAP_COLORS.keys())) > 0:
-                vls = sorted(zip(vec_dets.get("binVals"), lbls))
-                colors_list = [self.CUSTOM_CMAP_COLORS.get(c, self.CMAP_DEF_COLOR) for v,c in vls]
-                vmin, vmax = vls[0][0], vls[-1][0]
-                name_over = matplotlib.colors.ListedColormap(colors_list)
+
+        if draw_settings.get("custom_ccmap") is not None: #### CUSTOM CMAP
+            custom_ccmap = draw_settings.get("custom_ccmap")
+            if type(custom_ccmap) is str: ### name of color map
+                name_over = custom_ccmap
+            elif vec_dets.get("binLbls") is not None: ### dict of colors
+                ord_vals = [custom_ccmap[i] for i in sorted([k for k in custom_ccmap.keys() if type(k) is int])]
+                if len(ord_vals) == 0:
+                    ord_vals = [self.CMAP_DEF_COLOR]
+                lbls = [l.split()[0] for l in vec_dets.get("binLbls")]
+                kys = [k for k in custom_ccmap.keys() if not type(k) is int]
+                common_ks = set(lbls).intersection(kys)
+                if len(kys) > 0 and len(common_ks) > 0:
+                    vls = sorted(zip(vec_dets.get("binVals"), lbls))
+                    idx_val = 0
+                    colors_list = []
+                    for v,c in vls:
+                        if c in custom_ccmap:
+                            colors_list.append(custom_ccmap[c])
+                        else:
+                            colors_list.append(ord_vals[idx_val % len(ord_vals)])
+                            idx_val += 1
+                    vmin, vmax = vls[0][0], vls[-1][0]
+                    name_over = matplotlib.colors.ListedColormap(colors_list)
+                # else:
+                #     print("No custom ccmap key common with clusters...")
+                #     print(lbls, kys)
+
         mapper = self.prepMapper(vmin, vmax, vec_dets["typeId"], name_over)
         
         # if min_max is not None:

@@ -62,8 +62,13 @@ class DrawerProj(DrawerBasis):
         return self.view.getProj()
                         
     def makeFinish(self, xylims, xybs):
-        if self.getProj().getCoords() is not None:
+        if self.getProj().readyCoords():
             fs = self.view.getFontSizeProp()
+            if self.getProj().getVarsP() is not None:
+                for i, (x,y,l) in enumerate(zip(*self.getProj().getVarsP())):
+                    self.axe.plot((0,x), (0,y), "k-", linewidth=1.)
+                    self.axe.text(x,y,l,fontsize=fs)
+
             if self.getProj().getAxisLabel(0) is not None:
                 self.axe.set_xlabel(self.getProj().getAxisLabel(0),fontsize=fs)
             if self.getProj().getAxisLabel(1) is not None:
@@ -73,8 +78,10 @@ class DrawerProj(DrawerBasis):
             # self.axe.plot([xylims[0]-xybs[0], xylims[1]+xybs[0]], [xylims[0]-xybs[0], xylims[1]+xybs[0]], "k--")
             self.axe.axis([xylims[0]-xybs[0], xylims[1]+xybs[0], xylims[2]-xybs[1], xylims[3]+xybs[1]])
 
-    def isReadyPlot(self):
-        return self.getProj() is not None    
+    def readyPlot(self):
+        return self.getProj() is not None
+    def readyCoords(self):
+        return self.getProj() is not None and self.getProj().readyCoords()
     def getAxisLims(self):
         return self.getProj().getAxisLims()
     def drawPoly(self):

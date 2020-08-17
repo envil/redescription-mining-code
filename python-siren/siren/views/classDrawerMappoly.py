@@ -38,11 +38,7 @@ class DrawerMappoly(DrawerMap):
                     
                     for pi in pp_data["ccs_data"][ck]["exterior_polys"]:
                         cpoly = geoplus.prepEdgesCoordsFlatten(seids=pp_polys[pi])
-                        if self.bm is None:
-                            xs, ys, nxs, nys = zip(*cpoly)
-                        else:
-                            xs, ys = zip(*[self.bm(x,y) for (x,y,nx,ny) in cpoly])
-                        # pdb.set_trace()
+                        xs, ys = self.getProjP(cpoly)
                         if pp_data["ccs_data"][ck]["color"] == -1:
                             axe.fill(xs, ys, color="white", zorder=pp_data["ccs_data"][ck]["level"]+2, alpha=1)
                         elif pp_data["ccs_data"][ck]["color"] == -2:
@@ -82,15 +78,7 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
 
             np_data = geoplus.prepNodePairs()
             edges_coords = numpy.array(geoplus.prepEdgesCoordsFlatten())
-            if self.bm is None:
-                edges_tensor = numpy.array([[edges_coords[:,0], edges_coords[:,2]], [edges_coords[:,1], edges_coords[:,3]]]).T
-            else:
-                xA, yA = self.bm(edges_coords[:,0], edges_coords[:,1])
-                xZ, yZ = self.bm(edges_coords[:,2], edges_coords[:,3])
-                edges_tensor = numpy.array([[xA, xZ], [yA, yZ]]).T
-                # edges = numpy.array([zip(*self.bm(*zip(*edge.get("cut_edge", edge["edge"])))) for edge in pp_data["edges"]])
-                # edges = numpy.array([zip(*self.bm(*zip(*edge["edge"]))) for edge in pp_data["edges"]])
-
+            edges_tensor = self.getProjT(edges_coords)
             node_pairs = np_data["node_pairs"]
             
             # outer = node_pairs[node_pairs[:,-1] < 0, :]

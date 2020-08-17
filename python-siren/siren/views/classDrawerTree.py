@@ -225,7 +225,7 @@ class DrawerRedTree(DrawerEntitiesTD):
         if self.view.wasKilled():
             return
 
-        if self.isReadyPlot():
+        if self.readyPlot():
             red = self.getPltDtH().getRed()
 
             if update_trees:

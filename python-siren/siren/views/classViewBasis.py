@@ -1,6 +1,7 @@
-import wx
+import wx, re
 import numpy
- 
+import matplotlib.pyplot as plt
+
 from ..clired.classSParts import SSetts
 from ..clired.classCol import ColM
 from ..clired.classData import RowE
@@ -37,6 +38,7 @@ from .classDrawerCorrel import DrawerRedCorrel
 
 import pdb
 
+HTML_COLOR_PATT = "#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
 
 def typeIWhat(what):
     if type(what) == str:
@@ -312,6 +314,13 @@ class ViewBare(object):
     def getFontSizeProp(self):
         return self.getSettV("plot_fontsize")
 
+    def isHexColor(self, s):
+        return re.match(HTML_COLOR_PATT, s)
+    def colorHexto255(self, color_hex):
+        if self.isHexColor(color_hex):
+            return (int(color_hex[1:3], 16), int(color_hex[3:5], 16), int(color_hex[5:7], 16), int(color_hex[7:9], 16) if len(color_hex[7:9]) > 0 else 0)
+        return None
+        
     def getColorKey1(self, key, dsetts=None):
         if dsetts is None:
             dsetts = self.getParentPreferences()
@@ -332,7 +341,7 @@ class ViewBare(object):
         else:
             tc = self.colors_def[-1]
         return tc
-
+    
     def getAlpha(self, alpha=None, color=None):
         if self.alpha_off:
             alpha = 1.
@@ -377,7 +386,29 @@ class ViewBare(object):
             self.alpha_off = True
         else:
             self.alpha_off = False
-            
+
+    def getCustomCCMapSettings(self):
+        t = self.getParentPreferences()
+        ccmap = t["custom_ccmap"]["data"].strip()
+        if len(ccmap) > 0:
+            if "," in ccmap or ":" in ccmap:
+                cmap_parts = {} 
+                for i, p in enumerate(t["custom_ccmap"]["data"].strip().split(",")):
+                    qs = [q.strip() for q in p.split(":")]
+                    if self.isHexColor(qs[-1]):
+                        if len(qs) > 1:
+                            cmap_parts[":".join(qs[:-1])] = qs[-1] # self.colorHexto255(qs[-1])
+                        else:
+                            cmap_parts[i] = qs[-1] # self.colorHexto255(qs[-1])
+                if len(cmap_parts) > 0:
+                    return cmap_parts
+            else:
+                try:
+                    plt.get_cmap(ccmap)
+                    return ccmap
+                except ValueError:
+                    ccmap = None
+        return None
     def getDrawSettings(self):
         self.setAlphaOnOff()
         colors = self.getColors1()
@@ -399,9 +430,8 @@ class ViewBare(object):
         for (v, veq) in [(SSetts.Eom, SSetts.Eoo), (SSetts.Exm, SSetts.Exo)]:
             dd[v] = dd[veq]
 
-
         css = {"fontprops": fontprops, "draw_pord": draw_pord, "draw_ppos": dd, "shape": defaults["shape"], "colhigh": colhigh,
-               "delta_on": self.getSettV('draw_delta', self.DELTA_ON)}
+               "delta_on": self.getSettV('draw_delta', self.DELTA_ON), "custom_ccmap": self.getCustomCCMapSettings()}
         for (p, iid) in enumerate([SSetts.Exo, SSetts.Eox, SSetts.Exx, SSetts.Eoo]):
             css[iid] = {"color_f": self.getColorA(colors[p]),
                         "color_e": self.getColorA(colors[p], 1.),
@@ -623,7 +653,7 @@ class ViewEntitiesProj(ViewBasis):
             
     def makeBoxes(self, frame, proj):
         boxes = []
-        for kp in proj.getTunableParamsK():
+        for kp in proj.getTunableParamsK():          
             label = wx.StaticText(frame, wx.ID_ANY, kp.replace("_", " ").capitalize()+":")
             ctrls = []
             value = proj.getParameter(kp)
@@ -668,10 +698,10 @@ class ViewEntitiesProj(ViewBasis):
                 current_w = 10
             current_w += block_w + 10
             box["label"].SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-            setts_boxes[-1].Add(box["label"], 0, border=0, flag=flags | wx.ALIGN_RIGHT)
+            setts_boxes[-1].Add(box["label"], 0, border=0, flag=flags )#| wx.ALIGN_RIGHT)
             for c in box["ctrls"]:
                 c.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-                setts_boxes[-1].Add(c, 0, border=0, flag=flags | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
+                setts_boxes[-1].Add(c, 0, border=0, flag=flags)# | wx.ALIGN_BOTTOM | wx.ALIGN_LEFT)
             setts_boxes[-1].AddSpacer(10)
 
         self.nbadd_boxes = len(setts_boxes) 

@@ -135,7 +135,7 @@ class FoldsDialog(PreferencesDialog):
             self.controls_map[sec_id]["button"][button["name"]] = btn
             self.objects_map[btnId] = (sec_id, "button", button["name"])
 
-        top_sizer.Add(btn_sizer, 0, wx.ALIGN_BOTTOM|wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5)
+        top_sizer.Add(btn_sizer, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, 5) # wx.ALIGN_BOTTOM|
 
     def getFoldsIDS(self):
         if self.folds_info is None:

@@ -114,7 +114,7 @@ class DrawerRedCorrel(DrawerEntitiesTD):
         if self.view.wasKilled():
             return
 
-        if self.isReadyPlot():
+        if self.readyPlot():
 
             self.update_params(self.getElement("inter_elems"))
             
