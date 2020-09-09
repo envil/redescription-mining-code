@@ -23,7 +23,7 @@ COPYRIGHT=u'\u00A9 '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
 DU_FILES = [APP[:-3], "server_siren", "exec_clired"]
 # setuptools.find_packages()
 DU_PACKAGES = ['siren', 'siren.clired', 'siren.interface', 'siren.work', 'siren.views', 'siren.clired.grako']
-PACKAGE_DATA = {'siren.clired': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt'],
+PACKAGE_DATA = {'siren.clired': ['*_confdef.xml', '*defs*.txt'],
                 'siren.views': ['views_confdef.xml'],
                 'siren.interface': ['ui_confdef.xml'],
                 'siren': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}

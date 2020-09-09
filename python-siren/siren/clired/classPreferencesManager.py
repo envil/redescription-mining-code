@@ -14,7 +14,7 @@ import pdb
 ### for color parameter, both data and value are the integer triplets representation
 
 USAGE_DEF_HEADER = "Clired redescription mining"
-USAGE_DEF_URL_HELP = "https://members.loria.fr/EGalbrun/siren/help/"
+USAGE_DEF_URL_HELP = "http://cs.uef.fi/siren/help/"
 
 class CParameter(object):
     type_id = "X"
@@ -524,15 +524,24 @@ class PreferencesReader(object):
     def getParametersDict(self, filename=None, arguments=None, pv=None):
         return self.paramsToDict(self.getParameters(filename, arguments, pv), with_num=True)
     
-    def getParameters(self, filename=None, arguments=None, pv=None):
+    def getParameters(self, filename=None, arguments=None, pv=None, default_to_none=False):
         if pv is None:
             pv = self.pm.getDefaultTriplets()
+            only_default = True
+        else:
+            only_default = False
         if filename is not None:
             tmp = self.readParametersDict(self.readParametersFromFile(filename))
             pv.update(tmp)
+            if len(tmp) > 0:
+                only_default = False
         if arguments is not None:
             tmp = self.readParametersDict(self.readParametersFromArguments(arguments))
             pv.update(tmp)
+            if len(tmp) > 0:
+                only_default = False
+        if only_default and default_to_none:
+            return None
         return pv
 
     def readParametersFromArguments(self, arguments):

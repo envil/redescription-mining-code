@@ -300,7 +300,7 @@ class CartoBase:
         if fig is None:
             fig = plt.figure()
         self.axe = fig.add_subplot(axe_nbr, axe_nbc, axe_idx, projection = self.carto_proj)
-
+        
     def getExtent(self):
         if "xlim" in self.carto_args and "ylim" in self.carto_args:
             return (self.carto_args["xlim"][0], self.carto_args["xlim"][1], self.carto_args["ylim"][0], self.carto_args["ylim"][1])
@@ -374,15 +374,24 @@ class DrawerMap(DrawerBasis):
         self.getPltDtH().setBM(self.cb.projPoints)
         self.setAxe(self.cb.getAxe())
         self.cb.setExtent()
+        self.saveExtentCorners()
+
+    def saveExtentCorners(self):
+        #### remember original corners before adding histogram panel, to avoid adding more and more space on the side...
+        xx = self.axe.get_xlim()
+        yy = self.axe.get_ylim()
+        self.setElement("extent_corners", (xx[0], xx[1], yy[0], yy[1]))
         
-    def getAxisLims(self):
+    def getAxisCorners(self):
+        if self.hasElement("extent_corners"):
+            return self.getElement("extent_corners")
         if self.cb.isTrueProj():
             return self.cb.getExtent()
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
 
-    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
+    def makeFinish(self, xylims=(0,1,0,1), bxys=None):
         self.cb.setExtent(xylims[:2], xylims[2:4])
         self.drawCondionArea()
         
@@ -393,7 +402,6 @@ class DrawerMap(DrawerBasis):
                 qC = red.getQueryC()
                 if len(qC) == 0:
                     return
-                ax_lims = list(self.getAxisLims())
                 cond_lims = list(self.getPltDtH().getCoordsExtrema())
                 for term in qC.invTerms():
                     cid = term.colId()

@@ -392,21 +392,30 @@ class DrawerMap(DrawerBasis):
             self.setAxe(self.getFigure().add_subplot(111,
               xlim=[midlon-1.05*mside, midlon+1.05*mside],
               ylim=[midlat-1.05*mside, midlat+1.05*mside]))
-
-    def getAxisLims(self):
+        self.saveExtentCorners()
+            
+    def saveExtentCorners(self):
+        # ### remember original corners before adding histogram panel, to avoid adding more and more space on the side...
+        xx = self.axe.get_xlim()
+        yy = self.axe.get_ylim()
+        self.setElement("extent_corners", (xx[0], xx[1], yy[0], yy[1]))
+            
+    def getCorners(self):
+        if self.hasElement("extent_corners"):
+            return self.getElement("extent_corners")
         if self.bm is None:
             return self.getPltDtH().getCoordsExtrema()
         xx = self.axe.get_xlim()
         yy = self.axe.get_ylim()
         return (xx[0], xx[1], yy[0], yy[1])
 
-    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
+    def makeFinish(self, xylims=(0,1,0,1), bxys=None):
         ### DRAWING EDGES PREVIOUSLY STORED
         # edges = self.getParent().getTmpStore("edges")
         # if edges is not None:
         #     line_segments = LineCollection(edges, colors="red", linewidths=2, zorder=30)
         #     self.axe.add_collection(line_segments)        
-        DrawerBasis.makeFinish(self, xylims, xybs)
+        DrawerBasis.makeFinish(self, xylims, bxys)
         self.drawCondionArea()
         
     def drawCondionArea(self):
@@ -416,7 +425,6 @@ class DrawerMap(DrawerBasis):
                 qC = red.getQueryC()
                 if len(qC) == 0:
                     return
-                ax_lims = list(self.getAxisLims())
                 cond_lims = list(self.getPltDtH().getCoordsExtrema())
                 for term in qC.invTerms():
                     cid = term.colId()

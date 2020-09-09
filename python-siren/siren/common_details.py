@@ -35,7 +35,7 @@ version, changes, ctime = getVersion()
 
 #### also update help url in clired preference manager
 home_eg = "https://members.loria.fr/EGalbrun/"
-web_siren = home_eg+"siren/"
+web_siren = "http://cs.uef.fi/siren/"
 gitlab_siren = "https://gitlab.inria.fr/egalbrun/siren"
 
 dependencies_clired = [("python-dateutil", "-python3-dateutil", "(>= 2.8.1)"),

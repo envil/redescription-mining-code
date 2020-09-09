@@ -23,7 +23,7 @@ COPYRIGHT=u'\u00A9 '+clired_variables["COPYRIGHT_YEAR_FROM"]+'-' \
 DU_FILES = [APP[:-3]]
 # setuptools.find_packages()
 DU_PACKAGES = ['clired', 'clired.grako']
-PACKAGE_DATA = {'clired': ['miner_confdef.xml', 'inout_confdef.xml', '*defs*.txt', 'LICENSE*']}
+PACKAGE_DATA = {'clired': ['*_confdef.xml', '*defs*.txt', 'LICENSE*']}
 
 def get_git_hash():
     git_hash = '-1'

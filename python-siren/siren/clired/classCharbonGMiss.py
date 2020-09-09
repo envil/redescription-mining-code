@@ -1065,9 +1065,9 @@ class CharbonGMiss(CharbonGreedy):
             best.append((adv, clp, [side, op, neg, lit]))
         return best
     def updateBests(self, typs, best, with_multi=True):
-        if self.constraints.getCstr("pairs_productivity") == "high":
+        if self.constraints.getCstr("inits_productivity") == "high":
             return best
-        elif self.constraints.getCstr("pairs_productivity") == "low":
+        elif self.constraints.getCstr("inits_productivity") == "low":
             for i in range(len(best)): ## type of series
                 while len(best[i]) > 1:
                     best[i].pop(1)
@@ -1089,10 +1089,10 @@ class CharbonGMiss(CharbonGreedy):
 
     def conflictPair(self, typs, litA, litB, with_multi=True):
     #     r = self.conflictPairX(typs, litA, litB, with_multi)
-    #     print("PAIR", r, "\t", litA, litB, "\t", self.constraints.getCstr("pairs_productivity"), typs, with_multi,self.constraints.getCstr("multi_cats"))
+    #     print("PAIR", r, "\t", litA, litB, "\t", self.constraints.getCstr("inits_productivity"), typs, with_multi,self.constraints.getCstr("multi_cats"))
     #     return r
     # def conflictPairX(self, typs, litA, litB, with_multi=True):
-        prod = self.constraints.getCstr("pairs_productivity")
+        prod = self.constraints.getCstr("inits_productivity")
         if typs == 22:
             if prod == "high" or (with_multi and self.constraints.getCstr("multi_cats")):
                 return (litA[0] == litB[0]) and (litA[1] == litB[1])

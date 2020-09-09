@@ -41,7 +41,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
     def getCoords(self, axi=None, ids=None):
         return self.getPltDtH().getCoords(axi, ids)+self.getSuppOff(axi=axi, ids=ids)
     
-    def getAxisLims(self):
+    def getAxisCorners(self):
         return self.getPltDtH().getCoordsExtrema()[:-1]+(1.,)
 
     rect_alpha = 0.7
@@ -165,9 +165,8 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             draw_settings = self.getDrawSettings()
             selected = self.getPltDtH().getUnvizRows()
             
-            x0, x1, y0, y1 = self.getAxisLims()
+            x0, x1, y0, y1 = self.getAxisCorners()
             bx, by = (x1-x0)/100.0, (y1-y0)/100.0
-            corners = (x0, x1, y0, y1, bx, by)
 
             sides = [0,1]
             if red.hasCondition() and len(red.getQueryC()) == 1:
@@ -262,7 +261,7 @@ class DrawerRedTimeSeries(DrawerEntitiesTD):
             self.axe.set_xticklabels(xtlbls)
             self.axe.tick_params(labelsize=self.view.getFontSizeProp())
 
-            self.makeFinish(corners[:4], corners[4:])   
+            self.makeFinish([x0, x1, y0, y1], bxys=[bx, by])   
             self.updateEmphasize(review=False)
             self.draw()
             self.setFocus()

@@ -488,7 +488,7 @@ class BoolColM(ColM):
     def minGap(self):
         return 1.
     
-    def getInitTerms(self, minIn=0, minOut=0):
+    def getInitTerms(self, minIn=0, minOut=0, productivity="medium"):
         if self.sumCol() >= minIn and self.N-(self.sumCol()+self.nbMissing()) >= minOut:
             return [(self.getAssocTermClass()(self.getId()), self.sumCol())]
         else:
@@ -688,7 +688,7 @@ class CatColM(ColM):
     def minGap(self):
         return 1
         
-    def getInitTerms(self, minIn=0, minOut=0):
+    def getInitTerms(self, minIn=0, minOut=0, productivity="medium"):
         terms = []
         for cat in self.cats():
             if len(self.sCats[cat]) >= minIn and self.N-(len(self.sCats[cat])+self.nbMissing()) >= minOut:
@@ -905,7 +905,7 @@ class NumColM(ColM):
             else:
                 return [tmp.get(i, tmp[-1]) for i in range(self.nbRows())]
     
-    def getInitTerms(self, minIn=0, minOut=0):
+    def getInitTerms(self, minIn=0, minOut=0, productivity="medium"):
         terms = []
         low_idx, hi_idx = (len(self.sVals), 0)
         if self.lenNonMode() < minIn:
@@ -943,7 +943,12 @@ class NumColM(ColM):
                 terms.append((self.getAssocTermClass()(self.getId(), float("-Inf"), self.sVals[split_idx][0]), split_idx+1))
             
         if not self.hasMoreInMode():
-            max_agg = 2*minIn #max(2*min(minIn, minOut), max(minIn, minOut)/2)
+            if productivity == "high":
+                max_agg = 2*minIn
+            elif productivity == "low":
+                max_agg = max(4*minIn, (self.nbRows() - minOut)/4)
+            else:
+                max_agg = min(4*minIn, (self.nbRows() - minOut)/2)
             tt = self.collapseBuckets(max_agg)
             for i in range(len(tt[0])):
                 count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-2][i])

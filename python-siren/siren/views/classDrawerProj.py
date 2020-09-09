@@ -60,8 +60,19 @@ class DrawerProj(DrawerBasis):
 
     def getProj(self):
         return self.view.getProj()
-                        
-    def makeFinish(self, xylims, xybs):
+
+    def setAxisLims(self, xylims, bxys=None):
+        if bxys is not None:
+            bx, by = bxys[0], bxys[1]
+        else:
+            bx, by = (xylims[1]-xylims[0])/100.0, (xylims[3]-xylims[2])/100.0
+        if xylims[0]-bx == xylims[1]+bx:
+            bx = .5
+        if xylims[2]-by == xylims[3]+by:
+            by = .5
+        self.axe.axis([xylims[0]-bx, xylims[1]+bx, xylims[2]-by, xylims[3]+by])
+        
+    def makeFinish(self, xylims, bxys=None):
         if self.getProj().readyCoords():
             fs = self.view.getFontSizeProp()
             if self.getProj().getVarsP() is not None:
@@ -76,14 +87,15 @@ class DrawerProj(DrawerBasis):
             # xx, yy = self.getProj().getCoords()
             # print "CORR %s vs. %s = %.4f" % (self.getProj().getAxisLabel(0), self.getProj().getAxisLabel(1), numpy.corrcoef(xx, yy)[0,1])
             # self.axe.plot([xylims[0]-xybs[0], xylims[1]+xybs[0]], [xylims[0]-xybs[0], xylims[1]+xybs[0]], "k--")
-            self.axe.axis([xylims[0]-xybs[0], xylims[1]+xybs[0], xylims[2]-xybs[1], xylims[3]+xybs[1]])
+            self.setAxisLims(xylims, bxys)
+
 
     def readyPlot(self):
         return self.getProj() is not None
     def readyCoords(self):
         return self.getProj() is not None and self.getProj().readyCoords()
-    def getAxisLims(self):
-        return self.getProj().getAxisLims()
+    def getAxisCorners(self):
+        return self.getProj().getAxisCorners()
     def drawPoly(self):
         return False
 

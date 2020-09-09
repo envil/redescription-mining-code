@@ -103,9 +103,6 @@ class DrawerBasis(object):
             draw_settings = self.getDrawSettings()
             selected = self.getPltDtH().getUnvizRows()
 
-            x0, x1, y0, y1 = self.getAxisLims()
-            bx, by = (x1-x0)/100.0, (y1-y0)/100.0
-            corners = (x0, x1, y0, y1, bx, by)
 
             self.dots_draw, mapper = self.prepareDotsDraw(vec, vec_dets, draw_settings)
             if len(selected) > 0 and "fc_dots" in self.dots_draw:
@@ -122,16 +119,11 @@ class DrawerBasis(object):
             else:
                 self.plotDotsPoly(self.getAxe(), self.dots_draw, draw_indices, draw_settings)
 
+            corners = self.getAxisCorners()
             if mapper is not None:
-                ### remember original corners before adding histogram panel, for maps to avoid adding more and more space on the side...
-                if self.hasElement("prehist_corners"):
-                    corners = self.getElement("prehist_corners")
-                elif self.readyCoords():
-                    self.setElement("prehist_corners", corners)
-                ### else: don't save, not ready
                 corners = self.plotMapperHist(self.axe, vec, vec_dets, mapper, self.NBBINS, corners, draw_settings)
-                
-            self.makeFinish(corners[:4], corners[4:])   
+
+            self.makeFinish(corners)
             self.updateEmphasize(review=False)
             self.draw()
             self.setFocus()
@@ -158,8 +150,11 @@ class DrawerBasis(object):
         return True
     def readyCoords(self):
         return self.readyPlot()        
-    def getAxisLims(self):
+    def getAxisCorners(self):
         return (0,1,0,1)
+    def setAxisLims(self, xylims, bxys=None):
+        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
+
     def drawPoly(self):
         return False
     def plotSimple(self):
@@ -169,8 +164,8 @@ class DrawerBasis(object):
 
     def makeBackground(self):   
         pass
-    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
-        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
+    def makeFinish(self, xylims=(0,1,0,1), bxys=None):
+        self.setAxisLims(xylims, bxys)
     def updateEmphasize(self, review=True):
         if self.hasParent() and self.isEntitiesPlt():
             lids = self.getParentViewsm().getEmphasizedR(vkey=self.getId())
@@ -575,7 +570,7 @@ class DrawerEntitiesTD(DrawerBasis):
     def drawPoly(self):
         return self.getPltDtH().hasPolyCoords() & self.getSettV("map_poly", self.MAP_POLY)
     
-    def getAxisLims(self):
+    def getAxisCorners(self):
         return self.getPltDtH().getCoordsExtrema()
 
     
@@ -981,7 +976,8 @@ class DrawerEntitiesTD(DrawerBasis):
             for b in SPECIAL_BINS[1:]:
                 vec += 1*(re_vec >= b)
 
-        x0, x1, y0, y1, bx, by = corners
+        x0, x1, y0, y1 = corners
+        bx = (x1-x0)/100. if x0 != x1 else 0.1
         fracts = [.1, .03] ## width of hist, ratio bars adjusted/fixed
         hspan = 0.95 ## height of hist (also used in proj to decide axis lims)
         nb = nb_bins
@@ -1040,7 +1036,7 @@ class DrawerEntitiesTD(DrawerBasis):
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
                             labelleft="off", labelright="on", labelsize=self.view.getFontSizeProp())
-        return (x0, x1, y0, y1, bx, by)
+        return (x0, x1, y0, y1)
         
     def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
         ku, kindices = numpy.unique(dots_draw["zord_dots"][draw_indices], return_inverse=True)

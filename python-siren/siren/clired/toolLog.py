@@ -90,16 +90,19 @@ class Log(object):
         
     ####### THE PROGRESS PART
     def initProgressFull(self, constraints, explore_list=None, nbCols=[0,0], level=-1, id=None):
+        lim_max_init = constraints.getCstr("max_inits")
         if explore_list is not None:
-            self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])
+            self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])           
+            nb_max_init = min(len(explore_list), constraints.getCstr("max_pairs")) if lim_max_init > -1 else len(explore_list)
         else:
             self.progress_ss["pairs_gen"] = 0
+            nb_max_init = max(0, lim_max_init)
         self.progress_ss["cand_var"] = 1
         self.progress_ss["cand_side"] = [nbCols[0]*self.progress_ss["cand_var"],
                                          nbCols[1]*self.progress_ss["cand_var"]]
         self.progress_ss["generation"] = constraints.getCstr("batch_cap")*sum(self.progress_ss["cand_side"])
         self.progress_ss["expansion"] = (constraints.getCstr("max_var", side=0)+constraints.getCstr("max_var", side=0)-2)*2*self.progress_ss["generation"]
-        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + constraints.getCstr("max_pairs")*self.progress_ss["expansion"]
+        self.progress_ss["total"] = self.progress_ss["pairs_gen"] + nb_max_init*self.progress_ss["expansion"]
         self.progress_ss["current"] = 0
         if level > -1:
             self.printL(level, self.getProgress(), 'progress', id)

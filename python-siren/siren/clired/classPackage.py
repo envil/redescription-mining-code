@@ -664,7 +664,7 @@ class IOTools:
         reds = None
         params = None
         queries_second = None
-        
+
         proceed = processHelpArgs(arguments, pr)
         if proceed:
             if os.path.isfile(arguments[1]):
@@ -692,10 +692,10 @@ class IOTools:
             
             elif config_filename is not None:
                 src_folder = os.path.dirname(os.path.abspath(config_filename))
-    
+
             if options_args is not None:
                 try:
-                    params = pr.getParameters(config_filename, options_args, params)        
+                    params = pr.getParameters(config_filename, options_args, params, default_to_none=True)
                 except AttributeError:
                     queries_second = config_filename
                     

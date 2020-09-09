@@ -41,7 +41,6 @@ class Charbon(object):
         self.logger = logger
 
 
-
 class CharbonGreedy(Charbon):
 
     name = "G"
@@ -253,6 +252,32 @@ class CharbonTree(Charbon):
     def handlesMiss(self):
         return False
 
+    @classmethod    
+    def getJacc(tcl, suppL=None, suppR=None):
+        if suppL is None or suppR is None:
+            return -1
+        lL = sum(suppL)
+        lR = sum(suppR)
+        lI = sum(suppL * suppR)
+        return lI/(lL+lR-lI)
+
+    @classmethod    
+    def pickStep(tcl, accs, min_impr=0):
+        if len(accs) == 0:
+            return None
+        if type(accs) is list:
+            accs = numpy.array(accs)
+        ji = numpy.argmax(accs)
+        cands = numpy.where(accs[:ji] > 0)[0]
+        while len(cands) > 0:
+            ki = cands[numpy.argmin(accs[ji] - accs[cands])]
+            if (accs[ji]-accs[ki]) >= min_impr:
+                cands = []
+            else:
+                ji = ki
+                cands = numpy.where(accs[:ji] > 0)[0]
+        return ji
+    
     def computeExpandTree(self, side, data, red):
         targets, in_data, cols_info, basis_red = self.prepareTreeDataTrg(side, data, red)
         xps = []
@@ -263,9 +288,9 @@ class CharbonTree(Charbon):
             if tmp is not None:
                 xps.append(tmp)
         return xps
-    def computeInitTerm(self, colL):
+    def computeInitTerms(self, colL):
         # pdb.set_trace()
-        tmp = [(Literal(False,t), v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))]
+        tmp = [(Literal(False,t), v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"), self.constraints.getCstr("inits_productivity"))]
         ## tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.)]
         # if len(tmp) > 0:
         #     print("--", colL.getId(), colL)
@@ -312,7 +337,7 @@ class CharbonTree(Charbon):
                     cids = av_cols[side]
                 for cid in cids:
                     dcol = data.col(side, cid)
-                    for lit, ss in self.computeInitTerm(dcol):
+                    for lit, ss in self.computeInitTerms(dcol):
                         supp = numpy.zeros(data.nbRows(), dtype=bool) 
                         supp[list(dcol.suppLiteral(lit))] = 1
                         involved = [tcols[side].get(data.getMatLitK(side, lit, bincats=True))]
@@ -320,8 +345,18 @@ class CharbonTree(Charbon):
         return targets, in_data, cols_info, basis_red
 
     def get_redescription(self, results, data, cols_info):
-        left_query = get_pathway(0, results[0].get("tree"), results[0].get("candidates"), data, cols_info)
-        right_query = get_pathway(1, results[1].get("tree"), results[1].get("candidates"), data, cols_info)
+        if results[0].get("tree") is not None:
+            left_query = get_pathway(0, results[0].get("tree"), results[0].get("candidates"), data, cols_info)
+        elif isinstance(results[0].get("src"), Query):
+            left_query = results[0].get("src")
+        else:
+            left_query = Query([])
+        if results[1].get("tree") is not None:            
+            right_query = get_pathway(1, results[1].get("tree"), results[1].get("candidates"), data, cols_info)
+        elif isinstance(results[1].get("src"), Query):
+            right_query = results[1].get("src")
+        else:
+            right_query = Query([])
         redex = Redescription.fromQueriesPair((left_query, right_query), data)
         # ## check DEBUG
         # sL = set([k for k,v in enumerate(results[0].get("support")) if v > 0])

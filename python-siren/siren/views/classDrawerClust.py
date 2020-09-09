@@ -46,12 +46,8 @@ class DrawerClustTD(DrawerEntitiesTD):
         self.setElement("vec_dets", vec_dets)
         return vec, vec_dets
 
-    def getAxisLims(self):
+    def getAxisCorners(self):
         return self.getPltDtH().getCoordsExtrema()
-
-    def makeFinish(self, xylims=(0,1,0,1), xybs=(.1,.1)):
-        self.axe.axis([xylims[0], xylims[1], xylims[2], xylims[3]])
-
     
     #### SEC: ACTIONS
     ######################################
@@ -111,16 +107,17 @@ class DrawerClustTD(DrawerEntitiesTD):
                 e_drawn.append(axe.text(sizes["btms"][jj]+.5*sizes["h_occ"], sizes["left"][pi]+.5*sizes["width"][pi], block_data["occ_str"][j], ha="center", va="center", rotation=90, color=c, zorder=self.zorder_sideplot, **self.view.getFontProps()))
         return e_drawn
 
-    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):                
+    def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
         with_rlbls = self.getSettV("blocks_show_rids", True)
-        x0, x1, y0, y1, bx, by = corners
+        x0, x1, y0, y1 = corners
+        bx = (x1-x0)/100. if x0 != x1 else 0.1
         nbc = len(vec_dets["binLbls"])
         
         if nbc == 0:
             hci = {"left_edge_map": x0, "right_edge_map": x1, "right_edge_occ": x1, "right_edge_hist": x1,
                    "hedges_hist": [], "vedges_occ": [], "h_occ": 0, "y1_top": y1, "y1_lbls": y1, "y1_blocks": y1, "axe": axe}
             self.setElement("hist_click_info", hci)
-            return (x0, x1, y0, y1, bx, by)
+            return (x0, x1, y0, y1)
             
         
         y1_top, y1_lbls = y1, y1
@@ -192,7 +189,7 @@ class DrawerClustTD(DrawerEntitiesTD):
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
                             labelleft="off", labelright="on")
-        return (x0, x1, y0, y1_top, bx, by)
+        return (x0, x1, y0, y1_top)
         
 
     def on_click(self, event):
@@ -275,65 +272,3 @@ class DrawerClustTD(DrawerEntitiesTD):
                 sizes = {"left": [hci["y1_blocks"]], "h_occ": hci["h_occ"], "width": [hci["y1_lbls"]-hci["y1_blocks"]], "btms": hci["vedges_occ"]}
                 emph_blocks = self.plot_block(hci["axe"], -1, block_emph, ord_rids, sizes)
                 self.setElement("emph_blocks", emph_blocks)
-
-
-    # def update(self, more=None):
-    #     if self.view.wasKilled():
-    #         return
-
-    #     if self.readyPlot():
-
-    #         inter_params = self.getParamsInter()
-    #         if inter_params.get("choice_agg", 0) > 2:
-    #             DrawerEntitiesTD.update(self, more)
-    #             return
-            
-    #         self.clearPlot()
-    #         inter_params = self.getParamsInter()
-    #         vec, vec_dets = self.getVecAndDets(inter_params)
-    #         draw_settings = self.getDrawSettings()
-    #         selected = self.getPltDtH().getUnvizRows()
-
-    #         cpos = vec_dets["clusters"]["clust_pos"]
-    #         pairs = vec_dets["clusters"]["pairs"]
-    #         ddER = vec_dets["ddER"]
-    #         etor = vec_dets["etor"]
-           
-    #         na, nb, ds = pairs[0]
-    #         ncounts = {na: 1, nb:1}
-    #         mid = (cpos[na]+cpos[nb])/2.
-    #         self.axe.plot([mid, cpos[na]], [0, ncounts[na]], "b-", linewidth=.1)
-    #         self.axe.plot([mid, cpos[nb]], [0, ncounts[nb]], "b-", linewidth=.1)
-    #         self.axe.text(mid, 0, "%s" % ds[1], fontsize=2, ha="left", va="bottom", rotation=30)
-    #         # self.axe.text(mid, 0, "[0 %s %s]" % (ds[1], ds[2]), fontsize=2, ha="left", va="bottom", rotation=30)            
-    #         # self.axe.text(mid, 0, "%d" % ds[3], fontsize=2, ha="right", va="top", rotation=90)
-    #         self.axe.text(cpos[na], ncounts[na], "c:%d" % na, fontsize=2, ha="right", va="top", rotation=90)
-    #         self.axe.text(cpos[nb], ncounts[nb], "c:%d" % nb, fontsize=2, ha="right", va="top", rotation=90)
-
-    #         for pi, pair in enumerate(pairs[1:]):
-    #             na, nb, ds = pair
-
-    #             self.axe.plot([cpos[na], cpos[na]], [ncounts[na], ncounts[na]+1], "b-", linewidth=.1)
-    #             self.axe.plot([cpos[na], cpos[nb]], [ncounts[na], ncounts[na]+1], "b-", linewidth=.1)
-    #             # self.axe.text(cpos[na], ncounts[na], "[%d %s %s]" % (pi+1, ds[1], ds[2]), fontsize=2, ha="left", va="bottom", rotation=30)
-    #             # self.axe.text(cpos[na], ncounts[na], "%d" % ds[3], fontsize=2, ha="right", va="top", rotation=90)
-
-    #             self.axe.text(cpos[na], ncounts[na], "%s" % ds[1], fontsize=2, ha="left", va="bottom", rotation=30)
-    #             self.axe.text(cpos[nb], ncounts[na]+1, "c:%d" % nb, fontsize=2, ha="right", va="top", rotation=90)
-                
-    #             ncounts[na] += 1
-    #             ncounts[nb] = ncounts[na]
-
-    #         mx = numpy.max(ncounts.values())            
-    #         for na, ncount in ncounts.items():
-    #             self.axe.plot([cpos[na], cpos[na]], [ncounts[na], mx], "k-", linewidth=.05)
-    #             self.axe.text(cpos[na], mx, " %04d %s %s" % (ddER["E"]["rprt"][na], "".join(["%d" % xx for xx in etor[ddER["E"]["rprt"][na], :]]), ddER["E"]["counts"][na]), fontsize=2, ha="center", va="bottom", rotation=90)
-
-    #         corners = (-3, len(cpos)+2, -1, mx+4, 1, 1)
-            
-    #         self.makeFinish(corners[:4], corners[4:])   
-    #         self.updateEmphasize(review=False)
-    #         self.draw()
-    #         self.setFocus()
-    #     else:
-    #         self.plot_void()      

@@ -80,7 +80,15 @@ class DTree:
                 return None
             return (1, idx)
         return (0, idx)
-    
+    def getDepth(self, node_id=None):
+        if node_id is None:
+            return max([self.getDepth(i)  for i in self.getNodeIds() if self.isLeaf(i)])
+        pidx = self.getParent(node_id)
+        if pidx is None:
+            return 0
+        else:
+            return self.getDepth(pidx[1]) + 1
+
     def getFeature(self, node_id=None):
         if node_id is None:
             return [self.getFeature(i) for i in self.getNodeIds()]
@@ -126,11 +134,19 @@ class DTree:
     def resetInstances(self, n=0):
         self.nb_instances = n
         self.counts = [None for i in self.getNodeIds()]
-        self.supp_sets = [None for i in self.getNodeIds()]        
+        self.supp_sets = [None for i in self.getNodeIds()]
     def setCounts(self, node_id, counts):
         self.counts[node_id] = counts
     def setSuppSet(self, node_id, sset):
         self.supp_sets[node_id] = sset
+    def applyMaskSuppSets(self, mask):
+        map_mask = {}
+        if type(mask) is list:
+            map_mask = dict(enumerate(mask))            
+        for node_id in self.getNodeIds():
+            self.supp_sets[node_id] = set([map_mask.get(i, i) for i in self.supp_sets[node_id]])
+
+        
     def computeSupp(self, data, node_id=None, ids=None, supp_vect=None, target=None):
         if node_id is None:
             node_id = 0

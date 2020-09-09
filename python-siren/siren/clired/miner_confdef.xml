@@ -51,17 +51,6 @@
     <section>
       <name>Candidate filtering</name>
       <parameter>
-        <name>batch_out</name>
-        <label>Batch output</label>
-        <parameter_type>open</parameter_type>
-        <value_type>integer</value_type>
-        <legend>Maximum number of redescriptions returned from an expansion batch.</legend>
-        <length>1</length>
-        <default>
-          <value>1</value>
-        </default>
-      </parameter>
-      <parameter>
         <name>min_itm_c</name>
         <label>Min contribution</label>
         <parameter_type>open</parameter_type>
@@ -94,6 +83,43 @@
           <value>0.05</value>
         </default>
       </parameter>
+      <parameter>
+        <name>min_impr</name>
+        <label>Min improvement</label>
+        <parameter_type>open</parameter_type>
+        <value_type>float</value_type>
+        <legend>Minimum improvement score for an acceptable extension.</legend>
+        <length>4</length>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>max_inits</name>
+        <label>Max initial candidates</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Maximum number of initial candidates explored, pairs for ReReMi, initial targets for trees. -1 leads to expand all.</legend>
+        <length>4</length>
+        <default>
+          <value>100</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>inits_productivity</name>
+        <label>Initial candidates productivity</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Productivity when creating an initial pair of literals from non-Boolean variables.</legend>
+        <default>
+          <value>1</value>
+        </default>
+        <options>
+          <value>low</value>
+          <value>medium</value>
+          <value>high</value>
+        </options>
+      </parameter>
     </section>
     <section>
       <name>Final filtering</name>
@@ -117,17 +143,6 @@
         <length>5</length>
         <default>
           <value>-1</value>
-        </default>
-      </parameter>
-      <parameter>
-        <name>min_fin_var</name>
-        <label>Min total number of variables</label>
-        <parameter_type>open</parameter_type>
-        <value_type>integer</value_type>
-        <legend>Maximum number of variables per redescription, applied for final filtering.</legend>
-        <length>2</length>
-        <default>
-          <value>2</value>
         </default>
       </parameter>
       <parameter>
@@ -181,7 +196,7 @@
   </section>
   <section>
     <name>Mining adv.</name>
-    <section>
+      <section>
       <name>Process</name>
       <parameter>
         <name>nb_processes</name>
@@ -209,6 +224,28 @@
     </section>
     <section>
       <name>Other common parameters</name>
+      <parameter>
+        <name>batch_out</name>
+        <label>Batch output</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Maximum number of redescriptions returned from an expansion batch.</legend>
+        <length>1</length>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>min_fin_var</name>
+        <label>Min total number of variables</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Maximum number of variables per redescription, applied for final filtering.</legend>
+        <length>2</length>
+        <default>
+          <value>2</value>
+        </default>
+      </parameter>
       <parameter>
         <name>in_weight</name>
         <label>Weight Inside</label>
@@ -302,6 +339,47 @@
           <value>gini</value>
           <value>entropy</value>
         </options>
+      </parameter>
+    </section>
+    <section>
+      <name>Splittrees variant</name>
+      <parameter>
+        <name>splittrees_init_depth</name>
+        <label>Init depth</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Maximum tree depth for the split in the first round.</legend>
+        <default>
+          <value>1</value>
+        </default>
+        <length>2</length>
+      </parameter>
+      <parameter>
+        <name>splittrees_update_target</name>
+        <label>Update target</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Update the target between tree growing rounds.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>splittrees_both_sides_change</name>
+        <label>Both sides change</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Require both sides to be different in successive tree growing rounds.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>splittrees_dyn_side</name>
+        <label>Dynamic side</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Choose the side on which to grow the tree first depending on the source of the target (else always start with RHS).</legend>
+        <default>
+          <value>1</value>
+        </default>
       </parameter>
     </section>
   </section>
@@ -454,17 +532,6 @@
     <section>
       <name>Initial pairs</name>
       <parameter>
-        <name>max_pairs</name>
-        <label>Max number of pairs</label>
-        <parameter_type>open</parameter_type>
-        <value_type>integer</value_type>
-        <legend>Maximum number of initial pairs extended, -1 leads to expand all.</legend>
-        <length>4</length>
-        <default>
-          <value>100</value>
-        </default>
-      </parameter>
-      <parameter>
         <name>pair_sel</name>
         <label>Expansion order</label>
         <parameter_type>single_options</parameter_type>
@@ -490,21 +557,6 @@
         </default>
       </parameter>
       <parameter>
-        <name>pairs_productivity</name>
-        <label>Pairs productivity</label>
-        <parameter_type>single_options</parameter_type>
-        <value_type>text</value_type>
-        <legend>Productivity when creating an initial pair of literals from non-Boolean variables.</legend>
-        <default>
-          <value>1</value>
-        </default>
-        <options>
-          <value>low</value>
-          <value>medium</value>
-          <value>high</value>
-        </options>
-      </parameter>
-      <parameter>
         <name>pe_balance</name>
         <label>Pairs-expand balance</label>
         <parameter_type>range</parameter_type>
@@ -522,17 +574,6 @@
     <name>ReReMi exp.</name>
     <section>
       <name>Candidate expansion</name>
-      <parameter>
-        <name>min_impr</name>
-        <label>Min improvement</label>
-        <parameter_type>open</parameter_type>
-        <value_type>float</value_type>
-        <legend>Minimum improvement score for an acceptable extension.</legend>
-        <length>4</length>
-        <default>
-          <value>0</value>
-        </default>
-      </parameter>
       <parameter>
         <name>score.impacc</name>
         <label>Accuracy improvement coefficient</label>

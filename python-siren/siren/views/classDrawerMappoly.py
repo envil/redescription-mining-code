@@ -128,38 +128,32 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
             line_segments = LineCollection(dots_draw["edges_inner"], colors=dots_draw["colors"], linewidths=2*dots_draw["vals"]/mv)
             axe.add_collection(line_segments)
 
-
     def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
-        x0, x1, y0, y1, bx, by = corners
+        x0, x1, y0, y1 = corners
+        bx = (x1-x0)/100. if x0 != x1 else 0.1
         fracts = [.25, .05] ## ratio bars occ/fixed
         nbc = len(vec_dets["binLbls"])        
+        
+        h_hist = fracts[1]*(x1-x0)+2*bx
+        bottom_hist = x1
+        top_hist = bottom_hist+h_hist
+                
         bins_ticks = numpy.arange(nbc)
         tmpb = [b-0.5 for b in bins_ticks]
         tmpb.append(tmpb[-1]+1)
 
-        # norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
-        # norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
         norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in bins_ticks]
         norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in tmpb]
+        bins_lbl = vec_dets["binLbls"]
+        colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]
+        
         left = [norm_bins[i] for i in range(nbc)]
         width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
 
-        h_hist = fracts[1]*(x1-x0)+2*bx
-        bottom_hist = x1
-        top_hist = bottom_hist+h_hist
-        
-        bckc = "white"        
-        bins_lbl = vec_dets["binLbls"]
-        #vvmax = int(numpy.max(vec))
-        colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
-        # colors[-1] = draw_settings["default"]["color_f"]
-        
-        axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge")
-        # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
-        # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
-        # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
-        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge")
-        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        bckc = "white"
+        axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge", zorder=self.zorder_sideplot)
+        axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge", zorder=self.zorder_sideplot)
+        axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2, zorder=self.zorder_sideplot)
         
         x1 += h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
 
@@ -167,8 +161,51 @@ class DrawerBorders(DrawerMap, DrawerClustTD):
         axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
         # self.axe.yaxis.tick_right()
         axe.tick_params(direction="inout", left="off", right="on",
-                            labelleft="off", labelright="on")
-        return (x0, x1, y0, y1, bx, by)
+                            labelleft="off", labelright="on", labelsize=self.view.getFontSizeProp())
+        return (x0, x1, y0, y1)
+
+            
+    # def plotMapperHist(self, axe, vec, vec_dets, mapper, nb_bins, corners, draw_settings):
+    #     x0, x1, y0, y1 = corners
+    #     bx = (x1-x0)/100. if x0 != x1 else 0.1
+    #     fracts = [.25, .05] ## ratio bars occ/fixed
+    #     nbc = len(vec_dets["binLbls"])        
+    #     bins_ticks = numpy.arange(nbc)
+    #     tmpb = [b-0.5 for b in bins_ticks]
+    #     tmpb.append(tmpb[-1]+1)
+
+    #     # norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in bins_ticks]
+    #     # norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) * 0.95*float(y1-y0) + y0 + 0.025*float(y1-y0) for bi in tmpb]
+    #     norm_bins_ticks = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in bins_ticks]
+    #     norm_bins = [(bi-tmpb[0])/float(tmpb[-1]-tmpb[0]) *float(y1-y0) + y0 for bi in tmpb]
+    #     left = [norm_bins[i] for i in range(nbc)]
+    #     width = [norm_bins[i+1]-norm_bins[i] for i in range(nbc)]
+
+    #     h_hist = fracts[1]*(x1-x0)+2*bx
+    #     bottom_hist = x1
+    #     top_hist = bottom_hist+h_hist
+        
+    #     bckc = "white"        
+    #     bins_lbl = vec_dets["binLbls"]
+    #     #vvmax = int(numpy.max(vec))
+    #     colors = [mapper.to_rgba(i) for i in vec_dets["binVals"]]        
+    #     # colors[-1] = draw_settings["default"]["color_f"]
+        
+    #     axe.barh(y0, h_hist, y1-y0, x1, color=bckc, edgecolor=bckc, align="edge")
+    #     # axe.plot([bottom_occ, bottom_occ], [y0, y1-y0], color="blue")
+    #     # axe.plot([bottom_hist, bottom_hist], [y0, y1-y0], color="red")
+    #     # axe.plot([bottom+nbr*h, bottom+nbr*h], [y0, y1-y0], color="red")
+    #     axe.barh(left, numpy.ones(nbc)*h_hist, width, numpy.ones(nbc)*bottom_hist, color=colors, edgecolor=bckc, linewidth=2, align="edge")
+    #     axe.plot([bottom_hist, bottom_hist], [norm_bins[0], norm_bins[-1]], color="black", linewidth=.2)
+        
+    #     x1 += h_hist #(fracts[0]+fracts[1])*(x1-x0)+2*bx
+
+    #     axe.set_yticks(norm_bins_ticks)
+    #     axe.set_yticklabels(bins_lbl, **self.view.getFontProps())
+    #     # self.axe.yaxis.tick_right()
+    #     axe.tick_params(direction="inout", left="off", right="on",
+    #                         labelleft="off", labelright="on")
+    #     return (x0, x1, y0, y1)
 
     
     def makeAdditionalElements(self, panel=None):

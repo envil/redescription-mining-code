@@ -822,9 +822,12 @@ class Redescription(WithEVals):
             return -Redescription.diff_score
 
     def sameRectangles(self, other, details={}):
-        return self.supp(0, details) == other.supp(0, details) and self.supp(1, details) != other.supp(1, details) and \
-          self.invColsSide(0) != other.invColsSide(0) and self.invColsSide(1) != other.invColsSide(1)
-    
+        return self.supp(0, details) == other.supp(0, details) and self.supp(1, details) == other.supp(1, details) and \
+          self.invColsSide(0) == other.invColsSide(0) and self.invColsSide(1) == other.invColsSide(1)
+    # def sameRectangles(self, other, details={}):
+    #     return self.supp(0, details) == other.supp(0, details) and self.supp(1, details) != other.supp(1, details) and \
+    #       self.invColsSide(0) != other.invColsSide(0) and self.invColsSide(1) != other.invColsSide(1)
+          
     def interArea(self, other, side, details={}):
         if other is not None:
             return len(other.supp(side, details) & self.supp(side, details))* len(other.invColsSide(side) & self.invColsSide(side))

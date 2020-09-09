@@ -148,9 +148,8 @@ class Proj(object):
         elif ids is None:
             return self.vars_proj[axi]
         return self.vars_proj[axi][ids]
-
     
-    def getAxisLims(self):
+    def getAxisCorners(self):
         if not self.readyCoords():
             return (0,1,0,1)
         hspan = .95
@@ -370,18 +369,18 @@ class ProjFactory(object):
 
     @classmethod
     def getProj(tcl, data, code = None, boxes=[], what="entities", transpose=True):
-            
+
         if code is not None:
             tmp = re.match("^(?P<alg>[A-Za-z]*)(?P<par>:.*)?$", code)
             if tmp is not None:
-                for cls in all_subclasses(Proj):
-                    if re.match("^"+cls.PID+"(_.*)?$", tmp.group("alg")):
-                        return cls(data, code, what, transpose)
+                for pcls in all_subclasses(Proj):
+                    if re.match("^(CL)?"+pcls.PID+"(_.*)?$", tmp.group("alg")):
+                        return pcls(data, code, what, transpose)
 
-        cls = tcl.defaultView
+        pcls = tcl.defaultView
         # cls = random.choice([p for p in all_subclasses(Proj)
         #                      if re.match("^(?P<alg>[^-S][A-Za-z*.]*)$", p.PID) is not None])
-        return cls(data, {}, what, transpose)
+        return pcls(data, {}, what, transpose)
 
 
     @classmethod

@@ -467,7 +467,7 @@ class Miner(object):
         pairs_store = None
         if "pairs_store" in params and len(params["pairs_store"]["data"]) > 0:
             pairs_store = params["pairs_store"]["data"]
-        self.initial_pairs = initPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_pairs"), save_filename=pairs_store,
+        self.initial_pairs = initPairs(self.constraints.getCstr("pair_sel"), self.constraints.getCstr("max_inits"), save_filename=pairs_store,
                                            data=self.data)
         self.rcollect = RCollection(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")), self.constraints.getCstr("amnesic"))
         self.logger.printL(1, "Miner set up...\n\t%s\n\t%s" % (self.data, self.rcollect), 'log', self.getId())
@@ -640,14 +640,16 @@ class Miner(object):
         if self.data.isSingleD(): sides = [0]
         for side in sides:
             for idl in ids[side]:
-                for (l,v) in self.charbon.computeInitTerm(self.data.col(side, idl)):
+                iTerms = self.charbon.computeInitTerms(self.data.col(side, idl))
+                self.logger.printL(10, 'Generated %d initial literals from variable %d %d' % (len(iTerms), side, idl), 'status', self.getId())
+                for (l,v) in iTerms:
                     if side == 0:
                         self.initial_pairs.add(l, None, {"score":v, side: idl, 1-side: -1})
                     else:
                         self.initial_pairs.add(None, l, {"score":v, side: idl, 1-side: -1})
-        ## UNLIMITED PAIRS FOR TREES?
-        self.initial_pairs.setMaxOut(-1)
-        self.logger.printL(1, 'Found %i literals' % (len(self.initial_pairs)), "log", self.getId())
+        self.initial_pairs.setMaxOut(self.constraints.getCstr("max_inits"))
+        # self.initial_pairs.setMaxOut(-1) ### DEBUG
+        self.logger.printL(1, 'Found %i literals, will try at most %i (ordered by decreasing support)' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
         # self.logger.sendCompleted(self.getId())
 
         
@@ -713,7 +715,7 @@ class Miner(object):
                         self.logger.printL(6, '---- Score:%f %s <=> %s %s' % (pair["score"], pair["litL"], pair["litR"], " & ".join(["%s" % l for l in pair.get("litC", ["-"])])), "log", self.getId())
                 self.initial_pairs.addExploredPair((idL, idR))
 
-            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
+            self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
             self.logger.updateProgress(level=1, id=self.getId())
 
             ### Saving pairs to file if filename provided
@@ -721,7 +723,7 @@ class Miner(object):
             ## self.initial_pairs.saveToFile()
         else:
             self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
-            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
         return self.initial_pairs
     
     def testIni(self, pair):
@@ -860,7 +862,7 @@ class MinerDistrib(Miner):
         else:
             self.initial_pairs.setExploredDone()
             self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getId())
-            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
+            self.logger.printL(1, 'Loaded %i pairs from file, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
         return self.initial_pairs
 
 
@@ -954,7 +956,7 @@ class MinerDistrib(Miner):
                 if self.pairWorkers == 0:
                     self.logger.updateProgress({"rcount": 0}, 1, self.getId())
                     self.logger.clockTac(self.getId(), "pairs")
-                    self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
+                    self.logger.printL(1, 'Found %i pairs, will try at most %i' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
                     self.logger.updateProgress(level=1, id=self.getId())
                     self.initial_pairs.setExploredDone()
                     ## self.initial_pairs.saveToFile()
@@ -972,7 +974,7 @@ class MinerDistrib(Miner):
                 self.initializeExpansions()
 
             if self.leftOverPairs():
-                self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_pairs")), "log", self.getId())
+                self.logger.printL(1, 'Found %i pairs, tried %i before testing all' % (len(self.initial_pairs), self.constraints.getCstr("max_inits")), "log", self.getId())
                 ## self.initial_pairs.saveToFile()
                 break
 
