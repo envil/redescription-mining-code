@@ -752,7 +752,7 @@ class Data(ContentCollection):
             col = vec
         elif force_type is not None:
             cclass = self.getColClassForName(force_type)
-            col = cclass.parseList(vec, force=True)            
+            col = cclass.parseList(vec, force=True)
         elif type(vec) is set:
             col = BoolColM(vec, self.nbRows())            
         elif type(vec) is dict:
@@ -1487,7 +1487,7 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
     single_dataset = False
 
     if csv_data.get("cond_col", None) is not None:
-        cond_col = NumColM.parseList(csv_data["cond_col"])
+        cond_col = NumColM.parseList(csv_data["cond_col"], native_missing_check=False)
         cname = csv_reader.COND_COL[0]
         if csv_data.get("c_time", False):
             cname = csv_reader.COND_TIME
@@ -1533,18 +1533,18 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
             values = csv_data['data'][side]["data"][name]
             col = None
             if Data.all_types_map.get(csv_data['data'][side]['type_all']) is not None:
-                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True)
+                col = Data.all_types_map[csv_data['data'][side]['type_all']].parseList(values, indices[side], force=True, native_missing_check=False)
                 if col is None:
                     print("DID NOT MANAGE GLOBAL TYPE FORCE PARSING...")
             if col is None:
                 if "type" in det:
-                    col = det["type"].parseList(values, indices[side], force=True)
+                    col = det["type"].parseList(values, indices[side], force=True, native_missing_check=False)
                     if col is None:
                         print("DID NOT MANAGE COL TYPE FORCE PARSING...")
             if col is None:
                 type_ids = list(type_ids_org)
                 while col is None and len(type_ids) >= 1:
-                    col = type_ids.pop().parseList(values, indices[side])
+                    col = type_ids.pop().parseList(values, indices[side], native_missing_check=False)
                     
             if col is not None and col.N == N:
                 if not det.get("enabled", True) or \
@@ -1563,10 +1563,10 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         
 
 def main():
-
-    rep = "/home/egalbrun/TKTL/redescriptors/current/CSM_data/sample_2/"
-    data = Data([rep+"Patient_Claims_aggregated_Sample_2.csv", rep+"Patient_Claims_aggregated_Sample_2.csv", {"delimiter": ","}, "nan"], "csv")
-    print(data)
+    pass
+    # rep = "/home/egalbrun/TKTL/redescriptors/current/CSM_data/sample_2/"
+    # data = Data([rep+"Patient_Claims_aggregated_Sample_2.csv", rep+"Patient_Claims_aggregated_Sample_2.csv", {"delimiter": ","}, "nan"], "csv")
+    # print(data)
     
     
     # rep = "/home/egalbrun/TKTL/redescriptors/dp/test/dblp_pickedBB_empty/"

@@ -432,7 +432,7 @@ class DrawerBasis(object):
                     t = r.getXprTerm()
                     vname = t.getName()
                     if vname is None:
-                        vname = "eval"
+                        vname = "v%d:dyn" % self.getParentData().nbCols(side)
                     col = t.getCol()
                     self.getParent().OnSaveVecAsVar(col, vname, side, "values")
             elif self.getPltDtH().hasClusters():

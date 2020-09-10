@@ -1,5 +1,10 @@
 CHANGELOG for Clired/Siren
 =============================
+v6.0.3
+------
+* Revisited splittrees/layeredtrees algorithms, added minimum improvement constraint and fixed bugs.
+* Fixed a couple of bug in views, e.g. with histograms, maps and projections
+
 v6.0.2
 ------
 * Fixed a couple of bad parameters in layeredtree algorithm

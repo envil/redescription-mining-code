@@ -1168,7 +1168,7 @@ class XprTerm(AnonTerm):
     def __hash__(self):
         return hash(self.xpr)
     def toKey(self):
-        return (-99.99, self.typeId(), -1, -1)
+        return (-99.99, self.typeId(), hash(self.xpr), -1)
     
     def __str__(self):
         return self.disp()
@@ -1225,7 +1225,7 @@ class XprTerm(AnonTerm):
                     except ValueError:
                         col = None
         if col is not None:
-            return tcl(xx, col, xname)    
+            return tcl(xx, col, xname)
         return None
     
 class Literal(object):

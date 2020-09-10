@@ -152,7 +152,7 @@ class ColM(WithEVals):
         return [0 for i in range(N)]
 
     @classmethod
-    def parseList(tcl, list):
+    def parseList(tcl, listV, indices=None, force=False, native_missing_check=True):
         return None
 
     @classmethod
@@ -393,7 +393,7 @@ class BoolColM(ColM):
     values = BOOL_MAP
     
     @classmethod
-    def parseList(tcl, listV, indices=None, force=False):
+    def parseList(tcl, listV, indices=None, force=False, native_missing_check=True):
         if type(listV) is list and len(set(listV).difference([True, False, None])) == 0:
             miss = set([i for (i, v) in enumerate(listV) if v is None])
             trues = set([i for (i, v) in enumerate(listV) if v == True])
@@ -454,7 +454,7 @@ class BoolColM(ColM):
                     return None
                 elif BoolColM.values[v]:
                     trues.add(j)
-
+                    
         return BoolColM(trues, max(indices.values())+1, miss)
 
     @classmethod
@@ -527,7 +527,14 @@ class BoolColM(ColM):
         ColM.__init__(self, N, nmiss)
         self.hold = ncolSupp
         self.missing -= self.hold
+        if self.N == len(self.missing):
+            print("Boolean variable contains only missing values, this is suspect!..")
+        elif len(self.hold) == 0:
+            print("Boolean variable contains only False entries, this is suspect!..")
+        elif len(self.hold) == (self.N - len(self.missing)):
+            print("Boolean variable contains only True entries, this is suspect!..")
 
+        
     def subsetCol(self, row_ids=None):
         if row_ids is None:
             hold = set(self.hold)
@@ -605,13 +612,20 @@ class CatColM(ColM):
         self.sCats = ncolSupp
         self.ord_cats = sorted(self.sCats.keys())
         self.cards = sorted([(cat, len(self.suppCat(cat))) for cat in self.cats()], key=lambda x: x[1])
+        if self.N == len(self.missing):
+            print("Categorical variable contains only missing values, this is suspect!..")
+        elif len(self.ord_cats) == 1:
+            print("Categorical variable has only one category %s, this is suspect!.." % (self.ord_cats))
+        elif len(self.ord_cats) == 0:
+            print("Categorical variable has no categories, this is suspect!..")
 
+        
     @classmethod
     def initSums(tcl, N):
         return [{} for i in range(N)]
 
     @classmethod
-    def parseList(tcl, listV, indices=None, force=False):
+    def parseList(tcl, listV, indices=None, force=False, native_missing_check=True):
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
         cats = {}
@@ -623,16 +637,14 @@ class CatColM(ColM):
         for i in ttt:
             j = indices[i]
             v = listV[i]
-            if v is None or v == str(tcl.NA):
+            if v is None or (native_missing_check and v == str(tcl.NA)):
                 miss.add(j)
             else:
                 if v in cats:
                     cats[v].add(j)
                 else:
                     cats[v] = set([j])
-        if len(cats) > 0:
-            if len(cats) == 1:
-                print("Only one category %s, this is suspect!.." % (cats.keys()))
+        if len(cats) > 0 or force:
             return tcl(cats, max(indices.values())+1, miss)
         else:
             return None
@@ -855,7 +867,7 @@ class NumColM(ColM):
         return val, prec
 
     @classmethod
-    def parseList(tcl, listV, indices=None, force=False):
+    def parseList(tcl, listV, indices=None, force=False, native_missing_check=True):
         prec = None
         if indices is None:
             indices = dict([(v,v) for v in range(len(listV))])
@@ -1149,7 +1161,10 @@ class NumColM(ColM):
             self.setMode(force)
         else: ### especially for subsetCol
             self.mode = mode
+        if self.N == len(self.missing):
+            print("Numerical variable contains only missing values, this is suspect!..")
 
+            
     def subsetCol(self, row_ids=None):
         mode_rids = None
         hasMode = False
