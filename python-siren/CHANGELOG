@@ -1,5 +1,11 @@
 CHANGELOG for Clired/Siren
 =============================
+v6.0.4
+------
+* Modified reading of missing values for categorical variables. 
+* Added warning messages for useless variables. 
+* Fixes to xprTerms comparison and new columns naming.
+
 v6.0.3
 ------
 * Revisited splittrees/layeredtrees algorithms, added minimum improvement constraint and fixed bugs.
