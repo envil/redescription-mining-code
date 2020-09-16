@@ -1563,7 +1563,11 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
         
 
 def main():
-    pass
+    # pass
+
+    rep = "/home/egalbrun/short/cms/"
+    data = Data([rep+"toy500_LHS.csv", rep+"toy500_RHS.csv", {}, "nan"], "csv")
+
     # rep = "/home/egalbrun/TKTL/redescriptors/current/CSM_data/sample_2/"
     # data = Data([rep+"Patient_Claims_aggregated_Sample_2.csv", rep+"Patient_Claims_aggregated_Sample_2.csv", {"delimiter": ","}, "nan"], "csv")
     # print(data)

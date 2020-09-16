@@ -52,6 +52,141 @@ def test_all_numbers(strgs):
             return False
     return True
 
+
+class RowOrder(object):
+    def __init__(self, LhasIds=False, RhasIds=False, Lids=None, Rids=None,
+                LhasTimes=False, RhasTimes=False, Ltimes=None, Rtimes=None,
+                LhasCoords=False, RhasCoords=False, Lcoords=None, Rcoords=None):
+        self.setKeys(LhasIds, RhasIds, Lids, Rids,
+                LhasTimes, RhasTimes, Ltimes, Rtimes,
+                LhasCoords, RhasCoords, Lcoords, Rcoords)
+        self.orders = self.computeOrders()
+        
+    def resetKeys(self):
+        self.orders = None
+        self.Ns = [-1,-1]
+        self.key_ids = None
+        self.key_times = None
+        self.key_coords = None
+        
+    def setKeyIds(self, Lids, Rids):
+        self.key_ids = [Lids, Rids]
+    def setKeyTimes(self, Ltimes, Rtimes):
+        self.key_times = [Ltimes, Rtimes]
+    def setKeyCoords(self, Lcoords, Rcoords):
+        self.key_coords = [Lcoords, Rcoords]
+
+    def hasKeyIds(self):
+        return self.key_ids is not None
+    def hasKeyTimes(self):
+        return self.key_times is not None
+    def hasKeyCoords(self):
+        return self.key_coords is not None
+
+    def getKeyId(self, side, row):
+        if self.key_ids is not None and row < len(self.key_ids[side]):            
+            return [self.key_ids[side][row]]
+        else:
+            return []
+    def getKeyTime(self, side, row):
+        if self.key_times is not None and row < len(self.key_times[side]):            
+            return [self.key_times[side][row]]
+        else:
+            return []
+    def getKeyCoord(self, side, row):
+        if self.key_coords is not None and row < len(self.key_coords[side]):            
+            return [self.key_coords[side][row]]
+        else:
+            return []
+    def getKeyTuple(self, side, row):
+        return tuple(self.getKeyId(side, row) + self.getKeyTime(side, row) + self.getKeyCoord(side, row))
+    def getKeyStr(self, side, row):
+        return "::".join(["%s" % v for v in self.getKeyId(side, row) + self.getKeyTime(side, row) + self.getKeyCoord(side, row)])
+
+    def getAllKeysTuple(self, side):
+        if self.Ns[side] > 0:
+            return [self.getKeyTuple(side, row) for row in range(self.Ns[side])]
+        return []
+    def getAllKeysStr(self, side):
+        if self.Ns[side] > 0:
+            return [self.getKeyStr(side, row) for row in range(self.Ns[side])]
+        return []
+    
+    def setKeys(self, LhasIds=False, RhasIds=False, Lids=None, Rids=None,
+                LhasTimes=False, RhasTimes=False, Ltimes=None, Rtimes=None,
+                LhasCoords=False, RhasCoords=False, Lcoords=None, Rcoords=None):
+        self.resetKeys()
+        if (LhasIds and RhasIds):
+            self.setKeyIds(Lids, Rids)
+        if (LhasTimes and RhasTimes):
+            self.setKeyTimes(Ltimes, Rtimes)
+        if (LhasCoords and RhasCoords):
+            self.setKeyCoords(Lcoords, Rcoords)
+               
+    def validLen(self):
+        Ns = [-1,-1]
+        if self.hasKeyIds():
+            for side in [0,1]:
+                Ns[side] = len(self.key_ids[side])
+        if self.hasKeyTimes():
+            for side in [0,1]:
+                if Ns[side] == -1: 
+                    Ns[side] = len(self.key_times[iside])
+                elif Ns[side] != len(self.key_times[side]):
+                    raise CSVRError('Incoherent length of keys! %d vs. %d (times on side %d)' % (Ns[side], len(self.key_times[side]), side))
+        if self.hasKeyCoords():
+            for side in [0,1]:
+                if Ns[side] == -1: 
+                    Ns[side] = len(self.key_coords[iside])
+                elif Ns[side] != len(self.key_coords[side]):
+                    raise CSVRError('Incoherent length of keys! %d vs. %d (coords on side %d)' % (Ns[side], len(self.key_coords[side]), side))
+        if Ns[0] > 0 and Ns[1] > 0:
+            self.Ns = Ns
+            return True
+        return False
+
+    def hasOrders(self):
+        return self.orders is not None
+    
+    def getOrders(self):
+        return self.orders
+    
+    def computeOrders(self):
+        if not self.validLen():
+            return None
+        
+        # formatL = "::".join(["%s" for i in range(len(order_keys[0]))])
+        # formatR = "::".join(["%s" for i in range(len(order_keys[1]))])
+        # xLll = [formatL % p for p in zip(*order_keys[0])]
+        # xRll = [formatR % p for p in zip(*order_keys[1])]
+        Lll = self.getAllKeysStr(0)
+        Rll = self.getAllKeysStr(1)
+        # Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
+        if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
+            print('Those ids are no real ids, they are not unique!..')
+
+        Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
+        Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
+        both = set(Lll).intersection(Rll)
+        if len(both) == 0:
+            raise CSVRError('Error while parsing the data, found no matching rows!')
+
+        # Remove from Lorder and Rorder the parts that aren't in both
+        i = 0
+        while i < len(Lorder):
+            if Lll[Lorder[i]] not in both:
+                del Lorder[i]
+            else:
+                i += 1
+        i = 0
+        while i < len(Rorder):
+            if Rll[Rorder[i]] not in both:
+                del Rorder[i]
+            else:
+                i += 1
+        return Lorder, Rorder
+        
+
 def start_out(fp):
     return csv.writer(fp, quoting=csv.QUOTE_MINIMAL) #, delimiter=';', quotechar='"'
     # return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
@@ -624,7 +759,7 @@ def row_order(L, R, other_params={}):
         else:
             nbr, offL, offR = (nbrTT, offLTT, offRTT)
 
-    #### UNDER WORK Sparse pairs storing with empty first row on sparse side
+    #### Sparse pairs storing with empty first row on sparse side
     if LhasIds and Lvarcol is not None: 
         #if True:
         try:
@@ -640,54 +775,11 @@ def row_order(L, R, other_params={}):
         except IOError as arg: #Exception as arg:
             raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
 
-    order_keys = [[],[]]
-    if (LhasIds and RhasIds):
-        order_keys[0].append(Lids)
-        order_keys[1].append(Rids)
-    if (LisTime and RisTime):
-        order_keys[0].append(Lcond_col)
-        order_keys[1].append(Rcond_col)
-    if (LhasCoord and RhasCoord):
-        # order_keys = [list(Lcoord), list(Rcoord)]
-        order_keys[0].extend(Lcoord)
-        order_keys[1].extend(Rcoord)
-
-    if len(order_keys[0]) > 0:
-        # Both have coordinates
-        # Llat = Lcoord[0]
-        # Llong = Lcoord[1]
-        # Rlat = Rcoord[0]
-        # Rlong = Rcoord[1]
-        # sort per concatenated lat & long
-        # Lll = map(lambda x,y: str(x)+str(y), Llat, Llong)
-        # Rll = map(lambda x,y: str(x)+str(y), Rlat, Rlong)
-        formatL = "::".join(["%s" for i in range(len(order_keys[0]))])
-        formatR = "::".join(["%s" for i in range(len(order_keys[1]))])
-        Lll = [formatL % p for p in zip(*order_keys[0])]
-        Rll = [formatR % p for p in zip(*order_keys[1])]
-        # Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
-        if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
-            print('Those ids are no real ids, they are not unique!..')
-
-        Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
-        Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
-        both = set(Lll).intersection(Rll)
-        if len(both) == 0:
-            raise CSVRError('Error while parsing the data, found no matching rows!')
-
-        # Remove from Lorder and Rorder the parts that aren't in both
-        i = 0
-        while i < len(Lorder):
-            if Lll[Lorder[i]] not in both:
-                del Lorder[i]
-            else:
-                i += 1
-        i = 0
-        while i < len(Rorder):
-            if Rll[Rorder[i]] not in both:
-                del Rorder[i]
-            else:
-                i += 1
+    ro = RowOrder(LhasIds, RhasIds, Lids, Rids,
+                             LisTime, RisTime, Lcond_col, Rcond_col,
+                             LhasCoord, RhasCoord, Lcoord, Rcoord)
+    if ro.hasOrders():
+        Lorder, Rorder = ro.getOrders()
                 
         coord = None
         try:
@@ -742,7 +834,11 @@ def row_order(L, R, other_params={}):
             nbrowsR = len(Rids)
         else:
             nbrowsR = len(first_value(R["data"]))
-
+            
+        # Sanity check
+        if nbrowsR != nbrowsL:
+            raise CSVRError('The two data sets without mapping ids are not of same size')
+            
         data = L['data']
         head = L['headers']
         # extract the coordinates
@@ -768,10 +864,6 @@ def row_order(L, R, other_params={}):
             ids = Lids
         elif RhasIds: # and if len(R["data"].values()[0]) == len(Rids):
             ids = Rids
-
-        # Sanity check
-        if nbrowsR != nbrowsL:
-            raise CSVRError('The two data sets are not of same size')
 
         # LDis = has_disabled_rows(L) 
         # RDis = has_disabled_rows(R)

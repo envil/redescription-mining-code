@@ -472,20 +472,22 @@ class IOTools:
     
     @classmethod
     def getPrintParams(tcl, filename, data=None):
+        ### HERE
+        basename = os.path.basename(filename)
         params = {"with_disabled": False, "style": "", "full_supp":False, "nblines":1,
                   "names": [None, None], "supp_names": None}
     
-        named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", filename) is not None
-        supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", filename) is not None ) or \
-                     ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", filename) is not None )
+        named = re.search("[^a-zA-Z0-9]named[^a-zA-Z0-9]", basename) is not None
+        supp_names = ( re.search("[^a-zA-Z0-9]suppnames[^a-zA-Z0-9]", basename) is not None ) or \
+                     ( re.search("[^a-zA-Z0-9]suppids[^a-zA-Z0-9]", basename) is not None )
     
-        params["with_disabled"] = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", filename) is not None
-        params["full_supp"] = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", filename) is not None ) or supp_names
+        params["with_disabled"] = re.search("[^a-zA-Z0-9]all[^a-zA-Z0-9]", basename) is not None
+        params["full_supp"] = ( re.search("[^a-zA-Z0-9]support[^a-zA-Z0-9]", basename) is not None ) or supp_names
                 
-        if re.search(".tex$", filename):
+        if re.search(".tex$", basename):
             params["style"] = "tex"
     
-        tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).[a-z]*$", filename)
+        tmp = re.search("[^a-zA-Z0-9](?P<nbl>[1-3]).[a-z]*$", basename)
         if tmp is not None:
             params["nblines"] = int(tmp.group("nbl"))
     

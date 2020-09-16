@@ -178,6 +178,7 @@ Exporting Redescriptions
 Redescriptions from the ``Redescriptions`` tab can be exported to a file, one redescription per line, with both queries and basic statistics tab separated. Three of formatting options are available, determined by the provided filename:
 
 * **named**: Uses the names of the variables instead of variable ids in the queries. Activated if the filename matches the pattern ``*[^a-zA-Z0-9]named[^a-zA-Z0-9]*``.
+* **support**: Prints out the support sets. Activated if the filename matches the pattern ``*[^a-zA-Z0-9]support[^a-zA-Z0-9]*``.
 * **all** By default disabled redescriptions will not be printed when exporting redescriptions. If the filename matches the pattern ``*[^a-zA-Z0-9]all[^a-zA-Z0-9]*``, disabled redescriptions will also be printed. 
 * **tex** Rather than tab separated format, if the filename as ``.tex`` extension, a tex file is produced that can be compiled to obtain a table of the redescriptions. Three table layouts are available, where the information for each redescription is listed respectively on one, two or three rows, if the filename matches the pattern ``*[^a-zA-Z0-9][1-3].[a-z]*$``. Note that this format cannot be imported back.
 

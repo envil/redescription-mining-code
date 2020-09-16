@@ -955,23 +955,38 @@ class NumColM(ColM):
                 terms.append((self.getAssocTermClass()(self.getId(), float("-Inf"), self.sVals[split_idx][0]), split_idx+1))
             
         if not self.hasMoreInMode():
-            if productivity == "high":
-                max_agg = 2*minIn
-            elif productivity == "low":
-                max_agg = max(4*minIn, (self.nbRows() - minOut)/4)
-            else:
-                max_agg = min(4*minIn, (self.nbRows() - minOut)/2)
-            tt = self.collapseBuckets(max_agg)
-            for i in range(len(tt[0])):
-                count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-2][i])
-                if count >= minIn and ( self.nbRows() - count ) >= minOut :
-                    if i == 0:
-                        lowb = float("-Inf")
-                    elif i == len(tt[0])-1:
-                        upb = float("Inf")
-                    terms.append((self.getAssocTermClass()(self.getId(), lowb, upb), i))
-                    # print("Found term\t", terms[-1][0], terms[-1][1], count) 
+            # print("--- %s" % self)
+            max_agg = [max(4*minIn, (self.nbRows() - minOut)/4),
+                       min(4*minIn, (self.nbRows() - minOut)/2),
+                       2*minIn]
+            # print("Generated %d terms before levels\t%s" % (len(terms), max_agg))
+            # tmp_t = len(terms)
 
+            upTo = 2
+            seen = set()
+            if productivity == "high":
+                upTo = len(max_agg)
+            elif productivity == "low":
+                upTo = 1
+                seen = None
+            
+            for lvl in range(upTo):
+                if lvl == 0 or max_agg[lvl] < max_agg[lvl-1]:
+                    tt = self.collapseBuckets(max_agg[lvl])
+                    for i in range(len(tt[0])):
+                        count, lowb, upb =  (len(tt[0][i]), tt[1][i], tt[-2][i])
+                        if lvl == 0 or (lowb, upb) not in seen:
+                            if seen is not None:
+                                seen.add((lowb, upb))
+                            if count >= minIn and (self.nbRows() - count) >= minOut:
+                                if i == 0:
+                                    lowb = float("-Inf")
+                                elif i == len(tt[0])-1:
+                                    upb = float("Inf")
+                                terms.append((self.getAssocTermClass()(self.getId(), lowb, upb), i))
+                                # print("Found term\t", terms[-1][0], terms[-1][1], count)
+                    # print("Generated %d terms at level %d (%d agg buckets)" % (len(terms)-tmp_t, lvl, len(tt[0])))
+                    # tmp_t = len(terms)
         # if len(terms) == 0:
         #     print("Nothing found %s" % self)
         return terms
