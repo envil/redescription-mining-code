@@ -1,5 +1,9 @@
 CHANGELOG for Clired/Siren
 =============================
+v6.0.5
+------
+* Fixed bug of logger querying a parameter that no longer exists 
+
 v6.0.4
 ------
 * Modified reading of missing values for categorical variables. 
