@@ -499,7 +499,7 @@ class Miner(object):
     def initCharbon(self):
         if self.constraints.getCstr("mining_algo") in TREE_CLASSES:
             if self.data.hasMissing():
-                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK IN GREEDY REREMI...", 'log', self.getId())
+                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK ON GREEDY REREMI...", 'log', self.getId())
                 return CharbonGMiss(self.constraints, logger=self.shareLogger())
             else:
                 return TREE_CLASSES.get(self.constraints.getCstr("mining_algo"), TREE_DEF)(self.constraints, logger=self.shareLogger())

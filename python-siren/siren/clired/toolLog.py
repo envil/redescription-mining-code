@@ -93,7 +93,7 @@ class Log(object):
         lim_max_init = constraints.getCstr("max_inits")
         if explore_list is not None:
             self.progress_ss["pairs_gen"] = sum([p[-1] for p in explore_list])           
-            nb_max_init = min(len(explore_list), constraints.getCstr("max_pairs")) if lim_max_init > -1 else len(explore_list)
+            nb_max_init = min(len(explore_list), lim_max_init) if lim_max_init > -1 else len(explore_list)
         else:
             self.progress_ss["pairs_gen"] = 0
             nb_max_init = max(0, lim_max_init)
