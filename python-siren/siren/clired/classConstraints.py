@@ -436,9 +436,13 @@ class ActionsRegistry:
                 actions.extend(self.getActionsListToGo(action["actions"], constraints))
             else:
                 actions.append(self.fillActionConstraints(action, constraints))
-        if action_substitute is not None and len(actions) == 1:
-            if actions[0]["action"] == action_substitute[0]:
-                actions[0]["action"] = action_substitute[1]
+        if action_substitute is not None:
+            if action_substitute[1] is None:
+                actions = [a for a in actions if a["action"] != action_substitute[0]]
+            else:
+                for i in range(len(actions)):
+                    if actions[i]["action"] == action_substitute[0]:
+                        actions[i]["action"] = action_substitute[1]
         return actions    
 
     def fillBlockConstraints(self, block, constraints):

@@ -32,6 +32,16 @@ import pdb
 
 class Charbon(object):
     name = "-"
+
+    def isTreeBased(self):
+        return False
+    def isXaust(self):
+        return False
+    def isIterative(self):
+        return True
+    def withInitTerms(self):
+        return True
+    
     def getAlgoName(self):
         return self.name
 
@@ -40,7 +50,22 @@ class Charbon(object):
         self.constraints = constraints
         self.logger = logger
 
+    def computeInitTerms(self, colL):
+        # pdb.set_trace()
+        tmp = [(Literal(False,t), v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"), self.constraints.getCstr("inits_productivity"))]
+        ## tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.)]
+        # if len(tmp) > 0:
+        #     print("--", colL.getId(), colL)
+        return tmp
 
+        
+
+class CharbonXaust(Charbon):
+
+    name = "X"
+    def isXaust(self):
+        return True
+        
 class CharbonGreedy(Charbon):
 
     name = "G"
@@ -49,7 +74,9 @@ class CharbonGreedy(Charbon):
         return False
     def handlesMiss(self):
         return False
-
+    def withInitTerms(self):
+        return False
+    
     def computeExpand(self, side, col, red, colsC=None):
         if isinstance(red, ColM):
             (colL, colR) = (col, red)
@@ -288,13 +315,6 @@ class CharbonTree(Charbon):
             if tmp is not None:
                 xps.append(tmp)
         return xps
-    def computeInitTerms(self, colL):
-        # pdb.set_trace()
-        tmp = [(Literal(False,t), v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"), self.constraints.getCstr("inits_productivity"))]
-        ## tmp = [(Literal(False,t),v) for (t,v) in colL.getInitTerms(self.constraints.getCstr("min_itm_in")/4., self.constraints.getCstr("min_itm_out")/4.)]
-        # if len(tmp) > 0:
-        #     print("--", colL.getId(), colL)
-        return tmp
     
     def prepareTreeDataTrg(self, side, data, red):
         min_entities = min(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"))
