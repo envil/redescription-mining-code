@@ -621,7 +621,10 @@ class IOTools:
             filesfp["queries"] = open(filenames["queries"], mode)
         all_fields = rp.getListFields(fstyle, modifiers)
         if with_headers:
-            filesfp["queries"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
+            if len(header_recompute) > 0:
+                filesfp["queries"].write(rp.dispHeaderFields(all_fields)+"\t"+header_recompute+"\n")
+            else:
+                filesfp["queries"].write(rp.dispHeaderFields(all_fields)+"\n")
     
         names = None
         if data is not None and data.hasNames() and "queries_named" in filenames:
