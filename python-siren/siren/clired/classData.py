@@ -424,7 +424,16 @@ class Data(ContentCollection):
         if len(s) == 1:
             return s.pop()
         return None
+    def arePairTypesIn(self, cidA, cidB, sideA=0, sideB=1, tset=[]):
+        if tset is not None and len(tset) > 0:
+            if self.col(sideA, cidA).type_id > self.col(sideB, cidB).type_id:
+                k = "%s%s" % (self.col(sideB, cidB).type_letter, self.col(sideA, cidA).type_letter)
+            else:
+                k = "%s%s" % (self.col(sideA, cidA).type_letter, self.col(sideB, cidB).type_letter)
+            return k in tset
+        return False
 
+    
     def hasGroups(self, side=None):
         if side is None:            
             return any([self.hasGroups(sside) for sside in self.getSides(side)])

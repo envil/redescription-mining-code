@@ -121,6 +121,23 @@
           <value>high</value>
         </options>
       </parameter>
+      <parameter>
+        <name>inits_types_exclude</name>
+        <label>Excluded initial cand. pair types</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Excluded variable types in initial pairs.</legend>
+        <default>
+        </default>
+        <options>
+          <value>BB</value>
+          <value>BC</value>
+          <value>BN</value>
+          <value>CC</value>
+          <value>CN</value>
+          <value>NN</value>
+        </options>
+      </parameter>
     </section>
     <section>
       <name>Final filtering</name>
