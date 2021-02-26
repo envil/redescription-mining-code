@@ -201,7 +201,7 @@ class CharbonXFIM(CharbonXaust):
         return False
 
     def computeExpansions(self, data, initial_candidates):
-        lits = self.computeExpansionsOnSide(data, initial_candidates, 0)
+        lits = self.computeExpansionsOnEachSide(data, initial_candidates)
         tracts = [[] for i in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         for i, candidate in enumerate(initial_candidates):
@@ -240,19 +240,7 @@ class CharbonXFIM(CharbonXaust):
             cands.append(r)
         return cands
 
-    def computeExpansionsOnSide(self, data, initial_candidates_full, side):
-        initial_candidates = [candidate[side] for candidate in initial_candidates_full if candidate[side] is not None]
-        tracts = [[] for i in range(data.nbRows())]
-        initial_candidates_map = defaultdict(list)
-        for i, candidate in enumerate(initial_candidates):
-            column_id = candidate.colId()
-            # if column_id not in initial_candidates_map:
-            #     initial_candidates_map[column_id] = []
-            k = (side, column_id, len(initial_candidates_map[column_id]))
-            initial_candidates_map[column_id].append(i)
-            for row_id in data.supp(side, candidate):
-                tracts[row_id].append(k)
-        tracts = [frozenset(t) for t in tracts]
+    def computeExpansionsOnEachSide(self, data, initial_candidates_full):
 
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
@@ -261,12 +249,25 @@ class CharbonXFIM(CharbonXaust):
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
                                                                                  "min_fin_in", "min_fin_out",
                                                                                  "min_fin_acc"]])
-
         candidate_store = CandStoreV2(candidate_store_setts)
-        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
-        # with open('../../../data/candidate_store.pickle', 'rb') as f:
-        #     pickle.dump(candidate_store, f)
-        #     candidate_store = pickle.load(f)
+
+        for side in [0, 1]:
+            initial_candidates = [candidate[side] for candidate in initial_candidates_full if candidate[side] is not None]
+            tracts = [[] for i in range(data.nbRows())]
+            initial_candidates_map = defaultdict(list)
+            for i, candidate in enumerate(initial_candidates):
+                column_id = candidate.colId()
+                # if column_id not in initial_candidates_map:
+                #     initial_candidates_map[column_id] = []
+                k = (side, column_id, len(initial_candidates_map[column_id]))
+                initial_candidates_map[column_id].append(i)
+                for row_id in data.supp(side, candidate):
+                    tracts[row_id].append(k)
+            tracts = [frozenset(t) for t in tracts]
+            r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+            # with open('../../../data/candidate_store.pickle', 'rb') as f:
+            #     pickle.dump(candidate_store, f)
+            #     candidate_store = pickle.load(f)
         queries = candidate_store.getQueries()
         lits = []
         for qs in queries:
