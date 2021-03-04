@@ -137,7 +137,7 @@ def mod_eclat(tracts, setts, store_handle):
     tadb = [t for t in tadb if t[0] >= setts[1] and t[0] < sall]
 
     r = recurse(tadb, [], [], [], setts, store_handle)
-    return r
+    return r, tracts
 
 
 # -----------------------------------------------------------------------
@@ -182,15 +182,15 @@ class CandStoreV2:
             "max_var_s1" not in self.setts or len([c for c in cand[0] if c[0] == 1]) <= self.setts["max_var_s1"]):
             self.supps[1][cand[0]] = cand[1]
 
-    def getQueries(self):
+    def getQueries(self, tid_lists):
         query_store = []
         for lhs_cand, s0 in self.supps[0].items():
             for rhs_cand, s1 in self.supps[1].items():
-                s01 = s0 + s1
-                if s0 > 0 and s1 > 0 and \
-                    ("min_fin_in" not in self.setts or s01 >= self.setts["min_fin_in"]) and \
-                    ("min_fin_acc" not in self.setts or s01 / (s0 + s1 - s01) >= self.setts["min_fin_acc"]):
-                    query_store.append((lhs_cand, rhs_cand, s0, s1, s01))
+                union_cand = tid_lists[0].get(lhs_cand, None)
+                # if s0 > 0 and s1 > 0 and \
+                #     ("min_fin_in" not in self.setts or s01 >= self.setts["min_fin_in"]) and \
+                #     ("min_fin_acc" not in self.setts or s01 / (s0 + s1 - s01) >= self.setts["min_fin_acc"]):
+                #     query_store.append((lhs_cand, rhs_cand, s0, s1, s01))
         return query_store
 
 
@@ -226,10 +226,7 @@ class CharbonXFIM(CharbonXaust):
                                                                                  "min_fin_acc"]])
 
         candidate_store = CandStore(candidate_store_setts)
-        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
-        # with open('../../../data/candidate_store.pickle', 'wb') as f:
-        #     pickle.dump(candidate_store, f)
-        # #     candidate_store = pickle.load(f)
+        r, _ = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries()
         cands = []
         for qs in queries:
@@ -250,7 +247,7 @@ class CharbonXFIM(CharbonXaust):
                                                                                  "min_fin_in", "min_fin_out",
                                                                                  "min_fin_acc"]])
         candidate_store = CandStoreV2(candidate_store_setts)
-
+        tid_lists = []
         for side in [0, 1]:
             initial_candidates = [candidate[side] for candidate in initial_candidates_full if candidate[side] is not None]
             tracts = [[] for i in range(data.nbRows())]
@@ -264,11 +261,9 @@ class CharbonXFIM(CharbonXaust):
                 for row_id in data.supp(side, candidate):
                     tracts[row_id].append(k)
             tracts = [frozenset(t) for t in tracts]
-            r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
-            # with open('../../../data/candidate_store.pickle', 'rb') as f:
-            #     pickle.dump(candidate_store, f)
-            #     candidate_store = pickle.load(f)
-        queries = candidate_store.getQueries()
+            r, tid_list = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+            tid_lists.append(dict(tid_list))
+        queries = candidate_store.getQueries(tid_lists)
         lits = []
         for qs in queries:
             lits = [initial_candidates[initial_candidates_map[q[1]][q[2]]][0] for q in qs[0]]
