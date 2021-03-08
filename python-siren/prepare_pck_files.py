@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
-### usage: python prepare_pck_files.py win|src|clean
+# usage: python prepare_pck_files.py win|src|clean
 
-import sys, re, os.path, glob, subprocess
+import sys
+import re
+import os.path
+import glob
+import subprocess
 
-from siren.common_details import common_variables
+from blocks.common_details import common_variables
 
 this_rep = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,20 +26,19 @@ if len(sys.argv) > 1:
         print("Cleaning up files...")
         for filename in deb_file_list+src_file_list+win_file_list:
             if os.path.exists(this_rep+"/"+filename):
-                print("- "+ this_rep+"/"+ filename)
-                os.remove(this_rep+"/"+ filename)
+                print("- " + this_rep+"/" + filename)
+                os.remove(this_rep+"/" + filename)
         if os.path.isdir('debian'):
             print("- REP debian")
             subprocess.check_call("rm -rf "+this_rep+"/debian", shell=True)
 
         exit()
-            
+
 variables = {}
 for entry, vals in common_variables.items():
     variables["__"+entry+"__"] = vals
 variables.update({"__PYTHON_SRC__": sys.executable})
 variables.update({"__MAIN_FILEPREFF__": re.sub(".py", "", variables["__MAIN_FILENAME__"])})
-
 
 
 def openMakeP(filename, mode="w"):
@@ -44,21 +47,21 @@ def openMakeP(filename, mode="w"):
         os.makedirs(d)
     return open(filename, mode)
 
-def multiple_replace(dict, text): 
 
+def multiple_replace(dict, text):
     """ Replace in 'text' all occurences of any key in the given
-    dictionary by its corresponding value.  Returns the new tring.""" 
-    
+    dictionary by its corresponding value.  Returns the new tring."""
+
     # Create a regular expression  from the dictionary keys
     regex = re.compile("(%s)" % "|".join(map(re.escape, dict.keys())))
-    
+
     # For each match, look-up corresponding value in dictionary
     return regex.sub(lambda mo: dict[mo.string[mo.start():mo.end()]], text)
 
 
 files_dest = {}
-######################### README
-files_dest["README.md"]='''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
+# README
+files_dest["README.md"] = '''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
 
 __PROJECT_DESCRIPTION_LINE__
 
@@ -77,8 +80,9 @@ with pip, installation should be as easy as running
 this should provide the following commands:
 
 * `exec_siren` to launch the interface for interactively mining and visualizing redescriptions
-* `server_siren` to launch the server for off-loading computations
 * `exec_clired` to run the command-line redescription mining algorithms
+* `exec_server` to launch the server for off-loading computations
+* `exec_client` to run the command-line client allowing to send computations to server
 
 ### More information
 See __PROJECT_URL__
@@ -90,7 +94,7 @@ __PROJECT_NAME__ is licensed under Apache License v2.0. See attached file "LICEN
 '''
 
 
-files_dest["README"]='''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
+files_dest["README"] = '''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
 
 __PROJECT_DESCRIPTION_LINE__
 
@@ -104,7 +108,7 @@ dpkg -i the_latest___PROJECT_NAMELOW___deb_package.deb
 Afterward, you might need to run, to fix dependencies, i.e., install missing required packages 
 sudo apt-get -f install
 
-If everything went fine, you should find a __PROJECT_NAME__ entry in your Applications menu (probably under Science).
+If everything went fine, you should find a __PROJECT_NAME__ entry in your Applications menu.
 
 ### More information
 See __PROJECT_URL__
@@ -115,8 +119,8 @@ __PROJECT_NAME__ is licensed under Apache License v2.0. See attached file "LICEN
 (c) __PROJECT_AUTHORS__, __COPYRIGHT_YEAR_FROM__
 '''
 
-######################### Makefile
-files_dest["Makefile"]='''PYTHON=__PYTHON_SRC__
+# Makefile
+files_dest["Makefile"] = '''PYTHON=__PYTHON_SRC__
 DESTDIR=/
 BUILDIR=$(CURDIR)/debian/__PROJECT_NAMELOW__
 PROJECT=__PROJECT_NAME__
@@ -170,11 +174,11 @@ clean:
 	rm -rf build/ MANIFEST
 	find . -name '*.pyc' -delete'''
 
-######################### debian/compat
-files_dest["debian/compat"]="7"
+# debian/compat
+files_dest["debian/compat"] = "7"
 
-######################### debian/control
-files_dest["debian/control"]='''Source: __PACKAGE_NAME__
+# debian/control
+files_dest["debian/control"] = '''Source: __PACKAGE_NAME__
 Section: science
 Priority: extra
 Maintainer: __MAINTAINER_NAME__ <__MAINTAINER_EMAIL__>
@@ -189,8 +193,8 @@ Description: __PROJECT_NAME__ __PROJECT_DESCRIPTION__
  __PROJECT_DESCRIPTION_LONG__
 '''
 
-######################### debian/copyright
-files_dest["debian/copyright"]='''Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+# debian/copyright
+files_dest["debian/copyright"] = '''Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
 Copyright: Copyright __COPYRIGHT_YEAR_FROM__ __MAINTAINER_NAME__ <__MAINTAINER_EMAIL__>
@@ -212,8 +216,8 @@ License: Apache-2.0
    On Debian systems, the complete text of the Apache License Version 2.0 can be found in `/usr/share/common-licenses/Apache-2.0'.
 '''
 
-######################### debian/rules
-files_dest["debian/rules"]='''#!/usr/bin/make -f
+# debian/rules
+files_dest["debian/rules"] = '''#!/usr/bin/make -f
 # -*- makefile -*-
 
 %:
@@ -222,16 +226,16 @@ files_dest["debian/rules"]='''#!/usr/bin/make -f
 override_dh_usrlocal:
 '''
 
-######################### debian/changelog
-files_dest["debian/changelog"]='''__PACKAGE_NAME__ (__VERSION__) UNSTABLE; urgency=low
+# debian/changelog
+files_dest["debian/changelog"] = '''__PACKAGE_NAME__ (__VERSION__) UNSTABLE; urgency=low
 
 __LAST_CHANGES_STR__
 
  -- __MAINTAINER_NAME__ <__MAINTAINER_EMAIL__>  __LAST_CHANGES_DATE__
 '''
 
-######################### x-siren_desktop
-files_dest["x-siren_desktop"]='''[Desktop Entry]
+# x-siren_desktop
+files_dest["x-siren_desktop"] = '''[Desktop Entry]
 Comment=__PROJECT_NAME__ File
 
 Icon=__PACKAGE_NAMELOW__
@@ -240,8 +244,8 @@ MimeType=x-content/x-siren
 Patterns=*.siren;
 '''
 
-######################### x-siren.xml
-files_dest["x-siren.xml"]='''<?xml version="1.0"?>
+# x-siren.xml
+files_dest["x-siren.xml"] = '''<?xml version="1.0"?>
 <mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
   <mime-type type="x-content/x-siren">
     <comment>__PROJECT_NAME__ __PROJECT_DESCRIPTION__ package</comment>
@@ -250,8 +254,8 @@ files_dest["x-siren.xml"]='''<?xml version="1.0"?>
 </mime-info>
 '''
 
-######################### siren_desktop
-files_dest["siren_desktop"]='''[Desktop Entry]
+# siren_desktop
+files_dest["siren_desktop"] = '''[Desktop Entry]
 Name=__PROJECT_NAME__
 Comment=__PROJECT_DESCRIPTION__
 
@@ -266,7 +270,7 @@ StartupNotify=false
 Terminal=false
 '''
 
-#print(files_dest.keys())
+# print(files_dest.keys())
 print("Generating files...")
 for filename in file_list:
     print("+ "+this_rep+"/"+filename)

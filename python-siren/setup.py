@@ -1,9 +1,10 @@
-import sys, subprocess
+import sys
+import subprocess
 import setuptools
 
 import pdb
 
-from siren.common_details import common_variables
+from blocks.common_details import common_variables
 
 # Common info
 APP = common_variables["MAIN_FILENAME"]
@@ -16,17 +17,19 @@ DEPENDENCIES = common_variables["DEPENDENCIES_PIP_LIST"]
 AUTHOR = common_variables["PROJECT_AUTHORS"]
 AUTHOR_EMAIL = common_variables["MAINTAINER_EMAIL"]
 URL = common_variables["PROJECT_URL"]
-LICENSE="Apache_2.0"
-COPYRIGHT=u'\u00A9 '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
-               +common_variables["COPYRIGHT_YEAR_FROM"]+' ' \
-               +common_variables["PROJECT_AUTHORS"]
-DU_FILES = [APP[:-3], "server_siren", "exec_clired"]
+LICENSE = "Apache_2.0"
+COPYRIGHT = u'\u00A9 '+common_variables["COPYRIGHT_YEAR_FROM"]+'-' \
+    + common_variables["COPYRIGHT_YEAR_FROM"]+' ' \
+    + common_variables["PROJECT_AUTHORS"]
+DU_FILES = [APP[:-3], "exec_server", "exec_client"]
 # setuptools.find_packages()
-DU_PACKAGES = ['siren', 'siren.clired', 'siren.interface', 'siren.work', 'siren.views', 'siren.clired.grako']
-PACKAGE_DATA = {'siren.clired': ['*_confdef.xml', '*defs*.txt'],
-                'siren.views': ['views_confdef.xml'],
-                'siren.interface': ['ui_confdef.xml'],
-                'siren': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}
+DU_PACKAGES = ['blocks', 'blocks.mine', 'blocks.mine.grako', 'blocks.work', 'blocks.interface', 'blocks.views']
+PACKAGE_DATA = {'blocks.mine': ['*_confdef.xml', '*defs*.txt'],
+                'blocks.work': ['network_confdef.xml'],
+                'blocks.views': ['views_confdef.xml'],
+                'blocks.interface': ['ui_confdef.xml'],
+                'blocks': ['data/icons/*.png', 'data/icons/*.ico', 'data/help/*', 'data/licenses/LICENSE*']}
+
 
 def get_git_hash():
     git_hash = '-1'
@@ -35,6 +38,7 @@ def get_git_hash():
     except (subprocess.CalledProcessError, OSError):
         print("No GIT found, using default git revision (-1) instead")
     return git_hash.strip()
+
 
 setuptools.setup(
     name=NAME,
@@ -53,19 +57,20 @@ setuptools.setup(
     # other arguments here...
     entry_points={
         'console_scripts': [
-            'server_siren = server_siren:main',
-            'exec_clired = siren.clired.exec_clired:main',
+            'exec_clired = blocks.mine.exec_clired:main',
+            'exec_server = exec_server:main',
+            'exec_client = exec_client:main',
         ],
         'gui_scripts': [
             'exec_siren = exec_siren:main',
-        ],        
+        ],
     },
     python_requires='>=3',
     classifiers=[
-    "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering",
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering",
     ],
 )

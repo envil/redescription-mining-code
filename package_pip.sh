@@ -17,7 +17,7 @@ PACK_REP=${YAH}/packaging_current
 ROOT_REP=${PACK_REP}"/python-siren"
 SPHINX_REP=${PACK_REP}"/sphinx"
 HELP_SRC_REP=${SPHINX_REP}"/siren-help/_build/html"
-HELP_TRG_REP=${ROOT_REP}"/siren/data/help"
+HELP_TRG_REP=${ROOT_REP}"/blocks/data/help"
 # GUIDE_PDF_SRC=${SPHINX_REP}"/siren-help/_build/latex/Siren.pdf"
 # GUIDE_PDF_TRG=${HELP_TRG_REP}"/Siren-UserGuide.pdf"
 
@@ -34,13 +34,13 @@ cp -r ${SPH_REP}/_figs ${SPHINX_REP}/_figs
 cp -r ${SPH_REP}/_templates ${SPHINX_REP}/_templates
 
 ### COPY FILES FROM THE SOURCE CODE TO DOC
-cp ${ROOT_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
-sed -i 's:\./clired/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
+cp ${ROOT_REP}/blocks/*/*confdef.xml ${SPHINX_REP}/_static/
+sed -i 's:\./mine/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${ROOT_REP}/CHANGELOG ${SPHINX_REP}/_static/
 
 ### UPDATE THE IMPORT PATH FOR COMMON VARIABLES IN SPHINX CONF FILES
-sed -i -e s:__SIREN_PYTHON_PATH__:${ROOT_REP}/siren:g ${SPHINX_REP}/*/conf.py
+sed -i -e s:__SIREN_PYTHON_PATH__:${ROOT_REP}/blocks:g ${SPHINX_REP}/*/conf.py
 
 # ################################
 # ### prepare the help pages

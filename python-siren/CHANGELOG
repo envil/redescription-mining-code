@@ -1,5 +1,10 @@
 CHANGELOG for Clired/Siren
 =============================
+v6.0.7
+------
+* Adding a command-line client
+* Multiple bug fixes and refactoring
+
 v6.0.5
 ------
 * Fixed bug of logger querying a parameter that no longer exists 

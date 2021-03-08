@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
-### usage: python prepare_pck_clired.py win|src|clean
+# usage: python prepare_pck_clired.py win|src|clean
 
-import sys, re, os.path, glob, subprocess
+import sys
+import re
+import os.path
+import glob
+import subprocess
 
-from common_details import clired_variables
+from blocks.common_details import clired_variables
 
 this_rep = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,16 +18,15 @@ if len(sys.argv) > 1:
         print("Cleaning up files...")
         for filename in file_list:
             if os.path.exists(this_rep+"/"+filename):
-                print("- "+ this_rep+"/"+ filename)
-                os.remove(this_rep+"/"+ filename)
+                print("- " + this_rep+"/" + filename)
+                os.remove(this_rep+"/" + filename)
         exit()
-            
+
 variables = {}
 for entry, vals in clired_variables.items():
     variables["__"+entry+"__"] = vals
 variables.update({"__PYTHON_SRC__": sys.executable})
 variables.update({"__MAIN_FILEPREFF__": re.sub(".py", "", variables["__MAIN_FILENAME__"])})
-
 
 
 def openMakeP(filename, mode="w"):
@@ -32,21 +35,21 @@ def openMakeP(filename, mode="w"):
         os.makedirs(d)
     return open(filename, mode)
 
-def multiple_replace(dict, text): 
 
+def multiple_replace(dict, text):
     """ Replace in 'text' all occurences of any key in the given
-    dictionary by its corresponding value.  Returns the new tring.""" 
-    
+    dictionary by its corresponding value.  Returns the new tring."""
+
     # Create a regular expression  from the dictionary keys
     regex = re.compile("(%s)" % "|".join(map(re.escape, dict.keys())))
-    
+
     # For each match, look-up corresponding value in dictionary
     return regex.sub(lambda mo: dict[mo.string[mo.start():mo.end()]], text)
 
 
 files_dest = {}
-######################### README
-files_dest["README.md"]='''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
+# README
+files_dest["README.md"] = '''# __PROJECT_NAME__ --- __PROJECT_DESCRIPTION__
 
 __PROJECT_DESCRIPTION_LINE__
 
@@ -54,7 +57,7 @@ __PROJECT_DESCRIPTION_LINE__
 ### Installation
 
 #### Dependencies
-`python-clired` requires several other Python utilities, including Numpy, Scipy, Scikit-learn.
+`python-clired` requires several other Python utilities, including Numpy, Scipy and Scikit-learn.
 
 __DEPENDENCIES_PIP_STR__
 
@@ -62,7 +65,11 @@ __DEPENDENCIES_PIP_STR__
 with pip, installation should be as easy as running 
 `pip install python-clired`
 
-this should provide `exec_clired` to run the command-line redescription mining algorithms
+this should provide the following commands:
+
+* `exec_clired` to run the command-line redescription mining algorithms
+* `exec_server` to launch the server for off-loading computations
+* `exec_client` to run the command-line client allowing to send computations to server
 
 ### More information
 See __PROJECT_URL__
@@ -74,7 +81,7 @@ __PROJECT_NAME__ is licensed under Apache License v2.0. See attached file "LICEN
 '''
 
 
-#print(files_dest.keys())
+# print(files_dest.keys())
 print("Generating files...")
 for filename in file_list:
     print("+ "+this_rep+"/"+filename)
