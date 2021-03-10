@@ -747,7 +747,7 @@ class IOTools:
                 try:
                     rp = Redescription.getRP()
                     with open(filenames["queries"]) as fd:
-                        rs, _ = rp.parseRedList(fd, data)
+                        rs, _ = rp.parseRedList(fd, data, sid="1")  # avoid rid collisions
                 except IOError:
                     # not able to load redescriptions from the file
                     rs = []

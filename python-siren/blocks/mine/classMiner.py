@@ -42,8 +42,8 @@ TREE_CLASSES = {"layeredtrees": CharbonTLayer,
                 "sprit": CharbonTSprit}
 TREE_DEF = CharbonTLayer
 
-CHARBON_MISS_FORCE = False
-# CHARBON_MISS_FORCE = True
+# CHARBON_MISS_FORCE = False
+CHARBON_MISS_FORCE = True
 
 # TRACKS_ON = True
 TRACKS_ON = False  # DEACTIVATED KEEPING TRACKS
@@ -165,12 +165,12 @@ class ExpMiner(object):
 
     def expandRedescriptionsTree(self, nextge, rcollect):
         for redi, red in enumerate(nextge):
-            self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), "status", self.getLogId())
+            self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), "log", self.getLogId())
             kids = self.charbon.computeExpandTree(-1, self.data, red)
-            self.logger.printL(2, "Expansion returned %s redescriptions" % len(kids), "status", self.getLogId())
+            self.logger.printL(2, "Expansion %s.%s returned %s redescriptions" % (self.count, redi, len(kids)), "status", self.getLogId())
             kid_ids = []
             for kid in kids:
-                self.logger.printL(2, kid, "status", self.getLogId())
+                self.logger.printL(2, kid, "log", self.getLogId())
                 rcollect.addItem(kid, "W")
                 kid_ids.append(kid.getUid())
             if len(kid_ids) > 0:
@@ -200,12 +200,13 @@ class ExpMiner(object):
 
             while redi < len(nextge):
                 red = nextge[redi]
-                if first_round:
-                    self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), "status", self.getLogId())
-                # To know whether some of its extensions were found already
+                # if first_round:
+                # To know whether some of its extensions were found already, is it necessary?
+                # print(">>>", red.lAvailableCols[0], red.lAvailableCols[1])
                 red.updateAvailable(rcollect)
 
                 if red.hasAvailableCols():
+                    self.logger.printL(2, "Expansion %s.%s\t%s" % (self.count, redi, red), "log", self.getLogId())
                     exts, basis_red, modr = red.prepareExtElems(self.data, self.data.isSingleD(), souvenirs=rcollect)
                     if modr != 0:
                         if modr == 1:
@@ -226,6 +227,7 @@ class ExpMiner(object):
                         self.logger.printL(4, str(self.charbon.getStore()), "log", self.getLogId())
 
                     kids = self.charbon.getStore().improvingReds(self.data)
+                    self.logger.printL(2, "Expansion %s.%s returned %s redescriptions" % (self.count, redi, len(kids)), "status", self.getLogId())
                     kid_ids = []
                     for kid in kids:
                         rcollect.addItem(kid, "W")
@@ -271,20 +273,29 @@ class ExpMiner(object):
         self.charbon.setStore(self.data.nbRows(), self.constraints.getSSetts(), self.constraints)
 
         nbS = 0
-        for red in nextge:
+        for redi, red in enumerate(nextge):
             if self.questionLive():
                 rcollect.resetWorking()
                 non_anons = [red]
                 if red.containsAnon():
+                    self.logger.printL(2, "The redescription contains anonymous literal(s)\t%s" % red, "log", self.getLogId())
                     pids = self.setAnonRedescription(red, rcollect, self.charbon, trg_lid="W")
                     non_anons = [rcollect.getItem(iid) for iid in pids]
 
-                for r in non_anons:
+                for xi, r in enumerate(non_anons):
+                    self.logger.printL(2, "Improvement attempt %d.%d\t%s" % (redi, xi, r), "status", self.getLogId())
                     self.improveRedescription(r, rcollect, self.charbon, trg_lid="W")
 
                 rcollect.addItem(red, "P")
                 if rcollect.getLen("W") > 0:
-                    rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
+                    sids = rcollect.selected(self.constraints.getActionsList("partial"), ids="W", trg_lid="P")
+                    self.logger.printL(2, "Improvement found in round %d [%d/%d]" % (redi, len(sids), rcollect.getLen("W")), "status", self.getLogId())
+                    if self.logger.verbosity >= 4:
+                        for rr in rcollect.getItems("W"):
+                            self.logger.printL(4, "%3s %s" % ("*"*(rr.getUid() in sids), rr), "log", self.getLogId())
+
+                else:
+                    self.logger.printL(2, "No improvement found in round %d" % redi, "status", self.getLogId())
 
                 self.logger.logResults(rcollect, "P", self.getLogId())
                 # rcollect.logResults( "W", self.getId())
@@ -482,7 +493,7 @@ class Miner(object):
         self.charbon = self.initCharbon()
         self.rcollect = RCollection(self.data.usableIds(self.constraints.getCstr("min_itm_c"), self.constraints.getCstr("min_itm_c")),
                                     self.constraints.getCstr("amnesic"))
-        self.logger.printL(1, "Miner set up (%s)..." % self.charbon.getAlgoName(), "log", self.getLogId())
+        self.logger.printL(1, "Miner set up (%s)" % self.charbon.getAlgoName(), "log", self.getLogId())
         self.logger.printL(1, "\t%s" % self.data.getInfo(), "log", self.getLogId())
         self.logger.printL(1, "\t%s" % self.rcollect, "log", self.getLogId())
 
@@ -514,7 +525,7 @@ class Miner(object):
     def initCharbon(self):
         if self.constraints.getCstr("mining_algo") in TREE_CLASSES:
             if self.data.hasMissing():
-                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK ON GREEDY REREMI...", "log", self.getLogId())
+                self.logger.printL(1, "THE DATA CONTAINS MISSING VALUES, FALLING BACK ON GREEDY REREMI", "log", self.getLogId())
                 return CharbonGMiss(self.constraints, logger=self.shareLogger())
             else:
                 return TREE_CLASSES.get(self.constraints.getCstr("mining_algo"), TREE_DEF)(self.constraints, logger=self.shareLogger())
@@ -570,9 +581,9 @@ class Miner(object):
 
         self.logger.clockTac(self.getLogId(), "part run", "%s" % self.questionLive())
         if not self.questionLive():
-            self.logger.printL(1, "Interrupted...", "status", self.getLogId())
+            self.logger.printL(1, "Interrupted!", "status", self.getLogId())
         else:
-            self.logger.printL(1, "Done...", "status", self.getLogId())
+            self.logger.printL(1, "Done.", "status", self.getLogId())
         self.logger.sendCompleted(self.getLogId())
         # print(rcollect)
         return rcollect
@@ -580,7 +591,7 @@ class Miner(object):
     def full_run(self, cust_params={}):
         self.rcollect.resetFinal()
         self.count = 0
-        self.logger.printL(1, "Starting mining", "status", self.getLogId())
+        self.logger.printL(1, "Start mining", "status", self.getLogId())
 
         # progress initialized after listing pairs
         self.logger.clockTic(self.getLogId(), "pairs")
@@ -591,9 +602,9 @@ class Miner(object):
         self.doExpansions(cust_params)
         self.logger.clockTac(self.getLogId(), "full run", "%s" % self.questionLive())
         if not self.questionLive():
-            self.logger.printL(1, "Interrupted...", "status", self.getLogId())
+            self.logger.printL(1, "Interrupted!", "status", self.getLogId())
         else:
-            self.logger.printL(1, "Done...", "status", self.getLogId())
+            self.logger.printL(1, "Done.", "status", self.getLogId())
         self.logger.sendCompleted(self.getLogId())
         self.rcollect.dispTracksEnd(self.logger, self.getLogId())
         return self.rcollect
@@ -609,13 +620,13 @@ class Miner(object):
         if len(initial_cands) > 0 and self.questionLive():
 
             self.logger.clockTic(self.getLogId(), "fim_exp")
-            self.logger.printL(1, "FIM expansion starting", "log", self.getLogId())
+            self.logger.printL(1, "Global expansion", "status", self.getLogId())
 
             kids = self.charbon.computeExpansions(self.data, initial_cands)
-            self.logger.printL(2, "FIM expansion returned %s redescriptions" % len(kids), "status", self.getLogId())
+            self.logger.printL(2, "Global expansion returned %s redescriptions" % len(kids), "status", self.getLogId())
             kid_ids = []
             for kid in kids:
-                self.logger.printL(2, kid, "status", self.getLogId())
+                self.logger.printL(2, kid, "log", self.getLogId())
                 self.rcollect.addItem(kid, "W")
                 kid_ids.append(kid.getUid())
             if len(kid_ids) > 0:
@@ -640,7 +651,6 @@ class Miner(object):
             self.count += 1
 
             self.logger.clockTic(self.getLogId(), "expansion_%d-%d" % (self.count, 0))
-            self.logger.printL(1, "Expansion %d" % self.count, "log", self.getLogId())
             self.expandRedescriptions([initial_red], self.rcollect)
             self.logger.updateProgress({"rcount": self.count}, 1, self.getLogId())
 
@@ -677,7 +687,7 @@ class Miner(object):
             self.initializePairs(ids)
 
     def initializeTerms(self, ids=None):
-        self.logger.printL(1, "Searching for initial terms...", "status", self.getLogId())
+        self.logger.printL(1, "Searching for initial terms", "status", self.getLogId())
         self.logger.initProgressFull(self.constraints, None, self.rcollect.getNbAvailableCols(), 1, self.getLogId())
 
         if ids is None:
@@ -707,7 +717,7 @@ class Miner(object):
         loaded, done = self.initial_candidates.loadFromFile(self.data)
         if not loaded or done is not None:
 
-            self.logger.printL(1, "Searching for initial pairs...", "status", self.getLogId())
+            self.logger.printL(1, "Searching for initial pairs", "status", self.getLogId())
             explore_list = self.getInitExploreList(ids, done)
             self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.getNbAvailableCols(), 1, self.getLogId())
 
@@ -721,15 +731,15 @@ class Miner(object):
 
                 self.logger.updateProgress({"rcount": self.count, "pair": pairs, "pload": pload})
                 if pairs % 100 == 0:
-                    self.logger.printL(3, "Searching pair %d/%d (%i <=> %i) ..." %
+                    self.logger.printL(3, "Searching pair %d/%d (%i <=> %i)" %
                                        (pairs, total_pairs, idL, idR), "status", self.getLogId())
                     self.logger.updateProgress(level=3, id=self.getLogId())
                 elif pairs % 10 == 0:
-                    self.logger.printL(7, "Searching pair %d/%d (%i <=> %i) ..." %
+                    self.logger.printL(7, "Searching pair %d/%d (%i <=> %i)" %
                                        (pairs, total_pairs, idL, idR), "status", self.getLogId())
                     self.logger.updateProgress(level=7, id=self.getLogId())
                 else:
-                    self.logger.printL(10, "Searching pair %d/%d (%i <=> %i) ..." %
+                    self.logger.printL(10, "Searching pair %d/%d (%i <=> %i)" %
                                        (pairs, total_pairs, idL, idR), "status", self.getLogId())
 
                 cands = self.charbon.computePair(self.data.col(0, idL), self.data.col(1, idR), self.data.getColsC(), self.data)
@@ -785,7 +795,7 @@ class Miner(object):
                     if done is None or (idL, idR) not in done:
                         explore_list.append((idL, idR, self.getPairLoad(idL, idR)))
                     else:
-                        self.logger.printL(3, "Loaded pair (%i <=> %i) ..." % (idL, idR), "log", self.getLogId())
+                        self.logger.printL(3, "Loaded pair (%i <=> %i)" % (idL, idR), "status", self.getLogId())
         return explore_list
 
     def getPairLoad(self, idL, idR):
@@ -823,7 +833,7 @@ class MultiprocMiner(Miner):
         self.rqueue = multiprocessing.Queue()
         self.pstopqueue = multiprocessing.Queue()
 
-        self.logger.printL(1, "Starting mining", "status", self.getLogId())  # todo ID
+        self.logger.printL(1, "Start mining", "status", self.getLogId())  # todo ID
 
         # progress initialized after listing pairs
         self.logger.clockTic(self.getLogId(), "pairs")
@@ -835,9 +845,9 @@ class MultiprocMiner(Miner):
         self.keepWatchDispatch()
         self.logger.clockTac(self.getLogId(), "full run", "%s" % self.questionLive())
         if not self.questionLive():
-            self.logger.printL(1, "Interrupted...", "status", self.getLogId())
+            self.logger.printL(1, "Interrupted!", "status", self.getLogId())
         else:
-            self.logger.printL(1, "Done...", "status", self.getLogId())
+            self.logger.printL(1, "Done.", "status", self.getLogId())
         self.logger.sendCompleted(self.getLogId())
         self.rcollect.dispTracksEnd(self.logger, self.getLogId())
         return self.rcollect
@@ -848,7 +858,7 @@ class MultiprocMiner(Miner):
         loaded, done = self.initial_candidates.loadFromFile(self.data)
         if not loaded or done is not None:
 
-            self.logger.printL(1, "Searching for initial pairs...", "status", self.getLogId())
+            self.logger.printL(1, "Searching for initial pairs", "status", self.getLogId())
             explore_list = self.getInitExploreList(ids, done)
             self.logger.initProgressFull(self.constraints, explore_list, self.rcollect.getNbAvailableCols(), 1, self.getLogId())
             self.total_pairs = len(explore_list)
@@ -881,7 +891,7 @@ class MultiprocMiner(Miner):
 
                 # Launch last worker
                 if K*batch_size < len(explore_list):
-                    self.logger.printL(3, "Initial pairs process [%s] with %d batch..." %
+                    self.logger.printL(3, "Initial pairs process [%s] with %d batch" %
                                        (K, len(explore_list[K*batch_size:])), "status", self.getLogId())
                     # print("Init PairsProcess ", K, self.getId(), len(explore_list[K*batch_size:]))
                     self.workers[K] = PairsProcess(K, self.getId(), explore_list[K*batch_size:], self.data, self.charbon, self.constraints, self.rqueue)
@@ -892,7 +902,7 @@ class MultiprocMiner(Miner):
             for k in range(K):
                 ll = self.initial_candidates.getExploreNextBatch(pointer=k)
                 if len(ll) > 0:
-                    self.logger.printL(3, "Initial pairs process [%s] with %d batch..." %
+                    self.logger.printL(3, "Initial pairs process [%s] with %d batch" %
                                        (k, len(ll)), "status", self.getLogId())
                     # print("Init PairsProcess ", k, self.getId(), len(ll))
                     self.workers[k] = PairsProcess(k, self.getId(), ll, self.data, self.charbon, self.constraints, self.rqueue)
@@ -923,7 +933,7 @@ class MultiprocMiner(Miner):
                     self.count += 1
 
                     self.logger.printL(1, "Expansion %d" % self.count, "log", self.getLogId())
-                    self.logger.printL(3, "Expand process [%s]..." % k, "status", self.getLogId())
+                    self.logger.printL(3, "Expand process [%s]" % k, "status", self.getLogId())
                     self.logger.clockTic(self.getLogId(), "expansion_%d-%d" % (self.count, k))
                     ## print("Init ExpandProcess ", k, self.count)
                     self.workers[k] = ExpandProcess(k, self.getId(), self.count, self.data,
@@ -937,15 +947,15 @@ class MultiprocMiner(Miner):
 
         self.logger.updateProgress({"rcount": 0, "pair": self.pairs, "pload": pload})
         if self.pairs % 100 == 0:
-            self.logger.printL(3, "Searching pair %d/%d (%i <=> %i) ..." %
+            self.logger.printL(3, "Searching pair %d/%d (%i <=> %i)" %
                                (self.pairs, self.total_pairs, idL, idR), "status", self.getLogId())
             self.logger.updateProgress(level=3, id=self.getLogId())
         elif self.pairs % 10 == 0:
-            self.logger.printL(7, "Searching pair %d/%d (%i <=> %i) ..." %
+            self.logger.printL(7, "Searching pair %d/%d (%i <=> %i)" %
                                (self.pairs, self.total_pairs, idL, idR), "status", self.getLogId())
             self.logger.updateProgress(level=7, id=self.getLogId())
         else:
-            self.logger.printL(10, "Searching pair %d/%d (%i <=> %i) ..." %
+            self.logger.printL(10, "Searching pair %d/%d (%i <=> %i)" %
                                (self.pairs, self.total_pairs, idL, idR), "status", self.getLogId())
 
         added = 0
@@ -995,7 +1005,7 @@ class MultiprocMiner(Miner):
                     if self.pe_balance > 0:
                         self.initializeExpansions()
                     # else:
-                    #     print("Waiting for all pairs to complete...")
+                    #     print("Waiting for all pairs to complete")
 
                 if self.pairWorkers == 0:
                     self.logger.updateProgress({"rcount": 0}, 1, self.getLogId())
@@ -1006,7 +1016,7 @@ class MultiprocMiner(Miner):
                     self.initial_candidates.saveToFile()
                     if self.pe_balance == 0:
                         self.initializeExpansions()
-                        ## print("All pairs complete, launching expansion...")
+                        ## print("All pairs complete, launching expansion")
 
             elif m["what"] == "pairs":
                 self.handlePairResult(m)
@@ -1157,7 +1167,7 @@ class StatsMiner:
             try:
                 miner.full_run()
             except KeyboardInterrupt:
-                self.logger.printL(1, "Stopped...", "log")
+                self.logger.printL(1, "Interrupted!", "status")
 
             stats = []
             reds = []

@@ -5,8 +5,6 @@ import time
 import re
 
 from blocks.mine.classPackage import IOTools
-from blocks.mine.classContent import BatchCollection
-from blocks.mine.classConstraints import Constraints
 from blocks.mine.classProps import findFile
 from blocks.mine.exec_clired import TASKS, METHS, do_task, get_reds_etc
 from blocks.work.classWorkInactive import CLIBoss
@@ -51,10 +49,10 @@ def client_forward(kw, loaded, *task_args):
 
         data, logger, filenames = (loaded["data"], loaded["logger"], loaded["filenames"])
         trg_reds = filenames["queries"]
-        bc = BatchCollection()
-        boss = CLIBoss(wp, data, params, logger, bc, params["results_delay"]["data"])
+        boss = CLIBoss(wp, data, params, logger, params["results_delay"]["data"])
         # if results delay is not strictly postive, this means simply issue the command and exit, wil come back to collect results later on
         collectLater = (params["results_delay"]["data"] <= 0) and wp.isDistributed()
+        out_lid = "F"
 
         if kw == "reconnect":
             wp.resetClientId(client_id)
@@ -62,6 +60,7 @@ def client_forward(kw, loaded, *task_args):
         else:
             task_params = {"task": "mine"}
             if kw != "mine":
+                out_lid = "P"
                 reds, srcs_reds, trg_reds = get_reds_etc(loaded, suff=suff, alt_suff="_X")
                 if kw == "expand":
                     task_params = {"task": "expand", "reds": reds}
@@ -79,11 +78,9 @@ def client_forward(kw, loaded, *task_args):
             logger.printL(1, "Stopped...", "log")
 
         wp.closeDown(boss, collectLater=collectLater)
-        constraints = Constraints(params, data, filenames=filenames)
-        ids = boss.getRedsBC().selected(constraints.getActionsList("final"))
-        IOTools.writeRedescriptionsFmt(boss.getRedsBC().getItems(ids), trg_reds, data)
-        # IOTools.writeRedescriptionsFmt(boss.getReds(), trg_reds, data)
-        logger.clockTac(0, None)
+        if boss.getNbchecks() > 0:
+            IOTools.writeRedescriptionsFmt(boss.getReds(out_lid), trg_reds, data)
+            logger.clockTac(0, None)
 
     else:
         # no server specified, falling back on standard clired, or ending

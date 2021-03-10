@@ -9,18 +9,31 @@ class Boss:  # the ordering and receiving end of the work
 
     incomm_meths = {}
 
-    def __init__(self, wp, data, preferences):
+    def __init__(self, wp, data, preferences, filter_lids=None):
         self.wp = wp
         self.data = data
         self.preferences = preferences
         self.logger_comm = None
         self.resetLoggerComm()
+        self.nb_checks = 0
+        self.filter_lids = filter_lids
 
     def isGUI(self):
         return False
 
     def getWP(self):
         return self.wp
+
+    def getFilterLids(self):
+        return self.filter_lids
+
+    def setFilterLids(self, lids=None):
+        self.filter_lids = lids
+
+    def getNbchecks(self):
+        if hasattr(self, "nb_checks"):
+            return self.nb_checks
+        return 0
 
     def getData(self):
         return self.data
@@ -43,6 +56,10 @@ class Boss:  # the ordering and receiving end of the work
     def checkResults(self, once=False, countdown=-1):
         in_comm = self.getWP().checkInComm()
         self.processInComm(in_comm)
+        if hasattr(self, "nb_checks"):
+            self.nb_checks += 1
+        else:
+            self.nb_checks = 1
         if not once:
             self.rescheduleCheck(countdown)
 
@@ -68,8 +85,14 @@ class Boss:  # the ordering and receiving end of the work
                 self.readyProj(worker_info["vid"], message)
 
             else:
-                if "P" in message:  # worker_info.get("src_lid") is not None and worker_info.get("src_lid") in message:
-                    latest_reds = [self.mapRid(red, source_logid) for red in message["P"]]
+                latest_reds = {}
+                flids = self.getFilterLids()
+                if flids is None:
+                    flids = list(message.keys())
+                for flid in flids:
+                    if flid in message:
+                        latest_reds[flid] = [self.mapRid(red, source_logid) for red in message[flid]]
+                if sum([len(vs) for (k, vs) in latest_reds.items()]) > 0:
                     self.readyReds(latest_reds, (source_logid, worker_info["task"]), source_logid)  # (source, worker_info["task"], worker_info["results_tab"])
     incomm_meths["result"] = processResult
 
@@ -86,6 +109,8 @@ class Boss:  # the ordering and receiving end of the work
         if self.getWP().isDistributed():
             if not hasattr(self, "map_rids"):
                 self.map_rids = {}
+            # red coming from server (see WorkServer init)
+            # print(red.getUid(), source)
             if red.getUid() < 0:
                 k = (red.getUid(), source)
                 if k in self.map_rids:
@@ -118,12 +143,13 @@ class Boss:  # the ordering and receiving end of the work
 class CLIBoss(Boss):
 
     incomm_meths = dict(Boss.incomm_meths)
+    extend_lids = []  # "P"]
 
-    def __init__(self, wp, data, preferences, logger, bc, results_delay=1):
-        Boss.__init__(self, wp, data, preferences)
+    def __init__(self, wp, data, preferences, logger, results_delay=1, filter_lids=None):
+        Boss.__init__(self, wp, data, preferences, filter_lids)
         self.logger_out = logger
-        self.bc = bc
         self.results_delay = results_delay
+        self.rc = {}  # just a dict, filtering etc is done on the server side
 
     def getLoggerOut(self):
         return self.logger_out
@@ -131,8 +157,8 @@ class CLIBoss(Boss):
     def getResultsDelay(self):
         return self.results_delay
 
-    def getRedsBC(self):
-        return self.bc
+    def getReds(self, lid=None):
+        return self.rc.get(lid, [])
 
     def resetLoggerComm(self):
         # after setting up WorkInactive instance, integrate out queue to logger
@@ -156,17 +182,18 @@ class CLIBoss(Boss):
     incomm_meths["progress"] = None
 
     def readyReds(self, reds, wdets, source_logid):
-        # if len(reds) > 0:
-        #     for red in reds:
-        #         self.getLoggerOut().printL(10, "--- %s" % red, source=source_logid)
-        #     else:
-        #         self.getLoggerOut().printL(1, "No redescription [%s]", 'status', source_logid)
-        return self.bc.addItems(reds)
-
-    # doing nothing about tracks and proj
-
-    def getReds(self):
-        return self.bc.getItems()
+        for lid, rs in reds.items():
+            # these messages already come through status
+            # if len(rs) > 0:
+            #     self.getLoggerOut().printL(1, "%d redescriptions [%s]" % (len(rs), lid), 'status', source_logid)
+            #     for red in rs:
+            #         self.getLoggerOut().printL(10, "--- %s" % red, source=source_logid)
+            # else:
+            #     self.getLoggerOut().printL(1, "No redescription [%s]" % lid, 'status', source_logid)
+            if lid in self.rc and lid in self.extend_lids:  # extend existing list
+                self.rc[lid].extend(rs)
+            else:
+                self.rc[lid] = rs
 
 
 class GUIBoss(Boss):

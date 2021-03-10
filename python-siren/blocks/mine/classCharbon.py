@@ -1,28 +1,24 @@
 import numpy
 try:
-    from classData import Data
-    from classCol import ColM
     from classQuery import *
     from classRedescription import Redescription
-    from classSParts import tool_ratio, cmp_lower, cmp_greater, cmp_leq, cmp_geq
-    from classCandidates import XStore, ExtsBatch, PairsBatch, TermCand
-    from classConstraints import Constraints
+    from classCandidates import TermCand
+    # from classData import Data
+    # from classConstraints import Constraints
 except ModuleNotFoundError:
-    from .classData import Data
-    from .classCol import ColM
     from .classQuery import *
     from .classRedescription import Redescription
-    from .classSParts import tool_ratio, cmp_lower, cmp_greater, cmp_leq, cmp_geq
-    from .classCandidates import XStore, ExtsBatch, PairsBatch, TermCand
-    from .classConstraints import Constraints
+    from .classCandidates import TermCand
+    # from .classData import Data
+    # from .classConstraints import Constraints
 
 import pdb
 
 # Charbon    classCharbon.py:21
 
-#     CharbonGreedy    classCharbon.py:32
-#         CharbonGMiss    classCharbonGMiss.py:21
-#         CharbonGStd    classCharbonGStd.py:22
+#     CharbonGreedy    classCharbonGreedy.py
+#         CharbonGMiss    classCharbonGMiss.py
+#         CharbonGStd    classCharbonGStd.py
 
 #     CharbonTree    classCharbon.py:235
 #         CharbonTCW    classCharbonTAlt.py:17 -> "cartwheel"
@@ -69,181 +65,6 @@ class CharbonXaust(Charbon):
     name = "X"
 
     def isXaust(self):
-        return True
-
-
-class CharbonGreedy(Charbon):
-
-    name = "G"
-    FMT_FLG = "{:04b}"
-    FLG_IN = 0b1000  # broke min supp in constraint
-    FLG_OUT = 0b0100  # broke min supp out constraint
-    FLG_CONT = 0b0010  # broke min cont constraint
-    STG_CMP = 1  # dropped upon comparison
-    STG_OK = 0  # selected upon comparison
-
-    @classmethod
-    def is_raised_flag(tcl, v, flag):
-        return (v & flag) > 0
-
-    @classmethod
-    def disp_status(tcl, status):
-        return "".join([tcl.is_raised_flag(status, f)*l for f, l in [(tcl.FLG_CONT, "C"), (tcl.FLG_IN, "I"), (tcl.FLG_OUT, "O")]])
-        # return tcl.FMT_FLG.format(status)
-
-    def __init__(self, constraints, logger=None):
-        Charbon.__init__(self, constraints, logger)
-        self.setOffsets()
-        self.store = None
-        self.temp_store = None
-
-    def isTreeBased(self):
-        return False
-
-    def handlesMiss(self):
-        return False
-
-    def withInitTerms(self):
-        return False
-
-    # Storage of results
-    def startStoreDivert(self):
-        self.temp_store = []
-
-    def stopStoreDivert(self):
-        tt = self.temp_store
-        self.temp_store = None
-        return tt
-
-    def getStore(self):
-        return self.store
-
-    def addPairToStore(self, *pair_pieces):
-        if self.temp_store is not None:
-            self.temp_store.append(pair_pieces)
-        elif self.store is not None:
-            self.store.addPair(*pair_pieces)
-
-    def addExtToStore(self, *cand_pieces):
-        if self.temp_store is not None:
-            self.temp_store.append(cand_pieces)
-        elif self.store is not None:
-            self.store.addExt(*cand_pieces)
-
-    def clearStore(self, current=None):
-        self.store.clear(current)
-
-    def setStore(self, N=0, constraints=None, ssetts=None, current="E"):  # "E/P" for extension or pair...
-        if isinstance(N, XStore):  # Already existing store
-            self.store = N
-        elif current is None:
-            self.store = ExtsBatch(N, constraints, ssetts)
-        elif type(current) is str:
-            if current == "P":  # empty redescription, eg. starting from anon lits -> actually yields pairs
-                self.store = PairsBatch(N, constraints, ssetts)
-            else:
-                self.store = ExtsBatch(N, constraints, ssetts)
-        elif isinstance(current, Redescription):
-            if len(current) == 0:  # empty redescription, eg. starting from anon lits -> actually yields pairs
-                self.store = PairsBatch(N, constraints, ssetts, current)
-            else:
-                self.store = ExtsBatch(N, constraints, ssetts, current)
-        else:
-            raise Warning("Implementation hanging...")
-            ## self.store = ExtensionsCombBatch(N, constraints, current)
-
-    def computeExpand(self, side, col, red, colsC=None, data=None):
-        if isinstance(red, ColM):
-            (colL, colR) = (col, red)
-            if side == 1:
-                (colL, colR) = (col, red)
-            return self.computePair(colL, colR, colsC, data)
-        elif isinstance(red, Redescription):
-            return self.getCandidates(side, col, red, colsC, data)
-        return []
-
-    def getOffsets(self):
-        return self.offsets
-
-    def setOffsets(self, offsets=(0, 0)):
-        self.offsets = offsets
-
-    def offsetsNonZero(self):
-        return (self.offsets[0]+self.offsets[1]) != 0
-
-    def unconstrained(self, no_const):
-        return no_const or self.offsetsNonZero()
-
-    def ratio(self, num, den):
-        return tool_ratio(num, den)
-
-    def offset_ratio(self, num, den):
-        return tool_ratio(num+self.offsets[0], den+self.offsets[1])
-
-    def insertBest(self, typs, best, adv, clp, lit, side, op, neg, pre_multi=False):
-        inserted = False
-        i = 0
-        while i < len(best):
-            if cmp_greater(best[i][0], adv):
-                # Best already contains conflicting of better quality
-                if self.conflictPair(typs, best[i][-1][-1], lit, pre_multi):
-                    return self.STG_CMP
-            else:
-                if not inserted:
-                    best.insert(i, (adv, clp, [side, op, neg, lit]))
-                    inserted = True
-                # Best contains conflicting of lesser quality than inserted, remove
-                elif self.conflictPair(typs, lit, best[i][-1][-1], pre_multi):
-                    best.pop(i)
-                    i -= 1
-            i += 1
-        if not inserted:
-            best.append((adv, clp, [side, op, neg, lit]))
-        return self.STG_OK
-
-    def updateBests(self, typs, besti, pre_multi=False):
-        if self.constraints.getCstr("inits_productivity") == "high":
-            return besti
-        elif self.constraints.getCstr("inits_productivity") == "low":
-            if len(besti) > 1:
-                del besti[1:]
-            return besti
-        # print("BEST BEFORE", " ".join(["%s:%s" % (i, len(best[i])) for i in range(len(best))]))
-        ia = 1
-        while ia < len(besti):
-            ib = ia-1
-            while ib >= 0:
-                # Best contains conflicting of lesser quality than inserted, remove
-                if self.conflictPair(typs, besti[ib][-1][-1], besti[ia][-1][-1], pre_multi):
-                    besti.pop(ia)
-                    ia -= 1
-                    ib = 0
-                ib -= 1
-            ia += 1
-        # print("BEST AFTER", " ".join(["%s:%s" % (i, len(best[i])) for i in range(len(best))]))
-        return besti
-
-    def conflictPair(self, typs, litA, litB, pre_multi=False):
-        #     r = self.conflictPairX(typs, litA, litB, pre_multi)
-        #     print("PAIR", r, "\t", litA, litB, "\t", self.constraints.getCstr("inits_productivity"), typs, pre_multi,self.constraints.getCstr("multi_cats"))
-        #     return r
-        # def conflictPairX(self, typs, litA, litB, pre_multi=False):
-        prod = self.constraints.getCstr("inits_productivity")
-        if typs == 22:
-            if prod == "high" or (pre_multi and self.constraints.getCstr("multi_cats")):
-                return (litA[0] == litB[0]) and (litA[1] == litB[1])
-            elif prod == "medium":
-                return (litA[0] == litB[0]) or (litA[1] == litB[1])
-        elif typs == 23:
-            if prod == "high" or (pre_multi and self.constraints.getCstr("multi_cats")):
-                return (litA[0] == litB[0]) and (litA[1] <= litB[2] and litB[1] <= litA[2])
-            elif prod == "medium":
-                return (litA[0] == litB[0]) or (litA[1] <= litB[2] and litB[1] <= litA[2])
-        elif typs == 33:
-            if prod == "high":
-                return (litA[0] <= litB[1] and litB[0] <= litA[1]) and (litA[2] <= litB[3] and litB[2] <= litA[3])
-            elif prod == "medium":
-                return (litA[0] <= litB[1] and litB[0] <= litA[1]) or (litA[2] <= litB[3] and litB[2] <= litA[3])
         return True
 
     # def getCombinedCands(self, ext_lits, common, reds, cols):

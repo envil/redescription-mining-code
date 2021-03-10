@@ -41,7 +41,9 @@ def get_reds_etc(loaded, suff="", alt_suff="_alt"):
     q_found = False
     reds = []
     srcs_reds = []
+    count_red_lists = 0
     if loaded["reds"] is not None:
+        count_red_lists = len(loaded["reds"])
         i = 0
         while i < len(loaded["reds"]):
             if qfilename is not None and loaded["reds"][i]["src"][1] == qfilename:
@@ -58,9 +60,10 @@ def get_reds_etc(loaded, suff="", alt_suff="_alt"):
         # the file exists and redescriptions have not yet been loaded from it
         q_found = True
         rp = Redescription.getRP()
+        sid = ("%s" % (count_red_lists + 1))[::-1]  # avoid rid collisions
         try:
             with open(qfilename) as fd:
-                reds, _ = rp.parseRedList(fd, loaded["data"])
+                reds, _ = rp.parseRedList(fd, loaded["data"], sid=sid)
         except IOError:
             reds = []
             srcs_reds = []

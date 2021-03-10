@@ -1626,7 +1626,10 @@ class Siren(GUIBoss):
             self.dw.importTracks(tracks, source)
 
     def readyReds(self, reds, wdets, source_logid):
-        self.appendMinedReds(wdets, reds)
+        self.appendMinedReds(wdets, reds.get("P", []))
+
+    def filteredLids(self):
+        return ["P"]
 
     def readyProj(self, vid, proj):
         if proj is None:

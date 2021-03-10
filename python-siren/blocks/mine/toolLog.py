@@ -233,8 +233,8 @@ class Log(object):
         if rcollect.getLen(lid) > 0:
             self.printL(1, {lid: rcollect.getItems(lid)}, 'result', pid)
             self.printL(1, rcollect.getLatestTracks(), 'tracks', pid)
-            self.printL(1, "%d redescriptions [%s]" % (rcollect.getLen(lid), lid), 'status', pid)
             if rcollect.getLen(lid) > 0:
+                self.printL(1, "%d redescriptions [%s]" % (rcollect.getLen(lid), lid), 'status', pid)
                 for red in rcollect.getItems(lid):
                     self.printL(10, "--- %s" % red, source=pid)
             else:

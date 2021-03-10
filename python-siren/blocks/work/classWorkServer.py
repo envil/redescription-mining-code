@@ -102,6 +102,7 @@ class WorkServer(object):
 
     def __init__(self, port=PORT, authkey=AUTHKEY, max_k=MAXK):
         print("PID", os.getpid())
+        # MAKES REDS TO HAVE NEGATIVE IDS SO THEY CAN BE RECOGNIZED HAS EZTERNAL
         Redescription.setUidGen(nv=-1, step=-1, mp_lock=True)
         self.handlers = {}
         self.manager = make_server_manager(port, authkey)

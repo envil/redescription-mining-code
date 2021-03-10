@@ -1,4 +1,9 @@
-import re, string, numpy, copy, itertools, os.path
+import re
+import string
+import numpy
+import copy
+import itertools
+import os.path
 try:
     from classQuery import SYM
     from classSParts import SSetts, tool_ratio
@@ -13,11 +18,12 @@ except ModuleNotFoundError:
 import pdb
 
 ACTIVE_RSET_ID = "active"
-SIDE_CHARS = {0:"L", 1:"R", -1: "C"}
-HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1, "BOTH": ["LHS","RHS"]}
+SIDE_CHARS = {0: "L", 1: "R", -1: "C"}
+HAND_SIDE = {"LHS": 0, "RHS": 1, "0": 0, "1": 1, "COND": -1, "-1": -1, "BOTH": ["LHS", "RHS"]}
 NUM_CHARS = dict([(numpy.base_repr(ii, base=25), "%s" % chr(ii+ord("a"))) for ii in range(25)])
 
 WIDTH_MID = .5
+
 
 def findFile(fname, path=['']):
     """Finds file from path (always including the current working directory) and returns
@@ -34,13 +40,14 @@ def findFile(fname, path=['']):
             return testpath
     return None
 
+
 def all_subclasses(cls):
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
-                                   for g in all_subclasses(s)]    
+                                   for g in all_subclasses(s)]
 
 
 class WithProps:
-    
+
     info_what_dets = {}
     info_what = {}
 
@@ -55,15 +62,16 @@ class WithProps:
         if t is not None:
             return t
         return default
-    
+
+
 class WithEVals(Item, WithProps):
 
-    ### PROPS WHAT
-    Pwhat_match = ""    
+    # PROPS WHAT
+    Pwhat_match = ""
 
-    ### PROPS WHICH
+    # PROPS WHICH
     which_rids = "rids"
-    Pwhich_match = "("+ "|".join(["[^_]+"]+[which_rids]) +")"    
+    Pwhich_match = "(" + "|".join(["[^_]+"]+[which_rids]) + ")"
     @classmethod
     def hasPropWhich(tcl, which):
         return re.match(tcl.Pwhich_match, which) is not None
@@ -77,7 +85,7 @@ class WithEVals(Item, WithProps):
     def extendRP(tcl, fields_fns=[], rp=None):
         rp = tcl.getRP(rp)
         rp.setupFDefsFiles(fields_fns)
-    
+
     @classmethod
     def getRP(tcl, rp=None):
         if rp is None:
@@ -85,17 +93,19 @@ class WithEVals(Item, WithProps):
                 tcl.setupRP()
             return tcl.RP
         return rp
-    
+
     def __init__(self, iid=None):
         self.extras = {}
         self.cache_evals = {}
         Item.__init__(self, iid)
         self.resetRestrictedSuppSets()
+
     def nbRows(self):
         return 0
+
     def rows(self):
         return set(range(self.nbRows()))
-        
+
     def recompute(self, data):
         if data.hasLT() or data.hasSelectedRows():
             self.setRestrictedSupp(data)
@@ -105,7 +115,7 @@ class WithEVals(Item, WithProps):
         # print("Prop", what, which, rset_id, details.keys())
         if what == "extra":
             return self.getExtra(which, details)
-        if rset_id is not None and which == self.which_rids: ### ids details for folds subsets            
+        if rset_id is not None and which == self.which_rids:  # ids details for folds subsets
             rset_ids = self.getRestrictedRids(rset_id)
             if rset_ids is None:
                 return None
@@ -119,33 +129,37 @@ class WithEVals(Item, WithProps):
                 return tool_ratio(len(rset_ids), self.nbRows())
         else:
             return self.getPropD(what, details=details)
-        
+
     def getEValGUI(self, details):
         if "rp" in details:
             return details["rp"].getEValGUI(self, details)
         return None
-        
-    #### EXTRAS
+
+    # EXTRAS
     #######################
     def setExtra(self, key, val):
         self.extras[key] = val
+
     def getExtra(self, key=None, details={}):
         if key is None:
             return self.extras
         return self.extras.get(key)
+
     def copyExtras(self):
         return copy.deepcopy(self.extras)
+
     def computeExtras(self, data, extras=None, details={}):
         self.resetCacheEVals(only_keys=[Props.XTRKS])
         self.extras.update(data.computeExtras(self, extras, details))
-        
-    #### EVals Cache
+
+    # EVals Cache
     #######################
     def markCacheEValsKeys(self, kks):
         for key, ks in kks:
-            if key not in self.cache_evals:            
+            if key not in self.cache_evals:
                 self.cache_evals[key] = set()
             self.cache_evals[key].update(ks)
+
     def resetCacheEVals(self, only_keys=None):
         if only_keys is True:
             only_keys = list(Props.test_containing_kp.keys())
@@ -159,31 +173,40 @@ class WithEVals(Item, WithProps):
                         pass
         else:
             self.cache_evals = {}
+
     def setCacheEVals(self, cevs):
         self.cache_evals = cevs
+
     def updateCacheEVals(self, cevs):
         self.cache_evals.update(cevs)
+
     def setCacheEVal(self, ck, cev):
         self.cache_evals[ck] = cev
+
     def getCacheEVal(self, ck):
         return self.cache_evals.get(ck)
+
     def hasCacheEVal(self, ck):
         return ck in self.cache_evals
-        
-    #### Restricted sets
+
+    # Restricted sets
     #######################
     def setRestrictedSupp(self, data):
-        ### USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
+        # USED TO BE STORED IN: self.restrict_sub, self.restricted_sParts, self.restricted_prs = None, None, None
         ck = self.setRestrictedSuppSets(data, supp_sets=None)
         if ck:
             self.resetCacheEVals(only_keys=[Props.RSKS])
+
     def resetRestrictedSuppSets(self):
         self.restricted_sets = {}
         self.resetCacheEVals(only_keys=[Props.RSKS])
+
     def getRSKeys(self):
         return list(self.restricted_sets.keys())
-    def hasActiveRS(self):        
+
+    def hasActiveRS(self):
         return ACTIVE_RSET_ID in self.getRSKeys()
+
     def hasRSets(self):
         return len(self.restricted_sets) > 0
 
@@ -192,7 +215,7 @@ class WithEVals(Item, WithProps):
             rset_id = details.get("rset_id")
         else:
             rset_id = details
-        rset = None 
+        rset = None
         if rset_id is not None:
             if rset_id in self.restricted_sets:
                 rset = self.restricted_sets[rset_id]["rids"]
@@ -201,17 +224,20 @@ class WithEVals(Item, WithProps):
         if rset is not None and as_list:
             rset = sorted(rset)
         return rset
-                
+
     def setRestrictedSuppSets(self, data, supp_sets=None):
         self.resetRestrictedSuppSets()
 ##################################################
-        
+
+
 def mapSuppNames(supp, details={}):
     if details.get("named", False) and "row_names" in details:
         return [details["row_names"][t] for t in supp]
     return supp
-            
-####   TOOLS FOR LATEX PRINTING
+
+# TOOLS FOR LATEX PRINTING
+
+
 def digit_to_char(n, pad=None):
     if pad is None:
         tmp = "".join([NUM_CHARS[t] for t in numpy.base_repr(n, base=25)])
@@ -220,6 +246,7 @@ def digit_to_char(n, pad=None):
     # print("%s -> %s" % (n, tmp))
     return tmp
 
+
 def side_ltx_cmd(sid, padss=None):
     if sid in SIDE_CHARS:
         schar = SIDE_CHARS[sid]
@@ -227,50 +254,53 @@ def side_ltx_cmd(sid, padss=None):
         schar = digit_to_char(sid, padss)
     return schar
 
+
 def var_ltx_cmd(sid, vid, padsv=None, padss=None):
     schar = side_ltx_cmd(sid, padss)
     vchar = digit_to_char(vid, padsv)
     return "\\v%sHS%s" % (schar.upper(), vchar.lower())
 
-#### TODO update TeX commands
-TEX_PCK = "\\usepackage{amsmath}\n"+ \
-              "\\usepackage{amsfonts}\n"+ \
-              "\\usepackage{amssymb}\n"+ \
-              "\\usepackage{booktabs}\n"+ \
-              "\\usepackage[mathletters]{ucs}\n"+ \
-              "\\usepackage[utf8x]{inputenc}\n"
-TEX_CLR = "\\usepackage{color}\n"+ \
-              "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n"+ \
-              "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n"+ \
-              "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n"+ \
-              "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n"+ \
-              "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n"+ \
-              "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n"+ \
-              "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n"+ \
-              "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"
-TEX_CMD = "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n"+ \
-              "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n"+ \
-              "\\newcommand{\\iCOND}{\\mathbf{C}} % index for conditional\n"+ \
-              "\\newcommand{\\SubActive}{A} % index for learn subset\n"+ \
-              "\\newcommand{\\SubCond}{C} % index for learn subset\n"+ \
-              "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n"+ \
-              "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n"+ \
-              "\\newcommand{\\RSetAll}{} % index for whole\n"+ \
-              "\\newcommand{\\RSetAA}{\\mathcal{I}} % index for whole non empty\n"+ \
-              "\\newcommand{\\query}{q} % index for whole\n"+ \
-              "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n"+ \
-              "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n"+ \
-              "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n"+ \
-              "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n"+ \
-              "\\newcommand{\\perc}[1]{\\% #1} % perc \n"+ \
-              "\\newcommand{\\ratio}[1]{\\div #1} % ratio \n"+ \
-              "\\DeclareMathOperator*{\\pValue}{pV}\n"+ \
-              "\\DeclareMathOperator*{\\jacc}{J}\n"+ \
-              "\\DeclareMathOperator*{\\supp}{supp}\n"+ \
-              "\\DeclareMathOperator*{\\pr}{p}\n"
+
+# TODO update TeX commands
+TEX_PCK = "\\usepackage{amsmath}\n" + \
+    "\\usepackage{amsfonts}\n" + \
+    "\\usepackage{amssymb}\n" + \
+    "\\usepackage{booktabs}\n" + \
+    "\\usepackage[mathletters]{ucs}\n" + \
+    "\\usepackage[utf8x]{inputenc}\n"
+TEX_CLR = "\\usepackage{color}\n" + \
+    "\\definecolor{LHSclr}{rgb}{.855, .016, .078} %% medium red\n" + \
+    "% \\definecolor{LHSclr}{rgb}{.706, .012, .063} %% dark red\n" + \
+    "% \\definecolor{LHSclr}{rgb}{.988, .345, .392} %% light red\n" + \
+    "\\definecolor{RHSclr}{rgb}{.055, .365, .827} %% medium blue\n" + \
+    "% \\definecolor{RHSclr}{rgb}{.043, .298, .682} %% dark blue\n" + \
+    "% \\definecolor{RHSclr}{rgb}{.455, .659, .965} %% light blue\n" + \
+    "\\definecolor{LCclr}{rgb}{.50,.50,.50} %% medium gray\n" + \
+    "\\definecolor{RNclr}{rgb}{.40, .165, .553} %% medium purple\n"
+TEX_CMD = "\\newcommand{\\iLHS}{\\mathbf{L}} % index for left hand side\n" + \
+    "\\newcommand{\\iRHS}{\\mathbf{R}} % index for right hand side\n" + \
+    "\\newcommand{\\iCOND}{\\mathbf{C}} % index for conditional\n" + \
+    "\\newcommand{\\SubActive}{A} % index for learn subset\n" + \
+    "\\newcommand{\\SubCond}{C} % index for learn subset\n" + \
+    "\\newcommand{\\RSetLearn}{\\mathcal{O}} % index for learn subset\n" + \
+    "\\newcommand{\\RSetTest}{\\mathcal{I}} % index for test subset\n" + \
+    "\\newcommand{\\RSetAll}{} % index for whole\n" + \
+    "\\newcommand{\\RSetAA}{\\mathcal{I}} % index for whole non empty\n" + \
+    "\\newcommand{\\query}{q} % index for whole\n" + \
+    "\\newcommand{\\RName}[1]{\\textcolor{RNclr}{R#1}} \n" + \
+    "%% \\renewcommand{\\land}{\\text{\\textcolor{LCclr}{~AND~}}} \n" + \
+    "%% \\renewcommand{\\lor}{\\text{\\textcolor{LCclr}{~OR~}}} \n\n" + \
+    "\\newcommand{\\abs}[1]{\\vert#1\\vert} % absolute value\n" + \
+    "\\newcommand{\\perc}[1]{\\% #1} % perc \n" + \
+    "\\newcommand{\\ratio}[1]{\\div #1} % ratio \n" + \
+    "\\DeclareMathOperator*{\\pValue}{pV}\n" + \
+    "\\DeclareMathOperator*{\\jacc}{J}\n" + \
+    "\\DeclareMathOperator*{\\supp}{supp}\n" + \
+    "\\DeclareMathOperator*{\\pr}{p}\n"
+
 
 def openTexDocument(names, standalone=False):
-    ####### prepare variable names    
+    # prepare variable names
     names_alts = []
     names_commands = ""
     numvs_commands = ""
@@ -292,33 +322,34 @@ def openTexDocument(names, standalone=False):
         else:
             names_alts.append(None)
     if standalone:
-        str_out = "\\documentclass{article}\n"+ \
-              TEX_PCK + TEX_CLR + TEX_CMD + \
-              macvs_commands + \
-              names_commands+ \
-              numvs_commands+ \
-              macfld_commands+ \
-              "\\begin{document}\n"+ \
-              "\\begin{table}[h]\n"+ \
-              "\\scriptsize\n"
+        str_out = "\\documentclass{article}\n" + \
+            TEX_PCK + TEX_CLR + TEX_CMD + \
+            macvs_commands + \
+            names_commands + \
+            numvs_commands + \
+            macfld_commands + \
+            "\\begin{document}\n" + \
+            "\\begin{table}[h]\n" + \
+            "\\scriptsize\n"
     else:
         str_out = "\\scriptsize\n"
     return str_out, names_alts
+
 
 def openTexTabular(list_fields, nblines=1):
     str_out = ""
     with_fname = False
     if nblines == 3:
-        #### SPREAD ON THREE LINES
-        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{3ex}}"+ ("p{%.3f\\textwidth}" % WIDTH_MID)
+        # SPREAD ON THREE LINES
+        str_out += "\\begin{tabular}{@{\\hspace*{1ex}}p{0.05\\textwidth}@{\\hspace*{3ex}}" + ("p{%.3f\\textwidth}" % WIDTH_MID)
         for i in range(len(list_fields)-2):
             str_out += "@{\\hspace*{2ex}}l"
         str_out += "@{\\hspace*{1ex}}}\n"
         str_out += "\\toprule\n"
-        with_fname=True
-        
+        with_fname = True
+
     elif nblines == 2:
-        #### SPREAD ON TWO LINES 
+        # SPREAD ON TWO LINES
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.67\\textwidth}@{}r"
         for i in range(len(list_fields)-2):
             str_out += "@{\\hspace*{2ex}}r"
@@ -329,7 +360,7 @@ def openTexTabular(list_fields, nblines=1):
         str_out += "\\midrule\n"
 
     else:
-        #### SINGLE LINE
+        # SINGLE LINE
         str_out += "\\begin{tabular}{@{\\hspace*{1ex}}r@{\\hspace*{1ex}}p{0.35\\textwidth}@{\\hspace*{1em}}p{0.35\\textwidth}"
         for i in range(len(list_fields)-2):
             str_out += "@{\\hspace*{2ex}}r"
@@ -340,21 +371,25 @@ def openTexTabular(list_fields, nblines=1):
         str_out += "\\midrule\n"
     return str_out, with_fname
 
+
 def closeTexTabular():
     return "\\bottomrule\n\\end{tabular}\n"
+
 
 def closeTexDocument(standalone):
     str_out = ""
     if standalone:
         str_out += "\\end{table}\n\\end{document}"
-    ### auctex vars
-    str_out += "\n%%%%%% Local Variables:\n"+ \
-      "%%%%%% mode: latex\n"+ \
-      "%%%%%% TeX-master: t\n"+ \
-      "%%%%%% End:\n"
+    # auctex vars
+    str_out += "\n%%%%%% Local Variables:\n" + \
+        "%%%%%% mode: latex\n" + \
+        "%%%%%% TeX-master: t\n" + \
+        "%%%%%% End:\n"
     return str_out
 ##############################################
-####   TOOLS FOR FORMATTING AND PRINTING
+# TOOLS FOR FORMATTING AND PRINTING
+
+
 def prepareValFmt(val, fmt={}, to_str=True, replace_none="-"):
     if val is None:
         if to_str:
@@ -369,23 +404,24 @@ def prepareValFmt(val, fmt={}, to_str=True, replace_none="-"):
     if to_str:
         return fmtf % val
     return val
-    
+
+
 def prepareFmtString(nblines, nbstats, last_one, tex=False):
     nbc = "%d" % (nbstats+1)
     if nblines == 3:
-        #### SPREAD ON THREE LINES            
+        # SPREAD ON THREE LINES
         if tex:
-            frmts = "%(rid)s & & %(stats)s \\\\ [.2em]\n & \\multicolumn{"+ nbc +"}{p{.9\\textwidth}}{ %(q0)s } \\\\ \n" + \
-                    " & \\multicolumn{"+ nbc +"}{p{.9\\textwidth}}{ %(q1)s } \\\\"
+            frmts = "%(rid)s & & %(stats)s \\\\ [.2em]\n & \\multicolumn{" + nbc + "}{p{.9\\textwidth}}{ %(q0)s } \\\\ \n" + \
+                    " & \\multicolumn{" + nbc + "}{p{.9\\textwidth}}{ %(q1)s } \\\\"
             if not last_one:
-                frmts +=  " [.32em] \cline{2-"+ nbc +"} \\\\ [-.88em]"
+                frmts += " [.32em] \cline{2-" + nbc + "} \\\\ [-.88em]"
         else:
             frmts = "%(rid)s%(stats)s\n%(q0)s\n%(q1)s"
     elif nblines == 2:
         if tex:
             frmts = "%(rid)s & %(q0)s & & %(stats)s \\\\ \n & \\multicolumn{2}{r}{ %(q1)s } \\\\"
             if not last_one:
-                frmts +=  " [.3em]"
+                frmts += " [.3em]"
         else:
             frmts = "%(rid)s%(q0)s\t%(q1)s\n%(stats)s"
     else:
@@ -395,6 +431,8 @@ def prepareFmtString(nblines, nbstats, last_one, tex=False):
             frmts = "%(rid)s%(all)s"
     return frmts
 ##############################################
+
+
 def cust_eval(exp, loc):
     try:
         return eval(exp, {}, loc)
@@ -402,6 +440,7 @@ def cust_eval(exp, loc):
         return float("Inf")
     except TypeError:
         return None
+
 
 def expand_val(val):
     v = val.strip()
@@ -413,7 +452,7 @@ def expand_val(val):
 
 
 class Props(object):
-   
+
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = None
     default_def_files = []
@@ -421,17 +460,17 @@ class Props(object):
     rset_sub_match = ""
     rset_match = ""
     what_match = "\w+"
-    which_match = "\w+"         
+    which_match = "\w+"
 
     substs = []
-    
+
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
     map_lbls = {}
-    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all" : ""}}
+    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all": ""}}
     map_lbls["txt"]["specials"] = {}
-    map_lbls["tex"] = {"what": {}, "which": {}, "rset": {"all" : ""}}
+    map_lbls["tex"] = {"what": {}, "which": {}, "rset": {"all": ""}}
     map_lbls["tex"]["specials"] = {}
-    map_lbls["gui"] = {"what": {}, "which": {}, "rset": {"all" : ""}}
+    map_lbls["gui"] = {"what": {}, "which": {}, "rset": {"all": ""}}
     map_lbls["gui"]["specials"] = {}
     lbl_patts = {"txt": "%(what)s_%(which)s_%(rset)s",
                  "tex": "$\\PP{%(what)s}{%(which)s}{%(rset)s}$",
@@ -440,22 +479,23 @@ class Props(object):
     XTRKS = "##XTRKS##"
     extra_patt = ":extra:(?P<xtr>\w+)"
     RSKS = "##RSKS##"
-    
+
     @classmethod
-    def setupProps(tcl, Rclass, elems_typs=[]):        
+    def setupProps(tcl, Rclass, elems_typs=[]):
         tcl.Rclass = Rclass
         tcl.elems_typs = elems_typs
         tcl.setupPMatches()
+
     @classmethod
     def setupPMatches(tcl):
         tcl.match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.what_match+"):(?P<which>"+tcl.which_match+")?)"
-        tcl.all_what_match = "("+ "|".join(["(?P<"+ preff +"what>"+cc.Pwhat_match+")" for (preff, cc) in tcl.elems_typs]) +")"
-        tcl.all_which_match = "("+ "|".join(["(?P<"+ preff +"which>"+cc.Pwhich_match+")" for (preff, cc) in tcl.elems_typs]) +")"   
+        tcl.all_what_match = "(" + "|".join(["(?P<" + preff + "what>"+cc.Pwhat_match+")" for (preff, cc) in tcl.elems_typs]) + ")"
+        tcl.all_which_match = "(" + "|".join(["(?P<" + preff + "which>"+cc.Pwhich_match+")" for (preff, cc) in tcl.elems_typs]) + ")"
         # tcl.all_match_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.all_what_match+"):(?P<which>"+tcl.all_which_match+")?)"
         tcl.lbl_match = "(?P<what>"+tcl.all_what_match+")[_]?(?P<which>"+tcl.all_which_match+")[_]?(?P<rset_id>"+tcl.rset_match+")?"
         tcl.rsets_patt = "(?P<rset_id>"+tcl.rset_sub_match+"):.+:"
         tcl.test_containing_kp = {tcl.XTRKS: tcl.extra_patt, tcl.RSKS: tcl.rsets_patt}
-    
+
     modifiers_defaults = {"wfolds": False, "wmissing": False}
     @classmethod
     def compliesModifiers(tcl, f, modifiers):
@@ -471,6 +511,7 @@ class Props(object):
     @classmethod
     def updateModifiers(tcl, red_list, modifiers={}):
         return modifiers
+
     def getModifiersForData(tcl, data):
         if data is None:
             return {}
@@ -479,29 +520,31 @@ class Props(object):
         for xtr in data.getActiveExtensionKeys():
             tmp["wxtr_%s" % xtr] = True
         return tmp
+
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wfolds)d" % modifiers
         if cust:
-                b += ":CUST"
+            b += ":CUST"
         else:
-            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])        
+            xtr = ":".join([k.replace("wxtr_", "") for k, v in modifiers.items() if re.match("wxtr_", k) and v])
             if len(xtr) > 0:
                 b += ":"+xtr
         return b
+
     @classmethod
     def getStyles(tcl, style):
         if style in ["tex", "txt"]:
             return style, style
         elif style == "gui":
             return style, "U"
-        else:                
+        else:
             return "txt", style
 
-    
     @classmethod
     def isPrimitive(tcl, exp):
         return re.match(tcl.match_primitive, exp) is not None
+
     @classmethod
     def getPrimitiveWs(tcl, exp):
         # all_mtch = re.match(tcl.all_match_primitive, exp)
@@ -510,7 +553,7 @@ class Props(object):
             return (mtch.group("what"), mtch.group("which") or "", mtch.group("rset_id") or "all")
         return (None, None, None)
 
-    ### PRIMITIVE FORMATS AND LABELS
+    # PRIMITIVE FORMATS AND LABELS
     @classmethod
     def getPrimitiveFmt(tcl, exp):
         what, which, rset = tcl.getPrimitiveWs(exp)
@@ -526,11 +569,12 @@ class Props(object):
             if what in ["acc", "pval"]:
                 return {"fmt": ".3f", "rnd": 3}
         return {"fmt": "s"}
-    
-    @classmethod        
+
+    @classmethod
     def getPrimitiveLbl(tcl, exp, style="txt"):
         return tcl.prepareWsLbl(tcl.getPrimitiveWs(exp), style=style)
-    @classmethod        
+
+    @classmethod
     def prepareWsLbl(tcl, ws, style="txt"):
         (what, which, rset) = ws
         if what is not None:
@@ -544,19 +588,20 @@ class Props(object):
                     tt = tt[0]
                 lbl_elems.update({pk: tt})
             if rset in HAND_SIDE and what != "query" and lbl_elems["which"] == "":
-                lbl_elems["which"] = "q"                
+                lbl_elems["which"] = "q"
             tmp = tcl.lbl_patts[style] % lbl_elems
             return re.sub("__+", "_", tmp.strip("_"))
         return "??"
+
     @classmethod
     def getPrimitiveNameForLbl(tcl, ll):
         if ll in tcl.map_lbls["txt"]["specials"].values():
-            return dict([(v,k) for (k,v) in tcl.map_lbls["txt"]["specials"].items()])[ll]
-        fld = ll        
+            return dict([(v, k) for (k, v) in tcl.map_lbls["txt"]["specials"].items()])[ll]
+        fld = ll
         for (sf, st) in tcl.substs:
             fld = fld.replace(sf, st)
         parts = {"rset_id": "all", "what": None, "which": ""}
-        ptyps = {"what": None, "which": None}        
+        ptyps = {"what": None, "which": None}
         mtch_all = re.match(tcl.lbl_match+"$", fld)
         if mtch_all is not None:
             if mtch_all.group("rset_id") is not None:
@@ -585,24 +630,26 @@ class Props(object):
                 return ff
             return tmp
         return tmp
+
     @classmethod
     def getFieldKeyforLbl(tcl, ll):
         tmp = tcl.getPrimitiveKeyForLbl(ll)
         if tmp == "??":
             return ff
-        return tmp 
+        return tmp
 
-    ### PRIMITIVE EVAL
+    # PRIMITIVE EVAL
     @classmethod
     def getPrimitiveVal(tcl, red, exp, details={}):
         what, which, rset = tcl.getPrimitiveWs(exp)
         if what is not None:
-            return red.getProp(what, which, rset, details)        
+            return red.getProp(what, which, rset, details)
+
     @classmethod
     def getPrimitiveValFormatted(tcl, red, exp, details={}, to_str=True):
         fmt = tcl.getPrimitiveFmt(exp)
         val = tcl.getPrimitiveVal(red, exp, details)
-        return prepareValFmt(val, fmt, to_str)        
+        return prepareValFmt(val, fmt, to_str)
 
     @classmethod
     def containingSomething(tcl, patt, exps={}):
@@ -611,6 +658,7 @@ class Props(object):
             if (re.search(patt, k) is not None) or (exp is not None and (re.search(patt, exp) is not None)):
                 kxtrs.append(k)
         return kxtrs
+
     @classmethod
     def testContaining(tcl, exps):
         xps = []
@@ -619,8 +667,8 @@ class Props(object):
             if len(c) > 0:
                 xps.append((key, c))
         return xps
-    
-    ### DERIVATIVE EVAL
+
+    # DERIVATIVE EVAL
     @classmethod
     def compEVal(tcl, red, exp, details={}):
         texp = exp
@@ -629,6 +677,7 @@ class Props(object):
             Rd[mtch.group("prop")] = red.getProp(mtch.group("what"), mtch.group("which"), mtch.group("rset_id"), details)
             texp = texp[:mtch.start()] + ('R["%s"]' % mtch.group("prop")) + texp[mtch.end():]
         return cust_eval(texp, loc={"R": Rd})
+
     @classmethod
     def compEVals(tcl, red, exps, details={}):
         props_collect = set()
@@ -651,26 +700,29 @@ class Props(object):
     def refreshEVals(tcl, red, exps, details={}):
         red.setCacheEVals(tcl.compEVals(red, exps, details))
         red.markCacheEValsKeys(tcl.testContaining(exps))
+
     @classmethod
     def getEVal(tcl, red, k, exp=None, fresh=False, default=None, details={}):
         if (exp is not None) and (not red.hasCacheEVal(k) or fresh):
             red.setCacheEVal(k, tcl.compEVal(red, exp, details))
             red.markCacheEValsKeys(tcl.testContaining({k: exp}))
         return red.getCacheEVal(k)
+
     @classmethod
     def getEVals(tcl, red, exps, fresh=False, details={}):
         if fresh:
             revals = exps
         else:
-            revals = dict([(k,v) for (k,v) in exps.items() if not red.hasCacheEVal(k)])
+            revals = dict([(k, v) for (k, v) in exps.items() if not red.hasCacheEVal(k)])
         if len(revals) > 0:
             red.updateCacheEVals(tcl.compEVals(red, revals, details))
             red.markCacheEValsKeys(tcl.testContaining(revals))
-        return dict([(k,red.getCacheEVal(k)) for k in exps.keys()])
+        return dict([(k, red.getCacheEVal(k)) for k in exps.keys()])
 
     def getEValF(self, red, k, fresh=False, default=None, details={}):
         exp = self.getFieldExp(k)
         return self.getEVal(red, k, exp=exp, fresh=fresh, default=default, details=details)
+
     def getEValGUI(self, red, details):
         if "k" in details:
             # if re.search(":query:", details["k"]):
@@ -678,21 +730,21 @@ class Props(object):
             val = self.getEValF(red, details["k"], details=details)
             return self.formatVal(val, details["k"], to_str=details.get("to_str", False), replace_none=details.get("replace_none", "-"))
         return None
-    
+
     def __init__(self, Rclass, fields_fns=None):
         self.setupFDefs(fields_fns)
 
     def fieldsToStr(self):
         xps = ""
-        for k,v in self.derivatives.items():
+        for k, v in self.derivatives.items():
             if not self.derivatives_default[k]:
                 if "sep" in v:
                     fmt = "set"
                 else:
                     fmt = v["fmt"]
                 xps += "field\t%s\t%s\t%s\n" % (k, v["exp"], fmt)
-        for k,v in self.field_compact.items():
-            if v is not None:                
+        for k, v in self.field_compact.items():
+            if v is not None:
                 xps += "fieldlist\t%s\n" % k
                 for ff in v:
                     xps += "%s\n" % ff
@@ -706,7 +758,7 @@ class Props(object):
         self.derivatives = {}
         self.derivatives_default = {}
         self.field_lists = {}
-        self.field_compact = {}        
+        self.field_compact = {}
         if fields_fns is None:
             fields_fns = self.default_def_files
         self.setupFDefsFiles(fields_fns)
@@ -731,11 +783,10 @@ class Props(object):
                 if current_list_name is not None:
                     self.setFieldsList(current_list_name, current_list_fields, current_list_fcompact, default)
 
-                
     def readFieldsFile(self, fields_fp, default=False):
         current_list_fields = []
         current_list_fcompact = []
-        current_list_name = None        
+        current_list_name = None
         for line in fields_fp:
             ll = re.sub("\s*#.*$", "", line).strip()
             if len(ll) == 0:
@@ -763,9 +814,9 @@ class Props(object):
                     current_list_fields.extend(fields)
                     current_list_fcompact.append(line.strip())
         return current_list_name, current_list_fields, current_list_fcompact
-        
-                
+
     modifiers_mtch = "((\[(?P<modify>[^\]]*)\])|((?P<plc_hld>\w)\=)|(\{(?P<vals>[^}]*)\})|(?P<spc> +))"
+
     def parseFieldsLine(self, line):
         prts = line.strip().split("\t")
         if len(prts) == 1:
@@ -823,36 +874,44 @@ class Props(object):
                     fields[-1]["modify"] = " and ".join(mods)
             return fields
         return []
-    
+
     def addDerivativeField(self, fk, ff, default=False):
         self.derivatives[fk] = ff
         self.derivatives_default[fk] = default
+
     def hasDerivativeField(self, fk):
         return fk in self.derivatives
+
     def getDerivativeField(self, fk):
         return self.derivatives[fk]
+
     def getAllDerivativeFields(self):
         return list(self.derivatives.keys())
+
     def hasFieldsList(self, fk):
         return fk in self.field_lists
+
     def getFieldsList(self, fk):
         return self.field_lists.get(fk, [])
+
     def setFieldsList(self, fk, flist, fcompact=None, default=False):
         self.field_lists[fk] = flist
         if not default:
             self.field_compact[fk] = fcompact
         else:
             self.field_compact[fk] = None
+
     def delFieldsList(self, fk):
         if fk in self.field_lists:
-            del self.field_lists[fk]        
+            del self.field_lists[fk]
+
     def getListsKeys(self):
         return list(self.field_lists.keys())
 
     def getFieldExp(self, ff):
         if self.hasDerivativeField(ff):
             return self.getDerivativeField(ff)["exp"]
-        elif self.isPrimitive(ff):            
+        elif self.isPrimitive(ff):
             return ff
         elif ff in self.Rclass.info_what or ff in self.Rclass.info_what_dets:
             return ":%s:" % ff
@@ -862,10 +921,12 @@ class Props(object):
             return self.getDerivativeField(ff)
         else:
             return self.getPrimitiveFmt(ff)
+
     def getFieldDelim(self, ff, style="txt"):
-        if style == "tex" and  re.search("[df]$", self.getFieldFmt(ff).get("fmt")):
+        if style == "tex" and re.search("[df]$", self.getFieldFmt(ff).get("fmt")):
             return "$"
         return ""
+
     def getFieldDets(self, ff):
         tmp = {}
         if self.hasDerivativeField(ff):
@@ -877,8 +938,8 @@ class Props(object):
         fmt = self.getFieldFmt(fk)
         return prepareValFmt(val, fmt, to_str, replace_none)
 
-        
-    #### PREPARING DERIVATIVE FIELDS
+    # PREPARING DERIVATIVE FIELDS
+
     def getListFields(self, lfname, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
@@ -887,6 +948,7 @@ class Props(object):
             if self.compliesModifiers(f, ddmod):
                 fields.append(f["field"])
         return fields
+
     def getNeededExtras(self, lfname, modifiers={}):
         list_fields = self.getListFields(lfname, modifiers)
         exp_dict = self.getExpDict(list_fields)
@@ -905,6 +967,7 @@ class Props(object):
         for opt in options:
             if self.hasFieldsList(opt):
                 return self.getListFields(opt, modifiers)
+
     def setCurrentListFields(self, ll, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
@@ -912,6 +975,7 @@ class Props(object):
         ck = "%s-%s" % (ckey, hmod)
         flist = [{"field": f} for f in ll]
         self.setFieldsList(ck, flist)
+
     def dropCustListFields(self, ckey, modifiers={}):
         ddmod = dict(self.modifiers_defaults)
         ddmod.update(modifiers)
@@ -928,55 +992,54 @@ class Props(object):
                 if self.compliesModifiers(f, ddmod):
                     field = f["field"]
                     if field not in all_fields:
-                        all_fields[field] = [0.,0]
+                        all_fields[field] = [0., 0]
                     all_fields[field][0] += fi
                     all_fields[field][1] += 1
         for field in self.getAllDerivativeFields():
             if field not in all_fields:
-                all_fields[field] = [1,.1]
+                all_fields[field] = [1, .1]
 
         return sorted(all_fields.keys(), key=lambda x: all_fields[x][0]/all_fields[x][1])
-        
+
     def getExpDict(self, lfields):
         return dict([(f, self.getFieldExp(f)) for f in lfields])
 
 
 class VarProps(Props):
-   
+
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = findFile("fields_vdefs_basic.txt", ["", pref_dir])
     default_def_files = [def_file_basic]
-    
-    rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
-    rset_match = "("+ "|".join(["all","learn","test","active"]) +")"
+
+    rset_sub_match = "(" + "|".join(["learn", "test", "active"]) + ")"
+    rset_match = "(" + "|".join(["all", "learn", "test", "active"]) + ")"
     what_match = "\w+"
-    which_match = "\w+" 
+    which_match = "\w+"
     # match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
 
     lbl_patts = {}
     lbl_patts.update(Props.lbl_patts)
     lbl_patts["gui"] = "%(rset)s %(what)s %(which)s%(what_1)s"
 
-    
     substs = [("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
-    
+
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
     map_lbls = {}
-    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all" : ""}}
+    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all": ""}}
     map_lbls["txt"]["specials"] = {}
     map_lbls["tex"] = {"what": {"len": "\\abs", "card": "\\abs",
                                 "ratio": "\\ratio", "perc": "\\perc"},
                        "which": {"I": "\\supp"},
-                       "rset": {"all" : "\\RSetAll",
-                                "active" : "\\SubActive",
-                                "learn" : "_{\\RSetLearn}", "test" : "_{\\RSetTest}"}}
+                       "rset": {"all": "\\RSetAll",
+                                "active": "\\SubActive",
+                                "learn": "_{\\RSetLearn}", "test": "_{\\RSetTest}"}}
     map_lbls["tex"]["specials"] = {}
     map_lbls["gui"] = {"what": {"perc": "%", "ratio": "/",
                                 "len": ("|", "|"), "card": ("|", "|"),
                                 "set": "", "supp": "", "extra": ""},
                        "which": {"I": "supp"},
-                       "rset": {"all" : "", "active" : "",
-                                "learn" : SYM.SYM_LEARN, "test" : SYM.SYM_TEST}}
+                       "rset": {"all": "", "active": "",
+                                "learn": SYM.SYM_LEARN, "test": SYM.SYM_TEST}}
     map_lbls["gui"]["specials"] = {}
 
     @classmethod
@@ -986,7 +1049,7 @@ class VarProps(Props):
         else:
             types_letters = set(types_letters)
         types_letters.update([var[1].type_letter for var in var_list])
-        has_missing |= any([var[1].hasMissing() for var in var_list])            
+        has_missing |= any([var[1].hasMissing() for var in var_list])
         for types_letter in types_letters:
             tk = "wtype_%s" % types_letter
             if (tk not in modifiers):
@@ -994,40 +1057,40 @@ class VarProps(Props):
         if ("wmissing" not in modifiers) and has_missing:
             modifiers["wmissing"] = True
         return modifiers
+
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wfolds)d" % modifiers
         if cust:
-                b += ":CUST"
+            b += ":CUST"
         else:
-            typ = ":".join([k.replace("wtype_", "") for k,v in modifiers.items() if re.match("wtype_", k) and v])        
-            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])
+            typ = ":".join([k.replace("wtype_", "") for k, v in modifiers.items() if re.match("wtype_", k) and v])
+            xtr = ":".join([k.replace("wxtr_", "") for k, v in modifiers.items() if re.match("wxtr_", k) and v])
             if len(typ) > 0:
                 b += ":"+typ
             if len(xtr) > 0:
                 b += ":"+xtr
         return b
 
-    
+
 class RedProps(Props):
-   
+
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     def_file_basic = findFile("fields_rdefs_basic.txt", ["", pref_dir])
     default_def_files = [def_file_basic]
 
-    rset_sub_match = "("+ "|".join(["learn","test","active"]) +")"
-    rset_match = "("+ "|".join(["all","learn","test","cond","active"] + list(HAND_SIDE.keys())) +")"
+    rset_sub_match = "(" + "|".join(["learn", "test", "active"]) + ")"
+    rset_match = "(" + "|".join(["all", "learn", "test", "cond", "active"] + list(HAND_SIDE.keys())) + ")"
     what_match = "\w+"
-    which_match = "\w+" 
+    which_match = "\w+"
     # match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+what_match+"):(?P<which>"+which_match+")?)"
-        
+
     # all_what_match = ""
     # all_which_match = ""
     # all_match_primitive = "(?P<prop>((?P<rset_id>"+rset_match+"))?:(?P<what>"+all_what_match+"):(?P<which>"+all_which_match+")?)"
     # lbl_match = "(?P<what>"+all_what_match+")[_]?(?P<which>"+all_which_match+")[_]?(?P<rset_id>"+rset_match+")?"
 
-
-    #### The classes provided below should have the following methods: 
+    # The classes provided below should have the following methods:
     ## __init__(self), initParsed(self), parse(self)
     @classmethod
     def setupProps(tcl, Qclass, Rclass, elems_typs=[]):
@@ -1038,41 +1101,40 @@ class RedProps(Props):
         tcl.setupPPairMatches()
 
     @classmethod
-    def setupPPairMatches(tcl):        
+    def setupPPairMatches(tcl):
         tcl.match_pair_primitive = "(?P<prop>((?P<rset_id>"+tcl.rset_match+"))?:(?P<what>"+tcl.Rclass.Pwhat_pair_match+"):(?P<which>"+tcl.which_match+")?)"
 
-        
     substs = [("queryLHS", "query_LHS"), ("queryRHS", "query_RHS"), ("card_", "len"), ("alpha", "Exo"), ("beta", "Eox"), ("gamma", "Exx"), ("delta", "Eoo"), ("mua", "Exm"), ("mub", "Emx"), ("muaB", "Eom"), ("mubB", "Emo"), ("mud", "Emm"), ("status", "extra_status"), ("status_enabled", "status"), ("status_disabled", "status")]
-    
+
     # comm_tex = "\\newcommand{\\PP}[3]{#1{#2}#3}",
     map_lbls = {}
-    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all" : ""}}
+    map_lbls["txt"] = {"what": {}, "which": {}, "rset": {"all": ""}}
     map_lbls["txt"]["specials"] = {}
     map_lbls["tex"] = {"what": {"query": "\\query", "acc": "\\jacc", "pval": "\\pValue",
                                 "len": "\\abs", "card": "\\abs",
                                 "ratio": "\\ratio", "perc": "\\perc"},
                        "which": {"I": "\\supp"},
-                       "rset": {"all" : "\\RSetAll",
-                                "active" : "\\SubActive",
-                                "cond" : "\\SubCond",
-                                "learn" : "_{\\RSetLearn}", "test" : "_{\\RSetTest}",
-                                "ratioTL" : "_{\\RSetTest/\\RSetLearn}",
-                                "ratioTA" : "_{\\RSetTest/\\RSetAA}", "ratioLA" : "_{\\RSetLearn/\\RSetAA}",
-                                "LHS" : "_\\iLHS", "RHS" : "_\\iRHS", "COND" : "_\\iCOND",
-                                "0" : "_\\iLHS", "1" : "_\\iRHS", "-1" : "_\\iCOND", "BOTH":"_{\\iLHS+\\iRHS}"}}
+                       "rset": {"all": "\\RSetAll",
+                                "active": "\\SubActive",
+                                "cond": "\\SubCond",
+                                "learn": "_{\\RSetLearn}", "test": "_{\\RSetTest}",
+                                "ratioTL": "_{\\RSetTest/\\RSetLearn}",
+                                "ratioTA": "_{\\RSetTest/\\RSetAA}", "ratioLA": "_{\\RSetLearn/\\RSetAA}",
+                                "LHS": "_\\iLHS", "RHS": "_\\iRHS", "COND": "_\\iCOND",
+                                "0": "_\\iLHS", "1": "_\\iRHS", "-1": "_\\iCOND", "BOTH": "_{\\iLHS+\\iRHS}"}}
     map_lbls["tex"]["specials"] = {}
     map_lbls["gui"] = {"what": {"acc": "J", "pval": "pV", "perc": "%", "ratio": "/",
                                 "len": ("|", "|"), "card": ("|", "|"),
                                 "set": "", "supp": "", "extra": ""},
                        "which": {"I": "supp"},
-                       "rset": {"all" : "", "active" : "",
-                                "cond" : "C",
-                                "learn" : SYM.SYM_LEARN, "test" : SYM.SYM_TEST,
-                                "ratioTL" : "T/L",
-                                "ratioTA" : "T/A", "ratioLA" : "L/A",
-                                "0" : "LHS", "1" : "RHS", "-1" : "COND",}}
+                       "rset": {"all": "", "active": "",
+                                "cond": "C",
+                                "learn": SYM.SYM_LEARN, "test": SYM.SYM_TEST,
+                                "ratioTL": "T/L",
+                                "ratioTA": "T/A", "ratioLA": "L/A",
+                                "0": "LHS", "1": "RHS", "-1": "COND", }}
     map_lbls["gui"]["specials"] = {}
-    
+
     modifiers_defaults = {"wfolds": False, "wmissing": False, "wcond": False}
     @classmethod
     def updateModifiers(tcl, red_list, modifiers={}):
@@ -1083,6 +1145,7 @@ class RedProps(Props):
         if ("wfolds" not in modifiers) and any([red[1].hasRSets() for red in red_list]):
             modifiers["wfolds"] = True
         return modifiers
+
     def getModifiersForData(tcl, data):
         if data is None:
             return {}
@@ -1092,23 +1155,25 @@ class RedProps(Props):
         for xtr in data.getActiveExtensionKeys():
             tmp["wxtr_%s" % xtr] = True
         return tmp
+
     @classmethod
     def hashModifiers(tcl, modifiers, cust=False):
         b = "%(wmissing)d%(wcond)d%(wfolds)d" % modifiers
         if cust:
-                b += ":CUST"
+            b += ":CUST"
         else:
-            xtr = ":".join([k.replace("wxtr_", "") for k,v in modifiers.items() if re.match("wxtr_", k) and v])
+            xtr = ":".join([k.replace("wxtr_", "") for k, v in modifiers.items() if re.match("wxtr_", k) and v])
             if len(xtr) > 0:
                 b += ":"+xtr
         return b
 
     ##############################################
-    ####        PAIRS
+    # PAIRS
     ##############################################
     @classmethod
     def isPairPrimitive(tcl, exp):
         return re.match(tcl.match_pair_primitive, exp) is not None
+
     @classmethod
     def getPairPrimitiveWs(tcl, exp):
         # all_mtch = re.match(tcl.all_match_primitive, exp)
@@ -1117,9 +1182,8 @@ class RedProps(Props):
             return (mtch.group("what"), mtch.group("which") or "", mtch.group("rset_id") or "all")
         return (None, None, None)
 
-    
     ##############################################
-    ####        PRINTING
+    # PRINTING
     ##############################################
     @classmethod
     def dispHeaderFields(tcl, list_fields, style="txt", sep=None):
@@ -1136,7 +1200,6 @@ class RedProps(Props):
             list_fields = self.getListFields(list_fields, modifiers)
         return self.dispHeaderFields(list_fields, style, sep)
 
-    
     def disp(self, red, names=[None, None, None], row_names=None, with_fname=False, rid="", nblines=1, delim="", last_one=False, list_fields="basic", modifiers={}, style="txt", sep=None, fmts=[None, None, None]):
         dstyle, qstyle = self.getStyles(style)
         if not type(list_fields) is list:
@@ -1164,12 +1227,12 @@ class RedProps(Props):
             with_fname = True
         elif with_fname:
             lbls = ["%s=" % self.getFieldLbl(f, dstyle) for f in list_fields]
-            
+
         dts = {}
         lbl = ""
         entries = {"stats": [], "all": [], "q0": "", "q1": "", "rid": rid}
         for fid, field in enumerate(list_fields):
-            entry = self.formatVal(evals_dict[field], field, to_str=True)                    
+            entry = self.formatVal(evals_dict[field], field, to_str=True)
             delim = self.getFieldDelim(field, dstyle)
             if with_fname:
                 lbl = lbls[fid]
@@ -1187,9 +1250,9 @@ class RedProps(Props):
         entries["stats"] = sep.join(entries["stats"])
         frmts = prepareFmtString(nblines, nbstats, last_one, dstyle == "tex")
         return frmts % entries
-    
+
     ##############################################
-    ####        PRINTING
+    # PRINTING
     ##############################################
     def printRedList(self, reds, names=[None, None], fields=None, full_supp=False, supp_names=None, nblines=1, modifiers={}, style="txt", fmts=[None, None, None]):
         # print("PRINT RED LIST", modifiers)
@@ -1200,21 +1263,22 @@ class RedProps(Props):
 
         modifiers = self.updateModifiers(red_list, modifiers)
         ckey = "txt"
-        if style == "tex": ckey = "tex"
+        if style == "tex":
+            ckey = "tex"
         all_fields = self.getCurrentListFields(ckey, modifiers)
         if type(fields) is list and len(fields) > 0:
             if fields[0] == -1:
                 all_fields.extend(fields[1:])
             else:
                 all_fields = fields
-        if full_supp: ### if full supports are demanded and no support field is included, add them all
+        if full_supp:  # if full supports are demanded and no support field is included, add them all
             supp_fields = self.getListFields("supps", modifiers)
             if len(set([re.sub("^[a-z]*:", "", f) for f in all_fields]).intersection([re.sub("^[a-z]*:", "", f) for f in supp_fields])) == 0:
                 all_fields.extend(supp_fields)
 
         if style == "tex":
             return self.printTexRedList(reds=reds, names=names, list_fields=all_fields, nblines=nblines, fmts=fmts)
-        str_out = self.dispHeader(all_fields, sep="\t", style=style) 
+        str_out = self.dispHeader(all_fields, sep="\t", style=style)
         for ri, red in red_list:
             str_out += "\n" + self.disp(red, names=names, row_names=supp_names, nblines=nblines, list_fields=all_fields, sep="\t", style=style, fmts=fmts)
         return str_out
@@ -1237,16 +1301,16 @@ class RedProps(Props):
         str_oth, with_fname = openTexTabular(list_fields, nblines)
         str_reds = ""
         for ri, red in red_list:
-            ridstr = "\RName{%s}" %ri
-            str_reds += self.disp(red, names_alts, list_fields=list_fields, style="tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri), fmts=fmts) + "\n" 
+            ridstr = "\RName{%s}" % ri
+            str_reds += self.disp(red, names_alts, list_fields=list_fields, style="tex", sep=" & ", with_fname=with_fname, rid=ridstr, nblines=nblines, last_one=(ri == last_ri), fmts=fmts) + "\n"
         str_cth = closeTexTabular()
         str_cdoc = closeTexDocument(standalone)
         return str_odoc + str_oth + str_reds + str_cth + str_cdoc
 
+    ##############################################
+    # PARSING
+    ##############################################
 
-    ##############################################
-    ####        PARSING
-    ##############################################
     def parseHeader(self, string, sep=None):
         default_queries_fields = self.getListFields("queries", {})
         if sep is None:
@@ -1263,8 +1327,8 @@ class RedProps(Props):
         if list_fields is None:
             list_fields = self.getListFields("basic", modifiers)
         default_queries_fields = self.getListFields("queries", modifiers)
-        poplist_fields = list(list_fields) ### to pop out the query fields...
-        map_fields = dict([(v,k) for (k,v) in enumerate(list_fields)])
+        poplist_fields = list(list_fields)  # to pop out the query fields...
+        map_fields = dict([(v, k) for (k, v) in enumerate(list_fields)])
         queries = [None, None, None]
         lpartsList = {}
         parts = [s.strip() for s in string.rsplit(sep)]
@@ -1288,7 +1352,7 @@ class RedProps(Props):
                     except Exception as e:
                         query = None
                         if len(flds) == 0:
-                            ### HERE! SPECIAL FIX
+                            # HERE! SPECIAL FIX
                             try:
                                 query = self.Qclass.parse(parts[map_fields[fld]].replace("! ! ", ""))
                             except Exception as e:
@@ -1319,20 +1383,22 @@ class RedProps(Props):
 
         for side in [0, 1]:
             if queries[side] is None:
-                queries[side] =  self.Qclass()
+                queries[side] = self.Qclass()
         if queries[-1] is not None:
             lpartsList["queryCOND"] = queries[-1]
         if sid is not None and "sid" not in lpartsList:
-            lpartsList["sid"] = sid            
+            lpartsList["sid"] = sid
         return (queries[0], queries[1], lpartsList)
 
     def parseRedList(self, fp, data, reds=None, sid=None):
+        # use sid to avoid collision between rids, e.g. sid = ("%s" % (len(red_lists) + 1))[::-1]
+        # with red_lists the previsouly loaded lists of redescriptions
         if data is not None and data.hasNames():
             names = data.getNames()
         else:
             names = [None, None]
         modifiers = self.getModifiersForData(data)
-            
+
         list_fields = None
         sep = None
         more = []
@@ -1352,6 +1418,6 @@ class RedProps(Props):
                         more.append(line)
         return reds, {"fields": list_fields, "sep": sep, "lines": more}
 
-    
+
 # if __name__ == '__main__':
 #     pass
