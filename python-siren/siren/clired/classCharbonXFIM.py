@@ -137,7 +137,7 @@ def mod_eclat(tracts, setts, store_handle):
     tadb = [t for t in tadb if t[0] >= setts[1] and t[0] < sall]
 
     r = recurse(tadb, [], [], [], setts, store_handle)
-    return r, tracts
+    return r
 
 
 # -----------------------------------------------------------------------
@@ -238,7 +238,9 @@ class CharbonXFIM(CharbonXaust):
         return cands
 
     def computeExpansionsOnEachSide(self, data, initial_candidates_full):
-
+        # with open('tests/data/data.pickle', 'wb') as f:
+        #     import pickle
+        #     pickle.dump(data, f)
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
         min_supp = self.constraints.getCstr("min_itm_in")
@@ -261,10 +263,19 @@ class CharbonXFIM(CharbonXaust):
                 for row_id in data.supp(side, candidate):
                     tracts[row_id].append(k)
             tracts = [frozenset(t) for t in tracts]
-            r, tid_list = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
-            tid_lists.append(dict(tid_list))
+            r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
         lits = []
         for qs in queries:
             lits = [initial_candidates[initial_candidates_map[q[1]][q[2]]][0] for q in qs[0]]
         return lits
+
+    # def constructTIDList(self, data):
+
+
+class TIDList:
+    def __init__(self, data: Data):
+        self.data = data
+
+    def getColByCand(self, cand: frozenset):
+        return None
