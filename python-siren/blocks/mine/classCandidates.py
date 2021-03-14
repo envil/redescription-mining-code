@@ -543,7 +543,7 @@ class PairCand(Candidate):
         if coeffs is None:
             return self.getAcc()
         # HERE: HOW TO SCORE WITH CONDITION?
-        sc = coeffs["impacc"]*self.getAcc() + self.pValRedScore(**kargs)
+        sc = max(coeffs["impacc"], coeffs["rel_impacc"])*self.getAcc() + self.pValRedScore(**kargs)
         # + coeffs["rel_impacc"]*self.relImpacc(base_acc)
         # + self.pValQueryScore(N, prs, coeffs)
         if False:  # self.hasCondition():
