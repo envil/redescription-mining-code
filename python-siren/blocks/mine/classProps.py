@@ -49,6 +49,7 @@ def all_subclasses(cls):
 class WithProps:
 
     info_what_dets = {}
+    info_what_args = {}
     info_what = {}
 
     def getPropD(self, what, details={}, default=None):
@@ -59,6 +60,10 @@ class WithProps:
                 t = methode(details)
         elif what in self.info_what:
             t = eval(self.info_what[what])
+        elif what in self.info_what_args:
+            methode = eval(self.info_what_args[what])
+            if callable(methode):
+                t = methode(**details)
         if t is not None:
             return t
         return default

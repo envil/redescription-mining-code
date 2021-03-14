@@ -6,6 +6,20 @@ import random
 import re
 import pdb
 
+# A and B can be either True, False, or None (missing)
+
+
+def land(A, B):
+    if A is None and B == False:
+        return B
+    return A and B
+
+
+def lor(A, B):
+    if A is None and B == False:
+        return None
+    return A or B
+
 
 def cmp_lower(a, b):
     if b is not None:
@@ -177,6 +191,8 @@ sym_status = labelsu_status
 # ## WITHOUT UNICODE
 # sym_status = labels_status
 
+labels_iom = {True: "into", False: "out", None: "imiss"}
+
 
 class SSetts(object):
 
@@ -198,17 +214,24 @@ class SSetts(object):
         exec("global %s; %s = %d" % (l, l, i))
 
     # Setters to filter the parts on assignment
+
     def tSing(self, s):
         return self.bottom <= s <= self.top
 
     def tPair(self, p):
         return self.tSing(p[1]) and (p[0] != self.index_drop)
 
+    # def tTrip(self, t):
+    #     return self.tPair(p[0]) and self.tSing(t[1])
+
     def fSings(self, l):
         return list(filter(self.tSing, l))
 
     def fPairs(self, l):
         return list(filter(self.tPair, l))
+
+    # def fTrip(self, l):
+    #     return list(filter(self.tTrip, l))
 
     @property
     def IDS_inter(self):
@@ -623,6 +646,28 @@ class SSetts(object):
         if methodpVal is not None:
             self.setMethodPVal(methodpVal)
 
+    def getAssigns(self, op, side):
+        return self._assigns[op, side]
+
+    def setAssigns(self, has_missing):
+        if has_missing:
+            states = [True, False, None]
+        else:
+            states = [True, False]
+        assigns = {(False, 0): [], (True, 0): [], (False, 1): [], (True, 1): []}
+        for A in states:
+            for B in states:
+                for X in states:
+                    lfrom = "(%s, E%s%s)" % (labels_iom[X], labelsm_status[A], labelsm_status[B])
+                    assigns[(False, 0)].append("(%s, E%s%s)" % (lfrom, labelsm_status[land(A, X)], labelsm_status[B]))
+                    assigns[(True, 0)].append("(%s, E%s%s)" % (lfrom, labelsm_status[lor(A, X)], labelsm_status[B]))
+                    assigns[(False, 1)].append("(%s, E%s%s)" % (lfrom, labelsm_status[A], labelsm_status[land(B, X)]))
+                    assigns[(True, 1)].append("(%s, E%s%s)" % (lfrom, labelsm_status[A], labelsm_status[lor(B, X)]))
+
+        self._assigns = {}
+        for k, vs in assigns.items():
+            self._assigns[k] = eval("["+", ".join(vs)+"]")
+
     def resetPartsIds(self, has_missing, type_parts=None):
         if type_parts not in self.meths_init_part_ids[has_missing]:
             type_parts = self.defaults_init_part_ids[has_missing]
@@ -651,6 +696,7 @@ class SSetts(object):
             self.top = Eoo
             self.index_drop = imiss
 
+        self.setAssigns(has_missing)
         self.meths_init_part_ids[has_missing][type_parts](self)
 
         # TO COMPUTE SUPPORTS, no index, common to all part types with missing values
@@ -862,18 +908,32 @@ class SSetts(object):
             lp[pids] = counts
         return lp
 
+    def clpToLSupports(self, clp, side=0, op=True, pair=False, swap=False):
+        # retrieves the sizes of parts for SSizes from list of sizes clp (counts of parts from candidate, built by greedy mining algos)
+        lsupports = numpy.zeros(self.top+1, dtype=int)
+        if pair:
+            for cfrom, lto in self.getAssigns(1, True):
+                lsupports[self.partId(lto, side=1*swap)] += clp[cfrom[0]][self.partId(cfrom[1], side=1*swap)]
+        else:
+            for cfrom, lto in self.getAssigns(side, op):
+                lsupports[lto] += clp[cfrom[0]][cfrom[1]]
+        if self.top == self.last_nonmiss:
+            return lsupports.sum(), list(lsupports[:-1])  # no missing values, drop Eoo, implicit
+        else:
+            return lsupports.sum(), list(lsupports)
+
     def getInitPartIds(self, side=0):
         # side == 0 -> Exo, Eoo, Emo
         # side == 1 -> Exo, Eoo, Emo
         return [self.partId(pid, side) for pid in self.IDS_init]
 
 
-class SParts(object):
+class SSizes(object):
 
-    class_letter = "s"
+    class_letter = "z"
     # PROPS WHAT
     info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
-    props_what = ["len", "card", "supp", "set", "perc", "ratio", "area"]
+    props_what = ["len", "card", "perc", "ratio", "area"]
     Pwhat_match = "(" + "|".join(list(info_what.keys()) + props_what) + ")"
     @classmethod
     def hasPropWhat(tcl, what):
@@ -888,29 +948,92 @@ class SParts(object):
 
     props_stats = [("acc", None), ("len", "I"), ("pval", None)]
 
-    def __init__(self, ssetts, N, supports, prs=[1, 1]):
+    @classmethod
+    def prepare_lsupports_sizes(tcl, lsupports, N):  # retrieves the sizes of parts from list of sizes, which must be of length 3 or 9
+        if type(lsupports) == list and len(lsupports) == 9 and lsupports[8] + lsupports[7] + lsupports[6] + lsupports[5] + lsupports[4] == 0:
+            lsupports = lsupports[0:3]  # all missing empty -> cut off and proceed
+
+        # two lsupports: interpreted as (suppL, suppR) -> cannot deduce size of Exx
+        # three lsupports: interpreted as (Exo, Eox, Exx)
+        if type(lsupports) == list and len(lsupports) == 3:
+            missing = False
+            sSizes = [lsupports[0], lsupports[1], lsupports[2]]
+        # four lsupports: interpreted as (suppL, suppR, missL, missR) -> cannot deduce size of parts
+        # nine lsupports: interpreted as (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm)
+        elif type(lsupports) == list and len(lsupports) == 9:
+            missing = True
+            sSizes = [support for support in lsupports]
+        # else:  not valid
+        else:
+            missing = False
+            sSizes = None
+        return missing, sSizes
+
+    @classmethod
+    def prepare_supports_sizes(tcl, supports, N):  # retrieves the sizes of parts from list of sets, which must be of length 2, 3, 4 or 9
+        if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0:
+            supports = supports[0:2]
+        elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0:
+            supports = supports[0:3]
+
+        # two supports: interpreted as (suppL, suppR)
+        if type(supports) == list and len(supports) == 2:
+            (suppL, suppR) = supports
+            missing = False
+            sSizes = [len(suppL - suppR),
+                      len(suppR - suppL),
+                      len(suppL & suppR)]
+        # three supports: interpreted as (Exo, Eox, Exx)
+        elif type(supports) == list and len(supports) == 3:
+            missing = False
+            sSizes = [len(supports[0]), len(supports[1]), len(supports[2])]
+        # four supports: interpreted as (suppL, suppR, missL, missR)
+        elif type(supports) == list and len(supports) == 4:
+            missing = True
+            (suppL, suppR, missL, missR) = supports
+            sSizes = [len(suppL - suppR - missR),
+                      len(suppR - suppL - missL),
+                      len(suppL & suppR),
+                      len(set(range(N)) - suppL - suppR - missL - missR),
+                      len(suppL & missR),
+                      len(suppR & missL),
+                      len(missR - suppL - missL),
+                      len(missL - suppR - missR),
+                      len(missL & missR)]
+        # nine supports: interpreted as (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm)
+        elif type(supports) == list and len(supports) == 9:
+            missing = True
+            sSizes = [len(support) for support in supports]
+        # else: not valid
+        else:
+            missing = False
+            sSizes = None
+        return missing, sSizes
+
+    def __init__(self, ssetts, N, lsupports, prs=[1, 1]):
         # init from dict_info
         self.ssetts = ssetts
         if type(N) == dict:
             sdict = N
             self.missing = False
-            self.sParts = [set() for i in range(len(self.ssetts.getLabels()))]
+            self.sSizes = [set() for i in range(len(self.ssetts.getLabels()))]
             self.prs = [-1, -1]
             self.N = 0
             for i, supp_key in enumerate(self.ssetts.getLabels()):
-                if supp_key in sdict:
-                    if i > 3 and len(sdict[supp_key]) > 0:
+                if supp_key in sdict and type(sdict[supp_key]) is int:
+                    if i > 3 and sdict[supp_key] > 0:
                         self.missing = True
-                    self.sParts[i] = set(sdict.pop(supp_key))
+                    self.sSizes[i] = sdict.pop(supp_key)
 
-            if "pr_0" in sdict:
-                self.prs[0] = sdict.pop("pr_0")
-            if "pr_1" in sdict:
-                self.prs[1] = sdict.pop("pr_1")
-            if "N" in sdict:
-                self.N = sdict.pop("N")
+            if 'pr_0' in sdict:
+                self.prs[0] = sdict.pop('pr_0')
+            if 'pr_1' in sdict:
+                self.prs[1] = sdict.pop('pr_1')
+            if 'N' in sdict:
+                self.N = sdict.pop('N')
             if not self.missing:
-                del self.sParts[4:]
+                del self.sSizes[4:]
+
         else:
             if type(N) is set:
                 self.N = len(N)
@@ -918,88 +1041,66 @@ class SParts(object):
             else:
                 self.N = N
                 bk = None
-            self.prs = prs
-            self.vect = None
-            # if include all empty missing parts, remove
-            if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0:
-                supports = supports[0:2]
-            elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0:
-                supports = supports[0:3]
 
-            # sParts is a partition of the rows (Eoo is not explicitely stored when there are no missing values)
-            # two supports: interpreted as (suppL, suppR)
-            if type(supports) == list and len(supports) == 2:
-                (suppL, suppR) = supports
-                self.missing = False
-                self.sParts = [set(suppL - suppR),
-                               set(suppR - suppL),
-                               set(suppL & suppR)]
-            # three supports: interpreted as (Exo, Eox, Exx)
-            elif type(supports) == list and len(supports) == 3:
-                self.missing = False
-                self.sParts = [set(supports[0]), set(supports[1]), set(supports[2])]
-            # four supports: interpreted as (suppL, suppR, missL, missR)
-            elif type(supports) == list and len(supports) == 4:
-                self.missing = True
-                (suppL, suppR, missL, missR) = supports
-                self.sParts = [set(suppL - suppR - missR),
-                               set(suppR - suppL - missL),
-                               set(suppL & suppR),
-                               set(range(self.N)) - suppL - suppR - missL - missR,
-                               set(suppL & missR),
-                               set(suppR & missL),
-                               set(missR - suppL - missL),
-                               set(missL - suppR - missR),
-                               set(missL & missR)]
-            # nine supports: interpreted as (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm)
-            elif type(supports) == list and len(supports) == 9:
-                self.missing = True
-                self.sParts = [set(support) for support in supports]
-            # else: set all empty
-            else:
-                self.missing = False
-                self.sParts = [set(), set(), set(), set(), set(), set(), set(), set(), set()]
+            self.vect = None
+            self.missing, self.sSizes = self.prepare_lsupports_sizes(lsupports, self.N)
+            if self.sSizes is None:
+                self.sSizes = [0 for i in range(self.ssetts.top+1)]
                 bk = None
+
             if bk is not None:
-                if len(self.sParts) == 3:
-                    self.sParts.append(set(bk))
+                if len(self.sSizes) == 3:
+                    self.sSizes.append(bk)
                 else:
-                    self.sParts[self.ssetts.Eoo] = set(bk)
-                for si, sp in enumerate(self.sParts):
+                    self.sSizes[self.ssetts.Eoo] = bk
+                for si, sp in enumerate(self.sSizes):
                     if si != self.ssetts.Eoo:
-                        self.sParts[self.ssetts.Eoo] -= sp
+                        self.sSizes[self.ssetts.Eoo] -= sp
+            if prs is None:
+                self.prs = [self.lenSupp(0)/self.N, self.lenSupp(1)/self.N]
+            else:
+                self.prs = prs
+
+    @classmethod
+    def privatize_support(tcl, ssetts, N, supports, prs=[1, 1], budget=0):
+        has_missing, lsupports = tcl.prepare_supports_sizes(supports, N)
+        lsupports = [numpy.clip(round(x+numpy.random.laplace(scale=1/budget)), 0, N) for x in lsupports]
+        return tcl(ssetts, N, lsupports, prs)
 
     def copy(self):
-        return SParts(self.ssetts, self.N, self.sParts, prs=list(self.prs))
+        return SSizes(self.ssetts, self.N, self.sSizes, prs=self.prs if self.prs is None else list(self.prs))
+
+    def nbStored(self):
+        return len(self.sSizes)
 
     def __eq__(self, other):
-        return isinstance(other, SParts) and self.N == other.N and cmp_listsets(self.sParts, other.sParts) == 0
+        return isinstance(other, SSizes) and self.N == other.N and cmp_lists(self.sSizes, other.sSizes) == 0
 
     def __ne__(self, other):
-        return not isinstance(other, SParts) or self.N != other.N or cmp_listsets(self.sParts, other.sParts) != 0
-
+        return not isinstance(other, SSizes) or self.N != other.N or cmp_lists(self.sSizes, other.sSizes) != 0
     # !! if not the same length or not the same total, set lists are not comparable
+
     def __lt__(self, other):
-        if isinstance(other, SParts) and self.N == other.N:
-            c = cmp_listsets(self.sParts, other.sParts)
+        if isinstance(other, SSizes) and self.N == other.N:
+            c = cmp_lists(self.sSizes, other.sSizes)
             return c > -3 and c < 0
         return False
 
     def __le__(self, other):
-        if isinstance(other, SParts) and self.N == other.N:
-            c = cmp_listsets(self.sParts, other.sParts)
+        if isinstance(other, SSizes) and self.N == other.N:
+            c = cmp_lists(self.sSizes, other.sSizes)
             return c > -3 and c <= 0
         return False
 
     def __gt__(self, other):
-        if isinstance(other, SParts) and self.N == other.N:
-            c = cmp_listsets(self.sParts, other.sParts)
+        if isinstance(other, SSizes) and self.N == other.N:
+            c = cmp_lists(self.sSizes, other.sSizes)
             return c < 3 and c > 0
         return False
 
     def __ge__(self, other):
-        if isinstance(other, SParts) and self.N == other.N:
-            c = cmp_listsets(self.sParts, other.sParts)
+        if isinstance(other, SSizes) and self.N == other.N:
+            c = cmp_lists(self.sSizes, other.sSizes)
             return c < 3 and c >= 0
         return False
 
@@ -1010,6 +1111,8 @@ class SParts(object):
         return self.ssetts.getMethodPVal()
 
     def proba(self, side):
+        if self.prs is None:
+            return -1
         return self.prs[side]
 
     def pVal(self):
@@ -1026,20 +1129,17 @@ class SParts(object):
 
     def toDict(self, with_Eoo=False):
         sdict = {}
-        for i in range(len(self.sParts)):
-            sdict[self.ssetts.getLabel(i)] = self.part(i)
+        for i in range(self.nbStored()):
             sdict["card_" + self.ssetts.getLabel(i)] = self.lpart(i)
             sdict["perc_" + self.ssetts.getLabel(i)] = self.lpart(i) * 100. / self.N
         if with_Eoo:
-            sdict[self.ssetts.getLabel(SSetts.Eoo)] = self.part(SSetts.Eoo)
             sdict["card_" + self.ssetts.getLabel(SSetts.Eoo)] = self.lpart(SSetts.Eoo)
-            sdict["perc_" + self.ssetts.getLabel(SSetts.Eoo)
-                  ] = self.lpart(SSetts.Eoo) * 100. / self.N
+            sdict["perc_" + self.ssetts.getLabel(SSetts.Eoo)] = self.lpart(SSetts.Eoo) * 100. / self.N
         for side in [0, 1]:
-            if self.prs[side] != -1:
+            if self.prs is not None and self.prs[side] != -1:
                 sdict["pr_" + str(side)] = self.prs[side]
         sdict["N"] = self.N
-        for info_key, info_meth in SParts.info_what.items():
+        for info_key, info_meth in self.info_what.items():
             sdict[info_key] = eval(info_meth)
         return sdict
 
@@ -1049,110 +1149,26 @@ class SParts(object):
 
     # return copy of the probas
     def probas(self):
-        return list(self.prs)
-
-    # return support (used to create new instance of SParts)
-    def supparts(self):
-        return self.sParts
-
-    # return new instance of SParts corresponding to negating given side
-    def negate(self, side=0):
-        if self.missing:
-            return SParts(self.ssetts, self.N, self.ssetts.negateParts(side, self.sParts))
-        else:
-            self.sParts.append(self.part(self.ssetts.Eoo))
-            n = self.ssetts.negateParts(side, self.sParts)
-            return SParts(self.ssetts, self.N, n[0:-1])
-
-    def part(self, part_id, side=0):
-        pid = self.ssetts.partId(part_id, side)
-        if pid < len(self.sParts):
-            return self.sParts[pid]
-        elif part_id == self.ssetts.Eoo:
-            return set(range(self.N)) - self.sParts[0] - self.sParts[1] - self.sParts[2]
-        else:
-            return set()
+        if self.prs is not None:
+            return list(self.prs)
 
     def lpart(self, part_id, side=0):
         pid = self.ssetts.partId(part_id, side)
-        if pid < len(self.sParts):
-            return len(self.sParts[pid])
+        if pid < self.nbStored():
+            return self.sSizes[pid]
         elif part_id == self.ssetts.Eoo:
-            return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
+            return self.N - self.sSizes[0] - self.sSizes[1] - self.sSizes[2]
         else:
             return 0
-
-    def parts(self, side=0):
-        return [self.part(i, side) for i in range(self.ssetts.top+1)]
-
-    def parts4M(self, side=0):
-        if self.missing:
-            return [self.part(i, side) for i in range(self.ssetts.Eoo+1)]+[set().union(*[self.part(i, side) for i in range(self.ssetts.Eoo+1, self.ssetts.top+1)])]
-        else:
-            return self.parts(side)
 
     def lparts(self, side=0):
         return [self.lpart(i, side) for i in range(self.ssetts.top+1)]
-
-    def partInterX(self, suppX, part_id, side=0):
-        pid = self.ssetts.partId(part_id, side)
-        if pid < len(self.sParts):
-            return set(suppX & self.sParts[pid])
-        elif part_id == self.ssetts.Eoo:
-            return set(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
-        else:
-            return set()
-
-    def lpartInterX(self, suppX, part_id, side=0):
-        pid = self.ssetts.partId(part_id, side)
-        if pid < len(self.sParts):
-            return len(suppX & self.sParts[pid])
-        elif part_id == self.ssetts.Eoo:
-            return len(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
-        else:
-            return 0
-
-    def partsInterX(self, suppX, side=0):
-        return [self.partInterX(suppX, i, side) for i in range(self.ssetts.top+1)]
-
-    def lpartsInterX(self, suppX, side=0):
-        if self.missing:
-            return [self.lpartInterX(suppX, i, side) for i in range(self.ssetts.top+1)]
-        else:
-            la = self.lpartInterX(suppX, self.ssetts.Exo, side)
-            lb = self.lpartInterX(suppX, self.ssetts.Eox, side)
-            lc = self.lpartInterX(suppX, self.ssetts.Exx, side)
-            tmp = [la, lb, lc, len(suppX) - la - lb - lc]
-            for i in range(len(tmp), self.ssetts.top+1):
-                tmp.append(0)
-            return tmp
 
     def nbParts(self):
         return self.ssetts.top+1
 
     def lparts_union(self, ids, side=0):
         return sum([self.lpart(i, side) for i in ids])
-
-    def part_union(self, ids, side=0):
-        union = set()
-        for i in ids:
-            union |= self.part(i, side)
-        return union
-
-    def supp(self, side=0):
-        return self.part_union(self.ssetts.IDS_supp, side)
-
-    def nonSupp(self, side=0):
-        if not self.missing:
-            return set(range(self.N)) - self.supp(side)
-        else:
-            return self.part_union(set(range(self.ssetts.top+1)) - set(self.ssetts.IDS_supp + self.ssetts.IDS_miss), side)
-
-    def miss(self, side=0):
-        if not self.missing:
-            return set()
-        else:
-            return self.part_union(self.ssetts.IDS_miss, side)
 
     def lenSupp(self, side=0):
         return self.lparts_union(self.ssetts.IDS_supp, side)
@@ -1166,45 +1182,7 @@ class SParts(object):
         else:
             return self.lparts_union(self.ssetts.miss_ids, side)
 
-    # SUPPORTS
-    def suppSide(self, side):
-        pdb.set_trace()
-        return self.part_union(self.ssetts.IDS_suppL, side)
-
-    def suppP(self, i, side=0):
-        return self.part(i, side)
-
-    def suppD(self, side=0):
-        return self.part_union(self.ssetts.IDS_diff, side)
-
-    def suppI(self, side=0):
-        return self.part_union(self.ssetts.IDS_inter, side)
-
-    def suppU(self, side=0):
-        return self.part_union(self.ssetts.IDS_inter+self.ssetts.IDS_diff, side)
-
-    def suppL(self, side=0):
-        return self.suppSide(0)
-
-    def suppR(self, side=0):
-        return self.suppSide(1)
-
-    def suppO(self, side=0):
-        return self.part_union(self.ssetts.IDS_uncovered, side)
-
-    def suppA(self, side=0):
-        return self.part_union(self.ssetts.IDS_suppL, side)
-
-    def suppB(self, side=0):
-        return self.part_union(self.ssetts.IDS_suppL, 1-side)
-
-    def suppN(self, side=0):
-        if len(self.sParts) == 4:
-            return self.part_union(range(4), side)
-        else:
-            return set(range(self.N))
-
-    # LENGHTS
+    # LENGTHS
     # corresponding lengths
     def lenSide(self, side):
         return self.lparts_union(self.ssetts.IDS_suppL, side)
@@ -1237,7 +1215,7 @@ class SParts(object):
         return self.lparts_union(self.ssetts.IDS_suppL, 1-side)
 
     def lenN(self, side=0):
-        if len(self.sParts) == 4:
+        if self.nbStored() == 4:
             return self.lparts_union(range(4), side)
         else:
             return self.N
@@ -1257,13 +1235,11 @@ class SParts(object):
     #     return self.lparts_union(self.ssetts.IDS_uncovered, side)
 
     def getProp(self, what, which=None):
-        if what in SParts.info_what:
-            return eval(SParts.info_what[what])
+        if what in self.info_what:
+            return eval(self.info_what[what])
         wt = what
         if what == "card" or what == "area":
             wt = "len"
-        elif what == "supp":
-            wt = "set"
         methode = eval("self.%s" % wt)
         if callable(methode):
             return methode(which)
@@ -1271,14 +1247,8 @@ class SParts(object):
     def len(self, which="I"):
         if which in SSetts.map_label_part:
             return self.lenP(SSetts.map_label_part[which])
-        elif which in SParts.sets_letters:
+        elif which in self.sets_letters:
             return eval("self.len%s()" % which)
-
-    def set(self, which="I"):
-        if which in SSetts.map_label_part:
-            return self.suppP(SSetts.map_label_part[which])
-        elif which in SParts.sets_letters:
-            return eval("self.supp%s()" % which)
 
     def ratio(self, which="I"):
         return tool_ratio(self.len(which), self.nbRows())
@@ -1321,25 +1291,6 @@ class SParts(object):
             lUnion = self.lenI() if self.getTypeParts() == "exclu" else None
             return tool_pValOver(self.lenI(), self.N, self.lenSupp(0), self.lenSupp(1), lU=lUnion)
 
-    # moves the instersection of supp with part with index id_from to part with index id_to
-    def moveInter(self, side, id_from, id_to, supp):
-        self.sParts[self.ssetts.partId(id_to, side)] |= (
-            self.sParts[self.ssetts.partId(id_from, side)] & supp)
-        self.sParts[self.ssetts.partId(id_from, side)] -= supp
-
-    def moveInterAllOut(self, side, supp):
-        out_id = self.getSSetts().Eoo
-        lparts = []
-        for i in range(len(self.sParts)):
-            lparts.append(len(self.sParts[i] & supp))
-            if i != out_id:
-                self.sParts[i].difference_update(supp)
-            else:
-                self.sParts[i].update(supp)
-        if len(lparts) == out_id:
-            lparts.append(len(supp)-sum(lparts))
-        return lparts
-
     # update support probabilities
     @classmethod
     def updateProba(tcl, prA, prB, OR):
@@ -1360,7 +1311,354 @@ class SParts(object):
         else:
             return numpy.prod(prs)
 
+    # PRINTING
+    ##############
+    # def __str__(self):
+    #         s = "|"
+    #         r = "||\n|"
+    #         if self.missing: up_to = self.ssetts.Emm
+    #         else: up_to = self.ssetts.Eoo
+    #         for i in range(up_to+1):
+    #             s += "|%s" % (3*self.ssetts.getLabel(i))
+    #             r += "| % 4i " % self.lpart(i,0)
+    #         return s+r+"||"
+
+    def __str__(self):
+        return "SUPPORT:" + self.dispSuppL(sep=" ")
+
+    def dispSuppL(self, sep="\t"):
+        return sep.join(["card_" + self.ssetts.getLabel(i)+":" + str(len(self.sParts[i])) for i in range(len(self.sParts))])
+
+    def dispStats(self, sep="\t"):
+        return sep.join(["%s%s:%s" % (what, which or "", self.getProp(what, which)) for (what, which) in self.props_stats])
+
+
+class SParts(SSizes):
+
+    class_letter = "s"
+    # PROPS WHAT
+    # info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
+    props_what = ["len", "card", "perc", "ratio", "area", "supp", "set"]
+
+    @classmethod
+    def prepare_supports_parts(tcl, supports, N):  # retrieves the support parts from list of sets, which must be of length 2, 3, 4 or 9
+        if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0:
+            supports = supports[0:2]
+        elif type(supports) == list and len(supports) == 9 and len(supports[8]) + len(supports[7]) + len(supports[6]) + len(supports[5]) + len(supports[4]) == 0:
+            supports = supports[0:3]
+
+        # two supports: interpreted as (suppL, suppR)
+        if type(supports) == list and len(supports) == 2:
+            (suppL, suppR) = supports
+            missing = False
+            sParts = [set(suppL - suppR),
+                      set(suppR - suppL),
+                      set(suppL & suppR)]
+        # three supports: interpreted as (Exo, Eox, Exx)
+        elif type(supports) == list and len(supports) == 3:
+            missing = False
+            sParts = [set(supports[0]), set(supports[1]), set(supports[2])]
+        # four supports: interpreted as (suppL, suppR, missL, missR)
+        elif type(supports) == list and len(supports) == 4:
+            missing = True
+            (suppL, suppR, missL, missR) = supports
+            sParts = [set(suppL - suppR - missR),
+                      set(suppR - suppL - missL),
+                      set(suppL & suppR),
+                      set(range(N)) - suppL - suppR - missL - missR,
+                      set(suppL & missR),
+                      set(suppR & missL),
+                      set(missR - suppL - missL),
+                      set(missL - suppR - missR),
+                      set(missL & missR)]
+        # nine supports: interpreted as (Exo, Eox, Exx, Eoo, Exm, Emx, Eom, Emo, Emm)
+        elif type(supports) == list and len(supports) == 9:
+            missing = True
+            sParts = [set(support) for support in supports]
+        # else: not valid
+        else:
+            missing = False
+            sParts = None
+        return missing, sParts
+
+    def __init__(self, ssetts, N, supports, prs=[1, 1]):
+        # sParts is a partition of the rows (Eoo is not explicitely stored when there are no missing values)
+        # init from dict_info
+        self.ssetts = ssetts
+        if type(N) == dict:
+            sdict = N
+            self.missing = False
+            self.sParts = [set() for i in range(len(self.ssetts.getLabels()))]
+            self.prs = [-1, -1]
+            self.N = 0
+            for i, supp_key in enumerate(self.ssetts.getLabels()):
+                if supp_key in sdict:
+                    if i > 3 and len(sdict[supp_key]) > 0:
+                        self.missing = True
+                    self.sParts[i] = set(sdict.pop(supp_key))
+
+            if "pr_0" in sdict:
+                self.prs[0] = sdict.pop("pr_0")
+            if "pr_1" in sdict:
+                self.prs[1] = sdict.pop("pr_1")
+            if "N" in sdict:
+                self.N = sdict.pop("N")
+            if not self.missing:
+                del self.sParts[4:]
+        else:
+            if type(N) is set:
+                self.N = len(N)
+                bk = N
+            else:
+                self.N = N
+                bk = None
+
+            self.vect = None
+            self.missing, self.sParts = self.prepare_supports_parts(supports, self.N)
+            if self.sParts is None:
+                self.sParts = [set() for i in range(self.ssetts.top+1)]
+                bk = None
+
+            if bk is not None:
+                if len(self.sParts) == 3:
+                    self.sParts.append(set(bk))
+                else:
+                    self.sParts[self.ssetts.Eoo] = set(bk)
+                for si, sp in enumerate(self.sParts):
+                    if si != self.ssetts.Eoo:
+                        self.sParts[self.ssetts.Eoo] -= sp
+            if prs is None:
+                self.prs = [self.lenSupp(0)/self.N, self.lenSupp(1)/self.N]
+            else:
+                self.prs = prs
+
+    def privatize(self, budget=0):
+        return self.privatize_support(self.ssetts, self.N, self.sParts, prs=list(self.prs), budget=budget)
+
+    def copy(self):
+        return SParts(self.ssetts, self.N, self.sParts, prs=list(self.prs))
+
+    def nbStored(self):
+        return len(self.sParts)
+
+    def __eq__(self, other):
+        return isinstance(other, SParts) and self.N == other.N and cmp_listsets(self.sParts, other.sParts) == 0
+
+    def __ne__(self, other):
+        return not isinstance(other, SParts) or self.N != other.N or cmp_listsets(self.sParts, other.sParts) != 0
+    # !! if not the same length or not the same total, set lists are not comparable
+
+    def __lt__(self, other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c > -3 and c < 0
+        return False
+
+    def __le__(self, other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c > -3 and c <= 0
+        return False
+
+    def __gt__(self, other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c < 3 and c > 0
+        return False
+
+    def __ge__(self, other):
+        if isinstance(other, SParts) and self.N == other.N:
+            c = cmp_listsets(self.sParts, other.sParts)
+            return c < 3 and c >= 0
+        return False
+
+    def toDict(self, with_Eoo=False):
+        sdict = {}
+        for i in range(self.nbStored()):
+            sdict[self.ssetts.getLabel(i)] = self.part(i)
+            sdict["card_" + self.ssetts.getLabel(i)] = self.lpart(i)
+            sdict["perc_" + self.ssetts.getLabel(i)] = self.lpart(i) * 100. / self.N
+        if with_Eoo:
+            sdict[self.ssetts.getLabel(SSetts.Eoo)] = self.part(SSetts.Eoo)
+            sdict["card_" + self.ssetts.getLabel(SSetts.Eoo)] = self.lpart(SSetts.Eoo)
+            sdict["perc_" + self.ssetts.getLabel(SSetts.Eoo)] = self.lpart(SSetts.Eoo) * 100. / self.N
+        for side in [0, 1]:
+            if self.prs[side] != -1:
+                sdict["pr_" + str(side)] = self.prs[side]
+        sdict["N"] = self.N
+        for info_key, info_meth in SParts.info_what.items():
+            sdict[info_key] = eval(info_meth)
+        return sdict
+
+    # return support (used to create new instance of SParts)
+    def supparts(self):
+        return self.sParts
+
+    # return new instance of SParts corresponding to negating given side
+    def negate(self, side=0):
+        if self.missing:
+            return SParts(self.ssetts, self.N, self.ssetts.negateParts(side, self.sParts))
+        else:
+            self.sParts.append(self.part(self.ssetts.Eoo))
+            n = self.ssetts.negateParts(side, self.sParts)
+            return SParts(self.ssetts, self.N, n[0:-1])
+
+    def part(self, part_id, side=0):
+        pid = self.ssetts.partId(part_id, side)
+        if pid < self.nbStored():
+            return self.sParts[pid]
+        elif part_id == self.ssetts.Eoo:
+            return set(range(self.N)) - self.sParts[0] - self.sParts[1] - self.sParts[2]
+        else:
+            return set()
+
+    def lpart(self, part_id, side=0):
+        pid = self.ssetts.partId(part_id, side)
+        if pid < self.nbStored():
+            return len(self.sParts[pid])
+        elif part_id == self.ssetts.Eoo:
+            return self.N - len(self.sParts[0]) - len(self.sParts[1]) - len(self.sParts[2])
+        else:
+            return 0
+
+    def parts(self, side=0):
+        return [self.part(i, side) for i in range(self.ssetts.top+1)]
+
+    def parts4M(self, side=0):
+        if self.missing:
+            return [self.part(i, side) for i in range(self.ssetts.Eoo+1)]+[set().union(*[self.part(i, side) for i in range(self.ssetts.Eoo+1, self.ssetts.top+1)])]
+        else:
+            return self.parts(side)
+
+    def partInterX(self, suppX, part_id, side=0):
+        pid = self.ssetts.partId(part_id, side)
+        if pid < self.nbStored():
+            return set(suppX & self.sParts[pid])
+        elif part_id == self.ssetts.Eoo:
+            return set(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
+        else:
+            return set()
+
+    def lpartInterX(self, suppX, part_id, side=0):
+        pid = self.ssetts.partId(part_id, side)
+        if pid < self.nbStored():
+            return len(suppX & self.sParts[pid])
+        elif part_id == self.ssetts.Eoo:
+            return len(suppX - self.sParts[0] - self.sParts[1] - self.sParts[2])
+        else:
+            return 0
+
+    def partsInterX(self, suppX, side=0):
+        return [self.partInterX(suppX, i, side) for i in range(self.ssetts.top+1)]
+
+    def lpartsInterX(self, suppX, side=0):
+        if self.missing:
+            return [self.lpartInterX(suppX, i, side) for i in range(self.ssetts.top+1)]
+        else:
+            la = self.lpartInterX(suppX, self.ssetts.Exo, side)
+            lb = self.lpartInterX(suppX, self.ssetts.Eox, side)
+            lc = self.lpartInterX(suppX, self.ssetts.Exx, side)
+            tmp = [la, lb, lc, len(suppX) - la - lb - lc]
+            for i in range(len(tmp), self.ssetts.top+1):
+                tmp.append(0)
+            return tmp
+
+    def part_union(self, ids, side=0):
+        union = set()
+        for i in ids:
+            union |= self.part(i, side)
+        return union
+
+    def supp(self, side=0):
+        return self.part_union(self.ssetts.IDS_supp, side)
+
+    def nonSupp(self, side=0):
+        if not self.missing:
+            return set(range(self.N)) - self.supp(side)
+        else:
+            return self.part_union(set(range(self.ssetts.top+1)) - set(self.ssetts.IDS_supp + self.ssetts.IDS_miss), side)
+
+    def miss(self, side=0):
+        if not self.missing:
+            return set()
+        else:
+            return self.part_union(self.ssetts.IDS_miss, side)
+
+    # SUPPORTS
+    def suppSide(self, side):
+        return self.part_union(self.ssetts.IDS_suppL, side)
+
+    def suppP(self, i, side=0):
+        return self.part(i, side)
+
+    def suppD(self, side=0):
+        return self.part_union(self.ssetts.IDS_diff, side)
+
+    def suppI(self, side=0):
+        return self.part_union(self.ssetts.IDS_inter, side)
+
+    def suppU(self, side=0):
+        return self.part_union(self.ssetts.IDS_inter+self.ssetts.IDS_diff, side)
+
+    def suppL(self, side=0):
+        return self.suppSide(0)
+
+    def suppR(self, side=0):
+        return self.suppSide(1)
+
+    def suppO(self, side=0):
+        return self.part_union(self.ssetts.IDS_uncovered, side)
+
+    def suppA(self, side=0):
+        return self.part_union(self.ssetts.IDS_suppL, side)
+
+    def suppB(self, side=0):
+        return self.part_union(self.ssetts.IDS_suppL, 1-side)
+
+    def suppN(self, side=0):
+        if self.nbStored() == 4:
+            return self.part_union(range(4), side)
+        else:
+            return set(range(self.N))
+
+    def getProp(self, what, which=None):
+        if what in SParts.info_what:
+            return eval(SParts.info_what[what])
+        wt = what
+        if what == "card" or what == "area":
+            wt = "len"
+        elif what == "supp":
+            wt = "set"
+        methode = eval("self.%s" % wt)
+        if callable(methode):
+            return methode(which)
+
+    def set(self, which="I"):
+        if which in SSetts.map_label_part:
+            return self.suppP(SSetts.map_label_part[which])
+        elif which in self.sets_letters:
+            return eval("self.supp%s()" % which)
+
+    # moves the instersection of supp with part with index id_from to part with index id_to
+    def moveInter(self, side, id_from, id_to, supp):
+        self.sParts[self.ssetts.partId(id_to, side)] |= (self.sParts[self.ssetts.partId(id_from, side)] & supp)
+        self.sParts[self.ssetts.partId(id_from, side)] -= supp
+
+    def moveInterAllOut(self, side, supp):
+        out_id = self.getSSetts().Eoo
+        lparts = []
+        for i in range(self.nbStored()):
+            lparts.append(len(self.sParts[i] & supp))
+            if i != out_id:
+                self.sParts[i].difference_update(supp)
+            else:
+                self.sParts[i].update(supp)
+        if len(lparts) == out_id:
+            lparts.append(len(supp)-sum(lparts))
+        return lparts
+
     # update supports and probabilities resulting from appending X to given side with given operator
+
     def update(self, side, OR, suppX, missX=None):
         self.vect = None
         union = None
@@ -1368,9 +1666,8 @@ class SParts(object):
 
         if not self.missing and (type(missX) == set and len(missX) > 0):
             self.missing = True
-            if len(self.sParts) == 3:
-                self.sParts.append(set(range(self.N)) -
-                                   self.sParts[0] - self.sParts[1] - self.sParts[2])
+            if self.nbStored() == 3:
+                self.sParts.append(set(range(self.N)) - self.sParts[0] - self.sParts[1] - self.sParts[2])
             else:
                 union = set(self.sParts[0] | self.sParts[1] | self.sParts[2] | self.sParts[3])
             self.sParts.extend([set(), set(), set(), set(), set()])
@@ -1421,16 +1718,15 @@ class SParts(object):
                 self.sParts[self.ssetts.partId(self.ssetts.Exx, side)] &= suppX
                 self.sParts[self.ssetts.partId(self.ssetts.Exo, side)] &= suppX
         if union is not None:
-            self.sParts[self.ssetts.Eoo] = union - self.sParts[self.ssetts.Exx] - \
-                self.sParts[self.ssetts.Eox] - self.sParts[self.ssetts.Exo]
+            self.sParts[self.ssetts.Eoo] = union - self.sParts[self.ssetts.Exx] - self.sParts[self.ssetts.Eox] - self.sParts[self.ssetts.Exo]
 
     # computes vector ABCD (vector containg for each row the index of the part it belongs to)
     def makeVectorABCD(self, force_list=False, rest_ids=None):
         if self.vect is None or (force_list and type(self.vect) is not list):
-            if len(self.sParts) == 4 and not force_list:
+            if self.nbStored() == 4 and not force_list:
                 # svect = {}
                 self.vect = {}
-                for partId in range(len(self.sParts)):
+                for partId in range(self.nbStored()):
                     for i in self.sParts[partId]:
                         self.vect[i] = partId
             else:
@@ -1438,7 +1734,7 @@ class SParts(object):
                 map_rest = {}
                 if rest_ids is not None:
                     map_rest = dict([(vvv, vvi) for (vvi, vvv) in enumerate(sorted(rest_ids))])
-                for partId in range(len(self.sParts)):
+                for partId in range(self.nbStored()):
                     for i in self.sParts[partId]:
                         self.vect[map_rest.get(i, i)] = partId
 
@@ -1471,22 +1767,6 @@ class SParts(object):
 
     # PRINTING
     ##############
-    # def __str__(self):
-    #         s = "|"
-    #         r = "||\n|"
-    #         if self.missing: up_to = self.ssetts.Emm
-    #         else: up_to = self.ssetts.Eoo
-    #         for i in range(up_to+1):
-    #             s += "|%s" % (3*self.ssetts.getLabel(i))
-    #             r += "| % 4i " % self.lpart(i,0)
-    #         return s+r+"||"
-
-    def __str__(self):
-        return "SUPPORT:" + self.dispSuppL(sep=" ")
-
-    def dispSuppL(self, sep="\t"):
-        return sep.join(["card_" + self.ssetts.getLabel(i)+":" + str(len(self.sParts[i])) for i in range(len(self.sParts))])
-
     def dispSupp(self, sep="\t"):
         supportStr = ""
         for i in sorted(self.supp(0)):
@@ -1503,9 +1783,6 @@ class SParts(object):
                 supportStr += "%i " % i
         return supportStr
 
-    def dispStats(self, sep="\t"):
-        return sep.join(["%s%s:%s" % (what, which or "", self.getProp(what, which)) for (what, which) in self.props_stats])
-
     # compute the resulting support and missing when combining X and Y with given operator
     @classmethod
     def partsSuppMiss(tcl, OR, XSuppMiss, YSuppMiss):
@@ -1517,8 +1794,7 @@ class SParts(object):
             supp = set(XSuppMiss[0] | YSuppMiss[0])
             miss = set(XSuppMiss[1] | YSuppMiss[1]) - supp
         else:
-            miss = set((XSuppMiss[1] & YSuppMiss[1]) | (
-                XSuppMiss[1] & YSuppMiss[0]) | (YSuppMiss[1] & XSuppMiss[0]))
+            miss = set((XSuppMiss[1] & YSuppMiss[1]) | (XSuppMiss[1] & YSuppMiss[0]) | (YSuppMiss[1] & XSuppMiss[0]))
             supp = set(XSuppMiss[0] & YSuppMiss[0])
         return (supp, miss)
 

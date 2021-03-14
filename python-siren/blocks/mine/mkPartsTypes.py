@@ -110,6 +110,19 @@ if __name__ == "__main__":
     # for (A, B) in set_N:
     #     print("# %s  %s%7s%9s" % (status_labels[A], status_labels[B], status_labels[land(A, B)], status_labels[lor(B, A)]))
 
+    # states = [True, False, None]
+    # assigns = {(False, 0): [], (True, 0): [], (False, 1): [], (True, 1): []}
+    # for A in states:
+    #     for B in states:
+    #         for X in states:
+    #             assigns[(False, 0)].append("((%s, E%s%s), E%s%s)" % (io_labels[X], status_labels[A], status_labels[B], status_labels[land(A, X)], status_labels[B]))
+    #             assigns[(True, 0)].append("((%s, E%s%s), E%s%s)" % (io_labels[X], status_labels[A], status_labels[B], status_labels[lor(A, X)], status_labels[B]))
+    #             assigns[(False, 1)].append("((%s, E%s%s), E%s%s)" % (io_labels[X], status_labels[A], status_labels[B], status_labels[A], status_labels[land(B, X)]))
+    #             assigns[(True, 1)].append("((%s, E%s%s), E%s%s)" % (io_labels[X], status_labels[A], status_labels[B], status_labels[A], status_labels[lor(B, X)]))
+
+    # for k in [(False, 0), (True, 0), (False, 1), (True, 1)]:
+    #     print("assigns[%s] = [%s]" % (k, ", ".join(assigns[k])))
+
     typs = [("none", {"defI": "|Exx|", "defU": "|Exx|+|Exo|+|Eox|", "defL": "|Exo|+|Exx|", "states": [True, False]}),
             ("rejective",   {"defI": "|Exx|",
                              "defU": "|Exx|+|Exo|+|Eox|",

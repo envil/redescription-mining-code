@@ -889,17 +889,22 @@ class TrackedContentCollection(ContentCollection):
     def __init__(self, items=None, lists=None):
         self.last_t = 0
         self.stored_tracks = []
-        self.track_on = True
+        self.track_on = 1
         ContentCollection.__init__(self, items, lists)
 
+    def noTracking(self):
+        self.track_on = -1
+
     def turnTrackOff(self):
-        self.track_on = False
+        if self.track_on > -1:
+            self.track_on = 0
 
     def turnTrackOn(self):
-        self.track_on = True
+        if self.track_on > -1:
+            self.track_on = 1
 
     def isTrackOn(self):
-        return self.track_on
+        return self.track_on > 0
 
     def getLatestTracks(self):
         t = self.last_t
@@ -922,7 +927,8 @@ class TrackedContentCollection(ContentCollection):
         del self.stored_tracks[:]
 
     def appendTracks(self, tracks):
-        self.stored_tracks.extend(tracks)
+        if self.isTrackOn():
+            self.stored_tracks.extend(tracks)
 
     def addTrack(self, track):
         if self.isTrackOn():

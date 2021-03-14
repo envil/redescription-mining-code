@@ -42,8 +42,8 @@ TREE_CLASSES = {"layeredtrees": CharbonTLayer,
                 "sprit": CharbonTSprit}
 TREE_DEF = CharbonTLayer
 
-# CHARBON_MISS_FORCE = False
-CHARBON_MISS_FORCE = True
+CHARBON_MISS_FORCE = False
+# CHARBON_MISS_FORCE = True
 
 # TRACKS_ON = True
 TRACKS_ON = False  # DEACTIVATED KEEPING TRACKS
@@ -79,7 +79,7 @@ class RCollection(BatchCollection, Souvenirs):
         Souvenirs.__init__(self, nAvailableMo, nAmnesic)
         BatchCollection.__init__(self)
         if not TRACKS_ON:
-            self.turnTrackOff()
+            self.noTracking()
         # prepare buffer list
         self.newList(iid="F")
         self.newList(iid="P")
@@ -226,7 +226,7 @@ class ExpMiner(object):
                     if self.logger.verbosity >= 4:
                         self.logger.printL(4, str(self.charbon.getStore()), "log", self.getLogId())
 
-                    kids = self.charbon.getStore().improvingReds(self.data)
+                    kids = self.charbon.getStore().getFoundReds(self.data)
                     self.logger.printL(2, "Expansion %s.%s returned %s redescriptions" % (self.count, redi, len(kids)), "status", self.getLogId())
                     kid_ids = []
                     for kid in kids:
@@ -616,13 +616,13 @@ class Miner(object):
             self.doExpansionsGlobal(cust_params)
 
     def doExpansionsGlobal(self, cust_params={}):
-        initial_cands, scs = self.initial_candidates.getAllCands(self.data, testIni)
-        if len(initial_cands) > 0 and self.questionLive():
+        initial_terms = self.initial_candidates.getFoundCands()
+        if len(initial_terms) > 0 and self.questionLive():
 
             self.logger.clockTic(self.getLogId(), "fim_exp")
             self.logger.printL(1, "Global expansion", "status", self.getLogId())
 
-            kids = self.charbon.computeExpansions(self.data, initial_cands)
+            kids = self.charbon.computeExpansions(self.data, initial_terms)
             self.logger.printL(2, "Global expansion returned %s redescriptions" % len(kids), "status", self.getLogId())
             kid_ids = []
             for kid in kids:
@@ -697,8 +697,8 @@ class Miner(object):
         if self.data.isSingleD():
             sides = [0]
         for side in sides:
-            for idl in ids[side]:  # TODO INITIAL TERMS
-                cands = self.charbon.computeInitTerms(side, idl, self.data.col(side, idl))
+            for idl in ids[side]:
+                cands = self.charbon.computeInitTerms(side, self.data.col(side, idl))
                 self.logger.printL(4, "Generated %d initial terms from variable %d %d" % (len(cands), side, idl), "status", self.getLogId())
                 for cand in cands:
                     self.logger.printL(6, str(cand), "log", self.getLogId())

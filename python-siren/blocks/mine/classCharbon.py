@@ -54,8 +54,8 @@ class Charbon(object):
     def copy(self):
         return self.__class__(self.constraints, self.logger)
 
-    def computeInitTerms(self, side, idl, col):
-        return [TermCand(side, Literal(False, t), v, col.nbRows())
+    def computeInitTerms(self, side, col):
+        return [TermCand(self.constraints.getSSetts(), side, Literal(False, t), v, col.nbRows())
                 for (t, v) in col.getInitTerms(self.constraints.getCstr("min_itm_in"), self.constraints.getCstr("min_itm_out"),
                                                self.constraints.getCstr("inits_productivity"))]
 
@@ -324,7 +324,7 @@ class CharbonTree(Charbon):
                 elif len(lsAnon[1-side]) == 0:
                     cids = av_cols[side]
                 for cid in cids:
-                    for cand in self.computeInitTerms(data.col(side, cid)):
+                    for cand in self.computeInitTerms(side, data.col(side, cid)):
                         targets.append(cand.makeTrg(data, tcols))
         return targets, in_data, cols_info, basis_red
 

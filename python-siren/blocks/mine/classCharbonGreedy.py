@@ -5,7 +5,7 @@ try:
     from classQuery import *
     from classRedescription import Redescription
     from classConstraints import Constraints
-    from classCandidates import XStore, ExtsBatch, PairsBatch, CondCand, ExtensionWarning
+    from classCandidates import XStore, ExtsBatch, PairsBatch, ExtensionWarning
     from classCharbon import Charbon
 except ModuleNotFoundError:
     from .classCol import ColM
@@ -13,13 +13,14 @@ except ModuleNotFoundError:
     from .classQuery import *
     from .classRedescription import Redescription
     from .classConstraints import Constraints
-    from .classCandidates import XStore, ExtsBatch, PairsBatch, CondCand, ExtensionWarning
+    from .classCandidates import XStore, ExtsBatch, PairsBatch, ExtensionWarning
     from .classCharbon import Charbon
 
 import pdb
 
 
 class CharbonGreedy(Charbon):
+    # cannot be used directly, need complentary methods specific to Standard or Missing values subclasses
 
     name = "G"
     FMT_FLG = "{:04b}"
@@ -222,7 +223,7 @@ class CharbonGreedy(Charbon):
                 self.findCover(1, colsC[ci], clp_tm, cond_sparts, Constraints.getStatusCond())
                 cands = self.stopStoreDivert()
                 if len(cands) == 1:
-                    cand = CondCand(*cands[0][1:])
+                    cand = self.store.mkCondCand(*cands[0])
                     if cmp_lower(best[1], cand.getAcc()):
                         best = ([len(current)], cand.getAcc())
                     elif best[1] == cand.getAcc():
@@ -903,8 +904,9 @@ class CharbonGreedy(Charbon):
             new_clp = str([lparts, lin])
 
         rv = org_clp == new_clp
-        msg = "--- checkCountsExt %s" % c.disp(self.store.ssetts, self.store.N,
-                                               self.store.c_vals["base_acc"], self.store.c_vals["prs"], self.store.constraints["score_coeffs"])
+        msg = "--- checkCountsExt %s" % self.store.dispCand(c)
+        # c.disp(self.store.ssetts, self.store.N,
+        #            self.store.c_vals["base_acc"], self.store.c_vals["prs"], self.store.constraints["score_coeffs"])
         msg += "\n<<< clp: %s" % org_clp
         msg += "\n>>> clp: %s" % new_clp
         return self.resultCheck(rv, msg)
