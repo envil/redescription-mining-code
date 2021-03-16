@@ -1628,7 +1628,7 @@ class Siren(GUIBoss):
     def readyReds(self, reds, wdets, source_logid):
         self.appendMinedReds(wdets, reds.get("P", []))
 
-    def filteredLids(self):
+    def getFilterLids(self):
         return ["P"]
 
     def readyProj(self, vid, proj):
