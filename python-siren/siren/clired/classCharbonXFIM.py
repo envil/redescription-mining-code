@@ -168,29 +168,60 @@ class CandStore:
         return qs
 
 
+class TIDList:
+    def __init__(self):
+        # self.setts = setts
+        self.lists = [{}, {}]
+
+    def set_data(self, side, item, data):
+        self.lists[side][item] = data
+
+    def get_supports(self, candidate: tuple):
+        side, _, _ = candidate[0] if isinstance(candidate[0], tuple) else candidate
+        if self.lists[side].get(candidate) is None:
+            self.lists[side][candidate] = self.create_tid(candidate)
+        return self.lists[side].get(candidate, set())
+
+    def create_tid(self, candidate):
+        supps = self.get_supports(candidate[0])
+        for item in candidate:
+            supps = supps & self.get_supports(item)
+        return supps
+
+
+
+
 class CandStoreV2:
     def __init__(self, setts):
         self.setts = setts
-        self.supps = [{}, {}]
+        self.store = [{}, {}]
 
     def add(self, cand):
         side = cand[0][0][0]
         if side == 0 and (
             "max_var_s0" not in self.setts or len([c for c in cand[0] if c[0] == 0]) <= self.setts["max_var_s0"]):
-            self.supps[0][cand[0]] = cand[1]
+            self.store[0][cand[0]] = cand[1]
         elif side == 1 and (
             "max_var_s1" not in self.setts or len([c for c in cand[0] if c[0] == 1]) <= self.setts["max_var_s1"]):
-            self.supps[1][cand[0]] = cand[1]
+            self.store[1][cand[0]] = cand[1]
 
-    def getQueries(self, tid_lists):
+    def getQueries(self, tid_lists: TIDList) -> list:
         query_store = []
-        for lhs_cand, s0 in self.supps[0].items():
-            for rhs_cand, s1 in self.supps[1].items():
-                union_cand = tid_lists[0].get(lhs_cand, None)
-                # if s0 > 0 and s1 > 0 and \
-                #     ("min_fin_in" not in self.setts or s01 >= self.setts["min_fin_in"]) and \
-                #     ("min_fin_acc" not in self.setts or s01 / (s0 + s1 - s01) >= self.setts["min_fin_acc"]):
-                #     query_store.append((lhs_cand, rhs_cand, s0, s1, s01))
+        for lhs_cand, s0 in self.store[0].items():
+            for rhs_cand, s1 in self.store[1].items():
+                s0 = tid_lists.get_supports(lhs_cand)
+                s1 = tid_lists.get_supports(rhs_cand)
+                if len(s0) == 0 or len(s1) == 0 or \
+                    ("min_fin_in" in self.setts and (len(s0) <= self.setts["min_fin_in"] or len(s1) <= self.setts["min_fin_in"])):
+                    continue
+                union_supports = s0 | s1
+                if len(union_supports) == 0:
+                    continue
+                intersection_supports = s0 & s1
+                accuracy = len(intersection_supports)/len(union_supports)
+
+                if ("min_fin_acc" not in self.setts or accuracy >= self.setts["min_fin_acc"]):
+                    query_store.append((lhs_cand, rhs_cand, s0, s1, accuracy))
         return query_store
 
 
@@ -238,9 +269,6 @@ class CharbonXFIM(CharbonXaust):
         return cands
 
     def computeExpansionsOnEachSide(self, data, initial_candidates_full):
-        # with open('tests/data/data.pickle', 'wb') as f:
-        #     import pickle
-        #     pickle.dump(data, f)
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
         min_supp = self.constraints.getCstr("min_itm_in")
@@ -249,7 +277,7 @@ class CharbonXFIM(CharbonXaust):
                                                                                  "min_fin_in", "min_fin_out",
                                                                                  "min_fin_acc"]])
         candidate_store = CandStoreV2(candidate_store_setts)
-        tid_lists = []
+        tid_lists = TIDList()
         for side in [0, 1]:
             initial_candidates = [candidate[side] for candidate in initial_candidates_full if candidate[side] is not None]
             tracts = [[] for i in range(data.nbRows())]
@@ -260,9 +288,10 @@ class CharbonXFIM(CharbonXaust):
                 #     initial_candidates_map[column_id] = []
                 k = (side, column_id, len(initial_candidates_map[column_id]))
                 initial_candidates_map[column_id].append(i)
-                for row_id in data.supp(side, candidate):
-                    tracts[row_id].append(k)
+                tid_lists.set_data(side, k, data.supp(side, candidate))
+
             tracts = [frozenset(t) for t in tracts]
+
             r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
         lits = []
@@ -271,11 +300,3 @@ class CharbonXFIM(CharbonXaust):
         return lits
 
     # def constructTIDList(self, data):
-
-
-class TIDList:
-    def __init__(self, data: Data):
-        self.data = data
-
-    def getColByCand(self, cand: frozenset):
-        return None
